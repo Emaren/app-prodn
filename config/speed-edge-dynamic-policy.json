@@ -9,6 +9,18 @@
       "rationale": "Anonymous public academy snapshot; non-transactional and byte-stable across a full 30-second public/origin proof window."
     },
     {
+      "route": "/ai",
+      "ttl_seconds": 30,
+      "empty_query_only": true,
+      "rationale": "Anonymous public AI Council snapshot; non-transactional telemetry display and exact public/origin bytes proven stable across a full 30-second window."
+    },
+    {
+      "route": "/battle-archive",
+      "ttl_seconds": 30,
+      "empty_query_only": true,
+      "rationale": "Anonymous public battle archive snapshot; read-only historical presentation and exact public/origin bytes proven stable across a full 30-second window."
+    },
+    {
       "route": "/bounties",
       "ttl_seconds": 30,
       "empty_query_only": true,
@@ -19,6 +31,12 @@
       "ttl_seconds": 30,
       "empty_query_only": true,
       "rationale": "Anonymous public champion snapshot; non-transactional and byte-stable across a full 30-second public/origin proof window."
+    },
+    {
+      "route": "/clans",
+      "ttl_seconds": 30,
+      "empty_query_only": true,
+      "rationale": "Anonymous public clan-directory snapshot; payment intent and settlement truth remain on no-store API rails, while exact public/origin HTML bytes were stable across a full 30-second window."
     },
     {
       "route": "/national-champions",

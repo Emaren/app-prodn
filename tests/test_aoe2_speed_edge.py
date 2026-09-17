@@ -211,7 +211,7 @@ class SpeedEdgeTests(unittest.TestCase):
                         "layout_server_personalization_signal": False,
                     },
                 }
-                for route in ("/academy", "/bounties", "/champions", "/national-champions")
+                for route in ("/academy", "/ai", "/battle-archive", "/bounties", "/champions", "/clans", "/national-champions")
             ]
         }
 
@@ -230,7 +230,7 @@ class SpeedEdgeTests(unittest.TestCase):
         policy = MODULE.load_dynamic_policy()
         self.assertEqual(
             [row["route"] for row in policy["routes"]],
-            ["/academy", "/bounties", "/champions", "/national-champions"],
+            ["/academy", "/ai", "/battle-archive", "/bounties", "/champions", "/clans", "/national-champions"],
         )
         self.assertTrue(all(row["ttl_seconds"] == 30 for row in policy["routes"]))
         self.assertTrue(all(row["empty_query_only"] is True for row in policy["routes"]))
@@ -338,7 +338,7 @@ class SpeedEdgeTests(unittest.TestCase):
                 monotonic_fn=monotonic,
             )
             self.assertTrue(result["all_qualified"])
-            self.assertEqual(result["qualified_count"], 4)
+            self.assertEqual(result["qualified_count"], 7)
             self.assertGreaterEqual(result["elapsed_seconds"], 30.0)
             self.assertTrue(all(len(row["samples"]) == 3 for row in result["rows"]))
         finally:
@@ -472,7 +472,7 @@ class SpeedEdgeTests(unittest.TestCase):
                 "rows": [{"route": row["route"], "qualified": True} for row in policy["routes"]],
             }
             plan = MODULE.build_dynamic_cloudflare_plan(qualification)
-            self.assertEqual(plan["eligible_exact_routes"], ["/academy", "/bounties", "/champions", "/national-champions"])
+            self.assertEqual(plan["eligible_exact_routes"], ["/academy", "/ai", "/battle-archive", "/bounties", "/champions", "/clans", "/national-champions"])
             self.assertEqual(plan["edge_ttl_seconds"], 30)
             self.assertIn('http.request.uri.query eq ""', plan["expression"])
             self.assertIn('not http.cookie contains "aoe2hdbets_session="', plan["expression"])

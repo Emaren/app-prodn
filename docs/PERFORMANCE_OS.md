@@ -168,7 +168,7 @@ edge caching requires deployment-integrated purge proof first.
 separate fail-closed lane can promote an explicitly governed subset without weakening
 the static cache rule. `config/speed-edge-dynamic-policy.json` is the source-controlled
 staleness authority; the current bounded cohort authorizes `/academy`, `/bounties`,
-`/champions` and `/national-champions`, exactly 30 seconds, empty-query HTML only. `/players` is
+`/ai`, `/battle-archive`, `/champions`, `/clans` and `/national-champions`, exactly 30 seconds, empty-query HTML only. The added `/ai`, `/battle-archive`, and `/clans` routes each passed an independent 0/15/30-second public-vs-origin byte-stability scout before promotion; Clan Hall payment intent and settlement remain on live no-store API rails. `/players` is
 explicitly held outside this cohort: request-time presence has been removed from the
 document, but the September 17 live qualification observed replay-generation body
 changes inside the 30-second proof window, so shared edge caching remains fail-closed
