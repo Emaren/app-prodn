@@ -494,10 +494,41 @@ class SpeedEdgeTests(unittest.TestCase):
                 "cookie_bypass_names": ["aoe2hdbets_session", "aoe2war_language"],
             }
             static_plan = {"eligible_exact_routes": ["/download", "/app"]}
-            result = MODULE.verify_dynamic_cloudflare_apply(dynamic_plan, static_plan)
+            result = MODULE.verify_dynamic_cloudflare_apply(dynamic_plan, static_plan, sleep_fn=lambda _: None)
             self.assertTrue(result["ok"])
             self.assertEqual(result["failures"], [])
             self.assertEqual(len(result["static_cohort"]), 2)
+        finally:
+            MODULE.cache_status_probe = original
+
+    def test_dynamic_post_apply_static_verifier_allows_bounded_edge_revalidation(self):
+        original = MODULE.cache_status_probe
+        try:
+            calls = {"/upload": 0}
+
+            def probe(path, *, cookie=None, rsc=False, query=None):
+                if path == "/api/deployment-version" or cookie or rsc or query:
+                    return {"ok": True, "cf_cache_status": "DYNAMIC"}
+                if path in {"/academy", "/champions"}:
+                    return {"ok": True, "cf_cache_status": "HIT"}
+                calls[path] = calls.get(path, 0) + 1
+                sequence = ["MISS", "EXPIRED", "EXPIRED", "EXPIRED", "HIT"]
+                return {"ok": True, "cf_cache_status": sequence[min(calls[path] - 1, len(sequence) - 1)]}
+
+            MODULE.cache_status_probe = probe
+            result = MODULE.verify_dynamic_cloudflare_apply(
+                {
+                    "eligible_exact_routes": ["/academy", "/champions"],
+                    "cookie_bypass_names": ["aoe2hdbets_session"],
+                },
+                {"eligible_exact_routes": ["/upload"]},
+                sleep_fn=lambda _: None,
+            )
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["failures"], [])
+            self.assertEqual(result["static_prime"][0]["probe"]["cf_cache_status"], "MISS")
+            self.assertEqual(len(result["static_cohort"][0]["attempts"]), 4)
+            self.assertEqual(result["static_cohort"][0]["final"]["cf_cache_status"], "HIT")
         finally:
             MODULE.cache_status_probe = original
 
