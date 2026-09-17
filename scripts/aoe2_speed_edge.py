@@ -28,6 +28,9 @@ DYNAMIC_QUALIFICATION_RECEIPTS = speed.STATE / "performance-edge-dynamic-qualifi
 DYNAMIC_POLICY_PATH = ROOT / "config" / "speed-edge-dynamic-policy.json"
 DYNAMIC_SAMPLE_OFFSETS = (0.0, 15.0, 30.0)
 EDGE_AUDIT_REUSE_SECONDS = 15 * 60
+STATIC_VERIFY_SETTLE_SECONDS = 1.5
+STATIC_VERIFY_ATTEMPTS = 5
+STATIC_VERIFY_BACKOFF_SECONDS = 1.0
 SESSION_COOKIE_NAME = "aoe2hdbets_session"
 CLOUDFLARE_SSH = os.getenv("AOE2_SPEED_CLOUDFLARE_SSH", "hetzner-codex")
 CLOUDFLARE_UNIT = "aoe2war-speedos-cloudflare@{command}.service"
@@ -1183,6 +1186,8 @@ def verify_cloudflare_apply(plan: dict[str, Any]) -> dict[str, Any]:
 def verify_dynamic_cloudflare_apply(
     dynamic_plan: dict[str, Any],
     static_plan: dict[str, Any],
+    *,
+    sleep_fn=time.sleep,
 ) -> dict[str, Any]:
     dynamic_routes = list(dynamic_plan.get("eligible_exact_routes") or [])
     static_routes = list(static_plan.get("eligible_exact_routes") or [])
@@ -1232,16 +1237,27 @@ def verify_dynamic_cloudflare_apply(
             + str(api.get("cf_cache_status") or "NONE")
         )
 
+    # A Cloudflare ruleset mutation can temporarily surface a healthy long-lived
+    # static object as MISS/EXPIRED while the edge revalidates it. Prime the
+    # already-authorized static cohort once, allow a short bounded settle, then
+    # require every route to converge back to HIT. The gate remains fail-closed;
+    # this only prevents false rollback on asynchronous edge revalidation.
+    static_prime: list[dict[str, Any]] = []
+    for route in static_routes:
+        static_prime.append({"route": route, "probe": cache_status_probe(route)})
+    if static_routes:
+        sleep_fn(STATIC_VERIFY_SETTLE_SECONDS)
+
     static_proof: list[dict[str, Any]] = []
     for route in static_routes:
         attempts = []
-        for attempt in range(3):
+        for attempt in range(STATIC_VERIFY_ATTEMPTS):
             probe = cache_status_probe(route)
             attempts.append(probe)
             if probe.get("ok") and probe.get("cf_cache_status") == "HIT":
                 break
-            if attempt < 2:
-                time.sleep(0.5)
+            if attempt < STATIC_VERIFY_ATTEMPTS - 1:
+                sleep_fn(STATIC_VERIFY_BACKOFF_SECONDS)
         final = attempts[-1]
         static_proof.append({"route": route, "attempts": attempts, "final": final})
         if not final.get("ok") or final.get("cf_cache_status") != "HIT":
@@ -1253,6 +1269,8 @@ def verify_dynamic_cloudflare_apply(
         "dynamic_anonymous": anonymous,
         "dynamic_bypass": bypass,
         "api_probe": api,
+        "static_prime": static_prime,
+        "static_settle_seconds": STATIC_VERIFY_SETTLE_SECONDS,
         "static_cohort": static_proof,
         "failures": failures,
     }
