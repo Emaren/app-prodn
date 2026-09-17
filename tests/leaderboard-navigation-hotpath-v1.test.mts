@@ -48,7 +48,7 @@ test("Leaderboard gets one bandwidth-aware idle warm before Kingdom intent", () 
 
   assert.match(shell, /leaderboardIdleWarmRef = React\.useRef\(false\)/);
   assert.match(shell, /connection\?\.saveData[\s\S]*\/\(\^\|-\)2g\$\/[\s\S]*router\.prefetch\("\/leaderboard"\);[\s\S]*warmLeaderboardClient\(\)/);
-  assert.match(shell, /requestIdleCallback\([\s\S]*warmLeaderboardNavigation[\s\S]*timeout: 500/);
+  assert.match(shell, /setTimeout\(\(\) => \{[\s\S]*requestIdleCallback\([\s\S]*warmLeaderboardNavigation[\s\S]*timeout: 500[\s\S]*\}, 1_400\)/);
 });
 
 test("the existing Player Registry prefetch contract stays intact", () => {
