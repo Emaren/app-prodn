@@ -163,7 +163,7 @@ class SpeedEdgeTests(unittest.TestCase):
                         "layout_server_personalization_signal": False,
                     },
                 }
-                for route in ("/academy", "/champions", "/national-champions", "/players")
+                for route in ("/academy", "/champions", "/national-champions")
             ]
         }
 
@@ -182,7 +182,7 @@ class SpeedEdgeTests(unittest.TestCase):
         policy = MODULE.load_dynamic_policy()
         self.assertEqual(
             [row["route"] for row in policy["routes"]],
-            ["/academy", "/champions", "/national-champions", "/players"],
+            ["/academy", "/champions", "/national-champions"],
         )
         self.assertTrue(all(row["ttl_seconds"] == 30 for row in policy["routes"]))
         self.assertTrue(all(row["empty_query_only"] is True for row in policy["routes"]))
@@ -248,7 +248,7 @@ class SpeedEdgeTests(unittest.TestCase):
                 monotonic_fn=monotonic,
             )
             self.assertTrue(result["all_qualified"])
-            self.assertEqual(result["qualified_count"], 4)
+            self.assertEqual(result["qualified_count"], 3)
             self.assertGreaterEqual(result["elapsed_seconds"], 30.0)
             self.assertTrue(all(len(row["samples"]) == 3 for row in result["rows"]))
         finally:
@@ -382,7 +382,7 @@ class SpeedEdgeTests(unittest.TestCase):
                 "rows": [{"route": row["route"], "qualified": True} for row in policy["routes"]],
             }
             plan = MODULE.build_dynamic_cloudflare_plan(qualification)
-            self.assertEqual(plan["eligible_exact_routes"], ["/academy", "/champions", "/national-champions", "/players"])
+            self.assertEqual(plan["eligible_exact_routes"], ["/academy", "/champions", "/national-champions"])
             self.assertEqual(plan["edge_ttl_seconds"], 30)
             self.assertIn('http.request.uri.query eq ""', plan["expression"])
             self.assertIn('not http.cookie contains "aoe2hdbets_session="', plan["expression"])
