@@ -157,11 +157,12 @@ edge caching requires deployment-integrated purge proof first.
 `anonymous_dynamic_candidate_review` is no longer a dead-end classification. A
 separate fail-closed lane can promote an explicitly governed subset without weakening
 the static cache rule. `config/speed-edge-dynamic-policy.json` is the source-controlled
-staleness authority; the current bounded cohort authorizes `/academy`, `/champions`,
-`/national-champions` and `/players`, exactly 30 seconds, empty-query HTML only.
-`/players` is eligible because request-time presence was removed from the document;
-its live count/roster now starts as unknown and refreshes on the existing five-second
-client presence rail.
+staleness authority; the current bounded cohort authorizes `/academy`, `/champions`
+and `/national-champions`, exactly 30 seconds, empty-query HTML only. `/players` is
+explicitly held outside this cohort: request-time presence has been removed from the
+document, but the September 17 live qualification observed replay-generation body
+changes inside the 30-second proof window, so shared edge caching remains fail-closed
+until byte stability is independently re-proven.
 
 `aoe2war speed edge qualify-dynamic` is observational. It is allowed to run only from
 a clean `main` worktree when production SHA, GitHub `main`, operator source SHA and
@@ -180,10 +181,10 @@ plan to the policy SHA, qualification SHA, exact release/source identity, cookie
 bypass census and the independent 30-second rule. `apply-dynamic` stages a separate
 root request and can mutate only the independent Cloudflare rule
 `AOE2WAR SpeedOS qualified dynamic HTML v1`. The root helper has its own hardcoded
-four-route allowlist, requires TTL exactly 30 seconds, reconstructs the expression,
+three-route allowlist, requires TTL exactly 30 seconds, reconstructs the expression,
 requires the existing certified static SpeedOS rule, and proves the request source SHA
 against the live production checkout before touching Cloudflare. The privileged
-allowlist contains the same four routes and cannot be broadened by the staged request.
+allowlist contains the same three routes and cannot be broadened by the staged request.
 
 Post-apply proof is intentionally broader than the new rule: every qualified
 empty-query anonymous route must converge to HIT; every known AoE2WAR cookie, RSC
@@ -207,8 +208,9 @@ The Player Registry document no longer samples public presence on the server req
 It renders an explicit unknown/checking state, then the existing
 `/api/user/online_users` five-second no-store rail fills live counts and statuses.
 This keeps live truth fresh while removing volatile presence from the document/RSC
-critical path and makes the anonymous HTML snapshot eligible for the bounded dynamic
-edge qualification above.
+critical path. Dynamic edge caching is still withheld because live qualification
+observed replay-generation body churn inside the authorized 30-second proof window;
+that route must re-prove byte stability before it can rejoin the bounded cohort.
 
 ## Edge-cache safety classification
 
