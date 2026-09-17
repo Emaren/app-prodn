@@ -22,10 +22,10 @@ test("Bets is warmed on bounded idle and direct navigation intent", () => {
   assert.match(shell, /pathname === "\/bets"[\s\S]*connection\?\.saveData[\s\S]*\/\(\^\|-\)2g\$\//);
   assert.match(shell, /href === "\/bets"[\s\S]*warmBetsBoard\(uid\)/);
   assert.match(shell, /betsIdleWarmRef\.current = false;[\s\S]*\}, \[uid\]\)/);
-  assert.match(shell, /router\.prefetch\("\/players"\);[\s\S]*queueMicrotask\(warmBetsNavigation\)/);
+  assert.match(shell, /router\.prefetch\("\/players"\);[\s\S]*setTimeout\(warmBetsNavigation, 500\)/);
   const idleWarmBody = shell.match(/const warmBetsNavigation = \(\) => \{([\s\S]*?)\n    \};/)?.[1] ?? "";
-  assert.match(idleWarmBody, /warmBetsBoard\(uid\)/);
-  assert.match(idleWarmBody, /setTimeout\(\(\) => \{[\s\S]*router\.prefetch\("\/bets"\);[\s\S]*\}, 500\)/);
+  assert.match(idleWarmBody, /router\.prefetch\("\/bets"\)/);
+  assert.match(idleWarmBody, /queueMicrotask\(\(\) => \{[\s\S]*warmBetsBoard\(uid\)/);
   assert.doesNotMatch(idleWarmBody, /warmBetsClient/);
 });
 
