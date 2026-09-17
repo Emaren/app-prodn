@@ -33,16 +33,46 @@
       "rationale": "Anonymous public champion snapshot; non-transactional and byte-stable across a full 30-second public/origin proof window."
     },
     {
+      "route": "/champions/world",
+      "ttl_seconds": 30,
+      "empty_query_only": true,
+      "rationale": "Anonymous public champions drilldown; read-only ranking presentation with exact public/origin bytes stable across a full 30-second proof window."
+    },
+    {
       "route": "/clans",
       "ttl_seconds": 30,
       "empty_query_only": true,
       "rationale": "Anonymous public clan-directory snapshot; payment intent and settlement truth remain on no-store API rails, while exact public/origin HTML bytes were stable across a full 30-second window."
     },
     {
+      "route": "/kingdom",
+      "ttl_seconds": 30,
+      "empty_query_only": true,
+      "rationale": "Anonymous public kingdom overview; read-only aggregate presentation with exact public/origin bytes stable across a full 30-second proof window."
+    },
+    {
+      "route": "/leaderboard/og",
+      "ttl_seconds": 30,
+      "empty_query_only": true,
+      "rationale": "Anonymous public legacy leaderboard surface; read-only ranking presentation with exact public/origin bytes stable across a full 30-second proof window."
+    },
+    {
       "route": "/national-champions",
       "ttl_seconds": 30,
       "empty_query_only": true,
       "rationale": "Anonymous public national-title snapshot; non-transactional and byte-stable across a full 30-second public/origin proof window."
+    },
+    {
+      "route": "/players",
+      "ttl_seconds": 30,
+      "empty_query_only": true,
+      "rationale": "Anonymous public player directory; volatile presence is client-fetched, while exact public/origin HTML bytes were stable across a full 30-second proof window."
+    },
+    {
+      "route": "/players/by-name/Emaren",
+      "ttl_seconds": 30,
+      "empty_query_only": true,
+      "rationale": "Anonymous public player profile; read-only profile presentation with exact public/origin HTML bytes stable across a full 30-second proof window."
     }
   ]
 }
