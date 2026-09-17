@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6d4811190ddc610b30b2fc805566e356b8f23a9191683c2e3bfb0401d010a95b",
+      "sha256": "91aeef5e6a2f29aaff48459da81914140345368322b07e01649aac3fc6960c7c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "performance/dynamic-edge-cohort-2-v1",
-    "commit": "d9f51a1f63a11523becc23a581148fbb0fde8061"
+    "branch": "performance/dynamic-edge-kingdom-hold-v1",
+    "commit": "1a1b8bfb585f72415a0149683a2bd15920b6cdc0"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
