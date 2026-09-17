@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a3e7255870455310371bff4912c2845134a7dd9406e49cc179e2b466221ff03a",
+      "sha256": "bdea3d26fc6cce8e97e3d475ba93bad9e551995ce97bd80f3ab613ec4c621580",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -797,7 +797,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-06",
       "sensitivity": "internal",
-      "sha256": "e41d2fa83bac308316036220e3e5a3ff6682bf1eaf5a06a9d5857a16dfe6836d",
+      "sha256": "c647e464c9870634d348c3da2def03875d6820630d70a5b1271dd0f9e8ff6d42",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -958,7 +958,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-09",
       "sensitivity": "internal",
-      "sha256": "4ebf2750f5b3f292a2183900c01f19f2dee573c9ee4775e1801d41aa20bcf6e5",
+      "sha256": "3aef13692cac8dd2ebd39c8ad2c1d7f3e8dd70839c7884163b03b4253ec9afdc",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/watcher-folder-diagnostics-v1",
-    "commit": "1563454d4b20f3269f5a754091f0f7d4d4892333"
+    "branch": "fix/watcher-context-camera-v1",
+    "commit": "3d16527b9180ee8a8f14c9120eab6a132a204b94"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

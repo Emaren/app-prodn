@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/watcher-folder-diagnostics-v1` at `1563454d4b20f3269f5a754091f0f7d4d4892333`
+Implementation baseline: `fix/watcher-context-camera-v1` at `3d16527b9180ee8a8f14c9120eab6a132a204b94`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
