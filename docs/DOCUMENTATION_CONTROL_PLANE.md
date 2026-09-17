@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `performance/dynamic-edge-static-verifier-v1` at `fa1d51bb1726f99b64866ca73c2fbf15392dc1db`
+Implementation baseline: `performance/dynamic-edge-cohort-2-v1` at `d9f51a1f63a11523becc23a581148fbb0fde8061`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

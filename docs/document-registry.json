@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "14e90b835d1cba8ebd3427738ece06a9483d837e93cbdd30d1da569d1c1800d8",
+      "sha256": "6d4811190ddc610b30b2fc805566e356b8f23a9191683c2e3bfb0401d010a95b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "performance/dynamic-edge-static-verifier-v1",
-    "commit": "fa1d51bb1726f99b64866ca73c2fbf15392dc1db"
+    "branch": "performance/dynamic-edge-cohort-2-v1",
+    "commit": "d9f51a1f63a11523becc23a581148fbb0fde8061"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
