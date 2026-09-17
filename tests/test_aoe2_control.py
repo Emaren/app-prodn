@@ -206,6 +206,7 @@ class ControlDocsTests(unittest.TestCase):
                  "capture_context",
                  return_value={
                      "AoE2HDBets": {},
+                     "aoe2-watcher": {},
                      "WoloChain-wolo-1": {},
                      "VPSSentry": {},
                      "AoE2WAR-docs": {},
@@ -219,6 +220,7 @@ class ControlDocsTests(unittest.TestCase):
         capture_call.assert_called_once_with(
             [
                 "AoE2HDBets",
+                "aoe2-watcher",
                 "WoloChain-wolo-1",
                 "VPSSentry",
                 "AoE2WAR-docs",
@@ -231,6 +233,7 @@ class ControlDocsTests(unittest.TestCase):
             set(payload["context_archives"]),
             {
                 "AoE2HDBets",
+                "aoe2-watcher",
                 "WoloChain-wolo-1",
                 "VPSSentry",
                 "AoE2WAR-docs",

@@ -2660,6 +2660,7 @@ def start_pre_release_context_overlap(
         project
         for project in (
             "AoE2HDBets",
+            "aoe2-watcher",
             "WoloChain-wolo-1",
             "VPSSentry",
             "AoE2WAR-docs",

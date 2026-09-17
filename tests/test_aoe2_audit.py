@@ -125,6 +125,10 @@ class AuditCommandTests(unittest.TestCase):
     def test_manifest_entry_rejects_bad_digest(self):
         self.assertIsNone(MODULE.manifest_entry("xyz  archive.tgz"))
 
+    def test_context_archive_series_keep_watcher_independent(self):
+        self.assertEqual(MODULE.ARCHIVE_SERIES["AoE2HDBets"], [MODULE.APP, MODULE.API])
+        self.assertEqual(MODULE.ARCHIVE_SERIES["aoe2-watcher"], [MODULE.WATCHER])
+
     def test_archive_timestamp(self):
         value = MODULE.archive_timestamp(
             "AoE2HDBets-context-Tonys_Laptop-20260810-163416.tgz"

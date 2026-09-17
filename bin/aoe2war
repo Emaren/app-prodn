@@ -234,8 +234,8 @@ DOCUMENTATION / CONTEXT WRITE
 
   aoe2war control refresh
       Refresh the three certified control documents and one coherent core
-      context-camera set: AoE2HDBets, WoloChain, VPSSentry, AoE2WAR-docs,
-      MBP and VPS. This is the canonical "refresh the kingdom's self-knowledge"
+      context-camera set: AoE2HDBets, aoe2-watcher, WoloChain, VPSSentry,
+      AoE2WAR-docs, MBP and VPS. This is the canonical "refresh the kingdom's self-knowledge"
       transaction. It does NOT deploy production, mutate the database or Wolo.
 
   aoe2war update --apply

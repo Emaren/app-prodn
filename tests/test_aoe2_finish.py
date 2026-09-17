@@ -365,6 +365,31 @@ class FinishTests(unittest.TestCase):
         self.assertIn("AoE2HDBets", overlap["archives"])
         self.assertGreaterEqual(len(checkpoints), 2)
 
+    def test_context_overlap_keeps_watcher_camera_independent(self):
+        receipt = {}
+        with patch.object(
+            MODULE.aoe2_update,
+            "capture_context",
+            return_value={"aoe2-watcher": {"sha256": "b" * 64, "bytes": 42}},
+        ) as capture:
+            state = MODULE.start_pre_release_context_overlap(
+                projects=["aoe2-watcher"],
+                receipt=receipt,
+                checkpoint=lambda: None,
+                progress=MODULE.Progress(enabled=False),
+            )
+            MODULE.settle_pre_release_context_overlap(
+                state=state,
+                receipt=receipt,
+                checkpoint=lambda: None,
+                progress=MODULE.Progress(enabled=False),
+            )
+        capture.assert_called_once()
+        self.assertEqual(
+            receipt["pre_release_context_overlap"]["projects"],
+            ["aoe2-watcher"],
+        )
+
     def test_external_source_authorities_fail_closed_on_dirty_repo(self):
         with tempfile.TemporaryDirectory() as temp:
             base = pathlib.Path(temp)

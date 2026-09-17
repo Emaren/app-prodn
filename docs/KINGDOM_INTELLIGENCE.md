@@ -169,8 +169,8 @@ including:
 - invariant evidence;
 - an explicit read-only **Refresh Kingdom Intelligence** action;
 - a protected **Refresh Kingdom State** action that runs the certified control
-  refresh and regenerates the coherent AoE2HDBets/WoloChain/VPSSentry/
-  AoE2WAR-docs/MBP/VPS context camera set;
+  refresh and regenerates the coherent AoE2HDBets/aoe2-watcher/WoloChain/
+  VPSSentry/AoE2WAR-docs/MBP/VPS context camera set;
 - direct read-only **Storage Status**, **Storage Plan**, and **Storage Campaign**
   controls so capacity health, the next bounded archival candidate, and detached
   campaign lifecycle can be inspected without opening a terminal;

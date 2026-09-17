@@ -67,7 +67,8 @@ AREAS = [
 ]
 
 ARCHIVE_SERIES = {
-    "AoE2HDBets": [APP, API, WATCHER],
+    "AoE2HDBets": [APP, API],
+    "aoe2-watcher": [WATCHER],
     "WoloChain-wolo-1": [WOLOCHAIN],
     "VPSSentry": [VPSSENTRY],
     "AoE2WAR-docs": [DOCS],

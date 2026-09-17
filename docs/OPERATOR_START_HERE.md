@@ -121,8 +121,8 @@ aoe2war control refresh
 refreshes the certified generated blocks in `SYSTEM_MAP.md`,
 `SERVER_STORAGE_MAP.md`, and `AOE2WAR_100_CLOSURE.md`, synchronizes the
 documentation federation, and captures one coherent core context camera set for
-AoE2HDBets, WoloChain, VPSSentry, AoE2WAR-docs, MBP, and VPS. It does not deploy
-production or mutate the database/Wolo runtime.
+AoE2HDBets, aoe2-watcher, WoloChain, VPSSentry, AoE2WAR-docs, MBP, and VPS.
+It does not deploy production or mutate the database/Wolo runtime.
 
 The Admin AoE2WAR OS exposes the same fixed operation as **Refresh Kingdom
 State** through the outbound-only Operator Bridge. Documentation synchronization

@@ -34,7 +34,7 @@ SOURCES = aoe2_audit.CORE_SOURCES
 REPO_TO_CONTEXT = {
     "app-prodn": "AoE2HDBets",
     "api-prodn": "AoE2HDBets",
-    "aoe2-watcher": "AoE2HDBets",
+    "aoe2-watcher": "aoe2-watcher",
     "vpssentry": "VPSSentry",
     "wolochain": "WoloChain-wolo-1",
 }
@@ -329,6 +329,7 @@ def baseline_refresh_needed(output: str) -> bool:
 def archive_project_from_finding(detail: str) -> str | None:
     for project in (
         "AoE2HDBets",
+        "aoe2-watcher",
         "WoloChain-wolo-1",
         "VPSSentry",
         "AoE2WAR-docs",
@@ -1833,6 +1834,7 @@ def apply_update(
             project
             for project in (
                 "AoE2HDBets",
+                "aoe2-watcher",
                 "WoloChain-wolo-1",
                 "VPSSentry",
                 "AoE2WAR-docs",

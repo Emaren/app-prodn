@@ -228,6 +228,13 @@ class UpdateCommandTests(unittest.TestCase):
             ),
             "AoE2HDBets",
         )
+        self.assertEqual(
+            MODULE.archive_project_from_finding(
+                "aoe2-watcher: archive=old newest=new"
+            ),
+            "aoe2-watcher",
+        )
+        self.assertEqual(MODULE.REPO_TO_CONTEXT["aoe2-watcher"], "aoe2-watcher")
         self.assertIsNone(
             MODULE.archive_project_from_finding("unknown: x")
         )
