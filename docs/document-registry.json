@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6b77681793a224ab4a30f5c2173023dcd7426e66a835e46a37c5722f0769da7e",
+      "sha256": "4f67bd7c33d9072da3105b936f8c61bd3f13025150e13d51f86ffe11534fc1f7",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "performance/static-edge-idempotence-v1",
-    "commit": "24fc0f7de91fdde12f75d5bb285563a3e0947cad"
+    "branch": "performance/bounties-edge-stability-v1",
+    "commit": "fd35bca820547165e99b45e409c6161a2bf8c2e3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

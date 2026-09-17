@@ -370,7 +370,7 @@ function BasicLedger({
 
         <div className="text-xs text-slate-500">
           {board.ledger.length}{" "}
-          recent rows · generated{" "}
+          recent rows · snapshot{" "}
           {new Date(
             board.generatedAt
           ).toLocaleString()}
@@ -1426,7 +1426,7 @@ function PremiumLedger({
 
         <div className="text-xs text-slate-500">
           {board.ledger.length}{" "}
-          recent rows ·{" "}
+          recent rows · snapshot{" "}
           {new Date(
             board.generatedAt
           ).toLocaleString()}
