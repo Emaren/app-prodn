@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `performance/bounties-dynamic-edge-v1` at `14053d2b94c5728460f234dc6b0a0fb16ad28842`
+Implementation baseline: `performance/dynamic-edge-cohort-v2` at `1d03d797f9a5a92fb33c9871363625700eca3f0d`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
