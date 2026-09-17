@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b806afd933abed7f0e8a388142d2e59f312a8a9125359b61e3b1027f64c0e038",
+      "sha256": "a3e7255870455310371bff4912c2845134a7dd9406e49cc179e2b466221ff03a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1838,7 +1838,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/watcher-folder-diagnostics-v1",
-    "commit": "9a431a7b70cfe4866b1b0922bf6b9ea4eea444e7"
+    "commit": "1563454d4b20f3269f5a754091f0f7d4d4892333"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
