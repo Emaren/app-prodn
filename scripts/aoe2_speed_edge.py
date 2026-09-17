@@ -482,9 +482,15 @@ def build_cloudflare_plan(
 
 
 
+DYNAMIC_POLICY_ADMISSIONS = {
+    "anonymous_dynamic": "anonymous_dynamic_candidate_review",
+    "request_time_public": "static_or_revalidated_public_candidate",
+}
+
+
 def load_dynamic_policy(path: Path = DYNAMIC_POLICY_PATH) -> dict[str, Any]:
     payload = speed.safe_json(path)
-    if not payload or payload.get("schema") != 1 or payload.get("kind") != "aoe2war-speedos-dynamic-edge-policy":
+    if not payload or payload.get("schema") != 2 or payload.get("kind") != "aoe2war-speedos-dynamic-edge-policy":
         raise EdgeAuditError(f"dynamic edge policy is missing or invalid: {path}")
     raw_routes = payload.get("routes")
     if not isinstance(raw_routes, list) or not raw_routes:
@@ -502,6 +508,9 @@ def load_dynamic_policy(path: Path = DYNAMIC_POLICY_PATH) -> dict[str, Any]:
             raise EdgeAuditError(f"dynamic edge policy TTL must be exactly 30 seconds: {route}")
         if raw.get("empty_query_only") is not True:
             raise EdgeAuditError(f"dynamic edge policy must require empty-query HTML: {route}")
+        admission = str(raw.get("admission") or "").strip()
+        if admission not in DYNAMIC_POLICY_ADMISSIONS:
+            raise EdgeAuditError(f"dynamic edge policy has invalid admission {admission!r}: {route}")
         rationale = str(raw.get("rationale") or "").strip()
         if not rationale:
             raise EdgeAuditError(f"dynamic edge policy requires a rationale: {route}")
@@ -510,6 +519,7 @@ def load_dynamic_policy(path: Path = DYNAMIC_POLICY_PATH) -> dict[str, Any]:
             "route": route,
             "ttl_seconds": 30,
             "empty_query_only": True,
+            "admission": admission,
             "rationale": rationale,
         })
     return {**payload, "routes": sorted(rows, key=lambda row: row["route"])}
@@ -552,6 +562,7 @@ def require_dynamic_release_identity() -> dict[str, Any]:
 
 def dynamic_inventory_routes(source_inventory: dict[str, Any]) -> dict[str, dict[str, Any]]:
     result: dict[str, dict[str, Any]] = {}
+    admission_by_source = {source: admission for admission, source in DYNAMIC_POLICY_ADMISSIONS.items()}
     for page in source_inventory.get("pages") or []:
         if page.get("classification") != "public":
             continue
@@ -559,13 +570,19 @@ def dynamic_inventory_routes(source_inventory: dict[str, Any]) -> dict[str, dict
         profile = page.get("source_profile") or {}
         if not isinstance(route, str):
             continue
-        if profile.get("edge_cache_classification") != "anonymous_dynamic_candidate_review":
+        source_class = str(profile.get("edge_cache_classification") or "")
+        admission = admission_by_source.get(source_class)
+        if not admission:
+            continue
+        if profile.get("server_request_personalization_signal") or profile.get("layout_server_personalization_signal"):
             continue
         result[route] = {
             "template": page.get("template"),
             "source_path": profile.get("source_path"),
-            "server_request_personalization_signal": bool(profile.get("server_request_personalization_signal")),
-            "layout_server_personalization_signal": bool(profile.get("layout_server_personalization_signal")),
+            "source_edge_cache_classification": source_class,
+            "admission": admission,
+            "server_request_personalization_signal": False,
+            "layout_server_personalization_signal": False,
         }
     return result
 
@@ -721,9 +738,16 @@ def qualify_dynamic_edge(
     policy = policy or load_dynamic_policy()
     candidates = dynamic_inventory_routes(source_inventory)
     routes = [row["route"] for row in policy["routes"]]
+    policy_by_route = {row["route"]: row for row in policy["routes"]}
     missing = [route for route in routes if route not in candidates]
     if missing:
-        raise EdgeAuditError("dynamic policy route is no longer an anonymous-dynamic candidate: " + ", ".join(missing))
+        raise EdgeAuditError("dynamic policy route is no longer an admitted public candidate: " + ", ".join(missing))
+    admission_mismatch = [
+        route for route in routes
+        if candidates[route].get("admission") != policy_by_route[route].get("admission")
+    ]
+    if admission_mismatch:
+        raise EdgeAuditError("dynamic policy/source admission mismatch: " + ", ".join(admission_mismatch))
     if tuple(sample_offsets) != tuple(sorted(sample_offsets)) or not sample_offsets or sample_offsets[0] != 0:
         raise EdgeAuditError("dynamic qualification sample offsets must start at zero and be ordered")
     if sample_offsets[-1] < 30:

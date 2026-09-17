@@ -1,66 +1,97 @@
 {
-  "schema": 1,
+  "schema": 2,
   "kind": "aoe2war-speedos-dynamic-edge-policy",
   "routes": [
     {
       "route": "/academy",
       "ttl_seconds": 30,
       "empty_query_only": true,
-      "rationale": "Anonymous public academy snapshot; non-transactional and byte-stable across a full 30-second public/origin proof window."
+      "rationale": "Anonymous public academy snapshot; non-transactional and byte-stable across a full 30-second public/origin proof window.",
+      "admission": "anonymous_dynamic"
     },
     {
       "route": "/ai",
       "ttl_seconds": 30,
       "empty_query_only": true,
-      "rationale": "Anonymous public AI Council snapshot; non-transactional telemetry display and exact public/origin bytes proven stable across a full 30-second window."
+      "rationale": "Anonymous public AI Council snapshot; non-transactional telemetry display and exact public/origin bytes proven stable across a full 30-second window.",
+      "admission": "anonymous_dynamic"
     },
     {
       "route": "/battle-archive",
       "ttl_seconds": 30,
       "empty_query_only": true,
-      "rationale": "Anonymous public battle archive snapshot; read-only historical presentation and exact public/origin bytes proven stable across a full 30-second window."
+      "rationale": "Anonymous public battle archive snapshot; read-only historical presentation and exact public/origin bytes proven stable across a full 30-second window.",
+      "admission": "anonymous_dynamic"
     },
     {
       "route": "/bounties",
       "ttl_seconds": 30,
       "empty_query_only": true,
-      "rationale": "Anonymous public Bounty Hall snapshot; non-transactional display, request-time entropy removed, and exact public/origin bytes proven stable across a full 30-second window."
+      "rationale": "Anonymous public Bounty Hall snapshot; non-transactional display, request-time entropy removed, and exact public/origin bytes proven stable across a full 30-second window.",
+      "admission": "anonymous_dynamic"
     },
     {
       "route": "/champions",
       "ttl_seconds": 30,
       "empty_query_only": true,
-      "rationale": "Anonymous public champion snapshot; non-transactional and byte-stable across a full 30-second public/origin proof window."
+      "rationale": "Anonymous public champion snapshot; non-transactional and byte-stable across a full 30-second public/origin proof window.",
+      "admission": "anonymous_dynamic"
     },
     {
       "route": "/champions/world",
       "ttl_seconds": 30,
       "empty_query_only": true,
-      "rationale": "Anonymous public champions drilldown; read-only ranking presentation with exact public/origin bytes stable across a full 30-second proof window."
+      "rationale": "Anonymous public champions drilldown; read-only ranking presentation with exact public/origin bytes stable across a full 30-second proof window.",
+      "admission": "anonymous_dynamic"
     },
     {
       "route": "/clans",
       "ttl_seconds": 30,
       "empty_query_only": true,
-      "rationale": "Anonymous public clan-directory snapshot; payment intent and settlement truth remain on no-store API rails, while exact public/origin HTML bytes were stable across a full 30-second window."
+      "rationale": "Anonymous public clan-directory snapshot; payment intent and settlement truth remain on no-store API rails, while exact public/origin HTML bytes were stable across a full 30-second window.",
+      "admission": "anonymous_dynamic"
+    },
+    {
+      "route": "/forum",
+      "ttl_seconds": 30,
+      "empty_query_only": true,
+      "admission": "request_time_public",
+      "rationale": "Anonymous empty-query forum shell; live community state is fetched client-side, while server HTML was byte-identical public/origin and stable across a full 30-second proof window."
     },
     {
       "route": "/leaderboard/og",
       "ttl_seconds": 30,
       "empty_query_only": true,
-      "rationale": "Anonymous public legacy leaderboard surface; read-only ranking presentation with exact public/origin bytes stable across a full 30-second proof window."
+      "rationale": "Anonymous public legacy leaderboard surface; read-only ranking presentation with exact public/origin bytes stable across a full 30-second proof window.",
+      "admission": "anonymous_dynamic"
+    },
+    {
+      "route": "/market",
+      "ttl_seconds": 30,
+      "empty_query_only": true,
+      "admission": "request_time_public",
+      "rationale": "Anonymous Marketplace street snapshot; request-time database awnings remain non-transactional presentation, while payment authority stays on no-store API rails and HTML was byte-identical public/origin across a full 30-second proof window."
+    },
+    {
+      "route": "/market/shops/chat-effects",
+      "ttl_seconds": 30,
+      "empty_query_only": true,
+      "admission": "request_time_public",
+      "rationale": "Anonymous public merchant storefront shell; payment and inquiry verification remain on no-store API rails, while storefront HTML was byte-identical public/origin and stable across a full 30-second proof window."
     },
     {
       "route": "/national-champions",
       "ttl_seconds": 30,
       "empty_query_only": true,
-      "rationale": "Anonymous public national-title snapshot; non-transactional and byte-stable across a full 30-second public/origin proof window."
+      "rationale": "Anonymous public national-title snapshot; non-transactional and byte-stable across a full 30-second public/origin proof window.",
+      "admission": "anonymous_dynamic"
     },
     {
       "route": "/players/by-name/Emaren",
       "ttl_seconds": 30,
       "empty_query_only": true,
-      "rationale": "Anonymous public player profile; read-only profile presentation with exact public/origin HTML bytes stable across a full 30-second proof window."
+      "rationale": "Anonymous public player profile; read-only profile presentation with exact public/origin HTML bytes stable across a full 30-second proof window.",
+      "admission": "anonymous_dynamic"
     }
   ]
 }
