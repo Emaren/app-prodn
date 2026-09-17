@@ -231,7 +231,7 @@ class CloudflareRemoteHelperTests(unittest.TestCase):
                 MODULE.STATE, MODULE.REQUEST, MODULE.LAST_APPLY = old
 
     def dynamic_request(self, **overrides):
-        routes = ["/academy", "/ai", "/battle-archive", "/bounties", "/champions", "/clans", "/national-champions"]
+        routes = ["/academy", "/ai", "/battle-archive", "/bounties", "/champions", "/champions/world", "/clans", "/kingdom", "/leaderboard/og", "/national-champions", "/players", "/players/by-name/Emaren"]
         cookie_names = ["aoe2hdbets_session"]
         base = {
             "schema": 1,
