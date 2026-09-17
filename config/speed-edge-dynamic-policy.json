@@ -9,6 +9,12 @@
       "rationale": "Anonymous public academy snapshot; non-transactional and byte-stable across a full 30-second public/origin proof window."
     },
     {
+      "route": "/bounties",
+      "ttl_seconds": 30,
+      "empty_query_only": true,
+      "rationale": "Anonymous public Bounty Hall snapshot; non-transactional display, request-time entropy removed, and exact public/origin bytes proven stable across a full 30-second window."
+    },
+    {
       "route": "/champions",
       "ttl_seconds": 30,
       "empty_query_only": true,

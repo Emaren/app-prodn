@@ -167,8 +167,8 @@ edge caching requires deployment-integrated purge proof first.
 `anonymous_dynamic_candidate_review` is no longer a dead-end classification. A
 separate fail-closed lane can promote an explicitly governed subset without weakening
 the static cache rule. `config/speed-edge-dynamic-policy.json` is the source-controlled
-staleness authority; the current bounded cohort authorizes `/academy`, `/champions`
-and `/national-champions`, exactly 30 seconds, empty-query HTML only. `/players` is
+staleness authority; the current bounded cohort authorizes `/academy`, `/bounties`,
+`/champions` and `/national-champions`, exactly 30 seconds, empty-query HTML only. `/players` is
 explicitly held outside this cohort: request-time presence has been removed from the
 document, but the September 17 live qualification observed replay-generation body
 changes inside the 30-second proof window, so shared edge caching remains fail-closed
@@ -191,10 +191,10 @@ plan to the policy SHA, qualification SHA, exact release/source identity, cookie
 bypass census and the independent 30-second rule. `apply-dynamic` stages a separate
 root request and can mutate only the independent Cloudflare rule
 `AOE2WAR SpeedOS qualified dynamic HTML v1`. The root helper has its own hardcoded
-three-route allowlist, requires TTL exactly 30 seconds, reconstructs the expression,
+four-route allowlist, requires TTL exactly 30 seconds, reconstructs the expression,
 requires the existing certified static SpeedOS rule, and proves the request source SHA
 against the live production checkout before touching Cloudflare. The privileged
-allowlist contains the same three routes and cannot be broadened by the staged request.
+allowlist contains the same four routes and cannot be broadened by the staged request.
 
 Post-apply proof is intentionally broader than the new rule: every qualified
 empty-query anonymous route must converge to HIT; every known AoE2WAR cookie, RSC
