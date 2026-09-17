@@ -92,6 +92,32 @@ class UpdateCommandTests(unittest.TestCase):
         )
         self.assertFalse(MODULE.baseline_refresh_needed("candidate document found"))
 
+    def test_release_docs_refresh_detection(self):
+        marker = "WATCHER_RELEASE_DOCS_STALE version=1.5.12"
+        self.assertTrue(MODULE.release_docs_refresh_needed(marker))
+        self.assertTrue(MODULE.source_docs_refresh_needed(marker))
+        self.assertFalse(MODULE.release_docs_refresh_needed("WATCHER_RELEASE_DOCS_CURRENT"))
+
+    def test_source_checker_runs_release_documentation_gate(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            repo = pathlib.Path(temporary)
+            scripts = repo / "scripts"
+            scripts.mkdir()
+            (scripts / "docs_v2_check.py").write_text("# checker")
+            (scripts / "sync-release-docs.mjs").write_text("// release checker")
+            with mock.patch.object(
+                MODULE,
+                "run",
+                side_effect=[
+                    (0, "DOCS_PASS"),
+                    (2, "WATCHER_RELEASE_DOCS_STALE version=1.5.12"),
+                ],
+            ) as run_call:
+                rc, output = MODULE.source_checker(repo)
+        self.assertEqual(rc, 2)
+        self.assertIn("WATCHER_RELEASE_DOCS_STALE", output)
+        self.assertEqual(run_call.call_count, 2)
+
     def test_collect_plan_allows_central_quality_p0_self_remediation(self):
         audit = mock.Mock()
         audit.payload.return_value = {
@@ -228,6 +254,13 @@ class UpdateCommandTests(unittest.TestCase):
             ),
             "AoE2HDBets",
         )
+        self.assertEqual(
+            MODULE.archive_project_from_finding(
+                "aoe2-watcher: archive=old newest=new"
+            ),
+            "aoe2-watcher",
+        )
+        self.assertEqual(MODULE.REPO_TO_CONTEXT["aoe2-watcher"], "aoe2-watcher")
         self.assertIsNone(
             MODULE.archive_project_from_finding("unknown: x")
         )

@@ -67,7 +67,8 @@ AREAS = [
 ]
 
 ARCHIVE_SERIES = {
-    "AoE2HDBets": [APP, API, WATCHER],
+    "AoE2HDBets": [APP, API],
+    "aoe2-watcher": [WATCHER],
     "WoloChain-wolo-1": [WOLOCHAIN],
     "VPSSentry": [VPSSENTRY],
     "AoE2WAR-docs": [DOCS],
@@ -253,6 +254,15 @@ def check_source_documentation(audit: Audit) -> None:
             audit.add("P0", area, "docs-checker-missing", f"{repo_id}: {checker}")
             continue
         rc, out = run(["python3", str(checker)], cwd=repo, timeout=90)
+        release_checker = repo / "scripts" / "sync-release-docs.mjs"
+        if rc == 0 and release_checker.is_file():
+            release_rc, release_out = run(
+                ["node", str(release_checker)],
+                cwd=repo,
+                timeout=90,
+            )
+            out = "\n".join(part for part in (out, release_out) if part)
+            rc = release_rc
         results[repo_id] = {"rc": rc, "summary": checker_summary(out)}
         if rc != 0:
             audit.add(

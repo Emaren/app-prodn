@@ -242,6 +242,7 @@ def refresh_control_state(
                 result["context_archives"] = aoe2_update.capture_context(
                     [
                         "AoE2HDBets",
+                        "aoe2-watcher",
                         "WoloChain-wolo-1",
                         "VPSSentry",
                         "AoE2WAR-docs",
