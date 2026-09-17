@@ -174,6 +174,13 @@ document, but the September 17 live qualification observed replay-generation bod
 changes inside the 30-second proof window, so shared edge caching remains fail-closed
 until byte stability is independently re-proven.
 
+Dynamic apply verification also preserves the previously installed static cohort. Because a
+Cloudflare ruleset mutation can briefly surface an otherwise healthy long-lived static object as
+`MISS`/`EXPIRED` during asynchronous edge revalidation, the verifier primes that cohort once,
+waits a bounded 1.5-second settle, then requires each route to converge to `HIT` within five
+attempts. Failure still triggers dynamic-only rollback; the settle window only removes false
+rollback caused by transient edge revalidation.
+
 `aoe2war speed edge qualify-dynamic` is observational. It is allowed to run only from
 a clean `main` worktree when production SHA, GitHub `main`, operator source SHA and
 CERTIFIED release identity are exact. For each authorized route it samples public
