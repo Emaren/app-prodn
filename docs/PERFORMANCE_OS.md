@@ -189,11 +189,15 @@ allowlist contains the same three routes and cannot be broadened by the staged r
 Post-apply proof is intentionally broader than the new rule: every qualified
 empty-query anonymous route must converge to HIT; every known AoE2WAR cookie, RSC
 request, arbitrary query and `/api/deployment-version` must stay outside shared cache;
-and the complete existing static exact-route cohort must remain HIT. Any failure calls
-`rollback-dynamic`, which restores/removes only the dynamic rule and never uses the
-static rollback record. The first live qualification must therefore be rerun after
-this controller itself is merged, released and certified; development-time proofs do
-not authorize mutation.
+and the complete existing static exact-route cohort must remain HIT. The static
+preservation cohort comes from the latest successful static Cloudflare apply receipt,
+which is the authority for the rule actually installed at the edge. Dynamic apply must
+not reconstruct that cohort from a fresh header audit: transient Next cache-status
+changes can make a new plan differ from the installed rule and create a false rollback.
+Any failure calls `rollback-dynamic`, which restores/removes only the dynamic rule and
+never uses the static rollback record. The first live qualification must therefore be
+rerun after this controller itself is merged, released and certified; development-time
+proofs do not authorize mutation.
 
 ### Player Registry navigation hot path
 

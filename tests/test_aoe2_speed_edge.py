@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -186,6 +188,48 @@ class SpeedEdgeTests(unittest.TestCase):
         )
         self.assertTrue(all(row["ttl_seconds"] == 30 for row in policy["routes"]))
         self.assertTrue(all(row["empty_query_only"] is True for row in policy["routes"]))
+
+    def test_dynamic_apply_static_authority_uses_latest_successful_static_apply_receipt(self):
+        old_receipts = MODULE.EDGE_RECEIPTS
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                MODULE.EDGE_RECEIPTS = Path(tmp)
+
+                def write(name, *, mtime, routes, rollback=False, verification_ok=True):
+                    path = MODULE.EDGE_RECEIPTS / name
+                    path.write_text(json.dumps({
+                        "kind": "aoe2war-speedos-cloudflare-apply",
+                        "rollback_performed": rollback,
+                        "verification": {"ok": verification_ok},
+                        "plan": {"eligible_exact_routes": routes},
+                    }))
+                    os.utime(path, (mtime, mtime))
+                    return path
+
+                expected = write(
+                    "20260917T000000Z-cloudflare-apply.json",
+                    mtime=100,
+                    routes=["/about", "/app"],
+                )
+                write(
+                    "20260917T000100Z-cloudflare-apply.json",
+                    mtime=200,
+                    routes=["/bets"],
+                    rollback=True,
+                )
+                write(
+                    "20260917T000200Z-cloudflare-apply.json",
+                    mtime=300,
+                    routes=["/download"],
+                    verification_ok=False,
+                )
+
+                authority = MODULE.latest_successful_static_apply()
+                self.assertIsNotNone(authority)
+                self.assertEqual(authority["plan"]["eligible_exact_routes"], ["/about", "/app"])
+                self.assertEqual(authority["_path"], str(expected))
+        finally:
+            MODULE.EDGE_RECEIPTS = old_receipts
 
     def test_dynamic_release_identity_requires_certified_clean_main_and_three_way_sha_parity(self):
         original_identity = MODULE.speed.collect_release_identity

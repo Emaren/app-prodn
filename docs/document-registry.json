@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a8e6841f9836a2213a89be7350129c6a0f20749b8a4ec5e3efb7c9d27bcf06af",
+      "sha256": "4fe507a6028e438ab6765abaf7f6516a1eeb24968073d657823b1cce1bb20e18",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1116,7 +1116,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-06",
       "sensitivity": "internal",
-      "sha256": "2eac1388db306efef856ca67289ad0bfe4bc6114831598df0bd984fae9e2235f",
+      "sha256": "6487c8ff9c51fc422d65cc248a9e71221d8ee94cfa136c3944ea13137d751061",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "performance/dynamic-edge-cohort-v2",
-    "commit": "fbf2ce9f7e9930c280f337da7ba9c8b7406d5339"
+    "branch": "performance/dynamic-static-authority-v1",
+    "commit": "b45663680fdbb11b702a6fb95d64a8ae842b0680"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
