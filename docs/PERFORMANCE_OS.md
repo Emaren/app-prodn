@@ -167,13 +167,15 @@ edge caching requires deployment-integrated purge proof first.
 `anonymous_dynamic_candidate_review` is no longer a dead-end classification. A
 separate fail-closed lane can promote an explicitly governed subset without weakening
 the static cache rule. `config/speed-edge-dynamic-policy.json` is the source-controlled
-staleness authority. The current bounded cohort contains **19 exact routes**, all at
+staleness authority. The current bounded cohort contains **18 exact routes**, all at
 exactly 30 seconds and empty-query HTML only. It includes the original public academy,
 AI, archive, bounty, champion, clan, leaderboard, national-title and Emaren-profile
 surfaces; the request-time public `/forum`, `/market` and
-`/market/shops/chat-effects` shells; and six September 17 read-only additions:
-`/players/u_626ea6497a984dabbc2338ef54c5d333`, both governed matchup-history
-representatives, `/traffic`, `/radio`, and `/game-stats/16218/review`. Each addition
+`/market/shops/chat-effects` shells; and five September 17 read-only additions: both governed matchup-history
+representatives, `/traffic`, `/radio`, and `/game-stats/16218/review`. The generic
+claimed-player profile `/players/u_626ea6497a984dabbc2338ef54c5d333` failed the
+certified 30-second proof because both public and origin HTML changed across the
+window, so it remains explicitly HOLD outside shared edge cache. Each addition
 must still re-qualify on the exact merged-and-certified production SHA before the
 Cloudflare rule can expand; development-time byte proofs do not authorize mutation.
 On September 17 the certified `8d0f75ef4ae6` generation rejected `/kingdom` after its
@@ -207,10 +209,10 @@ plan to the policy SHA, qualification SHA, exact release/source identity, cookie
 bypass census and the independent 30-second rule. `apply-dynamic` stages a separate
 root request and can mutate only the independent Cloudflare rule
 `AOE2WAR SpeedOS qualified dynamic HTML v1`. The root helper has its own hardcoded
-nineteen-route allowlist, requires TTL exactly 30 seconds, reconstructs the expression,
+eighteen-route allowlist, requires TTL exactly 30 seconds, reconstructs the expression,
 requires the existing certified static SpeedOS rule, and proves the request source SHA
 against the live production checkout before touching Cloudflare. The privileged
-allowlist contains the same nineteen routes and cannot be broadened by the staged request.
+allowlist contains the same eighteen routes and cannot be broadened by the staged request.
 
 Post-apply proof is intentionally broader than the new rule: every qualified
 empty-query anonymous route must converge to HIT; every known AoE2WAR cookie, RSC

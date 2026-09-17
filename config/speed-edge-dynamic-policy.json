@@ -115,13 +115,6 @@
       "admission": "anonymous_dynamic"
     },
     {
-      "route": "/players/u_626ea6497a984dabbc2338ef54c5d333",
-      "ttl_seconds": 30,
-      "empty_query_only": true,
-      "rationale": "Anonymous public claimed-player profile; read-only profile presentation with exact public/origin HTML bytes stable across a full 30-second proof window.",
-      "admission": "anonymous_dynamic"
-    },
-    {
       "route": "/radio",
       "ttl_seconds": 30,
       "empty_query_only": true,
