@@ -984,6 +984,14 @@ The overlap is bounded to the context projects chosen by the locked update plan
 and is settled before post-release update replans the estate. Failure falls back
 to ordinary synchronous post-release context reconciliation.
 
+Watcher releases are a first-class documentation/context source. Once the public
+five-artifact inventory exists, the Watcher release-doc gate must report the
+current version as public. aoe2war update / aoe2war finish may repair only that
+bounded documentation state, refresh the federated documentation snapshot, and
+capture a standalone aoe2-watcher TGZ. Its freshness is audited separately from
+the umbrella AoE2HDBets app/API camera, so a fresh app archive can no longer mask
+a stale Watcher archive.
+
 ## Persistent build-cache decision
 
 A production experiment with a copied persistent Yarn/Next cache was retired

@@ -319,11 +319,34 @@ def source_checker(repo: Path) -> tuple[int, str]:
     checker = repo / "scripts" / "docs_v2_check.py"
     if not checker.is_file():
         return 127, f"missing documentation checker: {checker}"
-    return run(["python3", str(checker)], cwd=repo, timeout=120)
+    rc, out = run(["python3", str(checker)], cwd=repo, timeout=120)
+    if rc != 0:
+        return rc, out
+
+    release_checker = repo / "scripts" / "sync-release-docs.mjs"
+    if release_checker.is_file():
+        release_rc, release_out = run(
+            ["node", str(release_checker)],
+            cwd=repo,
+            timeout=120,
+        )
+        combined = "\n".join(part for part in (out, release_out) if part)
+        if release_rc != 0:
+            return release_rc, combined
+        out = combined
+    return 0, out
 
 
 def baseline_refresh_needed(output: str) -> bool:
     return "implementation changed after the recorded baseline" in output
+
+
+def release_docs_refresh_needed(output: str) -> bool:
+    return "WATCHER_RELEASE_DOCS_STALE" in output
+
+
+def source_docs_refresh_needed(output: str) -> bool:
+    return baseline_refresh_needed(output) or release_docs_refresh_needed(output)
 
 
 def archive_project_from_finding(detail: str) -> str | None:
@@ -759,7 +782,7 @@ def collect_plan(
         rc, out = source_checker(repo)
         if rc == 0:
             continue
-        if baseline_refresh_needed(out):
+        if source_docs_refresh_needed(out):
             baseline_refreshes.append(repo_id)
         else:
             blocked_source_docs.append(
@@ -984,34 +1007,76 @@ def refresh_source_documentation(
 ) -> dict[str, str]:
     branch, implementation_head = require_clean_remote(repo_id, repo)
 
-    rc, out = source_checker(repo)
-    if rc == 0:
+    for _attempt in range(3):
+        rc, out = source_checker(repo)
+        if rc == 0:
+            break
+
+        if release_docs_refresh_needed(out):
+            release_sync = repo / "scripts" / "sync-release-docs.mjs"
+            if not release_sync.is_file():
+                raise UpdateError(
+                    f"{repo_id} release documentation sync tool is missing: {release_sync}"
+                )
+            if progress:
+                progress.start(f"Synchronizing {repo_id} public-release documentation...")
+            rc, sync_out = run(
+                ["node", str(release_sync), "--write"],
+                cwd=repo,
+                timeout=120,
+            )
+            if rc != 0:
+                raise UpdateError(
+                    f"{repo_id} release documentation sync failed: "
+                    f"{aoe2_audit.checker_summary(sync_out)}"
+                )
+            rc, docs_out = run(
+                ["python3", "scripts/docs_v2_check.py", "--write"],
+                cwd=repo,
+                timeout=120,
+            )
+            if rc != 0:
+                raise UpdateError(
+                    f"{repo_id} registry refresh after release docs failed: "
+                    f"{aoe2_audit.checker_summary(docs_out)}"
+                )
+            if progress:
+                progress.done(f"{repo_id} public-release documentation synchronized")
+            continue
+
+        if baseline_refresh_needed(out):
+            rc, baseline_out = run(
+                [
+                    "python3",
+                    "scripts/docs_v2_check.py",
+                    "--write",
+                    "--refresh-baseline",
+                ],
+                cwd=repo,
+                timeout=120,
+            )
+            if rc != 0:
+                raise UpdateError(
+                    f"{repo_id} baseline refresh failed: "
+                    f"{aoe2_audit.checker_summary(baseline_out)}"
+                )
+            continue
+
+        raise UpdateError(
+            f"{repo_id} documentation failure is not safe to auto-refresh: "
+            f"{aoe2_audit.checker_summary(out)}"
+        )
+    else:
+        raise UpdateError(f"{repo_id} documentation did not converge after bounded refresh")
+
+    changed = status_paths(repo)
+    if not changed:
         return {
             "repo": repo_id,
             "status": "already-current",
             "implementation_head": implementation_head,
             "documentation_commit": implementation_head,
         }
-
-    if not baseline_refresh_needed(out):
-        raise UpdateError(
-            f"{repo_id} documentation failure is not safe to auto-refresh: "
-            f"{aoe2_audit.checker_summary(out)}"
-        )
-
-    rc, out = run(
-        ["python3", "scripts/docs_v2_check.py", "--write", "--refresh-baseline"],
-        cwd=repo,
-        timeout=120,
-    )
-    if rc != 0:
-        raise UpdateError(
-            f"{repo_id} baseline refresh failed: {aoe2_audit.checker_summary(out)}"
-        )
-
-    changed = status_paths(repo)
-    if not changed:
-        raise UpdateError(f"{repo_id} checker requested baseline refresh but wrote nothing")
 
     unsafe = sorted(path for path in changed if not docs_owned_path(path))
     if unsafe:
@@ -1035,7 +1100,7 @@ def refresh_source_documentation(
         raise UpdateError(f"{repo_id} staging failed: {out}")
 
     rc, out = run(
-        ["git", "commit", "-m", f"Refresh {repo_id} documentation baseline"],
+        ["git", "commit", "-m", f"Refresh {repo_id} documentation"],
         cwd=repo,
     )
     if rc != 0:

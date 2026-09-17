@@ -129,6 +129,26 @@ class AuditCommandTests(unittest.TestCase):
         self.assertEqual(MODULE.ARCHIVE_SERIES["AoE2HDBets"], [MODULE.APP, MODULE.API])
         self.assertEqual(MODULE.ARCHIVE_SERIES["aoe2-watcher"], [MODULE.WATCHER])
 
+    def test_source_documentation_includes_watcher_release_gate(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            repo = pathlib.Path(temporary)
+            scripts = repo / "scripts"
+            scripts.mkdir()
+            (scripts / "docs_v2_check.py").write_text("# docs")
+            (scripts / "sync-release-docs.mjs").write_text("// release")
+            audit = MODULE.Audit()
+            with patch.object(MODULE, "CORE_SOURCES", {"aoe2-watcher": repo}), patch.object(
+                MODULE,
+                "run",
+                side_effect=[
+                    (0, "DOCS_PASS"),
+                    (2, "WATCHER_RELEASE_DOCS_STALE version=1.5.12"),
+                ],
+            ):
+                MODULE.check_source_documentation(audit)
+        self.assertTrue(any(item.key == "documentation-drift" for item in audit.findings))
+        self.assertIn("WATCHER_RELEASE_DOCS_STALE", audit.info["source_documentation_checkers"]["aoe2-watcher"]["summary"])
+
     def test_archive_timestamp(self):
         value = MODULE.archive_timestamp(
             "AoE2HDBets-context-Tonys_Laptop-20260810-163416.tgz"
