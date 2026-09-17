@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 
 import BountyBoardViews from "@/components/bounties/BountyBoardViews";
+import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import { loadBountyBoard } from "@/lib/bounties";
 import { getPrisma } from "@/lib/prisma";
 
@@ -44,8 +45,11 @@ export default async function BountiesPage() {
     );
 
   return (
-    <BountyBoardViews
-      board={board}
-    />
+    <>
+      <SpeedReadyMarker route="/bounties" />
+      <BountyBoardViews
+        board={board}
+      />
+    </>
   );
 }

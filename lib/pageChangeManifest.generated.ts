@@ -50,7 +50,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/bounties",
     label: "Bounties",
-    version: "src-65cd4e7232513c0c3efb",
+    version: "src-9d8bf73102c746c92fa9",
   },
   {
     href: "/forum",

@@ -467,6 +467,22 @@ test("public loader admits only official numbered on-chain bounty transfers", ()
     publicLoader,
     /userGift/,
   );
+  assert.doesNotMatch(
+    publicLoader,
+    /Math\.random/,
+  );
+  assert.doesNotMatch(
+    publicLoader,
+    /new Date\(\)\.toISOString/,
+  );
+  assert.match(
+    publicLoader,
+    /stableSnapshotVersion/,
+  );
+  assert.match(
+    publicLoader,
+    /stableHash/,
+  );
 });
 
 test("staking bounty history shares the official numbered memo rule", () => {

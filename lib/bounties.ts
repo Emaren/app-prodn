@@ -26,6 +26,23 @@ function toIso(value: Date | null | undefined) {
   return value?.toISOString() ?? null;
 }
 
+function stableSnapshotVersion(values: Array<string | null | undefined>) {
+  const latest = values
+    .filter((value): value is string => Boolean(value))
+    .sort((left, right) => right.localeCompare(left))[0];
+
+  return latest ?? "1970-01-01T00:00:00.000Z";
+}
+
+function stableHash(value: string) {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
 const LEGACY_TRANSFER_WHERE: Prisma.WoloIndexedTransferWhereInput = {
   memo: { not: null },
   OR: LEGACY_TRANSFER_KEYWORDS.map((keyword) => ({
@@ -501,18 +518,31 @@ export async function loadBountyBoard(prisma: PrismaClient) {
         }),
       );
 
+  const snapshotVersion = stableSnapshotVersion([
+    ...serializedOpportunities.flatMap((opportunity) => [
+      opportunity.updatedAt,
+      opportunity.publishedAt,
+    ]),
+    ...ledger.map((entry) => entry.occurredAt),
+  ]);
+
   const unclaimedCandidates =
-    directory.replayEntries.filter(
-      (entry) =>
-        entry.totalMatches > 0,
-    );
+    directory.replayEntries
+      .filter(
+        (entry) =>
+          entry.totalMatches > 0,
+      )
+      .sort((left, right) =>
+        left.key.localeCompare(right.key),
+      );
 
   const unclaimedIndex =
     unclaimedCandidates.length
-      ? Math.floor(
-          Math.random() *
-            unclaimedCandidates.length,
-        )
+      ? stableHash(
+          `${snapshotVersion}:${unclaimedCandidates
+            .map((entry) => entry.key)
+            .join("|")}`,
+        ) % unclaimedCandidates.length
       : -1;
 
   const unclaimed =
@@ -572,7 +602,7 @@ export async function loadBountyBoard(prisma: PrismaClient) {
 
   return {
     generatedAt:
-      new Date().toISOString(),
+      snapshotVersion,
     opportunities:
       serializedOpportunities,
     ledger,
