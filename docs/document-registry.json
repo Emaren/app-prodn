@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "4fe507a6028e438ab6765abaf7f6516a1eeb24968073d657823b1cce1bb20e18",
+      "sha256": "6b77681793a224ab4a30f5c2173023dcd7426e66a835e46a37c5722f0769da7e",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "performance/dynamic-static-authority-v1",
-    "commit": "b45663680fdbb11b702a6fb95d64a8ae842b0680"
+    "branch": "performance/static-edge-idempotence-v1",
+    "commit": "24fc0f7de91fdde12f75d5bb285563a3e0947cad"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
