@@ -190,7 +190,7 @@ function PlayerProfileExtreme({
                 <CommandTile label="Win Rate" value={formatPercent(profile.command.winRate)} detail={`${profile.command.wins}W / ${profile.command.losses}L`} tone="emerald" />
                 <CommandTile label="Current Streak" value={profile.command.currentStreakLabel} detail={`${profile.command.matchesLast30Days} games in 30d`} tone={currentStreakTone} />
                 <CommandTile label={profile.command.bestScore !== null ? "Peak Score" : "Battle Archive"} value={profile.command.bestScore !== null ? formatPeakNumber(profile.command.bestScore) : `${profile.command.totalMatches} games`} detail={profile.command.averageScore !== null ? formatAverageNumber(profile.command.averageScore) : `${profile.command.activeDays} active days`} tone="sky" />
-                <CommandTile label={profile.command.bestEapm !== null ? "Peak EAPM" : "Watcher Proof"} value={profile.command.bestEapm !== null ? formatPeakDecimal(profile.command.bestEapm) : `${profile.watcher.watcherBackedMatches} games`} detail={profile.command.averageEapm !== null ? formatAverageDecimal(profile.command.averageEapm) : `${profile.watcher.proofScore}/100 proof`} tone="red" />
+                <CommandTile label={profile.command.bestEapm !== null ? "Peak EAPM" : "Watcher-Captured"} value={profile.command.bestEapm !== null ? formatPeakDecimal(profile.command.bestEapm) : `${profile.watcher.watcherBackedMatches} games`} detail={profile.command.averageEapm !== null ? formatAverageDecimal(profile.command.averageEapm) : `${profile.watcher.proofScore}/100 proof`} tone="red" />
               </div>
 
               <div className="mt-5 grid gap-4 xl:grid-cols-[0.95fr_1.05fr]">
@@ -245,7 +245,7 @@ function PlayerProfileExtreme({
               />
             </Panel>
 
-            <Panel eyebrow="Watcher Proof" title="Coverage stack" count={`${profile.watcher.proofScore}/100`}>
+            <Panel eyebrow="Watcher-Captured" title="Coverage stack" count={`${profile.watcher.proofScore}/100`}>
               <WatcherRail profile={profile} />
             </Panel>
 
@@ -286,7 +286,7 @@ function PlayerProfileAdvanced({ profile }: { profile: PlayerProfile }) {
               <CommandTile label="Win Rate" value={formatPercent(profile.command.winRate)} detail={`${profile.command.wins}W / ${profile.command.losses}L`} tone="emerald" />
               <CommandTile label="Current Streak" value={profile.command.currentStreakLabel} detail={`${profile.command.matchesLast30Days} games in 30d`} tone={currentStreakTone} />
               <CommandTile label={profile.command.bestScore !== null ? "Peak Score" : "Battle Archive"} value={profile.command.bestScore !== null ? formatPeakNumber(profile.command.bestScore) : `${profile.command.totalMatches} games`} detail={profile.command.averageScore !== null ? formatAverageNumber(profile.command.averageScore) : `${profile.command.activeDays} active days`} tone="sky" />
-              <CommandTile label={profile.command.bestEapm !== null ? "Peak EAPM" : "Watcher Proof"} value={profile.command.bestEapm !== null ? formatPeakDecimal(profile.command.bestEapm) : `${profile.watcher.watcherBackedMatches} games`} detail={profile.command.averageEapm !== null ? formatAverageDecimal(profile.command.averageEapm) : `${profile.watcher.proofScore}/100 proof`} tone="red" />
+              <CommandTile label={profile.command.bestEapm !== null ? "Peak EAPM" : "Watcher-Captured"} value={profile.command.bestEapm !== null ? formatPeakDecimal(profile.command.bestEapm) : `${profile.watcher.watcherBackedMatches} games`} detail={profile.command.averageEapm !== null ? formatAverageDecimal(profile.command.averageEapm) : `${profile.watcher.proofScore}/100 proof`} tone="red" />
             </div>
 
             <div className="mt-5 grid gap-4 2xl:grid-cols-[0.95fr_1.05fr]">
@@ -340,7 +340,7 @@ function PlayerProfileAdvanced({ profile }: { profile: PlayerProfile }) {
             />
           </Panel>
 
-          <Panel eyebrow="Watcher Proof" title="Coverage stack" count={`${profile.watcher.proofScore}/100`}>
+          <Panel eyebrow="Watcher-Captured" title="Coverage stack" count={`${profile.watcher.proofScore}/100`}>
             <WatcherRail profile={profile} />
           </Panel>
 
@@ -711,12 +711,12 @@ function ExtremeHero({
 
         <div className="relative z-0 grid gap-3 sm:grid-cols-2 xl:pt-8">
           <HeroSignal
-            label="Watcher Proof"
+            label="Watcher-Captured"
             value={`${profile.watcher.watcherBackedMatches} games`}
             detail={
               profile.watcher.multiWatcherProofGames > 0
                 ? `${profile.watcher.multiWatcherProofGames} dual proof${profile.watcher.multiWatcherProofGames === 1 ? "" : "s"} · ${profile.watcher.bestMultiWatcherProofLabel ?? "2+ watchers"}`
-                : `${profile.watcher.uniqueWatchers || profile.watcher.watcherKeys} account source${(profile.watcher.uniqueWatchers || profile.watcher.watcherKeys) === 1 ? "" : "s"}`
+                : "Replay evidence may come from any participant watcher"
             }
             tone="emerald"
           />
@@ -821,12 +821,12 @@ function AdvancedHero({ profile }: { profile: PlayerProfile }) {
 
         <div className="grid gap-3 sm:grid-cols-2">
           <HeroSignal
-            label="Watcher Proof"
+            label="Watcher-Captured"
             value={`${profile.watcher.watcherBackedMatches} games`}
             detail={
               profile.watcher.multiWatcherProofGames > 0
                 ? `${profile.watcher.multiWatcherProofGames} dual proof${profile.watcher.multiWatcherProofGames === 1 ? "" : "s"} · ${profile.watcher.bestMultiWatcherProofLabel ?? "2+ watchers"}`
-                : `${profile.watcher.uniqueWatchers || profile.watcher.watcherKeys} account source${(profile.watcher.uniqueWatchers || profile.watcher.watcherKeys) === 1 ? "" : "s"}`
+                : "Replay evidence may come from any participant watcher"
             }
             tone="emerald"
           />
@@ -1360,7 +1360,7 @@ function WatcherRail({ profile }: { profile: PlayerProfile }) {
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2">
-        <MiniStat label="Watcher Games" value={String(profile.watcher.watcherBackedMatches)} />
+        <MiniStat label="Watcher-Captured" value={String(profile.watcher.watcherBackedMatches)} />
         <MiniStat label="Account Sources" value={String(watcherSourceCount)} />
         <MiniStat label="Dual Proofs" value={String(profile.watcher.multiWatcherProofGames)} />
         <MiniStat label="Best Proof" value={profile.watcher.bestMultiWatcherProofLabel || "—"} />
