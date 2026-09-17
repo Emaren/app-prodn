@@ -122,6 +122,16 @@ edge eligibility. The plan reuses a recent live audit only when the certified
 production release and a cache-safety source signature still match; `--refresh`
 forces a new live header census.
 
+Static replanning is ownership-preserving. The latest successful static Cloudflare
+apply receipt supplies the exact route cohort already installed by SpeedOS. Routes in
+that cohort remain in the next plan while their source classification is still static
+or client-shell safe and live headers do not become private/no-store or emit
+`Set-Cookie`; they are not dropped merely because the audit now labels them
+`already_edge_cached_*` or a transient Next cache status changes. New routes still
+require fresh `x-nextjs-cache: HIT` evidence. Installed routes are revoked when source
+or runtime evidence crosses a fail-closed boundary. This makes repeated `apply`
+idempotent instead of replacing the existing rule with only newly uncached routes.
+
 ### Governed Cloudflare authority and mutation rail
 
 The edge controller never reads Cloudflare credentials on the Mac or inside the web

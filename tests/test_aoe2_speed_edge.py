@@ -151,6 +151,52 @@ class SpeedEdgeTests(unittest.TestCase):
         self.assertFalse(plan["mutation_authorized"])
 
 
+    def test_static_replan_preserves_owned_safe_routes_adds_new_hits_and_revokes_unsafe(self):
+        audit = {
+            "rows": [
+                {
+                    "route": "/about",
+                    "source_cache_classification": "static_or_revalidated_public_candidate",
+                    "priority": "already_edge_cached_public",
+                    "live": {"next_cache_status": None, "shared_cache_prohibited": False, "set_cookie": False},
+                },
+                {
+                    "route": "/app",
+                    "source_cache_classification": "static_client_shell_candidate",
+                    "priority": "strong_edge_shell_candidate",
+                    "live": {"next_cache_status": None, "shared_cache_prohibited": False, "set_cookie": False},
+                },
+                {
+                    "route": "/bets",
+                    "source_cache_classification": "static_client_shell_candidate",
+                    "priority": "strong_edge_shell_candidate",
+                    "live": {"next_cache_status": "HIT", "shared_cache_prohibited": False, "set_cookie": False},
+                },
+                {
+                    "route": "/academy",
+                    "source_cache_classification": "anonymous_dynamic_candidate_review",
+                    "priority": "anonymous_dynamic_freshness_review",
+                    "live": {"next_cache_status": None, "shared_cache_prohibited": False, "set_cookie": False},
+                },
+                {
+                    "route": "/war-chest",
+                    "source_cache_classification": "server_personalized_do_not_cache",
+                    "priority": "blocked_shared_cache",
+                    "live": {"next_cache_status": None, "shared_cache_prohibited": True, "set_cookie": False},
+                },
+            ]
+        }
+        installed = {"eligible_exact_routes": ["/about", "/academy", "/app", "/war-chest"]}
+        plan = MODULE.build_cloudflare_plan(audit, installed_plan=installed)
+        self.assertEqual(plan["eligible_exact_routes"], ["/about", "/app", "/bets"])
+        self.assertEqual(plan["installed_exact_routes_before"], ["/about", "/academy", "/app", "/war-chest"])
+        self.assertEqual(plan["preserved_installed_routes"], ["/about", "/app"])
+        self.assertEqual(plan["newly_eligible_routes"], ["/bets"])
+        self.assertEqual(plan["revoked_installed_routes"], ["/academy", "/war-chest"])
+        self.assertIn("/academy", plan["review_routes"])
+        self.assertIn("/war-chest", plan["blocked_routes"])
+
+
     def _dynamic_source_inventory(self):
         return {
             "pages": [
