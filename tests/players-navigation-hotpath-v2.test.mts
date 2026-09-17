@@ -24,7 +24,7 @@ test("global navigation prefetches the Player Registry without broadening every 
   const menu = source("components/HeaderMenu.tsx");
 
   assert.match(shell, /prefetch=\{href === "\/players"\}/);
-  assert.match(shell, /onMouseEnter=\{\(\) => router\.prefetch\(href\)\}/);
+  assert.match(shell, /onMouseEnter=\{\(\) => \{\s*router\.prefetch\(href\);/);
   assert.match(menu, /prefetch=\{entry\.href === "\/players"\}/);
 });
 

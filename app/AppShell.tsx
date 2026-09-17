@@ -25,6 +25,8 @@ import {
 import { getTileViewMode } from "@/lib/tileViewPreferences";
 import { trackLeaderboardEvent } from "@/lib/leaderboardTelemetry";
 import { warmLeaderboardClient } from "@/lib/leaderboardNavigationWarmup";
+import { warmBetsBoard } from "@/lib/betsNavigationWarmup";
+import { warmBetsClient } from "@/lib/betsClientWarmup";
 import {
   PAGE_CHANGE_NOTICE_STORAGE_KEY,
   getUnseenPageChangeHrefs,
@@ -474,6 +476,7 @@ function HeaderPillLink({
 }) {
   const t = useTranslations("Shell");
   const router = useRouter();
+  const { uid } = useUserAuth();
   const displayLabel =
     href === "/requests"
       ? t("requests", {
@@ -487,8 +490,27 @@ function HeaderPillLink({
       href={href}
       data-presence-door={presenceDoorForHref(href)}
       prefetch={href === "/players"}
-      onMouseEnter={() => router.prefetch(href)}
-      onFocus={() => router.prefetch(href)}
+      onMouseEnter={() => {
+        router.prefetch(href);
+        if (href === "/bets") {
+          void warmBetsBoard(uid);
+          void warmBetsClient().catch(() => undefined);
+        }
+      }}
+      onFocus={() => {
+        router.prefetch(href);
+        if (href === "/bets") {
+          void warmBetsBoard(uid);
+          void warmBetsClient().catch(() => undefined);
+        }
+      }}
+      onPointerDown={() => {
+        if (href === "/bets") {
+          router.prefetch(href);
+          void warmBetsBoard(uid);
+          void warmBetsClient().catch(() => undefined);
+        }
+      }}
       onClick={(event) => {
         if (isModifiedHeaderNavClick(event)) return;
         onCycleActiveEffect();
@@ -868,6 +890,11 @@ function InnerShell({ children }: { children: React.ReactNode }) {
   const [footerReady, setFooterReady] = React.useState(false);
   const footerWarmupRef = React.useRef<HTMLDivElement | null>(null);
   const leaderboardIdleWarmRef = React.useRef(false);
+  const betsIdleWarmRef = React.useRef(false);
+
+  React.useEffect(() => {
+    betsIdleWarmRef.current = false;
+  }, [uid]);
 
   React.useEffect(() => {
     try {
@@ -989,14 +1016,16 @@ function InnerShell({ children }: { children: React.ReactNode }) {
     };
 
     const schedule = () => {
-      if (idleWindow.requestIdleCallback) {
-        idleHandle = idleWindow.requestIdleCallback(
-          warmLeaderboardNavigation,
-          { timeout: 500 },
-        );
-      } else {
-        timer = window.setTimeout(warmLeaderboardNavigation, 500);
-      }
+      timer = window.setTimeout(() => {
+        if (idleWindow.requestIdleCallback) {
+          idleHandle = idleWindow.requestIdleCallback(
+            warmLeaderboardNavigation,
+            { timeout: 500 },
+          );
+        } else {
+          warmLeaderboardNavigation();
+        }
+      }, 1_400);
     };
 
     if (document.readyState === "complete") {
@@ -1012,6 +1041,49 @@ function InnerShell({ children }: { children: React.ReactNode }) {
       if (idleHandle !== null) idleWindow.cancelIdleCallback?.(idleHandle);
     };
   }, [pathname, router]);
+
+  React.useEffect(() => {
+    if (pathname === "/bets" || betsIdleWarmRef.current) {
+      return;
+    }
+
+    let cancelled = false;
+    let betsRouteTimer: number | null = null;
+    const connection = (
+      navigator as Navigator & {
+        connection?: { saveData?: boolean; effectiveType?: string };
+      }
+    ).connection;
+
+    const warmBetsNavigation = () => {
+      if (
+        cancelled ||
+        betsIdleWarmRef.current ||
+        document.visibilityState !== "visible" ||
+        connection?.saveData ||
+        /(^|-)2g$/.test(connection?.effectiveType ?? "")
+      ) {
+        return;
+      }
+
+      betsIdleWarmRef.current = true;
+      void warmBetsBoard(uid);
+      betsRouteTimer = window.setTimeout(() => {
+        if (cancelled || document.visibilityState !== "visible") return;
+        router.prefetch("/bets");
+      }, 500);
+    };
+
+    // Keep the tiny Player Registry route first in the same hydration turn,
+    // then enqueue Betting Hall immediately behind it without a timer gap.
+    router.prefetch("/players");
+    queueMicrotask(warmBetsNavigation);
+
+    return () => {
+      cancelled = true;
+      if (betsRouteTimer !== null) window.clearTimeout(betsRouteTimer);
+    };
+  }, [pathname, router, uid]);
 
   const isExtremePlayerProfileSurface =
     isPlayerProfileSurface && playerProfileViewMode !== "basic" && playerProfileViewMode !== "advanced";

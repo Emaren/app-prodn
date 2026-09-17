@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e82594f9402fc8fc01c55a043de5f335c0b88b5a03550d3d4b78449a6c4d7cb9",
+      "sha256": "7810f239af649672967f01876ac9fd0627cea77a6ef9e80c33d7be13e6797727",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/watcher-context-camera-v1",
-    "commit": "cbca36957a3a48bfb98d9e4cdbf1ce6ae7f61947"
+    "branch": "feature/performance-bets-navigation-hotpath-v1",
+    "commit": "9a1bb25b8d0d232d02290ca90a39b2da6123d78e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

@@ -22,6 +22,7 @@ import BetsDisplayRail from "@/components/bets/BetsDisplayRail";
 import ResultCard from "@/components/bets/ResultCard";
 import YourBookSection from "@/components/bets/YourBookSection";
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
+import { consumeWarmBetsBoard } from "@/lib/betsNavigationWarmup";
 
 import FounderBonusChips from "@/components/bets/FounderBonusChips";
 import FounderBonusModal from "@/components/bets/FounderBonusModal";
@@ -1681,7 +1682,7 @@ function BetsMutedToggleCss() {
 }
 
 export default function BetsPage() {
-  const { isAdmin, isAuthenticated, loading, loginWithSteam, user } =
+  const { isAdmin, isAuthenticated, loading, loginWithSteam, uid, user } =
     useUserAuth();
   const { address: connectedWalletAddress, connect: connectKeplr } = useKeplr();
   const walletBalance = useWoloBalance(
@@ -1695,6 +1696,7 @@ export default function BetsPage() {
     useState(false);
   const [selection, setSelection] = useState<SelectionState | null>(null);
   const [loadingBoard, setLoadingBoard] = useState(true);
+  const initialBoardLoadRef = useRef(true);
   const [workingKey, setWorkingKey] = useState<string | null>(null);
   const [lockWorkflow, setLockWorkflow] = useState<LockWorkflow | null>(null);
   const [recoveringIntentId, setRecoveringIntentId] = useState<number | null>(
@@ -1759,6 +1761,15 @@ export default function BetsPage() {
         );
       }
 
+      const isInitialBoardLoad = initialBoardLoadRef.current;
+      initialBoardLoadRef.current = false;
+      if (isInitialBoardLoad) {
+        const warmedBoard = await consumeWarmBetsBoard(uid);
+        if (warmedBoard) {
+          return warmedBoard as BetBoardSnapshot;
+        }
+      }
+
       const response = await fetch("/api/bets", {
         cache: "no-store",
         signal,
@@ -1779,7 +1790,7 @@ export default function BetsPage() {
     } finally {
       setLoadingBoard(false);
     }
-  }, []);
+  }, [uid]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
