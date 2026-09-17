@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "65f581759ca1da5732897abf56c672526f2787e149d84890effce2b4364bf9ae",
+      "sha256": "65b7190625121d4fabfb6aeba7c59a79809297ce05914e01790dcecac10616e2",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1116,7 +1116,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-06",
       "sensitivity": "internal",
-      "sha256": "0058bf2a31eee50a5eba762ac436ed79a6ca8d0db273f86a9b7560e104d6523f",
+      "sha256": "d91f6d0ccbc5a32e4895ddf009e8862f51f4eeab4671fc611a91e5b99d3f9c93",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "performance/bounties-dynamic-edge-v1",
-    "commit": "14053d2b94c5728460f234dc6b0a0fb16ad28842"
+    "branch": "performance/dynamic-edge-cohort-v2",
+    "commit": "1d03d797f9a5a92fb33c9871363625700eca3f0d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
