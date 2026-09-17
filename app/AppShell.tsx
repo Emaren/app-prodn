@@ -1067,17 +1067,18 @@ function InnerShell({ children }: { children: React.ReactNode }) {
       }
 
       betsIdleWarmRef.current = true;
-      void warmBetsBoard(uid);
-      betsRouteTimer = window.setTimeout(() => {
+      router.prefetch("/bets");
+      queueMicrotask(() => {
         if (cancelled || document.visibilityState !== "visible") return;
-        router.prefetch("/bets");
-      }, 500);
+        void warmBetsBoard(uid);
+      });
     };
 
-    // Keep the tiny Player Registry route first in the same hydration turn,
-    // then enqueue Betting Hall immediately behind it without a timer gap.
+    // Give the tiny Player Registry prefetch the uncontested first half-second.
+    // Betting Hall begins only after that protected handoff window so its board
+    // fetch and RSC prefetch cannot steal the fast /players path during startup.
     router.prefetch("/players");
-    queueMicrotask(warmBetsNavigation);
+    betsRouteTimer = window.setTimeout(warmBetsNavigation, 500);
 
     return () => {
       cancelled = true;

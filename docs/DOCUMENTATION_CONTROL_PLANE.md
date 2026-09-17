@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/performance-bets-navigation-hotpath-v1` at `9a1bb25b8d0d232d02290ca90a39b2da6123d78e`
+Implementation baseline: `feature/performance-bets-handoff-priority-v2` at `a4c3ab42625ac19b9a9a5090f1c279f6f2188374`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
