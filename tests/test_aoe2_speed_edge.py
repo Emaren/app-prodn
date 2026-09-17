@@ -211,7 +211,7 @@ class SpeedEdgeTests(unittest.TestCase):
                         "layout_server_personalization_signal": False,
                     },
                 }
-                for route in ("/academy", "/ai", "/battle-archive", "/bounties", "/champions", "/champions/world", "/clans", "/kingdom", "/leaderboard/og", "/national-champions", "/players", "/players/by-name/Emaren")
+                for route in ("/academy", "/ai", "/battle-archive", "/bounties", "/champions", "/champions/world", "/clans", "/leaderboard/og", "/national-champions", "/players", "/players/by-name/Emaren")
             ]
         }
 
@@ -230,10 +230,11 @@ class SpeedEdgeTests(unittest.TestCase):
         policy = MODULE.load_dynamic_policy()
         self.assertEqual(
             [row["route"] for row in policy["routes"]],
-            ["/academy", "/ai", "/battle-archive", "/bounties", "/champions", "/champions/world", "/clans", "/kingdom", "/leaderboard/og", "/national-champions", "/players", "/players/by-name/Emaren"],
+            ["/academy", "/ai", "/battle-archive", "/bounties", "/champions", "/champions/world", "/clans", "/leaderboard/og", "/national-champions", "/players", "/players/by-name/Emaren"],
         )
         self.assertTrue(all(row["ttl_seconds"] == 30 for row in policy["routes"]))
         self.assertTrue(all(row["empty_query_only"] is True for row in policy["routes"]))
+        self.assertNotIn("/kingdom", [row["route"] for row in policy["routes"]])
 
     def test_dynamic_apply_static_authority_uses_latest_successful_static_apply_receipt(self):
         old_receipts = MODULE.EDGE_RECEIPTS
@@ -472,7 +473,7 @@ class SpeedEdgeTests(unittest.TestCase):
                 "rows": [{"route": row["route"], "qualified": True} for row in policy["routes"]],
             }
             plan = MODULE.build_dynamic_cloudflare_plan(qualification)
-            self.assertEqual(plan["eligible_exact_routes"], ["/academy", "/ai", "/battle-archive", "/bounties", "/champions", "/champions/world", "/clans", "/kingdom", "/leaderboard/og", "/national-champions", "/players", "/players/by-name/Emaren"])
+            self.assertEqual(plan["eligible_exact_routes"], ["/academy", "/ai", "/battle-archive", "/bounties", "/champions", "/champions/world", "/clans", "/leaderboard/og", "/national-champions", "/players", "/players/by-name/Emaren"])
             self.assertEqual(plan["edge_ttl_seconds"], 30)
             self.assertIn('http.request.uri.query eq ""', plan["expression"])
             self.assertIn('not http.cookie contains "aoe2hdbets_session="', plan["expression"])
