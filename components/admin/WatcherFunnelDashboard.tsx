@@ -231,6 +231,28 @@ function SupportUserDiagnostics({ focusUser }: { focusUser: WatcherFocusUserDiag
         <FocusMetric label="App connection" value={focusUser.connected ? "Connected" : "Not connected"} />
         <FocusMetric label="Replay monitor" value={focusUser.monitorState} />
         <FocusMetric label="Folder" value={focusUser.folderState.replace(/_/g, " ")} />
+        <FocusMetric
+          label="Replay files in folder"
+          value={focusUser.folderSupportedReplayCount}
+        />
+        <FocusMetric
+          label="Folder activity"
+          value={
+            focusUser.folderActivityProven === true
+              ? "proven"
+              : focusUser.folderActivityProven === false
+                ? "none seen"
+                : null
+          }
+        />
+        <FocusMetric
+          label="Newest folder replay"
+          value={focusUser.folderLatestReplayBasename || "none reported"}
+        />
+        <FocusMetric
+          label="Newest replay write"
+          value={formatMaybeDate(focusUser.folderLatestReplayModifiedAt)}
+        />
         <FocusMetric label="Current replay" value={focusUser.currentReplay || "none reported"} />
         <FocusMetric label="Last replay received" value={formatMaybeDate(focusUser.lastServerReplayAt)} />
         <FocusMetric label="Server game row" value={focusUser.lastServerGameStatsId ? `#${focusUser.lastServerGameStatsId}` : null} />

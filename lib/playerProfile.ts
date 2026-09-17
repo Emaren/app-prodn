@@ -1289,7 +1289,7 @@ function buildTickerItems(profile: {
     profile.command.winRate !== null ? `${profile.command.winRate}% win rate` : "Win rate calibrating",
     profile.command.favoriteMap ? `Best-known battlefield: ${profile.command.favoriteMap}` : null,
     profile.command.mostPlayedCivilization ? `Most played civ: ${profile.command.mostPlayedCivilization}` : null,
-    profile.watcher.watcherBackedMatches > 0 ? `${profile.watcher.watcherBackedMatches} watcher-backed proofs` : null,
+    profile.watcher.watcherBackedMatches > 0 ? `${profile.watcher.watcherBackedMatches} watcher-captured games` : null,
     profile.resources.visibleGames > 0 ? `${profile.resources.visibleGames} games with economy tables visible` : "Economy vault expanding with every replay",
     profile.normalizedStats.visibleGames > 0
       ? `${profile.normalizedStats.metricCount} exact metrics across ${profile.normalizedStats.visibleGames} games`

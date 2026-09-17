@@ -12,6 +12,7 @@ const SESSION_ROW_LIMIT = 50;
 const FOCUS_USER_EVENT_LIMIT = 5000;
 const JULIO_UID_PREFIX = "u_79ce46af3d";
 const SCAVANGER_UID = "u_79fdf670637b4acd9c61ca3c49162cd1";
+const TEKKI_UID = "u_3379d1d2360d4c05ac88796ba7eda15c";
 const SUPPORT_USER_TILE_LIMIT = 10;
 const SUPPORT_USER_TARGETS: WatcherSupportUserTarget[] = [
   {
@@ -33,6 +34,12 @@ const SUPPORT_USER_TARGETS: WatcherSupportUserTarget[] = [
       "Savanger_Ab",
       "Scavenger_Ab",
     ],
+    tileKind: "dedicated",
+  },
+  {
+    label: "Tekki",
+    userUid: TEKKI_UID,
+    nameMatches: ["Tekki"],
     tileKind: "dedicated",
   },
 ];
@@ -194,6 +201,10 @@ export type WatcherFocusUserDiagnostics = {
   connected: boolean;
   monitorState: "active" | "stopped" | "unknown";
   folderState: "valid_hd" | "missing" | "invalid" | "unknown";
+  folderSupportedReplayCount: number | null;
+  folderLatestReplayBasename: string | null;
+  folderLatestReplayModifiedAt: string | null;
+  folderActivityProven: boolean | null;
   currentReplay: string | null;
   lastServerReplayAt: string | null;
   lastServerGameStatsId: number | null;
@@ -492,6 +503,18 @@ function deriveIndependentWatcherState(events: FocusWatcherEventRow[], appVersio
           ? "invalid"
           : "missing"
         : "unknown";
+  const folderSupportedReplayCount = heartbeat
+    ? metadataNumber(heartbeat.metadata, "folderSupportedReplayCount")
+    : null;
+  const folderLatestReplayBasename = heartbeat
+    ? metadataString(heartbeat.metadata, "folderLatestReplayBasename")
+    : null;
+  const folderLatestReplayModifiedAt = heartbeat
+    ? metadataString(heartbeat.metadata, "folderLatestReplayModifiedAt")
+    : null;
+  const folderActivityProven = heartbeat
+    ? metadataBoolean(heartbeat.metadata, "folderActivityProven")
+    : null;
   const currentReplay = heartbeat && metadataBoolean(heartbeat.metadata, "activeReplay")
     ? metadataString(heartbeat.metadata, "activeReplayBasename")
     : null;
@@ -499,13 +522,34 @@ function deriveIndependentWatcherState(events: FocusWatcherEventRow[], appVersio
   const warnings: string[] = [];
   if (connected && monitorState === "unknown") warnings.push("Heartbeat fresh but monitor state unknown.");
   if (monitorState === "active" && folderState === "unknown") warnings.push("Monitoring active but folder state unknown.");
+  if (
+    connected &&
+    monitorState === "active" &&
+    folderState === "valid_hd" &&
+    folderSupportedReplayCount === 0 &&
+    folderActivityProven === false
+  ) {
+    warnings.push(
+      "Selected HD folder is structurally valid but contains 0 supported replay files and has no replay activity. Auto-detect or choose the active Steam Age2HD SaveGame folder.",
+    );
+  }
   if (!modern && appVersion) warnings.push("Limited diagnostics · upgrade watcher to v1.5.3");
   if (watcherVersionIsBehind(appVersion, WATCHER_RELEASE.version)) {
     warnings.push(
       "Watcher " + appVersion + " is behind public release " + WATCHER_RELEASE.version + ". Restart Watcher or use Check Update.",
     );
   }
-  return { connected, monitorState, folderState, currentReplay, warnings } as const;
+  return {
+    connected,
+    monitorState,
+    folderState,
+    folderSupportedReplayCount,
+    folderLatestReplayBasename,
+    folderLatestReplayModifiedAt,
+    folderActivityProven,
+    currentReplay,
+    warnings,
+  } as const;
 }
 
 function compactEventCounts(events: FocusWatcherEventRow[]) {
@@ -955,6 +999,10 @@ async function loadFocusUserDiagnostics(
     connected: independentState.connected,
     monitorState: independentState.monitorState,
     folderState: independentState.folderState,
+    folderSupportedReplayCount: independentState.folderSupportedReplayCount,
+    folderLatestReplayBasename: independentState.folderLatestReplayBasename,
+    folderLatestReplayModifiedAt: independentState.folderLatestReplayModifiedAt,
+    folderActivityProven: independentState.folderActivityProven,
     currentReplay: independentState.currentReplay,
     lastServerReplayAt: lastServerReplay?.createdAt.toISOString() ?? null,
     lastServerGameStatsId: lastServerReplay?.id ?? null,

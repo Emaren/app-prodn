@@ -12,10 +12,10 @@ const release = fs.readFileSync(
   "utf8",
 );
 
-test("Watcher 1.5.11 keeps the existing 1.5.10 Extreme hero artwork", () => {
+test("Watcher 1.5.12 keeps the existing 1.5.10 Extreme hero artwork", () => {
   assert.match(
     release,
-    /version: "1\.5\.11"/,
+    /version: "1\.5\.12"/,
   );
 
   assert.match(page, /watcher-v1510-desktop\.png/);
@@ -38,7 +38,7 @@ test("Watcher 1.5.11 keeps the existing 1.5.10 Extreme hero artwork", () => {
   }
 });
 
-test("Watcher 1.5.11 release advertises reliability and media shedding", () => {
+test("Watcher 1.5.12 release advertises reliability and media shedding", () => {
   assert.match(
     release,
     /Active replay-folder recovery/,
@@ -56,11 +56,11 @@ test("Watcher 1.5.11 release advertises reliability and media shedding", () => {
 
   assert.match(
     release,
-    /AoE2HDBets Watcher Setup 1\.5\.11\.exe/,
+    /AoE2HDBets Watcher Setup 1\.5\.12\.exe/,
   );
 
   assert.match(
     release,
-    /AoE2HDBets Watcher 1\.5\.11\.exe/,
+    /AoE2HDBets Watcher 1\.5\.12\.exe/,
   );
 });

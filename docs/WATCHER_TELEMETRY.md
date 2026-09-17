@@ -8,34 +8,34 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "telemetry-contract"
-reviewed_at: "2026-09-14"
+reviewed_at: "2026-09-16"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
 
 # Watcher Telemetry
 
-## Production release identity — 2026-09-14
+## Production release identity — 2026-09-16
 
-The live download root is `/mnt/HC_Volume_105319120/aoe2-downloads`, exposed through the app's `public/downloads` symlink. The Watcher 1.5.11 release contract requires the Windows, macOS, and Linux updater manifests to report `version: 1.5.11` before the web metadata is considered publishable.
+The live download root is `/mnt/HC_Volume_105319120/aoe2-downloads`, exposed through the app's `public/downloads` symlink. The Watcher 1.5.12 release contract requires the Windows, macOS, and Linux updater manifests to report `version: 1.5.12` before the web metadata is considered publishable.
 
 Release evidence:
 
-- Watcher runtime source: `758804e673f2fd06460cb30919ddb7629c76a555`;
-- successful Windows Artifact Signing run: `34847268397`;
-- signed Windows build source: `758804e673f2fd06460cb30919ddb7629c76a555`;
-- successful macOS/Linux release build run: `34847268637`;
-- macOS/Linux build source: `758804e673f2fd06460cb30919ddb7629c76a555`.
+- Watcher runtime source: `329d0e99924126b0fc13f31ddcc26f81607b35cd`;
+- successful Windows Artifact Signing run: `35165618190`;
+- signed Windows build source: `329d0e99924126b0fc13f31ddcc26f81607b35cd`;
+- successful macOS/Linux release build run: `35165618193`;
+- macOS/Linux build source: `329d0e99924126b0fc13f31ddcc26f81607b35cd`.
 
 Verified release binary SHA-256 values:
 
-- Windows installer: `be936b480aca200d4cfdc8db1475715ff640e161771be85017828fdfcec2fcf5`;
-- Windows portable EXE: `25301abbc260ecb746a36f8e6466bdcc75840243a6b91bcf2a81558c8f4efda5`;
-- Apple Silicon DMG: `300b270298534b7753e2533fd114e445075dc750a309ef430f716e2982c249cb`;
-- macOS direct ZIP: `4d0530304ed4fa8c4b5dca1837f22fd0ed06901269325569f99aead598706985`;
-- Linux AppImage: `0e01f821fcfeafa2c7bbff654b1ba22260ac9c47c3878b776c5cd0d9f0d1e715`.
+- Windows installer: `611a98f710c42bf3c4486cca68bad6036662943cb0fbc67d0945ec9496509bf0`;
+- Windows portable EXE: `d2d771b7cdc6abacca4b2ca6128ac16004d51cf151d286d5c87323721ce52d37`;
+- Apple Silicon DMG: `68b18066888fc60392921b6dc44d66c0a32f23fc70556d2e4a0c7fed98f14ac3`;
+- macOS direct ZIP: `cdfdfbc9180bb403086d98009cb3516f2b81ba05488742fb4f01ea1e2dc694f4`;
+- Linux AppImage: `f53318079f00de092c93a5d3fbf0a747b0dfd520d736dfbddf4fa0629ac58057`.
 
-The certified release inventory contains nine canonical entries: the five user-facing binaries, the macOS DMG blockmap, and `latest.yml`, `latest-mac.yml`, and `latest-linux.yml`. `SHA256SUMS-1.5.11.txt` and `watcher-release-manifest-1.5.11.json` are the authoritative inventory receipts. The Windows updater manifest is regenerated from the **signed** installer bytes so its SHA-512 and size cannot point at the pre-signing binary.
+The certified release inventory contains nine canonical entries: the five user-facing binaries, the macOS DMG blockmap, and `latest.yml`, `latest-mac.yml`, and `latest-linux.yml`. `SHA256SUMS-1.5.12.txt` and `watcher-release-manifest-1.5.12.json` are the authoritative inventory receipts. The Windows updater manifest is regenerated from the **signed** installer bytes so its SHA-512 and size cannot point at the pre-signing binary.
 
 ## v1.5.11 capability-negotiated server media shedding
 
