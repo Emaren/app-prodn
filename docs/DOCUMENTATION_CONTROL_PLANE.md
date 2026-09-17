@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `performance/static-edge-idempotence-v1` at `24fc0f7de91fdde12f75d5bb285563a3e0947cad`
+Implementation baseline: `performance/bounties-edge-stability-v1` at `fd35bca820547165e99b45e409c6161a2bf8c2e3`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
