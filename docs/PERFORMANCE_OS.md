@@ -169,14 +169,14 @@ separate fail-closed lane can promote an explicitly governed subset without weak
 the static cache rule. `config/speed-edge-dynamic-policy.json` is the source-controlled
 staleness authority; the current bounded cohort authorizes `/academy`, `/ai`,
 `/battle-archive`, `/bounties`, `/champions`, `/champions/world`, `/clans`,
-`/leaderboard/og`, `/national-champions`, `/players` and `/players/by-name/Emaren`,
-exactly 30 seconds, empty-query HTML only. On September 17 the certified
-`8d0f75ef4ae6` production generation re-qualified 11 of 12 proposed routes across the
-full 0/15/30-second public-vs-origin byte window. `/kingdom` is explicitly held outside
-the cohort because its public body changed from one SHA-256/length to another inside
-that window before converging with origin; shared edge caching therefore remains
-fail-closed for `/kingdom`. Clan Hall payment intent, settlement, presence and other
-live truth remain on no-store API rails.
+`/leaderboard/og`, `/national-champions` and `/players/by-name/Emaren`, exactly 30
+seconds, empty-query HTML only. On September 17 the certified `8d0f75ef4ae6`
+generation rejected `/kingdom` after its public body changed inside the proof window.
+The follow-up certified `771d619cd31c` generation then rejected `/players`: both
+public and direct-origin HTML changed within 30 seconds and the final public/origin
+samples diverged to distinct SHA-256 values despite equal byte lengths. Both routes
+therefore remain explicitly fail-closed outside shared edge cache. Clan Hall payment
+intent, settlement, presence and other live truth remain on no-store API rails.
 
 Dynamic apply verification also preserves the previously installed static cohort. Because a
 Cloudflare ruleset mutation can briefly surface an otherwise healthy long-lived static object as
@@ -202,10 +202,10 @@ plan to the policy SHA, qualification SHA, exact release/source identity, cookie
 bypass census and the independent 30-second rule. `apply-dynamic` stages a separate
 root request and can mutate only the independent Cloudflare rule
 `AOE2WAR SpeedOS qualified dynamic HTML v1`. The root helper has its own hardcoded
-eleven-route allowlist, requires TTL exactly 30 seconds, reconstructs the expression,
+ten-route allowlist, requires TTL exactly 30 seconds, reconstructs the expression,
 requires the existing certified static SpeedOS rule, and proves the request source SHA
 against the live production checkout before touching Cloudflare. The privileged
-allowlist contains the same eleven routes and cannot be broadened by the staged request.
+allowlist contains the same ten routes and cannot be broadened by the staged request.
 
 Post-apply proof is intentionally broader than the new rule: every qualified
 empty-query anonymous route must converge to HIT; every known AoE2WAR cookie, RSC
@@ -233,10 +233,11 @@ The Player Registry document no longer samples public presence on the server req
 It renders an explicit unknown/checking state, then the existing
 `/api/user/online_users` five-second no-store rail fills live counts and statuses.
 This keeps live truth fresh while removing volatile presence from the document/RSC
-critical path. `/players` and `/players/by-name/Emaren` both passed the September 17
-certified 0/15/30-second byte-stability qualification and are now in the bounded
-policy cohort; any later release must still re-prove the full cohort before Cloudflare
-mutation is authorized.
+critical path. `/players/by-name/Emaren` remains in the bounded policy cohort. The directory
+`/players` itself is held outside shared edge cache because the certified
+`771d619cd31c` qualification observed both public and direct-origin body churn within
+the 30-second window. The navigation prefetch optimization remains valid and separate
+from shared-cache authorization.
 
 ## Edge-cache safety classification
 

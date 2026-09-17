@@ -28,14 +28,13 @@ test("global navigation prefetches the Player Registry without broadening every 
   assert.match(menu, /prefetch=\{entry\.href === "\/players"\}/);
 });
 
-test("players enters the dynamic edge cohort only under the proven 30-second anonymous policy", () => {
+test("players stays outside shared edge cache after certified body churn", () => {
   const policy = JSON.parse(source("config/speed-edge-dynamic-policy.json"));
   const player = policy.routes.find((row: { route?: string }) => row.route === "/players");
-  assert.ok(player);
-  assert.equal(player.ttl_seconds, 30);
-  assert.equal(player.empty_query_only, true);
+  assert.equal(player, undefined);
 
   const helper = source("scripts/aoe2_speed_cloudflare_remote.py");
   const allowlist = helper.match(/DYNAMIC_ALLOWED_ROUTES = \(([^\n]+)\)/)?.[1] ?? "";
-  assert.match(allowlist, /"\/players"/);
+  assert.doesNotMatch(allowlist, /"\/players"/);
+  assert.match(allowlist, /"\/players\/by-name\/Emaren"/);
 });

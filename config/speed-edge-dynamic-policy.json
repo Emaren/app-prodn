@@ -57,12 +57,6 @@
       "rationale": "Anonymous public national-title snapshot; non-transactional and byte-stable across a full 30-second public/origin proof window."
     },
     {
-      "route": "/players",
-      "ttl_seconds": 30,
-      "empty_query_only": true,
-      "rationale": "Anonymous public player directory; volatile presence is client-fetched, while exact public/origin HTML bytes were stable across a full 30-second proof window."
-    },
-    {
       "route": "/players/by-name/Emaren",
       "ttl_seconds": 30,
       "empty_query_only": true,

@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "91aeef5e6a2f29aaff48459da81914140345368322b07e01649aac3fc6960c7c",
+      "sha256": "22c49e444b6e937ee761c308487ac0992d9d270957b40758cfd6bd76774df6d6",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1116,7 +1116,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-06",
       "sensitivity": "internal",
-      "sha256": "b82a9fe6e0e3214671498d0a300571e66a2c4a9640b3019599d82e88a0645510",
+      "sha256": "c20e6fab816c7643f07d5b0b3bb9f7140034ea7d87bb0bce8faf7b1517b2b936",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "performance/dynamic-edge-kingdom-hold-v1",
-    "commit": "1a1b8bfb585f72415a0149683a2bd15920b6cdc0"
+    "branch": "performance/dynamic-edge-players-hold-v1",
+    "commit": "edf24a019d798acc97d7f2d9db2a1498be84974c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
