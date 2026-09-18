@@ -143,7 +143,7 @@ export function RecentMatchesPanel({
 
       const loadPage = async (offset: number, limit: number) => {
         const response = await fetch(
-          `/api/lobby/recent-matches?offset=${offset}&limit=${limit}&refresh=${Date.now()}`,
+          `/api/lobby/recent-matches?offset=${offset}&limit=${limit}&presentation=compact&refresh=${Date.now()}`,
           {
             cache: "no-store",
             headers: {
@@ -360,7 +360,7 @@ export function RecentMatchesPanel({
     try {
       const offset = nextOffsetRef.current;
       const response = await fetch(
-        `/api/lobby/recent-matches?offset=${offset}&limit=${MATCH_FEED_PAGE_SIZE}`,
+        `/api/lobby/recent-matches?offset=${offset}&limit=${MATCH_FEED_PAGE_SIZE}&presentation=compact`,
         { cache: "no-store" }
       );
 
