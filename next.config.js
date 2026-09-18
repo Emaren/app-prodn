@@ -34,6 +34,12 @@ module.exports = {
   reactStrictMode: false,
   productionBrowserSourceMaps: false,
 
+  // Bind output tracing to this repository instead of allowing unrelated
+  // ancestor lockfiles on an operator machine to redefine Next's workspace
+  // root. Release worktrees remain self-contained because __dirname resolves
+  // to the exact candidate checkout being built.
+  outputFileTracingRoot: __dirname,
+
   // The production release sandbox is a 4 GiB cgroup. Keep expensive
   // validation fail-closed, but run it sequentially in prebuild instead of
   // overlapping Next's lint/type workers with the compiled application graph.
