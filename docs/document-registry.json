@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "703310ba9f343e11ccf035b6848844ed81eb314885ec688631aab57905010396",
+      "sha256": "c2e3bb083be013ada54ba4a5a5ac52025ecbd2adf2da2f54a422ca8a33480ea9",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1116,7 +1116,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-06",
       "sensitivity": "internal",
-      "sha256": "7a436c501b05f46d374f6141c5e75a0ac3b593835159e7e79487456245cb3f28",
+      "sha256": "e4814446808219b0c901ae3bd8f12b474da659179916619ccb6d9c290824ebfa",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "speed/dynamic-edge-cohort-18",
-    "commit": "0e5b2988823de6f4716c28dd7fd3c9f4114ecf37"
+    "branch": "speed/lobby-match-payload-v1",
+    "commit": "19735ef393f74801ab7a4c9dcbf76eb0c758477b"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
