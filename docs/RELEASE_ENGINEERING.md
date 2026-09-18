@@ -210,9 +210,17 @@ shadow is realism for testing, never production truth.
 ### Dependency contract
 
 Every external runtime package imported by tracked application runtime source
-must be explicitly declared in `package.json`. The checker parses JavaScript /
-TypeScript syntax through the TypeScript AST rather than regex, so strings,
-comments and JSX text cannot masquerade as package imports.
+must be explicitly declared in `package.json`. Runtime inventory covers the
+App Router, shared components and libraries, hooks, React contexts, runtime
+configuration, middleware/server entrypoints, and Next instrumentation
+entrypoints. Operator scripts and tests are intentionally outside this runtime
+closure.
+
+The checker parses JavaScript / TypeScript syntax through the TypeScript AST
+rather than regex, so strings, comments and JSX text cannot masquerade as
+package imports. Adding a new tracked runtime source root requires extending
+this inventory contract and its fixture coverage before dependency conclusions
+can rely on it.
 
 The dependency contract runs during `aoe2war dev prepare` and in the protected
 release gate.

@@ -41,6 +41,23 @@ memory before closing the work.
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
 
+## Dependency contract runtime coverage
+
+The 2026-09-18 code-health audit found that the dependency AST contract covered
+`app/`, `components/`, and `lib/` but omitted tracked runtime source under
+`hooks/`, `context/`, `config/`, and Next instrumentation entrypoints. That
+blind spot caused `@walletconnect/client`, imported by
+`hooks/useWcConnector.ts`, to look falsely unused during dependency pruning.
+
+Durable invariant: dependency-use conclusions are valid only when every tracked
+application runtime root participates in the AST inventory. The canonical
+runtime closure now includes App Router source, components, libraries, hooks,
+React contexts, runtime configuration, middleware/server entrypoints, and
+`instrumentation.ts` / `instrumentation.node.ts`. Operator scripts and tests
+remain intentionally outside the deployed-runtime closure. When a new runtime
+source root is introduced, extend the inventory and its fixture test before
+using the dependency contract to justify removal.
+
 ## Certified application and Replay Durability V1
 
 The 2026-09-04 certified web release is rooted at

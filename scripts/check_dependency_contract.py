@@ -11,12 +11,17 @@ RUNTIME_PREFIXES = (
     "app/",
     "components/",
     "lib/",
+    "hooks/",
+    "context/",
+    "config/",
 )
 
 RUNTIME_EXACT = {
     "server.js",
     "middleware.ts",
     "middleware.js",
+    "instrumentation.ts",
+    "instrumentation.node.ts",
 }
 
 SOURCE_SUFFIXES = {
@@ -96,14 +101,16 @@ def builtin_modules() -> set[str]:
     )
 
 
-def tracked_runtime_sources() -> list[Path]:
+def tracked_runtime_sources(
+    root: Path = ROOT,
+) -> list[Path]:
     result = subprocess.run(
         [
             "git",
             "ls-files",
             "-z",
         ],
-        cwd=ROOT,
+        cwd=root,
         stdout=subprocess.PIPE,
         check=True,
     )
@@ -129,7 +136,7 @@ def tracked_runtime_sources() -> list[Path]:
         if not selected:
             continue
 
-        file = ROOT / rel
+        file = root / rel
 
         if (
             file.is_file()
