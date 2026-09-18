@@ -125,6 +125,28 @@ test(
 );
 
 test(
+  "Featured warrior opening lineup survives hydration and prioritizes the first mobile card",
+  () => {
+    assert.doesNotMatch(
+      homepage,
+      /const initialLineup = curatedFeaturedWarriorOpening\(poolRef\.current, true\)/,
+    );
+    assert.match(
+      homepage,
+      /visibleWarriorsRef\.current\.forEach\(\(warrior, index\) => \{[\s\S]*lastWarriorBySlotRef\.current\[index\] = warrior\.key/,
+    );
+    assert.match(
+      homepage,
+      /\}, \[clearTimers\]\);[\s\S]*later\(rotateOnce, FEATURED_WARRIOR_FIRST_ROTATE_MS\)/,
+    );
+    assert.equal(
+      (homepage.match(/fetchPriority=\{index === 0 \? "high" : "low"\}/g) || []).length,
+      2,
+    );
+  },
+);
+
+test(
   "Featured warrior subtitle hydration is deterministic before cosmetic rotation",
   () => {
     assert.doesNotMatch(homepage, /julioFeaturedSubtitleCursor/);
