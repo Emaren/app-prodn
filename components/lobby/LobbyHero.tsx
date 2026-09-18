@@ -610,8 +610,9 @@ export function LobbyHero({
                 src={avatarUrlForUser(featuredEntry?.uid, featuredName)}
                 alt=""
                 fill
-                priority
                 quality={95}
+                loading="lazy"
+                fetchPriority="low"
                 sizes="(min-width: 1536px) 360px, (min-width: 1280px) 300px, 90vw"
                 className="object-contain object-top opacity-100 [mask-image:linear-gradient(180deg,black_0%,black_82%,transparent_100%)] xl:object-cover"
               />

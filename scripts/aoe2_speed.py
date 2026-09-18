@@ -80,6 +80,8 @@ OPERATOR_TIMING_KEEP = 64
 BASELINE_DIR = STATE / "performance-baselines"
 BROWSER_TRUTH_ROOT = STATE / "performance-browser-truth"
 BROWSER_TRUTH_HELPER = ROOT / "scripts" / "aoe2_speed_browser_truth.mjs"
+COLD_LCP_ROOT = STATE / "performance-cold-lcp"
+COLD_LCP_HELPER = ROOT / "scripts" / "aoe2_speed_cold_lcp.mjs"
 BROWSER_TRUTH_ROUTES = [
     {"route": "/", "expect_ready": True},
     {"route": "/bets", "expect_ready": True},
@@ -2133,6 +2135,63 @@ def browser_truth(
     payload["_path"] = str(receipt_path)
     return payload
 
+
+def cold_lcp(
+    *,
+    url: str = PUBLIC_BASE + "/",
+    samples: int = 8,
+    viewport: str = "desktop",
+    out_dir: Path | None = None,
+) -> dict[str, Any]:
+    identity = collect_release_identity()
+    release_sha = str(identity.get("release_sha") or "")
+    build_version = str(identity.get("build_version") or "")
+    if identity.get("certification") != "CERTIFIED" or not release_sha or not build_version:
+        raise SpeedError("cold LCP probe requires a certified production release")
+    if not COLD_LCP_HELPER.is_file():
+        raise SpeedError(f"cold LCP helper missing: {COLD_LCP_HELPER}")
+    if viewport not in {"desktop", "phone"}:
+        raise SpeedError("cold LCP viewport must be desktop or phone")
+
+    sample_count = max(1, min(int(samples or 8), 20))
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    target = out_dir or (COLD_LCP_ROOT / f"{stamp}-{release_sha[:12]}-{viewport}")
+    target.mkdir(parents=True, exist_ok=False)
+    command = [
+        "node",
+        str(COLD_LCP_HELPER),
+        "--url",
+        url,
+        "--samples",
+        str(sample_count),
+        "--viewport",
+        viewport,
+        "--out-dir",
+        str(target),
+        "--release-sha",
+        release_sha,
+        "--build-version",
+        build_version,
+    ]
+    proc = subprocess.run(
+        command,
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+    receipt_path = target / "receipt.json"
+    if proc.returncode != 0 or not receipt_path.is_file():
+        detail = (proc.stderr or proc.stdout or "cold LCP harness failed").strip()
+        raise SpeedError(detail[-1500:])
+    payload = load_json(receipt_path)
+    if payload.get("releaseSha") != release_sha or payload.get("buildVersion") != build_version:
+        raise SpeedError("cold LCP receipt release identity mismatch")
+    payload["_path"] = str(receipt_path)
+    return payload
+
+
 def self_test() -> None:
     assert abs(percentile([1.0, 2.0, 3.0], 0.5) - 2.0) < 0.001
     assert QUICK_ROUTES[0] == "/"
@@ -2160,6 +2219,12 @@ def main() -> int:
     browser_truth_parser.add_argument("--base-url", default=PUBLIC_BASE)
     browser_truth_parser.add_argument("--out-dir", default="")
     browser_truth_parser.add_argument("--json", action="store_true")
+    cold_lcp_parser = sub.add_parser("cold-lcp")
+    cold_lcp_parser.add_argument("--url", default=PUBLIC_BASE + "/")
+    cold_lcp_parser.add_argument("--samples", type=int, default=8)
+    cold_lcp_parser.add_argument("--viewport", choices=("desktop", "phone"), default="desktop")
+    cold_lcp_parser.add_argument("--out-dir", default="")
+    cold_lcp_parser.add_argument("--json", action="store_true")
     sub.add_parser("diagnose")
     sub.add_parser("self-test")
     parser.add_argument("--self-test", action="store_true", dest="legacy_self_test")
@@ -2248,6 +2313,43 @@ def main() -> int:
                 print(f"Runtime errors:  {summary.get('runtime_error_failures')} failure(s)")
                 print(f"Receipt:         {evidence_ref(payload['_path'])}")
             return 0 if (payload.get("summary") or {}).get("pass") else 1
+        if args.command == "cold-lcp":
+            target = Path(args.out_dir).expanduser().resolve() if args.out_dir else None
+            payload = cold_lcp(
+                url=args.url,
+                samples=args.samples,
+                viewport=args.viewport,
+                out_dir=target,
+            )
+            if args.json:
+                print(json.dumps(payload, indent=2, sort_keys=True))
+            else:
+                summary = payload.get("summary") or {}
+                ready = summary.get("readyMs") or {}
+                lcp = summary.get("lcpMs") or {}
+                ttfb = summary.get("documentTtfbMs") or {}
+                targets = summary.get("lcpTargets") or []
+                print("🔬 AOE2WAR COLD-PROCESS LCP")
+                print()
+                print(f"Release:         {str(payload.get('releaseSha') or '')[:12]}")
+                print(f"Viewport:        {payload.get('viewport')}")
+                print(f"Samples:         {payload.get('samples')}")
+                print(
+                    "Ready:           "
+                    f"p50={ready.get('p50')} ms · p95={ready.get('p95')} · max={ready.get('max')}"
+                )
+                print(
+                    "LCP:             "
+                    f"p50={lcp.get('p50')} ms · p95={lcp.get('p95')} · max={lcp.get('max')}"
+                )
+                print(
+                    "Document TTFB:   "
+                    f"p50={ttfb.get('p50')} ms · p95={ttfb.get('p95')} · max={ttfb.get('max')}"
+                )
+                if targets:
+                    print(f"LCP target:      {targets[0].get('target')}")
+                print(f"Receipt:         {evidence_ref(payload['_path'])}")
+            return 0
         if args.command == "browser":
             identity = collect_release_identity()
             build_version = args.build_version or str(identity.get("build_version") or "")

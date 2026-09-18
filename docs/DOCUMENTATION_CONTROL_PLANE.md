@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `perf/dynamic-edge-kingdom-wolo-v1` at `bd4a81a5c8bd013616a46a1298c51501ff0e261e`
+Implementation baseline: `perf/browser-tail-lcp-v1` at `55d0297c3365b33bd9528f1301a5cb4e6ed5ec87`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

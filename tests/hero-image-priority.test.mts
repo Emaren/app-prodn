@@ -48,17 +48,24 @@ test("Wolomania preloads and prioritizes the unchanged official poster", () => {
   );
 });
 
-test("Lobby discovers every opening avatar eagerly without lowering quality", () => {
+test("Lobby reserves the critical image lane for the actual hero", () => {
   const home = source("app/HomePageClient.tsx");
+  const lobbyHero = source("components/lobby/LobbyHero.tsx");
   const carousel = source("components/hero/HeroCarousel.tsx");
   const renderer = source("components/hero/HeroScreenRenderer.tsx");
   const eventHero = source("components/lobby/WolomaniaPromoTile.tsx");
 
   assert.equal((home.match(/loading="eager"/g) || []).length >= 2, true);
-  assert.equal((home.match(/priority=\{index < 2\}/g) || []).length, 2);
+  assert.equal((home.match(/priority=\{index < 2\}/g) || []).length, 0);
+  assert.equal((home.match(/fetchPriority="low"/g) || []).length >= 2, true);
   assert.equal((home.match(/unoptimized/g) || []).length >= 2, true);
+  assert.match(
+    lobbyHero,
+    /src=\{avatarUrlForUser\([\s\S]*?quality=\{95\}[\s\S]*?loading="lazy"[\s\S]*?fetchPriority="low"/,
+  );
   assert.match(carousel, /preload\(currentHeroImageUrl, \{ as: "image", fetchPriority: "high" \}\)/);
   assert.match(renderer, /Pure-image takeovers already emit the exact responsive preload/);
+  assert.match(renderer, /quality=\{95\}/);
   assert.match(eventHero, /quality=\{95\}/);
   assert.match(eventHero, /fetchPriority=\{priority \? "high" : "low"\}/);
 });
