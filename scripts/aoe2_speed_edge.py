@@ -1099,7 +1099,7 @@ def bootstrap_cloudflare_runtime() -> dict[str, Any]:
 
 
 def remote_cloudflare_service(command: str) -> dict[str, Any]:
-    if command not in {"verify", "snapshot", "apply", "rollback", "apply-dynamic", "rollback-dynamic", "apply-asset", "rollback-asset"}:
+    if command not in {"verify", "snapshot", "apply", "rollback", "apply-dynamic", "rollback-dynamic", "apply-asset", "rollback-asset", "apply-featured-avatar", "rollback-featured-avatar"}:
         raise EdgeAuditError(f"unsupported Cloudflare helper command: {command}")
     unit = CLOUDFLARE_UNIT.format(command=command)
     remote = (

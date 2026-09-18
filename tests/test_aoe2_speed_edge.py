@@ -788,6 +788,29 @@ class SpeedEdgeTests(unittest.TestCase):
             MODULE.asset_probe = original_asset_probe
             MODULE.build_asset_cloudflare_plan = original_build_asset
 
+    def test_remote_cloudflare_service_accepts_featured_avatar_commands(self):
+        original_run = MODULE.subprocess.run
+        try:
+            def fake_run(args, **kwargs):
+                command = "apply-featured-avatar" if "apply-featured-avatar" in args[-1] else "rollback-featured-avatar"
+                class Result:
+                    returncode = 0
+                    stderr = ""
+                    stdout = json.dumps({"ok": True, "command": command}) + "\n"
+                return Result()
+
+            MODULE.subprocess.run = fake_run
+            self.assertEqual(
+                MODULE.remote_cloudflare_service("apply-featured-avatar")["command"],
+                "apply-featured-avatar",
+            )
+            self.assertEqual(
+                MODULE.remote_cloudflare_service("rollback-featured-avatar")["command"],
+                "rollback-featured-avatar",
+            )
+        finally:
+            MODULE.subprocess.run = original_run
+
     def test_bin_exposes_edge_delivery_audit(self):
         source = (ROOT / "bin" / "aoe2war").read_text(encoding="utf-8")
         self.assertIn('SPEED_EDGE="$BIN_DIR/../scripts/aoe2_speed_edge.py"', source)
