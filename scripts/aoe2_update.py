@@ -242,6 +242,22 @@ def status_paths(repo: Path) -> set[str]:
     return paths
 
 
+def verify_committed_tree(repo: Path, expected_tree: str) -> str:
+    actual_tree = git_output(repo, "rev-parse", "HEAD^{tree}")
+    if actual_tree != expected_tree:
+        raise UpdateError(
+            "post-commit tree identity failed: "
+            f"validated={expected_tree} committed={actual_tree}"
+        )
+    changed = status_paths(repo)
+    if changed:
+        raise UpdateError(
+            "central generated state changed after commit; "
+            f"determinism contract failed: {sorted(changed)}"
+        )
+    return actual_tree
+
+
 def remote_sha(repo: Path, branch: str) -> str | None:
     rc, out = git(
         repo,
@@ -1495,6 +1511,8 @@ def central_sync(
     if rc != 0:
         raise UpdateError(f"central staged diff check failed: {out}")
 
+    validated_tree = git_output(DOCS, "write-tree")
+
     if progress:
         progress.start("Committing central documentation synchronization...")
 
@@ -1507,35 +1525,10 @@ def central_sync(
 
     after_head = git_output(DOCS, "rev-parse", "HEAD")
     push_and_verify("AoE2WAR-docs", DOCS, branch)
+    verify_committed_tree(DOCS, validated_tree)
     if progress:
         progress.done(
-            f"Central documentation pushed ({after_head[:10]})"
-        )
-
-    for target in ("docs-check", "audit-taxonomy", "build"):
-        label = gate_labels[target]
-        if progress:
-            progress.start(f"Rechecking {label} after commit...")
-            rc, out = run_with_heartbeat(
-                ["make", target],
-                cwd=DOCS,
-                progress=progress,
-                label=f"Rechecking {label}",
-                timeout=240,
-            )
-        else:
-            rc, out = run(["make", target], cwd=DOCS, timeout=240)
-        if rc != 0:
-            raise UpdateError(
-                f"central post-commit {target} failed: "
-                f"{aoe2_audit.checker_summary(out)}"
-            )
-        if progress:
-            progress.done(f"Post-commit {label} passed")
-
-    if status_paths(DOCS):
-        raise UpdateError(
-            "central generated state changed after commit; determinism contract failed"
+            f"Central documentation pushed and tree-proven ({after_head[:10]})"
         )
 
     return {

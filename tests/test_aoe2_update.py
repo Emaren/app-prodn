@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import inspect
 import io
 import pathlib
 import sys
@@ -83,6 +84,65 @@ class UpdateCommandTests(unittest.TestCase):
             MODULE.central_owned_path("catalog/document-taxonomy.json")
         )
         self.assertFalse(MODULE.central_owned_path("scripts/generate.py"))
+
+    def test_verify_committed_tree_accepts_exact_clean_tree(self):
+        expected = "a" * 40
+        with mock.patch.object(
+            MODULE,
+            "git_output",
+            return_value=expected,
+        ), mock.patch.object(
+            MODULE,
+            "status_paths",
+            return_value=set(),
+        ):
+            self.assertEqual(
+                MODULE.verify_committed_tree(pathlib.Path("/repo"), expected),
+                expected,
+            )
+
+    def test_verify_committed_tree_rejects_tree_mutation(self):
+        expected = "a" * 40
+        with mock.patch.object(
+            MODULE,
+            "git_output",
+            return_value="b" * 40,
+        ), mock.patch.object(
+            MODULE,
+            "status_paths",
+            return_value=set(),
+        ):
+            with self.assertRaisesRegex(
+                MODULE.UpdateError,
+                "post-commit tree identity failed",
+            ):
+                MODULE.verify_committed_tree(pathlib.Path("/repo"), expected)
+
+    def test_verify_committed_tree_rejects_dirty_post_commit_state(self):
+        expected = "a" * 40
+        with mock.patch.object(
+            MODULE,
+            "git_output",
+            return_value=expected,
+        ), mock.patch.object(
+            MODULE,
+            "status_paths",
+            return_value={"catalog/generated.json"},
+        ):
+            with self.assertRaisesRegex(
+                MODULE.UpdateError,
+                "determinism contract failed",
+            ):
+                MODULE.verify_committed_tree(pathlib.Path("/repo"), expected)
+
+    def test_central_sync_proves_one_validated_tree_instead_of_rebuilding_it(self):
+        source = inspect.getsource(MODULE.central_sync)
+        self.assertEqual(
+            source.count('for target in ("docs-check", "audit-taxonomy", "build")'),
+            1,
+        )
+        self.assertIn('git_output(DOCS, "write-tree")', source)
+        self.assertIn("verify_committed_tree(DOCS, validated_tree)", source)
 
     def test_baseline_refresh_detection(self):
         self.assertTrue(
