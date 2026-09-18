@@ -1354,6 +1354,62 @@ class PerformanceOSTests(unittest.TestCase):
         self.assertEqual(analysis["targets"][0]["dominant_layer"], "connection_setup")
         self.assertIn("large cold-to-warm connection gap", analysis["targets"][0]["reasons"])
 
+    def test_cold_lcp_binds_certified_release_and_clamps_samples(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            target = pathlib.Path(temporary) / "cold-lcp"
+            seen = {}
+
+            def fake_run(command, **kwargs):
+                seen["command"] = command
+                out_dir = pathlib.Path(command[command.index("--out-dir") + 1])
+                receipt = {
+                    "releaseSha": "a" * 40,
+                    "buildVersion": "build-123",
+                    "samples": 20,
+                    "summary": {},
+                }
+                (out_dir / "receipt.json").write_text(
+                    json.dumps(receipt),
+                    encoding="utf-8",
+                )
+                return type(
+                    "Proc",
+                    (),
+                    {"returncode": 0, "stdout": "", "stderr": ""},
+                )()
+
+            with patch.object(
+                SPEED_MODULE,
+                "collect_release_identity",
+                return_value={
+                    "certification": "CERTIFIED",
+                    "release_sha": "a" * 40,
+                    "build_version": "build-123",
+                },
+            ), patch.object(SPEED_MODULE.subprocess, "run", side_effect=fake_run):
+                payload = SPEED_MODULE.cold_lcp(
+                    samples=99,
+                    viewport="desktop",
+                    out_dir=target,
+                )
+
+            command = seen["command"]
+            self.assertEqual(command[command.index("--samples") + 1], "20")
+            self.assertEqual(
+                command[command.index("--release-sha") + 1],
+                "a" * 40,
+            )
+            self.assertEqual(
+                command[command.index("--build-version") + 1],
+                "build-123",
+            )
+            self.assertEqual(payload["releaseSha"], "a" * 40)
+            self.assertEqual(payload["buildVersion"], "build-123")
+            self.assertEqual(
+                pathlib.Path(payload["_path"]),
+                target / "receipt.json",
+            )
+
 
 if __name__ == "__main__":
     unittest.main()

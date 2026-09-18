@@ -34,6 +34,7 @@ aoe2war speed benchmark
 aoe2war speed benchmark --full
 aoe2war speed compare
 aoe2war speed browser-truth
+aoe2war speed cold-lcp --samples 10 --viewport desktop
 aoe2war speed diagnose
 aoe2war speed inventory
 aoe2war speed campaign start
@@ -97,6 +98,21 @@ route that fails browser truth must be repaired and re-certified before an edge
 policy is broadened. The rail deliberately supplements source-contract tests: green
 build/tests and HTTP timing do not by themselves prove hydration, viewport fit, or
 real-browser runtime correctness.
+
+### Cold-process LCP rail
+
+`aoe2war speed cold-lcp` measures true first-session browser cost rather than
+reusing one Chrome process or profile between samples. Every observation launches a
+new headless Chrome process with a fresh profile, installs LCP/long-task/layout-shift
+observers before navigation, disables the browser cache, and records navigation
+phases plus the slowest early resources. This makes cold DNS/TLS/session and
+high-priority-image competition visible instead of hiding it behind a warmed browser.
+
+The command is bound to the currently certified production SHA/build and seals its
+receipt under `.aoe2war-release/performance-cold-lcp/`. It is diagnostic-only:
+`productionMutated`, `databaseMutated`, and `woloMutated` are all false. Use
+this rail when browser Ready is healthy but visual completion/LCP still has a long
+tail.
 
 ## Edge Delivery audit rail
 
