@@ -758,9 +758,10 @@ class SpeedEdgeTests(unittest.TestCase):
 
             MODULE.featured_avatar_probe = avatar_probe
             MODULE.cache_status_probe = cache_probe
+            hero_statuses = iter(["REVALIDATED", "HIT"])
             MODULE.asset_probe = lambda source_path, *, accept, width=1920, quality=95: {
                 "ok": True,
-                "cf_cache_status": "HIT",
+                "cf_cache_status": next(hero_statuses),
             }
             MODULE.build_asset_cloudflare_plan = lambda: {
                 "source_path": "/uploads/managed-assets/background/hero-chain-123-abc.png"
@@ -782,6 +783,10 @@ class SpeedEdgeTests(unittest.TestCase):
             self.assertEqual(result["excluded_thumb"]["cf_cache_status"], "DYNAMIC")
             self.assertEqual(result["excluded_version"]["cf_cache_status"], "DYNAMIC")
             self.assertEqual(result["hero_probe"]["cf_cache_status"], "HIT")
+            self.assertEqual(
+                [row["cf_cache_status"] for row in result["hero_convergence"]["attempts"]],
+                ["REVALIDATED", "HIT"],
+            )
         finally:
             MODULE.featured_avatar_probe = original_avatar_probe
             MODULE.cache_status_probe = original_cache_probe
