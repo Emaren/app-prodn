@@ -48,6 +48,52 @@ class SpeedBuildTests(unittest.TestCase):
         self.assertEqual(payload["routes"]["manifest_route_count"], 1)
         self.assertEqual(payload["routes"]["largest_route_js_bytes"], 300)
 
+    def test_build_authority_distinguishes_stale_exact_and_newer(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            build_dir = root / ".next"
+            build_dir.mkdir(parents=True)
+            receipts = root / ".aoe2war-release" / "activation-receipts"
+            receipts.mkdir(parents=True)
+            (receipts / "certified.json").write_text(
+                json.dumps(
+                    {
+                        "status": "CERTIFIED",
+                        "generated_at": "2026-09-18T09:33:19Z",
+                        "active_build_id": "certified-build",
+                        "candidate_build_version": "20260918092249-certified",
+                        "release_sha": "abc123",
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            (build_dir / "BUILD_ID").write_text("old-local\n", encoding="utf-8")
+            (root / ".aoe2war-build-version").write_text(
+                "20260917151400-local\n", encoding="utf-8"
+            )
+            self.assertEqual(
+                speed_build.build_authority(root, build_dir)["status"],
+                "STALE_LOCAL",
+            )
+
+            (build_dir / "BUILD_ID").write_text("certified-build\n", encoding="utf-8")
+            (root / ".aoe2war-build-version").write_text(
+                "20260918092249-certified\n", encoding="utf-8"
+            )
+            self.assertEqual(
+                speed_build.build_authority(root, build_dir)["status"],
+                "CERTIFIED_EXACT",
+            )
+
+            (root / ".aoe2war-build-version").write_text(
+                "20260919010000-candidate\n", encoding="utf-8"
+            )
+            self.assertEqual(
+                speed_build.build_authority(root, build_dir)["status"],
+                "LOCAL_CANDIDATE_NEWER",
+            )
+
     def test_normalize_manifest_path_handles_next_prefix(self):
         self.assertEqual(
             speed_build.normalize_manifest_path("/_next/static/chunks/a.js"),
