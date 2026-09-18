@@ -1795,9 +1795,17 @@ def verify_featured_avatar_cloudflare_apply(
             failures.append(f"{route}: dynamic HTML rule lost HIT after featured-avatar apply")
 
     hero_plan = build_asset_cloudflare_plan()
-    hero = asset_probe(str(hero_plan["source_path"]), accept=ASSET_MODERN_ACCEPT)
-    if hero.get("cf_cache_status") != "HIT":
-        failures.append("certified hero asset rule lost HIT after featured-avatar apply")
+    hero_attempts: list[dict[str, Any]] = []
+    for attempt in range(4):
+        hero = asset_probe(str(hero_plan["source_path"]), accept=ASSET_MODERN_ACCEPT)
+        hero_attempts.append(hero)
+        if hero.get("ok") and hero.get("cf_cache_status") == "HIT":
+            break
+        if attempt < 3:
+            sleep_fn(0.5)
+    hero = hero_attempts[-1]
+    if not hero.get("ok") or hero.get("cf_cache_status") != "HIT":
+        failures.append("certified hero asset rule did not converge back to HIT after featured-avatar apply")
     api = cache_status_probe("/api/deployment-version")
     if api.get("cf_cache_status") == "HIT":
         failures.append("/api/deployment-version incorrectly entered cache after featured-avatar apply")
@@ -1810,6 +1818,7 @@ def verify_featured_avatar_cloudflare_apply(
         "excluded_thumb": excluded_size,
         "excluded_version": excluded_version,
         "hero_probe": hero,
+        "hero_convergence": {"attempts": hero_attempts, "final": hero},
         "static_cohort": static_rows,
         "dynamic_cohort": dynamic_rows,
         "api_probe": api,
