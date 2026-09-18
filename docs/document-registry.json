@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b21076fb637cb864cdba979bec9db57ca7ca21d5e41798f74f6676613d72c914",
+      "sha256": "9fe8d0383c2ae2a38f31a5154766480f254b94db4b11e7cdfff6ddb202c8cf6f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-14",
       "sensitivity": "internal",
-      "sha256": "082198d332ddb10f301e5833bb2069d54e6278565056884a4c31017080491521",
+      "sha256": "4d755cd972d4f016bd1ed0eeaef93ae9c1ab6f18b6c6cce6740dfa052a5f6de2",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1254,7 +1254,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-08-24",
       "sensitivity": "internal",
-      "sha256": "7b3e6b0fba60bba5c0e68c9b8648b642ed0746f383e5b2c42a7a564984f79cef",
+      "sha256": "8684c7c2ea52f70fcdf4ee687011c85695d2d62205662a799ce7b92e426d7075",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "perf/dependency-diet-v1",
-    "commit": "45a4c73b252df596ce81e21e0347d4a239e437cf"
+    "branch": "harden/next-tracing-root-v1",
+    "commit": "aa2ec4197baa1a7b2d6190b2edd7664a3faef1fa"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

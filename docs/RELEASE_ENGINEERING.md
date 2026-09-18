@@ -233,6 +233,15 @@ outside Git's tracked-source inventory.
 The dependency contract runs during `aoe2war dev prepare` and in the protected
 release gate.
 
+### Next output tracing authority
+
+`next.config.js` binds `outputFileTracingRoot` to the repository directory.
+Next must not infer AoE2WAR's tracing root from unrelated ancestor lockfiles on
+an operator workstation. Release worktrees remain exact because `__dirname`
+resolves to the candidate checkout being built. Changing this boundary requires
+a production build plus route/build census proving the traced runtime and client
+graph remain complete.
+
 ### Hash-bound validation reuse
 
 Gate receipts bind validation to:

@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `perf/dependency-diet-v1` at `45a4c73b252df596ce81e21e0347d4a239e437cf`
+Implementation baseline: `harden/next-tracing-root-v1` at `aa2ec4197baa1a7b2d6190b2edd7664a3faef1fa`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

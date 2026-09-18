@@ -68,6 +68,13 @@ imports its runtime. The contract now rejects both undeclared runtime imports
 and dead direct runtime declarations, so this class of dependency bloat cannot
 silently return.
 
+The same audit found Next 15 was inferring the workspace root from an unrelated
+`~/package-lock.json` above the AoE2WAR repository. That can broaden or distort
+output-file tracing and makes release builds depend on operator-home state.
+Durable invariant: AoE2WAR explicitly sets `outputFileTracingRoot: __dirname`
+so every ordinary or isolated release build traces from its exact repository
+checkout rather than ancestor lockfiles.
+
 ## Certified application and Replay Durability V1
 
 The 2026-09-04 certified web release is rooted at

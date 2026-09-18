@@ -32,6 +32,7 @@ function loadReleaseConfig() {
 test("release build bounds aggregate Next memory without dropping validation", () => {
   const config = loadReleaseConfig();
 
+  assert.equal(config.outputFileTracingRoot, root);
   assert.equal(config.experimental?.webpackBuildWorker, true);
   assert.equal(config.experimental?.webpackMemoryOptimizations, true);
   assert.equal(config.experimental?.cpus, 2);
@@ -79,6 +80,7 @@ test("ordinary builds keep Next built-in validation enabled", () => {
 
   try {
     const config = require(configPath);
+    assert.equal(config.outputFileTracingRoot, root);
     assert.equal(config.eslint?.ignoreDuringBuilds, false);
     assert.equal(config.typescript?.ignoreBuildErrors, false);
     assert.equal(config.experimental?.cpus, undefined);
