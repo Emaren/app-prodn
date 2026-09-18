@@ -40,6 +40,13 @@ FRAMEWORK_VIRTUALS = {
     "client-only",
 }
 
+# Generated Prisma client code is intentionally ignored by Git and therefore
+# cannot appear in the tracked-source AST inventory, but production runtime
+# imports @prisma/client/runtime from that generated output.
+RUNTIME_INDIRECT_DEPENDENCIES = {
+    "@prisma/client",
+}
+
 
 def package_root(
     specifier: str,
@@ -347,6 +354,13 @@ process.stdout.write(
     }
 
 
+def unused_declared_dependencies(
+    declared: set[str],
+    imported: set[str],
+) -> set[str]:
+    return declared - imported - RUNTIME_INDIRECT_DEPENDENCIES
+
+
 def main() -> int:
     package_json = json.loads(
         (
@@ -402,7 +416,12 @@ def main() -> int:
         if package not in declared
     }
 
-    if missing:
+    unused = unused_declared_dependencies(
+        declared,
+        set(imports),
+    )
+
+    if missing or unused:
         print(
             "DEPENDENCY CONTRACT: FAIL"
         )
@@ -425,12 +444,21 @@ def main() -> int:
                     )
                 )
 
+        for package in sorted(unused):
+            print(
+                "unused direct runtime dependency: "
+                + package
+            )
+
         return 1
 
     print(
         "DEPENDENCY CONTRACT: PASS · "
         f"{len(imports)} runtime package(s) "
-        "are explicitly declared"
+        "are explicitly declared; "
+        f"{len(RUNTIME_INDIRECT_DEPENDENCIES)} "
+        "generated/indirect runtime package(s) "
+        "are explicitly protected"
     )
 
     return 0

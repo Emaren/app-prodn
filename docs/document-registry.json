@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9aa98d6dd4cc68d8533c08db40273e09b205a40cdfdbb12ac0d83cc2f13c9bcd",
+      "sha256": "b21076fb637cb864cdba979bec9db57ca7ca21d5e41798f74f6676613d72c914",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-14",
       "sensitivity": "internal",
-      "sha256": "1c7c30b0dc67a903fbf1cea7f8a9590170c4c1d580dcaaeb7cb95b59832eb552",
+      "sha256": "082198d332ddb10f301e5833bb2069d54e6278565056884a4c31017080491521",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1254,7 +1254,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-08-24",
       "sensitivity": "internal",
-      "sha256": "2f5440eb3b2226be32f8c8545f3ad3d9196e43833087fbce78f2d15c25cb2974",
+      "sha256": "7b3e6b0fba60bba5c0e68c9b8648b642ed0746f383e5b2c42a7a564984f79cef",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "harden/dependency-runtime-roots-v1",
-    "commit": "4317eebfd170859ec928dd31df53deb310669711"
+    "branch": "perf/dependency-diet-v1",
+    "commit": "45a4c73b252df596ce81e21e0347d4a239e437cf"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

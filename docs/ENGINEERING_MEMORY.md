@@ -58,6 +58,16 @@ remain intentionally outside the deployed-runtime closure. When a new runtime
 source root is introduced, extend the inventory and its fixture test before
 using the dependency contract to justify removal.
 
+The follow-on dependency diet removed fourteen direct packages with zero
+tracked-source imports: the legacy Cosmos Kit and Web3Modal stacks, Shadcn CLI
+runtime baggage, legacy auth/session/PWA/QR packages, and the obsolete
+`steam` npm client. A fresh normal Yarn install fell from 1295.6 MiB to
+877.4 MiB on the same Mac, a 418.2 MiB / 32.3% reduction per dependency
+generation. `@prisma/client` remains protected because generated Prisma output
+imports its runtime. The contract now rejects both undeclared runtime imports
+and dead direct runtime declarations, so this class of dependency bloat cannot
+silently return.
+
 ## Certified application and Replay Durability V1
 
 The 2026-09-04 certified web release is rooted at
