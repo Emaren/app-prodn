@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `perf/finish-doc-tree-proof-v1` at `4a053eea8cabcfac2f0e13e53937d3008cf20f18`
+Implementation baseline: `perf/dynamic-edge-kingdom-wolo-v1` at `bd4a81a5c8bd013616a46a1298c51501ff0e261e`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

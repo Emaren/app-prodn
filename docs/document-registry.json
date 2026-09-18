@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "58e1a91fd3154b1468fd1aeb2274d2c3470f5428462d983da5df506c38001900",
+      "sha256": "eea67241f4fbb308c8e5967fbdabc716a638cde0f3a052fa07b92a4f8d6887f9",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-14",
       "sensitivity": "internal",
-      "sha256": "92d4e9612eed1dc42c9c3be47a405b35df98594bdbc72a13b6d48ffd49f110b7",
+      "sha256": "f48c9ffc024278a956ff531aab33469d61264aae12b2778d8f46c00ae09d8ce6",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1116,7 +1116,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-06",
       "sensitivity": "internal",
-      "sha256": "e991d2c87c74a59ac33bc9c3f41def55ff0da19ea4dcd9e063bba881f6efa251",
+      "sha256": "60f6e0e20e232048965e51ba216d95c8ecc03b7f21ad96388e932ce55a31e914",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "perf/finish-doc-tree-proof-v1",
-    "commit": "4a053eea8cabcfac2f0e13e53937d3008cf20f18"
+    "branch": "perf/dynamic-edge-kingdom-wolo-v1",
+    "commit": "bd4a81a5c8bd013616a46a1298c51501ff0e261e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

@@ -87,6 +87,19 @@ match exactly and require a clean index/worktree. Git tree identity makes the
 second full rebuild redundant while remaining fail-closed against commit hooks
 or post-commit mutation.
 
+## Final dynamic-edge admission boundary
+
+The 2026-09-18 final speed pass re-tested the slow public dynamic cohort against
+the certified f070d7a30a14 production generation. `/kingdom` and `/wolo`
+both had no server-request personalization and produced one exact public/origin
+HTML SHA-256 across the full 30-second qualification window, so they were added
+to the governed anonymous dynamic edge policy. `/players` was tested at the
+same time and rejected because its public HTML changed during the window and
+failed public/origin byte equality. It remains outside shared edge cache.
+`/` remains server-personalized and prohibited; `/live-games`, `/watch`
+and `/staking` remain intentionally unpromoted because freshness or financial
+semantics make their cache ROI less clean than the admitted pair.
+
 ## Certified application and Replay Durability V1
 
 The 2026-09-04 certified web release is rooted at

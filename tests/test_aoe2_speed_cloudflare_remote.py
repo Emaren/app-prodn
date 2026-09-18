@@ -231,7 +231,7 @@ class CloudflareRemoteHelperTests(unittest.TestCase):
                 MODULE.STATE, MODULE.REQUEST, MODULE.LAST_APPLY = old
 
     def dynamic_request(self, **overrides):
-        routes = ["/academy", "/ai", "/battle-archive", "/bounties", "/champions", "/champions/world", "/clans", "/forum", "/game-stats/16218/review", "/leaderboard/og", "/market", "/market/shops/chat-effects", "/matchups/c_u_0df73bdbb64646c19e4a9bfd225b3285/n_Seedy_SI69", "/matchups/team/WyJjX3VfMGRmNzNiZGJiNjQ2NDZjMTllNGE5YmZkMjI1YjMyODUiLCJjX3VfMTc4MTYzODQzNjFmNGM4YThkNTdjNjkzNDI2NTEwMGIiLCJuX2NvcHBlcl9oZWFkX3JvYWQiXQ/WyJuX2Nhcmxvc2lzbSIsIm5fUm9NYV9WaWNUb1JfIiwibl9UYW5rVG9wTWFzdGVyIl0", "/national-champions", "/players/by-name/Emaren", "/radio", "/traffic"]
+        routes = list(MODULE.DYNAMIC_ALLOWED_ROUTES)
         cookie_names = ["aoe2hdbets_session"]
         base = {
             "schema": 1,
@@ -258,7 +258,7 @@ class CloudflareRemoteHelperTests(unittest.TestCase):
         self.assertEqual(MODULE.desired_dynamic_rule(validated)["description"], MODULE.DYNAMIC_RULE_DESCRIPTION)
 
         widened = {**payload, "expression": payload["expression"] + " or true"}
-        unauthorized_routes = ["/academy", "/kingdom"]
+        unauthorized_routes = ["/academy", "/players"]
         unauthorized = {
             **payload,
             "eligible_exact_routes": unauthorized_routes,

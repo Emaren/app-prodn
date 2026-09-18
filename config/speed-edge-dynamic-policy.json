@@ -66,6 +66,13 @@
       "admission": "anonymous_dynamic"
     },
     {
+      "route": "/kingdom",
+      "ttl_seconds": 30,
+      "empty_query_only": true,
+      "rationale": "Anonymous public Kingdom summary/chronicles surface; no server personalization and exact public/origin HTML bytes remained identical across the certified f070d7a3 30-second qualification window.",
+      "admission": "anonymous_dynamic"
+    },
+    {
       "route": "/leaderboard/og",
       "ttl_seconds": 30,
       "empty_query_only": true,
@@ -126,6 +133,13 @@
       "ttl_seconds": 30,
       "empty_query_only": true,
       "rationale": "Anonymous public traffic-observatory snapshot; read-only aggregate analytics with exact public/origin HTML bytes stable across a full 30-second proof window.",
+      "admission": "anonymous_dynamic"
+    },
+    {
+      "route": "/wolo",
+      "ttl_seconds": 30,
+      "empty_query_only": true,
+      "rationale": "Anonymous public WOLO client shell; no server personalization and exact public/origin HTML bytes remained identical across the certified f070d7a3 30-second qualification window.",
       "admission": "anonymous_dynamic"
     }
   ]
