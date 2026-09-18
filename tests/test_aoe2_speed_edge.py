@@ -579,6 +579,130 @@ class SpeedEdgeTests(unittest.TestCase):
         finally:
             MODULE.cache_status_probe = original
 
+    def test_asset_extractor_finds_one_q95_managed_hero_across_responsive_widths(self):
+        hero = "/uploads/managed-assets/background/hero-chain-123-abc.png"
+        sample = (
+            '<link rel="preload" as="image" imagesrcset="'
+            '/_next/image?url=%2Fbrand%2Faoe2war-logo.webp&amp;w=1080&amp;q=75 1x, '
+            '/_next/image?url=%2Fuploads%2Fmanaged-assets%2Fbackground%2Fhero-chain-123-abc.png&amp;w=1080&amp;q=95 1080w, '
+            '/_next/image?url=%2Fuploads%2Fmanaged-assets%2Fbackground%2Fhero-chain-123-abc.png&amp;w=1920&amp;q=95 1920w">'
+        )
+        rows = MODULE.extract_hero_image_candidates(sample)
+        self.assertEqual({row["source_path"] for row in rows}, {hero})
+        self.assertEqual([row["width"] for row in rows], [1080, 1920])
+        self.assertTrue(all(row["quality"] == 95 for row in rows))
+
+    def test_asset_plan_binds_certified_release_live_hero_and_vary_contract(self):
+        original_identity = MODULE.require_dynamic_release_identity
+        original_discover = MODULE.discover_live_hero_image
+        hero = "/uploads/managed-assets/background/hero-chain-123-abc.png"
+        try:
+            MODULE.require_dynamic_release_identity = lambda: self._dynamic_identity()
+            MODULE.discover_live_hero_image = lambda: {
+                "source_path": hero,
+                "quality": 95,
+                "widths": [640, 1080, 1920],
+                "probe_width": 1920,
+                "candidate_count": 3,
+            }
+            plan = MODULE.build_asset_cloudflare_plan()
+            self.assertEqual(plan["release_sha"], "a" * 40)
+            self.assertEqual(plan["source_path"], hero)
+            self.assertEqual(plan["quality"], 95)
+            self.assertEqual(plan["edge_ttl_seconds"], 3600)
+            self.assertEqual(plan["vary_default"], "bypass")
+            self.assertEqual(plan["vary_accept"], "normalize")
+            self.assertTrue(plan["query_string_preserved"])
+            self.assertIn('any(http.request.uri.args["url"][*] == "%2Fuploads%2Fmanaged-assets%2Fbackground%2Fhero-chain-123-abc.png")', plan["expression"])
+            self.assertIn('any(http.request.uri.args["q"][*] == "95")', plan["expression"])
+            self.assertIn('any(http.request.uri.args["w"][*] == "1920")', plan["expression"])
+        finally:
+            MODULE.require_dynamic_release_identity = original_identity
+            MODULE.discover_live_hero_image = original_discover
+
+    def test_asset_authority_uses_latest_successful_dynamic_apply_receipt(self):
+        old_receipts = MODULE.EDGE_RECEIPTS
+        try:
+            with tempfile.TemporaryDirectory() as tmp:
+                MODULE.EDGE_RECEIPTS = Path(tmp)
+
+                def write(name, *, mtime, routes, rollback=False, verification_ok=True):
+                    path = MODULE.EDGE_RECEIPTS / name
+                    path.write_text(json.dumps({
+                        "kind": "aoe2war-speedos-cloudflare-dynamic-apply",
+                        "rollback_performed": rollback,
+                        "verification": {"ok": verification_ok},
+                        "dynamic_plan": {"eligible_exact_routes": routes},
+                    }))
+                    os.utime(path, (mtime, mtime))
+                    return path
+
+                expected = write(
+                    "20260917T000000Z-cloudflare-dynamic-apply.json",
+                    mtime=100,
+                    routes=["/academy", "/wolo"],
+                )
+                write(
+                    "20260917T000100Z-cloudflare-dynamic-apply.json",
+                    mtime=200,
+                    routes=["/market"],
+                    rollback=True,
+                )
+                authority = MODULE.latest_successful_dynamic_apply()
+                self.assertIsNotNone(authority)
+                self.assertEqual(authority["dynamic_plan"]["eligible_exact_routes"], ["/academy", "/wolo"])
+                self.assertEqual(authority["_path"], str(expected))
+        finally:
+            MODULE.EDGE_RECEIPTS = old_receipts
+
+    def test_asset_verifier_proves_variants_q90_exclusion_and_html_preservation(self):
+        original_asset_probe = MODULE.asset_probe
+        original_cache_probe = MODULE.cache_status_probe
+        try:
+            def asset_probe(source_path, *, accept, width=1920, quality=95):
+                if quality == 90:
+                    return {
+                        "ok": True,
+                        "cf_cache_status": "DYNAMIC",
+                        "content_type": "image/webp",
+                        "body_sha256": "9" * 64,
+                        "bytes": 500000,
+                        "vary": "Accept",
+                    }
+                fallback = "image/png" in accept
+                digest_char = "b" if fallback else ("c" if width == 1080 else "a")
+                return {
+                    "ok": True,
+                    "cf_cache_status": "HIT",
+                    "content_type": "image/png" if fallback else "image/webp",
+                    "body_sha256": digest_char * 64,
+                    "bytes": 728090 if width == 1920 else 400000,
+                    "vary": "Accept",
+                    "next_cache_status": "HIT",
+                }
+
+            def cache_probe(path, **kwargs):
+                if path == "/api/deployment-version":
+                    return {"ok": True, "cf_cache_status": "DYNAMIC"}
+                return {"ok": True, "cf_cache_status": "HIT"}
+
+            MODULE.asset_probe = asset_probe
+            MODULE.cache_status_probe = cache_probe
+            result = MODULE.verify_asset_cloudflare_apply(
+                {"source_path": "/uploads/managed-assets/background/hero-chain-123-abc.png"},
+                {"eligible_exact_routes": ["/about", "/download"]},
+                {"eligible_exact_routes": ["/academy", "/wolo"]},
+                sleep_fn=lambda _: None,
+            )
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["failures"], [])
+            self.assertEqual(result["excluded_q90"]["cf_cache_status"], "DYNAMIC")
+            self.assertEqual(len(result["static_cohort"]), 2)
+            self.assertEqual(len(result["dynamic_cohort"]), 2)
+        finally:
+            MODULE.asset_probe = original_asset_probe
+            MODULE.cache_status_probe = original_cache_probe
+
     def test_bin_exposes_edge_delivery_audit(self):
         source = (ROOT / "bin" / "aoe2war").read_text(encoding="utf-8")
         self.assertIn('SPEED_EDGE="$BIN_DIR/../scripts/aoe2_speed_edge.py"', source)

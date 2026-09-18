@@ -19,6 +19,10 @@ ZONE_NAME = "aoe2war.com"
 PHASE = "http_request_cache_settings"
 RULE_DESCRIPTION = "AOE2WAR SpeedOS exact public HTML v1"
 DYNAMIC_RULE_DESCRIPTION = "AOE2WAR SpeedOS qualified dynamic HTML v1"
+ASSET_RULE_DESCRIPTION = "AOE2WAR SpeedOS certified hero image v1"
+ASSET_EDGE_TTL_SECONDS = 3600
+ASSET_QUALITY = 95
+ASSET_VARY_MEDIA_TYPES = ["image/avif", "image/webp", "image/*"]
 SESSION_COOKIE_NAME = "aoe2hdbets_session"
 DYNAMIC_ALLOWED_ROUTES = ("/academy", "/ai", "/battle-archive", "/bounties", "/champions", "/champions/world", "/clans", "/forum", "/game-stats/16218/review", "/kingdom", "/leaderboard/og", "/market", "/market/shops/chat-effects", "/matchups/c_u_0df73bdbb64646c19e4a9bfd225b3285/n_Seedy_SI69", "/matchups/team/WyJjX3VfMGRmNzNiZGJiNjQ2NDZjMTllNGE5YmZkMjI1YjMyODUiLCJjX3VfMTc4MTYzODQzNjFmNGM4YThkNTdjNjkzNDI2NTEwMGIiLCJuX2NvcHBlcl9oZWFkX3JvYWQiXQ/WyJuX2Nhcmxvc2lzbSIsIm5fUm9NYV9WaWNUb1JfIiwibl9UYW5rVG9wTWFzdGVyIl0", "/national-champions", "/players/by-name/Emaren", "/radio", "/traffic", "/wolo")
 STATE = Path("/var/lib/aoe2war-speedos/cloudflare")
@@ -26,6 +30,8 @@ REQUEST = STATE / "request.json"
 LAST_APPLY = STATE / "last-apply.json"
 DYNAMIC_REQUEST = STATE / "dynamic-request.json"
 LAST_DYNAMIC_APPLY = STATE / "last-dynamic-apply.json"
+ASSET_REQUEST = STATE / "asset-request.json"
+LAST_ASSET_APPLY = STATE / "last-asset-apply.json"
 PRODUCTION_APP_ROOT = Path("/var/www/AoE2HDBets/app-prodn")
 
 
@@ -156,6 +162,29 @@ def canonical_dynamic_expression(routes: list[str], cookie_names: list[str]) -> 
     )
 
 
+def canonical_asset_expression(
+    source_path: str,
+    responsive_widths: list[int],
+    quality: int = ASSET_QUALITY,
+) -> str:
+    encoded_source = urllib.parse.quote(source_path, safe="")
+    width_checks = " or ".join(
+        f'any(http.request.uri.args["w"][*] == "{width}")'
+        for width in responsive_widths
+    )
+    return (
+        '(http.host eq "aoe2war.com" and '
+        'http.request.method in {"GET" "HEAD"} and '
+        'http.request.uri.path eq "/_next/image" and '
+        'len(http.request.uri.args["url"]) eq 1 and '
+        f'any(http.request.uri.args["url"][*] == "{encoded_source}") and '
+        'len(http.request.uri.args["q"]) eq 1 and '
+        f'any(http.request.uri.args["q"][*] == "{quality}") and '
+        'len(http.request.uri.args["w"]) eq 1 and '
+        f'({width_checks}))'
+    )
+
+
 def is_lower_hex(value: Any, length: int) -> bool:
     text = str(value or "")
     return len(text) == length and all(ch in "0123456789abcdef" for ch in text)
@@ -280,6 +309,97 @@ def validate_dynamic_request(payload: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def validate_asset_request(payload: dict[str, Any]) -> dict[str, Any]:
+    if payload.get("schema") != 1:
+        raise CloudflareError("unsupported asset apply request schema")
+    if payload.get("kind") != "aoe2war-speedos-cloudflare-asset-apply-request":
+        raise CloudflareError("invalid asset apply request kind")
+    if payload.get("zone_name") != ZONE_NAME:
+        raise CloudflareError("asset apply request targets the wrong zone")
+
+    source_path = str(payload.get("source_path") or "")
+    if (
+        not source_path.startswith("/uploads/managed-assets/background/hero-chain-")
+        or len(source_path) > 512
+        or "?" in source_path
+        or "#" in source_path
+        or ".." in source_path
+        or not source_path.lower().endswith((".png", ".jpg", ".jpeg", ".webp", ".avif"))
+    ):
+        raise CloudflareError("asset source path is outside the certified hero namespace")
+
+    quality = int(payload.get("quality") or 0)
+    if quality != ASSET_QUALITY:
+        raise CloudflareError("asset quality must remain exactly 95")
+
+    responsive_widths = payload.get("responsive_widths") or []
+    if (
+        not isinstance(responsive_widths, list)
+        or not responsive_widths
+        or responsive_widths != sorted(set(responsive_widths))
+        or 1920 not in responsive_widths
+        or len(responsive_widths) > 16
+        or any(not isinstance(width, int) or width < 64 or width > 8192 for width in responsive_widths)
+    ):
+        raise CloudflareError("asset responsive width contract is invalid")
+
+    ttl = int(payload.get("edge_ttl_seconds") or 0)
+    if ttl != ASSET_EDGE_TTL_SECONDS:
+        raise CloudflareError("asset edge TTL must remain exactly 3600 seconds")
+
+    media_types = payload.get("vary_media_types") or []
+    if media_types != ASSET_VARY_MEDIA_TYPES:
+        raise CloudflareError("asset Accept normalization contract is invalid")
+
+    expression = str(payload.get("expression") or "").strip()
+    if expression != canonical_asset_expression(source_path, responsive_widths, quality):
+        raise CloudflareError("asset expression does not exactly match bounded request metadata")
+
+    for key, length in (("plan_sha256", 64), ("operator_source_sha", 40)):
+        if not is_lower_hex(payload.get(key), length):
+            raise CloudflareError(f"asset request {key} is invalid")
+
+    return {
+        **payload,
+        "source_path": source_path,
+        "quality": quality,
+        "responsive_widths": responsive_widths,
+        "edge_ttl_seconds": ttl,
+        "vary_media_types": media_types,
+        "expression": expression,
+    }
+
+
+def desired_asset_rule(request: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "action": "set_cache_settings",
+        "action_parameters": {
+            "cache": True,
+            "edge_ttl": {
+                "mode": "override_origin",
+                "default": 0,
+                "status_code_ttl": [
+                    {"status_code_range": {"from": 200, "to": 299}, "value": ASSET_EDGE_TTL_SECONDS},
+                    {"status_code_range": {"from": 300, "to": 499}, "value": 0},
+                    {"status_code_range": {"from": 500, "to": 999}, "value": -1},
+                ],
+            },
+            "vary": {
+                "default": {"action": "bypass"},
+                "headers": {
+                    "accept": {
+                        "action": "normalize",
+                        "media_types": ASSET_VARY_MEDIA_TYPES,
+                    }
+                },
+            },
+        },
+        "expression": request["expression"],
+        "description": ASSET_RULE_DESCRIPTION,
+        "enabled": True,
+    }
+
+
 def desired_dynamic_rule(request: dict[str, Any]) -> dict[str, Any]:
     return {
         "action": "set_cache_settings",
@@ -369,6 +489,10 @@ def find_speedos_rule(ruleset: dict[str, Any] | None) -> dict[str, Any] | None:
 
 def find_dynamic_rule(ruleset: dict[str, Any] | None) -> dict[str, Any] | None:
     return find_rule(ruleset, DYNAMIC_RULE_DESCRIPTION)
+
+
+def find_asset_rule(ruleset: dict[str, Any] | None) -> dict[str, Any] | None:
+    return find_rule(ruleset, ASSET_RULE_DESCRIPTION)
 
 
 def write_apply_record(record: dict[str, Any]) -> None:
@@ -684,6 +808,138 @@ def cmd_apply_dynamic() -> dict[str, Any]:
     }
 
 
+def write_asset_apply_record(record: dict[str, Any]) -> None:
+    STATE.mkdir(parents=True, exist_ok=True)
+    LAST_ASSET_APPLY.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n")
+    os.chmod(LAST_ASSET_APPLY, 0o600)
+
+
+def rollback_asset_record(record: dict[str, Any], zone: dict[str, Any]) -> dict[str, Any]:
+    if record.get("schema") != 1 or record.get("kind") != "aoe2war-speedos-cloudflare-asset-apply-record":
+        raise CloudflareError("asset rollback refuses legacy or unrecognized apply record")
+    if zone["id"] != record.get("zone_id"):
+        raise CloudflareError("asset rollback zone identity mismatch")
+    current = phase_ruleset(zone["id"])
+    if not current:
+        raise CloudflareError("asset rollback cannot find cache ruleset")
+    prior = record.get("prior_asset_rule")
+    prior_id = record.get("prior_asset_rule_id")
+    current_asset = find_asset_rule(current)
+    if prior:
+        if not prior_id:
+            raise CloudflareError("asset rollback lacks prior rule identity")
+        restored = api(
+            "PATCH",
+            f"/zones/{zone['id']}/rulesets/{current['id']}/rules/{prior_id}",
+            prior,
+            allow_404=True,
+        )
+        if restored is None:
+            api("POST", f"/zones/{zone['id']}/rulesets/{current['id']}/rules", prior)
+            action = "recreated_prior_asset_rule"
+        else:
+            action = "restored_prior_asset_rule"
+    elif current_asset:
+        api("DELETE", f"/zones/{zone['id']}/rulesets/{current['id']}/rules/{current_asset['id']}")
+        action = "deleted_created_asset_rule"
+    else:
+        action = "no_asset_rule_present"
+    record["state"] = "rolled_back"
+    record["rolled_back_at"] = now()
+    record["rollback_action"] = action
+    write_asset_apply_record(record)
+    return {"ok": True, "command": "rollback-asset", "action": action, "snapshot": record.get("snapshot")}
+
+
+def cmd_apply_asset() -> dict[str, Any]:
+    request = validate_asset_request(json.loads(ASSET_REQUEST.read_text()))
+    live_source = production_source_sha()
+    if request["operator_source_sha"] != live_source:
+        raise CloudflareError("asset apply request source SHA does not match production")
+    zone = resolve_zone()
+    snapshot_path, prior_ruleset = snapshot(zone)
+    if not prior_ruleset:
+        raise CloudflareError("asset apply requires an existing cache ruleset")
+    if not find_speedos_rule(prior_ruleset) or not find_dynamic_rule(prior_ruleset):
+        raise CloudflareError("asset apply requires both certified HTML SpeedOS rules")
+    prior_asset = find_asset_rule(prior_ruleset)
+    record = {
+        "schema": 1,
+        "kind": "aoe2war-speedos-cloudflare-asset-apply-record",
+        "generated_at": now(),
+        "state": "prepared",
+        "zone_id": zone["id"],
+        "zone_name": zone["name"],
+        "snapshot": str(snapshot_path),
+        "ruleset_id": prior_ruleset["id"],
+        "prior_asset_rule_id": (prior_asset or {}).get("id"),
+        "prior_asset_rule": safe_rule(prior_asset),
+        "request_sha256": hashlib.sha256(ASSET_REQUEST.read_bytes()).hexdigest(),
+        "plan_sha256": request["plan_sha256"],
+        "operator_source_sha": request["operator_source_sha"],
+        "source_path": request["source_path"],
+        "quality": request["quality"],
+        "responsive_widths": request["responsive_widths"],
+        "edge_ttl_seconds": request["edge_ttl_seconds"],
+    }
+    write_asset_apply_record(record)
+    try:
+        rule = desired_asset_rule(request)
+        if prior_asset:
+            api("PATCH", f"/zones/{zone['id']}/rulesets/{prior_ruleset['id']}/rules/{prior_asset['id']}", rule)
+        else:
+            api("POST", f"/zones/{zone['id']}/rulesets/{prior_ruleset['id']}/rules", rule)
+        current = phase_ruleset(zone["id"])
+        asset_rule = find_asset_rule(current)
+        if not current or not asset_rule:
+            raise CloudflareError("asset apply did not produce a readable asset SpeedOS rule")
+        if not find_speedos_rule(current) or not find_dynamic_rule(current):
+            raise CloudflareError("asset apply lost an existing HTML SpeedOS rule")
+        record.update({"state": "applied", "applied_at": now(), "rule_id": asset_rule["id"]})
+        write_asset_apply_record(record)
+    except Exception as exc:
+        try:
+            rollback = rollback_asset_record(record, zone)
+        except Exception as rollback_exc:
+            record["state"] = "rollback_failed"
+            record["apply_error"] = str(exc)
+            record["rollback_error"] = str(rollback_exc)
+            write_asset_apply_record(record)
+            raise CloudflareError(
+                f"asset apply failed and rollback also failed: apply={exc}; rollback={rollback_exc}"
+            ) from None
+        record["state"] = "rolled_back_after_apply_failure"
+        record["apply_error"] = str(exc)
+        record["rollback_action"] = rollback["action"]
+        write_asset_apply_record(record)
+        raise CloudflareError(
+            f"asset apply failed after prepare; rollback completed ({rollback['action']}): {exc}"
+        ) from None
+    return {
+        "ok": True,
+        "command": "apply-asset",
+        "rule_id_suffix": str(record["rule_id"])[-8:],
+        "edge_ttl_seconds": ASSET_EDGE_TTL_SECONDS,
+        "source_path": request["source_path"],
+        "snapshot": str(snapshot_path),
+    }
+
+
+def cmd_rollback_asset() -> dict[str, Any]:
+    if not LAST_ASSET_APPLY.exists():
+        raise CloudflareError("no asset Cloudflare apply record exists to roll back")
+    record = json.loads(LAST_ASSET_APPLY.read_text())
+    zone = resolve_zone()
+    if str(record.get("state") or "").startswith("rolled_back"):
+        return {
+            "ok": True,
+            "command": "rollback-asset",
+            "action": "already_rolled_back",
+            "snapshot": record.get("snapshot"),
+        }
+    return rollback_asset_record(record, zone)
+
+
 def cmd_rollback_dynamic() -> dict[str, Any]:
     if not LAST_DYNAMIC_APPLY.exists():
         raise CloudflareError("no dynamic Cloudflare apply record exists to roll back")
@@ -701,7 +957,7 @@ def cmd_rollback_dynamic() -> dict[str, Any]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(prog="aoe2war-speedos-cloudflare")
-    parser.add_argument("command", choices=["verify", "snapshot", "apply", "rollback", "apply-dynamic", "rollback-dynamic"])
+    parser.add_argument("command", choices=["verify", "snapshot", "apply", "rollback", "apply-dynamic", "rollback-dynamic", "apply-asset", "rollback-asset"])
     args = parser.parse_args()
     try:
         result = {
@@ -711,6 +967,8 @@ def main() -> int:
             "rollback": cmd_rollback,
             "apply-dynamic": cmd_apply_dynamic,
             "rollback-dynamic": cmd_rollback_dynamic,
+            "apply-asset": cmd_apply_asset,
+            "rollback-asset": cmd_rollback_asset,
         }[args.command]()
     except (CloudflareError, OSError, ValueError, json.JSONDecodeError) as exc:
         print(json.dumps({"ok": False, "command": args.command, "error": str(exc)}))

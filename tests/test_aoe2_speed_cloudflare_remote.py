@@ -384,6 +384,156 @@ class CloudflareRemoteHelperTests(unittest.TestCase):
             finally:
                 MODULE.STATE, MODULE.DYNAMIC_REQUEST, MODULE.LAST_DYNAMIC_APPLY = old
 
+    def asset_request(self, **overrides):
+        source_path = "/uploads/managed-assets/background/hero-chain-1789329346053-zrmnar-1789329348882-2bf78674.png"
+        base = {
+            "schema": 1,
+            "kind": "aoe2war-speedos-cloudflare-asset-apply-request",
+            "zone_name": "aoe2war.com",
+            "source_path": source_path,
+            "quality": MODULE.ASSET_QUALITY,
+            "responsive_widths": [640, 1080, 1920],
+            "edge_ttl_seconds": MODULE.ASSET_EDGE_TTL_SECONDS,
+            "vary_media_types": list(MODULE.ASSET_VARY_MEDIA_TYPES),
+            "expression": MODULE.canonical_asset_expression(source_path, [640, 1080, 1920]),
+            "plan_sha256": "a" * 64,
+            "operator_source_sha": "d" * 40,
+        }
+        base.update(overrides)
+        return base
+
+    def test_asset_request_is_exact_hero_q95_vary_normalized_and_bounded(self):
+        payload = MODULE.validate_asset_request(self.asset_request())
+        self.assertEqual(payload["quality"], 95)
+        self.assertEqual(payload["edge_ttl_seconds"], 3600)
+        self.assertIn('http.request.uri.path eq "/_next/image"', payload["expression"])
+        self.assertIn("hero-chain-", payload["expression"])
+
+        bad_source = "/uploads/managed-assets/avatar/not-a-hero.png"
+        for bad in (
+            self.asset_request(schema=2),
+            self.asset_request(source_path=bad_source, expression=MODULE.canonical_asset_expression(bad_source, [640, 1080, 1920])),
+            self.asset_request(quality=90),
+            self.asset_request(edge_ttl_seconds=86400),
+            self.asset_request(responsive_widths=[1080]),
+            self.asset_request(vary_media_types=["image/webp"]),
+            self.asset_request(expression=self.asset_request()["expression"] + " or true"),
+            self.asset_request(plan_sha256="bad"),
+        ):
+            with self.assertRaises(MODULE.CloudflareError):
+                MODULE.validate_asset_request(bad)
+
+    def test_asset_rule_normalizes_accept_and_bypasses_unexpected_vary_headers(self):
+        rule = MODULE.desired_asset_rule(MODULE.validate_asset_request(self.asset_request()))
+        self.assertEqual(rule["description"], MODULE.ASSET_RULE_DESCRIPTION)
+        self.assertTrue(rule["action_parameters"]["cache"])
+        self.assertEqual(
+            rule["action_parameters"]["edge_ttl"]["status_code_ttl"][0]["value"],
+            3600,
+        )
+        vary = rule["action_parameters"]["vary"]
+        self.assertEqual(vary["default"]["action"], "bypass")
+        self.assertEqual(vary["headers"]["accept"]["action"], "normalize")
+        self.assertEqual(
+            vary["headers"]["accept"]["media_types"],
+            ["image/avif", "image/webp", "image/*"],
+        )
+
+    def test_asset_apply_requires_both_html_rules_and_refetches_identity(self):
+        zone = {"id": "zone-1", "name": "aoe2war.com"}
+        static = {"id": "static-1", "description": MODULE.RULE_DESCRIPTION}
+        dynamic = {"id": "dynamic-1", "description": MODULE.DYNAMIC_RULE_DESCRIPTION}
+        asset = {"id": "asset-new", "description": MODULE.ASSET_RULE_DESCRIPTION}
+        prior = {"id": "ruleset-1", "rules": [static, dynamic]}
+        current = {"id": "ruleset-1", "rules": [static, dynamic, asset]}
+        with tempfile.TemporaryDirectory() as tmp:
+            state = Path(tmp)
+            old = (MODULE.STATE, MODULE.ASSET_REQUEST, MODULE.LAST_ASSET_APPLY)
+            MODULE.STATE = state
+            MODULE.ASSET_REQUEST = state / "asset-request.json"
+            MODULE.LAST_ASSET_APPLY = state / "last-asset-apply.json"
+            MODULE.ASSET_REQUEST.write_text(json.dumps(self.asset_request()))
+            try:
+                from unittest.mock import patch
+                with (
+                    patch.object(MODULE, "production_source_sha", return_value="d" * 40),
+                    patch.object(MODULE, "resolve_zone", return_value=zone),
+                    patch.object(MODULE, "snapshot", return_value=(state / "snapshot.json", prior)),
+                    patch.object(MODULE, "phase_ruleset", return_value=current),
+                    patch.object(MODULE, "api", return_value={"result": {"unexpected": "shape"}}),
+                ):
+                    result = MODULE.cmd_apply_asset()
+                record = json.loads(MODULE.LAST_ASSET_APPLY.read_text())
+                self.assertTrue(result["ok"])
+                self.assertEqual(result["rule_id_suffix"], "sset-new")
+                self.assertEqual(record["rule_id"], "asset-new")
+                self.assertEqual(record["state"], "applied")
+            finally:
+                MODULE.STATE, MODULE.ASSET_REQUEST, MODULE.LAST_ASSET_APPLY = old
+
+        with tempfile.TemporaryDirectory() as tmp:
+            state = Path(tmp)
+            old = (MODULE.STATE, MODULE.ASSET_REQUEST, MODULE.LAST_ASSET_APPLY)
+            MODULE.STATE = state
+            MODULE.ASSET_REQUEST = state / "asset-request.json"
+            MODULE.LAST_ASSET_APPLY = state / "last-asset-apply.json"
+            MODULE.ASSET_REQUEST.write_text(json.dumps(self.asset_request()))
+            try:
+                from unittest.mock import patch
+                with (
+                    patch.object(MODULE, "production_source_sha", return_value="d" * 40),
+                    patch.object(MODULE, "resolve_zone", return_value=zone),
+                    patch.object(MODULE, "snapshot", return_value=(state / "snapshot.json", {"id": "ruleset-1", "rules": [static]})),
+                ):
+                    with self.assertRaisesRegex(MODULE.CloudflareError, "both certified HTML"):
+                        MODULE.cmd_apply_asset()
+            finally:
+                MODULE.STATE, MODULE.ASSET_REQUEST, MODULE.LAST_ASSET_APPLY = old
+
+    def test_asset_response_loss_rolls_back_only_asset_rule(self):
+        zone = {"id": "zone-1", "name": "aoe2war.com"}
+        static = {"id": "static-1", "description": MODULE.RULE_DESCRIPTION}
+        dynamic = {"id": "dynamic-1", "description": MODULE.DYNAMIC_RULE_DESCRIPTION}
+        asset = {"id": "asset-new", "description": MODULE.ASSET_RULE_DESCRIPTION}
+        prior = {"id": "ruleset-1", "rules": [static, dynamic]}
+        current = {"id": "ruleset-1", "rules": [static, dynamic, asset]}
+        with tempfile.TemporaryDirectory() as tmp:
+            state = Path(tmp)
+            old = (MODULE.STATE, MODULE.ASSET_REQUEST, MODULE.LAST_ASSET_APPLY)
+            MODULE.STATE = state
+            MODULE.ASSET_REQUEST = state / "asset-request.json"
+            MODULE.LAST_ASSET_APPLY = state / "last-asset-apply.json"
+            MODULE.ASSET_REQUEST.write_text(json.dumps(self.asset_request()))
+            calls = []
+
+            def fake_api(method, path, payload=None, *, allow_404=False):
+                calls.append((method, path))
+                if method == "POST" and path.endswith("/rules"):
+                    self.assertEqual(
+                        json.loads(MODULE.LAST_ASSET_APPLY.read_text())["state"],
+                        "prepared",
+                    )
+                    raise MODULE.CloudflareError("simulated asset response loss")
+                return {"success": True}
+
+            try:
+                from unittest.mock import patch
+                with (
+                    patch.object(MODULE, "production_source_sha", return_value="d" * 40),
+                    patch.object(MODULE, "resolve_zone", return_value=zone),
+                    patch.object(MODULE, "snapshot", return_value=(state / "snapshot.json", prior)),
+                    patch.object(MODULE, "phase_ruleset", return_value=current),
+                    patch.object(MODULE, "api", side_effect=fake_api),
+                ):
+                    with self.assertRaisesRegex(MODULE.CloudflareError, "rollback completed"):
+                        MODULE.cmd_apply_asset()
+                record = json.loads(MODULE.LAST_ASSET_APPLY.read_text())
+                self.assertEqual(record["rollback_action"], "deleted_created_asset_rule")
+                deletes = [path for method, path in calls if method == "DELETE"]
+                self.assertEqual(deletes, ["/zones/zone-1/rulesets/ruleset-1/rules/asset-new"])
+            finally:
+                MODULE.STATE, MODULE.ASSET_REQUEST, MODULE.LAST_ASSET_APPLY = old
+
     def test_helper_never_serializes_token_into_results(self):
         source = (ROOT / "scripts" / "aoe2_speed_cloudflare_remote.py").read_text()
         self.assertIn('os.getenv("CLOUDFLARE_API_TOKEN"', source)
