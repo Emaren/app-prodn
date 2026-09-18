@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "7657323377a99c261d7f79cf0af030a62fc23e0da778c74751d21bb7ce43fe5d",
+      "sha256": "4118242afe180b5ae8dee726843017217c6e9a0eba9dad212396703ce478a930",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "perf/browser-tail-lcp-v1",
-    "commit": "55d0297c3365b33bd9528f1301a5cb4e6ed5ec87"
+    "branch": "perf/hero-edge-image-v1",
+    "commit": "8e619b151893d295088285f0d719e42cadf871a5"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

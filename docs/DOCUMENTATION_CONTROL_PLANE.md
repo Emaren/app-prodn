@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `perf/browser-tail-lcp-v1` at `55d0297c3365b33bd9528f1301a5cb4e6ed5ec87`
+Implementation baseline: `perf/hero-edge-image-v1` at `8e619b151893d295088285f0d719e42cadf871a5`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
