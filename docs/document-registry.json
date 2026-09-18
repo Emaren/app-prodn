@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e46ba26f32db5a605d0f02c9246eea792cc663047258c038f03ffec5fd86ecf1",
+      "sha256": "503fd2190ca377150680b992a68e434902749e507a4596a8157cf41e2c5f74a1",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "perf/featured-avatar-edge-v1",
-    "commit": "3e4b4d881a1c2e46bc7b62e8bae7f9fb17e07d24"
+    "branch": "fix/featured-helper-command",
+    "commit": "86214b1df1bbb5516d3f7f2bb9f0bf6c8f5af112"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
