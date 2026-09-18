@@ -222,6 +222,14 @@ package imports. Adding a new tracked runtime source root requires extending
 this inventory contract and its fixture coverage before dependency conclusions
 can rely on it.
 
+The contract is bidirectional: imported runtime packages must be declared, and
+direct `dependencies` that are not consumed by the tracked runtime closure are
+rejected as dead runtime declarations. Generated/runtime-indirect exceptions
+must be explicit and narrowly justified. `@prisma/client` is the current
+exception because ignored generated Prisma client output imports
+`@prisma/client/runtime` even though that generated source is intentionally
+outside Git's tracked-source inventory.
+
 The dependency contract runs during `aoe2war dev prepare` and in the protected
 release gate.
 

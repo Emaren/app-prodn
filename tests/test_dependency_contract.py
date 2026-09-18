@@ -97,6 +97,26 @@ class DependencyContractTests(
             self.assertNotIn("scripts/tool.ts", selected)
             self.assertNotIn("tests/tool.test.ts", selected)
 
+    def test_unused_dependency_contract_preserves_generated_prisma_runtime(self):
+        declared = {
+            "react",
+            "next",
+            "@prisma/client",
+            "dead-package",
+        }
+        imported = {
+            "react",
+            "next",
+        }
+
+        self.assertEqual(
+            deps.unused_declared_dependencies(
+                declared,
+                imported,
+            ),
+            {"dead-package"},
+        )
+
     def test_ast_scanner_ignores_strings_comments_and_jsx(self):
         with tempfile.TemporaryDirectory() as temp:
             file = (
