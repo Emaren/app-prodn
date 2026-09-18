@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "eea67241f4fbb308c8e5967fbdabc716a638cde0f3a052fa07b92a4f8d6887f9",
+      "sha256": "7657323377a99c261d7f79cf0af030a62fc23e0da778c74751d21bb7ce43fe5d",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "perf/dynamic-edge-kingdom-wolo-v1",
-    "commit": "bd4a81a5c8bd013616a46a1298c51501ff0e261e"
+    "branch": "perf/browser-tail-lcp-v1",
+    "commit": "55d0297c3365b33bd9528f1301a5cb4e6ed5ec87"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
