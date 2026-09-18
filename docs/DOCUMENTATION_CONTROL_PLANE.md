@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `perf/hero-edge-image-v1` at `8e619b151893d295088285f0d719e42cadf871a5`
+Implementation baseline: `perf/featured-avatar-edge-v1` at `3e4b4d881a1c2e46bc7b62e8bae7f9fb17e07d24`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

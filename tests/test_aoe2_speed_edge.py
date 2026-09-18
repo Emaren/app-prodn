@@ -703,6 +703,91 @@ class SpeedEdgeTests(unittest.TestCase):
             MODULE.asset_probe = original_asset_probe
             MODULE.cache_status_probe = original_cache_probe
 
+    def test_featured_avatar_plan_binds_live_roster_and_exact_query_contract(self):
+        original_identity = MODULE.require_dynamic_release_identity
+        original_discover = MODULE.discover_live_featured_avatar_paths
+        try:
+            MODULE.require_dynamic_release_identity = lambda: self._dynamic_identity()
+            MODULE.discover_live_featured_avatar_paths = lambda: {
+                "paths": [
+                    "/api/media-assets/avatar/user-aoe2hd-ai-concierge-featured",
+                    "/api/media-assets/avatar/user-u-79ce46af3d504ceca718e5fda83e3502-featured",
+                ],
+                "roster_sha256": "b" * 64,
+                "featured_entry_count": 21,
+                "eligible_path_count": 2,
+            }
+            plan = MODULE.build_featured_avatar_cloudflare_plan()
+            self.assertEqual(plan["release_sha"], "a" * 40)
+            self.assertEqual(plan["eligible_path_count"], 2)
+            self.assertEqual(plan["roster_sha256"], "b" * 64)
+            self.assertEqual(plan["cache_version"], "20260630a")
+            self.assertEqual(plan["edge_ttl_seconds"], 3600)
+            self.assertIn('http.request.uri.args["size"]', plan["expression"])
+            self.assertIn('"card"', plan["expression"])
+            self.assertIn("20260630a", plan["expression"])
+            self.assertEqual(
+                MODULE.slugify_avatar_target("aoe2hd_ai_concierge"),
+                "aoe2hd-ai-concierge",
+            )
+        finally:
+            MODULE.require_dynamic_release_identity = original_identity
+            MODULE.discover_live_featured_avatar_paths = original_discover
+
+    def test_featured_avatar_verifier_proves_hits_exclusions_and_stack_preservation(self):
+        original_avatar_probe = MODULE.featured_avatar_probe
+        original_cache_probe = MODULE.cache_status_probe
+        original_asset_probe = MODULE.asset_probe
+        original_build_asset = MODULE.build_asset_cloudflare_plan
+        try:
+            def avatar_probe(path, *, accept=MODULE.ASSET_MODERN_ACCEPT, size="card", cache_version=MODULE.FEATURED_AVATAR_CACHE_VERSION):
+                excluded = size != "card" or cache_version != MODULE.FEATURED_AVATAR_CACHE_VERSION
+                digest = ("b" if "image/png" in accept else "a") * 64
+                return {
+                    "ok": True,
+                    "cf_cache_status": "DYNAMIC" if excluded else "HIT",
+                    "content_type": "image/webp",
+                    "body_sha256": digest,
+                    "bytes": 120000,
+                }
+
+            def cache_probe(path, **kwargs):
+                if path == "/api/deployment-version":
+                    return {"ok": True, "cf_cache_status": "DYNAMIC"}
+                return {"ok": True, "cf_cache_status": "HIT"}
+
+            MODULE.featured_avatar_probe = avatar_probe
+            MODULE.cache_status_probe = cache_probe
+            MODULE.asset_probe = lambda source_path, *, accept, width=1920, quality=95: {
+                "ok": True,
+                "cf_cache_status": "HIT",
+            }
+            MODULE.build_asset_cloudflare_plan = lambda: {
+                "source_path": "/uploads/managed-assets/background/hero-chain-123-abc.png"
+            }
+            result = MODULE.verify_featured_avatar_cloudflare_apply(
+                {
+                    "eligible_exact_paths": [
+                        "/api/media-assets/avatar/user-a-featured",
+                        "/api/media-assets/avatar/user-b-featured",
+                    ]
+                },
+                {"eligible_exact_routes": ["/about"]},
+                {"eligible_exact_routes": ["/academy"]},
+                sleep_fn=lambda _: None,
+            )
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["failures"], [])
+            self.assertEqual(len(result["featured_avatar_rows"]), 2)
+            self.assertEqual(result["excluded_thumb"]["cf_cache_status"], "DYNAMIC")
+            self.assertEqual(result["excluded_version"]["cf_cache_status"], "DYNAMIC")
+            self.assertEqual(result["hero_probe"]["cf_cache_status"], "HIT")
+        finally:
+            MODULE.featured_avatar_probe = original_avatar_probe
+            MODULE.cache_status_probe = original_cache_probe
+            MODULE.asset_probe = original_asset_probe
+            MODULE.build_asset_cloudflare_plan = original_build_asset
+
     def test_bin_exposes_edge_delivery_audit(self):
         source = (ROOT / "bin" / "aoe2war").read_text(encoding="utf-8")
         self.assertIn('SPEED_EDGE="$BIN_DIR/../scripts/aoe2_speed_edge.py"', source)

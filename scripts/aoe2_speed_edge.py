@@ -39,6 +39,16 @@ ASSET_PROBE_WIDTH = 1920
 ASSET_VARY_MEDIA_TYPES = ["image/avif", "image/webp", "image/*"]
 ASSET_MODERN_ACCEPT = "image/avif,image/webp,image/*,*/*;q=0.8"
 ASSET_FALLBACK_ACCEPT = "image/png,image/*;q=0.8,*/*;q=0.5"
+FEATURED_AVATAR_EDGE_TTL_SECONDS = 3600
+FEATURED_AVATAR_CACHE_VERSION = "20260630a"
+FEATURED_AVATAR_EXTRA_UIDS = ("aoe2hd-moose", "aoe2hd_ai_concierge", "aoe2hd_ai_grimer")
+FEATURED_AVATAR_VARY_MEDIA_TYPES = ["image/avif", "image/webp", "image/*"]
+FEATURED_AVATAR_PASSTHROUGH_HEADERS = [
+    "next-router-prefetch",
+    "next-router-segment-prefetch",
+    "next-router-state-tree",
+    "rsc",
+]
 SESSION_COOKIE_NAME = "aoe2hdbets_session"
 CLOUDFLARE_SSH = os.getenv("AOE2_SPEED_CLOUDFLARE_SSH", "hetzner-codex")
 CLOUDFLARE_UNIT = "aoe2war-speedos-cloudflare@{command}.service"
@@ -136,6 +146,30 @@ def latest_successful_dynamic_apply() -> dict[str, Any] | None:
         plan = payload.get("dynamic_plan") or {}
         routes = plan.get("eligible_exact_routes")
         if not isinstance(routes, list) or not routes:
+            continue
+        payload["_path"] = str(path)
+        return payload
+    return None
+
+
+def latest_successful_asset_apply() -> dict[str, Any] | None:
+    if not EDGE_RECEIPTS.is_dir():
+        return None
+    paths = sorted(
+        EDGE_RECEIPTS.glob("*-cloudflare-asset-apply.json"),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+    for path in paths:
+        payload = speed.safe_json(path)
+        if not payload or payload.get("kind") != "aoe2war-speedos-cloudflare-asset-apply":
+            continue
+        if payload.get("rollback_performed"):
+            continue
+        if not (payload.get("verification") or {}).get("ok"):
+            continue
+        plan = payload.get("asset_plan") or {}
+        if not plan.get("source_path"):
             continue
         payload["_path"] = str(path)
         return payload
@@ -1163,6 +1197,160 @@ def stage_cloudflare_request(plan: dict[str, Any]) -> tuple[dict[str, Any], str]
     return request, plan_sha
 
 
+def slugify_avatar_target(value: str) -> str:
+    normalized = str(value or "").strip().lower()
+    normalized = normalized.replace("&", " and ")
+    normalized = re.sub(r"[^a-z0-9]+", "-", normalized).strip("-")
+    return normalized[:160]
+
+
+def canonical_featured_avatar_expression(
+    paths: list[str],
+    cache_version: str = FEATURED_AVATAR_CACHE_VERSION,
+) -> str:
+    quoted = " ".join(f'"{path}"' for path in paths)
+    return (
+        '(http.host eq "aoe2war.com" and '
+        'http.request.method in {"GET" "HEAD"} and '
+        f'http.request.uri.path in {{{quoted}}} and '
+        'len(http.request.uri.args["size"]) eq 1 and '
+        'any(http.request.uri.args["size"][*] == "card") and '
+        'len(http.request.uri.args["v"]) eq 1 and '
+        f'any(http.request.uri.args["v"][*] == "{cache_version}"))'
+    )
+
+
+def discover_live_featured_avatar_paths() -> dict[str, Any]:
+    proc = subprocess.run(
+        ["curl", "-fsS", "--max-time", "20", PUBLIC_BASE + "/api/lobby"],
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=25,
+        check=False,
+    )
+    if proc.returncode != 0:
+        raise EdgeAuditError("featured-avatar roster discovery failed: " + (proc.stderr or "curl failed")[-500:])
+    try:
+        payload = json.loads(proc.stdout)
+    except json.JSONDecodeError as exc:
+        raise EdgeAuditError(f"featured-avatar roster discovery returned invalid JSON: {exc}") from None
+    entries = payload.get("featuredWarriorEntries") or []
+    if not isinstance(entries, list) or not entries:
+        raise EdgeAuditError("featured-avatar roster discovery returned no featured warriors")
+    uids = {
+        str(row.get("uid") or "").strip()
+        for row in entries
+        if isinstance(row, dict) and row.get("hasFeaturedAvatar") and row.get("uid")
+    }
+    uids.update(FEATURED_AVATAR_EXTRA_UIDS)
+    paths = sorted(
+        f"/api/media-assets/avatar/user-{slugify_avatar_target(uid)}-featured"
+        for uid in uids
+        if slugify_avatar_target(uid)
+    )
+    if not paths or len(paths) > 64 or len(paths) != len(set(paths)):
+        raise EdgeAuditError("featured-avatar roster produced an invalid exact-path cohort")
+    roster_sha = hashlib.sha256(
+        json.dumps(paths, separators=(",", ":"), sort_keys=True).encode()
+    ).hexdigest()
+    return {
+        "paths": paths,
+        "roster_sha256": roster_sha,
+        "featured_entry_count": len(entries),
+        "eligible_path_count": len(paths),
+    }
+
+
+def build_featured_avatar_cloudflare_plan() -> dict[str, Any]:
+    identity = require_dynamic_release_identity()
+    roster = discover_live_featured_avatar_paths()
+    paths = roster["paths"]
+    return {
+        "schema": 1,
+        "kind": "aoe2war-speedos-cloudflare-featured-avatar-plan",
+        "generated_at": utc_now(),
+        "mutation_authorized": True,
+        "release_sha": identity["release_sha"],
+        "operator_source_sha": identity["operator_source_sha"],
+        "eligible_exact_paths": paths,
+        "eligible_path_count": len(paths),
+        "featured_entry_count": roster["featured_entry_count"],
+        "roster_sha256": roster["roster_sha256"],
+        "cache_version": FEATURED_AVATAR_CACHE_VERSION,
+        "edge_ttl_seconds": FEATURED_AVATAR_EDGE_TTL_SECONDS,
+        "vary_default": "bypass",
+        "vary_accept": "normalize",
+        "vary_media_types": list(FEATURED_AVATAR_VARY_MEDIA_TYPES),
+        "vary_passthrough_headers": list(FEATURED_AVATAR_PASSTHROUGH_HEADERS),
+        "query_string_preserved": True,
+        "expression": canonical_featured_avatar_expression(paths),
+    }
+
+
+def stage_featured_avatar_cloudflare_request(plan: dict[str, Any]) -> tuple[dict[str, Any], str]:
+    identity = require_dynamic_release_identity()
+    if plan.get("release_sha") != identity.get("release_sha"):
+        raise EdgeAuditError("featured-avatar plan is stale relative to current certified release")
+    roster = discover_live_featured_avatar_paths()
+    if plan.get("roster_sha256") != roster.get("roster_sha256"):
+        raise EdgeAuditError("featured-avatar plan is stale relative to live featured roster")
+    paths = list(plan.get("eligible_exact_paths") or [])
+    if paths != roster.get("paths"):
+        raise EdgeAuditError("featured-avatar plan paths differ from live featured roster")
+    if plan.get("expression") != canonical_featured_avatar_expression(paths):
+        raise EdgeAuditError("featured-avatar plan expression is not canonical")
+    canonical = json.dumps(plan, sort_keys=True, separators=(",", ":")).encode()
+    plan_sha = hashlib.sha256(canonical).hexdigest()
+    request = {
+        "schema": 1,
+        "kind": "aoe2war-speedos-cloudflare-featured-avatar-apply-request",
+        "generated_at": utc_now(),
+        "zone_name": "aoe2war.com",
+        "eligible_exact_paths": paths,
+        "cache_version": FEATURED_AVATAR_CACHE_VERSION,
+        "edge_ttl_seconds": FEATURED_AVATAR_EDGE_TTL_SECONDS,
+        "vary_media_types": list(FEATURED_AVATAR_VARY_MEDIA_TYPES),
+        "vary_passthrough_headers": list(FEATURED_AVATAR_PASSTHROUGH_HEADERS),
+        "expression": plan["expression"],
+        "plan_sha256": plan_sha,
+        "roster_sha256": plan["roster_sha256"],
+        "operator_source_sha": identity["operator_source_sha"],
+    }
+    encoded = json.dumps(request, indent=2, sort_keys=True) + "\n"
+    with tempfile.NamedTemporaryFile(
+        "w", encoding="utf-8", delete=False, prefix="aoe2war-cf-featured-avatar-", suffix=".json"
+    ) as handle:
+        handle.write(encoded)
+        local_path = Path(handle.name)
+    remote_tmp = f"/tmp/aoe2war-speedos-cloudflare-featured-avatar-request-{os.getpid()}.json"
+    try:
+        copy = subprocess.run(
+            ["scp", "-q", str(local_path), f"{CLOUDFLARE_SSH}:{remote_tmp}"],
+            cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            timeout=30, check=False,
+        )
+        if copy.returncode != 0:
+            raise EdgeAuditError("featured-avatar request transfer failed: " + copy.stderr[-1000:])
+        install = subprocess.run(
+            [
+                "ssh", "-o", "BatchMode=yes", CLOUDFLARE_SSH,
+                "set -e; "
+                + f"sudo -n /usr/bin/install -o root -g root -m 0600 {shlex.quote(remote_tmp)} "
+                + f"{shlex.quote(CLOUDFLARE_REMOTE_STATE + '/featured-avatar-request.json')}; "
+                + f"rm -f {shlex.quote(remote_tmp)}",
+            ],
+            cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            timeout=30, check=False,
+        )
+        if install.returncode != 0:
+            raise EdgeAuditError("featured-avatar request install failed: " + install.stderr[-1000:])
+    finally:
+        local_path.unlink(missing_ok=True)
+    return request, plan_sha
+
+
 def canonical_asset_expression(
     source_path: str,
     responsive_widths: list[int],
@@ -1486,6 +1674,149 @@ def verify_asset_cloudflare_apply(
     }
 
 
+def featured_avatar_probe(
+    path: str,
+    *,
+    accept: str = ASSET_MODERN_ACCEPT,
+    size: str = "card",
+    cache_version: str = FEATURED_AVATAR_CACHE_VERSION,
+) -> dict[str, Any]:
+    query = urllib.parse.urlencode(
+        {
+            "fallback": "/champions/players/silhouette.webp",
+            "v": cache_version,
+            "size": size,
+        }
+    )
+    target = PUBLIC_BASE + path + "?" + query
+    with tempfile.TemporaryDirectory(prefix="aoe2war-avatar-probe-") as tmp:
+        header_path = Path(tmp) / "headers.txt"
+        body_path = Path(tmp) / "body.bin"
+        proc = subprocess.run(
+            [
+                "curl", "-sS", "--compressed", "--max-time", "20",
+                "-H", f"Accept: {accept}",
+                "-D", str(header_path), "-o", str(body_path),
+                "-w", "%{http_code}	%{time_starttransfer}	%{time_total}",
+                target,
+            ],
+            cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            timeout=25, check=False,
+        )
+        if proc.returncode != 0:
+            return {"ok": False, "path": path, "error": (proc.stderr or "curl failed")[-500:]}
+        fields = proc.stdout.strip().split("	")
+        headers = parse_final_header_block(header_path.read_text(errors="replace"))
+        body = body_path.read_bytes()
+        return {
+            "ok": len(fields) == 3 and fields[0] == "200",
+            "path": path,
+            "url": target,
+            "http_status": int(fields[0]) if fields and fields[0].isdigit() else 0,
+            "ttfb_ms": float(fields[1]) * 1000 if len(fields) > 1 else None,
+            "total_ms": float(fields[2]) * 1000 if len(fields) > 2 else None,
+            "bytes": len(body),
+            "body_sha256": hashlib.sha256(body).hexdigest(),
+            "content_type": headers.get("content-type"),
+            "cache_control": headers.get("cache-control"),
+            "vary": headers.get("vary"),
+            "cf_cache_status": str(headers.get("cf-cache-status") or "").upper() or None,
+            "age": headers.get("age"),
+            "cf_ray": headers.get("cf-ray"),
+            "accept": accept,
+            "size": size,
+            "cache_version": cache_version,
+        }
+
+
+def verify_featured_avatar_cloudflare_apply(
+    avatar_plan: dict[str, Any],
+    static_plan: dict[str, Any],
+    dynamic_plan: dict[str, Any],
+    *,
+    sleep_fn=time.sleep,
+) -> dict[str, Any]:
+    failures: list[str] = []
+    rows: list[dict[str, Any]] = []
+    for path in list(avatar_plan.get("eligible_exact_paths") or []):
+        attempts = []
+        for attempt in range(4):
+            probe = featured_avatar_probe(path)
+            attempts.append(probe)
+            if probe.get("ok") and probe.get("cf_cache_status") == "HIT":
+                break
+            if attempt < 3:
+                sleep_fn(0.5)
+        final = attempts[-1]
+        successful = [row for row in attempts if row.get("ok")]
+        hashes = {row.get("body_sha256") for row in successful}
+        rows.append({"path": path, "attempts": attempts, "final": final})
+        if not final.get("ok") or final.get("cf_cache_status") != "HIT":
+            failures.append(f"{path}: featured avatar did not converge to HIT")
+        if len(hashes) != 1:
+            failures.append(f"{path}: featured avatar body changed across cache boundary")
+        if not str(final.get("content_type") or "").lower().startswith("image/"):
+            failures.append(f"{path}: featured avatar content type is not image/*")
+        if int(final.get("bytes") or 0) < 5_000:
+            failures.append(f"{path}: featured avatar body is unexpectedly small")
+
+    representative = str((avatar_plan.get("eligible_exact_paths") or [""])[0])
+    fallback_attempts = []
+    for attempt in range(3):
+        row = featured_avatar_probe(representative, accept=ASSET_FALLBACK_ACCEPT)
+        fallback_attempts.append(row)
+        if row.get("ok") and row.get("cf_cache_status") == "HIT":
+            break
+        if attempt < 2:
+            sleep_fn(0.5)
+    fallback_final = fallback_attempts[-1]
+    if not fallback_final.get("ok") or fallback_final.get("cf_cache_status") != "HIT":
+        failures.append("featured-avatar fallback Accept variant did not converge to HIT")
+
+    excluded_size = featured_avatar_probe(representative, size="thumb")
+    if excluded_size.get("cf_cache_status") == "HIT":
+        failures.append("featured-avatar thumb request incorrectly entered card rule")
+    excluded_version = featured_avatar_probe(representative, cache_version="speedos-excluded")
+    if excluded_version.get("cf_cache_status") == "HIT":
+        failures.append("featured-avatar wrong-version request incorrectly entered cache rule")
+
+    static_rows = []
+    for route in list(static_plan.get("eligible_exact_routes") or []):
+        row = _converge_html_hit(route, sleep_fn=sleep_fn)
+        static_rows.append(row)
+        if row["final"].get("cf_cache_status") != "HIT":
+            failures.append(f"{route}: static HTML rule lost HIT after featured-avatar apply")
+
+    dynamic_rows = []
+    for route in list(dynamic_plan.get("eligible_exact_routes") or []):
+        row = _converge_html_hit(route, sleep_fn=sleep_fn)
+        dynamic_rows.append(row)
+        if row["final"].get("cf_cache_status") != "HIT":
+            failures.append(f"{route}: dynamic HTML rule lost HIT after featured-avatar apply")
+
+    hero_plan = build_asset_cloudflare_plan()
+    hero = asset_probe(str(hero_plan["source_path"]), accept=ASSET_MODERN_ACCEPT)
+    if hero.get("cf_cache_status") != "HIT":
+        failures.append("certified hero asset rule lost HIT after featured-avatar apply")
+    api = cache_status_probe("/api/deployment-version")
+    if api.get("cf_cache_status") == "HIT":
+        failures.append("/api/deployment-version incorrectly entered cache after featured-avatar apply")
+
+    return {
+        "ok": not failures,
+        "generated_at": utc_now(),
+        "featured_avatar_rows": rows,
+        "fallback_accept": {"attempts": fallback_attempts, "final": fallback_final},
+        "excluded_thumb": excluded_size,
+        "excluded_version": excluded_version,
+        "hero_probe": hero,
+        "static_cohort": static_rows,
+        "dynamic_cohort": dynamic_rows,
+        "api_probe": api,
+        "failures": failures,
+    }
+
+
 def cache_status_probe(
     path: str,
     *,
@@ -1703,7 +2034,7 @@ def print_audit(payload: dict[str, Any], limit: int) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(prog="aoe2war speed edge")
-    parser.add_argument("command", nargs="?", choices=["audit", "plan", "bootstrap", "authority", "snapshot", "apply", "rollback", "qualify-dynamic", "plan-dynamic", "apply-dynamic", "rollback-dynamic", "plan-asset", "apply-asset", "rollback-asset"], default="audit")
+    parser.add_argument("command", nargs="?", choices=["audit", "plan", "bootstrap", "authority", "snapshot", "apply", "rollback", "qualify-dynamic", "plan-dynamic", "apply-dynamic", "rollback-dynamic", "plan-asset", "apply-asset", "rollback-asset", "plan-featured-avatar", "apply-featured-avatar", "rollback-featured-avatar"], default="audit")
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--limit", type=int, default=20)
     parser.add_argument("--no-receipt", action="store_true")
@@ -1716,14 +2047,14 @@ def main() -> int:
     if args.limit < 1 or args.limit > 100:
         print("STOP: --limit must be between 1 and 100", file=sys.stderr)
         return 2
-    if args.command in {"bootstrap", "authority", "snapshot", "rollback", "rollback-dynamic", "rollback-asset"}:
+    if args.command in {"bootstrap", "authority", "snapshot", "rollback", "rollback-dynamic", "rollback-asset", "rollback-featured-avatar"}:
         try:
             if args.command == "bootstrap":
                 runtime = bootstrap_cloudflare_runtime()
                 result = {"ok": True, "command": "bootstrap", "runtime": runtime}
             else:
                 runtime = require_cloudflare_runtime_exact()
-                helper_command = {"authority": "verify", "snapshot": "snapshot", "rollback": "rollback", "rollback-dynamic": "rollback-dynamic", "rollback-asset": "rollback-asset"}[args.command]
+                helper_command = {"authority": "verify", "snapshot": "snapshot", "rollback": "rollback", "rollback-dynamic": "rollback-dynamic", "rollback-asset": "rollback-asset", "rollback-featured-avatar": "rollback-featured-avatar"}[args.command]
                 result = remote_cloudflare_service(helper_command)
                 result["runtime_exact"] = runtime["exact"]
         except EdgeAuditError as exc:
@@ -1738,6 +2069,96 @@ def main() -> int:
                 if key != "ok":
                     print(f"{key}: {value}")
         return 0
+
+    if args.command in {"plan-featured-avatar", "apply-featured-avatar"}:
+        try:
+            avatar_plan = build_featured_avatar_cloudflare_plan()
+            if args.command == "plan-featured-avatar":
+                if args.json:
+                    print(json.dumps(avatar_plan, indent=2, sort_keys=True))
+                else:
+                    print("⚔️  AOE2WAR SPEED FEATURED AVATAR CLOUDFLARE PLAN")
+                    print()
+                    print(f"Release:         {avatar_plan['release_sha'][:12]}")
+                    print(f"Paths:           {avatar_plan['eligible_path_count']}")
+                    print(f"Roster SHA:      {avatar_plan['roster_sha256'][:12]}")
+                    print(f"Cache version:   {avatar_plan['cache_version']}")
+                    print(f"Edge TTL:        {avatar_plan['edge_ttl_seconds']}s")
+                    print("Vary:            Accept normalized · Next router headers passthrough")
+                    print("Query key:       PRESERVED")
+                    print("Mutation:        NOT YET")
+                    print()
+                    print(avatar_plan["expression"])
+                return 0
+
+            static_authority = latest_successful_static_apply()
+            dynamic_authority = latest_successful_dynamic_apply()
+            asset_authority = latest_successful_asset_apply()
+            if not static_authority or not dynamic_authority or not asset_authority:
+                raise EdgeAuditError(
+                    "featured-avatar apply requires successful static, dynamic and hero-asset authority receipts"
+                )
+            static_plan = static_authority.get("plan") or {}
+            dynamic_plan = dynamic_authority.get("dynamic_plan") or {}
+            runtime = require_cloudflare_runtime_exact()
+            authority = remote_cloudflare_service("verify")
+            authority["runtime_exact"] = runtime["exact"]
+            snapshot_result = remote_cloudflare_service("snapshot")
+            request, plan_sha = stage_featured_avatar_cloudflare_request(avatar_plan)
+            applied = remote_cloudflare_service("apply-featured-avatar")
+            verification = verify_featured_avatar_cloudflare_apply(
+                avatar_plan, static_plan, dynamic_plan
+            )
+            receipt_payload = {
+                "schema": 1,
+                "kind": "aoe2war-speedos-cloudflare-featured-avatar-apply",
+                "generated_at": utc_now(),
+                "authority": authority,
+                "snapshot": snapshot_result,
+                "avatar_plan": avatar_plan,
+                "static_plan_authority_receipt": speed.evidence_ref(
+                    Path(str(static_authority.get("_path") or ""))
+                ),
+                "dynamic_plan_authority_receipt": speed.evidence_ref(
+                    Path(str(dynamic_authority.get("_path") or ""))
+                ),
+                "asset_plan_authority_receipt": speed.evidence_ref(
+                    Path(str(asset_authority.get("_path") or ""))
+                ),
+                "plan_sha256": plan_sha,
+                "request": request,
+                "apply": applied,
+                "verification": verification,
+                "rollback_performed": False,
+            }
+            if not verification.get("ok"):
+                receipt_payload["rollback"] = remote_cloudflare_service("rollback-featured-avatar")
+                receipt_payload["rollback_performed"] = True
+                receipt = write_edge_operation_receipt("featured-avatar-apply-rolled-back", receipt_payload)
+                raise EdgeAuditError(
+                    "featured-avatar Cloudflare verification failed and avatar-only rollback completed: "
+                    + "; ".join(verification.get("failures") or [])
+                    + f" · receipt {speed.evidence_ref(receipt)}"
+                )
+            receipt = write_edge_operation_receipt("featured-avatar-apply", receipt_payload)
+            if args.json:
+                print(json.dumps(receipt_payload, indent=2, sort_keys=True))
+            else:
+                print("⚔️  AOE2WAR SPEED FEATURED AVATAR CLOUDFLARE APPLY")
+                print()
+                print(f"Paths:          {avatar_plan['eligible_path_count']}")
+                print(f"Edge TTL:       {FEATURED_AVATAR_EDGE_TTL_SECONDS}s")
+                print("Avatar cohort:  PASS")
+                print("Hero asset:     PRESERVED")
+                print(f"Static HTML:    {len(static_plan.get('eligible_exact_routes') or [])} preserved")
+                print(f"Dynamic HTML:   {len(dynamic_plan.get('eligible_exact_routes') or [])} preserved")
+                print("Exclusions:     thumb + wrong-version PASS")
+                print("Rollback:       NOT REQUIRED")
+                print(f"Receipt:        {speed.evidence_ref(receipt)}")
+            return 0
+        except EdgeAuditError as exc:
+            print(f"STOP: {exc}", file=sys.stderr)
+            return 2
 
     if args.command in {"plan-asset", "apply-asset"}:
         try:

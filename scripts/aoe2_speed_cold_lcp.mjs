@@ -311,9 +311,25 @@ async function runOne(index) {
     };
   } finally {
     try { session?.ws.close(); } catch {}
-    try { session?.child.kill("SIGTERM"); } catch {}
-    await sleep(100);
-    await rm(profileDir, { recursive: true, force: true });
+    const child = session?.child;
+    if (child && child.exitCode === null && child.signalCode === null) {
+      const exited = new Promise((resolve) => child.once("exit", resolve));
+      try { child.kill("SIGTERM"); } catch {}
+      await Promise.race([exited, sleep(1500)]);
+      if (child.exitCode === null && child.signalCode === null) {
+        try { child.kill("SIGKILL"); } catch {}
+        await Promise.race([
+          new Promise((resolve) => child.once("exit", resolve)),
+          sleep(500),
+        ]);
+      }
+    }
+    await rm(profileDir, {
+      recursive: true,
+      force: true,
+      maxRetries: 10,
+      retryDelay: 100,
+    });
   }
 }
 

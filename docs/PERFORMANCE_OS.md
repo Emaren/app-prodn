@@ -40,6 +40,9 @@ aoe2war speed inventory
 aoe2war speed edge plan-asset
 aoe2war speed edge apply-asset
 aoe2war speed edge rollback-asset
+aoe2war speed edge plan-featured-avatar
+aoe2war speed edge apply-featured-avatar
+aoe2war speed edge rollback-featured-avatar
 aoe2war speed campaign start
 aoe2war speed campaign analyze
 aoe2war speed campaign status
@@ -291,6 +294,46 @@ A hero change invalidates the source-bound plan. The operator must build a fresh
 plan from the newly certified homepage before the asset rule can move to the new
 source. The lane therefore optimizes immutable managed hero bytes without granting a
 blanket `/_next/image` cache policy.
+
+### Featured Warrior avatar edge lane
+
+Phone cold-LCP evidence can legitimately move away from the hero after the certified
+hero edge lane is active. In the Extreme/Advanced homepage presentation the Featured
+Warriors rail precedes the hero carousel, collapses to one large card per row on a
+390px viewport, and shuffles its opening roster. No single avatar is therefore a safe
+mobile-only preload target.
+
+`aoe2war speed edge plan-featured-avatar` binds the complete eligible cohort instead
+of using a wildcard API rule. It reads the live `/api/lobby` `featuredWarriorEntries`
+roster, keeps only claimed users with `hasFeaturedAvatar`, unions the three curated
+non-leaderboard featured identities (Moose, AI Scribe, and Grimer), normalizes UIDs
+with the same slug contract as `lib/avatarAssets.ts`, and hashes the sorted exact
+`/api/media-assets/avatar/user-…-featured` path allowlist. A changed roster invalidates
+the staged plan before mutation.
+
+The Cloudflare expression admits only GET/HEAD requests whose path is in that exact
+allowlist, `size=card` exactly once, and cache version `20260630a` exactly once. The
+ordinary query string remains in the cache identity, so per-target fallback URLs are
+not collapsed. The route itself already declares successful image bytes
+`public, max-age=86400, stale-while-revalidate=604800`; SpeedOS applies a shorter
+one-hour edge TTL and still refuses to cache 3xx/4xx or 5xx responses.
+
+Next route handlers currently add `RSC`, `Next-Router-State-Tree`,
+`Next-Router-Prefetch`, and `Next-Router-Segment-Prefetch` to `Vary` alongside
+`Accept`. The avatar rule therefore keeps a restrictive default bypass, normalizes
+only `Accept` across the known image MIME types, and explicitly passes those four
+Next router headers through the cache key. Unknown future `Vary` headers still cause
+cache bypass rather than silently widening response equivalence.
+
+`apply-featured-avatar` requires the certified static HTML, dynamic HTML, and hero
+asset rules to be present first. It writes a prepared root-owned rollback record
+before mutation and can touch only
+`AOE2WAR SpeedOS featured avatar cards v1`. The post-apply proof requires every exact
+featured path to converge to `CF-Cache-Status: HIT` with stable bytes and image
+content, verifies a fallback Accept variant, proves `size=thumb` and a wrong cache
+version remain outside the rule, re-proves the hero HIT, re-proves both authoritative
+HTML cohorts, and requires `/api/deployment-version` to remain dynamic. Any failure
+invokes `rollback-featured-avatar`, restoring/removing only this rule.
 
 ### Player Registry navigation hot path
 

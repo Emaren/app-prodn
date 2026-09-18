@@ -534,6 +534,154 @@ class CloudflareRemoteHelperTests(unittest.TestCase):
             finally:
                 MODULE.STATE, MODULE.ASSET_REQUEST, MODULE.LAST_ASSET_APPLY = old
 
+    def featured_avatar_request(self, **overrides):
+        paths = [
+            "/api/media-assets/avatar/user-aoe2hd-ai-concierge-featured",
+            "/api/media-assets/avatar/user-u-79ce46af3d504ceca718e5fda83e3502-featured",
+        ]
+        base = {
+            "schema": 1,
+            "kind": "aoe2war-speedos-cloudflare-featured-avatar-apply-request",
+            "zone_name": "aoe2war.com",
+            "eligible_exact_paths": paths,
+            "cache_version": MODULE.FEATURED_AVATAR_CACHE_VERSION,
+            "edge_ttl_seconds": MODULE.FEATURED_AVATAR_EDGE_TTL_SECONDS,
+            "vary_media_types": list(MODULE.FEATURED_AVATAR_VARY_MEDIA_TYPES),
+            "vary_passthrough_headers": list(MODULE.FEATURED_AVATAR_PASSTHROUGH_HEADERS),
+            "expression": MODULE.canonical_featured_avatar_expression(paths),
+            "plan_sha256": "a" * 64,
+            "roster_sha256": "b" * 64,
+            "operator_source_sha": "d" * 40,
+        }
+        base.update(overrides)
+        return base
+
+    def test_featured_avatar_request_is_exact_public_card_cohort(self):
+        payload = MODULE.validate_featured_avatar_request(self.featured_avatar_request())
+        self.assertEqual(payload["edge_ttl_seconds"], 3600)
+        self.assertIn('http.request.uri.args["size"]', payload["expression"])
+        self.assertIn('"card"', payload["expression"])
+        self.assertIn(MODULE.FEATURED_AVATAR_CACHE_VERSION, payload["expression"])
+        self.assertEqual(len(payload["eligible_exact_paths"]), 2)
+
+        bad_path = "/api/media-assets/avatar/user-bad"
+        for bad in (
+            self.featured_avatar_request(schema=2),
+            self.featured_avatar_request(
+                eligible_exact_paths=[bad_path],
+                expression=MODULE.canonical_featured_avatar_expression([bad_path]),
+            ),
+            self.featured_avatar_request(edge_ttl_seconds=86400),
+            self.featured_avatar_request(cache_version="old"),
+            self.featured_avatar_request(vary_media_types=["image/webp"]),
+            self.featured_avatar_request(vary_passthrough_headers=["rsc"]),
+            self.featured_avatar_request(expression=self.featured_avatar_request()["expression"] + " or true"),
+            self.featured_avatar_request(roster_sha256="bad"),
+        ):
+            with self.assertRaises(MODULE.CloudflareError):
+                MODULE.validate_featured_avatar_request(bad)
+
+    def test_featured_avatar_rule_normalizes_accept_and_passthroughs_next_vary(self):
+        rule = MODULE.desired_featured_avatar_rule(
+            MODULE.validate_featured_avatar_request(self.featured_avatar_request())
+        )
+        self.assertEqual(rule["description"], MODULE.FEATURED_AVATAR_RULE_DESCRIPTION)
+        vary = rule["action_parameters"]["vary"]
+        self.assertEqual(vary["default"]["action"], "bypass")
+        self.assertEqual(vary["headers"]["accept"]["action"], "normalize")
+        for header in MODULE.FEATURED_AVATAR_PASSTHROUGH_HEADERS:
+            self.assertEqual(vary["headers"][header]["action"], "passthrough")
+
+    def test_featured_avatar_apply_requires_existing_speedos_stack(self):
+        zone = {"id": "zone-1", "name": "aoe2war.com"}
+        static = {"id": "static-1", "description": MODULE.RULE_DESCRIPTION}
+        dynamic = {"id": "dynamic-1", "description": MODULE.DYNAMIC_RULE_DESCRIPTION}
+        asset = {"id": "asset-1", "description": MODULE.ASSET_RULE_DESCRIPTION}
+        avatar = {"id": "avatar-new", "description": MODULE.FEATURED_AVATAR_RULE_DESCRIPTION}
+        prior = {"id": "ruleset-1", "rules": [static, dynamic, asset]}
+        current = {"id": "ruleset-1", "rules": [static, dynamic, asset, avatar]}
+        with tempfile.TemporaryDirectory() as tmp:
+            state = Path(tmp)
+            old = (
+                MODULE.STATE,
+                MODULE.FEATURED_AVATAR_REQUEST,
+                MODULE.LAST_FEATURED_AVATAR_APPLY,
+            )
+            MODULE.STATE = state
+            MODULE.FEATURED_AVATAR_REQUEST = state / "featured-avatar-request.json"
+            MODULE.LAST_FEATURED_AVATAR_APPLY = state / "last-featured-avatar-apply.json"
+            MODULE.FEATURED_AVATAR_REQUEST.write_text(json.dumps(self.featured_avatar_request()))
+            try:
+                from unittest.mock import patch
+                with (
+                    patch.object(MODULE, "production_source_sha", return_value="d" * 40),
+                    patch.object(MODULE, "resolve_zone", return_value=zone),
+                    patch.object(MODULE, "snapshot", return_value=(state / "snapshot.json", prior)),
+                    patch.object(MODULE, "phase_ruleset", return_value=current),
+                    patch.object(MODULE, "api", return_value={"success": True}),
+                ):
+                    result = MODULE.cmd_apply_featured_avatar()
+                record = json.loads(MODULE.LAST_FEATURED_AVATAR_APPLY.read_text())
+                self.assertTrue(result["ok"])
+                self.assertEqual(record["state"], "applied")
+                self.assertEqual(record["rule_id"], "avatar-new")
+            finally:
+                (
+                    MODULE.STATE,
+                    MODULE.FEATURED_AVATAR_REQUEST,
+                    MODULE.LAST_FEATURED_AVATAR_APPLY,
+                ) = old
+
+    def test_featured_avatar_response_loss_rolls_back_only_avatar_rule(self):
+        zone = {"id": "zone-1", "name": "aoe2war.com"}
+        static = {"id": "static-1", "description": MODULE.RULE_DESCRIPTION}
+        dynamic = {"id": "dynamic-1", "description": MODULE.DYNAMIC_RULE_DESCRIPTION}
+        asset = {"id": "asset-1", "description": MODULE.ASSET_RULE_DESCRIPTION}
+        avatar = {"id": "avatar-new", "description": MODULE.FEATURED_AVATAR_RULE_DESCRIPTION}
+        prior = {"id": "ruleset-1", "rules": [static, dynamic, asset]}
+        current = {"id": "ruleset-1", "rules": [static, dynamic, asset, avatar]}
+        calls = []
+        with tempfile.TemporaryDirectory() as tmp:
+            state = Path(tmp)
+            old = (
+                MODULE.STATE,
+                MODULE.FEATURED_AVATAR_REQUEST,
+                MODULE.LAST_FEATURED_AVATAR_APPLY,
+            )
+            MODULE.STATE = state
+            MODULE.FEATURED_AVATAR_REQUEST = state / "featured-avatar-request.json"
+            MODULE.LAST_FEATURED_AVATAR_APPLY = state / "last-featured-avatar-apply.json"
+            MODULE.FEATURED_AVATAR_REQUEST.write_text(json.dumps(self.featured_avatar_request()))
+
+            def fake_api(method, path, payload=None, *, allow_404=False):
+                calls.append((method, path))
+                if method == "POST" and path.endswith("/rules"):
+                    raise MODULE.CloudflareError("simulated avatar response loss")
+                return {"success": True}
+
+            try:
+                from unittest.mock import patch
+                with (
+                    patch.object(MODULE, "production_source_sha", return_value="d" * 40),
+                    patch.object(MODULE, "resolve_zone", return_value=zone),
+                    patch.object(MODULE, "snapshot", return_value=(state / "snapshot.json", prior)),
+                    patch.object(MODULE, "phase_ruleset", return_value=current),
+                    patch.object(MODULE, "api", side_effect=fake_api),
+                ):
+                    with self.assertRaisesRegex(MODULE.CloudflareError, "rollback completed"):
+                        MODULE.cmd_apply_featured_avatar()
+                deletes = [path for method, path in calls if method == "DELETE"]
+                self.assertEqual(
+                    deletes,
+                    ["/zones/zone-1/rulesets/ruleset-1/rules/avatar-new"],
+                )
+            finally:
+                (
+                    MODULE.STATE,
+                    MODULE.FEATURED_AVATAR_REQUEST,
+                    MODULE.LAST_FEATURED_AVATAR_APPLY,
+                ) = old
+
     def test_helper_never_serializes_token_into_results(self):
         source = (ROOT / "scripts" / "aoe2_speed_cloudflare_remote.py").read_text()
         self.assertIn('os.getenv("CLOUDFLARE_API_TOKEN"', source)
