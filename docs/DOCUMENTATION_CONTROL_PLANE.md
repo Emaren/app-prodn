@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `speed/lobby-below-fold-code-split-v1` at `3b5957cf27cca8197be19942d8eee4d0c04aecae`
+Implementation baseline: `speed/build-authority-v1` at `a45cddfc3f7c26b177c51037217f7c40abb24456`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
