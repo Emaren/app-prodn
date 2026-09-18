@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/featured-helper-command` at `41daa56552fb330c047088d05242338f6fc2ea63`
+Implementation baseline: `perf/featured-avatar-lcp-stability-v1` at `ae24f00a64f382ca9962e44ed19973758ff27863`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
