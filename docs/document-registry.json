@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c2e3bb083be013ada54ba4a5a5ac52025ecbd2adf2da2f54a422ca8a33480ea9",
+      "sha256": "674f710a2b7051a0344d3e6082607c074f7b6887da2b715b925ff56d8703efd2",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "speed/lobby-match-payload-v1",
-    "commit": "19735ef393f74801ab7a4c9dcbf76eb0c758477b"
+    "branch": "speed/lobby-below-fold-code-split-v1",
+    "commit": "3b5957cf27cca8197be19942d8eee4d0c04aecae"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
