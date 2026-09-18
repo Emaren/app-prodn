@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `harden/dependency-runtime-roots-v1` at `4317eebfd170859ec928dd31df53deb310669711`
+Implementation baseline: `perf/dependency-diet-v1` at `45a4c73b252df596ce81e21e0347d4a239e437cf`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
