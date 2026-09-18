@@ -5,13 +5,10 @@ import dynamic from "next/dynamic";
 import Image from "next/image";
 import Link from "next/link";
 import { ChevronRight, Crown } from "lucide-react";
-import { LobbyChat } from "@/components/lobby/LobbyChat";
 import { LobbyHero } from "@/components/lobby/LobbyHero";
 import { LiveTickerStrip } from "@/components/lobby/LiveTickerStrip";
 import { getLobbyHeroBackground } from "@/components/lobby/lobbyPresentation";
 import { useLobbyAppearance } from "@/components/lobby/LobbyAppearanceContext";
-import { OnlinePlayersPanel } from "@/components/lobby/OnlinePlayersPanel";
-import { RecentMatchesPanel } from "@/components/lobby/RecentMatchesPanel";
 import { TopWoloEarnersTile } from "@/components/lobby/TopWoloEarnersTile";
 import { TournamentPanel } from "@/components/lobby/TournamentPanel";
 import { HeroCarousel } from "@/components/hero/HeroCarousel";
@@ -45,6 +42,25 @@ import {
 } from "@/lib/avatarAssets";
 import { resolveTimeZone } from "@/lib/timeDisplay";
 import { useHomeCopy } from "@/components/i18n/useHomeCopy";
+
+const LobbyChat = dynamic(
+  () => import("@/components/lobby/LobbyChat").then((module) => module.LobbyChat),
+  { ssr: false }
+);
+const OnlinePlayersPanel = dynamic(
+  () =>
+    import("@/components/lobby/OnlinePlayersPanel").then(
+      (module) => module.OnlinePlayersPanel
+    ),
+  { ssr: false }
+);
+const RecentMatchesPanel = dynamic(
+  () =>
+    import("@/components/lobby/RecentMatchesPanel").then(
+      (module) => module.RecentMatchesPanel
+    ),
+  { ssr: false }
+);
 
 const Aoe2ShortsTile = dynamic(
   () => import("@/components/home/Aoe2ShortsTile"),
@@ -2193,6 +2209,7 @@ return (
         </div>
       </section>
 
+      <AheadOfScroll minHeight="46rem">
       <section id="lobby-chat" className="grid scroll-mt-24 gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-start">
         <LobbyChat
           style={chatCardStyle}
@@ -2259,6 +2276,7 @@ return (
           />
         </div>
       </section>
+      </AheadOfScroll>
     </div>
   );
 }
