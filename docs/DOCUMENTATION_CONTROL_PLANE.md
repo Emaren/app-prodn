@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `harden/next-tracing-root-v1` at `aa2ec4197baa1a7b2d6190b2edd7664a3faef1fa`
+Implementation baseline: `perf/finish-doc-tree-proof-v1` at `4a053eea8cabcfac2f0e13e53937d3008cf20f18`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
