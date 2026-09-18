@@ -57,7 +57,10 @@ test("Lobby reserves the critical image lane for the actual hero", () => {
 
   assert.equal((home.match(/loading="eager"/g) || []).length >= 2, true);
   assert.equal((home.match(/priority=\{index < 2\}/g) || []).length, 0);
-  assert.equal((home.match(/fetchPriority="low"/g) || []).length >= 2, true);
+  assert.equal(
+    (home.match(/fetchPriority=\{index === 0 \? "high" : "low"\}/g) || []).length,
+    2,
+  );
   assert.equal((home.match(/unoptimized/g) || []).length >= 2, true);
   assert.match(
     lobbyHero,

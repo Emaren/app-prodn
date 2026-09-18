@@ -864,13 +864,12 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
     setFadingSlot(null);
     setFeaturedWarriorsReady(false);
 
-    const initialLineup = curatedFeaturedWarriorOpening(poolRef.current, true);
-    initialLineup.forEach((warrior, index) => {
+    // Preserve the server-rendered deterministic opening lineup through hydration.
+    // The rotation lane introduces variety after the first 6.2s; swapping the
+    // opening four here can abort the browser's first avatar request and extend LCP.
+    visibleWarriorsRef.current.forEach((warrior, index) => {
       lastWarriorBySlotRef.current[index] = warrior.key;
     });
-
-    visibleWarriorsRef.current = initialLineup;
-    setVisibleWarriors(initialLineup);
 
     // Reveal the card shells immediately and let each full-quality avatar
     // decode independently. Rotation still pre-decodes every incoming avatar.
@@ -883,7 +882,7 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
       clearTimers();
       transitionInFlightRef.current = false;
     };
-  }, [poolSignature, clearTimers]);
+  }, [clearTimers]);
 
   useEffect(() => {
     if (!featuredWarriorsReady || paused) {
@@ -1057,7 +1056,7 @@ function AdvancedFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] })
                 fill
                 sizes="(min-width: 1280px) 250px, (min-width: 640px) 45vw, 90vw"
                 loading="eager"
-                fetchPriority="low"
+                fetchPriority={index === 0 ? "high" : "low"}
                 unoptimized
                 className="object-contain object-top transition duration-500 ease-out group-hover:scale-[1.01] opacity-90"
               />
@@ -1176,7 +1175,7 @@ function ExtremeFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] }) 
                     fill
                     sizes="(min-width: 1280px) 280px, (min-width: 640px) 45vw, 90vw"
                     loading="eager"
-                    fetchPriority="low"
+                    fetchPriority={index === 0 ? "high" : "low"}
                     unoptimized
                     className="object-contain object-center drop-shadow-[0_18px_34px_rgba(0,0,0,0.56)] transition duration-500 ease-out [mask-image:linear-gradient(180deg,black_0%,black_88%,transparent_100%)]"
                   />
