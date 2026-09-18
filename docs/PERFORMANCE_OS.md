@@ -878,6 +878,14 @@ performance evidence rail. It inventories raw `.next/static` bytes, the largest
 JS/CSS artifacts, and route-referenced bundle footprints from Next build
 manifests.
 
+The census also binds the inspected build to release authority. It records the
+local BUILD_ID/build version beside the latest certified activation receipt and
+classifies the result as exact certified production, stale local build, newer
+local candidate, or otherwise unverified. A non-certified census prints a
+prominent warning; `--require-certified-build` makes that mismatch fail closed.
+This prevents an old workstation `.next` tree from masquerading as the live
+production bundle after a newer governed release.
+
 Raw build bytes are **not** browser transfer bytes and are never substituted for
 Runtime/Web Vitals evidence. Their purpose is to expose code-splitting and bundle
 regressions early, including in CI immediately after `yarn build`.

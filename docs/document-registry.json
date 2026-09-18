@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "674f710a2b7051a0344d3e6082607c074f7b6887da2b715b925ff56d8703efd2",
+      "sha256": "a9a8ddac5b0ea7c08f75eb8e412a60fc751ad72028e9035316f6d2e89661829f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1116,7 +1116,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-06",
       "sensitivity": "internal",
-      "sha256": "e4814446808219b0c901ae3bd8f12b474da659179916619ccb6d9c290824ebfa",
+      "sha256": "e991d2c87c74a59ac33bc9c3f41def55ff0da19ea4dcd9e063bba881f6efa251",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "speed/lobby-below-fold-code-split-v1",
-    "commit": "3b5957cf27cca8197be19942d8eee4d0c04aecae"
+    "branch": "speed/build-authority-v1",
+    "commit": "a45cddfc3f7c26b177c51037217f7c40abb24456"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

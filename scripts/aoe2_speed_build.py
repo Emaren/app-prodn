@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
+import subprocess
 import sys
 from collections import defaultdict
 from datetime import datetime, timezone
@@ -20,6 +22,106 @@ class BuildSpeedError(RuntimeError):
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def read_optional_text(path: Path) -> str | None:
+    try:
+        value = path.read_text(encoding="utf-8").strip()
+    except OSError:
+        return None
+    return value or None
+
+
+def git_head(root: Path) -> str | None:
+    try:
+        completed = subprocess.run(
+            ["git", "-C", str(root), "rev-parse", "HEAD"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    return completed.stdout.strip() or None
+
+
+def build_version_stamp(value: str | None) -> str | None:
+    if not value:
+        return None
+    match = re.match(r"^(\d{14})-", value)
+    return match.group(1) if match else None
+
+
+def latest_certified_activation(root: Path) -> dict[str, Any] | None:
+    receipt_dir = root / ".aoe2war-release" / "activation-receipts"
+    if not receipt_dir.is_dir():
+        return None
+
+    certified: list[dict[str, Any]] = []
+    for path in receipt_dir.glob("*.json"):
+        try:
+            payload = load_json(path)
+        except BuildSpeedError:
+            continue
+        if payload.get("status") != "CERTIFIED":
+            continue
+        payload = dict(payload)
+        payload["_receipt_path"] = str(path)
+        certified.append(payload)
+
+    if not certified:
+        return None
+    return max(
+        certified,
+        key=lambda row: str(row.get("generated_at") or row.get("completed_at") or ""),
+    )
+
+
+def build_authority(root: Path, build_dir: Path) -> dict[str, Any]:
+    inspected_build_id = read_optional_text(build_dir / "BUILD_ID")
+    inspected_version = read_optional_text(root / ".aoe2war-build-version")
+    inspected_stamp = build_version_stamp(inspected_version)
+    source_head = git_head(root)
+    certified = latest_certified_activation(root)
+
+    result: dict[str, Any] = {
+        "status": "NO_CERTIFIED_RECEIPT",
+        "inspected_build_id": inspected_build_id,
+        "inspected_build_version": inspected_version,
+        "source_head": source_head,
+        "certified_build_id": None,
+        "certified_build_version": None,
+        "certified_release_sha": None,
+        "certification_receipt": None,
+    }
+    if not certified:
+        return result
+
+    certified_build_id = certified.get("active_build_id")
+    certified_version = certified.get("candidate_build_version")
+    certified_stamp = build_version_stamp(
+        certified_version if isinstance(certified_version, str) else None
+    )
+    result.update(
+        {
+            "certified_build_id": certified_build_id,
+            "certified_build_version": certified_version,
+            "certified_release_sha": certified.get("release_sha"),
+            "certification_receipt": certified.get("_receipt_path"),
+        }
+    )
+
+    if inspected_build_id == certified_build_id and inspected_version == certified_version:
+        result["status"] = "CERTIFIED_EXACT"
+    elif inspected_version == certified_version:
+        result["status"] = "CERTIFIED_VERSION_BUILD_ID_MISMATCH"
+    elif inspected_stamp and certified_stamp and inspected_stamp < certified_stamp:
+        result["status"] = "STALE_LOCAL"
+    elif inspected_stamp and certified_stamp and inspected_stamp > certified_stamp:
+        result["status"] = "LOCAL_CANDIDATE_NEWER"
+    else:
+        result["status"] = "LOCAL_UNVERIFIED"
+    return result
 
 
 def load_json(path: Path) -> dict[str, Any]:
@@ -161,10 +263,11 @@ def snapshot(root: Path = ROOT) -> dict[str, Any]:
     total_static_bytes = sum(int(row["bytes"]) for row in files)
 
     return {
-        "schema": 1,
+        "schema": 2,
         "kind": "aoe2war-next-build-performance-census",
         "generated_at": utc_now(),
         "build_dir": str(build_dir),
+        "authority": build_authority(root, build_dir),
         "static": {
             "total_files": len(files),
             "total_bytes": total_static_bytes,
@@ -196,11 +299,20 @@ def write_receipt(payload: dict[str, Any], root: Path = ROOT) -> Path:
 
 
 def print_status(payload: dict[str, Any], receipt: Path | None) -> None:
+    authority = payload["authority"]
     static = payload["static"]
     routes = payload["routes"]
     by_category = static["by_category"]
 
     print("⚔️  AOE2WAR NEXT BUILD SPEED CENSUS")
+    print()
+    print(f"Build authority:    {authority['status']}")
+    print(f"Inspected BUILD_ID: {authority.get('inspected_build_id') or '—'}")
+    print(f"Inspected version:  {authority.get('inspected_build_version') or '—'}")
+    print(f"Certified BUILD_ID: {authority.get('certified_build_id') or '—'}")
+    print(f"Certified version:  {authority.get('certified_build_version') or '—'}")
+    if authority["status"] != "CERTIFIED_EXACT":
+        print("WARNING: route/build byte counts below are not certified production build evidence.")
     print()
     print(f"Static files:       {static['total_files']}")
     print(f"Static bytes:       {human_bytes(int(static['total_bytes']))}")
@@ -240,6 +352,11 @@ def main() -> int:
     )
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--no-receipt", action="store_true")
+    parser.add_argument(
+        "--require-certified-build",
+        action="store_true",
+        help="return nonzero unless the inspected .next exactly matches the latest certified activation receipt",
+    )
     parser.add_argument(
         "--require-build",
         action="store_true",
@@ -290,6 +407,11 @@ def main() -> int:
     )
 
     violations: list[str] = []
+    if args.require_certified_build and payload["authority"]["status"] != "CERTIFIED_EXACT":
+        violations.append(
+            "inspected build is not the latest certified production build "
+            f"({payload['authority']['status']})"
+        )
     if single_limit is not None and int(payload["static"]["largest_js_bytes"]) > single_limit:
         violations.append(
             "largest JS chunk exceeds "
