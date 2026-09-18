@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `speed/build-authority-v1` at `a45cddfc3f7c26b177c51037217f7c40abb24456`
+Implementation baseline: `harden/dependency-runtime-roots-v1` at `4317eebfd170859ec928dd31df53deb310669711`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

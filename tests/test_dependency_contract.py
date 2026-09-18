@@ -1,3 +1,4 @@
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -47,6 +48,54 @@ class DependencyContractTests(
                 "node:fs"
             )
         )
+
+    def test_runtime_source_inventory_includes_all_application_roots(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            subprocess.run(
+                ["git", "init", "-q", "-b", "main", str(root)],
+                check=True,
+            )
+            fixtures = {
+                "app/page.tsx": "export default function Page() { return null }\n",
+                "components/Card.tsx": "export const Card = () => null\n",
+                "lib/runtime.ts": "export const value = 1\n",
+                "hooks/useThing.ts": "export const useThing = () => 1\n",
+                "context/AuthContext.tsx": "export const AuthContext = null\n",
+                "config/runtime.ts": "export const config = {}\n",
+                "instrumentation.ts": "export function register() {}\n",
+                "instrumentation.node.ts": "export const nodeOnly = true\n",
+                "scripts/tool.ts": "export const tool = true\n",
+                "tests/tool.test.ts": "export const test = true\n",
+            }
+            for rel, content in fixtures.items():
+                path = root / rel
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(content, encoding="utf-8")
+            subprocess.run(
+                ["git", "-C", str(root), "add", "."],
+                check=True,
+            )
+
+            selected = {
+                path.relative_to(root).as_posix()
+                for path in deps.tracked_runtime_sources(root)
+            }
+
+            for rel in (
+                "app/page.tsx",
+                "components/Card.tsx",
+                "lib/runtime.ts",
+                "hooks/useThing.ts",
+                "context/AuthContext.tsx",
+                "config/runtime.ts",
+                "instrumentation.ts",
+                "instrumentation.node.ts",
+            ):
+                self.assertIn(rel, selected)
+
+            self.assertNotIn("scripts/tool.ts", selected)
+            self.assertNotIn("tests/tool.test.ts", selected)
 
     def test_ast_scanner_ignores_strings_comments_and_jsx(self):
         with tempfile.TemporaryDirectory() as temp:
