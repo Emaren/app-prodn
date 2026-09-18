@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { loadLobbyRecentMatches } from "@/lib/lobbyRecentMatches";
+import { projectLobbyMatchRow } from "@/lib/lobbyMatchProjection";
 import { loadPublicReplayGeneration } from "@/lib/publicReplayGeneration";
 import { getPrisma } from "@/lib/prisma";
 import type {
@@ -39,7 +40,12 @@ export async function GET(request: NextRequest) {
     loadPublicReplayGeneration(getPrisma()),
   ]);
 
-  const matches = rows.slice(0, limit) as LobbyMatchRow[];
+  const rawMatches = rows.slice(0, limit) as LobbyMatchRow[];
+  const compactPresentation =
+    request.nextUrl.searchParams.get("presentation") === "compact";
+  const matches = compactPresentation
+    ? rawMatches.map(projectLobbyMatchRow)
+    : rawMatches;
 
   return NextResponse.json(
     {

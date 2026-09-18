@@ -760,6 +760,31 @@ generation change invalidates the projection. Rejected loads are not retained.
 The complete corpus remains the source of truth; the cache is computation reuse,
 not evidence or authority.
 
+### Lobby recent-match presentation projection rule
+
+The homepage/lobby presentation rail must not ship full parser-heavy replay rows
+when the UI only renders bounded public replay truth. Projection happens only
+after canonical public replay cleanup plus adjudication, human-evidence and desync
+hydration have completed. The projection preserves the fields required for map,
+matchup/team formatting, winner/review state, played-at provenance, replay links
+and human/desync badges while dropping parser traces, event arrays, economy bulk
+and other fields the lobby never renders.
+
+The public `/api/lobby/recent-matches` endpoint remains **full-fidelity by
+default** because Kingdom Intelligence and diagnostic consumers may need richer
+player metadata. Homepage refresh/pagination requests opt in with
+`presentation=compact`; no-store behavior, public replay generation, visible-row
+offsets and the five-second reconciliation cadence remain unchanged.
+
+A September 17 production sample measured the anonymous `/api/lobby` response at
+204,765 bytes, of which eight recent-match rows consumed 108,143 bytes. The same
+rows projected to lobby presentation truth consumed 21,446 bytes: an **80.2%
+recent-match reduction** and about **42.3% of the whole response removed**. A
+24-row `/api/lobby/recent-matches` response measured 326,682 bytes; the compact
+shape was estimated at 66,500 bytes, a **79.6% reduction**. At a five-second
+refresh cadence that cuts the representative per-tab JSON body volume from about
+3.92 MB/minute to 0.80 MB/minute without weakening replay truth authority.
+
 ### Lightweight card/preview rule
 
 A public card or training landing page must not invoke the complete player

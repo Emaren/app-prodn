@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `speed/dynamic-edge-cohort-18` at `0e5b2988823de6f4716c28dd7fd3c9f4114ecf37`
+Implementation baseline: `speed/lobby-match-payload-v1` at `19735ef393f74801ab7a4c9dcbf76eb0c758477b`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

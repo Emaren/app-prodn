@@ -4,6 +4,7 @@ import { getEmptyAoe2HdPulseSnapshot, loadAoe2HdPulseSnapshot } from "@/lib/aoe2
 import { getFeaturedTournament, getLobbyMessages } from "@/lib/communityStore";
 import { loadLobbyLeaderboard } from "@/lib/lobbyLeaderboard";
 import { loadLobbyRecentMatches } from "@/lib/lobbyRecentMatches";
+import { projectLobbyMatchRow } from "@/lib/lobbyMatchProjection";
 import { loadLobbyWoloEarnersBoard } from "@/lib/lobbyWoloEarners";
 import { getFallbackLiveTickerSnapshot, loadLiveTickerSnapshot } from "@/lib/liveTicker";
 import {
@@ -146,7 +147,7 @@ async function loadLobbySnapshotFresh(
       tournament,
       messages,
       onlineUsers: presence.onlineUsers,
-      recentMatches,
+      recentMatches: recentMatches.map(projectLobbyMatchRow),
       leaderboard: visibleLeaderboard,
       featuredWarriorEntries,
       wolo,
@@ -162,10 +163,10 @@ async function loadLobbySnapshotFresh(
       tournament: getFallbackTournament(false),
       messages: [],
       onlineUsers: [],
-      recentMatches: await loadLobbyRecentMatches({
+      recentMatches: (await loadLobbyRecentMatches({
         offset: 0,
         limit: LOBBY_RECENT_MATCH_INITIAL_LIMIT,
-      }),
+      })).map(projectLobbyMatchRow),
       leaderboard: getFallbackLeaderboard(),
       featuredWarriorEntries: [],
       wolo,
