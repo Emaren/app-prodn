@@ -996,6 +996,12 @@ Additional fail-closed invariants:
 5. Storage relocation of arbitrary live dependencies remains guided rather than
    automatic. `finish` may apply only its explicitly contracted retention
    policy; broader root relocation requires a separately proven storage action.
+6. Central documentation synchronization runs the expensive docs-check,
+   taxonomy audit, and strict MkDocs build exactly once against the generated
+   staged tree. Before commit, Update OS records `git write-tree`; after commit
+   and push it requires `HEAD^{tree}` to equal that exact validated tree and
+   requires a clean index/worktree. This detects hook or post-commit mutation
+   without rebuilding byte-identical documentation a second time.
 
 ## Finish-owned context overlap and final audit
 
