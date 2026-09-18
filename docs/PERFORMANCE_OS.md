@@ -37,6 +37,9 @@ aoe2war speed browser-truth
 aoe2war speed cold-lcp --samples 10 --viewport desktop
 aoe2war speed diagnose
 aoe2war speed inventory
+aoe2war speed edge plan-asset
+aoe2war speed edge apply-asset
+aoe2war speed edge rollback-asset
 aoe2war speed campaign start
 aoe2war speed campaign analyze
 aoe2war speed campaign status
@@ -246,6 +249,48 @@ Any failure calls `rollback-dynamic`, which restores/removes only the dynamic ru
 never uses the static rollback record. The first live qualification must therefore be
 rerun after this controller itself is merged, released and certified; development-time
 proofs do not authorize mutation.
+
+### Certified hero image edge lane
+
+The homepage LCP image has its own fail-closed edge lane. It is deliberately
+independent of both HTML cache rules: no `/_next/image` request is admitted by the
+27-route static rule or the 20-route dynamic rule.
+
+`aoe2war speed edge plan-asset` first requires exact certified production identity:
+production SHA, GitHub `main`, and the clean operator `main` worktree must agree. It
+then reads the live homepage preload graph and requires exactly one q95 managed
+background hero. The plan binds that exact source path plus every responsive width
+currently emitted by the homepage. The Cloudflare expression accepts only GET/HEAD
+`/_next/image` requests with exactly one `url`, `q`, and `w` argument, exact q95,
+the certified encoded hero path, and one of those observed widths. The normal URL
+query remains part of the cache identity; width and quality are never collapsed.
+
+The asset rule uses the native Cache Rules `vary` contract rather than inventing a
+header-only custom cache key. Unexpected origin `Vary` headers bypass cache. An
+origin `Vary: Accept` is normalized only across `image/avif`, `image/webp`, and
+`image/*`, preserving content negotiation while reducing equivalent Accept-header
+variants. The edge TTL is exactly 3600 seconds for successful responses; 3xx/4xx
+responses receive zero edge TTL and 5xx responses are not cached.
+
+`apply-asset` requires both certified HTML SpeedOS rules to exist before mutation,
+writes a root-owned prepared rollback record before the first Cloudflare API change,
+re-reads live rule identity after mutation, and can touch only
+`AOE2WAR SpeedOS certified hero image v1`. A lost mutation response or any later
+verification failure triggers `rollback-asset`, which restores/removes only this
+asset rule and never uses either HTML rollback record.
+
+Post-apply verification is broader than the new rule. Modern and fallback Accept
+variants must each preserve one stable body hash across the MISS-to-HIT boundary,
+remain image content, retain `Vary: Accept`, and converge to `CF-Cache-Status: HIT`.
+Both 1080px and 1920px q95 variants must HIT. The same hero at q90 must remain
+outside the rule. Every route in the authoritative 27-route static cohort and
+20-route dynamic cohort must still converge to HIT, while
+`/api/deployment-version` must remain outside shared cache.
+
+A hero change invalidates the source-bound plan. The operator must build a fresh
+plan from the newly certified homepage before the asset rule can move to the new
+source. The lane therefore optimizes immutable managed hero bytes without granting a
+blanket `/_next/image` cache policy.
 
 ### Player Registry navigation hot path
 

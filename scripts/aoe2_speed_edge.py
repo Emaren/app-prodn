@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import base64
 import hashlib
+import html
 import json
 import os
 import re
@@ -11,6 +12,7 @@ import shlex
 import subprocess
 import sys
 import tempfile
+import urllib.parse
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -31,6 +33,12 @@ EDGE_AUDIT_REUSE_SECONDS = 15 * 60
 STATIC_VERIFY_SETTLE_SECONDS = 1.5
 STATIC_VERIFY_ATTEMPTS = 5
 STATIC_VERIFY_BACKOFF_SECONDS = 1.0
+ASSET_EDGE_TTL_SECONDS = 3600
+ASSET_QUALITY = 95
+ASSET_PROBE_WIDTH = 1920
+ASSET_VARY_MEDIA_TYPES = ["image/avif", "image/webp", "image/*"]
+ASSET_MODERN_ACCEPT = "image/avif,image/webp,image/*,*/*;q=0.8"
+ASSET_FALLBACK_ACCEPT = "image/png,image/*;q=0.8,*/*;q=0.5"
 SESSION_COOKIE_NAME = "aoe2hdbets_session"
 CLOUDFLARE_SSH = os.getenv("AOE2_SPEED_CLOUDFLARE_SSH", "hetzner-codex")
 CLOUDFLARE_UNIT = "aoe2war-speedos-cloudflare@{command}.service"
@@ -101,6 +109,31 @@ def latest_successful_static_apply() -> dict[str, Any] | None:
         if not (payload.get("verification") or {}).get("ok"):
             continue
         plan = payload.get("plan") or {}
+        routes = plan.get("eligible_exact_routes")
+        if not isinstance(routes, list) or not routes:
+            continue
+        payload["_path"] = str(path)
+        return payload
+    return None
+
+
+def latest_successful_dynamic_apply() -> dict[str, Any] | None:
+    if not EDGE_RECEIPTS.is_dir():
+        return None
+    paths = sorted(
+        EDGE_RECEIPTS.glob("*-cloudflare-dynamic-apply.json"),
+        key=lambda path: path.stat().st_mtime,
+        reverse=True,
+    )
+    for path in paths:
+        payload = speed.safe_json(path)
+        if not payload or payload.get("kind") != "aoe2war-speedos-cloudflare-dynamic-apply":
+            continue
+        if payload.get("rollback_performed"):
+            continue
+        if not (payload.get("verification") or {}).get("ok"):
+            continue
+        plan = payload.get("dynamic_plan") or {}
         routes = plan.get("eligible_exact_routes")
         if not isinstance(routes, list) or not routes:
             continue
@@ -1032,7 +1065,7 @@ def bootstrap_cloudflare_runtime() -> dict[str, Any]:
 
 
 def remote_cloudflare_service(command: str) -> dict[str, Any]:
-    if command not in {"verify", "snapshot", "apply", "rollback", "apply-dynamic", "rollback-dynamic"}:
+    if command not in {"verify", "snapshot", "apply", "rollback", "apply-dynamic", "rollback-dynamic", "apply-asset", "rollback-asset"}:
         raise EdgeAuditError(f"unsupported Cloudflare helper command: {command}")
     unit = CLOUDFLARE_UNIT.format(command=command)
     remote = (
@@ -1128,6 +1161,329 @@ def stage_cloudflare_request(plan: dict[str, Any]) -> tuple[dict[str, Any], str]
     finally:
         local_path.unlink(missing_ok=True)
     return request, plan_sha
+
+
+def canonical_asset_expression(
+    source_path: str,
+    responsive_widths: list[int],
+    quality: int = ASSET_QUALITY,
+) -> str:
+    encoded_source = urllib.parse.quote(source_path, safe="")
+    width_checks = " or ".join(
+        f'any(http.request.uri.args["w"][*] == "{width}")'
+        for width in responsive_widths
+    )
+    return (
+        '(http.host eq "aoe2war.com" and '
+        'http.request.method in {"GET" "HEAD"} and '
+        'http.request.uri.path eq "/_next/image" and '
+        'len(http.request.uri.args["url"]) eq 1 and '
+        f'any(http.request.uri.args["url"][*] == "{encoded_source}") and '
+        'len(http.request.uri.args["q"]) eq 1 and '
+        f'any(http.request.uri.args["q"][*] == "{quality}") and '
+        'len(http.request.uri.args["w"]) eq 1 and '
+        f'({width_checks}))'
+    )
+
+
+def extract_hero_image_candidates(home_html: str) -> list[dict[str, Any]]:
+    decoded = html.unescape(home_html)
+    urls = re.findall(r'/_next/image\?[^"\'< >]+', decoded)
+    rows: dict[tuple[str, int, int], dict[str, Any]] = {}
+    for raw in urls:
+        parsed = urllib.parse.urlsplit(raw)
+        query = urllib.parse.parse_qs(parsed.query)
+        source_path = (query.get("url") or [""])[0]
+        try:
+            width = int((query.get("w") or ["0"])[0])
+            quality = int((query.get("q") or ["0"])[0])
+        except ValueError:
+            continue
+        if (
+            source_path.startswith("/uploads/managed-assets/background/hero-chain-")
+            and quality == ASSET_QUALITY
+            and width > 0
+        ):
+            key = (source_path, width, quality)
+            rows[key] = {
+                "source_path": source_path,
+                "width": width,
+                "quality": quality,
+                "next_image_path": raw,
+            }
+    return sorted(rows.values(), key=lambda row: (row["source_path"], row["width"]))
+
+
+def discover_live_hero_image() -> dict[str, Any]:
+    proc = subprocess.run(
+        ["curl", "-fsS", "--max-time", "20", PUBLIC_BASE + "/"],
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=25,
+        check=False,
+    )
+    if proc.returncode != 0:
+        raise EdgeAuditError("live hero discovery failed: " + (proc.stderr or "curl failed")[-500:])
+    candidates = extract_hero_image_candidates(proc.stdout)
+    sources = sorted({row["source_path"] for row in candidates})
+    if len(sources) != 1:
+        raise EdgeAuditError(
+            f"live hero discovery requires exactly one q95 hero source; found {len(sources)}"
+        )
+    widths = sorted({row["width"] for row in candidates})
+    if ASSET_PROBE_WIDTH not in widths:
+        raise EdgeAuditError(
+            f"live hero discovery did not expose the required {ASSET_PROBE_WIDTH}px LCP variant"
+        )
+    source_path = sources[0]
+    return {
+        "source_path": source_path,
+        "quality": ASSET_QUALITY,
+        "widths": widths,
+        "probe_width": ASSET_PROBE_WIDTH,
+        "candidate_count": len(candidates),
+    }
+
+
+def build_asset_cloudflare_plan() -> dict[str, Any]:
+    identity = require_dynamic_release_identity()
+    hero = discover_live_hero_image()
+    source_path = hero["source_path"]
+    return {
+        "schema": 1,
+        "kind": "aoe2war-speedos-cloudflare-asset-plan",
+        "generated_at": utc_now(),
+        "mutation_authorized": True,
+        "release_sha": identity["release_sha"],
+        "operator_source_sha": identity["operator_source_sha"],
+        "source_path": source_path,
+        "quality": ASSET_QUALITY,
+        "probe_width": ASSET_PROBE_WIDTH,
+        "responsive_widths": hero["widths"],
+        "edge_ttl_seconds": ASSET_EDGE_TTL_SECONDS,
+        "vary_default": "bypass",
+        "vary_accept": "normalize",
+        "vary_media_types": list(ASSET_VARY_MEDIA_TYPES),
+        "query_string_preserved": True,
+        "expression": canonical_asset_expression(source_path, hero["widths"]),
+    }
+
+
+def stage_asset_cloudflare_request(plan: dict[str, Any]) -> tuple[dict[str, Any], str]:
+    identity = require_dynamic_release_identity()
+    if plan.get("release_sha") != identity.get("release_sha"):
+        raise EdgeAuditError("asset Cloudflare plan is stale relative to current certified release")
+    hero = discover_live_hero_image()
+    if plan.get("source_path") != hero.get("source_path"):
+        raise EdgeAuditError("asset Cloudflare plan is stale relative to the live hero")
+    if plan.get("expression") != canonical_asset_expression(
+        str(plan.get("source_path") or ""),
+        list(plan.get("responsive_widths") or []),
+    ):
+        raise EdgeAuditError("asset Cloudflare plan expression is not canonical")
+    canonical = json.dumps(plan, sort_keys=True, separators=(",", ":")).encode()
+    plan_sha = hashlib.sha256(canonical).hexdigest()
+    request = {
+        "schema": 1,
+        "kind": "aoe2war-speedos-cloudflare-asset-apply-request",
+        "generated_at": utc_now(),
+        "zone_name": "aoe2war.com",
+        "source_path": plan["source_path"],
+        "quality": ASSET_QUALITY,
+        "responsive_widths": list(plan["responsive_widths"]),
+        "edge_ttl_seconds": ASSET_EDGE_TTL_SECONDS,
+        "vary_media_types": list(ASSET_VARY_MEDIA_TYPES),
+        "expression": plan["expression"],
+        "plan_sha256": plan_sha,
+        "operator_source_sha": identity["operator_source_sha"],
+    }
+    encoded = json.dumps(request, indent=2, sort_keys=True) + "\n"
+    with tempfile.NamedTemporaryFile(
+        "w", encoding="utf-8", delete=False, prefix="aoe2war-cf-asset-", suffix=".json"
+    ) as handle:
+        handle.write(encoded)
+        local_path = Path(handle.name)
+    remote_tmp = f"/tmp/aoe2war-speedos-cloudflare-asset-request-{os.getpid()}.json"
+    try:
+        copy = subprocess.run(
+            ["scp", "-q", str(local_path), f"{CLOUDFLARE_SSH}:{remote_tmp}"],
+            cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            timeout=30, check=False,
+        )
+        if copy.returncode != 0:
+            raise EdgeAuditError("asset Cloudflare request transfer failed: " + copy.stderr[-1000:])
+        install = subprocess.run(
+            [
+                "ssh", "-o", "BatchMode=yes", CLOUDFLARE_SSH,
+                "set -e; "
+                + f"sudo -n /usr/bin/install -o root -g root -m 0600 {shlex.quote(remote_tmp)} "
+                + f"{shlex.quote(CLOUDFLARE_REMOTE_STATE + '/asset-request.json')}; "
+                + f"rm -f {shlex.quote(remote_tmp)}",
+            ],
+            cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            timeout=30, check=False,
+        )
+        if install.returncode != 0:
+            raise EdgeAuditError("asset Cloudflare request install failed: " + install.stderr[-1000:])
+    finally:
+        local_path.unlink(missing_ok=True)
+    return request, plan_sha
+
+
+def asset_probe(
+    source_path: str,
+    *,
+    accept: str,
+    width: int = ASSET_PROBE_WIDTH,
+    quality: int = ASSET_QUALITY,
+) -> dict[str, Any]:
+    query = urllib.parse.urlencode({"url": source_path, "w": width, "q": quality})
+    target = f"{PUBLIC_BASE}/_next/image?{query}"
+    with tempfile.TemporaryDirectory(prefix="aoe2war-asset-probe-") as tmp:
+        headers_path = Path(tmp) / "headers.txt"
+        body_path = Path(tmp) / "body.bin"
+        proc = subprocess.run(
+            [
+                "curl", "-sS", "-L", "--max-time", "20",
+                "-H", f"Accept: {accept}",
+                "-D", str(headers_path),
+                "-o", str(body_path),
+                "-w", "%{http_code}\t%{time_starttransfer}\t%{time_total}",
+                target,
+            ],
+            cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+            timeout=25, check=False,
+        )
+        if proc.returncode != 0:
+            return {"ok": False, "error": (proc.stderr or "curl failed")[-500:]}
+        fields = proc.stdout.strip().split("\t")
+        raw_headers = headers_path.read_text(encoding="utf-8", errors="replace")
+        headers = parse_final_header_block(raw_headers)
+        body = body_path.read_bytes()
+        return {
+            "ok": bool(fields) and fields[0] == "200",
+            "url": target,
+            "http_status": int(fields[0]) if fields and fields[0].isdigit() else 0,
+            "ttfb_ms": round(float(fields[1]) * 1000, 3) if len(fields) > 1 else None,
+            "total_ms": round(float(fields[2]) * 1000, 3) if len(fields) > 2 else None,
+            "body_sha256": hashlib.sha256(body).hexdigest(),
+            "bytes": len(body),
+            "content_type": str(headers.get("content-type") or ""),
+            "cache_control": str(headers.get("cache-control") or ""),
+            "vary": str(headers.get("vary") or ""),
+            "cf_cache_status": str(headers.get("cf-cache-status") or "").upper() or None,
+            "next_cache_status": str(headers.get("x-nextjs-cache") or "").upper() or None,
+            "age": headers.get("age"),
+            "cf_ray": headers.get("cf-ray"),
+            "accept": accept,
+            "width": width,
+            "quality": quality,
+        }
+
+
+def _converge_html_hit(route: str, *, attempts: int = 5, sleep_fn=time.sleep) -> dict[str, Any]:
+    rows = []
+    for attempt in range(attempts):
+        probe = cache_status_probe(route)
+        rows.append(probe)
+        if probe.get("ok") and probe.get("cf_cache_status") == "HIT":
+            break
+        if attempt < attempts - 1:
+            sleep_fn(STATIC_VERIFY_BACKOFF_SECONDS)
+    return {"route": route, "attempts": rows, "final": rows[-1]}
+
+
+def verify_asset_cloudflare_apply(
+    asset_plan: dict[str, Any],
+    static_plan: dict[str, Any],
+    dynamic_plan: dict[str, Any],
+    *,
+    sleep_fn=time.sleep,
+) -> dict[str, Any]:
+    source_path = str(asset_plan.get("source_path") or "")
+    failures: list[str] = []
+    variants: list[dict[str, Any]] = []
+    for label, accept in (
+        ("modern", ASSET_MODERN_ACCEPT),
+        ("fallback", ASSET_FALLBACK_ACCEPT),
+    ):
+        attempts = []
+        for attempt in range(4):
+            probe = asset_probe(source_path, accept=accept)
+            attempts.append(probe)
+            if probe.get("ok") and probe.get("cf_cache_status") == "HIT":
+                break
+            if attempt < 3:
+                sleep_fn(0.75)
+        final = attempts[-1]
+        successful = [row for row in attempts if row.get("ok")]
+        hashes = {row.get("body_sha256") for row in successful}
+        types = {row.get("content_type") for row in successful}
+        variants.append({"variant": label, "attempts": attempts, "final": final})
+        if not final.get("ok") or final.get("cf_cache_status") != "HIT":
+            failures.append(f"hero {label} variant did not converge to Cloudflare HIT")
+        if len(hashes) != 1:
+            failures.append(f"hero {label} variant body changed across MISS/HIT boundary")
+        if len(types) != 1 or not str(final.get("content_type") or "").lower().startswith("image/"):
+            failures.append(f"hero {label} variant content type was not stable image content")
+        if "accept" not in str(final.get("vary") or "").lower():
+            failures.append(f"hero {label} variant lost origin Vary: Accept")
+        if int(final.get("bytes") or 0) < 10_000:
+            failures.append(f"hero {label} variant body is unexpectedly small")
+
+    responsive = []
+    for width in (1080, ASSET_PROBE_WIDTH):
+        attempts = []
+        for attempt in range(3):
+            probe = asset_probe(source_path, accept=ASSET_MODERN_ACCEPT, width=width)
+            attempts.append(probe)
+            if probe.get("ok") and probe.get("cf_cache_status") == "HIT":
+                break
+            if attempt < 2:
+                sleep_fn(0.5)
+        responsive.append({"width": width, "attempts": attempts, "final": attempts[-1]})
+        if attempts[-1].get("cf_cache_status") != "HIT":
+            failures.append(f"hero width {width} did not converge to HIT")
+
+    excluded_quality = asset_probe(
+        source_path,
+        accept=ASSET_MODERN_ACCEPT,
+        quality=90,
+    )
+    if excluded_quality.get("cf_cache_status") == "HIT":
+        failures.append("q90 hero variant incorrectly entered the q95 asset cache rule")
+
+    static_rows = []
+    for route in list(static_plan.get("eligible_exact_routes") or []):
+        row = _converge_html_hit(route, sleep_fn=sleep_fn)
+        static_rows.append(row)
+        if row["final"].get("cf_cache_status") != "HIT":
+            failures.append(f"{route}: existing static HTML rule lost HIT after asset apply")
+
+    dynamic_rows = []
+    for route in list(dynamic_plan.get("eligible_exact_routes") or []):
+        row = _converge_html_hit(route, sleep_fn=sleep_fn)
+        dynamic_rows.append(row)
+        if row["final"].get("cf_cache_status") != "HIT":
+            failures.append(f"{route}: existing dynamic HTML rule lost HIT after asset apply")
+
+    api = cache_status_probe("/api/deployment-version")
+    if api.get("cf_cache_status") == "HIT":
+        failures.append("/api/deployment-version incorrectly entered shared cache after asset apply")
+
+    return {
+        "ok": not failures,
+        "generated_at": utc_now(),
+        "asset_variants": variants,
+        "responsive_widths": responsive,
+        "excluded_q90": excluded_quality,
+        "static_cohort": static_rows,
+        "dynamic_cohort": dynamic_rows,
+        "api_probe": api,
+        "failures": failures,
+    }
 
 
 def cache_status_probe(
@@ -1347,7 +1703,7 @@ def print_audit(payload: dict[str, Any], limit: int) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(prog="aoe2war speed edge")
-    parser.add_argument("command", nargs="?", choices=["audit", "plan", "bootstrap", "authority", "snapshot", "apply", "rollback", "qualify-dynamic", "plan-dynamic", "apply-dynamic", "rollback-dynamic"], default="audit")
+    parser.add_argument("command", nargs="?", choices=["audit", "plan", "bootstrap", "authority", "snapshot", "apply", "rollback", "qualify-dynamic", "plan-dynamic", "apply-dynamic", "rollback-dynamic", "plan-asset", "apply-asset", "rollback-asset"], default="audit")
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--limit", type=int, default=20)
     parser.add_argument("--no-receipt", action="store_true")
@@ -1360,14 +1716,14 @@ def main() -> int:
     if args.limit < 1 or args.limit > 100:
         print("STOP: --limit must be between 1 and 100", file=sys.stderr)
         return 2
-    if args.command in {"bootstrap", "authority", "snapshot", "rollback", "rollback-dynamic"}:
+    if args.command in {"bootstrap", "authority", "snapshot", "rollback", "rollback-dynamic", "rollback-asset"}:
         try:
             if args.command == "bootstrap":
                 runtime = bootstrap_cloudflare_runtime()
                 result = {"ok": True, "command": "bootstrap", "runtime": runtime}
             else:
                 runtime = require_cloudflare_runtime_exact()
-                helper_command = {"authority": "verify", "snapshot": "snapshot", "rollback": "rollback", "rollback-dynamic": "rollback-dynamic"}[args.command]
+                helper_command = {"authority": "verify", "snapshot": "snapshot", "rollback": "rollback", "rollback-dynamic": "rollback-dynamic", "rollback-asset": "rollback-asset"}[args.command]
                 result = remote_cloudflare_service(helper_command)
                 result["runtime_exact"] = runtime["exact"]
         except EdgeAuditError as exc:
@@ -1382,6 +1738,89 @@ def main() -> int:
                 if key != "ok":
                     print(f"{key}: {value}")
         return 0
+
+    if args.command in {"plan-asset", "apply-asset"}:
+        try:
+            asset_plan = build_asset_cloudflare_plan()
+            if args.command == "plan-asset":
+                if args.json:
+                    print(json.dumps(asset_plan, indent=2, sort_keys=True))
+                else:
+                    print("⚔️  AOE2WAR SPEED HERO ASSET CLOUDFLARE PLAN")
+                    print()
+                    print(f"Release:         {asset_plan['release_sha'][:12]}")
+                    print(f"Source:          {asset_plan['source_path']}")
+                    print(f"Quality:         q{asset_plan['quality']}")
+                    print(f"Widths observed: {len(asset_plan['responsive_widths'])}")
+                    print(f"Edge TTL:        {asset_plan['edge_ttl_seconds']}s")
+                    print("Vary:            Accept normalized · unexpected Vary headers bypass")
+                    print("Query key:       PRESERVED")
+                    print("Mutation:        NOT YET")
+                    print()
+                    print(asset_plan["expression"])
+                return 0
+
+            static_authority = latest_successful_static_apply()
+            dynamic_authority = latest_successful_dynamic_apply()
+            if not static_authority or not dynamic_authority:
+                raise EdgeAuditError(
+                    "asset apply requires successful static and dynamic Cloudflare authority receipts"
+                )
+            static_plan = static_authority.get("plan") or {}
+            dynamic_plan = dynamic_authority.get("dynamic_plan") or {}
+            runtime = require_cloudflare_runtime_exact()
+            authority = remote_cloudflare_service("verify")
+            authority["runtime_exact"] = runtime["exact"]
+            snapshot_result = remote_cloudflare_service("snapshot")
+            request, plan_sha = stage_asset_cloudflare_request(asset_plan)
+            applied = remote_cloudflare_service("apply-asset")
+            verification = verify_asset_cloudflare_apply(asset_plan, static_plan, dynamic_plan)
+            receipt_payload = {
+                "schema": 1,
+                "kind": "aoe2war-speedos-cloudflare-asset-apply",
+                "generated_at": utc_now(),
+                "authority": authority,
+                "snapshot": snapshot_result,
+                "asset_plan": asset_plan,
+                "static_plan_authority_receipt": speed.evidence_ref(
+                    Path(str(static_authority.get("_path") or ""))
+                ),
+                "dynamic_plan_authority_receipt": speed.evidence_ref(
+                    Path(str(dynamic_authority.get("_path") or ""))
+                ),
+                "plan_sha256": plan_sha,
+                "request": request,
+                "apply": applied,
+                "verification": verification,
+                "rollback_performed": False,
+            }
+            if not verification.get("ok"):
+                receipt_payload["rollback"] = remote_cloudflare_service("rollback-asset")
+                receipt_payload["rollback_performed"] = True
+                receipt = write_edge_operation_receipt("asset-apply-rolled-back", receipt_payload)
+                raise EdgeAuditError(
+                    "hero asset Cloudflare verification failed and asset-only rollback completed: "
+                    + "; ".join(verification.get("failures") or [])
+                    + f" · receipt {speed.evidence_ref(receipt)}"
+                )
+            receipt = write_edge_operation_receipt("asset-apply", receipt_payload)
+            if args.json:
+                print(json.dumps(receipt_payload, indent=2, sort_keys=True))
+            else:
+                print("⚔️  AOE2WAR SPEED HERO ASSET CLOUDFLARE APPLY")
+                print()
+                print(f"Source:         {asset_plan['source_path']}")
+                print(f"Edge TTL:       {ASSET_EDGE_TTL_SECONDS}s")
+                print("Accept variants: PASS")
+                print(f"Static HTML:    {len(static_plan.get('eligible_exact_routes') or [])} preserved")
+                print(f"Dynamic HTML:   {len(dynamic_plan.get('eligible_exact_routes') or [])} preserved")
+                print("q90 exclusion:  PASS")
+                print("Rollback:       NOT REQUIRED")
+                print(f"Receipt:        {speed.evidence_ref(receipt)}")
+            return 0
+        except EdgeAuditError as exc:
+            print(f"STOP: {exc}", file=sys.stderr)
+            return 2
 
     if args.command in {"qualify-dynamic", "plan-dynamic", "apply-dynamic"}:
         try:
