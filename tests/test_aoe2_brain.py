@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import pathlib
 import sys
+import tempfile
 import unittest
 from datetime import datetime, timezone
 from unittest.mock import patch
@@ -80,6 +82,11 @@ def council(*, p1: int = 0) -> dict:
             "baseline_routes": 77,
         },
         "docs_due_7d": 0,
+        "documentation": {
+            "estate_gate": "PASS",
+            "source_checkers_passed": 5,
+            "source_checkers_total": 5,
+        },
         "architecture_opportunities": [],
     }
 
@@ -153,6 +160,99 @@ class KingdomIntelligenceTests(unittest.TestCase):
     def test_war_date_is_deterministic_utc(self):
         value = datetime(2026, 9, 5, 21, 7, tzinfo=timezone.utc)
         self.assertEqual(MODULE.war_date(value), "2026.248.2107Z")
+
+    def test_fresh_browser_receipts_are_compacted_for_bridge_payload(self):
+        now = datetime(2026, 9, 19, 2, 0, tzinfo=timezone.utc)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            cold_root = root / "cold"
+            edge_root = root / "edge"
+            cold_dir = cold_root / "20260919T013534Z-test-phone"
+            cold_dir.mkdir(parents=True)
+            edge_root.mkdir(parents=True)
+
+            (cold_dir / "receipt.json").write_text(
+                json.dumps(
+                    {
+                        "kind": "aoe2war-cold-process-lcp",
+                        "releaseSha": "a" * 40,
+                        "buildVersion": "build-v",
+                        "generatedAt": "2026-09-19T01:37:12Z",
+                        "samples": 20,
+                        "summary": {
+                            "lcpMs": {
+                                "count": 20,
+                                "p50": 780,
+                                "p75": 832,
+                                "p95": 898.4,
+                                "max": 1020,
+                            },
+                            "readyMs": {
+                                "count": 20,
+                                "p50": 967.35,
+                                "p75": 1004.25,
+                                "p95": 1414.95,
+                                "max": 1554.5,
+                            },
+                            "documentTtfbMs": {
+                                "count": 20,
+                                "p50": 400.55,
+                                "p75": 414.05,
+                                "p95": 638.79,
+                                "max": 649.9,
+                            },
+                            "lcpTargets": [
+                                {"target": "https://example/logo.webp", "count": 20}
+                            ],
+                        },
+                    }
+                )
+            )
+            (edge_root / "20260919T013521Z-cloudflare-featured-avatar-apply.json").write_text(
+                json.dumps(
+                    {
+                        "kind": "aoe2war-speedos-cloudflare-featured-avatar-apply",
+                        "generated_at": "2026-09-19T01:35:21Z",
+                        "avatar_plan": {
+                            "release_sha": "a" * 40,
+                        },
+                        "verification": {
+                            "generated_at": "2026-09-19T01:35:21Z",
+                            "ok": True,
+                            "static_cohort": [
+                                {"final": {"cf_cache_status": "HIT", "http_status": 200}},
+                                {"final": {"cf_cache_status": "HIT", "http_status": 200}},
+                            ],
+                            "dynamic_cohort": [
+                                {"final": {"cf_cache_status": "HIT", "http_status": 200}},
+                            ],
+                            "featured_avatar_rows": [
+                                {"final": {"cf_cache_status": "HIT", "http_status": 200}},
+                                {"final": {"cf_cache_status": "MISS", "http_status": 200}},
+                            ],
+                        },
+                    }
+                )
+            )
+
+            with (
+                patch.object(MODULE, "COLD_LCP_ROOT", cold_root),
+                patch.object(MODULE, "EDGE_RECEIPT_ROOT", edge_root),
+            ):
+                cold = MODULE.latest_cold_lcp(now)
+                edge = MODULE.latest_edge_delivery(now)
+
+        self.assertTrue(cold["available"])
+        self.assertEqual(cold["samples"], 20)
+        self.assertEqual(cold["top_lcp_target_count"], 20)
+        self.assertEqual(cold["metrics"]["lcp_ms"]["p95"], 898.4)
+        self.assertNotIn("https://example/logo.webp", repr(cold))
+        self.assertTrue(edge["available"])
+        self.assertTrue(edge["ok"])
+        self.assertEqual(edge["static"], {"passed": 2, "total": 2})
+        self.assertEqual(edge["dynamic"], {"passed": 1, "total": 1})
+        self.assertEqual(edge["featured_avatar"], {"passed": 1, "total": 2})
+        self.assertNotIn("cf_ray", repr(edge))
 
     def test_source_summary_requires_exact_four_plane_identity(self):
         exact = MODULE.source_summary(release(exact=True))
@@ -249,6 +349,8 @@ class KingdomIntelligenceTests(unittest.TestCase):
         self.assertEqual(payload["health"]["p1"], 0)
         self.assertEqual(payload["replay_truth"]["accounted_percent"], 100.0)
         self.assertEqual(payload["performance"]["route_count"], 77)
+        self.assertEqual(payload["documentation"]["estate_gate"], "PASS")
+        self.assertEqual(payload["documentation"]["source_checkers_passed"], 5)
         self.assertEqual(payload["storage_campaign"]["status"], "NONE")
         self.assertEqual(payload["activity_24h"]["source_commits"], 42)
         self.assertEqual(payload["activity_24h"]["certified_finishes"], 2)
@@ -573,10 +675,22 @@ class KingdomIntelligenceTests(unittest.TestCase):
                 },
             },
         }
-        with patch.object(
-            MODULE.aoe2_speed_campaign,
-            "latest_campaign",
-            return_value=campaign,
+        with (
+            patch.object(
+                MODULE.aoe2_speed_campaign,
+                "latest_campaign",
+                return_value=campaign,
+            ),
+            patch.object(
+                MODULE,
+                "latest_cold_lcp",
+                return_value={"available": False},
+            ),
+            patch.object(
+                MODULE,
+                "latest_edge_delivery",
+                return_value={"available": False},
+            ),
         ):
             perf = MODULE.latest_performance(now)
 
