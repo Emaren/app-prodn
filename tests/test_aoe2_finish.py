@@ -41,6 +41,35 @@ class FinishTests(unittest.TestCase):
             },
         }
 
+    def legacy_runtime_release(self):
+        source = "a" * 40
+        build_version = "20260919194517-e1d69eb437"
+        return {
+            "local": {
+                "head": source,
+                "branch": "main",
+                "dirty_count": 0,
+            },
+            "github": {"main_sha": source},
+            "production": {
+                "reachable": True,
+                "source_sha": source,
+                "branch": "main",
+                "dirty_count": 0,
+                "service": "active",
+                "active_build_id": "legacy-build",
+                "internal_build_version": build_version,
+                "public_build_version": build_version,
+                "version_parity": True,
+                "wolo_8092_count": 1,
+                "wolo_8093_count": 1,
+            },
+            "certification": {
+                "status": "legacy-unmanifested",
+                "release_sha": None,
+            },
+        }
+
     @staticmethod
     def workshop_pass_output():
         return MODULE.json.dumps(
@@ -334,6 +363,69 @@ class FinishTests(unittest.TestCase):
         self.assertTrue(MODULE.is_sensitive_path("x/private.pem"))
         self.assertFalse(MODULE.is_sensitive_path(".env.production.example"))
         self.assertFalse(MODULE.is_sensitive_path("lib/secretPolicy.ts"))
+
+    def test_runtime_provenance_doctor_remediation_is_exact_and_narrow(self):
+        doctor = {
+            "findings": [
+                {
+                    "severity": "BLOCKER",
+                    "key": "certification",
+                    "detail": "runtime provenance='legacy-unmanifested'",
+                },
+                {
+                    "severity": "BLOCKER",
+                    "key": "host-integrity",
+                    "detail": "unrelated blocker",
+                },
+            ]
+        }
+        release = self.legacy_runtime_release()
+
+        remediations = MODULE.runtime_provenance_doctor_remediations(
+            doctor,
+            release,
+        )
+        self.assertEqual(
+            [item["key"] for item in remediations],
+            ["certification"],
+        )
+
+        mismatched = self.legacy_runtime_release()
+        mismatched["production"]["source_sha"] = "b" * 40
+        self.assertEqual(
+            MODULE.runtime_provenance_doctor_remediations(
+                doctor,
+                mismatched,
+            ),
+            [],
+        )
+
+        wrong_detail = {
+            "findings": [
+                {
+                    "severity": "BLOCKER",
+                    "key": "certification",
+                    "detail": "certification receipt corrupt",
+                }
+            ]
+        }
+        self.assertEqual(
+            MODULE.runtime_provenance_doctor_remediations(
+                wrong_detail,
+                release,
+            ),
+            [],
+        )
+
+    def test_finish_planning_and_execution_share_provenance_doctor_helper(self):
+        import inspect
+
+        plan_source = inspect.getsource(MODULE.plan_payload)
+        execute_source = inspect.getsource(MODULE.execute_finish)
+
+        self.assertIn("runtime_provenance_doctor_remediations", plan_source)
+        self.assertIn("runtime_provenance_doctor_remediations", execute_source)
+        self.assertIn("preflight_doctor_remediations", execute_source)
 
     def test_needs_deploy(self):
         clean = {

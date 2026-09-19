@@ -2413,6 +2413,30 @@ def doctor_blocker_details(payload: dict[str, Any]) -> list[str]:
     ]
 
 
+def runtime_provenance_doctor_remediations(
+    payload: dict[str, Any],
+    release_data: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Return only the Doctor blocker Finish's next deploy can provably repair."""
+    if not (
+        needs_deploy(release_data)
+        and aoe2_update.runtime_provenance_finish_remediable(release_data)
+    ):
+        return []
+
+    return [
+        finding
+        for finding in payload.get("findings", [])
+        if (
+            isinstance(finding, dict)
+            and finding.get("severity") == "BLOCKER"
+            and finding.get("key") == "certification"
+            and "legacy-unmanifested"
+            in str(finding.get("detail") or "")
+        )
+    ]
+
+
 def assert_certified_release(data: dict[str, Any]) -> None:
     if needs_deploy(data):
         raise FinishError(
@@ -3206,10 +3230,13 @@ def plan_payload(*, preserve_context_history: bool = False) -> dict[str, Any]:
         for finding in doctor.get("findings", [])
         if finding.get("severity") == "BLOCKER"
     ]
-    provenance_can_remediate = bool(
-        deploy_expected
-        and aoe2_update.runtime_provenance_finish_remediable(data)
+    provenance_remediations = runtime_provenance_doctor_remediations(
+        doctor,
+        data,
     )
+    provenance_remediation_ids = {
+        id(finding) for finding in provenance_remediations
+    }
     remediated_blockers = [
         str(finding.get("detail") or finding.get("key"))
         for finding in blocker_findings
@@ -3217,10 +3244,7 @@ def plan_payload(*, preserve_context_history: bool = False) -> dict[str, Any]:
             finding.get("key") == "volume-capacity-critical"
             and retention_can_remediate_capacity
         )
-        or (
-            finding.get("key") == "certification"
-            and provenance_can_remediate
-        )
+        or id(finding) in provenance_remediation_ids
     ]
     blockers = [
         str(finding.get("detail") or finding.get("key") or "unknown blocker")
@@ -3230,10 +3254,7 @@ def plan_payload(*, preserve_context_history: bool = False) -> dict[str, Any]:
                 finding.get("key") == "volume-capacity-critical"
                 and retention_can_remediate_capacity
             )
-            or (
-                finding.get("key") == "certification"
-                and provenance_can_remediate
-            )
+            or id(finding) in provenance_remediation_ids
         )
     ]
     if storage_rc != 0 or storage_preview.get("status") not in {"READY", "NOOP"}:
@@ -3513,16 +3534,49 @@ def execute_finish(
         progress=False,
     ).payload()
     receipt["preflight_doctor"] = preflight_doctor
-    preflight_blockers = doctor_blocker_details(preflight_doctor)
+    preflight_release = aoe2_release.collect()
+    receipt["preflight_release"] = preflight_release
+    preflight_remediations = runtime_provenance_doctor_remediations(
+        preflight_doctor,
+        preflight_release,
+    )
+    preflight_remediation_ids = {
+        id(finding) for finding in preflight_remediations
+    }
+    receipt["preflight_doctor_remediations"] = [
+        {
+            "key": finding.get("key"),
+            "detail": finding.get("detail"),
+            "reason": (
+                "Finish will immediately run the governed deployment and "
+                "require exact current-source certification afterward"
+            ),
+        }
+        for finding in preflight_remediations
+    ]
+    preflight_blockers = [
+        str(finding.get("detail") or finding.get("key") or "unknown blocker")
+        for finding in preflight_doctor.get("findings", [])
+        if (
+            finding.get("severity") == "BLOCKER"
+            and id(finding) not in preflight_remediation_ids
+        )
+    ]
     if preflight_blockers:
         raise FinishError(
             "pre-mutation Doctor found blocking operational issues: "
             + "; ".join(preflight_blockers)
         )
-    progress.done(
-        f"Pre-mutation Doctor passed — {preflight_doctor['score']}/100 · "
-        f"{preflight_doctor['warnings']} warning(s)"
-    )
+    if preflight_remediations:
+        progress.done(
+            "Pre-mutation Doctor accepted one bounded Finish-remediable "
+            "runtime-provenance blocker; governed deployment remains mandatory"
+        )
+    else:
+        progress.done(
+            f"Pre-mutation Doctor passed — {preflight_doctor['score']}/100 · "
+            f"{preflight_doctor['warnings']} warning(s)"
+        )
     finish_phase(receipt, "operational_preflight", checkpoint)
 
     start_phase(receipt, "source_reconciliation", checkpoint)
