@@ -1,0 +1,125 @@
+.shell {
+  --inspection-green: 52 211 153;
+  --inspection-amber: 251 191 36;
+  --inspection-red: 248 113 113;
+  --inspection-cyan: 34 211 238;
+  --inspection-blue: 59 130 246;
+  position: relative;
+  min-height: 100vh;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 8% 4%, rgb(var(--inspection-blue) / .14), transparent 27rem),
+    radial-gradient(circle at 87% 8%, rgb(var(--inspection-cyan) / .09), transparent 30rem),
+    radial-gradient(circle at 50% 62%, rgb(99 102 241 / .07), transparent 34rem),
+    #06101f;
+}
+.shell::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: .22;
+  background-image:
+    linear-gradient(rgb(56 189 248 / .08) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(59 130 246 / .07) 1px, transparent 1px);
+  background-size: 58px 58px;
+  mask-image: linear-gradient(to bottom, black, transparent 90%);
+}
+.hero {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgb(125 211 252 / .16);
+  background: linear-gradient(135deg, rgb(11 31 58 / .94), rgb(4 14 31 / .98));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .04), 0 24px 70px rgb(0 0 0 / .24);
+}
+.hero::after {
+  content: "";
+  position: absolute;
+  left: 5%;
+  right: 5%;
+  bottom: 22%;
+  height: 1px;
+  opacity: .7;
+  background: linear-gradient(90deg, transparent, rgb(34 211 238 / .64), rgb(59 130 246 / .54), transparent);
+  box-shadow: 0 0 22px rgb(34 211 238 / .32);
+}
+.card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgb(125 211 252 / .12);
+  background: linear-gradient(150deg, rgb(9 24 46 / .96), rgb(4 13 28 / .99));
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .025), 0 18px 44px rgb(0 0 0 / .2);
+  transition: border-color .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+.card:hover {
+  transform: translateY(-2px);
+  border-color: rgb(125 211 252 / .28);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .04), 0 22px 50px rgb(0 0 0 / .28), 0 0 24px rgb(34 211 238 / .04);
+}
+.cardSelected {
+  border-color: rgb(125 211 252 / .42);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / .05), 0 0 0 1px rgb(34 211 238 / .09), 0 24px 60px rgb(0 0 0 / .28);
+}
+.scoreRing {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 5.25rem;
+  height: 5.25rem;
+  border-radius: 9999px;
+  background: conic-gradient(currentColor var(--score-angle, 0deg), rgb(148 163 184 / .11) var(--score-angle, 0deg));
+  box-shadow: 0 0 28px color-mix(in srgb, currentColor 12%, transparent);
+}
+.scoreRing::before {
+  content: "";
+  position: absolute;
+  inset: 6px;
+  border-radius: inherit;
+  background: #071426;
+  border: 1px solid rgb(255 255 255 / .035);
+}
+.scoreRing > span { position: relative; z-index: 1; }
+.ember {
+  width: .58rem;
+  height: .58rem;
+  border-radius: 9999px;
+  background: currentColor;
+  box-shadow: 0 0 7px currentColor, 0 0 16px currentColor;
+  animation: ember-pulse 1.85s ease-in-out infinite;
+}
+.progressTrack {
+  height: .34rem;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: rgb(148 163 184 / .09);
+}
+.progressFill {
+  height: 100%;
+  border-radius: inherit;
+  background: currentColor;
+  box-shadow: 0 0 10px currentColor;
+}
+.scan {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgb(34 211 238 / .48), transparent);
+  animation: inspection-scan 8s linear infinite;
+}
+@keyframes ember-pulse {
+  0%, 100% { opacity: .42; transform: scale(.78); }
+  45% { opacity: 1; transform: scale(1.2); }
+}
+@keyframes inspection-scan {
+  0% { top: 6%; opacity: 0; }
+  9% { opacity: .65; }
+  91% { opacity: .65; }
+  100% { top: 96%; opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ember, .scan { animation: none; }
+  .card:hover { transform: none; }
+}

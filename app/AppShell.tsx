@@ -6,7 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Anvil, BarChart3, Bot, BrainCircuit, Castle, Crown, Eye, Globe2, GraduationCap, Hammer, MessageSquare, Radio, Scale, Store, Target, UsersRound, X, Zap } from "lucide-react";
+import { Anvil, BarChart3, Bot, BrainCircuit, Castle, ClipboardCheck, Crown, Eye, Globe2, GraduationCap, Hammer, MessageSquare, Radio, Scale, Store, Target, UsersRound, X, Zap } from "lucide-react";
 import { createPortal } from "react-dom";
 import SpeedRuntime from "@/components/speed/SpeedRuntime";
 import SpeedWebVitals from "@/components/speed/SpeedWebVitals";
@@ -143,6 +143,7 @@ const KINGDOM_LINKS = [
   { href: "/round-chamber", label: "The Chamber", icon: Scale, body: "Proposals, civic ballots, and public mandates" },
   { href: "/statistics", label: "Kingdom Statistics", icon: BarChart3, body: "WOLO, users, bets, games, watchers, and growth" },
   { href: "/speed", label: "Speed", icon: Zap, body: "Your live performance and readiness measurements" },
+  { href: "/general-inspections", label: "General Inspections", icon: ClipboardCheck, body: "Live readiness scores across the whole kingdom" },
 ] as const;
 
 const PAGE_HEADINGS: ReadonlyArray<{ prefix: string; title: string }> = [
@@ -199,6 +200,7 @@ const PAGE_HEADINGS: ReadonlyArray<{ prefix: string; title: string }> = [
   { prefix: "/traffic", title: "Traffic Observatory" },
   { prefix: "/statistics", title: "Kingdom Statistics" },
   { prefix: "/speed", title: "Speed Observatory" },
+  { prefix: "/general-inspections", title: "General Inspections" },
 ];
 
 function getPageHeading(pathname: string | null) {

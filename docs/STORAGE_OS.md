@@ -8,7 +8,7 @@ systems: ["app-prodn","aoe2war","wolochain","vpssentry"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "storage-operating-contract"
-reviewed_at: "2026-09-13"
+reviewed_at: "2026-09-19"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -247,6 +247,39 @@ opened without truncating holder metadata before the flock succeeds.
 
 This prevents deployment, rollback/release maintenance, cache retention, and cold
 archival from intentionally mutating the recovery estate concurrently.
+
+## September 19 housekeeping doctrine
+
+The live estate is now explicitly split between proof that must survive and runtime weight
+that only accelerates recovery.
+
+The preferred lean policy is:
+
+- keep the active production runtime;
+- keep exactly two complete immediate rollback generations;
+- keep exactly three verified compressed cold checkpoints under the current checkpoint policy;
+- keep immutable activation, archive, expiry, and deployment receipts;
+- keep protected replay, parser, user-media, database-recovery, settlement, Wolo, financial,
+  and security evidence;
+- retire superseded compiled runtime bodies once the ledger proves that Git and release
+  evidence are sufficient to reproduce them;
+- keep Watcher distribution bytes to the current release plus one previous release when
+  compatibility requires it, while retaining small release manifests and checksums;
+- treat build caches, package-manager caches, scratch builds, and abandoned staging bodies as
+  regenerable unless a separate contract explicitly promotes them to evidence.
+
+A local source checkout must not become a second historical binary warehouse. The operator Mac
+may point its ignored public downloads path at the canonical Watcher distribution directory
+instead of duplicating every installer generation.
+
+Root and mounted-volume capacity are different control surfaces. Root should hold the live
+runtime and bounded fast recovery only. Durable receipts and protected evidence belong on the
+mounted volume. Moving bytes from root to the mounted volume is useful only when those bytes
+still deserve retention; moving junk does not make junk authoritative.
+
+General Inspections consumes this policy as observable maintenance debt. A proven reclaimable
+runtime body may reduce the Organization & Storage score until expiry completes, while protected
+evidence is not penalized merely for existing.
 
 ## Safety invariants
 
