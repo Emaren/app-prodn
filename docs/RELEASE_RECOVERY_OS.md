@@ -142,6 +142,14 @@ healthy service/version parity, one protected listener on 8092 and 8093, sealed
 gate/manifest evidence, artifact/dependency hashes, and no pre-existing staged
 candidate.
 
+The empty Git diff in this lane is not low-risk `NO_CHANGE` validation evidence.
+Release Gate binds a distinct `SAME_SOURCE_RECERTIFICATION` scope digest and
+validation context, elevates the run to `INFRASTRUCTURE`, executes FULL
+release/toolchain/application validation, and disables reusable standard-gate
+inheritance. Manifest must recompute that exact context and consume only its
+matching PASS receipt. The manifest records the recertification authority
+explicitly, so a standard clean-tree gate cannot be substituted later.
+
 If any authority or health precondition is absent, or if no deployment is due,
 the P0 remains blocking. This preserves the ordering invariant without turning a
 recovery exception into a general provenance bypass.

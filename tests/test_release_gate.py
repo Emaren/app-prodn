@@ -1,5 +1,7 @@
 import importlib.util
+import json
 import pathlib
+import tempfile
 import unittest
 
 SCRIPT = pathlib.Path(__file__).resolve().parents[1] / "scripts" / "aoe2_release_gate.py"
@@ -445,6 +447,16 @@ class SameSourceManifestPreconditionTests(unittest.TestCase):
             },
         }
 
+    @classmethod
+    def actual_sample(cls):
+        data = cls.sample()
+        source = MODULE.git_text("rev-parse", "HEAD")
+        data["local"]["head"] = source
+        data["github"]["main_sha"] = source
+        data["production"]["source_sha"] = source
+        data["documentation"]["implementation_baseline"] = source
+        return data
+
     def test_manifest_allows_exact_healthy_same_source_legacy_recertification(self):
         data = self.sample()
         self.assertTrue(MODULE.same_source_recertification_allowed(data))
@@ -461,6 +473,146 @@ class SameSourceManifestPreconditionTests(unittest.TestCase):
         errors = MODULE.manifest_precondition_errors(data)
         self.assertEqual(len(errors), 1)
         self.assertIn("production source already equals this release", errors[0])
+
+    def test_same_source_recertification_has_distinct_full_validation_identity(self):
+        data = self.actual_sample()
+        scope = MODULE.release_scope(data)
+        self.assertEqual(scope["mode"], "clean")
+        self.assertEqual(scope["changed_files"], [])
+
+        standard_digest = MODULE.scope_digest(scope)
+        recert_digest = MODULE.scope_digest(
+            scope,
+            same_source_recertification=True,
+        )
+        self.assertNotEqual(standard_digest, recert_digest)
+
+        context = MODULE.validation_context(
+            scope,
+            same_source_recertification=True,
+        )
+        self.assertEqual(
+            context["release_mode"],
+            "SAME_SOURCE_RECERTIFICATION",
+        )
+
+        plan = MODULE.command_plan(
+            scope,
+            "INFRASTRUCTURE",
+            same_source_recertification=True,
+        )
+        labels = [label for label, _command, _timeout in plan]
+        self.assertIn("release-engineering-tests", labels)
+        self.assertIn("release-python-compile", labels)
+        self.assertIn("typescript", labels)
+        self.assertIn("eslint-full", labels)
+        self.assertIn("prisma-validate", labels)
+
+    def test_manifest_uses_recertification_gate_context_for_clean_same_source(self):
+        data = self.actual_sample()
+        scope = MODULE.release_scope(data)
+        context = MODULE.validation_context(
+            scope,
+            same_source_recertification=True,
+        )
+        digest = MODULE.scope_digest(
+            scope,
+            same_source_recertification=True,
+        )
+
+        with tempfile.TemporaryDirectory(dir=MODULE.ROOT) as tmp:
+            base = pathlib.Path(tmp)
+            gate_dir = base / "gates"
+            manifest_dir = base / "manifests"
+            gate_dir.mkdir()
+            manifest_dir.mkdir()
+
+            gate_path = gate_dir / "recert.json"
+            gate_payload = {
+                "schema": 2,
+                "status": "PASS",
+                "base_sha": scope["base_sha"],
+                "target_sha": scope["target_sha"],
+                "scope_sha256": digest,
+                "risk_class": "INFRASTRUCTURE",
+                "same_source_recertification": True,
+                "changed_files": [],
+                "validation_mode": "FULL",
+                **context,
+            }
+            gate_path.write_text(
+                json.dumps(gate_payload, sort_keys=True),
+                encoding="utf-8",
+            )
+
+            old_gate_dir = MODULE.GATE_DIR
+            old_manifest_dir = MODULE.MANIFEST_DIR
+            try:
+                MODULE.GATE_DIR = gate_dir
+                MODULE.MANIFEST_DIR = manifest_dir
+                rc = MODULE.manifest_release(data, json_output=True)
+            finally:
+                MODULE.GATE_DIR = old_gate_dir
+                MODULE.MANIFEST_DIR = old_manifest_dir
+
+            self.assertEqual(rc, 0)
+            manifest_path = manifest_dir / f"{data['local']['head']}.json"
+            manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            self.assertTrue(manifest["same_source_recertification"])
+            self.assertTrue(manifest["policy"]["same_source_recertification"])
+            self.assertEqual(manifest["scope_sha256"], digest)
+            self.assertEqual(manifest["risk_class"], "INFRASTRUCTURE")
+            self.assertEqual(manifest["changed_files"], [])
+            self.assertEqual(
+                manifest["previous_production_sha"],
+                data["local"]["head"],
+            )
+
+    def test_manifest_rejects_standard_clean_gate_for_same_source_recertification(self):
+        data = self.actual_sample()
+        scope = MODULE.release_scope(data)
+        standard_context = MODULE.validation_context(scope)
+        standard_digest = MODULE.scope_digest(scope)
+
+        with tempfile.TemporaryDirectory(dir=MODULE.ROOT) as tmp:
+            base = pathlib.Path(tmp)
+            gate_dir = base / "gates"
+            manifest_dir = base / "manifests"
+            gate_dir.mkdir()
+            manifest_dir.mkdir()
+
+            gate_path = gate_dir / "standard.json"
+            gate_payload = {
+                "schema": 2,
+                "status": "PASS",
+                "base_sha": scope["base_sha"],
+                "target_sha": scope["target_sha"],
+                "scope_sha256": standard_digest,
+                "risk_class": "NO_CHANGE",
+                "same_source_recertification": False,
+                "changed_files": [],
+                "validation_mode": "FULL",
+                **standard_context,
+            }
+            gate_path.write_text(
+                json.dumps(gate_payload, sort_keys=True),
+                encoding="utf-8",
+            )
+
+            old_gate_dir = MODULE.GATE_DIR
+            old_manifest_dir = MODULE.MANIFEST_DIR
+            try:
+                MODULE.GATE_DIR = gate_dir
+                MODULE.MANIFEST_DIR = manifest_dir
+                rc = MODULE.manifest_release(data, json_output=True)
+            finally:
+                MODULE.GATE_DIR = old_gate_dir
+                MODULE.MANIFEST_DIR = old_manifest_dir
+
+            self.assertEqual(rc, 2)
+            self.assertFalse(
+                (manifest_dir / f"{data['local']['head']}.json").exists()
+            )
 
     def test_manifest_same_source_legacy_recertification_fails_closed_when_unhealthy(self):
         mutations = [

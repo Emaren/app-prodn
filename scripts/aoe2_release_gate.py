@@ -164,13 +164,25 @@ def release_scope(data: dict) -> dict:
     }
 
 
-def scope_digest(scope: dict) -> str:
+def scope_digest(
+    scope: dict,
+    *,
+    same_source_recertification: bool = False,
+) -> str:
     h = hashlib.sha256()
     h.update(scope["mode"].encode())
     h.update(b"\0")
     h.update(scope["base_sha"].encode())
     h.update(b"\0")
     h.update(scope["target_sha"].encode())
+    h.update(b"\0")
+    h.update(
+        (
+            "SAME_SOURCE_RECERTIFICATION"
+            if same_source_recertification
+            else "STANDARD_RELEASE"
+        ).encode()
+    )
     h.update(b"\0")
 
     if scope["mode"] == "worktree":
@@ -408,7 +420,12 @@ def focused_npm_tests(paths: list[str]) -> list[str]:
     return scripts
 
 
-def command_plan(scope: dict, risk: str) -> list[tuple[str, list[str], int]]:
+def command_plan(
+    scope: dict,
+    risk: str,
+    *,
+    same_source_recertification: bool = False,
+) -> list[tuple[str, list[str], int]]:
     paths = scope["changed_files"]
     commands: list[tuple[str, list[str], int]] = []
 
@@ -445,7 +462,7 @@ def command_plan(scope: dict, risk: str) -> list[tuple[str, list[str], int]]:
             ("active-node-test-contract", ["python3", "scripts/run_test_contract.py"], 300)
         )
 
-    release_tooling = any(
+    release_tooling = same_source_recertification or any(
         path
         in {
             "bin/aoe2-release",
@@ -633,8 +650,14 @@ def command_plan(scope: dict, risk: str) -> list[tuple[str, list[str], int]]:
         )
 
     lintable = existing_lintable(paths)
-    typescript_required = requires_typescript_validation(paths)
-    full_eslint_required = requires_full_eslint(paths)
+    typescript_required = (
+        same_source_recertification
+        or requires_typescript_validation(paths)
+    )
+    full_eslint_required = (
+        same_source_recertification
+        or requires_full_eslint(paths)
+    )
     prisma_generate_added = False
 
     if typescript_required and (ROOT / "prisma" / "schema.prisma").exists():
@@ -668,6 +691,17 @@ def command_plan(scope: dict, risk: str) -> list[tuple[str, list[str], int]]:
                 )
             )
         commands.append(("prisma-validate", ["npx", "prisma", "validate"], 180))
+    elif (
+        same_source_recertification
+        and (ROOT / "prisma" / "schema.prisma").exists()
+    ):
+        commands.append(
+            (
+                "prisma-validate",
+                ["npx", "prisma", "validate"],
+                180,
+            )
+        )
 
     for script in focused_npm_tests(paths):
         commands.append((script, ["npm", "run", script], 900))
@@ -854,6 +888,8 @@ def implementation_digest(
 
 def validation_context(
     scope: dict,
+    *,
+    same_source_recertification: bool = False,
 ) -> dict[str, str]:
     if (
         scope["target_sha"]
@@ -938,6 +974,11 @@ def validation_context(
     ).hexdigest()
 
     return {
+        "release_mode": (
+            "SAME_SOURCE_RECERTIFICATION"
+            if same_source_recertification
+            else "STANDARD_RELEASE"
+        ),
         "tree_digest": tree_digest,
         "implementation_digest": (
             implementation_digest(
@@ -960,6 +1001,7 @@ def validation_context(
 
 
 VALIDATION_CONTEXT_KEYS = (
+    "release_mode",
     "tree_digest",
     "implementation_digest",
     "dependency_digest",
@@ -1170,14 +1212,24 @@ def gate_release(
         scope = release_scope(
             data
         )
-        digest = scope_digest(
-            scope
+        same_source_recertification = bool(
+            scope["mode"] == "clean"
+            and same_source_recertification_allowed(data)
         )
-        risk = classify_risk(
-            scope["changed_files"]
+        digest = scope_digest(
+            scope,
+            same_source_recertification=same_source_recertification,
+        )
+        risk = (
+            "INFRASTRUCTURE"
+            if same_source_recertification
+            else classify_risk(
+                scope["changed_files"]
+            )
         )
         context = validation_context(
-            scope
+            scope,
+            same_source_recertification=same_source_recertification,
         )
     except ReleaseGateError as exc:
         payload = {
@@ -1269,9 +1321,13 @@ def gate_release(
 
         return 0
 
-    reusable = reusable_validation_gate(
-        scope,
-        context,
+    reusable = (
+        None
+        if same_source_recertification
+        else reusable_validation_gate(
+            scope,
+            context,
+        )
     )
 
     if reusable is not None:
@@ -1288,6 +1344,7 @@ def gate_release(
         plan = command_plan(
             scope,
             risk,
+            same_source_recertification=same_source_recertification,
         )
         validation_mode = "FULL"
 
@@ -1366,6 +1423,7 @@ def gate_release(
         ),
         "scope_sha256": digest,
         "risk_class": risk,
+        "same_source_recertification": same_source_recertification,
         "changed_files": (
             scope["changed_files"]
         ),
@@ -1612,9 +1670,24 @@ def manifest_release(data: dict, *, json_output: bool = False) -> int:
 
     try:
         scope = release_scope(data)
-        if scope["mode"] != "committed":
-            raise ReleaseGateError("Release manifest requires a committed release scope.")
-        digest = scope_digest(scope)
+        same_source_recertification = bool(
+            scope["mode"] == "clean"
+            and same_source_recertification_allowed(data)
+        )
+        if scope["mode"] != "committed" and not same_source_recertification:
+            raise ReleaseGateError(
+                "Release manifest requires a committed release scope unless "
+                "exact healthy same-source runtime provenance is "
+                "legacy-unmanifested."
+            )
+        digest = scope_digest(
+            scope,
+            same_source_recertification=same_source_recertification,
+        )
+        context = validation_context(
+            scope,
+            same_source_recertification=same_source_recertification,
+        )
     except ReleaseGateError as exc:
         if json_output:
             print(json.dumps({"status": "ERROR", "error": str(exc)}, indent=2))
@@ -1622,7 +1695,11 @@ def manifest_release(data: dict, *, json_output: bool = False) -> int:
             print(f"STOP: {exc}")
         return 2
 
-    gate = matching_gate(scope, digest)
+    gate = matching_gate(
+        scope,
+        digest,
+        context=context,
+    )
     if not gate:
         message = "No matching PASS gate receipt. Run: aoe2-release gate"
         if json_output:
@@ -1650,6 +1727,7 @@ def manifest_release(data: dict, *, json_output: bool = False) -> int:
         "previous_production_sha": prod["source_sha"],
         "scope_sha256": digest,
         "risk_class": risk,
+        "same_source_recertification": same_source_recertification,
         "changed_files": scope["changed_files"],
         "migration_paths": migrations,
         "gate": {
@@ -1663,6 +1741,7 @@ def manifest_release(data: dict, *, json_output: bool = False) -> int:
             "preserve_rollback": True,
             "prove_internal_and_public": True,
             "wolo_mutation_allowed": False,
+            "same_source_recertification": same_source_recertification,
         },
     }
 
