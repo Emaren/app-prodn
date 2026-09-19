@@ -678,6 +678,7 @@ def remote_activation_script(
     mode = "DRY_RUN" if dry_run else "ACTIVATE"
     return f"""
 set -euo pipefail
+trap 'rc=$?; failed_command=$BASH_COMMAND; printf "ACTIVATION_ASSERTION_FAILED line=%s rc=%s cmd=%q\\n" "$LINENO" "$rc" "$failed_command" >&2; exit "$rc"' ERR
 cd {q(PROD_REPO)}
 
 MODE={q(mode)}
@@ -921,7 +922,11 @@ candidate_dependency_artifact="$(dependency_hash .node_modules-release)"
 test "$candidate_dependency_artifact" = "$DEPENDENCY_ARTIFACT"
 
 candidate_dependency_kb="$(du -sk .node_modules-release | awk '{{print $1}}')"
-test "$candidate_dependency_kb" = "$DEPENDENCY_KB"
+# Filesystem allocated blocks are capacity telemetry, not content identity.
+# Exact candidate dependency identity is the deterministic SHA-256 above;
+# allocation may shift by filesystem block(s) after publication without any
+# dependency byte/tree drift.
+test "$candidate_dependency_kb" -gt 0
 
 candidate_prisma_engine=.node_modules-release/@prisma/engines/schema-engine-debian-openssl-3.0.x
 test -f "$candidate_prisma_engine"

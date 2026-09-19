@@ -1263,3 +1263,25 @@ apply uses `rollback_archive.root_maintenance_host` (`root@hel1`). Do not add
 passwordless sudo or bypass the governed worker with ad-hoc shell deletion. The
 transport privilege changes; digest-bound planning, path confinement, symlink
 rejection, production identity checks, Wolo checks, and durable receipts do not.
+
+
+## 2026-09-19 — Filesystem allocation is telemetry, not release identity
+
+A receipt-driven activation for release `0d6c3cc4…` failed safely before runtime
+mutation even though the staged dependency SHA-256 remained exact. The stage
+recorded `1,070,668 KB` from `du -sk`; the same published
+`.node_modules-release` tree later measured `1,070,672 KB`, a 4 KiB allocated
+block difference, while its deterministic dependency SHA-256 remained exactly
+`8b471e64b99a922fd01633897429e799d7240325fc86f103a019452f2af62f54`.
+
+Durable rule: content/tree hashes prove release identity. Filesystem allocated
+size is useful for capacity planning and must be positive, but exact equality of
+`du` output must never gate activation because allocation metadata can drift
+without byte/tree drift. A zero-mutation activation dry run with only that
+equality relaxed reached `PREPARED`, proving there was no second hidden blocker.
+
+The incident also exposed an observability gap: the remote activation script used
+`set -e` but returned only `ssh exited 1` for a failed assertion. Activation now
+emits a bounded `ACTIVATION_ASSERTION_FAILED` diagnostic containing line, exit
+code, and shell command. This changes diagnosis only; fail-closed behavior,
+rollback traps, Wolo protection, and mutation authority remain unchanged.

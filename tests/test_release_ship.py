@@ -991,6 +991,19 @@ class ShipTests(unittest.TestCase):
             script,
         )
         self.assertIn(
+            'candidate_dependency_kb="$(du -sk .node_modules-release',
+            script,
+        )
+        self.assertIn(
+            'test "$candidate_dependency_kb" -gt 0',
+            script,
+        )
+        self.assertNotIn(
+            'test "$candidate_dependency_kb" = "$DEPENDENCY_KB"',
+            script,
+        )
+        self.assertIn("ACTIVATION_ASSERTION_FAILED", script)
+        self.assertIn(
             'dependency_fetch_scripts_disabled=1',
             script,
         )

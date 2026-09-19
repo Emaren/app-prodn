@@ -646,7 +646,10 @@ to retry blindly.
 Before the runtime swap, activation re-verifies:
 
 - the bound stage receipt and its hashes;
-- exact candidate artifact identity;
+- exact candidate artifact and dependency-tree SHA-256 identity;
+- positive candidate dependency allocation as capacity telemetry only — filesystem
+  allocated KB is never an identity equality because block allocation can change
+  without any dependency byte/tree change;
 - previous source/live runtime identity and unchanged build-version sidecar;
 - service health;
 - internal/public live version parity;
@@ -654,7 +657,10 @@ Before the runtime swap, activation re-verifies:
 - canonical Git transport;
 - protected WOLO counts.
 
-Dry-run activation performs zero production mutation.
+Dry-run activation performs zero production mutation. Remote activation assertions
+emit a bounded `ACTIVATION_ASSERTION_FAILED` line with the failing shell line,
+exit code, and command text so a pre-mutation stop is diagnosable without weakening
+the fail-closed boundary.
 
 ### 8. Activate with rollback trap armed
 
