@@ -772,6 +772,8 @@ def collect_control_snapshot(
 
 def collect_plan(
     release_data: dict[str, Any] | None = None,
+    *,
+    preserve_context_history: bool = False,
 ) -> dict[str, Any]:
     audit = aoe2_audit.collect_audit()
     payload = audit.payload()
@@ -808,18 +810,36 @@ def collect_plan(
                 }
             )
 
+    auto_remediable_p1 = [
+        finding
+        for finding in payload["findings"]
+        if (
+            finding["severity"] == "P1"
+            and finding.get("area") == "Context Durability"
+            and finding.get("key") == "archive-retention-drift"
+            and not preserve_context_history
+        )
+    ]
+    auto_remediable_p1_ids = {id(finding) for finding in auto_remediable_p1}
     unknown_p1 = [
         finding
         for finding in payload["findings"]
         if finding["severity"] == "P1"
         and finding["key"] not in AUTO_P1_KEYS
+        and id(finding) not in auto_remediable_p1_ids
     ]
 
     context_projects: set[str] = set()
     for finding in payload["findings"]:
-        if finding["severity"] == "P1" and finding["key"] == "archive-stale":
+        if (
+            finding["severity"] == "P1"
+            and finding["key"] in {"archive-stale", "archive-retention-drift"}
+        ):
             project = archive_project_from_finding(finding["detail"])
-            if project:
+            if project and (
+                finding["key"] != "archive-retention-drift"
+                or not preserve_context_history
+            ):
                 context_projects.add(project)
 
     for repo_id in baseline_refreshes:
@@ -877,6 +897,7 @@ def collect_plan(
         "baseline_refreshes": sorted(baseline_refreshes),
         "blocked_source_docs": blocked_source_docs,
         "auto_remediable_p0": auto_remediable_p0,
+        "auto_remediable_p1": auto_remediable_p1,
         "unknown_p0": unknown_p0,
         "unknown_p1": unknown_p1,
         "estate_maps": estate_maps,
@@ -2099,7 +2120,9 @@ def main() -> int:
             progress.done("Maintenance + release locks acquired")
 
             progress.start("Auditing estate and building locked update plan...")
-            locked_plan = collect_plan()
+            locked_plan = collect_plan(
+                preserve_context_history=args.preserve_context_history,
+            )
             locked_audit = locked_plan["audit"]
             progress.done(
                 "Locked update plan built — "

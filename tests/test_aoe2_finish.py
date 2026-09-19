@@ -180,6 +180,14 @@ class FinishTests(unittest.TestCase):
                     "detail": "stale central registry",
                 }
             ],
+            "auto_remediable_p1": [
+                {
+                    "severity": "P1",
+                    "area": "Context Durability",
+                    "key": "archive-retention-drift",
+                    "detail": "AoE2WAR-docs: 2 TGZ cameras retained",
+                }
+            ],
             "unknown_p0": [],
             "unknown_p1": [],
             "estate_maps": {"status": "deferred"},
@@ -193,6 +201,10 @@ class FinishTests(unittest.TestCase):
             ["docs-check"],
         )
         self.assertEqual(summary["unknown_p0"], [])
+        self.assertEqual(
+            [item["key"] for item in summary["auto_remediable_p1"]],
+            ["archive-retention-drift"],
+        )
 
     def test_documentation_reconcile_propagates_context_preservation(self):
         plan = {
@@ -208,7 +220,7 @@ class FinishTests(unittest.TestCase):
             MODULE.aoe2_update,
             "collect_plan",
             return_value=plan,
-        ), patch.object(MODULE, "run_live") as run_live:
+        ) as collect_plan, patch.object(MODULE, "run_live") as run_live:
             MODULE.reconcile_documentation(
                 label="Pre-release",
                 progress=MODULE.Progress(enabled=False),
@@ -217,6 +229,7 @@ class FinishTests(unittest.TestCase):
                 preserve_context_history=True,
             )
 
+        collect_plan.assert_called_once_with(preserve_context_history=True)
         args = run_live.call_args.args[0]
         self.assertIn("--preserve-context-history", args)
         self.assertIn("--defer-context", args)
