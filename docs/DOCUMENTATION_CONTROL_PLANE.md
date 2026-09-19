@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/watcher-staging-privileged-apply` at `1e94b82d42f3ae2c20613142ac42fc5ec245157e`
+Implementation baseline: `fix/release-dependency-allocation-telemetry` at `d0ba173fd65363e5457fb4b753242f0680efc26a`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
