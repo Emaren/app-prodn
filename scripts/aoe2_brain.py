@@ -626,7 +626,7 @@ def brain_recommendations(
                         f"latest finish status={finish.get('status')} "
                         f"phase={finish.get('failed_phase') or finish.get('active_phase')}"
                     ),
-                    "action": "aoe2war finish --preserve-context-history",
+                    "action": "aoe2war finish",
                 }
             )
 

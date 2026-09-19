@@ -149,6 +149,33 @@ class AuditCommandTests(unittest.TestCase):
         self.assertTrue(any(item.key == "documentation-drift" for item in audit.findings))
         self.assertIn("WATCHER_RELEASE_DOCS_STALE", audit.info["source_documentation_checkers"]["aoe2-watcher"]["summary"])
 
+    def test_context_archive_retention_drift_is_p1(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            tgz = root / "context" / "tgz"
+            sha = root / "context" / "sha256"
+            tgz.mkdir(parents=True)
+            sha.mkdir(parents=True)
+            older = tgz / "Test-context-host-20260919-010000.tgz"
+            newest = tgz / "Test-context-host-20260919-020000.tgz"
+            older.write_bytes(b"older")
+            newest.write_bytes(b"newest")
+            digest = MODULE.sha256(newest)
+            (sha / f"{newest.name}.sha256").write_text(
+                f"{digest}  {newest.name}\n", encoding="utf-8"
+            )
+            audit = MODULE.Audit()
+            with (
+                patch.object(MODULE, "VPSSENTRY", root),
+                patch.object(MODULE, "ARCHIVE_SERIES", {"Test": []}),
+            ):
+                MODULE.check_context_archives(audit)
+
+        drift = [item for item in audit.findings if item.key == "archive-retention-drift"]
+        self.assertEqual(len(drift), 1)
+        self.assertEqual(drift[0].severity, "P1")
+        self.assertFalse(any(item.severity == "P0" for item in audit.findings))
+
     def test_archive_timestamp(self):
         value = MODULE.archive_timestamp(
             "AoE2HDBets-context-Tonys_Laptop-20260810-163416.tgz"

@@ -121,7 +121,7 @@ Usage:
   aoe2war docs <status|impact|audit|update> [options]
   aoe2war speed [status|release-history|benchmark|compare|browser|browser-truth|cold-lcp|diagnose|inventory|edge|build|campaign|pulse]
   aoe2war storage-retention [--apply] [--json]
-  aoe2war storage <status|plan|maintain|verify> [options]
+  aoe2war storage <status|estate|local-maintain|plan|maintain|verify> [options]
   aoe2war council [--json]
   aoe2war brain [--json]
   aoe2war workspace <status|plan|clean> [options]

@@ -606,20 +606,28 @@ def commit_epoch(repo: Path) -> int | None:
     return int(out) if rc == 0 and out.isdigit() else None
 
 
-def latest_archive(series: str) -> Path | None:
-    root = VPSSENTRY / "context" / "tgz"
-    if not root.is_dir():
-        return None
-    candidates = list(root.glob(f"{series}-context-*.tgz"))
-    return max(candidates, key=lambda path: path.stat().st_mtime) if candidates else None
-
-
 def check_context_archives(audit: Audit) -> None:
     sha_dir = VPSSENTRY / "context" / "sha256"
     results: dict[str, Any] = {}
 
     for series, source_repos in ARCHIVE_SERIES.items():
-        archive = latest_archive(series)
+        archive_root = VPSSENTRY / "context" / "tgz"
+        candidates = (
+            list(archive_root.glob(f"{series}-context-*.tgz"))
+            if archive_root.is_dir()
+            else []
+        )
+        if len(candidates) > 1:
+            audit.add(
+                "P1",
+                "Context Durability",
+                "archive-retention-drift",
+                (
+                    f"{series}: {len(candidates)} TGZ cameras retained; "
+                    "expected one outside explicit forensic preservation"
+                ),
+            )
+        archive = max(candidates, key=lambda path: path.stat().st_mtime) if candidates else None
         if archive is None:
             audit.add("P0", "Context Durability", "archive-missing", series)
             continue
