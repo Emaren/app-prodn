@@ -751,13 +751,14 @@ class PerformanceOSTests(unittest.TestCase):
 
     def test_full_speed_cohort_v2_covers_current_world_surfaces(self):
         routes = SPEED_MODULE.route_list(True)
-        self.assertEqual(len(routes), 78)
+        self.assertEqual(len(routes), 79)
         self.assertEqual(len(routes), len(set(routes)))
         for route in (
             "/wargraph",
             "/national-champions",
             "/kingdom-forge",
             "/kingdom-intelligence",
+            "/general-inspections",
             "/round-chamber",
             "/oracle",
             "/speed",
@@ -927,12 +928,13 @@ class PerformanceOSTests(unittest.TestCase):
 
     def test_browser_truth_cohort_is_bounded_unique_and_targets_critical_routes(self):
         routes = SPEED_MODULE.BROWSER_TRUTH_ROUTES
-        self.assertEqual(len(routes), 15)
+        self.assertEqual(len(routes), 16)
         paths = [row["route"] for row in routes]
         self.assertEqual(len(paths), len(set(paths)))
         self.assertIn("/bets", paths)
         self.assertIn("/live-games", paths)
         self.assertIn("/kingdom-intelligence", paths)
+        self.assertIn("/general-inspections", paths)
         self.assertIn("/leaderboard", paths)
         self.assertTrue(next(row for row in routes if row["route"] == "/bets")["expect_ready"])
 
@@ -970,7 +972,7 @@ class PerformanceOSTests(unittest.TestCase):
             self.assertFalse(payload["database_mutated"])
             self.assertFalse(payload["wolo_mutated"])
             self.assertTrue((target / "routes.json").is_file())
-            self.assertEqual(len(json.loads((target / "routes.json").read_text())), 15)
+            self.assertEqual(len(json.loads((target / "routes.json").read_text())), 16)
 
     def test_browser_truth_requires_certified_release(self):
         with patch.object(

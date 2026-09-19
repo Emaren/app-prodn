@@ -362,6 +362,38 @@ class KingdomIntelligenceTests(unittest.TestCase):
             all(row["status"] == "PASS" for row in payload["invariants"])
         )
 
+    def test_healthy_docs_due_soon_and_idle_workspace_remain_healthy(self):
+        source = MODULE.source_summary(release())
+        perf = performance()
+        perf["matches_current_release"] = True
+        current_truth = truth()
+        current_truth["matches_current_release"] = True
+        current_council = council()
+        current_council["docs_due_7d"] = 11
+        current_council["workspace"] = {
+            "canonical_drift_count": 0,
+            "active_agent_count": 0,
+            "unmerged_count": 0,
+            "preserved_dirty_count": 1,
+        }
+
+        agents = MODULE.system_agent_rows(
+            source=source,
+            council=current_council,
+            truth=current_truth,
+            performance=perf,
+            control=control(),
+            storage_campaign={"status": "NONE"},
+            recovery_campaign={"status": "NONE"},
+        )
+        docs_agent = next(item for item in agents if item["key"] == "documentation")
+        workspace_agent = next(item for item in agents if item["key"] == "workspace")
+
+        self.assertEqual(docs_agent["state"], "HEALTHY")
+        self.assertIn("11 document review", docs_agent["summary"])
+        self.assertEqual(workspace_agent["state"], "HEALTHY")
+        self.assertIn("Workspace healthy", workspace_agent["summary"])
+
     def test_agent_roster_is_eight_os_agents_plus_doctor(self):
         source = MODULE.source_summary(release())
         perf = performance()
