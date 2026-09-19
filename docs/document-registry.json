@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "300586bf23d6580ba716bed9bd2398cbf99ecab8c56c882a9fabdf764cd93716",
+      "sha256": "bf5b323b6c1e215d25379fea5b1b5a7e64a0d95be8839db390a4154bb24d68d3",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "perf/header-logo-edge-direct-v1",
-    "commit": "2c4172101343f3ed7c969b6618a2eabdb4c2461e"
+    "branch": "perf/cold-lcp-watchdog-v1",
+    "commit": "1f3686c1ca1b12f1c397205898ccea50498423df"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
