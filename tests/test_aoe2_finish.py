@@ -229,9 +229,54 @@ class FinishTests(unittest.TestCase):
                 preserve_context_history=True,
             )
 
-        collect_plan.assert_called_once_with(preserve_context_history=True)
+        collect_plan.assert_called_once_with(
+            preserve_context_history=True,
+            defer_runtime_provenance=False,
+        )
         args = run_live.call_args.args[0]
         self.assertIn("--preserve-context-history", args)
+        self.assertIn("--defer-context", args)
+
+    def test_documentation_reconcile_propagates_finish_runtime_provenance_deferral(self):
+        plan = {
+            "blocked": False,
+            "changes_needed": True,
+            "baseline_refreshes": [],
+            "central_sync": False,
+            "context_projects": [],
+            "blocked_source_docs": [],
+            "auto_remediable_p0": [
+                {
+                    "severity": "P0",
+                    "area": "Release Engine",
+                    "key": "runtime-provenance",
+                    "detail": "status='legacy-unmanifested'",
+                }
+            ],
+            "auto_remediable_p1": [],
+            "unknown_p0": [],
+            "unknown_p1": [],
+            "estate_maps": {"status": "deferred"},
+        }
+        with patch.object(
+            MODULE.aoe2_update,
+            "collect_plan",
+            return_value=plan,
+        ) as collect_plan, patch.object(MODULE, "run_live") as run_live:
+            MODULE.reconcile_documentation(
+                label="Pre-release",
+                progress=MODULE.Progress(enabled=False),
+                json_mode=False,
+                defer_context=True,
+                defer_runtime_provenance=True,
+            )
+
+        collect_plan.assert_called_once_with(
+            preserve_context_history=False,
+            defer_runtime_provenance=True,
+        )
+        args = run_live.call_args.args[0]
+        self.assertIn("--defer-runtime-provenance", args)
         self.assertIn("--defer-context", args)
 
     def test_local_worktree_wins_when_vps_clean(self):

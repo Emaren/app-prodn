@@ -62,6 +62,19 @@ def certified_release(source: str = "a" * 40) -> dict:
     }
 
 
+def legacy_unmanifested_release(source: str = "a" * 40) -> dict:
+    data = certified_release(source)
+    data["certification"] = {
+        "status": "legacy-unmanifested",
+        "release_sha": None,
+        "active_build_id": None,
+        "build_version": None,
+        "artifact_sha256": None,
+        "receipt_path": None,
+    }
+    return data
+
+
 class UpdateCommandTests(unittest.TestCase):
     def test_context_preservation_skips_pre_capture_pruning(self):
         MODULE.prune_context_before_capture(
@@ -231,6 +244,85 @@ class UpdateCommandTests(unittest.TestCase):
             {"docs-check", "strict-build"},
         )
         self.assertEqual(plan["unknown_p0"], [])
+
+    def test_runtime_provenance_finish_remediation_requires_exact_healthy_source(self):
+        data = legacy_unmanifested_release()
+        self.assertTrue(MODULE.runtime_provenance_finish_remediable(data))
+
+        mutations = [
+            ("github mismatch", lambda x: x["github"].__setitem__("main_sha", "b" * 40)),
+            ("production source mismatch", lambda x: x["production"].__setitem__("source_sha", "b" * 40)),
+            ("local dirty", lambda x: x["local"].__setitem__("dirty_count", 1)),
+            ("production dirty", lambda x: x["production"].__setitem__("dirty_count", 1)),
+            ("production unreachable", lambda x: x["production"].__setitem__("reachable", False)),
+            ("service inactive", lambda x: x["production"].__setitem__("service", "inactive")),
+            ("version parity false", lambda x: x["production"].__setitem__("version_parity", False)),
+            ("missing build id", lambda x: x["production"].__setitem__("active_build_id", "")),
+            ("wolo 8092 abnormal", lambda x: x["production"].__setitem__("wolo_8092_count", 0)),
+            ("wolo 8093 abnormal", lambda x: x["production"].__setitem__("wolo_8093_count", 2)),
+            ("already certified", lambda x: x["certification"].__setitem__("status", "CERTIFIED")),
+        ]
+        for label, mutate in mutations:
+            with self.subTest(label=label):
+                candidate = legacy_unmanifested_release()
+                mutate(candidate)
+                self.assertFalse(
+                    MODULE.runtime_provenance_finish_remediable(candidate)
+                )
+
+    def test_collect_plan_defers_runtime_provenance_only_when_finish_authorizes_it(self):
+        audit = mock.Mock()
+        audit.payload.return_value = {
+            "p0": 1,
+            "p1": 0,
+            "findings": [
+                {
+                    "severity": "P0",
+                    "area": "Release Engine",
+                    "key": "runtime-provenance",
+                    "detail": "status='legacy-unmanifested'",
+                },
+            ],
+        }
+
+        with mock.patch.object(
+            MODULE.aoe2_audit,
+            "collect_audit",
+            return_value=audit,
+        ), mock.patch.object(
+            MODULE,
+            "source_checker",
+            return_value=(0, "PASS"),
+        ), mock.patch.object(
+            MODULE,
+            "estate_map_refresh_plan",
+            return_value={
+                "status": "deferred",
+                "reason": "post-deploy",
+                "intended_source_sha": "a" * 40,
+            },
+        ):
+            default = MODULE.collect_plan(
+                release_data=legacy_unmanifested_release(),
+            )
+            finish = MODULE.collect_plan(
+                release_data=legacy_unmanifested_release(),
+                defer_runtime_provenance=True,
+            )
+
+        self.assertTrue(default["blocked"])
+        self.assertEqual(default["auto_remediable_p0"], [])
+        self.assertEqual(
+            [item["key"] for item in default["unknown_p0"]],
+            ["runtime-provenance"],
+        )
+
+        self.assertFalse(finish["blocked"])
+        self.assertEqual(
+            [item["key"] for item in finish["auto_remediable_p0"]],
+            ["runtime-provenance"],
+        )
+        self.assertEqual(finish["unknown_p0"], [])
 
     def test_collect_plan_keeps_nonremediable_p0_blocking(self):
         audit = mock.Mock()

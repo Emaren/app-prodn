@@ -80,6 +80,8 @@ human diagnosis only for failure classes that have a tested recovery contract.
 | Prisma Client absent/stale locally | `npx prisma generate` | Committed schema + project Prisma toolchain | Continue validation |
 | Ordinary context archive-retention drift, preservation off | Classify as self-remediable; bounded keep-latest-1 runs before capture | Context series, retention tool, capture verification | Continue documentation/update flow |
 | Context archive-retention drift, explicit preservation on | None | `--preserve-context-history` operator intent | Stop until preservation intent or archive state changes |
+| Exact healthy source with `legacy-unmanifested` runtime provenance inside Finish when a governed deploy is already required | Defer that P0 only to Finish's immediately-following deploy/certification phase | Local/GitHub/production source exact; clean local/production trees; service active; version parity; active BUILD_ID; Wolo 8092=1 and 8093=1 | Continue Finish; current-source certification is still mandatory immediately after deployment |
+| `legacy-unmanifested` provenance outside the Finish fast path or with any authority/health invariant missing | None | Ordinary release provenance rules | Stop |
 | Unexpected database frontier | None | Protected migration contract | Stop |
 | Wolo listener boundary abnormal | None | Listener proof | Stop |
 
@@ -97,6 +99,31 @@ not block before its own next authorized remediation step can run.
 archive-retention drift remains blocking and no pruning authority is inferred.
 This keeps ordinary maintenance self-healing without weakening evidence-preserving
 campaigns.
+
+## Finish-only runtime-provenance planning invariant
+
+Runtime provenance remains a P0 by default. Standalone Update/Audit must not
+reinterpret or waive a missing certification receipt.
+
+Finish has one narrower ordering exception. If the active state is
+`legacy-unmanifested`, Finish may classify that P0 as self-remediable only when
+all source authorities are exact, both local and production trees are clean,
+production is reachable and active, public/internal deployment-version parity is
+healthy, an active BUILD_ID exists, protected Wolo listeners remain exactly one
+each, and Finish has independently determined that a governed deployment is
+required.
+
+That exception does not certify the existing artifact. It merely permits
+pre-release documentation/context reconciliation to complete so control can
+reach the immediately-following deployment. The internal Update flag is valid
+only with Finish's deferred-context plus deferred-final-audit fast path. After
+deployment, Finish immediately re-collects release state and
+`assert_certified_release` requires exact current-source certification. The
+post-release Update and final estate audit run without the provenance deferral.
+
+If any authority or health precondition is absent, or if no deployment is due,
+the P0 remains blocking. This preserves the ordering invariant without turning a
+recovery exception into a general provenance bypass.
 
 ## Bounded root-headroom recovery
 

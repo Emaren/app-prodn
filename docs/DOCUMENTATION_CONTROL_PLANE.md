@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/context-retention-plan-remediation` at `9e2fcd1d815d42f4326db0dbfdbbe0622bf555e5`
+Implementation baseline: `fix/finish-runtime-provenance-remediation` at `ab02c2ed5b0170bbde442a520815d781c75c7732`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

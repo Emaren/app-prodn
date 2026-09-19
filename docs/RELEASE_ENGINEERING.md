@@ -1017,6 +1017,21 @@ the remote deployment, and may defer update's broad final estate audit because
 finish performs one authoritative audit after post-release reconciliation and
 Operator Bridge reload.
 
+The same transaction owns one tightly bounded runtime-provenance ordering case.
+When local, GitHub and production source are already exact and healthy but the
+active artifact reports `legacy-unmanifested`, Finish may defer that specific P0
+through pre-release maintenance only if `needs_deploy` already requires a
+governed release and the service/version/BUILD_ID/Wolo invariants are exact.
+Standalone Update remains fail-closed. The internal deferral is accepted only
+with Finish's deferred-context and deferred-final-audit fast path, is recorded in
+the Update receipt, and ends at deployment. Finish then immediately requires
+exact current-source `CERTIFIED` provenance before Workshop, post-release
+documentation, or final closure can succeed.
+
+This is an ordering exception, not provenance inheritance: a certified older
+artifact does not make a newer source commit certified merely because the newer
+delta is tooling or documentation.
+
 The overlap is bounded to the context projects chosen by the locked update plan
 and is settled before post-release update replans the estate. Failure falls back
 to ordinary synchronous post-release context reconciliation.

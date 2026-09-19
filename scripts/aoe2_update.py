@@ -770,10 +770,37 @@ def collect_control_snapshot(
     return map_snapshot, closure_snapshot
 
 
+def runtime_provenance_finish_remediable(
+    release_data: dict[str, Any],
+) -> bool:
+    """Return True only for exact healthy source awaiting Finish certification."""
+    local = release_data.get("local") or {}
+    github = release_data.get("github") or {}
+    production = release_data.get("production") or {}
+    certification = release_data.get("certification") or {}
+    source = str(local.get("head") or "")
+
+    return bool(
+        len(source) == 40
+        and github.get("main_sha") == source
+        and production.get("reachable") is True
+        and production.get("source_sha") == source
+        and local.get("dirty_count") in (0, None)
+        and production.get("dirty_count") in (0, None)
+        and production.get("service") == "active"
+        and production.get("version_parity") is True
+        and bool(production.get("active_build_id"))
+        and production.get("wolo_8092_count") == 1
+        and production.get("wolo_8093_count") == 1
+        and certification.get("status") == "legacy-unmanifested"
+    )
+
+
 def collect_plan(
     release_data: dict[str, Any] | None = None,
     *,
     preserve_context_history: bool = False,
+    defer_runtime_provenance: bool = False,
 ) -> dict[str, Any]:
     audit = aoe2_audit.collect_audit()
     payload = audit.payload()
@@ -867,14 +894,26 @@ def collect_plan(
         for finding in payload["findings"]
         if finding["severity"] == "P0"
     ]
+    runtime_provenance_can_defer = bool(
+        defer_runtime_provenance
+        and release_data
+        and runtime_provenance_finish_remediable(release_data)
+    )
     auto_remediable_p0 = [
         finding
         for finding in p0_findings
         if (
-            central_sync_needed
-            and not blocked_source_docs
-            and finding.get("area") == "Documentation"
-            and finding.get("key") in AUTO_REMEDIABLE_CENTRAL_P0_KEYS
+            (
+                central_sync_needed
+                and not blocked_source_docs
+                and finding.get("area") == "Documentation"
+                and finding.get("key") in AUTO_REMEDIABLE_CENTRAL_P0_KEYS
+            )
+            or (
+                runtime_provenance_can_defer
+                and finding.get("area") == "Release Engine"
+                and finding.get("key") == "runtime-provenance"
+            )
         )
     ]
     auto_remediable_p0_ids = {id(finding) for finding in auto_remediable_p0}
@@ -1803,6 +1842,7 @@ def apply_update(
     defer_final_audit: bool = False,
     force_control_refresh: bool = False,
     preserve_context_history: bool = False,
+    defer_runtime_provenance: bool = False,
 ) -> int:
     if plan["blocked"]:
         raise UpdateError("update plan is blocked; resolve findings manually")
@@ -1862,6 +1902,9 @@ def apply_update(
         "final_audit_deferred": bool(defer_final_audit),
         "force_control_refresh": bool(force_control_refresh),
         "preserve_context_history": bool(preserve_context_history),
+        "runtime_provenance_deferred_to_finish": bool(
+            defer_runtime_provenance
+        ),
     }
 
     try:
@@ -2086,6 +2129,15 @@ def main() -> int:
             "intended for evidence-preserving campaigns"
         ),
     )
+    parser.add_argument(
+        "--defer-runtime-provenance",
+        action="store_true",
+        help=(
+            "internal Finish-only path: allow exact healthy legacy-unmanifested "
+            "runtime provenance to be repaired by the immediately-following "
+            "governed deployment"
+        ),
+    )
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
 
@@ -2094,8 +2146,17 @@ def main() -> int:
         or args.defer_final_audit
         or args.force_control_refresh
         or args.preserve_context_history
+        or args.defer_runtime_provenance
     ) and not args.apply:
         parser.error("defer/force flags require --apply")
+
+    if args.defer_runtime_provenance and not (
+        args.defer_context and args.defer_final_audit
+    ):
+        parser.error(
+            "--defer-runtime-provenance is internal to the Finish fast path "
+            "and requires --defer-context plus --defer-final-audit"
+        )
 
     if not args.apply:
         plan = collect_plan()
@@ -2122,6 +2183,7 @@ def main() -> int:
             progress.start("Auditing estate and building locked update plan...")
             locked_plan = collect_plan(
                 preserve_context_history=args.preserve_context_history,
+                defer_runtime_provenance=args.defer_runtime_provenance,
             )
             locked_audit = locked_plan["audit"]
             progress.done(
@@ -2162,6 +2224,7 @@ def main() -> int:
                 defer_final_audit=args.defer_final_audit,
                 force_control_refresh=args.force_control_refresh,
                 preserve_context_history=args.preserve_context_history,
+                defer_runtime_provenance=args.defer_runtime_provenance,
             )
     except (UpdateError, aoe2_release.DeployLockBusy) as exc:
         print(f"STOP: {exc}", file=os.sys.stderr)

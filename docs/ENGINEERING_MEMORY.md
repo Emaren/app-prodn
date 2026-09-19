@@ -1305,3 +1305,33 @@ blocking and pruning authority is not inferred.
 This is an ordering invariant: a controller must not require manual intervention
 for a condition that its own immediately-following governed step is explicitly
 authorized and tested to repair.
+
+
+## 2026-09-19 — Runtime provenance may be deferred only to the deploy that repairs it
+
+After release `0d6c3cc4…` was certified, production source was fast-forwarded to
+canonical `8f41390c…` across an explicitly bounded docs/scripts/tests-only delta
+without restarting or mutating the certified runtime. PID, BUILD_ID, build
+version, public/internal version parity, clean source state, and Wolo 1/1 were
+re-proved and durably receipted. Release OS correctly stopped calling the newer
+source certified: its active runtime status became `legacy-unmanifested`.
+
+Finish then exposed a controller-ordering bug. It correctly determined
+`deploy_expected=true`, but its pre-release Update planner classified
+`runtime-provenance` as unknown P0 and stopped before the governed deploy that
+would create current-source certification.
+
+Durable rule: provenance remains fail-closed everywhere by default. Finish alone
+may defer `runtime-provenance` when local/GitHub/production source are exact,
+local and production are clean, production is reachable and active, deployment
+version parity is healthy, an active BUILD_ID exists, Wolo listeners remain
+exactly one each, certification is specifically `legacy-unmanifested`, and
+Finish already requires a governed deployment. The internal Update deferral is
+restricted to Finish's deferred-context/deferred-final-audit path and is written
+into its receipt.
+
+The exception expires at the deployment boundary. Finish must immediately prove
+exact current-source `CERTIFIED` provenance afterward, and post-release/final
+audits receive no deferral. Deferral therefore means only “allow the controller
+to reach its authorized remediation,” never “inherit certification from an older
+artifact.”
