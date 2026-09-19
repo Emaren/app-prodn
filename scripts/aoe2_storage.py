@@ -3,10 +3,13 @@ from __future__ import annotations
 
 import argparse
 import base64
+from datetime import datetime, timezone
 import hashlib
 import json
+import os
 import re
 import shlex
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -15,6 +18,19 @@ from typing import Any
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACT_PATH = ROOT / "config" / "aoe2war-operations.json"
 WORKER_PATH = ROOT / "scripts" / "aoe2_rollback_archive_one.sh"
+LOCAL_RECEIPT_DIR = ROOT / ".aoe2war-release" / "storage-local-receipts"
+LOCAL_REGENERABLE_PATHS = (
+    ("yarn_cache", Path("Library/Caches/Yarn")),
+    ("go_build_cache", Path("Library/Caches/go-build")),
+    ("pnpm_cache", Path("Library/Caches/pnpm")),
+    ("core_simulator_cache", Path("Library/Developer/CoreSimulator/Caches")),
+)
+LOCAL_PROTECTED_PATHS = (
+    ("recovery_vault", Path("aoe2war-recovery")),
+    ("codex_sessions", Path(".codex/sessions")),
+    ("crossover", Path("Library/Application Support/CrossOver")),
+    ("mobile_sync", Path("Library/Application Support/MobileSync")),
+)
 
 GENERATION_RE = re.compile(r"^activate-\d{8}T\d{6}Z-[0-9a-f]{12}$")
 BUILD_RE = re.compile(r"^[A-Za-z0-9_-]{1,256}$")
@@ -371,6 +387,147 @@ def gib(value: int | float | None) -> str:
     return "—" if value is None else f"{float(value) / (1024 ** 3):.2f} GiB"
 
 
+def _allocated_bytes(path: Path) -> int:
+    if not path.exists() or path.is_symlink():
+        return 0
+    out = run(["du", "-skx", str(path)], timeout=180, check=False)
+    try:
+        return int(out.split()[0]) * 1024
+    except (IndexError, ValueError):
+        return 0
+
+
+def _filesystem_usage(path: Path) -> dict[str, Any]:
+    usage = shutil.disk_usage(path)
+    used_percent = round(usage.used * 100.0 / usage.total, 2) if usage.total else 100.0
+    return {
+        "total_bytes": usage.total,
+        "used_bytes": usage.used,
+        "free_bytes": usage.free,
+        "used_percent": used_percent,
+    }
+
+
+def _context_retention_snapshot(home: Path) -> dict[str, Any]:
+    root = home / "projects" / "VPSSentry" / "context"
+    formats: dict[str, Any] = {}
+    total_debt = 0
+    for suffix in ("tgz", "zip"):
+        directory = root / suffix
+        series: dict[str, int] = {}
+        if directory.is_dir():
+            for path in directory.glob(f"*-context-*.{suffix}"):
+                key = path.name.split("-context-", 1)[0]
+                series[key] = series.get(key, 0) + 1
+        debt = sum(max(0, count - 1) for count in series.values())
+        total_debt += debt
+        formats[suffix] = {
+            "archive_count": sum(series.values()),
+            "series_count": len(series),
+            "retention_debt": debt,
+            "over_retained_series": {
+                name: count for name, count in sorted(series.items()) if count > 1
+            },
+        }
+    return {
+        "root": str(root),
+        "retention_debt": total_debt,
+        "formats": formats,
+    }
+
+
+def local_storage_snapshot(*, measure: bool = False, home: Path | None = None) -> dict[str, Any]:
+    operator_home = (home or Path.home()).resolve()
+    regenerable = []
+    for name, relative in LOCAL_REGENERABLE_PATHS:
+        path = operator_home / relative
+        row = {
+            "name": name,
+            "path": str(path),
+            "exists": path.exists(),
+            "symlink": path.is_symlink(),
+        }
+        if measure:
+            row["allocated_bytes"] = _allocated_bytes(path)
+        regenerable.append(row)
+
+    protected = []
+    for name, relative in LOCAL_PROTECTED_PATHS:
+        path = operator_home / relative
+        row = {
+            "name": name,
+            "path": str(path),
+            "exists": path.exists(),
+            "symlink": path.is_symlink(),
+        }
+        if measure:
+            row["allocated_bytes"] = _allocated_bytes(path)
+        protected.append(row)
+
+    return {
+        "kind": "aoe2war-local-storage-status",
+        "home": str(operator_home),
+        "filesystem": _filesystem_usage(operator_home),
+        "regenerable": regenerable,
+        "protected": protected,
+        "context_retention": _context_retention_snapshot(operator_home),
+        "reclaimable_bytes": sum(int(row.get("allocated_bytes") or 0) for row in regenerable),
+    }
+
+
+REMOTE_ROOT_PROBE = r'''from __future__ import annotations
+import base64, json, os, sys
+from pathlib import Path
+p = json.loads(base64.urlsafe_b64decode(sys.argv[1].encode("ascii")))
+repo = Path(p["production_repo"])
+v = os.statvfs("/")
+block = v.f_frsize or v.f_bsize
+total = v.f_blocks * block
+available = v.f_bavail * block
+used = max(0, total - (v.f_bfree * block))
+den = used + available
+fast = set()
+for pattern in (".next-rollback-activate-*", ".node_modules-rollback-activate-*"):
+    for path in repo.glob(pattern):
+        name = path.name.split("rollback-", 1)[-1]
+        fast.add(name)
+print(json.dumps({
+    "kind": "aoe2war-root-storage-status",
+    "total_bytes": total,
+    "available_bytes": available,
+    "used_percent": round(used * 100.0 / den, 2) if den else 100.0,
+    "fast_rollback_generations": sorted(fast, reverse=True),
+    "fast_rollback_count": len(fast),
+}, sort_keys=True))
+'''
+
+
+def root_storage_snapshot() -> dict[str, Any]:
+    return remote_json(REMOTE_ROOT_PROBE, policy(), timeout=45)
+
+
+def estate_snapshot(*, measure: bool = False) -> dict[str, Any]:
+    volume = snapshot(measure=measure)
+    local = local_storage_snapshot(measure=measure)
+    root = root_storage_snapshot()
+    return {
+        "schema": 1,
+        "kind": "aoe2war-storage-estate-status",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "local": local,
+        "root": root,
+        "volume": volume,
+        "summary": {
+            "local_reclaimable_bytes": local["reclaimable_bytes"],
+            "context_archive_retention_debt": local["context_retention"]["retention_debt"],
+            "root_used_percent": root["used_percent"],
+            "volume_used_percent": volume["used_percent"],
+            "expanded_retention_debt": volume["eligible_expanded_count"],
+            "cold_archive_count": volume["archive_file_count"],
+        },
+    }
+
+
 def print_status(s: dict[str, Any]) -> None:
     print("⚔️  AOE2WAR STORAGE OS")
     print()
@@ -386,6 +543,105 @@ def print_status(s: dict[str, Any]) -> None:
     rt = s["runtime"]
     print(f"Production:      {rt['source_sha'][:12]} · {rt['build_id']} · {rt['service']}")
     print("Wolo:            node/settlement/founder active · 8092=1 · 8093=1")
+
+
+def print_estate(payload: dict[str, Any]) -> None:
+    local = payload["local"]
+    root = payload["root"]
+    volume = payload["volume"]
+    print("⚔️  AOE2WAR STORAGE ESTATE")
+    print()
+    print(
+        f"Mac:             {local['filesystem']['used_percent']:.2f}% used · "
+        f"{gib(local['filesystem']['free_bytes'])} free"
+    )
+    print(f"Mac reclaimable: {gib(local['reclaimable_bytes'])} · strict cache allowlist")
+    print(
+        f"Context debt:    {local['context_retention']['retention_debt']} extra archive(s)"
+    )
+    print(
+        f"VPS root:        {root['used_percent']:.2f}% used · "
+        f"{gib(root['available_bytes'])} available"
+    )
+    print(f"Fast rollback:   {root['fast_rollback_count']} generation(s)")
+    print(
+        f"VPS volume:      {volume['used_percent']:.2f}% used · "
+        f"{gib(volume['available_bytes'])} available · {volume['health']}"
+    )
+    print(f"Expanded debt:   {volume['eligible_expanded_count']} generation(s)")
+    print(f"Cold archives:   {volume['archive_file_count']}")
+
+
+def _assert_local_reclaim_path(home: Path, path: Path) -> None:
+    if path.is_symlink():
+        raise StorageError(f"refusing symlinked local cache path: {path}")
+    resolved_home = home.resolve()
+    resolved = path.resolve()
+    if resolved == resolved_home or resolved_home not in resolved.parents:
+        raise StorageError(f"local cache path escapes operator home: {path}")
+
+
+def local_maintain(*, apply: bool, json_mode: bool, home: Path | None = None) -> int:
+    operator_home = (home or Path.home()).resolve()
+    before = local_storage_snapshot(measure=True, home=operator_home)
+    payload: dict[str, Any] = {
+        "schema": 1,
+        "kind": "aoe2war-local-storage-maintenance",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "apply": apply,
+        "before": before,
+        "actions": [],
+        "status": "PREVIEW",
+    }
+    if apply:
+        for name, relative in LOCAL_REGENERABLE_PATHS:
+            path = operator_home / relative
+            _assert_local_reclaim_path(operator_home, path)
+            existed = path.exists()
+            allocated = _allocated_bytes(path) if existed else 0
+            if existed:
+                if path.is_dir():
+                    shutil.rmtree(path)
+                else:
+                    path.unlink()
+            payload["actions"].append(
+                {
+                    "name": name,
+                    "path": str(path),
+                    "existed": existed,
+                    "allocated_bytes_before": allocated,
+                    "removed": existed and not path.exists(),
+                }
+            )
+        after = local_storage_snapshot(measure=True, home=operator_home)
+        payload["after"] = after
+        payload["reclaimed_bytes"] = max(
+            0,
+            int(after["filesystem"]["free_bytes"]) - int(before["filesystem"]["free_bytes"]),
+        )
+        payload["status"] = "PASS"
+        LOCAL_RECEIPT_DIR.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        receipt = LOCAL_RECEIPT_DIR / f"{stamp}-local-maintenance.json"
+        receipt.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+        receipt.chmod(0o444)
+        payload["receipt"] = str(receipt)
+
+    if json_mode:
+        print(json.dumps(payload, indent=2, sort_keys=True))
+    else:
+        print("⚔️  AOE2WAR LOCAL STORAGE")
+        print()
+        print(f"Status:          {payload['status']}")
+        print(f"Reclaimable:     {gib(before['reclaimable_bytes'])}")
+        print(f"Free before:     {gib(before['filesystem']['free_bytes'])}")
+        if apply:
+            print(f"Free after:      {gib(payload['after']['filesystem']['free_bytes'])}")
+            print(f"Measured gain:   {gib(payload['reclaimed_bytes'])}")
+            print(f"Receipt:         {payload['receipt']}")
+        else:
+            print("READ ONLY: pass --apply to remove only the four allowlisted regenerable caches.")
+    return 0
 
 
 def make_plan() -> dict[str, Any]:
@@ -615,6 +871,12 @@ def parser() -> argparse.ArgumentParser:
     for name in ("status", "plan"):
         q = sub.add_parser(name)
         q.add_argument("--json", action="store_true")
+    q = sub.add_parser("estate")
+    q.add_argument("--json", action="store_true")
+    q.add_argument("--measure", action="store_true")
+    q = sub.add_parser("local-maintain")
+    q.add_argument("--apply", action="store_true")
+    q.add_argument("--json", action="store_true")
     q = sub.add_parser("maintain")
     q.add_argument("--apply", action="store_true")
     q.add_argument("--until-target", action="store_true")
@@ -645,6 +907,14 @@ def main() -> int:
         if not args.json:
             print_plan(payload)
         return 0
+    if args.command == "estate":
+        payload = estate_snapshot(measure=args.measure)
+        print(json.dumps(payload, indent=2, sort_keys=True) if args.json else "", end="")
+        if not args.json:
+            print_estate(payload)
+        return 0
+    if args.command == "local-maintain":
+        return local_maintain(apply=args.apply, json_mode=args.json)
     if args.command == "maintain":
         return maintain(apply=args.apply, until_target=args.until_target, max_generations=args.max_generations, force=args.force)
     if args.command == "verify":

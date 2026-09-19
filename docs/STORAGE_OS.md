@@ -24,6 +24,9 @@ Primary operator surface:
 
 ```bash
 aoe2war storage status
+aoe2war storage estate --measure
+aoe2war storage local-maintain
+aoe2war storage local-maintain --apply
 aoe2war storage plan
 aoe2war storage maintain
 aoe2war storage maintain --apply
@@ -47,6 +50,34 @@ primitive and never deletes durable rollback generations.
   archives with exact manifests and immutable receipts.
 - **Legacy/unknown:** never changed automatically.
 - **Regenerable:** separate bounded cache/staging retention lanes.
+
+## Whole-estate census and local reclaim
+
+`aoe2war storage estate` is the fast cross-plane storage census. It reports the
+operator Mac filesystem, VPS root filesystem, mounted production volume, fast
+rollback count, expanded rollback debt, and cold archive count in one command.
+Pass `--measure` when exact local cache allocation is worth the extra filesystem
+walk. The estate census also measures generated context-camera retention debt:
+more than one ZIP or TGZ per series is surfaced as structural debt, and the
+canonical audit raises a P1 when a core TGZ series is over-retained.
+
+Ordinary `aoe2war finish` remains the normal closure path and allows the context
+retention policy to collapse each generated series to its newest camera.
+`--preserve-context-history` is an exceptional forensic switch: it deliberately
+suspends that pruning and should not be carried into routine Finish runs.
+
+`aoe2war storage local-maintain` is deliberately narrower than a generic disk
+cleaner. Preview mode measures exactly four allowlisted regenerable Mac caches:
+Yarn, Go build cache, pnpm cache, and CoreSimulator cache. `--apply` removes only
+those paths, refuses symlinks/path escape, remeasures free space, and seals a
+local maintenance receipt. Recovery vaults, Codex sessions, CrossOver bottles,
+MobileSync backups, project sources, and evidence are observable protected
+classes and are never targets of this command.
+
+Capacity health and retention topology are separate facts. A volume below the
+capacity threshold may still carry structural rollback debt. The lean-retention
+expiry lane remains authoritative for reducing the runtime estate to two hot
+expanded rollback generations plus three proven cold checkpoints.
 
 ## Capacity policy
 

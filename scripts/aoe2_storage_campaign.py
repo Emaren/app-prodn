@@ -69,6 +69,14 @@ def save_state(state: dict[str, Any]) -> None:
     atomic_write(state_path(str(state["campaign_id"])), state)
 
 
+def refresh_operator_signals(state: dict[str, Any]) -> None:
+    """Merge operator-owned signals without letting stale controller state erase them."""
+    persisted = load_state(str(state["campaign_id"]))
+    if persisted.get("pause_requested"):
+        state["pause_requested"] = True
+        state["pause_requested_at"] = persisted.get("pause_requested_at") or utc_now()
+
+
 def process_alive(pid: int | None) -> bool:
     if not isinstance(pid, int) or pid <= 0:
         return False
@@ -227,6 +235,7 @@ def run_campaign(campaign_id: str) -> int:
     try:
         while True:
             validate_bound_baseline(state)
+            refresh_operator_signals(state)
 
             if state.get("pause_requested"):
                 mark_terminal(
@@ -322,6 +331,10 @@ def run_campaign(campaign_id: str) -> int:
             state["current_generation_started_at"] = None
             state["status"] = "RUNNING"
             state["last_storage_status"] = current
+            # A cooperative pause may have been requested while the bounded
+            # one-generation worker was running. Merge that operator-owned
+            # signal before persisting progress so stale state cannot erase it.
+            refresh_operator_signals(state)
             save_state(state)
 
             storage.print_status(current)

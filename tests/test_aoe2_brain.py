@@ -817,7 +817,7 @@ class KingdomIntelligenceTests(unittest.TestCase):
         self.assertEqual(rows[0]["key"], "finish-closure")
         self.assertEqual(
             rows[0]["action"],
-            "aoe2war finish --preserve-context-history",
+            "aoe2war finish",
         )
 
     def test_old_replay_closure_is_not_current_truth(self):

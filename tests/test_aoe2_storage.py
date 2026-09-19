@@ -2,6 +2,7 @@ import importlib.util
 import inspect
 import pathlib
 import subprocess
+import tempfile
 import unittest
 from unittest import mock
 
@@ -351,6 +352,99 @@ class StorageOSTests(unittest.TestCase):
 
         self.assertEqual(rc, 0)
         worker.assert_not_called()
+
+    def test_local_maintain_removes_only_allowlisted_regenerable_paths(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = pathlib.Path(directory)
+            for _, relative in MODULE.LOCAL_REGENERABLE_PATHS:
+                path = home / relative
+                path.mkdir(parents=True)
+                (path / "cache.bin").write_bytes(b"cache")
+            protected = home / "aoe2war-recovery"
+            protected.mkdir()
+            (protected / "proof.bin").write_bytes(b"proof")
+            receipts = home / "receipts"
+
+            with mock.patch.object(MODULE, "LOCAL_RECEIPT_DIR", receipts):
+                rc = MODULE.local_maintain(apply=True, json_mode=True, home=home)
+
+            self.assertEqual(rc, 0)
+            for _, relative in MODULE.LOCAL_REGENERABLE_PATHS:
+                self.assertFalse((home / relative).exists())
+            self.assertTrue((protected / "proof.bin").is_file())
+            self.assertEqual(len(list(receipts.glob("*-local-maintenance.json"))), 1)
+
+    def test_local_maintain_refuses_symlinked_allowlist_path(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = pathlib.Path(directory)
+            target = home / "real-cache"
+            target.mkdir()
+            relative = MODULE.LOCAL_REGENERABLE_PATHS[0][1]
+            path = home / relative
+            path.parent.mkdir(parents=True)
+            path.symlink_to(target, target_is_directory=True)
+
+            with self.assertRaises(MODULE.StorageError):
+                MODULE.local_maintain(apply=True, json_mode=True, home=home)
+
+            self.assertTrue(target.is_dir())
+
+    def test_context_retention_snapshot_counts_only_extra_archives(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = pathlib.Path(directory)
+            tgz = home / "projects/VPSSentry/context/tgz"
+            zip_dir = home / "projects/VPSSentry/context/zip"
+            tgz.mkdir(parents=True)
+            zip_dir.mkdir(parents=True)
+            for name in (
+                "AoE2HDBets-context-host-20260919-010000.tgz",
+                "AoE2HDBets-context-host-20260919-020000.tgz",
+                "VPS-context-host-20260919-020000.tgz",
+            ):
+                (tgz / name).write_bytes(b"x")
+            (zip_dir / "AoE2HDBets-context-host-20260919-020000.zip").write_bytes(b"x")
+
+            payload = MODULE._context_retention_snapshot(home)
+
+        self.assertEqual(payload["retention_debt"], 1)
+        self.assertEqual(payload["formats"]["tgz"]["archive_count"], 3)
+        self.assertEqual(
+            payload["formats"]["tgz"]["over_retained_series"],
+            {"AoE2HDBets": 2},
+        )
+
+    def test_estate_summary_keeps_capacity_and_retention_debt_separate(self):
+        with (
+            mock.patch.object(
+                MODULE,
+                "snapshot",
+                return_value={
+                    "used_percent": 77.0,
+                    "available_bytes": 10,
+                    "eligible_expanded_count": 12,
+                    "archive_file_count": 3,
+                },
+            ),
+            mock.patch.object(
+                MODULE,
+                "local_storage_snapshot",
+                return_value={
+                    "reclaimable_bytes": 20,
+                    "context_retention": {"retention_debt": 3},
+                },
+            ),
+            mock.patch.object(
+                MODULE,
+                "root_storage_snapshot",
+                return_value={"used_percent": 80.0},
+            ),
+        ):
+            payload = MODULE.estate_snapshot(measure=False)
+
+        self.assertEqual(payload["summary"]["volume_used_percent"], 77.0)
+        self.assertEqual(payload["summary"]["expanded_retention_debt"], 12)
+        self.assertEqual(payload["summary"]["cold_archive_count"], 3)
+        self.assertEqual(payload["summary"]["context_archive_retention_debt"], 3)
 
 
 if __name__ == "__main__":

@@ -60,6 +60,33 @@ class StorageCampaignTests(unittest.TestCase):
         self.assertIn("stdout=log", source)
         self.assertIn("stderr=subprocess.STDOUT", source)
 
+    def test_refresh_operator_signals_preserves_persisted_pause(self):
+        state = {
+            "campaign_id": "test",
+            "pause_requested": False,
+            "pause_requested_at": None,
+        }
+        persisted = {
+            "campaign_id": "test",
+            "pause_requested": True,
+            "pause_requested_at": "2026-09-19T15:00:00+00:00",
+        }
+        with mock.patch.object(campaign, "load_state", return_value=persisted):
+            campaign.refresh_operator_signals(state)
+        self.assertTrue(state["pause_requested"])
+        self.assertEqual(
+            state["pause_requested_at"],
+            "2026-09-19T15:00:00+00:00",
+        )
+
+    def test_pause_signal_is_refreshed_after_worker_before_progress_save(self):
+        source = Path(campaign.__file__).read_text(encoding="utf-8")
+        invoke = source.index("storage.invoke_worker(")
+        refresh = source.index("refresh_operator_signals(state)", invoke)
+        save = source.index("save_state(state)", refresh)
+        self.assertLess(invoke, refresh)
+        self.assertLess(refresh, save)
+
     def test_pause_is_between_generations_not_signal_kill(self):
         source = Path(campaign.__file__).read_text(encoding="utf-8")
 

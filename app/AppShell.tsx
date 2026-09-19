@@ -142,8 +142,8 @@ const KINGDOM_LINKS = [
   { href: "/kingdom-forge", label: "Kingdom Forge", icon: Anvil, body: "Forge Power, projects, milestones, and deeds" },
   { href: "/round-chamber", label: "The Chamber", icon: Scale, body: "Proposals, civic ballots, and public mandates" },
   { href: "/statistics", label: "Kingdom Statistics", icon: BarChart3, body: "WOLO, users, bets, games, watchers, and growth" },
-  { href: "/speed", label: "Speed", icon: Zap, body: "Your live performance and readiness measurements" },
   { href: "/general-inspections", label: "General Inspections", icon: ClipboardCheck, body: "Live readiness scores across the whole kingdom" },
+  { href: "/speed", label: "Speed", icon: Zap, body: "Your live performance and readiness measurements" },
 ] as const;
 
 const PAGE_HEADINGS: ReadonlyArray<{ prefix: string; title: string }> = [
