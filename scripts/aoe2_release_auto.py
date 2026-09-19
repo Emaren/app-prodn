@@ -18,6 +18,7 @@ from aoe2_release_gate import (
     ROOT,
     gate_release,
     manifest_release,
+    same_source_recertification_allowed,
 )
 from aoe2_release_ship import (
     PROD_HOST,
@@ -27,7 +28,6 @@ from aoe2_release_ship import (
     activate_release,
     load_stage_receipt,
     parse_kv,
-    same_source_recertification_allowed,
 )
 from aoe2_release_stage import (
     REMOTE_RECEIPT_ROOT,

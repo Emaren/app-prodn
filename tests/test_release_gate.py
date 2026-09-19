@@ -410,3 +410,74 @@ class DeterministicPrismaPreparationTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SameSourceManifestPreconditionTests(unittest.TestCase):
+    @staticmethod
+    def sample():
+        source = "a" * 40
+        return {
+            "local": {
+                "head": source,
+                "dirty_count": 0,
+            },
+            "github": {
+                "main_sha": source,
+            },
+            "documentation": {
+                "baseline_is_ancestor_of_local": True,
+            },
+            "production": {
+                "reachable": True,
+                "dirty_count": 0,
+                "source_sha": source,
+                "service": "active",
+                "active_build_id": "live-build",
+                "staged_build_id": None,
+                "version_parity": True,
+                "wolo_8092_count": 1,
+                "wolo_8093_count": 1,
+            },
+            "certification": {
+                "status": "legacy-unmanifested",
+                "release_sha": None,
+                "receipt_path": None,
+            },
+        }
+
+    def test_manifest_allows_exact_healthy_same_source_legacy_recertification(self):
+        data = self.sample()
+        self.assertTrue(MODULE.same_source_recertification_allowed(data))
+        self.assertEqual(MODULE.manifest_precondition_errors(data), [])
+
+    def test_manifest_same_source_certified_runtime_remains_blocked(self):
+        data = self.sample()
+        data["certification"] = {
+            "status": "CERTIFIED",
+            "release_sha": data["local"]["head"],
+            "receipt_path": ".aoe2war-release/activation-receipts/example.json",
+        }
+        self.assertFalse(MODULE.same_source_recertification_allowed(data))
+        errors = MODULE.manifest_precondition_errors(data)
+        self.assertEqual(len(errors), 1)
+        self.assertIn("production source already equals this release", errors[0])
+
+    def test_manifest_same_source_legacy_recertification_fails_closed_when_unhealthy(self):
+        mutations = [
+            ("github mismatch", lambda x: x["github"].__setitem__("main_sha", "b" * 40)),
+            ("local dirty", lambda x: x["local"].__setitem__("dirty_count", 1)),
+            ("production dirty", lambda x: x["production"].__setitem__("dirty_count", 1)),
+            ("production unreachable", lambda x: x["production"].__setitem__("reachable", False)),
+            ("service inactive", lambda x: x["production"].__setitem__("service", "inactive")),
+            ("missing build", lambda x: x["production"].__setitem__("active_build_id", "")),
+            ("version parity false", lambda x: x["production"].__setitem__("version_parity", False)),
+            ("staged build", lambda x: x["production"].__setitem__("staged_build_id", "candidate")),
+            ("wolo 8092 abnormal", lambda x: x["production"].__setitem__("wolo_8092_count", 0)),
+            ("wolo 8093 abnormal", lambda x: x["production"].__setitem__("wolo_8093_count", 2)),
+        ]
+        for label, mutate in mutations:
+            with self.subTest(label=label):
+                data = self.sample()
+                mutate(data)
+                self.assertFalse(MODULE.same_source_recertification_allowed(data))
+                self.assertTrue(MODULE.manifest_precondition_errors(data))

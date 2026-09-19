@@ -1379,3 +1379,11 @@ the exact P0, operational Doctor may carry only that same blocker forward, and
 Release OS must possess the matching same-source recertification primitive that
 actually repairs it. Any layer that interprets the state independently can
 recreate the deadlock.
+
+The first implementation still left Manifest/Gate with its older source-advance
+precondition while Ship and Auto understood same-source recertification. Live
+estate proof at source `17d898a7…` showed the exact healthy
+`legacy-unmanifested` state was acceptable to Ship/Auto but could not seal a
+manifest. Durable rule: Release Gate owns one recertification predicate and
+Manifest, Ship, and Auto consume it directly. A repair state is not real until
+every release layer agrees on the same classifier.
