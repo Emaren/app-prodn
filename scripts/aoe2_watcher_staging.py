@@ -21,6 +21,7 @@ from typing import Any, Iterator
 ROOT = Path(__file__).resolve().parents[1]
 CONTRACT_PATH = ROOT / "config" / "aoe2war-operations.json"
 CANONICAL_HOST = "hel1"
+CANONICAL_APPLY_HOST = "root@hel1"
 CANONICAL_REPO = "/var/www/AoE2HDBets/app-prodn"
 CANONICAL_SERVICE = "aoe2hdbets-web.service"
 CANONICAL_VOLUME = "/mnt/HC_Volume_105319120"
@@ -84,6 +85,7 @@ def policy_from_contract(contract: dict[str, Any]) -> dict[str, Any]:
     canonical = contract.get("canonical")
     protected = contract.get("protected")
     raw = contract.get("watcher_staging_retention")
+    rollback_archive = contract.get("rollback_archive")
     if not isinstance(canonical, dict) or not isinstance(protected, dict):
         raise WatcherStagingError(
             "operations contract is missing canonical/protected authority"
@@ -91,6 +93,15 @@ def policy_from_contract(contract: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(raw, dict):
         raise WatcherStagingError(
             "operations contract has no watcher_staging_retention block"
+        )
+    if not isinstance(rollback_archive, dict):
+        raise WatcherStagingError(
+            "operations contract has no rollback_archive authority"
+        )
+    if rollback_archive.get("root_maintenance_host") != CANONICAL_APPLY_HOST:
+        raise WatcherStagingError(
+            "rollback_archive.root_maintenance_host must be exactly "
+            f"{CANONICAL_APPLY_HOST!r}"
         )
 
     for key, expected in {
@@ -125,6 +136,7 @@ def policy_from_contract(contract: dict[str, Any]) -> dict[str, Any]:
 
     policy = {
         "production_host": CANONICAL_HOST,
+        "apply_host": CANONICAL_APPLY_HOST,
         "production_repo": CANONICAL_REPO,
         "service": CANONICAL_SERVICE,
         "volume_mount": CANONICAL_VOLUME,
@@ -141,6 +153,7 @@ def policy_from_contract(contract: dict[str, Any]) -> dict[str, Any]:
 def validate_policy(policy: dict[str, Any]) -> None:
     exact = {
         "production_host": CANONICAL_HOST,
+        "apply_host": CANONICAL_APPLY_HOST,
         "production_repo": CANONICAL_REPO,
         "service": CANONICAL_SERVICE,
         "volume_mount": CANONICAL_VOLUME,
@@ -870,13 +883,16 @@ def invoke_remote(
     ]
     if apply:
         command.append("--apply")
+    remote_host = (
+        policy["apply_host"] if apply else policy["production_host"]
+    )
     ssh = [
         "ssh",
         "-o",
         "BatchMode=yes",
         "-o",
         "ConnectTimeout=8",
-        policy["production_host"],
+        remote_host,
         shlex.join(command),
     ]
     process = subprocess.run(

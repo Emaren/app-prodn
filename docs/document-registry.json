@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d94c1d24e17811633ca6631664488ce56536c68453359f708c746f20d5ef514c",
+      "sha256": "a7f9be84f2cb7e24a49d56a299cd75b1fd8456b90cadb7f610fa754f808d358a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-14",
       "sensitivity": "internal",
-      "sha256": "7c40ede4fd8290106f6d50c067ef4074058bc2c4fb4ed6db01d41dd6ebf5b94e",
+      "sha256": "9dcdae77eb9e0eff853ec8a600cdf40abd247510ef59a331b07f3a794b5c1ebf",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1648,7 +1648,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-19",
       "sensitivity": "restricted",
-      "sha256": "5fec56e0496a47ac98f0d5cc2c11076484f68d0bd6971f170d545067904bfdf8",
+      "sha256": "9325759b86974051ecdf328493e3b22377dbba2664ca58f71660be5d178f0ad3",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/storage-expiry-proof-reuse",
-    "commit": "9c5cae963fc1e18b5eba3fe8707ea67b946d296c"
+    "branch": "fix/watcher-staging-privileged-apply",
+    "commit": "1e94b82d42f3ae2c20613142ac42fc5ec245157e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

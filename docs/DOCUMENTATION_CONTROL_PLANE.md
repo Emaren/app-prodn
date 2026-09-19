@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/storage-expiry-proof-reuse` at `9c5cae963fc1e18b5eba3fe8707ea67b946d296c`
+Implementation baseline: `fix/watcher-staging-privileged-apply` at `1e94b82d42f3ae2c20613142ac42fc5ec245157e`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
