@@ -482,6 +482,11 @@ function buildLocalGeneralInspectionsSnapshot(): GeneralInspectionsSnapshot {
   const recoveryRequired = integer(recoveryProgress.required_count) || 0;
   const maintenanceProblems = list(maintenance.problems).length;
   const secretPass = commandPassed(commands, "tracked-secret-scan");
+  const hostUpdatesTotal = integer(host.updates_total);
+  const hostUpdatesActionable = integer(host.updates_actionable);
+  const hostUpdatesPhased = integer(host.updates_phased_deferred) || 0;
+  const hostUpdates = hostUpdatesActionable ?? hostUpdatesTotal;
+
   const security = category(
     "security",
     "Security & Resilience",
@@ -489,7 +494,7 @@ function buildLocalGeneralInspectionsSnapshot(): GeneralInspectionsSnapshot {
     [
       check("vpssentry", "VPSSentry criticals", 15, integer(host.vpssentry_probe_ok) === 1 && integer(host.vpssentry_critical_count) === 0 ? finishFresh : 0, "criticals " + String(integer(host.vpssentry_critical_count) ?? "?"), { evidenceAt: finishAt }),
       check("failed-units", "Failed systemd units", 10, integer(host.failed_units) === 0 ? finishFresh : 0, String(integer(host.failed_units) ?? "?") + " failed", { evidenceAt: finishAt }),
-      check("updates", "Host updates", 10, integer(host.updates_total) === 0 ? finishFresh : 0.5 * finishFresh, String(integer(host.updates_total) ?? "?") + " pending", { evidenceAt: finishAt }),
+      check("updates", "Host updates", 10, hostUpdates === 0 ? finishFresh : hostUpdates == null ? 0 : 0.5 * finishFresh, hostUpdates == null ? "Unknown" : hostUpdates + " actionable" + (hostUpdatesPhased ? " · " + hostUpdatesPhased + " phased" : ""), { evidenceAt: finishAt }),
       check("reboot", "Reboot requirement", 10, integer(host.reboot_required) === 0 ? finishFresh : 0, integer(host.reboot_required) === 0 ? "Not required" : "Required", { evidenceAt: finishAt }),
       check("maintenance", "Maintenance safety rail", 10, maintenanceProblems === 0 ? finishFresh : 0, maintenanceProblems === 0 ? "No maintenance-safety problems" : maintenanceProblems + " problem(s)", { evidenceAt: finishAt }),
       check("secrets", "Tracked secret scan", 10, secretPass ? gateFresh : 0, secretPass ? "PASS" : "Not proven", { ratio: { passed: secretPass ? 1 : 0, total: 1 }, evidenceAt: gateAt }),

@@ -118,15 +118,26 @@ when they exceed the current retention contract.
 The score therefore rewards bounded recovery windows and punishes known reclaimable runtime
 debt.
 
+A staging pathname alone is not debt. A Wolo recovery stage that is exactly referenced by a
+current VERIFIED Recovery OS receipt is protected evidence and is excluded from scratch/staging
+debt. Unreferenced recovery stages, release scratch, Watcher staging, and other ordinary staging
+entries remain visible and lose marks until they are classified or retired.
+
+Host patch scoring follows the same authority boundary: actionable upgrades reduce the score;
+Ubuntu-phased deferrals remain visible but do not. General Inspections must consume Host OS
+classification rather than reinterpreting the raw package count.
+
 ## Mac evidence boundary
 
 Production cannot directly inspect the operator Mac. Current Mac headroom and workspace hygiene
 therefore arrive through the sanitized Kingdom Intelligence bridge and inherit the bridge
-capture timestamp. Preserved dirty or unmerged non-agent worktrees remain visible as maintenance
-debt even when they are intentionally retained for unique work.
+capture timestamp. Preserved dirty or unmerged non-agent worktrees remain visible, but they do
+not reduce the hygiene score when Workspace OS classifies them for review and reports zero
+cleanup candidates plus zero canonical drift. Actionable cleanup debt and canonical drift are
+the scoring authority; preserved unique work is evidence, not garbage.
 
 The tracked baseline file remains only as a local-development fallback. It must not claim a
-clean workstation while a preserved dirty workspace exists.
+clean canonical workspace when Workspace OS reports cleanup candidates or canonical drift.
 
 This evidence is intentionally weaker than live VPS filesystem evidence: if the operator bridge
 ages out, its contribution decays instead of silently assuming the Mac remains healthy forever.

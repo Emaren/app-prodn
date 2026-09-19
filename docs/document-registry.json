@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5c86c5c239caf85c20d1a398a819a9cad5b0c120b41f96dd179d9aee5ff9a035",
+      "sha256": "89334ba11014f71749ede773a5975ecb5d9857e1a2498465147d5ae945662d78",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-14",
       "sensitivity": "internal",
-      "sha256": "f48c9ffc024278a956ff531aab33469d61264aae12b2778d8f46c00ae09d8ce6",
+      "sha256": "4136b8261f3fc6a13df2efbea038692d124980728c2fda514b90c49debc92f95",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -615,7 +615,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-19",
       "sensitivity": "internal",
-      "sha256": "f924d0c29136bd4e6402c21f860d920e3348344b1005fb9e9e027185affd0a05",
+      "sha256": "995b8678bffaec63075bfcf329f9e374ff9b3bef7bcd9ae8c57574aa848b8df8",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/storage-estate-pristine",
-    "commit": "05f620ca3f9adf9532d3cb80fd7c2c07b29f235b"
+    "branch": "fix/general-inspections-governed-state",
+    "commit": "a1ff3bed9e3013ad0815a5219564f491511bf760"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

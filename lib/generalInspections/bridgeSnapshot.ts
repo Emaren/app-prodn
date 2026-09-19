@@ -295,16 +295,34 @@ function ageDetail(capturedAt: string | null, now: number) {
   return (hours / 24).toFixed(1) + "d old";
 }
 
-function topLevelStagingCount(aoe2warVolume: string) {
-  return [
+function stagingDebtCount(
+  aoe2warVolume: string,
+  protectedRecoveryStage: string | null,
+) {
+  let count = [
     "build-scratch",
-    "recovery-staging",
     "watcher-release-staging",
     "watcher-staging",
   ].reduce(
     (sum, name) => sum + countImmediate(path.join(aoe2warVolume, name)),
     0,
   );
+
+  const recoveryRoot = path.join(aoe2warVolume, "recovery-staging");
+  const woloRoot = path.join(recoveryRoot, "wolo");
+  count += safeEntries(recoveryRoot).filter(
+    (entry) => entry.name !== "wolo",
+  ).length;
+
+  const protectedName =
+    protectedRecoveryStage &&
+    path.dirname(protectedRecoveryStage) === woloRoot
+      ? path.basename(protectedRecoveryStage)
+      : null;
+  count += safeEntries(woloRoot).filter(
+    (entry) => entry.name !== protectedName,
+  ).length;
+  return count;
 }
 
 export function buildBridgeGeneralInspectionsSnapshot(
@@ -369,6 +387,12 @@ export function buildBridgeGeneralInspectionsSnapshot(
   const host = record(payload.host);
   const recovery = record(payload.recovery);
   const recoveryProgress = record(recovery.progress);
+  const recoveryCampaign = record(payload.recovery_campaign);
+  const protectedRecoveryStage =
+    String(recoveryCampaign.verification_status || "").toUpperCase() ===
+    "VERIFIED"
+      ? text(recoveryCampaign.remote_stage)
+      : null;
   const workspace = record(payload.workspace);
   const documentation = record(payload.documentation);
   const knowledge = record(payload.knowledge);
@@ -682,7 +706,10 @@ export function buildBridgeGeneralInspectionsSnapshot(
       : extraVersions.length <= 2
         ? 0.75
         : 0.25;
-  const stagingCount = topLevelStagingCount(aoe2warVolume);
+  const stagingCount = stagingDebtCount(
+    aoe2warVolume,
+    protectedRecoveryStage,
+  );
   const stagingFraction =
     stagingCount === 0 ? 1 : stagingCount <= 2 ? 0.75 : 0.25;
 
@@ -690,10 +717,11 @@ export function buildBridgeGeneralInspectionsSnapshot(
   const preservedDirty = numberValue(workspace.preserved_dirty_count) || 0;
   const preservedUnmerged =
     numberValue(workspace.preserved_unmerged_count) || 0;
+  const canonicalDrift = numberValue(workspace.canonical_drift_count) || 0;
   const worktreeFraction =
-    cleanupCandidates === 0 && preservedDirty === 0 && preservedUnmerged === 0
+    cleanupCandidates === 0 && canonicalDrift === 0
       ? 1
-      : cleanupCandidates === 0 && preservedDirty <= 1
+      : canonicalDrift === 0 && cleanupCandidates <= 1
         ? 0.75
         : 0.4;
   const storageHealthFraction = statusFraction(storage.health);
@@ -799,7 +827,9 @@ export function buildBridgeGeneralInspectionsSnapshot(
         "Scratch / staging queues",
         5,
         stagingFraction,
-        stagingCount + " immediate staging entries",
+        stagingCount +
+          " unprotected staging entries" +
+          (protectedRecoveryStage ? " · recovery stage protected" : ""),
       ),
       check(
         "worktrees",
@@ -811,7 +841,9 @@ export function buildBridgeGeneralInspectionsSnapshot(
           " · preserved dirty " +
           preservedDirty +
           " · preserved unmerged " +
-          preservedUnmerged,
+          preservedUnmerged +
+          " · canonical drift " +
+          canonicalDrift,
         { evidenceAt: bridgeAt },
       ),
       check(
@@ -1053,7 +1085,10 @@ export function buildBridgeGeneralInspectionsSnapshot(
     numberValue(host.failed_all) ??
     numberValue(host.failed_transient) ??
     null;
-  const updates = numberValue(host.updates_total);
+  const updatesTotal = numberValue(host.updates_total);
+  const updatesActionable = numberValue(host.updates_actionable);
+  const updatesPhased = numberValue(host.updates_phased_deferred) || 0;
+  const updates = updatesActionable ?? updatesTotal;
   const rebootRequired = boolValue(host.reboot_required);
   const security = category(
     "security",
@@ -1081,7 +1116,11 @@ export function buildBridgeGeneralInspectionsSnapshot(
         "Host updates",
         10,
         updates === 0 ? bridgeFresh : updates == null ? 0 : 0.5 * bridgeFresh,
-        updates == null ? "Unknown" : updates + " pending",
+        updates == null
+          ? "Unknown"
+          : updates +
+            " actionable" +
+            (updatesPhased ? " · " + updatesPhased + " phased" : ""),
         { evidenceAt: bridgeAt },
       ),
       check(
