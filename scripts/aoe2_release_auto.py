@@ -27,6 +27,7 @@ from aoe2_release_ship import (
     activate_release,
     load_stage_receipt,
     parse_kv,
+    same_source_recertification_allowed,
 )
 from aoe2_release_stage import (
     REMOTE_RECEIPT_ROOT,
@@ -139,6 +140,7 @@ def preflight_errors(data: dict) -> list[str]:
         not prod.get("staged_build_id")
         and local.get("head")
         and prod.get("source_sha") == local.get("head")
+        and not same_source_recertification_allowed(data)
     ):
         errors.append("production already serves local HEAD; there is nothing new to ship")
 

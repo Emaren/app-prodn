@@ -37,6 +37,9 @@ def sample():
             "dirty_count": 0,
             "head": "a" * 40,
         },
+        "github": {
+            "main_sha": "a" * 40,
+        },
         "documentation": {
             "baseline_is_ancestor_of_local": True,
         },
@@ -174,6 +177,41 @@ class AutoShipTests(unittest.TestCase):
         self.assertTrue(
             any("nothing new" in item for item in MODULE.preflight_errors(data))
         )
+
+    def test_preflight_allows_same_source_legacy_recertification(self):
+        data = sample()
+        data["production"]["source_sha"] = data["local"]["head"]
+        data["certification"] = {
+            "status": "legacy-unmanifested",
+            "release_sha": None,
+            "receipt_path": None,
+        }
+        self.assertTrue(MODULE.same_source_recertification_allowed(data))
+        self.assertEqual(MODULE.preflight_errors(data), [])
+
+    def test_preflight_same_source_legacy_still_fails_closed_when_unhealthy(self):
+        mutations = [
+            ("github mismatch", lambda x: x["github"].__setitem__("main_sha", "b" * 40)),
+            ("local dirty", lambda x: x["local"].__setitem__("dirty_count", 1)),
+            ("production dirty", lambda x: x["production"].__setitem__("dirty_count", 1)),
+            ("service inactive", lambda x: x["production"].__setitem__("service", "inactive")),
+            ("version parity false", lambda x: x["production"].__setitem__("version_parity", False)),
+            ("missing build", lambda x: x["production"].__setitem__("active_build_id", "")),
+            ("wolo 8092 abnormal", lambda x: x["production"].__setitem__("wolo_8092_count", 0)),
+            ("wolo 8093 abnormal", lambda x: x["production"].__setitem__("wolo_8093_count", 2)),
+        ]
+        for label, mutate in mutations:
+            with self.subTest(label=label):
+                data = sample()
+                data["production"]["source_sha"] = data["local"]["head"]
+                data["certification"] = {
+                    "status": "legacy-unmanifested",
+                    "release_sha": None,
+                    "receipt_path": None,
+                }
+                mutate(data)
+                self.assertFalse(MODULE.same_source_recertification_allowed(data))
+                self.assertTrue(MODULE.preflight_errors(data))
 
     def test_preflight_allows_noop_source_when_exact_stage_exists(self):
         data = sample()
