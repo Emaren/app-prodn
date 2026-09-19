@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0dd09bbff35fd79dc0d9e5edec0f20d4ceb783c2e99458b074af94560629a101",
+      "sha256": "8ac8b64f70867f97dabd35fda9cf59362e67a1eecaf9081eb9da5da0b9c68235",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-14",
       "sensitivity": "internal",
-      "sha256": "934e28fd848f95553e58e2a7e226ff0142ce29e0b31db258260494e0e9cc8898",
+      "sha256": "207a65a12112023eaf05afb085069e70414ffc457c8fad3fbc66e8e77507c079",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1325,7 +1325,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-08-24",
       "sensitivity": "internal",
-      "sha256": "8ecdeed123f8dcd00735bf5fc9e9e16cffcd904b8f4ad14440e5e5f31290cd4b",
+      "sha256": "6f7b6772445749fb3d1a1f9bafc86ce3c3acb193f053698a11614c16ff85f273",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/release-dependency-allocation-telemetry",
-    "commit": "d0ba173fd65363e5457fb4b753242f0680efc26a"
+    "branch": "fix/context-retention-plan-remediation",
+    "commit": "9e2fcd1d815d42f4326db0dbfdbbe0622bf555e5"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
