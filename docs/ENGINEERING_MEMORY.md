@@ -1180,3 +1180,20 @@ run public web services without root where possible, sandbox them with systemd,
 and keep remediation privilege out of ordinary public request handlers whenever
 the architecture permits. Monitoring is only useful when its findings can
 change control-plane decisions.
+
+## 2026-09-19 — Visibility is not actionability across governed state
+
+General Inspections exposed a cross-OS modeling bug after Host, Workspace, and Recovery had each
+already classified their own state correctly. Five Ubuntu-phased package candidates were being
+scored as patch debt even though Host OS reported zero actionable upgrades. A dirty Replay Truth
+review worktree was being scored as workspace debt even though Workspace OS reported zero cleanup
+candidates and zero canonical drift. A 13 GiB Wolo recovery stage was being counted as scratch
+even though the exact path was referenced by a VERIFIED off-host Recovery OS receipt.
+
+Durable rule: downstream health boards consume the governing OS classification instead of
+re-deriving actionability from raw counts or pathnames. Host update debt means actionable updates,
+not all visible candidates. Workspace debt means proven cleanup candidates or canonical drift,
+not intentionally preserved review work. Recovery staging referenced by a current VERIFIED
+recovery receipt is protected evidence; only unprotected staging contributes staging debt.
+Visibility remains mandatory in every case, but visibility alone does not justify mutation or a
+health penalty.

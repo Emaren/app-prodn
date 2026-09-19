@@ -77,6 +77,8 @@ function bridgePayload(speedCurrent = true) {
         failed_all: 0,
         failed_transient: 0,
         updates_total: 0,
+        updates_actionable: 0,
+        updates_phased_deferred: 0,
         reboot_required: false,
         wolo_8092_count: 1,
         wolo_8093_count: 1,
@@ -305,6 +307,57 @@ test("previous-release Speed proof visibly degrades instead of staying green", (
       snapshot.notes.some((note) =>
         note.includes("previous production release"),
       ),
+    );
+  } finally {
+    rmSync(estate.root, { recursive: true, force: true });
+  }
+});
+
+test("governed host deferrals, review worktrees, and verified recovery staging stay green", () => {
+  const estate = makeEstate(true);
+  try {
+    const envelope = bridgePayload(true);
+    envelope.payload.host.updates_total = 5;
+    envelope.payload.host.updates_actionable = 0;
+    envelope.payload.host.updates_phased_deferred = 5;
+    envelope.payload.workspace.preserved_dirty_count = 1;
+    envelope.payload.workspace.preserved_unmerged_count = 1;
+
+    const protectedStage = path.join(
+      estate.options.volumeRoot,
+      "aoe2war",
+      "recovery-staging",
+      "wolo",
+      "verified-snapshot",
+    );
+    envelope.payload.recovery_campaign = {
+      verification_status: "VERIFIED",
+      remote_stage: protectedStage,
+    };
+    mkdir(protectedStage);
+    writeJson(estate.options.bridgePath, envelope);
+
+    const snapshot = buildBridgeGeneralInspectionsSnapshot(estate.options);
+    assert.ok(snapshot);
+    const organization = snapshot.categories.find(
+      (item) => item.id === "organization",
+    );
+    const security = snapshot.categories.find((item) => item.id === "security");
+    assert.ok(organization);
+    assert.ok(security);
+
+    const organizationChecks = new Map(
+      organization.checks.map((item) => [item.id, item]),
+    );
+    const securityChecks = new Map(
+      security.checks.map((item) => [item.id, item]),
+    );
+    assert.equal(organizationChecks.get("staging")?.state, "green");
+    assert.equal(organizationChecks.get("worktrees")?.state, "green");
+    assert.equal(securityChecks.get("updates")?.state, "green");
+    assert.match(
+      securityChecks.get("updates")?.detail || "",
+      /0 actionable .* 5 phased/,
     );
   } finally {
     rmSync(estate.root, { recursive: true, force: true });
