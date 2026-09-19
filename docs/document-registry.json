@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c797a7e51bdec0c93ae524b09057737f643a50acd1244c1be25366383bccbd8f",
+      "sha256": "bd2c9abd62079a78b66381ebc225da80e5ff391b5cd10b79bfa42c5766709482",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -615,7 +615,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-19",
       "sensitivity": "internal",
-      "sha256": "99b832dc8fe686f1ddba4850f25ae72c5e04b6213c528f3dc840299a60eb56a5",
+      "sha256": "f924d0c29136bd4e6402c21f860d920e3348344b1005fb9e9e027185affd0a05",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/general-inspections-v1",
-    "commit": "f78a44f2b2ce79a0864b545a5de6ebf66ceb4008"
+    "branch": "feature/general-inspections-evidence-v1",
+    "commit": "654527c076ce6d50e31be1b74fdc3a0b8cbcae49"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

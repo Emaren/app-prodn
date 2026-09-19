@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/general-inspections-v1` at `f78a44f2b2ce79a0864b545a5de6ebf66ceb4008`
+Implementation baseline: `feature/general-inspections-evidence-v1` at `654527c076ce6d50e31be1b74fdc3a0b8cbcae49`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
