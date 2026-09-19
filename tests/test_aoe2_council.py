@@ -196,6 +196,131 @@ class CouncilTests(unittest.TestCase):
         )
         self.assertIn("dirty=1 unmerged=0", preserved["reason"])
 
+    def test_documentation_summary_is_sanitized_and_counted(self):
+        audit = {
+            "areas": {"Documentation": "WARN"},
+            "info": {
+                "central_quality_gates": {
+                    "docs-check": {"rc": 0, "summary": "/private/operator/path"},
+                    "strict-build": {"rc": 0},
+                    "audit-taxonomy": {"rc": 2},
+                },
+                "source_documentation_checkers": {
+                    "app-prodn": {"rc": 0, "summary": "PASS"},
+                    "aoe2-watcher": {
+                        "rc": 0,
+                        "summary": "WATCHER_RELEASE_DOCS_CURRENT version=1.5.12",
+                    },
+                    "api-prodn": {"rc": 2, "summary": "WARN"},
+                },
+                "taxonomy": {
+                    "corpus_total": 195,
+                    "semantic_index_total": 191,
+                    "intentionally_unindexed_count": 4,
+                },
+                "estate_maps": {
+                    "SYSTEM_MAP": {"current_source_sha": "a" * 40, "path": "/secret/system"},
+                    "SERVER_STORAGE_MAP": {"current_source_sha": "b" * 40, "path": "/secret/storage"},
+                },
+                "central_repository": {
+                    "head": "c" * 40,
+                    "remote": "c" * 40,
+                    "dirty_count": 0,
+                    "path": "/secret/docs",
+                },
+                "source_repositories": {
+                    "app-prodn": {
+                        "head": "d" * 40,
+                        "remote": "d" * 40,
+                        "dirty_count": 0,
+                        "path": "/secret/app",
+                    },
+                    "api-prodn": {
+                        "head": "e" * 40,
+                        "remote": "f" * 40,
+                        "dirty_count": 0,
+                        "path": "/secret/api",
+                    },
+                },
+            },
+        }
+        summary = council.documentation_summary(
+            audit,
+            captured_at="2026-09-19T03:00:00Z",
+        )
+        self.assertEqual(summary["estate_gate"], "WARN")
+        self.assertTrue(summary["docs_control_pass"])
+        self.assertTrue(summary["strict_build_pass"])
+        self.assertFalse(summary["taxonomy_audit_pass"])
+        self.assertEqual(summary["source_checkers_passed"], 2)
+        self.assertEqual(summary["source_checkers_total"], 3)
+        self.assertEqual(summary["taxonomy"]["indexed_total"], 191)
+        self.assertEqual(summary["source_repositories_synced"], 1)
+        self.assertEqual(summary["source_repositories_total"], 2)
+        self.assertEqual(summary["watcher_version"], "1.5.12")
+        self.assertNotIn("/secret", repr(summary))
+        self.assertNotIn("/private", repr(summary))
+
+    def test_collect_counts_preserved_dirty_non_agent_worktrees(self):
+        release_snapshot = {"production": {"source_sha": "a" * 40}}
+        doctor = {
+            "score": 94,
+            "status": "ATTENTION",
+            "generated_at": "2026-09-19T03:00:00Z",
+            "info": {
+                "estate": {
+                    "estate": "ATTENTION_REQUIRED",
+                    "p0": 0,
+                    "p1": 1,
+                    "areas": {"Documentation": "WARN"},
+                    "info": {},
+                },
+                "release": release_snapshot,
+            },
+        }
+        responses = {
+            "doctor": doctor,
+            "storage": {"health": "WATCH"},
+            "host": {},
+            "recovery": {"status": "VERIFIED"},
+            "workspace": {
+                "cleanup_candidates": [],
+                "stale_metadata": [],
+                "worktrees": [
+                    {
+                        "classification": "PRESERVE_DIRTY_REVIEW",
+                        "agent_workspace": False,
+                        "dirty": True,
+                        "merged_into_canonical": False,
+                    },
+                    {
+                        "classification": "AGENT_ACTIVE_DIRTY",
+                        "agent_workspace": True,
+                        "dirty": True,
+                        "merged_into_canonical": False,
+                    },
+                ],
+                "dirty_agent_count": 1,
+                "unmerged_count": 1,
+            },
+        }
+
+        def fake_command(*args, **kwargs):
+            return responses[args[0]]
+
+        with (
+            patch.object(council, "command_json", side_effect=fake_command),
+            patch.object(council, "latest_pulse", return_value={"status": "PASS"}),
+            patch.object(council, "docs_due", return_value=0),
+            patch.object(council, "ready_coverage", return_value={"ready_routes": 0, "baseline_routes": 0}),
+            patch.object(council, "architecture_opportunities", return_value=[]),
+        ):
+            payload = council.collect()
+
+        self.assertEqual(payload["workspace"]["preserved_dirty_count"], 1)
+        self.assertEqual(payload["workspace"]["preserved_unmerged_count"], 1)
+        self.assertEqual(payload["workspace"]["dirty_agent_count"], 1)
+
     def test_failed_transients_surface_as_hygiene(self):
         recs = council.build_recommendations(
             audit={"p0": 0, "p1": 0},

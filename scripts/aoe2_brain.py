@@ -20,6 +20,8 @@ ROOT = Path(__file__).resolve().parents[1]
 TRUTH_STALE_SECONDS = 24 * 60 * 60
 PERFORMANCE_STALE_SECONDS = 7 * 24 * 60 * 60
 FINISH_RECEIPT_DIR = ROOT / ".aoe2war-release" / "finish-receipts"
+COLD_LCP_ROOT = ROOT / ".aoe2war-release" / "performance-cold-lcp"
+EDGE_RECEIPT_ROOT = ROOT / ".aoe2war-release" / "performance-edge-receipts"
 ENGINEERING_MEMORY_PATH = ROOT / "docs" / "ENGINEERING_MEMORY.md"
 
 
@@ -183,11 +185,147 @@ def latest_truth(now: datetime) -> dict[str, Any]:
     }
 
 
+def read_json_object(path: Path) -> dict[str, Any] | None:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def latest_cold_lcp(now: datetime) -> dict[str, Any]:
+    if not COLD_LCP_ROOT.is_dir():
+        return {"available": False}
+
+    receipts = sorted(
+        COLD_LCP_ROOT.glob("*/receipt.json"),
+        key=lambda path: (path.stat().st_mtime_ns, str(path)),
+        reverse=True,
+    )
+    for path in receipts:
+        payload = read_json_object(path)
+        if not payload or payload.get("kind") != "aoe2war-cold-process-lcp":
+            continue
+        summary = payload.get("summary") or {}
+        if not isinstance(summary, dict):
+            summary = {}
+        targets = summary.get("lcpTargets") or []
+        top_target_count = 0
+        if isinstance(targets, list):
+            for item in targets:
+                if not isinstance(item, dict):
+                    continue
+                try:
+                    top_target_count = max(
+                        top_target_count,
+                        int(item.get("count") or 0),
+                    )
+                except (TypeError, ValueError):
+                    continue
+
+        metrics: dict[str, dict[str, Any]] = {}
+        for source_key, target_key in (
+            ("lcpMs", "lcp_ms"),
+            ("readyMs", "ready_ms"),
+            ("documentTtfbMs", "document_ttfb_ms"),
+        ):
+            row = summary.get(source_key) or {}
+            if not isinstance(row, dict):
+                row = {}
+            metrics[target_key] = {
+                key: row.get(key)
+                for key in ("count", "p50", "p75", "p95", "max")
+            }
+
+        generated_at = payload.get("generatedAt")
+        return {
+            "available": True,
+            "release_sha": payload.get("releaseSha"),
+            "build_version": payload.get("buildVersion"),
+            "generated_at": generated_at,
+            "samples": payload.get("samples"),
+            "top_lcp_target_count": top_target_count,
+            "mutation_boundary": {
+                "production_mutated": payload.get("productionMutated"),
+                "database_mutated": payload.get("databaseMutated"),
+                "wolo_mutated": payload.get("woloMutated"),
+            },
+            "metrics": metrics,
+            "freshness": freshness(
+                generated_at,
+                now=now,
+                stale_after_seconds=PERFORMANCE_STALE_SECONDS,
+            ),
+        }
+    return {"available": False}
+
+
+def edge_ratio(rows: object) -> dict[str, int]:
+    values = rows if isinstance(rows, list) else []
+    passed = 0
+    for item in values:
+        if not isinstance(item, dict):
+            continue
+        final = item.get("final") or {}
+        if (
+            isinstance(final, dict)
+            and final.get("cf_cache_status") == "HIT"
+            and int(final.get("http_status") or 0) == 200
+        ):
+            passed += 1
+    return {"passed": passed, "total": len(values)}
+
+
+def latest_edge_delivery(now: datetime) -> dict[str, Any]:
+    if not EDGE_RECEIPT_ROOT.is_dir():
+        return {"available": False}
+
+    receipts = sorted(
+        EDGE_RECEIPT_ROOT.glob("*cloudflare-featured-avatar-apply.json"),
+        key=lambda path: (path.stat().st_mtime_ns, path.name),
+        reverse=True,
+    )
+    for path in receipts:
+        payload = read_json_object(path)
+        if not payload:
+            continue
+        verification = payload.get("verification") or {}
+        avatar_plan = payload.get("avatar_plan") or {}
+        if not isinstance(verification, dict) or not isinstance(avatar_plan, dict):
+            continue
+        generated_at = (
+            verification.get("generated_at")
+            or payload.get("generated_at")
+            or avatar_plan.get("generated_at")
+        )
+        return {
+            "available": True,
+            "release_sha": avatar_plan.get("release_sha"),
+            "generated_at": generated_at,
+            "ok": bool(verification.get("ok")),
+            "static": edge_ratio(verification.get("static_cohort")),
+            "dynamic": edge_ratio(verification.get("dynamic_cohort")),
+            "featured_avatar": edge_ratio(
+                verification.get("featured_avatar_rows")
+            ),
+            "freshness": freshness(
+                generated_at,
+                now=now,
+                stale_after_seconds=PERFORMANCE_STALE_SECONDS,
+            ),
+        }
+    return {"available": False}
+
+
 def latest_performance(now: datetime) -> dict[str, Any]:
+    cold_lcp = latest_cold_lcp(now)
+    edge_delivery = latest_edge_delivery(now)
     campaign = aoe2_speed_campaign.latest_campaign()
     if not campaign:
         return {
             "available": False,
+            "cold_lcp": cold_lcp,
+            "edge_delivery": edge_delivery,
             "freshness": {
                 "generated_at": None,
                 "age_seconds": None,
@@ -260,6 +398,8 @@ def latest_performance(now: datetime) -> dict[str, Any]:
         if verification
         else None,
         "targets": targets,
+        "cold_lcp": cold_lcp,
+        "edge_delivery": edge_delivery,
         "freshness": freshness(
             generated_at,
             now=now,
@@ -304,6 +444,10 @@ def storage_summary(
                 else None
             )
         ),
+        "protected_newest_count": len(storage.get("protected_newest") or []),
+        "eligible_expanded_count": storage.get("eligible_expanded_count"),
+        "verified_receipt_count": storage.get("verified_receipt_count"),
+        "next_candidate": storage.get("next_candidate"),
     }
 
 
@@ -1263,11 +1407,20 @@ def collect() -> dict[str, Any]:
     source = source_summary(release)
     truth = latest_truth(now)
     performance = latest_performance(now)
+    production_source = source.get("production", {}).get("source_sha")
     performance["matches_current_release"] = bool(
         performance.get("available")
         and performance.get("release_sha")
-        == source.get("production", {}).get("source_sha")
+        == production_source
     )
+    for key in ("cold_lcp", "edge_delivery"):
+        detail = performance.get(key)
+        if isinstance(detail, dict):
+            detail["matches_current_release"] = bool(
+                detail.get("available")
+                and detail.get("release_sha")
+                == production_source
+            )
     truth["matches_current_release"] = bool(
         truth.get("available")
         and truth.get("production_source")
@@ -1341,6 +1494,7 @@ def collect() -> dict[str, Any]:
         "host": council.get("host") or {},
         "recovery": council.get("recovery") or {},
         "workspace": council.get("workspace") or {},
+        "documentation": council.get("documentation") or {},
         "performance": performance,
         "replay_truth": truth,
         "knowledge": {

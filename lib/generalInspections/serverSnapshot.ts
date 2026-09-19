@@ -10,6 +10,7 @@ import {
 import path from "node:path";
 
 import baseline from "@/config/general-inspections-baseline.json";
+import { buildBridgeGeneralInspectionsSnapshot } from "./bridgeSnapshot.ts";
 import {
   category,
   check,
@@ -271,7 +272,7 @@ function ageDetail(capturedAt: string | null) {
   return (hours / 24).toFixed(1) + "d old";
 }
 
-export function buildGeneralInspectionsSnapshot(): GeneralInspectionsSnapshot {
+function buildLocalGeneralInspectionsSnapshot(): GeneralInspectionsSnapshot {
   const finishReceipt = latestJson(path.join(RELEASE_ROOT, "finish-receipts"), (name) => name.endsWith(".json"));
   const finish = finishReceipt.data;
   const release = currentRelease(finish);
@@ -544,4 +545,11 @@ export function buildGeneralInspectionsSnapshot(): GeneralInspectionsSnapshot {
     categories,
     notes,
   };
+}
+
+export function buildGeneralInspectionsSnapshot(): GeneralInspectionsSnapshot {
+  return (
+    buildBridgeGeneralInspectionsSnapshot() ||
+    buildLocalGeneralInspectionsSnapshot()
+  );
 }

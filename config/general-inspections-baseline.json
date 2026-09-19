@@ -1,10 +1,10 @@
 {
   "schema": 1,
-  "capturedAt": "2026-09-19T02:09:25Z",
+  "capturedAt": "2026-09-19T03:14:40Z",
   "mac": {
-    "availableKb": 55161268,
-    "housekeepingReclaimedKb": 16445548,
-    "worktreesClean": true,
+    "availableKb": 54581836,
+    "housekeepingReclaimedKb": 17170660,
+    "worktreesClean": false,
     "regenerableCachesCleared": true
   },
   "policy": {

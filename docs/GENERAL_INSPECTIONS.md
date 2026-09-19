@@ -44,18 +44,38 @@ weights do not total 100, and the Node contract tests enforce the category total
 The page is receipt-backed. It does not execute shell commands from the browser and does not
 accept user-controlled filesystem paths.
 
-The server snapshot may read only known local evidence surfaces, including:
+Production uses a two-plane evidence contract:
 
-- Finish and activation receipts;
-- release-gate receipts;
-- Performance OS cold-LCP and edge receipts;
-- Doctor and estate evidence embedded in Finish;
-- current VPS root and mounted-volume filesystem statistics;
-- the bounded Storage Expiry ledger;
-- the canonical Watcher download directory;
-- a tracked Mac housekeeping snapshot for facts that production cannot observe directly.
+1. **Durable VPS authority.** The active release identity, gate result, candidate build version,
+   and certification are read from the newest fully certified activation receipt on the mounted
+   AoE2WAR volume. This receipt is authoritative even if the operator bridge is briefly behind
+   immediately after deployment.
+2. **Sanitized Kingdom Intelligence bridge.** The Mac operator plane publishes a compact
+   `kingdom-intelligence.json` state file to the VPS. Council and Brain reduce Doctor, audit,
+   workspace, documentation, SpeedOS, recovery, host, Wolo, replay, and storage observations to
+   safe counts, statuses, booleans, timings, and source SHAs before they cross the bridge.
 
-Absolute evidence paths and raw security internals are not returned to the browser.
+The production scorer may additionally read only bounded VPS-local surfaces whose state is not
+owned by the Mac bridge: current filesystem statistics, the sealed Storage Expiry ledger, the
+canonical Watcher download directory, and durable deployment receipts.
+
+Local development has a direct-receipt fallback that reads the developer checkout's
+`.aoe2war-release` evidence. Production must not depend on that Mac-only tree existing on the
+server.
+
+Absolute Mac paths, raw Doctor payloads, Cloudflare ray identifiers, avatar URL allowlists,
+secret material, and raw security internals are not returned to the browser.
+
+## Speed evidence bridge
+
+Brain publishes only a compact SpeedOS summary. Cold-browser evidence contains sample count,
+p50/p75/p95/max timing metrics, LCP-target stability count, and the three mutation booleans.
+Edge evidence contains only `passed/total` counts for static HTML, dynamic HTML, and Featured
+Avatar delivery plus the release SHA, timestamp, and overall verification state.
+
+If either Speed proof belongs to the previous production release, the performance category
+visibly loses current-release credit and emits a note. Deploying a new release therefore cannot
+inherit a permanent green speed mark from an older release.
 
 ## Freshness and decay
 
@@ -100,12 +120,16 @@ debt.
 
 ## Mac evidence boundary
 
-Production cannot directly inspect the operator Mac. Mac storage and worktree hygiene therefore
-use a tracked snapshot with a capture timestamp. That evidence decays until a newer housekeeping
-capture replaces it.
+Production cannot directly inspect the operator Mac. Current Mac headroom and workspace hygiene
+therefore arrive through the sanitized Kingdom Intelligence bridge and inherit the bridge
+capture timestamp. Preserved dirty or unmerged non-agent worktrees remain visible as maintenance
+debt even when they are intentionally retained for unique work.
 
-This is intentionally weaker than live VPS evidence and makes stale workstation maintenance
-visible instead of silently assuming the Mac remains clean forever.
+The tracked baseline file remains only as a local-development fallback. It must not claim a
+clean workstation while a preserved dirty workspace exists.
+
+This evidence is intentionally weaker than live VPS filesystem evidence: if the operator bridge
+ages out, its contribution decays instead of silently assuming the Mac remains healthy forever.
 
 ## Fail-closed rules
 

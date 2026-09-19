@@ -191,6 +191,106 @@ def ready_coverage() -> dict[str, Any]:
         }
 
 
+def documentation_summary(
+    audit: dict[str, Any],
+    *,
+    captured_at: object = None,
+) -> dict[str, Any]:
+    info = audit.get("info") or {}
+    if not isinstance(info, dict):
+        info = {}
+    areas = audit.get("areas") or {}
+    if not isinstance(areas, dict):
+        areas = {}
+
+    quality = info.get("central_quality_gates") or {}
+    if not isinstance(quality, dict):
+        quality = {}
+    checkers = info.get("source_documentation_checkers") or {}
+    if not isinstance(checkers, dict):
+        checkers = {}
+    maps = info.get("estate_maps") or {}
+    if not isinstance(maps, dict):
+        maps = {}
+    central = info.get("central_repository") or {}
+    if not isinstance(central, dict):
+        central = {}
+    source_repos = info.get("source_repositories") or {}
+    if not isinstance(source_repos, dict):
+        source_repos = {}
+    taxonomy = info.get("taxonomy") or {}
+    if not isinstance(taxonomy, dict):
+        taxonomy = {}
+
+    def rc_pass(name: str) -> bool:
+        row = quality.get(name) or {}
+        return isinstance(row, dict) and _int_value(row.get("rc")) == 0
+
+    checker_rows = [
+        row for row in checkers.values()
+        if isinstance(row, dict)
+    ]
+    checker_passed = sum(
+        1 for row in checker_rows
+        if _int_value(row.get("rc")) == 0
+    )
+    source_rows = [
+        row for row in source_repos.values()
+        if isinstance(row, dict)
+    ]
+    source_synced = sum(
+        1
+        for row in source_rows
+        if _int_value(row.get("dirty_count")) == 0
+        and bool(row.get("head"))
+        and row.get("head") == row.get("remote")
+    )
+
+    system_map = maps.get("SYSTEM_MAP") or {}
+    if not isinstance(system_map, dict):
+        system_map = {}
+    storage_map = maps.get("SERVER_STORAGE_MAP") or {}
+    if not isinstance(storage_map, dict):
+        storage_map = {}
+    watcher = checkers.get("aoe2-watcher") or {}
+    watcher_summary = (
+        str(watcher.get("summary") or "")
+        if isinstance(watcher, dict)
+        else ""
+    )
+    watcher_match = re.search(
+        r"WATCHER_RELEASE_DOCS_CURRENT\s+version=([^\s|]+)",
+        watcher_summary,
+    )
+
+    return {
+        "captured_at": captured_at,
+        "estate_gate": areas.get("Documentation"),
+        "docs_control_pass": rc_pass("docs-check"),
+        "strict_build_pass": rc_pass("strict-build"),
+        "taxonomy_audit_pass": rc_pass("audit-taxonomy"),
+        "source_checkers_passed": checker_passed,
+        "source_checkers_total": len(checker_rows),
+        "taxonomy": {
+            "corpus_total": _int_value(taxonomy.get("corpus_total")),
+            "indexed_total": _int_value(taxonomy.get("semantic_index_total")),
+            "intentionally_unindexed": _int_value(
+                taxonomy.get("intentionally_unindexed_count")
+            ),
+        },
+        "system_map_source_sha": system_map.get("current_source_sha"),
+        "storage_map_source_sha": storage_map.get("current_source_sha"),
+        "central_docs_synced": bool(
+            central.get("head")
+            and central.get("head") == central.get("remote")
+            and _int_value(central.get("dirty_count")) == 0
+        ),
+        "source_repositories_synced": source_synced,
+        "source_repositories_total": len(source_rows),
+        "watcher_version": watcher_match.group(1) if watcher_match else None,
+    }
+
+
 def architecture_opportunities() -> list[str]:
     path = ROOT / "ARCHITECTURE.md"
     if not path.is_file():
@@ -530,6 +630,10 @@ def collect() -> dict[str, Any]:
     due = docs_due()
     ready = ready_coverage()
     architecture = architecture_opportunities()
+    documentation = documentation_summary(
+        audit,
+        captured_at=doctor.get("generated_at"),
+    )
 
     recs = build_recommendations(
         audit=audit,
@@ -568,6 +672,20 @@ def collect() -> dict[str, Any]:
             ),
             "unmerged_count": workspace.get("unmerged_count"),
             "stale_metadata": len(workspace.get("stale_metadata") or []),
+            "preserved_dirty_count": sum(
+                1
+                for row in (workspace.get("worktrees") or [])
+                if isinstance(row, dict)
+                and row.get("classification") == "PRESERVE_DIRTY_REVIEW"
+                and bool(row.get("dirty"))
+            ),
+            "preserved_unmerged_count": sum(
+                1
+                for row in (workspace.get("worktrees") or [])
+                if isinstance(row, dict)
+                and row.get("classification") == "PRESERVE_DIRTY_REVIEW"
+                and not bool(row.get("merged_into_canonical"))
+            ),
             "agents": [
                 {
                     "agent": row.get("agent"),
@@ -586,6 +704,7 @@ def collect() -> dict[str, Any]:
         },
         "performance_pulse": pulse,
         "ready_coverage": ready,
+        "documentation": documentation,
         "docs_due_7d": due,
         "architecture_opportunities": architecture,
     }
