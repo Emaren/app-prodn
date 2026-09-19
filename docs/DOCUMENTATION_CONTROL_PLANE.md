@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `perf/cold-lcp-watchdog-v1` at `1f3686c1ca1b12f1c397205898ccea50498423df`
+Implementation baseline: `feature/general-inspections-v1` at `f78a44f2b2ce79a0864b545a5de6ebf66ceb4008`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **80**
+- Authoritative repository documents: **81**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,13 +36,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 48
+- `reference`: 49
 - `runbook`: 13
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 64
+- `active`: 65
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -76,6 +76,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Documentation OS](DOCUMENTATION_OS.md) | `reference` | `active` | `documentation-operations-contract` |
 | [AoE2WAR Engineering Memory and Learned Invariants](ENGINEERING_MEMORY.md) | `reference` | `active` | `repository-entrypoint` |
 | [AoE2WAR Evidence Vault](EVIDENCE_VAULT.md) | `runbook` | `active` | `disaster-recovery-contract` |
+| [AoE2WAR General Inspections](GENERAL_INSPECTIONS.md) | `reference` | `active` | `inspection-scoring-contract` |
 | [Hall Scribe, Identity and KKR Release - 2026-08-17](HALL_SCRIBE_IDENTITY_KKR_RELEASE_2026-08-17.md) | `reference` | `active` | `release-evidence` |
 | [AoE2WAR Hall Scribe Prompt Stack](HALL_SCRIBE_PROMPT.md) | `reference` | `active` | `product-contract` |
 | [HD Replay Truth Pipeline and Operator Runbook](HD_REPLAY_TRUTH_PIPELINE.md) | `runbook` | `active` | `operational-procedure` |
