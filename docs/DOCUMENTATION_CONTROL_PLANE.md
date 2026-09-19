@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/finish-operational-provenance-remediation` at `4ce0160833bbdf9a375007c3c6c24358b929dcb0`
+Implementation baseline: `fix/same-source-runtime-recertification` at `a534f4c780aff0ec6310ded0944d91e7afaa1ff7`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
