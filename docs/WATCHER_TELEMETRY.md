@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "telemetry-contract"
-reviewed_at: "2026-09-16"
+reviewed_at: "2026-09-19"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
@@ -36,6 +36,14 @@ Verified release binary SHA-256 values:
 - Linux AppImage: `f53318079f00de092c93a5d3fbf0a747b0dfd520d736dfbddf4fa0629ac58057`.
 
 The certified release inventory contains nine canonical entries: the five user-facing binaries, the macOS DMG blockmap, and `latest.yml`, `latest-mac.yml`, and `latest-linux.yml`. `SHA256SUMS-1.5.12.txt` and `watcher-release-manifest-1.5.12.json` are the authoritative inventory receipts. The Windows updater manifest is regenerated from the **signed** installer bytes so its SHA-512 and size cannot point at the pre-signing binary.
+
+## Watcher staging retention
+
+`aoe2war watcher-staging` is the read-only authority for Watcher release-staging cleanup. It hashes every regular file in each immediate staging subtree and compares those hashes with the canonical mounted download vault at `/mnt/HC_Volume_105319120/aoe2-downloads`. A subtree is reclaimable only when **every file** already exists byte-for-byte in that vault. One unmatched file protects the entire subtree.
+
+`aoe2war watcher-staging --apply` persists the digest-bound plan, re-runs the inventory, rechecks production source/build/service and Wolo 8092/8093 listener identity, removes only exact-duplicate subtrees, then seals a durable result receipt. Symlinks, special files, path escape, changed plans, runtime drift, or unique historical bytes fail closed. The command never interprets age or version text as deletion authority.
+
+The 2026-09-19 live preview classified the 1.5.12 staging body as an exact canonical duplicate while preserving the 1.5.9 staging body and the version-1.5.11 previous direct ZIP because those contain bytes not duplicated in the canonical vault. This preserves release evidence instead of deleting it for a storage score.
 
 ## v1.5.11 capability-negotiated server media shedding
 

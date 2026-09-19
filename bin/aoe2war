@@ -88,6 +88,7 @@ CONTROL="$BIN_DIR/../scripts/aoe2_control.py"
 FINISH="$BIN_DIR/../scripts/aoe2_finish.py"
 BRIDGE="$BIN_DIR/../scripts/aoe2_operator_bridge.py"
 STORAGE_RETENTION="$BIN_DIR/../scripts/aoe2_storage_retention.py"
+WATCHER_STAGING="$BIN_DIR/../scripts/aoe2_watcher_staging.py"
 STORAGE="$BIN_DIR/../scripts/aoe2_storage.py"
 SPEED="$BIN_DIR/../scripts/aoe2_speed.py"
 SPEED_CAMPAIGN="$BIN_DIR/../scripts/aoe2_speed_campaign.py"
@@ -121,6 +122,7 @@ Usage:
   aoe2war docs <status|impact|audit|update> [options]
   aoe2war speed [status|release-history|benchmark|compare|browser|browser-truth|cold-lcp|diagnose|inventory|edge|build|campaign|pulse]
   aoe2war storage-retention [--apply] [--json]
+  aoe2war watcher-staging [--apply] [--json]
   aoe2war storage <status|estate|local-maintain|plan|maintain|verify> [options]
   aoe2war council [--json]
   aoe2war brain [--json]
@@ -151,6 +153,8 @@ Examples:
   aoe2war update --apply
   aoe2war storage-retention
   aoe2war storage-retention --apply
+  aoe2war watcher-staging
+  aoe2war watcher-staging --apply
   aoe2war finish
   aoe2war bridge --once
   aoe2war deploy
@@ -230,6 +234,11 @@ SAFE / READ-ONLY
       durable activation rollback generations. Protects the newest two and
       makes no production or receipt change.
 
+  aoe2war watcher-staging
+      Preview Watcher release staging and classify only complete subtrees whose
+      every file already exists byte-for-byte in the canonical download vault
+      as reclaimable. Unique historical or previous-release bytes are preserved.
+
 DOCUMENTATION / CONTEXT WRITE
 
   aoe2war control refresh
@@ -250,6 +259,12 @@ BOUNDED STORAGE WRITE
       cache directories from older activation rollback generations. Generation
       evidence and BUILD_ID remain; source/build/service and protected Wolo
       listener counts must remain unchanged and are recorded afterward.
+
+  aoe2war watcher-staging --apply
+      Persist and recheck the exact staging plan, then retire only complete
+      staging subtrees already duplicated byte-for-byte in the canonical
+      download vault. Unique bytes are never deleted. Production and Wolo
+      identities are re-proven before and after mutation and a receipt is sealed.
 
 ADMIN UI / OPERATOR BRIDGE
 
@@ -528,6 +543,10 @@ case "$command" in
   storage-retention)
     shift
     exec "$AOE2WAR_PYTHON" "$STORAGE_RETENTION" "$@"
+    ;;
+  watcher-staging)
+    shift
+    exec "$AOE2WAR_PYTHON" "$WATCHER_STAGING" "$@"
     ;;
   storage)
     shift

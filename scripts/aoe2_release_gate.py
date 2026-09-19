@@ -217,6 +217,12 @@ def path_risk(path: str) -> str:
     if any(token in p for token in replay_tokens):
         return "REPLAY_TRUTH"
 
+    if p in {
+        "scripts/aoe2_watcher_staging.py",
+        "tests/test_aoe2_watcher_staging.py",
+    }:
+        return "INFRASTRUCTURE"
+
     if "watcher" in p:
         return "WATCHER"
 
@@ -241,6 +247,7 @@ def path_risk(path: str) -> str:
         "scripts/aoe2_finish.py",
         "scripts/aoe2_operator_bridge.py",
         "scripts/aoe2_storage_retention.py",
+        "scripts/aoe2_watcher_staging.py",
         "scripts/aoe2_storage.py",
         "scripts/aoe2_storage_campaign.py",
         "scripts/aoe2_docs.py",
@@ -260,6 +267,7 @@ def path_risk(path: str) -> str:
         "bin/aoe2war-release",
         "bin/aoe2war",
         "tests/test_aoe2_storage_retention.py",
+        "tests/test_aoe2_watcher_staging.py",
         "scripts/run_test_contract.py",
         "scripts/scan_tracked_secrets.py",
         "tests/test_test_contract.py",
@@ -421,6 +429,7 @@ def command_plan(scope: dict, risk: str) -> list[tuple[str, list[str], int]]:
             "scripts/aoe2_operator_bridge.py",
             "scripts/aoe2_node_runtime.py",
             "scripts/aoe2_storage_retention.py",
+            "scripts/aoe2_watcher_staging.py",
             "scripts/aoe2_storage.py",
             "scripts/aoe2_storage_campaign.py",
             "scripts/aoe2_docs.py",
@@ -446,6 +455,7 @@ def command_plan(scope: dict, risk: str) -> list[tuple[str, list[str], int]]:
             "tests/test_release_rollback.py",
             "tests/test_aoe2_cli.py",
             "tests/test_aoe2_storage_retention.py",
+            "tests/test_aoe2_watcher_staging.py",
             "scripts/run_test_contract.py",
             "scripts/scan_tracked_secrets.py",
             "tests/test_test_contract.py",
@@ -497,6 +507,7 @@ def command_plan(scope: dict, risk: str) -> list[tuple[str, list[str], int]]:
                     "tests/test_aoe2_finish.py",
                     "tests/test_aoe2_operator_bridge.py",
                     "tests/test_aoe2_storage_retention.py",
+                    "tests/test_aoe2_watcher_staging.py",
                     "tests/test_aoe2_storage.py",
                     "tests/test_aoe2_storage_campaign.py",
                     "tests/test_aoe2_docs.py",
@@ -539,6 +550,7 @@ def command_plan(scope: dict, risk: str) -> list[tuple[str, list[str], int]]:
                     "scripts/aoe2_operator_bridge.py",
                     "scripts/aoe2_node_runtime.py",
                     "scripts/aoe2_storage_retention.py",
+                    "scripts/aoe2_watcher_staging.py",
                     "scripts/aoe2_storage.py",
                     "scripts/aoe2_storage_campaign.py",
                     "scripts/aoe2_docs.py",

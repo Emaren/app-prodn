@@ -1197,3 +1197,24 @@ not intentionally preserved review work. Recovery staging referenced by a curren
 recovery receipt is protected evidence; only unprotected staging contributes staging debt.
 Visibility remains mandatory in every case, but visibility alone does not justify mutation or a
 health penalty.
+
+## 2026-09-19 — Watcher staging retention requires byte identity, not age
+
+The storage audit found three Watcher staging bodies: a current 1.5.12 publication
+copy, a historical 1.5.9 release body, and the previous 1.5.11 direct ZIP. A raw
+directory count made all three look like equivalent staging debt, but their
+evidence value is different.
+
+Durable rule: Watcher staging is reclaimable only when every regular file in one
+immediate staging subtree already exists byte-for-byte in the canonical mounted
+download vault. One unmatched file protects the entire subtree. Version text,
+mtime, age, directory naming, or a newer public release never authorize deletion.
+The governed lane must hash the canonical vault, seal a plan digest, re-run the
+inventory before mutation, reject symlinks/special files/path escape, re-prove
+production source/build/service and Wolo 8092/8093 identity, then seal a durable
+result receipt.
+
+The first live preview proved 1.5.12 was a complete canonical duplicate while
+1.5.9 and the prior 1.5.11 ZIP contained unique bytes. Therefore only 1.5.12 was
+eligible; the older bodies remained evidence instead of becoming score-driven
+deletion targets.
