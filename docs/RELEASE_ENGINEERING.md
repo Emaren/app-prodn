@@ -1055,6 +1055,17 @@ classifier; Manifest preconditions, Ship validation, and Auto preflight consume
 that same authority so one layer cannot authorize a repair that the next layer
 independently rejects.
 
+A same-source recertification has an empty Git diff by definition, but that does
+not make it a low-validation `NO_CHANGE` release. Release Gate assigns it a
+distinct `SAME_SOURCE_RECERTIFICATION` scope identity, classifies the gate as
+`INFRASTRUCTURE`, runs the full applicable release/toolchain/TypeScript/ESLint/
+Prisma validation plan, and never inherits a reusable standard gate receipt.
+Manifest sealing recomputes the same recertification scope digest and validation
+context and accepts only a PASS gate bound to that identity. The resulting
+manifest records `same_source_recertification: true` at both the manifest and
+policy level. A standard clean-tree/NO_CHANGE receipt can never authorize this
+lane.
+
 The overlap is bounded to the context projects chosen by the locked update plan
 and is settled before post-release update replans the estate. Failure falls back
 to ordinary synchronous post-release context reconciliation.

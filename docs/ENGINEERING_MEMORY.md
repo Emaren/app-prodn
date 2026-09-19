@@ -1387,3 +1387,28 @@ estate proof at source `17d898a7…` showed the exact healthy
 manifest. Durable rule: Release Gate owns one recertification predicate and
 Manifest, Ship, and Auto consume it directly. A repair state is not real until
 every release layer agrees on the same classifier.
+
+
+## 2026-09-19 — No source diff does not mean no release validation
+
+After same-source recertification authority had been shared across Finish,
+Manifest preconditions, Ship, and Auto Ship, the next live attempt exposed a
+Release Gate identity problem. A true recertification has
+`production source == local HEAD`, so its Git scope is clean and its changed-file
+list is empty. The ordinary gate model therefore classified the scope as
+`NO_CHANGE`, which could reuse or emit evidence appropriate to “nothing changed”
+even though the operator was intentionally rebuilding and certifying the current
+implementation.
+
+Durable rule: source-diff classification and release-validation depth are
+different dimensions. Exact healthy `legacy-unmanifested` same-source
+recertification receives a distinct `SAME_SOURCE_RECERTIFICATION` scope digest
+and validation context, `INFRASTRUCTURE` risk, FULL release-engineering and
+application validation, and no reusable-gate inheritance. Manifest must
+recompute that exact context and may consume only its matching PASS receipt; it
+records the recertification authority explicitly.
+
+A standard clean-tree `NO_CHANGE` gate must never authorize a recertification.
+Conversely, an already-certified same-source runtime remains the ordinary no-op.
+The special validation identity exists only while the shared fail-closed
+same-source predicate is true.
