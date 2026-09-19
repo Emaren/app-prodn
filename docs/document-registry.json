@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "bf5b323b6c1e215d25379fea5b1b5a7e64a0d95be8839db390a4154bb24d68d3",
+      "sha256": "c797a7e51bdec0c93ae524b09057737f643a50acd1244c1be25366383bccbd8f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -601,6 +601,31 @@
       ],
       "title": "AoE2WAR Evidence Vault",
       "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "inspection-scoring-contract",
+      "id": "aoe2war.app-prodn.general-inspections",
+      "owner": "aoe2war-web",
+      "path": "docs/GENERAL_INSPECTIONS.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-09-19",
+      "sensitivity": "internal",
+      "sha256": "99b832dc8fe686f1ddba4850f25ae72c5e04b6213c528f3dc840299a60eb56a5",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "aoe2war",
+        "wolochain",
+        "vpssentry"
+      ],
+      "title": "AoE2WAR General Inspections",
+      "type": "reference"
     },
     {
       "audience": [
@@ -1482,9 +1507,9 @@
       "owner": "aoe2war-web",
       "path": "docs/STORAGE_OS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-13",
+      "reviewed_at": "2026-09-19",
       "sensitivity": "internal",
-      "sha256": "06d588986e1326eb9703a3e3cc3f7f2e415e1710511f007d0460ba4c160d5658",
+      "sha256": "bd08a573d86823acab94919292836fd0348ab11641488408ab6478b0f13c8480",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1837,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "perf/cold-lcp-watchdog-v1",
-    "commit": "1f3686c1ca1b12f1c397205898ccea50498423df"
+    "branch": "feature/general-inspections-v1",
+    "commit": "f78a44f2b2ce79a0864b545a5de6ebf66ceb4008"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "capturedAt": "2026-09-19T02:09:25Z",
+  "mac": {
+    "availableKb": 55161268,
+    "housekeepingReclaimedKb": 16445548,
+    "worktreesClean": true,
+    "regenerableCachesCleared": true
+  },
+  "policy": {
+    "rootPreferredGiB": 6,
+    "rootHardFloorGiB": 5,
+    "volumeHealthyTargetPercent": 78,
+    "volumeMaintenancePercent": 82,
+    "volumeCriticalPercent": 92,
+    "hotRollbackCount": 2,
+    "coldCheckpointCount": 3,
+    "watcherCurrentVersion": "1.5.12",
+    "watcherPreviousVersion": "1.5.11"
+  }
+}
