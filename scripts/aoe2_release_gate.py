@@ -31,6 +31,33 @@ class ReleaseGateError(RuntimeError):
     pass
 
 
+def same_source_recertification_allowed(data: dict) -> bool:
+    """Allow a same-source rebuild only for exact healthy missing provenance."""
+    local = data.get("local") or {}
+    github = data.get("github") or {}
+    docs = data.get("documentation") or {}
+    prod = data.get("production") or {}
+    certification = data.get("certification") or {}
+    source = str(local.get("head") or "")
+
+    return bool(
+        len(source) == 40
+        and github.get("main_sha") == source
+        and docs.get("baseline_is_ancestor_of_local") is True
+        and local.get("dirty_count") == 0
+        and prod.get("reachable") is True
+        and prod.get("dirty_count") == 0
+        and prod.get("source_sha") == source
+        and prod.get("service") == "active"
+        and bool(prod.get("active_build_id"))
+        and prod.get("version_parity") is True
+        and not prod.get("staged_build_id")
+        and prod.get("wolo_8092_count") == 1
+        and prod.get("wolo_8093_count") == 1
+        and certification.get("status") == "legacy-unmanifested"
+    )
+
+
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
@@ -1530,7 +1557,7 @@ def matching_gate(
     return path, payload
 
 
-def manifest_release(data: dict, *, json_output: bool = False) -> int:
+def manifest_precondition_errors(data: dict) -> list[str]:
     local = data["local"]
     github = data["github"]
     docs = data["documentation"]
@@ -1549,8 +1576,24 @@ def manifest_release(data: dict, *, json_output: bool = False) -> int:
         errors.append("production worktree is not clean")
     if not prod.get("source_sha"):
         errors.append("production source SHA is unavailable")
-    elif prod.get("source_sha") == local.get("head"):
-        errors.append("production source already equals this release; manifest must be sealed before source advance")
+    elif (
+        prod.get("source_sha") == local.get("head")
+        and not same_source_recertification_allowed(data)
+    ):
+        errors.append(
+            "production source already equals this release; manifest must be "
+            "sealed before source advance unless exact healthy runtime "
+            "provenance is legacy-unmanifested"
+        )
+    return errors
+
+
+def manifest_release(data: dict, *, json_output: bool = False) -> int:
+    local = data["local"]
+    docs = data["documentation"]
+    prod = data["production"]
+
+    errors = manifest_precondition_errors(data)
 
     if errors:
         payload = {

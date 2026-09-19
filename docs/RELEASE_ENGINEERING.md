@@ -1050,7 +1050,10 @@ activation → soak → certification chain against the same Git SHA. This autho
 exists only while local/GitHub/production source are exact, local and production
 trees are clean, service/version/BUILD_ID health is exact, no staged candidate
 exists, and protected Wolo listeners remain exactly one each. Any drift restores
-the ordinary same-source block.
+the ordinary same-source block. Release Gate owns the shared recertification
+classifier; Manifest preconditions, Ship validation, and Auto preflight consume
+that same authority so one layer cannot authorize a repair that the next layer
+independently rejects.
 
 The overlap is bounded to the context projects chosen by the locked update plan
 and is settled before post-release update replans the estate. Failure falls back
