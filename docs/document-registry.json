@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "095957b6d1b6b7f5bf97802a136c75e5d3ac295f3a5f2933f9c9791c79cee098",
+      "sha256": "300586bf23d6580ba716bed9bd2398cbf99ecab8c56c882a9fabdf764cd93716",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1837,8 +1837,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "perf/featured-avatar-lcp-stability-v1",
-    "commit": "ae24f00a64f382ca9962e44ed19973758ff27863"
+    "branch": "perf/header-logo-edge-direct-v1",
+    "commit": "2c4172101343f3ed7c969b6618a2eabdb4c2461e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

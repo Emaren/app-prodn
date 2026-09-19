@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `perf/featured-avatar-lcp-stability-v1` at `ae24f00a64f382ca9962e44ed19973758ff27863`
+Implementation baseline: `perf/header-logo-edge-direct-v1` at `2c4172101343f3ed7c969b6618a2eabdb4c2461e`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
