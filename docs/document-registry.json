@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "89334ba11014f71749ede773a5975ecb5d9857e1a2498465147d5ae945662d78",
+      "sha256": "9bd92d0395b936c74a93274b62734b5cf6b0d1402185ca53bb043392499c8ca7",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-14",
       "sensitivity": "internal",
-      "sha256": "4136b8261f3fc6a13df2efbea038692d124980728c2fda514b90c49debc92f95",
+      "sha256": "9d58a0b18d71f89b89b43bdb9627c8fd300fce534dcb83c3c14e87ae1ee6f582",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1646,9 +1646,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WATCHER_TELEMETRY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-16",
+      "reviewed_at": "2026-09-19",
       "sensitivity": "restricted",
-      "sha256": "b2c3031adafa1f5ec07aa134c5e7122588ed632bb891fc5065b1430132d64f63",
+      "sha256": "5fec56e0496a47ac98f0d5cc2c11076484f68d0bd6971f170d545067904bfdf8",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/general-inspections-governed-state",
-    "commit": "a1ff3bed9e3013ad0815a5219564f491511bf760"
+    "branch": "feature/watcher-staging-retention",
+    "commit": "72116e6511989707a13bef70c2baccf90812d12d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
