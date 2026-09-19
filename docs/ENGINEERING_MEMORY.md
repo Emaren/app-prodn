@@ -1245,3 +1245,21 @@ The new ledger exposes `content_proof_summary.fresh_hash` and
 full campaign into reusable project intelligence: later campaigns should hash
 only genuinely new or changed rollback generations while preserving the exact
 same fail-closed deletion authority.
+
+
+## 2026-09-19 — Read authority and mutation authority are separate
+
+The first governed Watcher staging apply correctly identified the 1.5.12 staging
+subtree as a byte-identical canonical duplicate, sealed its plan, and then failed
+closed with `Permission denied`. The remote worker was intentionally running as
+the ordinary `hel1` operator user while the staging directory was `root:root`
+mode 0755. Runtime and Wolo identity stayed unchanged and the candidate remained
+present.
+
+Durable rule: read-only evidence collection should stay least-privileged, but a
+proven mutation must execute through the already-canonical maintenance authority
+that owns the target. Watcher staging preview therefore remains on `hel1`;
+apply uses `rollback_archive.root_maintenance_host` (`root@hel1`). Do not add
+passwordless sudo or bypass the governed worker with ad-hoc shell deletion. The
+transport privilege changes; digest-bound planning, path confinement, symlink
+rejection, production identity checks, Wolo checks, and durable receipts do not.

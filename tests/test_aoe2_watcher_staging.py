@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+from unittest import mock
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "aoe2_watcher_staging.py"
@@ -143,6 +144,8 @@ class WatcherStagingIntegrationTests(unittest.TestCase):
             list(MODULE.CANONICAL_STAGING_ROOTS),
         )
         self.assertEqual(policy["wolo_ports"], [8092, 8093])
+        self.assertEqual(policy["production_host"], "hel1")
+        self.assertEqual(policy["apply_host"], "root@hel1")
 
         altered = dict(policy)
         altered["download_root"] = "/tmp/not-canonical"
@@ -152,6 +155,31 @@ class WatcherStagingIntegrationTests(unittest.TestCase):
             MODULE.WatcherStagingError, "must be exactly"
         ):
             MODULE.validate_policy(altered)
+
+    def test_remote_transport_separates_preview_and_privileged_apply(self):
+        policy = MODULE.policy_from_contract(MODULE.load_contract())
+        completed = subprocess.CompletedProcess(
+            args=[], returncode=0, stdout='{"status":"NOOP"}', stderr=""
+        )
+
+        with mock.patch.object(
+            MODULE.subprocess, "run", return_value=completed
+        ) as run:
+            MODULE.invoke_remote(policy, apply=False)
+            preview_ssh = run.call_args.args[0]
+            self.assertIn("hel1", preview_ssh)
+            self.assertNotIn("root@hel1", preview_ssh)
+
+        with mock.patch.object(
+            MODULE.subprocess, "run", return_value=completed
+        ) as run:
+            MODULE.invoke_remote(policy, apply=True)
+            apply_ssh = run.call_args.args[0]
+            self.assertIn("root@hel1", apply_ssh)
+            self.assertNotEqual(
+                apply_ssh[apply_ssh.index("root@hel1")],
+                policy["production_host"],
+            )
 
     def test_operator_cli_routes_watcher_staging(self):
         with tempfile.TemporaryDirectory() as temp:
