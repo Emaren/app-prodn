@@ -202,8 +202,10 @@ Superseded application runtimes are rebuildable from retained Git history.
 
 - `inventory` is read-only and identifies every keep/expiry decision;
 - `prepare <canonical-campaign-directory>` seals a complete JSON deletion ledger,
-  hashes expanded content into compressed manifests, verifies cold archives and
-  their original receipts, and proves production identity;
+  hashes expanded content into compressed manifests or reuses an earlier sealed
+  content manifest only after the current tree reproduces the exact prior metadata
+  identity, verifies cold archives and their original receipts, and proves
+  production identity;
 - `apply-one <ledger> <sha256> <generation>` expires exactly one approved runtime
   body after rechecking the ledger, content identity, retained checkpoints,
   source/build/services, release/retention/archive locks, and Wolo progression;
@@ -217,6 +219,33 @@ Run this explicit, bounded maintenance lane after releases when a generation
 falls outside the two-generation window. Each campaign produces its exact ledger
 before expiry. Do not retain endless cold application bodies, and do not confuse
 an expired compiled runtime with deleted unique project evidence.
+
+### Cross-campaign content-proof reuse
+
+A completed expiry campaign leaves a content-hashed manifest for every expanded
+runtime it inspected. Later campaigns may reuse that proof instead of reading the
+same unchanged runtime bytes again, but reuse is evidence-driven rather than a
+cache shortcut.
+
+The newer campaign first walks the live runtime tree without reading file
+contents and computes the same metadata identity used by expiry verification. A
+prior manifest is reusable only when its ledger and manifest are direct read-only
+files, generation/path/source/build identity agrees, every regular manifest row
+contains a SHA-256, every manifest path remains inside the runtime root, the
+manifest reconstructs the exact current tree identity, and the tree identity is
+unchanged on a second post-copy walk. The reused manifest bytes are copied into
+the new campaign and their source ledger/manifest digests are recorded.
+
+Any missing, writable, malformed, drifted, ambiguous, or otherwise unverifiable
+prior evidence simply falls back to a fresh full content hash. The ledger records
+`content_proof_summary.fresh_hash` and
+`content_proof_summary.reused_sealed_manifest` so the optimization remains
+observable.
+
+A September 19 inode census across 12 current rollback generations found zero
+cross-generation shared inodes. Hash memoization by inode therefore has no
+measured value for this estate; sealed-manifest reuse is the durable acceleration
+path.
 
 ## Deployment boundary
 

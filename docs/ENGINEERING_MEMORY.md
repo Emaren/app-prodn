@@ -1218,3 +1218,30 @@ The first live preview proved 1.5.12 was a complete canonical duplicate while
 1.5.9 and the prior 1.5.11 ZIP contained unique bytes. Therefore only 1.5.12 was
 eligible; the older bodies remained evidence instead of becoming score-driven
 deletion targets.
+
+
+## 2026-09-19 — Retention proof reuse beats inode hash caching
+
+A full lean-retention `prepare` campaign is intentionally expensive because it
+content-hashes every expanded rollback generation before it can authorize
+expiry. During the September 19 campaign, a read-only census of 12 current
+rollback generations measured 26,105 file references and found **zero**
+cross-generation shared inodes. Therefore inode-keyed hash memoization has no
+measured benefit for the current estate and must not be treated as the storage
+acceleration strategy.
+
+The durable acceleration seam is the evidence already produced by prior
+campaigns. A completed campaign leaves a read-only content-hashed manifest and a
+sealed ledger row for each expanded runtime. A later campaign may reuse those
+bytes only after re-proving the live generation's complete metadata identity,
+source/build/path identity, prior ledger/manifest immutability, manifest
+namespace, per-regular-file SHA presence, and the manifest's reconstructed
+metadata identity. The runtime tree is re-read after the copied proof to close
+the race window. Any mismatch or weak evidence falls back to a fresh full
+content hash.
+
+The new ledger exposes `content_proof_summary.fresh_hash` and
+`content_proof_summary.reused_sealed_manifest`. This turns today's expensive
+full campaign into reusable project intelligence: later campaigns should hash
+only genuinely new or changed rollback generations while preserving the exact
+same fail-closed deletion authority.

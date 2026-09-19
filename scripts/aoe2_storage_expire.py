@@ -6,6 +6,7 @@ import datetime as dt
 import fcntl
 import gzip
 import hashlib
+import io
 import json
 import os
 from pathlib import Path
@@ -123,6 +124,111 @@ def tree(path, manifest=None, hash_content=False):
         if stream: stream.close()
     return {'identity_sha256':h.hexdigest(),'entries':count,'allocated_bytes':allocated}
 
+def _sealed_regular(path, max_bytes):
+    path=Path(path)
+    try: before=path.lstat()
+    except OSError: return None
+    if path.is_symlink() or not stat.S_ISREG(before.st_mode) or before.st_mode & 0o222:
+        return None
+    if before.st_size<=0 or before.st_size>max_bytes:
+        return None
+    try:
+        with path.open('rb') as stream:
+            data=stream.read(max_bytes+1)
+            after=os.fstat(stream.fileno())
+    except OSError:
+        return None
+    signature=lambda s:(s.st_dev,s.st_ino,s.st_size,s.st_mtime_ns,s.st_ctime_ns)
+    if len(data)>max_bytes or signature(before)!=signature(after):
+        return None
+    return data
+
+def _manifest_matches_tree(data, root, expected):
+    root=Path(root);h=hashlib.sha256();count=0;regular=0
+    try:
+        with gzip.GzipFile(fileobj=io.BytesIO(data),mode='rb') as stream:
+            for raw in stream:
+                row=json.loads(raw)
+                if not isinstance(row,dict) or not isinstance(row.get('path'),str):
+                    return False
+                p=Path(row['path'])
+                try: p.relative_to(root)
+                except ValueError: return False
+                mode=row.get('mode')
+                if type(mode) is not int:
+                    return False
+                if stat.S_ISREG(mode):
+                    if not re.fullmatch(r'[0-9a-f]{64}',str(row.get('sha256') or '')):
+                        return False
+                    regular+=1
+                elif not (stat.S_ISDIR(mode) or stat.S_ISLNK(mode)):
+                    return False
+                identity_row={k:v for k,v in row.items() if k!='sha256'}
+                h.update(encoded(identity_row));count+=1
+                if count>expected['entries']:
+                    return False
+    except (OSError,EOFError,gzip.BadGzipFile,json.JSONDecodeError,TypeError,ValueError):
+        return False
+    return (count==expected['entries'] and regular>0
+            and h.hexdigest()==expected['identity_sha256'])
+
+def _write_new(data,destination):
+    destination=Path(destination)
+    if destination.exists() or destination.is_symlink():
+        raise RuntimeError(f'manifest destination already exists {destination}')
+    with destination.open('xb') as dst:
+        dst.write(data);dst.flush();os.fsync(dst.fileno())
+
+def reuse_content_manifest(row,current,destination):
+    """Reuse a prior content-hashed manifest only when current metadata identity is exact."""
+    destination=Path(destination)
+    for ledger in sorted(EXPIRY.glob('campaign-*/ledger.json'),reverse=True):
+        if ledger.parent==destination.parent:
+            continue
+        data=_sealed_regular(ledger,64*1024*1024)
+        if data is None:
+            continue
+        try: prior=json.loads(data)
+        except (json.JSONDecodeError,UnicodeDecodeError):
+            continue
+        if prior.get('schema')!=1 or prior.get('kind')!='aoe2war-lean-retention-ledger':
+            continue
+        matches=[candidate for candidate in prior.get('rows',[]) if
+                 isinstance(candidate,dict) and candidate.get('generation')==row.get('generation')
+                 and candidate.get('kind')=='expanded']
+        if len(matches)!=1:
+            continue
+        candidate=matches[0]
+        if any(candidate.get(key)!=row.get(key) for key in ('path','source_sha','build_id')):
+            continue
+        if candidate.get('identity_sha256')!=current['identity_sha256'] or candidate.get('entries')!=current['entries']:
+            continue
+        source=Path(str(candidate.get('manifest') or ''))
+        if source.parent!=ledger.parent or source.name!=row['generation']+'.tree.jsonl.gz':
+            continue
+        source_bytes=_sealed_regular(source,128*1024*1024)
+        if source_bytes is None:
+            continue
+        source_sha=hashlib.sha256(source_bytes).hexdigest()
+        if source_sha!=candidate.get('manifest_sha256'):
+            continue
+        if not _manifest_matches_tree(source_bytes,Path(row['path']),current):
+            continue
+        _write_new(source_bytes,destination)
+        copied_sha=digest(destination)
+        if copied_sha!=source_sha:
+            destination.unlink(missing_ok=True)
+            raise RuntimeError('reused manifest copy digest mismatch')
+        after=tree(row['path'])
+        if after!=current:
+            destination.unlink(missing_ok=True)
+            continue
+        destination.chmod(0o444)
+        return {'mode':'reused_sealed_manifest',
+                'source_ledger':str(ledger),'source_ledger_sha256':hashlib.sha256(data).hexdigest(),
+                'source_manifest':str(source),'source_manifest_sha256':source_sha}
+    return None
+
 def select_checkpoints(modern, archives):
     hot=sorted(modern,reverse=True)[:2]
     cold=[]; weeks=set()
@@ -217,9 +323,16 @@ def prepare(directory):
     for i,r in enumerate(inv['rows']):
         if r['kind']=='expanded':
             manifest=directory/(r['generation']+'.tree.jsonl.gz')
-            r.update(tree(r['path'],manifest,hash_content=True))
-            r.update(manifest=str(manifest),manifest_sha256=digest(manifest))
-            manifest.chmod(0o444)
+            current=tree(r['path'])
+            proof=reuse_content_manifest(r,current,manifest)
+            if proof is None:
+                r.update(tree(r['path'],manifest,hash_content=True))
+                manifest.chmod(0o444)
+                proof={'mode':'fresh_hash','tool_sha256':inv['tool_sha256']}
+            else:
+                r.update(current)
+            r.update(manifest=str(manifest),manifest_sha256=digest(manifest),
+                     content_proof=proof)
         elif r['kind']=='archive':
             if digest(r['path'])!=r['archive_sha256']: raise RuntimeError('archive hash mismatch')
             if digest(r['tree_manifest_path'])!=r['tree_manifest_sha256']: raise RuntimeError('archive manifest mismatch')
@@ -233,7 +346,13 @@ def prepare(directory):
     inv['kind']='aoe2war-lean-retention-ledger'
     inv['wolo_height']=height()
     inv['reclaim_bytes']=sum(r.get('allocated_bytes',0) for r in inv['rows'] if r['action']=='EXPIRE')
+    inv['content_proof_summary']={
+        'fresh_hash':sum(r.get('content_proof',{}).get('mode')=='fresh_hash' for r in inv['rows']),
+        'reused_sealed_manifest':sum(r.get('content_proof',{}).get('mode')=='reused_sealed_manifest' for r in inv['rows'])
+    }
     seal(directory/'ledger.json',inv)
+    print('CONTENT_PROOF','fresh',inv['content_proof_summary']['fresh_hash'],
+          'reused',inv['content_proof_summary']['reused_sealed_manifest'],flush=True)
     print('LEDGER',directory/'ledger.json','SHA256',digest(directory/'ledger.json'),'RECLAIM',inv['reclaim_bytes'],flush=True)
 
 def verify_row(r):
