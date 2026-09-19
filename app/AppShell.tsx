@@ -1683,6 +1683,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                   width={972}
                   height={155}
                   priority
+                  unoptimized
                   className="h-auto w-[8.25rem] drop-shadow-[0_5px_18px_rgba(251,191,36,0.16)] transition duration-200 group-hover:brightness-110 min-[430px]:w-[9.25rem]"
                 />
               </Link>
@@ -1796,6 +1797,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                   width={972}
                   height={155}
                   priority
+                  unoptimized
                   className="h-auto w-[5.6rem] drop-shadow-[0_5px_18px_rgba(251,191,36,0.16)] transition duration-200 group-hover:brightness-110 lg:w-[6.5rem] xl:w-[8.7rem]"
                 />
               </Link>
