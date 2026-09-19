@@ -88,4 +88,95 @@ class ExpiryTest(unittest.TestCase):
     def test_unique_data_added_to_generation_prevents_deletion(self):self.exercise('unknown')
     def test_missing_retained_checkpoint_prevents_deletion(self):self.exercise('lost_checkpoint')
 
+
+    def _reuse_fixture(self,base):
+        expiry=base/'expiry';expiry.mkdir()
+        runtime=base/'runtime';runtime.mkdir()
+        (runtime/'next').mkdir()
+        (runtime/'next/BUILD_ID').write_text('build-one')
+        (runtime/'source-sha').write_text('a'*40)
+        (runtime/'next/app.js').write_bytes(b'content-proof')
+        row={'generation':'activate-20260918T000000Z-aaaaaaaaaaaa',
+             'path':str(runtime),'kind':'expanded','action':'EXPIRE',
+             'source_sha':'a'*40,'build_id':'build-one'}
+        inv={'schema':1,'kind':'aoe2war-lean-retention-inventory',
+             'tool_sha256':'f'*64,'runtime':{'build':'current'},
+             'protected_hot':[],'protected_cold':[],'rows':[row],
+             'wolo_mutated':False}
+        return expiry,runtime,inv
+
+    def test_second_campaign_reuses_exact_sealed_content_manifest(self):
+        with tempfile.TemporaryDirectory() as d:
+            base=Path(d);expiry,runtime,inv=self._reuse_fixture(base)
+            with mock.patch.multiple(M,EXPIRY=expiry), \
+                 mock.patch.object(M,'inspect_inventory',side_effect=lambda:json.loads(json.dumps(inv))), \
+                 mock.patch.object(M,'locks',return_value=[]), \
+                 mock.patch.object(M,'runtime',return_value=inv['runtime']), \
+                 mock.patch.object(M,'height',return_value=123):
+                first=expiry/'campaign-20260919T000000Z'
+                M.prepare(first)
+                first_ledger=json.loads((first/'ledger.json').read_text())
+                self.assertEqual(first_ledger['rows'][0]['content_proof']['mode'],'fresh_hash')
+                self.assertEqual(first_ledger['content_proof_summary'],
+                                 {'fresh_hash':1,'reused_sealed_manifest':0})
+
+                second=expiry/'campaign-20260919T010000Z'
+                M.prepare(second)
+                second_ledger=json.loads((second/'ledger.json').read_text())
+                proof=second_ledger['rows'][0]['content_proof']
+                self.assertEqual(proof['mode'],'reused_sealed_manifest')
+                self.assertEqual(second_ledger['content_proof_summary'],
+                                 {'fresh_hash':0,'reused_sealed_manifest':1})
+                self.assertEqual(proof['source_ledger'],str(first/'ledger.json'))
+                self.assertEqual(
+                    M.digest(second/(inv['rows'][0]['generation']+'.tree.jsonl.gz')),
+                    M.digest(first/(inv['rows'][0]['generation']+'.tree.jsonl.gz')))
+                self.assertFalse((second/(inv['rows'][0]['generation']+'.tree.jsonl.gz')).stat().st_mode & 0o222)
+
+    def test_same_size_content_drift_forces_fresh_hash(self):
+        with tempfile.TemporaryDirectory() as d:
+            base=Path(d);expiry,runtime,inv=self._reuse_fixture(base)
+            with mock.patch.multiple(M,EXPIRY=expiry), \
+                 mock.patch.object(M,'inspect_inventory',side_effect=lambda:json.loads(json.dumps(inv))), \
+                 mock.patch.object(M,'locks',return_value=[]), \
+                 mock.patch.object(M,'runtime',return_value=inv['runtime']), \
+                 mock.patch.object(M,'height',return_value=123):
+                first=expiry/'campaign-20260919T000000Z';M.prepare(first)
+                target=runtime/'next/app.js'
+                before=target.read_bytes()
+                target.write_bytes(b'changed-proof')
+                self.assertEqual(len(before),len(target.read_bytes()))
+                second=expiry/'campaign-20260919T010000Z';M.prepare(second)
+                ledger=json.loads((second/'ledger.json').read_text())
+                self.assertEqual(ledger['rows'][0]['content_proof']['mode'],'fresh_hash')
+
+    def test_writable_prior_manifest_is_not_reused(self):
+        with tempfile.TemporaryDirectory() as d:
+            base=Path(d);expiry,runtime,inv=self._reuse_fixture(base)
+            with mock.patch.multiple(M,EXPIRY=expiry), \
+                 mock.patch.object(M,'inspect_inventory',side_effect=lambda:json.loads(json.dumps(inv))), \
+                 mock.patch.object(M,'locks',return_value=[]), \
+                 mock.patch.object(M,'runtime',return_value=inv['runtime']), \
+                 mock.patch.object(M,'height',return_value=123):
+                first=expiry/'campaign-20260919T000000Z';M.prepare(first)
+                manifest=first/(inv['rows'][0]['generation']+'.tree.jsonl.gz')
+                manifest.chmod(0o644)
+                second=expiry/'campaign-20260919T010000Z';M.prepare(second)
+                ledger=json.loads((second/'ledger.json').read_text())
+                self.assertEqual(ledger['rows'][0]['content_proof']['mode'],'fresh_hash')
+
+
+    def test_release_gate_admits_storage_expiry_as_infrastructure(self):
+        gate_spec=importlib.util.spec_from_file_location(
+            'release_gate',Path(__file__).resolve().parents[1]/'scripts/aoe2_release_gate.py')
+        gate=importlib.util.module_from_spec(gate_spec);gate_spec.loader.exec_module(gate)
+        self.assertEqual(gate.path_risk('scripts/aoe2_storage_expire.py'),'INFRASTRUCTURE')
+        scope={'mode':'worktree','base_sha':'a','target_sha':'WORKTREE',
+               'changed_files':['scripts/aoe2_storage_expire.py']}
+        commands=gate.command_plan(scope,'INFRASTRUCTURE')
+        release_tests=next(args for label,args,_ in commands if label=='release-engineering-tests')
+        compile_args=next(args for label,args,_ in commands if label=='release-python-compile')
+        self.assertIn('tests/test_aoe2_storage_expire.py',release_tests)
+        self.assertIn('scripts/aoe2_storage_expire.py',compile_args)
+
 if __name__=='__main__':unittest.main()
