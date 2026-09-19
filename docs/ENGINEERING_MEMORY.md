@@ -1335,3 +1335,14 @@ exact current-source `CERTIFIED` provenance afterward, and post-release/final
 audits receive no deferral. Deferral therefore means only “allow the controller
 to reach its authorized remediation,” never “inherit certification from an older
 artifact.”
+
+The first implementation fixed Finish planning but the first real run exposed a
+second independent interpretation in the pre-mutation operational Doctor. Dry-run
+planning reported READY while execution stopped on the same certification
+blocker before source reconciliation. Runtime remained untouched. The durable
+follow-up rule is that planning and operational preflight must call one shared
+runtime-provenance Doctor-remediation classifier. Operational preflight
+re-collects release state immediately before applying that classifier; only the
+exact `certification / legacy-unmanifested` blocker may be carried forward, and
+any second Doctor blocker remains fatal. The remediation and its reason are
+written into the Finish receipt.

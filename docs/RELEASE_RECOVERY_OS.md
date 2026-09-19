@@ -114,10 +114,19 @@ each, and Finish has independently determined that a governed deployment is
 required.
 
 That exception does not certify the existing artifact. It merely permits
-pre-release documentation/context reconciliation to complete so control can
-reach the immediately-following deployment. The internal Update flag is valid
-only with Finish's deferred-context plus deferred-final-audit fast path. After
-deployment, Finish immediately re-collects release state and
+pre-release maintenance to complete so control can reach the immediately-following
+deployment. The internal Update flag is valid only with Finish's deferred-context
+plus deferred-final-audit fast path.
+
+Dry-run planning and the real pre-mutation operational Doctor use the same
+runtime-provenance remediation classifier. Operational preflight re-collects
+release state after maintenance/control-asset reconciliation and may remove only
+the exact `certification` blocker whose detail is
+`runtime provenance='legacy-unmanifested'`. The receipt records that bounded
+remediation. Any other Doctor blocker, or any source/health/Wolo drift, still
+stops before mutation.
+
+After deployment, Finish immediately re-collects release state and
 `assert_certified_release` requires exact current-source certification. The
 post-release Update and final estate audit run without the provenance deferral.
 

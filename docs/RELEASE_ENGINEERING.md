@@ -1024,9 +1024,17 @@ through pre-release maintenance only if `needs_deploy` already requires a
 governed release and the service/version/BUILD_ID/Wolo invariants are exact.
 Standalone Update remains fail-closed. The internal deferral is accepted only
 with Finish's deferred-context and deferred-final-audit fast path, is recorded in
-the Update receipt, and ends at deployment. Finish then immediately requires
-exact current-source `CERTIFIED` provenance before Workshop, post-release
-documentation, or final closure can succeed.
+the Update receipt, and ends at deployment.
+
+The dry-run planner and real operational preflight must share the same Doctor
+remediation helper. Operational preflight re-collects release truth after its
+maintenance/control-asset phases and may carry forward only the exact
+`certification` blocker for `legacy-unmanifested` provenance. Any additional
+Doctor blocker remains fatal. The Finish receipt records the remediated blocker
+and why deployment is still mandatory.
+
+Finish then immediately requires exact current-source `CERTIFIED` provenance
+before Workshop, post-release documentation, or final closure can succeed.
 
 This is an ordering exception, not provenance inheritance: a certified older
 artifact does not make a newer source commit certified merely because the newer
