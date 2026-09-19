@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a7f9be84f2cb7e24a49d56a299cd75b1fd8456b90cadb7f610fa754f808d358a",
+      "sha256": "0dd09bbff35fd79dc0d9e5edec0f20d4ceb783c2e99458b074af94560629a101",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-14",
       "sensitivity": "internal",
-      "sha256": "9dcdae77eb9e0eff853ec8a600cdf40abd247510ef59a331b07f3a794b5c1ebf",
+      "sha256": "934e28fd848f95553e58e2a7e226ff0142ce29e0b31db258260494e0e9cc8898",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1279,7 +1279,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-08-24",
       "sensitivity": "internal",
-      "sha256": "a6c89b2f22667781a9d28c1d16a301ddca3e19daaf062b4b286911e892a95c72",
+      "sha256": "e9f9b8218c4d8e0d5b8fffb12fd042ea66915be985db1b26a30c8c4753bb0416",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/watcher-staging-privileged-apply",
-    "commit": "1e94b82d42f3ae2c20613142ac42fc5ec245157e"
+    "branch": "fix/release-dependency-allocation-telemetry",
+    "commit": "d0ba173fd65363e5457fb4b753242f0680efc26a"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
