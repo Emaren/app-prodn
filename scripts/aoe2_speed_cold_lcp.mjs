@@ -29,6 +29,8 @@ const chrome = String(
 );
 const postLoadMs = Math.max(500, Number(args["post-load-ms"] || 2500));
 const loadTimeoutMs = Math.max(5000, Number(args["load-timeout-ms"] || 20000));
+const commandTimeoutMs = Math.max(5000, Number(args["command-timeout-ms"] || 15000));
+const sampleAttempts = Math.max(1, Math.min(3, Number(args["sample-attempts"] || 2)));
 if (!outDir) throw new Error("--out-dir is required");
 await mkdir(outDir, { recursive: true });
 
@@ -217,8 +219,9 @@ async function connectChrome(profileDir) {
   ws.onmessage = (event) => {
     const message = JSON.parse(event.data);
     if (message.id && pending.has(message.id)) {
-      const { resolve, reject } = pending.get(message.id);
+      const { resolve, reject, timer } = pending.get(message.id);
       pending.delete(message.id);
+      clearTimeout(timer);
       if (message.error) reject(new Error(message.error.message));
       else resolve(message.result);
     } else {
@@ -228,8 +231,18 @@ async function connectChrome(profileDir) {
   const command = (method, params = {}) =>
     new Promise((resolve, reject) => {
       const id = ++nextId;
-      pending.set(id, { resolve, reject });
-      ws.send(JSON.stringify({ id, method, params }));
+      const timer = setTimeout(() => {
+        pending.delete(id);
+        reject(new Error("CDP command timed out after " + commandTimeoutMs + "ms: " + method));
+      }, commandTimeoutMs);
+      pending.set(id, { resolve, reject, timer });
+      try {
+        ws.send(JSON.stringify({ id, method, params }));
+      } catch (error) {
+        clearTimeout(timer);
+        pending.delete(id);
+        reject(error);
+      }
     });
 
   return { child, ws, events, command };
@@ -335,14 +348,31 @@ async function runOne(index) {
 
 const rows = [];
 for (let i = 1; i <= samples; i += 1) {
-  const row = await runOne(i);
+  let row = null;
+  let lastError = null;
+  for (let attempt = 1; attempt <= sampleAttempts; attempt += 1) {
+    try {
+      row = await runOne(i);
+      row.harnessAttempt = attempt;
+      break;
+    } catch (error) {
+      lastError = error;
+      process.stderr.write(
+        "sample " + i + "/" + samples + " attempt " + attempt + "/" + sampleAttempts +
+        " failed: " + (error?.message || error) + "\n"
+      );
+    }
+  }
+  if (!row) throw lastError || new Error("sample " + i + "/" + samples + " failed");
   rows.push(row);
   const lcp = row.metrics?.finalLcp?.startTime;
   const ready = row.metrics?.readyMs;
   const load = row.metrics?.navigation?.loadEventEnd;
   process.stderr.write(
-    `sample ${i}/${samples} ready=${ready?.toFixed?.(1) ?? "-"}ms ` +
-    `lcp=${lcp?.toFixed?.(1) ?? "-"}ms load=${load?.toFixed?.(1) ?? "-"}ms\n`
+    "sample " + i + "/" + samples + " attempt=" + row.harnessAttempt +
+    " ready=" + (ready?.toFixed?.(1) ?? "-") + "ms " +
+    "lcp=" + (lcp?.toFixed?.(1) ?? "-") + "ms load=" +
+    (load?.toFixed?.(1) ?? "-") + "ms\n"
   );
 }
 
@@ -368,6 +398,10 @@ const receipt = {
   viewport: viewportName,
   samples,
   postLoadMs,
+  loadTimeoutMs,
+  commandTimeoutMs,
+  sampleAttempts,
+  retriedSamples: rows.filter((row) => row.harnessAttempt > 1).map((row) => row.sample),
   productionMutated: false,
   databaseMutated: false,
   woloMutated: false,
