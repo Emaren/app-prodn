@@ -2617,9 +2617,11 @@ def reconcile_documentation(
     defer_final_audit: bool = False,
     force_control_refresh: bool = False,
     preserve_context_history: bool = False,
+    defer_runtime_provenance: bool = False,
 ) -> dict[str, Any]:
     plan = aoe2_update.collect_plan(
         preserve_context_history=preserve_context_history,
+        defer_runtime_provenance=defer_runtime_provenance,
     )
     summary = documentation_plan_summary(plan)
     if plan.get("blocked"):
@@ -2639,6 +2641,8 @@ def reconcile_documentation(
         update_args.append("--defer-final-audit")
     if preserve_context_history:
         update_args.append("--preserve-context-history")
+    if defer_runtime_provenance:
+        update_args.append("--defer-runtime-provenance")
 
     run_live(
         update_args,
@@ -3162,8 +3166,10 @@ def plan_payload(*, preserve_context_history: bool = False) -> dict[str, Any]:
     )
     external_sources = external_source_authority_snapshot()
     capacity_snapshot = production_capacity_snapshot()
+    deploy_expected = plan.mode != "clean" or needs_deploy(data)
     documentation_plan = aoe2_update.collect_plan(
         preserve_context_history=preserve_context_history,
+        defer_runtime_provenance=deploy_expected,
     )
     documentation_summary = documentation_plan_summary(documentation_plan)
 
@@ -3200,18 +3206,34 @@ def plan_payload(*, preserve_context_history: bool = False) -> dict[str, Any]:
         for finding in doctor.get("findings", [])
         if finding.get("severity") == "BLOCKER"
     ]
+    provenance_can_remediate = bool(
+        deploy_expected
+        and aoe2_update.runtime_provenance_finish_remediable(data)
+    )
     remediated_blockers = [
         str(finding.get("detail") or finding.get("key"))
         for finding in blocker_findings
-        if finding.get("key") == "volume-capacity-critical"
-        and retention_can_remediate_capacity
+        if (
+            finding.get("key") == "volume-capacity-critical"
+            and retention_can_remediate_capacity
+        )
+        or (
+            finding.get("key") == "certification"
+            and provenance_can_remediate
+        )
     ]
     blockers = [
         str(finding.get("detail") or finding.get("key") or "unknown blocker")
         for finding in blocker_findings
         if not (
-            finding.get("key") == "volume-capacity-critical"
-            and retention_can_remediate_capacity
+            (
+                finding.get("key") == "volume-capacity-critical"
+                and retention_can_remediate_capacity
+            )
+            or (
+                finding.get("key") == "certification"
+                and provenance_can_remediate
+            )
         )
     ]
     if storage_rc != 0 or storage_preview.get("status") not in {"READY", "NOOP"}:
@@ -3227,17 +3249,28 @@ def plan_payload(*, preserve_context_history: bool = False) -> dict[str, Any]:
             "documentation/update plan is blocked by non-remediable findings"
         )
     elif documentation_summary.get("auto_remediable_p0"):
-        keys = sorted(
+        p0_items = [
+            item
+            for item in documentation_summary["auto_remediable_p0"]
+            if isinstance(item, dict)
+        ]
+        documentation_keys = sorted(
             {
                 str(item.get("key") or "unknown")
-                for item in documentation_summary["auto_remediable_p0"]
-                if isinstance(item, dict)
+                for item in p0_items
+                if item.get("area") == "Documentation"
             }
         )
-        remediated_blockers.append(
-            "central documentation quality gates will be regenerated and re-gated "
-            "before deployment: " + ", ".join(keys)
-        )
+        if documentation_keys:
+            remediated_blockers.append(
+                "central documentation quality gates will be regenerated and "
+                "re-gated before deployment: " + ", ".join(documentation_keys)
+            )
+        if any(item.get("key") == "runtime-provenance" for item in p0_items):
+            remediated_blockers.append(
+                "exact healthy legacy runtime provenance is deferred to Finish's "
+                "immediately-following governed deployment and certification"
+            )
 
     if documentation_summary.get("auto_remediable_p1"):
         projects = sorted(documentation_summary.get("context_projects") or [])
@@ -3268,7 +3301,7 @@ def plan_payload(*, preserve_context_history: bool = False) -> dict[str, Any]:
         "external_source_authorities": external_sources,
         "release": data,
         "local_dirty_paths": list(local.get("dirty_paths") or []),
-        "deploy_expected": plan.mode != "clean" or needs_deploy(data),
+        "deploy_expected": deploy_expected,
         "doctor": doctor,
         "storage_retention": storage_preview,
         "capacity": capacity_snapshot,
@@ -3571,6 +3604,7 @@ def execute_finish(
         defer_context=True,
         defer_final_audit=True,
         preserve_context_history=preserve_context_history,
+        defer_runtime_provenance=True,
     )
     receipt["documentation_reconciled"] = True
     finish_phase(receipt, "pre_release_documentation", checkpoint)
