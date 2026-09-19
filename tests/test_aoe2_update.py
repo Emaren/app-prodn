@@ -279,6 +279,63 @@ class UpdateCommandTests(unittest.TestCase):
             ["docs-venv-missing"],
         )
 
+    def test_collect_plan_auto_remediates_archive_retention_drift_unless_preserved(self):
+        audit = mock.Mock()
+        audit.payload.return_value = {
+            "p0": 0,
+            "p1": 1,
+            "findings": [
+                {
+                    "severity": "P1",
+                    "area": "Context Durability",
+                    "key": "archive-retention-drift",
+                    "detail": "AoE2HDBets: 2 TGZ cameras retained; expected one outside explicit forensic preservation",
+                },
+            ],
+        }
+
+        with mock.patch.object(
+            MODULE.aoe2_audit,
+            "collect_audit",
+            return_value=audit,
+        ), mock.patch.object(
+            MODULE,
+            "source_checker",
+            return_value=(0, "PASS"),
+        ), mock.patch.object(
+            MODULE,
+            "estate_map_refresh_plan",
+            return_value={
+                "status": "deferred",
+                "reason": "post-deploy",
+                "intended_source_sha": "a" * 40,
+            },
+        ):
+            normal = MODULE.collect_plan(
+                release_data=certified_release(),
+                preserve_context_history=False,
+            )
+            preserved = MODULE.collect_plan(
+                release_data=certified_release(),
+                preserve_context_history=True,
+            )
+
+        self.assertFalse(normal["blocked"])
+        self.assertEqual(
+            [item["key"] for item in normal["auto_remediable_p1"]],
+            ["archive-retention-drift"],
+        )
+        self.assertEqual(normal["unknown_p1"], [])
+        self.assertEqual(normal["context_projects"], ["AoE2HDBets"])
+
+        self.assertTrue(preserved["blocked"])
+        self.assertEqual(preserved["auto_remediable_p1"], [])
+        self.assertEqual(
+            [item["key"] for item in preserved["unknown_p1"]],
+            ["archive-retention-drift"],
+        )
+        self.assertEqual(preserved["context_projects"], [])
+
     def test_deferred_context_audit_allows_only_selected_archive_stale(self):
         audit = {
             "findings": [

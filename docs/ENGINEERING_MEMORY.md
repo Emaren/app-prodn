@@ -1285,3 +1285,23 @@ The incident also exposed an observability gap: the remote activation script use
 emits a bounded `ACTIVATION_ASSERTION_FAILED` diagnostic containing line, exit
 code, and shell command. This changes diagnosis only; fail-closed behavior,
 rollback traps, Wolo protection, and mutation authority remain unchanged.
+
+
+## 2026-09-19 — A planner must not block before its own authorized remediation
+
+Finish recovered root headroom successfully, then stopped before documentation
+reconciliation because the audit reported two retained TGZ cameras for both
+AoE2HDBets and AoE2WAR-docs. The same update pipeline already had a bounded
+keep-latest-1 retention step inside verified context capture, but its planner
+classified `archive-retention-drift` as unknown P1 and blocked before that step
+could run.
+
+Durable rule: when preservation is off, ordinary context archive-retention drift
+is a self-remediable P1. The planner must queue the affected context series and
+allow the existing retention/capture path to resolve it. When
+`--preserve-context-history` is explicitly set, the exact same finding remains
+blocking and pruning authority is not inferred.
+
+This is an ordering invariant: a controller must not require manual intervention
+for a condition that its own immediately-following governed step is explicitly
+authorized and tested to repair.

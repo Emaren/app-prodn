@@ -78,8 +78,25 @@ human diagnosis only for failure classes that have a tested recovery contract.
 | Zero/multiple matching durable stage receipts | None | Ambiguous provenance | Stop |
 | Live process references staged tree | None | `/proc` reference proof | Stop |
 | Prisma Client absent/stale locally | `npx prisma generate` | Committed schema + project Prisma toolchain | Continue validation |
+| Ordinary context archive-retention drift, preservation off | Classify as self-remediable; bounded keep-latest-1 runs before capture | Context series, retention tool, capture verification | Continue documentation/update flow |
+| Context archive-retention drift, explicit preservation on | None | `--preserve-context-history` operator intent | Stop until preservation intent or archive state changes |
 | Unexpected database frontier | None | Protected migration contract | Stop |
 | Wolo listener boundary abnormal | None | Listener proof | Stop |
+
+## Context-retention planning invariant
+
+Generated context cameras are governed evidence, but ordinary archive series are
+also bounded by a keep-latest retention policy. When the audit reports
+`archive-retention-drift` and context-history preservation is not requested, the
+update/finish planner must classify that finding as self-remediable, queue the
+affected project for context capture, and allow the existing bounded
+`context-prune-latest` + verified capture path to resolve it. The planner must
+not block before its own next authorized remediation step can run.
+
+`--preserve-context-history` is the explicit exception. In preservation mode,
+archive-retention drift remains blocking and no pruning authority is inferred.
+This keeps ordinary maintenance self-healing without weakening evidence-preserving
+campaigns.
 
 ## Bounded root-headroom recovery
 

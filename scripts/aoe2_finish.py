@@ -2434,6 +2434,7 @@ def documentation_plan_summary(plan: dict[str, Any]) -> dict[str, Any]:
         "context_projects": list(plan.get("context_projects") or []),
         "blocked_source_docs": list(plan.get("blocked_source_docs") or []),
         "auto_remediable_p0": list(plan.get("auto_remediable_p0") or []),
+        "auto_remediable_p1": list(plan.get("auto_remediable_p1") or []),
         "unknown_p0": list(plan.get("unknown_p0") or []),
         "unknown_p1": list(plan.get("unknown_p1") or []),
         "estate_maps": dict(plan.get("estate_maps") or {}),
@@ -2617,7 +2618,9 @@ def reconcile_documentation(
     force_control_refresh: bool = False,
     preserve_context_history: bool = False,
 ) -> dict[str, Any]:
-    plan = aoe2_update.collect_plan()
+    plan = aoe2_update.collect_plan(
+        preserve_context_history=preserve_context_history,
+    )
     summary = documentation_plan_summary(plan)
     if plan.get("blocked"):
         raise FinishError(
@@ -3159,7 +3162,9 @@ def plan_payload(*, preserve_context_history: bool = False) -> dict[str, Any]:
     )
     external_sources = external_source_authority_snapshot()
     capacity_snapshot = production_capacity_snapshot()
-    documentation_plan = aoe2_update.collect_plan()
+    documentation_plan = aoe2_update.collect_plan(
+        preserve_context_history=preserve_context_history,
+    )
     documentation_summary = documentation_plan_summary(documentation_plan)
 
     quiet_progress = Progress(enabled=False)
@@ -3232,6 +3237,13 @@ def plan_payload(*, preserve_context_history: bool = False) -> dict[str, Any]:
         remediated_blockers.append(
             "central documentation quality gates will be regenerated and re-gated "
             "before deployment: " + ", ".join(keys)
+        )
+
+    if documentation_summary.get("auto_remediable_p1"):
+        projects = sorted(documentation_summary.get("context_projects") or [])
+        remediated_blockers.append(
+            "bounded keep-latest context retention will remediate ordinary archive "
+            "retention drift before capture: " + ", ".join(projects)
         )
 
     docs_entry = external_sources.get("repositories", {}).get("AoE2WAR-docs", {})
