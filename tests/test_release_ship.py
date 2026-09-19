@@ -505,6 +505,68 @@ class ShipTests(unittest.TestCase):
             [],
         )
 
+    def test_same_source_legacy_recertification_is_allowed(self):
+        data, manifest, transport = sample()
+        release = manifest["release_sha"]
+        data["production"]["source_sha"] = release
+        data["certification"] = {
+            "status": "legacy-unmanifested",
+            "release_sha": None,
+            "receipt_path": None,
+        }
+        manifest["previous_production_sha"] = release
+        self.assertTrue(MODULE.same_source_recertification_allowed(data))
+        errors = MODULE.validation_errors(data, manifest, transport)
+        self.assertNotIn("production source already equals the release", errors)
+        self.assertEqual(errors, [])
+
+    def test_same_source_certified_release_remains_blocked(self):
+        data, manifest, transport = sample()
+        release = manifest["release_sha"]
+        data["production"]["source_sha"] = release
+        data["certification"] = {
+            "status": "CERTIFIED",
+            "release_sha": release,
+            "receipt_path": ".aoe2war-release/activation-receipts/example.json",
+        }
+        manifest["previous_production_sha"] = release
+        self.assertFalse(MODULE.same_source_recertification_allowed(data))
+        self.assertIn(
+            "production source already equals the release",
+            MODULE.validation_errors(data, manifest, transport),
+        )
+
+    def test_same_source_legacy_recertification_requires_healthy_exact_state(self):
+        data, manifest, transport = sample()
+        release = manifest["release_sha"]
+        data["production"]["source_sha"] = release
+        data["certification"] = {
+            "status": "legacy-unmanifested",
+            "release_sha": None,
+            "receipt_path": None,
+        }
+        manifest["previous_production_sha"] = release
+        mutations = [
+            ("github mismatch", lambda x: x["github"].__setitem__("main_sha", "d" * 40)),
+            ("local dirty", lambda x: x["local"].__setitem__("dirty_count", 1)),
+            ("production dirty", lambda x: x["production"].__setitem__("dirty_count", 1)),
+            ("service inactive", lambda x: x["production"].__setitem__("service", "inactive")),
+            ("version parity false", lambda x: x["production"].__setitem__("version_parity", False)),
+            ("missing build", lambda x: x["production"].__setitem__("active_build_id", "")),
+            ("staged build", lambda x: x["production"].__setitem__("staged_build_id", "candidate")),
+            ("wolo 8092 abnormal", lambda x: x["production"].__setitem__("wolo_8092_count", 0)),
+            ("wolo 8093 abnormal", lambda x: x["production"].__setitem__("wolo_8093_count", 2)),
+        ]
+        for label, mutate in mutations:
+            with self.subTest(label=label):
+                candidate = json.loads(json.dumps(data))
+                mutate(candidate)
+                self.assertFalse(MODULE.same_source_recertification_allowed(candidate))
+                self.assertIn(
+                    "production source already equals the release",
+                    MODULE.validation_errors(candidate, manifest, transport),
+                )
+
     def test_previous_production_drift_blocks(self):
         data, manifest, transport = sample()
         data["production"]["source_sha"] = "d" * 40

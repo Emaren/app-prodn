@@ -200,6 +200,33 @@ def gate_integrity(manifest: dict) -> tuple[Path, str]:
     return path, actual
 
 
+def same_source_recertification_allowed(data: dict) -> bool:
+    """Allow a same-source rebuild only for exact healthy missing provenance."""
+    local = data.get("local") or {}
+    github = data.get("github") or {}
+    docs = data.get("documentation") or {}
+    prod = data.get("production") or {}
+    certification = data.get("certification") or {}
+    source = str(local.get("head") or "")
+
+    return bool(
+        len(source) == 40
+        and github.get("main_sha") == source
+        and docs.get("baseline_is_ancestor_of_local") is True
+        and local.get("dirty_count") == 0
+        and prod.get("reachable") is True
+        and prod.get("dirty_count") == 0
+        and prod.get("source_sha") == source
+        and prod.get("service") == "active"
+        and bool(prod.get("active_build_id"))
+        and prod.get("version_parity") is True
+        and not prod.get("staged_build_id")
+        and prod.get("wolo_8092_count") == 1
+        and prod.get("wolo_8093_count") == 1
+        and certification.get("status") == "legacy-unmanifested"
+    )
+
+
 def validation_errors(
     data: dict,
     manifest: dict,
@@ -231,7 +258,11 @@ def validation_errors(
         errors.append("production worktree is not clean")
     if prod.get("source_sha") != manifest.get("previous_production_sha"):
         errors.append("production source no longer equals manifest previous production")
-    if prod.get("source_sha") == release_sha:
+    same_source_recertification = bool(
+        same_source_recertification_allowed(data)
+        and manifest.get("previous_production_sha") == release_sha
+    )
+    if prod.get("source_sha") == release_sha and not same_source_recertification:
         errors.append("production source already equals the release")
     if prod.get("service") != "active":
         errors.append("production web service is not active")

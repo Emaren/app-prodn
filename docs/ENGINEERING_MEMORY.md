@@ -1346,3 +1346,36 @@ re-collects release state immediately before applying that classifier; only the
 exact `certification / legacy-unmanifested` blocker may be carried forward, and
 any second Doctor blocker remains fatal. The remediation and its reason are
 written into the Finish receipt.
+
+
+## 2026-09-19 — Same source can still require a governed recertification
+
+After Finish planning and operational preflight were taught to defer one exact
+`legacy-unmanifested` provenance P0 to deployment, the first real transaction
+reached the deployment phase and stopped safely. Production source already
+equaled canonical local/GitHub HEAD, so the ordinary one-command ship preflight
+reported “production already serves local HEAD; there is nothing new to ship.”
+That rule was correct for an already-certified same-source runtime but incomplete
+for a same-source runtime whose provenance was precisely the condition Finish was
+trying to repair.
+
+Durable rule: “same source” is not itself sufficient to decide whether deployment
+is a no-op. Release OS must distinguish:
+
+- same source + current `CERTIFIED` provenance → no-op; nothing new to ship;
+- same source + exact healthy `legacy-unmanifested` provenance → governed
+  recertification is allowed;
+- same source + any source/health/Wolo/staging ambiguity → fail closed.
+
+The recertification lane does not bypass release engineering. It uses the normal
+release gate, manifest, isolated dependency/build staging, artifact and dependency
+hashes, activation preflight, rollback trap, critical-route checks, bounded soak,
+retention proof, and Wolo continuity checks. The release manifest legitimately
+binds `previous_production_sha == release_sha`, so rollback/source identity stays
+exact even though the Git commit does not change.
+
+This closes a three-layer controller-ordering chain: Finish planning may defer
+the exact P0, operational Doctor may carry only that same blocker forward, and
+Release OS must possess the matching same-source recertification primitive that
+actually repairs it. Any layer that interprets the state independently can
+recreate the deadlock.

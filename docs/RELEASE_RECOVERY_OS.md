@@ -130,6 +130,18 @@ After deployment, Finish immediately re-collects release state and
 `assert_certified_release` requires exact current-source certification. The
 post-release Update and final estate audit run without the provenance deferral.
 
+The release engine has the matching same-source rule. `production source ==
+local/GitHub HEAD` is normally a no-op and remains blocked from ordinary ship
+when the runtime is already certified. The sole exception is the exact healthy
+`legacy-unmanifested` state described above. In that state, Release OS may
+rebuild, stage, activate, soak, and certify the same Git SHA so that Finish can
+repair provenance without inventing source drift. The manifest records
+`previous_production_sha == release_sha`; rollback and activation therefore
+remain exact rather than synthetic. Stage/activation still require clean source,
+healthy service/version parity, one protected listener on 8092 and 8093, sealed
+gate/manifest evidence, artifact/dependency hashes, and no pre-existing staged
+candidate.
+
 If any authority or health precondition is absent, or if no deployment is due,
 the P0 remains blocking. This preserves the ordering invariant without turning a
 recovery exception into a general provenance bypass.

@@ -1040,6 +1040,18 @@ This is an ordering exception, not provenance inheritance: a certified older
 artifact does not make a newer source commit certified merely because the newer
 delta is tooling or documentation.
 
+Release OS must also distinguish two same-source states. If production already
+serves local/GitHub HEAD and that source is already `CERTIFIED`, ordinary
+one-command ship remains a no-op and reports that there is nothing new to ship.
+If production already serves local/GitHub HEAD but certification is specifically
+`legacy-unmanifested`, the exact healthy state is a recertification candidate:
+the release engine may run its normal gate → manifest → isolated stage →
+activation → soak → certification chain against the same Git SHA. This authority
+exists only while local/GitHub/production source are exact, local and production
+trees are clean, service/version/BUILD_ID health is exact, no staged candidate
+exists, and protected Wolo listeners remain exactly one each. Any drift restores
+the ordinary same-source block.
+
 The overlap is bounded to the context projects chosen by the locked update plan
 and is settled before post-release update replans the estate. Failure falls back
 to ordinary synchronous post-release context reconciliation.
