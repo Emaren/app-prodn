@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/general-inspections-governed-state` at `a1ff3bed9e3013ad0815a5219564f491511bf760`
+Implementation baseline: `feature/watcher-staging-retention` at `72116e6511989707a13bef70c2baccf90812d12d`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
