@@ -260,10 +260,29 @@ current summary, and a progress measure only when a deterministic denominator
 exists. Presentation uses one shared beacon language:
 
 - cyan pulse — proven active work;
-- green solid — healthy, complete or certified;
-- amber pulse — waiting, due, stale or attention;
+- green solid — operationally healthy, complete or certified;
+- amber pulse — stale, degraded, approaching/over a governed operating threshold,
+  or otherwise requiring attention;
 - red solid — failed, blocked or unsafe;
-- slate — idle/no proven current work.
+- slate — unavailable or lacking enough current evidence to classify safely.
+
+The beacon color represents **operational health**, not whether the subsystem has
+literally no future work scheduled. In particular:
+
+- Documentation OS remains HEALTHY when its control state, checker, taxonomy and
+  central federation are current and no reviews are overdue. Reviews due within
+  the next seven days remain visible in the summary as scheduled maintenance;
+  they do not by themselves make documentation unhealthy.
+- Workspace OS is HEALTHY when canonical source has no drift and no registered
+  agent workstream is active. A registered workstream is ACTIVE; canonical drift
+  is ATTENTION. Intentionally preserved unique/unmerged review work remains
+  visible as debt without turning a clean canonical workspace into a false
+  failure.
+- Replay Truth OS is HEALTHY when the current-release certainty closure is
+  complete, every final battle is explicitly accounted for, and the unclassified
+  count is zero. Its progress bar may remain below 100% because that bar measures
+  resolved winner authority, not accounting integrity. Explicitly evidence-bounded
+  unresolved battles are truthful classified outcomes, not missing rows.
 
 The public page must never animate an agent merely because an AI model is
 connected. Activity requires a deterministic receipt, registered Workspace OS

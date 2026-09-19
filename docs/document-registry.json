@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "bd2c9abd62079a78b66381ebc225da80e5ff391b5cd10b79bfa42c5766709482",
+      "sha256": "5fd735c8c2270c02a6bd1e66cb050da48f5cc637f8e314fb0cffb819c06a67ae",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -822,7 +822,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-06",
       "sensitivity": "internal",
-      "sha256": "c647e464c9870634d348c3da2def03875d6820630d70a5b1271dd0f9e8ff6d42",
+      "sha256": "3490d1e10d173e7bed31874a55012e3001696bf1b66c1e927884c1868d356136",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/general-inspections-evidence-v1",
-    "commit": "654527c076ce6d50e31be1b74fdc3a0b8cbcae49"
+    "branch": "fix/constellation-health-v1",
+    "commit": "22b8c72d13a08a34fd962f4636f31fc1ccd76586"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

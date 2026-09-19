@@ -23,6 +23,7 @@
 /download
 /forum
 /game-stats
+/general-inspections
 /kingdom
 /kingdom-intelligence
 /kingdom-forge

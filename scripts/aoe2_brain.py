@@ -1008,9 +1008,14 @@ def system_agent_rows(
     )
     control_status = str(control.get("status") or "unknown").lower()
     docs_due = int(council.get("docs_due_7d") or 0)
+    documentation = council.get("documentation") or {}
+    documentation_gate = str(
+        documentation.get("estate_gate") or "UNKNOWN"
+    ).upper()
     docs_state = (
         "HEALTHY"
-        if control_status == "current" and docs_due == 0
+        if control_status == "current"
+        and documentation_gate in {"PASS", "HEALTHY"}
         else "ACTIVE"
         if control_status == "refresh"
         else "ATTENTION"
@@ -1053,7 +1058,7 @@ def system_agent_rows(
         if canonical_drift
         else "ACTIVE"
         if active_agents
-        else "IDLE"
+        else "HEALTHY"
     )
 
     performance_current = bool(
@@ -1136,7 +1141,9 @@ def system_agent_rows(
             "label": "Documentation OS",
             "state": docs_state,
             "summary": (
-                f"{docs_due} document review(s) due within seven days."
+                f"Healthy · {docs_due} document review(s) due within seven days."
+                if docs_state == "HEALTHY" and docs_due
+                else f"{docs_due} document review(s) due within seven days."
                 if docs_due
                 else f"Control state: {control_status}."
             ),
@@ -1271,7 +1278,7 @@ def system_agent_rows(
                 f"{active_agents} registered agent workstream(s); "
                 f"{int(workspace.get('unmerged_count') or 0)} unmerged."
                 if active_agents
-                else "No registered agent workspace is active."
+                else "Workspace healthy; no registered agent workspace is active."
             ),
             "progress_percent": None,
             "progress_label": "parallel engineering",
