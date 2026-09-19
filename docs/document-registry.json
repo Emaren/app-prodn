@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5fd735c8c2270c02a6bd1e66cb050da48f5cc637f8e314fb0cffb819c06a67ae",
+      "sha256": "5c86c5c239caf85c20d1a398a819a9cad5b0c120b41f96dd179d9aee5ff9a035",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1509,7 +1509,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-19",
       "sensitivity": "internal",
-      "sha256": "bd08a573d86823acab94919292836fd0348ab11641488408ab6478b0f13c8480",
+      "sha256": "e4b9845d9d989a0536fad8597d9b1f5bc3df73e54bb063a97cccc1add4c45ccb",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/constellation-health-v1",
-    "commit": "22b8c72d13a08a34fd962f4636f31fc1ccd76586"
+    "branch": "feature/storage-estate-pristine",
+    "commit": "05f620ca3f9adf9532d3cb80fd7c2c07b29f235b"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
