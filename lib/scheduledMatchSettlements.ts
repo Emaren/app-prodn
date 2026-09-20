@@ -1844,18 +1844,23 @@ export async function executeScheduledMatchSettlement(
     const guardedExecution = enforceEscrowRunSource(markedPlan, execution) ?? execution;
     const plan = await recordExecutionResult(prisma, markedPlan, guardedExecution, adminUserId);
     if (plan.state === "executed") {
-      const { postChallengeProtocolNoticeToParticipants } = await import("@/lib/contactInbox");
-      await postChallengeProtocolNoticeToParticipants(prisma, {
-        challengeId: plan.id,
-        body: [
-          "Challenge settled",
-          plan.title,
-          `Status: ${plan.liability.executedWolo.toLocaleString()} WOLO settled · chain proof recorded`,
-        ].join("\n"),
-        deliveryKey: `settlement:${plan.settlementRunId}:completed`,
-      }).catch((noticeError) => {
-        console.error(`Failed to deliver Challenge Protocol settlement notice for #${plan.id}:`, noticeError);
-      });
+      try {
+        const { postChallengeProtocolNoticeToParticipants } = await import("@/lib/contactInbox");
+        await postChallengeProtocolNoticeToParticipants(prisma, {
+          challengeId: plan.id,
+          body: [
+            "Challenge settled",
+            plan.title,
+            `Status: ${plan.liability.executedWolo.toLocaleString()} WOLO settled · chain proof recorded`,
+          ].join("\n"),
+          deliveryKey: `settlement:${plan.settlementRunId}:completed`,
+        });
+      } catch (noticeError) {
+        console.error(
+          `Failed to deliver Challenge Protocol settlement notice for #${plan.id}:`,
+          noticeError
+        );
+      }
     }
     return {
       ok: guardedExecution.ok,
