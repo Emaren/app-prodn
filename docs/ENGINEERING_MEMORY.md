@@ -1477,3 +1477,32 @@ gain by changing the load generator.
 General rule: if an observability system can materially change the system under
 observation, govern and version that load explicitly. Do not optimize the chart
 by changing the experiment and pretending the experiment stayed the same.
+
+## 2026-09-19 — Verified performance targets must come from the After state
+
+Kingdom Intelligence already treated a verified Speed campaign's verification
+release/build as current performance identity, but its optimization target list
+still came from the frozen baseline analysis. That mixed two different moments
+inside one snapshot: freshness said After is current while targets still ranked
+the Before bottlenecks.
+
+Durable rule: current-state recommendations must be derived from current-state
+evidence. For an unverified campaign, baseline analysis remains the target
+authority. For a verified campaign with a readable verification receipt, Brain
+re-runs the Speed campaign analyzer against that exact After receipt and the
+verification's After source inventory. It exposes `target_basis` and
+`target_release_sha` so consumers can see which state produced the queue.
+
+The frozen baseline targets remain preserved separately as
+`baseline_targets`. They are useful experiment history and explain what the
+campaign set out to improve, but they must not silently continue driving the
+next optimization cycle after verification.
+
+If the After receipt is missing or unreadable, fall back to the labeled baseline
+analysis rather than fabricating current targets. Provenance is more important
+than having a populated recommendation list.
+
+General rule: when a before/after workflow advances the authority for freshness,
+advance recommendation derivation to the same authority or label the mismatch
+explicitly. Never let a control plane be temporally fresh and strategically
+stale at the same time.

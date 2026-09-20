@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/speed-benchmark-noninterference` at `8581d066973c7900f132f9995eda19e5e4e9ff92`
+Implementation baseline: `fix/brain-verified-performance-targets` at `0932c639cf275ea7f6b8d1d1c4c28892ed762ef2`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
