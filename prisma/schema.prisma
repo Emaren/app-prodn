@@ -3238,7 +3238,7 @@ model RadioListenerState {
   @@index([userId, lastSeenAt], map: "ix_radio_listener_states_user_seen")
   @@index([listening, lastSeenAt], map: "ix_radio_listener_states_listening_seen")
   @@index([currentAssetId, lastSeenAt], map: "ix_radio_listener_states_asset_seen")
-  @@index([trafficVisitorId, lastSeenAt], map: "ix_radio_listener_states_traffic_visitor_seen")
+  @@index([trafficVisitorId], map: "ix_radio_listener_states_traffic_visitor")
   @@map("radio_listener_states")
 }
 
