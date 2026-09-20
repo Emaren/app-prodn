@@ -2419,44 +2419,6 @@ function canAutoClaimForKnownUser(user: {
   );
 }
 
-async function findAutoClaimUserForPlayerName(
-  prisma: PrismaClient,
-  playerName: string
-) {
-  const normalized = normalizeName(playerName).toLowerCase();
-  if (!normalized) {
-    return null;
-  }
-
-  const users = await prisma.user.findMany({
-    where: {
-      AND: [
-        { OR: [{ verified: true }, { verificationLevel: { gt: 0 } }, { steamId: { not: null } }] },
-        { OR: [{ inGameName: { not: null } }, { steamPersonaName: { not: null } }] },
-      ],
-    },
-    select: {
-      id: true,
-      inGameName: true,
-      steamPersonaName: true,
-      verified: true,
-      verificationLevel: true,
-      steamId: true,
-      walletAddress: true,
-    },
-    take: 250,
-  });
-
-  return (
-    users.find((user) => {
-      const names = [user.inGameName, user.steamPersonaName]
-        .map((value) => normalizeName(value).toLowerCase())
-        .filter(Boolean);
-      return Boolean(user.walletAddress) && names.includes(normalized);
-    }) || null
-  );
-}
-
 function buildPendingClaimNote(
   market: { title: string; eventLabel: string },
   outcome: "won" | "void",
@@ -2478,15 +2440,6 @@ function buildAwaitingWalletLinkClaimDetail(playerName: string) {
   const resolvedName = normalizeName(playerName) || "this player";
   return `Awaiting verified wallet-linked account for ${resolvedName}. This payout stays pending until the player links a verified wallet.`;
 }
-
-function getWinningPlayerName(market: { leftLabel: string; rightLabel: string }, winningSide: BetSide) {
-  return winningSide === "left" ? market.leftLabel : market.rightLabel;
-}
-
-function getLosingPlayerName(market: { leftLabel: string; rightLabel: string }, winningSide: BetSide) {
-  return winningSide === "left" ? market.rightLabel : market.leftLabel;
-}
-
 
 type SettlementWinnerTruthMarket = {
   id: number;
@@ -3646,9 +3599,11 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
       feeRateBps: BETTING_FEE_RATE_BPS,
       feeDenominator: BPS_DENOMINATOR,
     });
-    const bettingFeePoolWolo = wagerSettlementPlan.bettingFeePoolWolo;
     const settlementOutcomeByWagerId = new Map(
       wagerSettlementPlan.outcomes.map((outcome) => [outcome.id, outcome] as const)
+    );
+    const settlementExposureByWagerId = new Map(
+      wagerSettlementPlan.exposures.map((exposure) => [exposure.id, exposure] as const)
     );
 
     const claimPlans = new Map<string, MarketSettlementClaimPlan>();
@@ -3722,6 +3677,10 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
           if (!outcome) {
             throw new Error(`Missing wager settlement outcome for wager #${wager.id}.`);
           }
+          const exposure = settlementExposureByWagerId.get(wager.id);
+          if (!exposure) {
+            throw new Error(`Missing wager matched exposure for wager #${wager.id}.`);
+          }
           const nextStatus = outcome.status;
           const payoutWolo = outcome.payoutWolo;
           const bettingFeeWolo = outcome.bettingFeeWolo;
@@ -3756,6 +3715,8 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
               payoutWolo,
               bettingFeeRateBps: BETTING_FEE_RATE_BPS,
               bettingFeeWolo,
+              matchedWolo: exposure.matchedWolo,
+              unmatchedRefundWolo: exposure.unmatchedWolo,
               settledAt: settledAt.toISOString(),
               outcome: nextStatus,
               winnerSide: winningSide,
@@ -3763,12 +3724,15 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
             dedupeWithinSeconds: 5,
           });
 
-          if (nextStatus === "lost" || payoutWolo < 1) {
+          if (payoutWolo < 1) {
             continue;
           }
 
           const claimPlayerName = claimPlayerNameForUser(wager.user);
-          const claimReason = nextStatus === "void" ? "bet_refund" : "bet_payout";
+          const claimReason =
+            nextStatus === "void" || (nextStatus === "lost" && exposure.unmatchedWolo > 0)
+              ? "bet_refund"
+              : "bet_payout";
           const planKey = wager.user.id
             ? `user:${wager.user.id}:${claimReason}`
             : `name:${normalizePendingWoloClaimName(claimPlayerName)}:${claimReason}`;
@@ -3780,7 +3744,7 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
             displayPlayerName: claimPlayerName,
             amountWolo: payoutWolo,
             claimReason,
-            outcomeKind: nextStatus,
+            outcomeKind: nextStatus === "won" ? "won" : "void",
             walletAddress: canAutoClaimForKnownUser(wager.user)
               ? wager.user.walletAddress ?? null
               : null,
@@ -3819,39 +3783,13 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
       continue;
     }
 
-    if (
-      winningSide &&
-      !isDesyncSideMarketType(
-        market.marketType
-      )
-    ) {
-      const winningWagers = market.wagers.filter((wager) => wager.side === winningSide);
-      const losingWagers = market.wagers.filter((wager) => wager.side !== winningSide);
-      const grossWinnerBountyWolo = losingWagers.reduce((sum, wager) => sum + wager.amountWolo, 0);
-      const winnerBountyWolo = Math.max(0, grossWinnerBountyWolo - bettingFeePoolWolo);
-
-      if (winningWagers.length === 0 && winnerBountyWolo > 0) {
-        const winnerName = getWinningPlayerName(market, winningSide);
-        const losingName = getLosingPlayerName(market, winningSide);
-        const autoClaimUser = await findAutoClaimUserForPlayerName(prisma, winnerName);
-        upsertSettlementClaimPlan(claimPlans, {
-          marketId: market.id,
-          planKey: autoClaimUser?.id
-            ? `user:${autoClaimUser.id}:winner_bounty`
-            : `name:${normalizePendingWoloClaimName(winnerName)}:winner_bounty`,
-          claimPlayerName: winnerName,
-          displayPlayerName: winnerName,
-          amountWolo: winnerBountyWolo,
-          claimReason: "winner_bounty",
-          outcomeKind: "winner_bounty",
-          winnerName,
-          losingName,
-          walletAddress: autoClaimUser?.walletAddress ?? null,
-          claimedByUserId: autoClaimUser?.id ?? null,
-          activityUserId: autoClaimUser?.id ?? null,
-        });
-      }
-    }
+    /*
+     * #JimsRule: unmatched user principal is never available for a winner
+     * bounty. A house/AI counter-bet must be a real funded wager on the
+     * opposite side before that WOLO can become matched settlement value.
+     * Historical winner_bounty claims remain supported elsewhere, but this
+     * settlement lane deliberately creates none from one-sided user stake.
+     */
 
     const claimPlanList = [...claimPlans.values()];
     const autoClaimPlans = claimPlanList.filter(

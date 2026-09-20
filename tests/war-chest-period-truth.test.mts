@@ -71,13 +71,17 @@ test("alternate War Chest mode can seed synchronously from prefetched entries", 
   );
 });
 
-test("server accumulator keeps independent weekly settled and wagered counters", () => {
+test("server accumulator keeps independent weekly settled and matched-wagered counters", () => {
   const source = fs.readFileSync(
     path.join(root, "lib/lobbyWoloEarners.ts"),
     "utf8",
   );
 
-  assert.match(source, /actor\.weeklyWageredWolo\s*\+=\s*wager\.amountWolo/);
+  assert.match(source, /planMatchedWagerExposure\(/);
+  assert.match(source, /matchedWoloByWagerId\.set\(row\.id, row\.matchedWolo\)/);
+  assert.match(source, /actor\.wageredWolo\s*\+=\s*matchedWolo/);
+  assert.match(source, /actor\.weeklyWageredWolo\s*\+=\s*matchedWolo/);
+  assert.doesNotMatch(source, /actor\.weeklyWageredWolo\s*\+=\s*wager\.amountWolo/);
   assert.match(source, /actor\.weeklySettledWolo\s*\+=\s*claim\.amountWolo/);
   assert.match(
     source,

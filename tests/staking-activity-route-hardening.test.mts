@@ -28,3 +28,25 @@ test("staking activity never caches financial history or exposes internal failur
     /const detail\s*=\s*error instanceof Error \? error\.message/,
   );
 });
+
+test("public mainnet recovery activity cannot be resurrected by maintenance updated_at", () => {
+  const source = readFileSync(
+    new URL("../lib/woloTransactionRecovery.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(
+    source,
+    /\.sort\(\(left, right\) => new Date\(right\.createdAt\)\.getTime\(\) - new Date\(left\.createdAt\)\.getTime\(\)\)/,
+  );
+  assert.match(source, /createdAt: row\.createdAt,\s*updatedAt: row\.createdAt/);
+  assert.match(source, /updatedAt: intent\.createdAt\.toISOString\(\)/);
+  assert.match(
+    source,
+    /ticket\.recordedAt \|\| ticket\.createdAt/,
+  );
+  assert.doesNotMatch(
+    source,
+    /ticket\.recordedAt \|\| ticket\.verifiedAt \|\| ticket\.updatedAt/,
+  );
+});

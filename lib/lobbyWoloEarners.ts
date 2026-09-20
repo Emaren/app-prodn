@@ -16,6 +16,7 @@ import type {
   LobbyWoloEarnersMode,
 } from "@/lib/lobby";
 import { getWoloMainnetDisplayStartAt, isWoloMainnet } from "@/lib/woloChain";
+import { planMatchedWagerExposure } from "@/lib/betWagerSettlement";
 import {
   warChestClaimCountsAsTake,
   warChestWagerTakeWolo,
@@ -50,7 +51,10 @@ type ClaimSample = {
 };
 
 type WagerSample = {
+  id: number;
+  marketId: number;
   userId: number;
+  side: string;
   amountWolo: number;
   payoutWolo: number | null;
   status: string;
@@ -425,7 +429,10 @@ async function loadWagers(prisma: PrismaClient) {
   return prisma.betWager.findMany({
     where: visibleMainnetWagerWhere(),
     select: {
+      id: true,
+      marketId: true,
       userId: true,
+      side: true,
       amountWolo: true,
       payoutWolo: true,
       status: true,
@@ -525,6 +532,25 @@ async function loadBoardMetrics(prisma: PrismaClient, weekStartsAt: Date) {
   ]);
 
   const metrics = new Map<string, ActorMetrics>();
+  const wagersByMarket = new Map<number, WagerSample[]>();
+  for (const wager of wagers) {
+    const rows = wagersByMarket.get(wager.marketId) ?? [];
+    rows.push(wager);
+    wagersByMarket.set(wager.marketId, rows);
+  }
+  const matchedWoloByWagerId = new Map<number, number>();
+  for (const marketWagers of wagersByMarket.values()) {
+    const exposure = planMatchedWagerExposure(
+      marketWagers.map((wager) => ({
+        id: wager.id,
+        side: wager.side,
+        amountWolo: wager.amountWolo,
+      }))
+    );
+    for (const row of exposure.wagers) {
+      matchedWoloByWagerId.set(row.id, row.matchedWolo);
+    }
+  }
 
   for (const claim of expandedClaims) {
     const directUser = claim.claimedByUserId ? usersById.get(claim.claimedByUserId) ?? null : null;
@@ -582,15 +608,14 @@ async function loadBoardMetrics(prisma: PrismaClient, weekStartsAt: Date) {
       replayName: null,
     });
 
-    actor.wageredWolo +=
-      wager.amountWolo;
+    const matchedWolo = matchedWoloByWagerId.get(wager.id) ?? 0;
+    actor.wageredWolo += matchedWolo;
 
     if (
       wager.createdAt.getTime() >=
       weekStartsAt.getTime()
     ) {
-      actor.weeklyWageredWolo +=
-        wager.amountWolo;
+      actor.weeklyWageredWolo += matchedWolo;
     }
 
     actor.wagerCount += 1;

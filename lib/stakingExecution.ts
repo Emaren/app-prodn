@@ -20,12 +20,12 @@ const UWOLO_PER_WOLO = STAKING_UWOLO_PER_WOLO;
 export { MIN_STAKING_OPERATING_RESERVE_WOLO };
 export const STAKING_WALLET_TOP_UP_DETAIL =
   "Staking wallet reserve top-up needed.";
-export const STAKING_STAKE_SAFETY_PAUSED = true;
+export const STAKING_STAKE_SAFETY_PAUSED = false;
 export const STAKING_STAKE_SAFETY_DETAIL =
-  "New stakes are temporarily paused while one-time wallet intent protection is added.";
-export const STAKING_UNSTAKE_SAFETY_PAUSED = true;
+  "Staking is available when the signed transfer verifies against the canonical staking wallet.";
+export const STAKING_UNSTAKE_SAFETY_PAUSED = false;
 export const STAKING_UNSTAKE_SAFETY_DETAIL =
-  "Unstaking is temporarily paused while withdrawal protection is upgraded. Your confirmed stake remains recorded.";
+  "Unstaking is available when the canonical position, signer, and operating-reserve checks pass.";
 export const STAKING_REWARD_DISTRIBUTION_SAFETY_PAUSED = true;
 export const STAKING_REWARD_DISTRIBUTION_SAFETY_DETAIL =
   "Staking reward distribution is temporarily paused while compounded rewards are upgraded to require chain-backed custody before confirmed staking liability can increase.";

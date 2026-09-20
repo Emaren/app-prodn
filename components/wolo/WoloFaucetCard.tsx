@@ -248,6 +248,21 @@ export default function WoloFaucetCard({
           </button>
         </div>
 
+        {txhash ? (
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-emerald-100/85">
+            <span>Claimed +{FAUCET_AMOUNT_WOLO} WOLO · tx {formatTxhash(txhash)}</span>
+            {txUrl ? (
+              <a
+                href={txUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="text-cyan-100 underline decoration-cyan-300/35 underline-offset-2 hover:text-white"
+              >
+                proof
+              </a>
+            ) : null}
+          </div>
+        ) : null}
         {claimError ? (
           <div className="mt-2 text-[11px] text-red-200/85">{claimError}</div>
         ) : null}

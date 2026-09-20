@@ -315,12 +315,11 @@ test(
 
 
 test(
-  "desync markets cannot create YES or NO player winner bounties",
+  "#JimsRule prevents unmatched user principal from becoming a winner bounty on any settlement lane",
   () => {
-    assert.match(
-      source,
-      /winningSide\s*&&\s*!isDesyncSideMarketType\(\s*market\.marketType\s*\)/
-    );
+    assert.doesNotMatch(source, /grossWinnerBountyWolo/);
+    assert.doesNotMatch(source, /winningWagers\.length\s*===\s*0\s*&&\s*winnerBountyWolo/);
+    assert.match(source, /unmatched user principal is never available for a winner/);
   }
 );
 
@@ -467,7 +466,7 @@ test(
 
 
 test(
-  "an unbacked factual desync side makes opposing wagers lose instead of blanket-refunding",
+  "#JimsRule returns an unbacked factual desync wager because no opposite stake matched it",
   () => {
     const plan = planResolvedWagerSettlements({
       winningSide: "right",
@@ -482,8 +481,10 @@ test(
 
     assert.equal(plan.unbackedDesyncWinningSide, true);
     assert.equal(plan.bettingFeePoolWolo, 0);
+    assert.equal(plan.matchedVolumeWolo, 0);
+    assert.equal(plan.unmatchedVolumeWolo, 25);
     assert.deepEqual(plan.outcomes, [
-      { id: 5, status: "lost", payoutWolo: 0, bettingFeeWolo: 0 },
+      { id: 5, status: "lost", payoutWolo: 25, bettingFeeWolo: 0 },
     ]);
   }
 );
@@ -520,7 +521,7 @@ test(
 
 
 test(
-  "ordinary winner books preserve their no-bettor winner-bounty fee basis",
+  "#JimsRule removes fee and winner-bounty funding when an ordinary wager has no counterparty",
   () => {
     const plan = planResolvedWagerSettlements({
       winningSide: "left",
@@ -534,13 +535,47 @@ test(
     });
 
     assert.equal(plan.unbackedDesyncWinningSide, false);
-    assert.equal(plan.bettingFeePoolWolo, 2);
+    assert.equal(plan.matchedVolumeWolo, 0);
+    assert.equal(plan.unmatchedVolumeWolo, 100);
+    assert.equal(plan.bettingFeePoolWolo, 0);
     assert.deepEqual(plan.outcomes, [
-      { id: 53, status: "lost", payoutWolo: 0, bettingFeeWolo: 0 },
+      { id: 53, status: "lost", payoutWolo: 100, bettingFeeWolo: 0 },
     ]);
   },
 );
 
+
+test(
+  "#JimsRule partial match charges fees only on matched volume and returns unmatched winner principal",
+  () => {
+    const plan = planResolvedWagerSettlements({
+      winningSide: "left",
+      marketType: "winner",
+      desyncMarketType: "desync",
+      seedLeftWolo: 0,
+      seedRightWolo: 0,
+      wagers: [
+        { id: 91, side: "left", amountWolo: 50_000 },
+        { id: 92, side: "right", amountWolo: 25 },
+      ],
+      feeRateBps: 200,
+      feeDenominator: 10_000,
+    });
+
+    assert.equal(plan.matchedPerSideWolo, 25);
+    assert.equal(plan.matchedVolumeWolo, 50);
+    assert.equal(plan.unmatchedVolumeWolo, 49_975);
+    assert.equal(plan.bettingFeePoolWolo, 1);
+    assert.deepEqual(plan.exposures, [
+      { id: 91, side: "left", amountWolo: 50_000, matchedWolo: 25, unmatchedWolo: 49_975 },
+      { id: 92, side: "right", amountWolo: 25, matchedWolo: 25, unmatchedWolo: 0 },
+    ]);
+    assert.deepEqual(plan.outcomes, [
+      { id: 91, status: "won", payoutWolo: 50_024, bettingFeeWolo: 1 },
+      { id: 92, status: "lost", payoutWolo: 0, bettingFeeWolo: 0 },
+    ]);
+  },
+);
 
 test(
   "backed desync settlement conserves the user pool after the configured fee",
@@ -564,7 +599,10 @@ test(
       0,
     );
 
-    assert.equal(plan.bettingFeePoolWolo, 20);
+    assert.equal(plan.matchedPerSideWolo, 150);
+    assert.equal(plan.matchedVolumeWolo, 300);
+    assert.equal(plan.unmatchedVolumeWolo, 700);
+    assert.equal(plan.bettingFeePoolWolo, 6);
     assert.equal(paidWolo + plan.bettingFeePoolWolo, 1_000);
     assert.deepEqual(
       plan.outcomes.map((outcome) => outcome.status),

@@ -54,13 +54,29 @@ test("confirmed staking receipts serialize tx reuse and user balance mutation in
   );
 });
 
-test("stake mutation remains fail-closed until separately activated", async () => {
+test("stake activation keeps the verified receipt and serialized-credit safety gates", async () => {
   const execution = await readFile("lib/stakingExecution.ts", "utf8");
   const route = await readFile("app/api/staking/stake/route.ts", "utf8");
+  const staking = await readFile("lib/staking.ts", "utf8");
 
-  assert.match(execution, /STAKING_STAKE_SAFETY_PAUSED\s*=\s*true/);
-  assert.match(route, /if \(STAKING_STAKE_SAFETY_PAUSED\)/);
-  assert.match(route, /code:\s*"STAKE_SAFETY_PAUSED"/);
+  assert.match(execution, /STAKING_STAKE_SAFETY_PAUSED\s*=\s*false/);
+  assert.match(route, /verifyWoloTransfer\(/);
+  assert.match(route, /createConfirmedStakingEvent\(/);
+  assert.match(staking, /staking-tx:\$\{normalizedTxHash\}/);
+  assert.match(staking, /staking-user:\$\{input\.userId\}/);
+});
+
+test("unstake activation remains gated by signer, canonical stake, and live reserve checks", async () => {
+  const execution = await readFile("lib/stakingExecution.ts", "utf8");
+  const route = await readFile("app/api/staking/unstake/route.ts", "utf8");
+
+  assert.match(execution, /STAKING_UNSTAKE_SAFETY_PAUSED\s*=\s*false/);
+  assert.match(route, /hasWoloStakingUnstakeExecutionConfigured\(\)/);
+  assert.match(route, /loadMainnetStakingPositionForUser\(/);
+  assert.match(route, /getUnstakeReserveCheck\(/);
+  assert.match(route, /if \(!reserveCheck\.executable\)/);
+  assert.match(route, /executeWoloStakingUnstake\(/);
+  assert.match(route, /createConfirmedStakingEvent\(/);
 });
 
 test("August 18 incident fixture proves repeated receipt rows can materially over-credit principal", () => {

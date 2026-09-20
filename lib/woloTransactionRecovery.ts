@@ -823,7 +823,7 @@ async function loadRecoveryCandidates(prisma: PrismaClient) {
       contextLabel: `${intent.market.title} · ${intent.side}`,
       groupKey: `market:${intent.marketId}`,
       createdAt: intent.createdAt.toISOString(),
-      updatedAt: intent.updatedAt.toISOString(),
+      updatedAt: intent.createdAt.toISOString(),
     });
   }
 
@@ -852,7 +852,7 @@ async function loadRecoveryCandidates(prisma: PrismaClient) {
       groupKey: primaryLeg ? `market:${primaryLeg.marketId}` : null,
       createdAt: ticket.createdAt.toISOString(),
       updatedAt: rowDate(
-        ticket.recordedAt || ticket.verifiedAt || ticket.updatedAt,
+        ticket.recordedAt || ticket.createdAt,
         ticket.createdAt
       ),
     });
@@ -1070,7 +1070,7 @@ export async function loadWoloMainnetActivityRows(
           })
         : true
     )
-    .sort((left, right) => new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime())
+    .sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime())
     .slice(0, Math.max(1, Math.min(limit, SOURCE_TAKE)));
 
   return candidates.map((row) => ({
@@ -1084,7 +1084,7 @@ export async function loadWoloMainnetActivityRows(
     contextLabel: row.contextLabel,
     groupKey: row.groupKey ?? null,
     createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
+    updatedAt: row.createdAt,
   }));
 }
 

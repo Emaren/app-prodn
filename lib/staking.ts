@@ -8,6 +8,7 @@ import {
   visibleMainnetFundedBetWagerWhere as visibleMainnetWagerWhere,
 } from "@/lib/betStakeFunding";
 import { buildStakingTreasuryPayoutRequestId } from "@/lib/stakingTreasuryPayouts";
+import { matchedMarketVolumeWolo } from "@/lib/betWagerSettlement";
 import {
   executeWoloEscrowSettlementRun,
   executeWoloSettlementRun,
@@ -1151,7 +1152,8 @@ export async function loadStakingSummary(
 
   const [
     wagerAggregate,
-    settledAggregate,
+    wagerMatchedSideTotals,
+    settledMatchedSideTotals,
     payoutAggregate,
     activeBettorRows,
     activePlayers,
@@ -1170,7 +1172,13 @@ export async function loadStakingSummary(
       _count: { _all: true },
       _sum: { amountWolo: true },
     }),
-    prisma.betWager.aggregate({
+    prisma.betWager.groupBy({
+      by: ["marketId", "side"],
+      where: wagerWhere,
+      _sum: { amountWolo: true },
+    }),
+    prisma.betWager.groupBy({
+      by: ["marketId", "side"],
       where: settledWhere,
       _sum: { amountWolo: true },
     }),
@@ -1283,7 +1291,24 @@ export async function loadStakingSummary(
     loadIndexedWoloTransferActivityRows(prisma, 25).catch(() => []),
   ]);
 
-  const settledVolumeWolo = settledAggregate._sum.amountWolo ?? 0;
+  const matchedVolumeFromSideTotals = (
+    rows: Array<{ marketId: number; side: string; _sum: { amountWolo: number | null } }>
+  ) => {
+    const byMarket = new Map<number, { left: number; right: number }>();
+    for (const row of rows) {
+      const pools = byMarket.get(row.marketId) ?? { left: 0, right: 0 };
+      if (row.side === "left") pools.left += row._sum.amountWolo ?? 0;
+      if (row.side === "right") pools.right += row._sum.amountWolo ?? 0;
+      byMarket.set(row.marketId, pools);
+    }
+    let total = 0;
+    for (const pools of byMarket.values()) {
+      total += matchedMarketVolumeWolo(pools.left, pools.right);
+    }
+    return total;
+  };
+  const matchedBetVolumeWolo = matchedVolumeFromSideTotals(wagerMatchedSideTotals);
+  const settledVolumeWolo = matchedVolumeFromSideTotals(settledMatchedSideTotals);
   const feePools = calculateModeledFeePools(settledVolumeWolo);
   const legacyTotalStakingWeight = stakingPositions.reduce(
     (sum, position) => sum + computeCurrentStakingWeight(position, now),
@@ -1457,7 +1482,7 @@ export async function loadStakingSummary(
     generatedAt: now.toISOString(),
     dataLive: true,
     betsPlaced: wagerAggregate._count._all,
-    betVolumeWolo: wagerAggregate._sum.amountWolo ?? 0,
+    betVolumeWolo: matchedBetVolumeWolo,
     payoutWolo: payoutAggregate._sum.payoutWolo ?? 0,
     settledVolumeWolo,
     stakerFeePoolWolo: feePools.stakerPoolWolo,

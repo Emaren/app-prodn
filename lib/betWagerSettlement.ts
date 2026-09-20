@@ -32,6 +32,23 @@ export type ResolvedWagerInput = {
   amountWolo: number;
 };
 
+export type MatchedWagerExposure = {
+  id: number;
+  side: ResolvedWagerSide;
+  amountWolo: number;
+  matchedWolo: number;
+  unmatchedWolo: number;
+};
+
+export type MatchedWagerExposurePlan = {
+  leftPoolWolo: number;
+  rightPoolWolo: number;
+  matchedPerSideWolo: number;
+  matchedVolumeWolo: number;
+  unmatchedVolumeWolo: number;
+  wagers: MatchedWagerExposure[];
+};
+
 export type ResolvedWagerOutcome = {
   id: number;
   status: "won" | "lost" | "void";
@@ -44,39 +61,46 @@ export type ResolvedWagerSettlementPlan = {
   winningUserPool: number;
   losingSidePool: number;
   settledUserPool: number;
+  matchedPerSideWolo: number;
+  matchedVolumeWolo: number;
+  unmatchedVolumeWolo: number;
   bettingFeePoolWolo: number;
+  exposures: MatchedWagerExposure[];
   outcomes: ResolvedWagerOutcome[];
 };
 
-function allocateFeeByWagerId(
-  wagers: Array<{ id: number; amountWolo: number }>,
-  totalFeeWolo: number
-) {
-  const feeByWagerId = new Map<number, number>();
-  const totalWinningStake = wagers.reduce(
-    (sum, wager) => sum + wager.amountWolo,
-    0
-  );
+function assertWholeWolo(value: number, label: string) {
+  if (!Number.isInteger(value) || value < 0) {
+    throw new Error(`${label} must be a non-negative whole-WOLO amount.`);
+  }
+}
 
-  if (totalFeeWolo <= 0 || totalWinningStake <= 0) {
-    return feeByWagerId;
+function allocateProRataByWagerId(
+  wagers: Array<{ id: number; amountWolo: number }>,
+  totalToAllocate: number
+) {
+  const allocationByWagerId = new Map<number, number>();
+  const totalStake = wagers.reduce((sum, wager) => sum + wager.amountWolo, 0);
+
+  if (totalToAllocate <= 0 || totalStake <= 0) {
+    for (const wager of wagers) allocationByWagerId.set(wager.id, 0);
+    return allocationByWagerId;
   }
 
+  const boundedTotal = Math.min(totalStake, Math.max(0, totalToAllocate));
   const allocations = wagers.map((wager) => {
-    const exact = (totalFeeWolo * wager.amountWolo) / totalWinningStake;
+    const exact = (boundedTotal * wager.amountWolo) / totalStake;
     const base = Math.floor(exact);
     return {
       id: wager.id,
       amountWolo: wager.amountWolo,
-      feeWolo: base,
+      allocatedWolo: base,
       remainder: exact - base,
     };
   });
 
-  let remaining = Math.max(
-    0,
-    totalFeeWolo - allocations.reduce((sum, row) => sum + row.feeWolo, 0)
-  );
+  let remaining =
+    boundedTotal - allocations.reduce((sum, row) => sum + row.allocatedWolo, 0);
 
   allocations
     .sort((left, right) => {
@@ -86,23 +110,95 @@ function allocateFeeByWagerId(
     })
     .forEach((allocation) => {
       if (remaining <= 0) return;
-      allocation.feeWolo += 1;
+      allocation.allocatedWolo += 1;
       remaining -= 1;
     });
 
   for (const allocation of allocations) {
-    feeByWagerId.set(allocation.id, allocation.feeWolo);
+    allocationByWagerId.set(allocation.id, allocation.allocatedWolo);
   }
 
-  return feeByWagerId;
+  return allocationByWagerId;
+}
+
+export function matchedMarketVolumeWolo(
+  leftPoolWolo: number,
+  rightPoolWolo: number
+) {
+  assertWholeWolo(leftPoolWolo, "Left wager pool");
+  assertWholeWolo(rightPoolWolo, "Right wager pool");
+  return Math.min(leftPoolWolo, rightPoolWolo) * 2;
+}
+
+/**
+ * #JimsRule matching authority.
+ *
+ * Only real funded wagers on opposite sides match each other. Seed/display
+ * liquidity is deliberately excluded: future house/AI action must enter as a
+ * real funded wager if it is to match user principal.
+ *
+ * Each side receives exactly min(leftPool, rightPool) of matched exposure.
+ * Within a side that matched amount is allocated proportionally and rounded
+ * deterministically by remainder, stake size, then wager id.
+ */
+export function planMatchedWagerExposure(
+  wagers: ResolvedWagerInput[]
+): MatchedWagerExposurePlan {
+  const normalized = wagers.map((wager) => {
+    if (wager.side !== "left" && wager.side !== "right") {
+      throw new Error(`Unsupported wager side for wager #${wager.id}: ${wager.side}`);
+    }
+    assertWholeWolo(wager.amountWolo, `Wager #${wager.id}`);
+    return {
+      id: wager.id,
+      side: wager.side,
+      amountWolo: wager.amountWolo,
+    } satisfies {
+      id: number;
+      side: ResolvedWagerSide;
+      amountWolo: number;
+    };
+  });
+
+  const leftWagers = normalized.filter((wager) => wager.side === "left");
+  const rightWagers = normalized.filter((wager) => wager.side === "right");
+  const leftPoolWolo = leftWagers.reduce((sum, wager) => sum + wager.amountWolo, 0);
+  const rightPoolWolo = rightWagers.reduce((sum, wager) => sum + wager.amountWolo, 0);
+  const matchedVolumeWolo = matchedMarketVolumeWolo(leftPoolWolo, rightPoolWolo);
+  const matchedPerSideWolo = matchedVolumeWolo / 2;
+  const leftMatched = allocateProRataByWagerId(leftWagers, matchedPerSideWolo);
+  const rightMatched = allocateProRataByWagerId(rightWagers, matchedPerSideWolo);
+
+  const planned = normalized.map((wager) => {
+    const matchedWolo =
+      (wager.side === "left" ? leftMatched : rightMatched).get(wager.id) ?? 0;
+    return {
+      ...wager,
+      matchedWolo,
+      unmatchedWolo: wager.amountWolo - matchedWolo,
+    };
+  });
+
+  const settledUserPool = leftPoolWolo + rightPoolWolo;
+  return {
+    leftPoolWolo,
+    rightPoolWolo,
+    matchedPerSideWolo,
+    matchedVolumeWolo,
+    unmatchedVolumeWolo: settledUserPool - matchedVolumeWolo,
+    wagers: planned,
+  };
 }
 
 /**
  * Pure payout plan used after proposition truth has passed its financial gate.
- * A resolved YES/NO market behaves like a real two-sided proposition: backed
- * winners win and opposing backers lose. A factual side with no backer does
- * not turn the opposing side into a refund: those wagers are resolved losses.
- * Exact-stake refunds are reserved for a proposition with no provable winner.
+ *
+ * #JimsRule separates proposition truth from money-at-risk truth:
+ * - only opposite funded user stake is economically matched;
+ * - unmatched principal is always returned exactly and pays no betting fee;
+ * - the 2% fee applies only to matched two-sided volume;
+ * - a losing pick can therefore still receive an unmatched-principal refund;
+ * - virtual seed liquidity never consumes user principal.
  */
 export function planResolvedWagerSettlements(input: {
   winningSide: ResolvedWagerSide | null;
@@ -114,49 +210,52 @@ export function planResolvedWagerSettlements(input: {
   feeRateBps: number;
   feeDenominator: number;
 }): ResolvedWagerSettlementPlan {
+  assertWholeWolo(input.seedLeftWolo, "Left seed");
+  assertWholeWolo(input.seedRightWolo, "Right seed");
+  assertWholeWolo(input.feeRateBps, "Fee rate");
+  if (!Number.isInteger(input.feeDenominator) || input.feeDenominator <= 0) {
+    throw new Error("Fee denominator must be a positive integer.");
+  }
+
+  const exposure = planMatchedWagerExposure(input.wagers);
+  const byId = new Map(exposure.wagers.map((wager) => [wager.id, wager] as const));
+  const settledUserPool = exposure.leftPoolWolo + exposure.rightPoolWolo;
   const winningUserPool = input.winningSide
-    ? input.wagers
+    ? exposure.wagers
         .filter((wager) => wager.side === input.winningSide)
         .reduce((sum, wager) => sum + wager.amountWolo, 0)
     : 0;
+  const losingSidePool = input.winningSide ? exposure.matchedPerSideWolo : 0;
   const unbackedDesyncWinningSide =
     Boolean(input.winningSide) &&
     input.marketType === input.desyncMarketType &&
     winningUserPool === 0 &&
     input.wagers.length > 0;
-  const losingSidePool =
-    input.winningSide === "left"
-      ? input.seedRightWolo +
-        input.wagers
-          .filter((wager) => wager.side === "right")
-          .reduce((sum, wager) => sum + wager.amountWolo, 0)
-      : input.winningSide === "right"
-        ? input.seedLeftWolo +
-          input.wagers
-            .filter((wager) => wager.side === "left")
-            .reduce((sum, wager) => sum + wager.amountWolo, 0)
-        : 0;
-  const settledUserPool = input.wagers.reduce(
-    (sum, wager) => sum + wager.amountWolo,
-    0
-  );
+
   const bettingFeePoolWolo =
-    input.winningSide &&
-    settledUserPool > 0 &&
-    !unbackedDesyncWinningSide
+    input.winningSide && exposure.matchedVolumeWolo > 0
       ? Math.round(
-          (settledUserPool * input.feeRateBps) /
-            Math.max(1, input.feeDenominator)
+          (exposure.matchedVolumeWolo * input.feeRateBps) /
+            input.feeDenominator
         )
       : 0;
-  const feeByWinningWagerId = allocateFeeByWagerId(
-    input.winningSide
-      ? input.wagers.filter((wager) => wager.side === input.winningSide)
-      : [],
+
+  const winningMatchedWagers = input.winningSide
+    ? exposure.wagers
+        .filter((wager) => wager.side === input.winningSide && wager.matchedWolo > 0)
+        .map((wager) => ({ id: wager.id, amountWolo: wager.matchedWolo }))
+    : [];
+  const feeByWinningWagerId = allocateProRataByWagerId(
+    winningMatchedWagers,
     bettingFeePoolWolo
   );
 
   const outcomes = input.wagers.map((wager): ResolvedWagerOutcome => {
+    const matched = byId.get(wager.id);
+    if (!matched) {
+      throw new Error(`Missing matched exposure for wager #${wager.id}.`);
+    }
+
     if (!input.winningSide) {
       return {
         id: wager.id,
@@ -170,22 +269,17 @@ export function planResolvedWagerSettlements(input: {
       return {
         id: wager.id,
         status: "lost",
-        payoutWolo: 0,
+        payoutWolo: matched.unmatchedWolo,
         bettingFeeWolo: 0,
       };
     }
 
     const bettingFeeWolo = feeByWinningWagerId.get(wager.id) ?? 0;
-    const payoutWolo =
-      winningUserPool > 0
-        ? Math.max(
-            0,
-            Math.round(
-              wager.amountWolo +
-                losingSidePool * (wager.amountWolo / winningUserPool)
-            ) - bettingFeeWolo
-          )
-        : wager.amountWolo;
+    const matchedGrossReturnWolo = matched.matchedWolo * 2;
+    const payoutWolo = Math.max(
+      0,
+      matched.unmatchedWolo + matchedGrossReturnWolo - bettingFeeWolo
+    );
 
     return {
       id: wager.id,
@@ -200,7 +294,11 @@ export function planResolvedWagerSettlements(input: {
     winningUserPool,
     losingSidePool,
     settledUserPool,
+    matchedPerSideWolo: exposure.matchedPerSideWolo,
+    matchedVolumeWolo: exposure.matchedVolumeWolo,
+    unmatchedVolumeWolo: exposure.unmatchedVolumeWolo,
     bettingFeePoolWolo,
+    exposures: exposure.wagers,
     outcomes,
   };
 }

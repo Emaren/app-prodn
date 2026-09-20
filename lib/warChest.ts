@@ -4,6 +4,7 @@ import {
   visibleMainnetFundedBetWagerWhere as visibleMainnetWagerWhere,
 } from "@/lib/betStakeFunding";
 import { loadBetBoardSnapshot, type BetBoardSnapshot } from "@/lib/bets";
+import { matchedMarketVolumeWolo } from "@/lib/betWagerSettlement";
 import { queueBetMarketEnsure } from "@/lib/betMarketEnsureQueue";
 import type {
   LobbyWoloEarnersBoard,
@@ -105,6 +106,23 @@ function displayActorName(input: {
   );
 }
 
+function matchedVolumeFromSideTotals(
+  rows: Array<{ marketId: number; side: string; _sum: { amountWolo: number | null } }>
+) {
+  const byMarket = new Map<number, { left: number; right: number }>();
+  for (const row of rows) {
+    const current = byMarket.get(row.marketId) ?? { left: 0, right: 0 };
+    if (row.side === "left") current.left += row._sum.amountWolo ?? 0;
+    if (row.side === "right") current.right += row._sum.amountWolo ?? 0;
+    byMarket.set(row.marketId, current);
+  }
+  let total = 0;
+  for (const pools of byMarket.values()) {
+    total += matchedMarketVolumeWolo(pools.left, pools.right);
+  }
+  return total;
+}
+
 function visibleMainnetClaimWhere(
   extra: Prisma.PendingWoloClaimWhereInput = {}
 ): Prisma.PendingWoloClaimWhereInput {
@@ -143,6 +161,11 @@ export async function loadWarChestSnapshot(
       _count: {
         _all: true,
       },
+    }),
+    prisma.betWager.groupBy({
+      by: ["marketId", "side"],
+      where: visibleMainnetWagerWhere(),
+      _sum: { amountWolo: true },
     }),
     prisma.pendingWoloClaim.aggregate({
       where: visibleMainnetClaimWhere({
@@ -246,6 +269,11 @@ export async function loadWarChestSnapshot(
       by: ["userId"],
       where: weeklyWagerWhere,
     }),
+    prisma.betWager.groupBy({
+      by: ["marketId", "side"],
+      where: weeklyWagerWhere,
+      _sum: { amountWolo: true },
+    }),
     prisma.betWager.aggregate({
       where: visibleMainnetWagerWhere({
         createdAt: { gte: weeklyWindowStart },
@@ -261,12 +289,14 @@ export async function loadWarChestSnapshot(
     [
       weeklyWagerSummary,
       weeklyBettors,
+      weeklyMatchedSideTotals,
       weeklyOnchainEscrow,
     ],
     [
       betBoard,
       wolo,
       lifetimeWagers,
+      lifetimeMatchedSideTotals,
       pendingSummary,
       recentWagersRaw,
       recentClaimsRaw,
@@ -316,7 +346,7 @@ export async function loadWarChestSnapshot(
     earners,
     betBoard,
     weekly: {
-      volumeWolo: weeklyWagerSummary._sum.amountWolo ?? 0,
+      volumeWolo: matchedVolumeFromSideTotals(weeklyMatchedSideTotals),
       paidOutWolo: weeklyWagerSummary._sum.payoutWolo ?? 0,
       activeBettors: weeklyBettors.length,
       slips: weeklyWagerSummary._count._all,
@@ -325,7 +355,7 @@ export async function loadWarChestSnapshot(
       pendingWolo: pendingSummary._sum.amountWolo ?? 0,
     },
     lifetime: {
-      totalWageredWolo: lifetimeWagers._sum.amountWolo ?? 0,
+      totalWageredWolo: matchedVolumeFromSideTotals(lifetimeMatchedSideTotals),
       totalPayoutWolo: lifetimeWagers._sum.payoutWolo ?? 0,
       totalParticipants: earners.totalParticipants,
       settledMarkets: settledMarketCount,
