@@ -34,6 +34,8 @@ jobs:
           yarn --version
       - name: Install frozen dependencies for Python contracts
         run: yarn install --frozen-lockfile --ignore-scripts --non-interactive
+      - name: Verify installed dependency security
+        run: python3 scripts/check_dependency_security.py
       - name: Compile Python tooling
         run: python3 -m compileall -q scripts tests
       - name: Run Python contracts

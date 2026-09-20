@@ -19,6 +19,7 @@ from typing import Any
 import aoe2_audit
 import aoe2_recovery
 import aoe2_release
+import check_dependency_security
 
 ROOT = Path(__file__).resolve().parents[1]
 PROJECTS_ROOT = ROOT.parents[1]
@@ -32,6 +33,7 @@ CATEGORIES = (
     "Production",
     "Operator Bridge",
     "Toolchain",
+    "Supply Chain",
     "Host",
     "Architecture",
     "Disaster Recovery",
@@ -293,6 +295,54 @@ def check_contract(doctor: Doctor, contract: dict[str, Any]) -> None:
         "path": str(CONTRACT_PATH),
         "schema": contract.get("schema"),
     }
+
+
+def check_supply_chain(doctor: Doctor) -> None:
+    try:
+        payload = check_dependency_security.collect(ROOT, timeout=90)
+    except Exception as exc:
+        doctor.add(
+            "BLOCKER",
+            "Supply Chain",
+            "dependency-audit-unavailable",
+            str(exc),
+            15,
+        )
+        doctor.info["supply_chain"] = {"status": "ERROR", "error": str(exc)}
+        return
+
+    doctor.info["supply_chain"] = payload
+    counts = payload.get("unique_advisories") or {}
+    critical = int(counts.get("critical", 0))
+    high = int(counts.get("high", 0))
+    moderate = int(counts.get("moderate", 0))
+    low = int(counts.get("low", 0))
+
+    if critical or high:
+        doctor.add(
+            "BLOCKER",
+            "Supply Chain",
+            "dependency-advisories",
+            f"critical={critical} high={high} moderate={moderate} low={low}",
+            20,
+        )
+    elif moderate or low:
+        doctor.add(
+            "WARN",
+            "Supply Chain",
+            "dependency-advisories",
+            f"moderate={moderate} low={low}",
+            5,
+        )
+
+    if int(payload.get("malformed_stdout_lines", 0)):
+        doctor.add(
+            "WARN",
+            "Supply Chain",
+            "dependency-audit-parser-noise",
+            f"malformed_lines={payload['malformed_stdout_lines']}",
+            2,
+        )
 
 
 def check_toolchain(doctor: Doctor, contract: dict[str, Any]) -> None:
@@ -1705,7 +1755,7 @@ def collect_doctor(
                 flush=True,
             )
         with ThreadPoolExecutor(
-            max_workers=8,
+            max_workers=9,
             thread_name_prefix="aoe2war-doctor",
         ) as pool:
             ordered_futures = (
@@ -1715,6 +1765,7 @@ def collect_doctor(
                 pool.submit(run_doctor_check, check_host_and_server_bridge, contract),
                 pool.submit(run_doctor_check, check_maintenance_safety, contract),
                 pool.submit(run_doctor_check, check_toolchain, contract),
+                pool.submit(run_doctor_check, check_supply_chain),
                 pool.submit(run_doctor_check, check_architecture, contract, release_data),
                 pool.submit(run_doctor_check, check_disaster_recovery, contract),
             )

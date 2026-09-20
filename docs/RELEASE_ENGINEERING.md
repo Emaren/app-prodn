@@ -116,6 +116,7 @@ aoe2war dev refresh
 aoe2war dev serve
 aoe2war dev new feature-name
 aoe2war deps
+aoe2war deps-security
 aoe2war workspace status
 aoe2war status
 aoe2war context
@@ -232,6 +233,19 @@ outside Git's tracked-source inventory.
 
 The dependency contract runs during `aoe2war dev prepare` and in the protected
 release gate.
+
+Dependency declaration correctness is not supply-chain security. The separate
+`aoe2war deps-security` contract runs Yarn's complete advisory census over the
+exact installed graph bound by `package.json` and `yarn.lock`, including build
+and development tooling because that code executes inside the software factory.
+Advisories are deduplicated by advisory identity while vulnerable dependency
+paths remain separately counted. Missing or malformed audit summary evidence
+fails closed. The protected release gate and GitHub CI both require zero known
+advisories at every severity before application code may ship.
+
+Doctor exposes this as the first-class **Supply Chain** category. Critical/high
+advisories are blockers; moderate/low advisories are warnings, so strict Doctor
+cannot report 100/100 while known dependency debt exists.
 
 ### Next output tracing authority
 

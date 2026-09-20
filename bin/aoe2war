@@ -107,6 +107,7 @@ DEV_OS="$BIN_DIR/../scripts/aoe2_dev.py"
 TRUTH_OS="$BIN_DIR/../scripts/aoe2_truth.py"
 CODE_HEALTH="$BIN_DIR/../scripts/aoe2_code_health.py"
 DEPENDENCY_CHECK="$BIN_DIR/../scripts/check_dependency_contract.py"
+DEPENDENCY_SECURITY="$BIN_DIR/../scripts/check_dependency_security.py"
 
 usage() {
   cat <<'EOF'
@@ -132,6 +133,7 @@ Usage:
   aoe2war truth <status|census|audit|closure|target> [options]
   aoe2war code-health [--json] [--no-receipt] [--require-clean-worktree]
   aoe2war deps
+  aoe2war deps-security [--json]
   aoe2war host <status|tidy|maintenance-plan> [options]
   aoe2war recovery <status|plan|campaign> [options]
   aoe2war finish [--dry-run] [--json] [--preserve-context-history] [-m MESSAGE]
@@ -607,6 +609,10 @@ case "$command" in
   deps)
     shift
     exec "$AOE2WAR_PYTHON" "$DEPENDENCY_CHECK" "$@"
+    ;;
+  deps-security)
+    shift
+    exec "$AOE2WAR_PYTHON" "$DEPENDENCY_SECURITY" "$@"
     ;;
   host)
     shift

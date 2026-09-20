@@ -325,6 +325,7 @@ def path_risk(path: str) -> str:
         "scripts/aoe2_shadow.py",
         "scripts/dev-shadow.py",
         "scripts/check_dependency_contract.py",
+        "scripts/check_dependency_security.py",
         "tests/test_aoe2_council.py",
         "tests/test_aoe2_brain.py",
         "tests/test_aoe2_workspace.py",
@@ -335,6 +336,7 @@ def path_risk(path: str) -> str:
         "tests/test_aoe2_dev.py",
         "tests/test_aoe2_shadow.py",
         "tests/test_dependency_contract.py",
+        "tests/test_dependency_security.py",
         "tests/test_aoe2_os_closure_gate.py",
     }
     if p.startswith(infra_prefixes) or p in infra_exact:
@@ -459,6 +461,13 @@ def command_plan(
             )
         )
         commands.append(
+            (
+                "dependency-security",
+                ["python3", "scripts/check_dependency_security.py"],
+                120,
+            )
+        )
+        commands.append(
             ("active-node-test-contract", ["python3", "scripts/run_test_contract.py"], 300)
         )
 
@@ -519,6 +528,7 @@ def command_plan(
             "scripts/aoe2_shadow.py",
             "scripts/dev-shadow.py",
             "scripts/check_dependency_contract.py",
+            "scripts/check_dependency_security.py",
             "tests/test_aoe2_council.py",
             "tests/test_aoe2_brain.py",
             "tests/test_aoe2_workspace.py",
@@ -529,6 +539,7 @@ def command_plan(
             "tests/test_aoe2_dev.py",
             "tests/test_aoe2_shadow.py",
             "tests/test_dependency_contract.py",
+            "tests/test_dependency_security.py",
             "tests/test_aoe2_os_closure_gate.py",
             "tests/test_aoe2_node_runtime.py",
         }
@@ -571,6 +582,7 @@ def command_plan(
                     "tests/test_aoe2_dev.py",
                     "tests/test_aoe2_shadow.py",
                     "tests/test_dependency_contract.py",
+                    "tests/test_dependency_security.py",
                     "tests/test_aoe2_os_closure_gate.py",
                     "tests/test_aoe2_node_runtime.py",
                     "tests/test_test_contract.py",
@@ -616,6 +628,7 @@ def command_plan(
                     "scripts/aoe2_shadow.py",
                     "scripts/dev-shadow.py",
                     "scripts/check_dependency_contract.py",
+                    "scripts/check_dependency_security.py",
                     "scripts/run_test_contract.py",
                     "scripts/scan_tracked_secrets.py",
                 ],
@@ -920,6 +933,8 @@ def validation_context(
             "scripts/run_test_contract.py",
             "scripts/aoe2-alias-loader.mjs",
             "scripts/check_dependency_contract.py",
+            "scripts/check_dependency_security.py",
+            "tests/test_dependency_security.py",
         )
     )
 
@@ -1099,6 +1114,14 @@ def reduced_revalidation_plan(
                 [
                     "python3",
                     "scripts/check_dependency_contract.py",
+                ],
+                120,
+            ),
+            (
+                "dependency-security",
+                [
+                    "python3",
+                    "scripts/check_dependency_security.py",
                 ],
                 120,
             ),
