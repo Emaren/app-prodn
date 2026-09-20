@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/brain-verified-performance-targets` at `0932c639cf275ea7f6b8d1d1c4c28892ed762ef2`
+Implementation baseline: `fix/speed-benchmark-receipt-counts` at `1263e3fdb0becfdb045488565503f31abed131a3`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
