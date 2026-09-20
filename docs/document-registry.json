@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "87ca9ace5c0b3606f1364451c10206ce0fd0f6d9328e463e364304a739e6d243",
+      "sha256": "9b55ccbbf73f44ac671d5170911df639b13be7403f9c217e3d1a51daca14d39a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/jims-rule-idempotency-20260920",
-    "commit": "662648eaa6803d53435e44eff01a55c3b0f79110"
+    "branch": "main",
+    "commit": "3d6b7661808449b02214bcb794b18d36c96e3474"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

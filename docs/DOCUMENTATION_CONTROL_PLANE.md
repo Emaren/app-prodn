@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/jims-rule-idempotency-20260920` at `662648eaa6803d53435e44eff01a55c3b0f79110`
+Implementation baseline: `main` at `3d6b7661808449b02214bcb794b18d36c96e3474`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
