@@ -88,6 +88,11 @@ test("all primary battlefield routes publish explicit readiness", () => {
     ["app/bounties/page.tsx", '<SpeedReadyMarker route="/bounties" />'],
     ["components/speed/SpeedObservatory.tsx", '<SpeedReadyMarker route="/speed" />'],
     ["app/staking/page.tsx", '<SpeedReadyMarker route="/staking" />'],
+    ["app/champions/page.tsx", '<SpeedReadyMarker route="/champions" />'],
+    [
+      "app/national-champions/page.tsx",
+      '<SpeedReadyMarker route="/national-champions" />',
+    ],
     [
       "components/wolo/WoloPageClient.tsx",
       '<SpeedReadyMarker route="/wolo" ready={speedReady} />',
@@ -101,6 +106,19 @@ test("all primary battlefield routes publish explicit readiness", () => {
   for (const [path, marker] of expectations) {
     assert.ok(source(path).includes(marker), `${path} is missing ${marker}`);
   }
+});
+
+test("Traffic publishes readiness from inside the hydrated primary chart boundary", () => {
+  const traffic = source("app/traffic/page.tsx");
+  const chart = source("components/observatory/PremiumTimeSeriesChart.tsx");
+
+  assert.match(traffic, /speedReadyRoute="\/traffic"/);
+  assert.doesNotMatch(traffic, /<SpeedReadyMarker/);
+  assert.match(chart, /speedReadyRoute\?: string/);
+  assert.match(
+    chart,
+    /speedReadyRoute \? <SpeedReadyMarker route=\{speedReadyRoute\} \/> : null/,
+  );
 });
 
 test("WOLO Ready reflects primary usability, not secondary wallet proof", () => {

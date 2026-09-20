@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/speed-benchmark-receipt-counts` at `1263e3fdb0becfdb045488565503f31abed131a3`
+Implementation baseline: `feature/speed-ready-authority-wave1` at `463a5ff970245631a4e8aa90f3c45535a3d4c0d8`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

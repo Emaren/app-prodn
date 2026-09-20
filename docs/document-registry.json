@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ad9bbde2021059fbdda59d72436b0f4ec091d16def52761b4638fe08160a85f1",
+      "sha256": "99b20e2f5eca8c6b22c65b8d1855c1a79bc2129186e082181a11e667f1ac2af8",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-14",
       "sensitivity": "internal",
-      "sha256": "047df32d1cb6caecd3818b1f5420bf777c270320b780c11f420898de4209c7c2",
+      "sha256": "c09997bb86279aa7c0186976d1dd5c42c4863a5fd96164dee10753bfdda36a15",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1141,7 +1141,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-06",
       "sensitivity": "internal",
-      "sha256": "eb01970ce7d31d38e149c1dd57391a9bdd53181e37e0dc7ac634447fb469751e",
+      "sha256": "1aad1d7b4a55231c82fe824fcc40abe12e9456e1d5ea500d79906f83a1aadf3a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/speed-benchmark-receipt-counts",
-    "commit": "1263e3fdb0becfdb045488565503f31abed131a3"
+    "branch": "feature/speed-ready-authority-wave1",
+    "commit": "463a5ff970245631a4e8aa90f3c45535a3d4c0d8"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

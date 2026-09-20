@@ -41,6 +41,33 @@ memory before closing the work.
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
 
+## Readiness authority must model semantics, not JSX shape
+
+Speed OS originally counted route-level readiness by scanning source only for
+literal `<SpeedReadyMarker route="...">` mounts. That was conservative, but it
+created the wrong incentive for client-primary routes: adding a detached
+page-level marker could improve the coverage counter while allowing the marker
+to fire before the real hydrated experience existed.
+
+The `/traffic` route exposed the cleaner pattern. Its primary experience is the
+client-side `PremiumTimeSeriesChart`, so readiness is delegated through a
+`speedReadyRoute="/traffic"` binding and the chart boundary owns the actual
+`SpeedReadyMarker`. Server-complete routes such as `/champions` and
+`/national-champions` can publish direct markers because their primary truth is
+already rendered before hydration.
+
+Durable rule: observability coverage must represent authority, not syntax.
+Speed OS readiness census now unions direct markers with explicit delegated
+bindings and reports both counts separately. Do not duplicate a fake marker to
+satisfy a regex; place the authoritative signal at the component boundary that
+actually knows when the primary experience is usable. Global `SpeedRuntime`
+fallback remains diagnostic telemetry and is not promoted to route-level
+authority merely because no explicit binding exists.
+
+General rule: when an instrumentation metric starts driving implementation
+behavior, verify that it measures the semantic contract you care about rather
+than an incidental source-code shape.
+
 ## Dependency contract runtime coverage
 
 The 2026-09-18 code-health audit found that the dependency AST contract covered

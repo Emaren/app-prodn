@@ -54,6 +54,7 @@ export default async function TrafficPage() {
             points={points}
             series={SERIES}
             variant="traffic"
+            speedReadyRoute="/traffic"
           />
         ) : (
           <div className="min-h-[80vh] rounded-[2.5rem] border border-white/[0.06] bg-white/[0.025]" />

@@ -181,6 +181,8 @@ def ready_coverage() -> dict[str, Any]:
         return {
             "ready_routes": int(ready.get("ready_route_count") or 0),
             "marker_mounts": int(ready.get("ready_marker_usages") or 0),
+            "delegated_bindings": int(ready.get("delegated_ready_bindings") or 0),
+            "authority_bindings": int(ready.get("ready_authority_bindings") or 0),
             "baseline_routes": cohort_count,
         }
     except Exception:
@@ -581,10 +583,10 @@ def build_recommendations(
             rank=70,
             level="BACKLOG",
             key="ready-coverage",
-            title="Grow route-level readiness coverage",
+            title="Grow route-level readiness authority",
             reason=(
                 f"{ready_routes}/{baseline_routes} public benchmark "
-                "representatives have explicit readiness markers."
+                "representatives have explicit readiness authority."
             ),
             action="aoe2war speed diagnose",
         )

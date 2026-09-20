@@ -3,6 +3,8 @@
 import { motion } from "framer-motion";
 import { useMemo, useRef, useState } from "react";
 
+import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
+
 export type ObservatoryAxis = "count" | "secondaryCount" | "wolo";
 
 export type ObservatorySeries = {
@@ -308,11 +310,13 @@ export default function PremiumTimeSeriesChart({
   points,
   series,
   variant,
+  speedReadyRoute,
 }: {
   title: string;
   points: ObservatoryPoint[];
   series: ObservatorySeries[];
   variant: "traffic" | "statistics";
+  speedReadyRoute?: string;
 }) {
   const chartRef = useRef<HTMLDivElement | null>(null);
 
@@ -482,6 +486,7 @@ export default function PremiumTimeSeriesChart({
     <section
       className={`relative overflow-hidden rounded-[2.5rem] border ${shellClass} shadow-[0_40px_140px_rgba(0,0,0,0.48)]`}
     >
+      {speedReadyRoute ? <SpeedReadyMarker route={speedReadyRoute} /> : null}
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.018)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.018)_1px,transparent_1px)] bg-[size:54px_54px] [mask-image:linear-gradient(to_bottom,black,transparent_92%)]" />
 
       <div className="relative flex flex-col gap-5 px-5 pb-3 pt-6 sm:px-8 lg:flex-row lg:items-center lg:justify-between">

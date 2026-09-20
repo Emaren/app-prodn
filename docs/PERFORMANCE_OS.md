@@ -388,7 +388,7 @@ reused connection. Each route can therefore carry:
 - warm public-to-origin delivery gap and ratio;
 - post-TTFB transfer tail;
 - static source-cost evidence;
-- browser Ready coverage.
+- browser readiness-authority coverage.
 
 Route-specific origin evidence outranks the old global public/origin ratio when
 classifying a target as `server_data` versus `delivery_proxy`. A route whose
@@ -403,10 +403,15 @@ Speed OS V3 adds two evidence families without replacing the V2 measurements.
 
 ### Durable browser performance evidence
 
-`SpeedReadyMarker` coverage proves that a route has an explicit semantic Ready
-boundary. It does **not** prove what users actually observed. Browser timing is
-durably ingested by Traffic and is joined back into Speed OS by exact build
-version and Traffic's canonical route-group contract.
+Explicit readiness-authority coverage proves that a route has a semantic Ready
+boundary. The ordinary form is a literal `SpeedReadyMarker` on the route. A
+primary client experience may instead delegate that authority through a tested
+binding such as `speedReadyRoute`, with the child component owning the actual
+`SpeedReadyMarker`. The census counts the union of direct markers and delegated
+bindings; it must not force a detached page-level marker merely to satisfy a
+source regex. Authority coverage does **not** prove what users actually
+observed. Browser timing is durably ingested by Traffic and is joined back into
+Speed OS by exact build version and Traffic's canonical route-group contract.
 
 `aoe2war speed browser` reads the existing Traffic performance overview through
 the VPS-local admin API. The Traffic admin credential is sourced and consumed
@@ -500,9 +505,13 @@ asks whether the gap survives connection reuse.
 
 ## Browser Ready hot-path discipline
 
-`Ready` measures the first authoritative state in which the marked primary
-interface is usable. It must not be delayed by secondary evidence that can
-continue resolving after the page is already operable.
+`Ready` measures the first authoritative state in which the primary interface
+is usable. A server-complete route may publish a direct marker after its
+server-backed truth is rendered. A client-primary route should bind readiness
+inside the hydrated primary experience rather than mounting a detached sibling
+that could fire before the real interface exists. It must not be delayed by
+secondary evidence that can continue resolving after the page is already
+operable.
 
 For the WOLO landing page, chain-id refresh, stored Keplr restoration, and
 balance proof are secondary live evidence. They may update the wallet panels
@@ -741,7 +750,7 @@ A benchmark receipt binds measurements to:
 - public TTFB and total-response percentiles;
 - public-vs-origin `/api/speed/check` seam;
 - per-route origin sample distribution and bounded stability evidence when warranted;
-- explicit route-level Ready marker coverage;
+- explicit route-level readiness-authority coverage (direct markers plus delegated bindings);
 - build-matched durable Traffic Ready/LCP aggregates with route-level confidence.
 
 Cohort percentiles are calculated across per-route medians so one noisy route or
@@ -756,9 +765,11 @@ receipt for a like-for-like comparison; Speed OS must not manufacture an
 "improvement" by comparing paced evidence to an unpaced baseline. A quick
 benchmark is never substituted for a full-estate baseline.
 
-The global `SpeedRuntime` is telemetry infrastructure. `SpeedReadyMarker` is the
-route-specific contract for application-ready timing. Global runtime presence
-must not be mistaken for complete route-level Ready coverage.
+The global `SpeedRuntime` is telemetry infrastructure. Route-specific
+application-ready authority comes from either a direct `SpeedReadyMarker` or a
+tested delegated binding whose primary client boundary owns that marker. Global
+runtime presence and its double-animation-frame fallback must not be mistaken
+for complete route-level Ready authority.
 
 ## Production non-interference contract
 

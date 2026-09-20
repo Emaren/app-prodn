@@ -13,6 +13,7 @@ import {
   Trophy,
 } from "lucide-react";
 
+import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import { getPrisma } from "@/lib/prisma";
 import { loadChampionTitleEconomyState } from "@/lib/champions/titleState";
 import {
@@ -447,6 +448,7 @@ export default async function NationalChampionsPage() {
 
   return (
     <main className="mx-auto w-full max-w-[96rem] space-y-8 overflow-x-hidden px-3 py-4 text-white sm:px-5 sm:py-6">
+      <SpeedReadyMarker route="/national-champions" />
       <section className="overflow-hidden rounded-[2.4rem] border border-amber-100/14 bg-[radial-gradient(circle_at_15%_20%,rgba(251,191,36,0.11),transparent_27%),radial-gradient(circle_at_78%_12%,rgba(59,130,246,0.12),transparent_28%),linear-gradient(135deg,rgba(8,14,26,0.96),rgba(4,8,16,0.98)_55%,rgba(19,8,13,0.94))] shadow-[0_44px_140px_rgba(0,0,0,0.46)]">
         <div className="grid gap-6 p-5 sm:p-7 lg:grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)] lg:items-center lg:p-8">
           <div className="space-y-6">

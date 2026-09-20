@@ -15,6 +15,7 @@ import {
   Users,
 } from "lucide-react";
 
+import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import TimeDisplayText from "@/components/time/TimeDisplayText";
 import { getPrisma } from "@/lib/prisma";
 import { avatarCardUrlForName, featuredAvatarCardUrlForUser } from "@/lib/avatarAssets";
@@ -737,6 +738,7 @@ export default async function ChampionsPage() {
 
   return (
     <main className="champions-page-shell space-y-8 py-4 text-white sm:py-6 overflow-visible">
+      <SpeedReadyMarker route="/champions" />
       <section className="champions-e-breakout champions-hero-shell relative overflow-hidden rounded-[2rem] border border-amber-200/14 bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.24),transparent_28%),radial-gradient(circle_at_10%_25%,rgba(14,165,233,0.12),transparent_24%),linear-gradient(145deg,#120d08,#07111c_54%,#02040a)] px-5 py-10 shadow-[0_34px_120px_rgba(0,0,0,0.42)] sm:px-8">
         <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-amber-200/55 to-transparent" />
         <ChampionsViewToggle />
