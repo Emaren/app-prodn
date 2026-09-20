@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "99b20e2f5eca8c6b22c65b8d1855c1a79bc2129186e082181a11e667f1ac2af8",
+      "sha256": "960f283afb60bfae4f4ec85f16ceadb8239b82351740dcbdd1f70e68e1f0c4a9",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -615,7 +615,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-19",
       "sensitivity": "internal",
-      "sha256": "995b8678bffaec63075bfcf329f9e374ff9b3bef7bcd9ae8c57574aa848b8df8",
+      "sha256": "b9c33790409467eb9db2453026123297fc00bbff6684cae83fe9bb27558c3c82",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1648,7 +1648,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-19",
       "sensitivity": "restricted",
-      "sha256": "9325759b86974051ecdf328493e3b22377dbba2664ca58f71660be5d178f0ad3",
+      "sha256": "0a5e12397aa13730b8ae24bf81189c920956c0c54cd90d6faed3811377474101",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/speed-ready-authority-wave1",
-    "commit": "463a5ff970245631a4e8aa90f3c45535a3d4c0d8"
+    "branch": "main",
+    "commit": "1e59d66290c5bc11a79af2ae082440b934672e7d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

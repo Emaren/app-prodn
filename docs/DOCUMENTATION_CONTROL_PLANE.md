@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/speed-ready-authority-wave1` at `463a5ff970245631a4e8aa90f3c45535a3d4c0d8`
+Implementation baseline: `main` at `1e59d66290c5bc11a79af2ae082440b934672e7d`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
