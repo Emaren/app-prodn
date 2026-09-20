@@ -51,6 +51,7 @@ test(
       "bet_payout",
       "bet_refund",
       "bet_corrective_refund",
+      "bet_unmatched_refund",
     ]) {
       assert.equal(
         warChestClaimCountsAsTake(

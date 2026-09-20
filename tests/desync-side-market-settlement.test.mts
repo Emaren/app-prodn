@@ -6,6 +6,7 @@ import test from "node:test";
 
 import {
   classifyResolvedMarketSettlement,
+  feeBearingMatchedWagerVolumeWolo,
   planResolvedWagerSettlements,
 } from "../lib/betWagerSettlement.ts";
 import {
@@ -610,3 +611,15 @@ test(
     );
   },
 );
+
+test("fee-bearing matched volume excludes unmatched principal and voided markets", () => {
+  assert.equal(
+    feeBearingMatchedWagerVolumeWolo([
+      { id: 1001, marketId: 10, side: "left", amountWolo: 100, status: "won" },
+      { id: 1002, marketId: 10, side: "right", amountWolo: 250, status: "lost" },
+      { id: 2001, marketId: 20, side: "left", amountWolo: 500, status: "void" },
+      { id: 2002, marketId: 20, side: "right", amountWolo: 500, status: "void" },
+    ]),
+    200,
+  );
+});

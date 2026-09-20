@@ -124,6 +124,16 @@ function eventLabel(eventType: string) {
   }
 }
 
+function publicActivityDetail(
+  eventType: string,
+  detail: string | null | undefined,
+) {
+  if (eventType === "scheduled_settlement_failed") {
+    return "Settlement retry recorded. Financial truth is shown by the settlement status above.";
+  }
+  return detail || eventLabel(eventType);
+}
+
 function statusLabel(status: string, leftName: string, rightName: string) {
   switch (status) {
     case "no_show_left":
@@ -842,7 +852,7 @@ export default async function ChallengeDetailPage({
               id: activity.id,
               eventType: activity.eventType,
               label: eventLabel(activity.eventType),
-              detail: activity.detail,
+              detail: publicActivityDetail(activity.eventType, activity.detail),
               message: metadataText(activity.metadata, "message"),
               proofUrl: metadataUrl(activity.metadata, "proofUrl"),
               actorUid: activity.actor?.uid ?? null,
@@ -874,7 +884,7 @@ export default async function ChallengeDetailPage({
                       <div className="flex flex-wrap items-center justify-between gap-3">
                         <div>
                           <div className="font-serif text-[0.98rem] font-semibold tracking-[-0.015em] text-amber-50/82">
-                            {activity.detail || eventLabel(activity.eventType)}
+                            {publicActivityDetail(activity.eventType, activity.detail)}
                           </div>
                           <div className="mt-1 text-[10px] uppercase tracking-[0.2em] text-slate-500">
                             {actorName ? `${actorName} · ` : ""}

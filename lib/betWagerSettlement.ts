@@ -190,6 +190,26 @@ export function planMatchedWagerExposure(
   };
 }
 
+export function feeBearingMatchedWagerVolumeWolo(
+  wagers: Array<ResolvedWagerInput & { marketId: number; status: string }>,
+) {
+  const byMarket = new Map<number, Array<ResolvedWagerInput & { marketId: number; status: string }>>();
+  for (const wager of wagers) {
+    const rows = byMarket.get(wager.marketId) ?? [];
+    rows.push(wager);
+    byMarket.set(wager.marketId, rows);
+  }
+
+  let matchedVolumeWolo = 0;
+  for (const marketWagers of byMarket.values()) {
+    // A terminal void can have two-sided matched exposure but charges no fee.
+    // A fee-bearing settlement must contain an actual winning wager outcome.
+    if (!marketWagers.some((wager) => wager.status === "won")) continue;
+    matchedVolumeWolo += planMatchedWagerExposure(marketWagers).matchedVolumeWolo;
+  }
+  return matchedVolumeWolo;
+}
+
 /**
  * Pure payout plan used after proposition truth has passed its financial gate.
  *

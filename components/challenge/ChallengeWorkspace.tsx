@@ -435,7 +435,7 @@ function formatActivityCompact(activity: ChallengeActivityItem, match?: Activity
     case "scheduled_settlement_completed":
       return `Escrow settled · Match #${activity.scheduledMatchId}`;
     case "scheduled_settlement_failed":
-      return activity.detail || `Escrow settlement failed · Match #${activity.scheduledMatchId}`;
+      return `Settlement retry recorded · Match #${activity.scheduledMatchId}`;
     case "declined":
       return `Declined · Match #${activity.scheduledMatchId}`;
     case "cancelled":

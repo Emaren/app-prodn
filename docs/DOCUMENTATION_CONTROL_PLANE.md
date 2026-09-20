@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `main` at `3d6b7661808449b02214bcb794b18d36c96e3474`
+Implementation baseline: `fix/financial-green-closeout-20260920` at `fa806f0f75addb8029984b6914541970156a53fe`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

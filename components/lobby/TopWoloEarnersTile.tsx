@@ -539,7 +539,7 @@ export function TopWoloEarnersTile({
                       <div className="col-start-2 min-w-0 sm:col-span-2 sm:col-start-2">
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-300">
                           <span className="break-words sm:whitespace-nowrap">
-                            <span className="font-medium text-slate-200">{h("Settled")}</span> {formatWolo(periodMetrics.settledWolo)} WOLO
+                            <span className="font-medium text-slate-200">{h("Earned")}</span> {formatWolo(periodMetrics.settledWolo)} WOLO
                           </span>
                           <span className="hidden h-1 w-1 rounded-full bg-white/15 sm:inline-block" />
                           <span className="break-words sm:whitespace-nowrap">
