@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9b55ccbbf73f44ac671d5170911df639b13be7403f9c217e3d1a51daca14d39a",
+      "sha256": "b069b0ad8983b1275a9175cc9005b0e8231d9e52d80b9792b2274578f286b38c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "main",
-    "commit": "3d6b7661808449b02214bcb794b18d36c96e3474"
+    "branch": "fix/financial-green-closeout-20260920",
+    "commit": "fa806f0f75addb8029984b6914541970156a53fe"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
