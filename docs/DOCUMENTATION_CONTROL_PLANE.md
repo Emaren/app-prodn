@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/economy-integrity-20260920` at `87df791545ae34afd4ae660898224f6d8f23fc66`
+Implementation baseline: `fix/jims-rule-idempotency-20260920` at `7be0794f3b2f37ea16c61ff60d04011039ff40e1`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
