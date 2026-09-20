@@ -14,6 +14,7 @@ import {
   LIVE_SESSION_LINGER_MS,
   buildLiveSessionGroupingIndex,
   buildLiveSessionGroupingProjection,
+  isActiveLiveCandidateRow,
   liveSessionRowGroupingKey,
   loadLiveSessionSnapshot,
   normalizeSessionKey,
@@ -105,6 +106,37 @@ function streamedSession(
     ...overrides,
   } as StreamedSession;
 }
+
+test("final pending-parse placeholders never resurrect into the active live lane", () => {
+  assert.equal(
+    isActiveLiveCandidateRow({
+      parse_source: "watcher_live",
+      parse_reason: "watcher_live_pending_parse",
+    }),
+    true
+  );
+  assert.equal(
+    isActiveLiveCandidateRow({
+      parse_source: "watcher_final",
+      parse_reason: "watcher_live_pending_parse",
+    }),
+    false
+  );
+  assert.equal(
+    isActiveLiveCandidateRow({
+      parse_source: "watcher_final_submission",
+      parse_reason: "watcher_live_pending_parse",
+    }),
+    false
+  );
+  assert.equal(
+    isActiveLiveCandidateRow({
+      parse_source: "watcher_final",
+      parse_reason: "watcher_final_submission",
+    }),
+    true
+  );
+});
 
 test("generic legacy replay names use stable watcher scope across partial roster growth", () => {
   const generic = {
