@@ -20,12 +20,12 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/champions",
     label: "Champions",
-    version: "src-6e4460b0d7219adcc942",
+    version: "src-c5808212a6a119138152",
   },
   {
     href: "/national-champions",
     label: "Nations",
-    version: "src-bf8952bf2878cc78bed5",
+    version: "src-eccd52b4dedf36a15699",
   },
   {
     href: "/clans",
@@ -80,7 +80,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/traffic",
     label: "Traffic Observatory",
-    version: "src-0b707beebd111007fd83",
+    version: "src-9c1303ce9b4b7f824452",
   },
   {
     href: "/kingdom-forge",

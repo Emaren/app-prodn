@@ -70,6 +70,32 @@ class PerformanceOSTests(unittest.TestCase):
             self.assertEqual(summary["p50_seconds"], 11.0)
             self.assertGreater(summary["p95_seconds"], 11.0)
 
+    def test_ready_coverage_unions_direct_and_delegated_authority(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            (root / "app").mkdir()
+            (root / "components").mkdir()
+            (root / "app" / "page.tsx").write_text(
+                '<SpeedReadyMarker route="/direct" />\n'
+                '<PremiumTimeSeriesChart speedReadyRoute="/delegated" />\n',
+                encoding="utf-8",
+            )
+            (root / "components" / "runtime.tsx").write_text(
+                '<SpeedRuntime />\n'
+                'type Props = { speedReadyRoute?: string };\n',
+                encoding="utf-8",
+            )
+
+            with patch.object(SPEED_MODULE, "ROOT", root):
+                ready = SPEED_MODULE.ready_coverage()
+
+        self.assertEqual(ready["ready_marker_usages"], 1)
+        self.assertEqual(ready["delegated_ready_bindings"], 1)
+        self.assertEqual(ready["ready_authority_bindings"], 2)
+        self.assertEqual(ready["ready_routes"], ["/delegated", "/direct"])
+        self.assertEqual(ready["ready_route_count"], 2)
+        self.assertEqual(ready["speed_runtime_mounts"], 1)
+
     def test_cohort_summary_uses_route_medians(self):
         rows = [
             {

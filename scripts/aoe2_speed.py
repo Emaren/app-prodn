@@ -409,7 +409,13 @@ def baseline_zero_summary() -> dict[str, Any] | None:
 def ready_coverage() -> dict[str, Any]:
     routes: set[str] = set()
     usage_count = 0
-    pattern = re.compile(r'<SpeedReadyMarker\b[^>]*\broute=["\']([^"\']+)["\']')
+    delegated_usage_count = 0
+    marker_pattern = re.compile(
+        r'<SpeedReadyMarker\b[^>]*\broute=["\']([^"\']+)["\']'
+    )
+    delegated_pattern = re.compile(
+        r'\bspeedReadyRoute=["\']([^"\']+)["\']'
+    )
     roots = [ROOT / "app", ROOT / "components"]
     for base in roots:
         if not base.is_dir():
@@ -419,7 +425,10 @@ def ready_coverage() -> dict[str, Any]:
                 continue
             text = path.read_text(encoding="utf-8", errors="replace")
             usage_count += text.count("<SpeedReadyMarker")
-            for match in pattern.finditer(text):
+            delegated_usage_count += len(delegated_pattern.findall(text))
+            for match in marker_pattern.finditer(text):
+                routes.add(match.group(1))
+            for match in delegated_pattern.finditer(text):
                 routes.add(match.group(1))
     runtime_mounts = 0
     for base in roots:
@@ -434,6 +443,8 @@ def ready_coverage() -> dict[str, Any]:
             ).count("<SpeedRuntime")
     return {
         "ready_marker_usages": usage_count,
+        "delegated_ready_bindings": delegated_usage_count,
+        "ready_authority_bindings": usage_count + delegated_usage_count,
         "ready_routes": sorted(routes),
         "ready_route_count": len(routes),
         "speed_runtime_mounts": runtime_mounts,
@@ -2047,8 +2058,10 @@ def print_status() -> None:
         print("FAST operator loop:   no timing receipts yet")
 
     print(
-        f"Ready coverage:       {ready['ready_route_count']} explicit routes · "
-        f"{ready['ready_marker_usages']} marker mount(s)"
+        f"Ready authority:      {ready['ready_route_count']} explicit routes · "
+        f"{ready['ready_authority_bindings']} authority binding(s) "
+        f"({ready['ready_marker_usages']} direct marker(s), "
+        f"{ready['delegated_ready_bindings']} delegated)"
     )
 
 
@@ -2113,10 +2126,10 @@ def diagnose() -> None:
         )
 
     print(
-        "Ready markers: "
+        "Ready authority: "
         f"{ready['ready_route_count']} explicit route(s); "
-        "global SpeedRuntime is present but route-level readiness is not yet "
-        "authoritative across the full public cohort."
+        "global SpeedRuntime is present but route-level readiness authority is not yet "
+        "complete across the full public cohort."
     )
 
 
