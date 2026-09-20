@@ -8,7 +8,10 @@ import {
   visibleMainnetFundedBetWagerWhere as visibleMainnetWagerWhere,
 } from "@/lib/betStakeFunding";
 import { buildStakingTreasuryPayoutRequestId } from "@/lib/stakingTreasuryPayouts";
-import { matchedMarketVolumeWolo } from "@/lib/betWagerSettlement";
+import {
+  feeBearingMatchedWagerVolumeWolo,
+  matchedMarketVolumeWolo,
+} from "@/lib/betWagerSettlement";
 import {
   executeWoloEscrowSettlementRun,
   executeWoloSettlementRun,
@@ -2703,20 +2706,25 @@ export async function calculateDailyStakingRewardDistribution(
   }
 
   const [
-    settledAggregate,
+    settledWagers,
     legacyPositions,
     mainnetPositions,
     mainnetLifetimePositions,
   ] = await Promise.all([
-    prisma.betWager.aggregate({
+    prisma.betWager.findMany({
       where: visibleMainnetWagerWhere({
         settledAt: {
           gte: periodStart,
           lt: periodEnd,
         },
       }),
-      _sum: { amountWolo: true },
-      _count: { _all: true },
+      select: {
+        id: true,
+        marketId: true,
+        side: true,
+        amountWolo: true,
+        status: true,
+      },
     }),
     prisma.stakingPosition.findMany({
       where: { status: "active", currentStakedWolo: { gt: 0 } },
@@ -2785,7 +2793,8 @@ export async function calculateDailyStakingRewardDistribution(
         id: position.id as number | null,
         lifetimeWeight: computeCurrentStakingWeight(position, periodEnd),
       }));
-  const settledVolumeWolo = settledAggregate._sum.amountWolo ?? 0;
+  const settledVolumeWolo = feeBearingMatchedWagerVolumeWolo(settledWagers);
+  const settledBetCount = settledWagers.length;
   const feePools = calculateLedgerFeePools(settledVolumeWolo);
   const stakingRuntime = getWoloStakingRuntime();
   const compoundCustodyAddress =
@@ -2854,7 +2863,7 @@ export async function calculateDailyStakingRewardDistribution(
             status: "FINALIZED",
             finalizedAt: new Date(),
             metadata: {
-              settledBets: settledAggregate._count._all,
+              settledBets: settledBetCount,
               settledVolumeWolo,
               unit: "uwolo",
               rewardWeightPolicy: "linked_identity_cap_v1",
@@ -2882,7 +2891,7 @@ export async function calculateDailyStakingRewardDistribution(
             status: "FINALIZED",
             finalizedAt: new Date(),
             metadata: {
-              settledBets: settledAggregate._count._all,
+              settledBets: settledBetCount,
               settledVolumeWolo,
               unit: "uwolo",
               rewardWeightPolicy: "linked_identity_cap_v1",
@@ -3044,7 +3053,7 @@ export async function calculateDailyStakingRewardDistribution(
         stakerRewardsWolo: feePools.stakerPoolWolo,
         treasuryRevenueWolo: feePools.treasuryPoolWolo,
         betVolumeWolo: settledVolumeWolo,
-        betsPlaced: settledAggregate._count._all,
+        betsPlaced: settledBetCount,
       },
       update: {
         totalStakedWolo: positions.reduce((sum, position) => sum + position.currentStakedWolo, 0),
@@ -3053,7 +3062,7 @@ export async function calculateDailyStakingRewardDistribution(
         stakerRewardsWolo: feePools.stakerPoolWolo,
         treasuryRevenueWolo: feePools.treasuryPoolWolo,
         betVolumeWolo: settledVolumeWolo,
-        betsPlaced: settledAggregate._count._all,
+        betsPlaced: settledBetCount,
       },
     });
 

@@ -112,13 +112,13 @@ test("daily staking distribution records volume returned through the shared tick
       findUnique: async () => null,
     },
     betWager: {
-      aggregate: async ({ where }: { where: unknown }) => {
+      findMany: async ({ where }: { where: unknown }) => {
         aggregateWhere = where;
-        // One 10 WOLO legacy stake plus one 20 WOLO ticket stake.
-        return {
-          _sum: { amountWolo: 30 },
-          _count: { _all: 2 },
-        };
+        // 100 WOLO opposes 200 WOLO: only 200 WOLO total is fee-bearing.
+        return [
+          { id: 1, marketId: 9, side: "left", amountWolo: 100, status: "won" },
+          { id: 2, marketId: 9, side: "right", amountWolo: 200, status: "lost" },
+        ];
       },
     },
     stakingPosition: {
@@ -149,7 +149,7 @@ test("daily staking distribution records volume returned through the shared tick
     });
     assert.match(serializedWhere, /"stakeIntent":/);
     assert.match(serializedWhere, /"stakeLeg":/);
-    assert.equal(create.betVolumeWolo, 30);
+    assert.equal(create.betVolumeWolo, 200);
     assert.equal(create.betsPlaced, 2);
   } finally {
     if (previousStakingWallet === undefined) {
