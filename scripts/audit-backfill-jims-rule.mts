@@ -398,6 +398,7 @@ try {
   console.log(JSON.stringify(summary, null, 2));
 
   if (
+    before.length > 0 &&
     before.every((row) => !row.existingClaim) &&
     (summary.rowCount !== EXPECTED_INITIAL_ROW_COUNT ||
       summary.totalWolo !== EXPECTED_INITIAL_TOTAL_WOLO)
