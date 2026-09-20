@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "18931b5369bb4eaaf135522713583e1217f4935dddf5bb51c0e0ee25feca7cf1",
+      "sha256": "dba2ecc5d44ea408876031b989b1045629f83bf22ce6565359b4cd1688f85cf3",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-14",
       "sensitivity": "internal",
-      "sha256": "39adeb6d7e1a425cee4cf5ec90ad1f781738b64a8d2b316e3b758bf5e3839a2f",
+      "sha256": "682dcf4b9e309d95833358a3c3cafa874ae70eda88f5cf19833a78a9019b388b",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -681,9 +681,9 @@
       "owner": "aoe2war-web",
       "path": "docs/HD_REPLAY_TRUTH_PIPELINE.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-04",
+      "reviewed_at": "2026-09-20",
       "sensitivity": "restricted",
-      "sha256": "4b9a15eb496bd7306c4a2ef083f828a7d8531cc996a2f02a32ab63b91d2553e4",
+      "sha256": "cca2ef09cbc4bdd32c7ad81f7a761b9420c6e9ce5d01763ed21b5ff0d0350940",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -909,9 +909,9 @@
       "owner": "aoe2war-web",
       "path": "docs/LIVE_FINAL_PROOF_VISIBILITY.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-09-08",
+      "reviewed_at": "2026-09-20",
       "sensitivity": "internal",
-      "sha256": "f2d5c7e54fddd3fcc208dee1ad2e4150940e9e9e203ff7ce6f08773c075ee507",
+      "sha256": "4a55afd67c99fc069845db74a053cb9a511c26bec46cd69de17ea382c3557da2",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "hardening/supply-chain-v1",
-    "commit": "c6d2c21893fecc3ed6677b78506c76a303c35870"
+    "branch": "fix/live-final-placeholder-lane",
+    "commit": "6cecf40d214c547c68b4429decc0c0e569d68c03"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

@@ -87,6 +87,27 @@ export const LIVE_FINAL_PROOF_LOOKBACK_MS = 14 * 24 * 60 * 60 * 1000;
 export const LIVE_IDENTITY_PROMOTION_WINDOW_MS = LIVE_SESSION_FRESHNESS_MS;
 const SUPERSEDED_PARSE_REASON = "superseded_by_later_upload";
 const UNPARSED_FINAL_PARSE_REASON = "watcher_final_unparsed";
+const FINAL_PENDING_PARSE_REASON = "watcher_live_pending_parse";
+
+export function isActiveLiveCandidateRow(row: {
+  parse_source?: string | null;
+  parse_reason?: string | null;
+}) {
+  const source = String(row.parse_source ?? "").trim().toLowerCase();
+  const reason = String(row.parse_reason ?? "").trim().toLowerCase();
+
+  /*
+   * A final-submission checkpoint can refresh an old placeholder's activity
+   * timestamp while result proof is being reconsidered. That is finality
+   * work, not evidence that the battle is live again. Keep genuine
+   * watcher_live pending-parse placeholders visible, but never resurrect a
+   * watcher_final pending placeholder into the active lane.
+   */
+  return !(
+    source.startsWith("watcher_final") &&
+    reason === FINAL_PENDING_PARSE_REASON
+  );
+}
 
 type SessionRow = {
   id: number;
@@ -912,7 +933,7 @@ export async function loadLiveSessionSnapshot(prisma: PrismaClient): Promise<{
   const completedCompatCutoff = new Date(lingerCutoff);
   const finalProofCutoff = new Date(Date.now() - LIVE_FINAL_PROOF_LOOKBACK_MS);
 
-  const [activeRows, finalRows, completedLiveRows, legacyBoundaryRows] = await Promise.all([
+  const [activeCandidateRows, finalRows, completedLiveRows, legacyBoundaryRows] = await Promise.all([
     prisma.gameStats.findMany({
       where: {
         is_final: false,
@@ -1175,6 +1196,8 @@ export async function loadLiveSessionSnapshot(prisma: PrismaClient): Promise<{
       },
     }),
   ]);
+
+  const activeRows = activeCandidateRows.filter(isActiveLiveCandidateRow);
 
   const completedRows: SessionRow[] = [
     ...finalRows.map((row) => row as SessionRow),

@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-09-04"
+reviewed_at: "2026-09-20"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
@@ -53,6 +53,28 @@ Treat each state as a separate fact. Do not collapse them into one â€œsuccess.â€
 upload-durability signals. `final_recorded`, `final_recorded_duplicate`, and
 `final_recorded_refreshed` are successful preservation outcomes and must not be
 counted as failed uploads or trusted finals.
+
+### Live-lane authority boundary
+
+A replay row's freshness timestamp is observation metadata, not lifecycle
+authority. Finality work is allowed to refresh an existing checkpoint while it
+re-observes result evidence, but that refresh cannot resurrect an old battle as
+currently live.
+
+The executable boundary is source-sensitive:
+
+- **parse_source = watcher_live** with
+  **parse_reason = watcher_live_pending_parse** remains valid early-live
+  evidence;
+- **parse_source = watcher_final*** with the same pending-parse reason is a
+  finality/review placeholder and is excluded from the active-live projection;
+- final-proof review visibility, market holds, and settlement eligibility stay
+  on their explicit lifecycle rails and are not inferred from timestamp
+  recency.
+
+Do not solve this by excluding every pending-parse placeholder. That would hide
+real newly detected games before they become parseable. The invariant is that
+**finality observation cannot manufacture active-live authority**.
 
 ### Single, watcher, and package upload parity
 
