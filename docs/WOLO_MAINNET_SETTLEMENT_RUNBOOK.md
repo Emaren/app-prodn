@@ -250,6 +250,34 @@ a pre-commit receipt, and refuses source/timer drift. It performs no WoloChain
 transaction. Re-running apply after a successful correction is an idempotent
 no-op; `--verify` is the canonical postcondition check.
 
+### September 20 UTC chain-custody closure and reward resumption
+
+The historical custody liability is now closed on mainnet. The 109 linked
+allocations are `COMPOUNDED` only because equivalent WOLO reached the canonical
+staking wallet from the canonical Bet Escrow through three code-0 transactions:
+
+- Emaren: 4 WOLO — `44DCF1A978177F444F7787C6056FB4A8F33CAF3586B028CCE77F45993EB1621B`;
+- Julio Alvarez: 23,619 WOLO — `85315997AD6939A808CBDCDC221B453A02DDA0471DACA5121E601662EC4BB093`;
+- Jim: 68,662 WOLO — `E7053CC994F667295D95A169DC533B1B6B510B2B2FCD96E5E07D999CAB5AF178`.
+
+All three transfers use the canonical escrow sender
+`wolo1zygwt232ymc4h2g52yvkntffhmd5alx2kglw7p` and canonical staking custody
+recipient `wolo18v9ugfdrnz2ll2ah5z2yqzm5kzlg3e7l7jy6rn`. After finalization,
+the corrected public staking balances are Emaren 104 WOLO, Julio 388,545 WOLO,
+and Jim 5,059,712 WOLO. The staking wallet remains reserve-healthy with more
+than 68,000 WOLO above the 10,000-WOLO operating-reserve target.
+
+Reward distribution may be resumed only after the chain-backed reward contract
+and matched-only fee-volume rule are deployed. Because the timer was disabled
+during containment, first backfill every closed UTC date from September 9
+through September 19 with explicit `--date=YYYY-MM-DD` runs. The read-only
+pre-backfill census found 600,650 WOLO of fee-bearing matched volume, producing
+12,013 WOLO of total betting fees: 6,006 WOLO for stakers and 6,007 WOLO for
+Community Treasury. Dates with settled wagers but zero matched fee-bearing
+exposure must produce zero fee. Enable the persistent daily timer only after
+all backfill dates are finalized, their chain receipts are proven, and no
+`COMPOUND_PENDING` reward liability remains.
+
 Do **not** fund the apparent historical 23,774.265-WOLO deficit as a substitute
 for this reconciliation. After repair, re-measure custody against real direct
 principal and any independently proven chain-backed compound liability, then
