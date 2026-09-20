@@ -321,11 +321,12 @@ function buildLocalGeneralInspectionsSnapshot(): GeneralInspectionsSnapshot {
     baseline.policy.watcherPreviousVersion,
   ]);
   const extraVersions = versions.filter((version) => !allowedVersions.has(version));
+  // Watcher release staging is governed by the dedicated digest-backed
+  // watcher-staging retention lane. Raw presence can be protected unique
+  // evidence, so the local fallback counts only generic staging debt.
   const stagingCount = [
     "build-scratch",
     "recovery-staging",
-    "watcher-release-staging",
-    "watcher-staging",
   ].reduce((sum, name) => sum + countImmediate(path.join(AOE2WAR_VOLUME, name)), 0);
 
   const doctor = release.doctor;
@@ -418,7 +419,7 @@ function buildLocalGeneralInspectionsSnapshot(): GeneralInspectionsSnapshot {
       check("cold-checkpoints", "Cold checkpoint window", 10, protectedCold === baseline.policy.coldCheckpointCount ? 1 : protectedCold > 0 ? 0.75 : 0, protectedCold + "/" + baseline.policy.coldCheckpointCount + " protected cold checkpoints", { ratio: { passed: Math.min(protectedCold, baseline.policy.coldCheckpointCount), total: baseline.policy.coldCheckpointCount }, evidenceAt: fileTime(expiry.file) }),
       check("expiry-debt", "Superseded runtime debt", 15, expiryFraction, expiry.data ? expiryDebt + " proven runtime bodies still reclaimable" : "No current lean-retention ledger", { evidenceAt: fileTime(expiry.file) }),
       check("watcher-downloads", "Watcher download generations", 10, watcherFraction, versions.length ? "Versions present: " + versions.join(", ") : "Download inventory unavailable"),
-      check("staging", "Scratch / staging queues", 5, stagingFraction, stagingCount + " immediate staging entries"),
+      check("staging", "Scratch / staging queues", 5, stagingFraction, stagingCount + " generic staging entries · watcher staging governed separately"),
       check("worktrees", "Mac worktree hygiene", 5, baseline.mac.worktreesClean ? macFresh : 0, baseline.mac.worktreesClean ? "Clean at last Mac capture · " + ageDetail(baseline.capturedAt) : "Mac worktree hygiene not proven", { evidenceAt: baseline.capturedAt }),
       check("caches", "Regenerable cache hygiene", 5, baseline.mac.regenerableCachesCleared ? macFresh : 0, baseline.mac.regenerableCachesCleared ? "Mac build/npm caches cleared at last capture" : "Cache cleanup not proven", { evidenceAt: baseline.capturedAt }),
     ],

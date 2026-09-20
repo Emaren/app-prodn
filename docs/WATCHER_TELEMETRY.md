@@ -47,6 +47,8 @@ Preview deliberately uses the ordinary `hel1` operator identity. Apply uses the 
 
 The 2026-09-19 live preview classified the 1.5.12 staging body as an exact canonical duplicate while preserving the 1.5.9 staging body and the version-1.5.11 previous direct ZIP because those contain bytes not duplicated in the canonical vault. This preserves release evidence instead of deleting it for a storage score.
 
+General Inspections therefore does **not** classify raw `watcher-release-staging` or `watcher-staging` presence as generic staging debt. Those trees belong to the digest-backed `aoe2war watcher-staging` authority above; Organization scoring counts only generic scratch/recovery queues. A future Watcher staging cleanup decision must come from that retention plan, never from directory age or entry count alone.
+
 ## v1.5.11 capability-negotiated server media shedding
 
 The app owns a server-side admission rail for watcher-native video. Before reading a watcher-native chunk body, the server may terminate that video stream with HTTP `409`, code `STREAM_MEDIA_SHED`, `terminal=true`, and bounded retry guidance when a replay proxy upload currently owns same-process priority **and** the client advertises `server-media-shed-v1`, or when the operator kill switch is enabled. The server records `stream_media_shed` itself; ordinary client-event ingress cannot forge that event. Watcher 1.5.11 advertises that capability on stream requests, treats this response as a terminal video-only stop, preserves replay transport, and asks the user to start a fresh stream after the retry window. Older watchers do not opt into automatic replay-pressure shedding. This rail does not create replay-result, betting, settlement, database, or Wolo authority.

@@ -299,14 +299,11 @@ function stagingDebtCount(
   aoe2warVolume: string,
   protectedRecoveryStage: string | null,
 ) {
-  let count = [
-    "build-scratch",
-    "watcher-release-staging",
-    "watcher-staging",
-  ].reduce(
-    (sum, name) => sum + countImmediate(path.join(aoe2warVolume, name)),
-    0,
-  );
+  // Watcher release staging is governed by the dedicated digest-backed
+  // watcher-staging retention lane. Raw presence there can mean unique
+  // evidence that must be preserved, so only generic scratch/recovery debt
+  // belongs in this count.
+  let count = countImmediate(path.join(aoe2warVolume, "build-scratch"));
 
   const recoveryRoot = path.join(aoe2warVolume, "recovery-staging");
   const woloRoot = path.join(recoveryRoot, "wolo");
@@ -828,7 +825,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
         5,
         stagingFraction,
         stagingCount +
-          " unprotected staging entries" +
+          " unprotected generic staging entries · watcher staging governed separately" +
           (protectedRecoveryStage ? " · recovery stage protected" : ""),
       ),
       check(

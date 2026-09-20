@@ -335,6 +335,22 @@ test("governed host deferrals, review worktrees, and verified recovery staging s
       remote_stage: protectedStage,
     };
     mkdir(protectedStage);
+    const watcherEvidence = path.join(
+      estate.options.volumeRoot,
+      "aoe2war",
+      "watcher-release-staging",
+      "historical-unique-release",
+    );
+    const watcherDirectZip = path.join(
+      estate.options.volumeRoot,
+      "aoe2war",
+      "watcher-staging",
+      "previous-direct-zip",
+    );
+    mkdir(watcherEvidence);
+    mkdir(watcherDirectZip);
+    writeFileSync(path.join(watcherEvidence, "unique.exe"), "unique historical bytes");
+    writeFileSync(path.join(watcherDirectZip, "unique.zip"), "unique direct zip bytes");
     writeJson(estate.options.bridgePath, envelope);
 
     const snapshot = buildBridgeGeneralInspectionsSnapshot(estate.options);

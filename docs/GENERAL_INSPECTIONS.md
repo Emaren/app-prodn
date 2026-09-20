@@ -120,8 +120,11 @@ debt.
 
 A staging pathname alone is not debt. A Wolo recovery stage that is exactly referenced by a
 current VERIFIED Recovery OS receipt is protected evidence and is excluded from scratch/staging
-debt. Unreferenced recovery stages, release scratch, Watcher staging, and other ordinary staging
-entries remain visible and lose marks until they are classified or retired.
+debt. Unreferenced recovery stages and generic release scratch remain visible and lose marks.
+Watcher release staging is a separate authority domain: raw directory presence is excluded from
+generic staging debt because `aoe2war watcher-staging` must first prove whether the bytes are
+reclaimable exact duplicates or protected unique evidence. General Inspections never converts
+Watcher directory age or entry count into deletion authority.
 
 Host patch scoring follows the same authority boundary: actionable upgrades reduce the score;
 Ubuntu-phased deferrals remain visible but do not. General Inspections must consume Host OS
