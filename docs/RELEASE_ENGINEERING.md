@@ -65,13 +65,19 @@ disagree, stop and reconcile them before production mutation.
 14. Machine-readable receipts must let a fresh operator or AI reconstruct the
     release state without conversational memory.
 15. Dependency-contract changes are supported only by the candidate-owned
-    dependency lane: frozen-lockfile network fetch with lifecycle scripts
-    disabled, then lifecycle/build work in the offline/private sandbox. The
-    equal-length candidate worktree remains root-local for deterministic Next
-    path relocation, while the disposable Yarn package cache is bind-mounted
-    from the governed mounted-volume build scratch. Candidate `node_modules` is
-    hash-bound, staged beside live, atomically activated with `.next`, and rolled
-    back as one runtime bundle. Root and mounted-volume capacity are preflighted
+    dependency lane: frozen-lockfile network fetch with third-party lifecycle
+    scripts disabled, then lifecycle/build work in the offline/private sandbox.
+    When Prisma changes, one tracked first-party seed helper may fetch only the
+    exact candidate Linux schema engine named by the frozen engines-version
+    commit; both Prisma-published compressed and raw SHA-256 values plus the
+    executable version must verify before the network-phase dependency tree is
+    discarded. The offline build consumes that sealed candidate engine rather
+    than borrowing the live release's engine. The equal-length candidate
+    worktree remains root-local for deterministic Next path relocation, while
+    the disposable Yarn package cache is bind-mounted from the governed
+    mounted-volume build scratch. Candidate `node_modules` is hash-bound,
+    staged beside live, atomically activated with `.next`, and rolled back as
+    one runtime bundle. Root and mounted-volume capacity are preflighted
     independently before candidate materialization.
 16. Before operational Doctor/staging, Finish reconciles the source-controlled
     build/dependency sandbox units and SpeedOS Cloudflare helper/unit onto the
@@ -480,10 +486,19 @@ Production source remains on the manifest's previous production SHA throughout
 staging. The engine fetches the sealed release, verifies pinned Yarn `1.22.22`,
 creates a temporary detached worktree for that exact release, and materializes
 a candidate-owned dependency tree. Dependency network fetch uses
-`--frozen-lockfile --ignore-scripts`; lifecycle scripts/build work then run in
-the offline/private sandbox. Build hooks, Prisma generation, the generated
-build-version sidecar, dependency tree, and Next build output therefore belong
-only to the candidate until activation.
+`--frozen-lockfile --ignore-scripts`; third-party lifecycle scripts remain
+disabled there. A tracked AoE2WAR helper may additionally retrieve only the
+candidate Prisma Linux schema engine selected by the frozen
+`@prisma/engines-version` commit. It requires Prisma's published SHA-256 for
+both the compressed transfer and decompressed executable, then proves
+`schema-engine-cli <candidate-commit>` and seals the result inside the
+disposable candidate worktree. The network-phase `node_modules` tree is then
+discarded. Lifecycle scripts/build work run offline/private with
+`PRISMA_SCHEMA_ENGINE_BINARY` pointing to that sealed candidate engine. After
+the build, Stage re-proves its byte identity and installs the same engine into
+candidate `node_modules` before dependency hashing. Build hooks, Prisma
+generation, the generated build-version sidecar, dependency tree, and Next
+build output therefore belong only to the candidate until activation.
 
 After a successful build, the engine removes `.next-release/cache` and
 binary-safely relocates embedded absolute worktree paths to the canonical live
@@ -501,6 +516,8 @@ Staging records:
 - live and candidate build versions;
 - deterministic staged artifact SHA-256;
 - bound manifest/gate evidence;
+- candidate Prisma engine commit, executable SHA-256, checksum-verified seed
+  source, and cross-sandbox byte identity;
 - previous/live production source identity and isolation invariants;
 - WOLO listener counts.
 
@@ -1098,9 +1115,12 @@ A production experiment with a copied persistent Yarn/Next cache was retired
 after the warm path measured slower than the certified V1.2 stage and consumed
 about 3.4 GiB of durable-volume capacity. Release staging therefore retains the
 fresh scripts-disabled network dependency fetch followed by the network-private
-frozen offline build.
+frozen offline build. Candidate Prisma engine bytes are the one tightly bounded
+network-phase addition: a tracked first-party helper retrieves only the exact
+frozen engine commit and accepts it only after Prisma-published compressed/raw
+checksums plus executable-version proof.
 
 This is an evidence-based rejection of that cache topology, not a relaxation of
-release guarantees. Frozen dependency inputs, Prisma engine identity, candidate
-dependency hashing, cache-free artifact hashing, activation certification,
-rollback evidence, and Wolo protection remain authoritative.
+release guarantees. Frozen dependency inputs, candidate-owned Prisma engine
+identity, candidate dependency hashing, cache-free artifact hashing, activation
+certification, rollback evidence, and Wolo protection remain authoritative.

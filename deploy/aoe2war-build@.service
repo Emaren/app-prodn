@@ -11,7 +11,7 @@ Environment=NEXT_DIST_DIR=.next-release
 Environment=NEXT_TELEMETRY_DISABLED=1
 Environment=NODE_OPTIONS=--max-old-space-size=2304
 Environment=PRISMA_ENGINES_CHECKSUM_IGNORE_MISSING=1
-Environment=PRISMA_SCHEMA_ENGINE_BINARY=/var/www/AoE2HDBets/app-prodn/node_modules/@prisma/engines/schema-engine-debian-openssl-3.0.x
+Environment=PRISMA_SCHEMA_ENGINE_BINARY=/tmp/aoe2war-stage-%i/.prisma-engine-seed/schema-engine-debian-openssl-3.0.x
 Environment=HOME=/tmp/aoe2war-stage-%i/.sandbox-home
 Environment=XDG_CONFIG_HOME=/tmp/aoe2war-stage-%i/.sandbox-home/.config
 Environment=XDG_CACHE_HOME=/tmp/aoe2war-stage-%i/.sandbox-home/.cache

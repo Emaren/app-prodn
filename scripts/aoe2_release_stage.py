@@ -98,8 +98,10 @@ DEPS_UNIT_SHA={q(deps_unit_sha)}
 SERVICE={q(SERVICE)}
 PUBLIC={q(PUBLIC)}
 LIVE_REPO={q(PROD_REPO)}
-PRISMA_SCHEMA_ENGINE_REL=node_modules/@prisma/engines/schema-engine-debian-openssl-3.0.x
-LIVE_PRISMA_SCHEMA_ENGINE="$LIVE_REPO/$PRISMA_SCHEMA_ENGINE_REL"
+PRISMA_ENGINE_TARGET=debian-openssl-3.0.x
+PRISMA_SCHEMA_ENGINE_REL=node_modules/@prisma/engines/schema-engine-$PRISMA_ENGINE_TARGET
+PRISMA_ENGINE_SEED_REL=.prisma-engine-seed/schema-engine-$PRISMA_ENGINE_TARGET
+PRISMA_ENGINE_SEED_METADATA_REL=.prisma-engine-seed/metadata.json
 MANIFEST_CONTENT={q(manifest_text)}
 GATE_CONTENT={q(gate_text)}
 
@@ -289,7 +291,6 @@ test "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["version
 # Root hosts the equal-length worktree, candidate node_modules, and build output.
 # The disposable Yarn package cache lives on the mounted build-scratch volume.
 test -d "$LIVE_REPO/node_modules"
-test -x "$LIVE_PRISMA_SCHEMA_ENGINE"
 test -d "$BUILD_SCRATCH_ROOT"
 test "$(stat -c '%U:%G:%a' "$BUILD_SCRATCH_ROOT")" = "tony:tony:750"
 live_dependency_kb="$(du -sk "$LIVE_REPO/node_modules" | awk '{{print $1}}')"
@@ -374,9 +375,11 @@ dependency_cache_kb="$(du -sk "$build_cache" | awk '{{print $1}}')"
 test "$dependency_cache_kb" -gt 0
 timing_record dependency_fetch "$dependency_fetch_started"
 
-# The build sandbox deliberately has no network. Prove that its live bootstrap
-# engine belongs to the exact engine commit requested by the frozen candidate
-# before the network-phase dependency tree is discarded.
+# The build sandbox deliberately has no network. The network-enabled fetch
+# sandbox may therefore seed only one first-party-approved binary: the exact
+# candidate Prisma schema engine whose commit and published checksums are bound
+# by the frozen candidate dependency graph. Prove that seed independently
+# before discarding the network-phase dependency tree.
 candidate_prisma_engine_commit="$(
   python3 - "$build_worktree/node_modules/@prisma/engines-version/package.json" <<'PY'
 import json
@@ -386,11 +389,40 @@ with open(sys.argv[1], encoding="utf-8") as handle:
     print(json.load(handle)["prisma"]["enginesVersion"])
 PY
 )"
-live_prisma_engine_version="$("$LIVE_PRISMA_SCHEMA_ENGINE" --version)"
+candidate_prisma_seed="$build_worktree/$PRISMA_ENGINE_SEED_REL"
+candidate_prisma_seed_metadata="$build_worktree/$PRISMA_ENGINE_SEED_METADATA_REL"
 [[ "$candidate_prisma_engine_commit" =~ ^[0-9a-f]{{40}}$ ]]
-test "$live_prisma_engine_version" = "schema-engine-cli $candidate_prisma_engine_commit"
-live_prisma_engine_sha="$(sha256sum "$LIVE_PRISMA_SCHEMA_ENGINE" | awk '{{print $1}}')"
-test "${{#live_prisma_engine_sha}}" = "64"
+test -f "$candidate_prisma_seed"
+test -x "$candidate_prisma_seed"
+test ! -L "$candidate_prisma_seed"
+test -f "$candidate_prisma_seed_metadata"
+test ! -L "$candidate_prisma_seed_metadata"
+test "$(realpath -e "$candidate_prisma_seed")" = "$candidate_prisma_seed"
+candidate_prisma_seed_version="$("$candidate_prisma_seed" --version)"
+test "$candidate_prisma_seed_version" = "schema-engine-cli $candidate_prisma_engine_commit"
+candidate_prisma_engine_sha="$(sha256sum "$candidate_prisma_seed" | awk '{{print $1}}')"
+test "${{#candidate_prisma_engine_sha}}" = "64"
+
+python3 - \
+  "$candidate_prisma_seed_metadata" \
+  "$candidate_prisma_engine_commit" \
+  "$candidate_prisma_engine_sha" \
+  "$PRISMA_ENGINE_TARGET" <<'PY'
+import json
+import re
+import sys
+
+path, commit, engine_sha, target = sys.argv[1:]
+with open(path, encoding="utf-8") as handle:
+    payload = json.load(handle)
+assert payload.get("schema") == 1
+assert payload.get("kind") == "aoe2war-prisma-engine-seed"
+assert payload.get("status") == "PASS"
+assert payload.get("engine_commit") == commit
+assert payload.get("engine_sha256") == engine_sha
+assert payload.get("target") == target
+assert re.fullmatch(r"[0-9a-f]{{64}}", str(payload.get("compressed_sha256") or ""))
+PY
 
 # Never trust/use the network-phase materialization as the runtime tree.
 rm -rf "$build_worktree/node_modules"
@@ -418,9 +450,15 @@ build_cache=""
 timing_record offline_build "$offline_build_started"
 
 # Prisma's postinstall cannot download inside the network-private build unit.
-# The isolated build borrows the version-proven live engine through its fixed
-# environment override. Preserve that exact engine in the candidate dependency
-# tree before hashing so activation bootstraps the next release as well.
+# Re-prove that the sealed candidate-owned seed survived the offline build
+# unchanged, then install that exact byte identity into candidate node_modules
+# before hashing so activation bootstraps the next release with its own engine.
+test -f "$candidate_prisma_seed"
+test -x "$candidate_prisma_seed"
+test ! -L "$candidate_prisma_seed"
+test "$(sha256sum "$candidate_prisma_seed" | awk '{{print $1}}')" = "$candidate_prisma_engine_sha"
+test "$("$candidate_prisma_seed" --version)" = "schema-engine-cli $candidate_prisma_engine_commit"
+
 candidate_prisma_engine_dir="$build_worktree/node_modules/@prisma/engines"
 test -d "$candidate_prisma_engine_dir"
 test ! -L "$build_worktree/node_modules"
@@ -428,21 +466,22 @@ test ! -L "$build_worktree/node_modules/@prisma"
 test ! -L "$candidate_prisma_engine_dir"
 test "$(realpath -e "$build_worktree")" = "$build_worktree"
 test "$(realpath -e "$candidate_prisma_engine_dir")" = "$candidate_prisma_engine_dir"
-candidate_prisma_schema_engine="$candidate_prisma_engine_dir/schema-engine-debian-openssl-3.0.x"
+candidate_prisma_schema_engine="$candidate_prisma_engine_dir/schema-engine-$PRISMA_ENGINE_TARGET"
 if [ -e "$candidate_prisma_schema_engine" ] || [ -L "$candidate_prisma_schema_engine" ]; then
   unlink -- "$candidate_prisma_schema_engine"
 fi
 test ! -e "$candidate_prisma_schema_engine"
 test ! -L "$candidate_prisma_schema_engine"
-install -m 0755 "$LIVE_PRISMA_SCHEMA_ENGINE" "$candidate_prisma_schema_engine"
+install -m 0755 "$candidate_prisma_seed" "$candidate_prisma_schema_engine"
 test -f "$candidate_prisma_schema_engine"
 test -x "$candidate_prisma_schema_engine"
 test ! -L "$candidate_prisma_schema_engine"
 test "$(realpath -e "$candidate_prisma_schema_engine")" = "$candidate_prisma_schema_engine"
-candidate_prisma_engine_sha="$(
+installed_prisma_engine_sha="$(
   sha256sum "$candidate_prisma_schema_engine" | awk '{{print $1}}'
 )"
-test "$candidate_prisma_engine_sha" = "$live_prisma_engine_sha"
+test "$installed_prisma_engine_sha" = "$candidate_prisma_engine_sha"
+test "$("$candidate_prisma_schema_engine" --version)" = "schema-engine-cli $candidate_prisma_engine_commit"
 
 test -f "$build_worktree/.next-release/BUILD_ID"
 test -f "$build_worktree/.aoe2war-build-version"
@@ -607,6 +646,8 @@ printf '%s\n' \
   "prisma_schema_engine_commit=$candidate_prisma_engine_commit" \
   "prisma_schema_engine_sha256=$candidate_prisma_engine_sha" \
   "prisma_schema_engine_seeded=1" \
+  "prisma_schema_engine_seed_source=candidate-network-checksum" \
+  "prisma_schema_engine_checksum_verified=1" \
   "service=$after_service" \
   "wolo8092=$after_wolo8092" \
   "wolo8093=$after_wolo8093" \
@@ -647,6 +688,8 @@ printf 'candidate_node_modules_kb\t%s\n' "$candidate_node_modules_kb"
 printf 'prisma_schema_engine_commit\t%s\n' "$candidate_prisma_engine_commit"
 printf 'prisma_schema_engine_sha256\t%s\n' "$candidate_prisma_engine_sha"
 printf 'prisma_schema_engine_seeded\t1\n'
+printf 'prisma_schema_engine_seed_source\tcandidate-network-checksum\n'
+printf 'prisma_schema_engine_checksum_verified\t1\n'
 printf 'service\t%s\n' "$after_service"
 printf 'wolo8092\t%s\n' "$after_wolo8092"
 printf 'wolo8093\t%s\n' "$after_wolo8093"
@@ -754,6 +797,8 @@ def validate_stage_result(
         ("dependency_build_offline", "1"),
         ("dependency_cache_on_volume", "1"),
         ("prisma_schema_engine_seeded", "1"),
+        ("prisma_schema_engine_checksum_verified", "1"),
+        ("prisma_schema_engine_seed_source", "candidate-network-checksum"),
         ("cache_free_artifact", "1"),
         ("artifact_path_relocated", "1"),
         ("live_source_mutated", "0"),
@@ -1074,6 +1119,10 @@ def stage_release(
         "prisma_schema_engine_commit": result["prisma_schema_engine_commit"],
         "prisma_schema_engine_sha256": result["prisma_schema_engine_sha256"],
         "prisma_schema_engine_seeded": True,
+        "prisma_schema_engine_seed_source": result[
+            "prisma_schema_engine_seed_source"
+        ],
+        "prisma_schema_engine_checksum_verified": True,
         "service": result["service"],
         "wolo_8092_count": int(result["wolo8092"]),
         "wolo_8093_count": int(result["wolo8093"]),

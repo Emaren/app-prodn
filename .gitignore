@@ -85,6 +85,9 @@ storage/
 # Local release-engineering receipts and manifests
 .aoe2war-release/
 
+# Disposable checksum-verified candidate Prisma engine seed
+.prisma-engine-seed/
+
 # VPS-local operator repair backups
 runtime/
 # Python bytecode/cache

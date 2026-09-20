@@ -16,9 +16,11 @@ Environment=TMP=/tmp/aoe2war-stage-%i/.tmp
 Environment=TEMP=/tmp/aoe2war-stage-%i/.tmp
 
 ExecStart=/usr/bin/node /tmp/aoe2war-stage-%i/.yarn-runtime/bin/yarn.js install --frozen-lockfile --ignore-scripts --non-interactive --cache-folder /tmp/aoe2war-stage-%i/.yarn-cache
+ExecStart=/usr/bin/python3 /tmp/aoe2war-stage-%i/scripts/aoe2_prisma_engine_seed.py
 
-# Network is available only for dependency retrieval. Candidate/package
-# lifecycle scripts are disabled in this phase.
+# Network is available only for dependency retrieval plus the first-party,
+# checksum-verifying Prisma engine seed helper. Third-party package lifecycle
+# scripts remain disabled throughout this phase.
 RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
 
 # Writable only inside the disposable detached worktree.

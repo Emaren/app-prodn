@@ -326,6 +326,8 @@ def path_risk(path: str) -> str:
         "scripts/dev-shadow.py",
         "scripts/check_dependency_contract.py",
         "scripts/check_dependency_security.py",
+        "scripts/aoe2_prisma_engine_seed.py",
+        "tests/test_prisma_engine_seed.py",
         "tests/test_aoe2_council.py",
         "tests/test_aoe2_brain.py",
         "tests/test_aoe2_workspace.py",
@@ -529,6 +531,8 @@ def command_plan(
             "scripts/dev-shadow.py",
             "scripts/check_dependency_contract.py",
             "scripts/check_dependency_security.py",
+            "scripts/aoe2_prisma_engine_seed.py",
+            "tests/test_prisma_engine_seed.py",
             "tests/test_aoe2_council.py",
             "tests/test_aoe2_brain.py",
             "tests/test_aoe2_workspace.py",
@@ -583,6 +587,7 @@ def command_plan(
                     "tests/test_aoe2_shadow.py",
                     "tests/test_dependency_contract.py",
                     "tests/test_dependency_security.py",
+                    "tests/test_prisma_engine_seed.py",
                     "tests/test_aoe2_os_closure_gate.py",
                     "tests/test_aoe2_node_runtime.py",
                     "tests/test_test_contract.py",
@@ -629,6 +634,7 @@ def command_plan(
                     "scripts/dev-shadow.py",
                     "scripts/check_dependency_contract.py",
                     "scripts/check_dependency_security.py",
+                    "scripts/aoe2_prisma_engine_seed.py",
                     "scripts/run_test_contract.py",
                     "scripts/scan_tracked_secrets.py",
                 ],
@@ -935,6 +941,8 @@ def validation_context(
             "scripts/check_dependency_contract.py",
             "scripts/check_dependency_security.py",
             "tests/test_dependency_security.py",
+            "scripts/aoe2_prisma_engine_seed.py",
+            "tests/test_prisma_engine_seed.py",
         )
     )
 
