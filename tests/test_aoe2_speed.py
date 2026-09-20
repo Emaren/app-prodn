@@ -125,6 +125,37 @@ class PerformanceOSTests(unittest.TestCase):
             SPEED_MODULE.cohort_identity(different),
         )
 
+        operator_safe = {
+            **full_a,
+            "load_profile": {
+                "contract": SPEED_MODULE.FULL_BENCHMARK_LOAD_CONTRACT,
+            },
+        }
+        self.assertNotEqual(
+            SPEED_MODULE.cohort_identity(full_a),
+            SPEED_MODULE.cohort_identity(operator_safe),
+        )
+        self.assertEqual(
+            SPEED_MODULE.benchmark_load_contract(full_a),
+            SPEED_MODULE.LEGACY_BENCHMARK_LOAD_CONTRACT,
+        )
+
+    def test_full_benchmark_pause_yields_only_for_full_campaigns(self):
+        observed = []
+        SPEED_MODULE.benchmark_inter_request_pause(
+            full=False,
+            sleep_fn=observed.append,
+        )
+        self.assertEqual(observed, [])
+
+        SPEED_MODULE.benchmark_inter_request_pause(
+            full=True,
+            sleep_fn=observed.append,
+        )
+        self.assertEqual(
+            observed,
+            [SPEED_MODULE.FULL_BENCHMARK_COLD_DELAY_SECONDS],
+        )
 
     def test_quick_cohort_is_unique_and_critical(self):
         routes = SPEED_MODULE.QUICK_ROUTES
@@ -483,6 +514,9 @@ class PerformanceOSTests(unittest.TestCase):
     def test_campaign_verify_replays_exact_frozen_baseline_routes(self):
         baseline = {
             "mode": "full",
+            "load_profile": {
+                "contract": SPEED_MODULE.FULL_BENCHMARK_LOAD_CONTRACT,
+            },
             "rounds": 3,
             "routes": [
                 {
@@ -503,6 +537,9 @@ class PerformanceOSTests(unittest.TestCase):
         }
         after = {
             "mode": "full",
+            "load_profile": {
+                "contract": SPEED_MODULE.FULL_BENCHMARK_LOAD_CONTRACT,
+            },
             "rounds": 3,
             "routes": [
                 {
@@ -569,6 +606,45 @@ class PerformanceOSTests(unittest.TestCase):
         self.assertTrue(benchmark.call_args.kwargs["full"])
         self.assertEqual(benchmark.call_args.kwargs["rounds"], 3)
         self.assertEqual(result["status"], "verified")
+        self.assertEqual(
+            result["verification"]["load_profile"]["contract"],
+            SPEED_MODULE.FULL_BENCHMARK_LOAD_CONTRACT,
+        )
+
+    def test_legacy_unpaced_full_campaign_requires_a_fresh_safe_baseline(self):
+        baseline = {
+            "mode": "full",
+            "rounds": 3,
+            "routes": [{"path": "/"}],
+            "cohort": {
+                "ttfb_p50_ms": 300.0,
+                "total_p50_ms": 500.0,
+            },
+        }
+        campaign = {
+            "campaign_id": "legacy",
+            "status": "analyzed",
+            "baseline": {
+                "receipt": ".aoe2war-release/performance-receipts/legacy.json",
+                "rounds": 3,
+                "source_inventory": {},
+            },
+        }
+        with patch.object(
+            CAMPAIGN_MODULE,
+            "load_receipt",
+            return_value=baseline,
+        ), patch.object(
+            CAMPAIGN_MODULE.speed,
+            "benchmark",
+        ) as benchmark:
+            with self.assertRaisesRegex(
+                CAMPAIGN_MODULE.CampaignError,
+                "legacy unpaced full benchmark",
+            ):
+                CAMPAIGN_MODULE.verify_campaign(campaign, rounds=None)
+
+        benchmark.assert_not_called()
 
     def test_speed_campaign_verifies_every_route_and_flags_regression(self):
         before = {
@@ -892,6 +968,7 @@ class PerformanceOSTests(unittest.TestCase):
             rows = SPEED_MODULE.run_curl_sequence(
                 ["https://aoe2war.com/", "https://aoe2war.com/bets"],
                 timeout=7,
+                request_rate="2/s",
             )
 
         self.assertEqual(len(rows), 2)
@@ -900,6 +977,8 @@ class PerformanceOSTests(unittest.TestCase):
         command = run.call_args.args[0]
         self.assertEqual(command.count("curl"), 1)
         self.assertIn("https://aoe2war.com/bets", command)
+        self.assertIn("--rate", command)
+        self.assertIn("2/s", command)
 
     def test_remote_origin_keepalive_parses_curl_record_newlines(self):
         fake = type(
@@ -1144,6 +1223,39 @@ class PerformanceOSTests(unittest.TestCase):
         self.assertEqual(probe["samples"][0]["path"], "/a")
         self.assertEqual(probe["samples"][1]["path"], "/b")
         self.assertEqual(probe["samples"][0]["ttfb_ms"], 10.0)
+
+    def test_origin_route_probe_caps_request_rate_in_operator_safe_mode(self):
+        fake = type(
+            "Proc",
+            (),
+            {
+                "returncode": 0,
+                "stderr": "",
+                "stdout": (
+                    "200\t0.00001\t0.00020\t0.00000\t0.00200\t0.00210\t123\t1\thttp://127.0.0.1:3030/api/speed/check\n"
+                    "200\t0.00001\t0.00000\t0.00000\t0.01000\t0.01100\t1000\t0\thttp://127.0.0.1:3030/a\n"
+                ),
+            },
+        )()
+
+        with patch.object(
+            SPEED_MODULE.subprocess,
+            "run",
+            return_value=fake,
+        ) as run:
+            probe = SPEED_MODULE.remote_origin_route_probe(
+                ["/a"],
+                1,
+                operator_safe=True,
+            )
+
+        self.assertTrue(probe["available"])
+        self.assertEqual(
+            probe["request_rate"],
+            SPEED_MODULE.FULL_BENCHMARK_SEQUENCE_RATE,
+        )
+        script = run.call_args.kwargs["input"]
+        self.assertIn("--rate 2/s", script)
 
     def test_capacity_advice_prefers_warm_seam_over_misleading_cold_ratio(self):
         baseline = {
