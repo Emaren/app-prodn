@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b069b0ad8983b1275a9175cc9005b0e8231d9e52d80b9792b2274578f286b38c",
+      "sha256": "bc8cc793e836b24d97a93d3db69a9fdc424ba8dbc4a0426395a5ce4f3f3c5241",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/financial-green-closeout-20260920",
-    "commit": "fa806f0f75addb8029984b6914541970156a53fe"
+    "branch": "fix/resume-chain-backed-staking-rewards-20260920",
+    "commit": "435d0f68039b064a6702e3904d792a4a53062d28"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
