@@ -20,7 +20,19 @@ test("public hot paths keep expensive work off request-critical rails", () => {
 
   assert.match(warChest, /const weeklyWagerWhere = visibleMainnetWagerWhere/);
   assert.match(warChest, /prisma\.betWager\.groupBy\(\{\s*by: \["userId"\]/);
-  assert.match(warChest, /weeklyWagerSummary\._sum\.amountWolo/);
+  assert.match(
+    warChest,
+    /prisma\.betWager\.groupBy\(\{\s*by: \["marketId", "side"\],[\s\S]*?where: weeklyWagerWhere/,
+  );
+  assert.match(
+    warChest,
+    /volumeWolo: matchedVolumeFromSideTotals\(weeklyMatchedSideTotals\)/,
+  );
+  assert.match(
+    warChest,
+    /totalWageredWolo: matchedVolumeFromSideTotals\(lifetimeMatchedSideTotals\)/,
+  );
+  assert.doesNotMatch(warChest, /weeklyWagerSummary\._sum\.amountWolo/);
   assert.doesNotMatch(warChest, /const \[\s*weeklyWagers,/);
   assert.doesNotMatch(warChest, /weeklyWagers\.reduce/);
 
