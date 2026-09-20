@@ -232,6 +232,21 @@ comparison evidence. A verified campaign must therefore satisfy current-release
 freshness when its After release matches certified production; it must not ask
 for a redundant new baseline merely because the baseline SHA is older.
 
+The optimization target queue follows the same temporal rule. Before
+verification, `performance.targets` may come from the frozen baseline analysis.
+Once a verification receipt exists and is readable, Brain re-analyzes that exact
+After benchmark receipt, using the verification's After source inventory when
+available. Current targets then carry
+`target_basis=verification_after` and the verification release SHA. The
+frozen baseline target list remains separately available as
+`baseline_targets`; it is historical comparison evidence, not the current
+optimization queue.
+
+If the verification receipt cannot be read, Brain does not invent After-state
+targets. It retains the baseline analysis and labels the basis accordingly.
+Freshness, target basis, baseline identity, and verification identity are
+separate facts and must not be collapsed into one ambiguous current flag.
+
 Storage recommendations are also phase-aware. Storage pressure may block a
 Finish retry only while Finish closure is incomplete. Once the latest Finish is
 CERTIFIED, the same storage state remains maintenance/Doctor attention but is no
