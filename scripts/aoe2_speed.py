@@ -1833,10 +1833,10 @@ def benchmark(
     total_elapsed = time.monotonic() - started
     load_profile = current_benchmark_load_profile(full=full)
     load_profile["cold_route_transfer_count"] = len(passing)
-    load_profile["warm_route_transfer_count"] = len(warm_route_samples)
+    load_profile["warm_route_transfer_count"] = len(warm_samples)
     load_profile["origin_route_transfer_count"] = len(origin_route_samples)
     load_profile["measured_route_transfer_count"] = (
-        len(passing) + len(warm_route_samples) + len(origin_route_samples)
+        len(passing) + len(warm_samples) + len(origin_route_samples)
     )
 
     payload = {
