@@ -5,7 +5,6 @@ import {
   CHALLENGE_PROTOCOL_NAME,
   CHALLENGE_PROTOCOL_UID,
 } from "@/lib/internalSystemAccounts";
-import { ensureAiConciergeUser } from "@/lib/aiConcierge";
 import { getAiThreadKind } from "@/lib/aiPersonaInbox";
 import {
   CHALLENGE_NOTICE_HEADLINES,
@@ -1896,6 +1895,7 @@ export async function loadInboxPayload(
   if (viewer.isAdmin) {
     activeTargetUser = await resolveInboxTargetForViewer(prisma, viewer, options?.targetUid);
   } else {
+    const { ensureAiConciergeUser } = await import("@/lib/aiConcierge");
     const aiConcierge = await ensureAiConciergeUser(prisma);
     await getOrCreateConversationByUsers(prisma, viewer.id, aiConcierge.id);
 

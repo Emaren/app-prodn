@@ -102,13 +102,14 @@ test("lobby snapshot prefetches both War Chest rankings before interaction", () 
   assert.match(source, /prefetchedEntriesByMode/);
 });
 
-test("home War Chest renders settled and wagered from the active period", () => {
+test("home War Chest renders earned and matched-wagered truth from the active period", () => {
   const source = fs.readFileSync(
     path.join(root, "components/lobby/TopWoloEarnersTile.tsx"),
     "utf8",
   );
 
   assert.match(source, /getWarChestPeriodMetrics\(entry, mode\)/);
+  assert.match(source, /h\("Earned"\)/);
   assert.match(source, /formatWolo\(periodMetrics\.settledWolo\)/);
   assert.match(source, /formatWolo\(periodMetrics\.wageredWolo\)/);
 });

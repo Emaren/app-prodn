@@ -48,7 +48,8 @@
     "dev:shadow": "npm run kill-ports && npm run cert && python3 scripts/dev-shadow.py serve",
     "dev:shadow:fresh": "npm run shadow:refresh && npm run dev:shadow",
     "bets:jims-rule-backfill": "node --experimental-strip-types --experimental-loader ./scripts/aoe2-alias-loader.mjs scripts/audit-backfill-jims-rule.mts",
-    "challenge:emaren23": "node --experimental-strip-types --experimental-loader ./scripts/aoe2-alias-loader.mjs scripts/audit-settle-emaren-challenge-23.mts"
+    "challenge:emaren23": "node --experimental-strip-types --experimental-loader ./scripts/aoe2-alias-loader.mjs scripts/audit-settle-emaren-challenge-23.mts",
+    "staking:legacy-custody": "node --experimental-strip-types --experimental-loader ./scripts/aoe2-alias-loader.mjs scripts/reconcile-legacy-staking-custody.mts"
   },
   "dependencies": {
     "@cosmjs/amino": "^0.39.0",

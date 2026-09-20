@@ -221,7 +221,7 @@ export default async function WarChestPage({ searchParams }: WarChestPageProps) 
                   value={`${formatNumber(oppositeModeTake)} WOLO`}
                 />
                 <MetricTile
-                  label="Settled"
+                  label="Earned"
                   value={leader ? `${formatNumber(leader.settledWolo)} WOLO` : "0 WOLO"}
                 />
               </div>
