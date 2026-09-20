@@ -1175,6 +1175,7 @@ def start_campaign(*, full: bool, rounds: int, force_new: bool) -> dict[str, Any
             "rounds": baseline.get("rounds"),
             "route_count": baseline.get("route_count"),
             "cohort": baseline.get("cohort"),
+            "load_profile": baseline.get("load_profile"),
             "source_inventory": source_inventory,
         },
         "analysis": analysis,
@@ -1219,6 +1220,15 @@ def verify_campaign(
 
     mode = str(baseline.get("mode") or "")
     full = mode == "full"
+    if (
+        full
+        and speed.benchmark_load_contract(baseline)
+        != speed.FULL_BENCHMARK_LOAD_CONTRACT
+    ):
+        raise CampaignError(
+            "legacy unpaced full benchmark cannot be verified under the "
+            "operator-safe load contract; start a new full campaign"
+        )
     verify_rounds = rounds if rounds is not None else int(baseline.get("rounds") or 3)
     baseline_routes = cohort_routes(baseline)
     if not baseline_routes:
@@ -1263,6 +1273,7 @@ def verify_campaign(
     verification["release_sha"] = after.get("release_sha")
     verification["build_id"] = after.get("build_id")
     verification["build_version"] = after.get("build_version")
+    verification["load_profile"] = after.get("load_profile")
 
     campaign["verification"] = verification
     campaign["status"] = "verified"

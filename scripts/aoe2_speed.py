@@ -19,6 +19,16 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 
+# Full-estate performance campaigns are observational, but observational
+# tooling can still become production load. The operator-safe profile below
+# deliberately yields between cold transfers and caps serial keepalive request
+# starts. It is part of benchmark identity so paced evidence is never compared
+# to historical unpaced evidence.
+LEGACY_BENCHMARK_LOAD_CONTRACT = "legacy-unpaced-v1"
+FULL_BENCHMARK_LOAD_CONTRACT = "operator-safe-paced-v1"
+FULL_BENCHMARK_COLD_DELAY_SECONDS = 0.25
+FULL_BENCHMARK_SEQUENCE_RATE = "2/s"
+
 
 def parse_worktree_porcelain(text: str) -> list[dict[str, str]]:
     rows: list[dict[str, str]] = []
@@ -774,6 +784,7 @@ def run_curl_sequence(
     urls: list[str],
     *,
     timeout: int = 15,
+    request_rate: str | None = None,
 ) -> list[dict[str, Any]]:
     """Measure several transfers in one curl process so its connection cache survives."""
     if not urls:
@@ -786,9 +797,13 @@ def run_curl_sequence(
         "--compressed",
         "--max-time",
         str(timeout),
+    ]
+    if request_rate:
+        command.extend(["--rate", request_rate])
+    command.extend([
         "-w",
         CURL_METRIC_FORMAT + "\\n",
-    ]
+    ])
     for url in urls:
         command.extend(["-o", "/dev/null", url])
 
@@ -918,14 +933,52 @@ def summarize_route_cohort(
     }
 
 
-def cohort_identity(payload: dict[str, Any]) -> tuple[str, tuple[str, ...]]:
+def benchmark_load_contract(payload: dict[str, Any]) -> str:
+    profile = payload.get("load_profile")
+    if isinstance(profile, dict):
+        contract = str(profile.get("contract") or "").strip()
+        if contract:
+            return contract
+    return LEGACY_BENCHMARK_LOAD_CONTRACT
+
+
+def current_benchmark_load_profile(*, full: bool) -> dict[str, Any]:
+    if not full:
+        return {
+            "contract": LEGACY_BENCHMARK_LOAD_CONTRACT,
+            "operator_safe": False,
+            "cold_inter_request_delay_ms": 0,
+            "sequence_request_rate": None,
+        }
+    return {
+        "contract": FULL_BENCHMARK_LOAD_CONTRACT,
+        "operator_safe": True,
+        "cold_inter_request_delay_ms": int(
+            FULL_BENCHMARK_COLD_DELAY_SECONDS * 1000
+        ),
+        "sequence_request_rate": FULL_BENCHMARK_SEQUENCE_RATE,
+    }
+
+
+def benchmark_inter_request_pause(
+    *,
+    full: bool,
+    sleep_fn=time.sleep,
+) -> None:
+    if full and FULL_BENCHMARK_COLD_DELAY_SECONDS > 0:
+        sleep_fn(FULL_BENCHMARK_COLD_DELAY_SECONDS)
+
+
+def cohort_identity(
+    payload: dict[str, Any],
+) -> tuple[str, str, tuple[str, ...]]:
     mode = str(payload.get("mode") or "")
     routes = tuple(
         str(row.get("path"))
         for row in (payload.get("routes") or [])
         if isinstance(row, dict) and row.get("path")
     )
-    return mode, routes
+    return mode, benchmark_load_contract(payload), routes
 
 
 def keepalive_summary(rows: list[dict[str, Any]]) -> dict[str, Any]:
@@ -1102,6 +1155,8 @@ done
 def warm_route_probe(
     routes: list[str],
     rounds: int,
+    *,
+    operator_safe: bool = False,
 ) -> dict[str, Any]:
     """Supplement the legacy cold route benchmark with browser-like connection reuse."""
     warm_rounds = min(max(1, rounds), 3)
@@ -1112,12 +1167,18 @@ def warm_route_probe(
             urls.append(PUBLIC_BASE + path)
             labels.append((round_no, path))
 
-    rows = run_curl_sequence(urls, timeout=15)
+    request_rate = FULL_BENCHMARK_SEQUENCE_RATE if operator_safe else None
+    rows = run_curl_sequence(
+        urls,
+        timeout=15,
+        request_rate=request_rate,
+    )
     if len(rows) != len(urls) or not rows[0].get("ok"):
         return {
             "available": False,
             "rounds": warm_rounds,
             "sample_count": 0,
+            "request_rate": request_rate,
             "reason": "same-process public route sequence failed or was incomplete",
             "samples": [],
         }
@@ -1132,6 +1193,7 @@ def warm_route_probe(
             "available": False,
             "rounds": warm_rounds,
             "sample_count": len(route_rows),
+            "request_rate": request_rate,
             "reason": "one or more warm route transfers failed",
             "samples": route_rows,
         }
@@ -1143,6 +1205,7 @@ def warm_route_probe(
         "available": True,
         "rounds": warm_rounds,
         "sample_count": len(route_rows),
+        "request_rate": request_rate,
         "prime_ttfb_ms": float(rows[0]["ttfb_ms"]),
         "reused_connection_transfers": reused,
         "new_connection_transfers": len(route_rows) - reused,
@@ -1154,6 +1217,8 @@ def warm_route_probe(
 def remote_origin_route_probe(
     routes: list[str],
     rounds: int,
+    *,
+    operator_safe: bool = False,
 ) -> dict[str, Any]:
     """Measure route compute at the local Next origin over one reused connection."""
     origin_rounds = min(max(1, rounds), 3)
@@ -1168,10 +1233,13 @@ def remote_origin_route_probe(
         f"-o /dev/null {shlex.quote(url)}"
         for url in urls
     )
+    request_rate = FULL_BENCHMARK_SEQUENCE_RATE if operator_safe else None
+    rate_arg = f"--rate {shlex.quote(request_rate)} " if request_rate else ""
     script = (
         "curl -fsS -L --compressed --max-time 15 "
-        "-H 'Host: aoe2war.com' "
-        f"-w '{CURL_METRIC_FORMAT}\n' {operands}\n"
+        + rate_arg
+        + "-H 'Host: aoe2war.com' "
+        + f"-w '{CURL_METRIC_FORMAT}\n' {operands}\n"
     )
     try:
         proc = subprocess.run(
@@ -1197,6 +1265,7 @@ def remote_origin_route_probe(
         return {
             "available": False,
             "rounds": origin_rounds,
+            "request_rate": request_rate,
             "sample_count": 0,
             "reason": str(exc),
             "samples": [],
@@ -1206,6 +1275,7 @@ def remote_origin_route_probe(
         return {
             "available": False,
             "rounds": origin_rounds,
+            "request_rate": request_rate,
             "sample_count": 0,
             "reason": (proc.stderr or proc.stdout or "origin route probe failed").strip()[-1000:],
             "samples": [],
@@ -1216,6 +1286,7 @@ def remote_origin_route_probe(
         return {
             "available": False,
             "rounds": origin_rounds,
+            "request_rate": request_rate,
             "sample_count": 0,
             "reason": f"origin route probe returned {len(lines)} records for {len(urls)} transfers",
             "samples": [],
@@ -1228,6 +1299,7 @@ def remote_origin_route_probe(
             return {
                 "available": False,
                 "rounds": origin_rounds,
+                "request_rate": request_rate,
                 "sample_count": len(parsed_rows),
                 "reason": "origin route probe contained an invalid or non-200 transfer",
                 "samples": parsed_rows,
@@ -1246,6 +1318,7 @@ def remote_origin_route_probe(
     return {
         "available": True,
         "rounds": origin_rounds,
+        "request_rate": request_rate,
         "sample_count": len(route_rows),
         "prime_ttfb_ms": float(prime["ttfb_ms"]),
         "reused_connection_transfers": reused,
@@ -1578,8 +1651,9 @@ def benchmark(
                 }
             )
             samples.append(sample)
+            benchmark_inter_request_pause(full=full)
 
-    elapsed = time.monotonic() - started
+    cold_elapsed = time.monotonic() - started
     passing = [
         sample
         for sample in samples
@@ -1596,7 +1670,7 @@ def benchmark(
             full=full,
             rounds=rounds,
             route_count=len(routes),
-            elapsed_seconds=elapsed,
+            elapsed_seconds=cold_elapsed,
             failures=failed_attempts,
         )
         raise SpeedError(
@@ -1605,9 +1679,17 @@ def benchmark(
             f"receipt={attempt_path}"
         )
 
-    warm_probe = warm_route_probe(routes, rounds)
+    warm_probe = warm_route_probe(
+        routes,
+        rounds,
+        operator_safe=full,
+    )
     warm_samples = list(warm_probe.get("samples") or [])
-    origin_route_probe = remote_origin_route_probe(routes, rounds)
+    origin_route_probe = remote_origin_route_probe(
+        routes,
+        rounds,
+        operator_safe=full,
+    )
     origin_route_samples = list(origin_route_probe.get("samples") or [])
 
     per_route: list[dict[str, Any]] = []
@@ -1748,6 +1830,14 @@ def benchmark(
     ready = ready_coverage()
     capacity = production_capacity_snapshot()
     incidents = production_performance_incidents()
+    total_elapsed = time.monotonic() - started
+    load_profile = current_benchmark_load_profile(full=full)
+    load_profile["cold_route_transfer_count"] = len(passing)
+    load_profile["warm_route_transfer_count"] = len(warm_route_samples)
+    load_profile["origin_route_transfer_count"] = len(origin_route_samples)
+    load_profile["measured_route_transfer_count"] = (
+        len(passing) + len(warm_route_samples) + len(origin_route_samples)
+    )
 
     payload = {
         "schema": 1,
@@ -1757,7 +1847,9 @@ def benchmark(
         "rounds": rounds,
         "route_count": len(routes),
         "request_count": len(passing),
-        "elapsed_seconds": round(elapsed, 3),
+        "cold_elapsed_seconds": round(cold_elapsed, 3),
+        "elapsed_seconds": round(total_elapsed, 3),
+        "load_profile": load_profile,
         "recovered_sample_failure_count": len(
             recovered_failures
         ),
@@ -2053,13 +2145,22 @@ def compare() -> None:
         before_label = Path(str(before["_path"])).name
         before_ttfb = float(before["cohort"]["ttfb_p50_ms"])
         before_total = float(before["cohort"]["total_p50_ms"])
-    elif after.get("mode") == "full":
+    elif (
+        after.get("mode") == "full"
+        and benchmark_load_contract(after) == LEGACY_BENCHMARK_LOAD_CONTRACT
+    ):
         baseline = baseline_zero_summary()
         if not baseline:
             raise SpeedError("full benchmark has no comparable baseline zero")
         before_label = "baseline-zero"
         before_ttfb = float(baseline["median_ttfb_ms"])
         before_total = float(baseline["median_total_ms"])
+    elif after.get("mode") == "full":
+        raise SpeedError(
+            "no previous benchmark exists for this exact route cohort and "
+            "load contract; capture a second operator-safe full benchmark "
+            "before comparing"
+        )
     else:
         raise SpeedError(
             "no previous benchmark exists for this exact route cohort; "
