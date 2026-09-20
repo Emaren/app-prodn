@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c3d740258b6d847bbc5b29b7527849a81960cbaf7ef855a77a0054f56f673e16",
+      "sha256": "5362281ba006e973f4a0b2287f0383f5e8476a12bd2a9e711e62cc3362bf7065",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/economy-integrity-20260920",
-    "commit": "b8a936775c11ce8087ac733068772426cc5980fd"
+    "commit": "87df791545ae34afd4ae660898224f6d8f23fc66"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
