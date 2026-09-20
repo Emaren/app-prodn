@@ -18,6 +18,9 @@ import {
   radioWoloRatingIsValid,
 } from "@/lib/radioWoloFeedbackPolicy";
 import {
+  isRadioWoloOperatorUid,
+} from "@/lib/radioWoloOperatorPolicy";
+import {
   getSessionUid,
 } from "@/lib/session";
 
@@ -38,7 +41,8 @@ type FeedbackEvent =
   | "on"
   | "off"
   | "heartbeat"
-  | "rate";
+  | "rate"
+  | "interact";
 
 function isFeedbackEvent(
   value: unknown,
@@ -47,7 +51,67 @@ function isFeedbackEvent(
     value === "on" ||
     value === "off" ||
     value === "heartbeat" ||
-    value === "rate"
+    value === "rate" ||
+    value === "interact"
+  );
+}
+
+function cleanTrafficId(
+  value: unknown,
+) {
+  if (
+    typeof value !==
+    "string"
+  ) {
+    return null;
+  }
+
+  const cleaned =
+    value
+      .trim()
+      .slice(0, 100);
+
+  return /^[a-zA-Z0-9_.:-]{1,100}$/.test(
+    cleaned,
+  )
+    ? cleaned
+    : null;
+}
+
+function cleanInteraction(
+  value: unknown,
+) {
+  return (
+    value === "player" ||
+    value === "volume" ||
+    value === "appearance" ||
+    value === "autoplay"
+  )
+    ? value
+    : null;
+}
+
+function requestIsSynthetic(
+  request: NextRequest,
+) {
+  const marker =
+    request.headers
+      .get(
+        "x-aoe2war-synthetic",
+      )
+      ?.trim();
+
+  if (marker) {
+    return true;
+  }
+
+  const userAgent =
+    request.headers.get(
+      "user-agent",
+    ) || "";
+
+  return /HeadlessChrome|AoE2WAR-SpeedOS/i.test(
+    userAgent,
   );
 }
 
@@ -69,6 +133,7 @@ async function resolveUser(
     },
     select: {
       id: true,
+      uid: true,
     },
   });
 }
@@ -192,7 +257,43 @@ export async function POST(
       listenerId?: unknown;
       event?: unknown;
       rating?: unknown;
+      interaction?: unknown;
+      trafficVisitorId?: unknown;
+      trafficSessionId?: unknown;
     };
+
+  if (
+    requestIsSynthetic(
+      request,
+    )
+  ) {
+    return NextResponse.json(
+      {
+        ok: true,
+        ignoredSynthetic:
+          true,
+      },
+      {
+        headers:
+          NO_STORE_HEADERS,
+      },
+    );
+  }
+
+  const trafficVisitorId =
+    cleanTrafficId(
+      payload.trafficVisitorId,
+    );
+
+  const trafficSessionId =
+    cleanTrafficId(
+      payload.trafficSessionId,
+    );
+
+  const interaction =
+    cleanInteraction(
+      payload.interaction,
+    );
 
   if (
     !radioWoloListenerIdIsValid(
@@ -221,6 +322,23 @@ export async function POST(
       {
         detail:
           "Valid Radio WOLO feedback event is required.",
+      },
+      {
+        status: 400,
+        headers:
+          NO_STORE_HEADERS,
+      },
+    );
+  }
+
+  if (
+    payload.event === "interact" &&
+    !interaction
+  ) {
+    return NextResponse.json(
+      {
+        detail:
+          "Valid Radio WOLO interaction is required.",
       },
       {
         status: 400,
@@ -292,6 +410,86 @@ export async function POST(
 
   const listenerId =
     payload.listenerId;
+
+  if (
+    isRadioWoloOperatorUid(
+      user?.uid,
+    )
+  ) {
+    return NextResponse.json(
+      {
+        ok: true,
+        ignoredOperator:
+          true,
+      },
+      {
+        headers:
+          NO_STORE_HEADERS,
+      },
+    );
+  }
+
+  if (
+    payload.event === "interact"
+  ) {
+    await prisma.radioListenerState.upsert(
+      {
+        where: {
+          listenerId,
+        },
+        create: {
+          listenerId,
+          userId:
+            user?.id ??
+            null,
+          listening:
+            false,
+          currentAssetId:
+            asset?.id ??
+            null,
+          lastEvent:
+            "off",
+          stoppedListeningAt:
+            now,
+          trafficVisitorId,
+          trafficSessionId,
+          interactedAt:
+            now,
+          lastInteraction:
+            interaction,
+          lastSeenAt:
+            now,
+        },
+        update: {
+          userId:
+            user?.id ??
+            null,
+          currentAssetId:
+            asset?.id ??
+            null,
+          trafficVisitorId,
+          trafficSessionId,
+          interactedAt:
+            now,
+          lastInteraction:
+            interaction,
+          lastSeenAt:
+            now,
+        },
+      },
+    );
+
+    return NextResponse.json(
+      {
+        ok: true,
+        interaction,
+      },
+      {
+        headers:
+          NO_STORE_HEADERS,
+      },
+    );
+  }
 
   if (
     payload.event === "rate"
@@ -369,6 +567,12 @@ export async function POST(
               null,
             stoppedListeningAt:
               now,
+            trafficVisitorId,
+            trafficSessionId,
+            interactedAt:
+              now,
+            lastInteraction:
+              "rate",
             lastSeenAt:
               now,
           },
@@ -379,6 +583,12 @@ export async function POST(
             currentAssetId:
               asset.id,
             lastEvent:
+              "rate",
+            trafficVisitorId,
+            trafficSessionId,
+            interactedAt:
+              now,
+            lastInteraction:
               "rate",
             lastSeenAt:
               now,
@@ -426,6 +636,21 @@ export async function POST(
           listening
             ? null
             : now,
+        trafficVisitorId,
+        trafficSessionId,
+        ...(
+          payload.event ===
+            "on"
+            ? {
+                interactedAt:
+                  now,
+                lastInteraction:
+                  "sound",
+                soundEverOnAt:
+                  now,
+              }
+            : {}
+        ),
         lastSeenAt:
           now,
       },
@@ -439,12 +664,20 @@ export async function POST(
           null,
         lastEvent:
           payload.event,
+        trafficVisitorId,
+        trafficSessionId,
         lastSeenAt:
           now,
         ...(
           payload.event ===
             "on"
             ? {
+                interactedAt:
+                  now,
+                lastInteraction:
+                  "sound",
+                soundEverOnAt:
+                  now,
                 startedListeningAt:
                   now,
                 stoppedListeningAt:

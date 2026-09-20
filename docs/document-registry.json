@@ -1230,9 +1230,9 @@
       "owner": "aoe2war-web",
       "path": "docs/RADIO_WOLO.md",
       "review_interval_days": 90,
-      "reviewed_at": "2026-09-08",
+      "reviewed_at": "2026-09-20",
       "sensitivity": "internal",
-      "sha256": "c3d4cec31a1a0275e460580974b72900b03d008ca709b057a33305eb23b080bf",
+      "sha256": "f7c124a4b779b5504062c8d5c2a149c2f984e4e715afda57a2186ed73edbbf13",
       "source_of_truth": "git",
       "status": "active",
       "systems": [

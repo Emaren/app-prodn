@@ -14,6 +14,9 @@ import {
 import {
   readOrCreateBrowserVisitorId,
 } from "@/lib/browserVisitorId";
+import {
+  getTrafficCorrelationIds,
+} from "@/lib/speed/clientIds";
 
 const FEEDBACK_URL =
   "/api/radio/feedback";
@@ -63,7 +66,24 @@ async function postFeedback(
         },
         body:
           JSON.stringify(
-            body,
+            {
+              ...body,
+              ...(
+                typeof window !== "undefined"
+                  ? (() => {
+                      const ids =
+                        getTrafficCorrelationIds();
+
+                      return {
+                        trafficVisitorId:
+                          ids.trafficVisitorId,
+                        trafficSessionId:
+                          ids.trafficSessionId,
+                      };
+                    })()
+                  : {}
+              ),
+            },
           ),
       },
     );
@@ -189,6 +209,58 @@ export function useRadioWoloFeedback(
       [listenerId],
     );
 
+  const interactionRef =
+    useRef<{
+      kind: string;
+      at: number;
+    }>({
+      kind: "",
+      at: 0,
+    });
+
+  const noteInteraction =
+    useCallback(
+      (
+        kind:
+          | "player"
+          | "volume"
+          | "appearance"
+          | "autoplay",
+      ) => {
+        if (!listenerId) {
+          return;
+        }
+
+        const now =
+          Date.now();
+
+        if (
+          interactionRef.current
+            .kind === kind &&
+          now -
+            interactionRef.current
+              .at <
+            1_500
+        ) {
+          return;
+        }
+
+        interactionRef.current = {
+          kind,
+          at: now,
+        };
+
+        void postFeedback({
+          listenerId,
+          event: "interact",
+          interaction: kind,
+        }).catch(
+          () => undefined,
+        );
+      },
+      [listenerId],
+    );
+
   useEffect(() => {
     if (!listenerId) {
       return;
@@ -210,11 +282,11 @@ export function useRadioWoloFeedback(
       input.soundEnabled;
 
     if (initial) {
-      void sendSignal(
-        input.soundEnabled
-          ? "on"
-          : "off",
-      );
+      if (input.soundEnabled) {
+        void sendSignal(
+          "on",
+        );
+      }
 
       return;
     }
@@ -549,5 +621,6 @@ export function useRadioWoloFeedback(
     ratingError,
     saveRating,
     setRatingStyle,
+    noteInteraction,
   };
 }

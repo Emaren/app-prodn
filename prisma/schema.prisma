@@ -3223,6 +3223,11 @@ model RadioListenerState {
   lastEvent          String    @default("off") @map("last_event") @db.VarChar(24)
   startedListeningAt DateTime? @map("started_listening_at") @db.Timestamp(6)
   stoppedListeningAt DateTime? @map("stopped_listening_at") @db.Timestamp(6)
+  trafficVisitorId   String?   @map("traffic_visitor_id") @db.VarChar(100)
+  trafficSessionId   String?   @map("traffic_session_id") @db.VarChar(100)
+  interactedAt       DateTime? @map("interacted_at") @db.Timestamp(6)
+  lastInteraction    String?   @map("last_interaction") @db.VarChar(32)
+  soundEverOnAt      DateTime? @map("sound_ever_on_at") @db.Timestamp(6)
   lastSeenAt         DateTime  @default(now()) @map("last_seen_at") @db.Timestamp(6)
   createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
@@ -3233,6 +3238,7 @@ model RadioListenerState {
   @@index([userId, lastSeenAt], map: "ix_radio_listener_states_user_seen")
   @@index([listening, lastSeenAt], map: "ix_radio_listener_states_listening_seen")
   @@index([currentAssetId, lastSeenAt], map: "ix_radio_listener_states_asset_seen")
+  @@index([trafficVisitorId, lastSeenAt], map: "ix_radio_listener_states_traffic_visitor_seen")
   @@map("radio_listener_states")
 }
 

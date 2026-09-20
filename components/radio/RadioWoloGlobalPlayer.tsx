@@ -755,7 +755,7 @@ export default function RadioWoloGlobalPlayer() {
           .mediaUrl ??
         null,
       soundEnabled:
-        isListening &&
+        isActuallyPlaying &&
         !playbackBlocked,
       ratingEnabled:
         mode ===
@@ -869,11 +869,15 @@ export default function RadioWoloGlobalPlayer() {
         type="button"
         data-radio-wolo-player
         data-radio-wolo-mode="dormant"
-        onClick={() =>
+        onClick={() => {
+          radioFeedback.noteInteraction(
+            "player",
+          );
+
           setStoredMode(
             "compact",
-          )
-        }
+          );
+        }}
         className={`group fixed bottom-[calc(env(safe-area-inset-bottom)+5.8rem)] left-3 z-[169] grid h-11 w-11 place-items-center rounded-full border shadow-[0_14px_44px_rgba(0,0,0,0.58)] backdrop-blur-xl transition lg:bottom-4 lg:left-4 ${theme.dormant}`}
         aria-label={
           isOnAir
@@ -913,6 +917,11 @@ export default function RadioWoloGlobalPlayer() {
           skinId
         }
         data-radio-wolo-art-face
+        onPointerDownCapture={() =>
+          radioFeedback.noteInteraction(
+            "player",
+          )
+        }
         className={artFaceShellClassName(
           skinId,
         )}
@@ -1026,6 +1035,11 @@ export default function RadioWoloGlobalPlayer() {
       }
       data-radio-wolo-skin={
         skinId
+      }
+      onPointerDownCapture={() =>
+        radioFeedback.noteInteraction(
+          "player",
+        )
       }
       className={`fixed bottom-[calc(env(safe-area-inset-bottom)+5.8rem)] left-3 z-[169] overflow-hidden rounded-[1.2rem] border shadow-[0_22px_70px_rgba(0,0,0,0.64)] backdrop-blur-2xl lg:bottom-4 lg:left-4 ${theme.shell} ${
         mode ===
@@ -1482,14 +1496,18 @@ export default function RadioWoloGlobalPlayer() {
                 targetVolume *
                   100,
               )}
-              onChange={(event) =>
+              onChange={(event) => {
+                radioFeedback.noteInteraction(
+                  "volume",
+                );
+
                 setTargetVolume(
                   Number(
                     event.target
                       .value,
                   ) / 100,
-                )
-              }
+                );
+              }}
               className="mt-2 h-1 w-full cursor-pointer accent-amber-600"
               aria-label="Radio WOLO volume"
             />

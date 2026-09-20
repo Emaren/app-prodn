@@ -1,11 +1,13 @@
 "use client";
 
 import {
+  MousePointerClick,
   RadioTower,
   RefreshCw,
   Star,
   UserRound,
   UsersRound,
+  Volume2,
 } from "lucide-react";
 import {
   useCallback,
@@ -51,6 +53,18 @@ type Payload = {
     currentRating:
       | number
       | null;
+    trafficVisitorId:
+      | string
+      | null;
+    visitCount: number;
+    returnCount: number;
+    activeOnSite: boolean;
+    currentPage:
+      | string
+      | null;
+    hasInteracted: boolean;
+    everSoundOn: boolean;
+    hasRated: boolean;
   }>;
   tracks: Array<{
     assetId: number;
@@ -211,10 +225,10 @@ export function RadioWoloListenerSignals() {
             Radio WOLO Listener Signals
           </div>
           <div className="mt-2 text-2xl font-semibold text-white">
-            Who is listening, who turned it off, and what they rate
+            Human traffic + Radio WOLO signals
           </div>
           <div className="mt-1 text-sm text-slate-400">
-            Signed-in Kingdom members and random anonymous browser listeners. No fingerprinting.
+            Real browser visitors, repeat visits, sound state, interaction, and ratings.
           </div>
         </div>
 
@@ -243,12 +257,12 @@ export function RadioWoloListenerSignals() {
         <>
           <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
             <SummaryCard
-              label="Known listeners"
+              label="Human visitors"
               value={
                 data.summary
                   .totalListeners
               }
-              detail="Browsers that entered Radio WOLO"
+              detail="Traffic-qualified AoE2WAR browsers"
             />
             <SummaryCard
               label="ON"
@@ -293,11 +307,12 @@ export function RadioWoloListenerSignals() {
           </div>
 
           <div className="mt-5 overflow-hidden rounded-2xl border border-white/8 bg-slate-950/55">
-            <div className="grid grid-cols-[minmax(10rem,1.05fr)_5rem_minmax(12rem,1.4fr)_5rem_8rem] gap-3 border-b border-white/8 px-4 py-3 text-[9px] font-bold uppercase tracking-[0.18em] text-slate-500">
-              <span>Listener</span>
+            <div className="grid grid-cols-[minmax(10rem,1.2fr)_4.5rem_5rem_7rem_minmax(11rem,1.2fr)_8rem] gap-3 border-b border-white/8 px-4 py-3 text-[9px] font-bold uppercase tracking-[0.18em] text-slate-500">
+              <span>Visitor</span>
+              <span>Visits</span>
               <span>Sound</span>
+              <span>Radio</span>
               <span>Last track</span>
-              <span>Rating</span>
               <span>Signal</span>
             </div>
 
@@ -305,7 +320,7 @@ export function RadioWoloListenerSignals() {
               data.listeners
                 .slice(
                   0,
-                  30,
+                  40,
                 )
                 .map(
                   (
@@ -315,7 +330,7 @@ export function RadioWoloListenerSignals() {
                       key={
                         row.listenerId
                       }
-                      className="grid grid-cols-[minmax(10rem,1.05fr)_5rem_minmax(12rem,1.4fr)_5rem_8rem] gap-3 border-b border-white/[0.05] px-4 py-3 text-xs last:border-b-0"
+                      className="grid grid-cols-[minmax(10rem,1.2fr)_4.5rem_5rem_7rem_minmax(11rem,1.2fr)_8rem] gap-3 border-b border-white/[0.05] px-4 py-3 text-xs last:border-b-0"
                     >
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
@@ -329,15 +344,35 @@ export function RadioWoloListenerSignals() {
                               row.displayName
                             }
                           </span>
+                          {row.activeOnSite ? (
+                            <span
+                              className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-300"
+                              title="On site now"
+                              aria-label="On site now"
+                            />
+                          ) : null}
                         </div>
                         <div className="mt-1 truncate text-[10px] text-slate-600">
-                          {row.identityKind === "user"
-                            ? row.userUid
-                            : row.listenerId.slice(
-                                0,
-                                8,
-                              )}
+                          {row.currentPage ||
+                            (row.identityKind === "user"
+                              ? row.userUid
+                              : row.trafficVisitorId?.slice(
+                                  -8,
+                                ) ||
+                                row.listenerId.slice(
+                                  0,
+                                  8,
+                                ))}
                         </div>
+                      </div>
+
+                      <div className="flex items-center">
+                        <span
+                          className="text-xl font-black tabular-nums text-cyan-100"
+                          title={`${row.visitCount} recorded visit${row.visitCount === 1 ? "" : "s"}`}
+                        >
+                          {row.visitCount}×
+                        </span>
                       </div>
 
                       <div>
@@ -352,15 +387,43 @@ export function RadioWoloListenerSignals() {
                         </span>
                       </div>
 
+                      <div className="flex items-center gap-2">
+                        <MousePointerClick
+                          className={`h-4 w-4 ${
+                            row.hasInteracted
+                              ? "text-cyan-200"
+                              : "text-slate-700"
+                          }`}
+                          aria-label={row.hasInteracted ? "Radio controls used" : "No Radio interaction"}
+                        />
+                        <Volume2
+                          className={`h-4 w-4 ${
+                            row.everSoundOn
+                              ? "text-emerald-200"
+                              : "text-slate-700"
+                          }`}
+                          aria-label={row.everSoundOn ? "Sound has been turned on" : "Sound never turned on"}
+                        />
+                        <span className="inline-flex items-center gap-0.5">
+                          <Star
+                            className={`h-4 w-4 ${
+                              row.hasRated
+                                ? "text-amber-200"
+                                : "text-slate-700"
+                            }`}
+                            aria-label={row.hasRated ? "Has rated a Radio WOLO track" : "No rating yet"}
+                          />
+                          {row.currentRating ? (
+                            <span className="text-[10px] font-bold text-amber-100">
+                              {row.currentRating}
+                            </span>
+                          ) : null}
+                        </span>
+                      </div>
+
                       <div className="min-w-0 truncate text-slate-300">
                         {row.currentTrack ||
                           "—"}
-                      </div>
-
-                      <div className="font-semibold text-amber-100">
-                        {row.currentRating
-                          ? `${row.currentRating}/10`
-                          : "—"}
                       </div>
 
                       <div>
@@ -378,7 +441,7 @@ export function RadioWoloListenerSignals() {
                 )
             ) : (
               <div className="px-4 py-5 text-sm text-slate-500">
-                No Radio WOLO listener signals yet.
+                No human AoE2WAR visitor signals yet.
               </div>
             )}
           </div>

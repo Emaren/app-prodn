@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-09-08"
+reviewed_at: "2026-09-20"
 review_interval_days: 90
 sensitivity: "internal"
 ---
@@ -88,10 +88,31 @@ fingerprint and is not derived from IP address, user agent, hardware, or other
 cross-site identifiers. When a signed session exists, listener signals are also
 associated with that AoE2WAR user.
 
+Traffic is the authority for passive human browser presence. Its persisted
+`traffic_visitor_id` and per-session `traffic_session_id` supply the Command
+Tower Radio WOLO pane with real AoE2WAR browser rows, visit counts, current page,
+and recent presence. The Radio subsystem enriches those rows with product-specific
+signals. This keeps a real visitor visible as Sound OFF even when they never touch
+Radio WOLO, without manufacturing a Radio listener record for every page load.
+
 Radio listener state records Sound On, Sound Off, the most recently observed
-authoritative RadioAsset, and bounded heartbeat timestamps. Admin analytics treat
-Sound On as live only while the stored intent is on and its heartbeat remains
-fresh; an expired heartbeat fails closed to OFF.
+authoritative RadioAsset, the Traffic correlation IDs when available, bounded
+heartbeat timestamps, durable interaction state, and whether sound has ever been
+turned on. Opening or operating the player records interaction; volume/player
+controls count as interaction; Sound On is separately durable; ratings remain
+separately durable. A globally mounted silent player does not create Radio state.
+
+Admin analytics treat Sound On as live only while the stored intent is on and its
+heartbeat remains fresh; an expired heartbeat fails closed to OFF. Traffic rows
+classified as owner/operator, known automation, crawler, known cloud browser, or
+other nonhuman traffic are excluded from the human pane. Speed OS browser harnesses
+also stamp `X-AoE2WAR-Synthetic`; Traffic and Radio reject those writes before
+they enter human analytics.
+
+The bold visit multiplier shown in Command Tower is based on distinct persisted
+Traffic sessions for the same browser visitor ID. It is deliberately not derived
+from IP address or fingerprinting. Clearing site storage or changing browsers or
+devices creates a new anonymous browser identity.
 
 Track ratings are integers from 1 through 10.
 Emoji stars are the default fresh-listener presentation; the premium icon-star face remains selectable. There is no submit step: clicking
@@ -101,9 +122,12 @@ per random browser listener and RadioAsset.
 
 Rating truth is loaded only while the global player is expanded, because that is
 the only mode in which the rating controls are usable. Dormant and compact modes
-still report the full listener lifecycle — initial Sound Off observation, Sound
-On/Off transitions, heartbeat, pagehide teardown, and Admin listener intelligence
-— but they do not issue the rating GET for invisible controls.
+do not emit an initial Sound Off write merely because the global player mounted.
+Passive visitors still appear in Command Tower through Traffic. Once playback
+actually begins, the client reports Sound On/Off transitions, heartbeat, pagehide
+teardown, and Admin listener intelligence. Player interaction can write a compact
+interaction signal without changing Sound state. Invisible rating controls still
+do not issue the rating GET.
 
 The client never supplies the RadioAsset being rated as authority. The feedback
 endpoint resolves the currently airing asset from RadioStationState and the

@@ -280,6 +280,11 @@ async function runOne(index) {
     await command("Page.enable");
     await command("Runtime.enable");
     await command("Network.enable");
+    await command("Network.setExtraHTTPHeaders", {
+      headers: {
+        "X-AoE2WAR-Synthetic": "speedos-cold-lcp",
+      },
+    });
     await command("Network.setCacheDisabled", { cacheDisabled: true });
     await command("Emulation.setDeviceMetricsOverride", {
       width: viewport.width,

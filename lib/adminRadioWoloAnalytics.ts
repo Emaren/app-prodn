@@ -2,10 +2,12 @@ import type {
   PrismaClient,
 } from "@/lib/generated/prisma";
 import {
-  RADIO_WOLO_LISTENER_ACTIVE_WINDOW_MS,
   radioWoloListenerIsEffectivelyOn,
   radioWoloRaterKey,
 } from "@/lib/radioWoloFeedbackPolicy";
+import {
+  radioWoloOperatorUids,
+} from "@/lib/radioWoloOperatorPolicy";
 
 export type AdminRadioWoloAnalytics = {
   generatedAt: string;
@@ -45,6 +47,18 @@ export type AdminRadioWoloAnalytics = {
     currentRating:
       | number
       | null;
+    trafficVisitorId:
+      | string
+      | null;
+    visitCount: number;
+    returnCount: number;
+    activeOnSite: boolean;
+    currentPage:
+      | string
+      | null;
+    hasInteracted: boolean;
+    everSoundOn: boolean;
+    hasRated: boolean;
   }>;
   tracks: Array<{
     assetId: number;
@@ -59,6 +73,137 @@ export type AdminRadioWoloAnalytics = {
     distribution: number[];
   }>;
 };
+
+type TrafficAudienceRow = {
+  traffic_visitor_id: string;
+  visit_count: number;
+  return_count: number;
+  last_seen_at: string;
+  active_now: boolean;
+  current_path: string;
+  known_visitor_label: string;
+  known_visitor_kind: string;
+  authenticated_uid: string;
+  exclude_from_human_analytics: boolean;
+};
+
+async function loadTrafficAudience() {
+  const key =
+    process.env
+      .TRAFFIC_IDENTITY_INGEST_KEY
+      ?.trim();
+
+  if (!key) {
+    return [] as TrafficAudienceRow[];
+  }
+
+  let endpoint =
+    "http://127.0.0.1:3345/api/internal/browser-visitor-audience";
+
+  const configured =
+    process.env
+      .TRAFFIC_IDENTITY_INGEST_URL
+      ?.trim();
+
+  if (configured) {
+    try {
+      const parsed =
+        new URL(
+          configured,
+        );
+
+      parsed.pathname =
+        "/api/internal/browser-visitor-audience";
+      parsed.search = "";
+      parsed.hash = "";
+      endpoint =
+        parsed.toString();
+    } catch {
+      // The local Traffic authority remains the safe fallback.
+    }
+  }
+
+  try {
+    const response =
+      await fetch(
+        endpoint,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type":
+              "application/json",
+            "X-Identity-Key":
+              key,
+          },
+          body:
+            JSON.stringify(
+              {
+                project_slug:
+                  "aoe2hdbets",
+                since_hours: 24,
+                limit: 160,
+                exclude_authenticated_uids:
+                  [
+                    ...radioWoloOperatorUids(),
+                  ],
+              },
+            ),
+          cache: "no-store",
+          signal:
+            AbortSignal.timeout(
+              3_000,
+            ),
+        },
+      );
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const payload =
+      (await response.json()) as {
+        visitors?: unknown;
+      };
+
+    if (
+      !Array.isArray(
+        payload.visitors,
+      )
+    ) {
+      return [];
+    }
+
+    const operators =
+      radioWoloOperatorUids();
+
+    return (
+      payload.visitors as
+        TrafficAudienceRow[]
+    ).filter(
+      (row) =>
+        Boolean(
+          row &&
+            typeof row
+              .traffic_visitor_id ===
+              "string" &&
+            row
+              .traffic_visitor_id &&
+            !row
+              .exclude_from_human_analytics &&
+            !(
+              row
+                .authenticated_uid &&
+              operators.has(
+                row
+                  .authenticated_uid,
+              )
+            ),
+        ),
+    );
+  } catch {
+    return [];
+  }
+}
 
 export function emptyAdminRadioWoloAnalytics(
   now = new Date(),
@@ -111,24 +256,38 @@ export async function loadAdminRadioWoloAnalytics(
   prisma: PrismaClient,
   now = new Date(),
 ): Promise<AdminRadioWoloAnalytics> {
-  const cutoff =
-    new Date(
-      now.getTime() -
-        RADIO_WOLO_LISTENER_ACTIVE_WINDOW_MS,
-    );
-
   const [
     states,
-    totalListeners,
-    onCount,
-    signedInCount,
     totalRatings,
     trackGroups,
     distributionRows,
+    trafficAudience,
   ] =
     await Promise.all([
       prisma.radioListenerState.findMany(
         {
+          where: {
+            OR: [
+              {
+                trafficVisitorId: {
+                  not: null,
+                },
+              },
+              {
+                startedListeningAt: {
+                  not: null,
+                },
+              },
+              {
+                interactedAt: {
+                  not: null,
+                },
+              },
+              {
+                lastEvent: "rate",
+              },
+            ],
+          },
           orderBy: [
             {
               lastSeenAt:
@@ -138,7 +297,7 @@ export async function loadAdminRadioWoloAnalytics(
               id: "desc",
             },
           ],
-          take: 80,
+          take: 200,
           select: {
             listenerId:
               true,
@@ -152,6 +311,14 @@ export async function loadAdminRadioWoloAnalytics(
             startedListeningAt:
               true,
             stoppedListeningAt:
+              true,
+            trafficVisitorId:
+              true,
+            interactedAt:
+              true,
+            lastInteraction:
+              true,
+            soundEverOnAt:
               true,
             currentAssetId:
               true,
@@ -168,30 +335,6 @@ export async function loadAdminRadioWoloAnalytics(
                 steamPersonaName:
                   true,
               },
-            },
-          },
-        },
-      ),
-
-      prisma.radioListenerState.count(),
-
-      prisma.radioListenerState.count(
-        {
-          where: {
-            listening:
-              true,
-            lastSeenAt: {
-              gte: cutoff,
-            },
-          },
-        },
-      ),
-
-      prisma.radioListenerState.count(
-        {
-          where: {
-            userId: {
-              not: null,
             },
           },
         },
@@ -228,6 +371,8 @@ export async function loadAdminRadioWoloAnalytics(
           },
         },
       ),
+
+      loadTrafficAudience(),
     ]);
 
   const assetIds =
@@ -255,9 +400,16 @@ export async function loadAdminRadioWoloAnalytics(
       ),
     );
 
+  const listenerIds =
+    states.map(
+      (row) =>
+        row.listenerId,
+    );
+
   const [
     ratings,
     assets,
+    ratedListeners,
   ] =
     await Promise.all([
       assetIds.length
@@ -293,6 +445,27 @@ export async function loadAdminRadioWoloAnalytics(
               select: {
                 id: true,
                 title: true,
+              },
+            },
+          )
+        : Promise.resolve(
+            [],
+          ),
+
+      listenerIds.length
+        ? prisma.radioTrackRating.findMany(
+            {
+              where: {
+                listenerId: {
+                  in: listenerIds,
+                },
+              },
+              distinct: [
+                "listenerId",
+              ],
+              select: {
+                listenerId:
+                  true,
               },
             },
           )
@@ -353,36 +526,170 @@ export async function loadAdminRadioWoloAnalytics(
     );
   }
 
-  const listeners =
-    states.map(
-      (row) => {
-        const status: "on" | "off" =
+  const ratedListenerIds =
+    new Set(
+      ratedListeners.map(
+        (row) =>
+          row.listenerId,
+      ),
+    );
+
+  type StateRow =
+    (typeof states)[number];
+
+  const stateSignals = (
+    row: StateRow,
+  ) => {
+    const raterKey =
+      radioWoloRaterKey(
+        row.userId,
+        row.listenerId,
+      );
+
+    const currentRating =
+      row.currentAssetId
+        ? ratingByIdentity.get(
+            `${row.currentAssetId}:${raterKey}`,
+          ) ??
+          null
+        : null;
+
+    const hasRated =
+      ratedListenerIds.has(
+        row.listenerId,
+      );
+
+    return {
+      status:
+        (
           radioWoloListenerIsEffectivelyOn(
             row,
             now,
           )
             ? "on"
-            : "off";
+            : "off"
+        ) as
+          | "on"
+          | "off",
+      currentRating,
+      hasRated,
+      hasInteracted:
+        Boolean(
+          row.interactedAt ||
+            row.soundEverOnAt ||
+            hasRated,
+        ),
+      everSoundOn:
+        Boolean(
+          row.soundEverOnAt ||
+            row.startedListeningAt,
+        ),
+    };
+  };
 
-        const raterKey =
-          radioWoloRaterKey(
-            row.userId,
-            row.listenerId,
+  const stateByTrafficVisitor =
+    new Map(
+      states
+        .filter(
+          (
+            row,
+          ): row is StateRow & {
+            trafficVisitorId:
+              string;
+          } =>
+            Boolean(
+              row.trafficVisitorId,
+            ),
+        )
+        .map(
+          (row) => [
+            row.trafficVisitorId,
+            row,
+          ] as const,
+        ),
+    );
+
+  const joinedStateIds =
+    new Set<string>();
+
+  const trafficListeners:
+    AdminRadioWoloAnalytics["listeners"] =
+    trafficAudience.map(
+      (traffic) => {
+        const state =
+          stateByTrafficVisitor.get(
+            traffic
+              .traffic_visitor_id,
+          ) ??
+          null;
+
+        if (state) {
+          joinedStateIds.add(
+            state.listenerId,
           );
+        }
 
-        const currentRating =
-          row.currentAssetId
-            ? ratingByIdentity.get(
-                `${row.currentAssetId}:${raterKey}`,
-              ) ??
-              null
-            : null;
+        const signals =
+          state
+            ? stateSignals(
+                state,
+              )
+            : {
+                status:
+                  "off" as const,
+                currentRating:
+                  null,
+                hasRated:
+                  false,
+                hasInteracted:
+                  false,
+                everSoundOn:
+                  false,
+              };
+
+        const trafficSeen =
+          new Date(
+            traffic.last_seen_at,
+          );
+        const stateSeen =
+          state?.lastSeenAt ??
+          null;
+
+        const lastSeenAt =
+          stateSeen &&
+          (
+            !Number.isFinite(
+              trafficSeen.getTime(),
+            ) ||
+            stateSeen >
+              trafficSeen
+          )
+            ? stateSeen.toISOString()
+            : traffic.last_seen_at;
+
+        const resolvedUid =
+          state?.user?.uid ||
+          traffic
+            .authenticated_uid ||
+          null;
+
+        const displayName =
+          state
+            ? displayNameFor(
+                state,
+              )
+            : (
+                traffic
+                  .known_visitor_label ||
+                `Anonymous · ${traffic.traffic_visitor_id.slice(-8)}`
+              );
 
         return {
           listenerId:
-            row.listenerId,
+            state?.listenerId ??
+            `traffic:${traffic.traffic_visitor_id}`,
           identityKind:
-            row.user
+            resolvedUid
               ? (
                   "user" as const
                 )
@@ -390,33 +697,155 @@ export async function loadAdminRadioWoloAnalytics(
                   "anonymous" as const
                 ),
           userUid:
-            row.user?.uid ??
-            null,
-          displayName:
-            displayNameFor(
-              row,
-            ),
-          status,
+            resolvedUid,
+          displayName,
+          status:
+            signals.status,
           storedListening:
-            row.listening,
+            state?.listening ??
+            false,
           lastEvent:
-            row.lastEvent,
-          lastSeenAt:
-            row.lastSeenAt.toISOString(),
+            state?.lastEvent ??
+            "off",
+          lastSeenAt,
           startedListeningAt:
-            row.startedListeningAt?.toISOString() ??
+            state?.startedListeningAt?.toISOString() ??
             null,
           stoppedListeningAt:
-            row.stoppedListeningAt?.toISOString() ??
+            state?.stoppedListeningAt?.toISOString() ??
             null,
           currentTrack:
-            row.currentAsset
+            state?.currentAsset
               ?.title ??
             null,
-          currentRating,
+          currentRating:
+            signals.currentRating,
+          trafficVisitorId:
+            traffic
+              .traffic_visitor_id,
+          visitCount:
+            Math.max(
+              1,
+              traffic
+                .visit_count,
+            ),
+          returnCount:
+            Math.max(
+              0,
+              traffic
+                .return_count,
+            ),
+          activeOnSite:
+            traffic.active_now,
+          currentPage:
+            traffic
+              .current_path ||
+            null,
+          hasInteracted:
+            signals
+              .hasInteracted,
+          everSoundOn:
+            signals
+              .everSoundOn,
+          hasRated:
+            signals.hasRated,
         };
       },
     );
+
+  const legacyRadioListeners:
+    AdminRadioWoloAnalytics["listeners"] =
+    states
+      .filter(
+        (row) =>
+          !joinedStateIds.has(
+            row.listenerId,
+          ),
+      )
+      .map(
+        (row) => {
+          const signals =
+            stateSignals(
+              row,
+            );
+
+          return {
+            listenerId:
+              row.listenerId,
+            identityKind:
+              row.user
+                ? (
+                    "user" as const
+                  )
+                : (
+                    "anonymous" as const
+                  ),
+            userUid:
+              row.user?.uid ??
+              null,
+            displayName:
+              displayNameFor(
+                row,
+              ),
+            status:
+              signals.status,
+            storedListening:
+              row.listening,
+            lastEvent:
+              row.lastEvent,
+            lastSeenAt:
+              row.lastSeenAt.toISOString(),
+            startedListeningAt:
+              row.startedListeningAt?.toISOString() ??
+              null,
+            stoppedListeningAt:
+              row.stoppedListeningAt?.toISOString() ??
+              null,
+            currentTrack:
+              row.currentAsset
+                ?.title ??
+              null,
+            currentRating:
+              signals
+                .currentRating,
+            trafficVisitorId:
+              row.trafficVisitorId,
+            visitCount: 1,
+            returnCount: 0,
+            activeOnSite:
+              false,
+            currentPage:
+              null,
+            hasInteracted:
+              signals
+                .hasInteracted,
+            everSoundOn:
+              signals
+                .everSoundOn,
+            hasRated:
+              signals.hasRated,
+          };
+        },
+      );
+
+  const listeners =
+    [
+      ...trafficListeners,
+      ...legacyRadioListeners,
+    ]
+      .sort(
+        (left, right) =>
+          Date.parse(
+            right.lastSeenAt,
+          ) -
+          Date.parse(
+            left.lastSeenAt,
+          ),
+      )
+      .slice(
+        0,
+        120,
+      );
 
   const tracks =
     [...trackGroups]
@@ -476,6 +905,22 @@ export async function loadAdminRadioWoloAnalytics(
             ),
         }),
       );
+
+  const totalListeners =
+    listeners.length;
+
+  const onCount =
+    listeners.filter(
+      (row) =>
+        row.status === "on",
+    ).length;
+
+  const signedInCount =
+    listeners.filter(
+      (row) =>
+        row.identityKind ===
+        "user",
+    ).length;
 
   return {
     generatedAt:

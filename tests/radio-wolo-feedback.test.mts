@@ -370,7 +370,7 @@ test(
 
     assert.match(
       rail,
-      /Who is listening, who turned it off, and what they rate/,
+      /Human traffic \+ Radio WOLO signals/,
     );
 
     assert.match(
@@ -406,11 +406,21 @@ test(
 );
 
 test(
-  "fresh listeners default to emoji ratings and every observed listener reaches Admin",
+  "Traffic owns passive human presence while Radio persists only meaningful product signals",
   () => {
     const hook =
       read(
         "hooks/useRadioWoloFeedback.ts",
+      );
+
+    const player =
+      read(
+        "components/radio/RadioWoloGlobalPlayer.tsx",
+      );
+
+    const analytics =
+      read(
+        "lib/adminRadioWoloAnalytics.ts",
       );
 
     const route =
@@ -420,7 +430,7 @@ test(
 
     const migration =
       read(
-        "prisma/migrations/20260902010000_add_radio_wolo_listener_feedback/migration.sql",
+        "prisma/migrations/20260920170000_radio_traffic_analytics/migration.sql",
       );
 
     assert.match(
@@ -430,27 +440,67 @@ test(
 
     assert.match(
       hook,
-      /useState<RadioWoloRatingStyle>\(\s*"emoji"/,
+      /if \(initial\) \{[\s\S]*if \(input\.soundEnabled\)[\s\S]*sendSignal\([\s\S]*"on"/,
     );
 
-    assert.match(
+    assert.doesNotMatch(
       hook,
       /input\.soundEnabled\s*\?\s*"on"\s*:\s*"off"/,
     );
 
     assert.match(
-      route,
-      /prisma\.radioListenerState\.upsert/,
+      hook,
+      /trafficVisitorId:[\s\S]*ids\.trafficVisitorId/,
+    );
+
+    assert.match(
+      hook,
+      /event:\s*"interact"/,
+    );
+
+    assert.match(
+      player,
+      /soundEnabled:\s*isActuallyPlaying\s*&&\s*!playbackBlocked/,
+    );
+
+    assert.match(
+      analytics,
+      /loadTrafficAudience/,
+    );
+
+    assert.match(
+      analytics,
+      /visitCount/,
+    );
+
+    assert.match(
+      analytics,
+      /exclude_from_human_analytics/,
     );
 
     assert.match(
       route,
-      /lastEvent:\s*"rate"/,
+      /requestIsSynthetic/,
+    );
+
+    assert.match(
+      route,
+      /soundEverOnAt/,
+    );
+
+    assert.match(
+      route,
+      /lastInteraction/,
     );
 
     assert.match(
       migration,
-      /'rate'/,
+      /"traffic_visitor_id"/,
+    );
+
+    assert.match(
+      migration,
+      /"sound_ever_on_at"/,
     );
   },
 );
