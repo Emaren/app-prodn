@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "51b279761d7059d7a0194c12da1cbf78d4e349169c45498fccc71cd211cd61b7",
+      "sha256": "181971bdf3c1e7562f400f6906b402bf848b603fa00bb4c5f3f4cb9a674422e2",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/manifest-no-change-recertification",
-    "commit": "3c5f6961b80199e2bde0496e27db312af6391b6f"
+    "branch": "hardening/supply-chain-v1",
+    "commit": "db09bdec20ecd3efece139c4375861b53292b5ce"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/manifest-no-change-recertification` at `3c5f6961b80199e2bde0496e27db312af6391b6f`
+Implementation baseline: `hardening/supply-chain-v1` at `db09bdec20ecd3efece139c4375861b53292b5ce`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
