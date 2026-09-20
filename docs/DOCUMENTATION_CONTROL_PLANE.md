@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `hardening/supply-chain-v1` at `db09bdec20ecd3efece139c4375861b53292b5ce`
+Implementation baseline: `hardening/supply-chain-v1` at `c6d2c21893fecc3ed6677b78506c76a303c35870`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

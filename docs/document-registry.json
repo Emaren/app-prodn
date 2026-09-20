@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "181971bdf3c1e7562f400f6906b402bf848b603fa00bb4c5f3f4cb9a674422e2",
+      "sha256": "18931b5369bb4eaaf135522713583e1217f4935dddf5bb51c0e0ee25feca7cf1",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "hardening/supply-chain-v1",
-    "commit": "db09bdec20ecd3efece139c4375861b53292b5ce"
+    "commit": "c6d2c21893fecc3ed6677b78506c76a303c35870"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
