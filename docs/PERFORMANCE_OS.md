@@ -736,6 +736,7 @@ A benchmark receipt binds measurements to:
 - active BUILD_ID;
 - build version;
 - benchmark mode and route cohort;
+- benchmark load contract and pacing profile;
 - sample count;
 - public TTFB and total-response percentiles;
 - public-vs-origin `/api/speed/check` seam;
@@ -745,14 +746,52 @@ A benchmark receipt binds measurements to:
 
 Cohort percentiles are calculated across per-route medians so one noisy route or
 extra request sample does not silently reweight the estate. Comparisons are always like-for-like:
-the same benchmark mode and exact ordered route cohort.
-Baseline Zero may seed the first `--full` comparison because it uses the same
-66-route cohort and route-median aggregation contract. A quick benchmark is
-never compared against the 66-route full baseline.
+the same benchmark mode, benchmark load contract, and exact ordered route cohort.
+
+Historical receipts without an explicit load profile are classified as
+`legacy-unpaced-v1`. Baseline Zero may seed only a legacy full comparison whose
+measurement contract is compatible with that historical evidence. Once a full
+benchmark uses the operator-safe contract, it requires another operator-safe
+receipt for a like-for-like comparison; Speed OS must not manufacture an
+"improvement" by comparing paced evidence to an unpaced baseline. A quick
+benchmark is never substituted for a full-estate baseline.
 
 The global `SpeedRuntime` is telemetry infrastructure. `SpeedReadyMarker` is the
 route-specific contract for application-ready timing. Global runtime presence
 must not be mistaken for complete route-level Ready coverage.
+
+## Production non-interference contract
+
+Performance observability is not allowed to become meaningful production load
+without declaring that load in the evidence contract. A full route campaign is
+more than its visible `route_count × rounds` cold pass: Speed OS also runs a
+bounded warm public keepalive pass and a direct-origin route-compute pass. On a
+79-route, five-round campaign that can approach roughly 870 measured route
+transfers before any bounded retry or stability probe is added.
+
+The `operator-safe-paced-v1` contract therefore governs new full benchmarks:
+
+- after every cold full-estate transfer, the controller yields 250 ms before
+  starting the next measured route request;
+- the large serial warm-public and direct-origin sequences use curl's request
+  rate limiter at `2/s`, preserving connection reuse while bounding request
+  starts;
+- quick benchmarks and the small automatic release pulse keep their existing
+  low-cost behavior and are not silently reclassified as the full campaign;
+- each full receipt records the load contract, cold delay, serial sequence rate,
+  and measured cold/warm/origin route-transfer counts;
+- `cold_elapsed_seconds` records the original cold route loop, while
+  `elapsed_seconds` records the complete benchmark wall time including the
+  auxiliary route probes;
+- campaign verification fails closed if a frozen full baseline used the legacy
+  unpaced contract. The operator must start a fresh operator-safe baseline
+  rather than compare different load shapes.
+
+The goal is not to make benchmark numbers prettier. The goal is to keep the
+measurement from materially altering the production system or the human browsing
+experience it is trying to observe. A benchmark that changes the measured system
+must be treated as a different measurement contract, not as directly comparable
+evidence.
 
 ## Baseline zero
 
@@ -929,6 +968,8 @@ and it must not be silently discarded.
 ## Fail-closed rules
 
 - A benchmark never mutates production.
+- A full benchmark must also respect the production non-interference load
+  contract; read-only traffic is not automatically harmless traffic.
 - Performance data may recommend a change; it does not bypass a release gate.
 - Missing timing evidence is reported as missing evidence, not inferred.
 - Performance timing is observational: missing timing evidence is surfaced as missing evidence and must not invalidate an otherwise correct release transaction.

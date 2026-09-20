@@ -1442,3 +1442,38 @@ defense in depth, with regression coverage for both the allowed live placeholder
 and the rejected finality placeholder. Do not broaden the exclusion to all
 pending-parse rows; doing so would trade duplicate stale cards for missing real
 new games.
+
+## 2026-09-19 — Observability must not become the production incident
+
+While a full Speed OS campaign was running, interactive browsing showed several
+multi-second page loads. The later certified release pulse and full-estate
+measurements returned to the normal hundreds-of-milliseconds range, so that
+correlation does not prove that every slow page was caused by the benchmark.
+
+The tooling audit nevertheless proved a real observability defect. A 79-route,
+five-round campaign did not stop at 395 cold public requests: it followed with
+up to three warm public rounds and three direct-origin rounds, for roughly 870
+measured route transfers before retries or stability probes. Those large serial
+passes had no inter-route pacing. The benchmark was read-only, but read-only
+dynamic pages can still consume application CPU, database work, cache fills and
+downstream capacity. The old receipt also stopped `elapsed_seconds` after the
+cold pass, hiding the auxiliary probe wall time.
+
+Durable rule: observational tooling needs a production non-interference contract,
+not merely a no-mutation contract. New full campaigns use
+`operator-safe-paced-v1`: cold route starts yield 250 ms, large serial
+keepalive/origin passes are capped at two request starts per second, and receipts
+record the exact load profile plus cold/warm/origin transfer counts. Total
+benchmark wall time includes the auxiliary probes; cold-loop time remains
+separately available.
+
+Measurement shape is part of evidence identity. Historical receipts without a
+load profile remain `legacy-unpaced-v1`; they are valid historical evidence but
+must not be compared as like-for-like Before data against the paced contract.
+Likewise, a frozen legacy full campaign cannot be verified under the new pacing
+profile. Start a fresh operator-safe baseline instead of creating a false speed
+gain by changing the load generator.
+
+General rule: if an observability system can materially change the system under
+observation, govern and version that load explicitly. Do not optimize the chart
+by changing the experiment and pretending the experiment stayed the same.

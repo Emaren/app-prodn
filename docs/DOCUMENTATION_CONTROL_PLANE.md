@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/live-final-placeholder-lane` at `6cecf40d214c547c68b4429decc0c0e569d68c03`
+Implementation baseline: `fix/speed-benchmark-noninterference` at `8581d066973c7900f132f9995eda19e5e4e9ff92`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
