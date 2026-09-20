@@ -780,6 +780,9 @@ The `operator-safe-paced-v1` contract therefore governs new full benchmarks:
   low-cost behavior and are not silently reclassified as the full campaign;
 - each full receipt records the load contract, cold delay, serial sequence rate,
   and measured cold/warm/origin route-transfer counts;
+- a full benchmark is not successful until the final receipt has sealed all
+  three transfer rails; regression coverage must execute the integrated receipt
+  finalization path, not only the cold/warm/origin helper functions;
 - `cold_elapsed_seconds` records the original cold route loop, while
   `elapsed_seconds` records the complete benchmark wall time including the
   auxiliary route probes;

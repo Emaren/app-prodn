@@ -770,6 +770,143 @@ class PerformanceOSTests(unittest.TestCase):
             any("Traffic performance-ingest" in action for action in advice["actions"])
         )
 
+    def test_full_benchmark_seals_operator_safe_transfer_counts(self):
+        routes = ["/a", "/b"]
+        warm_samples = [
+            {
+                "ok": True,
+                "path": path,
+                "ttfb_ms": 40.0,
+                "total_ms": 50.0,
+                "download_bytes": 100,
+                "new_connections": 0 if round_no > 1 else 1,
+            }
+            for round_no in range(1, 3)
+            for path in routes
+        ]
+        origin_samples = [
+            {
+                "ok": True,
+                "path": path,
+                "ttfb_ms": 10.0,
+                "total_ms": 12.0,
+                "download_bytes": 100,
+                "new_connections": 0 if round_no > 1 else 1,
+            }
+            for round_no in range(1, 3)
+            for path in routes
+        ]
+
+        def cold_sample(_url, retries=1):
+            self.assertEqual(retries, 1)
+            return (
+                {
+                    "ok": True,
+                    "ttfb_ms": 100.0,
+                    "total_ms": 120.0,
+                    "download_bytes": 100,
+                },
+                [],
+            )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            with (
+                patch.object(
+                    SPEED_MODULE,
+                    "PERFORMANCE_RECEIPTS",
+                    pathlib.Path(tmp),
+                ),
+                patch.object(
+                    SPEED_MODULE,
+                    "collect_release_identity",
+                    return_value={
+                        "certification": "CERTIFIED",
+                        "release_sha": "a" * 40,
+                        "build_id": "build",
+                        "build_version": "version",
+                    },
+                ),
+                patch.object(
+                    SPEED_MODULE,
+                    "benchmark_sample",
+                    side_effect=cold_sample,
+                ),
+                patch.object(
+                    SPEED_MODULE,
+                    "benchmark_inter_request_pause",
+                ) as pause,
+                patch.object(
+                    SPEED_MODULE,
+                    "warm_route_probe",
+                    return_value={
+                        "available": True,
+                        "request_rate": SPEED_MODULE.FULL_BENCHMARK_SEQUENCE_RATE,
+                        "samples": warm_samples,
+                    },
+                ) as warm_probe,
+                patch.object(
+                    SPEED_MODULE,
+                    "remote_origin_route_probe",
+                    return_value={
+                        "available": True,
+                        "request_rate": SPEED_MODULE.FULL_BENCHMARK_SEQUENCE_RATE,
+                        "samples": origin_samples,
+                    },
+                ) as origin_probe,
+                patch.object(
+                    SPEED_MODULE,
+                    "remote_origin_stability_probe",
+                    return_value={"available": False, "routes": {}},
+                ),
+                patch.object(
+                    SPEED_MODULE,
+                    "remote_browser_performance_overview",
+                    return_value={"available": False},
+                ),
+                patch.object(
+                    SPEED_MODULE,
+                    "origin_seam",
+                    return_value={"available": False},
+                ),
+                patch.object(
+                    SPEED_MODULE,
+                    "ready_coverage",
+                    return_value={"available": False},
+                ),
+                patch.object(
+                    SPEED_MODULE,
+                    "production_capacity_snapshot",
+                    return_value={"available": False},
+                ),
+                patch.object(
+                    SPEED_MODULE,
+                    "production_performance_incidents",
+                    return_value={"available": False},
+                ),
+            ):
+                payload = SPEED_MODULE.benchmark(
+                    full=True,
+                    rounds=2,
+                    routes_override=routes,
+                )
+                receipt_exists = pathlib.Path(payload["_path"]).is_file()
+
+        profile = payload["load_profile"]
+        self.assertEqual(
+            profile["contract"],
+            SPEED_MODULE.FULL_BENCHMARK_LOAD_CONTRACT,
+        )
+        self.assertEqual(profile["cold_route_transfer_count"], 4)
+        self.assertEqual(profile["warm_route_transfer_count"], 4)
+        self.assertEqual(profile["origin_route_transfer_count"], 4)
+        self.assertEqual(profile["measured_route_transfer_count"], 12)
+        self.assertEqual(payload["request_count"], 4)
+        self.assertEqual(payload["route_count"], 2)
+        self.assertTrue(receipt_exists)
+        self.assertEqual(pause.call_count, 4)
+        warm_probe.assert_called_once_with(routes, 2, operator_safe=True)
+        origin_probe.assert_called_once_with(routes, 2, operator_safe=True)
+
     def test_speed_benchmark_records_recent_incident_counts(self):
         source = SPEED.read_text(encoding="utf-8")
         self.assertIn("def production_performance_incidents", source)

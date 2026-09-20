@@ -1506,3 +1506,30 @@ General rule: when a before/after workflow advances the authority for freshness,
 advance recommendation derivation to the same authority or label the mismatch
 explicitly. Never let a control plane be temporally fresh and strategically
 stale at the same time.
+
+## 2026-09-19 — Measurement is incomplete until the receipt seals
+
+The first live `operator-safe-paced-v1` full campaign successfully completed its
+cold public measurements, its rate-limited warm public pass, and its rate-limited
+direct-origin pass. Both high-volume serial rails were observed live using
+`curl --rate 2/s`. After roughly nine minutes of valid measurement work, receipt
+finalization crashed because the load-profile counter referenced
+`warm_route_samples` while the collected list was actually named `warm_samples`.
+
+No performance baseline was sealed, so the measurement could not become current
+Speed OS authority even though the requests themselves had completed.
+
+Durable rule: a benchmark is not complete when its probes finish; it is complete
+only when the durable receipt seals successfully. Tests for observability
+pipelines must execute the integrated finalization path that joins helper outputs
+into the receipt, because helper-level tests cannot catch a stale local symbol or
+assembly error at the evidence boundary.
+
+The fix binds warm transfer accounting to the actual `warm_samples` collection
+and adds an integration test that runs a full mocked benchmark through receipt
+creation. The test asserts exact cold, warm, origin, and aggregate transfer
+counts plus receipt existence.
+
+General rule: the evidence assembler is production code. Treat receipt sealing
+with the same end-to-end regression coverage as the probes whose evidence it
+records.
