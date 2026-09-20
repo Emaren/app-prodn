@@ -1412,3 +1412,33 @@ A standard clean-tree `NO_CHANGE` gate must never authorize a recertification.
 Conversely, an already-certified same-source runtime remains the ordinary no-op.
 The special validation identity exists only while the shared fail-closed
 same-source predicate is true.
+
+## 2026-09-20 — Finality timestamp refresh is not active-live authority
+
+Scavanger_Ab exposed a lifecycle projection bug that initially looked like a
+Watcher upload failure. The support funnel showed repeated deferrals and the
+public live board showed five simultaneous Scavanger cards. Read-only production
+telemetry proved the opposite on the transport rail: Watcher 1.5.12 was healthy,
+ordinary live uploads were returning HTTP 200 and parsing successfully, there
+were no upload_failed events in the observed 24-hour window, and there were no
+batch_upload_* events at all.
+
+The five false live cards were older .aoe2mpgame finality candidates. They had
+been created earlier, remained is_final = false, and carried
+parse_source = watcher_final with parse_reason = watcher_live_pending_parse. A
+later finality re-observation refreshed their timestamp, so the active snapshot's
+old "non-final + recent activity" admission rule temporarily treated them as
+live again.
+
+Durable rule: timestamp freshness is not lifecycle authority. A
+watcher_live + watcher_live_pending_parse row is legitimate early-live truth and
+must remain visible while a growing replay becomes parseable. The same
+pending-parse reason under watcher_final* is finality/review work and must never
+enter the active-live lane merely because its observation timestamp was
+refreshed. Final-proof visibility remains a separate bounded presentation rail.
+
+The guard is enforced in the live-session projector after the database query as
+defense in depth, with regression coverage for both the allowed live placeholder
+and the rejected finality placeholder. Do not broaden the exclusion to all
+pending-parse rows; doing so would trade duplicate stale cards for missing real
+new games.

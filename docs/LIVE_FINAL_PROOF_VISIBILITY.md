@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-09-08"
+reviewed_at: "2026-09-20"
 review_interval_days: 60
 sensitivity: "internal"
 ---
@@ -44,6 +44,24 @@ During that window:
 The visibility hold changes presentation only. It does not reopen betting,
 downgrade final transport evidence, or authorize settlement without canonical
 result truth.
+
+### Active-live authority is not inherited from finality placeholders
+
+**watcher_live_pending_parse** describes two different transport contexts and
+must not be interpreted without its parse source:
+
+- **watcher_live + watcher_live_pending_parse** is a legitimate early live
+  placeholder. It may represent a currently growing replay before the parser can
+  extract substantive battle facts.
+- **watcher_final* + watcher_live_pending_parse** is finality/review work. It is
+  not evidence that the battle became live again and must never populate the
+  active-live lane merely because a later finality observation refreshed the
+  row's activity timestamp.
+
+Final-proof visibility remains available through the explicit bounded
+final-proof presentation contract above. A refreshed timestamp cannot upgrade a
+finality placeholder into active-live authority, increase liveCount, reopen a
+market, or create a new live battle card.
 
 ## Deadline and refresh invariants
 
