@@ -345,19 +345,49 @@ def latest_performance(now: datetime) -> dict[str, Any]:
         or campaign.get("started_at")
     )
 
-    targets = []
-    for row in (analysis.get("targets") or [])[:10]:
-        if not isinstance(row, dict):
-            continue
-        targets.append(
-            {
-                "path": row.get("path"),
-                "median_ttfb_ms": row.get("median_ttfb_ms"),
-                "median_total_ms": row.get("median_total_ms"),
-                "reasons": row.get("reasons") or [],
-                "recommendation": row.get("recommendation") or [],
-            }
-        )
+    def target_rows(source_analysis: dict[str, Any]) -> list[dict[str, Any]]:
+        rows: list[dict[str, Any]] = []
+        for row in (source_analysis.get("targets") or [])[:10]:
+            if not isinstance(row, dict):
+                continue
+            rows.append(
+                {
+                    "path": row.get("path"),
+                    "median_ttfb_ms": row.get("median_ttfb_ms"),
+                    "median_total_ms": row.get("median_total_ms"),
+                    "reasons": row.get("reasons") or [],
+                    "recommendation": row.get("recommendation") or [],
+                }
+            )
+        return rows
+
+    baseline_targets = target_rows(analysis)
+    targets = baseline_targets
+    target_basis = "baseline_analysis"
+    target_release_sha = baseline.get("release_sha")
+
+    verification_receipt = verification.get("receipt") if verification else None
+    if isinstance(verification_receipt, str) and verification_receipt.strip():
+        receipt_path = Path(verification_receipt)
+        if not receipt_path.is_absolute():
+            receipt_path = ROOT / receipt_path
+        try:
+            after_receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            after_receipt = None
+        if isinstance(after_receipt, dict):
+            inventory_after = (
+                (verification.get("source_inventory") or {}).get("after")
+                if isinstance(verification.get("source_inventory"), dict)
+                else None
+            )
+            verified_analysis = aoe2_speed_campaign.analyze_baseline(
+                after_receipt,
+                inventory_after if isinstance(inventory_after, dict) else None,
+            )
+            targets = target_rows(verified_analysis)
+            target_basis = "verification_after"
+            target_release_sha = verification.get("release_sha")
 
     effective_release_sha = (
         verification.get("release_sha")
@@ -398,6 +428,9 @@ def latest_performance(now: datetime) -> dict[str, Any]:
         if verification
         else None,
         "targets": targets,
+        "target_basis": target_basis,
+        "target_release_sha": target_release_sha,
+        "baseline_targets": baseline_targets,
         "cold_lcp": cold_lcp,
         "edge_delivery": edge_delivery,
         "freshness": freshness(

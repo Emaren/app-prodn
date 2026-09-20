@@ -734,6 +734,104 @@ class KingdomIntelligenceTests(unittest.TestCase):
             perf["verification"]["total_p50_after_ms"],
             556.1,
         )
+        self.assertEqual(perf["target_basis"], "baseline_analysis")
+        self.assertEqual(perf["target_release_sha"], "b" * 40)
+
+    def test_verified_campaign_targets_use_after_receipt_analysis(self):
+        now = datetime(2026, 9, 7, 2, 10, tzinfo=timezone.utc)
+        after_receipt = {
+            "release_sha": "a" * 40,
+            "routes": [
+                {
+                    "path": "/after",
+                    "median_ttfb_ms": 250.0,
+                    "median_total_ms": 400.0,
+                }
+            ],
+        }
+        campaign = {
+            "campaign_id": "before-after",
+            "status": "verified",
+            "started_at": "2026-09-05T22:44:24Z",
+            "verified_at": "2026-09-07T02:10:00Z",
+            "baseline": {
+                "release_sha": "b" * 40,
+                "build_id": "before-build",
+                "route_count": 1,
+                "cohort": {"ttfb_p50_ms": 400.0, "total_p50_ms": 587.2},
+            },
+            "analysis": {
+                "targets": [
+                    {
+                        "path": "/before",
+                        "median_ttfb_ms": 800.0,
+                        "median_total_ms": 1200.0,
+                        "reasons": ["baseline"],
+                        "recommendation": ["old"],
+                    }
+                ]
+            },
+            "verification": {
+                "status": "WARN",
+                "release_sha": "a" * 40,
+                "build_id": "after-build",
+                "build_version": "after-version",
+                "receipt": "after.json",
+                "source_inventory": {"after": {"pages": []}},
+                "overall": {
+                    "ttfb_p50_before_ms": 400.0,
+                    "ttfb_p50_after_ms": 384.4,
+                    "total_p50_before_ms": 587.2,
+                    "total_p50_after_ms": 556.1,
+                },
+            },
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            pathlib.Path(tmp, "after.json").write_text(
+                json.dumps(after_receipt),
+                encoding="utf-8",
+            )
+            with (
+                patch.object(
+                    MODULE.aoe2_speed_campaign,
+                    "latest_campaign",
+                    return_value=campaign,
+                ),
+                patch.object(MODULE, "ROOT", pathlib.Path(tmp)),
+                patch.object(
+                    MODULE,
+                    "latest_cold_lcp",
+                    return_value={"available": False},
+                ),
+                patch.object(
+                    MODULE,
+                    "latest_edge_delivery",
+                    return_value={"available": False},
+                ),
+                patch.object(
+                    MODULE.aoe2_speed_campaign,
+                    "analyze_baseline",
+                    return_value={
+                        "targets": [
+                            {
+                                "path": "/after",
+                                "median_ttfb_ms": 250.0,
+                                "median_total_ms": 400.0,
+                                "reasons": ["current"],
+                                "recommendation": ["new"],
+                            }
+                        ]
+                    },
+                ) as analyze,
+            ):
+                perf = MODULE.latest_performance(now)
+
+        self.assertEqual(perf["target_basis"], "verification_after")
+        self.assertEqual(perf["target_release_sha"], "a" * 40)
+        self.assertEqual(perf["targets"][0]["path"], "/after")
+        self.assertEqual(perf["targets"][0]["median_ttfb_ms"], 250.0)
+        self.assertEqual(perf["baseline_targets"][0]["path"], "/before")
+        analyze.assert_called_once_with(after_receipt, {"pages": []})
 
     def test_certified_finish_demotes_storage_to_maintenance(self):
         perf = performance()
