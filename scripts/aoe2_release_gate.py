@@ -258,7 +258,9 @@ def path_risk(path: str) -> str:
 
     if p in {
         "scripts/aoe2_watcher_staging.py",
+        "scripts/aoe2_watcher_release.py",
         "tests/test_aoe2_watcher_staging.py",
+        "tests/test_aoe2_watcher_release.py",
     }:
         return "INFRASTRUCTURE"
 
@@ -488,6 +490,7 @@ def command_plan(
             "scripts/aoe2_storage_expire.py",
             "scripts/aoe2_storage_retention.py",
             "scripts/aoe2_watcher_staging.py",
+            "scripts/aoe2_watcher_release.py",
             "scripts/aoe2_storage.py",
             "scripts/aoe2_storage_campaign.py",
             "scripts/aoe2_docs.py",
@@ -515,6 +518,7 @@ def command_plan(
             "tests/test_aoe2_storage_expire.py",
             "tests/test_aoe2_storage_retention.py",
             "tests/test_aoe2_watcher_staging.py",
+            "tests/test_aoe2_watcher_release.py",
             "scripts/run_test_contract.py",
             "scripts/scan_tracked_secrets.py",
             "tests/test_test_contract.py",
@@ -572,6 +576,7 @@ def command_plan(
                     "tests/test_aoe2_storage_expire.py",
                     "tests/test_aoe2_storage_retention.py",
                     "tests/test_aoe2_watcher_staging.py",
+                    "tests/test_aoe2_watcher_release.py",
                     "tests/test_aoe2_storage.py",
                     "tests/test_aoe2_storage_campaign.py",
                     "tests/test_aoe2_docs.py",
@@ -618,6 +623,7 @@ def command_plan(
                     "scripts/aoe2_storage_expire.py",
                     "scripts/aoe2_storage_retention.py",
                     "scripts/aoe2_watcher_staging.py",
+                    "scripts/aoe2_watcher_release.py",
                     "scripts/aoe2_storage.py",
                     "scripts/aoe2_storage_campaign.py",
                     "scripts/aoe2_docs.py",
