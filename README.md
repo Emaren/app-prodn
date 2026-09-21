@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "repository-entrypoint"
-reviewed_at: "2026-08-20"
+reviewed_at: "2026-09-21"
 review_interval_days: 60
 sensitivity: "internal"
 ---
@@ -420,7 +420,7 @@ These routes are important because they often do more than simple pass-through w
 - Twitch/YouTube/custom watch feeds remain external fallbacks through `game_watch_streams`, but they are not required for AoE2WAR browser streaming.
 - Recent Match Feed sorts and displays the backend `played_at` contract so bulk reparses of old saved games do not outrank newer actual matches
 - Watcher final uploads can store header-only fallback rows when MGZ full-summary decoding fails; fallback rows are explicit parser breadcrumbs and do not fabricate a winner or postgame resource table
-- Watcher packages: generated in `aoe2-watcher/dist`, then synced into `public/downloads` with `npm run watcher:sync`
+- Watcher packages: certify/publish the release first, run `npm run watcher:sync` for the local transactional release contract, then use `aoe2war watcher-release --apply` to prove the exact 11 public GitHub release digests and promote those bytes into the production download vault before any WATCHER-risk app deployment advertises the new version
 - Watcher latest-version metadata: `/api/watcher/release` feeds the desktop app's Update / Latest Version indicator
 - Watcher telemetry ingress coalesces only repeated `replay_detected_ignored` events whose reason is `monitoring`, per resolved watcher/replay identity, to one stored summary every 30 seconds. The response reports exact `stored`, `suppressed`, and `failed` counts; monitor-stop clears the replay window, and upload/parser/result/finality events are never coalesced. This server guard protects production immediately even when an installed watcher predates client-side coalescing.
 - Watcher pairing route: `/profile?watcher_pair=1` (mints a key and launches `aoe2hd-watcher://pair?...`)
