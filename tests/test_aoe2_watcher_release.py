@@ -241,9 +241,12 @@ class WatcherReleasePolicyTests(unittest.TestCase):
             mock.patch.object(
                 MODULE,
                 "invoke_remote",
-                side_effect=MODULE.WatcherReleasePromotionError(
-                    "transport lost after remote worker start"
-                ),
+                side_effect=[
+                    {"status": "READY"},
+                    MODULE.WatcherReleasePromotionError(
+                        "transport lost after remote worker start"
+                    ),
+                ],
             ),
             mock.patch.object(
                 MODULE, "cleanup_failed_stage"
@@ -253,6 +256,68 @@ class WatcherReleasePolicyTests(unittest.TestCase):
             ),
             mock.patch.object(
                 MODULE.Path, "resolve", return_value=pathlib.Path("/tmp/fake-dist")
+            ),
+            mock.patch.dict(
+                "sys.modules",
+                {"aoe2_release": mock.MagicMock()},
+            ),
+        ):
+            aoe2_release = __import__("aoe2_release")
+            lease = mock.MagicMock()
+            lease.__enter__.return_value = None
+            lease.__exit__.return_value = False
+            aoe2_release.global_release_lease.return_value = lease
+            rc = MODULE.main(argv)
+
+        self.assertEqual(rc, 2)
+        cleanup.assert_not_called()
+
+    def test_preexisting_stage_is_never_cleaned_on_create_refusal(self):
+        policy = MODULE.policy_from_contract(MODULE.load_contract())
+        plan = {
+            "version": "9.9.9",
+            "bundle_digest_sha256": "a" * 64,
+        }
+        argv = [
+            "--apply",
+            "--version",
+            "9.9.9",
+            "--source",
+            "/tmp/fake-dist",
+        ]
+
+        with (
+            mock.patch.object(
+                MODULE, "policy_from_contract", return_value=policy
+            ),
+            mock.patch.object(MODULE, "load_contract", return_value={}),
+            mock.patch.object(MODULE, "build_plan", return_value=plan),
+            mock.patch.object(
+                MODULE,
+                "stage_path",
+                return_value=(
+                    MODULE.CANONICAL_STAGING_ROOT
+                    + "/promote-9.9.9-aaaaaaaaaaaa"
+                ),
+            ),
+            mock.patch.object(
+                MODULE,
+                "invoke_remote",
+                return_value={"status": "READY"},
+            ),
+            mock.patch.object(
+                MODULE,
+                "create_remote_stage",
+                side_effect=MODULE.WatcherReleasePromotionError(
+                    "stage already exists"
+                ),
+            ),
+            mock.patch.object(
+                MODULE, "cleanup_failed_stage"
+            ) as cleanup,
+            mock.patch.object(
+                MODULE.Path, "resolve",
+                return_value=pathlib.Path("/tmp/fake-dist"),
             ),
             mock.patch.dict(
                 "sys.modules",
