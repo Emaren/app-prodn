@@ -103,6 +103,18 @@ disagree, stop and reconcile them before production mutation.
     restores every prior target byte in reverse order. Temporary stage/backup
     directories are removed on both success and failure.
 
+19. Production Watcher distribution promotion is a separate governed
+    transaction: `aoe2war watcher-release` proves the exact local 11-file
+    bundle against the public `Emaren/aoe2-watcher` GitHub release digest
+    multiset, then `--apply` stages those bytes on the canonical mounted
+    volume and promotes them under the global release lease plus a dedicated
+    remote lock. Payloads and inventory receipts precede updater manifests.
+    Existing matching files are idempotent; a fully matching vault is a
+    zero-upload `NOOP`. Production source/build/service and Wolo listener
+    identity are re-proven and may not change. An existing deterministic stage
+    or lost transport after privileged mutation begins is preserved as
+    uncertain transaction evidence rather than auto-cleaned or blindly retried.
+
 ## Root control assets and mounted build scratch
 
 `aoe2war finish` owns the root-controlled release helpers needed by staging.
