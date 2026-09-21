@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "366f13857110c3e4e00d32e072a9170d53bd2b110c2cab6a5e00d8bc5be35f44",
+      "sha256": "c44d7b60a64bb4410604a6605ecfdfc997600ce05b2ec149a56f48bc2390d2a4",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/staking-precision-migration-lane-20260921",
-    "commit": "cd1078a9bc5d06a52c155e8d195766b20daa7520"
+    "branch": "release/watcher-1.5.13-app-20260921",
+    "commit": "92c37e6ffdc6b6d2793a4a5379fb53d00cbf3e6c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
