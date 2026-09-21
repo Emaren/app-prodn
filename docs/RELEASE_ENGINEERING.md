@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "release-engineering-contract"
-reviewed_at: "2026-08-24"
+reviewed_at: "2026-09-21"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -85,6 +85,15 @@ disagree, stop and reconcile them before production mutation.
     atomically replaced, daemon-reloaded without service restart, Wolo-guarded,
     and durably receipted. The build-scratch parent is root-created but owned by
     the unprivileged release user with mode `0750`.
+17. A `WATCHER`-risk release may not stage application metadata ahead of its
+    distributable bytes. Before candidate materialization, Release OS derives
+    the Watcher version from the exact sealed release commit and proves the
+    canonical mounted download vault contains the complete nine-file release
+    inventory plus both inventory receipts. The release manifest, checksum
+    receipt, actual file sizes/hashes, and Windows/macOS/Linux updater manifests
+    must all agree exactly; missing files, duplicate or unexpected checksum
+    entries, symlinks, version drift, path drift, or digest disagreement fail
+    closed while the live source and runtime remain untouched.
 
 ## Root control assets and mounted build scratch
 
@@ -481,6 +490,17 @@ The manifest and companion SHA-256 live beneath
 `.aoe2war-release/manifests/`.
 
 ### 6. Isolated stage beside live
+
+For `WATCHER` risk, staging begins with a distribution preflight against
+`/mnt/HC_Volume_105319120/aoe2-downloads`. The target version is read from
+`lib/watcherRelease.ts` at the exact release SHA. The preflight requires the
+five user-facing binaries, DMG blockmap, and three updater manifests to match
+both `SHA256SUMS-<version>.txt` and
+`watcher-release-manifest-<version>.json`; the two receipts must be regular
+non-symlink files, their inventories must be exact, and each updater manifest
+must name the same version and expected platform binary. Successful evidence is
+written into the stage receipt before any candidate worktree or dependency
+fetch exists.
 
 Production source remains on the manifest's previous production SHA throughout
 staging. The engine fetches the sealed release, verifies pinned Yarn `1.22.22`,
