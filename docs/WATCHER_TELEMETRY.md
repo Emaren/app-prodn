@@ -66,6 +66,16 @@ agree byte-for-byte. The updater manifests must advertise the same version and
 expected platform binaries. Missing, extra, duplicate, symlinked, stale, or
 digest-disagreeing evidence stops staging while production remains untouched.
 
+The source-side `yarn watcher:sync` path now follows the same ordering rule
+before a release can reach that production preflight. It validates the complete
+certified Watcher distribution and both receipts before touching destination
+state, copies everything into a same-filesystem hidden staging directory,
+re-validates the staged canonical bundle, then promotes payloads/receipts before
+the updater YAMLs. `lib/watcherRelease.ts` is committed last. The promotion
+keeps byte-for-byte backups of replaced targets and restores the entire prior
+vault if that final metadata write fails; regression coverage forces exactly
+that post-promotion failure and proves rollback plus staging cleanup.
+
 ## v1.6.0 low-footprint lifecycle and self-update
 
 Watcher 1.6.0 separates the replay engine from the Chromium dashboard. Login startup may arm in tray-only background mode with no BrowserWindow alive; opening the dashboard creates the renderer on demand, and closing it destroys the renderer while replay monitoring continues. The renderer is sandboxed, dashboard log growth is bounded, runtime-event paints are coalesced, config/folder inspection is cached, and idle recovery/freshness safety nets run at deliberately low frequency.
