@@ -268,8 +268,7 @@ export async function validateWatcherReleaseBundle(root, version) {
 
   const checksumText = await fs.readFile(path.join(root, receipts[0]), "utf8");
   const checksumEntries = new Map();
-  for (const line of checksumText.split(/?
-/)) {
+  for (const line of checksumText.split(/\r?\n/)) {
     if (!line) {
       continue;
     }
@@ -304,8 +303,7 @@ export async function validateWatcherReleaseBundle(root, version) {
   for (const [manifestName, expectedPath] of updaterRules(version)) {
     const lines = (
       await fs.readFile(path.join(root, manifestName), "utf8")
-    ).split(/?
-/);
+    ).split(/\r?\n/);
     if (!lines.includes(`version: ${version}`)) {
       throw new Error(
         `Watcher updater version mismatch: ${manifestName}`,
@@ -609,7 +607,7 @@ export async function syncWatcherRelease({
     await fs.readFile(watcherPackagePath, "utf8"),
   );
   const version = watcherPackage.version;
-  if (!/^d+.d+.d+$/.test(version)) {
+  if (!/^\d+\.\d+\.\d+$/.test(version)) {
     throw new Error(`Watcher package version is invalid: ${version}`);
   }
 
