@@ -303,6 +303,7 @@ if [ -n "$WATCHER_VERSION" ]; then
   python3 - "$WATCHER_DOWNLOAD_ROOT" "$WATCHER_VERSION" <<'PY'
 import hashlib
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -357,6 +358,30 @@ for row in rows:
     if row.get("sha256") != digest:
         raise SystemExit(
             f"STOP: WATCHER release manifest SHA-256 mismatch: {{name}}"
+        )
+
+checksum_entries = {{}}
+for line in (root / receipts[0]).read_text(encoding="utf-8").splitlines():
+    if not line:
+        continue
+    match = re.fullmatch(r"([0-9a-f]{{64}})  (.+)", line)
+    if not match:
+        raise SystemExit("STOP: WATCHER checksum receipt contains an invalid row")
+    digest, name = match.groups()
+    if name in checksum_entries:
+        raise SystemExit(
+            f"STOP: WATCHER checksum receipt contains duplicate file: {{name}}"
+        )
+    checksum_entries[name] = digest
+
+if set(checksum_entries) != set(expected):
+    raise SystemExit("STOP: WATCHER checksum receipt inventory mismatch")
+
+manifest_hashes = {{row["filename"]: row["sha256"] for row in rows}}
+for name in expected:
+    if checksum_entries[name] != manifest_hashes[name]:
+        raise SystemExit(
+            f"STOP: WATCHER checksum and release manifest disagree: {{name}}"
         )
 
 manifest_rules = {{
