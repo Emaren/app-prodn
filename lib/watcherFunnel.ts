@@ -4,6 +4,7 @@ import {
   type UnresolvedWatcherResult,
 } from "@/lib/unresolvedWatcherResult";
 import { WATCHER_RELEASE } from "@/lib/watcherRelease";
+import { deriveReplayDetectionGapWarning } from "@/lib/watcherDetectionGap";
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 const WATCHER_PARSE_SOURCES = ["watcher_live", "watcher_final"] as const;
@@ -980,6 +981,19 @@ async function loadFocusUserDiagnostics(
   const independentState = deriveIndependentWatcherState(recentEvents, lastEvent?.appVersion ?? null);
   if (lastServerReplay && !lastUpload) {
     independentState.warnings.push("Replay received by server but upload telemetry is missing.");
+  }
+
+  const replayDetectionGapWarning = deriveReplayDetectionGapWarning({
+    connected: independentState.connected,
+    monitorState: independentState.monitorState,
+    folderState: independentState.folderState,
+    folderActivityProven: independentState.folderActivityProven,
+    currentReplay: independentState.currentReplay,
+    folderLatestReplayModifiedAt: independentState.folderLatestReplayModifiedAt,
+    lastServerReplayAt: lastServerReplay?.createdAt ?? null,
+  });
+  if (replayDetectionGapWarning) {
+    independentState.warnings.push(replayDetectionGapWarning);
   }
 
   const displayEvents = recentEvents.filter((event) => {
