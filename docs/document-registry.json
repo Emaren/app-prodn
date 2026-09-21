@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "f5f4ed0e2a7059cd29a526f0c91f12436c7540276f1f6a5a49f27b7286807236",
+      "sha256": "366f13857110c3e4e00d32e072a9170d53bd2b110c2cab6a5e00d8bc5be35f44",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/staking-reward-micro-carry-20260921",
-    "commit": "2e5870be092fd61c82074b5cad30868358f0a0af"
+    "branch": "fix/staking-precision-migration-lane-20260921",
+    "commit": "cd1078a9bc5d06a52c155e8d195766b20daa7520"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

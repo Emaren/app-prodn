@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/staking-reward-micro-carry-20260921` at `2e5870be092fd61c82074b5cad30868358f0a0af`
+Implementation baseline: `fix/staking-precision-migration-lane-20260921` at `cd1078a9bc5d06a52c155e8d195766b20daa7520`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
