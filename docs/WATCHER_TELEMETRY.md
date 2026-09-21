@@ -39,6 +39,33 @@ Secondary release evidence is also pinned: macOS DMG blockmap `d06e9206b9db50401
 
 The GitHub Actions integration passed every provenance, inventory, updater-metadata, and artifact-hash gate but was denied release creation with HTTP `403 Resource not accessible by integration`. The certified bundle was therefore published against the pre-created annotated tag by the authenticated repository owner without rebuilding or replacing any candidate artifact. The durable workflow now stops at a certified release-bundle handoff instead of pretending the integration has release-create authority.
 
+## 2026-09-21 distribution-ordering incident and permanent invariant
+
+The first app-side 1.6.0 promotion exposed a release-ordering gap. The certified
+web runtime and `/api/watcher/release` advertised Watcher 1.6.0 while the
+canonical mounted download vault still lacked four versioned 1.6.0 packages and
+the two 1.6.0 inventory receipts; the shared direct ZIP and updater YAMLs still
+contained the previous release bytes. Application certification had proved the
+web runtime, but it had not yet made Watcher distribution identity a release
+precondition.
+
+Recovery used the already-certified public release bundle; no Watcher was
+rebuilt. All 11 release files were hash-checked locally, copied into an isolated
+incoming directory on the mounted volume, hash-checked again, and promoted into
+the canonical vault. User-facing payloads and inventory receipts moved first;
+the three updater manifests moved last so an updater pointer could not lead its
+binary. The canonical vault was then re-hashed against the public 1.6.0 release.
+
+Permanent rule: a `WATCHER`-risk app release must prove distribution before
+candidate materialization. Release OS derives the target Watcher version from
+the exact sealed release commit and requires the canonical nine-file inventory
+(five user-facing binaries, DMG blockmap, and three updater manifests), exact
+`SHA256SUMS-<version>.txt` inventory, and
+`watcher-release-manifest-<version>.json` inventory/size/hash evidence to
+agree byte-for-byte. The updater manifests must advertise the same version and
+expected platform binaries. Missing, extra, duplicate, symlinked, stale, or
+digest-disagreeing evidence stops staging while production remains untouched.
+
 ## v1.6.0 low-footprint lifecycle and self-update
 
 Watcher 1.6.0 separates the replay engine from the Chromium dashboard. Login startup may arm in tray-only background mode with no BrowserWindow alive; opening the dashboard creates the renderer on demand, and closing it destroys the renderer while replay monitoring continues. The renderer is sandboxed, dashboard log growth is bounded, runtime-event paints are coalesced, config/folder inspection is cached, and idle recovery/freshness safety nets run at deliberately low frequency.
