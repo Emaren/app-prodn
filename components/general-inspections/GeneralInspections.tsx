@@ -256,14 +256,6 @@ export default function GeneralInspections() {
                 </span>
                 <span className="text-[9px] font-bold uppercase tracking-[0.18em] text-slate-600">live readiness ledger</span>
               </div>
-              <h1 className="mt-4 font-serif text-4xl tracking-[-0.035em] text-white sm:text-5xl lg:text-6xl">
-                The kingdom checks itself.
-              </h1>
-              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-400">
-                Seven 100-point inspections turn SpeedOS, documentation, storage, tests, release receipts,
-                security, and data truth into one live maintenance board. Evidence ages. Scores fall.
-                Nothing stays green just because it was green yesterday.
-              </p>
               <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-[10px] font-semibold uppercase tracking-[0.13em] text-slate-600">
                 <span>Refresh · 30 seconds</span>
                 <span>Release · {snapshot?.releaseSha?.slice(0, 12) || "—"}</span>

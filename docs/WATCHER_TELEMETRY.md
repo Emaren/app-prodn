@@ -8,34 +8,35 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "telemetry-contract"
-reviewed_at: "2026-09-19"
+reviewed_at: "2026-09-20"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
 
 # Watcher Telemetry
 
-## Production release identity — 2026-09-16
+## Production release identity — 2026-09-20
 
-The live download root is `/mnt/HC_Volume_105319120/aoe2-downloads`, exposed through the app's `public/downloads` symlink. The Watcher 1.5.12 release contract requires the Windows, macOS, and Linux updater manifests to report `version: 1.5.12` before the web metadata is considered publishable.
+The live download root is `/mnt/HC_Volume_105319120/aoe2-downloads`, exposed through the app's `public/downloads` symlink. The Watcher 1.5.13 release contract requires the Windows, macOS, and Linux updater manifests to report `version: 1.5.13` before the web metadata is considered publishable.
 
 Release evidence:
 
-- Watcher runtime source: `329d0e99924126b0fc13f31ddcc26f81607b35cd`;
-- successful Windows Artifact Signing run: `35165618190`;
-- signed Windows build source: `329d0e99924126b0fc13f31ddcc26f81607b35cd`;
-- successful macOS/Linux release build run: `35165618193`;
-- macOS/Linux build source: `329d0e99924126b0fc13f31ddcc26f81607b35cd`.
+- Watcher runtime source: `79c4641e77df26e488c252738ff6f44e89772de6`;
+- successful Windows Artifact Signing run: `35552739520`;
+- signed Windows build source: `79c4641e77df26e488c252738ff6f44e89772de6`;
+- successful macOS/Linux release build run: `35552739589`;
+- macOS/Linux build source: `79c4641e77df26e488c252738ff6f44e89772de6`;
+- immutable GitHub release: `v1.5.13`, published 2026-09-21 02:21:45 UTC.
 
 Verified release binary SHA-256 values:
 
-- Windows installer: `611a98f710c42bf3c4486cca68bad6036662943cb0fbc67d0945ec9496509bf0`;
-- Windows portable EXE: `d2d771b7cdc6abacca4b2ca6128ac16004d51cf151d286d5c87323721ce52d37`;
-- Apple Silicon DMG: `68b18066888fc60392921b6dc44d66c0a32f23fc70556d2e4a0c7fed98f14ac3`;
-- macOS direct ZIP: `cdfdfbc9180bb403086d98009cb3516f2b81ba05488742fb4f01ea1e2dc694f4`;
-- Linux AppImage: `f53318079f00de092c93a5d3fbf0a747b0dfd520d736dfbddf4fa0629ac58057`.
+- Windows installer: `73a432687fd3b1989ff4cb5063d9e29589b6471186e277df399b6bb5599a91ec`;
+- Windows portable EXE: `4583ce46bebd864a32b2db4d0b57792b6e70d31dfd9c56a414644c857e674248`;
+- Apple Silicon DMG: `87c9545364bab48ee0e45cb7cb3e145a953a52ea480481ba427f0b55cdd4e140`;
+- macOS direct ZIP: `80eea06fc3beec7c905379d59180a04e2cf36303f9712f07397403700a81c142`;
+- Linux AppImage: `823b6a29836dea8caf2953201e68681adbdc4d3855b1b25a5c19bff8d618770e`.
 
-The certified release inventory contains nine canonical entries: the five user-facing binaries, the macOS DMG blockmap, and `latest.yml`, `latest-mac.yml`, and `latest-linux.yml`. `SHA256SUMS-1.5.12.txt` and `watcher-release-manifest-1.5.12.json` are the authoritative inventory receipts. The Windows updater manifest is regenerated from the **signed** installer bytes so its SHA-512 and size cannot point at the pre-signing binary.
+The certified release inventory contains nine canonical entries: the five user-facing binaries, the macOS DMG blockmap, and `latest.yml`, `latest-mac.yml`, and `latest-linux.yml`. `SHA256SUMS-1.5.13.txt` and `watcher-release-manifest-1.5.13.json` are the authoritative inventory receipts. The Windows updater manifest is regenerated from the **signed** installer bytes so its SHA-512 and size cannot point at the pre-signing binary.
 
 ## Watcher staging retention
 
@@ -48,6 +49,16 @@ Preview deliberately uses the ordinary `hel1` operator identity. Apply uses the 
 The 2026-09-19 live preview classified the 1.5.12 staging body as an exact canonical duplicate while preserving the 1.5.9 staging body and the version-1.5.11 previous direct ZIP because those contain bytes not duplicated in the canonical vault. This preserves release evidence instead of deleting it for a storage score.
 
 General Inspections therefore does **not** classify raw `watcher-release-staging` or `watcher-staging` presence as generic staging debt. Those trees belong to the digest-backed `aoe2war watcher-staging` authority above; Organization scoring counts only generic scratch/recovery queues. A future Watcher staging cleanup decision must come from that retention plan, never from directory age or entry count alone.
+
+## v1.5.13 live replay recovery
+
+Watcher 1.5.13 repairs a client-side live-admission failure exposed by simultaneous Scavanger_Ab and Tekki reports. Both 1.5.12 clients remained authenticated, monitor-attached, and heartbeating with valid HD folders while heartbeat metadata showed newer supported `.aoe2mpgame` files in those folders. The server received no `replay_detected`, `upload_attempted`, or `upload_succeeded` events for the new games, proving the break was before replay transport rather than in parser ingestion or public game rendering.
+
+Two 1.5.12 admission rules caused the blind spot. First, `shouldHandle()` explicitly rejected any path containing the English phrase `Out of Sync`, so legitimate English out-of-sync MP saves could never enter monitoring. Second, restart/recovery admission for an unknown recent replay required the file to grow during one short sampling interval; a valid already-existing replay could therefore remain invisible after watcher restart, auto-repair, or native-event loss.
+
+1.5.13 removes filename-language vetoes and adds fresh-unknown recovery admission: a supported replay with no prior upload state may be adopted on attach/recovery while it is still within the bounded recent-live window, even if it does not grow during that one sample. Known-final replay safety remains separate and unchanged: fingerprint divergence is rechecked against durable final replay hash state before reopening a settled replay. Regression coverage explicitly admits English and localized out-of-sync MP saves and proves fresh replay recovery without a lucky growth sample.
+
+Durable rule: replay filenames are presentation evidence, never lifecycle authority. Admission is based on supported extension, valid HD folder, bounded freshness, runtime state, and durable replay identity/finality evidence. A healthy heartbeat with `activeReplay=false` plus a newer supported folder replay must be treated as a detection-path incident when the server has no corresponding replay lifecycle events.
 
 ## v1.5.11 capability-negotiated server media shedding
 

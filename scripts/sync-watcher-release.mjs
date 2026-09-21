@@ -24,6 +24,8 @@ const FEATURE_CHIPS = [
   "Custom Steam library detection",
   "Replay folder self-healing",
   "Active replay-folder recovery",
+  "Fresh replay adoption after restart",
+  "Localized out-of-sync MP save support",
   "Replay-priority streaming",
   "Capability-negotiated media shedding",
   "Mid-game replay recovery",

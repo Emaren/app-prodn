@@ -1440,6 +1440,16 @@ Conversely, an already-certified same-source runtime remains the ordinary no-op.
 The special validation identity exists only while the shared fail-closed
 same-source predicate is true.
 
+## 2026-09-20 — Watcher 1.5.12 could miss live MP saves before transport
+
+Jim reported that Tekki and Scavanger_Ab were actively playing while neither game appeared. The Watcher support funnel made this a client-detection incident rather than another public projection bug. Both users were on Watcher 1.5.12 with fresh heartbeats, `monitorAttached = true`, `isWatching = true`, valid HD folders, and `activeReplay = false`. Their heartbeat folder census nevertheless showed newer supported `.aoe2mpgame` files. Over the observed three-hour window the server received heartbeats and watcher lifecycle/recovery events but no `replay_detected`, `upload_attempted`, or `upload_succeeded` events for either user's new game.
+
+Source inspection identified two independent 1.5.12 admission defects. `shouldHandle()` rejected every path containing the literal English phrase `Out of Sync`, which directly excluded Scavanger_Ab's latest `MP Save - Out of Sync Save - ... .aoe2mpgame`. The recovery scan for a replay with no prior in-memory state also required size or mtime growth during its short sampling window, so a recent already-existing replay could remain invisible after restart, auto-repair, resume, or a missed native filesystem notification. Tekki's localized desynchronization filename was not subject to the English veto but was exposed to that recovery-window blind spot.
+
+Watcher 1.5.13 removes the filename-text veto and introduces `shouldRecoverUnknownReplayCandidate()`: a supported, fresh, previously unknown replay can be adopted on attach/recovery without requiring growth during that single sample. Known-final replay fingerprint/hash short-circuit safety is preserved. The release passed 68/68 local tests, including explicit English/localized out-of-sync admission and fresh-unknown recovery coverage. GitHub source CI, Windows signing, and non-Windows builds all passed for runtime source `79c4641e77df26e488c252738ff6f44e89772de6`; immutable `v1.5.13` was then published from the pinned certified artifact runs.
+
+Durable rule: do not use localized filename text as replay truth. When heartbeat proves a valid active folder contains a newer supported replay but `activeReplay=false` and the server has no replay lifecycle events, investigate client admission/recovery before parser, game-row, or live-board code. Conversely, when replay lifecycle uploads are healthy, use the separate finality/live-projection incident playbook below.
+
 ## 2026-09-20 — Finality timestamp refresh is not active-live authority
 
 Scavanger_Ab exposed a lifecycle projection bug that initially looked like a
