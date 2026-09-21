@@ -57,6 +57,11 @@ import {
   cappedRewardWeightForWindow,
   KINGDOM_STAKE_REWARD_CAP_WOLO,
 } from "@/lib/stakingRewardCap";
+import {
+  allocateStakingRewardPoolUwolo,
+  planStakingRewardCarry,
+  UWOLO_PER_WOLO,
+} from "@/lib/stakingRewardPrecision";
 import { loadBetLifecycleActivityPage } from "@/lib/betLifecycleActivity";
 import type {
   BetBattleHistoryEventKind,
@@ -1754,10 +1759,15 @@ export async function loadMainnetTransferStakingActivityPage(
 
       const rewardUwolo = BigInt(String(allocation.reward_uwolo || 0));
       const rewardWoloDecimal = Number(rewardUwolo) / 1_000_000;
-
       const fallbackRewardWolo = Number.parseFloat(String(allocation.reward_wolo ?? "0"));
+      const status = String(allocation.status || "REWARD").toUpperCase();
+
+      // MICRO_ACCRUED describes newly earned sub-WOLO precision. Once prior
+      // carry crosses a whole-WOLO boundary, the allocation's rewardWolo is
+      // the actual amount sent/compounded and must be the public money label.
+      const isMicroAccrual = status === "MICRO_ACCRUED";
       const displayRewardWolo =
-        rewardUwolo > BigInt(0)
+        isMicroAccrual && rewardUwolo > BigInt(0)
           ? rewardWoloDecimal
           : Number.isFinite(fallbackRewardWolo)
             ? fallbackRewardWolo
@@ -1767,8 +1777,7 @@ export async function loadMainnetTransferStakingActivityPage(
           ? `${displayRewardWolo.toFixed(6).replace(/0+$/, "").replace(/\.$/, "")} WOLO`
           : formatActivityWoloAmount(displayRewardWolo);
 
-      const status = String(allocation.status || "REWARD").toUpperCase();
-      const isMicro = displayRewardWolo > 0 && displayRewardWolo < 1;
+      const isMicro = isMicroAccrual;
       const isCompounded = status === "COMPOUNDED";
       const isCompoundPending = status === "COMPOUND_PENDING";
 
@@ -2660,6 +2669,8 @@ function normalizeWoloAddress(value: string | null | undefined) {
 }
 
 const STAKING_REWARD_SETTLEMENT_POLICY_V2 = "chain_backed_compound_v1";
+const STAKING_REWARD_DISTRIBUTION_LOCK_KEY =
+  "staking-reward-distribution:chain-backed-v2";
 
 function creditedRewardStatuses() {
   return ["CREDITED", "PENDING"] as const;
@@ -2796,6 +2807,12 @@ export async function calculateDailyStakingRewardDistribution(
   const settledVolumeWolo = feeBearingMatchedWagerVolumeWolo(settledWagers);
   const settledBetCount = settledWagers.length;
   const feePools = calculateLedgerFeePools(settledVolumeWolo);
+  const bettingFeePoolUwolo =
+    BigInt(feePools.bettingFeePoolWolo) * UWOLO_PER_WOLO;
+  const stakerPoolUwolo =
+    BigInt(feePools.stakerPoolWolo) * UWOLO_PER_WOLO;
+  const treasuryPoolUwolo =
+    BigInt(feePools.treasuryPoolWolo) * UWOLO_PER_WOLO;
   const stakingRuntime = getWoloStakingRuntime();
   const compoundCustodyAddress =
     isWoloMainnet() && stakingRuntime.walletSource === "staking"
@@ -2849,15 +2866,47 @@ export async function calculateDailyStakingRewardDistribution(
   );
 
   return prisma.$transaction(async (tx) => {
-    const distribution = existing
+    // Carry is state shared across distribution dates. Serialize the entire
+    // allocation mutation lane so backfills cannot assign the same prior
+    // carry to different dates depending on request timing.
+    await tx.$executeRaw`
+      SELECT pg_advisory_xact_lock(
+        hashtextextended(${STAKING_REWARD_DISTRIBUTION_LOCK_KEY}, 0)
+      )
+    `;
+
+    const lockedExisting = await tx.stakingRewardDistribution.findUnique({
+      where: { distributionDate: periodStart },
+      include: { allocations: { select: { id: true } } },
+    });
+
+    if (lockedExisting && lockedExisting.status !== "DRAFT") {
+      return {
+        distributionId: lockedExisting.id,
+        created: false,
+        status: lockedExisting.status,
+      };
+    }
+
+    if (lockedExisting?.allocations.length) {
+      throw new StakingActionError(
+        "Distribution already has allocations; refusing to double-credit.",
+        409,
+      );
+    }
+
+    const distribution = lockedExisting
       ? await tx.stakingRewardDistribution.update({
-          where: { id: existing.id },
+          where: { id: lockedExisting.id },
           data: {
             periodStart,
             periodEnd,
             bettingFeePoolWolo: feePools.bettingFeePoolWolo,
+            bettingFeePoolUwolo,
             stakerPoolWolo: feePools.stakerPoolWolo,
+            stakerPoolUwolo,
             treasuryPoolWolo: feePools.treasuryPoolWolo,
+            treasuryPoolUwolo,
             treasuryPayoutRequestId: buildStakingTreasuryPayoutRequestId(periodStart),
             totalWeight,
             status: "FINALIZED",
@@ -2884,8 +2933,11 @@ export async function calculateDailyStakingRewardDistribution(
             periodStart,
             periodEnd,
             bettingFeePoolWolo: feePools.bettingFeePoolWolo,
+            bettingFeePoolUwolo,
             stakerPoolWolo: feePools.stakerPoolWolo,
+            stakerPoolUwolo,
             treasuryPoolWolo: feePools.treasuryPoolWolo,
+            treasuryPoolUwolo,
             treasuryPayoutRequestId: buildStakingTreasuryPayoutRequestId(periodStart),
             totalWeight,
             status: "FINALIZED",
@@ -2908,48 +2960,71 @@ export async function calculateDailyStakingRewardDistribution(
         });
 
       if (totalWeight > BigInt(0) && feePools.stakerPoolWolo > 0) {
-        const microFactor = BigInt(1_000_000);
-        const stakerPoolUwolo = BigInt(feePools.stakerPoolWolo) * microFactor;
+        const microAllocations = allocateStakingRewardPoolUwolo(
+          stakerPoolUwolo,
+          weightedPositions.map((position) => ({
+            userId: position.userId,
+            userWeight: position.userWeight,
+          })),
+        );
+        const rewardUwoloByUserId = new Map(
+          microAllocations.map((row) => [row.userId, row.rewardUwolo] as const),
+        );
 
         const rewardPlans = weightedPositions
           .filter((position) => position.userWeight > BigInt(0))
-          .map((position, originalIndex) => {
-          const rewardUwolo = (stakerPoolUwolo * position.userWeight) / totalWeight;
-          const rewardWolo = Number(rewardUwolo / microFactor);
-          const rewardCarryUwolo = rewardUwolo % microFactor;
+          .sort((left, right) => left.userId - right.userId);
 
-          return {
-            ...position,
-            rewardUwolo,
-            rewardWolo,
-            rewardCarryUwolo,
-            originalIndex,
-          };
-        });
+        for (const position of rewardPlans) {
+          const earnedRewardUwolo =
+            rewardUwoloByUserId.get(position.userId) ?? BigInt(0);
 
-        for (const position of rewardPlans.sort((left, right) => left.originalIndex - right.originalIndex)) {
-          const rewardUwolo = position.rewardUwolo;
-          const rewardWolo = position.rewardWolo;
-          const rewardCarryUwolo = position.rewardCarryUwolo;
+          const carryRows = await tx.$queryRawUnsafe<
+            Array<{
+              id: number;
+              auto_compound_rewards: boolean;
+              micro_reward_carry_uwolo: bigint | number | string;
+            }>
+          >(
+            "select id, auto_compound_rewards, micro_reward_carry_uwolo from staking_positions where user_id = $1 for update",
+            position.userId,
+          );
+          if (carryRows.length !== 1) {
+            throw new StakingActionError(
+              "Canonical staking position is unavailable for reward recipient " +
+                position.userId +
+                "; distribution stopped before carry mutation.",
+              409,
+            );
+          }
 
-          if (rewardUwolo <= BigInt(0)) continue;
-
-          const preference = await tx.stakingPosition.findUnique({
-            where: { userId: position.userId },
-            select: { autoCompoundRewards: true },
+          const carryState = carryRows[0];
+          const priorCarryUwolo = BigInt(
+            String(carryState.micro_reward_carry_uwolo || 0),
+          );
+          const carryPlan = planStakingRewardCarry({
+            earnedUwolo: earnedRewardUwolo,
+            priorCarryUwolo,
           });
-          const shouldCompound = preference?.autoCompoundRewards ?? true;
+          const rewardWolo = carryPlan.releaseWolo;
+
+          if (earnedRewardUwolo <= BigInt(0) && rewardWolo <= 0) {
+            continue;
+          }
+
+          const shouldCompound = carryState.auto_compound_rewards;
           const creditedAt = new Date();
 
           const allocation = await tx.stakingRewardAllocation.create({
             data: {
               distributionId: distribution.id,
               userId: position.userId,
-              positionId: position.id,
+              positionId: position.id ?? carryState.id,
               walletAddress: position.walletAddress,
               userWeight: position.userWeight,
               totalWeight,
               rewardWolo,
+              rewardUwolo: earnedRewardUwolo,
               status:
                 rewardWolo > 0
                   ? shouldCompound
@@ -2962,19 +3037,12 @@ export async function calculateDailyStakingRewardDistribution(
             },
           });
 
-          await tx.$executeRawUnsafe(
-            "update staking_reward_allocations set reward_uwolo = $1::bigint where id = $2",
-            rewardUwolo.toString(),
-            allocation.id
-          );
-
-          if (rewardCarryUwolo > BigInt(0)) {
-            await tx.$executeRawUnsafe(
-              "update staking_positions set micro_reward_carry_uwolo = coalesce(micro_reward_carry_uwolo, 0) + $1::bigint, updated_at = now() where user_id = $2",
-              rewardCarryUwolo.toString(),
-              position.userId
-            );
-          }
+          await tx.stakingPosition.update({
+            where: { userId: position.userId },
+            data: {
+              microRewardCarryUwolo: carryPlan.nextCarryUwolo,
+            },
+          });
 
           if (shouldCompound && rewardWolo > 0 && !isWoloMainnet()) {
             const balanceBefore = position.currentStakedWolo;

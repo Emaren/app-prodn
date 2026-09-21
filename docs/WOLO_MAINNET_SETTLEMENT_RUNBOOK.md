@@ -274,9 +274,30 @@ through September 19 with explicit `--date=YYYY-MM-DD` runs. The read-only
 pre-backfill census found 600,650 WOLO of fee-bearing matched volume, producing
 12,013 WOLO of total betting fees: 6,006 WOLO for stakers and 6,007 WOLO for
 Community Treasury. Dates with settled wagers but zero matched fee-bearing
-exposure must produce zero fee. Enable the persistent daily timer only after
-all backfill dates are finalized, their chain receipts are proven, and no
-`COMPOUND_PENDING` reward liability remains.
+exposure must produce zero fee.
+
+A September 21 pre-backfill precision audit also proved that historical
+sub-WOLO carry had accumulated past whole-WOLO boundaries without being
+released: Emaren 4,844,555 uWOLO, Julio Alvarez 27,910,788 uWOLO, Jim
+33,102,336 uWOLO, and soso 1,109 uWOLO, totaling **65,858,788 uWOLO**. The
+precision columns already exist in production as `BIGINT NOT NULL DEFAULT 0`;
+the accompanying Prisma migration records that runtime schema in Git and is
+idempotent against the current database.
+
+The durable reward rule is exact minimal-unit conservation. Each distribution
+allocates every uWOLO in the current staker pool deterministically, adds each
+recipient's prior carry, releases every crossed whole WOLO through the normal
+chain-backed reward rail, and leaves only a remainder below 1 WOLO in
+`micro_reward_carry_uwolo`. Because carry is shared state across dates, reward
+distribution takes one transaction advisory lock, rechecks the distribution
+after acquiring it, and locks recipient positions in ascending user-ID order.
+For the September 9–19 backlog, the proven model releases **6,071 WOLO** to
+stakers: the current 6,006-WOLO staker pools plus 65 previously stranded whole
+WOLO, while preserving exactly 858,788 uWOLO of residual carry.
+
+Enable the persistent daily timer only after the precision release is deployed,
+all backfill dates are finalized sequentially, their chain receipts are proven,
+and no `COMPOUND_PENDING` reward liability remains.
 
 Do **not** fund the apparent historical 23,774.265-WOLO deficit as a substitute
 for this reconciliation. After repair, re-measure custody against real direct
