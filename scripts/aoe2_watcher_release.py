@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+from collections import Counter
 import fcntl
 import hashlib
 import hmac
@@ -19,8 +20,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterator
 
-ROOT = Path(__file__).resolve().parents[1]
-SCRIPTS = Path(__file__).resolve().parent
+CANONICAL_PRODUCTION_REPO = "/var/www/AoE2HDBets/app-prodn"
+if __file__ == "<stdin>":
+    ROOT = Path(CANONICAL_PRODUCTION_REPO)
+else:
+    ROOT = Path(__file__).resolve().parents[1]
+SCRIPTS = ROOT / "scripts"
 if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
@@ -415,35 +420,37 @@ def prove_public_release(
     inventory: list[dict[str, Any]],
     release: dict[str, Any],
 ) -> dict[str, Any]:
-    asset_digests: dict[str, list[str]] = {}
+    public_digests: list[str] = []
     for asset in release["assets"]:
         if not isinstance(asset, dict):
             continue
         digest = str(asset.get("digest") or "")
         if not digest.startswith("sha256:"):
-            continue
+            raise WatcherReleasePromotionError(
+                "public Watcher release asset has no SHA-256 digest"
+            )
         value = digest.removeprefix("sha256:")
         if not re.fullmatch(r"[0-9a-f]{64}", value):
-            continue
-        asset_digests.setdefault(value, []).append(
-            str(asset.get("name") or "")
+            raise WatcherReleasePromotionError(
+                "public Watcher release asset digest is invalid"
+            )
+        public_digests.append(value)
+
+    local_digests = [str(row["sha256"]) for row in inventory]
+    if (
+        len(public_digests) != len(inventory)
+        or Counter(public_digests) != Counter(local_digests)
+    ):
+        raise WatcherReleasePromotionError(
+            "certified local bundle digest multiset does not exactly "
+            "match the public GitHub release"
         )
 
-    missing = [
-        row["name"]
-        for row in inventory
-        if row["sha256"] not in asset_digests
-    ]
-    if missing:
-        raise WatcherReleasePromotionError(
-            "certified local bundle does not match public GitHub "
-            "release asset digests: " + ", ".join(missing)
-        )
     return {
         "release_id": release.get("id"),
         "tag_name": release.get("tag_name"),
         "published_at": release.get("published_at"),
-        "asset_count": len(release["assets"]),
+        "asset_count": len(public_digests),
         "digest_matched_files": len(inventory),
     }
 
@@ -1366,16 +1373,23 @@ def main(argv: list[str] | None = None) -> int:
             import aoe2_release
 
             with aoe2_release.global_release_lease():
+                remote_apply_started = False
                 try:
                     create_remote_stage(policy, remote_stage)
                     transfer_bundle(
                         source, version, policy, remote_stage
                     )
+                    remote_apply_started = True
                     payload = invoke_remote(
                         policy, plan, remote_stage, apply=True
                     )
                 except Exception:
-                    cleanup_failed_stage(policy, remote_stage)
+                    # Before remote mutation begins, an incomplete upload is
+                    # safe to retire. Once the privileged worker starts, any
+                    # transport loss is an uncertain transaction: preserve the
+                    # stage/backups/receipts for explicit recovery.
+                    if not remote_apply_started:
+                        cleanup_failed_stage(policy, remote_stage)
                     raise
     except Exception as exc:
         payload = error_payload(str(exc), apply=args.apply)
