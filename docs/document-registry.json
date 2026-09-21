@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "bc8cc793e836b24d97a93d3db69a9fdc424ba8dbc4a0426395a5ce4f3f3c5241",
+      "sha256": "f5f4ed0e2a7059cd29a526f0c91f12436c7540276f1f6a5a49f27b7286807236",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1717,7 +1717,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-10",
       "sensitivity": "restricted",
-      "sha256": "5ac0107e86e472495eef873c328ee1b46db62fea33d216126f8531b0e0a08bfa",
+      "sha256": "20d92ed8f5b95f666998c72dbc9df6e104d556bd7c0a86b56cad1c3972cd4552",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/resume-chain-backed-staking-rewards-20260920",
-    "commit": "435d0f68039b064a6702e3904d792a4a53062d28"
+    "branch": "fix/staking-reward-micro-carry-20260921",
+    "commit": "2e5870be092fd61c82074b5cad30868358f0a0af"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
