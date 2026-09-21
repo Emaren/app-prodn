@@ -661,45 +661,6 @@ def remote_policy_for_staging(
     }
 
 
-def collect_remote_runtime(
-    policy: dict[str, Any],
-) -> dict[str, Any]:
-    source = Path(staging.__file__).read_text(encoding="utf-8")
-    remote_policy = remote_policy_for_staging(policy)
-    command = [
-        "python3",
-        "-",
-        "--remote-worker",
-        "--policy-b64",
-        staging.encode_policy(remote_policy),
-    ]
-    output = run_checked(
-        [
-            "ssh",
-            "-o",
-            "BatchMode=yes",
-            "-o",
-            "ConnectTimeout=8",
-            policy["preview_host"],
-            shlex.join(command),
-        ],
-        timeout=900,
-        input_text=source,
-    )
-    try:
-        payload = json.loads(output)
-    except Exception as exc:
-        raise WatcherReleasePromotionError(
-            "remote runtime proof returned invalid JSON"
-        ) from exc
-    runtime = payload.get("runtime_before")
-    if not isinstance(runtime, dict):
-        raise WatcherReleasePromotionError(
-            "remote runtime proof is unavailable"
-        )
-    return runtime
-
-
 def validate_remote_environment(policy: dict[str, Any]) -> None:
     volume = Path(policy["volume_mount"])
     volume_info = staging.require_direct_directory(
