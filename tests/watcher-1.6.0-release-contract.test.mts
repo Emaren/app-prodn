@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import test from "node:test";
+
+import {
+  syncWatcherRelease,
+  validateWatcherReleaseBundle,
+} from "../scripts/sync-watcher-release.mjs";
 
 const release = fs.readFileSync(
   "lib/watcherRelease.ts",
@@ -31,6 +39,108 @@ const reliabilityEvents = [
   "watch_folder_auto_repair_failed",
 ];
 
+
+function sha256(data: Buffer | string) {
+  return createHash("sha256").update(data).digest("hex");
+}
+
+function fakeCanonicalFiles(version: string) {
+  return [
+    `AoE2HDBets Watcher Setup ${version}.exe`,
+    `AoE2HDBets Watcher ${version}.exe`,
+    `AoE2HDBets Watcher-${version}-arm64.dmg`,
+    "aoe2hdbets-watcher-direct.zip",
+    `AoE2HDBets Watcher-${version}.AppImage`,
+    `AoE2HDBets Watcher-${version}-arm64.dmg.blockmap`,
+    "latest.yml",
+    "latest-mac.yml",
+    "latest-linux.yml",
+  ];
+}
+
+function writeFakeCertifiedBundle(
+  dist: string,
+  version: string,
+  { badChecksum = false }: { badChecksum?: boolean } = {},
+) {
+  fs.mkdirSync(dist, { recursive: true });
+
+  const contents = new Map<string, Buffer>([
+    [`AoE2HDBets Watcher Setup ${version}.exe`, Buffer.from("installer")],
+    [`AoE2HDBets Watcher ${version}.exe`, Buffer.from("portable")],
+    [`AoE2HDBets Watcher-${version}-arm64.dmg`, Buffer.from("dmg")],
+    ["aoe2hdbets-watcher-direct.zip", Buffer.from("direct-zip")],
+    [`AoE2HDBets Watcher-${version}.AppImage`, Buffer.from("appimage")],
+    [`AoE2HDBets Watcher-${version}-arm64.dmg.blockmap`, Buffer.from("blockmap")],
+    [
+      "latest.yml",
+      Buffer.from(
+        `version: ${version}\npath: AoE2HDBets Watcher Setup ${version}.exe\n`,
+      ),
+    ],
+    [
+      "latest-mac.yml",
+      Buffer.from(
+        `version: ${version}\npath: AoE2HDBets Watcher-${version}-arm64.dmg\n`,
+      ),
+    ],
+    [
+      "latest-linux.yml",
+      Buffer.from(
+        `version: ${version}\npath: AoE2HDBets Watcher-${version}.AppImage\n`,
+      ),
+    ],
+  ]);
+
+  for (const [name, data] of contents) {
+    fs.writeFileSync(path.join(dist, name), data);
+  }
+
+  const rows = fakeCanonicalFiles(version).map((filename) => {
+    const data = contents.get(filename);
+    assert.ok(data);
+    return {
+      filename,
+      bytes: data.length,
+      sha256: sha256(data),
+    };
+  });
+
+  const checksumRows = rows.map((row, index) => {
+    const digest = badChecksum && index === 0 ? "0".repeat(64) : row.sha256;
+    return `${digest}  ${row.filename}\n`;
+  });
+
+  fs.writeFileSync(
+    path.join(dist, `SHA256SUMS-${version}.txt`),
+    checksumRows.join(""),
+  );
+  fs.writeFileSync(
+    path.join(dist, `watcher-release-manifest-${version}.json`),
+    JSON.stringify(
+      {
+        schema: 1,
+        version,
+        files: rows,
+      },
+      null,
+      2,
+    ) + "\n",
+  );
+}
+
+function makeFakeWatcher(root: string, version: string, options = {}) {
+  const watcherDir = path.join(root, "aoe2-watcher");
+  const dist = path.join(watcherDir, "dist");
+  fs.mkdirSync(watcherDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(watcherDir, "package.json"),
+    JSON.stringify({ version }) + "\n",
+  );
+  writeFakeCertifiedBundle(dist, version, options);
+  return { watcherDir, dist };
+}
+
 test("Watcher 1.6.0 public release identity is exact", () => {
   assert.match(release, /version: "1\.6\.0"/);
   assert.match(release, /releasedOn: "Sep 21, 2026"/);
@@ -44,6 +154,135 @@ test("Watcher 1.6.0 public release identity is exact", () => {
   assert.match(release, /Sandboxed dashboard renderer/);
   assert.doesNotMatch(release, /version: "1\.5\.13"/);
   assert.doesNotMatch(release, /version: "1\.5\.9"/);
+});
+
+test("Watcher release sync transaction commits certified bytes before metadata", async (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "watcher-sync-ok-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+
+  const version = "9.9.9";
+  const { watcherDir, dist } = makeFakeWatcher(root, version);
+  const downloadsDir = path.join(root, "downloads");
+  const releaseModulePath = path.join(root, "watcherRelease.ts");
+  fs.mkdirSync(downloadsDir);
+  fs.writeFileSync(
+    releaseModulePath,
+    'export const WATCHER_RELEASE = { version: "1.0.0", releasedOn: "Jan 1, 2026" };\n',
+  );
+  fs.writeFileSync(path.join(downloadsDir, "latest.yml"), "old-updater\n");
+  fs.writeFileSync(
+    path.join(downloadsDir, "aoe2hdbets-watcher-direct.zip"),
+    "old-direct",
+  );
+
+  await validateWatcherReleaseBundle(dist, version);
+  await syncWatcherRelease({
+    watcherDir,
+    releaseModulePath,
+    downloadsDir,
+    now: new Date("2026-09-21T18:00:00Z"),
+  });
+
+  for (const name of fakeCanonicalFiles(version)) {
+    assert.deepEqual(
+      fs.readFileSync(path.join(downloadsDir, name)),
+      fs.readFileSync(path.join(dist, name)),
+      name,
+    );
+  }
+
+  const metadata = fs.readFileSync(releaseModulePath, "utf8");
+  assert.match(metadata, /version: "9\.9\.9"/);
+  assert.match(metadata, /releasedOn: "Sep 21, 2026"/);
+  assert.equal(
+    fs.readdirSync(downloadsDir).filter((name) => name.startsWith(".watcher-sync-")).length,
+    0,
+  );
+});
+
+test("Watcher release sync rejects bad receipts before any target mutation", async (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "watcher-sync-bad-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+
+  const version = "9.9.9";
+  const { watcherDir } = makeFakeWatcher(root, version, { badChecksum: true });
+  const downloadsDir = path.join(root, "downloads");
+  const releaseModulePath = path.join(root, "watcherRelease.ts");
+  fs.mkdirSync(downloadsDir);
+  fs.writeFileSync(releaseModulePath, "old-metadata\n");
+  fs.writeFileSync(path.join(downloadsDir, "latest.yml"), "old-updater\n");
+
+  await assert.rejects(
+    syncWatcherRelease({
+      watcherDir,
+      releaseModulePath,
+      downloadsDir,
+    }),
+    /checksum and release manifest disagree/,
+  );
+
+  assert.equal(fs.readFileSync(releaseModulePath, "utf8"), "old-metadata\n");
+  assert.equal(
+    fs.readFileSync(path.join(downloadsDir, "latest.yml"), "utf8"),
+    "old-updater\n",
+  );
+  assert.equal(
+    fs.existsSync(
+      path.join(downloadsDir, `AoE2HDBets Watcher Setup ${version}.exe`),
+    ),
+    false,
+  );
+});
+
+test("Watcher release sync rolls vault back if metadata commit fails", async (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "watcher-sync-rb-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+
+  const version = "9.9.9";
+  const { watcherDir } = makeFakeWatcher(root, version);
+  const downloadsDir = path.join(root, "downloads");
+  const releaseModulePath = path.join(
+    root,
+    "missing-metadata-parent",
+    "watcherRelease.ts",
+  );
+  fs.mkdirSync(downloadsDir);
+  fs.writeFileSync(path.join(downloadsDir, "latest.yml"), "old-updater\n");
+  fs.writeFileSync(
+    path.join(downloadsDir, "aoe2hdbets-watcher-direct.zip"),
+    "old-direct",
+  );
+
+  await assert.rejects(
+    syncWatcherRelease({
+      watcherDir,
+      releaseModulePath,
+      downloadsDir,
+    }),
+    /ENOENT/,
+  );
+
+  assert.equal(
+    fs.readFileSync(path.join(downloadsDir, "latest.yml"), "utf8"),
+    "old-updater\n",
+  );
+  assert.equal(
+    fs.readFileSync(
+      path.join(downloadsDir, "aoe2hdbets-watcher-direct.zip"),
+      "utf8",
+    ),
+    "old-direct",
+  );
+  assert.equal(
+    fs.existsSync(
+      path.join(downloadsDir, `AoE2HDBets Watcher Setup ${version}.exe`),
+    ),
+    false,
+  );
+  assert.equal(
+    fs.readdirSync(downloadsDir).filter((name) => name.startsWith(".watcher-sync-")).length,
+    0,
+  );
 });
 
 test("Watcher release sync preserves reliability and 1.5.11 media shedding", () => {
