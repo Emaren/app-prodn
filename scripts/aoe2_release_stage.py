@@ -303,7 +303,6 @@ if [ -n "$WATCHER_VERSION" ]; then
   python3 - "$WATCHER_DOWNLOAD_ROOT" "$WATCHER_VERSION" <<'PY'
 import hashlib
 import json
-import os
 import sys
 from pathlib import Path
 
@@ -311,25 +310,27 @@ root = Path(sys.argv[1])
 version = sys.argv[2]
 
 expected = [
-    f"AoE2HDBets Watcher Setup {version}.exe",
-    f"AoE2HDBets Watcher {version}.exe",
-    f"AoE2HDBets Watcher-{version}-arm64.dmg",
+    f"AoE2HDBets Watcher Setup {{version}}.exe",
+    f"AoE2HDBets Watcher {{version}}.exe",
+    f"AoE2HDBets Watcher-{{version}}-arm64.dmg",
     "aoe2hdbets-watcher-direct.zip",
-    f"AoE2HDBets Watcher-{version}.AppImage",
-    f"AoE2HDBets Watcher-{version}-arm64.dmg.blockmap",
+    f"AoE2HDBets Watcher-{{version}}.AppImage",
+    f"AoE2HDBets Watcher-{{version}}-arm64.dmg.blockmap",
     "latest.yml",
     "latest-mac.yml",
     "latest-linux.yml",
 ]
 receipts = [
-    f"SHA256SUMS-{version}.txt",
-    f"watcher-release-manifest-{version}.json",
+    f"SHA256SUMS-{{version}}.txt",
+    f"watcher-release-manifest-{{version}}.json",
 ]
 
 for name in expected + receipts:
     path = root / name
     if path.is_symlink() or not path.is_file():
-        raise SystemExit(f"STOP: WATCHER distribution file is not a regular file: {name}")
+        raise SystemExit(
+            f"STOP: WATCHER distribution file is not a regular file: {{name}}"
+        )
 
 manifest = json.loads((root / receipts[1]).read_text(encoding="utf-8"))
 schema = manifest.get("schema")
@@ -349,22 +350,26 @@ for row in rows:
     path = root / name
     data = path.read_bytes()
     if row.get("bytes") != len(data):
-        raise SystemExit(f"STOP: WATCHER release manifest byte-size mismatch: {name}")
+        raise SystemExit(
+            f"STOP: WATCHER release manifest byte-size mismatch: {{name}}"
+        )
     digest = hashlib.sha256(data).hexdigest()
     if row.get("sha256") != digest:
-        raise SystemExit(f"STOP: WATCHER release manifest SHA-256 mismatch: {name}")
+        raise SystemExit(
+            f"STOP: WATCHER release manifest SHA-256 mismatch: {{name}}"
+        )
 
-manifest_rules = {
-    "latest.yml": f"path: AoE2HDBets Watcher Setup {version}.exe",
-    "latest-mac.yml": f"path: AoE2HDBets Watcher-{version}-arm64.dmg",
-    "latest-linux.yml": f"path: AoE2HDBets Watcher-{version}.AppImage",
-}
+manifest_rules = {{
+    "latest.yml": f"path: AoE2HDBets Watcher Setup {{version}}.exe",
+    "latest-mac.yml": f"path: AoE2HDBets Watcher-{{version}}-arm64.dmg",
+    "latest-linux.yml": f"path: AoE2HDBets Watcher-{{version}}.AppImage",
+}}
 for name, path_line in manifest_rules.items():
     lines = (root / name).read_text(encoding="utf-8").splitlines()
-    if f"version: {version}" not in lines:
-        raise SystemExit(f"STOP: WATCHER updater version mismatch: {name}")
+    if f"version: {{version}}" not in lines:
+        raise SystemExit(f"STOP: WATCHER updater version mismatch: {{name}}")
     if path_line not in lines:
-        raise SystemExit(f"STOP: WATCHER updater path mismatch: {name}")
+        raise SystemExit(f"STOP: WATCHER updater path mismatch: {{name}}")
 PY
 
   (
@@ -373,13 +378,13 @@ PY
   ) > "$RECEIPT/watcher-distribution-checksums.txt"
 
   watcher_distribution_checksum_sha256="$(
-    sha256sum "$watcher_sums" | awk '{print $1}'
+    sha256sum "$watcher_sums" | awk '{{print $1}}'
   )"
   watcher_distribution_manifest_sha256="$(
-    sha256sum "$watcher_manifest" | awk '{print $1}'
+    sha256sum "$watcher_manifest" | awk '{{print $1}}'
   )"
-  test "${#watcher_distribution_checksum_sha256}" = 64
-  test "${#watcher_distribution_manifest_sha256}" = 64
+  test "${{#watcher_distribution_checksum_sha256}}" = 64
+  test "${{#watcher_distribution_manifest_sha256}}" = 64
 
   watcher_distribution_status=PASS
   watcher_distribution_version="$WATCHER_VERSION"
