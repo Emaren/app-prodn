@@ -41,7 +41,7 @@ def fake_bundle(root: pathlib.Path, version: str = "9.9.9"):
             f"path: AoE2HDBets Watcher-{version}.AppImage\n"
         ).encode(),
     }
-    root.mkdir(parents=True)
+    root.mkdir(parents=True, exist_ok=True)
     for name, data in payloads.items():
         (root / name).write_bytes(data)
 
