@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/financial-green-closeout-20260920` at `fa806f0f75addb8029984b6914541970156a53fe`
+Implementation baseline: `fix/resume-chain-backed-staking-rewards-20260920` at `435d0f68039b064a6702e3904d792a4a53062d28`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

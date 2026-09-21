@@ -996,7 +996,7 @@ Unstake execution must sign from the staking wallet itself. Do not route unstake
 
 Staking reward distributions are executed through the protected web route
 `POST /api/staking/rewards/run`. The route finalizes the last closed UTC day,
-allocates the staker side of the 1% betting fee by staking weight, pays valid
+allocates the staker 50% share of the 2% matched betting fee by staking weight, pays valid
 wallets through the WOLO settlement rail, and records successful payouts as
 staking `CLAIM` events for the Recent Activity tile.
 

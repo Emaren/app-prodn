@@ -15,13 +15,17 @@ const configRouteSource = fs.readFileSync(
   "utf8",
 );
 
-test("mainnet reward distribution is explicitly safety-paused", () => {
+test("mainnet reward distribution is enabled only after the chain-backed custody repair", () => {
   assert.match(
     executionSource,
-    /STAKING_REWARD_DISTRIBUTION_SAFETY_PAUSED = true/,
+    /STAKING_REWARD_DISTRIBUTION_SAFETY_PAUSED = false/,
+  );
+  assert.match(
+    executionSource,
+    /auto-compound liability increases only after exact WoloChain custody proof/,
   );
 });
-test("reward run fails closed before Prisma is acquired", () => {
+test("reward-run emergency pause remains fail-closed before Prisma is acquired", () => {
   const authIndex = runRouteSource.indexOf("bearerToken(request)");
   const pauseIndex = runRouteSource.indexOf(
     "if (STAKING_REWARD_DISTRIBUTION_SAFETY_PAUSED)",
