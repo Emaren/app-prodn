@@ -4,7 +4,32 @@ import test from "node:test";
 import {
   allocateStakingRewardPoolUwolo,
   planStakingRewardCarry,
+  splitPoolUwolo,
 } from "../lib/stakingRewardPrecision.ts";
+
+test("odd whole-WOLO fees split exactly 50/50 in minimal units", () => {
+  const feePoolUwolo = BigInt(6_009) * BigInt(1_000_000);
+  const split = splitPoolUwolo({
+    poolUwolo: feePoolUwolo,
+    firstShareBps: 5_000,
+    bpsDenominator: 10_000,
+  });
+
+  assert.equal(split.firstUwolo, BigInt(3_004_500_000));
+  assert.equal(split.secondUwolo, BigInt(3_004_500_000));
+  assert.equal(split.firstUwolo + split.secondUwolo, feePoolUwolo);
+});
+
+test("a one-WOLO fee still gives stakers an exact half-WOLO entitlement", () => {
+  const split = splitPoolUwolo({
+    poolUwolo: BigInt(1_000_000),
+    firstShareBps: 5_000,
+    bpsDenominator: 10_000,
+  });
+
+  assert.equal(split.firstUwolo, BigInt(500_000));
+  assert.equal(split.secondUwolo, BigInt(500_000));
+});
 
 test("micro reward allocation conserves every uwolo deterministically", () => {
   const allocations = allocateStakingRewardPoolUwolo(BigInt(7), [
@@ -58,12 +83,17 @@ test("September backlog releases historical whole carry with exact conservation"
     { userId: 18168, userWeight: BigInt(86_400_000_000), carry: BigInt(33_102_336) },
     { userId: 65, userWeight: BigInt(31_529_606_400), carry: BigInt(27_910_788) },
   ];
-  const pools = [2_000, 1_000, 2, 3_004];
+  const poolsUwolo = [
+    BigInt(2_000_000_000),
+    BigInt(1_000_000_000),
+    BigInt(2_000_000),
+    BigInt(3_004_500_000),
+  ];
   let releasedWolo = 0;
 
-  for (const poolWolo of pools) {
+  for (const poolUwolo of poolsUwolo) {
     const allocations = allocateStakingRewardPoolUwolo(
-      BigInt(poolWolo) * BigInt(1_000_000),
+      poolUwolo,
       rows,
     );
     for (const allocation of allocations) {
@@ -78,22 +108,55 @@ test("September backlog releases historical whole carry with exact conservation"
     }
   }
 
-  assert.equal(pools.reduce((sum, value) => sum + value, 0), 6_006);
+  assert.equal(
+    poolsUwolo.reduce((sum, value) => sum + value, BigInt(0)),
+    BigInt(6_006_500_000),
+  );
   assert.equal(releasedWolo, 6_071);
   assert.deepEqual(
     rows.map((row) => [row.userId, row.carry]),
     [
-      [63, BigInt(284_546)],
-      [18168, BigInt(18_528)],
-      [65, BigInt(554_605)],
+      [63, BigInt(284_583)],
+      [18168, BigInt(384_821)],
+      [65, BigInt(688_275)],
     ],
   );
   assert.equal(
     rows.reduce((sum, row) => sum + row.carry, BigInt(0)),
-    BigInt(857_679),
+    BigInt(1_357_679),
   );
   // soso has no reward weight, so his existing 1,109 uwolo remains untouched.
-  assert.equal(BigInt(857_679) + BigInt(1_109), BigInt(858_788));
+  assert.equal(BigInt(1_357_679) + BigInt(1_109), BigInt(1_358_788));
+});
+
+test("new reward and Treasury settlement authority uses exact uwolo mirrors", async () => {
+  const { readFileSync } = await import("node:fs");
+  const stakingSource = readFileSync(
+    new URL("../lib/staking.ts", import.meta.url),
+    "utf8",
+  );
+  const treasurySource = readFileSync(
+    new URL("../lib/stakingTreasuryPayouts.ts", import.meta.url),
+    "utf8",
+  );
+
+  assert.match(stakingSource, /const exactFeeSplit = splitPoolUwolo/);
+  assert.match(stakingSource, /const stakerPoolUwolo = exactFeeSplit\.firstUwolo/);
+  assert.match(stakingSource, /const treasuryPoolUwolo = exactFeeSplit\.secondUwolo/);
+  assert.match(
+    stakingSource,
+    /totalWeight > BigInt\(0\) && stakerPoolUwolo > BigInt\(0\)/,
+  );
+
+  assert.match(treasurySource, /treasuryPoolUwolo: true/);
+  assert.match(
+    treasurySource,
+    /amountWolo: Number\(row\.treasuryPoolUwolo\) \/ 1_000_000/,
+  );
+  assert.doesNotMatch(
+    treasurySource,
+    /amountWolo: row\.treasuryPoolWolo/,
+  );
 });
 
 test("reward distribution serializes carry mutation before rechecking date state", async () => {

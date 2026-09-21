@@ -15,6 +15,33 @@ function assertNonNegativeBigInt(value: bigint, label: string) {
   }
 }
 
+export function splitPoolUwolo(input: {
+  poolUwolo: bigint;
+  firstShareBps: number;
+  bpsDenominator: number;
+}) {
+  assertNonNegativeBigInt(input.poolUwolo, "Pool");
+  if (
+    !Number.isInteger(input.firstShareBps) ||
+    !Number.isInteger(input.bpsDenominator) ||
+    input.bpsDenominator <= 0 ||
+    input.firstShareBps < 0 ||
+    input.firstShareBps > input.bpsDenominator
+  ) {
+    throw new Error("Pool split basis points are invalid.");
+  }
+
+  const denominator = BigInt(input.bpsDenominator);
+  const firstUwolo =
+    (input.poolUwolo * BigInt(input.firstShareBps)) / denominator;
+  const secondUwolo = input.poolUwolo - firstUwolo;
+
+  return {
+    firstUwolo,
+    secondUwolo,
+  };
+}
+
 /**
  * Allocate every minimal unit in the staker pool.
  *

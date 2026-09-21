@@ -272,8 +272,10 @@ and matched-only fee-volume rule are deployed. Because the timer was disabled
 during containment, first backfill every closed UTC date from September 9
 through September 19 with explicit `--date=YYYY-MM-DD` runs. The read-only
 pre-backfill census found 600,650 WOLO of fee-bearing matched volume, producing
-12,013 WOLO of total betting fees: 6,006 WOLO for stakers and 6,007 WOLO for
-Community Treasury. Dates with settled wagers but zero matched fee-bearing
+12,013 WOLO of total betting fees. The precise 50/50 economic split is
+6,006.5 WOLO for stakers and 6,006.5 WOLO for Community Treasury; legacy
+whole-WOLO compatibility fields may display 6,006 / 6,007, but new settlement
+and reward authority is the exact `uwolo` mirror. Dates with settled wagers but zero matched fee-bearing
 exposure must produce zero fee.
 
 A September 21 pre-backfill precision audit also proved that historical
@@ -291,9 +293,10 @@ chain-backed reward rail, and leaves only a remainder below 1 WOLO in
 `micro_reward_carry_uwolo`. Because carry is shared state across dates, reward
 distribution takes one transaction advisory lock, rechecks the distribution
 after acquiring it, and locks recipient positions in ascending user-ID order.
-For the September 9–19 backlog, the proven model releases **6,071 WOLO** to
-stakers: the current 6,006-WOLO staker pools plus 65 previously stranded whole
-WOLO, while preserving exactly 858,788 uWOLO of residual carry.
+For the September 9–19 backlog, the proven model combines the exact
+**6,006.5 WOLO** current staker entitlement with the historical carry and
+releases **6,071 whole WOLO** through the chain-backed rail, while preserving
+exactly **1,358,788 uWOLO** of residual carry across all stakers.
 
 Enable the persistent daily timer only after the precision release is deployed,
 all backfill dates are finalized sequentially, their chain receipts are proven,

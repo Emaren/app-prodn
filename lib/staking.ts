@@ -60,6 +60,7 @@ import {
 import {
   allocateStakingRewardPoolUwolo,
   planStakingRewardCarry,
+  splitPoolUwolo,
   UWOLO_PER_WOLO,
 } from "@/lib/stakingRewardPrecision";
 import { loadBetLifecycleActivityPage } from "@/lib/betLifecycleActivity";
@@ -2809,10 +2810,13 @@ export async function calculateDailyStakingRewardDistribution(
   const feePools = calculateLedgerFeePools(settledVolumeWolo);
   const bettingFeePoolUwolo =
     BigInt(feePools.bettingFeePoolWolo) * UWOLO_PER_WOLO;
-  const stakerPoolUwolo =
-    BigInt(feePools.stakerPoolWolo) * UWOLO_PER_WOLO;
-  const treasuryPoolUwolo =
-    BigInt(feePools.treasuryPoolWolo) * UWOLO_PER_WOLO;
+  const exactFeeSplit = splitPoolUwolo({
+    poolUwolo: bettingFeePoolUwolo,
+    firstShareBps: STAKER_SHARE_BPS,
+    bpsDenominator: BPS_DENOMINATOR,
+  });
+  const stakerPoolUwolo = exactFeeSplit.firstUwolo;
+  const treasuryPoolUwolo = exactFeeSplit.secondUwolo;
   const stakingRuntime = getWoloStakingRuntime();
   const compoundCustodyAddress =
     isWoloMainnet() && stakingRuntime.walletSource === "staking"
@@ -2822,7 +2826,7 @@ export async function calculateDailyStakingRewardDistribution(
   if (
     isWoloMainnet() &&
     positions.length > 0 &&
-    feePools.stakerPoolWolo > 0 &&
+    stakerPoolUwolo > BigInt(0) &&
     !compoundCustodyAddress
   ) {
     throw new StakingActionError(
@@ -2959,7 +2963,7 @@ export async function calculateDailyStakingRewardDistribution(
           },
         });
 
-      if (totalWeight > BigInt(0) && feePools.stakerPoolWolo > 0) {
+      if (totalWeight > BigInt(0) && stakerPoolUwolo > BigInt(0)) {
         const microAllocations = allocateStakingRewardPoolUwolo(
           stakerPoolUwolo,
           weightedPositions.map((position) => ({
