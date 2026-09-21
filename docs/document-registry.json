@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c44d7b60a64bb4410604a6605ecfdfc997600ce05b2ec149a56f48bc2390d2a4",
+      "sha256": "8818e699b7ff3a3512e1e16c6cfba552f56693376a399dd1eddc6bf6f88b93d8",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-14",
       "sensitivity": "internal",
-      "sha256": "1f46e9688effc4a0f4a9474a9e7b962d65662b89f10beb345d23cba4f703567a",
+      "sha256": "e7927c0fd00a7ee349b6b95b7f6af2673d7ecaef66b43d8924204463d5b1ffb6",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1648,7 +1648,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-20",
       "sensitivity": "restricted",
-      "sha256": "0a68a4691874f0dcbad31a9ff946f2b57c8b7e26faf55b902f681c4e5dac7475",
+      "sha256": "33bcfec6bddfa852616c3189bd525e9b5c241fba315e30811e202a58952efd2b",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "release/watcher-1.5.13-app-20260921",
-    "commit": "92c37e6ffdc6b6d2793a4a5379fb53d00cbf3e6c"
+    "branch": "fix/watcher-1.5.13-release-20260921",
+    "commit": "99465fc2f5ad020e6611a601808ec10a9c996791"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
