@@ -68,6 +68,106 @@ def sample():
 
 
 class StageTests(unittest.TestCase):
+    def test_watcher_distribution_version_is_bound_to_exact_release_commit(self):
+        import subprocess
+
+        head = subprocess.check_output(
+            ["git", "rev-parse", "HEAD"],
+            cwd=MODULE.ROOT,
+            text=True,
+        ).strip()
+        manifest = {
+            "risk_class": "WATCHER",
+            "release_sha": head,
+        }
+        self.assertEqual(
+            MODULE.watcher_distribution_version(manifest),
+            "1.6.0",
+        )
+        self.assertEqual(
+            MODULE.watcher_distribution_version(
+                {"risk_class": "APPLICATION", "release_sha": head}
+            ),
+            "",
+        )
+
+    def test_watcher_distribution_preflight_precedes_candidate_materialization(self):
+        script = MODULE.remote_stage_script(
+            release_sha="b" * 40,
+            previous_sha="a" * 40,
+            manifest_sha="c" * 64,
+            gate_sha="d" * 64,
+            receipt_dir="/mnt/receipt",
+            watcher_version="1.6.0",
+        )
+
+        self.assertIn(
+            'WATCHER_DOWNLOAD_ROOT=/mnt/HC_Volume_105319120/aoe2-downloads',
+            script,
+        )
+        self.assertIn('WATCHER_VERSION=1.6.0', script)
+        self.assertIn(
+            'sha256sum --strict -c "SHA256SUMS-$WATCHER_VERSION.txt"',
+            script,
+        )
+        self.assertIn(
+            'watcher-release-manifest-$WATCHER_VERSION.json',
+            script,
+        )
+        self.assertIn(
+            'if [row.get("filename") for row in rows] != expected:',
+            script,
+        )
+        self.assertIn(
+            'f"version: {version}" not in lines',
+            script,
+        )
+        self.assertIn(
+            'watcher-distribution-preflight.txt',
+            script,
+        )
+        self.assertIn(
+            'watcher_distribution_status=PASS',
+            script,
+        )
+
+        preflight = script.index("# A WATCHER-risk release")
+        worktree = script.index('build_parent="$(mktemp')
+        dependency_fetch = script.index(
+            'sudo -n /usr/bin/systemctl start --wait "$deps_unit"'
+        )
+        self.assertLess(preflight, worktree)
+        self.assertLess(preflight, dependency_fetch)
+
+    def test_watcher_stage_result_requires_distribution_receipt_proof(self):
+        data, manifest, result = sample()
+        manifest["risk_class"] = "WATCHER"
+        result.update(
+            {
+                "watcher_distribution_status": "PASS",
+                "watcher_distribution_version": "1.6.0",
+                "watcher_distribution_checksum_sha256": "e" * 64,
+                "watcher_distribution_manifest_sha256": "f" * 64,
+            }
+        )
+        self.assertEqual(
+            MODULE.validate_stage_result(data, manifest, result),
+            [],
+        )
+
+        result["watcher_distribution_status"] = "NOT_APPLICABLE"
+        result["watcher_distribution_manifest_sha256"] = "not-a-sha"
+        errors = MODULE.validate_stage_result(data, manifest, result)
+        self.assertIn(
+            "WATCHER distribution preflight did not report PASS",
+            errors,
+        )
+        self.assertIn(
+            "WATCHER distribution evidence is invalid: "
+            "watcher_distribution_manifest_sha256",
+            errors,
+        )
+
     def test_stage_disk_preflight_precedes_candidate_materialization(self):
         script = MODULE.remote_stage_script(
             release_sha="b" * 40,
