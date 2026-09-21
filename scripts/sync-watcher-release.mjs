@@ -31,6 +31,10 @@ const FEATURE_CHIPS = [
   "Mid-game replay recovery",
   "Bounded monitor watchdog",
   "Privacy-safe rich heartbeat",
+  "Low-footprint tray background mode",
+  "Dashboard-free replay monitoring",
+  "Safe self-update handoff",
+  "Sandboxed dashboard renderer",
 ];
 
 const WATCHER_RELEASE_TEMPLATE = ({ version, releasedOn }) => `export type WatcherArtifactPlatform = "windows" | "macos" | "linux";
@@ -186,6 +190,22 @@ async function copyArtifact(sourcePath, targetPath, { optional = false } = {}) {
     }
 
     throw error;
+  }
+
+  const sourceRealPath = await fs.realpath(sourcePath);
+  let targetRealPath = null;
+
+  try {
+    targetRealPath = await fs.realpath(targetPath);
+  } catch {
+    // Destination does not exist yet.
+  }
+
+  if (targetRealPath && sourceRealPath === targetRealPath) {
+    process.stdout.write(
+      `Watcher artifact already canonical: ${targetPath}\n`
+    );
+    return true;
   }
 
   await fs.copyFile(sourcePath, targetPath);

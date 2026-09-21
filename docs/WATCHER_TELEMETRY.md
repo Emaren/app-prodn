@@ -8,14 +8,44 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "telemetry-contract"
-reviewed_at: "2026-09-20"
+reviewed_at: "2026-09-21"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
 
 # Watcher Telemetry
 
-## Production release identity — 2026-09-20
+## Production release identity — 2026-09-21
+
+The live download root is `/mnt/HC_Volume_105319120/aoe2-downloads`, exposed through the app's `public/downloads` symlink. The Watcher 1.6.0 release contract requires the Windows, macOS, and Linux updater manifests to report `version: 1.6.0` before the web metadata is considered publishable.
+
+Release evidence:
+
+- Watcher runtime source: `ee9229009f3b36dc082a1c3aa31305b5fd76a5b7`;
+- certified candidate build source and annotated `v1.6.0` tag target: `52d0a42ee68bb6f1f71db16a6298f32810baeeec`;
+- successful Windows Artifact Signing run: `35634269184`;
+- successful macOS/Linux release build run: `35634269169`;
+- public GitHub release: `v1.6.0`, published 2026-09-21 18:10:42 UTC.
+
+Verified release binary SHA-256 values:
+
+- Windows installer: `b6fa8b3ed934bb98dfbb5008148fb739575ca138b3dfc74084dd4a2b7d650f89`;
+- Windows portable EXE: `d656b66de13cc594e28c2dc88651dc8df5eefd1b35d0fa5b6792c7dfd1ef173d`;
+- Apple Silicon DMG: `e128424ca6cecc5ebcf82c57d643e0774380b786780fd8b141190562a50380e3`;
+- macOS direct ZIP: `44845f98996614bac4c3c8a340b037983edc2de9975e47181db2689a4f8712e0`;
+- Linux AppImage: `5b35a62b09bab23117e744386c463e2579a3e34d7319094163aaae83d62b1266`.
+
+Secondary release evidence is also pinned: macOS DMG blockmap `d06e9206b9db50401f7da23624d39ea9bfaf35c097db1cb324075586f2fe5c0a`, `latest-mac.yml` `a75eaead880e6cd7dd139e6a62d3fd5f776bd430fda28f752c23c10ae9327a7e`, and `latest-linux.yml` `37926c8fe2e37bbaafd95b4383f0b3b56bb46c8a0cf2b7be536104880fcc2ccf`. `SHA256SUMS-1.6.0.txt` and `watcher-release-manifest-1.6.0.json` are the authoritative public inventory receipts. The release manifest records both runtime source and candidate build source plus the exact platform workflow run IDs.
+
+The GitHub Actions integration passed every provenance, inventory, updater-metadata, and artifact-hash gate but was denied release creation with HTTP `403 Resource not accessible by integration`. The certified bundle was therefore published against the pre-created annotated tag by the authenticated repository owner without rebuilding or replacing any candidate artifact. The durable workflow now stops at a certified release-bundle handoff instead of pretending the integration has release-create authority.
+
+## v1.6.0 low-footprint lifecycle and self-update
+
+Watcher 1.6.0 separates the replay engine from the Chromium dashboard. Login startup may arm in tray-only background mode with no BrowserWindow alive; opening the dashboard creates the renderer on demand, and closing it destroys the renderer while replay monitoring continues. The renderer is sandboxed, dashboard log growth is bounded, runtime-event paints are coalesced, config/folder inspection is cached, and idle recovery/freshness safety nets run at deliberately low frequency.
+
+Updater installation now distinguishes an **armed** watcher from **active work**. An idle monitor no longer blocks an already-downloaded update. Active replay observation, replay upload, historical import, or watcher-native streaming still blocks installation; once those rails clear, Windows may hand off safely to `quitAndInstall()`. The unsigned macOS distribution remains download-and-replace. Replay durability, fresh-unknown recovery, known-final hash/fingerprint safety, and replay-over-video network priority remain intact from the prior releases.
+
+## Previous production release identity — 2026-09-20
 
 The live download root is `/mnt/HC_Volume_105319120/aoe2-downloads`, exposed through the app's `public/downloads` symlink. The Watcher 1.5.13 release contract requires the Windows, macOS, and Linux updater manifests to report `version: 1.5.13` before the web metadata is considered publishable.
 
