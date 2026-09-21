@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `hardening/watcher-distribution-preflight` at `71abe63407120626d779e253a4e93a53775d92fb`
+Implementation baseline: `hardening/watcher-distribution-preflight` at `7b676e46a446809326b5ffc35dcce3483d7eec7c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
