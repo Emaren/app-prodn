@@ -76,6 +76,19 @@ keeps byte-for-byte backups of replaced targets and restores the entire prior
 vault if that final metadata write fails; regression coverage forces exactly
 that post-promotion failure and proves rollback plus staging cleanup.
 
+The production-vault handoff is now governed too. `aoe2war watcher-release`
+is preview-first and binds the local 11-file bundle to the exact public GitHub
+release through SHA-256 digest-multiset equality before any transfer. Apply
+acquires the global release lease, stages the exact files under
+`watcher-release-staging`, re-validates them on the VPS, and promotes the six
+payload/update-support files plus both receipts before the three updater
+manifests. A fully matching vault returns `NOOP` without uploading. Production
+source, active BUILD_ID, service state and Wolo 8092/8093 listener counts are
+recorded before/after and must remain unchanged. Pre-mutation upload failure may
+clean only the stage created by that invocation; once the privileged worker
+starts, transport loss or a pre-existing deterministic stage is preserved for
+explicit recovery rather than guessed away.
+
 ## v1.6.0 low-footprint lifecycle and self-update
 
 Watcher 1.6.0 separates the replay engine from the Chromium dashboard. Login startup may arm in tray-only background mode with no BrowserWindow alive; opening the dashboard creates the renderer on demand, and closing it destroys the renderer while replay monitoring continues. The renderer is sandboxed, dashboard log growth is bounded, runtime-event paints are coalesced, config/folder inspection is cached, and idle recovery/freshness safety nets run at deliberately low frequency.
