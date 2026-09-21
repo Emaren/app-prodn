@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-14",
       "sensitivity": "internal",
-      "sha256": "c09997bb86279aa7c0186976d1dd5c42c4863a5fd96164dee10753bfdda36a15",
+      "sha256": "1f46e9688effc4a0f4a9474a9e7b962d65662b89f10beb345d23cba4f703567a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1646,9 +1646,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WATCHER_TELEMETRY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-19",
+      "reviewed_at": "2026-09-20",
       "sensitivity": "restricted",
-      "sha256": "0a5e12397aa13730b8ae24bf81189c920956c0c54cd90d6faed3811377474101",
+      "sha256": "0a68a4691874f0dcbad31a9ff946f2b57c8b7e26faf55b902f681c4e5dac7475",
       "source_of_truth": "git",
       "status": "active",
       "systems": [

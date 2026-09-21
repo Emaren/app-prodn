@@ -31,16 +31,20 @@ const reliabilityEvents = [
   "watch_folder_auto_repair_failed",
 ];
 
-test("Watcher 1.5.12 public release identity is exact", () => {
-  assert.match(release, /version: "1\.5\.12"/);
-  assert.match(release, /releasedOn: "Sep 16, 2026"/);
+test("Watcher 1.5.13 public release identity is exact", () => {
+  assert.match(release, /version: "1\.5\.13"/);
+  assert.match(release, /releasedOn: "Sep 20, 2026"/);
   assert.match(release, /Active replay-folder recovery/);
+  assert.match(release, /Fresh replay adoption after restart/);
+  assert.match(release, /Localized out-of-sync MP save support/);
   assert.match(release, /Replay-priority streaming/);
   assert.doesNotMatch(release, /version: "1\.5\.9"/);
 });
 
 test("Watcher release sync preserves reliability and 1.5.11 media shedding", () => {
   assert.match(sync, /Active replay-folder recovery/);
+  assert.match(sync, /Fresh replay adoption after restart/);
+  assert.match(sync, /Localized out-of-sync MP save support/);
   assert.match(sync, /Replay-priority streaming/);
   assert.match(sync, /Capability-negotiated media shedding/);
   assert.match(sync, /Replay folder self-healing/);
@@ -57,18 +61,18 @@ test("Watcher reliability telemetry remains admitted server-side", () => {
   }
 });
 
-test("Watcher 1.5.12 docs bind public metadata to certified artifacts", () => {
-  assert.match(docs, /version: 1\.5\.12/);
-  assert.match(docs, /329d0e99924126b0fc13f31ddcc26f81607b35cd/);
-  assert.match(docs, /35165618190/);
-  assert.match(docs, /35165618193/);
+test("Watcher 1.5.13 docs bind public metadata to certified artifacts", () => {
+  assert.match(docs, /version: 1\.5\.13/);
+  assert.match(docs, /79c4641e77df26e488c252738ff6f44e89772de6/);
+  assert.match(docs, /35552739520/);
+  assert.match(docs, /35552739589/);
 
   for (const hash of [
-    "611a98f710c42bf3c4486cca68bad6036662943cb0fbc67d0945ec9496509bf0",
-    "d2d771b7cdc6abacca4b2ca6128ac16004d51cf151d286d5c87323721ce52d37",
-    "68b18066888fc60392921b6dc44d66c0a32f23fc70556d2e4a0c7fed98f14ac3",
-    "cdfdfbc9180bb403086d98009cb3516f2b81ba05488742fb4f01ea1e2dc694f4",
-    "f53318079f00de092c93a5d3fbf0a747b0dfd520d736dfbddf4fa0629ac58057",
+    "73a432687fd3b1989ff4cb5063d9e29589b6471186e277df399b6bb5599a91ec",
+    "4583ce46bebd864a32b2db4d0b57792b6e70d31dfd9c56a414644c857e674248",
+    "87c9545364bab48ee0e45cb7cb3e145a953a52ea480481ba427f0b55cdd4e140",
+    "80eea06fc3beec7c905379d59180a04e2cf36303f9712f07397403700a81c142",
+    "823b6a29836dea8caf2953201e68681adbdc4d3855b1b25a5c19bff8d618770e",
   ]) {
     assert.match(docs, new RegExp(hash));
   }
@@ -76,6 +80,8 @@ test("Watcher 1.5.12 docs bind public metadata to certified artifacts", () => {
   assert.match(docs, /valid-but-stale/);
   assert.match(docs, /Video is expendable; replay live\/final delivery is not/);
   assert.match(docs, /authenticated Watcher API key/);
+  assert.match(docs, /fresh-unknown recovery admission/);
+  assert.match(docs, /English and localized out-of-sync MP saves/);
   assert.match(docs, /server-media-shed-v1/);
   assert.match(docs, /STREAM_MEDIA_SHED/);
 });
