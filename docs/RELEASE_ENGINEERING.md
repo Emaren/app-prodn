@@ -94,6 +94,14 @@ disagree, stop and reconcile them before production mutation.
     must all agree exactly; missing files, duplicate or unexpected checksum
     entries, symlinks, version drift, path drift, or digest disagreement fail
     closed while the live source and runtime remain untouched.
+18. The source-side `watcher:sync` promotion is itself transactional. It proves
+    the complete certified source bundle before mutation, stages copies beside
+    the canonical target, re-proves the staged canonical bundle, rejects unsafe
+    target file types, promotes payloads and inventory receipts before updater
+    manifests, and writes `lib/watcherRelease.ts` only after the vault
+    transaction succeeds. If metadata commit fails after promotion, the sync
+    restores every prior target byte in reverse order. Temporary stage/backup
+    directories are removed on both success and failure.
 
 ## Root control assets and mounted build scratch
 
