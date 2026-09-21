@@ -90,6 +90,17 @@
     "require_plan_digest_recheck": true,
     "require_runtime_identity_recheck": true
   },
+  "watcher_release_promotion": {
+    "default_mode": "preview-read-only",
+    "github_repo": "Emaren/aoe2-watcher",
+    "download_root": "/mnt/HC_Volume_105319120/aoe2-downloads",
+    "staging_root": "/mnt/HC_Volume_105319120/aoe2war/watcher-release-staging",
+    "receipt_root": "/mnt/HC_Volume_105319120/aoe2war/os-control/watcher-release-promotion-receipts",
+    "lock_path": "/mnt/HC_Volume_105319120/aoe2war/os-control/locks/watcher-release-promotion.lock",
+    "require_public_release_digest_match": true,
+    "require_runtime_identity_recheck": true,
+    "wolo_mutation_allowed": false
+  },
   "operator_bridge": {
     "online_threshold_seconds": 45,
     "poll_interval_seconds": 3,
