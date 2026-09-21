@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "8818e699b7ff3a3512e1e16c6cfba552f56693376a399dd1eddc6bf6f88b93d8",
+      "sha256": "c3e05a34f98ea48cdea2f2d9f03a9e5392b9de49d7b73245a2d2b0748647a7d6",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1646,9 +1646,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WATCHER_TELEMETRY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-20",
+      "reviewed_at": "2026-09-21",
       "sensitivity": "restricted",
-      "sha256": "33bcfec6bddfa852616c3189bd525e9b5c241fba315e30811e202a58952efd2b",
+      "sha256": "2f33565d010e309bfed77af03c8f24cd9435dd4a6547d63885d6d3bd67835ab9",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/watcher-1.5.13-release-20260921",
-    "commit": "99465fc2f5ad020e6611a601808ec10a9c996791"
+    "branch": "release/watcher-1.6.0-20260921",
+    "commit": "ac3b21e18c91b91757aef191aa996f5faa9b010d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
