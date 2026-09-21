@@ -119,6 +119,18 @@ class StageTests(unittest.TestCase):
             script,
         )
         self.assertIn(
+            'if set(checksum_entries) != set(expected):',
+            script,
+        )
+        self.assertIn(
+            'if name in checksum_entries:',
+            script,
+        )
+        self.assertIn(
+            'if checksum_entries[name] != manifest_hashes[name]:',
+            script,
+        )
+        self.assertIn(
             'f"version: {version}" not in lines',
             script,
         )
