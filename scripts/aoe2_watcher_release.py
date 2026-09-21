@@ -1373,24 +1373,37 @@ def main(argv: list[str] | None = None) -> int:
             import aoe2_release
 
             with aoe2_release.global_release_lease():
-                remote_apply_started = False
-                try:
-                    create_remote_stage(policy, remote_stage)
-                    transfer_bundle(
-                        source, version, policy, remote_stage
+                preview = invoke_remote(
+                    policy, plan, remote_stage, apply=False
+                )
+                if preview.get("status") == "NOOP":
+                    payload = preview
+                elif preview.get("status") != "READY":
+                    raise WatcherReleasePromotionError(
+                        "remote Watcher release preview is not READY"
                     )
-                    remote_apply_started = True
-                    payload = invoke_remote(
-                        policy, plan, remote_stage, apply=True
-                    )
-                except Exception:
-                    # Before remote mutation begins, an incomplete upload is
-                    # safe to retire. Once the privileged worker starts, any
-                    # transport loss is an uncertain transaction: preserve the
-                    # stage/backups/receipts for explicit recovery.
-                    if not remote_apply_started:
-                        cleanup_failed_stage(policy, remote_stage)
-                    raise
+                else:
+                    stage_created = False
+                    remote_apply_started = False
+                    try:
+                        create_remote_stage(policy, remote_stage)
+                        stage_created = True
+                        transfer_bundle(
+                            source, version, policy, remote_stage
+                        )
+                        remote_apply_started = True
+                        payload = invoke_remote(
+                            policy, plan, remote_stage, apply=True
+                        )
+                    except Exception:
+                        # Retire only a stage created by this invocation and
+                        # only before privileged mutation begins. An existing
+                        # or remotely uncertain transaction is evidence.
+                        if stage_created and not remote_apply_started:
+                            cleanup_failed_stage(
+                                policy, remote_stage
+                            )
+                        raise
     except Exception as exc:
         payload = error_payload(str(exc), apply=args.apply)
 
