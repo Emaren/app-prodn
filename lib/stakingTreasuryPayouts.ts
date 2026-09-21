@@ -31,6 +31,7 @@ const STAKING_TREASURY_DISTRIBUTION_SELECT = {
   bettingFeePoolWolo: true,
   stakerPoolWolo: true,
   treasuryPoolWolo: true,
+  treasuryPoolUwolo: true,
   status: true,
   treasuryPayoutStatus: true,
   treasuryPayoutRequestId: true,
@@ -230,7 +231,7 @@ function buildBlockers(row: StakingTreasuryDistributionRow) {
   if (!isFinalized(row)) {
     blockers.push("Distribution is not FINALIZED yet.");
   }
-  if (row.treasuryPoolWolo <= 0) {
+  if (row.treasuryPoolUwolo <= BigInt(0)) {
     blockers.push("Distribution has no positive Treasury pool.");
   }
   if (!treasuryAddress) {
@@ -333,7 +334,7 @@ export function buildStakingTreasuryPayoutPlan(
     state: state.state,
     stateLabel: state.stateLabel,
     stateDetail: state.stateDetail,
-    amountWolo: row.treasuryPoolWolo,
+    amountWolo: Number(row.treasuryPoolUwolo) / 1_000_000,
     requestId,
     settlementRunId: buildSettlementRunId(row),
     sourceEventId: buildSourceEventId(row),
@@ -631,7 +632,10 @@ export async function loadStakingTreasuryPayoutPlans(
               periodEnd: new Date(plan.periodEnd),
               bettingFeePoolWolo: 0,
               stakerPoolWolo: 0,
-              treasuryPoolWolo: plan.amountWolo,
+              treasuryPoolWolo: Math.ceil(plan.amountWolo),
+              treasuryPoolUwolo: BigInt(
+                Math.round(plan.amountWolo * 1_000_000),
+              ),
               status: plan.status,
               treasuryPayoutStatus: plan.treasuryPayoutStatus,
               treasuryPayoutRequestId: plan.requestId,

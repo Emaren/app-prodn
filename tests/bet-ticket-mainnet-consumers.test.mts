@@ -94,7 +94,9 @@ test("daily staking distribution records volume returned through the shared tick
   let dailyStatUpsert: Record<string, unknown> | null = null;
 
   const tx = {
+    $executeRaw: async () => 0,
     stakingRewardDistribution: {
+      findUnique: async () => null,
       create: async ({ data }: { data: { status: string } }) => ({
         id: 91,
         status: data.status,
