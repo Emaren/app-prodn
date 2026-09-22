@@ -207,7 +207,7 @@ function makeEstate(speedCurrent = true) {
       ),
       command(
         "active-python-test-contract",
-        "Running 46 Python contract files.\n",
+        "Running 47 Python contract files.\n",
       ),
       command("documentation-control-plane"),
       command("tracked-secret-scan"),
