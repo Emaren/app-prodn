@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "repository-entrypoint"
-reviewed_at: "2026-09-14"
+reviewed_at: "2026-09-22"
 review_interval_days: 14
 sensitivity: "internal"
 ---
@@ -40,6 +40,20 @@ memory before closing the work.
 4. `aoe2war finish` remains the canonical end-of-work transaction and owns
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
+
+## Mutable release identity must have one authority
+
+General Inspections exposed a stale duplicated Watcher identity after Watcher 1.6.0 shipped:
+`lib/watcherRelease.ts` correctly advertised 1.6.0 while the static inspection baseline still
+named 1.5.12 / 1.5.11. That could make download-retention and Watcher-integrity scoring disagree
+with the release users could actually install even though the underlying Watcher publication was
+healthy.
+
+Durable rule: fast-moving release identity belongs to its owning release contract, not to a
+dashboard baseline. General Inspections now imports the canonical Watcher current/previous
+versions directly, and the Watcher sync transaction rotates the prior current version whenever a
+new certified release is synchronized. Baseline/config snapshots may carry slow-changing scoring
+policy, but they must not become a second mutable source of product-release truth.
 
 ## Readiness authority must model semantics, not JSX shape
 

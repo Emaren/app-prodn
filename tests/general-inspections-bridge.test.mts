@@ -116,7 +116,7 @@ function bridgePayload(speedCurrent = true) {
         central_docs_synced: true,
         source_repositories_synced: 5,
         source_repositories_total: 5,
-        watcher_version: "1.5.12",
+        watcher_version: "1.6.0",
       },
       knowledge: {
         docs_due_7d: 0,
@@ -237,8 +237,8 @@ function makeEstate(speedCurrent = true) {
   );
 
   mkdir(downloadRoot);
-  writeFileSync(path.join(downloadRoot, "AoE2HDBets Watcher 1.5.12.exe"), "");
-  writeFileSync(path.join(downloadRoot, "AoE2HDBets Watcher 1.5.11.exe"), "");
+  writeFileSync(path.join(downloadRoot, "AoE2HDBets Watcher 1.6.0.exe"), "");
+  writeFileSync(path.join(downloadRoot, "AoE2HDBets Watcher 1.5.13.exe"), "");
   writeFileSync(path.join(downloadRoot, "watcher-release-manifest-1.5.10.json"), "{}\n");
 
   const campaign = path.join(expiryRoot, "campaign-20260919T030000Z");

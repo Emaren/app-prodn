@@ -10,6 +10,7 @@ import {
 import path from "node:path";
 
 import baseline from "@/config/general-inspections-baseline.json";
+import { WATCHER_RELEASE } from "@/lib/watcherRelease";
 import { buildBridgeGeneralInspectionsSnapshot } from "./bridgeSnapshot.ts";
 import {
   category,
@@ -316,10 +317,10 @@ function buildLocalGeneralInspectionsSnapshot(): GeneralInspectionsSnapshot {
   const protectedHot = list(expiry.data?.protected_hot).length;
   const protectedCold = list(expiry.data?.protected_cold).length;
   const versions = watcherVersions();
-  const allowedVersions = new Set([
-    baseline.policy.watcherCurrentVersion,
-    baseline.policy.watcherPreviousVersion,
-  ]);
+  const allowedVersions = new Set<string>([WATCHER_RELEASE.version]);
+  if (WATCHER_RELEASE.previousVersion) {
+    allowedVersions.add(WATCHER_RELEASE.previousVersion);
+  }
   const extraVersions = versions.filter((version) => !allowedVersions.has(version));
   // Watcher release staging is governed by the dedicated digest-backed
   // watcher-staging retention lane. Raw presence can be protected unique
@@ -506,7 +507,7 @@ function buildLocalGeneralInspectionsSnapshot(): GeneralInspectionsSnapshot {
   );
 
   const watcherChecker = record(sourceCheckers["aoe2-watcher"]);
-  const watcherCurrent = (text(watcherChecker.summary) || "").includes(baseline.policy.watcherCurrentVersion);
+  const watcherCurrent = (text(watcherChecker.summary) || "").includes(WATCHER_RELEASE.version);
   const data = category(
     "data",
     "Data / Wolo / Replay Integrity",
@@ -517,7 +518,7 @@ function buildLocalGeneralInspectionsSnapshot(): GeneralInspectionsSnapshot {
       check("wolo-estate", "WoloChain estate", 10, areas.WoloChain === "PASS" ? finishFresh : 0, String(areas.WoloChain || "Not proven"), { evidenceAt: finishAt }),
       check("parser-estate", "API / Parser estate", 10, areas["API / Parser"] === "PASS" ? finishFresh : 0, String(areas["API / Parser"] || "Not proven"), { evidenceAt: finishAt }),
       check("recovery-data", "Recovery coverage", 10, recoveryRequired ? recoveryProven / recoveryRequired * finishFresh : 0, recoveryRequired ? recoveryProven + "/" + recoveryRequired + " classes" : "No recovery proof", { ratio: { passed: recoveryProven, total: recoveryRequired }, evidenceAt: finishAt }),
-      check("watcher-release", "Watcher release contract", 10, watcherCurrent ? finishFresh : 0, watcherCurrent ? "Current " + baseline.policy.watcherCurrentVersion : "Watcher release checker behind", { evidenceAt: finishAt }),
+      check("watcher-release", "Watcher release contract", 10, watcherCurrent ? finishFresh : 0, watcherCurrent ? "Current " + WATCHER_RELEASE.version : "Watcher release checker behind", { evidenceAt: finishAt }),
       check("db-mutation", "Finish database mutation boundary", 10, finish?.database_mutated === false ? finishFresh : 0, finish?.database_mutated === false ? "No database mutation" : "Mutation boundary not clean", { evidenceAt: finishAt }),
       check("wolo-mutation", "Finish Wolo mutation boundary", 10, finish?.wolo_mutated_by_finish === false ? finishFresh : 0, finish?.wolo_mutated_by_finish === false ? "No Wolo mutation" : "Mutation boundary not clean", { evidenceAt: finishAt }),
       check("data-fresh", "Data truth freshness", 5, finishFresh, ageDetail(finishAt), { evidenceAt: finishAt }),

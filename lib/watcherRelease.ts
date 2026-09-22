@@ -24,6 +24,7 @@ export type WatcherDownloadArtifact = {
 
 export const WATCHER_RELEASE = {
   version: "1.6.0",
+  previousVersion: "1.5.13",
   label: "AoE2HDBets Watcher 1.6.0",
   releasedOn: "Sep 21, 2026",
   signingStatus: "Signed and timestamped Windows builds; unsigned macOS build; Linux AppImage available",
