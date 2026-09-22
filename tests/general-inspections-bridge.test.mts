@@ -378,7 +378,7 @@ test("required validator missing from certified gate still fails closed", () => 
     assert.ok(tests);
     assert.ok(tests.score < 100);
     const typescript = tests.checks.find((item) => item.id === "typescript");
-    assert.equal(typescript?.score, 0);
+    assert.equal(typescript?.earned, 0);
     assert.equal(typescript?.detail, "Required TypeScript proof missing");
   } finally {
     rmSync(estate.root, { recursive: true, force: true });
