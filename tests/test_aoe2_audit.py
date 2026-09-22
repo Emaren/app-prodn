@@ -164,6 +164,20 @@ class AuditCommandTests(unittest.TestCase):
             (sha / f"{newest.name}.sha256").write_text(
                 f"{digest}  {newest.name}\n", encoding="utf-8"
             )
+            md = root / "context" / "md"
+            md.mkdir(parents=True)
+            companion = md / f"{newest.stem}.md"
+            companion.write_text(
+                "# AoE2WAR Portable Context Companion\n\n"
+                f"- source_archive: `{newest.name}`\n"
+                f"- source_sha256: `{digest}`\n",
+                encoding="utf-8",
+            )
+            companion_digest = MODULE.sha256(companion)
+            (sha / f"{companion.name}.sha256").write_text(
+                f"{companion_digest}  {companion.name}\n",
+                encoding="utf-8",
+            )
             audit = MODULE.Audit()
             with (
                 patch.object(MODULE, "VPSSENTRY", root),
@@ -175,6 +189,52 @@ class AuditCommandTests(unittest.TestCase):
         self.assertEqual(len(drift), 1)
         self.assertEqual(drift[0].severity, "P1")
         self.assertFalse(any(item.severity == "P0" for item in audit.findings))
+
+    def test_context_archive_missing_markdown_companion_is_p0(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            tgz = root / "context" / "tgz"
+            sha = root / "context" / "sha256"
+            tgz.mkdir(parents=True)
+            sha.mkdir(parents=True)
+            archive = tgz / "Test-context-host-20260919-020000.tgz"
+            archive.write_bytes(b"payload")
+            digest = MODULE.sha256(archive)
+            (sha / f"{archive.name}.sha256").write_text(
+                f"{digest}  {archive.name}\n",
+                encoding="utf-8",
+            )
+            audit = MODULE.Audit()
+            with (
+                patch.object(MODULE, "VPSSENTRY", root),
+                patch.object(MODULE, "ARCHIVE_SERIES", {"Test": []}),
+            ):
+                MODULE.check_context_archives(audit)
+
+        self.assertTrue(
+            any(
+                item.key == "markdown-companion-missing"
+                and item.severity == "P0"
+                for item in audit.findings
+            )
+        )
+
+    def test_markdown_companion_metadata_requires_exact_source_binding(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = pathlib.Path(temporary) / "context.md"
+            path.write_text(
+                "# AoE2WAR Portable Context Companion\n\n"
+                "- source_archive: `Demo-context-host-20260922-010203.tgz`\n"
+                f"- source_sha256: `{'a' * 64}`\n",
+                encoding="utf-8",
+            )
+            self.assertEqual(
+                MODULE.markdown_companion_metadata(path),
+                (
+                    "Demo-context-host-20260922-010203.tgz",
+                    "a" * 64,
+                ),
+            )
 
     def test_archive_timestamp(self):
         value = MODULE.archive_timestamp(
