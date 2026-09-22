@@ -446,12 +446,13 @@ def build_audit(
                     "static_or_revalidated_public_candidate",
                 }
                 and not server_personalized
-                and not runtime_prohibited
+                and not live.get("set_cookie")
             ):
                 priority = "installed_dynamic_edge"
                 reason = (
                     "verified SpeedOS dynamic-edge authority owns this exact route; "
-                    "MISS/EXPIRED is TTL state, not an unresolved cache opportunity"
+                    "MISS/EXPIRED and origin private/no-store are expected cache-lifecycle "
+                    "state for the explicitly qualified override lane, not unresolved cache opportunities"
                 )
             else:
                 authority_drift = True

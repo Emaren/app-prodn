@@ -133,10 +133,14 @@ It also joins the latest verified static and dynamic SpeedOS apply receipts:
 routes already owned by those exact cohorts are reported as `installed_static_edge`
 or `installed_dynamic_edge` instead of being re-ranked merely because a one-shot
 header probe observes `MISS` or `EXPIRED`. Those statuses are cache-lifecycle
-state, not fresh authorization opportunities. If current source/runtime safety
-no longer matches an installed authority, the audit preserves the fail-closed
-classification and records authority drift rather than hiding it. Reusable audits
-are invalidated when installed edge authority changes.
+state, not fresh authorization opportunities. The qualified dynamic lane is an
+explicit Cloudflare override of ordinary Next dynamic-response cache directives, so
+origin `private`/`no-store` alone does not revoke an already-qualified dynamic
+route; source personalization or a newly emitted `Set-Cookie` still fails closed.
+Static authority continues to treat private/no-store as revocation evidence. If
+current source/runtime safety no longer matches an installed authority, the audit
+records authority drift rather than hiding it. Reusable audits are invalidated when
+installed edge authority changes.
 This creates a durable deployment manifest before any Cloudflare Cache Rule or
 other edge mutation is authorized.
 
