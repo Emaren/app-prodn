@@ -41,6 +41,26 @@ memory before closing the work.
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
 
+## 2026-09-22 — Browser Truth cohorts must use one readiness meaning
+
+The 16-route Browser Truth cohort still contained five fallback-only rows:
+a claimed player profile, `/lobby`, `/kingdom`, `/kingdom-forge`, and
+`/clans/mystikal`. Those routes could pass browser integrity without proving the
+same semantic Ready boundary used by the rest of the cohort, which made cross-route
+Ready comparisons weaker than the green pass count implied.
+
+The repair follows route authority instead of adding decorative markers. Server-backed
+Kingdom, player-profile, and clan-hall pages publish after their authoritative snapshot
+has rendered. Lobby reuses the same hydrated primary experience as the root route but
+publishes under its own route key. Kingdom Forge waits until its initial ledger request
+settles before publishing Ready. Browser Truth now requires explicit Ready on all 16
+cohort routes, and Speed Proof recognizes those exact route families.
+
+Durable rule: a fixed performance cohort must use one semantic definition for a metric.
+Never mix route-paint fallback with primary-interface Ready and then compare or aggregate
+the rows as though they measured the same event. If a route cannot name its truthful
+Ready boundary, it is not ready for decision-grade Browser Truth.
+
 ## 2026-09-22 — Pay deterministic cold work before the first human navigation
 
 A live Speed Observatory session exposed `/workshop` as a multi-second in-site navigation while

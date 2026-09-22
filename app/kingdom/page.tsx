@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Anvil, ArrowRight, Eye, Flame, Scale } from "lucide-react";
 
+import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import { loadKingdomSummary } from "@/lib/kingdomSummary";
 
 import KingdomHero from "./KingdomHero";
@@ -66,6 +67,7 @@ export default async function KingdomPage() {
 
   return (
     <main className="space-y-6 overflow-x-hidden py-3 text-white sm:space-y-8 sm:py-5">
+      <SpeedReadyMarker route="/kingdom" />
       <KingdomHero featuredStats={featuredStats} />
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">

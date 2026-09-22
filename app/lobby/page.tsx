@@ -27,6 +27,7 @@ export default async function LobbyPage() {
     <HomePageClient
       initialLobby={initialLobby}
       initialHeroPlaylist={initialHeroPlaylist}
+      speedRoute="/lobby"
     />
   );
 }

@@ -344,7 +344,9 @@ class PerformanceOSTests(unittest.TestCase):
         self.assertIn("  speed)", source)
 
 
-        self.assertIn("browser", (ROOT / "bin" / "aoe2war").read_text(encoding="utf-8"))
+        self.assertIn("browser", source)
+        self.assertIn("16\n      critical public routes", source)
+        self.assertNotIn("15\n      critical public routes", source)
 
     def test_speed_campaign_material_delta_policy(self):
         self.assertEqual(
@@ -1180,6 +1182,10 @@ class PerformanceOSTests(unittest.TestCase):
         self.assertIn("/leaderboard", paths)
         self.assertTrue(next(row for row in routes if row["route"] == "/bets")["expect_ready"])
         self.assertTrue(next(row for row in routes if row["route"] == "/workshop")["expect_ready"])
+        self.assertTrue(
+            all(row["expect_ready"] for row in routes),
+            "every Browser Truth route must publish explicit semantic Ready",
+        )
 
     def test_browser_truth_seals_release_bound_nonmutating_receipt(self):
         identity = {

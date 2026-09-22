@@ -78,7 +78,7 @@ test("the readiness marker publishes only after the marked experience is ready",
 
 test("all primary battlefield routes publish explicit readiness", () => {
   const expectations = new Map([
-    ["app/HomePageClient.tsx", '<SpeedReadyMarker route="/" />'],
+    ["app/HomePageClient.tsx", '<SpeedReadyMarker route={speedRoute} />'],
     ["app/bets/page.tsx", '<SpeedReadyMarker route="/bets" ready={!loadingBoard} />'],
     ["components/live/LiveGamesBoard.tsx", '<SpeedReadyMarker route="/live-games" />'],
     ["app/players/page.tsx", '<SpeedReadyMarker route="/players" />'],
@@ -108,6 +108,38 @@ test("all primary battlefield routes publish explicit readiness", () => {
   }
 });
 
+test("Browser Truth cohort has truthful Ready boundaries for formerly fallback-only routes", () => {
+  const home = source("app/HomePageClient.tsx");
+  const lobby = source("app/lobby/page.tsx");
+  const kingdom = source("app/kingdom/page.tsx");
+  const forge = source("components/kingdom-forge/KingdomForgeClient.tsx");
+  const clan = source("app/clans/[slug]/page.tsx");
+  const player = source("components/players/PlayerProfilePage.tsx");
+  const proof = source("components/speed/SpeedProof.tsx");
+
+  assert.match(home, /speedRoute\?: "\/" \| "\/lobby"/);
+  assert.match(home, /speedRoute = "\/"/);
+  assert.match(lobby, /speedRoute="\/lobby"/);
+
+  assert.match(kingdom, /<SpeedReadyMarker route="\/kingdom" \/>/);
+  assert.match(
+    forge,
+    /<SpeedReadyMarker route="\/kingdom-forge" ready=\{!loading\} \/>/,
+  );
+  assert.match(forge, /finally \{[\s\S]*?setLoading\(false\);[\s\S]*?\}/);
+
+  assert.match(
+    clan,
+    /<SpeedReadyMarker route=\{`\/clans\/\$\{normalizedSlug\}`\} \/>/,
+  );
+  assert.match(player, /<SpeedReadyMarker route=\{profile\.href\} \/>/);
+
+  for (const route of ["/lobby", "/kingdom", "/kingdom-forge"]) {
+    assert.ok(proof.includes(`"${route}"`), `SpeedProof missing ${route}`);
+  }
+  assert.match(proof, /players\\\/u_/);
+  assert.match(proof, /clans\\\//);
+});
 test("Traffic publishes readiness from inside the hydrated primary chart boundary", () => {
   const traffic = source("app/traffic/page.tsx");
   const chart = source("components/observatory/PremiumTimeSeriesChart.tsx");

@@ -14,6 +14,9 @@ test("Speed Proof only exposes valid authoritative explicit readiness", () => {
   for (const route of [
     "/bets",
     "/live-games",
+    "/lobby",
+    "/kingdom",
+    "/kingdom-forge",
     "/players",
     "/rivalries",
     "/leaderboard",
@@ -33,7 +36,7 @@ test("Speed Proof says exactly what was measured instead of making an aggregate 
   assert.doesNotMatch(proof, /site-wide/i);
 });
 
-test("exact clan and bet realms retain a truthful last proof instead of measuring forever", () => {
+test("non-instrumented detail realms retain a truthful last proof instead of measuring forever", () => {
   assert.match(proof, /if \(!isAuthoritativeRoute\(route\)\)/);
   assert.match(proof, /getRecentSpeedSamples\(\)\.find\(\(candidate\) => isValidProof\(candidate\)\)/);
   assert.match(proof, /Last ready/);
@@ -51,6 +54,9 @@ test("every explicitly instrumented route can surface its own proof", () => {
     assert.match(proof, new RegExp(route.replaceAll("/", "\\/")));
   }
   assert.match(proof, /\^\\\/game-stats\\\//);
+  assert.match(proof, /players\\\/u_/);
+  assert.match(proof, /players\\\/by-name/);
+  assert.match(proof, /clans\\\//);
   assert.match(proof, /isAuthoritativeRoute\(currentRoute\)/);
 });
 

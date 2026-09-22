@@ -93,7 +93,7 @@ authoritative in existing Finish/release receipts.
 
 `aoe2war speed browser-truth` drives the installed Google Chrome directly through
 Chrome DevTools Protocol; it does not add a browser-test dependency or create a new
-control-plane service. The cohort is intentionally bounded to 15 critical public
+control-plane service. The cohort is intentionally bounded to 16 critical public
 routes and two fixed viewports (1440×900 desktop and 390×844 phone).
 
 The receipt is bound to the currently certified production source/build and records
@@ -108,6 +108,13 @@ route that fails browser truth must be repaired and re-certified before an edge
 policy is broadened. The rail deliberately supplements source-contract tests: green
 build/tests and HTTP timing do not by themselves prove hydration, viewport fit, or
 real-browser runtime correctness.
+
+Every route in the canonical 16-route cohort now requires explicit semantic Ready.
+Server-complete pages publish after their authoritative server snapshot exists;
+client-primary pages publish only after their initial primary-data load settles.
+Dynamic player-profile and clan-hall routes bind Ready to their resolved public path.
+A missing explicit signal is a Browser Truth failure rather than a route-paint
+fallback, so cohort pass rates remain comparable across routes and releases.
 
 ### Cold-process LCP rail
 

@@ -24,6 +24,9 @@ const AUTHORITATIVE_ROUTES = new Set([
   "/",
   "/bets",
   "/live-games",
+  "/lobby",
+  "/kingdom",
+  "/kingdom-forge",
   "/players",
   "/rivalries",
   "/leaderboard",
@@ -41,7 +44,10 @@ const AUTHORITATIVE_ROUTES = new Set([
 function isAuthoritativeRoute(route: string) {
   return (
     AUTHORITATIVE_ROUTES.has(route) ||
-    /^\/game-stats\/[1-9]\d*$/.test(route)
+    /^\/game-stats\/[1-9]\d*$/.test(route) ||
+    /^\/players\/u_[A-Za-z0-9_-]+$/.test(route) ||
+    /^\/players\/by-name\/[^/]+$/.test(route) ||
+    /^\/clans\/[^/]+$/.test(route)
   );
 }
 

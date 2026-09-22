@@ -8,6 +8,7 @@ import PlayerProfileRealtimeRefresh from "@/components/players/PlayerProfileReal
 import PlayerProfileDocumentShelf from "@/components/players/PlayerProfileDocumentShelf";
 import { PlayerAiDevelopmentConsole, PlayerHeroAiDomBinder } from "@/components/players/PlayerAiFeature";
 import SteamLinkedBadge from "@/components/SteamLinkedBadge";
+import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import { formatDurationLabel } from "@/lib/gameStatsView";
 import { buildMatchupHref } from "@/lib/publicMatchups";
 import { getPrisma } from "@/lib/prisma";
@@ -156,6 +157,7 @@ export default async function PlayerProfilePage({ profile, viewMode }: PlayerPro
 
   return (
     <>
+      <SpeedReadyMarker route={profile.href} />
       <PlayerProfileRealtimeRefresh
         initialGeneration={profile.matchFeed.generation}
       />
