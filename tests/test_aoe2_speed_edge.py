@@ -235,7 +235,7 @@ class SpeedEdgeTests(unittest.TestCase):
         policy = MODULE.load_dynamic_policy()
         self.assertEqual(
             [row["route"] for row in policy["routes"]],
-            ["/academy", "/ai", "/battle-archive", "/bounties", "/champions", "/champions/world", "/clans", "/forum", "/game-stats/16218/review", "/kingdom", "/leaderboard/og", "/market", "/market/shops/chat-effects", "/matchups/c_u_0df73bdbb64646c19e4a9bfd225b3285/n_Seedy_SI69", "/matchups/team/WyJjX3VfMGRmNzNiZGJiNjQ2NDZjMTllNGE5YmZkMjI1YjMyODUiLCJjX3VfMTc4MTYzODQzNjFmNGM4YThkNTdjNjkzNDI2NTEwMGIiLCJuX2NvcHBlcl9oZWFkX3JvYWQiXQ/WyJuX2Nhcmxvc2lzbSIsIm5fUm9NYV9WaWNUb1JfIiwibl9UYW5rVG9wTWFzdGVyIl0", "/national-champions", "/players/by-name/Emaren", "/radio", "/traffic", "/wolo"],
+            ["/academy", "/ai", "/battle-archive", "/champions", "/champions/world", "/clans", "/forum", "/game-stats/16218/review", "/kingdom", "/leaderboard/og", "/market", "/market/shops/chat-effects", "/matchups/c_u_0df73bdbb64646c19e4a9bfd225b3285/n_Seedy_SI69", "/matchups/team/WyJjX3VfMGRmNzNiZGJiNjQ2NDZjMTllNGE5YmZkMjI1YjMyODUiLCJjX3VfMTc4MTYzODQzNjFmNGM4YThkNTdjNjkzNDI2NTEwMGIiLCJuX2NvcHBlcl9oZWFkX3JvYWQiXQ/WyJuX2Nhcmxvc2lzbSIsIm5fUm9NYV9WaWNUb1JfIiwibl9UYW5rVG9wTWFzdGVyIl0", "/national-champions", "/players/by-name/Emaren", "/radio", "/traffic", "/wolo"],
         )
         self.assertTrue(all(row["ttl_seconds"] == 30 for row in policy["routes"]))
         self.assertTrue(all(row["empty_query_only"] is True for row in policy["routes"]))
