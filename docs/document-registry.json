@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "f0a2a62c2e2aeb713d4e2c24fbee33c19e021447c1725e83d2e41f8bf817e921",
+      "sha256": "4cc7830f5d79e7172a195931e69e89d3c4b5dbf95f41a693706e6d6cf635f4c3",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "speedos-exclude-volatile-bounties-20260922",
-    "commit": "3a11aa5cf698e2abf9a6b3ab49ef51158aecf816"
+    "branch": "main",
+    "commit": "cfbaff3009bf40f3807117bd4be7a03fb8227028"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
