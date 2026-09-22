@@ -563,9 +563,9 @@
       "owner": "aoe2war-web",
       "path": "docs/ENGINEERING_MEMORY.md",
       "review_interval_days": 14,
-      "reviewed_at": "2026-09-14",
+      "reviewed_at": "2026-09-22",
       "sensitivity": "internal",
-      "sha256": "1e26dd6a2c7a081a2cde9c34eda8fdae2dea07217442a0d297f2f574c31842a9",
+      "sha256": "a3fe3c6d97c814fea578764f378cdba4480b5a2dd4568f353942ae3dec08865f",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
