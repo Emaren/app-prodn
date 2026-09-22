@@ -55,6 +55,22 @@ versions directly, and the Watcher sync transaction rotates the prior current ve
 new certified release is synchronized. Baseline/config snapshots may carry slow-changing scoring
 policy, but they must not become a second mutable source of product-release truth.
 
+## Executable test counts must come from the release receipt
+
+General Inspections originally displayed a hard-coded Python contract-file count
+and awarded partial credit because GitHub CI ran the suite outside the local
+release receipt. That made the dashboard stale as the Python suite grew and
+created a ceiling below 100 even when every actual contract passed.
+
+The canonical test contract now owns both inventories. Release Gate executes the
+full active Python contract through `scripts/run_test_contract.py --python`
+alongside the Node contract and records each exact active/quarantined denominator
+in the gate receipt. GitHub CI uses the same runner.
+
+Durable rule: never hard-code executable-test counts in health scoring and never
+infer test success from the existence of a remote CI workflow. Health surfaces
+consume the exact receipt produced by the authority that certified the release.
+
 ## Readiness authority must model semantics, not JSX shape
 
 Speed OS originally counted route-level readiness by scanning source only for
