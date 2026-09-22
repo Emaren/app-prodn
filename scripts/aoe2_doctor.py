@@ -1555,7 +1555,7 @@ printf 'migration_current\\t%s\\n' "$(venv/bin/alembic current 2>/dev/null | tai
     if implementation_source and remote_head:
         remote_in_authority = False
         remote_known_rc, _ = run(
-            ["git", "cat-file", "-e", f"{remote_head}^{commit}"],
+            ["git", "cat-file", "-e", f"{remote_head}^{{commit}}"],
             cwd=local_repo,
             timeout=30,
         )
