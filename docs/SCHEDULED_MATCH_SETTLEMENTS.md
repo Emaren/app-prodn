@@ -8,14 +8,14 @@ systems: ["app-prodn","wolochain"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-08-26"
+reviewed_at: "2026-09-22"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
 
 # Scheduled Match Escrow Settlements
 
-Last updated: 2026-06-27
+Implementation review: 2026-09-22
 
 AoE2HDBets owns the app-side Challenge escrow settlement decision. WoloChain remains the chain rail for sending WOLO and proving tx hashes.
 
@@ -115,7 +115,7 @@ Dry-run all current scheduled-match liabilities:
 GET /api/admin/wolochain/scheduled-settlements?dryRun=1
 ```
 
-Dry-run the known live backfill rows:
+Dry-run the historical named backfill cohort when verifying legacy settlement state:
 
 ```bash
 GET /api/admin/wolochain/scheduled-settlements?dryRun=1&ids=17,18,19,12
@@ -129,11 +129,16 @@ POST /api/admin/wolochain/scheduled-settlements/:id/execute
 
 Execution is admin-only, records `refund_sent`, `guarantee_awarded`, `guarantee_forfeited_to_treasury`, `wager_awarded`, `scheduled_settlement_completed`, and `scheduled_settlement_failed` activity rows, and refuses execution when funding, recipients, settlement config, or Bet Escrow signer verification are missing.
 
-## Current Backfill Targets
+## Historical named backfill cohort
 
 - `#17`: canceled; refund Emaren `65 WOLO`.
 - `#18`: canceled; refund Emaren `1,030 WOLO`.
 - `#19`: double no-show; refund Emaren `15 WOLO`, refund Jim `15 WOLO`, send `20 WOLO` total guarantees to Community Treasury.
 - `#12`: no-show left; refund Julio Alvarez `1,000 WOLO`, refund Emaren `1,010 WOLO`, send Julio Alvarez's `10 WOLO` guarantee to Community Treasury.
 
-Migration does not execute these. An operator must review the dry-run and click/POST execute per match.
+This list is preserved as the original named backfill cohort, not as a live claim that
+those liabilities are still outstanding. Current settlement truth must come from the
+admin dry-run, persisted settlement rows, and WoloChain transaction proof.
+
+Migrations do not execute WOLO transfers. Any still-unsettled row requires an
+operator-reviewed dry-run before execution.
