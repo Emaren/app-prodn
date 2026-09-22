@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "4cc7830f5d79e7172a195931e69e89d3c4b5dbf95f41a693706e6d6cf635f4c3",
+      "sha256": "968d2bea31d7248b8caa7448d83433f941954b20b784124dc8775c5ea5a0d886",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1139,9 +1139,9 @@
       "owner": "aoe2war-web",
       "path": "docs/PERFORMANCE_OS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-06",
+      "reviewed_at": "2026-09-22",
       "sensitivity": "internal",
-      "sha256": "1aad1d7b4a55231c82fe824fcc40abe12e9456e1d5ea500d79906f83a1aadf3a",
+      "sha256": "0a496f09efc0ab7e0d2531687a473664672900d679a8dbd4fc89b1ad2073428f",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "main",
-    "commit": "cfbaff3009bf40f3807117bd4be7a03fb8227028"
+    "commit": "c85f10f9c3c166644b128b5532b46c9d2a2db850"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

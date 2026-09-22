@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "performance-operating-contract"
-reviewed_at: "2026-09-06"
+reviewed_at: "2026-09-22"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -50,7 +50,7 @@ aoe2war speed campaign verify
 ```
 
 `benchmark` defaults to a small critical public cohort. New `--full`
-benchmarks use the versioned 77-route V2 public cohort in
+benchmarks use the current 79-route V2 public cohort in
 `docs/audits/performance-route-cohort-v2.txt`: current static public surfaces
 plus stable representatives of dynamic route families. The frozen August 13
 66-route cohort remains historical comparison evidence only; it is not silently
@@ -129,6 +129,14 @@ the measured warm public-to-origin delivery gap.
 
 The audit is deliberately non-mutating. It ranks safe opportunities and keeps
 server-personalized or runtime-cookie responses in a fail-closed blocked class.
+It also joins the latest verified static and dynamic SpeedOS apply receipts:
+routes already owned by those exact cohorts are reported as `installed_static_edge`
+or `installed_dynamic_edge` instead of being re-ranked merely because a one-shot
+header probe observes `MISS` or `EXPIRED`. Those statuses are cache-lifecycle
+state, not fresh authorization opportunities. If current source/runtime safety
+no longer matches an installed authority, the audit preserves the fail-closed
+classification and records authority drift rather than hiding it. Reusable audits
+are invalidated when installed edge authority changes.
 This creates a durable deployment manifest before any Cloudflare Cache Rule or
 other edge mutation is authorized.
 
@@ -189,9 +197,9 @@ edge caching requires deployment-integrated purge proof first.
 `anonymous_dynamic_candidate_review` is no longer a dead-end classification. A
 separate fail-closed lane can promote an explicitly governed subset without weakening
 the static cache rule. `config/speed-edge-dynamic-policy.json` is the source-controlled
-staleness authority. The current bounded cohort contains **20 exact routes**, all at
-exactly 30 seconds and empty-query HTML only. It includes the original public academy,
-AI, archive, bounty, champion, clan, leaderboard, national-title and Emaren-profile
+staleness authority. The current bounded cohort contains **19 exact routes**, all at
+exactly 30 seconds and empty-query HTML only. It includes the public academy,
+AI, archive, champion, clan, leaderboard, national-title and Emaren-profile
 surfaces; the request-time public `/forum`, `/market` and
 `/market/shops/chat-effects` shells; five September 17 read-only additions: both governed matchup-history
 representatives, `/traffic`, `/radio`, and `/game-stats/16218/review`; and the
@@ -208,8 +216,11 @@ byte-identical and stable across the full 30-second window, so it is now admitte
 The same certified generation independently qualified the anonymous `/wolo` client
 shell. The follow-up `/players` recheck still failed because its public HTML changed
 across the 30-second window and diverged from origin, so `/players` remains explicitly
-HOLD outside shared edge cache. Clan Hall payment intent, settlement, live presence and
-other transactional truth remain on no-store API rails.
+HOLD outside shared edge cache. On September 22, `/bounties` was removed from the
+authorized cohort after the certified qualification observed both public and direct-origin
+body churn across the proof window; its live database-backed presentation remains uncached.
+Clan Hall payment intent, settlement, live presence and other transactional truth remain on
+no-store API rails.
 
 Dynamic apply verification also preserves the previously installed static cohort. Because a
 Cloudflare ruleset mutation can briefly surface an otherwise healthy long-lived static object as
@@ -235,10 +246,10 @@ plan to the policy SHA, qualification SHA, exact release/source identity, cookie
 bypass census and the independent 30-second rule. `apply-dynamic` stages a separate
 root request and can mutate only the independent Cloudflare rule
 `AOE2WAR SpeedOS qualified dynamic HTML v1`. The root helper has its own hardcoded
-twenty-route allowlist, requires TTL exactly 30 seconds, reconstructs the expression,
+nineteen-route allowlist, requires TTL exactly 30 seconds, reconstructs the expression,
 requires the existing certified static SpeedOS rule, and proves the request source SHA
 against the live production checkout before touching Cloudflare. The privileged
-allowlist contains the same twenty routes and cannot be broadened by the staged request.
+allowlist contains the same nineteen routes and cannot be broadened by the staged request.
 
 Post-apply proof is intentionally broader than the new rule: every qualified
 empty-query anonymous route must converge to HIT; every known AoE2WAR cookie, RSC
@@ -257,7 +268,7 @@ proofs do not authorize mutation.
 
 The homepage LCP image has its own fail-closed edge lane. It is deliberately
 independent of both HTML cache rules: no `/_next/image` request is admitted by the
-27-route static rule or the 20-route dynamic rule.
+28-route static rule or the 19-route dynamic rule.
 
 `aoe2war speed edge plan-asset` first requires exact certified production identity:
 production SHA, GitHub `main`, and the clean operator `main` worktree must agree. It
@@ -286,8 +297,8 @@ Post-apply verification is broader than the new rule. Modern and fallback Accept
 variants must each preserve one stable body hash across the MISS-to-HIT boundary,
 remain image content, retain `Vary: Accept`, and converge to `CF-Cache-Status: HIT`.
 Both 1080px and 1920px q95 variants must HIT. The same hero at q90 must remain
-outside the rule. Every route in the authoritative 27-route static cohort and
-20-route dynamic cohort must still converge to HIT, while
+outside the rule. Every route in the authoritative 28-route static cohort and
+19-route dynamic cohort must still converge to HIT, while
 `/api/deployment-version` must remain outside shared cache.
 
 A hero change invalidates the source-bound plan. The operator must build a fresh

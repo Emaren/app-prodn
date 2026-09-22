@@ -152,6 +152,54 @@ def latest_successful_dynamic_apply() -> dict[str, Any] | None:
     return None
 
 
+def installed_edge_authority_snapshot() -> dict[str, Any]:
+    """Summarize the verified SpeedOS HTML cache cohorts currently owned by receipts."""
+
+    def summarize(
+        payload: dict[str, Any] | None,
+        *,
+        plan_key: str,
+        tier: str,
+        default_ttl_seconds: int,
+    ) -> dict[str, Any] | None:
+        if not payload:
+            return None
+        plan = payload.get(plan_key) or {}
+        routes = sorted(set(plan.get("eligible_exact_routes") or []))
+        if not routes:
+            return None
+        receipt_path = str(payload.get("_path") or "")
+        return {
+            "tier": tier,
+            "routes": routes,
+            "route_count": len(routes),
+            "ttl_seconds": int(plan.get("edge_ttl_seconds") or default_ttl_seconds),
+            "authority_receipt": speed.evidence_ref(receipt_path) if receipt_path else None,
+            "verified_at": (payload.get("verification") or {}).get("generated_at")
+            or payload.get("generated_at"),
+        }
+
+    static = summarize(
+        latest_successful_static_apply(),
+        plan_key="plan",
+        tier="static",
+        default_ttl_seconds=300,
+    )
+    dynamic = summarize(
+        latest_successful_dynamic_apply(),
+        plan_key="dynamic_plan",
+        tier="dynamic",
+        default_ttl_seconds=30,
+    )
+    static_routes = set((static or {}).get("routes") or [])
+    dynamic_routes = set((dynamic or {}).get("routes") or [])
+    return {
+        "static": static,
+        "dynamic": dynamic,
+        "overlap_routes": sorted(static_routes & dynamic_routes),
+    }
+
+
 def latest_successful_asset_apply() -> dict[str, Any] | None:
     if not EDGE_RECEIPTS.is_dir():
         return None
@@ -188,6 +236,8 @@ def reusable_edge_audit(
     if audit.get("benchmark_release_sha") != benchmark.get("release_sha"):
         return False
     if audit.get("cache_safety_signature") != cache_safety_signature(source_inventory):
+        return False
+    if audit.get("installed_edge_authority") != installed_edge_authority_snapshot():
         return False
     generated = speed.parse_dt(audit.get("generated_at"))
     now = speed.parse_dt(utc_now())
@@ -342,11 +392,21 @@ def build_audit(
     source_inventory: dict[str, Any] | None = None,
     benchmark: dict[str, Any] | None = None,
     probe_fn=header_probe,
+    edge_authority: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     source_inventory = source_inventory or inventory.snapshot()
     benchmark = benchmark or latest_full_cost_stack()
     if not benchmark:
         raise EdgeAuditError("no full per-route Speed OS cost-stack receipt exists")
+    edge_authority = (
+        installed_edge_authority_snapshot()
+        if edge_authority is None
+        else edge_authority
+    )
+    static_authority = edge_authority.get("static") or {}
+    dynamic_authority = edge_authority.get("dynamic") or {}
+    static_routes = set(static_authority.get("routes") or [])
+    dynamic_routes = set(dynamic_authority.get("routes") or [])
 
     by_route = {
         str(row.get("path")): row
@@ -364,12 +424,75 @@ def build_audit(
         source_class = str(profile.get("edge_cache_classification") or "unknown")
         live = probe_fn(representative)
         priority, reason = priority_for(source_class, live)
+        authority_row = None
+        authority_drift = False
+        server_personalized = bool(
+            profile.get("server_request_personalization_signal")
+            or profile.get("layout_server_personalization_signal")
+        )
+        runtime_prohibited = bool(
+            live.get("set_cookie")
+            or live.get("shared_cache_prohibited")
+        )
+        if representative in dynamic_routes:
+            authority_row = {
+                "tier": "dynamic",
+                "ttl_seconds": dynamic_authority.get("ttl_seconds"),
+                "authority_receipt": dynamic_authority.get("authority_receipt"),
+            }
+            if (
+                source_class in {
+                    "anonymous_dynamic_candidate_review",
+                    "static_or_revalidated_public_candidate",
+                }
+                and not server_personalized
+                and not runtime_prohibited
+            ):
+                priority = "installed_dynamic_edge"
+                reason = (
+                    "verified SpeedOS dynamic-edge authority owns this exact route; "
+                    "MISS/EXPIRED is TTL state, not an unresolved cache opportunity"
+                )
+            else:
+                authority_drift = True
+                reason = (
+                    "installed SpeedOS dynamic-edge authority no longer matches current "
+                    "source/runtime cache-safety evidence; " + reason
+                )
+        elif representative in static_routes:
+            authority_row = {
+                "tier": "static",
+                "ttl_seconds": static_authority.get("ttl_seconds"),
+                "authority_receipt": static_authority.get("authority_receipt"),
+            }
+            if (
+                source_class in {
+                    "static_client_shell_candidate",
+                    "static_or_revalidated_public_candidate",
+                }
+                and not server_personalized
+                and not runtime_prohibited
+            ):
+                priority = "installed_static_edge"
+                reason = (
+                    "verified SpeedOS static-edge authority owns this exact route; "
+                    "MISS/EXPIRED is cache state, not an unresolved cache opportunity"
+                )
+            else:
+                authority_drift = True
+                reason = (
+                    "installed SpeedOS static-edge authority no longer matches current "
+                    "source/runtime cache-safety evidence; " + reason
+                )
+
         measured = by_route.get(representative) or {}
         gap = measured.get("warm_public_origin_gap_ms")
         warm_public = measured.get("warm_median_ttfb_ms")
         origin = measured.get("origin_warm_median_ttfb_ms")
         score = float(gap or 0.0)
-        if priority == "strong_edge_shell_candidate":
+        if priority.startswith("installed_"):
+            score = 0.0
+        elif priority == "strong_edge_shell_candidate":
             score += 250.0
         elif priority == "static_delivery_candidate":
             score += 175.0
@@ -390,6 +513,8 @@ def build_audit(
                 "warm_public_ttfb_ms": warm_public,
                 "origin_warm_ttfb_ms": origin,
                 "warm_delivery_gap_ms": gap,
+                "edge_authority": authority_row,
+                "edge_authority_drift": authority_drift,
                 "live": live,
             }
         )
@@ -414,6 +539,7 @@ def build_audit(
         "benchmark_release_sha": benchmark.get("release_sha"),
         "operator_source_sha": speed.git_head(ROOT),
         "cache_safety_signature": cache_safety_signature(source_inventory),
+        "installed_edge_authority": edge_authority,
         "route_count": len(rows),
         "counts": dict(sorted(counts.items())),
         "rows": rows,
@@ -2019,11 +2145,33 @@ def print_audit(payload: dict[str, Any], limit: int) -> None:
     print(f"Release measured: {str(payload.get('benchmark_release_sha') or 'unknown')[:12]}")
     for key, value in payload["counts"].items():
         print(f"  {value:>3}  {key}")
+
+    installed = payload.get("installed_edge_authority") or {}
+    static = installed.get("static") or {}
+    dynamic = installed.get("dynamic") or {}
+    if static or dynamic:
+        print()
+        print("Installed SpeedOS edge authority:")
+        if static:
+            print(
+                f"  static   {int(static.get('route_count') or 0):>3} routes · "
+                f"TTL={int(static.get('ttl_seconds') or 0)}s"
+            )
+        if dynamic:
+            print(
+                f"  dynamic  {int(dynamic.get('route_count') or 0):>3} routes · "
+                f"TTL={int(dynamic.get('ttl_seconds') or 0)}s"
+            )
+        overlaps = installed.get("overlap_routes") or []
+        if overlaps:
+            print(f"  WARNING  {len(overlaps)} route(s) appear in both installed cohorts")
+
     print()
-    print("Highest safe delivery opportunities:")
+    print("Highest unresolved safe delivery opportunities:")
     shown = 0
     for row in payload["rows"]:
-        if str(row["priority"]).startswith("blocked"):
+        priority = str(row["priority"])
+        if priority.startswith("blocked") or priority.startswith("installed_"):
             continue
         live = row["live"]
         print(
@@ -2035,6 +2183,8 @@ def print_audit(payload: dict[str, Any], limit: int) -> None:
         shown += 1
         if shown >= limit:
             break
+    if shown == 0:
+        print("  none")
     print()
     print("Blocked shared-cache routes remain fail-closed:")
     for row in [row for row in payload["rows"] if str(row["priority"]).startswith("blocked")][:10]:
@@ -2050,7 +2200,7 @@ def main() -> int:
     parser.add_argument(
         "--refresh",
         action="store_true",
-        help="force a fresh 78-route header audit instead of reusing a current audit for plan",
+        help="force a fresh full-cohort header audit instead of reusing a current audit for plan",
     )
     args = parser.parse_args()
     if args.limit < 1 or args.limit > 100:
