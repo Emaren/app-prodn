@@ -635,14 +635,21 @@ def check_context_archives(audit: Audit) -> None:
             if archive_root.is_dir()
             else []
         )
-        if len(candidates) > 1:
+        markdown_root = VPSSENTRY / "context" / "md"
+        markdown_candidates = (
+            list(markdown_root.glob(f"{series}-context-*.md"))
+            if markdown_root.is_dir()
+            else []
+        )
+        if len(candidates) > 1 or len(markdown_candidates) > 1:
             audit.add(
                 "P1",
                 "Context Durability",
                 "archive-retention-drift",
                 (
-                    f"{series}: {len(candidates)} TGZ cameras retained; "
-                    "expected one outside explicit forensic preservation"
+                    f"{series}: {len(candidates)} TGZ camera(s), "
+                    f"{len(markdown_candidates)} Markdown companion(s) retained; "
+                    "expected one paired generation outside explicit forensic preservation"
                 ),
             )
         archive = max(candidates, key=lambda path: path.stat().st_mtime) if candidates else None
