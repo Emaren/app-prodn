@@ -59,6 +59,13 @@ The production scorer may additionally read only bounded VPS-local surfaces whos
 owned by the Mac bridge: current filesystem statistics, the sealed Storage Expiry ledger, the
 canonical Watcher download directory, and durable deployment receipts.
 
+Source authority distinguishes **exact source identity** from **implementation-equivalent
+identity**. A certified production commit may remain current when the canonical local/GitHub
+head is a proven documentation-only descendant of the repository's implementation baseline and
+the certified production commit lies on that same baseline-to-head lineage. This prevents a
+documentation refresh from manufacturing release debt while still requiring a real deployment
+whenever implementation authority advances.
+
 Local development has a direct-receipt fallback that reads the developer checkout's
 `.aoe2war-release` evidence. Production must not depend on that Mac-only tree existing on the
 server.
@@ -117,10 +124,14 @@ coverage comes from `scripts/run_test_contract.py`; Python coverage comes from
 before running the complete unittest suite.
 
 General Inspections parses those exact receipts instead of carrying a hand-maintained Python
-file count or awarding partial credit for an unsealed remote run. A successful current gate
-therefore records a real passed/total ratio for both languages; missing or failed proof loses
-credit fail-closed. GitHub CI invokes the same Python runner so local release proof and remote
-CI cannot silently drift onto different test inventories.
+file count or awarding partial credit for an unsealed remote run. New gate receipts also seal
+`required_commands`, the exact validator set selected by the governed release scope. A
+validator that the gate explicitly declares out of scope is displayed as **Not required by
+certified gate scope** rather than being misreported as a failure. A validator that is required
+but missing or failed still loses its full credit fail-closed. Legacy receipts without an
+explicit required-command set retain the conservative missing-evidence behavior. GitHub CI
+invokes the same Python runner so local release proof and remote CI cannot silently drift onto
+different test inventories.
 
 ## Organization and storage policy
 
