@@ -1447,6 +1447,10 @@ def gate_release(
             is not None
             else None
         ),
+        "required_commands": [
+            label
+            for label, _args, _timeout in plan
+        ],
         "commands": results,
     }
 
