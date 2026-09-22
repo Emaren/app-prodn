@@ -145,12 +145,12 @@ class SpeedEdgeTests(unittest.TestCase):
         result = MODULE.build_audit(
             source_inventory=source,
             benchmark=benchmark,
-            probe_fn=lambda _: {
+            probe_fn=lambda route: {
                 "available": True,
                 "cf_cache_status": "EXPIRED",
                 "next_cache_status": None,
                 "set_cookie": False,
-                "shared_cache_prohibited": False,
+                "shared_cache_prohibited": route == "/market",
                 "edge_cache_hit": False,
             },
             edge_authority=authority,
@@ -159,6 +159,7 @@ class SpeedEdgeTests(unittest.TestCase):
         self.assertEqual(by_route["/bets"]["priority"], "installed_static_edge")
         self.assertEqual(by_route["/market"]["priority"], "installed_dynamic_edge")
         self.assertEqual(by_route["/market"]["edge_authority"]["ttl_seconds"], 30)
+        self.assertTrue(by_route["/market"]["live"]["shared_cache_prohibited"])
         self.assertFalse(by_route["/market"]["edge_authority_drift"])
         self.assertEqual(result["counts"]["installed_static_edge"], 1)
         self.assertEqual(result["counts"]["installed_dynamic_edge"], 1)
