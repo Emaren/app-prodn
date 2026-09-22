@@ -215,6 +215,20 @@ function commandPassed(commands: Map<string, Json>, label: string) {
   return integer(commands.get(label)?.returncode) === 0;
 }
 
+function requiredCommandSet(gate: Json | null) {
+  const labels = list(gate?.required_commands)
+    .map((value) => text(value))
+    .filter((value): value is string => Boolean(value));
+  return labels.length ? new Set(labels) : null;
+}
+
+function validatorRequired(
+  required: Set<string> | null,
+  labels: string[],
+) {
+  return required == null || labels.some((label) => required.has(label));
+}
+
 function nodeTestRatio(commands: Map<string, Json>) {
   const output = text(commands.get("active-node-test-contract")?.stdout_tail) || "";
   const match = output.match(/Running\s+(\d+)\s+active Node test files;\s+(\d+)\s+explicitly quarantined/i);
@@ -299,6 +313,28 @@ function buildLocalGeneralInspectionsSnapshot(): GeneralInspectionsSnapshot {
   const gate = gateReceipt.data;
   const gateAt = text(gate?.generated_at) || fileTime(gateReceipt.file);
   const commands = commandMap(gate);
+  const requiredCommands = requiredCommandSet(gate);
+  const nodeRequired = validatorRequired(requiredCommands, [
+    "active-node-test-contract",
+  ]);
+  const pythonRequired = validatorRequired(requiredCommands, [
+    "active-python-test-contract",
+  ]);
+  const typescriptRequired = validatorRequired(requiredCommands, ["typescript"]);
+  const eslintRequired = validatorRequired(requiredCommands, [
+    "eslint-full",
+    "eslint-changed",
+  ]);
+  const docsRequired = validatorRequired(requiredCommands, [
+    "documentation-control-plane",
+  ]);
+  const secretRequired = validatorRequired(requiredCommands, [
+    "tracked-secret-scan",
+  ]);
+  const dependencyRequired = validatorRequired(requiredCommands, [
+    "dependency-contract",
+  ]);
+  const prismaRequired = validatorRequired(requiredCommands, ["prisma-generate"]);
 
   const coldReceipt = latestColdReceipt(releaseSha);
   const cold = coldReceipt.data;
@@ -447,15 +483,151 @@ function buildLocalGeneralInspectionsSnapshot(): GeneralInspectionsSnapshot {
     "Test & Build Integrity",
     "Executable contracts, type safety, lint, dependency boundaries, production build proof, and secret scanning.",
     [
-      check("node-tests", "Active Node test files", 20, nodeRatio ? nodeRatio.passed / nodeRatio.total : 0, nodeRatio ? nodeRatio.passed + "/" + nodeRatio.total + " active files" : "Node test receipt missing", { ratio: nodeRatio || { passed: 0, total: 0 }, evidenceAt: gateAt }),
-      check("python-tests", "Python contract files", 10, pythonRatio ? (pythonRatio.passed / pythonRatio.total) * gateFresh : 0, pythonRatio ? pythonRatio.passed + "/" + pythonRatio.total + " files" : "Python test receipt missing", { ratio: pythonRatio || { passed: 0, total: 0 }, evidenceAt: gateAt }),
-      check("typescript", "TypeScript", 15, commandPassed(commands, "typescript") ? gateFresh : 0, commandPassed(commands, "typescript") ? "PASS" : "Current local gate not proven", { ratio: { passed: commandPassed(commands, "typescript") ? 1 : 0, total: 1 }, evidenceAt: gateAt }),
-      check("eslint", "ESLint", 10, commandPassed(commands, "eslint-full") || commandPassed(commands, "eslint-changed") ? gateFresh : 0, commandPassed(commands, "eslint-full") || commandPassed(commands, "eslint-changed") ? "PASS" : "Current lint gate not proven", { ratio: { passed: commandPassed(commands, "eslint-full") || commandPassed(commands, "eslint-changed") ? 1 : 0, total: 1 }, evidenceAt: gateAt }),
-      check("docs-gate", "Documentation gate", 10, commandPassed(commands, "documentation-control-plane") ? gateFresh : 0, commandPassed(commands, "documentation-control-plane") ? "PASS" : "Not proven", { ratio: { passed: commandPassed(commands, "documentation-control-plane") ? 1 : 0, total: 1 }, evidenceAt: gateAt }),
-      check("secret-scan", "Tracked secret scan", 10, commandPassed(commands, "tracked-secret-scan") ? gateFresh : 0, commandPassed(commands, "tracked-secret-scan") ? "PASS" : "Not proven", { ratio: { passed: commandPassed(commands, "tracked-secret-scan") ? 1 : 0, total: 1 }, evidenceAt: gateAt }),
-      check("dependency", "Dependency contract", 10, commandPassed(commands, "dependency-contract") ? gateFresh : 0, commandPassed(commands, "dependency-contract") ? "PASS" : "Not proven", { ratio: { passed: commandPassed(commands, "dependency-contract") ? 1 : 0, total: 1 }, evidenceAt: gateAt }),
-      check("prisma", "Prisma generation", 5, commandPassed(commands, "prisma-generate") ? gateFresh : 0, commandPassed(commands, "prisma-generate") ? "PASS" : "Not proven for current gate", { ratio: { passed: commandPassed(commands, "prisma-generate") ? 1 : 0, total: 1 }, evidenceAt: gateAt }),
-      check("production-build", "Certified production build", 10, release.state === "CERTIFIED" ? finishFresh : 0, release.state || "No certified release evidence", { ratio: { passed: release.state === "CERTIFIED" ? 1 : 0, total: 1 }, evidenceAt: finishAt }),
+      check(
+        "node-tests",
+        "Active Node test files",
+        20,
+        nodeRequired
+          ? nodeRatio
+            ? (nodeRatio.passed / nodeRatio.total) * gateFresh
+            : 0
+          : 1,
+        nodeRequired
+          ? nodeRatio
+            ? nodeRatio.passed + "/" + nodeRatio.total + " active files"
+            : "Required Node test receipt missing"
+          : "Not required by certified gate scope",
+        nodeRequired
+          ? { ratio: nodeRatio || { passed: 0, total: 0 }, evidenceAt: gateAt }
+          : { evidenceAt: gateAt },
+      ),
+      check(
+        "python-tests",
+        "Python contract files",
+        10,
+        pythonRequired
+          ? pythonRatio
+            ? (pythonRatio.passed / pythonRatio.total) * gateFresh
+            : 0
+          : 1,
+        pythonRequired
+          ? pythonRatio
+            ? pythonRatio.passed + "/" + pythonRatio.total + " files"
+            : "Required Python test receipt missing"
+          : "Not required by certified gate scope",
+        pythonRequired
+          ? { ratio: pythonRatio || { passed: 0, total: 0 }, evidenceAt: gateAt }
+          : { evidenceAt: gateAt },
+      ),
+      check(
+        "typescript",
+        "TypeScript",
+        15,
+        typescriptRequired
+          ? commandPassed(commands, "typescript")
+            ? gateFresh
+            : 0
+          : 1,
+        typescriptRequired
+          ? commandPassed(commands, "typescript")
+            ? "PASS"
+            : "Required TypeScript proof missing"
+          : "Not required by certified gate scope",
+        { evidenceAt: gateAt },
+      ),
+      check(
+        "eslint",
+        "ESLint",
+        10,
+        eslintRequired
+          ? commandPassed(commands, "eslint-full") ||
+            commandPassed(commands, "eslint-changed")
+            ? gateFresh
+            : 0
+          : 1,
+        eslintRequired
+          ? commandPassed(commands, "eslint-full") ||
+            commandPassed(commands, "eslint-changed")
+            ? "PASS"
+            : "Required lint proof missing"
+          : "Not required by certified gate scope",
+        { evidenceAt: gateAt },
+      ),
+      check(
+        "docs-gate",
+        "Documentation gate",
+        10,
+        docsRequired
+          ? commandPassed(commands, "documentation-control-plane")
+            ? gateFresh
+            : 0
+          : 1,
+        docsRequired
+          ? commandPassed(commands, "documentation-control-plane")
+            ? "PASS"
+            : "Required documentation proof missing"
+          : "Not required by certified gate scope",
+        { evidenceAt: gateAt },
+      ),
+      check(
+        "secret-scan",
+        "Tracked secret scan",
+        10,
+        secretRequired
+          ? commandPassed(commands, "tracked-secret-scan")
+            ? gateFresh
+            : 0
+          : 1,
+        secretRequired
+          ? commandPassed(commands, "tracked-secret-scan")
+            ? "PASS"
+            : "Required secret-scan proof missing"
+          : "Not required by certified gate scope",
+        { evidenceAt: gateAt },
+      ),
+      check(
+        "dependency",
+        "Dependency contract",
+        10,
+        dependencyRequired
+          ? commandPassed(commands, "dependency-contract")
+            ? gateFresh
+            : 0
+          : 1,
+        dependencyRequired
+          ? commandPassed(commands, "dependency-contract")
+            ? "PASS"
+            : "Required dependency proof missing"
+          : "Not required by certified gate scope",
+        { evidenceAt: gateAt },
+      ),
+      check(
+        "prisma",
+        "Prisma generation",
+        5,
+        prismaRequired
+          ? commandPassed(commands, "prisma-generate")
+            ? gateFresh
+            : 0
+          : 1,
+        prismaRequired
+          ? commandPassed(commands, "prisma-generate")
+            ? "PASS"
+            : "Required Prisma proof missing"
+          : "Not required by certified gate scope",
+        { evidenceAt: gateAt },
+      ),
+      check(
+        "production-build",
+        "Certified production build",
+        10,
+        release.state === "CERTIFIED" ? finishFresh : 0,
+        release.state || "No certified release evidence",
+        {
+          ratio: { passed: release.state === "CERTIFIED" ? 1 : 0, total: 1 },
+          evidenceAt: finishAt,
+        },
+      ),
     ],
   );
 
