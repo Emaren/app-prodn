@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "financial-domain-contract"
-reviewed_at: "2026-08-28"
+reviewed_at: "2026-09-22"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
