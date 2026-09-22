@@ -68,7 +68,7 @@
     "react": "19.1.9",
     "react-dom": "19.1.9",
     "sharp": "^0.35.4",
-    "sonner": "^2.0.3"
+    "sonner": "^2.0.8"
   },
   "resolutions": {
     "ws": "7.5.11",
