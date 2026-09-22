@@ -783,6 +783,13 @@ After restart the candidate must prove:
 - matching public routes;
 - unchanged WOLO listener counts.
 
+Before the soak begins, activation may pay bounded non-critical cache warmup costs while
+rollback is still armed. Statistics, the common leaderboard cohorts, and the Workshop are warmed
+through localhost only. Their PASS/FAIL state and measured warm timings are written into the
+certification evidence. A prewarm failure does not independently roll back a release because these
+requests are performance preparation, not release-truth gates; the critical route checks above
+remain authoritative.
+
 The rollback trap then stays armed during a bounded health soak.
 
 Defaults:
