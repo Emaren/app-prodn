@@ -33,5 +33,24 @@ class TestContractTests(unittest.TestCase):
             self.assertRegex(item["review_by"], r"^\d{4}-\d{2}-\d{2}$")
 
 
+    def test_every_python_contract_is_active_or_explicitly_quarantined(self):
+        plan = MODULE.resolve_python_plan(MODULE.load_contract())
+        classified = set(plan["active"]) | {
+            item["path"] for item in plan["quarantine"]
+        }
+        self.assertEqual(classified, set(plan["discovered"]))
+        self.assertEqual(
+            len(plan["active"]),
+            len(plan["discovered"]) - len(plan["quarantine"]),
+        )
+        self.assertGreater(len(plan["active"]), 0)
+
+    def test_python_quarantine_is_owned_reasoned_and_time_bounded(self):
+        plan = MODULE.resolve_python_plan(MODULE.load_contract())
+        for item in plan["quarantine"]:
+            self.assertTrue(item["reason"])
+            self.assertTrue(item["owner"])
+            self.assertRegex(item["review_by"], r"^\d{4}-\d{2}-\d{2}$")
+
 if __name__ == "__main__":
     unittest.main()
