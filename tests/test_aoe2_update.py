@@ -872,5 +872,63 @@ class UpdateCommandTests(unittest.TestCase):
             self.assertIn("--only-projects", command)
 
 
+    def test_context_capture_verifies_tgz_and_markdown_companion_pair(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            vpssentry = pathlib.Path(temporary)
+            tool = vpssentry / "bin" / "full-context-tgz"
+            tool.parent.mkdir(parents=True)
+            tool.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+            tool.chmod(0o755)
+
+            context = vpssentry / "context"
+            tgz = context / "tgz"
+            md = context / "md"
+            sha = context / "sha256"
+            for directory in (tgz, md, sha):
+                directory.mkdir(parents=True)
+
+            def fake_run(args, *, cwd, timeout=120, env=None):
+                if args[0] == str(tool):
+                    assert env is not None
+                    stamp = env["CTX_TS"]
+                    archive = tgz / f"AoE2HDBets-context-host-{stamp}.tgz"
+                    archive.write_bytes(b"archive-payload")
+                    archive_sha = MODULE.sha256(archive)
+                    (sha / f"{archive.name}.sha256").write_text(
+                        f"{archive_sha}  {archive.name}\n",
+                        encoding="utf-8",
+                    )
+                    companion = md / f"{archive.stem}.md"
+                    companion.write_text(
+                        "# AoE2WAR Portable Context Companion\n\n"
+                        f"- source_archive: `{archive.name}`\n"
+                        f"- source_sha256: `{archive_sha}`\n",
+                        encoding="utf-8",
+                    )
+                    companion_sha = MODULE.sha256(companion)
+                    (sha / f"{companion.name}.sha256").write_text(
+                        f"{companion_sha}  {companion.name}\n",
+                        encoding="utf-8",
+                    )
+                    return 0, "capture ok"
+                if args[0] == "shasum":
+                    return 0, "OK"
+                raise AssertionError(args)
+
+            with mock.patch.object(MODULE, "VPSSENTRY", vpssentry), \
+                 mock.patch.object(MODULE, "prune_context_before_capture"), \
+                 mock.patch.object(MODULE, "context_capture_headroom"), \
+                 mock.patch.object(MODULE, "run", side_effect=fake_run):
+                result = MODULE.capture_context(["AoE2HDBets"])
+
+            row = result["AoE2HDBets"]
+            self.assertTrue(row["archive"].endswith(".tgz"))
+            self.assertTrue(row["markdown"].endswith(".md"))
+            self.assertEqual(len(row["sha256"]), 64)
+            self.assertEqual(len(row["markdown_sha256"]), 64)
+            self.assertGreater(row["bytes"], 0)
+            self.assertGreater(row["markdown_bytes"], 0)
+
+
 if __name__ == "__main__":
     unittest.main()
