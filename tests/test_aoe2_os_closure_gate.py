@@ -22,7 +22,9 @@ class ClosureGateTests(unittest.TestCase):
                 gate.classify_risk(scope["changed_files"]),
             )
         ]
-        self.assertIn("release-engineering-tests", labels)
+        self.assertIn("active-python-test-contract", labels)
+        self.assertEqual(labels.count("active-python-test-contract"), 1)
+        self.assertNotIn("release-engineering-tests", labels)
         self.assertIn("release-python-compile", labels)
 
     def test_new_gate_test_is_itself_infrastructure(self):
