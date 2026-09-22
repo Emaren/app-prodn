@@ -66,6 +66,18 @@ server.
 Absolute Mac paths, raw Doctor payloads, Cloudflare ray identifiers, avatar URL allowlists,
 secret material, and raw security internals are not returned to the browser.
 
+## Watcher release authority
+
+Watcher release identity is not copied into the General Inspections baseline. The scorer imports
+`WATCHER_RELEASE.version` and `WATCHER_RELEASE.previousVersion` from the canonical app release
+contract. `sync-watcher-release.mjs` rotates the old current version into `previousVersion` when
+a newly certified Watcher is synchronized. This keeps download-generation hygiene and the
+Data / Wolo / Replay Watcher check bound to the release users can actually download instead of
+a manually maintained inspection snapshot.
+
+The tracked baseline remains authority only for slow-changing inspection policy such as storage
+headroom targets and rollback-window counts; it must not duplicate mutable product release IDs.
+
 ## Speed evidence bridge
 
 Brain publishes only a compact SpeedOS summary. Cold-browser evidence contains sample count,

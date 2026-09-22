@@ -41,6 +41,20 @@ memory before closing the work.
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
 
+## Mutable release identity must have one authority
+
+General Inspections exposed a stale duplicated Watcher identity after Watcher 1.6.0 shipped:
+`lib/watcherRelease.ts` correctly advertised 1.6.0 while the static inspection baseline still
+named 1.5.12 / 1.5.11. That could make download-retention and Watcher-integrity scoring disagree
+with the release users could actually install even though the underlying Watcher publication was
+healthy.
+
+Durable rule: fast-moving release identity belongs to its owning release contract, not to a
+dashboard baseline. General Inspections now imports the canonical Watcher current/previous
+versions directly, and the Watcher sync transaction rotates the prior current version whenever a
+new certified release is synchronized. Baseline/config snapshots may carry slow-changing scoring
+policy, but they must not become a second mutable source of product-release truth.
+
 ## Readiness authority must model semantics, not JSX shape
 
 Speed OS originally counted route-level readiness by scanning source only for
