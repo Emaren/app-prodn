@@ -176,9 +176,9 @@ class ReleaseGateTests(unittest.TestCase):
             1,
         )
 
-        self.assertIn(
-            "tests/test_aoe2_storage.py",
+        self.assertEqual(
             release_tests[0],
+            ["python3", "scripts/run_python_contract.py"],
         )
 
         compile_steps = [
