@@ -41,6 +41,25 @@ memory before closing the work.
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
 
+## 2026-09-22 — A quiet edge-review window cannot overrule later certified churn
+
+The read-only dynamic-edge review initially observed `/rivalries` as byte-stable for one
+30-second window and product review admitted it for certified requalification. The later
+qualification on certified release `b234edd076b3` produced two public/origin body hashes
+across t=0/15/30 and failed exact byte equality. The route is intentionally
+`force-dynamic` and its generation-keyed rivalry projection advances when public replay
+generation changes, so the certified churn is consistent with real live corpus updates rather
+than a transport anomaly.
+
+SpeedOS therefore removed `/rivalries` from the shared dynamic-edge allowlist instead of
+retrying until a quiet interval happened to pass. The remaining dynamic cohort is 21 exact
+routes and still requires all-policy qualification before mutation.
+
+Durable rule: an earlier technical PASS is admission evidence, not permanent cache authority.
+When the exact certified generation later proves body churn inside the proposed TTL window,
+fail closed and shrink the policy. Do not rerun until random timing makes a mutable route look
+stable.
+
 ## 2026-09-22 — Cross-repository Doctor must compare implementation authority, not documentation HEAD
 
 Finish correctly stopped before mutating production when the Replay API parity check saw local
