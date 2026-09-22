@@ -8,7 +8,7 @@ systems: ["app-prodn", "wolochain"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "betting-constitution-ratification-candidate"
-reviewed_at: "2026-09-09"
+reviewed_at: "2026-09-22"
 review_interval_days: 14
 sensitivity: "internal"
 ---
@@ -16,9 +16,14 @@ sensitivity: "internal"
 
 ## Status and authority
 
-This document is the ratification candidate for Betting Constitution V1.
-It does not retroactively change a settled market and does not by itself
-authorize a production financial migration or settlement change.
+This document records two layers that must not be confused:
+
+1. the **current implemented settlement law** enforced by `#JimsRule`; and
+2. broader Betting Constitution V1 ideas that remain ratification candidates.
+
+Where a candidate section conflicts with the implemented settlement planner,
+`lib/betWagerSettlement.ts` controls production behavior. This document does
+not independently authorize a production financial migration.
 
 AoE2HDBets owns bettor entitlement and market rules. WoloChain remains the
 authority for signed custody, transfers, balances, and final payout truth.
@@ -28,17 +33,20 @@ authority for signed custody, transfers, balances, and final payout truth.
 1. **No invented winnings.** Bettor profit must be backed by real accepted
    opposing WOLO or another explicitly funded liquidity object.
 2. **One-for-one match ceiling.** One winning WOLO may earn at most one WOLO
-   of opposing bettor liquidity.
-3. **First accepted, first matched.** Within one phase book and side, matching
-   is FIFO by server-owned acceptance time, then immutable wager ID.
-4. **Losing stake is at risk.** A valid accepted losing wager loses its stake
-   when the proposition resolves against it.
-5. **Void means exact refund.** A void returns original stake with zero fee.
-6. **No cross-phase subsidy.** Pre-Game, Opening Minute, and Late Book money
-   never share one economic pool.
-7. **No silent clawback.** Historical overpayments remain historical unless a
-   separately authorized voluntary-return process exists.
-8. **Chain proof wins.** App rows describe entitlement; WoloChain proves money
+   of opposing funded bettor liquidity.
+3. **Only funded opposite-side stake matches.** Display/seed liquidity is never
+   settlement backing. House or AI liquidity must enter as a real funded wager
+   before it can consume user principal.
+4. **Unmatched principal is protected.** Unmatched WOLO on either side is
+   returned exactly, including on the losing side.
+5. **Fees follow matched exposure only.** The 2% betting fee applies only to
+   matched two-sided volume. Unmatched principal and void refunds are fee-free.
+6. **Void means exact refund.** A void returns original stake with zero fee.
+7. **No cross-phase subsidy.** Pre-Game, Opening Minute, and Late Book money
+   never share one economic pool when those phase books are active.
+8. **No silent clawback.** Historical overpayments remain historical unless a
+   separately authorized correction or voluntary-return process exists.
+9. **Chain proof wins.** App rows describe entitlement; WoloChain proves money
    movement.
 
 ## Phase books
@@ -56,22 +64,32 @@ A later phase can never dilute, reprice, or subsidize an earlier phase.
 The server owns all timing fences. Browser clocks and stale UI state never
 create financial admission authority.
 
-## FIFO matching candidate
+## Current #JimsRule matching authority
 
-Each phase/side is an ordered queue:
+For each market, current settlement first computes:
 
-1. server accepted-at time;
-2. immutable wager ID as deterministic tie-breaker.
+```text
+matched per side = min(total funded left stake, total funded right stake)
+matched volume   = matched per side * 2
+unmatched volume = total funded user stake - matched volume
+```
 
-For a winning ticket, matched WOLO is the amount of its stake paired one-for-one
-with accepted losing-side liquidity in FIFO order.
+The matched amount on each side is allocated proportionally across that side's
+wagers, with deterministic whole-WOLO rounding by fractional remainder, then
+stake size, then wager ID. This is the implemented production rule today; FIFO
+is not the current matching algorithm.
 
-- matched WOLO is never negative;
-- matched WOLO never exceeds that ticket's stake;
-- gross return equals returned principal plus matched opposing WOLO.
+For every ticket:
 
-An unmatched winning WOLO earns no opposing-profit WOLO. It returns as
-principal, subject to the ordinary winning-payout fee if that fee rule is ratified.
+- matched WOLO is never negative and never exceeds that ticket's stake;
+- unmatched WOLO is returned exactly regardless of whether the proposition won
+  or lost;
+- only the matched portion can win opposing stake or lose principal;
+- seed/display liquidity contributes zero matched exposure.
+
+A future constitution may ratify a different within-side ordering rule such as
+FIFO, but it must be implemented and migrated deliberately rather than inferred
+from this document.
 
 ### Founder / house liquidity
 
@@ -79,47 +97,42 @@ Founder counter-liquidity must eventually be a real funded wager or an
 explicitly proven reserved-liquidity object with the same FIFO semantics.
 Display-only seed numbers must never mint bettor profit.
 
-## Betting fee candidate
+## Current betting fee law
 
-The current code constant is a 2% betting fee. The ratification recommendation
-is to preserve that rate and apply it only to the gross amount actually returned
-to a winning bettor.
+The current code constant is a 2% betting fee. Under `#JimsRule`, the fee is
+computed from **matched two-sided volume only**:
 
-Recommended formula:
+```text
+fee pool = round(matched volume * 2%)
+```
 
-- gross return = stake + matched opposing WOLO;
-- fee = 2% of gross return, using the implementation's deterministic rounding rule;
-- payout = gross return - fee.
+That fee pool is allocated across winning wagers according to their matched
+exposure. Unmatched principal never contributes to the fee basis.
 
 Worked examples:
 
-- 100 WOLO wins with 0 opposing -> gross 100, fee 2, payout 98.
-- 100 WOLO wins with 50 matched -> gross 150, fee 3, payout 147.
-- 100 WOLO wins with 100 matched -> gross 200, fee 4, payout 196.
+- 100 WOLO wins with 0 opposing -> matched volume 0, fee 0, payout 100.
+- 100 WOLO wins against 50 -> matched volume 100, fee 2, payout 148.
+- 100 WOLO wins against 100 -> matched volume 200, fee 4, payout 196.
 
-Exact void refunds are fee-free.
+Exact void refunds are fee-free. Unmatched principal is also fee-free.
 
 ### Fee split
 
 Current code constants split betting-fee economics 50% to the Staker pool and
 50% to the Community Treasury. Preserve that split unless a separately versioned
 constitutional amendment changes it prospectively.
-## Losing-side surplus candidate
+## Unmatched principal and Winner Bounty boundary
 
-A losing bettor's accepted stake is fully at risk even when winning-bettor
-demand is smaller.
+Unmatched user principal is not surplus available to the house, winner, or
+Winner Bounty system. It is returned to its bettor exactly.
 
-Recommended disposition order:
+A Winner Bounty may exist only from a separately authorized and explicitly
+funded source. Current settlement code deliberately prevents unmatched user
+principal from becoming Winner Bounty funding.
 
-1. satisfy winning bettor FIFO matches one-for-one;
-2. any unmatched losing-side surplus becomes a Winner Bounty candidate for the
-   actual winning player/team rather than extra bettor profit;
-3. result and recipient truth must be independently proven;
-4. if recipient truth is unavailable, the bounty remains pending;
-5. no surplus may silently disappear or be multiplied.
-
-The exact Winner Bounty fee treatment remains a ratification item rather than
-an implementation assumption.
+Future house or AI counter-liquidity must become a real funded opposite-side
+wager before it can increase matched exposure.
 
 ## Refunds and integrity corrections
 
@@ -194,31 +207,31 @@ Two April 25 legacy winning rows predate the canonical May 25 mainnet accounting
 window. Applying today's fee formula to those old rows would reduce their combined
 payout by 1,002 WOLO. They remain historical and grandfathered.
 
-## Required implementation invariants
+## Current implementation invariants
 
-Before Constitution V1 can become live financial behavior, implementation must
-persist immutable phase identity, server acceptance time, deterministic FIFO
-sequence, matched WOLO, fee basis, fee amount, constitutional version, unmatched
-surplus and its disposition, exact proposition/result proof, and chain stake/payout
-proof. Settlement retries must be idempotent and concurrency tests must prove that
-two wagers cannot consume the same opposing liquidity.
+The settlement planner must keep matched and unmatched exposure explicit,
+deterministic, and conservation-safe. Settlement retries remain idempotent;
+terminal voids refund exact stake; and proposition truth remains separate from
+money-at-risk truth.
 
-Production activation also requires a reviewed migration/backfill policy for
-open books only, full owning tests, certified release, and protected Wolo
-settlement continuity. Settled historical books are never rewritten into V1.
+The targeted `#JimsRule` correction tooling uses its own explicit effective
+timestamp and idempotent claim/request identities. Historical chain transfers
+are never erased; corrections are additive and separately evidenced.
 
 ## Open ratification items
 
-The three isolated phase books, 2% current fee rate, exact void refund,
-grandfathering, and chain-proof requirements are established product direction.
-The following still require explicit ratification before implementation:
+The following remain product-design questions rather than current settlement
+law:
 
-- strict one-for-one FIFO as the production matching algorithm;
-- Winner Bounty treatment for unmatched losing-side surplus;
-- exact Winner Bounty fee treatment;
-- whether founder counter-liquidity must be a signed chain wager or may use a
-  separately reserved and proven custody object;
+- whether future phase books should replace today's proportional within-side
+  allocation with strict FIFO;
+- the exact funded design for house/AI counter-liquidity;
+- any Winner Bounty program funded from a source other than user unmatched
+  principal;
 - exact public wording for matched profit, unmatched principal, and fee previews;
 - whether any future phase may use a different fee rate.
 
-No implementation should guess these remaining policy choices.
+The following are **not** open under current `#JimsRule`: unmatched principal
+returns whole, unmatched principal pays no betting fee, only real opposite-side
+funded stake creates matched exposure, and unmatched user principal cannot fund
+a Winner Bounty.
