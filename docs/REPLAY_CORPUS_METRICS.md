@@ -8,14 +8,14 @@ systems: ["app-prodn","api-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "runtime-evidence"
 authority: "metric-contract"
-reviewed_at: "2026-08-28"
+reviewed_at: "2026-09-22"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # Replay Corpus and Public Metric Contract
 
-Review note (2026-08-28): the grain definitions, public-label rules, and
+Review note (2026-09-22): the grain definitions, public-label rules, and
 projection invariants were re-reviewed against the current implementation and
 regression suite. The table below remains an explicitly dated 2026-07-28
 runtime snapshot, not a claim about today's mutable corpus totals.
