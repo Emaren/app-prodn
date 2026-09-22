@@ -1363,11 +1363,11 @@ export function buildBridgeGeneralInspectionsSnapshot(
         " documentation review(s) are due within seven days.",
     );
   }
-  notes.push(
-    "Python CI executes " +
-      pythonFiles +
-      " discovered contract files, but the per-run Python denominator is not yet sealed into the local release receipt.",
-  );
+  if (!pythonRatio) {
+    notes.push(
+      "Python contract proof is missing from the certified release receipt; Test & Build Integrity remains fail-closed.",
+    );
+  }
 
   return {
     schema: 1,
