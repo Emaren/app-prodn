@@ -50,7 +50,7 @@ aoe2war speed campaign verify
 ```
 
 `benchmark` defaults to a small critical public cohort. New `--full`
-benchmarks use the versioned 77-route V2 public cohort in
+benchmarks use the current 79-route V2 public cohort in
 `docs/audits/performance-route-cohort-v2.txt`: current static public surfaces
 plus stable representatives of dynamic route families. The frozen August 13
 66-route cohort remains historical comparison evidence only; it is not silently
