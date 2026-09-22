@@ -1021,6 +1021,7 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
 type HomePageClientProps = {
   initialLobby: LobbySnapshot | null;
   initialHeroPlaylist: HeroPlaylistView;
+  speedRoute?: "/" | "/lobby";
 };
 
 function AdvancedFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] }) {
@@ -1222,6 +1223,7 @@ export default function HomePageClient({
 
   initialLobby,
   initialHeroPlaylist,
+  speedRoute = "/",
 }: HomePageClientProps) {
   const h = useHomeCopy();
 const { uid, isAdmin, isAuthenticated, loading, loginWithSteam, playerName, user } = useUserAuth();
@@ -2083,7 +2085,7 @@ const { uid, isAdmin, isAuthenticated, loading, loginWithSteam, playerName, user
 
 return (
     <div className="space-y-4 overflow-x-hidden py-2 text-white sm:space-y-6 sm:py-3">
-      <SpeedReadyMarker route="/" />
+      <SpeedReadyMarker route={speedRoute} />
       {shouldShowShowcaseLobby ? (
         <>
           {isExtremeLobby ? (
