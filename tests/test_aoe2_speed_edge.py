@@ -81,11 +81,88 @@ class SpeedEdgeTests(unittest.TestCase):
                 "edge_cache_hit": False,
             }
 
-        result = MODULE.build_audit(source_inventory=source, benchmark=benchmark, probe_fn=probe)
+        result = MODULE.build_audit(
+            source_inventory=source,
+            benchmark=benchmark,
+            probe_fn=probe,
+            edge_authority={},
+        )
         by_route = {row["route"]: row for row in result["rows"]}
         self.assertEqual(by_route["/bets"]["priority"], "strong_edge_shell_candidate")
         self.assertEqual(by_route["/war-chest"]["priority"], "blocked_shared_cache")
         self.assertGreater(by_route["/bets"]["score"], by_route["/war-chest"]["score"])
+
+    def test_audit_marks_verified_installed_cohorts_as_governed_even_when_probe_is_expired(self):
+        source = {
+            "pages": [
+                {
+                    "template": "/bets",
+                    "classification": "public",
+                    "benchmark_representative": "/bets",
+                    "source_profile": {
+                        "source_path": "app/bets/page.tsx",
+                        "edge_cache_classification": "static_client_shell_candidate",
+                    },
+                },
+                {
+                    "template": "/market",
+                    "classification": "public",
+                    "benchmark_representative": "/market",
+                    "source_profile": {
+                        "source_path": "app/market/page.tsx",
+                        "edge_cache_classification": "static_or_revalidated_public_candidate",
+                    },
+                },
+            ]
+        }
+        benchmark = {
+            "mode": "full",
+            "release_sha": "a" * 40,
+            "_path": str(MODULE.speed.STATE / "performance-receipts" / "sample.json"),
+            "routes": [
+                {"path": "/bets", "warm_median_ttfb_ms": 250.0, "origin_warm_median_ttfb_ms": 2.0, "warm_public_origin_gap_ms": 248.0},
+                {"path": "/market", "warm_median_ttfb_ms": 330.0, "origin_warm_median_ttfb_ms": 3.0, "warm_public_origin_gap_ms": 327.0},
+            ],
+        }
+        authority = {
+            "static": {
+                "tier": "static",
+                "routes": ["/bets"],
+                "route_count": 1,
+                "ttl_seconds": 300,
+                "authority_receipt": "static.json",
+            },
+            "dynamic": {
+                "tier": "dynamic",
+                "routes": ["/market"],
+                "route_count": 1,
+                "ttl_seconds": 30,
+                "authority_receipt": "dynamic.json",
+            },
+            "overlap_routes": [],
+        }
+
+        result = MODULE.build_audit(
+            source_inventory=source,
+            benchmark=benchmark,
+            probe_fn=lambda _: {
+                "available": True,
+                "cf_cache_status": "EXPIRED",
+                "next_cache_status": None,
+                "set_cookie": False,
+                "shared_cache_prohibited": False,
+                "edge_cache_hit": False,
+            },
+            edge_authority=authority,
+        )
+        by_route = {row["route"]: row for row in result["rows"]}
+        self.assertEqual(by_route["/bets"]["priority"], "installed_static_edge")
+        self.assertEqual(by_route["/market"]["priority"], "installed_dynamic_edge")
+        self.assertEqual(by_route["/market"]["edge_authority"]["ttl_seconds"], 30)
+        self.assertFalse(by_route["/market"]["edge_authority_drift"])
+        self.assertEqual(result["counts"]["installed_static_edge"], 1)
+        self.assertEqual(result["counts"]["installed_dynamic_edge"], 1)
+        self.assertEqual(result["installed_edge_authority"], authority)
 
     def test_cache_safety_signature_ignores_inventory_timestamp_but_changes_with_policy(self):
         base = {
