@@ -1760,6 +1760,7 @@ def capture_context(
         progress.done("Context capture command completed")
 
     tgz_dir = VPSSENTRY / "context" / "tgz"
+    md_dir = VPSSENTRY / "context" / "md"
     sha_dir = VPSSENTRY / "context" / "sha256"
     result: dict[str, dict[str, Any]] = {}
     verification_series = list(projects)
@@ -1807,17 +1808,73 @@ def capture_context(
                 f"context manifest verification failed for {project}: {verify}"
             )
 
+        markdown = md_dir / f"{archive.stem}.md"
+        markdown_manifest = sha_dir / f"{markdown.name}.sha256"
+        if not markdown.is_file():
+            raise UpdateError(
+                f"Markdown context companion missing for {project}: {markdown}"
+            )
+        if not markdown_manifest.is_file():
+            raise UpdateError(
+                f"Markdown context manifest missing for {project}: {markdown_manifest}"
+            )
+
+        markdown_parsed = aoe2_audit.manifest_entry(
+            markdown_manifest.read_text(encoding="utf-8")
+        )
+        if markdown_parsed is None:
+            raise UpdateError(f"malformed Markdown manifest: {markdown_manifest}")
+        markdown_expected_sha, markdown_manifest_name = markdown_parsed
+        markdown_actual_sha = sha256(markdown)
+        if (
+            markdown_manifest_name != markdown.name
+            or "/" in markdown_manifest_name
+        ):
+            raise UpdateError(
+                f"non-portable Markdown context manifest: "
+                f"{markdown_manifest_name!r}"
+            )
+        if markdown_expected_sha != markdown_actual_sha:
+            raise UpdateError(
+                f"Markdown context SHA mismatch for {project}: "
+                f"manifest={markdown_expected_sha} actual={markdown_actual_sha}"
+            )
+
+        metadata = aoe2_audit.markdown_companion_metadata(markdown)
+        if metadata != (archive.name, actual_sha):
+            raise UpdateError(
+                f"Markdown context source binding mismatch for {project}: "
+                f"metadata={metadata!r} "
+                f"expected=({archive.name!r}, {actual_sha!r})"
+            )
+
+        rc, markdown_verify = run(
+            ["shasum", "-a", "256", "-c", str(markdown_manifest)],
+            cwd=markdown.parent,
+            timeout=120,
+        )
+        if rc != 0:
+            raise UpdateError(
+                f"Markdown context manifest verification failed for {project}: "
+                f"{markdown_verify}"
+            )
+
         result[project] = {
             "archive": str(archive),
             "manifest": str(manifest),
             "sha256": actual_sha,
             "bytes": archive.stat().st_size,
+            "markdown": str(markdown),
+            "markdown_manifest": str(markdown_manifest),
+            "markdown_sha256": markdown_actual_sha,
+            "markdown_bytes": markdown.stat().st_size,
         }
         if progress:
             mib = archive.stat().st_size / (1024 * 1024)
+            md_mib = markdown.stat().st_size / (1024 * 1024)
             progress.done(
-                f"{project} context verified · "
-                f"{mib:.1f} MiB · {actual_sha[:12]}"
+                f"{project} context verified · TGZ {mib:.1f} MiB · "
+                f"MD {md_mib:.1f} MiB · {actual_sha[:12]}"
             )
 
     return result
