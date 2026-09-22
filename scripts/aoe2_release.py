@@ -317,6 +317,34 @@ def is_ancestor(older: str | None, newer: str | None) -> bool | None:
     return None
 
 
+def documentation_only_descendant(
+    baseline: str | None,
+    head: str | None,
+) -> bool | None:
+    """Prove every commit after the implementation baseline is documentation-only."""
+    relation = is_ancestor(baseline, head)
+    if relation is not True:
+        return relation
+    if baseline == head:
+        return True
+    rc, out, _ = run(["git", "diff", "--name-only", f"{baseline}..{head}"])
+    if rc != 0:
+        return None
+    for raw in out.splitlines():
+        path = raw.strip()
+        if not path:
+            continue
+        pure = Path(path)
+        if (
+            path == "catalog-info.yaml"
+            or (pure.parts and pure.parts[0] == "docs")
+            or pure.suffix.lower() in {".md", ".mdx"}
+        ):
+            continue
+        return False
+    return True
+
+
 def docs_baseline() -> str | None:
     path = ROOT / "docs" / "DOCUMENTATION_CONTROL_PLANE.md"
     try:
@@ -680,6 +708,33 @@ def collect() -> dict:
     }
     cert = certified_runtime(prod)
     data["certification"] = cert
+
+    docs_only_head = documentation_only_descendant(baseline, head)
+    production_after_baseline = is_ancestor(baseline, prod.get("source_sha"))
+    production_before_head = is_ancestor(prod.get("source_sha"), head)
+    implementation_equivalent = bool(
+        baseline
+        and head
+        and head == gh
+        and dirty == 0
+        and docs_only_head is True
+        and production_after_baseline is True
+        and production_before_head is True
+        and prod.get("reachable")
+        and prod.get("dirty_count") == 0
+        and prod.get("service") == "active"
+        and prod.get("version_parity") is True
+        and cert.get("status") == "CERTIFIED"
+        and cert.get("release_sha") == prod.get("source_sha")
+        and cert.get("active_build_id") == prod.get("active_build_id")
+    )
+    data["documentation"]["release_head_is_docs_descendant"] = bool(
+        docs_only_head is True and baseline and head and baseline != head
+    )
+    data["documentation"]["production_implementation_equivalent"] = (
+        implementation_equivalent
+    )
+
     state, nxt = derive_state(data)
     data["release"] = {
         "state": state,

@@ -98,7 +98,11 @@ def fast_source_plan(brain: dict[str, Any]) -> dict[str, Any]:
         "mode": plan.mode,
         "detail": plan.detail,
         "deploy_expected": bool(
-            plan.mode != "clean" or production_head != github_head
+            plan.mode != "clean"
+            or (
+                production_head != github_head
+                and source.get("implementation_equivalent") is not True
+            )
         ),
         "seal_preflight": "DEFERRED_TO_AOE2WAR_FINISH",
     }

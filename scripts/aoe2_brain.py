@@ -75,6 +75,7 @@ def freshness(
 def source_summary(release: dict[str, Any]) -> dict[str, Any]:
     local = release.get("local") or {}
     github = release.get("github") or {}
+    documentation = release.get("documentation") or {}
     production = release.get("production") or {}
     certification = release.get("certification") or {}
 
@@ -93,6 +94,18 @@ def source_summary(release: dict[str, Any]) -> dict[str, Any]:
         and local_clean
         and production_clean
         and certified
+        and production.get("service") == "active"
+        and production.get("version_parity") is True
+    )
+    implementation_equivalent = bool(
+        documentation.get("production_implementation_equivalent") is True
+        and local_head
+        and local_head == github_head
+        and local_clean
+        and production_head
+        and production_clean
+        and certified
+        and certified_head == production_head
         and production.get("service") == "active"
         and production.get("version_parity") is True
     )
@@ -123,7 +136,14 @@ def source_summary(release: dict[str, Any]) -> dict[str, Any]:
             "active_build_id": certification.get("active_build_id"),
             "artifact_sha256": certification.get("artifact_sha256"),
         },
+        "documentation": {
+            "implementation_baseline": documentation.get("implementation_baseline"),
+            "release_head_is_docs_descendant": documentation.get(
+                "release_head_is_docs_descendant"
+            ),
+        },
         "exact": exact,
+        "implementation_equivalent": implementation_equivalent,
         "production_behind_github": bool(
             github_head and production_head and github_head != production_head
         ),
@@ -741,9 +761,19 @@ def invariant_rows(
     recovery = council.get("recovery") or {}
     rows = [
         {
-            "key": "source-authority-exact",
-            "status": "PASS" if source.get("exact") else "ATTENTION",
-            "evidence": "local/GitHub/production/certification identity",
+            "key": "source-authority-current",
+            "status": (
+                "PASS"
+                if source.get("implementation_equivalent")
+                else "ATTENTION"
+            ),
+            "evidence": (
+                "exact local/GitHub/production/certification identity"
+                if source.get("exact")
+                else "certified production is within current implementation authority"
+                if source.get("implementation_equivalent")
+                else "implementation authority is not current"
+            ),
         },
         {
             "key": "estate-p0-zero",
@@ -839,7 +869,7 @@ def operating_state(
         return "BLOCKED"
     if (
         any(row["status"] == "ATTENTION" for row in invariants)
-        or not source.get("exact")
+        or not source.get("implementation_equivalent")
         or int(council.get("p1") or 0) > 0
         or str(council.get("doctor_status") or "").upper()
         not in {"HEALTHY", "PASS"}
@@ -1034,7 +1064,7 @@ def system_agent_rows(
 
     source_state = (
         "HEALTHY"
-        if source.get("exact")
+        if source.get("implementation_equivalent")
         else "ACTIVE"
         if source.get("production_behind_github")
         else "ATTENTION"
@@ -1160,13 +1190,18 @@ def system_agent_rows(
             "label": "Release OS",
             "state": source_state,
             "summary": (
-                "GitHub source is ahead of certified production."
-                if source.get("production_behind_github")
-                else "Source, runtime and certification are exact."
+                "Source, runtime and certification are exact."
                 if source.get("exact")
+                else "Certified production is implementation-current; GitHub is documentation-only ahead."
+                if source.get("implementation_equivalent")
+                and source.get("production_behind_github")
+                else "GitHub implementation is ahead of certified production."
+                if source.get("production_behind_github")
                 else "Source authority needs reconciliation."
             ),
-            "progress_percent": 100 if source.get("exact") else None,
+            "progress_percent": (
+                100 if source.get("implementation_equivalent") else None
+            ),
             "progress_label": "source authority",
         },
         {

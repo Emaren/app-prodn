@@ -84,6 +84,28 @@ class ControlDocsTests(unittest.TestCase):
         self.assertEqual(payload["source_plan"]["mode"], "clean")
         self.assertTrue(payload["source_plan"]["deploy_expected"])
 
+    def test_fast_does_not_expect_deploy_for_docs_only_descendant(self):
+        brain = {
+            "source": {
+                "implementation_equivalent": True,
+                "local": {"head": "b" * 40, "clean": True},
+                "github": {"main_sha": "b" * 40},
+                "production": {"source_sha": "a" * 40, "clean": True},
+            },
+            "health": {
+                "p0": 0,
+                "p1": 0,
+                "doctor_score": 100,
+                "doctor_status": "HEALTHY",
+            },
+            "storage": {},
+            "workspace": {},
+        }
+        with mock.patch.object(MODULE.aoe2_brain, "collect", return_value=brain):
+            payload = MODULE.fast_payload()
+        self.assertEqual(payload["source_plan"]["mode"], "clean")
+        self.assertFalse(payload["source_plan"]["deploy_expected"])
+
     def test_fast_blocks_on_source_or_live_health(self):
         brain = {
             "source": {

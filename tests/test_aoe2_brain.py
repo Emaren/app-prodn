@@ -21,11 +21,17 @@ sys.modules[SPEC.name] = MODULE
 SPEC.loader.exec_module(MODULE)
 
 
-def release(*, exact: bool = True) -> dict:
+def release(
+    *,
+    exact: bool = True,
+    implementation_equivalent: bool | None = None,
+) -> dict:
     local = "a" * 40
     github = local
     production = local if exact else "b" * 40
     certified = production
+    if implementation_equivalent is None:
+        implementation_equivalent = exact
     return {
         "local": {
             "head": local,
@@ -34,6 +40,13 @@ def release(*, exact: bool = True) -> dict:
         },
         "github": {
             "main_sha": github,
+        },
+        "documentation": {
+            "implementation_baseline": production if implementation_equivalent else local,
+            "release_head_is_docs_descendant": bool(
+                implementation_equivalent and not exact
+            ),
+            "production_implementation_equivalent": implementation_equivalent,
         },
         "production": {
             "source_sha": production,
@@ -262,6 +275,52 @@ class KingdomIntelligenceTests(unittest.TestCase):
         behind = MODULE.source_summary(release(exact=False))
         self.assertFalse(behind["exact"])
         self.assertTrue(behind["production_behind_github"])
+
+    def test_docs_only_head_can_remain_implementation_current(self):
+        source = MODULE.source_summary(
+            release(exact=False, implementation_equivalent=True)
+        )
+        self.assertFalse(source["exact"])
+        self.assertTrue(source["implementation_equivalent"])
+        self.assertTrue(source["production_behind_github"])
+
+        perf = performance()
+        perf["matches_current_release"] = True
+        current_truth = truth()
+        current_truth["matches_current_release"] = True
+        rows = MODULE.invariant_rows(
+            source=source,
+            council=council(),
+            truth=current_truth,
+            finish=finish(),
+            control=control(),
+            performance=perf,
+        )
+        source_row = next(
+            row for row in rows if row["key"] == "source-authority-current"
+        )
+        self.assertEqual(source_row["status"], "PASS")
+        self.assertEqual(
+            MODULE.operating_state(
+                source=source,
+                council=council(),
+                invariants=rows,
+            ),
+            "READY",
+        )
+
+        agents = MODULE.system_agent_rows(
+            source=source,
+            council=council(),
+            truth=current_truth,
+            performance=perf,
+            control=control(),
+            storage_campaign={"status": "NONE"},
+            recovery_campaign={"status": "NONE"},
+        )
+        release_agent = next(item for item in agents if item["key"] == "release")
+        self.assertEqual(release_agent["state"], "HEALTHY")
+        self.assertIn("documentation-only ahead", release_agent["summary"])
 
     def test_collect_reuses_council_release_snapshot(self):
         current_council = council()

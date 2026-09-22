@@ -320,6 +320,13 @@ revalidation.
 Any implementation, dependency, test-contract, toolchain or validator change
 invalidates inheritance and forces the full gate.
 
+Every new gate receipt also seals `required_commands`, the validator labels
+selected by that exact governed scope. This is distinct from the raw
+`commands` execution rows: downstream inspection surfaces use the declared
+scope to distinguish a validator that was intentionally not required from one
+that was required but is missing or failed. Legacy receipts without the field
+remain conservative rather than being upgraded by inference.
+
 `config/test-contract.json` and `scripts/run_test_contract.py` are the machine
 authority for the active Node test invocation. Operators and AI agents should
 not manually reconstruct loader flags or substitute raw `node --test` commands

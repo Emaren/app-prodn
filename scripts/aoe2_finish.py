@@ -2319,9 +2319,10 @@ def reset_vps_candidate_after_publish(
 
 def needs_deploy(data: dict[str, Any]) -> bool:
     local = data.get("local", {})
+    documentation = data.get("documentation", {})
     production = data.get("production", {})
     certification = data.get("certification", {})
-    return not (
+    exact = bool(
         production.get("reachable")
         and production.get("dirty_count") in (0, None)
         and production.get("source_sha") == local.get("head")
@@ -2329,6 +2330,17 @@ def needs_deploy(data: dict[str, Any]) -> bool:
         and production.get("version_parity")
         and certification.get("status") == "CERTIFIED"
         and certification.get("release_sha") == local.get("head")
+    )
+    if exact:
+        return False
+    return not bool(
+        documentation.get("production_implementation_equivalent") is True
+        and production.get("reachable")
+        and production.get("dirty_count") in (0, None)
+        and production.get("service") == "active"
+        and production.get("version_parity")
+        and certification.get("status") == "CERTIFIED"
+        and certification.get("release_sha") == production.get("source_sha")
     )
 
 
