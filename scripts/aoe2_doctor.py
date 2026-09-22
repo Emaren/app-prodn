@@ -1374,6 +1374,89 @@ def check_disaster_recovery(doctor: Doctor, contract: dict[str, Any]) -> None:
         )
 
 
+def replay_api_documentation_owned_path(path_value: str) -> bool:
+    path = Path(path_value)
+    if path_value in {
+        "catalog-info.yaml",
+        "docs/document-registry.json",
+        "scripts/docs_v2_check.py",
+    }:
+        return True
+    if path.suffix.lower() in {".md", ".mdx"}:
+        return True
+    if path.parts and path.parts[0] == "docs":
+        return True
+    return False
+
+
+def replay_api_implementation_authority(
+    local_repo: Path,
+    local_head: str | None,
+    branch: str,
+) -> tuple[str | None, list[str], dict[str, Any]]:
+    evidence: dict[str, Any] = {}
+    problems: list[str] = []
+    registry_path = local_repo / "docs" / "document-registry.json"
+
+    try:
+        registry = json.loads(registry_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return None, [f"documentation registry unreadable: {exc}"], evidence
+
+    baseline = registry.get("implementation_baseline")
+    if not isinstance(baseline, dict):
+        return None, ["documentation registry has no implementation_baseline"], evidence
+
+    baseline_branch = str(baseline.get("branch") or "")
+    baseline_commit = str(baseline.get("commit") or "")
+    evidence["branch"] = baseline_branch
+    evidence["commit"] = baseline_commit
+
+    if baseline_branch != branch:
+        problems.append(
+            f"implementation baseline branch={baseline_branch!r} expected={branch!r}"
+        )
+    if not re.fullmatch(r"[0-9a-f]{40}", baseline_commit):
+        problems.append("implementation baseline commit is invalid")
+        return None, problems, evidence
+    if not local_head:
+        problems.append("local replay API head is unavailable")
+        return None, problems, evidence
+
+    rc, changed_output = run(
+        ["git", "diff", "--name-only", f"{baseline_commit}..{local_head}"],
+        cwd=local_repo,
+        timeout=30,
+    )
+    if rc != 0:
+        problems.append("implementation baseline diff could not be verified")
+        return None, problems, evidence
+
+    changed = [line.strip() for line in changed_output.splitlines() if line.strip()]
+    non_docs = sorted(
+        path for path in changed if not replay_api_documentation_owned_path(path)
+    )
+    evidence["changed_after_baseline"] = changed
+    evidence["non_documentation_changes"] = non_docs
+    if non_docs:
+        problems.append(
+            "implementation changed after replay API documentation baseline: "
+            + ", ".join(non_docs)
+        )
+        return None, problems, evidence
+
+    rc, _ = run(
+        ["git", "merge-base", "--is-ancestor", baseline_commit, local_head],
+        cwd=local_repo,
+        timeout=30,
+    )
+    if rc != 0:
+        problems.append("implementation baseline is not an ancestor of local replay API")
+        return None, problems, evidence
+
+    return baseline_commit, problems, evidence
+
+
 def check_replay_api(doctor: Doctor, contract: dict[str, Any]) -> None:
     component = contract.get("components", {}).get("replay_api", {})
     if not isinstance(component, dict):
@@ -1432,6 +1515,10 @@ def check_replay_api(doctor: Doctor, contract: dict[str, Any]) -> None:
     origin_output = str(result.get("origin") or "")
     origin_head = origin_output.split()[0] if origin_output else None
     local_migration = str(result.get("migration_head") or "").split()[0] or None
+    implementation_source, authority_problems, implementation_evidence = (
+        replay_api_implementation_authority(local_repo, local_head, branch)
+    )
+    result["implementation_authority"] = implementation_evidence
 
     remote_script = f"""
 set +e
@@ -1453,7 +1540,7 @@ printf 'migration_current\\t%s\\n' "$(venv/bin/alembic current 2>/dev/null | tai
     remote["rc"] = str(remote_rc)
     result["production"] = remote
 
-    problems: list[str] = []
+    problems: list[str] = list(authority_problems)
     if result.get("branch") != branch:
         problems.append(f"local branch={result.get('branch')!r}")
     if str(result.get("dirty") or "").strip():
@@ -1464,10 +1551,38 @@ printf 'migration_current\\t%s\\n' "$(venv/bin/alembic current 2>/dev/null | tai
         )
     if remote_rc != 0:
         problems.append("production inspection failed")
-    if remote.get("head") != local_head:
-        problems.append(
-            f"production source={str(remote.get('head'))[:10]} local={str(local_head)[:10]}"
+    remote_head = remote.get("head")
+    if implementation_source and remote_head:
+        remote_in_authority = False
+        remote_known_rc, _ = run(
+            ["git", "cat-file", "-e", f"{remote_head}^{commit}"],
+            cwd=local_repo,
+            timeout=30,
         )
+        if remote_known_rc == 0:
+            baseline_to_remote_rc, _ = run(
+                ["git", "merge-base", "--is-ancestor", implementation_source, remote_head],
+                cwd=local_repo,
+                timeout=30,
+            )
+            remote_to_local_rc, _ = run(
+                ["git", "merge-base", "--is-ancestor", remote_head, str(local_head)],
+                cwd=local_repo,
+                timeout=30,
+            )
+            remote_in_authority = (
+                baseline_to_remote_rc == 0 and remote_to_local_rc == 0
+            )
+        result["production"]["implementation_equivalent"] = remote_in_authority
+        if not remote_in_authority:
+            problems.append(
+                "production source is outside replay API implementation authority: "
+                f"production={str(remote_head)[:10]} "
+                f"baseline={str(implementation_source)[:10]} "
+                f"local={str(local_head)[:10]}"
+            )
+    elif implementation_source and not remote_head:
+        problems.append("production replay API source is unavailable")
     if remote.get("branch") != branch:
         problems.append(f"production branch={remote.get('branch')!r}")
     if remote.get("dirty") != "0":
