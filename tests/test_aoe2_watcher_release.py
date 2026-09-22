@@ -414,15 +414,16 @@ class WatcherReleaseIntegrationTests(unittest.TestCase):
         release_tests = next(
             args
             for label, args, _timeout in commands
-            if label == "release-engineering-tests"
+            if label == "active-python-test-contract"
         )
         compile_args = next(
             args
             for label, args, _timeout in commands
             if label == "release-python-compile"
         )
-        self.assertIn(
-            "tests/test_aoe2_watcher_release.py", release_tests
+        self.assertEqual(
+            release_tests,
+            ["python3", "scripts/run_test_contract.py", "--python"],
         )
         self.assertIn(
             "scripts/aoe2_watcher_release.py", compile_args
