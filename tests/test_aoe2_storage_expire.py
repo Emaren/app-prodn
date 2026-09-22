@@ -174,9 +174,9 @@ class ExpiryTest(unittest.TestCase):
         scope={'mode':'worktree','base_sha':'a','target_sha':'WORKTREE',
                'changed_files':['scripts/aoe2_storage_expire.py']}
         commands=gate.command_plan(scope,'INFRASTRUCTURE')
-        release_tests=next(args for label,args,_ in commands if label=='release-engineering-tests')
+        release_tests=next(args for label,args,_ in commands if label=='active-python-test-contract')
         compile_args=next(args for label,args,_ in commands if label=='release-python-compile')
-        self.assertIn('tests/test_aoe2_storage_expire.py',release_tests)
+        self.assertEqual(release_tests,['python3','scripts/run_test_contract.py','--python'])
         self.assertIn('scripts/aoe2_storage_expire.py',compile_args)
 
 if __name__=='__main__':unittest.main()
