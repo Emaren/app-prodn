@@ -224,6 +224,15 @@ function nodeTestRatio(commands: Map<string, Json>) {
   return { passed: commandPassed(commands, "active-node-test-contract") ? active : 0, total: active + quarantined };
 }
 
+function pythonTestRatio(commands: Map<string, Json>) {
+  const output = text(commands.get("active-python-test-contract")?.stdout_tail) || "";
+  const match = output.match(/Running\s+(\d+)\s+active Python contract files;\s+(\d+)\s+explicitly quarantined/i);
+  if (!match) return null;
+  const active = Number(match[1]);
+  const quarantined = Number(match[2]);
+  return { passed: commandPassed(commands, "active-python-test-contract") ? active : 0, total: active + quarantined };
+}
+
 function latestBuildSummary(cold: Json | null, key: string) {
   const summary = record(cold?.summary);
   const metric = record(summary[key]);
@@ -427,14 +436,14 @@ function buildLocalGeneralInspectionsSnapshot(): GeneralInspectionsSnapshot {
   );
 
   const nodeRatio = nodeTestRatio(commands);
-  const pythonFiles = 42;
+  const pythonRatio = pythonTestRatio(commands);
   const tests = category(
     "tests",
     "Test & Build Integrity",
     "Executable contracts, type safety, lint, dependency boundaries, production build proof, and secret scanning.",
     [
       check("node-tests", "Active Node test files", 20, nodeRatio ? nodeRatio.passed / nodeRatio.total : 0, nodeRatio ? nodeRatio.passed + "/" + nodeRatio.total + " active files" : "Node test receipt missing", { ratio: nodeRatio || { passed: 0, total: 0 }, evidenceAt: gateAt }),
-      check("python-tests", "Python contract files", 10, 0.75 * gateFresh, pythonFiles + " files · GitHub CI executes them; per-run count is not yet sealed locally", { evidenceAt: gateAt }),
+      check("python-tests", "Python contract files", 10, pythonRatio ? (pythonRatio.passed / pythonRatio.total) * gateFresh : 0, pythonRatio ? pythonRatio.passed + "/" + pythonRatio.total + " active files" : "Python test receipt missing", { ratio: pythonRatio || { passed: 0, total: 0 }, evidenceAt: gateAt }),
       check("typescript", "TypeScript", 15, commandPassed(commands, "typescript") ? gateFresh : 0, commandPassed(commands, "typescript") ? "PASS" : "Current local gate not proven", { ratio: { passed: commandPassed(commands, "typescript") ? 1 : 0, total: 1 }, evidenceAt: gateAt }),
       check("eslint", "ESLint", 10, commandPassed(commands, "eslint-full") || commandPassed(commands, "eslint-changed") ? gateFresh : 0, commandPassed(commands, "eslint-full") || commandPassed(commands, "eslint-changed") ? "PASS" : "Current lint gate not proven", { ratio: { passed: commandPassed(commands, "eslint-full") || commandPassed(commands, "eslint-changed") ? 1 : 0, total: 1 }, evidenceAt: gateAt }),
       check("docs-gate", "Documentation gate", 10, commandPassed(commands, "documentation-control-plane") ? gateFresh : 0, commandPassed(commands, "documentation-control-plane") ? "PASS" : "Not proven", { ratio: { passed: commandPassed(commands, "documentation-control-plane") ? 1 : 0, total: 1 }, evidenceAt: gateAt }),
