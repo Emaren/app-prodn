@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `speedos-exclude-volatile-bounties-20260922` at `3a11aa5cf698e2abf9a6b3ab49ef51158aecf816`
+Implementation baseline: `main` at `cfbaff3009bf40f3807117bd4be7a03fb8227028`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
