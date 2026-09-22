@@ -212,7 +212,7 @@ edge caching requires deployment-integrated purge proof first.
 `anonymous_dynamic_candidate_review` is no longer a dead-end classification. A
 separate fail-closed lane can promote an explicitly governed subset without weakening
 the static cache rule. `config/speed-edge-dynamic-policy.json` is the source-controlled
-staleness authority. The current bounded cohort contains **22 exact routes**, all at
+staleness authority. The current bounded cohort contains **21 exact routes**, all at
 exactly 30 seconds and empty-query HTML only. It includes the public academy,
 AI, archive, champion, clan, leaderboard, national-title and Emaren-profile
 surfaces; the request-time public `/forum`, `/market` and
@@ -237,12 +237,14 @@ body churn across the proof window; its live database-backed presentation remain
 A later read-only review window technically passed `/bounties`, but that single stable
 window does not override the earlier churn evidence or its live contract semantics.
 
-The same September 22 read-only review tested the 15 routes still outside installed
-authority: 8/15 were technically byte-stable for 30 seconds. Product review admitted only
-three non-transactional/read-only surfaces into the source policy for requalification:
-`/rivalries`, `/zodiac`, and `/war-engine`. The first is historical rivalry
-presentation, the second is a training/profile surface, and the third is a public forensic
-queue whose financial authority is explicitly separate and locked. Technical PASS did not
+The September 22 read-only review tested the 15 routes still outside installed
+authority: 8/15 were technically byte-stable for 30 seconds. Product review initially
+admitted three non-transactional/read-only surfaces for certified requalification:
+`/rivalries`, `/zodiac`, and `/war-engine`. On certified release `b234edd076b3`,
+`/rivalries` then failed the authoritative 0/15/30-second qualification because both
+public and direct-origin HTML changed across the window and produced two body hashes.
+That live churn supersedes the earlier quiet-window observation, so `/rivalries` is
+removed from shared edge authority. `/zodiac` and `/war-engine` remain admitted. Technical PASS did not
 authorize `/challenge/24`, `/bets/562774`, the live watch representative, or
 `/bounties`; those remain outside the shared edge rule because transaction/live-freshness
 semantics require a stronger product-level staleness decision. The client-only
@@ -277,10 +279,10 @@ plan to the policy SHA, qualification SHA, exact release/source identity, cookie
 bypass census and the independent 30-second rule. `apply-dynamic` stages a separate
 root request and can mutate only the independent Cloudflare rule
 `AOE2WAR SpeedOS qualified dynamic HTML v1`. The root helper has its own hardcoded
-22-route allowlist, requires TTL exactly 30 seconds, reconstructs the expression,
+21-route allowlist, requires TTL exactly 30 seconds, reconstructs the expression,
 requires the existing certified static SpeedOS rule, and proves the request source SHA
 against the live production checkout before touching Cloudflare. The privileged
-allowlist contains the same 22 routes and cannot be broadened by the staged request.
+allowlist contains the same 21 routes and cannot be broadened by the staged request.
 
 Post-apply proof is intentionally broader than the new rule: every qualified
 empty-query anonymous route must converge to HIT; every known AoE2WAR cookie, RSC
