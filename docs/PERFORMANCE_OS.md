@@ -370,6 +370,29 @@ version remain outside the rule, re-proves the hero HIT, re-proves both authorit
 HTML cohorts, and requires `/api/deployment-version` to remain dynamic. Any failure
 invokes `rollback-featured-avatar`, restoring/removing only this rule.
 
+### Workshop navigation hot path
+
+The Workshop is a rich public route whose initial server render combines the bounded Workshop
+projection with Parser Observatory diagnostics and Kingdom Intelligence. Browser flight-recorder
+evidence exposed a multi-second in-site Workshop navigation even while nearby top-level routes
+were sub-second.
+
+The mitigation is deliberately narrow:
+
+- the Workshop client publishes one explicit `SpeedReadyMarker` only after the real
+  `WorkshopExperience` has hydrated with its server projection;
+- Browser Truth therefore requires semantic Workshop Ready instead of accepting a generic
+  route-paint fallback;
+- the Kingdom menu opts `/workshop` into viewport prefetch, alongside the already privileged
+  Leaderboard route, so opening the menu can begin the RSC request before the click;
+- successful activation performs one bounded localhost `/workshop` prewarm and measures a
+  second warm request while rollback is still armed. Failure is recorded as performance evidence
+  but is not release-critical.
+
+This does not authorize shared edge caching, does not change Parser Observatory freshness, and
+does not move Chronicle history back onto the initial critical path. The goal is to move known
+cold-start work off the first human navigation while preserving the same truth contract.
+
 ### Player Registry navigation hot path
 
 `/players` is a top-level destination whose server origin is already fast, so browser
