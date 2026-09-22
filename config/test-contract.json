@@ -1,6 +1,7 @@
 {
   "schema": 1,
   "node_test_glob": "tests/*.test.mts",
+  "python_test_glob": "tests/test_*.py",
   "runner": {
     "node_flags": [
       "--experimental-strip-types",
@@ -11,5 +12,6 @@
       "--test-reporter=dot"
     ]
   },
-  "quarantine": []
+  "quarantine": [],
+  "python_quarantine": []
 }
