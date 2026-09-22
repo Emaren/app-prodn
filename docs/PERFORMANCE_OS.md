@@ -37,6 +37,10 @@ aoe2war speed browser-truth
 aoe2war speed cold-lcp --samples 10 --viewport desktop
 aoe2war speed diagnose
 aoe2war speed inventory
+aoe2war speed edge qualify-review
+aoe2war speed edge qualify-dynamic
+aoe2war speed edge plan-dynamic
+aoe2war speed edge apply-dynamic
 aoe2war speed edge plan-asset
 aoe2war speed edge apply-asset
 aoe2war speed edge rollback-asset
@@ -232,6 +236,8 @@ Cloudflare ruleset mutation can briefly surface an otherwise healthy long-lived 
 waits a bounded 1.5-second settle, then requires each route to converge to `HIT` within five
 attempts. Failure still triggers dynamic-only rollback; the settle window only removes false
 rollback caused by transient edge revalidation.
+
+`aoe2war speed edge qualify-review` is the read-only discovery rail for routes that the edge audit still classifies as `anonymous_dynamic_freshness_review`. It samples every unresolved admitted route at t=0/15/30 seconds using the same exact public-vs-direct-origin byte proof as the authorized dynamic lane, but writes a separate review receipt and **never authorizes mutation**. A technical PASS only means the route was HTTP 200 HTML, emitted no `Set-Cookie`, did not redirect, and stayed byte-identical between public and origin for the full 30-second window. Product/financial/live-freshness policy still requires explicit review before any route is added to `config/speed-edge-dynamic-policy.json`; technical PASS cannot silently expand the Cloudflare allowlist.
 
 `aoe2war speed edge qualify-dynamic` is observational. It is allowed to run only from
 a clean `main` worktree when production SHA, GitHub `main`, operator source SHA and
