@@ -212,10 +212,10 @@ class PerformanceOSTests(unittest.TestCase):
         tests = [
             args
             for label, args, _timeout in plan
-            if label == "release-engineering-tests"
+            if label == "active-python-test-contract"
         ]
         self.assertEqual(len(tests), 1)
-        self.assertIn("tests/test_aoe2_speed.py", tests[0])
+        self.assertEqual(tests[0], ["python3", "scripts/run_python_contract.py"])
 
         compiles = [
             args

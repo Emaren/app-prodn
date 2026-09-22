@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "fb39a211dc8aa17116e2faf128a4dd5dc102799dc9563f41d7b5a5fb2fd6acf4",
+      "sha256": "80ab6d5fc328e380feae62e555191d64e3e0d94a8909f1c927e7a6bd6f778699",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-22",
       "sensitivity": "internal",
-      "sha256": "a3fe3c6d97c814fea578764f378cdba4480b5a2dd4568f353942ae3dec08865f",
+      "sha256": "1e7f940b86d0fa4cdf4bda43c729103336d93137b2f6e1439e2e158b5afe3cc7",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -613,9 +613,9 @@
       "owner": "aoe2war-web",
       "path": "docs/GENERAL_INSPECTIONS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-19",
+      "reviewed_at": "2026-09-22",
       "sensitivity": "internal",
-      "sha256": "0c7d89b488ce977a7dea70fa6ac4619d79206bb598e3d99e11477d1247e16f6f",
+      "sha256": "20c2d2751bbb388349d297707754ee21e13c1ec1f1c5c682bf9ad3b7990c02b7",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1279,7 +1279,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-21",
       "sensitivity": "internal",
-      "sha256": "2d3be7cffc4253d24472ae28d0955087cf94e951621336c1c6176006e07bbc6a",
+      "sha256": "2405ec0ea8bfca87dc5b97d2ac0d6d7dc54e211a6bbfd20638490f06320c5535",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "main",
-    "commit": "5758efe3dbeae203df2f5b58760145620ab12f99"
+    "commit": "47fdcda44f84279c6b8eb220adeb7fba27c95d7f"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

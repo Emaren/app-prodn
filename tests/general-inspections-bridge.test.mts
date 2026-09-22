@@ -205,6 +205,10 @@ function makeEstate(speedCurrent = true) {
         "active-node-test-contract",
         "Running 330 active Node test files; 0 explicitly quarantined.\n",
       ),
+      command(
+        "active-python-test-contract",
+        "Running 47 Python contract files.\n",
+      ),
       command("documentation-control-plane"),
       command("tracked-secret-scan"),
       command("dependency-contract"),
@@ -285,7 +289,7 @@ test("bridge-backed General Inspections can reach green from certified evidence"
     assert.equal(byId.get("speed")?.score, 100);
     assert.equal(byId.get("documentation")?.score, 100);
     assert.equal(byId.get("organization")?.score, 100);
-    assert.equal(byId.get("tests")?.score, 98);
+    assert.equal(byId.get("tests")?.score, 100);
     assert.equal(byId.get("release")?.score, 100);
     assert.equal(byId.get("security")?.score, 100);
     assert.equal(byId.get("data")?.score, 100);

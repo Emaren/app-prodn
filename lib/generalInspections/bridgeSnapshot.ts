@@ -213,6 +213,20 @@ function nodeTestRatio(commands: Map<string, Json>): InspectionRatio | null {
   };
 }
 
+function pythonTestRatio(commands: Map<string, Json>): InspectionRatio | null {
+  const output =
+    (text(commands.get("active-python-test-contract")?.stdout_tail) || "") +
+    "\n" +
+    (text(commands.get("active-python-test-contract")?.stderr_tail) || "");
+  const match = output.match(/Running\s+(\d+)\s+Python contract files/i);
+  if (!match) return null;
+  const total = Number(match[1]);
+  return {
+    passed: commandPassed(commands, "active-python-test-contract") ? total : 0,
+    total,
+  };
+}
+
 function latestExpiryLedger(expiryRoot: string) {
   const campaigns = safeEntries(expiryRoot)
     .filter((entry) => entry.isDirectory() && entry.name.startsWith("campaign-"))
@@ -857,7 +871,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
 
   const commands = commandMap(activation.gate);
   const nodeRatio = nodeTestRatio(commands);
-  const pythonFiles = 42;
+  const pythonRatio = pythonTestRatio(commands);
   const certified =
     activation.certification.status === "CERTIFIED" &&
     text(activation.gate.target_sha) === releaseSha;
@@ -883,10 +897,14 @@ export function buildBridgeGeneralInspectionsSnapshot(
         "python-tests",
         "Python contract files",
         10,
-        0.75 * gateFresh,
-        pythonFiles +
-          " files · GitHub CI executes them; per-run denominator is not sealed locally",
-        { evidenceAt: gateAt },
+        pythonRatio ? ratioFraction(pythonRatio) * gateFresh : 0,
+        pythonRatio
+          ? pythonRatio.passed + "/" + pythonRatio.total + " files"
+          : "Python test receipt missing",
+        {
+          ratio: pythonRatio || { passed: 0, total: 0 },
+          evidenceAt: gateAt,
+        },
       ),
       check(
         "typescript",
@@ -1344,12 +1362,6 @@ export function buildBridgeGeneralInspectionsSnapshot(
         " documentation review(s) are due within seven days.",
     );
   }
-  notes.push(
-    "Python CI executes " +
-      pythonFiles +
-      " discovered contract files, but the per-run Python denominator is not yet sealed into the local release receipt.",
-  );
-
   return {
     schema: 1,
     generatedAt: new Date(now).toISOString(),
