@@ -443,6 +443,22 @@ class FinishTests(unittest.TestCase):
         changed = {**clean, "local": {"head": "b"}}
         self.assertTrue(MODULE.needs_deploy(changed))
 
+        docs_only = {
+            **changed,
+            "documentation": {
+                "production_implementation_equivalent": True,
+            },
+        }
+        self.assertFalse(MODULE.needs_deploy(docs_only))
+
+        unproven_docs_only = {
+            **changed,
+            "documentation": {
+                "production_implementation_equivalent": False,
+            },
+        }
+        self.assertTrue(MODULE.needs_deploy(unproven_docs_only))
+
     def test_checkpoint_receipt_replaces_one_atomic_file(self):
         with tempfile.TemporaryDirectory() as temp:
             path = pathlib.Path(temp) / "finish.json"
