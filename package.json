@@ -60,7 +60,7 @@
     "@tanstack/react-query": "^5.76.1",
     "@walletconnect/client": "^1.8.0",
     "framer-motion": "^12.4.7",
-    "jose": "^6.1.3",
+    "jose": "^6.2.12",
     "lucide-react": "^0.476.0",
     "next": "15.5.24",
     "next-intl": "4.13.4",
