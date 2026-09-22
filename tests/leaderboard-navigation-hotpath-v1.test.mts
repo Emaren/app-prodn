@@ -4,11 +4,14 @@ import test from "node:test";
 
 const source = (path: string) => readFileSync(path, "utf8");
 
-test("opening the Kingdom menu primes the Leaderboard before click", () => {
+test("Kingdom menu primes the two reviewed hot routes before click", () => {
   const shell = source("app/AppShell.tsx");
 
   assert.match(shell, /const router = useRouter\(\);[\s\S]*const openMenu = React\.useCallback\(\(\) => \{[\s\S]*router\.prefetch\("\/leaderboard"\);[\s\S]*setOpen\(true\);/);
-  assert.match(shell, /prefetch=\{item\.href === "\/leaderboard"\}/);
+  assert.match(
+    shell,
+    /prefetch=\{item\.href === "\/leaderboard" \|\| item\.href === "\/workshop"\}/,
+  );
   assert.match(shell, /onMouseEnter=\{\(\) => router\.prefetch\(item\.href\)\}/);
 });
 
