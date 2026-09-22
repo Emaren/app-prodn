@@ -394,8 +394,10 @@ class StorageOSTests(unittest.TestCase):
             home = pathlib.Path(directory)
             tgz = home / "projects/VPSSentry/context/tgz"
             zip_dir = home / "projects/VPSSentry/context/zip"
+            md_dir = home / "projects/VPSSentry/context/md"
             tgz.mkdir(parents=True)
             zip_dir.mkdir(parents=True)
+            md_dir.mkdir(parents=True)
             for name in (
                 "AoE2HDBets-context-host-20260919-010000.tgz",
                 "AoE2HDBets-context-host-20260919-020000.tgz",
@@ -403,13 +405,24 @@ class StorageOSTests(unittest.TestCase):
             ):
                 (tgz / name).write_bytes(b"x")
             (zip_dir / "AoE2HDBets-context-host-20260919-020000.zip").write_bytes(b"x")
+            for name in (
+                "AoE2HDBets-context-host-20260919-010000.md",
+                "AoE2HDBets-context-host-20260919-020000.md",
+                "VPS-context-host-20260919-020000.md",
+            ):
+                (md_dir / name).write_text("# context\n", encoding="utf-8")
 
             payload = MODULE._context_retention_snapshot(home)
 
-        self.assertEqual(payload["retention_debt"], 1)
+        self.assertEqual(payload["retention_debt"], 2)
         self.assertEqual(payload["formats"]["tgz"]["archive_count"], 3)
+        self.assertEqual(payload["formats"]["md"]["archive_count"], 3)
         self.assertEqual(
             payload["formats"]["tgz"]["over_retained_series"],
+            {"AoE2HDBets": 2},
+        )
+        self.assertEqual(
+            payload["formats"]["md"]["over_retained_series"],
             {"AoE2HDBets": 2},
         )
 
