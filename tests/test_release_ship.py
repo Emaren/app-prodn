@@ -841,6 +841,45 @@ class ShipTests(unittest.TestCase):
             script,
         )
 
+    def test_activation_prewarms_workshop_before_health_soak(self):
+        script = render_activation_script()
+
+        prewarm = script.index('WORKSHOP_PREWARM="FAIL"')
+        soak = script.index(
+            "# BOUNDED POST-ACTIVATION HEALTH SOAK",
+            prewarm,
+        )
+
+        self.assertLess(prewarm, soak)
+
+        block = script[prewarm:soak]
+
+        self.assertIn(
+            "http://127.0.0.1:3030/workshop",
+            block,
+        )
+        self.assertIn(
+            "--connect-timeout 3",
+            block,
+        )
+        self.assertIn(
+            "--max-time 25",
+            block,
+        )
+        self.assertIn(
+            "-w '%{time_total}'",
+            block,
+        )
+
+        self.assertIn(
+            "workshop_prewarm=$WORKSHOP_PREWARM",
+            script,
+        )
+        self.assertIn(
+            "workshop_warm_seconds=$WORKSHOP_WARM_SECONDS",
+            script,
+        )
+
     def test_activation_prewarms_common_leaderboards_before_health_soak(self):
         script = render_activation_script()
 

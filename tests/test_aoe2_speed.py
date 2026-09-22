@@ -1179,6 +1179,7 @@ class PerformanceOSTests(unittest.TestCase):
         self.assertIn("/general-inspections", paths)
         self.assertIn("/leaderboard", paths)
         self.assertTrue(next(row for row in routes if row["route"] == "/bets")["expect_ready"])
+        self.assertTrue(next(row for row in routes if row["route"] == "/workshop")["expect_ready"])
 
     def test_browser_truth_seals_release_bound_nonmutating_receipt(self):
         identity = {

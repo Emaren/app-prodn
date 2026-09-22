@@ -24,6 +24,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import { useTileViewPreference } from "@/components/tile-view/useTileViewPreference";
+import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import WorkshopAsk from "@/components/workshop/WorkshopAsk";
 import WorkshopBrainPanel from "@/components/workshop/WorkshopBrainPanel";
 import WorkshopChronicle from "@/components/workshop/WorkshopChronicle";
@@ -211,6 +212,7 @@ export default function WorkshopExperience({ data, chronicle, diagnostics, brain
       data-workshop-view={viewMode}
       data-workshop-campaign={WORKSHOP_CURRENT_CAMPAIGN}
     >
+      <SpeedReadyMarker route="/workshop" />
       {viewMode === "basic" ? (
         <BasicView {...shared} />
       ) : viewMode === "advanced" ? (

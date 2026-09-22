@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "af7d2f19bff6c3c8141e22bf4f53c7436666e3576adfa2baae3530b726a2e931",
+      "sha256": "a38a17c77feb87963c81ab84c4ba9f941da4965b4d1b84496675d2801d4e3214",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-22",
       "sensitivity": "internal",
-      "sha256": "8eafcbaf3fd90b4727abbb322cc3643fc3e5d1091deea71ad7035d27eeb28367",
+      "sha256": "eb6e555bbc6402927dbbfd763543277f6114ef0513f2d5c32ea3870950cbde26",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1141,7 +1141,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-22",
       "sensitivity": "internal",
-      "sha256": "40d19eba763542e0a92f640d77ac8f22de9f07c34c8c654b5019663557d8ce35",
+      "sha256": "a2ee786fa81e646675f24aff46a96ef55be938cc0cb6e67ae98ad9cf084afc23",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1277,9 +1277,9 @@
       "owner": "aoe2war-web",
       "path": "docs/RELEASE_ENGINEERING.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-21",
+      "reviewed_at": "2026-09-22",
       "sensitivity": "internal",
-      "sha256": "2405ec0ea8bfca87dc5b97d2ac0d6d7dc54e211a6bbfd20638490f06320c5535",
+      "sha256": "06c1544c081976d7f5f1459ecc74ed46da765bfcd40bc4be3b3274c0a5406ccf",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "main",
-    "commit": "76f4937284fce846e695c6cfefdba53d072c2e4b"
+    "commit": "b9c73d9396213ce1482944db06afc3f1c39c24ff"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

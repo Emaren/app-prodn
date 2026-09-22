@@ -1347,6 +1347,35 @@ do
   LEADERBOARD_WARM_SECONDS="$LEADERBOARD_WARM_SECONDS$lane:$scope:$warm_seconds"
 done
 
+# Workshop carries a deliberately rich public diagnostics projection. The
+# first process-local request can pay the parser-observatory cache fill, so
+# warm it while rollback is still armed instead of making a human visitor the
+# first caller after activation. Like Statistics, this is non-critical
+# performance evidence and never weakens release health gates.
+WORKSHOP_PREWARM="FAIL"
+WORKSHOP_WARM_SECONDS=""
+
+if curl -fsS \
+  --connect-timeout 3 \
+  --max-time 25 \
+  -o /dev/null \
+  http://127.0.0.1:3030/workshop
+then
+  WORKSHOP_WARM_SECONDS="$(
+    curl -fsS \
+      --connect-timeout 3 \
+      --max-time 12 \
+      -o /dev/null \
+      -w '%{{time_total}}' \
+      http://127.0.0.1:3030/workshop \
+      || true
+  )"
+
+  if [ -n "$WORKSHOP_WARM_SECONDS" ]; then
+    WORKSHOP_PREWARM="PASS"
+  fi
+fi
+
 # ------------------------------------------------------------
 # BOUNDED POST-ACTIVATION HEALTH SOAK
 #
@@ -1424,6 +1453,8 @@ printf '%s\\n' \
   "statistics_warm_seconds=$STATISTICS_WARM_SECONDS" \
   "leaderboard_prewarm=$LEADERBOARD_PREWARM" \
   "leaderboard_warm_seconds=$LEADERBOARD_WARM_SECONDS" \
+  "workshop_prewarm=$WORKSHOP_PREWARM" \
+  "workshop_warm_seconds=$WORKSHOP_WARM_SECONDS" \
   "fast_rollback=$FAST_OLD" \
   "fast_rollback_modules=$FAST_OLD_MODULES" \
   "durable_rollback=$ROLLBACK" \
