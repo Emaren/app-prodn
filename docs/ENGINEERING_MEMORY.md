@@ -41,6 +41,23 @@ memory before closing the work.
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
 
+## 2026-09-22 — Pay deterministic cold work before the first human navigation
+
+A live Speed Observatory session exposed `/workshop` as a multi-second in-site navigation while
+nearby routes were already sub-second. The route intentionally carries a rich public diagnostics
+projection, including cached Parser Observatory work. That makes the first process-local request
+after activation a predictable cold-work candidate even when steady-state behavior is healthy.
+
+The fix is layered rather than invasive: publish semantic Ready from the hydrated Workshop
+experience, prefetch only the Workshop navigation when the Kingdom menu is actually open, and
+prewarm the Workshop once on localhost after activation while rollback is still armed. The
+activation receipt records the warm result and timing; failure remains non-critical performance
+evidence.
+
+Durable rule: when a route has expensive but deterministic cache-fill work, prefer a bounded
+post-activation prewarm plus targeted navigation prefetch before rewriting correct data logic or
+weakening freshness. Measure semantic Ready, not merely route paint.
+
 ## 2026-09-22 — Financial documentation must distinguish implemented law from candidate design
 
 A due-document review found that the Betting Constitution still described the pre-#JimsRule
