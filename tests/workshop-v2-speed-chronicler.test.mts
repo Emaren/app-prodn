@@ -10,6 +10,7 @@ const page = read("app/workshop/page.tsx");
 const loading = read("app/workshop/loading.tsx");
 const chronicle = read("components/workshop/WorkshopChronicle.tsx");
 const experience = read("components/workshop/WorkshopExperience.tsx");
+const appShell = read("app/AppShell.tsx");
 const workshopTime = read("lib/workshopTime.ts");
 const workshop = read("lib/workshop.ts");
 const chronicler = read("scripts/workshop_chronicler.mts");
@@ -21,6 +22,14 @@ test("Workshop paints a real route shell before deep data is ready", () => {
   assert.match(loading, /The strange machine is forged in public/);
   assert.match(loading, /WorkshopShellReady/);
   assert.doesNotMatch(loading, /skeleton/i);
+});
+
+test("Workshop publishes semantic Ready and receives targeted menu prefetch", () => {
+  assert.match(experience, /SpeedReadyMarker route="\/workshop"/);
+  assert.match(
+    appShell,
+    /prefetch=\{item\.href === "\/leaderboard" \|\| item\.href === "\/workshop"\}/,
+  );
 });
 
 test("Workshop root no longer blocks navigation on Chronicle history", () => {
