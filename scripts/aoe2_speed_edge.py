@@ -237,6 +237,8 @@ def reusable_edge_audit(
         return False
     if audit.get("cache_safety_signature") != cache_safety_signature(source_inventory):
         return False
+    if audit.get("installed_edge_authority") != installed_edge_authority_snapshot():
+        return False
     generated = speed.parse_dt(audit.get("generated_at"))
     now = speed.parse_dt(utc_now())
     if not generated or not now:
@@ -453,6 +455,10 @@ def build_audit(
                 )
             else:
                 authority_drift = True
+                reason = (
+                    "installed SpeedOS dynamic-edge authority no longer matches current "
+                    "source/runtime cache-safety evidence; " + reason
+                )
         elif representative in static_routes:
             authority_row = {
                 "tier": "static",
@@ -474,6 +480,10 @@ def build_audit(
                 )
             else:
                 authority_drift = True
+                reason = (
+                    "installed SpeedOS static-edge authority no longer matches current "
+                    "source/runtime cache-safety evidence; " + reason
+                )
 
         measured = by_route.get(representative) or {}
         gap = measured.get("warm_public_origin_gap_ms")
