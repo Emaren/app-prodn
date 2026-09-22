@@ -613,7 +613,7 @@
       "owner": "aoe2war-web",
       "path": "docs/GENERAL_INSPECTIONS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-19",
+      "reviewed_at": "2026-09-22",
       "sensitivity": "internal",
       "sha256": "54bd38a81af488f42900f65197554a529c43ef6bc0db18bca693e95b0498b5a3",
       "source_of_truth": "git",
