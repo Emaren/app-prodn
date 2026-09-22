@@ -41,6 +41,22 @@ memory before closing the work.
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
 
+## 2026-09-22 — Sealed benchmark evidence must never masquerade as live estate truth
+
+The E2 Speed Observatory mixed live browser telemetry with a sealed estate benchmark. The
+underlying benchmark object correctly carried its capture timestamp, source SHA, and build
+version, but presentation copy called the route census "live estate" and one histogram label
+hard-coded the old 78-route denominator. That made a trustworthy historical receipt look newer
+than it was and created a second place for the route count to drift.
+
+The observatory now labels the estate cohort as a sealed snapshot, derives the displayed route
+count from the snapshot authority itself, and keeps the live browser rail visually separate.
+
+Durable rule: freshness is part of the meaning of operational data. A sealed receipt may remain
+valuable indefinitely as historical evidence, but UI copy must not upgrade it to "live" merely
+because the page displaying it is live. Presentation denominators come from the authority object,
+never from remembered literals.
+
 ## 2026-09-22 — Test scores must come from executable receipts, not remembered denominators
 
 General Inspections exposed a false-authority gap in the Python test line. GitHub CI executed
