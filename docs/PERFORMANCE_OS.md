@@ -436,6 +436,19 @@ network seam.
 
 Speed OS V3 adds two evidence families without replacing the V2 measurements.
 
+### Observatory snapshot provenance
+
+The E2 Speed Observatory intentionally combines two evidence clocks. The browser flight
+recorder, live RTT, and session Ready measurements are live client telemetry. The estate-wide
+route census, edge cohort, latency ladder, hot-route stack, distribution, and before/after edge
+proof come from a sealed SpeedOS benchmark snapshot bound to its recorded source, build, and
+capture timestamp.
+
+The UI must label that estate evidence as a sealed snapshot. It must not call a captured census
+"live estate" or hard-code the audited route denominator in presentation code. A newer browser
+session does not silently promote an older benchmark snapshot to current-release proof; current
+estate claims still require a new governed SpeedOS receipt.
+
 ### Durable browser performance evidence
 
 Explicit readiness-authority coverage proves that a route has a semantic Ready
