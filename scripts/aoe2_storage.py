@@ -412,7 +412,7 @@ def _context_retention_snapshot(home: Path) -> dict[str, Any]:
     root = home / "projects" / "VPSSentry" / "context"
     formats: dict[str, Any] = {}
     total_debt = 0
-    for suffix in ("tgz", "zip"):
+    for suffix in ("tgz", "zip", "md"):
         directory = root / suffix
         series: dict[str, int] = {}
         if directory.is_dir():
