@@ -27,6 +27,7 @@ import aoe2_speed_inventory as inventory
 PUBLIC_BASE = "https://aoe2war.com"
 EDGE_RECEIPTS = speed.STATE / "performance-edge-receipts"
 DYNAMIC_QUALIFICATION_RECEIPTS = speed.STATE / "performance-edge-dynamic-qualification-receipts"
+DYNAMIC_REVIEW_RECEIPTS = speed.STATE / "performance-edge-dynamic-review-receipts"
 DYNAMIC_POLICY_PATH = ROOT / "config" / "speed-edge-dynamic-policy.json"
 DYNAMIC_SAMPLE_OFFSETS = (0.0, 15.0, 30.0)
 EDGE_AUDIT_REUSE_SECONDS = 15 * 60
@@ -1022,6 +1023,155 @@ def qualify_dynamic_edge(
         "all_qualified": qualified_count == len(final_rows),
         "rows": final_rows,
     }
+
+
+
+def qualify_dynamic_review_candidates(
+    source_inventory: dict[str, Any],
+    audit: dict[str, Any],
+    *,
+    sample_offsets: tuple[float, ...] = DYNAMIC_SAMPLE_OFFSETS,
+    public_probe=public_html_body_probe,
+    origin_probe=origin_html_body_probe,
+    sleep_fn=time.sleep,
+    monotonic_fn=time.monotonic,
+) -> dict[str, Any]:
+    """Empirically review unresolved dynamic candidates without authorizing mutation."""
+
+    identity = require_dynamic_release_identity()
+    if tuple(sample_offsets) != tuple(sorted(sample_offsets)) or not sample_offsets or sample_offsets[0] != 0:
+        raise EdgeAuditError("dynamic review sample offsets must start at zero and be ordered")
+    if sample_offsets[-1] < 30:
+        raise EdgeAuditError("dynamic review must span at least the authorized 30-second TTL")
+
+    inventory_candidates = dynamic_inventory_routes(source_inventory)
+    review_routes = [
+        str(row.get("route"))
+        for row in audit.get("rows") or []
+        if str(row.get("priority") or "") == "anonymous_dynamic_freshness_review"
+        and isinstance(row.get("route"), str)
+    ]
+    review_routes = list(dict.fromkeys(review_routes))
+    missing = [route for route in review_routes if route not in inventory_candidates]
+    if missing:
+        raise EdgeAuditError(
+            "dynamic review route is no longer an admitted public candidate: "
+            + ", ".join(missing)
+        )
+
+    rows = {
+        route: {
+            "route": route,
+            "inventory": inventory_candidates[route],
+            "samples": [],
+        }
+        for route in review_routes
+    }
+    started = monotonic_fn()
+    for round_no, offset in enumerate(sample_offsets, start=1):
+        delay = started + offset - monotonic_fn()
+        if delay > 0:
+            sleep_fn(delay)
+        for route in review_routes:
+            public = public_probe(route)
+            origin = origin_probe(route)
+            rows[route]["samples"].append(
+                {
+                    "round": round_no,
+                    "target_offset_seconds": offset,
+                    "public": public,
+                    "origin": origin,
+                }
+            )
+
+    technically_qualified_count = 0
+    final_rows: list[dict[str, Any]] = []
+    for route in review_routes:
+        row = rows[route]
+        reasons: list[str] = []
+        hashes: set[str] = set()
+        public_hashes: set[str] = set()
+        origin_hashes: set[str] = set()
+        for sample in row["samples"]:
+            for side in ("public", "origin"):
+                probe = sample[side]
+                label = f"round {sample['round']} {side}"
+                if not probe.get("available"):
+                    reasons.append(f"{label}: unavailable")
+                    continue
+                if probe.get("http_status") != 200:
+                    reasons.append(f"{label}: HTTP {probe.get('http_status')}")
+                if "text/html" not in str(probe.get("content_type") or "").lower():
+                    reasons.append(f"{label}: non-HTML response")
+                if probe.get("set_cookie"):
+                    reasons.append(f"{label}: Set-Cookie present")
+                digest = str(probe.get("body_sha256") or "")
+                if not re.fullmatch(r"[0-9a-f]{64}", digest):
+                    reasons.append(f"{label}: invalid body SHA-256")
+                else:
+                    hashes.add(digest)
+                    (public_hashes if side == "public" else origin_hashes).add(digest)
+            public = sample["public"]
+            if public.get("available") and public.get("effective_url") != PUBLIC_BASE + route:
+                reasons.append(f"round {sample['round']} public: redirected")
+
+        if len(public_hashes) != 1:
+            reasons.append(
+                f"public body changed across window ({len(public_hashes)} hashes)"
+            )
+        if len(origin_hashes) != 1:
+            reasons.append(
+                f"origin body changed across window ({len(origin_hashes)} hashes)"
+            )
+        if len(hashes) != 1:
+            reasons.append(
+                f"public/origin byte equality failed ({len(hashes)} hashes)"
+            )
+
+        technically_qualified = not reasons
+        if technically_qualified:
+            technically_qualified_count += 1
+        final_rows.append(
+            {
+                **row,
+                "technically_qualified": technically_qualified,
+                "mutation_authorized": False,
+                "reasons": sorted(set(reasons)),
+                "body_sha256": next(iter(hashes)) if len(hashes) == 1 else None,
+                "sample_count": len(row["samples"]),
+            }
+        )
+
+    return {
+        "schema": 1,
+        "kind": "aoe2war-speedos-dynamic-edge-review-qualification",
+        "generated_at": utc_now(),
+        "release_identity": identity,
+        "operator_source_sha": identity["operator_source_sha"],
+        "review_only": True,
+        "mutation_authorized": False,
+        "cache_safety_signature": cache_safety_signature(source_inventory),
+        "audit_receipt": speed.evidence_ref(audit.get("_path") or ""),
+        "authorized_ttl_seconds": 30,
+        "sample_offsets_seconds": list(sample_offsets),
+        "elapsed_seconds": round(monotonic_fn() - started, 3),
+        "route_count": len(final_rows),
+        "technically_qualified_count": technically_qualified_count,
+        "all_technically_qualified": technically_qualified_count == len(final_rows),
+        "rows": final_rows,
+    }
+
+
+def write_dynamic_review_receipt(payload: dict[str, Any]) -> Path:
+    DYNAMIC_REVIEW_RECEIPTS.mkdir(parents=True, exist_ok=True)
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    release = str((payload.get("release_identity") or {}).get("release_sha") or "unknown")[:12]
+    path = DYNAMIC_REVIEW_RECEIPTS / f"{stamp}-{release}-review.json"
+    path.write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return path
 
 
 def dynamic_qualification_digest(payload: dict[str, Any]) -> str:
@@ -2194,7 +2344,7 @@ def print_audit(payload: dict[str, Any], limit: int) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(prog="aoe2war speed edge")
-    parser.add_argument("command", nargs="?", choices=["audit", "plan", "bootstrap", "authority", "snapshot", "apply", "rollback", "qualify-dynamic", "plan-dynamic", "apply-dynamic", "rollback-dynamic", "plan-asset", "apply-asset", "rollback-asset", "plan-featured-avatar", "apply-featured-avatar", "rollback-featured-avatar"], default="audit")
+    parser.add_argument("command", nargs="?", choices=["audit", "plan", "bootstrap", "authority", "snapshot", "apply", "rollback", "qualify-review", "qualify-dynamic", "plan-dynamic", "apply-dynamic", "rollback-dynamic", "plan-asset", "apply-asset", "rollback-asset", "plan-featured-avatar", "apply-featured-avatar", "rollback-featured-avatar"], default="audit")
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--limit", type=int, default=20)
     parser.add_argument("--no-receipt", action="store_true")
@@ -2400,6 +2550,66 @@ def main() -> int:
                 print(f"Receipt:        {speed.evidence_ref(receipt)}")
             return 0
         except EdgeAuditError as exc:
+            print(f"STOP: {exc}", file=sys.stderr)
+            return 2
+
+    if args.command == "qualify-review":
+        try:
+            source_inventory = inventory.snapshot()
+            benchmark = latest_full_cost_stack()
+            if not benchmark:
+                raise EdgeAuditError(
+                    "no full per-route Speed OS cost-stack receipt exists"
+                )
+            prior = latest_edge_audit()
+            if reusable_edge_audit(prior, source_inventory, benchmark):
+                audit = prior
+            else:
+                audit = build_audit(
+                    source_inventory=source_inventory,
+                    benchmark=benchmark,
+                )
+                audit_path = write_receipt(audit)
+                audit["_path"] = str(audit_path)
+            review = qualify_dynamic_review_candidates(
+                source_inventory,
+                audit,
+            )
+            receipt = write_dynamic_review_receipt(review)
+            review["receipt"] = speed.evidence_ref(receipt)
+            if args.json:
+                print(json.dumps(review, indent=2, sort_keys=True))
+            else:
+                print("⚔️  AOE2WAR SPEED DYNAMIC REVIEW QUALIFICATION")
+                print()
+                print(
+                    f"Release:       "
+                    f"{str((review.get('release_identity') or {}).get('release_sha') or '')[:12]}"
+                )
+                print(
+                    f"Routes:        "
+                    f"{review['technically_qualified_count']}/{review['route_count']} "
+                    "technically qualified"
+                )
+                print(
+                    f"Window:        {review['sample_offsets_seconds']} seconds"
+                )
+                print("Mutation:      NOT AUTHORIZED — review evidence only")
+                print(f"Receipt:       {speed.evidence_ref(receipt)}")
+                for row in review["rows"]:
+                    state = (
+                        "PASS"
+                        if row["technically_qualified"]
+                        else "HOLD"
+                    )
+                    detail = (
+                        ""
+                        if row["technically_qualified"]
+                        else " · " + "; ".join(row["reasons"])
+                    )
+                    print(f"  {state:<4} {row['route']}{detail}")
+            return 0
+        except (EdgeAuditError, inventory.InventoryError) as exc:
             print(f"STOP: {exc}", file=sys.stderr)
             return 2
 
