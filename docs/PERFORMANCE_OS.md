@@ -205,7 +205,7 @@ edge caching requires deployment-integrated purge proof first.
 `anonymous_dynamic_candidate_review` is no longer a dead-end classification. A
 separate fail-closed lane can promote an explicitly governed subset without weakening
 the static cache rule. `config/speed-edge-dynamic-policy.json` is the source-controlled
-staleness authority. The current bounded cohort contains **19 exact routes**, all at
+staleness authority. The current bounded cohort contains **22 exact routes**, all at
 exactly 30 seconds and empty-query HTML only. It includes the public academy,
 AI, archive, champion, clan, leaderboard, national-title and Emaren-profile
 surfaces; the request-time public `/forum`, `/market` and
@@ -227,6 +227,20 @@ across the 30-second window and diverged from origin, so `/players` remains expl
 HOLD outside shared edge cache. On September 22, `/bounties` was removed from the
 authorized cohort after the certified qualification observed both public and direct-origin
 body churn across the proof window; its live database-backed presentation remains uncached.
+A later read-only review window technically passed `/bounties`, but that single stable
+window does not override the earlier churn evidence or its live contract semantics.
+
+The same September 22 read-only review tested the 15 routes still outside installed
+authority: 8/15 were technically byte-stable for 30 seconds. Product review admitted only
+three non-transactional/read-only surfaces into the source policy for requalification:
+`/rivalries`, `/zodiac`, and `/war-engine`. The first is historical rivalry
+presentation, the second is a training/profile surface, and the third is a public forensic
+queue whose financial authority is explicitly separate and locked. Technical PASS did not
+authorize `/challenge/24`, `/bets/562774`, the live watch representative, or
+`/bounties`; those remain outside the shared edge rule because transaction/live-freshness
+semantics require a stronger product-level staleness decision. The client-only
+`/challenge` shell also remains outside this policy pending a source-level static-shell
+cleanup rather than using dynamic caching as a substitute for correct rendering mode.
 Clan Hall payment intent, settlement, live presence and other transactional truth remain on
 no-store API rails.
 
@@ -256,10 +270,10 @@ plan to the policy SHA, qualification SHA, exact release/source identity, cookie
 bypass census and the independent 30-second rule. `apply-dynamic` stages a separate
 root request and can mutate only the independent Cloudflare rule
 `AOE2WAR SpeedOS qualified dynamic HTML v1`. The root helper has its own hardcoded
-nineteen-route allowlist, requires TTL exactly 30 seconds, reconstructs the expression,
+22-route allowlist, requires TTL exactly 30 seconds, reconstructs the expression,
 requires the existing certified static SpeedOS rule, and proves the request source SHA
 against the live production checkout before touching Cloudflare. The privileged
-allowlist contains the same nineteen routes and cannot be broadened by the staged request.
+allowlist contains the same 22 routes and cannot be broadened by the staged request.
 
 Post-apply proof is intentionally broader than the new rule: every qualified
 empty-query anonymous route must converge to HIT; every known AoE2WAR cookie, RSC
@@ -278,7 +292,7 @@ proofs do not authorize mutation.
 
 The homepage LCP image has its own fail-closed edge lane. It is deliberately
 independent of both HTML cache rules: no `/_next/image` request is admitted by the
-28-route static rule or the 19-route dynamic rule.
+28-route static rule or the 22-route dynamic rule.
 
 `aoe2war speed edge plan-asset` first requires exact certified production identity:
 production SHA, GitHub `main`, and the clean operator `main` worktree must agree. It
@@ -308,7 +322,7 @@ variants must each preserve one stable body hash across the MISS-to-HIT boundary
 remain image content, retain `Vary: Accept`, and converge to `CF-Cache-Status: HIT`.
 Both 1080px and 1920px q95 variants must HIT. The same hero at q90 must remain
 outside the rule. Every route in the authoritative 28-route static cohort and
-19-route dynamic cohort must still converge to HIT, while
+22-route dynamic cohort must still converge to HIT, while
 `/api/deployment-version` must remain outside shared cache.
 
 A hero change invalidates the source-bound plan. The operator must build a fresh
