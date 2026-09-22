@@ -611,6 +611,99 @@ class SpeedEdgeTests(unittest.TestCase):
         finally:
             MODULE.require_dynamic_release_identity = original
 
+    def test_dynamic_review_qualification_is_read_only_and_separates_stable_from_churn(self):
+        original = MODULE.require_dynamic_release_identity
+        clock = [0.0]
+        calls = {"/changing": 0}
+        try:
+            MODULE.require_dynamic_release_identity = lambda: self._dynamic_identity()
+            source = {
+                "pages": [
+                    {
+                        "template": "/stable",
+                        "classification": "public",
+                        "benchmark_representative": "/stable",
+                        "source_profile": {
+                            "source_path": "app/stable/page.tsx",
+                            "edge_cache_classification": "anonymous_dynamic_candidate_review",
+                            "server_request_personalization_signal": False,
+                            "layout_server_personalization_signal": False,
+                        },
+                    },
+                    {
+                        "template": "/changing",
+                        "classification": "public",
+                        "benchmark_representative": "/changing",
+                        "source_profile": {
+                            "source_path": "app/changing/page.tsx",
+                            "edge_cache_classification": "anonymous_dynamic_candidate_review",
+                            "server_request_personalization_signal": False,
+                            "layout_server_personalization_signal": False,
+                        },
+                    },
+                ]
+            }
+            audit = {
+                "_path": str(MODULE.speed.STATE / "performance-edge-receipts" / "review-source.json"),
+                "rows": [
+                    {"route": "/stable", "priority": "anonymous_dynamic_freshness_review"},
+                    {"route": "/changing", "priority": "anonymous_dynamic_freshness_review"},
+                ],
+            }
+
+            def monotonic():
+                return clock[0]
+
+            def sleep(seconds):
+                clock[0] += seconds
+
+            def public(route):
+                digest = __import__("hashlib").sha256(route.encode()).hexdigest()
+                return {
+                    "available": True,
+                    "http_status": 200,
+                    "content_type": "text/html; charset=utf-8",
+                    "set_cookie": False,
+                    "body_sha256": digest,
+                    "effective_url": MODULE.PUBLIC_BASE + route,
+                    "cf_cache_status": "DYNAMIC",
+                }
+
+            def origin(route):
+                row = public(route)
+                row["effective_url"] = MODULE.speed.ORIGIN_BASE + route
+                row["cf_cache_status"] = None
+                if route == "/changing":
+                    calls[route] += 1
+                    if calls[route] == 3:
+                        row["body_sha256"] = "f" * 64
+                return row
+
+            result = MODULE.qualify_dynamic_review_candidates(
+                source,
+                audit,
+                public_probe=public,
+                origin_probe=origin,
+                sleep_fn=sleep,
+                monotonic_fn=monotonic,
+            )
+            by_route = {row["route"]: row for row in result["rows"]}
+            self.assertTrue(result["review_only"])
+            self.assertFalse(result["mutation_authorized"])
+            self.assertEqual(result["route_count"], 2)
+            self.assertEqual(result["technically_qualified_count"], 1)
+            self.assertTrue(by_route["/stable"]["technically_qualified"])
+            self.assertFalse(by_route["/stable"]["mutation_authorized"])
+            self.assertFalse(by_route["/changing"]["technically_qualified"])
+            self.assertTrue(
+                any(
+                    "origin body changed" in reason
+                    for reason in by_route["/changing"]["reasons"]
+                )
+            )
+        finally:
+            MODULE.require_dynamic_release_identity = original
+
     def test_dynamic_plan_binds_exact_expression_policy_and_qualification_digest(self):
         original = MODULE.require_dynamic_release_identity
         try:
