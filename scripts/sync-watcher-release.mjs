@@ -38,7 +38,7 @@ const FEATURE_CHIPS = [
   "Sandboxed dashboard renderer",
 ];
 
-const WATCHER_RELEASE_TEMPLATE = ({ version, releasedOn }) => `export type WatcherArtifactPlatform = "windows" | "macos" | "linux";
+const WATCHER_RELEASE_TEMPLATE = ({ version, previousVersion, releasedOn }) => `export type WatcherArtifactPlatform = "windows" | "macos" | "linux";
 
 export type WatcherArtifactKey =
   | "windows-installer"
@@ -64,6 +64,7 @@ export type WatcherDownloadArtifact = {
 
 export const WATCHER_RELEASE = {
   version: ${JSON.stringify(version)},
+  previousVersion: ${previousVersion ? JSON.stringify(previousVersion) : "null"},
   label: ${JSON.stringify(`AoE2HDBets Watcher ${version}`)},
   releasedOn: ${JSON.stringify(releasedOn)},
   signingStatus: "Signed and timestamped Windows builds; unsigned macOS build; Linux AppImage available",
@@ -169,10 +170,12 @@ export function getWatcherArtifactsForPlatform(platform: WatcherArtifactPlatform
 
 function readExistingReleaseMetadata(content) {
   const versionMatch = content.match(/version:\s*"([^"]+)"/);
+  const previousVersionMatch = content.match(/previousVersion:\s*"([^"]+)"/);
   const releasedOnMatch = content.match(/releasedOn:\s*"([^"]+)"/);
 
   return {
     version: versionMatch?.[1] ?? null,
+    previousVersion: previousVersionMatch?.[1] ?? null,
     releasedOn: releasedOnMatch?.[1] ?? null,
   };
 }
@@ -615,6 +618,7 @@ export async function syncWatcherRelease({
   // destination bytes.
   await validateWatcherReleaseBundle(watcherDistDir, version);
 
+  let previousVersion = null;
   let releasedOn = new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
@@ -625,8 +629,13 @@ export async function syncWatcherRelease({
   try {
     const currentReleaseModule = await fs.readFile(releaseModulePath, "utf8");
     const existing = readExistingReleaseMetadata(currentReleaseModule);
-    if (existing.version === version && existing.releasedOn) {
-      releasedOn = existing.releasedOn;
+    if (existing.version === version) {
+      if (existing.releasedOn) {
+        releasedOn = existing.releasedOn;
+      }
+      previousVersion = existing.previousVersion;
+    } else if (existing.version) {
+      previousVersion = existing.version;
     }
   } catch (error) {
     if (error?.code !== "ENOENT") {
@@ -636,6 +645,7 @@ export async function syncWatcherRelease({
 
   const releaseModuleContent = WATCHER_RELEASE_TEMPLATE({
     version,
+    previousVersion,
     releasedOn,
   });
 

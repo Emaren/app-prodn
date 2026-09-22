@@ -14,8 +14,6 @@
     "volumeMaintenancePercent": 82,
     "volumeCriticalPercent": 92,
     "hotRollbackCount": 2,
-    "coldCheckpointCount": 3,
-    "watcherCurrentVersion": "1.5.12",
-    "watcherPreviousVersion": "1.5.11"
+    "coldCheckpointCount": 3
   }
 }

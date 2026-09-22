@@ -8,6 +8,7 @@ import {
 import path from "node:path";
 
 import baseline from "@/config/general-inspections-baseline.json" with { type: "json" };
+import { WATCHER_RELEASE } from "@/lib/watcherRelease";
 import {
   category,
   check,
@@ -692,10 +693,10 @@ export function buildBridgeGeneralInspectionsSnapshot(
     : 0;
 
   const versions = watcherVersions(downloadRoot);
-  const allowedVersions = new Set([
-    baseline.policy.watcherCurrentVersion,
-    baseline.policy.watcherPreviousVersion,
-  ]);
+  const allowedVersions = new Set<string>([WATCHER_RELEASE.version]);
+  if (WATCHER_RELEASE.previousVersion) {
+    allowedVersions.add(WATCHER_RELEASE.previousVersion);
+  }
   const extraVersions = versions.filter((version) => !allowedVersions.has(version));
   const watcherFraction =
     versions.length > 0 && extraVersions.length === 0
@@ -1191,8 +1192,8 @@ export function buildBridgeGeneralInspectionsSnapshot(
   const replayCurrent = replay.matches_current_release === true;
   const watcherVersion =
     text(documentation.watcher_version) ||
-    (versions.includes(baseline.policy.watcherCurrentVersion)
-      ? baseline.policy.watcherCurrentVersion
+    (versions.includes(WATCHER_RELEASE.version)
+      ? WATCHER_RELEASE.version
       : null);
   const mutation = record(cold.mutation_boundary);
   const data = category(
@@ -1255,7 +1256,7 @@ export function buildBridgeGeneralInspectionsSnapshot(
         "watcher-release",
         "Watcher release contract",
         10,
-        watcherVersion === baseline.policy.watcherCurrentVersion
+        watcherVersion === WATCHER_RELEASE.version
           ? bridgeFresh
           : 0,
         watcherVersion

@@ -143,6 +143,7 @@ function makeFakeWatcher(root: string, version: string, options = {}) {
 
 test("Watcher 1.6.0 public release identity is exact", () => {
   assert.match(release, /version: "1\.6\.0"/);
+  assert.match(release, /previousVersion: "1\.5\.13"/);
   assert.match(release, /releasedOn: "Sep 21, 2026"/);
   assert.match(release, /Active replay-folder recovery/);
   assert.match(release, /Fresh replay adoption after restart/);
@@ -193,6 +194,7 @@ test("Watcher release sync transaction commits certified bytes before metadata",
 
   const metadata = fs.readFileSync(releaseModulePath, "utf8");
   assert.match(metadata, /version: "9\.9\.9"/);
+  assert.match(metadata, /previousVersion: "1\.0\.0"/);
   assert.match(metadata, /releasedOn: "Sep 21, 2026"/);
   assert.equal(
     fs.readdirSync(downloadsDir).filter((name) => name.startsWith(".watcher-sync-")).length,
