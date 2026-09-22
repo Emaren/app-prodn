@@ -115,6 +115,30 @@ class ReleaseEngineeringTests(unittest.TestCase):
             with patch.object(MODULE, "ROOT", root):
                 self.assertEqual(MODULE.docs_baseline(), sha)
 
+    def test_documentation_only_descendant_accepts_docs_owned_paths(self):
+        with patch.object(MODULE, "is_ancestor", return_value=True), patch.object(
+            MODULE,
+            "run",
+            return_value=(
+                0,
+                "docs/DOCUMENTATION_CONTROL_PLANE.md\nREADME.md\ncatalog-info.yaml\n",
+                "",
+            ),
+        ):
+            self.assertTrue(
+                MODULE.documentation_only_descendant("a" * 40, "b" * 40)
+            )
+
+    def test_documentation_only_descendant_rejects_implementation_paths(self):
+        with patch.object(MODULE, "is_ancestor", return_value=True), patch.object(
+            MODULE,
+            "run",
+            return_value=(0, "docs/README.md\nscripts/aoe2_brain.py\n", ""),
+        ):
+            self.assertFalse(
+                MODULE.documentation_only_descendant("a" * 40, "b" * 40)
+            )
+
     def test_parse_kv(self):
         self.assertEqual(MODULE.parse_kv("head\tabc\nservice\tactive\n"), {"head": "abc", "service": "active"})
 
