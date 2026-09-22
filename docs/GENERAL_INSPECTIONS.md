@@ -111,12 +111,14 @@ complete.
 
 ## Test provenance
 
-The current local release gate seals the active Node test inventory with an exact file count.
-The General Inspections page displays that count directly.
+The release gate seals both active executable-test inventories with exact file counts:
+the Node contract and the Python contract. General Inspections parses those counts from the
+same gate receipt that certified the release, displays real numerators and denominators, and
+withholds credit when either receipt is absent or failed.
 
-GitHub CI also executes the Python contract suite. Until the GitHub run result is imported into
-a local release receipt with an exact per-run denominator, the Python line remains explicitly
-identified as remote-CI evidence rather than pretending a local 42/42 result was sealed.
+GitHub CI uses the same canonical test-contract runner for both languages. The page must never
+hard-code a Python file count or award partial credit merely because CI is expected to run the
+suite; executable proof belongs in the release receipt.
 
 ## Organization and storage policy
 
