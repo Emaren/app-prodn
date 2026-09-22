@@ -472,6 +472,9 @@ def command_plan(
             )
         )
         commands.append(
+            ("active-python-test-contract", ["python3", "scripts/run_test_contract.py", "--python"], 300)
+        )
+        commands.append(
             ("active-node-test-contract", ["python3", "scripts/run_test_contract.py"], 300)
         )
 
@@ -554,53 +557,6 @@ def command_plan(
         for path in paths
     )
     if release_tooling:
-        commands.append(
-            (
-                "release-engineering-tests",
-                [
-                    "python3",
-                    "-m",
-                    "unittest",
-                    "tests/test_release_engineering.py",
-                    "tests/test_release_gate.py",
-                    "tests/test_release_ship.py",
-                    "tests/test_release_stage.py",
-                    "tests/test_release_auto.py",
-                    "tests/test_release_rollback.py",
-                    "tests/test_aoe2_cli.py",
-                    "tests/test_aoe2_audit.py",
-                    "tests/test_aoe2_update.py",
-                    "tests/test_aoe2_doctor.py",
-                    "tests/test_aoe2_finish.py",
-                    "tests/test_aoe2_operator_bridge.py",
-                    "tests/test_aoe2_storage_expire.py",
-                    "tests/test_aoe2_storage_retention.py",
-                    "tests/test_aoe2_watcher_staging.py",
-                    "tests/test_aoe2_watcher_release.py",
-                    "tests/test_aoe2_storage.py",
-                    "tests/test_aoe2_storage_campaign.py",
-                    "tests/test_aoe2_docs.py",
-                    "tests/test_aoe2_speed.py",
-                    "tests/test_aoe2_council.py",
-                    "tests/test_aoe2_brain.py",
-                    "tests/test_aoe2_workspace.py",
-                    "tests/test_aoe2_host.py",
-                    "tests/test_aoe2_recovery.py",
-                    "tests/test_aoe2_speed_pulse.py",
-                    "tests/test_aoe2_facts.py",
-                    "tests/test_aoe2_dev.py",
-                    "tests/test_aoe2_shadow.py",
-                    "tests/test_dependency_contract.py",
-                    "tests/test_dependency_security.py",
-                    "tests/test_prisma_engine_seed.py",
-                    "tests/test_aoe2_os_closure_gate.py",
-                    "tests/test_aoe2_node_runtime.py",
-                    "tests/test_test_contract.py",
-                    "tests/test_scan_tracked_secrets.py",
-                ],
-                120,
-            )
-        )
         commands.append(
             (
                 "release-python-compile",
