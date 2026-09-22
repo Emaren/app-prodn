@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","auditors","ai-agents"]
 source_of_truth: "git"
 authority: "architecture-contract"
-reviewed_at: "2026-08-25"
+reviewed_at: "2026-09-22"
 review_interval_days: 30
 sensitivity: "internal"
 ---
