@@ -8,7 +8,7 @@ systems: ["app-prodn","aoe2war","wolochain","vpssentry"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "inspection-scoring-contract"
-reviewed_at: "2026-09-19"
+reviewed_at: "2026-09-22"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -111,12 +111,16 @@ complete.
 
 ## Test provenance
 
-The current local release gate seals the active Node test inventory with an exact file count.
-The General Inspections page displays that count directly.
+The release gate seals both executable test inventories into the durable gate receipt. Node
+coverage comes from `scripts/run_test_contract.py`; Python coverage comes from
+`scripts/run_python_contract.py`, which discovers every tracked `tests/test_*.py` contract
+before running the complete unittest suite.
 
-GitHub CI also executes the Python contract suite. Until the GitHub run result is imported into
-a local release receipt with an exact per-run denominator, the Python line remains explicitly
-identified as remote-CI evidence rather than pretending a local 42/42 result was sealed.
+General Inspections parses those exact receipts instead of carrying a hand-maintained Python
+file count or awarding partial credit for an unsealed remote run. A successful current gate
+therefore records a real passed/total ratio for both languages; missing or failed proof loses
+credit fail-closed. GitHub CI invokes the same Python runner so local release proof and remote
+CI cannot silently drift onto different test inventories.
 
 ## Organization and storage policy
 

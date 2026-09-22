@@ -484,8 +484,12 @@ NO_CHANGE -> DOCUMENTATION -> PRESENTATION -> APPLICATION -> INFRASTRUCTURE
           -> WATCHER -> REPLAY_TRUTH -> FINANCIAL -> DATABASE
 ```
 
-Release-engineering changes trigger the complete release-engineering test suite
-and explicit Python compilation, including the rollback implementation.
+Every implementation gate now executes the canonical Python contract runner,
+`scripts/run_python_contract.py`, which discovers and runs the complete tracked
+`tests/test_*.py` suite and seals its exact file denominator into the gate receipt.
+Release-engineering changes additionally trigger explicit Python compilation, including the
+rollback implementation. Same-source recertification also executes the canonical Python suite,
+so it cannot inherit an unproven Python state merely because source bytes are unchanged.
 
 ### 4. Exact GitHub publish
 

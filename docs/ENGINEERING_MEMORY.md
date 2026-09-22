@@ -41,6 +41,24 @@ memory before closing the work.
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
 
+## 2026-09-22 — Test scores must come from executable receipts, not remembered denominators
+
+General Inspections exposed a false-authority gap in the Python test line. GitHub CI executed
+the complete Python suite, but the release receipt did not seal that execution and the scorer
+carried a hand-maintained file count with permanent partial credit. The source tree had already
+grown beyond that remembered denominator.
+
+The fix is one canonical Python runner: `scripts/run_python_contract.py` discovers every
+tracked `tests/test_*.py` file, prints the exact current denominator, runs the complete unittest
+suite, and is invoked by both GitHub CI and the local release gate. General Inspections now
+parses the durable gate receipt exactly as it does the Node contract inventory. The redundant
+release-engineering unittest subset was removed; release-tooling still receives explicit Python
+compilation, while implementation gates and same-source recertification receive the full Python
+contract suite.
+
+Durable rule: a readiness score may summarize executable evidence, but it must not manufacture
+or remember a test denominator outside the executable authority that actually ran the tests.
+
 ## Mutable release identity must have one authority
 
 General Inspections exposed a stale duplicated Watcher identity after Watcher 1.6.0 shipped:
