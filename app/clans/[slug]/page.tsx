@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 
 import ClanHallClient from "@/components/clans/ClanHallClient";
+import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import {
   buildClanFallbackSnapshot,
   findFoundingClanFallback,
@@ -125,9 +126,12 @@ export default async function ClanHallPage({
   }
 
   return (
-    <ClanHallClient
-      initialSnapshot={snapshot}
-      initialView={view}
-    />
+    <>
+      <SpeedReadyMarker route={`/clans/${normalizedSlug}`} />
+      <ClanHallClient
+        initialSnapshot={snapshot}
+        initialView={view}
+      />
+    </>
   );
 }
