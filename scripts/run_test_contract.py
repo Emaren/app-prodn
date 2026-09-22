@@ -72,16 +72,59 @@ def resolve_plan(contract: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def resolve_python_plan(contract: dict[str, Any]) -> dict[str, Any]:
+    pattern = str(contract.get("python_test_glob") or "")
+    if pattern != "tests/test_*.py":
+        raise TestContractError("python_test_glob must remain tests/test_*.py")
+
+    discovered = sorted(
+        path.relative_to(ROOT).as_posix()
+        for path in (ROOT / "tests").glob("test_*.py")
+        if path.is_file()
+    )
+    quarantine_items = contract.get("python_quarantine")
+    if not isinstance(quarantine_items, list):
+        raise TestContractError("python_quarantine must be a list")
+
+    quarantine: dict[str, dict[str, Any]] = {}
+    for item in quarantine_items:
+        if not isinstance(item, dict):
+            raise TestContractError("every Python quarantine entry must be an object")
+        path = str(item.get("path") or "")
+        if path in quarantine:
+            raise TestContractError(f"duplicate Python quarantine entry: {path}")
+        if path not in discovered:
+            raise TestContractError(f"quarantined Python test does not exist: {path}")
+        if not str(item.get("reason") or "").strip():
+            raise TestContractError(f"Python quarantine reason is missing: {path}")
+        if not str(item.get("owner") or "").strip():
+            raise TestContractError(f"Python quarantine owner is missing: {path}")
+        try:
+            review_by = date.fromisoformat(str(item.get("review_by") or ""))
+        except ValueError as exc:
+            raise TestContractError(f"invalid Python review_by for {path}") from exc
+        quarantine[path] = {**item, "overdue": review_by < date.today()}
+
+    return {
+        "schema": 1,
+        "discovered": discovered,
+        "active": [path for path in discovered if path not in quarantine],
+        "quarantine": [quarantine[path] for path in sorted(quarantine)],
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         description="Run every non-quarantined Node contract test from one audited inventory."
     )
     parser.add_argument("--list", action="store_true")
     parser.add_argument("--json", action="store_true")
+    parser.add_argument("--python", action="store_true", help="Run the canonical Python contract instead of Node tests")
     args = parser.parse_args()
 
     try:
-        plan = resolve_plan(load_contract())
+        contract = load_contract()
+        plan = resolve_python_plan(contract) if args.python else resolve_plan(contract)
     except Exception as exc:
         if args.json:
             print(json.dumps({"status": "ERROR", "error": str(exc)}, indent=2))
@@ -101,14 +144,37 @@ def main() -> int:
         if args.json:
             print(json.dumps(payload, indent=2, sort_keys=True))
         else:
+            label = "Python contract files" if args.python else "Node tests"
             print(
-                f"Node tests: {payload['active_count']} active, "
+                f"{label}: {payload['active_count']} active, "
                 f"{payload['quarantine_count']} quarantined"
             )
             for item in plan["quarantine"]:
                 suffix = " OVERDUE" if item["overdue"] else ""
                 print(f"  {item['path']} · review {item['review_by']}{suffix}")
         return 1 if any(item["overdue"] for item in plan["quarantine"]) else 0
+
+    if args.python:
+        print(
+            f"Running {len(plan['active'])} active Python contract files; "
+            f"{len(plan['quarantine'])} explicitly quarantined.",
+            flush=True,
+        )
+        process = subprocess.run(
+            [
+                sys.executable,
+                "-m",
+                "unittest",
+                "discover",
+                "-s",
+                "tests",
+                "-p",
+                "test_*.py",
+            ],
+            cwd=ROOT,
+            check=False,
+        )
+        return process.returncode
 
     print(
         f"Running {len(plan['active'])} active Node test files; "
