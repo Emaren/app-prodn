@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 
 import SteamLoginButton from "@/components/SteamLoginButton";
+import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import {
   ForgeDoctrine,
   ForgeHealthMeter,
@@ -181,6 +182,7 @@ export default function KingdomForgeClient() {
 
   return (
     <main className="relative isolate -mx-3 overflow-hidden bg-[#07080b] text-white sm:-mx-5 lg:-mx-8">
+      <SpeedReadyMarker route="/kingdom-forge" ready={!loading} />
       <ForgeHero
         kingdomStake={formatWolo(summary?.totalRewardEligibleWolo ?? 0, true)}
         forgeCapacity={formatWolo(summary?.totalForgeCapacityWolo ?? 0, true)}
