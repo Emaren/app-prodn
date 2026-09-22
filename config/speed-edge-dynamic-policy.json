@@ -122,13 +122,6 @@
       "admission": "anonymous_dynamic"
     },
     {
-      "route": "/rivalries",
-      "ttl_seconds": 30,
-      "empty_query_only": true,
-      "rationale": "Anonymous public rivalry-history index; read-only historical presentation passed the September 22 governed 0/15/30-second public/origin byte-equivalence review and tolerates a bounded 30-second presentation lag.",
-      "admission": "anonymous_dynamic"
-    },
-    {
       "route": "/traffic",
       "ttl_seconds": 30,
       "empty_query_only": true,
