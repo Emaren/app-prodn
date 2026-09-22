@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -176,62 +177,450 @@ function readExistingReleaseMetadata(content) {
   };
 }
 
-async function ensureFileExists(filePath) {
-  await fs.access(filePath);
+function canonicalReleaseFiles(version) {
+  return [
+    `AoE2HDBets Watcher Setup ${version}.exe`,
+    `AoE2HDBets Watcher ${version}.exe`,
+    `AoE2HDBets Watcher-${version}-arm64.dmg`,
+    "aoe2hdbets-watcher-direct.zip",
+    `AoE2HDBets Watcher-${version}.AppImage`,
+    `AoE2HDBets Watcher-${version}-arm64.dmg.blockmap`,
+    "latest.yml",
+    "latest-mac.yml",
+    "latest-linux.yml",
+  ];
 }
 
-async function copyArtifact(sourcePath, targetPath, { optional = false } = {}) {
-  try {
-    await ensureFileExists(sourcePath);
-  } catch (error) {
-    if (optional) {
-      process.stdout.write(`Skipped optional watcher artifact: ${sourcePath}\n`);
-      return false;
+function receiptFiles(version) {
+  return [
+    `SHA256SUMS-${version}.txt`,
+    `watcher-release-manifest-${version}.json`,
+  ];
+}
+
+function updaterRules(version) {
+  return new Map([
+    ["latest.yml", `AoE2HDBets Watcher Setup ${version}.exe`],
+    ["latest-mac.yml", `AoE2HDBets Watcher-${version}-arm64.dmg`],
+    ["latest-linux.yml", `AoE2HDBets Watcher-${version}.AppImage`],
+  ]);
+}
+
+async function regularFile(filePath, label = filePath) {
+  const stat = await fs.lstat(filePath);
+  if (stat.isSymbolicLink() || !stat.isFile()) {
+    throw new Error(`Watcher release path is not a regular file: ${label}`);
+  }
+  return stat;
+}
+
+async function sha256File(filePath) {
+  return createHash("sha256")
+    .update(await fs.readFile(filePath))
+    .digest("hex");
+}
+
+export async function validateWatcherReleaseBundle(root, version) {
+  const canonical = canonicalReleaseFiles(version);
+  const receipts = receiptFiles(version);
+
+  for (const name of [...canonical, ...receipts]) {
+    await regularFile(path.join(root, name), name);
+  }
+
+  const manifestPath = path.join(root, receipts[1]);
+  const manifest = JSON.parse(await fs.readFile(manifestPath, "utf8"));
+  if (!Number.isInteger(manifest.schema) || manifest.schema < 1) {
+    throw new Error("Watcher release manifest schema is invalid");
+  }
+  if (manifest.version !== version) {
+    throw new Error(
+      `Watcher release manifest version mismatch: ${manifest.version} !== ${version}`,
+    );
+  }
+  if (!Array.isArray(manifest.files)) {
+    throw new Error("Watcher release manifest files are missing");
+  }
+
+  const manifestNames = manifest.files.map((row) => row?.filename);
+  if (JSON.stringify(manifestNames) !== JSON.stringify(canonical)) {
+    throw new Error("Watcher release manifest inventory mismatch");
+  }
+
+  const manifestHashes = new Map();
+  for (const row of manifest.files) {
+    const filePath = path.join(root, row.filename);
+    const stat = await regularFile(filePath, row.filename);
+    const digest = await sha256File(filePath);
+
+    if (row.bytes !== stat.size) {
+      throw new Error(
+        `Watcher release manifest byte-size mismatch: ${row.filename}`,
+      );
+    }
+    if (row.sha256 !== digest) {
+      throw new Error(
+        `Watcher release manifest SHA-256 mismatch: ${row.filename}`,
+      );
+    }
+    manifestHashes.set(row.filename, row.sha256);
+  }
+
+  const checksumText = await fs.readFile(path.join(root, receipts[0]), "utf8");
+  const checksumEntries = new Map();
+  for (const line of checksumText.split(/\r?\n/)) {
+    if (!line) {
+      continue;
+    }
+    const match = line.match(/^([0-9a-f]{64})  (.+)$/);
+    if (!match) {
+      throw new Error("Watcher checksum receipt contains an invalid row");
+    }
+    const [, digest, name] = match;
+    if (checksumEntries.has(name)) {
+      throw new Error(
+        `Watcher checksum receipt contains duplicate file: ${name}`,
+      );
+    }
+    checksumEntries.set(name, digest);
+  }
+
+  if (
+    checksumEntries.size !== canonical.length ||
+    canonical.some((name) => !checksumEntries.has(name))
+  ) {
+    throw new Error("Watcher checksum receipt inventory mismatch");
+  }
+
+  for (const name of canonical) {
+    if (checksumEntries.get(name) !== manifestHashes.get(name)) {
+      throw new Error(
+        `Watcher checksum and release manifest disagree: ${name}`,
+      );
+    }
+  }
+
+  for (const [manifestName, expectedPath] of updaterRules(version)) {
+    const lines = (
+      await fs.readFile(path.join(root, manifestName), "utf8")
+    ).split(/\r?\n/);
+    if (!lines.includes(`version: ${version}`)) {
+      throw new Error(
+        `Watcher updater version mismatch: ${manifestName}`,
+      );
+    }
+    if (!lines.includes(`path: ${expectedPath}`)) {
+      throw new Error(
+        `Watcher updater path mismatch: ${manifestName}`,
+      );
+    }
+  }
+
+  return {
+    version,
+    canonical,
+    receipts,
+    manifest,
+  };
+}
+
+function artifactCopyPlan(version, watcherDistDir, targetRoot) {
+  const payloads = [
+    {
+      source: path.join(
+        watcherDistDir,
+        `AoE2HDBets Watcher-${version}-arm64.dmg`,
+      ),
+      target: path.join(
+        targetRoot,
+        `AoE2HDBets Watcher-${version}-arm64.dmg`,
+      ),
+    },
+    {
+      source: path.join(
+        watcherDistDir,
+        `AoE2HDBets Watcher-${version}-arm64.dmg`,
+      ),
+      target: path.join(
+        targetRoot,
+        `AoE2HDBets-Watcher-${version}-arm64.dmg`,
+      ),
+    },
+    {
+      source: path.join(
+        watcherDistDir,
+        `AoE2HDBets Watcher-${version}-arm64.dmg.blockmap`,
+      ),
+      target: path.join(
+        targetRoot,
+        `AoE2HDBets Watcher-${version}-arm64.dmg.blockmap`,
+      ),
+    },
+    {
+      source: path.join(
+        watcherDistDir,
+        `AoE2HDBets Watcher-${version}-arm64-mac.zip`,
+      ),
+      target: path.join(
+        targetRoot,
+        `AoE2HDBets Watcher-${version}-arm64-mac.zip`,
+      ),
+      optional: true,
+    },
+    {
+      source: path.join(
+        watcherDistDir,
+        `AoE2HDBets Watcher-${version}-arm64-mac.zip.blockmap`,
+      ),
+      target: path.join(
+        targetRoot,
+        `AoE2HDBets Watcher-${version}-arm64-mac.zip.blockmap`,
+      ),
+      optional: true,
+    },
+    {
+      source: path.join(watcherDistDir, "aoe2hdbets-watcher-direct.zip"),
+      target: path.join(targetRoot, "aoe2hdbets-watcher-direct.zip"),
+    },
+    {
+      source: path.join(
+        watcherDistDir,
+        `AoE2HDBets Watcher Setup ${version}.exe`,
+      ),
+      target: path.join(
+        targetRoot,
+        `AoE2HDBets Watcher Setup ${version}.exe`,
+      ),
+    },
+    {
+      source: path.join(
+        watcherDistDir,
+        `AoE2HDBets Watcher Setup ${version}.exe`,
+      ),
+      target: path.join(
+        targetRoot,
+        `AoE2HDBets-Watcher-Setup-${version}.exe`,
+      ),
+    },
+    {
+      source: path.join(
+        watcherDistDir,
+        `AoE2HDBets Watcher Setup ${version}.exe.blockmap`,
+      ),
+      target: path.join(
+        targetRoot,
+        `AoE2HDBets Watcher Setup ${version}.exe.blockmap`,
+      ),
+      optional: true,
+    },
+    {
+      source: path.join(
+        watcherDistDir,
+        `AoE2HDBets Watcher ${version}.exe`,
+      ),
+      target: path.join(
+        targetRoot,
+        `AoE2HDBets Watcher ${version}.exe`,
+      ),
+    },
+    {
+      source: path.join(
+        watcherDistDir,
+        `AoE2HDBets Watcher-${version}.AppImage`,
+      ),
+      target: path.join(
+        targetRoot,
+        `AoE2HDBets Watcher-${version}.AppImage`,
+      ),
+    },
+    {
+      source: path.join(
+        watcherDistDir,
+        `AoE2HDBets Watcher-${version}.AppImage`,
+      ),
+      target: path.join(
+        targetRoot,
+        `AoE2HDBets-Watcher-${version}.AppImage`,
+      ),
+    },
+    {
+      source: path.join(watcherDistDir, `SHA256SUMS-${version}.txt`),
+      target: path.join(targetRoot, `SHA256SUMS-${version}.txt`),
+    },
+    {
+      source: path.join(
+        watcherDistDir,
+        `watcher-release-manifest-${version}.json`,
+      ),
+      target: path.join(
+        targetRoot,
+        `watcher-release-manifest-${version}.json`,
+      ),
+    },
+  ];
+
+  const updaters = ["latest.yml", "latest-mac.yml", "latest-linux.yml"].map(
+    (name) => ({
+      source: path.join(watcherDistDir, name),
+      target: path.join(targetRoot, name),
+    }),
+  );
+
+  return { payloads, updaters };
+}
+
+async function stageCopyPlan(entries, stageDir) {
+  const staged = [];
+
+  for (const entry of entries) {
+    let sourceStat;
+    try {
+      sourceStat = await regularFile(entry.source);
+    } catch (error) {
+      if (entry.optional && error?.code === "ENOENT") {
+        process.stdout.write(
+          `Skipped optional watcher artifact: ${entry.source}\n`,
+        );
+        continue;
+      }
+      throw error;
     }
 
+    if (!sourceStat.isFile()) {
+      throw new Error(`Watcher source is not a file: ${entry.source}`);
+    }
+
+    const stagedPath = path.join(stageDir, path.basename(entry.target));
+    await fs.copyFile(entry.source, stagedPath);
+    await regularFile(stagedPath);
+
+    staged.push({
+      ...entry,
+      stagedPath,
+    });
+  }
+
+  return staged;
+}
+
+async function proveTargetsSafe(entries) {
+  for (const entry of entries) {
+    try {
+      await regularFile(entry.target);
+    } catch (error) {
+      if (error?.code === "ENOENT") {
+        continue;
+      }
+      throw error;
+    }
+  }
+}
+
+async function rollbackPromotion(journal) {
+  const failures = [];
+
+  for (const item of [...journal].reverse()) {
+    try {
+      await fs.rm(item.target, { force: true });
+      if (item.hadExisting) {
+        await fs.rename(item.backupPath, item.target);
+      }
+    } catch (error) {
+      failures.push(
+        `${item.target}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  if (failures.length) {
+    throw new Error(
+      `Watcher release rollback failed: ${failures.join("; ")}`,
+    );
+  }
+}
+
+async function promoteStagedFiles(entries, backupDir) {
+  const journal = [];
+
+  try {
+    for (const entry of entries) {
+      const backupPath = path.join(backupDir, path.basename(entry.target));
+      let hadExisting = false;
+
+      try {
+        await regularFile(entry.target);
+        await fs.rename(entry.target, backupPath);
+        hadExisting = true;
+      } catch (error) {
+        if (error?.code !== "ENOENT") {
+          throw error;
+        }
+      }
+
+      const item = {
+        target: entry.target,
+        backupPath,
+        hadExisting,
+      };
+      journal.push(item);
+
+      try {
+        await fs.rename(entry.stagedPath, entry.target);
+      } catch (error) {
+        journal.pop();
+        if (hadExisting) {
+          await fs.rename(backupPath, entry.target);
+        }
+        throw error;
+      }
+    }
+  } catch (error) {
+    await rollbackPromotion(journal);
     throw error;
   }
 
-  const sourceRealPath = await fs.realpath(sourcePath);
-  let targetRealPath = null;
-
-  try {
-    targetRealPath = await fs.realpath(targetPath);
-  } catch {
-    // Destination does not exist yet.
-  }
-
-  if (targetRealPath && sourceRealPath === targetRealPath) {
-    process.stdout.write(
-      `Watcher artifact already canonical: ${targetPath}\n`
-    );
-    return true;
-  }
-
-  await fs.copyFile(sourcePath, targetPath);
-  return true;
+  return journal;
 }
 
+async function atomicWriteText(filePath, content) {
+  const temp = path.join(
+    path.dirname(filePath),
+    `.${path.basename(filePath)}.watcher-sync-${process.pid}-${Date.now()}`,
+  );
+  try {
+    await fs.writeFile(temp, content, "utf8");
+    await fs.rename(temp, filePath);
+  } finally {
+    await fs.rm(temp, { force: true }).catch(() => {});
+  }
+}
 
-async function main() {
-  const scriptDir = path.dirname(fileURLToPath(import.meta.url));
-  const appDir = path.resolve(scriptDir, "..");
-  const repoDir = path.resolve(appDir, "..");
-  const watcherDir = path.join(repoDir, "aoe2-watcher");
+export async function syncWatcherRelease({
+  watcherDir,
+  releaseModulePath,
+  downloadsDir,
+  now = new Date(),
+}) {
   const watcherPackagePath = path.join(watcherDir, "package.json");
-  const releaseModulePath = path.join(appDir, "lib", "watcherRelease.ts");
-  const downloadsDir = path.join(appDir, "public", "downloads");
   const watcherDistDir = path.join(watcherDir, "dist");
-
-  const watcherPackage = JSON.parse(await fs.readFile(watcherPackagePath, "utf8"));
+  const watcherPackage = JSON.parse(
+    await fs.readFile(watcherPackagePath, "utf8"),
+  );
   const version = watcherPackage.version;
+  if (!/^\d+\.\d+\.\d+$/.test(version)) {
+    throw new Error(`Watcher package version is invalid: ${version}`);
+  }
+
+  // Prove the complete certified source bundle before mutating metadata or
+  // destination bytes.
+  await validateWatcherReleaseBundle(watcherDistDir, version);
 
   let releasedOn = new Intl.DateTimeFormat("en-US", {
     month: "short",
     day: "numeric",
     year: "numeric",
     timeZone: "America/Edmonton",
-  }).format(new Date());
+  }).format(now);
 
   try {
     const currentReleaseModule = await fs.readFile(releaseModulePath, "utf8");
@@ -239,109 +628,89 @@ async function main() {
     if (existing.version === version && existing.releasedOn) {
       releasedOn = existing.releasedOn;
     }
-  } catch {
-    // Fresh release file, so today's date is correct.
+  } catch (error) {
+    if (error?.code !== "ENOENT") {
+      throw error;
+    }
   }
 
-  await fs.writeFile(
-    releaseModulePath,
-    WATCHER_RELEASE_TEMPLATE({ version, releasedOn }),
-    "utf8"
-  );
+  const releaseModuleContent = WATCHER_RELEASE_TEMPLATE({
+    version,
+    releasedOn,
+  });
 
   await fs.mkdir(downloadsDir, { recursive: true });
+  const targetRoot = await fs.realpath(downloadsDir);
+  const stageDir = await fs.mkdtemp(
+    path.join(targetRoot, `.watcher-sync-stage-${version}-`),
+  );
+  const backupDir = await fs.mkdtemp(
+    path.join(targetRoot, `.watcher-sync-backup-${version}-`),
+  );
 
-  const artifactCopies = [
-    {
-      source: path.join(watcherDistDir, `AoE2HDBets Watcher-${version}-arm64.dmg`),
-      target: path.join(downloadsDir, `AoE2HDBets Watcher-${version}-arm64.dmg`),
-    },
-    {
-      source: path.join(watcherDistDir, `AoE2HDBets Watcher-${version}-arm64.dmg`),
-      target: path.join(downloadsDir, `AoE2HDBets-Watcher-${version}-arm64.dmg`),
-    },
-    {
-      source: path.join(watcherDistDir, `AoE2HDBets Watcher-${version}-arm64.dmg.blockmap`),
-      target: path.join(downloadsDir, `AoE2HDBets Watcher-${version}-arm64.dmg.blockmap`),
-    },
-    {
-      source: path.join(watcherDistDir, `AoE2HDBets Watcher-${version}-arm64-mac.zip`),
-      target: path.join(downloadsDir, `AoE2HDBets Watcher-${version}-arm64-mac.zip`),
-      optional: true,
-    },
-    {
-      source: path.join(watcherDistDir, `AoE2HDBets Watcher-${version}-arm64-mac.zip.blockmap`),
-      target: path.join(downloadsDir, `AoE2HDBets Watcher-${version}-arm64-mac.zip.blockmap`),
-      optional: true,
-    },
-    {
-      source: path.join(watcherDistDir, "aoe2hdbets-watcher-direct.zip"),
-      target: path.join(downloadsDir, "aoe2hdbets-watcher-direct.zip"),
-    },
-    {
-      source: path.join(watcherDistDir, `AoE2HDBets Watcher Setup ${version}.exe`),
-      target: path.join(downloadsDir, `AoE2HDBets Watcher Setup ${version}.exe`),
-    },
-    {
-      source: path.join(watcherDistDir, `AoE2HDBets Watcher Setup ${version}.exe`),
-      target: path.join(downloadsDir, `AoE2HDBets-Watcher-Setup-${version}.exe`),
-    },
-    {
-      source: path.join(watcherDistDir, `AoE2HDBets Watcher Setup ${version}.exe.blockmap`),
-      target: path.join(downloadsDir, `AoE2HDBets Watcher Setup ${version}.exe.blockmap`),
-      optional: true,
-    },
-    {
-      source: path.join(watcherDistDir, `AoE2HDBets Watcher ${version}.exe`),
-      target: path.join(downloadsDir, `AoE2HDBets Watcher ${version}.exe`),
-    },
-    {
-      source: path.join(watcherDistDir, `AoE2HDBets Watcher-${version}.AppImage`),
-      target: path.join(downloadsDir, `AoE2HDBets Watcher-${version}.AppImage`),
-    },
-    {
-      source: path.join(watcherDistDir, `AoE2HDBets Watcher-${version}.AppImage`),
-      target: path.join(downloadsDir, `AoE2HDBets-Watcher-${version}.AppImage`),
-    },
-    {
-      source: path.join(watcherDistDir, `SHA256SUMS-${version}.txt`),
-      target: path.join(downloadsDir, `SHA256SUMS-${version}.txt`),
-    },
-    {
-      source: path.join(
-        watcherDistDir,
-        `watcher-release-manifest-${version}.json`
-      ),
-      target: path.join(
-        downloadsDir,
-        `watcher-release-manifest-${version}.json`
-      ),
-    },
-  ];
+  let journal = [];
+  let committed = false;
 
-  for (const artifact of artifactCopies) {
-    await copyArtifact(artifact.source, artifact.target, {
-      optional: artifact.optional,
-    });
-  }
+  try {
+    const plan = artifactCopyPlan(version, watcherDistDir, targetRoot);
+    const payloads = await stageCopyPlan(plan.payloads, stageDir);
+    const updaters = await stageCopyPlan(plan.updaters, stageDir);
 
-  for (const manifestName of [
-    "latest.yml",
-    "latest-mac.yml",
-    "latest-linux.yml",
-  ]) {
-    await copyArtifact(
-      path.join(watcherDistDir, manifestName),
-      path.join(downloadsDir, manifestName)
-    );
+    // Re-prove the exact canonical bundle from staged bytes, not the source
+    // paths, before any live target is renamed.
+    await validateWatcherReleaseBundle(stageDir, version);
+
+    const promotion = [...payloads, ...updaters];
+    await proveTargetsSafe(promotion);
+
+    // Payloads and receipts are installed before updater pointers. Metadata is
+    // written only after the complete vault transaction succeeds.
+    journal = await promoteStagedFiles(promotion, backupDir);
+
+    try {
+      await atomicWriteText(releaseModulePath, releaseModuleContent);
+    } catch (error) {
+      await rollbackPromotion(journal);
+      journal = [];
+      throw error;
+    }
+
+    committed = true;
+  } finally {
+    if (!committed && journal.length) {
+      await rollbackPromotion(journal);
+    }
+    await fs.rm(stageDir, { recursive: true, force: true }).catch(() => {});
+    await fs.rm(backupDir, { recursive: true, force: true }).catch(() => {});
   }
 
   process.stdout.write(
-    `Synced watcher release AoE2HDBets Watcher ${version} into ${downloadsDir}\n`
+    `Synced watcher release AoE2HDBets Watcher ${version} into ${downloadsDir}\n`,
   );
+
+  return {
+    version,
+    releasedOn,
+    downloadsDir: targetRoot,
+  };
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+async function main() {
+  const scriptDir = path.dirname(fileURLToPath(import.meta.url));
+  const appDir = path.resolve(scriptDir, "..");
+  const repoDir = path.resolve(appDir, "..");
+
+  await syncWatcherRelease({
+    watcherDir: path.join(repoDir, "aoe2-watcher"),
+    releaseModulePath: path.join(appDir, "lib", "watcherRelease.ts"),
+    downloadsDir: path.join(appDir, "public", "downloads"),
+  });
+}
+
+const invokedPath = process.argv[1] ? path.resolve(process.argv[1]) : null;
+if (invokedPath === fileURLToPath(import.meta.url)) {
+  main().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+}

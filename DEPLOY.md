@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-09-15"
+reviewed_at: "2026-09-21"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -88,6 +88,46 @@ For browser-sensitive UI work, complete the relevant local browser smoke before
 calling `finish`. The local `aoe2hdbets_shadow` exists specifically so
 interaction and persistence behavior can be tested with production-shaped data
 without giving local application code a production write path.
+
+### Watcher release distribution before app promotion
+
+A Watcher client release and the web application release are separate authority
+boundaries. Never advance `lib/watcherRelease.ts` or a WATCHER-risk web release
+ahead of the canonical production download vault.
+
+The ordinary sequence is:
+
+```bash
+# In aoe2-watcher: build/sign/certify and publish the immutable release bundle.
+
+# In app-prodn: validate and synchronize the exact certified local bundle.
+npm run watcher:sync
+
+# Read-only production-vault proof first.
+aoe2war watcher-release
+
+# Then explicitly stage/promote the exact public release bytes.
+aoe2war watcher-release --apply
+
+# Only after vault promotion is proven may the app release advertise it.
+aoe2war finish
+```
+
+`aoe2war watcher-release` requires the local 11-file bundle to match the
+public GitHub release's SHA-256 digest multiset exactly. Apply runs under the
+global release lease, stages only those exact files in the canonical mounted
+Watcher staging root, re-proves the bundle remotely, and promotes payloads and
+the two inventory receipts before the three updater manifests. Production
+source/build/service and Wolo listeners 8092/8093 are observation-only and must
+remain unchanged.
+
+If the vault already matches all 11 files, apply returns `NOOP` without
+uploading the bundle. If a deterministic promotion stage already exists while
+the vault is incomplete, stop: that stage may represent an interrupted
+transaction and is preserved for explicit recovery. A lost SSH session after
+the privileged remote worker starts is likewise an uncertain outcome; do not
+delete the stage or blindly retry. Reconstruct state from the durable promotion
+receipts, canonical vault hashes, runtime identity, and Wolo proof first.
 
 ### Signed-bet automatic recovery activation
 

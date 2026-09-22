@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shlex
 import subprocess
 import sys
@@ -29,6 +30,11 @@ from aoe2_release_ship import (
 STAGE_RECEIPT_DIR = ROOT / ".aoe2war-release" / "stage-receipts"
 REMOTE_RECEIPT_ROOT = "/mnt/HC_Volume_105319120/aoe2war/deploy-receipts"
 REMOTE_BUILD_SCRATCH_ROOT = "/mnt/HC_Volume_105319120/aoe2war/build-scratch"
+REMOTE_WATCHER_DOWNLOAD_ROOT = "/mnt/HC_Volume_105319120/aoe2-downloads"
+WATCHER_VERSION_RE = re.compile(
+    r'export const WATCHER_RELEASE\s*=\s*\{.*?\bversion:\s*"([0-9]+\.[0-9]+\.[0-9]+)"',
+    re.DOTALL,
+)
 BUILD_SANDBOX_UNIT_SOURCE = ROOT / "deploy" / "aoe2war-build@.service"
 BUILD_SANDBOX_UNIT = "/etc/systemd/system/aoe2war-build@.service"
 DEPS_SANDBOX_UNIT_SOURCE = ROOT / "deploy" / "aoe2war-deps@.service"
@@ -68,6 +74,32 @@ def parse_kv(text: str) -> dict[str, str]:
     return result
 
 
+def watcher_distribution_version(manifest: dict) -> str:
+    """Return the target Watcher version that must already exist in production."""
+    if manifest.get("risk_class") != "WATCHER":
+        return ""
+
+    release_sha = str(manifest.get("release_sha") or "")
+    if not re.fullmatch(r"[0-9a-f]{40}", release_sha):
+        raise StageError("WATCHER release manifest has an invalid release SHA")
+
+    p = run(
+        ["git", "show", f"{release_sha}:lib/watcherRelease.ts"],
+        timeout=30,
+    )
+    if p.returncode != 0:
+        raise StageError(
+            "WATCHER release cannot read lib/watcherRelease.ts from the exact release commit"
+        )
+
+    matches = WATCHER_VERSION_RE.findall(p.stdout or "")
+    if len(matches) != 1:
+        raise StageError(
+            "WATCHER release must expose exactly one semantic WATCHER_RELEASE version"
+        )
+    return matches[0]
+
+
 def remote_stage_script(
     *,
     release_sha: str,
@@ -77,6 +109,7 @@ def remote_stage_script(
     receipt_dir: str,
     manifest_text: str = "",
     gate_text: str = "",
+    watcher_version: str = "",
 ) -> str:
     q = shlex.quote
     build_unit_sha = sha256_file(BUILD_SANDBOX_UNIT_SOURCE)
@@ -98,6 +131,8 @@ DEPS_UNIT_SHA={q(deps_unit_sha)}
 SERVICE={q(SERVICE)}
 PUBLIC={q(PUBLIC)}
 LIVE_REPO={q(PROD_REPO)}
+WATCHER_VERSION={q(watcher_version)}
+WATCHER_DOWNLOAD_ROOT={q(REMOTE_WATCHER_DOWNLOAD_ROOT)}
 PRISMA_ENGINE_TARGET=debian-openssl-3.0.x
 PRISMA_SCHEMA_ENGINE_REL=node_modules/@prisma/engines/schema-engine-$PRISMA_ENGINE_TARGET
 PRISMA_ENGINE_SEED_REL=.prisma-engine-seed/schema-engine-$PRISMA_ENGINE_TARGET
@@ -244,6 +279,149 @@ test ! -e .node_modules-release
 git fetch origin --prune
 remote_main="$(git rev-parse origin/main)"
 test "$remote_main" = "$RELEASE"
+
+# A WATCHER-risk release may advertise a new client only after the canonical
+# production download vault already contains that exact certified distribution.
+# This runs before candidate materialization, while live source/runtime is still
+# untouched, so metadata can never get ahead of the bytes it promises.
+watcher_distribution_status=NOT_APPLICABLE
+watcher_distribution_version=""
+watcher_distribution_checksum_sha256=""
+watcher_distribution_manifest_sha256=""
+
+if [ -n "$WATCHER_VERSION" ]; then
+  test -d "$WATCHER_DOWNLOAD_ROOT"
+  test ! -L "$WATCHER_DOWNLOAD_ROOT"
+
+  watcher_sums="$WATCHER_DOWNLOAD_ROOT/SHA256SUMS-$WATCHER_VERSION.txt"
+  watcher_manifest="$WATCHER_DOWNLOAD_ROOT/watcher-release-manifest-$WATCHER_VERSION.json"
+  test -f "$watcher_sums"
+  test ! -L "$watcher_sums"
+  test -f "$watcher_manifest"
+  test ! -L "$watcher_manifest"
+
+  python3 - "$WATCHER_DOWNLOAD_ROOT" "$WATCHER_VERSION" <<'PY'
+import hashlib
+import json
+import re
+import sys
+from pathlib import Path
+
+root = Path(sys.argv[1])
+version = sys.argv[2]
+
+expected = [
+    f"AoE2HDBets Watcher Setup {{version}}.exe",
+    f"AoE2HDBets Watcher {{version}}.exe",
+    f"AoE2HDBets Watcher-{{version}}-arm64.dmg",
+    "aoe2hdbets-watcher-direct.zip",
+    f"AoE2HDBets Watcher-{{version}}.AppImage",
+    f"AoE2HDBets Watcher-{{version}}-arm64.dmg.blockmap",
+    "latest.yml",
+    "latest-mac.yml",
+    "latest-linux.yml",
+]
+receipts = [
+    f"SHA256SUMS-{{version}}.txt",
+    f"watcher-release-manifest-{{version}}.json",
+]
+
+for name in expected + receipts:
+    path = root / name
+    if path.is_symlink() or not path.is_file():
+        raise SystemExit(
+            f"STOP: WATCHER distribution file is not a regular file: {{name}}"
+        )
+
+manifest = json.loads((root / receipts[1]).read_text(encoding="utf-8"))
+schema = manifest.get("schema")
+if not isinstance(schema, int) or schema < 1:
+    raise SystemExit("STOP: WATCHER release manifest schema is invalid")
+if manifest.get("version") != version:
+    raise SystemExit("STOP: WATCHER release manifest version mismatch")
+
+rows = manifest.get("files")
+if not isinstance(rows, list):
+    raise SystemExit("STOP: WATCHER release manifest files are missing")
+if [row.get("filename") for row in rows] != expected:
+    raise SystemExit("STOP: WATCHER release manifest inventory mismatch")
+
+for row in rows:
+    name = row["filename"]
+    path = root / name
+    data = path.read_bytes()
+    if row.get("bytes") != len(data):
+        raise SystemExit(
+            f"STOP: WATCHER release manifest byte-size mismatch: {{name}}"
+        )
+    digest = hashlib.sha256(data).hexdigest()
+    if row.get("sha256") != digest:
+        raise SystemExit(
+            f"STOP: WATCHER release manifest SHA-256 mismatch: {{name}}"
+        )
+
+checksum_entries = {{}}
+for line in (root / receipts[0]).read_text(encoding="utf-8").splitlines():
+    if not line:
+        continue
+    match = re.fullmatch(r"([0-9a-f]{{64}})  (.+)", line)
+    if not match:
+        raise SystemExit("STOP: WATCHER checksum receipt contains an invalid row")
+    digest, name = match.groups()
+    if name in checksum_entries:
+        raise SystemExit(
+            f"STOP: WATCHER checksum receipt contains duplicate file: {{name}}"
+        )
+    checksum_entries[name] = digest
+
+if set(checksum_entries) != set(expected):
+    raise SystemExit("STOP: WATCHER checksum receipt inventory mismatch")
+
+manifest_hashes = {{row["filename"]: row["sha256"] for row in rows}}
+for name in expected:
+    if checksum_entries[name] != manifest_hashes[name]:
+        raise SystemExit(
+            f"STOP: WATCHER checksum and release manifest disagree: {{name}}"
+        )
+
+manifest_rules = {{
+    "latest.yml": f"path: AoE2HDBets Watcher Setup {{version}}.exe",
+    "latest-mac.yml": f"path: AoE2HDBets Watcher-{{version}}-arm64.dmg",
+    "latest-linux.yml": f"path: AoE2HDBets Watcher-{{version}}.AppImage",
+}}
+for name, path_line in manifest_rules.items():
+    lines = (root / name).read_text(encoding="utf-8").splitlines()
+    if f"version: {{version}}" not in lines:
+        raise SystemExit(f"STOP: WATCHER updater version mismatch: {{name}}")
+    if path_line not in lines:
+        raise SystemExit(f"STOP: WATCHER updater path mismatch: {{name}}")
+PY
+
+  (
+    cd "$WATCHER_DOWNLOAD_ROOT"
+    sha256sum --strict -c "SHA256SUMS-$WATCHER_VERSION.txt"
+  ) > "$RECEIPT/watcher-distribution-checksums.txt"
+
+  watcher_distribution_checksum_sha256="$(
+    sha256sum "$watcher_sums" | awk '{{print $1}}'
+  )"
+  watcher_distribution_manifest_sha256="$(
+    sha256sum "$watcher_manifest" | awk '{{print $1}}'
+  )"
+  test "${{#watcher_distribution_checksum_sha256}}" = 64
+  test "${{#watcher_distribution_manifest_sha256}}" = 64
+
+  watcher_distribution_status=PASS
+  watcher_distribution_version="$WATCHER_VERSION"
+  printf '%s\n' \
+    "status=$watcher_distribution_status" \
+    "version=$watcher_distribution_version" \
+    "download_root=$WATCHER_DOWNLOAD_ROOT" \
+    "sha256sums_sha256=$watcher_distribution_checksum_sha256" \
+    "release_manifest_sha256=$watcher_distribution_manifest_sha256" \
+    > "$RECEIPT/watcher-distribution-preflight.txt"
+fi
+
 # Dependency changes are supported by staging a fresh candidate-owned tree.
 # Policy: yarn install --frozen-lockfile; network fetch executes with
 # --ignore-scripts, while lifecycle scripts run only in the offline sandbox.
@@ -662,6 +840,10 @@ printf '%s\n' \
   "dependency_cache_kb=$dependency_cache_kb" \
   "dependency_contract_unchanged=$dependency_contract_unchanged" \
   "dependency_lock_changed=$dependency_lock_changed" \
+  "watcher_distribution_status=$watcher_distribution_status" \
+  "watcher_distribution_version=$watcher_distribution_version" \
+  "watcher_distribution_checksum_sha256=$watcher_distribution_checksum_sha256" \
+  "watcher_distribution_manifest_sha256=$watcher_distribution_manifest_sha256" \
   "cache_free_artifact=1" \
   "artifact_path_relocated=1" \
   "live_source_mutated=0" \
@@ -704,6 +886,10 @@ printf 'dependency_cache_on_volume\t1\n'
 printf 'dependency_cache_kb\t%s\n' "$dependency_cache_kb"
 printf 'dependency_contract_unchanged\t%s\n' "$dependency_contract_unchanged"
 printf 'dependency_lock_changed\t%s\n' "$dependency_lock_changed"
+printf 'watcher_distribution_status\t%s\n' "$watcher_distribution_status"
+printf 'watcher_distribution_version\t%s\n' "$watcher_distribution_version"
+printf 'watcher_distribution_checksum_sha256\t%s\n' "$watcher_distribution_checksum_sha256"
+printf 'watcher_distribution_manifest_sha256\t%s\n' "$watcher_distribution_manifest_sha256"
 printf 'cache_free_artifact\t1\n'
 printf 'artifact_path_relocated\t1\n'
 printf 'live_source_mutated\t0\n'
@@ -823,6 +1009,22 @@ def validate_stage_result(
             errors.append(
                 "dependency lock-change evidence does not match release manifest"
             )
+
+    if manifest.get("risk_class") == "WATCHER":
+        if result.get("watcher_distribution_status") != "PASS":
+            errors.append("WATCHER distribution preflight did not report PASS")
+        version = result.get("watcher_distribution_version") or ""
+        if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version):
+            errors.append("WATCHER distribution version evidence is invalid")
+        for key in (
+            "watcher_distribution_checksum_sha256",
+            "watcher_distribution_manifest_sha256",
+        ):
+            digest = result.get(key) or ""
+            if len(digest) != 64 or any(
+                char not in "0123456789abcdef" for char in digest
+            ):
+                errors.append(f"WATCHER distribution evidence is invalid: {key}")
 
     return errors
 
@@ -944,6 +1146,7 @@ def stage_release(
     try:
         manifest_path, manifest, manifest_sha = load_manifest(release_sha)
         gate_path, gate_sha = gate_integrity(manifest)
+        watcher_version = watcher_distribution_version(manifest)
     except Exception as exc:
         if json_output:
             print(json.dumps({"status": "ERROR", "error": str(exc)}, indent=2))
@@ -989,6 +1192,7 @@ def stage_release(
         receipt_dir=receipt_dir,
         manifest_text=manifest_path.read_text(encoding="utf-8"),
         gate_text=gate_path.read_text(encoding="utf-8"),
+        watcher_version=watcher_version,
     )
 
     if not json_output:
@@ -1140,6 +1344,18 @@ def stage_release(
         "dependency_lock_changed": (
             result["dependency_lock_changed"] == "1"
         ),
+        "watcher_distribution_status": result.get(
+            "watcher_distribution_status", "NOT_APPLICABLE"
+        ),
+        "watcher_distribution_version": result.get(
+            "watcher_distribution_version", ""
+        ),
+        "watcher_distribution_checksum_sha256": result.get(
+            "watcher_distribution_checksum_sha256", ""
+        ),
+        "watcher_distribution_manifest_sha256": result.get(
+            "watcher_distribution_manifest_sha256", ""
+        ),
         "cache_free_artifact": True,
         "artifact_path_relocated": True,
         "live_source_mutated": False,
@@ -1213,6 +1429,11 @@ def stage_release(
     print("Build isolation: temporary detached worktree; live source/public/dependencies untouched")
     print("Artifact paths: relocated to canonical live root before hashing")
     print("Artifact cache: cache-free")
+    if payload["watcher_distribution_status"] == "PASS":
+        print(
+            "Watcher vault:   "
+            f"{payload['watcher_distribution_version']}  CERTIFIED BEFORE STAGE"
+        )
     print(f"Service:        {payload['service']}")
     print(
         "WOLO protected: "

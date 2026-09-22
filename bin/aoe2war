@@ -89,6 +89,7 @@ FINISH="$BIN_DIR/../scripts/aoe2_finish.py"
 BRIDGE="$BIN_DIR/../scripts/aoe2_operator_bridge.py"
 STORAGE_RETENTION="$BIN_DIR/../scripts/aoe2_storage_retention.py"
 WATCHER_STAGING="$BIN_DIR/../scripts/aoe2_watcher_staging.py"
+WATCHER_RELEASE="$BIN_DIR/../scripts/aoe2_watcher_release.py"
 STORAGE="$BIN_DIR/../scripts/aoe2_storage.py"
 SPEED="$BIN_DIR/../scripts/aoe2_speed.py"
 SPEED_CAMPAIGN="$BIN_DIR/../scripts/aoe2_speed_campaign.py"
@@ -124,6 +125,7 @@ Usage:
   aoe2war speed [status|release-history|benchmark|compare|browser|browser-truth|cold-lcp|diagnose|inventory|edge|build|campaign|pulse]
   aoe2war storage-retention [--apply] [--json]
   aoe2war watcher-staging [--apply] [--json]
+  aoe2war watcher-release [--apply] [--json] [--version VERSION] [--source PATH]
   aoe2war storage <status|estate|local-maintain|plan|maintain|verify> [options]
   aoe2war council [--json]
   aoe2war brain [--json]
@@ -157,6 +159,8 @@ Examples:
   aoe2war storage-retention --apply
   aoe2war watcher-staging
   aoe2war watcher-staging --apply
+  aoe2war watcher-release
+  aoe2war watcher-release --apply
   aoe2war finish
   aoe2war bridge --once
   aoe2war deploy
@@ -241,6 +245,11 @@ SAFE / READ-ONLY
       every file already exists byte-for-byte in the canonical download vault
       as reclaimable. Unique historical or previous-release bytes are preserved.
 
+  aoe2war watcher-release
+      Prove one local certified Watcher bundle against its exact public GitHub
+      release digests and preview production-vault convergence. Makes no
+      production, database or Wolo mutation.
+
 DOCUMENTATION / CONTEXT WRITE
 
   aoe2war control refresh
@@ -267,6 +276,13 @@ BOUNDED STORAGE WRITE
       staging subtrees already duplicated byte-for-byte in the canonical
       download vault. Unique bytes are never deleted. Production and Wolo
       identities are re-proven before and after mutation and a receipt is sealed.
+
+  aoe2war watcher-release --apply
+      Stage the exact public Watcher release bundle into the governed mounted
+      staging root, then transactionally promote the certified bytes into the
+      canonical download vault. Payloads and receipts precede updater manifests;
+      production source/runtime and Wolo remain unchanged and a durable receipt
+      is sealed.
 
 ADMIN UI / OPERATOR BRIDGE
 
@@ -549,6 +565,10 @@ case "$command" in
   watcher-staging)
     shift
     exec "$AOE2WAR_PYTHON" "$WATCHER_STAGING" "$@"
+    ;;
+  watcher-release)
+    shift
+    exec "$AOE2WAR_PYTHON" "$WATCHER_RELEASE" "$@"
     ;;
   storage)
     shift

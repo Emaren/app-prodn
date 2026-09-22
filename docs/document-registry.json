@@ -35,9 +35,9 @@
       "owner": "aoe2war-web",
       "path": "DEPLOY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-15",
+      "reviewed_at": "2026-09-21",
       "sensitivity": "internal",
-      "sha256": "84a40c95b32e0a99d5a994fd9e5d15d8a548174ddb0e9c26b7b92ff015b4cb90",
+      "sha256": "215eeeac15c1a06764a6c4944b12fa6b7c5b4277892936accc9d02377cb1c88c",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -83,9 +83,9 @@
       "owner": "aoe2war-web",
       "path": "README.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-08-20",
+      "reviewed_at": "2026-09-21",
       "sensitivity": "internal",
-      "sha256": "5163423ff984dcea29d6d1e05354b59b18eda69df6724fffc71e255ace6ae560",
+      "sha256": "52e2dd4de32683dad103b3d9a04d535f0a75125dfec1908a1216652b796162ef",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c3e05a34f98ea48cdea2f2d9f03a9e5392b9de49d7b73245a2d2b0748647a7d6",
+      "sha256": "8ddc2e2d2f69fc2d4cd7932c7dac3f5616e942eb1d79f282f5b1cd0d3b9c823b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -981,9 +981,9 @@
       "owner": "aoe2war-web",
       "path": "docs/OPERATOR_START_HERE.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-09",
+      "reviewed_at": "2026-09-21",
       "sensitivity": "internal",
-      "sha256": "3aef13692cac8dd2ebd39c8ad2c1d7f3e8dd70839c7884163b03b4253ec9afdc",
+      "sha256": "468ee3c853bd7f450b6e167f3f42b36b0c4801e18f0632df10973d21a354f7b8",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1277,9 +1277,9 @@
       "owner": "aoe2war-web",
       "path": "docs/RELEASE_ENGINEERING.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-08-24",
+      "reviewed_at": "2026-09-21",
       "sensitivity": "internal",
-      "sha256": "6a3b044a4692a3479b60d66514bcd8f7d3d3ce8e3a63c31b1ba05f1caf3bafc4",
+      "sha256": "2d3be7cffc4253d24472ae28d0955087cf94e951621336c1c6176006e07bbc6a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1648,7 +1648,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-21",
       "sensitivity": "restricted",
-      "sha256": "2f33565d010e309bfed77af03c8f24cd9435dd4a6547d63885d6d3bd67835ab9",
+      "sha256": "66c0708548bff99e4d554170ef5726271f7f5802cb62e278e6e8d5721d1983ec",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "release/watcher-1.6.0-20260921",
-    "commit": "ac3b21e18c91b91757aef191aa996f5faa9b010d"
+    "branch": "hardening/watcher-distribution-preflight",
+    "commit": "7b676e46a446809326b5ffc35dcce3483d7eec7c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

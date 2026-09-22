@@ -39,6 +39,56 @@ Secondary release evidence is also pinned: macOS DMG blockmap `d06e9206b9db50401
 
 The GitHub Actions integration passed every provenance, inventory, updater-metadata, and artifact-hash gate but was denied release creation with HTTP `403 Resource not accessible by integration`. The certified bundle was therefore published against the pre-created annotated tag by the authenticated repository owner without rebuilding or replacing any candidate artifact. The durable workflow now stops at a certified release-bundle handoff instead of pretending the integration has release-create authority.
 
+## 2026-09-21 distribution-ordering incident and permanent invariant
+
+The first app-side 1.6.0 promotion exposed a release-ordering gap. The certified
+web runtime and `/api/watcher/release` advertised Watcher 1.6.0 while the
+canonical mounted download vault still lacked four versioned 1.6.0 packages and
+the two 1.6.0 inventory receipts; the shared direct ZIP and updater YAMLs still
+contained the previous release bytes. Application certification had proved the
+web runtime, but it had not yet made Watcher distribution identity a release
+precondition.
+
+Recovery used the already-certified public release bundle; no Watcher was
+rebuilt. All 11 release files were hash-checked locally, copied into an isolated
+incoming directory on the mounted volume, hash-checked again, and promoted into
+the canonical vault. User-facing payloads and inventory receipts moved first;
+the three updater manifests moved last so an updater pointer could not lead its
+binary. The canonical vault was then re-hashed against the public 1.6.0 release.
+
+Permanent rule: a `WATCHER`-risk app release must prove distribution before
+candidate materialization. Release OS derives the target Watcher version from
+the exact sealed release commit and requires the canonical nine-file inventory
+(five user-facing binaries, DMG blockmap, and three updater manifests), exact
+`SHA256SUMS-<version>.txt` inventory, and
+`watcher-release-manifest-<version>.json` inventory/size/hash evidence to
+agree byte-for-byte. The updater manifests must advertise the same version and
+expected platform binaries. Missing, extra, duplicate, symlinked, stale, or
+digest-disagreeing evidence stops staging while production remains untouched.
+
+The source-side `yarn watcher:sync` path now follows the same ordering rule
+before a release can reach that production preflight. It validates the complete
+certified Watcher distribution and both receipts before touching destination
+state, copies everything into a same-filesystem hidden staging directory,
+re-validates the staged canonical bundle, then promotes payloads/receipts before
+the updater YAMLs. `lib/watcherRelease.ts` is committed last. The promotion
+keeps byte-for-byte backups of replaced targets and restores the entire prior
+vault if that final metadata write fails; regression coverage forces exactly
+that post-promotion failure and proves rollback plus staging cleanup.
+
+The production-vault handoff is now governed too. `aoe2war watcher-release`
+is preview-first and binds the local 11-file bundle to the exact public GitHub
+release through SHA-256 digest-multiset equality before any transfer. Apply
+acquires the global release lease, stages the exact files under
+`watcher-release-staging`, re-validates them on the VPS, and promotes the six
+payload/update-support files plus both receipts before the three updater
+manifests. A fully matching vault returns `NOOP` without uploading. Production
+source, active BUILD_ID, service state and Wolo 8092/8093 listener counts are
+recorded before/after and must remain unchanged. Pre-mutation upload failure may
+clean only the stage created by that invocation; once the privileged worker
+starts, transport loss or a pre-existing deterministic stage is preserved for
+explicit recovery rather than guessed away.
+
 ## v1.6.0 low-footprint lifecycle and self-update
 
 Watcher 1.6.0 separates the replay engine from the Chromium dashboard. Login startup may arm in tray-only background mode with no BrowserWindow alive; opening the dashboard creates the renderer on demand, and closing it destroys the renderer while replay monitoring continues. The renderer is sandboxed, dashboard log growth is bounded, runtime-event paints are coalesced, config/folder inspection is cached, and idle recovery/freshness safety nets run at deliberately low frequency.

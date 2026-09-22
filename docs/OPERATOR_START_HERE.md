@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["operators","developers","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-09-09"
+reviewed_at: "2026-09-21"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -108,6 +108,23 @@ SEAL owns the full racetrack: storage/capacity safety, source reconciliation,
 hash-bound release validation, deployment when required, certification, final
 Audit/Doctor, documentation reconciliation, and bounded context evidence. There
 is no second seal implementation inside Control OS.
+
+Watcher client distribution has one explicit pre-SEAL exception because the
+binary vault must exist before a WATCHER-risk web release may advertise it:
+
+```bash
+npm run watcher:sync
+aoe2war watcher-release
+aoe2war watcher-release --apply
+aoe2war finish
+```
+
+The first command proves and transactionally prepares the certified local
+bundle. `watcher-release` then proves the same 11 files against the public
+GitHub release and, only with `--apply`, promotes them into the canonical
+production download vault while keeping the web runtime and Wolo observe-only.
+A WATCHER-risk Release OS stage refuses to proceed unless that vault proof is
+already exact.
 
 When code is not being deployed but the operating handoff itself should become
 current, use:
