@@ -164,6 +164,35 @@ class SpeedEdgeTests(unittest.TestCase):
         self.assertEqual(result["counts"]["installed_dynamic_edge"], 1)
         self.assertEqual(result["installed_edge_authority"], authority)
 
+    def test_reusable_edge_audit_invalidates_when_installed_authority_changes(self):
+        source = {"pages": []}
+        benchmark = {"release_sha": "a" * 40}
+        authority = {"static": None, "dynamic": None, "overlap_routes": []}
+        audit = {
+            "benchmark_release_sha": "a" * 40,
+            "cache_safety_signature": MODULE.cache_safety_signature(source),
+            "installed_edge_authority": authority,
+            "generated_at": MODULE.utc_now(),
+        }
+        original = MODULE.installed_edge_authority_snapshot
+        try:
+            MODULE.installed_edge_authority_snapshot = lambda: authority
+            self.assertTrue(MODULE.reusable_edge_audit(audit, source, benchmark))
+            MODULE.installed_edge_authority_snapshot = lambda: {
+                "static": None,
+                "dynamic": {
+                    "tier": "dynamic",
+                    "routes": ["/market"],
+                    "route_count": 1,
+                    "ttl_seconds": 30,
+                    "authority_receipt": "dynamic.json",
+                },
+                "overlap_routes": [],
+            }
+            self.assertFalse(MODULE.reusable_edge_audit(audit, source, benchmark))
+        finally:
+            MODULE.installed_edge_authority_snapshot = original
+
     def test_cache_safety_signature_ignores_inventory_timestamp_but_changes_with_policy(self):
         base = {
             "generated_at": "2026-01-01T00:00:00Z",
