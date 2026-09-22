@@ -41,6 +41,30 @@ memory before closing the work.
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
 
+## 2026-09-22 — Cross-repository Doctor must compare implementation authority, not documentation HEAD
+
+Finish correctly stopped before mutating production when the Replay API parity check saw local
+`api-prodn` at a newer Git commit than the VPS checkout. The apparent source mismatch was not
+an implementation mismatch: the newer API commits were documentation-only, and the API
+`docs/document-registry.json` still named the deployed commit as its exact
+`implementation_baseline`.
+
+The old Doctor check compared production Replay API `HEAD` directly to local documentation
+`HEAD`, so renewing documentation forced an unnecessary runtime deployment before any web
+release could proceed. That collapses documentation identity and implementation identity even
+though Release OS deliberately models them separately.
+
+The parity rail now reads the Replay API implementation baseline, proves every local change after
+that baseline is documentation-owned, proves ancestry, and accepts a production checkout anywhere
+inside that documentation-only authority interval. Local still must equal origin, production still
+must be clean and healthy, migrations still must match, and any implementation change after the
+recorded baseline remains a blocker.
+
+Durable rule: repository HEAD answers “what documentation/source snapshot is current”; the
+implementation baseline answers “what executable implementation this documentation describes.”
+Cross-system runtime exactness must use the second identity whenever the repository formally
+supports documentation-only descendants.
+
 ## 2026-09-22 — Browser Truth cohorts must use one readiness meaning
 
 The 16-route Browser Truth cohort still contained five fallback-only rows:

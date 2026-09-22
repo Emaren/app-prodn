@@ -30,7 +30,12 @@ disagree, stop and reconcile them before production mutation.
 
 1. Production advances only to an exact sealed Git commit.
 2. The Documentation Baseline names the implementation commit described by the
-   repository documentation; documentation-only commits may follow it.
+   repository documentation; documentation-only commits may follow it. Cross-repository
+   runtime parity checks must compare production to that implementation authority, not
+   blindly require the production checkout to equal a newer documentation snapshot HEAD.
+   A production checkout may sit anywhere from the implementation baseline through the
+   current documentation-only descendant chain, provided the entire interval is proven
+   documentation-owned and ancestry remains exact.
 3. The release SHA and implementation SHA are distinct identities when the
    generated documentation-baseline commit follows implementation.
 4. Production builds occur in a disposable detached Git worktree. Staging

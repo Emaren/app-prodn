@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 import pathlib
+import tempfile
 import sys
 import threading
 import unittest
@@ -245,6 +247,165 @@ class DoctorTests(unittest.TestCase):
         self.assertTrue(any("service_state" in value for value in problems))
         self.assertTrue(any("live_oom" in value for value in problems))
         self.assertTrue(any("runner" in value for value in problems))
+
+    def test_replay_api_implementation_authority_accepts_docs_only_descendants(self):
+        baseline = "e" * 40
+        local_head = "d" * 40
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = pathlib.Path(temp_dir)
+            (repo / "docs").mkdir()
+            (repo / "docs" / "document-registry.json").write_text(
+                json.dumps(
+                    {
+                        "implementation_baseline": {
+                            "branch": "main",
+                            "commit": baseline,
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            def fake_run(args, *, cwd=MODULE.ROOT, timeout=30):
+                if args[:3] == ["git", "diff", "--name-only"]:
+                    return (
+                        0,
+                        "\n".join(
+                            [
+                                "README.md",
+                                "agent/README.agent.md",
+                                "docs/REPLAY_ENGINE_ROOM_WORKER.md",
+                                "docs/document-registry.json",
+                            ]
+                        ),
+                    )
+                if args[:3] == ["git", "merge-base", "--is-ancestor"]:
+                    return 0, ""
+                raise AssertionError(f"unexpected command: {args}")
+
+            with patch.object(MODULE, "run", side_effect=fake_run):
+                source, problems, evidence = MODULE.replay_api_implementation_authority(
+                    repo,
+                    local_head,
+                    "main",
+                )
+
+        self.assertEqual(source, baseline)
+        self.assertEqual(problems, [])
+        self.assertEqual(evidence["non_documentation_changes"], [])
+
+    def test_replay_api_implementation_authority_rejects_code_after_baseline(self):
+        baseline = "e" * 40
+        local_head = "d" * 40
+        with tempfile.TemporaryDirectory() as temp_dir:
+            repo = pathlib.Path(temp_dir)
+            (repo / "docs").mkdir()
+            (repo / "docs" / "document-registry.json").write_text(
+                json.dumps(
+                    {
+                        "implementation_baseline": {
+                            "branch": "main",
+                            "commit": baseline,
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            def fake_run(args, *, cwd=MODULE.ROOT, timeout=30):
+                if args[:3] == ["git", "diff", "--name-only"]:
+                    return 0, "utils/replay_engine.py"
+                raise AssertionError(f"unexpected command: {args}")
+
+            with patch.object(MODULE, "run", side_effect=fake_run):
+                source, problems, evidence = MODULE.replay_api_implementation_authority(
+                    repo,
+                    local_head,
+                    "main",
+                )
+
+        self.assertIsNone(source)
+        self.assertTrue(any("implementation changed" in value for value in problems))
+        self.assertEqual(evidence["non_documentation_changes"], ["utils/replay_engine.py"])
+
+    def test_replay_api_accepts_production_at_docs_only_implementation_baseline(self):
+        baseline = "e" * 40
+        local_head = "d" * 40
+        migration = "abc123"
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            workspace = pathlib.Path(temp_dir) / "AoE2HDBets"
+            app_root = workspace / "app-prodn"
+            api_root = workspace / "api-prodn"
+            app_root.mkdir(parents=True)
+            (api_root / "docs").mkdir(parents=True)
+            (api_root / ".venv" / "bin").mkdir(parents=True)
+            (api_root / "docs" / "document-registry.json").write_text(
+                json.dumps(
+                    {
+                        "implementation_baseline": {
+                            "branch": "main",
+                            "commit": baseline,
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            def fake_run(args, *, cwd=MODULE.ROOT, timeout=30):
+                if args == ["git", "rev-parse", "HEAD"]:
+                    return 0, local_head
+                if args == ["git", "branch", "--show-current"]:
+                    return 0, "main"
+                if args == ["git", "status", "--porcelain", "--untracked-files=all"]:
+                    return 0, ""
+                if args[:4] == ["git", "ls-remote", "--exit-code", "origin"]:
+                    return 0, f"{local_head}\trefs/heads/main"
+                if str(args[0]).endswith("/alembic") and args[1:] == ["heads"]:
+                    return 0, f"{migration} (head)"
+                if args[:3] == ["git", "diff", "--name-only"]:
+                    return 0, "README.md\ndocs/document-registry.json"
+                if args[:3] == ["git", "merge-base", "--is-ancestor"]:
+                    return 0, ""
+                if args[:3] == ["git", "cat-file", "-e"]:
+                    return 0, ""
+                raise AssertionError(f"unexpected command: {args}")
+
+            remote_output = "\n".join(
+                [
+                    f"head\t{baseline}",
+                    "branch\tmain",
+                    "dirty\t0",
+                    "service\tactive",
+                    "port_count\t1",
+                    'health\t{"status":"ok"}',
+                    f"migration_current\t{migration}",
+                ]
+            )
+            contract = {
+                "canonical": {"production_host": "hel1"},
+                "components": {
+                    "replay_api": {
+                        "local_repo": "../api-prodn",
+                        "production_repo": "/var/www/AoE2HDBets/api-prodn",
+                        "service": "aoe2hdbets-api.service",
+                        "branch": "main",
+                        "health_url": "http://127.0.0.1:3330/health",
+                    }
+                },
+            }
+            doctor = MODULE.Doctor()
+            with (
+                patch.object(MODULE, "ROOT", app_root),
+                patch.object(MODULE, "run", side_effect=fake_run),
+                patch.object(MODULE, "ssh", return_value=(0, remote_output)),
+            ):
+                MODULE.check_replay_api(doctor, contract)
+
+        self.assertNotIn("replay-api-proof", {item.key for item in doctor.findings})
+        replay = doctor.info["replay_api"]
+        self.assertEqual(replay["implementation_authority"]["commit"], baseline)
+        self.assertTrue(replay["production"]["implementation_equivalent"])
 
     def test_staking_custody_healthy_has_no_blocker(self):
         doctor = MODULE.Doctor()
