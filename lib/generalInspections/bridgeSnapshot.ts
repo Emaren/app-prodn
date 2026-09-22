@@ -1362,12 +1362,6 @@ export function buildBridgeGeneralInspectionsSnapshot(
         " documentation review(s) are due within seven days.",
     );
   }
-  notes.push(
-    "Python CI executes " +
-      pythonFiles +
-      " discovered contract files, but the per-run Python denominator is not yet sealed into the local release receipt.",
-  );
-
   return {
     schema: 1,
     generatedAt: new Date(now).toISOString(),
