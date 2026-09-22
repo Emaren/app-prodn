@@ -168,7 +168,7 @@ class ReleaseGateTests(unittest.TestCase):
         release_tests = [
             args
             for label, args, _timeout in plan
-            if label == "release-engineering-tests"
+            if label == "active-python-test-contract"
         ]
 
         self.assertEqual(
@@ -176,10 +176,7 @@ class ReleaseGateTests(unittest.TestCase):
             1,
         )
 
-        self.assertIn(
-            "tests/test_aoe2_storage.py",
-            release_tests[0],
-        )
+        self.assertEqual(release_tests[0], ["python3", "scripts/run_test_contract.py", "--python"])
 
         compile_steps = [
             args
@@ -219,7 +216,7 @@ class ReleaseGateTests(unittest.TestCase):
         release_tests = [
             args
             for label, args, _timeout in plan
-            if label == "release-engineering-tests"
+            if label == "active-python-test-contract"
         ]
         compile_steps = [
             args
@@ -228,7 +225,7 @@ class ReleaseGateTests(unittest.TestCase):
         ]
         self.assertEqual(len(release_tests), 1)
         self.assertEqual(len(compile_steps), 1)
-        self.assertIn("tests/test_aoe2_docs.py", release_tests[0])
+        self.assertEqual(release_tests[0], ["python3", "scripts/run_test_contract.py", "--python"])
         self.assertIn("scripts/aoe2_docs.py", compile_steps[0])
 
     def test_release_prebuild_helper_triggers_full_release_suite(self):
@@ -240,7 +237,7 @@ class ReleaseGateTests(unittest.TestCase):
         }
         plan = MODULE.command_plan(scope, "INFRASTRUCTURE")
         labels = [label for label, _args, _timeout in plan]
-        self.assertIn("release-engineering-tests", labels)
+        self.assertIn("active-python-test-contract", labels)
 
     def test_operator_cli_is_infrastructure_risk(self):
         self.assertEqual(MODULE.path_risk("bin/aoe2war"), "INFRASTRUCTURE")
@@ -253,9 +250,9 @@ class ReleaseGateTests(unittest.TestCase):
             "changed_files": ["bin/aoe2war"],
         }
         plan = MODULE.command_plan(scope, "INFRASTRUCTURE")
-        release_tests = [args for label, args, _timeout in plan if label == "release-engineering-tests"]
+        release_tests = [args for label, args, _timeout in plan if label == "active-python-test-contract"]
         self.assertEqual(len(release_tests), 1)
-        self.assertIn("tests/test_aoe2_cli.py", release_tests[0])
+        self.assertEqual(release_tests[0], ["python3", "scripts/run_test_contract.py", "--python"])
 
     def test_rollback_tooling_is_infrastructure_and_compiled(self):
         self.assertEqual(
@@ -287,10 +284,10 @@ class ReleaseGateTests(unittest.TestCase):
         plan = MODULE.command_plan(scope, "INFRASTRUCTURE")
         release_tests = [
             args for label, args, _timeout in plan
-            if label == "release-engineering-tests"
+            if label == "active-python-test-contract"
         ]
         self.assertEqual(len(release_tests), 1)
-        self.assertIn("tests/test_release_rollback.py", release_tests[0])
+        self.assertEqual(release_tests[0], ["python3", "scripts/run_test_contract.py", "--python"])
 
     def test_finish_and_doctor_are_infrastructure_tooling(self):
         self.assertEqual(
@@ -311,11 +308,10 @@ class ReleaseGateTests(unittest.TestCase):
         release_tests = [
             args
             for label, args, _timeout in plan
-            if label == "release-engineering-tests"
+            if label == "active-python-test-contract"
         ]
         self.assertEqual(len(release_tests), 1)
-        self.assertIn("tests/test_aoe2_finish.py", release_tests[0])
-        self.assertIn("tests/test_aoe2_doctor.py", release_tests[0])
+        self.assertEqual(release_tests[0], ["python3", "scripts/run_test_contract.py", "--python"])
 
 
     def test_validation_context_matching_can_ignore_tree_for_docs_descendant(self):
@@ -502,7 +498,7 @@ class SameSourceManifestPreconditionTests(unittest.TestCase):
             same_source_recertification=True,
         )
         labels = [label for label, _command, _timeout in plan]
-        self.assertIn("release-engineering-tests", labels)
+        self.assertIn("active-python-test-contract", labels)
         self.assertIn("release-python-compile", labels)
         self.assertIn("typescript", labels)
         self.assertIn("eslint-full", labels)
