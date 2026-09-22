@@ -249,7 +249,7 @@ function Distribution() {
   const max = Math.max(...rows.map((row) => row.count));
   return (
     <div className={`${styles.panel} rounded-[24px] p-4 sm:p-5 lg:col-span-3`}>
-      <PanelTitle icon={Waves} title="Warm TTFB Spectrum" right="78 routes" accent="blue" />
+      <PanelTitle icon={Waves} title="Warm TTFB Spectrum" right={`${SPEED_OS_SNAPSHOT.routes.audited} routes`} accent="blue" />
       <div className="mt-6 flex h-48 items-end gap-3 border-b border-blue-300/10 px-1">
         {rows.map((row, index) => (
           <div key={row.label} className="flex h-full flex-1 flex-col items-center justify-end">
@@ -445,7 +445,7 @@ function RouteCounts() {
   ] as const;
   return (
     <div className={`${styles.panel} rounded-[24px] p-4 sm:p-5 lg:col-span-4`}>
-      <PanelTitle icon={Boxes} title="Route Census" right="live estate" accent="violet" />
+      <PanelTitle icon={Boxes} title="Route Census" right="sealed snapshot" accent="violet" />
       <div className="mt-4 grid grid-cols-2 gap-2">
         {rows.map(([label, value, accent]) => <SignalPill key={label} label={label} value={String(value)} accent={accent as Accent} />)}
       </div>
@@ -506,10 +506,11 @@ function Hero() {
             <span>ROUTES {s.routes.audited}</span>
             <span>EDGE {s.routes.edgeCached}</span>
             <span>BUILD {s.buildVersion.slice(-10)}</span>
-            <span>SNAPSHOT {s.capturedAt.slice(11,16)}Z</span>
+            <span>SEALED SNAPSHOT {s.capturedAt.slice(0,16)}Z</span>
           </div>
         </div>
         <div className="flex flex-wrap gap-2 xl:max-w-[520px] xl:justify-end">
+          <SignalPill label="BENCHMARK" value="SEALED" accent="violet" />
           <SignalPill label="EDGE VERIFY" value="PASS" accent="green" />
           <SignalPill label="HIT RATE" value="27/27" accent="cyan" />
           <SignalPill label="COOKIE LEAK" value="0" accent="green" />
@@ -557,7 +558,7 @@ export default function SpeedObservatoryE2(props: SpeedE2Props) {
         </section>
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-cyan-300/[0.07] px-1 pt-3 font-mono text-[8px] uppercase tracking-[0.2em] text-slate-700">
-          <span>{s.releaseSha.slice(0,12)} / {s.buildVersion}</span>
+          <span>SEALED SNAPSHOT · {s.releaseSha.slice(0,12)} / {s.buildVersion}</span>
           <span className="text-cyan-300/40">MEASURE · OPTIMIZE · CONQUER</span>
         </div>
       </div>

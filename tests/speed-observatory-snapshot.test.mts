@@ -25,9 +25,18 @@ test("SpeedOS edge proof remains internally coherent", () => {
   assert.ok(numberAfter(source, "speedup") > 1);
 });
 
-test("SpeedOS TTFB histogram accounts for all 78 benchmark routes", () => {
+test("SpeedOS TTFB histogram accounts for the audited benchmark estate", () => {
   const block = source.match(/routeDistribution:\s*\[([\s\S]*?)\n\s*\],/);
   assert.ok(block);
   const counts = [...block[1].matchAll(/count:\s*(\d+)/g)].map((match) => Number(match[1]));
-  assert.equal(counts.reduce((sum, count) => sum + count, 0), 78);
+  assert.equal(counts.reduce((sum, count) => sum + count, 0), numberAfter(source, "audited"));
+});
+
+test("E2 labels sealed benchmark data as a snapshot rather than live estate truth", () => {
+  const e2 = fs.readFileSync("components/speed/SpeedObservatoryE2.tsx", "utf8");
+  assert.doesNotMatch(e2, /right="live estate"/);
+  assert.match(e2, /right="sealed snapshot"/);
+  assert.match(e2, /SEALED SNAPSHOT/);
+  assert.match(e2, /SPEED_OS_SNAPSHOT\.routes\.audited/);
+  assert.doesNotMatch(e2, /right="78 routes"/);
 });
