@@ -24,13 +24,6 @@
       "admission": "anonymous_dynamic"
     },
     {
-      "route": "/bounties",
-      "ttl_seconds": 30,
-      "empty_query_only": true,
-      "rationale": "Anonymous public Bounty Hall snapshot; non-transactional display, request-time entropy removed, and exact public/origin bytes proven stable across a full 30-second window.",
-      "admission": "anonymous_dynamic"
-    },
-    {
       "route": "/champions",
       "ttl_seconds": 30,
       "empty_query_only": true,
