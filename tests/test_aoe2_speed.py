@@ -1180,6 +1180,10 @@ class PerformanceOSTests(unittest.TestCase):
         self.assertIn("/leaderboard", paths)
         self.assertTrue(next(row for row in routes if row["route"] == "/bets")["expect_ready"])
         self.assertTrue(next(row for row in routes if row["route"] == "/workshop")["expect_ready"])
+        self.assertTrue(
+            all(row["expect_ready"] for row in routes),
+            "every Browser Truth route must publish explicit semantic Ready",
+        )
 
     def test_browser_truth_seals_release_bound_nonmutating_receipt(self):
         identity = {
