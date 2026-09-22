@@ -104,7 +104,7 @@ BROWSER_TRUTH_ROUTES = [
     {"route": "/kingdom-forge", "expect_ready": False},
     {"route": "/clans/mystikal", "expect_ready": False},
     {"route": "/war-chest", "expect_ready": True},
-    {"route": "/workshop", "expect_ready": False},
+    {"route": "/workshop", "expect_ready": True},
     {"route": "/kingdom-intelligence", "expect_ready": True},
     {"route": "/general-inspections", "expect_ready": True},
     {"route": "/staking", "expect_ready": True},
