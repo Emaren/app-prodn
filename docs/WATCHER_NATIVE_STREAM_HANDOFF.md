@@ -8,7 +8,7 @@ systems: ["app-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "stream-ingest-contract"
-reviewed_at: "2026-08-30"
+reviewed_at: "2026-09-22"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -103,6 +103,7 @@ the first is explicitly deleted or expires. If disk deletion fails, the
 registry is preserved and the route returns `503`; it must never claim success
 while leaving an untracked recording.
 
-The additive `GameWatchRetainedDemo` migration must be applied through the
-protected release lane before these routes are activated. Retention never
-changes replay or financial authority.
+The additive `GameWatchRetainedDemo` migration belongs to the protected
+release lane. Any deployment exposing these routes must prove that migration is
+applied before activation; this document does not infer live migration state.
+Retention never changes replay or financial authority.
