@@ -2200,7 +2200,7 @@ def main() -> int:
     parser.add_argument(
         "--refresh",
         action="store_true",
-        help="force a fresh 78-route header audit instead of reusing a current audit for plan",
+        help="force a fresh full-cohort header audit instead of reusing a current audit for plan",
     )
     args = parser.parse_args()
     if args.limit < 1 or args.limit > 100:
