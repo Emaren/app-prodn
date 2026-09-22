@@ -8,16 +8,16 @@ systems: ["app-prodn","api-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-07-28"
+reviewed_at: "2026-09-22"
 review_interval_days: 60
 sensitivity: "internal"
 ---
 
 # Parser Observatory
 
-## Current corpus census — 2026-07-28
+## Dated corpus census — 2026-07-28
 
-The current production metrics use several deliberate denominators:
+The 2026-07-28 production snapshot used several deliberate denominators:
 
 | Metric | Count | Grain |
 | --- | ---: | --- |

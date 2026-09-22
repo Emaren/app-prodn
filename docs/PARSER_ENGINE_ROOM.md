@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "architecture-explanation"
-reviewed_at: "2026-07-26"
+reviewed_at: "2026-09-22"
 review_interval_days: 60
 sensitivity: "restricted"
 ---
