@@ -42,6 +42,7 @@ function bridgePayload(speedCurrent = true) {
       generated_at: "2026-09-19T03:09:00Z",
       source: {
         exact: true,
+        implementation_equivalent: true,
         local: { head: RELEASE, clean: true },
         github: { main_sha: RELEASE },
         production: {
@@ -200,6 +201,16 @@ function makeEstate(speedCurrent = true) {
     status: "PASS",
     target_sha: RELEASE,
     generated_at: "2026-09-19T03:07:00Z",
+    required_commands: [
+      "active-node-test-contract",
+      "active-python-test-contract",
+      "documentation-control-plane",
+      "tracked-secret-scan",
+      "dependency-contract",
+      "prisma-generate",
+      "typescript",
+      "eslint-changed",
+    ],
     commands: [
       command(
         "active-node-test-contract",
@@ -294,6 +305,81 @@ test("bridge-backed General Inspections can reach green from certified evidence"
     assert.equal(byId.get("security")?.score, 100);
     assert.equal(byId.get("data")?.score, 100);
     assert.equal(snapshot.overallScore, 100);
+  } finally {
+    rmSync(estate.root, { recursive: true, force: true });
+  }
+});
+
+test("scope-aware certified gate does not score intentionally skipped validators as failures", () => {
+  const estate = makeEstate(true);
+  try {
+    const gatePath = path.join(
+      estate.options.deployRoot,
+      "activate-20260919T030800Z-" + RELEASE.slice(0, 12),
+      "gate-receipt.json",
+    );
+    writeJson(gatePath, {
+      schema: 2,
+      kind: "gate-receipt",
+      status: "PASS",
+      target_sha: RELEASE,
+      generated_at: "2026-09-19T03:07:00Z",
+      risk_class: "DOCUMENTATION",
+      required_commands: [
+        "documentation-control-plane",
+        "tracked-secret-scan",
+      ],
+      commands: [
+        command("documentation-control-plane"),
+        command("tracked-secret-scan"),
+      ],
+    });
+
+    const snapshot = buildBridgeGeneralInspectionsSnapshot(estate.options);
+    assert.ok(snapshot);
+    const tests = snapshot.categories.find((item) => item.id === "tests");
+    assert.ok(tests);
+    assert.equal(tests.score, 100);
+    const typescript = tests.checks.find((item) => item.id === "typescript");
+    assert.equal(typescript?.detail, "Not required by certified gate scope");
+  } finally {
+    rmSync(estate.root, { recursive: true, force: true });
+  }
+});
+
+test("required validator missing from certified gate still fails closed", () => {
+  const estate = makeEstate(true);
+  try {
+    const gatePath = path.join(
+      estate.options.deployRoot,
+      "activate-20260919T030800Z-" + RELEASE.slice(0, 12),
+      "gate-receipt.json",
+    );
+    writeJson(gatePath, {
+      schema: 2,
+      kind: "gate-receipt",
+      status: "PASS",
+      target_sha: RELEASE,
+      generated_at: "2026-09-19T03:07:00Z",
+      required_commands: [
+        "documentation-control-plane",
+        "tracked-secret-scan",
+        "typescript",
+      ],
+      commands: [
+        command("documentation-control-plane"),
+        command("tracked-secret-scan"),
+      ],
+    });
+
+    const snapshot = buildBridgeGeneralInspectionsSnapshot(estate.options);
+    assert.ok(snapshot);
+    const tests = snapshot.categories.find((item) => item.id === "tests");
+    assert.ok(tests);
+    assert.ok(tests.score < 100);
+    const typescript = tests.checks.find((item) => item.id === "typescript");
+    assert.equal(typescript?.score, 0);
+    assert.equal(typescript?.detail, "Required TypeScript proof missing");
   } finally {
     rmSync(estate.root, { recursive: true, force: true });
   }
