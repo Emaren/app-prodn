@@ -41,6 +41,24 @@ memory before closing the work.
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
 
+## 2026-09-22 — Financial documentation must distinguish implemented law from candidate design
+
+A due-document review found that the Betting Constitution still described the pre-#JimsRule
+candidate economics after production settlement had changed. It said unmatched winning principal
+could carry the ordinary fee, described losing stake as fully at risk even when unmatched, and
+left unmatched losing-side surplus available as a Winner Bounty candidate. The executable
+settlement authority now does the opposite on all three points.
+
+Current `#JimsRule` is explicit: only real funded opposite-side stake creates matched exposure;
+unmatched principal on either side returns exactly and fee-free; the 2% fee is computed only from
+matched two-sided volume; and unmatched user principal cannot fund a Winner Bounty. Within each
+side, current matched exposure is proportional with deterministic whole-WOLO rounding, not FIFO.
+
+Durable rule: a constitution or policy document may contain future proposals, but it must label
+them as proposals and place current executable financial law first. When prose and settlement code
+diverge, correct the prose immediately and keep historical audits clearly watermarked rather than
+silently carrying obsolete economics forward.
+
 ## 2026-09-22 — Sealed benchmark evidence must never masquerade as live estate truth
 
 The E2 Speed Observatory mixed live browser telemetry with a sealed estate benchmark. The
