@@ -75,6 +75,12 @@ ARCHIVE_SERIES = {
 }
 
 ARCHIVE_TS_RE = re.compile(r"-(\d{8}-\d{6})\.tgz$")
+CONTEXT_MD_SOURCE_ARCHIVE_RE = re.compile(
+    r"^- source_archive: `([^`]+)`$", re.MULTILINE
+)
+CONTEXT_MD_SOURCE_SHA_RE = re.compile(
+    r"^- source_sha256: `([0-9a-f]{64})`$", re.MULTILINE
+)
 
 
 @dataclass(frozen=True)
@@ -601,6 +607,18 @@ def archive_timestamp(name: str) -> datetime | None:
         return None
 
 
+def markdown_companion_metadata(path: Path) -> tuple[str, str] | None:
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError):
+        return None
+    archive_matches = CONTEXT_MD_SOURCE_ARCHIVE_RE.findall(text)
+    sha_matches = CONTEXT_MD_SOURCE_SHA_RE.findall(text)
+    if len(archive_matches) != 1 or len(sha_matches) != 1:
+        return None
+    return archive_matches[0], sha_matches[0]
+
+
 def commit_epoch(repo: Path) -> int | None:
     rc, out = git(repo, "show", "-s", "--format=%ct", "HEAD")
     return int(out) if rc == 0 and out.isdigit() else None
@@ -665,6 +683,70 @@ def check_context_archives(audit: Audit) -> None:
                 f"{series}: expected={expected_sha} actual={actual_sha}",
             )
 
+        markdown = VPSSENTRY / "context" / "md" / f"{archive.stem}.md"
+        markdown_manifest = sha_dir / f"{markdown.name}.sha256"
+        markdown_sha: str | None = None
+        markdown_portable = False
+        markdown_source_bound = False
+
+        if not markdown.is_file():
+            audit.add(
+                "P0",
+                "Context Durability",
+                "markdown-companion-missing",
+                f"{series}: {markdown}",
+            )
+        elif not markdown_manifest.is_file():
+            audit.add(
+                "P0",
+                "Context Durability",
+                "markdown-manifest-missing",
+                f"{series}: {markdown_manifest}",
+            )
+        else:
+            markdown_entry = manifest_entry(
+                markdown_manifest.read_text(encoding="utf-8")
+            )
+            if markdown_entry is None:
+                audit.add(
+                    "P0",
+                    "Context Durability",
+                    "markdown-manifest-format",
+                    f"{series}: {markdown_manifest}",
+                )
+            else:
+                markdown_expected_sha, markdown_manifest_name = markdown_entry
+                markdown_sha = sha256(markdown)
+                markdown_portable = (
+                    markdown_manifest_name == markdown.name
+                    and "/" not in markdown_manifest_name
+                )
+                if not markdown_portable:
+                    audit.add(
+                        "P0",
+                        "Context Durability",
+                        "markdown-manifest-portability",
+                        f"{series}: {markdown_manifest_name!r}",
+                    )
+                if markdown_expected_sha != markdown_sha:
+                    audit.add(
+                        "P0",
+                        "Context Durability",
+                        "markdown-manifest-sha",
+                        f"{series}: expected={markdown_expected_sha} actual={markdown_sha}",
+                    )
+
+                metadata = markdown_companion_metadata(markdown)
+                markdown_source_bound = metadata == (archive.name, actual_sha)
+                if not markdown_source_bound:
+                    audit.add(
+                        "P0",
+                        "Context Durability",
+                        "markdown-source-binding",
+                        f"{series}: metadata={metadata!r} "
+                        f"expected=({archive.name!r}, {actual_sha!r})",
+                    )
+
         stamp = archive_timestamp(archive.name)
         epochs = [commit_epoch(repo) for repo in source_repos]
         known_epochs = [value for value in epochs if value is not None]
@@ -688,6 +770,11 @@ def check_context_archives(audit: Audit) -> None:
             "sha256": actual_sha,
             "manifest": str(manifest),
             "portable": portable,
+            "markdown": str(markdown),
+            "markdown_manifest": str(markdown_manifest),
+            "markdown_sha256": markdown_sha,
+            "markdown_portable": markdown_portable,
+            "markdown_source_bound": markdown_source_bound,
             "stale": stale,
         }
 
