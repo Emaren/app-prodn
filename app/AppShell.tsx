@@ -744,7 +744,7 @@ function KingdomMenuPanel({
               key={item.href}
               href={item.href}
               data-presence-door={presenceDoorForHref(item.href)}
-              prefetch={item.href === "/leaderboard"}
+              prefetch={item.href === "/leaderboard" || item.href === "/workshop"}
               onMouseEnter={() => router.prefetch(item.href)}
               onFocus={() => router.prefetch(item.href)}
               role="menuitem"
