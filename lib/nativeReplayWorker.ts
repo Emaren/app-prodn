@@ -155,8 +155,14 @@ export async function buildNativeReplayRunParameters(
     throw new Error("The selected battle has no canonical replay SHA-256.");
   }
 
-  const sourceName = game.original_filename || game.replay_file || "";
-  if (extname(sourceName).toLowerCase() !== ".aoe2record") {
+  const sourceNames = [game.original_filename, game.replay_file].filter(
+    (value): value is string => typeof value === "string" && Boolean(value.trim())
+  );
+  if (
+    !sourceNames.some(
+      (sourceName) => extname(sourceName).toLowerCase() === ".aoe2record"
+    )
+  ) {
     throw new Error(
       "Native HD playthrough accepts recorded .aoe2record battles only; saved checkpoints and legacy containers remain in their separate evidence lanes."
     );
