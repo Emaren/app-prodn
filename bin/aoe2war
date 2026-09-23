@@ -126,7 +126,7 @@ Usage:
   aoe2war storage-retention [--apply] [--json]
   aoe2war watcher-staging [--apply] [--json]
   aoe2war watcher-release [--apply] [--json] [--version VERSION] [--source PATH]
-  aoe2war storage <status|estate|local-maintain|plan|maintain|verify|campaign|handoff> [options]
+  aoe2war storage <status|estate|local-maintain|plan|maintain|verify|campaign|handoff|db-snapshots> [options]
   aoe2war council [--json]
   aoe2war brain [--json]
   aoe2war workspace <status|plan|clean> [options]
@@ -301,6 +301,17 @@ BOUNDED STORAGE WRITE
   aoe2war storage handoff resume [HANDOFF]
       Resume an interrupted handoff from its last durably proven state. Unknown
       or ambiguous transaction state remains fail-closed.
+
+  aoe2war storage db-snapshots status
+      Read-only bounded inventory of deploy database snapshots. Classifies exact
+      migration boundaries, financial/recovery evidence and ambiguous legacy
+      shapes; reports protected/hot/cold/candidate posture without deleting data.
+
+  aoe2war storage db-snapshots plan
+      Show the full tiered retention plan. By default it trusts only sealed
+      migration-receipt hashes and metadata, avoiding a multi-gigabyte body read.
+      Add --verify-hashes for an explicit read-only full-body SHA-256 census.
+      V1 has no apply/delete command.
 
 ADMIN UI / OPERATOR BRIDGE
 
