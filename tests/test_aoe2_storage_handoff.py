@@ -105,14 +105,52 @@ class StorageHandoffTests(unittest.TestCase):
             "status": "V1_RUNNING",
             "history": [],
         }
-        with mock.patch.object(handoff, "save_state") as save:
-            handoff.transition(state, "V1_FROZEN", evidence={"ok": True})
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            with (
+                mock.patch.object(handoff, "HANDOFF_DIR", root),
+                mock.patch.object(handoff, "save_state") as save,
+            ):
+                handoff.transition(state, "V1_FROZEN", evidence={"ok": True})
+                receipt = Path(state["last_transition_receipt"])
+                self.assertTrue(receipt.is_file())
+                self.assertEqual(receipt.stat().st_mode & 0o777, 0o444)
+                sealed = __import__("json").loads(receipt.read_text(encoding="utf-8"))
+
         self.assertEqual(state["status"], "V1_FROZEN")
         self.assertEqual(state["history"][-1]["evidence"], {"ok": True})
+        self.assertEqual(sealed["from"], "V1_RUNNING")
+        self.assertEqual(sealed["to"], "V1_FROZEN")
+        self.assertEqual(sealed["evidence"], {"ok": True})
+        self.assertEqual(
+            state["history"][-1]["receipt_sha256"],
+            state["last_transition_receipt_sha256"],
+        )
         save.assert_called_once_with(state)
 
         with self.assertRaises(handoff.HandoffError):
             handoff.transition(state, "SOURCE_READY")
+
+    def test_transition_receipt_is_create_once_and_reusable_after_crash(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            with mock.patch.object(handoff, "HANDOFF_DIR", root):
+                first = handoff.write_transition_receipt(
+                    handoff_id="handoff-a",
+                    source="V1_RUNNING",
+                    target="V1_FROZEN",
+                    evidence={"seam": "proven"},
+                )
+                second = handoff.write_transition_receipt(
+                    handoff_id="handoff-a",
+                    source="V1_RUNNING",
+                    target="V1_FROZEN",
+                    evidence={"seam": "reobserved-but-not-authority"},
+                )
+
+        self.assertEqual(first[0], second[0])
+        self.assertEqual(first[1], second[1])
+        self.assertEqual(second[2]["evidence"], {"seam": "proven"})
 
     def test_create_state_binds_v1_target_and_process_family(self):
         campaign_state = {
