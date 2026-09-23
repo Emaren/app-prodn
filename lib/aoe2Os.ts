@@ -99,6 +99,14 @@ export const AOE2_OS_ACTIONS = {
     confirmation: "FINISH",
     requiresSourceSha: false,
   },
+  replay_native_run: {
+    label: "Native Replay Playthrough",
+    description:
+      "Run one immutable replay through the local AoE2 HD engine as candidate-only evidence. This never promotes results, settles bets, or mutates Wolo.",
+    risk: "read",
+    confirmation: "RUN NATIVE REPLAY",
+    requiresSourceSha: false,
+  },
   rollback_preview: {
     label: "Rollback Preview",
     description: "Preview the receipt-driven rollback target without changing production.",
@@ -140,6 +148,12 @@ export type Aoe2OsRun = {
     message?: string;
     dryRun?: boolean;
     preserveContextHistory?: boolean;
+    gameStatsId?: number;
+    replaySha256?: string;
+    rosterSlots?: number[];
+    candidateOnly?: true;
+    nativePerformanceSeconds?: number;
+    timeoutSeconds?: number;
   } | null;
   bridgeId: string | null;
   requestedAt: string;
