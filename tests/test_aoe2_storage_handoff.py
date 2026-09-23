@@ -183,6 +183,9 @@ class StorageHandoffTests(unittest.TestCase):
             ("status", "--porcelain", "--untracked-files=all"): "",
             ("rev-parse", "HEAD"): "b" * 40,
             ("rev-parse", "origin/main"): "b" * 40,
+            ("ls-remote", "origin", "refs/heads/main"): (
+                ("b" * 40) + "\trefs/heads/main"
+            ),
         }
 
         def git_value(*args):
@@ -197,6 +200,24 @@ class StorageHandoffTests(unittest.TestCase):
                 handoff.source_ready("a" * 40, expected_target="b" * 40),
                 "b" * 40,
             )
+
+    def test_source_ready_rejects_stale_tracking_ref(self):
+        values = {
+            ("branch", "--show-current"): "main",
+            ("status", "--porcelain", "--untracked-files=all"): "",
+            ("rev-parse", "HEAD"): "b" * 40,
+            ("rev-parse", "origin/main"): "b" * 40,
+            ("ls-remote", "origin", "refs/heads/main"): (
+                ("c" * 40) + "\trefs/heads/main"
+            ),
+        }
+        with mock.patch.object(
+            handoff,
+            "git_output",
+            side_effect=lambda *args: values[args],
+        ):
+            with self.assertRaisesRegex(handoff.HandoffError, "tracking=.*live"):
+                handoff.source_ready("a" * 40)
 
     def test_transition_is_strictly_sequential_and_durable(self):
         state = {
