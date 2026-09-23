@@ -496,17 +496,19 @@ non-canonical classes are protected from generic retirement.
 
 The tiered migration-boundary policy is evidence-first:
 
-1. keep the newest five exact migration restore points as `HOT`;
-2. keep one additional exact restore point per ISO week for eight older weeks;
-3. keep one additional exact restore point per calendar month for twelve older
+1. protect any snapshot whose exact snapshot/receipt path is referenced by
+   external durable metadata;
+2. keep the newest five remaining exact migration restore points as `HOT`;
+3. keep one additional exact restore point per ISO week for eight older weeks;
+4. keep one additional exact restore point per calendar month for twelve older
    months;
-4. keep any snapshot whose exact snapshot/receipt path is referenced by external
-   durable metadata;
 5. mark only the remaining exact, unreferenced migration-boundary snapshots as
    `RETIRE_CANDIDATE`.
 
-Hot weeks/months already represented by a newer retained snapshot do not consume
-a second cold slot. Age alone is never deletion authority.
+A referenced exact migration snapshot already satisfies its week/month recovery
+coverage, so Storage OS does not keep a redundant cold point solely for the same
+period. Hot weeks/months already represented by a newer retained snapshot likewise
+do not consume a second cold slot. Age alone is never deletion authority.
 
 The ordinary `aoe2war storage status` metadata probe now reports the bounded
 database-snapshot count and allocated bytes so this recovery estate cannot
