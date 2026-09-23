@@ -142,6 +142,114 @@ class StorageCampaignTests(unittest.TestCase):
         self.assertEqual(state["target_percent"], 78)
         self.assertEqual(state["max_generations"], 4)
         self.assertEqual(state["completed_generations"], 0)
+        self.assertIsNone(state["handoff_id"])
+        self.assertIsNone(state["handoff_requested_at"])
+
+    def test_refresh_operator_signals_preserves_handoff_reservation(self):
+        state = {
+            "campaign_id": "test",
+            "pause_requested": False,
+            "handoff_id": None,
+            "handoff_requested_at": None,
+        }
+        persisted = {
+            "campaign_id": "test",
+            "pause_requested": True,
+            "pause_requested_at": "2026-09-23T20:00:00+00:00",
+            "handoff_id": "handoff-a",
+            "handoff_requested_at": "2026-09-23T19:59:59+00:00",
+        }
+        with mock.patch.object(campaign, "load_state", return_value=persisted):
+            campaign.refresh_operator_signals(state)
+
+        self.assertEqual(state["handoff_id"], "handoff-a")
+        self.assertEqual(
+            state["handoff_requested_at"],
+            "2026-09-23T19:59:59+00:00",
+        )
+        self.assertTrue(state["pause_requested"])
+
+    def test_reserve_handoff_is_idempotent_and_blocks_competing_takeover(self):
+        state = {
+            "schema": 1,
+            "kind": "aoe2war-storage-campaign",
+            "campaign_id": "test",
+            "status": "RUNNING_TRANSACTION",
+            "pid": 123,
+            "release_sha": "a" * 40,
+            "build_id": "build-a",
+            "handoff_id": None,
+            "handoff_requested_at": None,
+            "pause_requested": False,
+            "pause_requested_at": None,
+        }
+        persisted = dict(state)
+
+        def load(_campaign_id):
+            return dict(persisted)
+
+        def save(updated):
+            persisted.update(updated)
+
+        with (
+            mock.patch.object(campaign, "load_state", side_effect=load),
+            mock.patch.object(campaign, "save_state", side_effect=save),
+            mock.patch.object(campaign, "process_alive", return_value=True),
+        ):
+            first = campaign.reserve_handoff(
+                "test",
+                handoff_id="handoff-a",
+                old_release_sha="a" * 40,
+                old_build_id="build-a",
+            )
+            second = campaign.reserve_handoff(
+                "test",
+                handoff_id="handoff-a",
+                old_release_sha="a" * 40,
+                old_build_id="build-a",
+            )
+            with self.assertRaisesRegex(
+                campaign.CampaignError,
+                "already reserved by another",
+            ):
+                campaign.reserve_handoff(
+                    "test",
+                    handoff_id="handoff-b",
+                    old_release_sha="a" * 40,
+                    old_build_id="build-a",
+                )
+
+        self.assertEqual(first["handoff_id"], "handoff-a")
+        self.assertEqual(second["handoff_id"], "handoff-a")
+        self.assertTrue(persisted["pause_requested"])
+
+    def test_resume_redirects_reserved_campaign_to_handoff(self):
+        state = {
+            "schema": 1,
+            "kind": "aoe2war-storage-campaign",
+            "campaign_id": "test",
+            "status": "PAUSED",
+            "pid": None,
+            "release_sha": "a" * 40,
+            "build_id": "build-a",
+            "handoff_id": "handoff-a",
+            "current_generation": None,
+            "current_generation_started_at": None,
+        }
+        with (
+            mock.patch.object(campaign, "load_state", return_value=state),
+            mock.patch.object(campaign, "process_alive", return_value=False),
+            mock.patch.object(campaign, "validate_bound_baseline") as baseline,
+            mock.patch.object(campaign, "spawn") as spawn,
+        ):
+            with self.assertRaisesRegex(
+                campaign.CampaignError,
+                "storage handoff resume handoff-a",
+            ):
+                campaign.resume("test")
+
+        baseline.assert_not_called()
+        spawn.assert_not_called()
 
     def test_resume_blocks_ambiguous_inflight_transaction(self):
         state = {
@@ -254,6 +362,7 @@ class StorageCampaignTests(unittest.TestCase):
             "build_id": "build-a",
             "current_generation": "activate-20260923T000000Z-aaaaaaaaaaaa",
             "current_generation_started_at": "2026-09-23T19:00:00+00:00",
+            "handoff_id": "handoff-a",
         }
         with mock.patch.object(campaign, "load_state", return_value=state):
             with self.assertRaises(campaign.CampaignError):
@@ -279,6 +388,8 @@ class StorageCampaignTests(unittest.TestCase):
             "current_generation_started_at": None,
             "pause_requested": True,
             "pause_requested_at": "2026-09-23T19:00:00+00:00",
+            "handoff_id": "handoff-a",
+            "handoff_requested_at": "2026-09-23T18:59:59+00:00",
         }
         captured = {}
 
@@ -308,6 +419,8 @@ class StorageCampaignTests(unittest.TestCase):
         self.assertEqual(result["build_id"], "build-b")
         self.assertFalse(result["pause_requested"])
         self.assertIsNone(result["pause_requested_at"])
+        self.assertIsNone(result["handoff_id"])
+        self.assertIsNone(result["handoff_requested_at"])
         self.assertEqual(result["handoff_history"][-1]["handoff_id"], "handoff-a")
         self.assertEqual(captured["release_sha"], "b" * 40)
 
