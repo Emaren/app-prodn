@@ -24,6 +24,13 @@ class StorageHandoffTests(unittest.TestCase):
             "v1_completed_generations": 2,
             "v1_max_generations": 6,
             "v1_force": False,
+            "v1_process_at_request": {
+                "pid": 123,
+                "pgid": 123,
+                "stat": "S",
+                "stopped": False,
+                "descendants": [],
+            },
             "v1_process": {
                 "pid": 123,
                 "pgid": 123,
@@ -40,6 +47,51 @@ class StorageHandoffTests(unittest.TestCase):
             "last_error": None,
             "log_path": "handoff.log",
         }
+
+    def test_created_state_waits_for_cooperative_campaign_freeze(self):
+        state = self.base_state(status="CREATED")
+        state["v1_process"] = None
+        state["freeze_requested_at"] = "2026-09-23T19:00:00+00:00"
+        frozen = {
+            "pid": 123,
+            "pgid": 123,
+            "stat": "T",
+            "stopped": True,
+            "descendants": [],
+        }
+        campaign_state = {
+            "status": "HANDOFF_FREEZE_READY",
+            "pid": 123,
+            "handoff_freeze_handoff_id": "handoff-test",
+            "handoff_freeze_ready_at": "2026-09-23T19:01:00+00:00",
+            "current_generation": None,
+            "current_generation_started_at": None,
+        }
+        with (
+            mock.patch.object(
+                handoff.campaign,
+                "load_state",
+                return_value=campaign_state,
+            ),
+            mock.patch.object(handoff.campaign, "process_alive", return_value=True),
+            mock.patch.object(handoff, "process_snapshot", return_value=frozen),
+            mock.patch.object(handoff, "save_state"),
+            mock.patch.object(
+                handoff,
+                "seal_transition",
+                return_value={**state, "status": "V1_FROZEN", "v1_process": frozen},
+            ) as seal,
+            mock.patch.object(handoff.os, "killpg") as killpg,
+        ):
+            result = handoff.transition_created(state)
+
+        killpg.assert_not_called()
+        self.assertEqual(result["status"], "V1_FROZEN")
+        self.assertEqual(state["v1_process"], frozen)
+        self.assertEqual(
+            seal.call_args.args[2]["freeze_mode"],
+            "cooperative_between_generation_self_stop",
+        )
 
     def test_transition_is_sequential_and_receipted_read_only(self):
         with tempfile.TemporaryDirectory() as td:
