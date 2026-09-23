@@ -124,7 +124,11 @@ coverage comes from `scripts/run_test_contract.py`; Python coverage comes from
 before running the complete unittest suite.
 
 General Inspections parses those exact receipts instead of carrying a hand-maintained Python
-file count or awarding partial credit for an unsealed remote run. New gate receipts also seal
+file count or awarding partial credit for an unsealed remote run. The validator command return
+code is the pass/fail authority; parsed file counts are display/provenance detail when the bounded
+receipt tail still contains the runner's opening count banner. A successful required validator
+therefore remains proven when only that banner has rotated out of the bounded tail, while a
+missing or nonzero command still fails closed. New gate receipts also seal
 `required_commands`, the exact validator set selected by the governed release scope. A
 validator that the gate explicitly declares out of scope is displayed as **Not required by
 certified gate scope** rather than being misreported as a failure. A validator that is required

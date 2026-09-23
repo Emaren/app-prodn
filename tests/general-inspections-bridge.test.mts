@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {
   mkdtempSync,
   mkdirSync,
+  readFileSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -305,6 +306,39 @@ test("bridge-backed General Inspections can reach green from certified evidence"
     assert.equal(byId.get("security")?.score, 100);
     assert.equal(byId.get("data")?.score, 100);
     assert.equal(snapshot.overallScore, 100);
+  } finally {
+    rmSync(estate.root, { recursive: true, force: true });
+  }
+});
+
+test("passed Python contract remains authoritative when bounded receipt tail omits the count banner", () => {
+  const estate = makeEstate(true);
+  try {
+    const gatePath = path.join(
+      estate.options.deployRoot,
+      "activate-20260919T030800Z-" + RELEASE.slice(0, 12),
+      "gate-receipt.json",
+    );
+    const gate = JSON.parse(readFileSync(gatePath, "utf8"));
+    const python = gate.commands.find(
+      (item: { label?: string }) => item.label === "active-python-test-contract",
+    );
+    assert.ok(python);
+    python.stdout_tail = "OK\n";
+    python.stderr_tail = "";
+    writeJson(gatePath, gate);
+
+    const snapshot = buildBridgeGeneralInspectionsSnapshot(estate.options);
+    assert.ok(snapshot);
+    const tests = snapshot.categories.find((item) => item.id === "tests");
+    assert.ok(tests);
+    assert.equal(tests.score, 100);
+    const pythonCheck = tests.checks.find((item) => item.id === "python-tests");
+    assert.equal(pythonCheck?.earned, 10);
+    assert.equal(
+      pythonCheck?.detail,
+      "PASS · file count omitted from bounded receipt tail",
+    );
   } finally {
     rmSync(estate.root, { recursive: true, force: true });
   }

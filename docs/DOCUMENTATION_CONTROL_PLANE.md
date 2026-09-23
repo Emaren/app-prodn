@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `main` at `fbaf85411fce570b307dc1c8299b82cff4b145b6`
+Implementation baseline: `fix/general-inspections-python-receipt-20260923` at `36db592d2075912353e09ac91acf70b5dea9ce69`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
