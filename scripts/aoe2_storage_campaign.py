@@ -428,6 +428,32 @@ def rebind_after_handoff(
     new_build_id: str,
 ) -> dict[str, Any]:
     state = load_state(campaign_id)
+    history = list(state.get("handoff_history") or [])
+    matching = next(
+        (
+            item
+            for item in reversed(history)
+            if isinstance(item, dict)
+            and item.get("handoff_id") == handoff_id
+            and item.get("old_release_sha") == old_release_sha
+            and item.get("old_build_id") == old_build_id
+            and item.get("new_release_sha") == new_release_sha
+            and item.get("new_build_id") == new_build_id
+        ),
+        None,
+    )
+    if (
+        matching is not None
+        and state.get("release_sha") == new_release_sha
+        and state.get("build_id") == new_build_id
+    ):
+        current_release, current_build = current_baseline()
+        if current_release != new_release_sha or current_build != new_build_id:
+            raise CampaignError(
+                "previous handoff rebind no longer matches certified V2 authority"
+            )
+        return state
+
     if state.get("status") != "PAUSED":
         raise CampaignError(
             f"handoff rebind requires PAUSED campaign, found {state.get('status')}"
@@ -476,6 +502,7 @@ def rebind_after_handoff(
     state["completion_reason"] = None
     state["finished_at"] = None
     state["failed_at"] = None
+    state["resumed_at"] = None
     state["last_error"] = None
     save_state(state)
     return state
