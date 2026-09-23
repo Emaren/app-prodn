@@ -218,14 +218,31 @@ def save_state(state: dict[str, Any]) -> None:
     atomic_write(state_path(str(state["handoff_id"])), state)
 
 
-def latest_handoff_id() -> str | None:
+def handoff_state_paths() -> list[Path]:
     if not HANDOFF_DIR.is_dir():
-        return None
-    rows = sorted(
+        return []
+    return sorted(
         HANDOFF_DIR.glob("*.json"),
         key=lambda path: (path.stat().st_mtime_ns, path.name),
         reverse=True,
     )
+
+
+def incomplete_handoff_ids() -> list[str]:
+    rows: list[str] = []
+    for path in handoff_state_paths():
+        state = load_state(path.stem)
+        verify_transition_chain(state)
+        if state.get("status") != "V2_RESUMED":
+            rows.append(path.stem)
+    return rows
+
+
+def latest_handoff_id() -> str | None:
+    incomplete = incomplete_handoff_ids()
+    if incomplete:
+        return incomplete[0]
+    rows = handoff_state_paths()
     return rows[0].stem if rows else None
 
 
@@ -876,12 +893,36 @@ def spawn_runner(handoff_id: str) -> int:
 
 
 def start(campaign_id: str | None) -> dict[str, Any]:
+    incomplete = incomplete_handoff_ids()
+    if incomplete:
+        raise HandoffError(
+            "an incomplete Storage OS handoff already exists; resume it instead: "
+            f"aoe2war storage handoff resume {incomplete[0]}"
+        )
+
     selected = campaign_id or campaign.latest_campaign_id()
     if not selected:
         raise HandoffError("no storage campaign exists")
     state = create_state(selected)
-    pid = spawn_runner(str(state["handoff_id"]))
-    return {**load_state(str(state["handoff_id"])), "spawned_pid": pid}
+    handoff_id = str(state["handoff_id"])
+    try:
+        campaign.reserve_handoff(
+            selected,
+            handoff_id=handoff_id,
+            old_release_sha=str(state["old_release_sha"]),
+            old_build_id=str(state["old_build_id"]),
+        )
+    except Exception as exc:
+        state = load_state(handoff_id)
+        state["last_error"] = str(exc)
+        state["reservation_failed_at"] = utc_now()
+        save_state(state)
+        raise
+    state = load_state(handoff_id)
+    state["campaign_reserved_at"] = utc_now()
+    save_state(state)
+    pid = spawn_runner(handoff_id)
+    return {**load_state(handoff_id), "spawned_pid": pid}
 
 
 def launch_finish(state: dict[str, Any]) -> subprocess.Popen[str]:
@@ -1177,7 +1218,12 @@ def drive(handoff_id: str) -> int:
                 return 0
 
             if status == "V1_RUNNING":
-                campaign.request_pause(campaign_id)
+                campaign.reserve_handoff(
+                    campaign_id,
+                    handoff_id=handoff_id,
+                    old_release_sha=str(state["old_release_sha"]),
+                    old_build_id=str(state["old_build_id"]),
+                )
                 current = campaign.load_state(campaign_id)
                 if current.get("status") != "PAUSED":
                     if current.get("status") in {"COMPLETE", "FAILED", "BLOCKED"}:
