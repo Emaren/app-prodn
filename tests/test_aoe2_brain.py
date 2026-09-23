@@ -892,6 +892,50 @@ class KingdomIntelligenceTests(unittest.TestCase):
         self.assertEqual(perf["baseline_targets"][0]["path"], "/before")
         analyze.assert_called_once_with(after_receipt, {"pages": []})
 
+    def test_incomplete_storage_handoff_outranks_generic_finish(self):
+        perf = performance()
+        perf["matches_current_release"] = True
+        rows = MODULE.brain_recommendations(
+            finish=finish(complete=False),
+            control=control(status="current"),
+            performance=perf,
+            truth=truth(),
+            council_recommendations=[],
+            storage={"health": "HEALTHY"},
+            storage_handoff={
+                "status": "SOURCE_READY",
+                "handoff_id": "handoff-1",
+                "process_alive": False,
+            },
+        )
+        self.assertEqual(rows[0]["key"], "storage-handoff-incomplete")
+        self.assertEqual(
+            rows[0]["action"],
+            "aoe2war storage handoff resume handoff-1",
+        )
+
+    def test_active_storage_handoff_recommends_status_not_duplicate_resume(self):
+        perf = performance()
+        perf["matches_current_release"] = True
+        rows = MODULE.brain_recommendations(
+            finish=finish(complete=False),
+            control=control(status="current"),
+            performance=perf,
+            truth=truth(),
+            council_recommendations=[],
+            storage={"health": "HEALTHY"},
+            storage_handoff={
+                "status": "RUNNER_RECONCILED",
+                "handoff_id": "handoff-2",
+                "process_alive": True,
+            },
+        )
+        self.assertEqual(rows[0]["key"], "storage-handoff-incomplete")
+        self.assertEqual(
+            rows[0]["action"],
+            "aoe2war storage handoff status handoff-2",
+        )
+
     def test_estate_p0_outranks_storage_attention_before_finish(self):
         perf = performance()
         perf["matches_current_release"] = True
