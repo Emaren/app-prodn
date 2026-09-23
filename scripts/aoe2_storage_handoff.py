@@ -738,13 +738,22 @@ def spawn_runner(handoff_id: str) -> int:
         close_fds=True,
     )
     log.close()
-    runner_identity = capture_process_identity(
-        int(proc.pid),
-        required_tokens=("aoe2_storage_handoff.py", "_run", handoff_id),
-    )
     state["runner_pid"] = int(proc.pid)
-    state["runner_process_identity"] = runner_identity
+    state["runner_process_identity"] = None
     state["runner_started_at"] = utc_now()
+    state["runner_identity_error"] = None
+    save_state(state)
+    try:
+        runner_identity = capture_process_identity(
+            int(proc.pid),
+            required_tokens=("aoe2_storage_handoff.py", "_run", handoff_id),
+        )
+    except Exception as exc:
+        state["runner_identity_error"] = str(exc)
+        save_state(state)
+        raise
+    state["runner_process_identity"] = runner_identity
+    state["runner_identity_error"] = None
     save_state(state)
     return int(proc.pid)
 
@@ -778,14 +787,23 @@ def launch_finish(state: dict[str, Any]) -> subprocess.Popen[str]:
         close_fds=True,
     )
     log.close()
-    finish_identity = capture_process_identity(
-        int(proc.pid),
-        required_tokens=("aoe2_finish.py", str(state["handoff_id"])),
-    )
     state["finish_pid"] = int(proc.pid)
-    state["finish_process_identity"] = finish_identity
+    state["finish_process_identity"] = None
     state["finish_started_at"] = utc_now()
     state["finish_returncode"] = None
+    state["finish_identity_error"] = None
+    save_state(state)
+    try:
+        finish_identity = capture_process_identity(
+            int(proc.pid),
+            required_tokens=("aoe2_finish.py", str(state["handoff_id"])),
+        )
+    except Exception as exc:
+        state["finish_identity_error"] = str(exc)
+        save_state(state)
+        raise
+    state["finish_process_identity"] = finish_identity
+    state["finish_identity_error"] = None
     save_state(state)
     return proc
 
@@ -961,6 +979,12 @@ def wait_for_finish_or_recover(state: dict[str, Any]) -> tuple[str, str]:
             save_state(state)
             bind_finish_receipt(state)
             return current_release, current_build
+    elif isinstance(finish_pid, int) and process_alive(finish_pid):
+        raise HandoffError(
+            "Finish PID is alive but exact process identity is unavailable or "
+            "mismatched; refusing to launch a duplicate Finish. Wait for that "
+            "PID to exit, then resume the same handoff."
+        )
 
     proc = launch_finish(state)
     returncode = proc.wait()
