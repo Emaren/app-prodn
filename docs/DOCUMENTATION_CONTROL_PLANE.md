@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `release/watcher-1.6.1-promotion-20260922` at `46df4663ba9feb1e2a3dd96fac8b9d85f8ff28a0`
+Implementation baseline: `fix/watcher-release-macos-rsync-20260922` at `d1d7d4cc9071cfab9f0221135f1c6c3af6bc8faf`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
