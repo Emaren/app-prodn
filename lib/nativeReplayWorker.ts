@@ -16,13 +16,7 @@ export const NATIVE_REPLAY_MAX_WALL_SECONDS = 300;
 
 const ARCHIVE_ROOT = "/mnt/HC_Volume_105319120/aoe2-replay-archive";
 const SHA256_RE = /^[0-9a-f]{64}$/;
-const SAFE_REPLAY_EXTENSIONS = new Set([
-  ".aoe2record",
-  ".aoe2mpgame",
-  ".mgz",
-  ".mgx",
-  ".mgl",
-]);
+const SAFE_REPLAY_EXTENSIONS = new Set([".aoe2record"]);
 
 export type NativeReplayRunParameters = {
   gameStatsId: number;
@@ -148,6 +142,8 @@ export async function buildNativeReplayRunParameters(
       replayHash: true,
       is_final: true,
       players: true,
+      replay_file: true,
+      original_filename: true,
     },
   });
   if (!game || !game.is_final) {
@@ -157,6 +153,13 @@ export async function buildNativeReplayRunParameters(
   const replaySha256 = String(game.replayHash || "").trim().toLowerCase();
   if (!SHA256_RE.test(replaySha256)) {
     throw new Error("The selected battle has no canonical replay SHA-256.");
+  }
+
+  const sourceName = game.original_filename || game.replay_file || "";
+  if (extname(sourceName).toLowerCase() !== ".aoe2record") {
+    throw new Error(
+      "Native HD playthrough accepts recorded .aoe2record battles only; saved checkpoints and legacy containers remain in their separate evidence lanes."
+    );
   }
 
   const normalized = normalizeReplayPlayers(game.players);
