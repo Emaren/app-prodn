@@ -1729,7 +1729,7 @@ a long manual cockpit sequence.
 
 The durable rule is that a handoff is its own transaction, not an operator
 checklist. `aoe2war storage handoff` now records and advances the exact states
-`CREATED -> V1_FROZEN -> TRANSACTION_SEAM_PROVEN -> SOURCE_READY ->
+`V1_RUNNING -> V1_FROZEN -> TRANSACTION_SEAM_PROVEN -> SOURCE_READY ->
 RUNNER_RECONCILED -> V2_CERTIFIED -> V1_RETIRED -> V2_RESUMED`. Every
 transition is sealed before the next mutation. The controller runs in a detached
 session with a durable log, so losing the initiating shell does not abandon the
