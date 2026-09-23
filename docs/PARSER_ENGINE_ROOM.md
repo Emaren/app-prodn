@@ -104,8 +104,10 @@ their separate evidence/decoder lanes and are never renamed into native battle
 inputs.
 
 Before native execution the Mac worker also binds **source provenance**. The
-tracked `app-prodn` and sibling `api-prodn` worktrees must be clean, and the
-local API HEAD must contain canonical native-worker merge
+tracked `app-prodn` and sibling `api-prodn` worktrees must be clean. The
+local app HEAD must contain reviewed canary implementation
+`aa39b283fbb8b508e79d902091de6244500194c1`, and the local API HEAD must
+contain canonical native-worker merge
 `51bd43ecadc9f830976925bcc3586a1bd29a4275`. The resulting app/API HEADs are
 stamped into the candidate result. A dirty, stale, or divergent local engine
 checkout therefore fails closed instead of becoming invisible runtime input.
