@@ -77,6 +77,9 @@ export async function GET(request: NextRequest) {
         "Content-Length": String(artifact.byteSize),
         "Content-Disposition": `attachment; filename="${artifact.fileName}"`,
         "X-AoE2WAR-Replay-SHA256": artifact.sha256,
+        "X-AoE2WAR-Replay-Extension": artifact.fileName.slice(
+          artifact.fileName.lastIndexOf(".")
+        ),
         "X-AoE2WAR-Game-Stats-ID": String(parameters.gameStatsId),
         "X-Content-Type-Options": "nosniff",
       },
