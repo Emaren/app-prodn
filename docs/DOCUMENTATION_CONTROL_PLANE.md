@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/db-snapshot-retention-v1-20260923` at `6505abcabd0da139dc7c64009267c7c3c5a05970`
+Implementation baseline: `feature/db-snapshot-retention-v1-20260923` at `6c08f45ac96888cc5e9a954de25f7cbf41a1f0ac`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
