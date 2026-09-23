@@ -48,6 +48,26 @@ class StorageHandoffTests(unittest.TestCase):
             "log_path": "handoff.log",
         }
 
+    def test_load_state_rejects_history_status_mismatch(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            with mock.patch.object(handoff, "HANDOFF_ROOT", root):
+                state = self.base_state(status="V1_FROZEN")
+                # V1_FROZEN requires exactly one V1_RUNNING -> V1_FROZEN receipt row.
+                state["history"] = []
+                path = handoff.state_path("handoff-test")
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(
+                    __import__("json").dumps(state),
+                    encoding="utf-8",
+                )
+
+                with self.assertRaisesRegex(
+                    handoff.HandoffError,
+                    "state/history mismatch",
+                ):
+                    handoff.load_state("handoff-test")
+
     def test_latest_status_prefers_incomplete_handoff(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
