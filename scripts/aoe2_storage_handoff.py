@@ -229,6 +229,82 @@ def latest_handoff_id() -> str | None:
     return rows[0].stem if rows else None
 
 
+def verify_transition_chain(state: dict[str, Any]) -> None:
+    if (
+        state.get("schema") != 1
+        or state.get("kind") != "aoe2war-storage-handoff"
+    ):
+        return
+
+    handoff_id = str(state.get("handoff_id") or "")
+    status = str(state.get("status") or "")
+    if status not in FLOW:
+        raise HandoffError(f"invalid persisted handoff status: {status!r}")
+    expected_count = FLOW.index(status) + 1
+    history = state.get("history")
+    if not isinstance(history, list) or len(history) != expected_count:
+        raise HandoffError(
+            "handoff transition history does not match persisted state: "
+            f"status={status} expected={expected_count} "
+            f"observed={len(history) if isinstance(history, list) else 'invalid'}"
+        )
+
+    previous: str | None = None
+    for index, row in enumerate(history):
+        if not isinstance(row, dict):
+            raise HandoffError(
+                f"handoff transition history row {index} is not an object"
+            )
+        target = FLOW[index]
+        source = previous
+        expected_path = transition_receipt_path(handoff_id, target)
+        recorded_path = Path(str(row.get("receipt_path") or ""))
+        if recorded_path != expected_path:
+            raise HandoffError(
+                "handoff transition receipt path drifted: "
+                f"state={target} expected={expected_path} recorded={recorded_path}"
+            )
+        if not expected_path.is_file():
+            raise HandoffError(
+                f"handoff transition receipt is missing: {expected_path}"
+            )
+        raw = expected_path.read_bytes()
+        digest = hashlib.sha256(raw).hexdigest()
+        if digest != row.get("receipt_sha256"):
+            raise HandoffError(
+                "handoff transition receipt digest mismatch: "
+                f"state={target} expected={row.get('receipt_sha256')} "
+                f"observed={digest}"
+            )
+        try:
+            receipt = json.loads(raw)
+        except Exception as exc:
+            raise HandoffError(
+                f"handoff transition receipt is invalid JSON: {expected_path}"
+            ) from exc
+        if (
+            not isinstance(receipt, dict)
+            or receipt.get("schema") != 1
+            or receipt.get("kind") != "aoe2war-storage-handoff-transition"
+            or receipt.get("handoff_id") != handoff_id
+            or receipt.get("from") != source
+            or receipt.get("to") != target
+            or receipt.get("created_at") != row.get("at")
+            or (receipt.get("evidence") or {}) != (row.get("evidence") or {})
+        ):
+            raise HandoffError(
+                f"handoff transition receipt content mismatch: {expected_path}"
+            )
+        previous = target
+
+    last_path = str(history[-1].get("receipt_path") or "")
+    last_digest = str(history[-1].get("receipt_sha256") or "")
+    if state.get("last_transition_receipt") != last_path:
+        raise HandoffError("handoff latest transition receipt pointer drifted")
+    if state.get("last_transition_receipt_sha256") != last_digest:
+        raise HandoffError("handoff latest transition digest pointer drifted")
+
+
 def process_alive(pid: int | None) -> bool:
     if not isinstance(pid, int) or pid <= 0:
         return False
@@ -1090,6 +1166,7 @@ def drive(handoff_id: str) -> int:
     try:
         while True:
             state = load_state(handoff_id)
+            verify_transition_chain(state)
             status = str(state["status"])
             campaign_id = str(state["campaign_id"])
 
@@ -1321,6 +1398,7 @@ def resume(handoff_id: str | None) -> dict[str, Any]:
     if not selected:
         raise HandoffError("no storage handoff exists")
     state = load_state(selected)
+    verify_transition_chain(state)
     if state.get("status") == "V2_RESUMED":
         return state
     runner_pid = state.get("runner_pid")
