@@ -82,7 +82,7 @@ class StageTests(unittest.TestCase):
         }
         self.assertEqual(
             MODULE.watcher_distribution_version(manifest),
-            "1.6.0",
+            "1.6.1",
         )
         self.assertEqual(
             MODULE.watcher_distribution_version(

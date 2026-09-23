@@ -8,14 +8,41 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "telemetry-contract"
-reviewed_at: "2026-09-21"
+reviewed_at: "2026-09-22"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
 
 # Watcher Telemetry
 
-## Production release identity — 2026-09-21
+## Production release identity — 2026-09-22
+
+Watcher 1.6.1 is the memory/retry hotfix for the 1.6.0 low-footprint release. Historical batch imports now use one disk-backed immutable replay snapshot at a time rather than retaining replay bodies in Node Buffers. Stable historical HTTP 422 parser/validation failures no longer enter live replay-growth retry semantics, and Windows disk-backed upload streams are explicitly closed before temporary snapshot cleanup. Cleanup failure is non-authoritative to a successful replay receipt.
+
+The live download root remains `/mnt/HC_Volume_105319120/aoe2-downloads`, exposed through the app's `public/downloads` symlink. The Watcher 1.6.1 release contract requires the Windows, macOS, and Linux updater manifests to report `version: 1.6.1` before web metadata is promoted.
+
+Release evidence:
+
+- Watcher runtime source: `3f8982d0f9c3f28540ec49adacad5418de065adc`;
+- certified candidate build source: `eb8c7478575b472273b4400f01c4d401df03e2c5`;
+- successful Windows Artifact Signing run: `35808959038`;
+- successful macOS/Linux release build run: `35808958815`;
+- successful certified publication-bundle workflow: `35809312675`;
+- public GitHub release: `v1.6.1`, published 2026-09-23 02:39:36 UTC.
+
+Verified release binary SHA-256 values:
+
+- Windows installer: `755f04816cb0c965c1c716f0a904521b6c470448b4096d07668ab02ff20a32fa`;
+- Windows portable EXE: `775356c6f901ab688537a00d96bfb1887bf0d44799103df2a1b17fecefbfec44`;
+- Apple Silicon DMG: `e00be9ce8ff1e3fb4794345c5f72147c6d71b947c7581f626e6e8ebb89f551d8`;
+- macOS direct ZIP: `c22084525aebf7634581e3abeb6c794ff5206579630a00e6f94df7fe226b60cc`;
+- Linux AppImage: `56df79354885859826833c848591b69605aae5cd2964d69f6d6ed40f14b98924`.
+
+Secondary release evidence is pinned: macOS DMG blockmap `87564583a61e95e3576bd2385e4239ca18d1fca572328defe6791a3e783571df`, `latest-mac.yml` `3779e9181397c60b4b8fed02db3cf1b906d60af11d600b5b73bb37bafc59f95a`, and `latest-linux.yml` `66b56060fb82a35fc655ac8361df5f6b071ea85cb58d85e356c3aa3f1e92b63b`. `SHA256SUMS-1.6.1.txt` and `watcher-release-manifest-1.6.1.json` are the authoritative inventory receipts.
+
+The hotfix changes replay transport resource handling only. It does not expand replay-result, betting, settlement, database, or Wolo authority. Live growing-replay uploads retain the existing in-memory immutable snapshot and replay-progress behavior.
+
+## Previous production release identity — 2026-09-21
 
 The live download root is `/mnt/HC_Volume_105319120/aoe2-downloads`, exposed through the app's `public/downloads` symlink. The Watcher 1.6.0 release contract requires the Windows, macOS, and Linux updater manifests to report `version: 1.6.0` before the web metadata is considered publishable.
 
