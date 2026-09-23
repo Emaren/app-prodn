@@ -268,16 +268,64 @@ recover capacity when a finished source release is waiting behind the capacity
 gate; the worker continues proving the actual runtime serving users instead of
 pretending the unpublished source tree is production.
 
-Finish now reconciles the installed root-owned maintenance runner at exactly
-that serialized boundary. If a worker is still active, the same locks make the
+The first-class command is:
+
+```bash
+aoe2war storage handoff start
+aoe2war storage handoff status
+aoe2war storage handoff resume <handoff-id>
+```
+
+`start` requires a live detached Storage campaign at the exact
+between-generation seam. It records the V1 campaign identity, PID, PGID,
+descendants, release SHA, BUILD_ID and completed-generation count, then launches
+the handoff controller in a detached process group with a durable log. Closing
+the initiating terminal does not stop the takeover.
+
+The durable state machine is strictly ordered:
+
+`CREATED -> V1_FROZEN -> TRANSACTION_SEAM_PROVEN -> SOURCE_READY -> RUNNER_RECONCILED -> V2_CERTIFIED -> V1_RETIRED -> V2_RESUMED`
+
+Every transition writes a read-only transition receipt before the next mutation.
+Reinvocation does not restart from scratch: `resume` reloads the last proven
+state and continues from there. Kingdom Intelligence treats any nonterminal
+handoff as higher-priority control-plane work and reports the exact
+`storage handoff resume` or `storage handoff status` command instead of
+recommending a generic Finish retry.
+
+V1 freeze is fail-closed. The campaign must have no
+`current_generation` or `current_generation_started_at`; the controller
+process group is stopped and then revalidated by exact PID/PGID/descendant
+identity. A process-group change, disappearing process, new descendant, or
+partially active transaction blocks the takeover.
+
+The canonical Finish transaction remains the only source/deploy/certification
+authority. During the handoff it must prove the maintenance-runner
+reconciliation phase, Wolo PID/restart/height continuity, full release
+certification, final certification, exactly one protected Wolo listener on each
+port, and `wolo_mutated_by_finish=false`. The old V1 controller is never
+retired before those proofs are durable.
+
+Only after V2 certification does the handoff retire the still-frozen V1 process
+group and mark its campaign `RETIRED_HANDOFF`, which ordinary campaign
+`resume` refuses. If storage still has actionable backlog, the handoff creates
+a V2 successor campaign bound to the new certified source/build. It carries the
+V1 completed-generation count as `continuation_generations`, so an inherited
+WATCH-range campaign may continue toward the already-authorized healthy target
+without pretending it is a brand-new maintenance request. If no work remains,
+V2 resumes as an explicit no-action-required terminal result.
+
+Finish also reconciles the installed root-owned maintenance runner at exactly
+the serialized seam. If a worker is still active, the same locks make the
 handoff fail closed. Once the seam is free, the new runner is atomically
 installed with exact SHA, syntax, owner/mode, durable receipt and Wolo
 continuity proof before the normal operational Doctor proceeds.
 
-This permits a controlled "mid-air refuel": finish the current exact
-transaction, freeze the old batch from replanning, certify the new control
-plane, then resume the remaining storage backlog under the new governor. No
-partially verified generation is discarded or reinterpreted.
+This is the controlled "mid-air refuel": finish the current exact transaction,
+freeze the old batch from replanning, certify the new control plane, retire only
+the frozen old orchestrator, then continue the remaining backlog under the new
+governor. No partially verified generation is discarded, reinterpreted or
+silently replayed.
 
 
 ## Deployment boundary
