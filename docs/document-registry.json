@@ -1049,9 +1049,9 @@
       "owner": "aoe2war-web",
       "path": "docs/PARSER_ENGINE_ROOM.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-09-22",
+      "reviewed_at": "2026-09-23",
       "sensitivity": "restricted",
-      "sha256": "52b7f1ecce236b903dd146e90b7504ff3d58fc6f1163d10662dbc8c7f2280d11",
+      "sha256": "63d60585634c3824f908eb3346ab67a3feeec8daac52b0317ee76f8c0e26ab49",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
