@@ -149,6 +149,68 @@ class DatabaseSnapshotRetentionTests(unittest.TestCase):
         self.assertNotIn("os.remove(", source)
         self.assertNotIn("shutil.rmtree(", source)
 
+    def test_remote_inventory_fails_closed_when_root_is_missing(self):
+        with tempfile.TemporaryDirectory() as td:
+            missing = Path(td) / "missing"
+            policy = {
+                "snapshot_root": str(missing),
+                "max_metadata_file_bytes": 2 * 1024 * 1024,
+            }
+            encoded = base64.urlsafe_b64encode(
+                json.dumps(policy).encode("utf-8")
+            ).decode("ascii")
+            proc = subprocess.run(
+                [sys.executable, "-", encoded, "0"],
+                input=retention.REMOTE_INVENTORY,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn("canonical deploy-receipt root", proc.stderr)
+
+    def test_remote_inventory_rejects_symlinked_status_receipt(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            modern = root / "migration-20260923T120000Z-aaaaaaaaaaaa"
+            modern.mkdir()
+            dump = modern / "pre-migration.dump"
+            dump.write_bytes(b"backup")
+            real_status = root / "real-status.txt"
+            real_status.write_text(
+                "status=APPLIED\n"
+                + "release_sha=" + ("a" * 40) + "\n"
+                + "dump=pre-migration.dump\n"
+                + "dump_sha256=" + hashlib.sha256(dump.read_bytes()).hexdigest() + "\n",
+                encoding="utf-8",
+            )
+            (modern / "migration-status.txt").symlink_to(real_status)
+            (modern / "migration-status.txt.sha256").write_text(
+                hashlib.sha256(real_status.read_bytes()).hexdigest()
+                + "  migration-status.txt\n",
+                encoding="utf-8",
+            )
+            policy = {
+                "snapshot_root": str(root),
+                "max_metadata_file_bytes": 2 * 1024 * 1024,
+            }
+            encoded = base64.urlsafe_b64encode(
+                json.dumps(policy).encode("utf-8")
+            ).decode("ascii")
+            proc = subprocess.run(
+                [sys.executable, "-", encoded, "0"],
+                input=retention.REMOTE_INVENTORY,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        row = json.loads(proc.stdout)["snapshots"][0]
+        self.assertFalse(row["status_receipt_valid"])
+        self.assertFalse(row["migration_shape_exact"])
+
     def test_default_inventory_does_not_hash_snapshot_bodies(self):
         source = open(retention.__file__, encoding="utf-8").read()
         self.assertIn('verify_hashes = sys.argv[2] == "1"', source)
