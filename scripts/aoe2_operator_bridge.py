@@ -31,6 +31,7 @@ DEFAULT_TOKEN_FILE = Path(
 ).expanduser()
 
 VERSION = "1.4.0"
+NATIVE_REPLAY_CANARY_GAME_IDS = {32388}
 
 ACTIONS = {
     "status",
@@ -217,6 +218,10 @@ def command_for_run(
             or game_stats_id < 1
         ):
             raise BridgeError("Native replay run has invalid GameStats identity.")
+        if game_stats_id not in NATIVE_REPLAY_CANARY_GAME_IDS:
+            raise BridgeError(
+                "Native replay execution is still locked to trusted control GameStats #32388."
+            )
         if __import__("re").fullmatch(r"[0-9a-f]{64}", replay_sha256) is None:
             raise BridgeError("Native replay run has invalid replay SHA-256.")
         if (
