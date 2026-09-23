@@ -51,7 +51,7 @@ EXPECTED_DATA_SHA256 = (
     "21591ac67251d8674635d5634f2d8e9ff80ad90f3c792f9503d60dd658d61058"
 )
 MAX_REPLAY_BYTES = 64 * 1024 * 1024
-SAFE_REPLAY_EXTENSIONS = {".aoe2record", ".aoe2mpgame", ".mgz", ".mgx", ".mgl"}
+SAFE_REPLAY_EXTENSIONS = {".aoe2record"}
 SHA256_RE = __import__("re").compile(r"^[0-9a-f]{64}$")
 
 
