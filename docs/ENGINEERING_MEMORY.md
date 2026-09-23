@@ -1768,9 +1768,10 @@ would trade unique recovery history for a disk-percentage target.
 Durable rule: deploy database snapshots are their own retention class. Modern
 migration-boundary dumps are recognized only from the exact
 `migration-<timestamp>-<release12>/pre-migration.dump` receipt contract with
-a valid status receipt, release SHA and sealed dump SHA-256. Financial,
-incident/recovery and legacy-ambiguous shapes remain protected rather than being
-coerced into the modern class.
+a valid status receipt, unique release/database/dump/hash fields, at least one
+recorded migration, and an exact release SHA whose first 12 hex characters match
+the directory identity. Financial, incident/recovery and legacy-ambiguous
+shapes remain protected rather than being coerced into the modern class.
 
 The read-only `aoe2war storage db-snapshots` planner keeps a named hot set plus
 weekly and monthly cold restore points, protects externally referenced evidence,
