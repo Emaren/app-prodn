@@ -202,6 +202,47 @@ class StorageCampaignTests(unittest.TestCase):
         spawn.assert_called_once_with("test")
         self.assertEqual(result["spawned_pid"], 456)
 
+    def test_handoff_rebind_is_idempotent_after_exact_v2_adoption(self):
+        state = {
+            "schema": 1,
+            "kind": "aoe2war-storage-campaign",
+            "campaign_id": "test",
+            "status": "RUNNING",
+            "pid": 456,
+            "release_sha": "b" * 40,
+            "build_id": "build-b",
+            "handoff_history": [
+                {
+                    "handoff_id": "handoff-a",
+                    "old_release_sha": "a" * 40,
+                    "old_build_id": "build-a",
+                    "new_release_sha": "b" * 40,
+                    "new_build_id": "build-b",
+                    "rebound_at": "2026-09-23T20:00:00+00:00",
+                }
+            ],
+        }
+        with (
+            mock.patch.object(campaign, "load_state", return_value=dict(state)),
+            mock.patch.object(
+                campaign,
+                "current_baseline",
+                return_value=("b" * 40, "build-b"),
+            ),
+            mock.patch.object(campaign, "save_state") as save,
+        ):
+            result = campaign.rebind_after_handoff(
+                "test",
+                handoff_id="handoff-a",
+                old_release_sha="a" * 40,
+                old_build_id="build-a",
+                new_release_sha="b" * 40,
+                new_build_id="build-b",
+            )
+
+        self.assertEqual(result, state)
+        save.assert_not_called()
+
     def test_handoff_rebind_requires_paused_transaction_seam(self):
         state = {
             "schema": 1,
