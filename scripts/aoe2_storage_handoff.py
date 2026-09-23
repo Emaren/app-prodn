@@ -241,7 +241,7 @@ def process_alive(pid: int | None) -> bool:
 
 def process_table() -> dict[int, dict[str, Any]]:
     proc = subprocess.run(
-        ["ps", "-axo", "pid=,ppid=,pgid=,command="],
+        ["ps", "-ww", "-axo", "pid=,ppid=,pgid=,command="],
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
