@@ -563,6 +563,45 @@ def source_ready(old_release: str, *, expected_target: str | None = None) -> str
     return head
 
 
+def source_ready_for_finish(target_source: str) -> str:
+    branch = git_output("branch", "--show-current")
+    if branch != "main":
+        raise HandoffError(
+            f"handoff Finish requires canonical main, found {branch!r}"
+        )
+    if git_output("status", "--porcelain", "--untracked-files=all"):
+        raise HandoffError("handoff Finish requires a clean canonical worktree")
+    head = git_output("rev-parse", "HEAD")
+    tracking = git_output("rev-parse", "origin/main")
+    live_remote = git_output("ls-remote", "origin", "refs/heads/main")
+    parts = live_remote.split()
+    if (
+        len(parts) != 2
+        or len(parts[0]) != 40
+        or any(ch not in "0123456789abcdef" for ch in parts[0])
+        or parts[1] != "refs/heads/main"
+    ):
+        raise HandoffError(
+            f"cannot prove live GitHub main before Finish: {live_remote!r}"
+        )
+    remote = parts[0]
+    if tracking != remote:
+        raise HandoffError(
+            f"local origin/main is stale before Finish: "
+            f"tracking={tracking} live={remote}"
+        )
+    if head != remote:
+        raise HandoffError(
+            f"local HEAD {head} != live origin/main {remote} before Finish"
+        )
+    if not implementation_equivalent_release(target_source, head):
+        raise HandoffError(
+            "handoff source drifted after authorization with non-documentation "
+            f"implementation changes: target={target_source} current={head}"
+        )
+    return head
+
+
 def transition(
     state: dict[str, Any],
     target: str,
@@ -1022,6 +1061,7 @@ def wait_for_finish_or_recover(state: dict[str, Any]) -> tuple[str, str]:
             "PID to exit, then resume the same handoff."
         )
 
+    source_ready_for_finish(target)
     proc = launch_finish(state)
     returncode = proc.wait()
     state = load_state(str(state["handoff_id"]))
