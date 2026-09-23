@@ -1737,7 +1737,12 @@ family, binds the exact clean `main` target, launches canonical Finish
 independently of the initiating terminal, and requires an exact CERTIFIED Finish
 receipt whose maintenance-runner reconciliation phase passed for that target.
 Only then may the old process family be declared retired and the paused campaign
-adopt the new certified source/build before resuming.
+adopt the new certified source/build before resuming. Wolo continuity is proved
+twice: canonical Finish carries its protected-service proof, while the handoff
+independently snapshots validator PID, restart counter, active-enter identity,
+protected listeners, fresh advancing height, and block age before takeover,
+after V2 certification, and after V2 campaign resume. Any restart or height
+regression fails closed.
 
 General rule: when authority changes while durable work is in flight, model the
 takeover itself as a receipted state machine. Every restart must answer "what was
