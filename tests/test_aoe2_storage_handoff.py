@@ -177,6 +177,62 @@ class StorageHandoffTests(unittest.TestCase):
             ):
                 handoff.live_campaign_controller("campaign-a")
 
+    def test_source_ready_for_finish_allows_docs_only_descendant(self):
+        values = {
+            ("branch", "--show-current"): "main",
+            ("status", "--porcelain", "--untracked-files=all"): "",
+            ("rev-parse", "HEAD"): "c" * 40,
+            ("rev-parse", "origin/main"): "c" * 40,
+            ("ls-remote", "origin", "refs/heads/main"): (
+                ("c" * 40) + "\trefs/heads/main"
+            ),
+        }
+        with (
+            mock.patch.object(
+                handoff,
+                "git_output",
+                side_effect=lambda *args: values[args],
+            ),
+            mock.patch.object(
+                handoff,
+                "implementation_equivalent_release",
+                return_value=True,
+            ) as equivalent,
+        ):
+            self.assertEqual(
+                handoff.source_ready_for_finish("b" * 40),
+                "c" * 40,
+            )
+        equivalent.assert_called_once_with("b" * 40, "c" * 40)
+
+    def test_source_ready_for_finish_blocks_non_docs_source_drift(self):
+        values = {
+            ("branch", "--show-current"): "main",
+            ("status", "--porcelain", "--untracked-files=all"): "",
+            ("rev-parse", "HEAD"): "c" * 40,
+            ("rev-parse", "origin/main"): "c" * 40,
+            ("ls-remote", "origin", "refs/heads/main"): (
+                ("c" * 40) + "\trefs/heads/main"
+            ),
+        }
+        with (
+            mock.patch.object(
+                handoff,
+                "git_output",
+                side_effect=lambda *args: values[args],
+            ),
+            mock.patch.object(
+                handoff,
+                "implementation_equivalent_release",
+                return_value=False,
+            ),
+        ):
+            with self.assertRaisesRegex(
+                handoff.HandoffError,
+                "implementation changes",
+            ):
+                handoff.source_ready_for_finish("b" * 40)
+
     def test_source_ready_requires_clean_exact_main_descendant(self):
         values = {
             ("branch", "--show-current"): "main",
@@ -489,6 +545,36 @@ class StorageHandoffTests(unittest.TestCase):
                 "refusing to launch a duplicate Finish",
             ):
                 handoff.wait_for_finish_or_recover(state)
+        launch.assert_not_called()
+
+    def test_wait_for_finish_reproves_source_before_new_finish(self):
+        state = {
+            "handoff_id": "handoff-a",
+            "target_source_sha": "b" * 40,
+            "created_at": "2026-09-23T19:00:00+00:00",
+            "finish_pid": None,
+            "finish_process_identity": None,
+            "finish_log_path": "/tmp/handoff.finish.log",
+        }
+        with (
+            mock.patch.object(
+                handoff.storage,
+                "operator_baseline",
+                return_value=("a" * 40, "build-a"),
+            ),
+            mock.patch.object(
+                handoff,
+                "source_ready_for_finish",
+                side_effect=handoff.HandoffError("implementation changes"),
+            ) as ready,
+            mock.patch.object(handoff, "launch_finish") as launch,
+        ):
+            with self.assertRaisesRegex(
+                handoff.HandoffError,
+                "implementation changes",
+            ):
+                handoff.wait_for_finish_or_recover(dict(state))
+        ready.assert_called_once_with("b" * 40)
         launch.assert_not_called()
 
     def test_finish_is_terminal_independent_and_uses_canonical_finish(self):
