@@ -22,6 +22,91 @@ class StorageHandoffTests(unittest.TestCase):
             ],
         )
 
+    def test_latest_status_prefers_incomplete_handoff(self):
+        completed = mock.Mock()
+        completed.stem = "completed"
+        completed.stat.return_value.st_mtime_ns = 20
+        incomplete = mock.Mock()
+        incomplete.stem = "incomplete"
+        incomplete.stat.return_value.st_mtime_ns = 10
+
+        with (
+            mock.patch.object(
+                handoff,
+                "handoff_state_paths",
+                return_value=[completed, incomplete],
+            ),
+            mock.patch.object(
+                handoff,
+                "incomplete_handoff_ids",
+                return_value=["incomplete"],
+            ),
+        ):
+            self.assertEqual(handoff.latest_handoff_id(), "incomplete")
+
+    def test_start_refuses_to_hide_existing_incomplete_handoff(self):
+        with (
+            mock.patch.object(
+                handoff,
+                "incomplete_handoff_ids",
+                return_value=["handoff-a"],
+            ),
+            mock.patch.object(handoff, "create_state") as create,
+            mock.patch.object(handoff, "spawn_runner") as spawn,
+        ):
+            with self.assertRaisesRegex(
+                handoff.HandoffError,
+                "storage handoff resume handoff-a",
+            ):
+                handoff.start("campaign-a")
+
+        create.assert_not_called()
+        spawn.assert_not_called()
+
+    def test_start_reserves_campaign_before_spawning_handoff_runner(self):
+        events = []
+        state = {
+            "handoff_id": "handoff-a",
+            "old_release_sha": "a" * 40,
+            "old_build_id": "build-a",
+        }
+
+        with (
+            mock.patch.object(handoff, "incomplete_handoff_ids", return_value=[]),
+            mock.patch.object(handoff, "create_state", return_value=dict(state)),
+            mock.patch.object(
+                handoff.campaign,
+                "reserve_handoff",
+                side_effect=lambda *args, **kwargs: events.append("reserve"),
+            ) as reserve,
+            mock.patch.object(
+                handoff,
+                "load_state",
+                return_value=dict(state),
+            ),
+            mock.patch.object(
+                handoff,
+                "save_state",
+                side_effect=lambda _state: events.append("save"),
+            ),
+            mock.patch.object(
+                handoff,
+                "spawn_runner",
+                side_effect=lambda _id: events.append("spawn") or 456,
+            ) as spawn,
+        ):
+            result = handoff.start("campaign-a")
+
+        reserve.assert_called_once_with(
+            "campaign-a",
+            handoff_id="handoff-a",
+            old_release_sha="a" * 40,
+            old_build_id="build-a",
+        )
+        spawn.assert_called_once_with("handoff-a")
+        self.assertLess(events.index("reserve"), events.index("spawn"))
+        self.assertEqual(result["spawned_pid"], 456)
+
     def test_process_family_collects_descendants(self):
         rows = {
             10: {"pid": 10, "ppid": 1, "pgid": 10, "command": "python v1"},
