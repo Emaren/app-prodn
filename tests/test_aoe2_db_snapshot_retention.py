@@ -239,6 +239,106 @@ class DatabaseSnapshotRetentionTests(unittest.TestCase):
         self.assertFalse(row["status_receipt_valid"])
         self.assertFalse(row["migration_shape_exact"])
 
+    def test_remote_inventory_requires_directory_release_prefix_match(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            modern = root / "migration-20260923T120000Z-bbbbbbbbbbbb"
+            modern.mkdir()
+            dump = modern / "pre-migration.dump"
+            dump.write_bytes(b"backup")
+            dump_sha = hashlib.sha256(dump.read_bytes()).hexdigest()
+            status = modern / "migration-status.txt"
+            status.write_text(
+                "\n".join(
+                    [
+                        "status=APPLIED",
+                        "release_sha=" + ("a" * 40),
+                        "database=aoe2hdbets",
+                        "dump=pre-migration.dump",
+                        "dump_sha256=" + dump_sha,
+                        "migration=20260923000000_test",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            status_sha = hashlib.sha256(status.read_bytes()).hexdigest()
+            (modern / "migration-status.txt.sha256").write_text(
+                f"{status_sha}  migration-status.txt\n",
+                encoding="utf-8",
+            )
+            policy = {
+                "snapshot_root": str(root),
+                "max_metadata_file_bytes": 2 * 1024 * 1024,
+            }
+            encoded = base64.urlsafe_b64encode(
+                json.dumps(policy).encode("utf-8")
+            ).decode("ascii")
+            proc = subprocess.run(
+                [sys.executable, "-", encoded, "0"],
+                input=retention.REMOTE_INVENTORY,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        row = json.loads(proc.stdout)["snapshots"][0]
+        self.assertTrue(row["status_receipt_valid"])
+        self.assertFalse(row["migration_shape_exact"])
+
+    def test_remote_inventory_requires_unique_complete_migration_metadata(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            modern = root / "migration-20260923T120000Z-aaaaaaaaaaaa"
+            modern.mkdir()
+            dump = modern / "pre-migration.dump"
+            dump.write_bytes(b"backup")
+            dump_sha = hashlib.sha256(dump.read_bytes()).hexdigest()
+            status = modern / "migration-status.txt"
+            status.write_text(
+                "\n".join(
+                    [
+                        "status=APPLIED",
+                        "release_sha=" + ("a" * 40),
+                        "release_sha=" + ("b" * 40),
+                        "dump=pre-migration.dump",
+                        "dump_sha256=" + dump_sha,
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            status_sha = hashlib.sha256(status.read_bytes()).hexdigest()
+            (modern / "migration-status.txt.sha256").write_text(
+                f"{status_sha}  migration-status.txt\n",
+                encoding="utf-8",
+            )
+            policy = {
+                "snapshot_root": str(root),
+                "max_metadata_file_bytes": 2 * 1024 * 1024,
+            }
+            encoded = base64.urlsafe_b64encode(
+                json.dumps(policy).encode("utf-8")
+            ).decode("ascii")
+            proc = subprocess.run(
+                [sys.executable, "-", encoded, "0"],
+                input=retention.REMOTE_INVENTORY,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        row = json.loads(proc.stdout)["snapshots"][0]
+        self.assertTrue(row["status_receipt_valid"])
+        self.assertFalse(row["migration_shape_exact"])
+        self.assertIsNone(row["release_sha"])
+        self.assertIsNone(row["database"])
+        self.assertEqual(row["migrations"], [])
+
     def test_default_inventory_does_not_hash_snapshot_bodies(self):
         source = open(retention.__file__, encoding="utf-8").read()
         self.assertIn('verify_hashes = sys.argv[2] == "1"', source)
