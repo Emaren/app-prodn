@@ -1,0 +1,155 @@
+import unittest
+from datetime import datetime, timezone
+
+import scripts.aoe2_db_snapshot_retention as retention
+
+
+def exact_row(index: int, *, year: int, month: int, day: int = 15) -> dict:
+    release = f"{index + 1:040x}"[-40:]
+    digest = f"{index + 1:064x}"[-64:]
+    stamp = datetime(year, month, day, 12, 0, tzinfo=timezone.utc).isoformat()
+    return {
+        "path": f"/mnt/HC_Volume_105319120/aoe2war/deploy-receipts/migration-{index}/pre-migration.dump",
+        "relative_path": f"migration-{index}/pre-migration.dump",
+        "parent": f"/mnt/HC_Volume_105319120/aoe2war/deploy-receipts/migration-{index}",
+        "parent_name": f"migration-{index}",
+        "name": "pre-migration.dump",
+        "size_bytes": 1000 + index,
+        "mtime": stamp,
+        "status_receipt_valid": True,
+        "migration_shape_exact": True,
+        "release_sha": release,
+        "declared_sha256": digest,
+        "actual_sha256": None,
+        "hash_matches_declared": None,
+        "migrations": [f"migration_{index}"],
+        "external_reference_count": 0,
+        "external_reference_examples": [],
+    }
+
+
+class DatabaseSnapshotRetentionTests(unittest.TestCase):
+    def test_exact_canonical_migration_shape_classifies_as_boundary(self):
+        row = exact_row(1, year=2026, month=9)
+        classification, reason = retention.classify_snapshot(row)
+        self.assertEqual(classification, "migration-boundary")
+        self.assertIn("canonical pre-migration", reason)
+
+    def test_verified_hash_mismatch_fails_closed_to_ambiguous(self):
+        row = exact_row(1, year=2026, month=9)
+        row["hash_matches_declared"] = False
+        classification, reason = retention.classify_snapshot(row)
+        self.assertEqual(classification, "legacy-ambiguous")
+        self.assertIn("hash does not match", reason)
+
+    def test_financial_and_incident_shapes_are_protected_classes(self):
+        financial = exact_row(1, year=2026, month=9)
+        financial["migration_shape_exact"] = False
+        financial["relative_path"] = "bet-recovery/database.dump"
+        financial["parent_name"] = "bet-recovery"
+        financial["name"] = "database.dump"
+
+        incident = exact_row(2, year=2026, month=8)
+        incident["migration_shape_exact"] = False
+        incident["relative_path"] = "incident-202608/database-before.dump"
+        incident["parent_name"] = "incident-202608"
+        incident["name"] = "database-before.dump"
+
+        self.assertEqual(
+            retention.classify_snapshot(financial)[0],
+            "financial",
+        )
+        self.assertEqual(
+            retention.classify_snapshot(incident)[0],
+            "incident/recovery",
+        )
+
+    def test_legacy_unknown_shape_never_becomes_generic_retire_candidate(self):
+        row = exact_row(1, year=2024, month=1)
+        row["migration_shape_exact"] = False
+        row["relative_path"] = "old/database.dump"
+        row["parent_name"] = "old"
+        row["name"] = "database.dump"
+        planned = retention.select_retention([row])
+        self.assertEqual(planned[0]["classification"], "legacy-ambiguous")
+        self.assertEqual(planned[0]["retention_class"], "PROTECTED_EVIDENCE")
+        self.assertFalse(planned[0]["retire_candidate"])
+
+    def test_external_reference_outranks_hot_cold_and_candidate_logic(self):
+        row = exact_row(1, year=2026, month=9)
+        row["external_reference_count"] = 2
+        row["external_reference_examples"] = ["/proof/a.json", "/proof/b.json"]
+        planned = retention.select_retention([row])
+        self.assertEqual(planned[0]["retention_class"], "PROTECTED_REFERENCE")
+        self.assertFalse(planned[0]["retire_candidate"])
+
+    def test_policy_keeps_hot_weekly_monthly_and_only_then_marks_candidates(self):
+        rows = []
+        year = 2026
+        month = 9
+        for i in range(32):
+            rows.append(exact_row(i, year=year, month=month, day=15))
+            month -= 1
+            if month == 0:
+                month = 12
+                year -= 1
+
+        planned = retention.select_retention(rows)
+        summary = retention.summarize(planned)
+
+        self.assertEqual(summary["snapshot_count"], 32)
+        self.assertEqual(summary["retention_counts"]["HOT"], 5)
+        self.assertLessEqual(
+            summary["retention_counts"].get("COLD_WEEKLY", 0),
+            retention.policy()["weekly_cold_weeks"],
+        )
+        self.assertLessEqual(
+            summary["retention_counts"].get("COLD_MONTHLY", 0),
+            retention.policy()["monthly_cold_months"],
+        )
+        self.assertGreater(summary["candidate_count"], 0)
+        self.assertTrue(
+            all(
+                row["classification"] == "migration-boundary"
+                and row["declared_sha256"]
+                and row["external_reference_count"] == 0
+                for row in planned
+                if row["retire_candidate"]
+            )
+        )
+
+    def test_read_only_contract_has_no_apply_or_delete_mode(self):
+        source = open(retention.__file__, encoding="utf-8").read()
+        self.assertIn('"delete_enabled": False', source)
+        self.assertIn('"apply": {', source)
+        self.assertIn('"available": False', source)
+        self.assertNotIn("unlink(", source)
+        self.assertNotIn("os.remove(", source)
+        self.assertNotIn("shutil.rmtree(", source)
+
+    def test_default_inventory_does_not_hash_snapshot_bodies(self):
+        source = open(retention.__file__, encoding="utf-8").read()
+        self.assertIn('verify_hashes = sys.argv[2] == "1"', source)
+        self.assertIn("actual_sha = sha256(path) if verify_hashes else None", source)
+        self.assertIn("default uses sealed", source)
+
+    def test_summary_reports_candidate_bytes_without_authorizing_deletion(self):
+        hot = exact_row(1, year=2026, month=9)
+        protected = exact_row(2, year=2025, month=9)
+        protected["migration_shape_exact"] = False
+        protected["relative_path"] = "incident/database-before.dump"
+        protected["parent_name"] = "incident"
+        protected["name"] = "database-before.dump"
+        rows = retention.select_retention([hot, protected])
+        summary = retention.summarize(rows)
+        self.assertEqual(summary["snapshot_count"], 2)
+        self.assertEqual(summary["candidate_count"], 0)
+        self.assertEqual(summary["ambiguous_count"], 0)
+        self.assertEqual(
+            summary["classification_counts"]["incident/recovery"],
+            1,
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()
