@@ -89,8 +89,32 @@ def load_state(handoff_id: str) -> dict[str, Any]:
         or payload.get("handoff_id") != handoff_id
     ):
         raise HandoffError(f"invalid handoff state: {path}")
-    if payload.get("status") not in STATE_ORDER:
-        raise HandoffError(f"invalid handoff status: {payload.get('status')!r}")
+    status = payload.get("status")
+    if status not in STATE_ORDER:
+        raise HandoffError(f"invalid handoff status: {status!r}")
+
+    history = payload.get("history")
+    if not isinstance(history, list):
+        raise HandoffError("handoff history is not a list")
+    expected_transitions = STATE_ORDER.index(str(status))
+    if len(history) != expected_transitions:
+        raise HandoffError(
+            "handoff state/history mismatch: "
+            f"state={status} history={len(history)} "
+            f"expected={expected_transitions}"
+        )
+    for index, row in enumerate(history, start=1):
+        if not isinstance(row, dict):
+            raise HandoffError("handoff history contains a non-object row")
+        if int(row.get("transition") or 0) != index:
+            raise HandoffError("handoff history transition sequence is not contiguous")
+        if row.get("from") != STATE_ORDER[index - 1]:
+            raise HandoffError("handoff history source state is inconsistent")
+        if row.get("to") != STATE_ORDER[index]:
+            raise HandoffError("handoff history target state is inconsistent")
+        receipt = row.get("receipt")
+        if not isinstance(receipt, str) or not receipt:
+            raise HandoffError("handoff history transition has no receipt path")
     return payload
 
 
