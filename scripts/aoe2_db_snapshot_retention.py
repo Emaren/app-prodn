@@ -492,8 +492,11 @@ def select_retention(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         protected_ids.add(str(row["path"]))
 
     weekly_seen: set[tuple[int, int]] = set()
-    for row in available:
-        if row.get("retention_class") != "HOT":
+    for row in modern:
+        if row.get("retention_class") not in {
+            "PROTECTED_REFERENCE",
+            "HOT",
+        }:
             continue
         dt = retention_time(row)
         iso = dt.isocalendar()
@@ -517,8 +520,12 @@ def select_retention(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         protected_ids.add(str(row["path"]))
 
     monthly_seen: set[tuple[int, int]] = set()
-    for row in available:
-        if row.get("retention_class") not in {"HOT", "COLD_WEEKLY"}:
+    for row in modern:
+        if row.get("retention_class") not in {
+            "PROTECTED_REFERENCE",
+            "HOT",
+            "COLD_WEEKLY",
+        }:
             continue
         dt = retention_time(row)
         monthly_seen.add((dt.year, dt.month))
