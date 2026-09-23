@@ -35,6 +35,7 @@ type BusyKey =
   | "inventory"
   | "plan"
   | "run"
+  | "native"
   | "review"
   | "receipts";
 
@@ -135,10 +136,12 @@ export default function ReplayOperationsCommandCenter() {
   const [candidateConfirmation, setCandidateConfirmation] =
     useState("");
   const [financialOnly, setFinancialOnly] = useState(true);
+  const [nativeMessage, setNativeMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState<Record<BusyKey, boolean>>({
     inventory: false,
     plan: false,
     run: false,
+    native: false,
     review: false,
     receipts: false,
   });
@@ -253,6 +256,44 @@ export default function ReplayOperationsCommandCenter() {
       }));
     } finally {
       finish("plan");
+    }
+  }
+
+  async function runNativeReplay(gameStatsId: number) {
+    start("native");
+    setNativeMessage(null);
+    try {
+      const dashboard = await loadJson<{
+        activeRun?: {
+          id: string;
+          status: string;
+          label: string;
+        } | null;
+      }>("/api/admin/aoe2war-os", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "replay_native_run",
+          gameStatsId,
+          confirmation: "RUN NATIVE REPLAY",
+        }),
+      });
+      const run = dashboard.activeRun;
+      setNativeMessage(
+        run
+          ? `Queued native HD playthrough for game #${gameStatsId} · ${run.id} · ${run.status}`
+          : `Queued native HD playthrough for game #${gameStatsId}.`
+      );
+    } catch (error) {
+      setErrors((current) => ({
+        ...current,
+        native:
+          error instanceof Error
+            ? error.message
+            : "Native replay playthrough unavailable.",
+      }));
+    } finally {
+      finish("native");
     }
   }
 
@@ -540,13 +581,28 @@ export default function ReplayOperationsCommandCenter() {
                     key={artifact.artifactId}
                     className="flex items-center justify-between gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-[11px]"
                   >
-                    <span className="font-mono text-cyan-100/75">
+                    <span className="min-w-0 font-mono text-cyan-100/75">
                       #{artifact.artifactId} · {artifact.hashPrefix}
                     </span>
-                    <span className="text-slate-500">
-                      {artifact.extension ?? "unknown"} ·{" "}
-                      {formatBytes(artifact.byteSize)}
-                    </span>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className="text-slate-500">
+                        {artifact.extension ?? "unknown"} ·{" "}
+                        {formatBytes(artifact.byteSize)}
+                      </span>
+                      {artifact.linkedGameStatsId !== null ? (
+                        <button
+                          type="button"
+                          disabled={busy.native}
+                          onClick={() =>
+                            void runNativeReplay(artifact.linkedGameStatsId as number)
+                          }
+                          className="rounded-full border border-violet-300/20 bg-violet-400/[0.08] px-2.5 py-1 font-semibold text-violet-100 transition hover:bg-violet-400/[0.14] disabled:cursor-wait disabled:opacity-50"
+                          title="Queue one candidate-only native AoE2 HD playthrough"
+                        >
+                          {busy.native ? "Running…" : `Play HD #${artifact.linkedGameStatsId}`}
+                        </button>
+                      ) : null}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -631,8 +687,14 @@ export default function ReplayOperationsCommandCenter() {
               ) : null}
             </div>
           ) : null}
+          {nativeMessage ? (
+            <div className="mt-3 rounded-xl border border-violet-300/15 bg-violet-400/[0.06] px-3 py-2.5 text-xs leading-5 text-violet-100">
+              {nativeMessage}
+            </div>
+          ) : null}
           {errors.plan ? <PanelError>{errors.plan}</PanelError> : null}
           {errors.run ? <PanelError>{errors.run}</PanelError> : null}
+          {errors.native ? <PanelError>{errors.native}</PanelError> : null}
         </article>
 
         <article className="bg-slate-950/80 p-5 sm:p-6">
