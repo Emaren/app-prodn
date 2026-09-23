@@ -327,7 +327,11 @@ source SHA and BUILD_ID through a dedicated handoff rebind receipt in its own
 state. Rebinding is allowed only from a proven `PAUSED` transaction seam and
 only when the requested V2 source/build equals current certified production.
 The existing campaign `resume` path then launches the backlog under V2 and the
-handoff seals `V2_RESUMED`.
+handoff seals `V2_RESUMED`. That final adoption is crash-idempotent: the
+campaign rebind recognizes the exact previously sealed handoff without applying
+it twice, old V1 `resumed_at` evidence is cleared at first adoption, and a
+reinvoked handoff detects an already-live exact V2 campaign controller or an
+already-completed V2 resumed run instead of spawning a duplicate controller.
 
 This creates the controlled "mid-air refuel" contract: finish the current exact
 transaction, freeze the old controller from replanning, certify the new control
