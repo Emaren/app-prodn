@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "fbd8c48fd07084a13f9968bf0df4d5419dcf45d0f242351ef77a6d2e2e8bad77",
+      "sha256": "9271ffa0d492c58ca5134e82cdb1a396cd17d4c4c1922ca08c7806d2fda6404f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "main",
-    "commit": "a579112f2e1a7b0ca478d65d9c231bf929a68677"
+    "branch": "test/brain-p0-precedence-20260923",
+    "commit": "d5b538f55d04166110fc1bf756350eeb4b361dc6"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

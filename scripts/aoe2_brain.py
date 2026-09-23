@@ -745,7 +745,13 @@ def brain_recommendations(
             )
 
     rows.extend(council_recommendations)
-    return sorted(rows, key=lambda item: (int(item.get("rank") or 999), str(item.get("key") or "")))
+    return sorted(
+        rows,
+        key=lambda item: (
+            int(item["rank"]) if item.get("rank") is not None else 999,
+            str(item.get("key") or ""),
+        ),
+    )
 
 
 def invariant_rows(

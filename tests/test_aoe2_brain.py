@@ -892,6 +892,34 @@ class KingdomIntelligenceTests(unittest.TestCase):
         self.assertEqual(perf["baseline_targets"][0]["path"], "/before")
         analyze.assert_called_once_with(after_receipt, {"pages": []})
 
+    def test_estate_p0_outranks_storage_attention_before_finish(self):
+        perf = performance()
+        perf["matches_current_release"] = True
+        rows = MODULE.brain_recommendations(
+            finish=finish(complete=False),
+            control=control(status="current"),
+            performance=perf,
+            truth=truth(),
+            council_recommendations=[
+                {
+                    "rank": 0,
+                    "level": "BLOCKER",
+                    "key": "estate-p0",
+                    "title": "Estate has P0 findings",
+                    "reason": "P0=2",
+                    "action": "aoe2war audit",
+                }
+            ],
+            storage={
+                "health": "ATTENTION",
+                "used_percent": 85.0,
+            },
+        )
+        self.assertEqual(rows[0]["key"], "estate-p0")
+        self.assertEqual(rows[0]["action"], "aoe2war audit")
+        storage_row = next(row for row in rows if row["key"] == "storage-blocks-finish")
+        self.assertGreater(storage_row["rank"], rows[0]["rank"])
+
     def test_certified_finish_demotes_storage_to_maintenance(self):
         perf = performance()
         perf["matches_current_release"] = True

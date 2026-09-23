@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `main` at `a579112f2e1a7b0ca478d65d9c231bf929a68677`
+Implementation baseline: `test/brain-p0-precedence-20260923` at `d5b538f55d04166110fc1bf756350eeb4b361dc6`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
