@@ -33,6 +33,7 @@ DEFAULT_TOKEN_FILE = Path(
 VERSION = "1.4.0"
 NATIVE_REPLAY_CANARY_SHA256 = {32388: "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b"}
 NATIVE_REPLAY_CANARY_GAME_IDS = set(NATIVE_REPLAY_CANARY_SHA256)
+NATIVE_REPLAY_CANARY_ROSTER = {32388: [1, 2, 3, 4]}
 
 ACTIONS = {
     "status",
@@ -243,6 +244,10 @@ def command_for_run(
             or len(set(roster_slots)) != len(roster_slots)
         ):
             raise BridgeError("Native replay run has invalid roster slots.")
+        if roster_slots != NATIVE_REPLAY_CANARY_ROSTER[game_stats_id]:
+            raise BridgeError(
+                "Native replay roster does not match trusted 32388 slots 1,2,3,4."
+            )
         if (
             not isinstance(performance_seconds, int)
             or isinstance(performance_seconds, bool)
