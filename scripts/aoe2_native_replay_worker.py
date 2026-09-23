@@ -24,6 +24,7 @@ TERMINAL_CONTROL_VALIDATOR = (
 )
 TRUSTED_CONTROL_SHA256 = {32388: "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b"}
 TRUSTED_CONTROL_GAME_IDS = set(TRUSTED_CONTROL_SHA256)
+TRUSTED_CONTROL_ROSTER = {32388: [1, 2, 3, 4]}
 TRUSTED_LOCAL_CONTROLS = {
     32388: (
         API_ROOT
@@ -482,6 +483,10 @@ def main() -> int:
     slots = sorted(set(args.roster_slot))
     if len(slots) < 2 or len(slots) > 8 or any(slot < 1 or slot > 8 for slot in slots):
         raise WorkerError("Native replay worker requires 2-8 unique roster slots 1-8.")
+    if slots != TRUSTED_CONTROL_ROSTER[args.game_stats_id]:
+        raise WorkerError(
+            "Native replay roster does not match trusted GameStats #32388 slots 1,2,3,4."
+        )
     if not 1 <= args.native_performance_seconds <= 240:
         raise WorkerError("native-performance-seconds is outside the governed bound.")
     if not args.native_performance_seconds + 15 <= args.timeout_seconds <= 300:
