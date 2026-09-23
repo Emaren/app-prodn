@@ -178,6 +178,13 @@ def parse_status(path):
             result.setdefault(key.strip(), []).append(value.strip())
     return result
 
+def one(status, key):
+    values = status.get(key) or []
+    if len(values) != 1:
+        return None
+    value = values[0]
+    return value if value else None
+
 def status_receipt_valid(parent, status):
     status_path = parent / "migration-status.txt"
     sidecar = parent / "migration-status.txt.sha256"
@@ -189,13 +196,29 @@ def status_receipt_valid(parent, status):
     ):
         return False
     try:
-        expected = sidecar.read_text(encoding="utf-8", errors="replace").split()[0]
+        status_stat = status_path.stat(follow_symlinks=False)
+        sidecar_stat = sidecar.stat(follow_symlinks=False)
+    except OSError:
+        return False
+    if (
+        not stat.S_ISREG(status_stat.st_mode)
+        or not stat.S_ISREG(sidecar_stat.st_mode)
+        or status_stat.st_size > max_meta
+        or sidecar_stat.st_size > max_meta
+    ):
+        return False
+    try:
+        tokens = sidecar.read_text(
+            encoding="utf-8", errors="replace"
+        ).split()
+        expected = tokens[0] if tokens else None
     except Exception:
         return False
     return bool(
-        sha_re.fullmatch(expected)
+        isinstance(expected, str)
+        and sha_re.fullmatch(expected)
         and hashlib.sha256(status_path.read_bytes()).hexdigest() == expected
-        and (status.get("status") or [None])[0] == "APPLIED"
+        and one(status, "status") == "APPLIED"
     )
 
 metadata_documents = []
@@ -261,13 +284,21 @@ if root.is_dir():
             parent = path.parent
             status = parse_status(parent / "migration-status.txt")
             status_ok = status_receipt_valid(parent, status)
-            declared = (status.get("dump_sha256") or [None])[0]
-            release_sha = (status.get("release_sha") or [None])[0]
-            declared_dump = (status.get("dump") or [None])[0]
-            migrations = status.get("migration") or []
+            declared = one(status, "dump_sha256")
+            release_sha = one(status, "release_sha")
+            database = one(status, "database")
+            declared_dump = one(status, "dump")
+            migrations = [
+                value
+                for value in (status.get("migration") or [])
+                if isinstance(value, str) and value
+            ]
             migration_match = migration_dir_re.fullmatch(parent.name)
             receipt_timestamp = (
                 migration_match.group(1) if migration_match else None
+            )
+            release_short = (
+                migration_match.group(2) if migration_match else None
             )
             migration_shape = bool(
                 name == "pre-migration.dump"
@@ -278,6 +309,10 @@ if root.is_dir():
                 and sha_re.fullmatch(declared)
                 and isinstance(release_sha, str)
                 and release_re.fullmatch(release_sha)
+                and release_sha[:12] == release_short
+                and isinstance(database, str)
+                and database.strip()
+                and migrations
             )
 
             actual_sha = sha256(path) if verify_hashes else None
@@ -316,6 +351,7 @@ if root.is_dir():
                 "status_receipt_valid": status_ok,
                 "migration_shape_exact": migration_shape,
                 "release_sha": release_sha,
+                "database": database,
                 "declared_sha256": declared,
                 "actual_sha256": actual_sha,
                 "hash_matches_declared": hash_matches,
