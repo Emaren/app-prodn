@@ -626,7 +626,6 @@ def transfer_bundle(
         [
             "rsync",
             "-a",
-            "--protect-args",
             "--",
             *files,
             f"{policy['apply_host']}:{remote_stage}/bundle/",

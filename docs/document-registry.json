@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b29ac215a95755dabd0792bc229975e20bcb8cef23ba9f5be7569c353101a83d",
+      "sha256": "783fd9861f4a918d72fb998efc06cfb5ae0dfb6db9ca5c2efc5c384d3d444735",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "release/watcher-1.6.1-promotion-20260922",
-    "commit": "46df4663ba9feb1e2a3dd96fac8b9d85f8ff28a0"
+    "branch": "fix/watcher-release-macos-rsync-20260922",
+    "commit": "d1d7d4cc9071cfab9f0221135f1c6c3af6bc8faf"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

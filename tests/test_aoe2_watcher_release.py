@@ -335,6 +335,52 @@ class WatcherReleasePolicyTests(unittest.TestCase):
         cleanup.assert_not_called()
 
 
+
+    def test_transfer_bundle_uses_macos_compatible_rsync_arguments(self):
+        policy = MODULE.policy_from_contract(MODULE.load_contract())
+        remote_stage = (
+            MODULE.CANONICAL_STAGING_ROOT
+            + "/promote-9.9.9-aaaaaaaaaaaa"
+        )
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            fake_bundle(root)
+            completed = subprocess.CompletedProcess(
+                args=[],
+                returncode=0,
+                stdout="",
+                stderr="",
+            )
+            with mock.patch.object(
+                MODULE.subprocess,
+                "run",
+                return_value=completed,
+            ) as run:
+                MODULE.transfer_bundle(
+                    root,
+                    "9.9.9",
+                    policy,
+                    remote_stage,
+                )
+
+        argv = run.call_args.args[0]
+        self.assertEqual(argv[:3], ["rsync", "-a", "--"])
+        self.assertNotIn("--protect-args", argv)
+        self.assertIn(
+            str(root / "AoE2HDBets Watcher Setup 9.9.9.exe"),
+            argv,
+        )
+        self.assertEqual(
+            argv[-1],
+            (
+                policy["apply_host"]
+                + ":"
+                + remote_stage
+                + "/bundle/"
+            ),
+        )
+
 class WatcherReleaseIntegrationTests(unittest.TestCase):
     def test_operator_cli_routes_watcher_release(self):
         with tempfile.TemporaryDirectory() as temp:
