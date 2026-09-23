@@ -684,26 +684,14 @@ export default function ReplayOperationsCommandCenter() {
                         {artifact.extension ?? "unknown"} ·{" "}
                         {formatBytes(artifact.byteSize)}
                       </span>
-                      {artifact.linkedGameStatsId !== null ? (
-                        <button
-                          type="button"
-                          disabled={busy.native}
-                          onClick={() =>
-                            void runNativeReplay(artifact.linkedGameStatsId as number)
-                          }
-                          className="rounded-full border border-violet-300/20 bg-violet-400/[0.08] px-2.5 py-1 font-semibold text-violet-100 transition hover:bg-violet-400/[0.14] disabled:cursor-wait disabled:opacity-50"
-                          title="Queue one candidate-only native AoE2 HD playthrough"
-                        >
-                          {busy.native ? "Running…" : `Play HD #${artifact.linkedGameStatsId}`}
-                        </button>
-                      ) : null}
                     </div>
                   </div>
                 ))}
               </div>
               <div className="mt-3 text-[11px] leading-5 text-slate-500">
-                Worker boundary: {plan.executionBoundary.label}. Each button run creates a
-                frozen one-replay manifest on the API host and remains candidate-only.
+                Worker boundary: {plan.executionBoundary.label}. Candidate parser runs remain
+                private and bounded. Native HD execution stays server-locked to trusted control
+                #32388 until the validation ladder is explicitly widened in reviewed source.
               </div>
               {plan.artifacts.some(
                 (artifact) => artifact.linkedGameStatsId !== null
