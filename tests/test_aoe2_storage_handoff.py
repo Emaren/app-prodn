@@ -81,6 +81,23 @@ class StorageHandoffTests(unittest.TestCase):
                 ):
                     handoff.load_state("handoff-test")
 
+    def test_load_state_refuses_missing_transition_receipt(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            with mock.patch.object(handoff, "HANDOFF_ROOT", root):
+                state = self.persist_state_at(
+                    "handoff-test",
+                    "V1_FROZEN",
+                )
+                receipt = Path(state["history"][0]["receipt"])
+                receipt.unlink()
+
+                with self.assertRaisesRegex(
+                    handoff.HandoffError,
+                    "receipt is missing or misplaced",
+                ):
+                    handoff.load_state("handoff-test")
+
     def test_latest_status_prefers_incomplete_handoff(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
