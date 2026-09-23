@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9c0e8b76d0badaf4947909eee2406a01191cb15224ba43ecce7435fc9fbb85ac",
+      "sha256": "a9055669e67142904d272d5fd01ac6e8be5649c155f6dc0a8eb5463d36af0f1b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-22",
       "sensitivity": "internal",
-      "sha256": "bdf49cd3a897ef9b3b1baf34ffaeb70a5e88b1f33a72322f255465d3990f4fbb",
+      "sha256": "1e9c9233673d024a916527baeb87184360e991ba7d9272e161b8c4c6d7f4bdc9",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1509,7 +1509,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-19",
       "sensitivity": "internal",
-      "sha256": "908efe1e8e425c5fcc8d390c548d9b2059efeb3f3d8ff3a664b36ce4bcc4e464",
+      "sha256": "3cc7b08c7c2cca155c56adf8a96b33c39081b296fa548c2fc40cd96ceaf602ed",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "main",
-    "commit": "64a0381a4f6c4f3ae9d030a6ae8adf6f2fab68bf"
+    "branch": "fix/storage-handoff-freeze-priority-20260923",
+    "commit": "be3762d5d0522c9405fb57b9636ae9c64961f87d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
