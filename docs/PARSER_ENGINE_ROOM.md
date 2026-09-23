@@ -85,14 +85,18 @@ admin Replay Operations
 
 The browser never supplies a local path or arbitrary command. The server queues
 only a GameStats identity; the run freezes the current replay SHA and roster
-slots. The bridge exposes one fixed action and cannot turn request parameters
-into shell syntax.
+slots. During the canary stage, GameStats **32388** is additionally bound at the
+admin parser, bridge, and Mac worker to exact replay SHA
+`02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b`.
+A historical presentation filename is not replay identity and cannot veto or
+substitute for that digest. The bridge exposes one fixed action and cannot turn
+request parameters into shell syntax.
 
 Ordinary unresolved replays are served from the canonical content-addressed
 archive through the authenticated internal bridge endpoint and are hashed again
 after transfer. The bridge response must agree with the queued GameStats ID,
-replay SHA-256, and recorded-game extension before any bytes become native
-input. Archive admission requires the exact canonical filename
+trusted replay SHA-256, and recorded-game extension before any bytes become
+native input. Archive admission requires the exact canonical filename
 `<replay-sha256>.aoe2record`; prefix lookalikes and alternate containers are
 not native-run inputs. This native lane accepts recorded HD `.aoe2record`
 battles only. Saved `.aoe2mpgame` checkpoints and legacy containers remain in
