@@ -33,6 +33,9 @@ class StorageHandoffTests(unittest.TestCase):
             },
             "history": [],
             "finish_result": None,
+            "retirement_intent": None,
+            "successor_intent": None,
+            "successor_spawn": None,
             "successor": None,
             "last_error": None,
             "log_path": "handoff.log",
@@ -177,6 +180,79 @@ class StorageHandoffTests(unittest.TestCase):
         with self.assertRaises(handoff.HandoffError):
             handoff.certified_finish_evidence(finish)
 
+    def test_source_ready_reuses_persisted_finish_result(self):
+        state = self.base_state(status="SOURCE_READY")
+        state["finish_result"] = {
+            "phases": {
+                "maintenance_runner_reconciliation": {"status": "PASSED"},
+            },
+            "maintenance_runner_reconciliation": {
+                "status": "NOOP",
+                "wolo_pid": "1",
+                "wolo_restart_counter": "0",
+                "wolo_height_before": "10",
+                "wolo_height_after": "11",
+            },
+            "receipt_path": "/tmp/finish.json",
+        }
+        with (
+            mock.patch.object(handoff, "assert_frozen_identity"),
+            mock.patch.object(
+                handoff.campaign,
+                "load_state",
+                return_value={
+                    "status": "RUNNING",
+                    "current_generation": None,
+                    "current_generation_started_at": None,
+                },
+            ),
+            mock.patch.object(handoff, "run_finish_json") as finish_run,
+            mock.patch.object(
+                handoff,
+                "seal_transition",
+                return_value={**state, "status": "RUNNER_RECONCILED"},
+            ),
+        ):
+            result = handoff.transition_source_ready(state)
+
+        finish_run.assert_not_called()
+        self.assertEqual(result["status"], "RUNNER_RECONCILED")
+
+    def test_retirement_recovers_after_intent_and_process_loss(self):
+        state = self.base_state(status="V2_CERTIFIED")
+        state["target_source_sha"] = "d" * 40
+        state["last_transition_receipt"] = "/tmp/v2-certified.json"
+        old = {
+            "status": "RUNNING",
+            "pid": 123,
+            "current_generation": None,
+            "current_generation_started_at": None,
+        }
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            with (
+                mock.patch.object(handoff, "HANDOFF_ROOT", root),
+                mock.patch.object(handoff, "save_state"),
+            ):
+                handoff.ensure_retirement_intent(state)
+
+            captured = {}
+            with (
+                mock.patch.object(handoff, "HANDOFF_ROOT", root),
+                mock.patch.object(handoff, "process_alive", return_value=False),
+                mock.patch.object(handoff.campaign, "load_state", return_value=old),
+                mock.patch.object(
+                    handoff.campaign,
+                    "save_state",
+                    side_effect=lambda payload: captured.update(payload),
+                ),
+            ):
+                result = handoff.retire_v1(state)
+
+        self.assertEqual(result["campaign_status"], "RETIRED_HANDOFF")
+        self.assertEqual(captured["status"], "RETIRED_HANDOFF")
+        self.assertIsNone(captured["pid"])
+
     def test_advance_once_routes_each_proven_state_only_forward(self):
         routes = [
             ("CREATED", "transition_created"),
@@ -234,8 +310,15 @@ class StorageHandoffTests(unittest.TestCase):
                 "policy",
                 return_value={"healthy_target": 78},
             ),
+            mock.patch.object(handoff, "save_state"),
+            mock.patch.object(
+                handoff.campaign,
+                "state_path",
+                return_value=Path("/tmp/does-not-exist-successor-state.json"),
+            ),
             mock.patch.object(handoff.campaign, "save_state", side_effect=capture_save),
             mock.patch.object(handoff.campaign, "spawn", return_value=789),
+            mock.patch.object(handoff.campaign, "process_alive", return_value=False),
         ):
             result = handoff.create_successor_campaign(state)
 
