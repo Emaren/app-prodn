@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `main` at `64a0381a4f6c4f3ae9d030a6ae8adf6f2fab68bf`
+Implementation baseline: `fix/storage-handoff-freeze-priority-20260923` at `be3762d5d0522c9405fb57b9636ae9c64961f87d`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
