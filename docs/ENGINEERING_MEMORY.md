@@ -1735,11 +1735,16 @@ transition is sealed before the next mutation. The controller runs in a detached
 session with a durable log, so losing the initiating shell does not abandon the
 takeover; a later invocation resumes from the last proven state.
 
-Freezing V1 is identity-bound. The campaign must be between generations, its
-PID/PGID/descendants are captured, the process group is stopped, and that exact
-identity is revalidated before source reconciliation, Finish, certification and
-retirement. A changed process group, new descendant, missing process, active
-`current_generation`, or partial transaction is not interpreted optimistically.
+Freezing V1 is identity-bound and cooperative. The handoff may be
+requested while the detached campaign is between generations or while one exact
+archive transaction is still running, but it never interrupts that transaction.
+The campaign itself persists the handoff reservation, completes/seals the current
+generation if necessary, clears its active-generation fields, records
+`HANDOFF_FREEZE_READY`, and self-stops before any next-generation planning.
+Only then are PID/PGID/descendants captured as the frozen authority and
+revalidated before source reconciliation, Finish, certification and retirement.
+A changed process group, new descendant, missing process, conflicting reservation,
+or partially active transaction is not interpreted optimistically.
 
 Finish remains the only deployment/certification authority. A handoff may treat
 the runner as reconciled only when Finish's
