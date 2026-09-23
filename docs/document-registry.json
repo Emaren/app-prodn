@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "913158aa093e86d85d95b9d93574d8be6eca0cf75a327a3b3442ce52a10f464b",
+      "sha256": "6cdd6bf138fa77bc479ffab7b6cf887c5144d27bdd56ee63c16e3f57f92a5601",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-22",
       "sensitivity": "internal",
-      "sha256": "49daedc719fd81826c21aa2b3ffb713519f3f7f2126db9371c5a3508d54df68a",
+      "sha256": "8979fecbbd371610d0d62578f564366577d1ab885b3a11efc648bd9784c69d5b",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1509,7 +1509,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-19",
       "sensitivity": "internal",
-      "sha256": "11b6683ff8cf415c7df2f7c2ab27a63b1163e18da10e0db2ebf018ebb9b52fe2",
+      "sha256": "e9daff84dd899e6315db2c2a1e6bd66d0be8afdec555cf8263a4ed912693ba46",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/db-snapshot-retention-v2-20260923",
-    "commit": "a106a2626b4493662a5f0f85a0b375424a73dc7e"
+    "commit": "d9d5253dd31c3e2342ecfbf4e9d495c28cd42bb6"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
