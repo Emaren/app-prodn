@@ -46,6 +46,30 @@ class NativeReplayWorkerTests(unittest.TestCase):
             self.assertEqual(artifact.read_bytes(), b"native-control-bytes")
             self.assertEqual(MODULE.sha256_file(artifact), expected)
 
+    def test_materialize_32388_rejects_saved_checkpoint_container(self):
+        with tempfile.TemporaryDirectory() as temp:
+            base = Path(temp)
+            source = base / "control.aoe2mpgame"
+            source.write_bytes(b"checkpoint-bytes")
+            expected = MODULE.hashlib.sha256(source.read_bytes()).hexdigest()
+            destination_dir = base / "out"
+            destination_dir.mkdir()
+
+            with patch.dict(
+                MODULE.TRUSTED_LOCAL_CONTROLS,
+                {32388: source},
+                clear=True,
+            ):
+                with self.assertRaises(MODULE.WorkerError):
+                    MODULE.materialize_replay(
+                        game_stats_id=32388,
+                        replay_sha256=expected,
+                        base_url="https://example.invalid",
+                        token="unused",
+                        run_id="run",
+                        destination_dir=destination_dir,
+                    )
+
     def test_materialize_32388_rejects_wrong_local_hash(self):
         with tempfile.TemporaryDirectory() as temp:
             base = Path(temp)
