@@ -22,6 +22,9 @@ export const NATIVE_REPLAY_CANARY_SHA256_BY_GAME_ID = new Map<number, string>([
 export const NATIVE_REPLAY_CANARY_GAME_IDS = new Set(
   NATIVE_REPLAY_CANARY_SHA256_BY_GAME_ID.keys()
 );
+export const NATIVE_REPLAY_CANARY_ROSTER_BY_GAME_ID = new Map<number, number[]>([
+  [32388, [1, 2, 3, 4]],
+]);
 
 const ARCHIVE_ROOT = "/mnt/HC_Volume_105319120/aoe2-replay-archive";
 const SHA256_RE = /^[0-9a-f]{64}$/;
@@ -115,6 +118,17 @@ export function parseNativeReplayRunParameters(
     )
   ) {
     throw new Error("rosterSlots must contain 2-8 unique AoE2 player slots from 1 through 8.");
+  }
+
+  const trustedRoster = NATIVE_REPLAY_CANARY_ROSTER_BY_GAME_ID.get(gameStatsId);
+  if (
+    !trustedRoster ||
+    rosterSlots.length !== trustedRoster.length ||
+    rosterSlots.some((slot, index) => slot !== trustedRoster[index])
+  ) {
+    throw new Error(
+      "Native HD canary roster does not match trusted GameStats #32388 slots 1,2,3,4."
+    );
   }
 
   const nativePerformanceSeconds = boundedPositiveInteger(
