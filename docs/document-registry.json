@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "cf0d04fe78ec92c2e3e18c6e2757aa322f6e8110faf105a2190caec0d914187a",
+      "sha256": "33826febda79a2da7b04c693729a3329ff48678ea83f49b12b4b00f80584370b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/compact-clan-hall-signals-20260922",
-    "commit": "80b22db5254a87aa1d05543d6ff0989ef6b09581"
+    "branch": "feature/replay-native-admin-worker-v1-20260923",
+    "commit": "1b63284c051608485633a0b5283184d6eb3a213f"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
