@@ -1,5 +1,12 @@
+import base64
+import hashlib
+import json
+import subprocess
+import sys
+import tempfile
 import unittest
 from datetime import datetime, timezone
+from pathlib import Path
 
 import scripts.aoe2_db_snapshot_retention as retention
 
@@ -147,6 +154,92 @@ class DatabaseSnapshotRetentionTests(unittest.TestCase):
         self.assertIn('verify_hashes = sys.argv[2] == "1"', source)
         self.assertIn("actual_sha = sha256(path) if verify_hashes else None", source)
         self.assertIn("default uses sealed", source)
+
+    def test_remote_inventory_executes_against_historical_shapes(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            modern = root / "migration-20260923T120000Z-aaaaaaaaaaaa"
+            modern.mkdir()
+            dump = modern / "pre-migration.dump"
+            dump.write_bytes(b"canonical migration backup")
+            dump_sha = hashlib.sha256(dump.read_bytes()).hexdigest()
+            status = modern / "migration-status.txt"
+            status.write_text(
+                "\n".join(
+                    [
+                        "status=APPLIED",
+                        "release_sha=" + ("a" * 40),
+                        "database=aoe2hdbets",
+                        "dump=pre-migration.dump",
+                        "dump_sha256=" + dump_sha,
+                        "migration=20260923000000_test",
+                    ]
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            status_sha = hashlib.sha256(status.read_bytes()).hexdigest()
+            (modern / "migration-status.txt.sha256").write_text(
+                f"{status_sha}  migration-status.txt\n",
+                encoding="utf-8",
+            )
+
+            incident = root / "incident-repair"
+            incident.mkdir()
+            (incident / "database-before.dump").write_bytes(b"incident")
+            financial = root / "bet-recovery"
+            financial.mkdir()
+            (financial / "database.dump").write_bytes(b"financial")
+
+            policy = {
+                "snapshot_root": str(root),
+                "max_metadata_file_bytes": 2 * 1024 * 1024,
+            }
+            encoded = base64.urlsafe_b64encode(
+                json.dumps(policy).encode("utf-8")
+            ).decode("ascii")
+            proc = subprocess.run(
+                [sys.executable, "-", encoded, "1"],
+                input=retention.REMOTE_INVENTORY,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        payload = json.loads(proc.stdout)
+        rows = {
+            row["relative_path"]: row
+            for row in payload["snapshots"]
+        }
+        modern_row = rows[
+            "migration-20260923T120000Z-aaaaaaaaaaaa/pre-migration.dump"
+        ]
+        self.assertTrue(modern_row["migration_shape_exact"])
+        self.assertTrue(modern_row["status_receipt_valid"])
+        self.assertTrue(modern_row["hash_matches_declared"])
+        self.assertEqual(
+            modern_row["receipt_timestamp"],
+            "20260923T120000Z",
+        )
+
+        planned = retention.select_retention(list(rows.values()))
+        by_path = {row["relative_path"]: row for row in planned}
+        self.assertEqual(
+            by_path["incident-repair/database-before.dump"]["classification"],
+            "incident/recovery",
+        )
+        self.assertEqual(
+            by_path["bet-recovery/database.dump"]["classification"],
+            "financial",
+        )
+        self.assertFalse(
+            by_path["incident-repair/database-before.dump"]["retire_candidate"]
+        )
+        self.assertFalse(
+            by_path["bet-recovery/database.dump"]["retire_candidate"]
+        )
 
     def test_summary_reports_candidate_bytes_without_authorizing_deletion(self):
         hot = exact_row(1, year=2026, month=9)
