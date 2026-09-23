@@ -984,7 +984,7 @@ class StorageHandoffTests(unittest.TestCase):
                 mock.patch.object(handoff, "HANDOFF_DIR", root),
                 mock.patch.object(handoff, "LOCK_PATH", root / "handoff.lock"),
                 mock.patch.object(handoff, "load_state", side_effect=[state, state]),
-                mock.patch.object(handoff.campaign, "request_pause"),
+                mock.patch.object(handoff.campaign, "reserve_handoff"),
                 mock.patch.object(handoff.campaign, "load_state", return_value=terminal),
                 mock.patch.object(handoff, "save_state"),
             ):
@@ -1099,7 +1099,7 @@ class StorageHandoffTests(unittest.TestCase):
                     mock.patch.object(handoff, "LOCK_PATH", root / "handoff.lock"),
                     mock.patch.object(handoff, "load_state", side_effect=lambda _id: state),
                     mock.patch.object(handoff, "save_state"),
-                    mock.patch.object(handoff.campaign, "request_pause"),
+                    mock.patch.object(handoff.campaign, "reserve_handoff"),
                     mock.patch.object(handoff.campaign, "load_state", side_effect=campaign_state),
                     mock.patch.object(handoff, "prove_frozen"),
                     mock.patch.object(handoff, "source_ready", return_value=target),
