@@ -269,7 +269,11 @@ every transition atomically. Each transition also seals a create-once, mode-0444
 fsynced JSON receipt whose path and SHA-256 are chained into the mutable handoff
 state. If a terminal or process dies after that receipt seals but before the
 state file advances, reinvocation reuses the exact receipt rather than inventing
-a new proof. Its state machine is:
+a new proof. Before resumed mutation, the controller replays the persisted
+history against the expected receipt path, digest, from/to identity, timestamp,
+and evidence payload for every completed state. Missing or rewritten transition
+proof fails closed instead of trusting the mutable state file alone. Its state
+machine is:
 
 1. `V1_RUNNING`
 2. `V1_FROZEN`
