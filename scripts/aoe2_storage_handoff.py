@@ -23,6 +23,7 @@ except ImportError:
 ROOT = Path(__file__).resolve().parents[1]
 CLI = ROOT / "bin" / "aoe2war"
 HANDOFF_DIR = ROOT / ".aoe2war-release" / "storage-handoffs"
+FINISH_RECEIPT_DIR = ROOT / ".aoe2war-release" / "finish-receipts"
 LOCK_PATH = HANDOFF_DIR / "handoff.lock"
 
 FLOW = [
@@ -399,6 +400,64 @@ def seal_finish_log(state: dict[str, Any]) -> None:
         state["finish_log_sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def finish_receipt_for_target(target_source: str) -> tuple[Path, dict[str, Any]] | None:
+    if not FINISH_RECEIPT_DIR.is_dir():
+        return None
+    paths = sorted(
+        FINISH_RECEIPT_DIR.glob("*.json"),
+        key=lambda path: (path.stat().st_mtime_ns, path.name),
+        reverse=True,
+    )
+    for path in paths:
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+        if not isinstance(payload, dict):
+            continue
+        if payload.get("kind") != "aoe2war-finish-result":
+            continue
+        if payload.get("status") != "CERTIFIED":
+            continue
+        if payload.get("release_outcome") != "CERTIFIED":
+            continue
+        phase = (payload.get("phases") or {}).get(
+            "maintenance_runner_reconciliation"
+        ) or {}
+        if not isinstance(phase, dict) or phase.get("status") != "PASSED":
+            continue
+        final_release = payload.get("final_release") or payload.get("certified_release") or {}
+        if not isinstance(final_release, dict):
+            continue
+        production = final_release.get("production") or {}
+        certification = final_release.get("certification") or {}
+        if not isinstance(production, dict) or not isinstance(certification, dict):
+            continue
+        if production.get("source_sha") != target_source:
+            continue
+        if certification.get("status") != "CERTIFIED":
+            continue
+        if certification.get("release_sha") != target_source:
+            continue
+        return path, payload
+    return None
+
+
+def bind_finish_receipt(state: dict[str, Any]) -> None:
+    target = str(state["target_source_sha"])
+    found = finish_receipt_for_target(target)
+    if found is None:
+        raise HandoffError(
+            "target runtime is certified but no exact CERTIFIED Finish receipt "
+            "proves maintenance-runner reconciliation"
+        )
+    path, payload = found
+    state["finish_receipt_path"] = str(path)
+    state["finish_receipt_sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
+    state["finish_release_certified_at"] = payload.get("release_certified_at")
+    save_state(state)
+
+
 def prove_target_certified(state: dict[str, Any]) -> tuple[str, str]:
     release, build = storage.operator_baseline()
     target = str(state["target_source_sha"])
@@ -422,6 +481,7 @@ def wait_for_finish_or_recover(state: dict[str, Any]) -> tuple[str, str]:
         state["finish_pid"] = None
         seal_finish_log(state)
         save_state(state)
+        bind_finish_receipt(state)
         return current_release, current_build
 
     finish_pid = state.get("finish_pid")
@@ -442,7 +502,9 @@ def wait_for_finish_or_recover(state: dict[str, Any]) -> tuple[str, str]:
             f"canonical Finish failed with exit code {returncode}; "
             f"inspect {state['finish_log_path']}"
         )
-    return prove_target_certified(state)
+    release, build = prove_target_certified(state)
+    bind_finish_receipt(state)
+    return release, build
 
 
 def drive(handoff_id: str) -> int:
@@ -469,6 +531,20 @@ def drive(handoff_id: str) -> int:
                 campaign.request_pause(campaign_id)
                 current = campaign.load_state(campaign_id)
                 if current.get("status") != "PAUSED":
+                    if current.get("status") in {"COMPLETE", "FAILED", "BLOCKED"}:
+                        raise HandoffError(
+                            "V1 could not reach the cooperative freeze seam: "
+                            f"campaign status={current.get('status')} "
+                            f"reason={current.get('completion_reason') or current.get('last_error')}"
+                        )
+                    pid = current.get("pid")
+                    if (
+                        current.get("status") not in {"CREATED", "RESUME_REQUESTED"}
+                        and not process_alive(pid if isinstance(pid, int) else None)
+                    ):
+                        raise HandoffError(
+                            "V1 controller disappeared before the cooperative freeze seam"
+                        )
                     time.sleep(2)
                     continue
                 prove_frozen(current)
@@ -522,6 +598,8 @@ def drive(handoff_id: str) -> int:
                     evidence={
                         "finish_returncode": state.get("finish_returncode"),
                         "finish_log_sha256": state.get("finish_log_sha256"),
+                        "finish_receipt_path": state.get("finish_receipt_path"),
+                        "finish_receipt_sha256": state.get("finish_receipt_sha256"),
                     },
                 )
                 continue
