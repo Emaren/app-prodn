@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ed406629091f15ec7818afeac679cf55dc5e6238d59e96ee927a6f077f3755d9",
+      "sha256": "0dfb2afc6b1d3fa25e96bdb47b5f49c0916f798a09c0da8c9b9ed68cc26b8c18",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/storage-handoff-state-machine-v1-20260923",
-    "commit": "cce312d16c42a6ee379ffaecaeef5121860b1c3d"
+    "commit": "e0bafe9ba8fc1f6c679fff5787606fe0d79660f8"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
