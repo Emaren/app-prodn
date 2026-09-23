@@ -23,6 +23,13 @@ TERMINAL_CONTROL_VALIDATOR = (
     API_ROOT / "scripts" / "validate_replay_engine_terminal_control.py"
 )
 TRUSTED_CONTROL_GAME_IDS = {32388}
+TRUSTED_LOCAL_CONTROLS = {
+    32388: (
+        API_ROOT
+        / "instance/engine-runner-20260920/inputs"
+        / "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b.aoe2record"
+    )
+}
 DEFAULT_URL = os.getenv("AOE2WAR_OS_BRIDGE_URL", "https://aoe2war.com").rstrip("/")
 DEFAULT_TOKEN_FILE = Path(
     os.getenv("AOE2WAR_OS_BRIDGE_TOKEN_FILE", "~/.config/aoe2war/os-bridge-token")
@@ -167,6 +174,55 @@ def download_replay(
         )
     destination.chmod(0o400)
     return destination, total
+
+
+def materialize_replay(
+    *,
+    game_stats_id: int,
+    replay_sha256: str,
+    base_url: str,
+    token: str,
+    run_id: str,
+    destination_dir: Path,
+) -> tuple[Path, int, str]:
+    local_control = TRUSTED_LOCAL_CONTROLS.get(game_stats_id)
+    if local_control is not None and local_control.exists():
+        if local_control.is_symlink() or not local_control.is_file():
+            raise WorkerError("Trusted local control must be one regular file.")
+        size = local_control.stat().st_size
+        if size < 1 or size > MAX_REPLAY_BYTES:
+            raise WorkerError("Trusted local control is outside the worker byte bound.")
+        if sha256_file(local_control) != replay_sha256:
+            raise WorkerError("Trusted local control failed its exact SHA-256 identity.")
+        extension = local_control.suffix.lower()
+        if extension not in SAFE_REPLAY_EXTENSIONS:
+            raise WorkerError("Trusted local control has an unsupported replay extension.")
+        destination = destination_dir / f"{replay_sha256}{extension}"
+        digest = hashlib.sha256()
+        copied = 0
+        with local_control.open("rb") as source, destination.open("xb") as target:
+            while True:
+                chunk = source.read(1024 * 1024)
+                if not chunk:
+                    break
+                copied += len(chunk)
+                if copied > MAX_REPLAY_BYTES:
+                    raise WorkerError("Trusted local control exceeded the worker byte bound.")
+                digest.update(chunk)
+                target.write(chunk)
+        if copied != size or digest.hexdigest() != replay_sha256:
+            raise WorkerError("Trusted local control changed while being materialized.")
+        destination.chmod(0o400)
+        return destination, copied, "trusted_local_control"
+
+    artifact, byte_size = download_replay(
+        base_url=base_url,
+        token=token,
+        run_id=run_id,
+        expected_sha256=replay_sha256,
+        destination_dir=destination_dir,
+    )
+    return artifact, byte_size, "server_archive"
 
 
 def read_json(path: Path) -> dict[str, Any]:
@@ -347,11 +403,12 @@ def main() -> int:
     output.parent.mkdir(parents=True, exist_ok=True)
 
     with tempfile.TemporaryDirectory(prefix="aoe2war-native-replay-") as temp_dir:
-        artifact, byte_size = download_replay(
+        artifact, byte_size, artifact_source = materialize_replay(
+            game_stats_id=args.game_stats_id,
+            replay_sha256=replay_sha256,
             base_url=args.url.rstrip("/"),
             token=token,
             run_id=args.run_id,
-            expected_sha256=replay_sha256,
             destination_dir=Path(temp_dir),
         )
 
@@ -408,7 +465,8 @@ def main() -> int:
         output=output,
         runner_returncode=process.returncode,
     )
-    payload["downloadedByteSize"] = byte_size
+    payload["artifactByteSize"] = byte_size
+    payload["artifactSource"] = artifact_source
     payload, exit_code = apply_trusted_control_validation(
         game_stats_id=args.game_stats_id,
         output=output,
