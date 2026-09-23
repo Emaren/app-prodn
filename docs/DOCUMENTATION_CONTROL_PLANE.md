@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/compact-clan-hall-signals-20260922` at `80b22db5254a87aa1d05543d6ff0989ef6b09581`
+Implementation baseline: `feature/replay-native-admin-worker-v1-20260923` at `1b63284c051608485633a0b5283184d6eb3a213f`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
