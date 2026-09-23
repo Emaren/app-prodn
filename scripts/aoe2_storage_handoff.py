@@ -531,8 +531,16 @@ def wait_for_finish_or_recover(state: dict[str, Any]) -> tuple[str, str]:
         state["finish_pid"] = None
         seal_finish_log(state)
         save_state(state)
-        bind_finish_receipt(state)
-        return current_release, current_build
+        try:
+            bind_finish_receipt(state)
+        except HandoffError:
+            # The target can be live after a Finish that certified activation
+            # but failed a later closure check. Target-live alone is not handoff
+            # authority: rerun canonical Finish to complete and seal the exact
+            # post-handoff CERTIFIED receipt instead of deadlocking recovery.
+            pass
+        else:
+            return current_release, current_build
 
     finish_pid = state.get("finish_pid")
     if isinstance(finish_pid, int) and process_alive(finish_pid):
