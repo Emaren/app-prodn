@@ -185,7 +185,7 @@ def status_receipt_valid(parent, status):
         and (status.get("status") or [None])[0] == "APPLIED"
     )
 
-metadata_files = []
+metadata_documents = []
 for base in metadata_roots:
     if not base.is_dir():
         continue
@@ -205,7 +205,7 @@ for base in metadata_roots:
                 st = path.stat(follow_symlinks=False)
             except OSError:
                 continue
-            if (
+            if not (
                 stat.S_ISREG(st.st_mode)
                 and st.st_size <= max_meta
                 and any(
@@ -213,7 +213,14 @@ for base in metadata_roots:
                     for suffix in allowed_metadata_suffixes
                 )
             ):
-                metadata_files.append(path)
+                continue
+            try:
+                text = path.read_text(
+                    encoding="utf-8", errors="replace"
+                )
+            except Exception:
+                continue
+            metadata_documents.append((path, text))
 
 snapshots = []
 if root.is_dir():
@@ -245,9 +252,13 @@ if root.is_dir():
             release_sha = (status.get("release_sha") or [None])[0]
             declared_dump = (status.get("dump") or [None])[0]
             migrations = status.get("migration") or []
+            migration_match = migration_dir_re.fullmatch(parent.name)
+            receipt_timestamp = (
+                migration_match.group(1) if migration_match else None
+            )
             migration_shape = bool(
                 name == "pre-migration.dump"
-                and migration_dir_re.fullmatch(parent.name)
+                and migration_match
                 and status_ok
                 and declared_dump == name
                 and isinstance(declared, str)
@@ -266,16 +277,14 @@ if root.is_dir():
             abs_text = str(path)
             parent_text = str(parent)
             refs = []
-            for meta in metadata_files:
+            for meta, text in metadata_documents:
                 if meta.parent == parent:
                     continue
-                try:
-                    text = meta.read_text(
-                        encoding="utf-8", errors="replace"
-                    )
-                except Exception:
-                    continue
-                if abs_text in text or parent_text in text:
+                if (
+                    abs_text in text
+                    or parent_text in text
+                    or parent.name in text
+                ):
                     refs.append(str(meta))
                     if len(refs) >= 24:
                         break
@@ -290,6 +299,7 @@ if root.is_dir():
                 "mtime": datetime.fromtimestamp(
                     st.st_mtime, timezone.utc
                 ).isoformat(),
+                "receipt_timestamp": receipt_timestamp,
                 "status_receipt_valid": status_ok,
                 "migration_shape_exact": migration_shape,
                 "release_sha": release_sha,
@@ -400,6 +410,18 @@ def parse_mtime(row: dict[str, Any]) -> datetime:
     return value.astimezone(timezone.utc)
 
 
+def retention_time(row: dict[str, Any]) -> datetime:
+    stamp = str(row.get("receipt_timestamp") or "")
+    if row.get("migration_shape_exact") is True and stamp:
+        try:
+            return datetime.strptime(
+                stamp, "%Y%m%dT%H%M%SZ"
+            ).replace(tzinfo=timezone.utc)
+        except ValueError:
+            pass
+    return parse_mtime(row)
+
+
 def select_retention(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     p = policy()
     now = datetime.now(timezone.utc)
@@ -410,7 +432,7 @@ def select_retention(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         classification, reason = classify_snapshot(row)
         row["classification"] = classification
         row["classification_reason"] = reason
-        mtime = parse_mtime(row)
+        mtime = retention_time(row)
         row["age_days"] = round(
             max(0.0, (now - mtime).total_seconds() / 86400.0), 2
         )
@@ -424,7 +446,7 @@ def select_retention(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             row for row in enriched
             if row["classification"] == "migration-boundary"
         ],
-        key=parse_mtime,
+        key=retention_time,
         reverse=True,
     )
 
@@ -460,7 +482,7 @@ def select_retention(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     for row in available:
         if row.get("retention_class") != "HOT":
             continue
-        dt = parse_mtime(row)
+        dt = retention_time(row)
         iso = dt.isocalendar()
         weekly_seen.add((iso.year, iso.week))
     weekly_limit = int(p["weekly_cold_weeks"])
@@ -468,7 +490,7 @@ def select_retention(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     for row in available:
         if str(row["path"]) in protected_ids:
             continue
-        dt = parse_mtime(row)
+        dt = retention_time(row)
         iso = dt.isocalendar()
         key = (iso.year, iso.week)
         if key in weekly_seen or weekly_added >= weekly_limit:
@@ -518,7 +540,7 @@ def select_retention(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         )
         row["retire_candidate"] = True
 
-    return sorted(enriched, key=parse_mtime, reverse=True)
+    return sorted(enriched, key=retention_time, reverse=True)
 
 
 def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
