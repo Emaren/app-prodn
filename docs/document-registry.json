@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9271ffa0d492c58ca5134e82cdb1a396cd17d4c4c1922ca08c7806d2fda6404f",
+      "sha256": "11df2cc3fdca4c884484d07ee4e462067a56d9b2d7863a9c067eb5d9db308fa6",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "test/brain-p0-precedence-20260923",
-    "commit": "d5b538f55d04166110fc1bf756350eeb4b361dc6"
+    "branch": "fix/storage-resume-ambiguous-transaction-v2-20260923",
+    "commit": "e0db70f6c0190a39b43279605f840f3e8e893948"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

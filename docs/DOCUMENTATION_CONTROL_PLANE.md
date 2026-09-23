@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `test/brain-p0-precedence-20260923` at `d5b538f55d04166110fc1bf756350eeb4b361dc6`
+Implementation baseline: `fix/storage-resume-ambiguous-transaction-v2-20260923` at `e0db70f6c0190a39b43279605f840f3e8e893948`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
