@@ -107,10 +107,12 @@ class StorageCampaignTests(unittest.TestCase):
         self.assertLess(increment, save)
         self.assertLess(next_loop, invoke)
 
-    def test_atomic_state_write_uses_replace(self):
+    def test_atomic_state_write_uses_replace_and_fsync(self):
         source = Path(campaign.__file__).read_text(encoding="utf-8")
 
         self.assertIn("os.replace(tmp, path)", source)
+        self.assertIn("os.fsync(handle.fileno())", source)
+        self.assertIn("os.fsync(directory_fd)", source)
 
     def test_state_path_rejects_traversal(self):
         with self.assertRaises(campaign.CampaignError):
