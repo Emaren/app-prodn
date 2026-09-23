@@ -276,11 +276,16 @@ aoe2war storage handoff status
 aoe2war storage handoff resume <handoff-id>
 ```
 
-`start` requires a live detached Storage campaign at the exact
-between-generation seam. It records the V1 campaign identity, PID, PGID,
-descendants, release SHA, BUILD_ID and completed-generation count, then launches
-the handoff controller in a detached process group with a durable log. Closing
-the initiating terminal does not stop the takeover.
+`start` requires a live detached Storage campaign in `RUNNING` or
+`RUNNING_TRANSACTION`. It records the V1 campaign identity, PID, PGID, release
+SHA, BUILD_ID and completed-generation count, reserves that campaign for one
+handoff, and durably requests a cooperative freeze. If a one-generation archive
+transaction is already active, that exact worker is allowed to finish and seal
+normally. Before the campaign can plan another generation, its controller writes
+`HANDOFF_FREEZE_READY`, clears the active-generation fields, records the handoff
+ID and seam timestamp, and self-stops. Only then does the handoff record the exact
+frozen PID/PGID/descendant identity and advance to `V1_FROZEN`. Closing the
+initiating terminal does not stop this takeover controller or weaken the seam.
 
 The durable state machine is strictly ordered:
 
@@ -293,11 +298,13 @@ handoff as higher-priority control-plane work and reports the exact
 `storage handoff resume` or `storage handoff status` command instead of
 recommending a generic Finish retry.
 
-V1 freeze is fail-closed. The campaign must have no
-`current_generation` or `current_generation_started_at`; the controller
-process group is stopped and then revalidated by exact PID/PGID/descendant
-identity. A process-group change, disappearing process, new descendant, or
-partially active transaction blocks the takeover.
+V1 freeze is fail-closed. A handoff request never interrupts a live
+one-generation worker. The campaign owns the freeze request and may reach
+`HANDOFF_FREEZE_READY` only after the active transaction, if any, has finished
+and `current_generation` / `current_generation_started_at` are clear. The
+self-stopped controller is then revalidated by exact PID/PGID/descendant identity.
+A process-group change, disappearing process, new descendant, conflicting
+handoff reservation, or ambiguous transaction blocks the takeover.
 
 The canonical Finish transaction remains the only source/deploy/certification
 authority. During the handoff it must prove the maintenance-runner
