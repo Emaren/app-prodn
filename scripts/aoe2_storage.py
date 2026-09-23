@@ -888,6 +888,8 @@ def parser() -> argparse.ArgumentParser:
     q.add_argument("expiry_args", nargs=argparse.REMAINDER)
     q = sub.add_parser("campaign")
     q.add_argument("campaign_args", nargs=argparse.REMAINDER)
+    q = sub.add_parser("handoff")
+    q.add_argument("handoff_args", nargs=argparse.REMAINDER)
     return p
 
 
@@ -926,6 +928,13 @@ def main() -> int:
             sys.executable,
             str(ROOT / "scripts" / "aoe2_storage_campaign.py"),
             *args.campaign_args,
+        ]
+        return subprocess.run(cmd, cwd=ROOT, check=False).returncode
+    if args.command == "handoff":
+        cmd = [
+            sys.executable,
+            str(ROOT / "scripts" / "aoe2_storage_handoff.py"),
+            *args.handoff_args,
         ]
         return subprocess.run(cmd, cwd=ROOT, check=False).returncode
     raise StorageError(f"unknown command: {args.command}")
