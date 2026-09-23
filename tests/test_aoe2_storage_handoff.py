@@ -24,26 +24,42 @@ class StorageHandoffTests(unittest.TestCase):
 
     def test_process_family_collects_descendants(self):
         rows = {
-            10: {"pid": 10, "ppid": 1, "pgid": 10},
-            11: {"pid": 11, "ppid": 10, "pgid": 10},
-            12: {"pid": 12, "ppid": 11, "pgid": 10},
-            13: {"pid": 13, "ppid": 1, "pgid": 13},
+            10: {"pid": 10, "ppid": 1, "pgid": 10, "command": "python v1"},
+            11: {"pid": 11, "ppid": 10, "pgid": 10, "command": "worker a"},
+            12: {"pid": 12, "ppid": 11, "pgid": 10, "command": "worker b"},
+            13: {"pid": 13, "ppid": 1, "pgid": 13, "command": "other"},
         }
         with mock.patch.object(handoff, "process_table", return_value=rows):
-            self.assertEqual(
-                handoff.process_family(10),
-                {"pid": 10, "pgid": 10, "descendants": [11, 12]},
-            )
+            family = handoff.process_family(10)
+        self.assertEqual(family["pid"], 10)
+        self.assertEqual(family["pgid"], 10)
+        self.assertEqual(family["command"], "python v1")
+        self.assertEqual(
+            [row["pid"] for row in family["descendants"]],
+            [11, 12],
+        )
 
-    def test_recorded_family_dead_requires_every_recorded_pid_dead(self):
-        snapshot = {"pid": 10, "pgid": 10, "descendants": [11, 12]}
-        with mock.patch.object(
-            handoff,
-            "process_alive",
-            side_effect=lambda pid: pid == 11,
-        ):
+    def test_recorded_family_dead_rejects_same_identity_but_allows_pid_reuse(self):
+        snapshot = {
+            "pid": 10,
+            "ppid": 1,
+            "pgid": 10,
+            "command": "python v1",
+            "descendants": [
+                {"pid": 11, "ppid": 10, "pgid": 10, "command": "worker a"},
+            ],
+        }
+        same = {
+            11: {"pid": 11, "ppid": 999, "pgid": 10, "command": "worker a"},
+        }
+        with mock.patch.object(handoff, "process_table", return_value=same):
             self.assertFalse(handoff.recorded_family_dead(snapshot))
-        with mock.patch.object(handoff, "process_alive", return_value=False):
+
+        reused = {
+            10: {"pid": 10, "ppid": 1, "pgid": 77, "command": "unrelated"},
+            11: {"pid": 11, "ppid": 1, "pgid": 88, "command": "different"},
+        }
+        with mock.patch.object(handoff, "process_table", return_value=reused):
             self.assertTrue(handoff.recorded_family_dead(snapshot))
 
     def test_prove_frozen_requires_cooperative_transaction_seam(self):
@@ -128,7 +144,20 @@ class StorageHandoffTests(unittest.TestCase):
                 mock.patch.object(
                     handoff,
                     "process_family",
-                    return_value={"pid": 123, "pgid": 123, "descendants": [124]},
+                    return_value={
+                        "pid": 123,
+                        "ppid": 1,
+                        "pgid": 123,
+                        "command": "python v1",
+                        "descendants": [
+                            {
+                                "pid": 124,
+                                "ppid": 123,
+                                "pgid": 123,
+                                "command": "worker",
+                            }
+                        ],
+                    },
                 ),
             ):
                 state = handoff.create_state("campaign-a")
@@ -137,7 +166,15 @@ class StorageHandoffTests(unittest.TestCase):
         self.assertEqual(state["old_release_sha"], "a" * 40)
         self.assertEqual(state["old_build_id"], "build-a")
         self.assertEqual(state["target_source_sha"], "b" * 40)
-        self.assertEqual(state["v1_process_family"]["descendants"], [124])
+        self.assertEqual(
+            [row["pid"] for row in state["v1_process_family"]["descendants"]],
+            [124],
+        )
+
+    def test_atomic_write_fsyncs_file_and_directory(self):
+        source = Path(handoff.__file__).read_text(encoding="utf-8")
+        self.assertIn("os.fsync(handle.fileno())", source)
+        self.assertIn("os.fsync(directory_fd)", source)
 
     def test_spawn_runner_is_terminal_independent(self):
         source = Path(handoff.__file__).read_text(encoding="utf-8")
