@@ -497,6 +497,59 @@ class StorageHandoffTests(unittest.TestCase):
         self.assertIn("Storage OS handoff", source)
         self.assertGreaterEqual(source.count("start_new_session=True"), 2)
 
+    def test_implementation_equivalent_release_allows_only_docs_descendant(self):
+        with mock.patch.object(
+            handoff.aoe2_release,
+            "documentation_only_descendant",
+            return_value=True,
+        ) as docs_only:
+            self.assertTrue(
+                handoff.implementation_equivalent_release(
+                    "b" * 40,
+                    "c" * 40,
+                )
+            )
+        docs_only.assert_called_once_with("b" * 40, "c" * 40)
+
+        with mock.patch.object(
+            handoff.aoe2_release,
+            "documentation_only_descendant",
+            return_value=False,
+        ):
+            self.assertFalse(
+                handoff.implementation_equivalent_release(
+                    "b" * 40,
+                    "c" * 40,
+                )
+            )
+
+        self.assertTrue(
+            handoff.implementation_equivalent_release(
+                "b" * 40,
+                "b" * 40,
+            )
+        )
+
+    def test_prove_target_certified_accepts_docs_only_finish_descendant(self):
+        state = {"target_source_sha": "b" * 40}
+        with (
+            mock.patch.object(
+                handoff.storage,
+                "operator_baseline",
+                return_value=("c" * 40, "build-c"),
+            ),
+            mock.patch.object(
+                handoff,
+                "implementation_equivalent_release",
+                return_value=True,
+            ) as equivalent,
+        ):
+            self.assertEqual(
+                handoff.prove_target_certified(state),
+                ("c" * 40, "build-c"),
+            )
+        equivalent.assert_called_once_with("b" * 40, "c" * 40)
+
     def test_finish_receipt_requires_certified_target_and_runner_phase(self):
         payload = {
             "kind": "aoe2war-finish-result",
@@ -519,7 +572,7 @@ class StorageHandoffTests(unittest.TestCase):
             path = root / "receipt.json"
             path.write_text(__import__("json").dumps(payload), encoding="utf-8")
             with mock.patch.object(handoff, "FINISH_RECEIPT_DIR", root):
-                found = handoff.finish_receipt_for_target("b" * 40)
+                found = handoff.finish_receipt_for_target("b" * 40, "b" * 40)
                 self.assertIsNotNone(found)
                 self.assertEqual(found[0], path)
                 self.assertIsNone(
@@ -597,7 +650,8 @@ class StorageHandoffTests(unittest.TestCase):
                             "handoff_id": "handoff-b",
                             "target_source_sha": "b" * 40,
                             "created_at": "2026-09-23T19:00:00+00:00",
-                        }
+                        },
+                        "b" * 40,
                     )
 
     def test_target_live_without_full_finish_receipt_reruns_canonical_finish(self):
@@ -659,6 +713,7 @@ class StorageHandoffTests(unittest.TestCase):
             with mock.patch.object(handoff, "FINISH_RECEIPT_DIR", root):
                 self.assertIsNone(
                     handoff.finish_receipt_for_target(
+                        "b" * 40,
                         "b" * 40,
                         not_before="2026-09-23T19:00:00+00:00",
                     )
