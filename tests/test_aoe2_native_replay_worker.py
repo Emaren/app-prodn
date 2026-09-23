@@ -17,6 +17,39 @@ SPEC.loader.exec_module(MODULE)
 
 
 class NativeReplayWorkerTests(unittest.TestCase):
+    def test_clean_git_repo_returns_head(self):
+        with patch.object(
+            MODULE.subprocess,
+            "check_output",
+            side_effect=["f" * 40 + "\n", ""],
+        ):
+            self.assertEqual(
+                MODULE.require_clean_git_repo(Path("/repo"), label="repo"),
+                "f" * 40,
+            )
+
+    def test_clean_git_repo_rejects_tracked_changes(self):
+        with patch.object(
+            MODULE.subprocess,
+            "check_output",
+            side_effect=["f" * 40 + "\n", " M scripts/example.py\n"],
+        ):
+            with self.assertRaisesRegex(MODULE.WorkerError, "tracked worktree changes"):
+                MODULE.require_clean_git_repo(Path("/repo"), label="repo")
+
+    def test_required_api_commit_must_be_ancestor(self):
+        failed = type("Completed", (), {"returncode": 1, "stdout": "not ancestor"})()
+        with patch.object(MODULE.subprocess, "run", return_value=failed):
+            with self.assertRaisesRegex(
+                MODULE.WorkerError,
+                "required canonical implementation",
+            ):
+                MODULE.require_git_ancestor(
+                    Path("/repo"),
+                    MODULE.REQUIRED_API_IMPLEMENTATION_COMMIT,
+                    label="api-prodn",
+                )
+
     def test_materialize_32388_prefers_exact_local_control(self):
         with tempfile.TemporaryDirectory() as temp:
             base = Path(temp)
