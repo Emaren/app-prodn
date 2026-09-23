@@ -481,11 +481,15 @@ A canonical `migration-boundary` snapshot requires all of the following:
 
 - parent directory shape `migration-<UTC timestamp>-<release12>`;
 - filename exactly `pre-migration.dump`;
-- sibling `migration-status.txt` with `status=APPLIED`;
-- a valid SHA-256 sidecar over that status receipt;
-- exact 40-hex release SHA;
-- exact 64-hex `dump_sha256`;
-- status `dump=pre-migration.dump`.
+- sibling direct regular `migration-status.txt` with one and only one
+  `status=APPLIED`;
+- a bounded direct regular SHA-256 sidecar over that status receipt;
+- one exact 40-hex release SHA whose first 12 hex characters equal the
+  `<release12>` encoded in the parent directory;
+- one non-empty database identity;
+- one exact 64-hex `dump_sha256`;
+- one status `dump=pre-migration.dump`;
+- at least one recorded migration name.
 
 Anything outside that contract is never guessed into the migration class.
 Paths/names that clearly identify settlement, betting, staking, escrow, Wolo or
