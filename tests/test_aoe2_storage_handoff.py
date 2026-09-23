@@ -48,6 +48,41 @@ class StorageHandoffTests(unittest.TestCase):
             "log_path": "handoff.log",
         }
 
+    def test_latest_status_prefers_incomplete_handoff(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            with mock.patch.object(handoff, "HANDOFF_ROOT", root):
+                complete = self.base_state(status="V2_RESUMED")
+                complete["handoff_id"] = "complete"
+                handoff.save_state(complete)
+
+                incomplete = self.base_state(status="SOURCE_READY")
+                incomplete["handoff_id"] = "incomplete"
+                handoff.save_state(incomplete)
+
+                self.assertEqual(
+                    handoff.latest_handoff_id(),
+                    "incomplete",
+                )
+                self.assertEqual(
+                    handoff.status_payload(None)["handoff_id"],
+                    "incomplete",
+                )
+
+    def test_new_handoff_refuses_to_hide_existing_incomplete_handoff(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            with mock.patch.object(handoff, "HANDOFF_ROOT", root):
+                existing = self.base_state(status="SOURCE_READY")
+                existing["handoff_id"] = "existing"
+                handoff.save_state(existing)
+
+                with self.assertRaisesRegex(
+                    handoff.HandoffError,
+                    "resume it first: existing",
+                ):
+                    handoff.create_state("campaign-test")
+
     def test_created_state_waits_for_cooperative_campaign_freeze(self):
         state = self.base_state(status="CREATED")
         state["v1_process"] = None
