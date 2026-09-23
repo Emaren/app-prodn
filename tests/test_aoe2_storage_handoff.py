@@ -662,7 +662,7 @@ class StorageHandoffTests(unittest.TestCase):
                 self.assertIsNotNone(found)
                 self.assertEqual(found[0], path)
                 self.assertIsNone(
-                    handoff.finish_receipt_for_target("c" * 40)
+                    handoff.finish_receipt_for_target("c" * 40, "c" * 40)
                 )
 
     def test_bind_finish_receipt_requires_and_records_wolo_continuity(self):
@@ -705,7 +705,7 @@ class StorageHandoffTests(unittest.TestCase):
                 mock.patch.object(handoff, "FINISH_RECEIPT_DIR", root),
                 mock.patch.object(handoff, "save_state") as save,
             ):
-                handoff.bind_finish_receipt(state)
+                handoff.bind_finish_receipt(state, "b" * 40)
 
         self.assertEqual(state["wolo_continuity"]["pid"], 4321)
         self.assertEqual(state["wolo_continuity"]["restart_counter"], 7)
@@ -765,6 +765,11 @@ class StorageHandoffTests(unittest.TestCase):
             mock.patch.object(handoff, "seal_finish_log"),
             mock.patch.object(handoff, "save_state"),
             mock.patch.object(handoff, "load_state", return_value=dict(state)),
+            mock.patch.object(
+                handoff,
+                "source_ready_for_finish",
+                return_value="b" * 40,
+            ),
             mock.patch.object(handoff, "launch_finish", return_value=proc) as launch,
         ):
             release, build = handoff.wait_for_finish_or_recover(dict(state))
