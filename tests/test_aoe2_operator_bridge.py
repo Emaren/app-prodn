@@ -111,7 +111,7 @@ class OperatorBridgeTests(unittest.TestCase):
                 "action": "replay_native_run",
                 "parameters": {
                     "gameStatsId": 32388,
-                    "replaySha256": "a" * 64,
+                    "replaySha256": "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b",
                     "rosterSlots": [1, 2, 3, 4],
                     "candidateOnly": True,
                     "nativePerformanceSeconds": 240,
@@ -130,7 +130,7 @@ class OperatorBridgeTests(unittest.TestCase):
                 "--game-stats-id",
                 "32388",
                 "--replay-sha256",
-                "a" * 64,
+                "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b",
                 "--native-performance-seconds",
                 "240",
                 "--timeout-seconds",
@@ -159,6 +159,26 @@ class OperatorBridgeTests(unittest.TestCase):
                     "action": "replay_native_run",
                     "parameters": {
                         "gameStatsId": 99999,
+                        "replaySha256": "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b",
+                        "rosterSlots": [1, 2],
+                        "candidateOnly": True,
+                        "nativePerformanceSeconds": 240,
+                        "timeoutSeconds": 300,
+                    },
+                }
+            )
+
+    def test_native_replay_command_rejects_wrong_canary_sha(self):
+        with self.assertRaisesRegex(
+            MODULE.BridgeError,
+            "does not match the trusted 32388 canary",
+        ):
+            MODULE.command_for_run(
+                {
+                    "id": "run",
+                    "action": "replay_native_run",
+                    "parameters": {
+                        "gameStatsId": 32388,
                         "replaySha256": "a" * 64,
                         "rosterSlots": [1, 2],
                         "candidateOnly": True,
@@ -176,7 +196,7 @@ class OperatorBridgeTests(unittest.TestCase):
                     "action": "replay_native_run",
                     "parameters": {
                         "gameStatsId": 32388,
-                        "replaySha256": "a" * 64,
+                        "replaySha256": "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b",
                         "rosterSlots": [1, 2, 3, 4],
                         "candidateOnly": True,
                         "nativePerformanceSeconds": 241,
@@ -191,7 +211,7 @@ class OperatorBridgeTests(unittest.TestCase):
                     "action": "replay_native_run",
                     "parameters": {
                         "gameStatsId": 32388,
-                        "replaySha256": "a" * 64,
+                        "replaySha256": "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b",
                         "rosterSlots": [1, 2, 3, 4],
                         "candidateOnly": True,
                         "nativePerformanceSeconds": 240,
@@ -208,7 +228,7 @@ class OperatorBridgeTests(unittest.TestCase):
                     "action": "replay_native_run",
                     "parameters": {
                         "gameStatsId": 32388,
-                        "replaySha256": "a" * 64,
+                        "replaySha256": "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b",
                         "rosterSlots": [1, 2],
                         "candidateOnly": False,
                         "nativePerformanceSeconds": 240,
