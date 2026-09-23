@@ -87,6 +87,80 @@ def atomic_write(path: Path, payload: dict[str, Any]) -> None:
         tmp.unlink(missing_ok=True)
 
 
+def transition_receipt_dir(handoff_id: str) -> Path:
+    state_path(handoff_id)
+    return HANDOFF_DIR / f"{handoff_id}.receipts"
+
+
+def transition_receipt_path(handoff_id: str, target: str) -> Path:
+    if target not in FLOW:
+        raise HandoffError(f"invalid handoff receipt state: {target}")
+    index = FLOW.index(target) + 1
+    return transition_receipt_dir(handoff_id) / f"{index:02d}-{target}.json"
+
+
+def write_transition_receipt(
+    *,
+    handoff_id: str,
+    source: str | None,
+    target: str,
+    evidence: dict[str, Any],
+) -> tuple[Path, str, dict[str, Any]]:
+    path = transition_receipt_path(handoff_id, target)
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    if path.exists():
+        try:
+            existing = json.loads(path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            raise HandoffError(f"invalid existing handoff receipt: {path}") from exc
+        if (
+            existing.get("schema") != 1
+            or existing.get("kind") != "aoe2war-storage-handoff-transition"
+            or existing.get("handoff_id") != handoff_id
+            or existing.get("from") != source
+            or existing.get("to") != target
+        ):
+            raise HandoffError(f"existing handoff receipt identity mismatch: {path}")
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        return path, digest, existing
+
+    payload = {
+        "schema": 1,
+        "kind": "aoe2war-storage-handoff-transition",
+        "handoff_id": handoff_id,
+        "from": source,
+        "to": target,
+        "created_at": utc_now(),
+        "evidence": evidence,
+    }
+    encoded = json.dumps(payload, indent=2, sort_keys=True) + "\n"
+    try:
+        with path.open("x", encoding="utf-8") as handle:
+            handle.write(encoded)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.chmod(path, 0o444)
+        try:
+            directory_fd = os.open(path.parent, os.O_RDONLY)
+        except OSError:
+            directory_fd = None
+        if directory_fd is not None:
+            try:
+                os.fsync(directory_fd)
+            finally:
+                os.close(directory_fd)
+    except FileExistsError:
+        return write_transition_receipt(
+            handoff_id=handoff_id,
+            source=source,
+            target=target,
+            evidence=evidence,
+        )
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    return path, digest, payload
+
+
 def load_state(handoff_id: str) -> dict[str, Any]:
     path = state_path(handoff_id)
     if not path.is_file():
@@ -275,17 +349,28 @@ def transition(
         target_index = FLOW.index(target)
         if target_index != current_index + 1:
             raise HandoffError(f"invalid handoff transition: {current} -> {target}")
+    proof = evidence or {}
+    receipt_path, receipt_sha256, receipt = write_transition_receipt(
+        handoff_id=str(state["handoff_id"]),
+        source=current or None,
+        target=target,
+        evidence=proof,
+    )
     history = list(state.get("history") or [])
     history.append(
         {
             "from": current or None,
             "to": target,
-            "at": utc_now(),
-            "evidence": evidence or {},
+            "at": receipt.get("created_at"),
+            "evidence": receipt.get("evidence") or {},
+            "receipt_path": str(receipt_path),
+            "receipt_sha256": receipt_sha256,
         }
     )
     state["status"] = target
     state["history"] = history
+    state["last_transition_receipt"] = str(receipt_path)
+    state["last_transition_receipt_sha256"] = receipt_sha256
     state["last_error"] = None
     save_state(state)
 
@@ -349,14 +434,28 @@ def create_state(campaign_id: str) -> dict[str, Any]:
             f"Storage campaign: pid={pid} command={root_command!r}"
         )
     handoff_id = f"{stamp()}-{campaign_id}-{target_source[:12]}"
+    created_at = utc_now()
+    initial_evidence = {
+        "campaign_status": existing.get("status"),
+        "campaign_release_sha": existing.get("release_sha"),
+        "campaign_build_id": existing.get("build_id"),
+        "process_family": family,
+        "target_source_sha": target_source,
+    }
+    receipt_path, receipt_sha256, receipt = write_transition_receipt(
+        handoff_id=handoff_id,
+        source=None,
+        target="V1_RUNNING",
+        evidence=initial_evidence,
+    )
     payload = {
         "schema": 1,
         "kind": "aoe2war-storage-handoff",
         "handoff_id": handoff_id,
         "campaign_id": campaign_id,
         "status": "V1_RUNNING",
-        "created_at": utc_now(),
-        "updated_at": utc_now(),
+        "created_at": created_at,
+        "updated_at": created_at,
         "old_release_sha": current_release,
         "old_build_id": current_build,
         "target_source_sha": target_source,
@@ -373,16 +472,14 @@ def create_state(campaign_id: str) -> dict[str, Any]:
             {
                 "from": None,
                 "to": "V1_RUNNING",
-                "at": utc_now(),
-                "evidence": {
-                    "campaign_status": existing.get("status"),
-                    "campaign_release_sha": existing.get("release_sha"),
-                    "campaign_build_id": existing.get("build_id"),
-                    "process_family": family,
-                    "target_source_sha": target_source,
-                },
+                "at": receipt.get("created_at"),
+                "evidence": receipt.get("evidence") or {},
+                "receipt_path": str(receipt_path),
+                "receipt_sha256": receipt_sha256,
             }
         ],
+        "last_transition_receipt": str(receipt_path),
+        "last_transition_receipt_sha256": receipt_sha256,
         "last_error": None,
         "log_path": str(log_path(handoff_id)),
     }
