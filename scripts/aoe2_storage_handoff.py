@@ -1014,6 +1014,11 @@ def drive(handoff_id: str) -> int:
             if status == "V1_FROZEN":
                 current = campaign.load_state(campaign_id)
                 prove_frozen(current)
+                if not recorded_family_dead(state.get("v1_process_family") or {}):
+                    raise HandoffError(
+                        "V1 process family is still alive at the transaction seam; "
+                        "handoff will not overlap the archive controller or its descendants"
+                    )
                 transition(
                     state,
                     "TRANSACTION_SEAM_PROVEN",
@@ -1023,6 +1028,7 @@ def drive(handoff_id: str) -> int:
                             "current_generation_started_at"
                         ),
                         "controller_pid": current.get("pid"),
+                        "v1_process_family_dead": True,
                     },
                 )
                 continue
