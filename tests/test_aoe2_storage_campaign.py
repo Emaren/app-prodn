@@ -87,6 +87,24 @@ class StorageCampaignTests(unittest.TestCase):
         self.assertLess(invoke, refresh)
         self.assertLess(refresh, save)
 
+    def test_post_worker_pause_wins_over_natural_target_completion(self):
+        source = Path(campaign.__file__).read_text(encoding="utf-8")
+
+        invoke = source.index("storage.invoke_worker(")
+        refresh = source.index("refresh_operator_signals(state)", invoke)
+        pause_gate = source.index('if state.get("pause_requested"):', refresh)
+        target_gate = source.index(
+            'if float(current["used_percent"]) < float(state["target_percent"]):',
+            refresh,
+        )
+
+        self.assertLess(invoke, refresh)
+        self.assertLess(refresh, pause_gate)
+        self.assertLess(pause_gate, target_gate)
+        seam = source[pause_gate:target_gate]
+        self.assertIn('"PAUSED"', seam)
+        self.assertIn('"OPERATOR_PAUSE_BETWEEN_GENERATIONS"', seam)
+
     def test_pause_is_between_generations_not_signal_kill(self):
         source = Path(campaign.__file__).read_text(encoding="utf-8")
 
