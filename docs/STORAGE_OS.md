@@ -454,6 +454,75 @@ General Inspections consumes this policy as observable maintenance debt. A prove
 runtime body may reduce the Organization & Storage score until expiry completes, while protected
 evidence is not penalized merely for existing.
 
+## Deploy database snapshot retention
+
+Deploy-time database restore points are a separate recovery class from compiled
+application rollback generations. They must never be swept by the two-hot /
+three-cold runtime policy or deleted merely to drive the mounted volume below a
+capacity percentage.
+
+The V1 operator surface is intentionally read-only:
+
+```bash
+aoe2war storage db-snapshots status
+aoe2war storage db-snapshots plan
+aoe2war storage db-snapshots plan --verify-hashes
+```
+
+The default inventory is bounded to
+`/mnt/HC_Volume_105319120/aoe2war/deploy-receipts`, walks at most four
+directory levels, ignores symlinks and non-regular files, and counts only known
+database-backup suffixes. It does **not** hash multi-gigabyte dump bodies by
+default. Canonical migration boundaries reuse the SHA-256 already sealed in
+`migration-status.txt`; `--verify-hashes` is an explicit read-only full-body
+verification pass.
+
+A canonical `migration-boundary` snapshot requires all of the following:
+
+- parent directory shape `migration-<UTC timestamp>-<release12>`;
+- filename exactly `pre-migration.dump`;
+- sibling `migration-status.txt` with `status=APPLIED`;
+- a valid SHA-256 sidecar over that status receipt;
+- exact 40-hex release SHA;
+- exact 64-hex `dump_sha256`;
+- status `dump=pre-migration.dump`.
+
+Anything outside that contract is never guessed into the migration class.
+Paths/names that clearly identify settlement, betting, staking, escrow, Wolo or
+other financial recovery material are classified `financial`. Incident,
+repair, restore, rollback and replay-repair shapes are
+`incident/recovery`. Everything else is `legacy-ambiguous`. All three
+non-canonical classes are protected from generic retirement.
+
+The tiered migration-boundary policy is evidence-first:
+
+1. keep the newest five exact migration restore points as `HOT`;
+2. keep one additional exact restore point per ISO week for eight older weeks;
+3. keep one additional exact restore point per calendar month for twelve older
+   months;
+4. keep any snapshot whose exact snapshot/receipt path is referenced by external
+   durable metadata;
+5. mark only the remaining exact, unreferenced migration-boundary snapshots as
+   `RETIRE_CANDIDATE`.
+
+Hot weeks/months already represented by a newer retained snapshot do not consume
+a second cold slot. Age alone is never deletion authority.
+
+The ordinary `aoe2war storage status` metadata probe now reports the bounded
+database-snapshot count and allocated bytes so this recovery estate cannot
+silently grow outside Storage OS visibility. The detailed planner reports
+classification, retention tier, external-reference evidence and potential
+candidate bytes.
+
+**V1 has no apply/delete command.** The planner explicitly reports deletion as
+disabled. A future apply lane must be separately reviewed and must, at minimum,
+seal an immutable retirement ledger; rehash the exact candidate body; re-prove
+path/size/SHA/provenance and external-reference absence; hold the canonical
+release lock; re-prove production/Wolo safety before and after unlink; append
+intent/completion receipts; and preserve the parent deployment/migration
+evidence after the dump body is retired. Until that lane exists and a fresh
+production plan is reviewed, every candidate is informational only.
+
 ## Safety invariants
 
 - Wolo mutation forbidden.
