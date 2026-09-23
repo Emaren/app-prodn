@@ -301,6 +301,80 @@ class StorageHandoffTests(unittest.TestCase):
                     handoff.finish_receipt_for_target("c" * 40)
                 )
 
+    def test_bind_finish_receipt_requires_and_records_wolo_continuity(self):
+        payload = {
+            "kind": "aoe2war-finish-result",
+            "status": "CERTIFIED",
+            "release_outcome": "CERTIFIED",
+            "release_certified_at": "2026-09-23T20:00:00+00:00",
+            "phases": {
+                "maintenance_runner_reconciliation": {"status": "PASSED"},
+            },
+            "maintenance_runner_reconciliation": {
+                "wolo_pid": "4321",
+                "wolo_restart_counter": "7",
+                "wolo_height_before": "100",
+                "wolo_height_after": "103",
+            },
+            "final_release": {
+                "production": {
+                    "source_sha": "b" * 40,
+                    "wolo_8092_count": 1,
+                    "wolo_8093_count": 1,
+                },
+                "certification": {
+                    "status": "CERTIFIED",
+                    "release_sha": "b" * 40,
+                },
+            },
+        }
+        state = {
+            "handoff_id": "handoff-a",
+            "target_source_sha": "b" * 40,
+            "created_at": "2026-09-23T19:00:00+00:00",
+        }
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            receipt = root / "receipt.json"
+            receipt.write_text(__import__("json").dumps(payload), encoding="utf-8")
+            with (
+                mock.patch.object(handoff, "FINISH_RECEIPT_DIR", root),
+                mock.patch.object(handoff, "save_state") as save,
+            ):
+                handoff.bind_finish_receipt(state)
+
+        self.assertEqual(state["wolo_continuity"]["pid"], 4321)
+        self.assertEqual(state["wolo_continuity"]["restart_counter"], 7)
+        self.assertEqual(state["wolo_continuity"]["height_before"], 100)
+        self.assertEqual(state["wolo_continuity"]["height_after"], 103)
+        self.assertEqual(state["wolo_continuity"]["listener_8092_count"], 1)
+        self.assertEqual(state["wolo_continuity"]["listener_8093_count"], 1)
+        self.assertFalse(state["wolo_continuity"]["wolo_mutated_by_handoff"])
+        save.assert_called_once_with(state)
+
+        payload["maintenance_runner_reconciliation"]["wolo_height_after"] = "100"
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "receipt.json").write_text(
+                __import__("json").dumps(payload),
+                encoding="utf-8",
+            )
+            with (
+                mock.patch.object(handoff, "FINISH_RECEIPT_DIR", root),
+                mock.patch.object(handoff, "save_state"),
+            ):
+                with self.assertRaisesRegex(
+                    handoff.HandoffError,
+                    "does not prove protected Wolo continuity",
+                ):
+                    handoff.bind_finish_receipt(
+                        {
+                            "handoff_id": "handoff-b",
+                            "target_source_sha": "b" * 40,
+                            "created_at": "2026-09-23T19:00:00+00:00",
+                        }
+                    )
+
     def test_target_live_without_full_finish_receipt_reruns_canonical_finish(self):
         state = {
             "handoff_id": "handoff-a",
