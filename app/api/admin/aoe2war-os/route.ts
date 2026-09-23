@@ -10,6 +10,7 @@ import {
   loadAoe2OsDashboard,
   cancelAoe2OsRun,
 } from "@/lib/aoe2Os";
+import { buildNativeReplayRunParameters } from "@/lib/nativeReplayWorker";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -89,6 +90,12 @@ export async function POST(request: NextRequest) {
   }
 
   const definition = getAoe2OsAction(action);
+  if (!dashboard.bridge.capabilities.includes(action)) {
+    return NextResponse.json(
+      { detail: `Operator Bridge does not advertise ${action} capability. Update/restart the bridge first.` },
+      { status: 409, headers: NO_STORE }
+    );
+  }
   if (!confirmationMatches(action, body.confirmation)) {
     return NextResponse.json(
       {
@@ -106,6 +113,11 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const parameters =
+      action === "replay_native_run"
+        ? await buildNativeReplayRunParameters(body.gameStatsId)
+        : undefined;
+
     await createAoe2OsRun({
       action,
       requestedByUserId: admin.user.id,
@@ -118,6 +130,7 @@ export async function POST(request: NextRequest) {
         typeof body.expectedTargetSha === "string"
           ? body.expectedTargetSha.trim()
           : null,
+      parameters,
     });
   } catch (error) {
     return NextResponse.json(
