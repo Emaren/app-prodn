@@ -478,6 +478,7 @@ function buildLocalGeneralInspectionsSnapshot(): GeneralInspectionsSnapshot {
 
   const nodeRatio = nodeTestRatio(commands);
   const pythonRatio = pythonTestRatio(commands);
+  const pythonPassed = commandPassed(commands, "active-python-test-contract");
   const tests = category(
     "tests",
     "Test & Build Integrity",
@@ -508,15 +509,19 @@ function buildLocalGeneralInspectionsSnapshot(): GeneralInspectionsSnapshot {
         pythonRequired
           ? pythonRatio
             ? (pythonRatio.passed / pythonRatio.total) * gateFresh
-            : 0
+            : pythonPassed
+              ? gateFresh
+              : 0
           : 1,
         pythonRequired
           ? pythonRatio
             ? pythonRatio.passed + "/" + pythonRatio.total + " files"
-            : "Required Python test receipt missing"
+            : pythonPassed
+              ? "PASS · file count omitted from bounded receipt tail"
+              : "Required Python test receipt missing"
           : "Not required by certified gate scope",
-        pythonRequired
-          ? { ratio: pythonRatio || { passed: 0, total: 0 }, evidenceAt: gateAt }
+        pythonRequired && pythonRatio
+          ? { ratio: pythonRatio, evidenceAt: gateAt }
           : { evidenceAt: gateAt },
       ),
       check(
