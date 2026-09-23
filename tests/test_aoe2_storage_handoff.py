@@ -141,6 +141,7 @@ class StorageHandoffTests(unittest.TestCase):
                     "source_ready",
                     return_value="b" * 40,
                 ),
+                mock.patch.object(handoff, "process_alive", return_value=True),
                 mock.patch.object(
                     handoff,
                     "process_family",
@@ -148,7 +149,7 @@ class StorageHandoffTests(unittest.TestCase):
                         "pid": 123,
                         "ppid": 1,
                         "pgid": 123,
-                        "command": "python v1",
+                        "command": "python scripts/aoe2_storage_campaign.py _run campaign-a",
                         "descendants": [
                             {
                                 "pid": 124,
@@ -175,6 +176,50 @@ class StorageHandoffTests(unittest.TestCase):
         source = Path(handoff.__file__).read_text(encoding="utf-8")
         self.assertIn("os.fsync(handle.fileno())", source)
         self.assertIn("os.fsync(directory_fd)", source)
+
+    def test_create_state_refuses_nonlive_or_wrong_v1_controller(self):
+        paused = {
+            "campaign_id": "campaign-a",
+            "status": "PAUSED",
+            "release_sha": "a" * 40,
+            "build_id": "build-a",
+            "pid": None,
+        }
+        with mock.patch.object(handoff.campaign, "load_state", return_value=paused):
+            with self.assertRaisesRegex(handoff.HandoffError, "not a live V1 controller"):
+                handoff.create_state("campaign-a")
+
+        running = {
+            **paused,
+            "status": "RUNNING",
+            "pid": 123,
+        }
+        with (
+            mock.patch.object(handoff.campaign, "load_state", return_value=running),
+            mock.patch.object(handoff, "process_alive", return_value=True),
+            mock.patch.object(
+                handoff.storage,
+                "operator_baseline",
+                return_value=("a" * 40, "build-a"),
+            ),
+            mock.patch.object(handoff, "source_ready", return_value="b" * 40),
+            mock.patch.object(
+                handoff,
+                "process_family",
+                return_value={
+                    "pid": 123,
+                    "ppid": 1,
+                    "pgid": 123,
+                    "command": "unrelated process",
+                    "descendants": [],
+                },
+            ),
+        ):
+            with self.assertRaisesRegex(
+                handoff.HandoffError,
+                "process identity does not match",
+            ):
+                handoff.create_state("campaign-a")
 
     def test_spawn_runner_is_terminal_independent(self):
         source = Path(handoff.__file__).read_text(encoding="utf-8")
