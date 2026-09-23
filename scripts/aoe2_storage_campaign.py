@@ -75,6 +75,14 @@ def refresh_operator_signals(state: dict[str, Any]) -> None:
     if persisted.get("pause_requested"):
         state["pause_requested"] = True
         state["pause_requested_at"] = persisted.get("pause_requested_at") or utc_now()
+    if persisted.get("handoff_freeze_requested"):
+        state["handoff_freeze_requested"] = True
+        state["handoff_freeze_requested_at"] = (
+            persisted.get("handoff_freeze_requested_at") or utc_now()
+        )
+        state["handoff_freeze_handoff_id"] = persisted.get(
+            "handoff_freeze_handoff_id"
+        )
 
 
 def process_alive(pid: int | None) -> bool:
@@ -161,6 +169,10 @@ def create_state(*, max_generations: int, force: bool) -> dict[str, Any]:
         "completed_generations": 0,
         "force": bool(force),
         "pause_requested": False,
+        "handoff_freeze_requested": False,
+        "handoff_freeze_requested_at": None,
+        "handoff_freeze_handoff_id": None,
+        "handoff_freeze_ready_at": None,
         "pid": None,
         "current_generation": None,
         "current_generation_started_at": None,
@@ -236,6 +248,23 @@ def run_campaign(campaign_id: str) -> int:
         while True:
             validate_bound_baseline(state)
             refresh_operator_signals(state)
+
+            if state.get("handoff_freeze_requested"):
+                state["status"] = "HANDOFF_FREEZE_READY"
+                state["handoff_freeze_ready_at"] = utc_now()
+                state["current_generation"] = None
+                state["current_generation_started_at"] = None
+                save_state(state)
+                print(
+                    "HANDOFF_FREEZE_READY "
+                    + str(state.get("handoff_freeze_handoff_id") or ""),
+                    flush=True,
+                )
+                os.kill(os.getpid(), signal.SIGSTOP)
+                raise CampaignError(
+                    "handoff-frozen V1 controller resumed unexpectedly; "
+                    "only the handoff retirement path may retire it"
+                )
 
             if state.get("pause_requested"):
                 mark_terminal(
@@ -376,11 +405,45 @@ def start(*, max_generations: int, force: bool) -> dict[str, Any]:
     }
 
 
+def request_handoff_freeze(
+    campaign_id: str,
+    handoff_id: str,
+) -> dict[str, Any]:
+    state = load_state(campaign_id)
+    status = str(state.get("status") or "")
+    if status not in {"RUNNING", "RUNNING_TRANSACTION"}:
+        raise CampaignError(
+            "handoff freeze requires a live RUNNING campaign; "
+            f"found {status or 'UNKNOWN'}"
+        )
+    pid = state.get("pid")
+    if not process_alive(pid if isinstance(pid, int) else None):
+        raise CampaignError("handoff freeze requires a live campaign controller")
+    existing = state.get("handoff_freeze_handoff_id")
+    if existing and existing != handoff_id:
+        raise CampaignError(
+            f"campaign is already reserved for handoff {existing}"
+        )
+    state["handoff_freeze_requested"] = True
+    state["handoff_freeze_requested_at"] = (
+        state.get("handoff_freeze_requested_at") or utc_now()
+    )
+    state["handoff_freeze_handoff_id"] = handoff_id
+    save_state(state)
+    return state
+
+
 def resume(campaign_id: str) -> dict[str, Any]:
     state = load_state(campaign_id)
-    if state.get("status") in {"COMPLETE", "RETIRED_HANDOFF"}:
+    if state.get("status") in {
+        "COMPLETE",
+        "RETIRED_HANDOFF",
+        "HANDOFF_FREEZE_READY",
+    } or state.get("handoff_freeze_requested"):
         raise CampaignError(
-            f"{str(state.get('status')).lower()} campaign cannot be resumed"
+            "campaign cannot be resumed outside its reserved handoff path"
+            if state.get("handoff_freeze_requested")
+            else f"{str(state.get('status')).lower()} campaign cannot be resumed"
         )
     pid = state.get("pid")
     if process_alive(pid if isinstance(pid, int) else None):
