@@ -200,6 +200,22 @@ class StorageCampaignTests(unittest.TestCase):
         spawn.assert_called_once_with("test")
         self.assertEqual(result["spawned_pid"], 456)
 
+    def test_handoff_freeze_outranks_post_worker_target_completion(self):
+        source = Path(campaign.__file__).read_text(encoding="utf-8")
+        invoke = source.index("storage.invoke_worker(")
+        refresh = source.index("refresh_operator_signals(state)", invoke)
+        handoff_continue = source.index(
+            'if state.get("handoff_freeze_requested"):\n                continue',
+            refresh,
+        )
+        target_check = source.index(
+            'if float(current["used_percent"]) < float(state["target_percent"]):',
+            refresh,
+        )
+
+        self.assertLess(refresh, handoff_continue)
+        self.assertLess(handoff_continue, target_check)
+
     def test_request_handoff_freeze_reserves_live_transaction(self):
         state = {
             "schema": 1,
