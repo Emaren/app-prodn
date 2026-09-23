@@ -1,0 +1,270 @@
+import os
+import tempfile
+import unittest
+from pathlib import Path
+from unittest import mock
+
+import scripts.aoe2_storage_handoff as handoff
+
+
+class StorageHandoffTests(unittest.TestCase):
+    def base_state(self, status="CREATED"):
+        return {
+            "schema": 1,
+            "kind": "aoe2war-storage-handoff",
+            "handoff_id": "handoff-test",
+            "campaign_id": "campaign-test",
+            "status": status,
+            "created_at": "2026-09-23T19:00:00+00:00",
+            "updated_at": "2026-09-23T19:00:00+00:00",
+            "controller_pid": None,
+            "controller_pgid": None,
+            "v1_release_sha": "a" * 40,
+            "v1_build_id": "build-v1",
+            "v1_completed_generations": 2,
+            "v1_max_generations": 6,
+            "v1_force": False,
+            "v1_process": {
+                "pid": 123,
+                "pgid": 123,
+                "stat": "T",
+                "stopped": True,
+                "descendants": [],
+            },
+            "history": [],
+            "finish_result": None,
+            "successor": None,
+            "last_error": None,
+            "log_path": "handoff.log",
+        }
+
+    def test_transition_is_sequential_and_receipted_read_only(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            with mock.patch.object(handoff, "HANDOFF_ROOT", root):
+                state = self.base_state()
+                handoff.save_state(state)
+                result = handoff.seal_transition(
+                    state,
+                    "V1_FROZEN",
+                    {"pid": 123, "pgid": 123},
+                )
+
+                self.assertEqual(result["status"], "V1_FROZEN")
+                self.assertEqual(len(result["history"]), 1)
+                receipt = Path(result["last_transition_receipt"])
+                self.assertTrue(receipt.is_file())
+                self.assertEqual(receipt.stat().st_mode & 0o777, 0o444)
+
+                with self.assertRaises(handoff.HandoffError):
+                    handoff.seal_transition(
+                        result,
+                        "SOURCE_READY",
+                        {},
+                    )
+
+    def test_spawn_is_terminal_independent(self):
+        state = self.base_state()
+        fake_proc = mock.Mock(pid=456)
+        fake_log = mock.mock_open()
+        with (
+            mock.patch.object(handoff, "load_state", return_value=state),
+            mock.patch.object(Path, "mkdir"),
+            mock.patch.object(Path, "open", fake_log),
+            mock.patch.object(handoff.subprocess, "Popen", return_value=fake_proc) as popen,
+        ):
+            pid = handoff.spawn("handoff-test")
+
+        self.assertEqual(pid, 456)
+        kwargs = popen.call_args.kwargs
+        self.assertTrue(kwargs["start_new_session"])
+        self.assertEqual(kwargs["stdin"], handoff.subprocess.DEVNULL)
+        self.assertEqual(kwargs["stderr"], handoff.subprocess.STDOUT)
+
+    def test_resume_rejects_live_handoff_controller(self):
+        state = self.base_state(status="SOURCE_READY")
+        state["controller_pid"] = 456
+        with (
+            mock.patch.object(handoff, "load_state", return_value=state),
+            mock.patch.object(handoff, "process_alive", return_value=True),
+        ):
+            with self.assertRaisesRegex(
+                handoff.HandoffError,
+                "still active",
+            ):
+                handoff.resume("handoff-test")
+
+    def test_runner_evidence_requires_wolo_progress(self):
+        finish = {
+            "phases": {
+                "maintenance_runner_reconciliation": {
+                    "status": "PASSED",
+                },
+            },
+            "maintenance_runner_reconciliation": {
+                "status": "UPDATED",
+                "installed_sha256": "b" * 64,
+                "receipt_path": "/mnt/receipt.json",
+                "wolo_pid": "1234",
+                "wolo_restart_counter": "2",
+                "wolo_height_before": "100",
+                "wolo_height_after": "101",
+            },
+        }
+        evidence = handoff.maintenance_runner_evidence(finish)
+        self.assertEqual(evidence["wolo_pid"], 1234)
+        self.assertEqual(evidence["wolo_height_after"], 101)
+
+        finish["maintenance_runner_reconciliation"]["wolo_height_after"] = "100"
+        with self.assertRaises(handoff.HandoffError):
+            handoff.maintenance_runner_evidence(finish)
+
+    def test_certified_finish_requires_exact_wolo_boundary(self):
+        source = "c" * 40
+        finish = {
+            "status": "CERTIFIED",
+            "release_outcome": "CERTIFIED",
+            "wolo_mutated_by_finish": False,
+            "phases": {
+                "release_certification": {"status": "PASSED"},
+                "final_certification": {"status": "PASSED"},
+            },
+            "final_release": {
+                "local": {"head": source},
+                "production": {
+                    "active_build_id": "build-v2",
+                    "wolo_8092_count": 1,
+                    "wolo_8093_count": 1,
+                },
+                "certification": {
+                    "status": "CERTIFIED",
+                    "release_sha": source,
+                    "receipt_path": "/mnt/cert.json",
+                },
+            },
+        }
+        evidence = handoff.certified_finish_evidence(finish)
+        self.assertEqual(evidence["source_sha"], source)
+        self.assertFalse(evidence["wolo_mutated"])
+
+        finish["final_release"]["production"]["wolo_8093_count"] = 0
+        with self.assertRaises(handoff.HandoffError):
+            handoff.certified_finish_evidence(finish)
+
+    def test_advance_once_routes_each_proven_state_only_forward(self):
+        routes = [
+            ("CREATED", "transition_created"),
+            ("V1_FROZEN", "transition_v1_frozen"),
+            ("TRANSACTION_SEAM_PROVEN", "transition_seam_proven"),
+            ("SOURCE_READY", "transition_source_ready"),
+            ("RUNNER_RECONCILED", "transition_runner_reconciled"),
+            ("V2_CERTIFIED", "transition_v2_certified"),
+            ("V1_RETIRED", "transition_v1_retired"),
+        ]
+        for index, (status, function_name) in enumerate(routes):
+            state = self.base_state(status=status)
+            target = handoff.STATE_ORDER[index + 1]
+            with mock.patch.object(
+                handoff,
+                function_name,
+                return_value={**state, "status": target},
+            ) as transition:
+                result = handoff.advance_once(state)
+            transition.assert_called_once_with(state)
+            self.assertEqual(result["status"], target)
+
+    def test_successor_preserves_continuation_progress(self):
+        state = self.base_state(status="V1_RETIRED")
+        old = {
+            "campaign_id": "campaign-test",
+            "completed_generations": 2,
+            "max_generations": 6,
+            "force": False,
+        }
+        plan = {
+            "status": "WATCH",
+            "candidate": "activate-20260920T000000Z-aaaaaaaaaaaa",
+        }
+        saved = {}
+
+        def capture_save(payload):
+            saved.update(payload)
+
+        with (
+            mock.patch.object(handoff.campaign, "load_state", return_value=old),
+            mock.patch.object(
+                handoff.campaign,
+                "current_baseline",
+                return_value=("d" * 40, "build-v2"),
+            ),
+            mock.patch.object(handoff.storage, "make_plan", return_value=plan),
+            mock.patch.object(
+                handoff.campaign,
+                "actionable_plan",
+                return_value=(True, "WATCH_CONTINUATION"),
+            ) as actionable,
+            mock.patch.object(
+                handoff.storage,
+                "policy",
+                return_value={"healthy_target": 78},
+            ),
+            mock.patch.object(handoff.campaign, "save_state", side_effect=capture_save),
+            mock.patch.object(handoff.campaign, "spawn", return_value=789),
+        ):
+            result = handoff.create_successor_campaign(state)
+
+        actionable.assert_called_once_with(
+            plan,
+            completed=2,
+            force=False,
+        )
+        self.assertEqual(result["status"], "STARTED")
+        self.assertEqual(result["remaining_generations"], 4)
+        self.assertEqual(saved["continuation_generations"], 2)
+        self.assertEqual(saved["max_generations"], 4)
+        self.assertEqual(saved["handoff_parent"]["campaign_id"], "campaign-test")
+
+    def test_v1_retirement_is_only_routed_after_v2_certified(self):
+        for status in (
+            "CREATED",
+            "V1_FROZEN",
+            "TRANSACTION_SEAM_PROVEN",
+            "SOURCE_READY",
+            "RUNNER_RECONCILED",
+        ):
+            state = self.base_state(status=status)
+            with mock.patch.object(
+                handoff,
+                "retire_v1",
+                side_effect=AssertionError("must not retire before V2_CERTIFIED"),
+            ):
+                # Every pre-certification state has a different transition path.
+                with mock.patch.object(
+                    handoff,
+                    {
+                        "CREATED": "transition_created",
+                        "V1_FROZEN": "transition_v1_frozen",
+                        "TRANSACTION_SEAM_PROVEN": "transition_seam_proven",
+                        "SOURCE_READY": "transition_source_ready",
+                        "RUNNER_RECONCILED": "transition_runner_reconciled",
+                    }[status],
+                    return_value=state,
+                ):
+                    handoff.advance_once(state)
+
+        state = self.base_state(status="V2_CERTIFIED")
+        with mock.patch.object(
+            handoff,
+            "retire_v1",
+            return_value={"signal": "SIGKILL"},
+        ) as retire, mock.patch.object(
+            handoff,
+            "seal_transition",
+            return_value={**state, "status": "V1_RETIRED"},
+        ):
+            handoff.transition_v2_certified(state)
+        retire.assert_called_once_with(state)
+
+
+if __name__ == "__main__":
+    unittest.main()
