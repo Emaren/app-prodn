@@ -310,6 +310,15 @@ an older incomplete takeover. Status selection prefers incomplete handoffs until
 they reach `V2_RESUMED`. The reservation is cleared only by the certified V2
 rebind immediately before the ordinary campaign resume.
 
+If the reservation arrives while a generation is already running, the completed
+generation still seals normally. At that first between-generation seam, the
+persisted pause/handoff signal is evaluated **before** healthy-target completion.
+This prevents the same generation from reaching the storage target and
+strandingly converting the reserved campaign to `COMPLETE` before the takeover
+can freeze it. V1 becomes `PAUSED`; after certified V2 adoption, the resumed
+campaign may immediately observe `NOOP_HEALTHY` and complete without starting
+another archive transaction.
+
 The initial receipt records the V1 campaign source/build, the exact target
 `main` source, and the observed V1 PID/PPID/PGID/command plus descendant
 identities. After the cooperative pause, that exact recorded family is
