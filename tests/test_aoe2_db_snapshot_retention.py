@@ -118,6 +118,21 @@ class DatabaseSnapshotRetentionTests(unittest.TestCase):
             )
         )
 
+    def test_canonical_receipt_timestamp_outranks_mutable_file_mtime(self):
+        row = exact_row(1, year=2024, month=1)
+        row["receipt_timestamp"] = "20260923T120000Z"
+        self.assertEqual(
+            retention.retention_time(row),
+            datetime(2026, 9, 23, 12, 0, tzinfo=timezone.utc),
+        )
+
+    def test_remote_inventory_preloads_bounded_metadata_once(self):
+        source = retention.REMOTE_INVENTORY
+        self.assertIn("metadata_documents = []", source)
+        self.assertIn("metadata_documents.append((path, text))", source)
+        self.assertIn("for meta, text in metadata_documents:", source)
+        self.assertNotIn("for meta in metadata_files:", source)
+
     def test_read_only_contract_has_no_apply_or_delete_mode(self):
         source = open(retention.__file__, encoding="utf-8").read()
         self.assertIn('"delete_enabled": False', source)
