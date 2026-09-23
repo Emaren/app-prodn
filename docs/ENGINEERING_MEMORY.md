@@ -1756,5 +1756,10 @@ Durable rule: handoff ownership is also persisted in the campaign state. A
 reserved campaign keeps the cooperative pause signal across transaction
 completion, rejects ordinary resume with the exact handoff-resume command, and
 may be rebound/released only by that same handoff after certified V2 authority is
-proven. New handoffs must refuse to hide an older incomplete takeover.
+proven. New handoffs must refuse to hide an older incomplete takeover. When a
+reservation arrives during an active generation, that transaction may finish,
+but the persisted freeze signal must win the next between-generation decision
+even if the transaction simultaneously reaches the healthy storage target. The
+V2 controller can then observe the healthy target and complete without starting
+another mutation.
 
