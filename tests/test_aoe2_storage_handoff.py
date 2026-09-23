@@ -203,6 +203,39 @@ class StorageHandoffTests(unittest.TestCase):
         ):
             self.assertEqual(handoff.drive("handoff-a"), 2)
 
+    def test_resume_is_terminal_loss_safe_from_every_incomplete_state(self):
+        for state_name in handoff.FLOW[:-1]:
+            state = {
+                "handoff_id": "handoff-a",
+                "status": state_name,
+                "runner_pid": 123,
+                "last_error": "old",
+            }
+            with (
+                self.subTest(state=state_name),
+                mock.patch.object(handoff, "load_state", return_value=dict(state)),
+                mock.patch.object(handoff, "process_alive", return_value=False),
+                mock.patch.object(handoff, "save_state") as save,
+                mock.patch.object(handoff, "spawn_runner", return_value=456) as spawn,
+            ):
+                result = handoff.resume("handoff-a")
+                self.assertEqual(result["spawned_pid"], 456)
+                spawn.assert_called_once_with("handoff-a")
+                self.assertIsNone(save.call_args.args[0]["last_error"])
+
+    def test_resume_does_not_restart_completed_handoff(self):
+        state = {
+            "handoff_id": "handoff-a",
+            "status": "V2_RESUMED",
+            "runner_pid": None,
+        }
+        with (
+            mock.patch.object(handoff, "load_state", return_value=state),
+            mock.patch.object(handoff, "spawn_runner") as spawn,
+        ):
+            self.assertEqual(handoff.resume("handoff-a"), state)
+        spawn.assert_not_called()
+
     def test_v2_resume_rebinds_before_campaign_resume(self):
         source = Path(handoff.__file__).read_text(encoding="utf-8")
         rebind = source.index("campaign.rebind_after_handoff(")
