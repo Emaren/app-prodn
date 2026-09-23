@@ -14,9 +14,11 @@ from pathlib import Path
 from typing import Any
 
 try:
+    from scripts import aoe2_release
     from scripts import aoe2_storage as storage
     from scripts import aoe2_storage_campaign as campaign
 except ImportError:
+    import aoe2_release  # type: ignore
     import aoe2_storage as storage  # type: ignore
     import aoe2_storage_campaign as campaign  # type: ignore
 
@@ -814,8 +816,24 @@ def seal_finish_log(state: dict[str, Any]) -> None:
         state["finish_log_sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def implementation_equivalent_release(
+    target_source: str,
+    certified_source: str,
+) -> bool:
+    if certified_source == target_source:
+        return True
+    return (
+        aoe2_release.documentation_only_descendant(
+            target_source,
+            certified_source,
+        )
+        is True
+    )
+
+
 def finish_receipt_for_target(
     target_source: str,
+    certified_source: str,
     *,
     not_before: str | None = None,
 ) -> tuple[Path, dict[str, Any]] | None:
@@ -854,26 +872,38 @@ def finish_receipt_for_target(
         certification = final_release.get("certification") or {}
         if not isinstance(production, dict) or not isinstance(certification, dict):
             continue
-        if production.get("source_sha") != target_source:
+        production_source = str(production.get("source_sha") or "")
+        certification_source = str(certification.get("release_sha") or "")
+        if production_source != certified_source:
             continue
         if certification.get("status") != "CERTIFIED":
             continue
-        if certification.get("release_sha") != target_source:
+        if certification_source != certified_source:
+            continue
+        if not implementation_equivalent_release(
+            target_source,
+            certified_source,
+        ):
             continue
         return path, payload
     return None
 
 
-def bind_finish_receipt(state: dict[str, Any]) -> None:
+def bind_finish_receipt(
+    state: dict[str, Any],
+    certified_source: str,
+) -> None:
     target = str(state["target_source_sha"])
     found = finish_receipt_for_target(
         target,
+        certified_source,
         not_before=str(state.get("created_at") or "") or None,
     )
     if found is None:
         raise HandoffError(
-            "target runtime is certified but no exact CERTIFIED Finish receipt "
-            "proves maintenance-runner reconciliation"
+            "target implementation is certified but no CERTIFIED Finish receipt "
+            "proves an implementation-equivalent runtime and "
+            "maintenance-runner reconciliation"
         )
     path, payload = found
 
@@ -928,9 +958,9 @@ def bind_finish_receipt(state: dict[str, Any]) -> None:
 def prove_target_certified(state: dict[str, Any]) -> tuple[str, str]:
     release, build = storage.operator_baseline()
     target = str(state["target_source_sha"])
-    if release != target:
+    if not implementation_equivalent_release(target, release):
         raise HandoffError(
-            "Finish did not certify the intended V2 source: "
+            "Finish did not certify the intended V2 implementation: "
             f"target={target} certified={release}"
         )
     return release, build
@@ -944,12 +974,15 @@ def wait_for_finish_or_recover(state: dict[str, Any]) -> tuple[str, str]:
     except Exception:
         current_release, current_build = "", ""
 
-    if current_release == target:
+    if (
+        current_release
+        and implementation_equivalent_release(target, current_release)
+    ):
         state["finish_pid"] = None
         seal_finish_log(state)
         save_state(state)
         try:
-            bind_finish_receipt(state)
+            bind_finish_receipt(state, current_release)
         except HandoffError:
             # The target can be live after a Finish that certified activation
             # but failed a later closure check. Target-live alone is not handoff
@@ -973,11 +1006,14 @@ def wait_for_finish_or_recover(state: dict[str, Any]) -> tuple[str, str]:
             current_release, current_build = storage.operator_baseline()
         except Exception:
             current_release, current_build = "", ""
-        if current_release == target:
+        if (
+            current_release
+            and implementation_equivalent_release(target, current_release)
+        ):
             state["finish_pid"] = None
             seal_finish_log(state)
             save_state(state)
-            bind_finish_receipt(state)
+            bind_finish_receipt(state, current_release)
             return current_release, current_build
     elif isinstance(finish_pid, int) and process_alive(finish_pid):
         raise HandoffError(
@@ -999,7 +1035,7 @@ def wait_for_finish_or_recover(state: dict[str, Any]) -> tuple[str, str]:
             f"inspect {state['finish_log_path']}"
         )
     release, build = prove_target_certified(state)
-    bind_finish_receipt(state)
+    bind_finish_receipt(state, release)
     return release, build
 
 
