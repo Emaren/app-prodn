@@ -720,20 +720,28 @@ def create_state(campaign_id: str | None) -> dict[str, Any]:
         raise HandoffError("no Storage OS campaign exists")
 
     old = campaign.load_state(selected)
-    validate_campaign_seam(old, require_running=True)
+    status = str(old.get("status") or "")
+    if status not in {"RUNNING", "RUNNING_TRANSACTION"}:
+        raise HandoffError(
+            "Storage OS handoff requires a live running campaign; "
+            f"found {status or 'UNKNOWN'}"
+        )
     pid = int(old.get("pid") or 0)
     if not campaign.process_alive(pid):
         raise HandoffError(f"Storage OS campaign {selected} has no live controller")
     process = process_snapshot(pid)
     if process.get("stopped"):
         raise HandoffError("V1 campaign controller is already stopped before handoff authority exists")
-    if any(row.get("stopped") for row in process.get("descendants") or []):
-        raise HandoffError("V1 campaign has a pre-stopped descendant before handoff")
 
     release, build = storage.operator_baseline()
     if release != old.get("release_sha") or build != old.get("build_id"):
         raise HandoffError(
             "live Storage OS campaign is not bound to the current certified runtime"
+        )
+    existing_handoff = old.get("handoff_freeze_handoff_id")
+    if existing_handoff:
+        raise HandoffError(
+            f"Storage OS campaign is already reserved for handoff {existing_handoff}"
         )
 
     handoff_id = f"{stamp()}-{selected}"
@@ -752,7 +760,9 @@ def create_state(campaign_id: str | None) -> dict[str, Any]:
         "v1_completed_generations": int(old.get("completed_generations") or 0),
         "v1_max_generations": int(old.get("max_generations") or 0),
         "v1_force": bool(old.get("force")),
-        "v1_process": process,
+        "v1_process_at_request": process,
+        "v1_process": None,
+        "freeze_requested_at": None,
         "history": [],
         "finish_result": None,
         "retirement_intent": None,
@@ -762,6 +772,9 @@ def create_state(campaign_id: str | None) -> dict[str, Any]:
         "last_error": None,
         "log_path": str(log_path(handoff_id)),
     }
+    save_state(state)
+    reserved = campaign.request_handoff_freeze(selected, handoff_id)
+    state["freeze_requested_at"] = reserved.get("handoff_freeze_requested_at")
     save_state(state)
     return state
 
@@ -793,43 +806,67 @@ def spawn(handoff_id: str) -> int:
 
 
 def transition_created(state: dict[str, Any]) -> dict[str, Any]:
-    old = campaign.load_state(str(state["campaign_id"]))
-    validate_campaign_seam(old, require_running=True)
-    frozen_before = process_snapshot(int(state["v1_process"]["pid"]))
-    if frozen_before["pgid"] != state["v1_process"]["pgid"]:
-        raise HandoffError("V1 process-group identity drifted before freeze")
-    os.killpg(int(frozen_before["pgid"]), signal.SIGSTOP)
+    requested = state.get("v1_process_at_request") or {}
+    pid = int(requested.get("pid") or 0)
+    expected_pgid = int(requested.get("pgid") or 0)
+    if pid <= 0 or expected_pgid <= 0:
+        raise HandoffError("handoff has no V1 request-time pid/pgid identity")
 
-    deadline = time.monotonic() + 5
+    deadline = time.monotonic() + 7200
     while time.monotonic() < deadline:
-        current = process_snapshot(int(frozen_before["pid"]))
-        if current.get("stopped") and all(
-            row.get("stopped") for row in current.get("descendants") or []
-        ):
-            break
-        time.sleep(0.1)
-    current = process_snapshot(int(frozen_before["pid"]))
-    if not current.get("stopped") or any(
-        not row.get("stopped") for row in current.get("descendants") or []
-    ):
-        raise HandoffError("V1 process group did not enter a fully stopped state")
-    state["v1_process"] = current
-    return seal_transition(
-        state,
-        "V1_FROZEN",
-        {
-            "pid": current["pid"],
-            "pgid": current["pgid"],
-            "descendants": current["descendants"],
-            "signal": "SIGSTOP",
-        },
-    )
+        old = campaign.load_state(str(state["campaign_id"]))
+        if old.get("handoff_freeze_handoff_id") != state["handoff_id"]:
+            raise HandoffError("campaign handoff-freeze reservation changed")
+        if int(old.get("pid") or 0) != pid:
+            raise HandoffError("V1 campaign pid changed before freeze seam")
+        if not campaign.process_alive(pid):
+            raise HandoffError("V1 campaign controller exited before freeze seam")
+
+        status = str(old.get("status") or "")
+        if status == "HANDOFF_FREEZE_READY":
+            validate_campaign_seam(old, require_running=False)
+            current = process_snapshot(pid)
+            if int(current["pgid"]) != expected_pgid:
+                raise HandoffError("V1 process-group identity drifted before freeze")
+            if not current.get("stopped") or any(
+                not row.get("stopped") for row in current.get("descendants") or []
+            ):
+                time.sleep(0.1)
+                continue
+            state["v1_process"] = current
+            save_state(state)
+            return seal_transition(
+                state,
+                "V1_FROZEN",
+                {
+                    "pid": current["pid"],
+                    "pgid": current["pgid"],
+                    "descendants": current["descendants"],
+                    "freeze_mode": "cooperative_between_generation_self_stop",
+                    "freeze_requested_at": state.get("freeze_requested_at"),
+                    "freeze_ready_at": old.get("handoff_freeze_ready_at"),
+                },
+            )
+
+        if status in {"FAILED", "BLOCKED", "COMPLETE", "RETIRED_HANDOFF"}:
+            raise HandoffError(
+                f"V1 campaign reached {status} before handoff freeze became ready"
+            )
+        time.sleep(1)
+
+    raise HandoffError("timed out waiting for V1 campaign to reach handoff freeze seam")
 
 
 def transition_v1_frozen(state: dict[str, Any]) -> dict[str, Any]:
     frozen = assert_frozen_identity(state)
     old = campaign.load_state(str(state["campaign_id"]))
-    validate_campaign_seam(old, require_running=True)
+    validate_campaign_seam(old, require_running=False)
+    if old.get("status") != "HANDOFF_FREEZE_READY":
+        raise HandoffError(
+            "V1 campaign is not in HANDOFF_FREEZE_READY at the proven seam"
+        )
+    if old.get("handoff_freeze_handoff_id") != state["handoff_id"]:
+        raise HandoffError("V1 campaign freeze belongs to a different handoff")
     if int(old.get("pid") or 0) != int(frozen["pid"]):
         raise HandoffError("campaign state pid does not match frozen V1 identity")
     return seal_transition(
