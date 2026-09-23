@@ -239,4 +239,15 @@ test("Contact inbox renders Clan Signal cards with exact Hall deep link", () => 
   assert.match(inbox, /Enter Hall/);
   assert.match(inbox, /Hall Signal Sent/);
   assert.match(inbox, /isViewer=\{isViewer\}/);
+  assert.match(inbox, /whitespace-nowrap/);
+  assert.match(inbox, /sm:group-hover:opacity-100/);
+  assert.match(inbox, /right-\[4\.65rem\] top-2\.5/);
+  assert.match(inbox, /aria-label=\{\`\$\{actionLabel\}: \$\{signal\.clanName\}\`\}/);
+  assert.doesNotMatch(
+    inbox.slice(
+      inbox.indexOf("function ClanHallSignalCard"),
+      inbox.indexOf("function ClanInviteDirectArtifact"),
+    ),
+    /mt-4 flex justify-end/,
+  );
 });

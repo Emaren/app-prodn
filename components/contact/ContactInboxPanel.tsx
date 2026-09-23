@@ -1208,68 +1208,70 @@ function ClanHallSignalCard({
     `#clan-message-${signal.messageId}`;
 
   return (
-    <div className="w-full max-w-2xl">
-      <section className="group relative overflow-hidden rounded-[1.65rem] border border-amber-100/18 bg-[radial-gradient(circle_at_10%_0%,rgba(251,191,36,0.14),transparent_38%),radial-gradient(circle_at_92%_12%,rgba(99,102,241,0.13),transparent_34%),linear-gradient(145deg,rgba(25,20,15,0.98),rgba(6,12,22,0.99)_58%,rgba(4,8,16,0.99))] px-4 py-4 shadow-[0_22px_70px_rgba(0,0,0,0.38),inset_0_1px_0_rgba(255,255,255,0.055)] sm:px-5 sm:py-5">
-        <div className="pointer-events-none absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/55 to-transparent" />
+    <Link
+      href={href}
+      aria-label={`${actionLabel}: ${signal.clanName}`}
+      className="group block w-full max-w-2xl rounded-[1.25rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/55 focus-visible:ring-offset-2 focus-visible:ring-offset-[#050912]"
+    >
+      <section className="relative overflow-hidden rounded-[1.25rem] border border-amber-100/16 bg-[radial-gradient(circle_at_8%_0%,rgba(251,191,36,0.12),transparent_34%),radial-gradient(circle_at_90%_12%,rgba(99,102,241,0.10),transparent_30%),linear-gradient(145deg,rgba(22,18,14,0.98),rgba(5,10,18,0.99)_58%,rgba(3,7,14,0.99))] px-3 py-2.5 pr-16 shadow-[0_12px_34px_rgba(0,0,0,0.32),inset_0_1px_0_rgba(255,255,255,0.05)] transition duration-200 group-hover:-translate-y-px group-hover:border-amber-100/28 group-hover:shadow-[0_16px_40px_rgba(0,0,0,0.38),0_0_22px_rgba(245,158,11,0.08),inset_0_1px_0_rgba(255,255,255,0.06)] sm:px-3.5 sm:py-3 sm:pr-[10.5rem]">
+        <div className="pointer-events-none absolute inset-x-7 top-0 h-px bg-gradient-to-r from-transparent via-amber-100/50 to-transparent" />
 
-        <div className="flex items-start gap-3">
-          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-[1rem] border border-amber-200/20 bg-amber-300/[0.08] text-amber-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
-            <Swords className="h-4 w-4" />
+        <div className="flex min-w-0 items-center gap-2.5">
+          <div className="grid h-8 w-8 shrink-0 place-items-center rounded-[0.8rem] border border-amber-200/18 bg-amber-300/[0.07] text-amber-100/90 shadow-[inset_0_1px_0_rgba(255,255,255,0.055)]">
+            <Swords className="h-3.5 w-3.5" />
           </div>
 
           <div className="min-w-0 flex-1">
-            <div className="text-[9px] font-black uppercase tracking-[0.28em] text-amber-200/65">
+            <div className="text-[8px] font-black uppercase tracking-[0.24em] text-amber-200/62">
               {eyebrow}
             </div>
 
-            <div className="mt-1.5 truncate font-serif text-lg font-semibold tracking-[-0.015em] text-white">
-              {signal.clanName}
+            <div className="mt-0.5 flex min-w-0 items-baseline gap-2">
+              <span className="truncate font-serif text-[15px] font-semibold tracking-[-0.012em] text-white">
+                {signal.clanName}
+              </span>
+
+              {!isViewer ? (
+                <span className="hidden truncate text-[10px] text-slate-400/80 sm:inline">
+                  {detail}
+                </span>
+              ) : null}
             </div>
-
-            {!isViewer ? (
-              <div className="mt-1 text-xs text-slate-400">
-                {detail}
-              </div>
-            ) : null}
-          </div>
-
-          <div className="shrink-0 text-[10px] text-slate-500">
-            {formatBubbleTime(message.createdAt)}
           </div>
         </div>
 
         {signal.preview ? (
           <div
-            className="mt-4 overflow-hidden text-sm leading-6 text-slate-200 [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]"
+            className="mt-2 overflow-hidden whitespace-nowrap text-[13px] leading-5 text-slate-200/90"
             style={{
               WebkitMaskImage:
-                "linear-gradient(180deg, black 0%, black 58%, transparent 100%)",
+                "linear-gradient(90deg, black 0%, black 82%, transparent 100%)",
               maskImage:
-                "linear-gradient(180deg, black 0%, black 58%, transparent 100%)",
+                "linear-gradient(90deg, black 0%, black 82%, transparent 100%)",
             }}
           >
             {signal.preview}
           </div>
         ) : null}
 
-        <div className="mt-4 flex justify-end">
-          <Link
-            href={href}
-            className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-amber-200/35 bg-[linear-gradient(135deg,rgba(61,40,16,0.98),rgba(24,15,10,0.99))] px-4 text-[10px] font-black uppercase tracking-[0.16em] text-amber-50 shadow-[0_10px_28px_rgba(0,0,0,0.34),inset_0_1px_0_rgba(255,245,210,0.14)] transition duration-200 hover:-translate-y-0.5 hover:border-amber-100/65 hover:shadow-[0_15px_34px_rgba(0,0,0,0.42),0_0_26px_rgba(245,158,11,0.15)]"
-          >
-            {!isViewer && isPersonalMention ? (
-              <Reply className="h-3.5 w-3.5" />
-            ) : (
-              <Swords className="h-3.5 w-3.5" />
-            )}
+        <span className="absolute right-3 top-3 shrink-0 text-[10px] tabular-nums text-slate-500">
+          {formatBubbleTime(message.createdAt)}
+        </span>
+
+        <span className="pointer-events-none absolute right-[4.65rem] top-2.5 inline-flex h-7 items-center gap-1.5 rounded-lg border border-amber-200/28 bg-[linear-gradient(135deg,rgba(63,40,16,0.96),rgba(23,14,9,0.98))] px-2.5 text-[9px] font-black uppercase tracking-[0.14em] text-amber-50 shadow-[0_8px_22px_rgba(0,0,0,0.28),inset_0_1px_0_rgba(255,245,210,0.12)] opacity-100 transition duration-200 sm:translate-y-0.5 sm:opacity-0 sm:group-hover:translate-y-0 sm:group-hover:opacity-100 sm:group-focus-visible:translate-y-0 sm:group-focus-visible:opacity-100">
+          {!isViewer && isPersonalMention ? (
+            <Reply className="h-3 w-3" />
+          ) : (
+            <Swords className="h-3 w-3" />
+          )}
+          <span className="hidden sm:inline">
             {actionLabel}
-          </Link>
-        </div>
+          </span>
+        </span>
       </section>
-    </div>
+    </Link>
   );
 }
-
 
 function ClanInviteDirectArtifact({
   message,
