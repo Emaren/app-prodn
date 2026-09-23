@@ -577,6 +577,42 @@ class StorageHandoffTests(unittest.TestCase):
             ):
                 self.assertEqual(handoff.drive("handoff-a"), 2)
 
+    def test_v1_family_must_be_dead_before_transaction_seam(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            state = {
+                "handoff_id": "handoff-a",
+                "campaign_id": "campaign-a",
+                "status": "V1_FROZEN",
+                "v1_process_family": {
+                    "pid": 10,
+                    "ppid": 1,
+                    "pgid": 10,
+                    "command": "python old-controller",
+                    "descendants": [],
+                },
+            }
+            paused = {
+                "status": "PAUSED",
+                "completion_reason": "OPERATOR_PAUSE_BETWEEN_GENERATIONS",
+                "current_generation": None,
+                "current_generation_started_at": None,
+                "pid": None,
+            }
+            with (
+                mock.patch.object(handoff, "HANDOFF_DIR", root),
+                mock.patch.object(handoff, "LOCK_PATH", root / "handoff.lock"),
+                mock.patch.object(handoff, "load_state", side_effect=lambda _id: state),
+                mock.patch.object(handoff, "save_state"),
+                mock.patch.object(handoff.campaign, "load_state", return_value=paused),
+                mock.patch.object(handoff, "prove_frozen"),
+                mock.patch.object(handoff, "recorded_family_dead", return_value=False),
+                mock.patch.object(handoff, "source_ready") as source_ready,
+            ):
+                self.assertEqual(handoff.drive("handoff-a"), 2)
+            source_ready.assert_not_called()
+            self.assertIn("still alive at the transaction seam", state["last_error"])
+
     def test_terminal_loss_harness_reaches_v2_resumed_from_every_state(self):
         target = "b" * 40
         old = "a" * 40
