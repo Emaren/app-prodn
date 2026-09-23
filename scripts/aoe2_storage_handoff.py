@@ -115,6 +115,36 @@ def load_state(handoff_id: str) -> dict[str, Any]:
         receipt = row.get("receipt")
         if not isinstance(receipt, str) or not receipt:
             raise HandoffError("handoff history transition has no receipt path")
+        expected_path = receipts_dir(handoff_id) / (
+            f"{index:02d}-{STATE_ORDER[index].lower()}.json"
+        )
+        receipt_path = Path(receipt)
+        if receipt_path != expected_path or not receipt_path.is_file():
+            raise HandoffError(
+                f"handoff transition receipt is missing or misplaced: {receipt}"
+            )
+        try:
+            sealed = json.loads(receipt_path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            raise HandoffError(
+                f"handoff transition receipt is unreadable: {receipt}"
+            ) from exc
+        expected_receipt = {
+            "schema": 1,
+            "kind": "aoe2war-storage-handoff-transition",
+            "handoff_id": handoff_id,
+            "campaign_id": payload["campaign_id"],
+            "transition": index,
+            "from": STATE_ORDER[index - 1],
+            "to": STATE_ORDER[index],
+            "database_mutated": False,
+            "wolo_mutated": False,
+        }
+        for key, value in expected_receipt.items():
+            if sealed.get(key) != value:
+                raise HandoffError(
+                    f"handoff transition receipt mismatch at {key}: {receipt}"
+                )
     return payload
 
 
