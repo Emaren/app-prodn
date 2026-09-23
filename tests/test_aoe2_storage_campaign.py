@@ -281,6 +281,44 @@ class StorageCampaignTests(unittest.TestCase):
             "2026-09-23T19:00:00+00:00",
         )
 
+    def test_pause_and_handoff_controls_cannot_compete(self):
+        handoff_state = {
+            "schema": 1,
+            "kind": "aoe2war-storage-campaign",
+            "campaign_id": "test",
+            "status": "RUNNING",
+            "pid": 123,
+            "pause_requested": False,
+            "handoff_freeze_requested": True,
+            "handoff_freeze_handoff_id": "handoff-1",
+        }
+        with mock.patch.object(
+            campaign,
+            "load_state",
+            return_value=handoff_state,
+        ):
+            with self.assertRaisesRegex(
+                campaign.CampaignError,
+                "reserved for Storage OS handoff",
+            ):
+                campaign.request_pause("test")
+
+        pause_state = {
+            **handoff_state,
+            "pause_requested": True,
+            "handoff_freeze_requested": False,
+            "handoff_freeze_handoff_id": None,
+        }
+        with (
+            mock.patch.object(campaign, "load_state", return_value=pause_state),
+            mock.patch.object(campaign, "process_alive", return_value=True),
+        ):
+            with self.assertRaisesRegex(
+                campaign.CampaignError,
+                "operator pause request",
+            ):
+                campaign.request_handoff_freeze("test", "handoff-1")
+
     def test_reserved_handoff_campaign_cannot_escape_through_resume(self):
         state = {
             "schema": 1,
