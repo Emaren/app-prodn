@@ -47,11 +47,24 @@ def log_path(campaign_id: str) -> Path:
 def atomic_write(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(f".{path.name}.tmp.{os.getpid()}")
-    tmp.write_text(
-        json.dumps(payload, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
-    os.replace(tmp, path)
+    encoded = json.dumps(payload, indent=2, sort_keys=True) + "\n"
+    try:
+        with tmp.open("w", encoding="utf-8") as handle:
+            handle.write(encoded)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp, path)
+        try:
+            directory_fd = os.open(path.parent, os.O_RDONLY)
+        except OSError:
+            directory_fd = None
+        if directory_fd is not None:
+            try:
+                os.fsync(directory_fd)
+            finally:
+                os.close(directory_fd)
+    finally:
+        tmp.unlink(missing_ok=True)
 
 
 def load_state(campaign_id: str) -> dict[str, Any]:
@@ -403,6 +416,96 @@ def resume(campaign_id: str) -> dict[str, Any]:
         **load_state(campaign_id),
         "spawned_pid": new_pid,
     }
+
+
+def rebind_after_handoff(
+    campaign_id: str,
+    *,
+    handoff_id: str,
+    old_release_sha: str,
+    old_build_id: str,
+    new_release_sha: str,
+    new_build_id: str,
+) -> dict[str, Any]:
+    state = load_state(campaign_id)
+    history = list(state.get("handoff_history") or [])
+    matching = next(
+        (
+            item
+            for item in reversed(history)
+            if isinstance(item, dict)
+            and item.get("handoff_id") == handoff_id
+            and item.get("old_release_sha") == old_release_sha
+            and item.get("old_build_id") == old_build_id
+            and item.get("new_release_sha") == new_release_sha
+            and item.get("new_build_id") == new_build_id
+        ),
+        None,
+    )
+    if (
+        matching is not None
+        and state.get("release_sha") == new_release_sha
+        and state.get("build_id") == new_build_id
+    ):
+        current_release, current_build = current_baseline()
+        if current_release != new_release_sha or current_build != new_build_id:
+            raise CampaignError(
+                "previous handoff rebind no longer matches certified V2 authority"
+            )
+        return state
+
+    if state.get("status") != "PAUSED":
+        raise CampaignError(
+            f"handoff rebind requires PAUSED campaign, found {state.get('status')}"
+        )
+    if (
+        state.get("current_generation")
+        or state.get("current_generation_started_at")
+    ):
+        raise CampaignError("handoff rebind requires a proven transaction seam")
+    pid = state.get("pid")
+    if process_alive(pid if isinstance(pid, int) else None):
+        raise CampaignError(f"handoff rebind refuses live V1 controller pid={pid}")
+    if (
+        state.get("release_sha") != old_release_sha
+        or state.get("build_id") != old_build_id
+    ):
+        raise CampaignError(
+            "handoff rebind V1 authority mismatch: "
+            f"campaign={state.get('release_sha')}:{state.get('build_id')} "
+            f"expected={old_release_sha}:{old_build_id}"
+        )
+    current_release, current_build = current_baseline()
+    if current_release != new_release_sha or current_build != new_build_id:
+        raise CampaignError(
+            "handoff rebind V2 authority is not certified: "
+            f"requested={new_release_sha}:{new_build_id} "
+            f"current={current_release}:{current_build}"
+        )
+
+    history = list(state.get("handoff_history") or [])
+    history.append(
+        {
+            "handoff_id": handoff_id,
+            "old_release_sha": old_release_sha,
+            "old_build_id": old_build_id,
+            "new_release_sha": new_release_sha,
+            "new_build_id": new_build_id,
+            "rebound_at": utc_now(),
+        }
+    )
+    state["handoff_history"] = history
+    state["release_sha"] = new_release_sha
+    state["build_id"] = new_build_id
+    state["pause_requested"] = False
+    state["pause_requested_at"] = None
+    state["completion_reason"] = None
+    state["finished_at"] = None
+    state["failed_at"] = None
+    state["resumed_at"] = None
+    state["last_error"] = None
+    save_state(state)
+    return state
 
 
 def request_pause(campaign_id: str) -> dict[str, Any]:

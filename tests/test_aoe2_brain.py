@@ -920,6 +920,32 @@ class KingdomIntelligenceTests(unittest.TestCase):
         storage_row = next(row for row in rows if row["key"] == "storage-blocks-finish")
         self.assertGreater(storage_row["rank"], rows[0]["rank"])
 
+    def test_incomplete_storage_handoff_outranks_generic_finish_and_storage(self):
+        perf = performance()
+        perf["matches_current_release"] = False
+        rows = MODULE.brain_recommendations(
+            finish=finish(complete=False),
+            control=control(status="current"),
+            performance=perf,
+            truth=truth(),
+            council_recommendations=[],
+            storage={
+                "health": "ATTENTION",
+                "used_percent": 91.0,
+            },
+            storage_handoff={
+                "handoff_id": "handoff-a",
+                "status": "SOURCE_READY",
+            },
+        )
+        self.assertEqual(rows[0]["key"], "storage-handoff-incomplete")
+        self.assertEqual(
+            rows[0]["action"],
+            "aoe2war storage handoff resume handoff-a",
+        )
+        self.assertEqual(rows[1]["key"], "storage-blocks-finish")
+        self.assertIn("finish-closure", [row["key"] for row in rows])
+
     def test_certified_finish_demotes_storage_to_maintenance(self):
         perf = performance()
         perf["matches_current_release"] = True

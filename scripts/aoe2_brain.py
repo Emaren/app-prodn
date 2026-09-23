@@ -13,6 +13,7 @@ import aoe2_release
 import aoe2_recovery_campaign
 import aoe2_speed_campaign
 import aoe2_storage_campaign
+import aoe2_storage_handoff
 import aoe2_truth
 import aoe2_update
 
@@ -590,8 +591,32 @@ def brain_recommendations(
     truth: dict[str, Any],
     council_recommendations: list[dict[str, Any]],
     storage: dict[str, Any] | None = None,
+    storage_handoff: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
+
+    storage_handoff = storage_handoff or {}
+    handoff_status = str(storage_handoff.get("status") or "").upper()
+    if handoff_status and handoff_status not in {"NONE", "V2_RESUMED"}:
+        handoff_id = str(storage_handoff.get("handoff_id") or "").strip()
+        rows.append(
+            {
+                "rank": 1,
+                "level": "MUST RESUME",
+                "key": "storage-handoff-incomplete",
+                "title": "Resume the exact Storage OS handoff",
+                "reason": (
+                    f"handoff={handoff_id or 'unknown'} "
+                    f"state={handoff_status}; continue the durably receipted "
+                    "V1→V2 takeover instead of issuing generic Finish/storage work."
+                ),
+                "action": (
+                    f"aoe2war storage handoff resume {handoff_id}"
+                    if handoff_id
+                    else "aoe2war storage handoff status"
+                ),
+            }
+        )
 
     storage = storage or {}
     storage_health = str(
@@ -887,6 +912,19 @@ def operating_state(
 def storage_campaign_summary() -> dict[str, Any]:
     try:
         payload = aoe2_storage_campaign.status_payload(None)
+    except Exception as exc:
+        return {
+            "status": "UNAVAILABLE",
+            "error": str(exc),
+        }
+    if not isinstance(payload, dict):
+        return {"status": "UNAVAILABLE"}
+    return payload
+
+
+def storage_handoff_summary() -> dict[str, Any]:
+    try:
+        payload = aoe2_storage_handoff.status_payload(None)
     except Exception as exc:
         return {
             "status": "UNAVAILABLE",
@@ -1510,6 +1548,7 @@ def collect() -> dict[str, Any]:
     finish = latest_finish()
     control = control_summary(release)
     storage_campaign = storage_campaign_summary()
+    storage_handoff = storage_handoff_summary()
     recovery_campaign = recovery_campaign_summary()
     activity = activity_24h(now)
     source_activity = recent_source_activity()
@@ -1530,6 +1569,7 @@ def collect() -> dict[str, Any]:
         truth=truth,
         council_recommendations=list(council.get("recommendations") or []),
         storage=council.get("storage") or {},
+        storage_handoff=storage_handoff,
     )
     system_agents = system_agent_rows(
         source=source,
@@ -1566,6 +1606,7 @@ def collect() -> dict[str, Any]:
             source,
         ),
         "storage_campaign": storage_campaign,
+        "storage_handoff": storage_handoff,
         "recovery_campaign": recovery_campaign,
         "activity_24h": activity,
         "system_agents": system_agents,

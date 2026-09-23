@@ -107,10 +107,12 @@ class StorageCampaignTests(unittest.TestCase):
         self.assertLess(increment, save)
         self.assertLess(next_loop, invoke)
 
-    def test_atomic_state_write_uses_replace(self):
+    def test_atomic_state_write_uses_replace_and_fsync(self):
         source = Path(campaign.__file__).read_text(encoding="utf-8")
 
         self.assertIn("os.replace(tmp, path)", source)
+        self.assertIn("os.fsync(handle.fileno())", source)
+        self.assertIn("os.fsync(directory_fd)", source)
 
     def test_state_path_rejects_traversal(self):
         with self.assertRaises(campaign.CampaignError):
@@ -199,6 +201,115 @@ class StorageCampaignTests(unittest.TestCase):
         baseline.assert_called_once()
         spawn.assert_called_once_with("test")
         self.assertEqual(result["spawned_pid"], 456)
+
+    def test_handoff_rebind_is_idempotent_after_exact_v2_adoption(self):
+        state = {
+            "schema": 1,
+            "kind": "aoe2war-storage-campaign",
+            "campaign_id": "test",
+            "status": "RUNNING",
+            "pid": 456,
+            "release_sha": "b" * 40,
+            "build_id": "build-b",
+            "handoff_history": [
+                {
+                    "handoff_id": "handoff-a",
+                    "old_release_sha": "a" * 40,
+                    "old_build_id": "build-a",
+                    "new_release_sha": "b" * 40,
+                    "new_build_id": "build-b",
+                    "rebound_at": "2026-09-23T20:00:00+00:00",
+                }
+            ],
+        }
+        with (
+            mock.patch.object(campaign, "load_state", return_value=dict(state)),
+            mock.patch.object(
+                campaign,
+                "current_baseline",
+                return_value=("b" * 40, "build-b"),
+            ),
+            mock.patch.object(campaign, "save_state") as save,
+        ):
+            result = campaign.rebind_after_handoff(
+                "test",
+                handoff_id="handoff-a",
+                old_release_sha="a" * 40,
+                old_build_id="build-a",
+                new_release_sha="b" * 40,
+                new_build_id="build-b",
+            )
+
+        self.assertEqual(result, state)
+        save.assert_not_called()
+
+    def test_handoff_rebind_requires_paused_transaction_seam(self):
+        state = {
+            "schema": 1,
+            "kind": "aoe2war-storage-campaign",
+            "campaign_id": "test",
+            "status": "RUNNING_TRANSACTION",
+            "pid": None,
+            "release_sha": "a" * 40,
+            "build_id": "build-a",
+            "current_generation": "activate-20260923T000000Z-aaaaaaaaaaaa",
+            "current_generation_started_at": "2026-09-23T19:00:00+00:00",
+        }
+        with mock.patch.object(campaign, "load_state", return_value=state):
+            with self.assertRaises(campaign.CampaignError):
+                campaign.rebind_after_handoff(
+                    "test",
+                    handoff_id="handoff-a",
+                    old_release_sha="a" * 40,
+                    old_build_id="build-a",
+                    new_release_sha="b" * 40,
+                    new_build_id="build-b",
+                )
+
+    def test_handoff_rebind_requires_exact_certified_v2_and_records_history(self):
+        state = {
+            "schema": 1,
+            "kind": "aoe2war-storage-campaign",
+            "campaign_id": "test",
+            "status": "PAUSED",
+            "pid": None,
+            "release_sha": "a" * 40,
+            "build_id": "build-a",
+            "current_generation": None,
+            "current_generation_started_at": None,
+            "pause_requested": True,
+            "pause_requested_at": "2026-09-23T19:00:00+00:00",
+        }
+        captured = {}
+
+        def save(updated):
+            captured.update(updated)
+
+        with (
+            mock.patch.object(campaign, "load_state", return_value=dict(state)),
+            mock.patch.object(campaign, "process_alive", return_value=False),
+            mock.patch.object(
+                campaign,
+                "current_baseline",
+                return_value=("b" * 40, "build-b"),
+            ),
+            mock.patch.object(campaign, "save_state", side_effect=save),
+        ):
+            result = campaign.rebind_after_handoff(
+                "test",
+                handoff_id="handoff-a",
+                old_release_sha="a" * 40,
+                old_build_id="build-a",
+                new_release_sha="b" * 40,
+                new_build_id="build-b",
+            )
+
+        self.assertEqual(result["release_sha"], "b" * 40)
+        self.assertEqual(result["build_id"], "build-b")
+        self.assertFalse(result["pause_requested"])
+        self.assertIsNone(result["pause_requested_at"])
+        self.assertEqual(result["handoff_history"][-1]["handoff_id"], "handoff-a")
+        self.assertEqual(captured["release_sha"], "b" * 40)
 
     def test_resume_refuses_live_pid(self):
         state = {
