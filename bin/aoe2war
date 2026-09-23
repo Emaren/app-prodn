@@ -126,7 +126,7 @@ Usage:
   aoe2war storage-retention [--apply] [--json]
   aoe2war watcher-staging [--apply] [--json]
   aoe2war watcher-release [--apply] [--json] [--version VERSION] [--source PATH]
-  aoe2war storage <status|estate|local-maintain|plan|maintain|verify> [options]
+  aoe2war storage <status|estate|local-maintain|plan|maintain|verify|campaign|handoff> [options]
   aoe2war council [--json]
   aoe2war brain [--json]
   aoe2war workspace <status|plan|clean> [options]
@@ -283,6 +283,24 @@ BOUNDED STORAGE WRITE
       canonical download vault. Payloads and receipts precede updater manifests;
       production source/runtime and Wolo remain unchanged and a durable receipt
       is sealed.
+
+  aoe2war storage campaign start
+      Start the detached one-generation-at-a-time Storage OS campaign controller.
+      It owns no terminal and pauses only between sealed archive transactions.
+
+  aoe2war storage handoff start [CAMPAIGN]
+      Start the detached, resumable Storage OS V1->V2 takeover. It cooperatively
+      freezes the existing campaign at a proven transaction seam, runs canonical
+      Finish for the exact current main source, proves the certified V2 runtime,
+      retires the recorded V1 process family, rebinds campaign authority, and
+      resumes the same backlog under V2. No signal-kill shortcut is used.
+
+  aoe2war storage handoff status [HANDOFF]
+      Read the durable handoff state and exact source/build/process evidence.
+
+  aoe2war storage handoff resume [HANDOFF]
+      Resume an interrupted handoff from its last durably proven state. Unknown
+      or ambiguous transaction state remains fail-closed.
 
 ADMIN UI / OPERATOR BRIDGE
 
