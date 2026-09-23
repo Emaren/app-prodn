@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "7beb9ef95a5fd613f44c654fb8957a484d3138ebc9b4811d6567d2473d4988ac",
+      "sha256": "ad982af35dcca3d758cc7c2a9d48682df95039a09adf3dede4c525941ed0fd82",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/storage-handoff-v1-20260923",
-    "commit": "a46a9060ac27c75b0a8c751786edae06eec8672f"
+    "commit": "90053f0a56f559ba702c31577a71c16445a08200"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
