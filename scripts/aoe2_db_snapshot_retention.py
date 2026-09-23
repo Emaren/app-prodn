@@ -143,6 +143,10 @@ p = json.loads(base64.urlsafe_b64decode(sys.argv[1].encode("ascii")))
 verify_hashes = sys.argv[2] == "1"
 root = Path(p["snapshot_root"])
 max_meta = int(p["max_metadata_file_bytes"])
+if root.is_symlink() or not root.is_dir():
+    raise SystemExit(
+        "STOP: canonical deploy-receipt root is missing or not a direct directory"
+    )
 metadata_roots = [
     root,
     Path("/mnt/HC_Volume_105319120/aoe2war/os-control"),
@@ -162,7 +166,11 @@ def sha256(path):
 
 def parse_status(path):
     result = {}
-    if not path.is_file() or path.stat().st_size > max_meta:
+    if (
+        path.is_symlink()
+        or not path.is_file()
+        or path.stat().st_size > max_meta
+    ):
         return result
     for raw in path.read_text(encoding="utf-8", errors="replace").splitlines():
         key, sep, value = raw.partition("=")
@@ -173,7 +181,12 @@ def parse_status(path):
 def status_receipt_valid(parent, status):
     status_path = parent / "migration-status.txt"
     sidecar = parent / "migration-status.txt.sha256"
-    if not status_path.is_file() or not sidecar.is_file():
+    if (
+        status_path.is_symlink()
+        or sidecar.is_symlink()
+        or not status_path.is_file()
+        or not sidecar.is_file()
+    ):
         return False
     try:
         expected = sidecar.read_text(encoding="utf-8", errors="replace").split()[0]
