@@ -1716,3 +1716,49 @@ counts plus receipt existence.
 General rule: the evidence assembler is production code. Treat receipt sealing
 with the same end-to-end regression coverage as the probes whose evidence it
 records.
+
+## 2026-09-23 — Storage OS takeover must be a resumable transaction
+
+The first live V1→V2 Storage OS handoff exposed a control-plane weakness even
+though production itself remained safe. The old detached archive controller had
+been frozen at a proven between-generation seam, but the operator terminal then
+disappeared and the newer Finish attempt failed before deployment while building
+the maintenance-runner reconciliation script. Production stayed certified on the
+old release and the V1 parent stayed frozen, yet recovery depended on reconstructing
+a long manual cockpit sequence.
+
+The durable rule is that a handoff is its own transaction, not an operator
+checklist. `aoe2war storage handoff` now records and advances the exact states
+`CREATED -> V1_FROZEN -> TRANSACTION_SEAM_PROVEN -> SOURCE_READY ->
+RUNNER_RECONCILED -> V2_CERTIFIED -> V1_RETIRED -> V2_RESUMED`. Every
+transition is sealed before the next mutation. The controller runs in a detached
+session with a durable log, so losing the initiating shell does not abandon the
+takeover; a later invocation resumes from the last proven state.
+
+Freezing V1 is identity-bound. The campaign must be between generations, its
+PID/PGID/descendants are captured, the process group is stopped, and that exact
+identity is revalidated before source reconciliation, Finish, certification and
+retirement. A changed process group, new descendant, missing process, active
+`current_generation`, or partial transaction is not interpreted optimistically.
+
+Finish remains the only deployment/certification authority. A handoff may treat
+the runner as reconciled only when Finish's
+`maintenance_runner_reconciliation` phase passed with Wolo PID, restart
+counter and advancing-height evidence. V2 may be certified only when Finish
+itself reaches `CERTIFIED`, release and final certification phases pass,
+exactly one Wolo listener remains on each protected port, and Finish reports no
+Wolo mutation.
+
+The old controller is killed only after that V2 proof, while it is still frozen
+at the already-proven seam. Its campaign becomes `RETIRED_HANDOFF`, a terminal
+state ordinary campaign resume refuses. Any remaining storage budget moves into
+a successor campaign bound to the new certified source/build. The successor
+carries prior completed generations as continuation evidence so WATCH-range
+hysteresis remains one maintenance campaign in substance rather than becoming a
+fresh unauthorized maintenance start.
+
+General rule: whenever one long-lived controller must survive the release that
+replaces its own implementation, freeze and certify the takeover as a separate
+durable state machine. Do not rely on terminal lifetime, shell history, remembered
+PIDs, or a pasted sequence of irreversible commands.
+
