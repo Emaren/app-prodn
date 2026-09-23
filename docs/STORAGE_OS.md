@@ -285,10 +285,17 @@ reports `PAUSED` with
 `OPERATOR_PAUSE_BETWEEN_GENERATIONS`, no current generation timestamps remain,
 and the V1 controller PID is dead.
 
+Handoff authorization requires an actual live V1 campaign controller in
+`RUNNING` or `RUNNING_TRANSACTION`: its PID must be alive and its process
+command must identify the exact `aoe2_storage_campaign.py _run <campaign>`
+controller. An already paused, merely created, dead, or PID-reused campaign
+cannot manufacture V1 identity; start or resume the ordinary campaign first.
+
 The initial receipt records the V1 campaign source/build, the exact target
-`main` source, and the observed V1 PID/PGID/descendant family. The target must
-be a clean local `main`, equal to `origin/main`, and descend from the
-certified V1 source. Target drift after handoff authorization fails closed.
+`main` source, and the observed V1 PID/PPID/PGID/command plus descendant
+identities. The target must be a clean local `main`, equal to `origin/main`,
+and descend from the certified V1 source. Target drift after handoff
+authorization fails closed.
 
 After the seam is proven, the handoff starts canonical `aoe2war finish` in its
 own session and records the Finish PID and log. A lost initiating terminal
