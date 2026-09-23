@@ -1716,3 +1716,30 @@ counts plus receipt existence.
 General rule: the evidence assembler is production code. Treat receipt sealing
 with the same end-to-end regression coverage as the probes whose evidence it
 records.
+
+## 2026-09-23 — Storage OS handoff is a resumable transaction, not a terminal ritual
+
+The first Storage OS mid-air upgrade exposed a control-plane weakness: operator
+knowledge could identify a safe one-generation seam, but the takeover still
+depended on a long terminal-driven sequence. A later controller failure also
+showed that merely finding a dead PID is insufficient evidence for resume when
+persisted state still names an in-flight generation.
+
+Durable rule: storage continuity is authorized by persisted transaction state,
+not by process absence. Campaign resume now refuses an ambiguous in-generation
+state. Cross-version takeover is owned by the first-class
+`aoe2war storage handoff` controller with durable transitions from
+`V1_RUNNING` through `V2_RESUMED`.
+
+The handoff uses the campaign's cooperative between-generation pause rather than
+signal-killing the old controller. It records the original PID/PGID/descendant
+family, binds the exact clean `main` target, launches canonical Finish
+independently of the initiating terminal, and requires an exact CERTIFIED Finish
+receipt whose maintenance-runner reconciliation phase passed for that target.
+Only then may the old process family be declared retired and the paused campaign
+adopt the new certified source/build before resuming.
+
+General rule: when authority changes while durable work is in flight, model the
+takeover itself as a receipted state machine. Every restart must answer "what was
+last proven?" rather than "what probably happened?".
+
