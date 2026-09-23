@@ -390,9 +390,9 @@ def main() -> int:
     slots = sorted(set(args.roster_slot))
     if len(slots) < 2 or len(slots) > 8 or any(slot < 1 or slot > 8 for slot in slots):
         raise WorkerError("Native replay worker requires 2-8 unique roster slots 1-8.")
-    if not 1 <= args.native_performance_seconds <= 600:
+    if not 1 <= args.native_performance_seconds <= 240:
         raise WorkerError("native-performance-seconds is outside the governed bound.")
-    if not args.native_performance_seconds + 15 <= args.timeout_seconds <= 660:
+    if not args.native_performance_seconds + 15 <= args.timeout_seconds <= 300:
         raise WorkerError("timeout-seconds is outside the governed bound.")
 
     require_runtime()
