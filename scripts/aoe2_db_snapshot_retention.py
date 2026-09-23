@@ -457,16 +457,24 @@ def select_retention(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         protected_ids.add(str(row["path"]))
 
     weekly_seen: set[tuple[int, int]] = set()
+    for row in available:
+        if row.get("retention_class") != "HOT":
+            continue
+        dt = parse_mtime(row)
+        iso = dt.isocalendar()
+        weekly_seen.add((iso.year, iso.week))
     weekly_limit = int(p["weekly_cold_weeks"])
+    weekly_added = 0
     for row in available:
         if str(row["path"]) in protected_ids:
             continue
         dt = parse_mtime(row)
         iso = dt.isocalendar()
         key = (iso.year, iso.week)
-        if key in weekly_seen or len(weekly_seen) >= weekly_limit:
+        if key in weekly_seen or weekly_added >= weekly_limit:
             continue
         weekly_seen.add(key)
+        weekly_added += 1
         row["retention_class"] = "COLD_WEEKLY"
         row["retention_reason"] = (
             "newest exact migration restore point for retained ISO week"
@@ -474,15 +482,22 @@ def select_retention(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
         protected_ids.add(str(row["path"]))
 
     monthly_seen: set[tuple[int, int]] = set()
+    for row in available:
+        if row.get("retention_class") not in {"HOT", "COLD_WEEKLY"}:
+            continue
+        dt = parse_mtime(row)
+        monthly_seen.add((dt.year, dt.month))
     monthly_limit = int(p["monthly_cold_months"])
+    monthly_added = 0
     for row in available:
         if str(row["path"]) in protected_ids:
             continue
         dt = parse_mtime(row)
         key = (dt.year, dt.month)
-        if key in monthly_seen or len(monthly_seen) >= monthly_limit:
+        if key in monthly_seen or monthly_added >= monthly_limit:
             continue
         monthly_seen.add(key)
+        monthly_added += 1
         row["retention_class"] = "COLD_MONTHLY"
         row["retention_reason"] = (
             "newest exact migration restore point for retained calendar month"
