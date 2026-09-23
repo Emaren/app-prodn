@@ -1427,6 +1427,7 @@ def status_payload(handoff_id: str | None) -> dict[str, Any]:
             "status": "NONE",
         }
     state = load_state(selected)
+    verify_transition_chain(state)
     runner_pid = state.get("runner_pid")
     finish_pid = state.get("finish_pid")
     runner_identity = state.get("runner_process_identity")
