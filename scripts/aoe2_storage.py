@@ -614,6 +614,11 @@ def print_estate(payload: dict[str, Any]) -> None:
     )
     print(f"Expanded debt:   {volume['eligible_expanded_count']} generation(s)")
     print(f"Cold archives:   {volume['archive_file_count']}")
+    db = volume.get("database_snapshots") or {}
+    print(
+        "DB snapshots:    "
+        f"{db.get('count', '—')} · {gib(db.get('bytes'))}"
+    )
 
 
 def _assert_local_reclaim_path(home: Path, path: Path) -> None:
