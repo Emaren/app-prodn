@@ -26,6 +26,46 @@ HANDOFF_DIR = ROOT / ".aoe2war-release" / "storage-handoffs"
 FINISH_RECEIPT_DIR = ROOT / ".aoe2war-release" / "finish-receipts"
 LOCK_PATH = HANDOFF_DIR / "handoff.lock"
 
+WOLO_REMOTE_SCRIPT = r"""set -euo pipefail
+NODE="wolochaind-mainnet.service"
+RPC="http://127.0.0.1:27657"
+
+service="$(systemctl is-active "$NODE")"
+pid="$(systemctl show "$NODE" -p MainPID --value)"
+restarts="$(systemctl show "$NODE" -p NRestarts --value)"
+active_enter="$(systemctl show "$NODE" -p ActiveEnterTimestampMonotonic --value)"
+w8092="$(ss -ltn | grep -Ec ':8092[[:space:]]' || true)"
+w8093="$(ss -ltn | grep -Ec ':8093[[:space:]]' || true)"
+rpc1="$(curl -fsS --max-time 4 "$RPC/status")"
+sleep 3
+rpc2="$(curl -fsS --max-time 4 "$RPC/status")"
+
+python3 - "$service" "$pid" "$restarts" "$active_enter" "$w8092" "$w8093" "$rpc1" "$rpc2" <<'PY'
+import datetime as dt
+import json
+import sys
+
+service, pid, restarts, active_enter, w8092, w8093, raw1, raw2 = sys.argv[1:]
+one = json.loads(raw1)["result"]["sync_info"]
+two = json.loads(raw2)["result"]["sync_info"]
+h1 = int(one["latest_block_height"])
+h2 = int(two["latest_block_height"])
+stamp = dt.datetime.fromisoformat(two["latest_block_time"].replace("Z", "+00:00"))
+age = int((dt.datetime.now(dt.timezone.utc) - stamp).total_seconds())
+print(json.dumps({
+    "service": service,
+    "pid": int(pid),
+    "restart_counter": int(restarts),
+    "active_enter_monotonic": int(active_enter),
+    "listener_8092_count": int(w8092),
+    "listener_8093_count": int(w8093),
+    "height_before": h1,
+    "height_after": h2,
+    "block_age_seconds": age,
+}, sort_keys=True))
+PY
+"""
+
 FLOW = [
     "V1_RUNNING",
     "V1_FROZEN",
@@ -309,6 +349,60 @@ def live_campaign_controller(campaign_id: str) -> dict[str, Any] | None:
     return matches[0] if matches else None
 
 
+def wolo_snapshot() -> dict[str, Any]:
+    host = str(storage.policy()["root_maintenance_host"])
+    proc = subprocess.run(
+        ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8", host, "bash", "-s"],
+        input=WOLO_REMOTE_SCRIPT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+        timeout=30,
+    )
+    if proc.returncode != 0:
+        raise HandoffError(
+            "cannot prove Wolo continuity: "
+            + (proc.stderr or proc.stdout or "remote snapshot failed")[-1500:]
+        )
+    try:
+        payload = json.loads(proc.stdout)
+    except json.JSONDecodeError as exc:
+        raise HandoffError("Wolo continuity snapshot returned invalid JSON") from exc
+    if not isinstance(payload, dict):
+        raise HandoffError("Wolo continuity snapshot returned a non-object")
+    if payload.get("service") != "active":
+        raise HandoffError("Wolo node service is not active")
+    if payload.get("listener_8092_count") != 1:
+        raise HandoffError("Wolo listener 8092 count is not exactly one")
+    if payload.get("listener_8093_count") != 1:
+        raise HandoffError("Wolo listener 8093 count is not exactly one")
+    if int(payload.get("pid") or 0) <= 0:
+        raise HandoffError("Wolo node PID is invalid")
+    if int(payload.get("height_after") or 0) <= int(payload.get("height_before") or 0):
+        raise HandoffError("Wolo chain did not advance during continuity snapshot")
+    if int(payload.get("block_age_seconds") or 999999) > 20:
+        raise HandoffError("Wolo latest block is stale")
+    return payload
+
+
+def verify_wolo_continuity(
+    before: dict[str, Any],
+    after: dict[str, Any],
+) -> None:
+    for key in ("pid", "restart_counter", "active_enter_monotonic"):
+        if after.get(key) != before.get(key):
+            raise HandoffError(
+                f"Wolo continuity changed {key}: before={before.get(key)} "
+                f"after={after.get(key)}"
+            )
+    if int(after.get("height_after") or 0) < int(before.get("height_after") or 0):
+        raise HandoffError(
+            "Wolo chain height regressed across Storage handoff: "
+            f"before={before.get('height_after')} after={after.get('height_after')}"
+        )
+
+
 def git_output(*args: str) -> str:
     proc = subprocess.run(
         ["git", "-C", str(ROOT), *args],
@@ -439,6 +533,7 @@ def create_state(campaign_id: str) -> dict[str, Any]:
         )
 
     target_source = source_ready(current_release)
+    wolo_before = wolo_snapshot()
     family = process_family(pid)
     root_command = str(family.get("command") or "")
     if (
@@ -459,6 +554,7 @@ def create_state(campaign_id: str) -> dict[str, Any]:
         "campaign_build_id": existing.get("build_id"),
         "process_family": family,
         "target_source_sha": target_source,
+        "wolo": wolo_before,
     }
     receipt_path, receipt_sha256, receipt = write_transition_receipt(
         handoff_id=handoff_id,
@@ -480,6 +576,10 @@ def create_state(campaign_id: str) -> dict[str, Any]:
         "new_release_sha": None,
         "new_build_id": None,
         "v1_process_family": family,
+        "wolo_before": wolo_before,
+        "wolo_after_certification": None,
+        "wolo_after_resume": None,
+        "wolo_mutated": False,
         "finish_pid": None,
         "finish_started_at": None,
         "finish_returncode": None,
@@ -848,12 +948,23 @@ def drive(handoff_id: str) -> int:
 
             if status == "RUNNER_RECONCILED":
                 release, build = prove_target_certified(state)
+                wolo_after = wolo_snapshot()
+                verify_wolo_continuity(
+                    state.get("wolo_before") or {},
+                    wolo_after,
+                )
+                state["wolo_after_certification"] = wolo_after
+                state["wolo_mutated"] = False
+                save_state(state)
                 transition(
                     state,
                     "V2_CERTIFIED",
                     evidence={
                         "release_sha": release,
                         "build_id": build,
+                        "wolo_before": state.get("wolo_before"),
+                        "wolo_after": wolo_after,
+                        "wolo_mutated": False,
                     },
                 )
                 continue
@@ -908,6 +1019,13 @@ def drive(handoff_id: str) -> int:
 
                 state = load_state(handoff_id)
                 state["resumed_pid"] = resumed_pid
+                wolo_after_resume = wolo_snapshot()
+                verify_wolo_continuity(
+                    state.get("wolo_before") or {},
+                    wolo_after_resume,
+                )
+                state["wolo_after_resume"] = wolo_after_resume
+                state["wolo_mutated"] = False
                 save_state(state)
                 transition(
                     state,
@@ -917,6 +1035,8 @@ def drive(handoff_id: str) -> int:
                         "new_build_id": build,
                         "resumed_pid": resumed_pid,
                         "resume_mode": resume_mode,
+                        "wolo_after_resume": wolo_after_resume,
+                        "wolo_mutated": False,
                     },
                 )
                 continue
@@ -992,6 +1112,19 @@ def print_status(state: dict[str, Any]) -> None:
     print(f"Finish PID:   {state.get('finish_pid') or '—'}")
     print(f"Finish alive: {state.get('finish_alive', False)}")
     print(f"Resumed PID:  {state.get('resumed_pid') or '—'}")
+    wolo = (
+        state.get("wolo_after_resume")
+        or state.get("wolo_after_certification")
+        or state.get("wolo_before")
+        or {}
+    )
+    print(
+        "Wolo:          "
+        f"pid={wolo.get('pid') or '—'} "
+        f"restarts={wolo.get('restart_counter') if wolo.get('restart_counter') is not None else '—'} "
+        f"height={wolo.get('height_after') or '—'} "
+        f"mutated={state.get('wolo_mutated', False)}"
+    )
     print(f"Last error:   {state.get('last_error') or '—'}")
     print(f"Log:          {state.get('log_path') or '—'}")
     print(f"Finish log:   {state.get('finish_log_path') or '—'}")
