@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/replay-native-admin-worker-v1-20260923` at `33f8fe92f5d95ba46272d1ccb7a2f85f84a103a1`
+Implementation baseline: `feature/replay-native-admin-worker-v1-20260923` at `aa39b283fbb8b508e79d902091de6244500194c1`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
