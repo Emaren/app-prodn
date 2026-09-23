@@ -67,11 +67,24 @@ def finish_log_path(handoff_id: str) -> Path:
 def atomic_write(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(f".{path.name}.tmp.{os.getpid()}")
-    tmp.write_text(
-        json.dumps(payload, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
-    os.replace(tmp, path)
+    encoded = json.dumps(payload, indent=2, sort_keys=True) + "\n"
+    try:
+        with tmp.open("w", encoding="utf-8") as handle:
+            handle.write(encoded)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp, path)
+        try:
+            directory_fd = os.open(path.parent, os.O_RDONLY)
+        except OSError:
+            directory_fd = None
+        if directory_fd is not None:
+            try:
+                os.fsync(directory_fd)
+            finally:
+                os.close(directory_fd)
+    finally:
+        tmp.unlink(missing_ok=True)
 
 
 def load_state(handoff_id: str) -> dict[str, Any]:
@@ -112,9 +125,9 @@ def process_alive(pid: int | None) -> bool:
     return True
 
 
-def process_table() -> dict[int, dict[str, int]]:
+def process_table() -> dict[int, dict[str, Any]]:
     proc = subprocess.run(
-        ["ps", "-axo", "pid=,ppid=,pgid="],
+        ["ps", "-axo", "pid=,ppid=,pgid=,command="],
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
@@ -124,16 +137,21 @@ def process_table() -> dict[int, dict[str, int]]:
         raise HandoffError(
             "cannot inspect process table: " + (proc.stderr or "ps failed")[-1000:]
         )
-    rows: dict[int, dict[str, int]] = {}
+    rows: dict[int, dict[str, Any]] = {}
     for raw in proc.stdout.splitlines():
-        parts = raw.split()
+        parts = raw.strip().split(None, 3)
         if len(parts) < 3:
             continue
         try:
             pid, ppid, pgid = map(int, parts[:3])
         except ValueError:
             continue
-        rows[pid] = {"pid": pid, "ppid": ppid, "pgid": pgid}
+        rows[pid] = {
+            "pid": pid,
+            "ppid": ppid,
+            "pgid": pgid,
+            "command": parts[3] if len(parts) > 3 else "",
+        }
     return rows
 
 
@@ -145,7 +163,7 @@ def process_family(pid: int | None) -> dict[str, Any]:
     if root is None:
         return {"pid": pid, "pgid": None, "descendants": []}
 
-    descendants: list[int] = []
+    descendant_pids: list[int] = []
     frontier = [pid]
     seen = {pid}
     while frontier:
@@ -157,24 +175,46 @@ def process_family(pid: int | None) -> dict[str, Any]:
         )
         for child in children:
             seen.add(child)
-            descendants.append(child)
+            descendant_pids.append(child)
             frontier.append(child)
+
+    def identity(row: dict[str, Any]) -> dict[str, Any]:
+        return {
+            "pid": int(row["pid"]),
+            "ppid": int(row["ppid"]),
+            "pgid": int(row["pgid"]),
+            "command": str(row.get("command") or ""),
+        }
+
     return {
-        "pid": pid,
-        "pgid": root["pgid"],
-        "descendants": descendants,
+        **identity(root),
+        "descendants": [identity(rows[child]) for child in descendant_pids],
     }
 
 
+def same_process_identity(current: dict[str, Any], recorded: dict[str, Any]) -> bool:
+    return bool(
+        int(current.get("pid") or 0) == int(recorded.get("pid") or 0)
+        and int(current.get("pgid") or 0) == int(recorded.get("pgid") or 0)
+        and str(current.get("command") or "") == str(recorded.get("command") or "")
+    )
+
+
 def recorded_family_dead(snapshot: dict[str, Any]) -> bool:
-    pids: list[int] = []
-    root = snapshot.get("pid")
-    if isinstance(root, int):
-        pids.append(root)
+    rows = process_table()
+    members: list[dict[str, Any]] = []
+    if isinstance(snapshot.get("pid"), int):
+        members.append(snapshot)
     for value in snapshot.get("descendants") or []:
-        if isinstance(value, int):
-            pids.append(value)
-    return all(not process_alive(pid) for pid in pids)
+        if isinstance(value, dict) and isinstance(value.get("pid"), int):
+            members.append(value)
+
+    for recorded in members:
+        pid = int(recorded["pid"])
+        current = rows.get(pid)
+        if current is not None and same_process_identity(current, recorded):
+            return False
+    return True
 
 
 def git_output(*args: str) -> str:
@@ -400,7 +440,11 @@ def seal_finish_log(state: dict[str, Any]) -> None:
         state["finish_log_sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-def finish_receipt_for_target(target_source: str) -> tuple[Path, dict[str, Any]] | None:
+def finish_receipt_for_target(
+    target_source: str,
+    *,
+    not_before: str | None = None,
+) -> tuple[Path, dict[str, Any]] | None:
     if not FINISH_RECEIPT_DIR.is_dir():
         return None
     paths = sorted(
@@ -420,6 +464,9 @@ def finish_receipt_for_target(target_source: str) -> tuple[Path, dict[str, Any]]
         if payload.get("status") != "CERTIFIED":
             continue
         if payload.get("release_outcome") != "CERTIFIED":
+            continue
+        certified_at = str(payload.get("release_certified_at") or "")
+        if not_before and (not certified_at or certified_at < not_before):
             continue
         phase = (payload.get("phases") or {}).get(
             "maintenance_runner_reconciliation"
@@ -445,7 +492,10 @@ def finish_receipt_for_target(target_source: str) -> tuple[Path, dict[str, Any]]
 
 def bind_finish_receipt(state: dict[str, Any]) -> None:
     target = str(state["target_source_sha"])
-    found = finish_receipt_for_target(target)
+    found = finish_receipt_for_target(
+        target,
+        not_before=str(state.get("created_at") or "") or None,
+    )
     if found is None:
         raise HandoffError(
             "target runtime is certified but no exact CERTIFIED Finish receipt "
@@ -489,6 +539,16 @@ def wait_for_finish_or_recover(state: dict[str, Any]) -> tuple[str, str]:
         while process_alive(finish_pid):
             time.sleep(2)
         state = load_state(str(state["handoff_id"]))
+        try:
+            current_release, current_build = storage.operator_baseline()
+        except Exception:
+            current_release, current_build = "", ""
+        if current_release == target:
+            state["finish_pid"] = None
+            seal_finish_log(state)
+            save_state(state)
+            bind_finish_receipt(state)
+            return current_release, current_build
 
     proc = launch_finish(state)
     returncode = proc.wait()
