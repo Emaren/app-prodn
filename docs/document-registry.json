@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "1140436d37d8913f2711c9a9c0d52af3ec38a880fa701a1b83e2987e5511d876",
+      "sha256": "e47763675d5b3ce9938cf6548caa87240cd34c3ee1f4f7923372a4fcf1371d04",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-22",
       "sensitivity": "internal",
-      "sha256": "5efac9f89e38acc9139ea5231d572d01e052eda87e9cc30081e25f0ef05c9841",
+      "sha256": "06d7df2d3fc38f858cb83ba6207e2ac90bc23c13d2701e84c2c24520a2873a40",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1509,7 +1509,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-19",
       "sensitivity": "internal",
-      "sha256": "beac1ce2318acbb4107d3fe194b6f61a1694e73b139c40d0d64c06a987cf307b",
+      "sha256": "68061f9d6490691094cf2a68ee55174d4d453f6b7c48f1585ed1c00343e0a48f",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/storage-handoff-state-machine-v1-20260923",
-    "commit": "14964b2537c4e7c028e1dcf4b793f482fe856693"
+    "commit": "0b7cf5ad2f3218bc4c2b73c037989d2da5ed477f"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
