@@ -460,6 +460,9 @@ def rebind_after_handoff(
     state["build_id"] = new_build_id
     state["pause_requested"] = False
     state["pause_requested_at"] = None
+    state["completion_reason"] = None
+    state["finished_at"] = None
+    state["failed_at"] = None
     state["last_error"] = None
     save_state(state)
     return state
