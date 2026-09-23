@@ -31,7 +31,8 @@ DEFAULT_TOKEN_FILE = Path(
 ).expanduser()
 
 VERSION = "1.4.0"
-NATIVE_REPLAY_CANARY_GAME_IDS = {32388}
+NATIVE_REPLAY_CANARY_SHA256 = {32388: "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b"}
+NATIVE_REPLAY_CANARY_GAME_IDS = set(NATIVE_REPLAY_CANARY_SHA256)
 
 ACTIONS = {
     "status",
@@ -224,6 +225,10 @@ def command_for_run(
             )
         if __import__("re").fullmatch(r"[0-9a-f]{64}", replay_sha256) is None:
             raise BridgeError("Native replay run has invalid replay SHA-256.")
+        if replay_sha256 != NATIVE_REPLAY_CANARY_SHA256[game_stats_id]:
+            raise BridgeError(
+                "Native replay SHA-256 does not match the trusted 32388 canary."
+            )
         if (
             not isinstance(roster_slots, list)
             or len(roster_slots) < 2
