@@ -19,6 +19,10 @@ ROOT = Path(__file__).resolve().parents[1]
 API_ROOT = ROOT.parent / "api-prodn"
 RUNNER = API_ROOT / "scripts" / "replay_engine_runner.py"
 RUNNER_IMPL = API_ROOT / "utils" / "replay_engine_runner.py"
+TERMINAL_CONTROL_VALIDATOR = (
+    API_ROOT / "scripts" / "validate_replay_engine_terminal_control.py"
+)
+TRUSTED_CONTROL_GAME_IDS = {32388}
 DEFAULT_URL = os.getenv("AOE2WAR_OS_BRIDGE_URL", "https://aoe2war.com").rstrip("/")
 DEFAULT_TOKEN_FILE = Path(
     os.getenv("AOE2WAR_OS_BRIDGE_TOKEN_FILE", "~/.config/aoe2war/os-bridge-token")
@@ -70,7 +74,15 @@ def sha256_file(path: Path) -> str:
 
 
 def require_runtime() -> None:
-    for path in (RUNNER, RUNNER_IMPL, EXECUTABLE, DATA_FILE, LAUNCHER, BOTTLE):
+    for path in (
+        RUNNER,
+        RUNNER_IMPL,
+        TERMINAL_CONTROL_VALIDATOR,
+        EXECUTABLE,
+        DATA_FILE,
+        LAUNCHER,
+        BOTTLE,
+    ):
         if not path.exists():
             raise WorkerError(f"Required native runtime object is missing: {path}")
         if path.is_symlink():
@@ -244,6 +256,65 @@ def result_payload(
     return payload, 5
 
 
+def apply_trusted_control_validation(
+    *,
+    game_stats_id: int,
+    output: Path,
+    payload: dict[str, Any],
+    candidate_exit_code: int,
+) -> tuple[dict[str, Any], int]:
+    if game_stats_id not in TRUSTED_CONTROL_GAME_IDS:
+        return payload, candidate_exit_code
+    if payload.get("status") != "candidate_terminal_witness":
+        payload["trustedControlValidation"] = {
+            "status": "not_run",
+            "reason": "native terminal witness is not available",
+        }
+        return payload, candidate_exit_code
+
+    control_path = output / "trusted-control-validation.json"
+    process = subprocess.run(
+        [
+            sys.executable,
+            str(TERMINAL_CONTROL_VALIDATOR),
+            str(output),
+            "--output",
+            str(control_path),
+        ],
+        cwd=str(API_ROOT),
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        timeout=30,
+        env={
+            **os.environ,
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "PYTHONUNBUFFERED": "1",
+        },
+    )
+    if process.returncode != 0:
+        payload["status"] = "trusted_control_failed"
+        payload["trustedControlValidation"] = {
+            "status": "FAIL",
+            "exitCode": process.returncode,
+            "detail": process.stdout[-4000:],
+        }
+        return payload, 7
+
+    control = read_json(control_path)
+    if control.get("status") != "PASS" or control.get("control_passed") is not True:
+        payload["status"] = "trusted_control_failed"
+        payload["trustedControlValidation"] = control
+        return payload, 7
+
+    payload["status"] = "candidate_terminal_witness_control_pass"
+    payload["trustedControlValidation"] = control
+    payload["evidenceSha256"]["trusted-control-validation.json"] = sha256_file(
+        control_path
+    )
+    return payload, 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run-id", required=True)
@@ -338,6 +409,12 @@ def main() -> int:
         runner_returncode=process.returncode,
     )
     payload["downloadedByteSize"] = byte_size
+    payload, exit_code = apply_trusted_control_validation(
+        game_stats_id=args.game_stats_id,
+        output=output,
+        payload=payload,
+        candidate_exit_code=exit_code,
+    )
     print(json.dumps(payload, sort_keys=True))
     return exit_code
 
