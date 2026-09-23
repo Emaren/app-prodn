@@ -294,15 +294,24 @@ if root.is_dir():
                 if isinstance(value, str) and value
             ]
             migration_match = migration_dir_re.fullmatch(parent.name)
-            receipt_timestamp = (
-                migration_match.group(1) if migration_match else None
-            )
+            receipt_timestamp = None
+            if migration_match:
+                candidate_timestamp = migration_match.group(1)
+                try:
+                    datetime.strptime(
+                        candidate_timestamp, "%Y%m%dT%H%M%SZ"
+                    )
+                except ValueError:
+                    pass
+                else:
+                    receipt_timestamp = candidate_timestamp
             release_short = (
                 migration_match.group(2) if migration_match else None
             )
             migration_shape = bool(
                 name == "pre-migration.dump"
                 and migration_match
+                and receipt_timestamp is not None
                 and status_ok
                 and declared_dump == name
                 and isinstance(declared, str)
