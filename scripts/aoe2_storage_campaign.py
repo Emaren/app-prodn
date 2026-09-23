@@ -369,6 +369,13 @@ def run_campaign(campaign_id: str) -> int:
 
             storage.print_status(current)
 
+            # A handoff reservation outranks normal campaign completion at this
+            # exact between-generation seam. Re-enter the loop so the controller
+            # can durably publish HANDOFF_FREEZE_READY and self-stop before any
+            # target/max-generation terminal state hides the requested takeover.
+            if state.get("handoff_freeze_requested"):
+                continue
+
             if float(current["used_percent"]) < float(state["target_percent"]):
                 mark_terminal(
                     state,
