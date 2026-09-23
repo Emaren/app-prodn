@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "206f8a912851b3f20d727795c78f229e057fbec21e4864b911d055684902e07c",
+      "sha256": "45c74368e99c532f84e026b163d535cb657b61ca24c4240dbad9699598ef54c6",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1051,7 +1051,7 @@
       "review_interval_days": 60,
       "reviewed_at": "2026-09-23",
       "sensitivity": "restricted",
-      "sha256": "63d60585634c3824f908eb3346ab67a3feeec8daac52b0317ee76f8c0e26ab49",
+      "sha256": "f7b95d6440f0c34a411a4a422a015b58d551da714477743dd913624e17e72004",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/replay-native-admin-worker-v1-20260923",
-    "commit": "b8bcbd1a6c425e762493e698a80b1a7ee71d1f30"
+    "commit": "33e09730227ae4ef9d746347dbb8f116655f6c24"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
