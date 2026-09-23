@@ -426,6 +426,11 @@ def request_handoff_freeze(
     pid = state.get("pid")
     if not process_alive(pid if isinstance(pid, int) else None):
         raise CampaignError("handoff freeze requires a live campaign controller")
+    if state.get("pause_requested"):
+        raise CampaignError(
+            "campaign already has an operator pause request; "
+            "resolve that control state before starting a handoff"
+        )
     existing = state.get("handoff_freeze_handoff_id")
     if existing and existing != handoff_id:
         raise CampaignError(
@@ -482,6 +487,11 @@ def request_pause(campaign_id: str) -> dict[str, Any]:
     state = load_state(campaign_id)
     if state.get("status") in {"COMPLETE", "FAILED", "BLOCKED", "PAUSED"}:
         return state
+    if state.get("handoff_freeze_requested"):
+        raise CampaignError(
+            "campaign is reserved for Storage OS handoff; "
+            "pause cannot replace the handoff control signal"
+        )
     state["pause_requested"] = True
     state["pause_requested_at"] = utc_now()
     save_state(state)
