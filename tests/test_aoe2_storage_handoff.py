@@ -218,6 +218,37 @@ class StorageHandoffTests(unittest.TestCase):
                     handoff.finish_receipt_for_target("c" * 40)
                 )
 
+    def test_finish_receipt_rejects_pre_handoff_certification(self):
+        payload = {
+            "kind": "aoe2war-finish-result",
+            "status": "CERTIFIED",
+            "release_outcome": "CERTIFIED",
+            "release_certified_at": "2026-09-23T18:00:00+00:00",
+            "phases": {
+                "maintenance_runner_reconciliation": {"status": "PASSED"},
+            },
+            "final_release": {
+                "production": {"source_sha": "b" * 40},
+                "certification": {
+                    "status": "CERTIFIED",
+                    "release_sha": "b" * 40,
+                },
+            },
+        }
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            (root / "receipt.json").write_text(
+                __import__("json").dumps(payload),
+                encoding="utf-8",
+            )
+            with mock.patch.object(handoff, "FINISH_RECEIPT_DIR", root):
+                self.assertIsNone(
+                    handoff.finish_receipt_for_target(
+                        "b" * 40,
+                        not_before="2026-09-23T19:00:00+00:00",
+                    )
+                )
+
     def test_incomplete_v1_terminal_state_fails_instead_of_waiting_forever(self):
         state = {
             "handoff_id": "handoff-a",
@@ -230,15 +261,17 @@ class StorageHandoffTests(unittest.TestCase):
             "last_error": "worker failed",
             "pid": None,
         }
-        with (
-            mock.patch.object(handoff, "HANDOFF_DIR", Path("/tmp")),
-            mock.patch.object(handoff, "LOCK_PATH", Path("/tmp/aoe2war-handoff-test.lock")),
-            mock.patch.object(handoff, "load_state", side_effect=[state, state, terminal]),
-            mock.patch.object(handoff.campaign, "request_pause"),
-            mock.patch.object(handoff.campaign, "load_state", return_value=terminal),
-            mock.patch.object(handoff, "save_state"),
-        ):
-            self.assertEqual(handoff.drive("handoff-a"), 2)
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            with (
+                mock.patch.object(handoff, "HANDOFF_DIR", root),
+                mock.patch.object(handoff, "LOCK_PATH", root / "handoff.lock"),
+                mock.patch.object(handoff, "load_state", side_effect=[state, state]),
+                mock.patch.object(handoff.campaign, "request_pause"),
+                mock.patch.object(handoff.campaign, "load_state", return_value=terminal),
+                mock.patch.object(handoff, "save_state"),
+            ):
+                self.assertEqual(handoff.drive("handoff-a"), 2)
 
     def test_resume_is_terminal_loss_safe_from_every_incomplete_state(self):
         for state_name in handoff.FLOW[:-1]:
