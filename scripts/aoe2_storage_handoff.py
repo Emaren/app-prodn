@@ -469,34 +469,120 @@ def certified_finish_evidence(finish: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def retire_v1(state: dict[str, Any]) -> dict[str, Any]:
-    frozen = assert_frozen_identity(state)
-    pgid = int(frozen["pgid"])
-    pid = int(frozen["pid"])
-    os.killpg(pgid, signal.SIGKILL)
+def retirement_intent_path(handoff_id: str) -> Path:
+    return handoff_dir(handoff_id) / "retirement-intent.json"
 
-    deadline = time.monotonic() + 5
-    while process_alive(pid) and time.monotonic() < deadline:
-        time.sleep(0.1)
+
+def ensure_retirement_intent(state: dict[str, Any]) -> dict[str, Any]:
+    identity = state.get("v1_process") or {}
+    intent = {
+        "schema": 1,
+        "kind": "aoe2war-storage-handoff-retirement-intent",
+        "handoff_id": state["handoff_id"],
+        "campaign_id": state["campaign_id"],
+        "v1_pid": int(identity.get("pid") or 0),
+        "v1_pgid": int(identity.get("pgid") or 0),
+        "v2_source_sha": state.get("target_source_sha"),
+        "v2_certification_receipt": state.get("last_transition_receipt"),
+        "authorized_from_state": "V2_CERTIFIED",
+        "signal": "SIGKILL",
+        "database_mutated": False,
+        "wolo_mutated": False,
+    }
+    path = retirement_intent_path(str(state["handoff_id"]))
+    if path.exists():
+        try:
+            existing = json.loads(path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            raise HandoffError(
+                f"retirement intent is unreadable: {path}"
+            ) from exc
+        if existing != intent:
+            raise HandoffError(
+                f"retirement intent conflicts with current handoff identity: {path}"
+            )
+    else:
+        atomic_write(path, intent, mode=0o444)
+
+    state["retirement_intent"] = str(path)
+    save_state(state)
+    return intent
+
+
+def validate_retirement_intent(state: dict[str, Any]) -> dict[str, Any]:
+    path_value = state.get("retirement_intent")
+    if not isinstance(path_value, str) or not path_value:
+        raise HandoffError("V1 process is absent but no retirement intent was sealed")
+    path = Path(path_value)
+    if path != retirement_intent_path(str(state["handoff_id"])) or not path.is_file():
+        raise HandoffError("retirement intent path is invalid")
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    identity = state.get("v1_process") or {}
+    expected = {
+        "handoff_id": state["handoff_id"],
+        "campaign_id": state["campaign_id"],
+        "v1_pid": int(identity.get("pid") or 0),
+        "v1_pgid": int(identity.get("pgid") or 0),
+        "v2_source_sha": state.get("target_source_sha"),
+        "authorized_from_state": "V2_CERTIFIED",
+        "signal": "SIGKILL",
+        "database_mutated": False,
+        "wolo_mutated": False,
+    }
+    for key, value in expected.items():
+        if payload.get(key) != value:
+            raise HandoffError(f"retirement intent mismatch at {key}")
+    return payload
+
+
+def retire_v1(state: dict[str, Any]) -> dict[str, Any]:
+    identity = state.get("v1_process") or {}
+    pid = int(identity.get("pid") or 0)
+    pgid = int(identity.get("pgid") or 0)
+    if pid <= 0 or pgid <= 0:
+        raise HandoffError("V1 retirement has no exact pid/pgid identity")
+
     if process_alive(pid):
-        raise HandoffError(f"V1 controller pid {pid} survived SIGKILL")
+        frozen = assert_frozen_identity(state)
+        if int(frozen["pgid"]) != pgid:
+            raise HandoffError("V1 process group drifted before retirement")
+        intent = ensure_retirement_intent(state)
+        os.killpg(pgid, signal.SIGKILL)
+
+        deadline = time.monotonic() + 5
+        while process_alive(pid) and time.monotonic() < deadline:
+            time.sleep(0.1)
+        if process_alive(pid):
+            raise HandoffError(f"V1 controller pid {pid} survived SIGKILL")
+    else:
+        # A controller may die after the immutable retirement intent and
+        # SIGKILL but before the mutable handoff state advances. The sealed
+        # intent makes that seam recoverable without guessing.
+        intent = validate_retirement_intent(state)
 
     old = campaign.load_state(str(state["campaign_id"]))
     validate_campaign_seam(old, require_running=False)
-    if int(old.get("pid") or 0) != pid:
-        raise HandoffError("V1 campaign pid drifted before retirement receipt")
-    old["status"] = "RETIRED_HANDOFF"
-    old["pid"] = None
-    old["completion_reason"] = "V2_CERTIFIED_HANDOFF"
-    old["handoff_id"] = state["handoff_id"]
-    old["finished_at"] = utc_now()
-    campaign.save_state(old)
+    if old.get("status") == "RETIRED_HANDOFF":
+        if old.get("handoff_id") != state["handoff_id"] or old.get("pid") is not None:
+            raise HandoffError("existing V1 retirement state conflicts with handoff")
+    else:
+        if int(old.get("pid") or 0) != pid:
+            raise HandoffError("V1 campaign pid drifted before retirement receipt")
+        old["status"] = "RETIRED_HANDOFF"
+        old["pid"] = None
+        old["completion_reason"] = "V2_CERTIFIED_HANDOFF"
+        old["handoff_id"] = state["handoff_id"]
+        old["finished_at"] = utc_now()
+        campaign.save_state(old)
+
     return {
         "v1_pid": pid,
         "v1_pgid": pgid,
         "signal": "SIGKILL",
+        "retirement_intent": state.get("retirement_intent"),
         "process_alive_after": False,
-        "campaign_status": old["status"],
+        "campaign_status": "RETIRED_HANDOFF",
+        "v2_source_sha": intent.get("v2_source_sha"),
     }
 
 
@@ -529,38 +615,95 @@ def create_successor_campaign(state: dict[str, Any]) -> dict[str, Any]:
             "build_id": build,
         }
 
-    successor_id = f"{stamp()}-{release[:12]}-handoff"
-    successor = {
-        "schema": 1,
-        "kind": "aoe2war-storage-campaign",
-        "campaign_id": successor_id,
-        "status": "CREATED",
-        "created_at": utc_now(),
-        "updated_at": utc_now(),
+    successor_id = f"{state['handoff_id']}-v2"
+    intent = {
+        "successor_campaign_id": successor_id,
         "release_sha": release,
         "build_id": build,
-        "target_percent": storage.policy()["healthy_target"],
-        "max_generations": remaining,
-        "completed_generations": 0,
+        "remaining_generations": remaining,
         "continuation_generations": completed,
         "force": bool(old.get("force")),
-        "pause_requested": False,
-        "pid": None,
-        "current_generation": None,
-        "current_generation_started_at": None,
-        "history": [],
-        "last_plan": plan,
-        "last_error": None,
-        "completion_reason": None,
-        "log_path": str(campaign.log_path(successor_id)),
-        "handoff_parent": {
-            "handoff_id": state["handoff_id"],
-            "campaign_id": state["campaign_id"],
-            "completed_generations": completed,
-        },
     }
-    campaign.save_state(successor)
-    pid = campaign.spawn(successor_id)
+    existing_intent = state.get("successor_intent")
+    if existing_intent is not None and existing_intent != intent:
+        raise HandoffError("persisted successor intent conflicts with current plan")
+    state["successor_intent"] = intent
+    save_state(state)
+
+    successor_path = campaign.state_path(successor_id)
+    if successor_path.is_file():
+        successor = campaign.load_state(successor_id)
+        parent = successor.get("handoff_parent") or {}
+        if (
+            successor.get("release_sha") != release
+            or successor.get("build_id") != build
+            or int(successor.get("max_generations") or 0) != remaining
+            or int(successor.get("continuation_generations") or 0) != completed
+            or parent.get("handoff_id") != state["handoff_id"]
+            or parent.get("campaign_id") != state["campaign_id"]
+        ):
+            raise HandoffError("existing successor campaign conflicts with handoff intent")
+    else:
+        successor = {
+            "schema": 1,
+            "kind": "aoe2war-storage-campaign",
+            "campaign_id": successor_id,
+            "status": "CREATED",
+            "created_at": utc_now(),
+            "updated_at": utc_now(),
+            "release_sha": release,
+            "build_id": build,
+            "target_percent": storage.policy()["healthy_target"],
+            "max_generations": remaining,
+            "completed_generations": 0,
+            "continuation_generations": completed,
+            "force": bool(old.get("force")),
+            "pause_requested": False,
+            "pid": None,
+            "current_generation": None,
+            "current_generation_started_at": None,
+            "history": [],
+            "last_plan": plan,
+            "last_error": None,
+            "completion_reason": None,
+            "log_path": str(campaign.log_path(successor_id)),
+            "handoff_parent": {
+                "handoff_id": state["handoff_id"],
+                "campaign_id": state["campaign_id"],
+                "completed_generations": completed,
+            },
+        }
+        campaign.save_state(successor)
+
+    successor_pid = successor.get("pid")
+    if campaign.process_alive(
+        successor_pid if isinstance(successor_pid, int) else None
+    ):
+        pid = int(successor_pid)
+    else:
+        prior_spawn = (state.get("successor_spawn") or {}).get("pid")
+        if campaign.process_alive(
+            prior_spawn if isinstance(prior_spawn, int) else None
+        ):
+            pid = int(prior_spawn)
+        elif successor.get("status") in {"COMPLETE", "PAUSED", "BLOCKED"}:
+            return {
+                "status": "NO_ACTION_REQUIRED",
+                "reason": successor.get("completion_reason") or successor.get("status"),
+                "successor_campaign_id": successor_id,
+                "remaining_generations": remaining,
+                "release_sha": release,
+                "build_id": build,
+            }
+        else:
+            pid = campaign.spawn(successor_id)
+            state["successor_spawn"] = {
+                "campaign_id": successor_id,
+                "pid": pid,
+                "spawned_at": utc_now(),
+            }
+            save_state(state)
+
     return {
         "status": "STARTED",
         "successor_campaign_id": successor_id,
@@ -612,6 +755,9 @@ def create_state(campaign_id: str | None) -> dict[str, Any]:
         "v1_process": process,
         "history": [],
         "finish_result": None,
+        "retirement_intent": None,
+        "successor_intent": None,
+        "successor_spawn": None,
         "successor": None,
         "last_error": None,
         "log_path": str(log_path(handoff_id)),
