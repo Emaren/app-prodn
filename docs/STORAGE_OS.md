@@ -314,12 +314,21 @@ path.
 
 Finish owns maintenance-runner reconciliation, release serialization,
 certification, final Estate/Doctor proof and protected Wolo continuity. A
-successful handoff does not invent a second deployment authority. Only after the exact target source is the active certified runtime may the state
-advance through `RUNNER_RECONCILED` and `V2_CERTIFIED`. The bound Finish
-receipt must also carry the protected Wolo continuity proof from maintenance
-reconciliation: a live node PID, restart counter, advancing block height, and
-exactly one listener on each protected port 8092/8093. Handoff records those
-values as observe-only evidence and never treats Wolo as a mutation target.
+successful handoff does not invent a second deployment authority. Only after the
+exact target source is the active certified runtime may the state advance through
+`RUNNER_RECONCILED` and `V2_CERTIFIED`. The bound Finish receipt must also
+prove its own protected Wolo continuity.
+
+The handoff adds an independent observe-only continuity layer around that Finish
+proof. Before takeover it captures the validator service state, node PID, restart
+counter, active-enter monotonic timestamp, exact 8092/8093 listener counts, an
+advancing height pair, and latest-block age. It repeats the snapshot after exact
+V2 certification and again after V2 campaign resume. PID, restart counter and
+active-enter timestamp must remain unchanged; both protected listener counts
+must remain exactly one; each sample must show chain advancement and a fresh
+block; and height may never regress across the handoff. The durable state records
+`wolo_mutated=false`. Any discontinuity fails closed instead of being explained
+away as unrelated host activity.
 
 Before V1 retirement, every PID recorded in the original V1 process-family
 snapshot must be dead. The paused campaign can then adopt the exact new certified
