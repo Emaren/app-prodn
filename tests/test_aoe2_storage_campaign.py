@@ -87,13 +87,29 @@ class StorageCampaignTests(unittest.TestCase):
         self.assertLess(invoke, refresh)
         self.assertLess(refresh, save)
 
-    def test_pause_is_between_generations_not_signal_kill(self):
+    def test_pause_is_between_generations_while_handoff_uses_only_sigstop(self):
         source = Path(campaign.__file__).read_text(encoding="utf-8")
+        run_source = source[
+            source.index("def run_campaign(") : source.index("\ndef start(", source.index("def run_campaign("))
+        ]
 
-        self.assertIn('state.get("pause_requested")', source)
-        self.assertNotIn("os.kill(", source.replace("os.kill(pid, 0)", ""))
-        self.assertNotIn("SIGKILL", source)
-        self.assertNotIn("SIGTERM", source)
+        handoff_offset = run_source.index(
+            'if state.get("handoff_freeze_requested"):'
+        )
+        pause_offset = run_source.index(
+            'if state.get("pause_requested"):'
+        )
+        completed_offset = run_source.index(
+            'completed = int(state.get("completed_generations") or 0)'
+        )
+        handoff_block = run_source[handoff_offset:pause_offset]
+        pause_block = run_source[pause_offset:completed_offset]
+
+        self.assertIn("signal.SIGSTOP", handoff_block)
+        self.assertIn("os.kill(os.getpid(), signal.SIGSTOP)", handoff_block)
+        self.assertNotIn("os.kill(", pause_block)
+        self.assertNotIn("SIGKILL", run_source)
+        self.assertNotIn("SIGTERM", run_source)
 
     def test_runner_persists_completed_generation_before_next_plan(self):
         source = Path(campaign.__file__).read_text(encoding="utf-8")
