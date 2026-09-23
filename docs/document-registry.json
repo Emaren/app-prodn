@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "905a3b98c943ea366d3231f2ca7e5a3d88437614654f87c56c1c9f584b6a05cc",
+      "sha256": "7beb9ef95a5fd613f44c654fb8957a484d3138ebc9b4811d6567d2473d4988ac",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-22",
       "sensitivity": "internal",
-      "sha256": "ab1c070f7a002ca5d2e5ee77b1b6c6c92233f36b3de57b5abddbf71cfcabbeca",
+      "sha256": "94376c2b5241f27cca578b24b27b15ba3b034dafd69dbce95b7a3110c26fdf22",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1509,7 +1509,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-19",
       "sensitivity": "internal",
-      "sha256": "75a5c0fb4cba9bce73a81c3282d313a65c531aa262b270b4714bdad1f72d2072",
+      "sha256": "ede5ea14ed097f0823878f46fa6d90d6f5b895f054dfc6f4a9dd32d3a542e309",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/storage-handoff-v1-20260923",
-    "commit": "7fa50189a6013c28df4b03b009d82fa7a36d263e"
+    "commit": "a46a9060ac27c75b0a8c751786edae06eec8672f"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
