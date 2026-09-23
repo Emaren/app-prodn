@@ -93,6 +93,103 @@ class StorageHandoffTests(unittest.TestCase):
             "cooperative_between_generation_self_stop",
         )
 
+    def test_created_state_recovers_missing_campaign_reservation(self):
+        state = self.base_state(status="CREATED")
+        state["v1_process"] = None
+        state["freeze_requested_at"] = None
+        frozen = {
+            "pid": 123,
+            "pgid": 123,
+            "stat": "T",
+            "stopped": True,
+            "descendants": [],
+        }
+        unreserved = {
+            "status": "RUNNING",
+            "pid": 123,
+            "handoff_freeze_handoff_id": None,
+            "current_generation": None,
+            "current_generation_started_at": None,
+        }
+        reserved = {
+            **unreserved,
+            "status": "HANDOFF_FREEZE_READY",
+            "handoff_freeze_handoff_id": "handoff-test",
+            "handoff_freeze_requested_at": "2026-09-23T19:00:00+00:00",
+            "handoff_freeze_ready_at": "2026-09-23T19:01:00+00:00",
+        }
+
+        with (
+            mock.patch.object(
+                handoff.campaign,
+                "load_state",
+                return_value=unreserved,
+            ),
+            mock.patch.object(
+                handoff.campaign,
+                "request_handoff_freeze",
+                return_value=reserved,
+            ) as reserve,
+            mock.patch.object(handoff.campaign, "process_alive", return_value=True),
+            mock.patch.object(handoff, "process_snapshot", return_value=frozen),
+            mock.patch.object(handoff, "save_state"),
+            mock.patch.object(
+                handoff,
+                "seal_transition",
+                return_value={**state, "status": "V1_FROZEN", "v1_process": frozen},
+            ),
+        ):
+            result = handoff.transition_created(state)
+
+        reserve.assert_called_once_with("campaign-test", "handoff-test")
+        self.assertEqual(result["status"], "V1_FROZEN")
+        self.assertEqual(
+            state["freeze_requested_at"],
+            "2026-09-23T19:00:00+00:00",
+        )
+
+    def test_every_handoff_state_survives_controller_restart(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            with mock.patch.object(handoff, "HANDOFF_ROOT", root):
+                state = self.base_state(status="CREATED")
+                handoff.save_state(state)
+
+                routes = [
+                    ("CREATED", "V1_FROZEN", "transition_created"),
+                    ("V1_FROZEN", "TRANSACTION_SEAM_PROVEN", "transition_v1_frozen"),
+                    ("TRANSACTION_SEAM_PROVEN", "SOURCE_READY", "transition_seam_proven"),
+                    ("SOURCE_READY", "RUNNER_RECONCILED", "transition_source_ready"),
+                    ("RUNNER_RECONCILED", "V2_CERTIFIED", "transition_runner_reconciled"),
+                    ("V2_CERTIFIED", "V1_RETIRED", "transition_v2_certified"),
+                    ("V1_RETIRED", "V2_RESUMED", "transition_v1_retired"),
+                ]
+
+                for current, target, function_name in routes:
+                    # Simulate a new controller process loading only durable state.
+                    reloaded = handoff.load_state("handoff-test")
+                    self.assertEqual(reloaded["status"], current)
+
+                    def transition(payload, target=target):
+                        return handoff.seal_transition(
+                            payload,
+                            target,
+                            {"restart_harness": target},
+                        )
+
+                    with mock.patch.object(
+                        handoff,
+                        function_name,
+                        side_effect=transition,
+                    ):
+                        handoff.advance_once(reloaded)
+
+                final = handoff.load_state("handoff-test")
+                self.assertEqual(final["status"], "V2_RESUMED")
+                self.assertEqual(len(final["history"]), 7)
+                for item in final["history"]:
+                    self.assertTrue(Path(item["receipt"]).is_file())
+
     def test_transition_is_sequential_and_receipted_read_only(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
