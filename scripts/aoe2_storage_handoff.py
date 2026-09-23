@@ -474,6 +474,10 @@ def wolo_snapshot() -> dict[str, Any]:
         raise HandoffError("Wolo listener 8093 count is not exactly one")
     if int(payload.get("pid") or 0) <= 0:
         raise HandoffError("Wolo node PID is invalid")
+    if int(payload.get("restart_counter") or 0) < 0:
+        raise HandoffError("Wolo restart counter is invalid")
+    if int(payload.get("active_enter_monotonic") or 0) <= 0:
+        raise HandoffError("Wolo active-enter identity is invalid")
     if int(payload.get("height_after") or 0) <= int(payload.get("height_before") or 0):
         raise HandoffError("Wolo chain did not advance during continuity snapshot")
     if int(payload.get("block_age_seconds") or 999999) > 20:
