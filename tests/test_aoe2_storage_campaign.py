@@ -200,6 +200,89 @@ class StorageCampaignTests(unittest.TestCase):
         spawn.assert_called_once_with("test")
         self.assertEqual(result["spawned_pid"], 456)
 
+    def test_request_handoff_freeze_reserves_live_transaction(self):
+        state = {
+            "schema": 1,
+            "kind": "aoe2war-storage-campaign",
+            "campaign_id": "test",
+            "status": "RUNNING_TRANSACTION",
+            "pid": 123,
+            "handoff_freeze_requested": False,
+            "handoff_freeze_requested_at": None,
+            "handoff_freeze_handoff_id": None,
+        }
+        persisted = {}
+
+        with (
+            mock.patch.object(campaign, "load_state", return_value=state),
+            mock.patch.object(campaign, "process_alive", return_value=True),
+            mock.patch.object(
+                campaign,
+                "save_state",
+                side_effect=lambda payload: persisted.update(payload),
+            ),
+        ):
+            result = campaign.request_handoff_freeze(
+                "test",
+                "handoff-1",
+            )
+
+        self.assertTrue(result["handoff_freeze_requested"])
+        self.assertEqual(
+            result["handoff_freeze_handoff_id"],
+            "handoff-1",
+        )
+        self.assertTrue(persisted["handoff_freeze_requested"])
+
+    def test_refresh_operator_signals_preserves_handoff_freeze_request(self):
+        state = {
+            "campaign_id": "test",
+            "handoff_freeze_requested": False,
+            "handoff_freeze_requested_at": None,
+            "handoff_freeze_handoff_id": None,
+        }
+        persisted = {
+            "campaign_id": "test",
+            "handoff_freeze_requested": True,
+            "handoff_freeze_requested_at": "2026-09-23T19:00:00+00:00",
+            "handoff_freeze_handoff_id": "handoff-1",
+        }
+
+        with mock.patch.object(
+            campaign,
+            "load_state",
+            return_value=persisted,
+        ):
+            campaign.refresh_operator_signals(state)
+
+        self.assertTrue(state["handoff_freeze_requested"])
+        self.assertEqual(
+            state["handoff_freeze_handoff_id"],
+            "handoff-1",
+        )
+        self.assertEqual(
+            state["handoff_freeze_requested_at"],
+            "2026-09-23T19:00:00+00:00",
+        )
+
+    def test_reserved_handoff_campaign_cannot_escape_through_resume(self):
+        state = {
+            "schema": 1,
+            "kind": "aoe2war-storage-campaign",
+            "campaign_id": "test",
+            "status": "HANDOFF_FREEZE_READY",
+            "pid": 123,
+            "handoff_freeze_requested": True,
+            "handoff_freeze_handoff_id": "handoff-1",
+        }
+
+        with mock.patch.object(campaign, "load_state", return_value=state):
+            with self.assertRaisesRegex(
+                campaign.CampaignError,
+                "reserved handoff path",
+            ):
+                campaign.resume("test")
+
     def test_handoff_successor_continues_watch_using_inherited_progress(self):
         plan = {
             "status": "WATCH",
