@@ -815,7 +815,19 @@ def transition_created(state: dict[str, Any]) -> dict[str, Any]:
     deadline = time.monotonic() + 7200
     while time.monotonic() < deadline:
         old = campaign.load_state(str(state["campaign_id"]))
-        if old.get("handoff_freeze_handoff_id") != state["handoff_id"]:
+        reservation = old.get("handoff_freeze_handoff_id")
+        if not reservation:
+            old = campaign.request_handoff_freeze(
+                str(state["campaign_id"]),
+                str(state["handoff_id"]),
+            )
+            reservation = old.get("handoff_freeze_handoff_id")
+            if not state.get("freeze_requested_at"):
+                state["freeze_requested_at"] = old.get(
+                    "handoff_freeze_requested_at"
+                )
+                save_state(state)
+        if reservation != state["handoff_id"]:
             raise HandoffError("campaign handoff-freeze reservation changed")
         if int(old.get("pid") or 0) != pid:
             raise HandoffError("V1 campaign pid changed before freeze seam")
