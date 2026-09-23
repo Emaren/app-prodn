@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/storage-resume-ambiguous-transaction-v2-20260923` at `e0db70f6c0190a39b43279605f840f3e8e893948`
+Implementation baseline: `feature/storage-handoff-state-machine-v1-20260923` at `904d6c13db04424c6b1aba09390d5e1b287a1371`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
