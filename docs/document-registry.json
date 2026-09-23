@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "783fd9861f4a918d72fb998efc06cfb5ae0dfb6db9ca5c2efc5c384d3d444735",
+      "sha256": "cf0d04fe78ec92c2e3e18c6e2757aa322f6e8110faf105a2190caec0d914187a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/watcher-release-macos-rsync-20260922",
-    "commit": "d1d7d4cc9071cfab9f0221135f1c6c3af6bc8faf"
+    "branch": "feature/compact-clan-hall-signals-20260922",
+    "commit": "80b22db5254a87aa1d05543d6ff0989ef6b09581"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

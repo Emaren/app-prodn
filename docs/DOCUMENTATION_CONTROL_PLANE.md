@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/watcher-release-macos-rsync-20260922` at `d1d7d4cc9071cfab9f0221135f1c6c3af6bc8faf`
+Implementation baseline: `feature/compact-clan-hall-signals-20260922` at `80b22db5254a87aa1d05543d6ff0989ef6b09581`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
