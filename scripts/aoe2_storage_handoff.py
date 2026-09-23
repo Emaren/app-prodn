@@ -615,9 +615,52 @@ def bind_finish_receipt(state: dict[str, Any]) -> None:
             "proves maintenance-runner reconciliation"
         )
     path, payload = found
+
+    maintenance = payload.get("maintenance_runner_reconciliation") or {}
+    final_release = payload.get("final_release") or payload.get("certified_release") or {}
+    production = (
+        final_release.get("production") or {}
+        if isinstance(final_release, dict)
+        else {}
+    )
+    try:
+        wolo_pid = int(maintenance["wolo_pid"])
+        wolo_restarts = int(maintenance["wolo_restart_counter"])
+        height_before = int(maintenance["wolo_height_before"])
+        height_after = int(maintenance["wolo_height_after"])
+        listener_8092 = int(production["wolo_8092_count"])
+        listener_8093 = int(production["wolo_8093_count"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise HandoffError(
+            "certified Finish receipt lacks exact Wolo PID/restart/height/listener evidence"
+        ) from exc
+    if (
+        wolo_pid <= 0
+        or wolo_restarts < 0
+        or height_before <= 0
+        or height_after <= height_before
+        or listener_8092 != 1
+        or listener_8093 != 1
+    ):
+        raise HandoffError(
+            "certified Finish receipt does not prove protected Wolo continuity: "
+            f"pid={wolo_pid} restarts={wolo_restarts} "
+            f"height={height_before}->{height_after} "
+            f"listeners=8092:{listener_8092},8093:{listener_8093}"
+        )
+
     state["finish_receipt_path"] = str(path)
     state["finish_receipt_sha256"] = hashlib.sha256(path.read_bytes()).hexdigest()
     state["finish_release_certified_at"] = payload.get("release_certified_at")
+    state["wolo_continuity"] = {
+        "pid": wolo_pid,
+        "restart_counter": wolo_restarts,
+        "height_before": height_before,
+        "height_after": height_after,
+        "listener_8092_count": listener_8092,
+        "listener_8093_count": listener_8093,
+        "wolo_mutated_by_handoff": False,
+    }
     save_state(state)
 
 
