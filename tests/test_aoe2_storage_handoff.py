@@ -78,6 +78,40 @@ class StorageHandoffTests(unittest.TestCase):
         with self.assertRaises(handoff.HandoffError):
             handoff.prove_frozen(invalid)
 
+    def test_live_campaign_controller_is_exact_and_unique(self):
+        rows = {
+            100: {
+                "pid": 100,
+                "ppid": 1,
+                "pgid": 100,
+                "command": "python scripts/aoe2_storage_campaign.py _run campaign-a",
+            },
+            101: {
+                "pid": 101,
+                "ppid": 1,
+                "pgid": 101,
+                "command": "python unrelated.py campaign-a",
+            },
+        }
+        with mock.patch.object(handoff, "process_table", return_value=rows):
+            self.assertEqual(
+                handoff.live_campaign_controller("campaign-a")["pid"],
+                100,
+            )
+
+        rows[102] = {
+            "pid": 102,
+            "ppid": 1,
+            "pgid": 102,
+            "command": "python scripts/aoe2_storage_campaign.py _run campaign-a",
+        }
+        with mock.patch.object(handoff, "process_table", return_value=rows):
+            with self.assertRaisesRegex(
+                handoff.HandoffError,
+                "multiple live Storage campaign controllers",
+            ):
+                handoff.live_campaign_controller("campaign-a")
+
     def test_source_ready_requires_clean_exact_main_descendant(self):
         values = {
             ("branch", "--show-current"): "main",
