@@ -40,6 +40,7 @@ EXPECTED_DATA_SHA256 = (
     "21591ac67251d8674635d5634f2d8e9ff80ad90f3c792f9503d60dd658d61058"
 )
 MAX_REPLAY_BYTES = 64 * 1024 * 1024
+SAFE_REPLAY_EXTENSIONS = {".aoe2record", ".aoe2mpgame", ".mgz", ".mgx", ".mgl"}
 SHA256_RE = __import__("re").compile(r"^[0-9a-f]{64}$")
 
 
@@ -92,8 +93,8 @@ def download_replay(
     token: str,
     run_id: str,
     expected_sha256: str,
-    destination: Path,
-) -> int:
+    destination_dir: Path,
+) -> tuple[Path, int]:
     query = urllib.parse.urlencode({"runId": run_id})
     request = urllib.request.Request(
         f"{base_url}/api/internal/aoe2war-os/native-replay/artifact?{query}",
@@ -110,6 +111,12 @@ def download_replay(
                 raise WorkerError(
                     "Server replay identity does not match the queued native-run identity."
                 )
+            extension = response.headers.get(
+                "X-AoE2WAR-Replay-Extension", ""
+            ).strip().lower()
+            if extension not in SAFE_REPLAY_EXTENSIONS:
+                raise WorkerError("Server replay extension is not supported by the native worker.")
+            destination = destination_dir / f"{expected_sha256}{extension}"
             length_header = response.headers.get("Content-Length", "").strip()
             if length_header:
                 try:
@@ -147,7 +154,7 @@ def download_replay(
             f"Downloaded replay failed SHA-256 validation: {observed}"
         )
     destination.chmod(0o400)
-    return total
+    return destination, total
 
 
 def read_json(path: Path) -> dict[str, Any]:
@@ -269,13 +276,12 @@ def main() -> int:
     output.parent.mkdir(parents=True, exist_ok=True)
 
     with tempfile.TemporaryDirectory(prefix="aoe2war-native-replay-") as temp_dir:
-        artifact = Path(temp_dir) / f"{replay_sha256}.aoe2record"
-        byte_size = download_replay(
+        artifact, byte_size = download_replay(
             base_url=args.url.rstrip("/"),
             token=token,
             run_id=args.run_id,
             expected_sha256=replay_sha256,
-            destination=artifact,
+            destination_dir=Path(temp_dir),
         )
 
         command = [
