@@ -401,6 +401,96 @@ class StorageHandoffTests(unittest.TestCase):
         self.assertIn("stdout=log", source)
         self.assertIn("stderr=subprocess.STDOUT", source)
 
+    def test_spawn_runner_persists_pid_before_identity_failure(self):
+        state = {
+            "handoff_id": "handoff-a",
+            "runner_pid": None,
+        }
+        proc = mock.Mock()
+        proc.pid = 321
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            with (
+                mock.patch.object(handoff, "HANDOFF_DIR", root),
+                mock.patch.object(handoff, "load_state", return_value=state),
+                mock.patch.object(handoff, "process_alive", return_value=False),
+                mock.patch.object(handoff.subprocess, "Popen", return_value=proc),
+                mock.patch.object(
+                    handoff,
+                    "capture_process_identity",
+                    side_effect=handoff.HandoffError("identity unavailable"),
+                ),
+                mock.patch.object(handoff, "save_state") as save,
+            ):
+                with self.assertRaisesRegex(
+                    handoff.HandoffError,
+                    "identity unavailable",
+                ):
+                    handoff.spawn_runner("handoff-a")
+
+        self.assertEqual(state["runner_pid"], 321)
+        self.assertIsNone(state["runner_process_identity"])
+        self.assertEqual(state["runner_identity_error"], "identity unavailable")
+        self.assertGreaterEqual(save.call_count, 2)
+        first = save.call_args_list[0].args[0]
+        self.assertEqual(first["runner_pid"], 321)
+
+    def test_launch_finish_persists_pid_before_identity_failure(self):
+        state = {
+            "handoff_id": "handoff-a",
+        }
+        proc = mock.Mock()
+        proc.pid = 654
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            with (
+                mock.patch.object(handoff, "HANDOFF_DIR", root),
+                mock.patch.object(handoff, "capture_process_identity",
+                    side_effect=handoff.HandoffError("finish identity unavailable")),
+                mock.patch.object(handoff.subprocess, "Popen", return_value=proc),
+                mock.patch.object(handoff, "save_state") as save,
+            ):
+                with self.assertRaisesRegex(
+                    handoff.HandoffError,
+                    "finish identity unavailable",
+                ):
+                    handoff.launch_finish(state)
+
+        self.assertEqual(state["finish_pid"], 654)
+        self.assertIsNone(state["finish_process_identity"])
+        self.assertEqual(
+            state["finish_identity_error"],
+            "finish identity unavailable",
+        )
+        self.assertGreaterEqual(save.call_count, 2)
+        first = save.call_args_list[0].args[0]
+        self.assertEqual(first["finish_pid"], 654)
+
+    def test_wait_for_finish_refuses_duplicate_when_live_pid_identity_is_unknown(self):
+        state = {
+            "handoff_id": "handoff-a",
+            "target_source_sha": "b" * 40,
+            "finish_pid": 777,
+            "finish_process_identity": None,
+            "finish_log_path": "/tmp/handoff-a.finish.log",
+        }
+        with (
+            mock.patch.object(
+                handoff.storage,
+                "operator_baseline",
+                return_value=("a" * 40, "build-a"),
+            ),
+            mock.patch.object(handoff, "process_alive", return_value=True),
+            mock.patch.object(handoff, "recorded_process_alive", return_value=False),
+            mock.patch.object(handoff, "launch_finish") as launch,
+        ):
+            with self.assertRaisesRegex(
+                handoff.HandoffError,
+                "refusing to launch a duplicate Finish",
+            ):
+                handoff.wait_for_finish_or_recover(state)
+        launch.assert_not_called()
+
     def test_finish_is_terminal_independent_and_uses_canonical_finish(self):
         source = Path(handoff.__file__).read_text(encoding="utf-8")
         self.assertIn('"finish"', source)
