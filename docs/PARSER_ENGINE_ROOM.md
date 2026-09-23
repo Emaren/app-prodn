@@ -90,7 +90,9 @@ into shell syntax.
 
 Ordinary unresolved replays are served from the canonical content-addressed
 archive through the authenticated internal bridge endpoint and are hashed again
-after transfer. Archive admission requires the exact canonical filename
+after transfer. The bridge response must agree with the queued GameStats ID,
+replay SHA-256, and recorded-game extension before any bytes become native
+input. Archive admission requires the exact canonical filename
 `<replay-sha256>.aoe2record`; prefix lookalikes and alternate containers are
 not native-run inputs. This native lane accepts recorded HD `.aoe2record`
 battles only. Saved `.aoe2mpgame` checkpoints and legacy containers remain in
