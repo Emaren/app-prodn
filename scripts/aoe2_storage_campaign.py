@@ -382,6 +382,17 @@ def resume(campaign_id: str) -> dict[str, Any]:
     pid = state.get("pid")
     if process_alive(pid if isinstance(pid, int) else None):
         raise CampaignError(f"campaign is still active with pid={pid}")
+
+    current_generation = state.get("current_generation")
+    current_started = state.get("current_generation_started_at")
+    if current_generation or current_started:
+        raise CampaignError(
+            "campaign stopped inside a one-generation transaction; "
+            "resume is blocked until exact transaction evidence is reconciled: "
+            f"generation={current_generation or 'unknown'} "
+            f"started_at={current_started or 'unknown'}"
+        )
+
     validate_bound_baseline(state)
     state["pause_requested"] = False
     state["status"] = "RESUME_REQUESTED"
