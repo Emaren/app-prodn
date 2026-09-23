@@ -577,6 +577,112 @@ class StorageHandoffTests(unittest.TestCase):
             ):
                 self.assertEqual(handoff.drive("handoff-a"), 2)
 
+    def test_terminal_loss_harness_reaches_v2_resumed_from_every_state(self):
+        target = "b" * 40
+        old = "a" * 40
+        wolo_before = {
+            "pid": 77,
+            "restart_counter": 0,
+            "active_enter_monotonic": 123456,
+            "height_after": 100,
+        }
+        wolo_after = {
+            **wolo_before,
+            "service": "active",
+            "listener_8092_count": 1,
+            "listener_8093_count": 1,
+            "height_before": 109,
+            "height_after": 110,
+            "block_age_seconds": 2,
+        }
+
+        for start_state in handoff.FLOW[:-1]:
+            with self.subTest(state=start_state), tempfile.TemporaryDirectory() as td:
+                root = Path(td)
+                state = {
+                    "handoff_id": f"handoff-{start_state.lower()}",
+                    "campaign_id": "campaign-a",
+                    "status": start_state,
+                    "old_release_sha": old,
+                    "old_build_id": "build-a",
+                    "target_source_sha": target,
+                    "new_release_sha": target,
+                    "new_build_id": "build-b",
+                    "v1_process_family": {
+                        "pid": 10,
+                        "ppid": 1,
+                        "pgid": 10,
+                        "command": "python old-controller",
+                        "descendants": [],
+                    },
+                    "wolo_before": dict(wolo_before),
+                    "wolo_mutated": False,
+                    "history": [],
+                    "runner_pid": None,
+                    "finish_pid": None,
+                    "finish_log_path": str(root / "finish.log"),
+                    "finish_log_sha256": "f" * 64,
+                    "finish_receipt_path": str(root / "finish.json"),
+                    "finish_receipt_sha256": "e" * 64,
+                }
+
+                paused = {
+                    "status": "PAUSED",
+                    "completion_reason": "OPERATOR_PAUSE_BETWEEN_GENERATIONS",
+                    "current_generation": None,
+                    "current_generation_started_at": None,
+                    "pid": None,
+                }
+
+                def campaign_state(_campaign_id):
+                    if state["status"] in {"V1_RUNNING", "V1_FROZEN"}:
+                        return dict(paused)
+                    return {
+                        "status": "PAUSED",
+                        "release_sha": target,
+                        "build_id": "build-b",
+                        "resumed_at": None,
+                        "pid": None,
+                    }
+
+                with (
+                    mock.patch.object(handoff, "HANDOFF_DIR", root),
+                    mock.patch.object(handoff, "LOCK_PATH", root / "handoff.lock"),
+                    mock.patch.object(handoff, "load_state", side_effect=lambda _id: state),
+                    mock.patch.object(handoff, "save_state"),
+                    mock.patch.object(handoff.campaign, "request_pause"),
+                    mock.patch.object(handoff.campaign, "load_state", side_effect=campaign_state),
+                    mock.patch.object(handoff, "prove_frozen"),
+                    mock.patch.object(handoff, "source_ready", return_value=target),
+                    mock.patch.object(
+                        handoff,
+                        "wait_for_finish_or_recover",
+                        return_value=(target, "build-b"),
+                    ),
+                    mock.patch.object(
+                        handoff,
+                        "prove_target_certified",
+                        return_value=(target, "build-b"),
+                    ),
+                    mock.patch.object(
+                        handoff,
+                        "wolo_snapshot",
+                        return_value=dict(wolo_after),
+                    ),
+                    mock.patch.object(handoff, "recorded_family_dead", return_value=True),
+                    mock.patch.object(handoff.campaign, "rebind_after_handoff"),
+                    mock.patch.object(handoff, "live_campaign_controller", return_value=None),
+                    mock.patch.object(
+                        handoff.campaign,
+                        "resume",
+                        return_value={"spawned_pid": 999},
+                    ),
+                ):
+                    self.assertEqual(handoff.drive(state["handoff_id"]), 0)
+
+                self.assertEqual(state["status"], "V2_RESUMED")
+                self.assertFalse(state["wolo_mutated"])
+
     def test_resume_is_terminal_loss_safe_from_every_incomplete_state(self):
         for state_name in handoff.FLOW[:-1]:
             state = {
