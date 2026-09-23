@@ -673,6 +673,16 @@ class StorageHandoffTests(unittest.TestCase):
                     mock.patch.object(handoff.campaign, "rebind_after_handoff"),
                     mock.patch.object(handoff, "live_campaign_controller", return_value=None),
                     mock.patch.object(
+                        handoff,
+                        "prove_v2_campaign_adoption",
+                        return_value={
+                            "mode": "LIVE_V2_CONTROLLER",
+                            "pid": 999,
+                            "status": "RUNNING",
+                            "resumed_at": "2026-09-23T20:00:00+00:00",
+                        },
+                    ),
+                    mock.patch.object(
                         handoff.campaign,
                         "resume",
                         return_value={"spawned_pid": 999},
@@ -740,6 +750,89 @@ class StorageHandoffTests(unittest.TestCase):
         ):
             self.assertEqual(handoff.resume("handoff-a"), state)
         spawn.assert_not_called()
+
+    def test_v2_campaign_adoption_requires_exact_authority_and_controller(self):
+        state = {
+            "release_sha": "b" * 40,
+            "build_id": "build-b",
+            "status": "RUNNING",
+            "resumed_at": "2026-09-23T20:00:00+00:00",
+            "pid": 999,
+        }
+        live = {
+            "pid": 999,
+            "ppid": 1,
+            "pgid": 999,
+            "command": "python scripts/aoe2_storage_campaign.py _run campaign-a",
+        }
+        with (
+            mock.patch.object(handoff.campaign, "load_state", return_value=state),
+            mock.patch.object(handoff, "live_campaign_controller", return_value=live),
+        ):
+            proof = handoff.prove_v2_campaign_adoption(
+                "campaign-a",
+                release_sha="b" * 40,
+                build_id="build-b",
+                expected_pid=999,
+                attempts=1,
+            )
+        self.assertEqual(proof["mode"], "LIVE_V2_CONTROLLER")
+        self.assertEqual(proof["pid"], 999)
+
+        drifted = dict(state)
+        drifted["build_id"] = "wrong"
+        with mock.patch.object(handoff.campaign, "load_state", return_value=drifted):
+            with self.assertRaisesRegex(handoff.HandoffError, "authority drifted"):
+                handoff.prove_v2_campaign_adoption(
+                    "campaign-a",
+                    release_sha="b" * 40,
+                    build_id="build-b",
+                    attempts=1,
+                )
+
+    def test_v2_campaign_adoption_accepts_proven_terminal_resumed_run(self):
+        terminal = {
+            "release_sha": "b" * 40,
+            "build_id": "build-b",
+            "status": "COMPLETE",
+            "resumed_at": "2026-09-23T20:00:00+00:00",
+            "pid": None,
+            "completion_reason": "HEALTHY_TARGET_REACHED",
+            "last_error": None,
+        }
+        with (
+            mock.patch.object(handoff.campaign, "load_state", return_value=terminal),
+            mock.patch.object(handoff, "live_campaign_controller", return_value=None),
+        ):
+            proof = handoff.prove_v2_campaign_adoption(
+                "campaign-a",
+                release_sha="b" * 40,
+                build_id="build-b",
+                attempts=1,
+            )
+        self.assertEqual(proof["mode"], "TERMINAL_V2_RUN")
+        self.assertEqual(proof["status"], "COMPLETE")
+
+    def test_v2_campaign_adoption_fails_when_spawn_never_establishes_run(self):
+        pending = {
+            "release_sha": "b" * 40,
+            "build_id": "build-b",
+            "status": "RESUME_REQUESTED",
+            "resumed_at": None,
+            "pid": None,
+        }
+        with (
+            mock.patch.object(handoff.campaign, "load_state", return_value=pending),
+            mock.patch.object(handoff, "live_campaign_controller", return_value=None),
+            mock.patch.object(handoff.time, "sleep"),
+        ):
+            with self.assertRaisesRegex(handoff.HandoffError, "was not proven"):
+                handoff.prove_v2_campaign_adoption(
+                    "campaign-a",
+                    release_sha="b" * 40,
+                    build_id="build-b",
+                    attempts=2,
+                )
 
     def test_wolo_remote_script_is_syntax_valid(self):
         proc = __import__("subprocess").run(
