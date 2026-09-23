@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `main` at `8d58499364e4338e4719bb588640cdb9c746992f`
+Implementation baseline: `fix/storage-handoff-reservation-20260923` at `ced2490a1a3bf5219773a31c4f0933a1d3ae8f1f`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
