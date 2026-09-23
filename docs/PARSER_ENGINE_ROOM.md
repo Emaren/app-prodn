@@ -90,7 +90,10 @@ into shell syntax.
 
 Ordinary unresolved replays are served from the canonical content-addressed
 archive through the authenticated internal bridge endpoint and are hashed again
-after transfer. Historical positive control **32388** may instead use its
+after transfer. This native lane accepts recorded HD `.aoe2record` battles
+only. Saved `.aoe2mpgame` checkpoints and legacy containers remain in their
+separate evidence/decoder lanes and are never renamed into native battle inputs.
+Historical positive control **32388** may instead use its
 preserved local control bytes on Tony's Mac when present; those bytes must match
 the exact checked-in control SHA before use. Missing or mismatched local control
 bytes fail closed or fall back to the canonical server artifact path as
