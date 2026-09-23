@@ -382,6 +382,68 @@ def live_campaign_controller(campaign_id: str) -> dict[str, Any] | None:
     return matches[0] if matches else None
 
 
+def prove_v2_campaign_adoption(
+    campaign_id: str,
+    *,
+    release_sha: str,
+    build_id: str,
+    expected_pid: int | None = None,
+    attempts: int = 40,
+) -> dict[str, Any]:
+    last: dict[str, Any] = {}
+    for _ in range(attempts):
+        current = campaign.load_state(campaign_id)
+        last = current
+        if (
+            current.get("release_sha") != release_sha
+            or current.get("build_id") != build_id
+        ):
+            raise HandoffError(
+                "V2 campaign authority drifted during adoption proof: "
+                f"campaign={current.get('release_sha')}:{current.get('build_id')} "
+                f"expected={release_sha}:{build_id}"
+            )
+
+        live = live_campaign_controller(campaign_id)
+        if live is not None:
+            live_pid = int(live["pid"])
+            if expected_pid is not None and live_pid != expected_pid:
+                raise HandoffError(
+                    "V2 campaign resumed under an unexpected controller PID: "
+                    f"expected={expected_pid} observed={live_pid}"
+                )
+            return {
+                "mode": "LIVE_V2_CONTROLLER",
+                "pid": live_pid,
+                "status": current.get("status"),
+                "resumed_at": current.get("resumed_at"),
+            }
+
+        status = str(current.get("status") or "")
+        if current.get("resumed_at") and status in {
+            "COMPLETE",
+            "FAILED",
+            "BLOCKED",
+            "PAUSED",
+        }:
+            return {
+                "mode": "TERMINAL_V2_RUN",
+                "pid": current.get("pid"),
+                "status": status,
+                "resumed_at": current.get("resumed_at"),
+                "completion_reason": current.get("completion_reason"),
+                "last_error": current.get("last_error"),
+            }
+
+        time.sleep(0.1)
+
+    raise HandoffError(
+        "V2 campaign adoption was not proven after resume: "
+        f"status={last.get('status')} pid={last.get('pid')} "
+        f"resumed_at={last.get('resumed_at')}"
+    )
+
+
 def wolo_snapshot() -> dict[str, Any]:
     host = str(storage.policy()["root_maintenance_host"])
     proc = subprocess.run(
@@ -1052,22 +1114,43 @@ def drive(handoff_id: str) -> int:
 
                 recovered_controller = live_campaign_controller(campaign_id)
                 if recovered_controller is not None:
-                    resumed_pid = int(recovered_controller["pid"])
+                    expected_pid = int(recovered_controller["pid"])
+                    adoption = prove_v2_campaign_adoption(
+                        campaign_id,
+                        release_sha=release,
+                        build_id=build,
+                        expected_pid=expected_pid,
+                    )
+                    resumed_pid = adoption.get("pid")
                     resume_mode = "RECOVERED_LIVE_V2_CONTROLLER"
                 elif current_campaign.get("resumed_at"):
-                    resumed_pid = (
-                        int(current_campaign["pid"])
-                        if isinstance(current_campaign.get("pid"), int)
-                        else None
+                    adoption = prove_v2_campaign_adoption(
+                        campaign_id,
+                        release_sha=release,
+                        build_id=build,
                     )
-                    resume_mode = "RECOVERED_COMPLETED_OR_TERMINAL_V2_RUN"
+                    resumed_pid = adoption.get("pid")
+                    resume_mode = "RECOVERED_TERMINAL_V2_RUN"
                 else:
                     resumed = campaign.resume(campaign_id)
-                    resumed_pid = resumed.get("spawned_pid")
-                    resume_mode = "SPAWNED_V2_CONTROLLER"
+                    spawned_pid = resumed.get("spawned_pid")
+                    expected_pid = (
+                        int(spawned_pid)
+                        if isinstance(spawned_pid, int)
+                        else None
+                    )
+                    adoption = prove_v2_campaign_adoption(
+                        campaign_id,
+                        release_sha=release,
+                        build_id=build,
+                        expected_pid=expected_pid,
+                    )
+                    resumed_pid = adoption.get("pid")
+                    resume_mode = "SPAWNED_AND_PROVEN_V2_CONTROLLER"
 
                 state = load_state(handoff_id)
                 state["resumed_pid"] = resumed_pid
+                state["v2_campaign_adoption"] = adoption
                 wolo_after_resume = wolo_snapshot()
                 verify_wolo_continuity(
                     state.get("wolo_before") or {},
@@ -1084,6 +1167,7 @@ def drive(handoff_id: str) -> int:
                         "new_build_id": build,
                         "resumed_pid": resumed_pid,
                         "resume_mode": resume_mode,
+                        "v2_campaign_adoption": adoption,
                         "wolo_after_resume": wolo_after_resume,
                         "wolo_mutated": False,
                     },
