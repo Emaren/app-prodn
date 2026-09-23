@@ -1,4 +1,7 @@
+import json
 import os
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -267,6 +270,48 @@ class StorageHandoffTests(unittest.TestCase):
                 self.assertEqual(len(final["history"]), 7)
                 for item in final["history"]:
                     self.assertTrue(Path(item["receipt"]).is_file())
+
+    def test_fresh_process_identifies_every_durable_handoff_state(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            with mock.patch.object(handoff, "HANDOFF_ROOT", root):
+                state = self.base_state(status="V1_RUNNING")
+                handoff.save_state(state)
+
+                states = list(handoff.STATE_ORDER)
+                for index, expected in enumerate(states):
+                    if index:
+                        state = handoff.seal_transition(
+                            state,
+                            expected,
+                            {"terminal_restart_harness": expected},
+                        )
+
+                    code = (
+                        "import json,sys;"
+                        "from pathlib import Path;"
+                        "import scripts.aoe2_storage_handoff as h;"
+                        "h.HANDOFF_ROOT=Path(sys.argv[1]);"
+                        "print(json.dumps(h.status_payload(sys.argv[2])))"
+                    )
+                    proc = subprocess.run(
+                        [
+                            sys.executable,
+                            "-c",
+                            code,
+                            str(root),
+                            "handoff-test",
+                        ],
+                        cwd=handoff.ROOT,
+                        text=True,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        timeout=30,
+                        check=False,
+                    )
+                    self.assertEqual(proc.returncode, 0, proc.stderr)
+                    observed = json.loads(proc.stdout)
+                    self.assertEqual(observed["status"], expected)
 
     def test_transition_is_sequential_and_receipted_read_only(self):
         with tempfile.TemporaryDirectory() as td:
