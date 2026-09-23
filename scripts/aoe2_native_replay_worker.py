@@ -467,6 +467,10 @@ def main() -> int:
 
     if not __import__("re").fullmatch(r"[A-Za-z0-9-]{1,100}", args.run_id):
         raise WorkerError("Invalid AoE2WAR OS run id.")
+    if args.game_stats_id not in TRUSTED_CONTROL_GAME_IDS:
+        raise WorkerError(
+            "Native replay execution is still locked to trusted control GameStats #32388."
+        )
     replay_sha256 = args.replay_sha256.strip().lower()
     if not SHA256_RE.fullmatch(replay_sha256):
         raise WorkerError("Invalid replay SHA-256.")
