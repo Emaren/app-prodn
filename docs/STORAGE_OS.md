@@ -315,12 +315,20 @@ change after handoff authorization remains a hard blocker. The campaign is
 rebound to the actual certified descendant SHA and BUILD_ID, not to the earlier
 target label.
 
-After the seam is proven, the handoff starts canonical `aoe2war finish` in its
-own session and records the Finish PID and log. A lost initiating terminal
-therefore does not own either the handoff or Finish lifetime. On reinvocation,
-the controller resumes from the last durable state. A target source merely being
-live is not sufficient takeover authority: it must also have a handoff-era
-fully `CERTIFIED` Finish receipt proving the maintenance-runner reconciliation
+After the seam is proven, the handoff re-proves source authority immediately
+before every newly launched canonical Finish. Local `main`, its tracking ref,
+and live GitHub `main` must still agree, the worktree must still be clean, and
+the current head must be the authorized target or a Release-OS-proven
+documentation-only descendant. This closes the restart window in which unrelated
+implementation work could otherwise land after `SOURCE_READY` and be deployed
+by a resumed handoff.
+
+The handoff then starts canonical `aoe2war finish` in its own session and
+records the Finish PID and log. A lost initiating terminal therefore does not own
+either the handoff or Finish lifetime. On reinvocation, the controller resumes
+from the last durable state. A target implementation merely being live is not
+sufficient takeover authority: it must also have a handoff-era fully
+`CERTIFIED` Finish receipt proving the maintenance-runner reconciliation
 phase. If activation succeeded but a later Finish closure check failed, the
 handoff reruns canonical Finish to complete that closure rather than accepting
 the partial receipt or deadlocking. Canonical Finish remains the only deployment
