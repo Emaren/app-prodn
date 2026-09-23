@@ -507,14 +507,14 @@ def select_retention(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     for row in available:
         if row.get("retention_class") not in {"HOT", "COLD_WEEKLY"}:
             continue
-        dt = parse_mtime(row)
+        dt = retention_time(row)
         monthly_seen.add((dt.year, dt.month))
     monthly_limit = int(p["monthly_cold_months"])
     monthly_added = 0
     for row in available:
         if str(row["path"]) in protected_ids:
             continue
-        dt = parse_mtime(row)
+        dt = retention_time(row)
         key = (dt.year, dt.month)
         if key in monthly_seen or monthly_added >= monthly_limit:
             continue
