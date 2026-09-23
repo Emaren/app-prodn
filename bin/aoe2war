@@ -284,6 +284,21 @@ BOUNDED STORAGE WRITE
       production source/runtime and Wolo remain unchanged and a durable receipt
       is sealed.
 
+  aoe2war storage handoff start
+      Begin a resumable terminal-independent Storage OS V1→V2 takeover from a
+      live campaign at the exact between-generation seam. The old controller is
+      frozen and identity-bound; Finish remains the only deploy/certification
+      authority; V1 cannot be retired until V2 and Wolo continuity are proven.
+
+  aoe2war storage handoff status [HANDOFF_ID]
+      Show the last durably receipted takeover state, controller liveness,
+      source identities and exact resume point.
+
+  aoe2war storage handoff resume [HANDOFF_ID]
+      Restart a stopped handoff controller from its last proven state. It never
+      restarts the takeover from scratch and never guesses across an ambiguous
+      archive transaction.
+
 ADMIN UI / OPERATOR BRIDGE
 
   aoe2war bridge
