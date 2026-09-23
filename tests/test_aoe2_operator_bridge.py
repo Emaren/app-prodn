@@ -148,6 +148,38 @@ class OperatorBridgeTests(unittest.TestCase):
             ],
         )
 
+    def test_native_replay_command_rejects_bounds_wider_than_engine(self):
+        with self.assertRaises(MODULE.BridgeError):
+            MODULE.command_for_run(
+                {
+                    "id": "run",
+                    "action": "replay_native_run",
+                    "parameters": {
+                        "gameStatsId": 32388,
+                        "replaySha256": "a" * 64,
+                        "rosterSlots": [1, 2, 3, 4],
+                        "candidateOnly": True,
+                        "nativePerformanceSeconds": 241,
+                        "timeoutSeconds": 300,
+                    },
+                }
+            )
+        with self.assertRaises(MODULE.BridgeError):
+            MODULE.command_for_run(
+                {
+                    "id": "run",
+                    "action": "replay_native_run",
+                    "parameters": {
+                        "gameStatsId": 32388,
+                        "replaySha256": "a" * 64,
+                        "rosterSlots": [1, 2, 3, 4],
+                        "candidateOnly": True,
+                        "nativePerformanceSeconds": 240,
+                        "timeoutSeconds": 301,
+                    },
+                }
+            )
+
     def test_native_replay_command_rejects_untrusted_parameters(self):
         with self.assertRaises(MODULE.BridgeError):
             MODULE.command_for_run(
