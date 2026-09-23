@@ -533,7 +533,6 @@ def create_state(campaign_id: str) -> dict[str, Any]:
         )
 
     target_source = source_ready(current_release)
-    wolo_before = wolo_snapshot()
     family = process_family(pid)
     root_command = str(family.get("command") or "")
     if (
@@ -546,6 +545,8 @@ def create_state(campaign_id: str) -> dict[str, Any]:
             "live V1 controller process identity does not match the exact "
             f"Storage campaign: pid={pid} command={root_command!r}"
         )
+
+    wolo_before = wolo_snapshot()
     handoff_id = f"{stamp()}-{campaign_id}-{target_source[:12]}"
     created_at = utc_now()
     initial_evidence = {
