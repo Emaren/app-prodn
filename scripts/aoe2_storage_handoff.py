@@ -37,7 +37,7 @@ active_enter="$(systemctl show "$NODE" -p ActiveEnterTimestampMonotonic --value)
 w8092="$(ss -ltn | grep -Ec ':8092[[:space:]]' || true)"
 w8093="$(ss -ltn | grep -Ec ':8093[[:space:]]' || true)"
 rpc1="$(curl -fsS --max-time 4 "$RPC/status")"
-sleep 3
+sleep 6
 rpc2="$(curl -fsS --max-time 4 "$RPC/status")"
 
 python3 - "$service" "$pid" "$restarts" "$active_enter" "$w8092" "$w8093" "$rpc1" "$rpc2" <<'PY'
