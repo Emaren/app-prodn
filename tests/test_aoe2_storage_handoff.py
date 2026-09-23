@@ -8,7 +8,7 @@ import scripts.aoe2_storage_handoff as handoff
 
 
 class StorageHandoffTests(unittest.TestCase):
-    def base_state(self, status="CREATED"):
+    def base_state(self, status="V1_RUNNING"):
         return {
             "schema": 1,
             "kind": "aoe2war-storage-handoff",
@@ -84,7 +84,7 @@ class StorageHandoffTests(unittest.TestCase):
                     handoff.create_state("campaign-test")
 
     def test_created_state_waits_for_cooperative_campaign_freeze(self):
-        state = self.base_state(status="CREATED")
+        state = self.base_state(status="V1_RUNNING")
         state["v1_process"] = None
         state["freeze_requested_at"] = "2026-09-23T19:00:00+00:00"
         frozen = {
@@ -129,7 +129,7 @@ class StorageHandoffTests(unittest.TestCase):
         )
 
     def test_created_state_recovers_missing_campaign_reservation(self):
-        state = self.base_state(status="CREATED")
+        state = self.base_state(status="V1_RUNNING")
         state["v1_process"] = None
         state["freeze_requested_at"] = None
         frozen = {
@@ -187,11 +187,11 @@ class StorageHandoffTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             with mock.patch.object(handoff, "HANDOFF_ROOT", root):
-                state = self.base_state(status="CREATED")
+                state = self.base_state(status="V1_RUNNING")
                 handoff.save_state(state)
 
                 routes = [
-                    ("CREATED", "V1_FROZEN", "transition_created"),
+                    ("V1_RUNNING", "V1_FROZEN", "transition_created"),
                     ("V1_FROZEN", "TRANSACTION_SEAM_PROVEN", "transition_v1_frozen"),
                     ("TRANSACTION_SEAM_PROVEN", "SOURCE_READY", "transition_seam_proven"),
                     ("SOURCE_READY", "RUNNER_RECONCILED", "transition_source_ready"),
@@ -440,7 +440,7 @@ class StorageHandoffTests(unittest.TestCase):
 
     def test_advance_once_routes_each_proven_state_only_forward(self):
         routes = [
-            ("CREATED", "transition_created"),
+            ("V1_RUNNING", "transition_created"),
             ("V1_FROZEN", "transition_v1_frozen"),
             ("TRANSACTION_SEAM_PROVEN", "transition_seam_proven"),
             ("SOURCE_READY", "transition_source_ready"),
@@ -520,7 +520,7 @@ class StorageHandoffTests(unittest.TestCase):
 
     def test_v1_retirement_is_only_routed_after_v2_certified(self):
         for status in (
-            "CREATED",
+            "V1_RUNNING",
             "V1_FROZEN",
             "TRANSACTION_SEAM_PROVEN",
             "SOURCE_READY",
@@ -536,7 +536,7 @@ class StorageHandoffTests(unittest.TestCase):
                 with mock.patch.object(
                     handoff,
                     {
-                        "CREATED": "transition_created",
+                        "V1_RUNNING": "transition_created",
                         "V1_FROZEN": "transition_v1_frozen",
                         "TRANSACTION_SEAM_PROVEN": "transition_seam_proven",
                         "SOURCE_READY": "transition_source_ready",
