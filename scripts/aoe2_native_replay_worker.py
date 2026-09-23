@@ -50,6 +50,9 @@ EXPECTED_EXECUTABLE_SHA256 = (
 EXPECTED_DATA_SHA256 = (
     "21591ac67251d8674635d5634f2d8e9ff80ad90f3c792f9503d60dd658d61058"
 )
+REQUIRED_API_IMPLEMENTATION_COMMIT = (
+    "51bd43ecadc9f830976925bcc3586a1bd29a4275"
+)
 MAX_REPLAY_BYTES = 64 * 1024 * 1024
 SAFE_REPLAY_EXTENSIONS = {".aoe2record"}
 SHA256_RE = __import__("re").compile(r"^[0-9a-f]{64}$")
@@ -80,7 +83,63 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def require_runtime() -> None:
+def git_head(repo: Path) -> str:
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "HEAD"],
+            cwd=str(repo),
+            text=True,
+            stderr=subprocess.STDOUT,
+            timeout=10,
+        ).strip()
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise WorkerError(f"Could not read Git source identity for {repo}.") from exc
+
+
+def require_clean_git_repo(repo: Path, *, label: str) -> str:
+    head = git_head(repo)
+    try:
+        dirty = subprocess.check_output(
+            ["git", "status", "--porcelain", "--untracked-files=no"],
+            cwd=str(repo),
+            text=True,
+            stderr=subprocess.STDOUT,
+            timeout=10,
+        ).strip()
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise WorkerError(f"Could not verify {label} worktree cleanliness.") from exc
+    if dirty:
+        raise WorkerError(f"{label} has tracked worktree changes; native evidence requires clean source.")
+    return head
+
+
+def require_git_ancestor(repo: Path, ancestor: str, *, label: str) -> None:
+    try:
+        process = subprocess.run(
+            ["git", "merge-base", "--is-ancestor", ancestor, "HEAD"],
+            cwd=str(repo),
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise WorkerError(f"Could not verify canonical {label} source ancestry.") from exc
+    if process.returncode != 0:
+        raise WorkerError(
+            f"{label} HEAD does not contain required canonical implementation {ancestor}."
+        )
+
+
+def require_runtime() -> dict[str, str]:
+    app_head = require_clean_git_repo(ROOT, label="app-prodn")
+    api_head = require_clean_git_repo(API_ROOT, label="api-prodn")
+    require_git_ancestor(
+        API_ROOT,
+        REQUIRED_API_IMPLEMENTATION_COMMIT,
+        label="api-prodn",
+    )
+
     for path in (
         RUNNER,
         RUNNER_IMPL,
@@ -104,6 +163,12 @@ def require_runtime() -> None:
         raise WorkerError("AoK HD executable identity differs from the governed runtime.")
     if sha256_file(DATA_FILE) != EXPECTED_DATA_SHA256:
         raise WorkerError("AoE2 HD data identity differs from the governed runtime.")
+
+    return {
+        "appHead": app_head,
+        "apiHead": api_head,
+        "requiredApiImplementationCommit": REQUIRED_API_IMPLEMENTATION_COMMIT,
+    }
 
 
 def download_replay(
@@ -395,7 +460,7 @@ def main() -> int:
     if not args.native_performance_seconds + 15 <= args.timeout_seconds <= 300:
         raise WorkerError("timeout-seconds is outside the governed bound.")
 
-    require_runtime()
+    source_identity = require_runtime()
     token = load_token()
     output = API_ROOT / "instance/native-replay-worker/attempts" / args.run_id
     if output.exists():
@@ -467,6 +532,7 @@ def main() -> int:
     )
     payload["artifactByteSize"] = byte_size
     payload["artifactSource"] = artifact_source
+    payload["sourceIdentity"] = source_identity
     payload, exit_code = apply_trusted_control_validation(
         game_stats_id=args.game_stats_id,
         output=output,
