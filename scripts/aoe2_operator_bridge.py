@@ -236,13 +236,13 @@ def command_for_run(
         if (
             not isinstance(performance_seconds, int)
             or isinstance(performance_seconds, bool)
-            or not 1 <= performance_seconds <= 600
+            or not 1 <= performance_seconds <= 240
         ):
             raise BridgeError("Native replay run has invalid performance bound.")
         if (
             not isinstance(timeout_seconds, int)
             or isinstance(timeout_seconds, bool)
-            or not performance_seconds + 15 <= timeout_seconds <= 660
+            or not performance_seconds + 15 <= timeout_seconds <= 300
         ):
             raise BridgeError("Native replay run has invalid wall-time bound.")
 
