@@ -62,6 +62,71 @@ class StorageHandoffTests(unittest.TestCase):
         with mock.patch.object(handoff, "process_table", return_value=reused):
             self.assertTrue(handoff.recorded_family_dead(snapshot))
 
+    def test_recorded_process_identity_rejects_pid_reuse(self):
+        recorded = {
+            "pid": 20,
+            "ppid": 1,
+            "pgid": 20,
+            "command": "python scripts/aoe2_finish.py -m handoff-a",
+        }
+        with mock.patch.object(
+            handoff,
+            "process_table",
+            return_value={
+                20: {
+                    "pid": 20,
+                    "ppid": 1,
+                    "pgid": 99,
+                    "command": "unrelated process",
+                }
+            },
+        ):
+            self.assertFalse(handoff.recorded_process_alive(recorded))
+
+        with mock.patch.object(
+            handoff,
+            "process_table",
+            return_value={20: dict(recorded)},
+        ):
+            self.assertTrue(handoff.recorded_process_alive(recorded))
+
+    def test_capture_process_identity_waits_for_expected_exec(self):
+        pid = 30
+        transitional = {
+            pid: {
+                "pid": pid,
+                "ppid": 1,
+                "pgid": pid,
+                "command": "/bin/bash bin/aoe2war finish",
+            }
+        }
+        final = {
+            pid: {
+                "pid": pid,
+                "ppid": 1,
+                "pgid": pid,
+                "command": (
+                    "python scripts/aoe2_finish.py -m "
+                    "Storage OS handoff handoff-a"
+                ),
+            }
+        }
+        with (
+            mock.patch.object(
+                handoff,
+                "process_table",
+                side_effect=[transitional, final],
+            ),
+            mock.patch.object(handoff.time, "sleep"),
+        ):
+            identity = handoff.capture_process_identity(
+                pid,
+                required_tokens=("aoe2_finish.py", "handoff-a"),
+                attempts=2,
+            )
+        self.assertEqual(identity["pid"], pid)
+        self.assertIn("aoe2_finish.py", identity["command"])
+
     def test_prove_frozen_requires_cooperative_transaction_seam(self):
         valid = {
             "status": "PAUSED",
@@ -531,6 +596,31 @@ class StorageHandoffTests(unittest.TestCase):
                 self.assertEqual(result["spawned_pid"], 456)
                 spawn.assert_called_once_with("handoff-a")
                 self.assertIsNone(save.call_args.args[0]["last_error"])
+
+    def test_resume_rejects_reused_runner_pid(self):
+        state = {
+            "handoff_id": "handoff-a",
+            "status": "SOURCE_READY",
+            "runner_pid": 123,
+            "runner_process_identity": {
+                "pid": 123,
+                "ppid": 1,
+                "pgid": 123,
+                "command": "python scripts/aoe2_storage_handoff.py _run handoff-a",
+            },
+        }
+        with (
+            mock.patch.object(handoff, "load_state", return_value=state),
+            mock.patch.object(handoff, "recorded_process_alive", return_value=False),
+            mock.patch.object(handoff, "process_alive", return_value=True),
+            mock.patch.object(handoff, "spawn_runner") as spawn,
+        ):
+            with self.assertRaisesRegex(
+                handoff.HandoffError,
+                "recorded process identity",
+            ):
+                handoff.resume("handoff-a")
+        spawn.assert_not_called()
 
     def test_resume_does_not_restart_completed_handoff(self):
         state = {
