@@ -906,7 +906,13 @@ def transition_seam_proven(state: dict[str, Any]) -> dict[str, Any]:
 def transition_source_ready(state: dict[str, Any]) -> dict[str, Any]:
     assert_frozen_identity(state)
     old = campaign.load_state(str(state["campaign_id"]))
-    validate_campaign_seam(old, require_running=True)
+    validate_campaign_seam(old, require_running=False)
+    if old.get("status") != "HANDOFF_FREEZE_READY":
+        raise HandoffError(
+            "V1 campaign left HANDOFF_FREEZE_READY before Finish"
+        )
+    if old.get("handoff_freeze_handoff_id") != state["handoff_id"]:
+        raise HandoffError("V1 campaign freeze belongs to a different handoff")
 
     finish = state.get("finish_result")
     if not isinstance(finish, dict):
