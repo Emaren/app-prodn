@@ -90,14 +90,25 @@ into shell syntax.
 
 Ordinary unresolved replays are served from the canonical content-addressed
 archive through the authenticated internal bridge endpoint and are hashed again
-after transfer. This native lane accepts recorded HD `.aoe2record` battles
-only. Saved `.aoe2mpgame` checkpoints and legacy containers remain in their
-separate evidence/decoder lanes and are never renamed into native battle inputs.
-Historical positive control **32388** may instead use its
-preserved local control bytes on Tony's Mac when present; those bytes must match
-the exact checked-in control SHA before use. Missing or mismatched local control
-bytes fail closed or fall back to the canonical server artifact path as
-implemented by the worker.
+after transfer. Archive admission requires the exact canonical filename
+`<replay-sha256>.aoe2record`; prefix lookalikes and alternate containers are
+not native-run inputs. This native lane accepts recorded HD `.aoe2record`
+battles only. Saved `.aoe2mpgame` checkpoints and legacy containers remain in
+their separate evidence/decoder lanes and are never renamed into native battle
+inputs.
+
+Before native execution the Mac worker also binds **source provenance**. The
+tracked `app-prodn` and sibling `api-prodn` worktrees must be clean, and the
+local API HEAD must contain canonical native-worker merge
+`51bd43ecadc9f830976925bcc3586a1bd29a4275`. The resulting app/API HEADs are
+stamped into the candidate result. A dirty, stale, or divergent local engine
+checkout therefore fails closed instead of becoming invisible runtime input.
+
+Historical positive control **32388** may instead use its preserved local
+control bytes on Tony's Mac when present; those bytes must match the exact
+checked-in control SHA before use. If the preserved local file is absent, the
+worker may use the exact canonical server archive object. If the local control
+exists but its identity, type, or byte bounds disagree, the run fails closed.
 
 The native runner may record a candidate terminal partition only when all of the
 following are true:
