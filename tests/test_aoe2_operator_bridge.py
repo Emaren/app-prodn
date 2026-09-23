@@ -148,6 +148,26 @@ class OperatorBridgeTests(unittest.TestCase):
             ],
         )
 
+    def test_native_replay_command_rejects_non_canary_game(self):
+        with self.assertRaisesRegex(
+            MODULE.BridgeError,
+            "locked to trusted control GameStats #32388",
+        ):
+            MODULE.command_for_run(
+                {
+                    "id": "run",
+                    "action": "replay_native_run",
+                    "parameters": {
+                        "gameStatsId": 99999,
+                        "replaySha256": "a" * 64,
+                        "rosterSlots": [1, 2],
+                        "candidateOnly": True,
+                        "nativePerformanceSeconds": 240,
+                        "timeoutSeconds": 300,
+                    },
+                }
+            )
+
     def test_native_replay_command_rejects_bounds_wider_than_engine(self):
         with self.assertRaises(MODULE.BridgeError):
             MODULE.command_for_run(
