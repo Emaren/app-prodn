@@ -99,15 +99,34 @@ def save_state(state: dict[str, Any]) -> None:
     atomic_write(state_path(str(state["handoff_id"])), state)
 
 
-def latest_handoff_id() -> str | None:
+def handoff_state_paths() -> list[Path]:
     if not HANDOFF_ROOT.is_dir():
-        return None
-    states = sorted(
+        return []
+    return sorted(
         HANDOFF_ROOT.glob("*/state.json"),
         key=lambda path: (path.stat().st_mtime_ns, str(path)),
         reverse=True,
     )
-    return states[0].parent.name if states else None
+
+
+def incomplete_handoff_ids() -> list[str]:
+    rows: list[str] = []
+    for path in handoff_state_paths():
+        handoff_id = path.parent.name
+        state = load_state(handoff_id)
+        if state.get("status") != FINAL_STATE:
+            rows.append(handoff_id)
+    return rows
+
+
+def latest_handoff_id() -> str | None:
+    paths = handoff_state_paths()
+    if not paths:
+        return None
+    incomplete = incomplete_handoff_ids()
+    if incomplete:
+        return incomplete[0]
+    return paths[0].parent.name
 
 
 def process_alive(pid: int | None) -> bool:
@@ -715,6 +734,13 @@ def create_successor_campaign(state: dict[str, Any]) -> dict[str, Any]:
 
 
 def create_state(campaign_id: str | None) -> dict[str, Any]:
+    existing = incomplete_handoff_ids()
+    if existing:
+        raise HandoffError(
+            "an incomplete Storage OS handoff already exists; "
+            f"resume it first: {existing[0]}"
+        )
+
     selected = campaign_id or campaign.latest_campaign_id()
     if not selected:
         raise HandoffError("no Storage OS campaign exists")
