@@ -218,6 +218,39 @@ class StorageHandoffTests(unittest.TestCase):
                     handoff.finish_receipt_for_target("c" * 40)
                 )
 
+    def test_target_live_without_full_finish_receipt_reruns_canonical_finish(self):
+        state = {
+            "handoff_id": "handoff-a",
+            "target_source_sha": "b" * 40,
+            "created_at": "2026-09-23T19:00:00+00:00",
+            "finish_pid": None,
+            "finish_log_path": "/tmp/handoff.finish.log",
+        }
+        proc = mock.Mock()
+        proc.wait.return_value = 0
+
+        with (
+            mock.patch.object(
+                handoff.storage,
+                "operator_baseline",
+                return_value=("b" * 40, "build-b"),
+            ),
+            mock.patch.object(
+                handoff,
+                "bind_finish_receipt",
+                side_effect=[handoff.HandoffError("closure incomplete"), None],
+            ) as bind,
+            mock.patch.object(handoff, "seal_finish_log"),
+            mock.patch.object(handoff, "save_state"),
+            mock.patch.object(handoff, "load_state", return_value=dict(state)),
+            mock.patch.object(handoff, "launch_finish", return_value=proc) as launch,
+        ):
+            release, build = handoff.wait_for_finish_or_recover(dict(state))
+
+        self.assertEqual((release, build), ("b" * 40, "build-b"))
+        launch.assert_called_once()
+        self.assertEqual(bind.call_count, 2)
+
     def test_finish_receipt_rejects_pre_handoff_certification(self):
         payload = {
             "kind": "aoe2war-finish-result",
