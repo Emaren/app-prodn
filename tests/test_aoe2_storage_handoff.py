@@ -213,6 +213,21 @@ class StorageHandoffTests(unittest.TestCase):
                     "source_ready",
                     return_value="b" * 40,
                 ),
+                mock.patch.object(
+                    handoff,
+                    "wolo_snapshot",
+                    return_value={
+                        "service": "active",
+                        "pid": 77,
+                        "restart_counter": 0,
+                        "active_enter_monotonic": 123456,
+                        "listener_8092_count": 1,
+                        "listener_8093_count": 1,
+                        "height_before": 100,
+                        "height_after": 101,
+                        "block_age_seconds": 2,
+                    },
+                ),
                 mock.patch.object(handoff, "process_alive", return_value=True),
                 mock.patch.object(
                     handoff,
