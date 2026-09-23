@@ -141,6 +141,65 @@ class StorageCampaignTests(unittest.TestCase):
         self.assertEqual(state["max_generations"], 4)
         self.assertEqual(state["completed_generations"], 0)
 
+    def test_resume_blocks_ambiguous_inflight_transaction(self):
+        state = {
+            "schema": 1,
+            "kind": "aoe2war-storage-campaign",
+            "campaign_id": "test",
+            "status": "FAILED",
+            "pid": None,
+            "release_sha": "a" * 40,
+            "build_id": "build-a",
+            "current_generation": "activate-20260923T000000Z-aaaaaaaaaaaa",
+            "current_generation_started_at": "2026-09-23T19:00:00+00:00",
+        }
+
+        with (
+            mock.patch.object(campaign, "load_state", return_value=state),
+            mock.patch.object(campaign, "process_alive", return_value=False),
+            mock.patch.object(campaign, "validate_bound_baseline") as baseline,
+            mock.patch.object(campaign, "spawn") as spawn,
+        ):
+            with self.assertRaisesRegex(
+                campaign.CampaignError,
+                "stopped inside a one-generation transaction",
+            ):
+                campaign.resume("test")
+
+        baseline.assert_not_called()
+        spawn.assert_not_called()
+
+    def test_resume_allows_dead_controller_between_generations(self):
+        state = {
+            "schema": 1,
+            "kind": "aoe2war-storage-campaign",
+            "campaign_id": "test",
+            "status": "RUNNING",
+            "pid": 123,
+            "release_sha": "a" * 40,
+            "build_id": "build-a",
+            "current_generation": None,
+            "current_generation_started_at": None,
+            "pause_requested": False,
+        }
+        persisted = dict(state)
+
+        def save(updated):
+            persisted.update(updated)
+
+        with (
+            mock.patch.object(campaign, "load_state", side_effect=lambda _id: dict(persisted)),
+            mock.patch.object(campaign, "process_alive", return_value=False),
+            mock.patch.object(campaign, "validate_bound_baseline") as baseline,
+            mock.patch.object(campaign, "save_state", side_effect=save),
+            mock.patch.object(campaign, "spawn", return_value=456) as spawn,
+        ):
+            result = campaign.resume("test")
+
+        baseline.assert_called_once()
+        spawn.assert_called_once_with("test")
+        self.assertEqual(result["spawned_pid"], 456)
+
     def test_resume_refuses_live_pid(self):
         state = {
             "schema": 1,
