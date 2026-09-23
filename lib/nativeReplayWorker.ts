@@ -10,9 +10,9 @@ import { normalizeReplayPlayers } from "@/lib/teamResolution";
 export const NATIVE_REPLAY_CONFIRMATION = "RUN NATIVE REPLAY";
 export const NATIVE_REPLAY_MAX_BYTES = 64 * 1024 * 1024;
 export const NATIVE_REPLAY_DEFAULT_PERFORMANCE_SECONDS = 240;
-export const NATIVE_REPLAY_MAX_PERFORMANCE_SECONDS = 600;
+export const NATIVE_REPLAY_MAX_PERFORMANCE_SECONDS = 240;
 export const NATIVE_REPLAY_DEFAULT_WALL_SECONDS = 300;
-export const NATIVE_REPLAY_MAX_WALL_SECONDS = 660;
+export const NATIVE_REPLAY_MAX_WALL_SECONDS = 300;
 
 const ARCHIVE_ROOT = "/mnt/HC_Volume_105319120/aoe2-replay-archive";
 const SHA256_RE = /^[0-9a-f]{64}$/;
