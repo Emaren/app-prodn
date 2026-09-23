@@ -57,6 +57,16 @@ function humanize(value: string) {
   return value.replaceAll("_", " ");
 }
 
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function delay(milliseconds: number) {
+  return new Promise<void>((resolve) => window.setTimeout(resolve, milliseconds));
+}
+
 function toneForStatus(value: string) {
   if (["completed", "accepted", "paid"].includes(value)) {
     return "border-emerald-300/20 bg-emerald-400/[0.08] text-emerald-100";
@@ -263,13 +273,18 @@ export default function ReplayOperationsCommandCenter() {
     start("native");
     setNativeMessage(null);
     try {
-      const dashboard = await loadJson<{
-        activeRun?: {
-          id: string;
-          status: string;
-          label: string;
-        } | null;
-      }>("/api/admin/aoe2war-os", {
+      type NativeRun = {
+        id: string;
+        status: string;
+        result?: unknown;
+        error?: string | null;
+      };
+      type NativeDashboard = {
+        activeRun?: NativeRun | null;
+        recentRuns?: NativeRun[];
+      };
+
+      const queued = await loadJson<NativeDashboard>("/api/admin/aoe2war-os", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -278,11 +293,64 @@ export default function ReplayOperationsCommandCenter() {
           confirmation: "RUN NATIVE REPLAY",
         }),
       });
-      const run = dashboard.activeRun;
+      const queuedRun = queued.activeRun;
+      if (!queuedRun?.id) {
+        throw new Error("Native replay run was queued but its run identity is unavailable.");
+      }
+
+      const runId = queuedRun.id;
       setNativeMessage(
-        run
-          ? `Queued native HD playthrough for game #${gameStatsId} · ${run.id} · ${run.status}`
-          : `Queued native HD playthrough for game #${gameStatsId}.`
+        `Native HD #${gameStatsId} · ${runId} · queued — waiting for the Mac bridge…`
+      );
+
+      const deadline = Date.now() + 12 * 60 * 1000;
+      while (Date.now() < deadline) {
+        await delay(3000);
+        const dashboard = await loadJson<NativeDashboard>("/api/admin/aoe2war-os");
+        const run =
+          dashboard.activeRun?.id === runId
+            ? dashboard.activeRun
+            : (dashboard.recentRuns ?? []).find((candidate) => candidate.id === runId);
+        if (!run) continue;
+
+        if (["queued", "claimed", "running"].includes(run.status)) {
+          setNativeMessage(
+            `Native HD #${gameStatsId} · ${runId} · ${humanize(run.status)}…`
+          );
+          continue;
+        }
+
+        const result = asRecord(run.result);
+        const nativeStatus =
+          typeof result?.status === "string" ? result.status : run.status;
+        const terminal = result?.terminalOutcomeProven === true;
+        const nativeResult = asRecord(result?.result);
+        const winners = Array.isArray(nativeResult?.winning_slots)
+          ? nativeResult.winning_slots.filter((slot) => typeof slot === "number")
+          : [];
+        const control = asRecord(result?.trustedControlValidation);
+        const controlStatus =
+          typeof control?.status === "string" ? control.status : null;
+
+        const pieces = [
+          `Native HD #${gameStatsId}`,
+          humanize(nativeStatus),
+        ];
+        if (terminal) pieces.push("terminal witness recorded");
+        if (winners.length) pieces.push(`winner slots ${winners.join(", ")}`);
+        if (controlStatus) pieces.push(`trusted control ${controlStatus}`);
+        setNativeMessage(pieces.join(" · "));
+
+        if (run.status !== "succeeded" && !result) {
+          throw new Error(
+            run.error || `Native replay run ended with status ${run.status}.`
+          );
+        }
+        return;
+      }
+
+      setNativeMessage(
+        `Native HD #${gameStatsId} is still running after 12 minutes. The run remains receipt-tracked in AoE2WAR OS.`
       );
     } catch (error) {
       setErrors((current) => ({
