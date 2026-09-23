@@ -88,6 +88,11 @@ def refresh_operator_signals(state: dict[str, Any]) -> None:
     if persisted.get("pause_requested"):
         state["pause_requested"] = True
         state["pause_requested_at"] = persisted.get("pause_requested_at") or utc_now()
+    if persisted.get("handoff_id"):
+        state["handoff_id"] = persisted.get("handoff_id")
+        state["handoff_requested_at"] = (
+            persisted.get("handoff_requested_at") or utc_now()
+        )
 
 
 def process_alive(pid: int | None) -> bool:
@@ -174,6 +179,8 @@ def create_state(*, max_generations: int, force: bool) -> dict[str, Any]:
         "completed_generations": 0,
         "force": bool(force),
         "pause_requested": False,
+        "handoff_id": None,
+        "handoff_requested_at": None,
         "pid": None,
         "current_generation": None,
         "current_generation_started_at": None,
@@ -396,6 +403,13 @@ def resume(campaign_id: str) -> dict[str, Any]:
     if process_alive(pid if isinstance(pid, int) else None):
         raise CampaignError(f"campaign is still active with pid={pid}")
 
+    handoff_id = str(state.get("handoff_id") or "").strip()
+    if handoff_id:
+        raise CampaignError(
+            "campaign is reserved by an incomplete Storage OS handoff; "
+            f"resume the takeover instead: aoe2war storage handoff resume {handoff_id}"
+        )
+
     current_generation = state.get("current_generation")
     current_started = state.get("current_generation_started_at")
     if current_generation or current_started:
@@ -416,6 +430,61 @@ def resume(campaign_id: str) -> dict[str, Any]:
         **load_state(campaign_id),
         "spawned_pid": new_pid,
     }
+
+
+def reserve_handoff(
+    campaign_id: str,
+    *,
+    handoff_id: str,
+    old_release_sha: str,
+    old_build_id: str,
+) -> dict[str, Any]:
+    if not handoff_id or "/" in handoff_id or ".." in handoff_id:
+        raise CampaignError(f"unsafe handoff id: {handoff_id!r}")
+
+    state = load_state(campaign_id)
+    existing = str(state.get("handoff_id") or "").strip()
+    if existing and existing != handoff_id:
+        raise CampaignError(
+            "campaign is already reserved by another Storage OS handoff: "
+            f"{existing}"
+        )
+
+    if (
+        state.get("release_sha") != old_release_sha
+        or state.get("build_id") != old_build_id
+    ):
+        raise CampaignError(
+            "handoff reservation V1 authority mismatch: "
+            f"campaign={state.get('release_sha')}:{state.get('build_id')} "
+            f"expected={old_release_sha}:{old_build_id}"
+        )
+
+    if existing == handoff_id:
+        if state.get("status") not in {"RUNNING", "RUNNING_TRANSACTION", "PAUSED"}:
+            raise CampaignError(
+                "existing handoff reservation is no longer on a resumable "
+                f"campaign state: {state.get('status')}"
+            )
+        return state
+
+    if state.get("status") not in {"RUNNING", "RUNNING_TRANSACTION"}:
+        raise CampaignError(
+            "handoff reservation requires a live campaign controller, found "
+            f"{state.get('status')}"
+        )
+    pid = state.get("pid")
+    if not isinstance(pid, int) or not process_alive(pid):
+        raise CampaignError(
+            "handoff reservation requires the live V1 campaign controller"
+        )
+
+    state["handoff_id"] = handoff_id
+    state["handoff_requested_at"] = utc_now()
+    state["pause_requested"] = True
+    state["pause_requested_at"] = state["handoff_requested_at"]
+    save_state(state)
+    return state
 
 
 def rebind_after_handoff(
@@ -454,6 +523,12 @@ def rebind_after_handoff(
             )
         return state
 
+    reserved_handoff = str(state.get("handoff_id") or "").strip()
+    if reserved_handoff != handoff_id:
+        raise CampaignError(
+            "handoff rebind reservation mismatch: "
+            f"campaign={reserved_handoff or 'none'} expected={handoff_id}"
+        )
     if state.get("status") != "PAUSED":
         raise CampaignError(
             f"handoff rebind requires PAUSED campaign, found {state.get('status')}"
@@ -499,6 +574,8 @@ def rebind_after_handoff(
     state["build_id"] = new_build_id
     state["pause_requested"] = False
     state["pause_requested_at"] = None
+    state["handoff_id"] = None
+    state["handoff_requested_at"] = None
     state["completion_reason"] = None
     state["finished_at"] = None
     state["failed_at"] = None
@@ -548,6 +625,7 @@ def print_status(state: dict[str, Any]) -> None:
     print(f"Alive:       {state.get('process_alive', False)}")
     print(f"Current:     {state.get('current_generation') or '—'}")
     print(f"Reason:      {state.get('completion_reason') or '—'}")
+    print(f"Handoff:     {state.get('handoff_id') or '—'}")
     print(f"Last error:  {state.get('last_error') or '—'}")
     print(f"Log:         {state.get('log_path') or '—'}")
     last = state.get("last_storage_status") or {}
