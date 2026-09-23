@@ -890,6 +890,8 @@ def parser() -> argparse.ArgumentParser:
     q.add_argument("campaign_args", nargs=argparse.REMAINDER)
     q = sub.add_parser("handoff")
     q.add_argument("handoff_args", nargs=argparse.REMAINDER)
+    q = sub.add_parser("db-snapshots")
+    q.add_argument("db_snapshot_args", nargs=argparse.REMAINDER)
     return p
 
 
@@ -935,6 +937,13 @@ def main() -> int:
             sys.executable,
             str(ROOT / "scripts" / "aoe2_storage_handoff.py"),
             *args.handoff_args,
+        ]
+        return subprocess.run(cmd, cwd=ROOT, check=False).returncode
+    if args.command == "db-snapshots":
+        cmd = [
+            sys.executable,
+            str(ROOT / "scripts" / "aoe2_db_snapshot_retention.py"),
+            *args.db_snapshot_args,
         ]
         return subprocess.run(cmd, cwd=ROOT, check=False).returncode
     raise StorageError(f"unknown command: {args.command}")
