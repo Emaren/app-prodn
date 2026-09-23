@@ -1748,3 +1748,13 @@ General rule: when authority changes while durable work is in flight, model the
 takeover itself as a receipted state machine. Every restart must answer "what was
 last proven?" rather than "what probably happened?".
 
+
+A second failure mode is control-plane competition during the frozen interval.
+The handoff state machine is not enough if an ordinary campaign command can
+restart V1 while the takeover is waiting on source reconciliation or Finish.
+Durable rule: handoff ownership is also persisted in the campaign state. A
+reserved campaign keeps the cooperative pause signal across transaction
+completion, rejects ordinary resume with the exact handoff-resume command, and
+may be rebound/released only by that same handoff after certified V2 authority is
+proven. New handoffs must refuse to hide an older incomplete takeover.
+
