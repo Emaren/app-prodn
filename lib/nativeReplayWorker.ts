@@ -13,6 +13,7 @@ export const NATIVE_REPLAY_DEFAULT_PERFORMANCE_SECONDS = 240;
 export const NATIVE_REPLAY_MAX_PERFORMANCE_SECONDS = 240;
 export const NATIVE_REPLAY_DEFAULT_WALL_SECONDS = 300;
 export const NATIVE_REPLAY_MAX_WALL_SECONDS = 300;
+export const NATIVE_REPLAY_CANARY_GAME_IDS = new Set([32388]);
 
 const ARCHIVE_ROOT = "/mnt/HC_Volume_105319120/aoe2-replay-archive";
 const SHA256_RE = /^[0-9a-f]{64}$/;
@@ -62,6 +63,12 @@ export function parseNativeReplayRunParameters(
     "gameStatsId",
     Number.MAX_SAFE_INTEGER
   );
+  if (!NATIVE_REPLAY_CANARY_GAME_IDS.has(gameStatsId)) {
+    throw new Error(
+      "Native HD execution is still locked to trusted control GameStats #32388."
+    );
+  }
+
   const replaySha256 =
     typeof source.replaySha256 === "string"
       ? source.replaySha256.trim().toLowerCase()
