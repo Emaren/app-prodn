@@ -350,7 +350,8 @@ class StorageHandoffTests(unittest.TestCase):
                 handoff.campaign,
                 "load_state",
                 return_value={
-                    "status": "RUNNING",
+                    "status": "HANDOFF_FREEZE_READY",
+                    "handoff_freeze_handoff_id": "handoff-test",
                     "current_generation": None,
                     "current_generation_started_at": None,
                 },
