@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9ef72cba8d0adb7df0ce994e635eaa96d852bc1257aafe0fa79f2bae26d23493",
+      "sha256": "f8f5e686353274cde070f2618a5dea8a6791cb9d488acb2a6195129e60d6180f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "main",
-    "commit": "fbaf85411fce570b307dc1c8299b82cff4b145b6"
+    "branch": "fix/general-inspections-python-receipt-20260923",
+    "commit": "36db592d2075912353e09ac91acf70b5dea9ce69"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
