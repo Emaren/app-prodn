@@ -312,10 +312,16 @@ def prove_frozen(campaign_state: dict[str, Any]) -> None:
 
 def create_state(campaign_id: str) -> dict[str, Any]:
     existing = campaign.load_state(campaign_id)
-    if existing.get("status") in {"COMPLETE", "FAILED", "BLOCKED"}:
+    status = str(existing.get("status") or "")
+    if status not in {"RUNNING", "RUNNING_TRANSACTION"}:
         raise HandoffError(
-            f"campaign {campaign_id} is not eligible for handoff: "
-            f"status={existing.get('status')}"
+            f"campaign {campaign_id} is not a live V1 controller: "
+            f"status={status or 'unknown'}; start/resume the campaign first"
+        )
+    pid = existing.get("pid")
+    if not isinstance(pid, int) or not process_alive(pid):
+        raise HandoffError(
+            f"campaign {campaign_id} has no live V1 controller PID"
         )
 
     current_release, current_build = storage.operator_baseline()
@@ -330,8 +336,18 @@ def create_state(campaign_id: str) -> dict[str, Any]:
         )
 
     target_source = source_ready(current_release)
-    pid = existing.get("pid")
-    family = process_family(pid if isinstance(pid, int) else None)
+    family = process_family(pid)
+    root_command = str(family.get("command") or "")
+    if (
+        family.get("pgid") is None
+        or "aoe2_storage_campaign.py" not in root_command
+        or "_run" not in root_command
+        or campaign_id not in root_command
+    ):
+        raise HandoffError(
+            "live V1 controller process identity does not match the exact "
+            f"Storage campaign: pid={pid} command={root_command!r}"
+        )
     handoff_id = f"{stamp()}-{campaign_id}-{target_source[:12]}"
     payload = {
         "schema": 1,
