@@ -152,6 +152,57 @@ class StorageHandoffTests(unittest.TestCase):
         self.assertIn("Storage OS handoff", source)
         self.assertGreaterEqual(source.count("start_new_session=True"), 2)
 
+    def test_finish_receipt_requires_certified_target_and_runner_phase(self):
+        payload = {
+            "kind": "aoe2war-finish-result",
+            "status": "CERTIFIED",
+            "release_outcome": "CERTIFIED",
+            "release_certified_at": "2026-09-23T19:00:00+00:00",
+            "phases": {
+                "maintenance_runner_reconciliation": {"status": "PASSED"},
+            },
+            "final_release": {
+                "production": {"source_sha": "b" * 40},
+                "certification": {
+                    "status": "CERTIFIED",
+                    "release_sha": "b" * 40,
+                },
+            },
+        }
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            path = root / "receipt.json"
+            path.write_text(__import__("json").dumps(payload), encoding="utf-8")
+            with mock.patch.object(handoff, "FINISH_RECEIPT_DIR", root):
+                found = handoff.finish_receipt_for_target("b" * 40)
+                self.assertIsNotNone(found)
+                self.assertEqual(found[0], path)
+                self.assertIsNone(
+                    handoff.finish_receipt_for_target("c" * 40)
+                )
+
+    def test_incomplete_v1_terminal_state_fails_instead_of_waiting_forever(self):
+        state = {
+            "handoff_id": "handoff-a",
+            "campaign_id": "campaign-a",
+            "status": "V1_RUNNING",
+        }
+        terminal = {
+            "status": "FAILED",
+            "completion_reason": None,
+            "last_error": "worker failed",
+            "pid": None,
+        }
+        with (
+            mock.patch.object(handoff, "HANDOFF_DIR", Path("/tmp")),
+            mock.patch.object(handoff, "LOCK_PATH", Path("/tmp/aoe2war-handoff-test.lock")),
+            mock.patch.object(handoff, "load_state", side_effect=[state, state, terminal]),
+            mock.patch.object(handoff.campaign, "request_pause"),
+            mock.patch.object(handoff.campaign, "load_state", return_value=terminal),
+            mock.patch.object(handoff, "save_state"),
+        ):
+            self.assertEqual(handoff.drive("handoff-a"), 2)
+
     def test_v2_resume_rebinds_before_campaign_resume(self):
         source = Path(handoff.__file__).read_text(encoding="utf-8")
         rebind = source.index("campaign.rebind_after_handoff(")
