@@ -200,6 +200,45 @@ class StorageCampaignTests(unittest.TestCase):
         spawn.assert_called_once_with("test")
         self.assertEqual(result["spawned_pid"], 456)
 
+    def test_handoff_successor_continues_watch_using_inherited_progress(self):
+        plan = {
+            "status": "WATCH",
+            "candidate": "activate-20260830T215319Z-612199b51641",
+        }
+        state = {
+            "continuation_generations": 3,
+            "completed_generations": 0,
+            "force": False,
+        }
+
+        actionable, reason = campaign.actionable_plan(
+            plan,
+            completed=(
+                int(state["completed_generations"])
+                + int(state["continuation_generations"])
+            ),
+            force=bool(state["force"]),
+        )
+
+        self.assertTrue(actionable)
+        self.assertEqual(reason, "WATCH_CONTINUATION")
+
+    def test_retired_handoff_campaign_cannot_resume(self):
+        state = {
+            "schema": 1,
+            "kind": "aoe2war-storage-campaign",
+            "campaign_id": "test",
+            "status": "RETIRED_HANDOFF",
+            "pid": None,
+        }
+
+        with mock.patch.object(campaign, "load_state", return_value=state):
+            with self.assertRaisesRegex(
+                campaign.CampaignError,
+                "retired_handoff campaign cannot be resumed",
+            ):
+                campaign.resume("test")
+
     def test_resume_refuses_live_pid(self):
         state = {
             "schema": 1,
