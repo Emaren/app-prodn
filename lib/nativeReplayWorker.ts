@@ -193,10 +193,7 @@ export async function buildNativeReplayRunParameters(
   });
 }
 
-async function locateArchiveReplay(
-  replaySha256: string,
-  preferredFilename: string | null
-) {
+async function locateArchiveReplay(replaySha256: string) {
   const directory = join(
     ARCHIVE_ROOT,
     replaySha256.slice(0, 2),
@@ -209,31 +206,21 @@ async function locateArchiveReplay(
     throw new Error("The canonical replay archive directory is missing.");
   }
 
-  const candidates = entries
-    .filter(
-      (entry) =>
-        entry.isFile() &&
-        !entry.isSymbolicLink() &&
-        entry.name.startsWith(`${replaySha256}.`) &&
-        SAFE_REPLAY_EXTENSIONS.has(extname(entry.name).toLowerCase())
-    )
-    .map((entry) => join(directory, entry.name));
+  const canonicalName = `${replaySha256}.aoe2record`;
+  const candidate = entries.find(
+    (entry) =>
+      entry.isFile() &&
+      !entry.isSymbolicLink() &&
+      entry.name === canonicalName &&
+      SAFE_REPLAY_EXTENSIONS.has(extname(entry.name).toLowerCase())
+  );
 
-  if (!candidates.length) {
-    throw new Error("The canonical replay bytes are not present in the archive.");
-  }
-
-  const preferredExtension = preferredFilename
-    ? extname(preferredFilename).toLowerCase()
-    : "";
-  if (preferredExtension) {
-    const preferred = candidates.filter(
-      (candidate) => extname(candidate).toLowerCase() === preferredExtension
+  if (!candidate) {
+    throw new Error(
+      "The exact SHA-named .aoe2record is not present in the canonical replay archive."
     );
-    if (preferred.length === 1) return preferred[0];
   }
-  if (candidates.length === 1) return candidates[0];
-  throw new Error("Multiple canonical archive objects match this replay hash.");
+  return join(directory, candidate.name);
 }
 
 export async function loadNativeReplayArtifact(
@@ -263,10 +250,7 @@ export async function loadNativeReplayArtifact(
     throw new Error("Replay identity moved after the native-run request was queued.");
   }
 
-  const source = await locateArchiveReplay(
-    parameters.replaySha256,
-    game.original_filename || game.replay_file || null
-  );
+  const source = await locateArchiveReplay(parameters.replaySha256);
   const archiveRoot = (await fs.realpath(resolve(ARCHIVE_ROOT))) + "/";
   const realSource = await fs.realpath(source);
   if (!realSource.startsWith(archiveRoot)) {
