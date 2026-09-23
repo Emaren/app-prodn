@@ -46,6 +46,11 @@ test("confirmation policy is server-side", () => {
   assert.equal(confirmationMatches("deploy", "DEPLOY"), true);
   assert.equal(confirmationMatches("finish", "FINISH"), true);
   assert.equal(confirmationMatches("finish", "finish"), false);
+  assert.equal(
+    confirmationMatches("replay_native_run", "RUN NATIVE REPLAY"),
+    true
+  );
+  assert.equal(confirmationMatches("replay_native_run", "run native replay"), false);
 });
 
 test("bridge online window is deterministic", () => {
