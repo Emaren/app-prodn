@@ -283,8 +283,36 @@ def seal_transition(
         f"{transition_number:02d}-{target.lower()}.json"
     )
     if path.exists():
-        raise HandoffError(f"transition receipt already exists unexpectedly: {path}")
-    atomic_write(path, receipt, mode=0o444)
+        try:
+            existing = json.loads(path.read_text(encoding="utf-8"))
+        except Exception as exc:
+            raise HandoffError(
+                f"existing transition receipt is unreadable: {path}"
+            ) from exc
+        expected_identity = {
+            "schema": 1,
+            "kind": "aoe2war-storage-handoff-transition",
+            "handoff_id": state["handoff_id"],
+            "campaign_id": state["campaign_id"],
+            "transition": transition_number,
+            "from": current,
+            "to": target,
+            "evidence": evidence,
+            "database_mutated": False,
+            "wolo_mutated": False,
+        }
+        for key, value in expected_identity.items():
+            if existing.get(key) != value:
+                raise HandoffError(
+                    f"existing transition receipt conflicts at {key}: {path}"
+                )
+        at = str(existing.get("at") or "")
+        if not at:
+            raise HandoffError(
+                f"existing transition receipt has no timestamp: {path}"
+            )
+    else:
+        atomic_write(path, receipt, mode=0o444)
 
     history.append(
         {
