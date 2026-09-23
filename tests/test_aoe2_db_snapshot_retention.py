@@ -90,6 +90,34 @@ class DatabaseSnapshotRetentionTests(unittest.TestCase):
         self.assertEqual(planned[0]["retention_class"], "PROTECTED_REFERENCE")
         self.assertFalse(planned[0]["retire_candidate"])
 
+    def test_reference_protection_satisfies_same_period_cold_coverage(self):
+        rows = [
+            exact_row(1, year=2026, month=9, day=20),
+            exact_row(2, year=2026, month=9, day=19),
+            exact_row(3, year=2026, month=9, day=18),
+            exact_row(4, year=2026, month=9, day=17),
+            exact_row(5, year=2026, month=9, day=16),
+            exact_row(6, year=2026, month=8, day=20),
+            exact_row(7, year=2026, month=8, day=19),
+        ]
+        rows[5]["external_reference_count"] = 1
+        rows[5]["external_reference_examples"] = ["/proof/reference.json"]
+        planned = retention.select_retention(rows)
+        referenced = next(
+            row for row in planned if row["path"] == rows[5]["path"]
+        )
+        older_same_month = next(
+            row for row in planned if row["path"] == rows[6]["path"]
+        )
+        self.assertEqual(
+            referenced["retention_class"],
+            "PROTECTED_REFERENCE",
+        )
+        self.assertNotEqual(
+            older_same_month["retention_class"],
+            "COLD_MONTHLY",
+        )
+
     def test_policy_keeps_hot_weekly_monthly_and_only_then_marks_candidates(self):
         rows = []
         year = 2026
