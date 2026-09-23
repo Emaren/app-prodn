@@ -63,6 +63,32 @@ class StorageHandoffTests(unittest.TestCase):
                         {},
                     )
 
+    def test_existing_transition_receipt_is_adopted_after_state_write_loss(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            with mock.patch.object(handoff, "HANDOFF_ROOT", root):
+                state = self.base_state()
+                handoff.save_state(state)
+                first = handoff.seal_transition(
+                    state,
+                    "V1_FROZEN",
+                    {"pid": 123, "pgid": 123},
+                )
+                receipt = Path(first["last_transition_receipt"])
+
+                # Simulate a crash after the immutable receipt sealed but before
+                # the mutable state file advanced.
+                handoff.save_state(self.base_state())
+                recovered = handoff.seal_transition(
+                    handoff.load_state("handoff-test"),
+                    "V1_FROZEN",
+                    {"pid": 123, "pgid": 123},
+                )
+
+                self.assertEqual(recovered["status"], "V1_FROZEN")
+                self.assertEqual(recovered["last_transition_receipt"], str(receipt))
+                self.assertEqual(len(recovered["history"]), 1)
+
     def test_spawn_is_terminal_independent(self):
         state = self.base_state()
         fake_proc = mock.Mock(pid=456)
