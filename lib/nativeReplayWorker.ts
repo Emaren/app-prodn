@@ -13,7 +13,15 @@ export const NATIVE_REPLAY_DEFAULT_PERFORMANCE_SECONDS = 240;
 export const NATIVE_REPLAY_MAX_PERFORMANCE_SECONDS = 240;
 export const NATIVE_REPLAY_DEFAULT_WALL_SECONDS = 300;
 export const NATIVE_REPLAY_MAX_WALL_SECONDS = 300;
-export const NATIVE_REPLAY_CANARY_GAME_IDS = new Set([32388]);
+export const NATIVE_REPLAY_CANARY_SHA256_BY_GAME_ID = new Map<number, string>([
+  [
+    32388,
+    "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b",
+  ],
+]);
+export const NATIVE_REPLAY_CANARY_GAME_IDS = new Set(
+  NATIVE_REPLAY_CANARY_SHA256_BY_GAME_ID.keys()
+);
 
 const ARCHIVE_ROOT = "/mnt/HC_Volume_105319120/aoe2-replay-archive";
 const SHA256_RE = /^[0-9a-f]{64}$/;
@@ -75,6 +83,12 @@ export function parseNativeReplayRunParameters(
       : "";
   if (!SHA256_RE.test(replaySha256)) {
     throw new Error("replaySha256 must be a complete lowercase SHA-256 digest.");
+  }
+  const canarySha256 = NATIVE_REPLAY_CANARY_SHA256_BY_GAME_ID.get(gameStatsId);
+  if (!canarySha256 || replaySha256 !== canarySha256) {
+    throw new Error(
+      "Native HD canary replay SHA-256 does not match the trusted GameStats #32388 control."
+    );
   }
   if (source.candidateOnly !== true) {
     throw new Error("Native replay execution is candidate-only.");
@@ -149,8 +163,6 @@ export async function buildNativeReplayRunParameters(
       replayHash: true,
       is_final: true,
       players: true,
-      replay_file: true,
-      original_filename: true,
     },
   });
   if (!game || !game.is_final) {
@@ -160,19 +172,6 @@ export async function buildNativeReplayRunParameters(
   const replaySha256 = String(game.replayHash || "").trim().toLowerCase();
   if (!SHA256_RE.test(replaySha256)) {
     throw new Error("The selected battle has no canonical replay SHA-256.");
-  }
-
-  const sourceNames = [game.original_filename, game.replay_file].filter(
-    (value): value is string => typeof value === "string" && Boolean(value.trim())
-  );
-  if (
-    !sourceNames.some(
-      (sourceName) => extname(sourceName).toLowerCase() === ".aoe2record"
-    )
-  ) {
-    throw new Error(
-      "Native HD playthrough accepts recorded .aoe2record battles only; saved checkpoints and legacy containers remain in their separate evidence lanes."
-    );
   }
 
   const normalized = normalizeReplayPlayers(game.players);
@@ -244,8 +243,6 @@ export async function loadNativeReplayArtifact(
     select: {
       id: true,
       replayHash: true,
-      replay_file: true,
-      original_filename: true,
       is_final: true,
     },
   });
