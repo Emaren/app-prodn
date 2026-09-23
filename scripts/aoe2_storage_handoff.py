@@ -712,9 +712,17 @@ def transition_source_ready(state: dict[str, Any]) -> dict[str, Any]:
     assert_frozen_identity(state)
     old = campaign.load_state(str(state["campaign_id"]))
     validate_campaign_seam(old, require_running=True)
-    finish = run_finish_json()
-    state["finish_result"] = finish
-    save_state(state)
+
+    finish = state.get("finish_result")
+    if not isinstance(finish, dict):
+        finish = run_finish_json()
+        # Persist the complete Finish result before converting any of its
+        # evidence into a handoff transition. If the handoff controller dies
+        # after Finish returns, resume consumes this exact result instead of
+        # launching a second release transaction.
+        state["finish_result"] = finish
+        save_state(state)
+
     evidence = maintenance_runner_evidence(finish)
     evidence["finish_receipt_path"] = finish.get("receipt_path")
     return seal_transition(state, "RUNNER_RECONCILED", evidence)
