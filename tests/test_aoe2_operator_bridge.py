@@ -168,6 +168,26 @@ class OperatorBridgeTests(unittest.TestCase):
                 }
             )
 
+    def test_native_replay_command_rejects_wrong_canary_roster(self):
+        with self.assertRaisesRegex(
+            MODULE.BridgeError,
+            "does not match trusted 32388 slots 1,2,3,4",
+        ):
+            MODULE.command_for_run(
+                {
+                    "id": "run",
+                    "action": "replay_native_run",
+                    "parameters": {
+                        "gameStatsId": 32388,
+                        "replaySha256": "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b",
+                        "rosterSlots": [1, 2, 3],
+                        "candidateOnly": True,
+                        "nativePerformanceSeconds": 240,
+                        "timeoutSeconds": 300,
+                    },
+                }
+            )
+
     def test_native_replay_command_rejects_wrong_canary_sha(self):
         with self.assertRaisesRegex(
             MODULE.BridgeError,
