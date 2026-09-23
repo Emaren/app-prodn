@@ -297,9 +297,13 @@ cannot manufacture V1 identity; start or resume the ordinary campaign first.
 
 The initial receipt records the V1 campaign source/build, the exact target
 `main` source, and the observed V1 PID/PPID/PGID/command plus descendant
-identities. The target must be a clean local `main`, equal to `origin/main`,
-and descend from the certified V1 source. Target drift after handoff
-authorization fails closed.
+identities. After the cooperative pause, that exact recorded family is
+revalidated as dead before `TRANSACTION_SEAM_PROVEN`; canonical Finish is
+therefore never launched while the old archive controller or one of its recorded
+descendants remains alive. The same family is revalidated again after V2
+certification before `V1_RETIRED`. The target must be a clean local `main`,
+equal to `origin/main`, and descend from the certified V1 source. Target drift
+after handoff authorization fails closed.
 
 After the seam is proven, the handoff starts canonical `aoe2war finish` in its
 own session and records the Finish PID and log. A lost initiating terminal
