@@ -520,9 +520,24 @@ def source_ready(old_release: str, *, expected_target: str | None = None) -> str
     if git_output("status", "--porcelain", "--untracked-files=all"):
         raise HandoffError("handoff requires a clean canonical worktree")
     head = git_output("rev-parse", "HEAD")
-    remote = git_output("rev-parse", "origin/main")
+    tracking = git_output("rev-parse", "origin/main")
+    live_remote = git_output("ls-remote", "origin", "refs/heads/main")
+    parts = live_remote.split()
+    if (
+        len(parts) != 2
+        or len(parts[0]) != 40
+        or any(ch not in "0123456789abcdef" for ch in parts[0])
+        or parts[1] != "refs/heads/main"
+    ):
+        raise HandoffError(f"cannot prove live GitHub main: {live_remote!r}")
+    remote = parts[0]
+    if tracking != remote:
+        raise HandoffError(
+            f"local origin/main is stale: tracking={tracking} live={remote}; "
+            "fetch canonical main before handoff"
+        )
     if head != remote:
-        raise HandoffError(f"local HEAD {head} != origin/main {remote}")
+        raise HandoffError(f"local HEAD {head} != live origin/main {remote}")
     if expected_target and head != expected_target:
         raise HandoffError(
             f"handoff target drifted: expected={expected_target} current={head}"
