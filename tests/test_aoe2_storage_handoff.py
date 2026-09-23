@@ -307,6 +307,77 @@ class StorageHandoffTests(unittest.TestCase):
         with self.assertRaises(handoff.HandoffError):
             handoff.transition(state, "SOURCE_READY")
 
+    def test_transition_chain_verifies_every_durable_receipt(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            with mock.patch.object(handoff, "HANDOFF_DIR", root):
+                first_path, first_digest, first = handoff.write_transition_receipt(
+                    handoff_id="handoff-a",
+                    source=None,
+                    target="V1_RUNNING",
+                    evidence={"one": 1},
+                )
+                second_path, second_digest, second = handoff.write_transition_receipt(
+                    handoff_id="handoff-a",
+                    source="V1_RUNNING",
+                    target="V1_FROZEN",
+                    evidence={"two": 2},
+                )
+                state = {
+                    "schema": 1,
+                    "kind": "aoe2war-storage-handoff",
+                    "handoff_id": "handoff-a",
+                    "status": "V1_FROZEN",
+                    "history": [
+                        {
+                            "from": None,
+                            "to": "V1_RUNNING",
+                            "at": first["created_at"],
+                            "evidence": first["evidence"],
+                            "receipt_path": str(first_path),
+                            "receipt_sha256": first_digest,
+                        },
+                        {
+                            "from": "V1_RUNNING",
+                            "to": "V1_FROZEN",
+                            "at": second["created_at"],
+                            "evidence": second["evidence"],
+                            "receipt_path": str(second_path),
+                            "receipt_sha256": second_digest,
+                        },
+                    ],
+                    "last_transition_receipt": str(second_path),
+                    "last_transition_receipt_sha256": second_digest,
+                }
+                handoff.verify_transition_chain(state)
+
+                drifted = {
+                    **state,
+                    "history": [dict(row) for row in state["history"]],
+                }
+                drifted["history"][0]["receipt_sha256"] = "0" * 64
+                with self.assertRaisesRegex(
+                    handoff.HandoffError,
+                    "digest mismatch",
+                ):
+                    handoff.verify_transition_chain(drifted)
+
+    def test_transition_chain_rejects_missing_state_receipt(self):
+        state = {
+            "schema": 1,
+            "kind": "aoe2war-storage-handoff",
+            "handoff_id": "handoff-a",
+            "status": "V1_RUNNING",
+            "history": [],
+            "last_transition_receipt": None,
+            "last_transition_receipt_sha256": None,
+        }
+        with self.assertRaisesRegex(
+            handoff.HandoffError,
+            "history does not match",
+        ):
+            handoff.verify_transition_chain(state)
+
     def test_transition_receipt_is_create_once_and_reusable_after_crash(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
