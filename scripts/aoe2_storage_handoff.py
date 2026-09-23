@@ -25,7 +25,7 @@ HANDOFF_ROOT = ROOT / ".aoe2war-release" / "storage-handoffs"
 LOCK_PATH = HANDOFF_ROOT / "handoff.lock"
 FINAL_STATE = "V2_RESUMED"
 STATE_ORDER = (
-    "CREATED",
+    "V1_RUNNING",
     "V1_FROZEN",
     "TRANSACTION_SEAM_PROVEN",
     "SOURCE_READY",
@@ -776,7 +776,7 @@ def create_state(campaign_id: str | None) -> dict[str, Any]:
         "kind": "aoe2war-storage-handoff",
         "handoff_id": handoff_id,
         "campaign_id": selected,
-        "status": "CREATED",
+        "status": "V1_RUNNING",
         "created_at": utc_now(),
         "updated_at": utc_now(),
         "controller_pid": None,
@@ -984,7 +984,7 @@ def transition_v1_retired(state: dict[str, Any]) -> dict[str, Any]:
 
 def advance_once(state: dict[str, Any]) -> dict[str, Any]:
     status = str(state.get("status"))
-    if status == "CREATED":
+    if status == "V1_RUNNING":
         return transition_created(state)
     if status == "V1_FROZEN":
         return transition_v1_frozen(state)
