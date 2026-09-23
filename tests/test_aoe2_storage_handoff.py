@@ -48,6 +48,19 @@ class StorageHandoffTests(unittest.TestCase):
             "log_path": "handoff.log",
         }
 
+    def persist_state_at(self, handoff_id, target):
+        state = self.base_state(status="V1_RUNNING")
+        state["handoff_id"] = handoff_id
+        handoff.save_state(state)
+        target_index = handoff.STATE_ORDER.index(target)
+        for next_state in handoff.STATE_ORDER[1 : target_index + 1]:
+            state = handoff.seal_transition(
+                state,
+                next_state,
+                {"fixture": next_state},
+            )
+        return state
+
     def test_load_state_rejects_history_status_mismatch(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
@@ -72,13 +85,8 @@ class StorageHandoffTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             with mock.patch.object(handoff, "HANDOFF_ROOT", root):
-                complete = self.base_state(status="V2_RESUMED")
-                complete["handoff_id"] = "complete"
-                handoff.save_state(complete)
-
-                incomplete = self.base_state(status="SOURCE_READY")
-                incomplete["handoff_id"] = "incomplete"
-                handoff.save_state(incomplete)
+                self.persist_state_at("complete", "V2_RESUMED")
+                self.persist_state_at("incomplete", "SOURCE_READY")
 
                 self.assertEqual(
                     handoff.latest_handoff_id(),
@@ -93,9 +101,7 @@ class StorageHandoffTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
             with mock.patch.object(handoff, "HANDOFF_ROOT", root):
-                existing = self.base_state(status="SOURCE_READY")
-                existing["handoff_id"] = "existing"
-                handoff.save_state(existing)
+                self.persist_state_at("existing", "SOURCE_READY")
 
                 with self.assertRaisesRegex(
                     handoff.HandoffError,
