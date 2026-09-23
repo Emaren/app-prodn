@@ -299,6 +299,17 @@ command must identify the exact `aoe2_storage_campaign.py _run <campaign>`
 controller. An already paused, merely created, dead, or PID-reused campaign
 cannot manufacture V1 identity; start or resume the ordinary campaign first.
 
+Authorization also writes an explicit handoff reservation into the campaign
+state before the handoff runner is spawned. The reservation carries the exact
+handoff ID, requests the cooperative pause, and is merged back into controller
+state after an in-flight generation finishes so stale local state cannot erase
+the takeover. While the reservation exists, ordinary `storage campaign resume`
+is rejected with the exact `storage handoff resume <id>` command instead.
+A second handoff cannot reserve the same campaign, and a new handoff cannot hide
+an older incomplete takeover. Status selection prefers incomplete handoffs until
+they reach `V2_RESUMED`. The reservation is cleared only by the certified V2
+rebind immediately before the ordinary campaign resume.
+
 The initial receipt records the V1 campaign source/build, the exact target
 `main` source, and the observed V1 PID/PPID/PGID/command plus descendant
 identities. After the cooperative pause, that exact recorded family is
