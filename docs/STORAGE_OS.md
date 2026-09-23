@@ -289,7 +289,7 @@ initiating terminal does not stop this takeover controller or weaken the seam.
 
 The durable state machine is strictly ordered:
 
-`CREATED -> V1_FROZEN -> TRANSACTION_SEAM_PROVEN -> SOURCE_READY -> RUNNER_RECONCILED -> V2_CERTIFIED -> V1_RETIRED -> V2_RESUMED`
+`V1_RUNNING -> V1_FROZEN -> TRANSACTION_SEAM_PROVEN -> SOURCE_READY -> RUNNER_RECONCILED -> V2_CERTIFIED -> V1_RETIRED -> V2_RESUMED`
 
 Every transition writes a read-only transition receipt before the next mutation.
 Reinvocation does not restart from scratch: `resume` reloads the last proven
