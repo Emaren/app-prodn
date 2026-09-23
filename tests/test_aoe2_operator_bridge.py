@@ -104,6 +104,67 @@ class OperatorBridgeTests(unittest.TestCase):
             ],
         )
 
+    def test_native_replay_command_is_fixed_and_identity_bound(self):
+        command = MODULE.command_for_run(
+            {
+                "id": "20260923120000-abcd1234",
+                "action": "replay_native_run",
+                "parameters": {
+                    "gameStatsId": 32388,
+                    "replaySha256": "a" * 64,
+                    "rosterSlots": [1, 2, 3, 4],
+                    "candidateOnly": True,
+                    "nativePerformanceSeconds": 240,
+                    "timeoutSeconds": 300,
+                },
+            },
+            base_url="https://example.invalid",
+        )
+        self.assertEqual(
+            command,
+            [
+                sys.executable,
+                str(MODULE.NATIVE_REPLAY_WORKER),
+                "--run-id",
+                "20260923120000-abcd1234",
+                "--game-stats-id",
+                "32388",
+                "--replay-sha256",
+                "a" * 64,
+                "--native-performance-seconds",
+                "240",
+                "--timeout-seconds",
+                "300",
+                "--url",
+                "https://example.invalid",
+                "--roster-slot",
+                "1",
+                "--roster-slot",
+                "2",
+                "--roster-slot",
+                "3",
+                "--roster-slot",
+                "4",
+            ],
+        )
+
+    def test_native_replay_command_rejects_untrusted_parameters(self):
+        with self.assertRaises(MODULE.BridgeError):
+            MODULE.command_for_run(
+                {
+                    "id": "run",
+                    "action": "replay_native_run",
+                    "parameters": {
+                        "gameStatsId": 32388,
+                        "replaySha256": "a" * 64,
+                        "rosterSlots": [1, 2],
+                        "candidateOnly": False,
+                        "nativePerformanceSeconds": 240,
+                        "timeoutSeconds": 300,
+                    },
+                }
+            )
+
     def test_token_file(self):
         with tempfile.TemporaryDirectory() as temp:
             token_file = Path(temp) / "token"
