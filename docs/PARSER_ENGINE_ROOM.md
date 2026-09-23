@@ -87,9 +87,9 @@ The browser never supplies a local path or arbitrary command. The server queues
 only a GameStats identity; the run freezes the current replay SHA and roster
 slots. During the canary stage, GameStats **32388** is additionally bound at the
 admin parser, bridge, and Mac worker to exact replay SHA
-`02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b`.
-A historical presentation filename is not replay identity and cannot veto or
-substitute for that digest. The bridge exposes one fixed action and cannot turn
+`02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b`
+and exact roster slots `[1, 2, 3, 4]`. A historical presentation filename is
+not replay identity and cannot veto or substitute for that digest. The bridge exposes one fixed action and cannot turn
 request parameters into shell syntax.
 
 Ordinary unresolved replays are served from the canonical content-addressed
@@ -106,9 +106,9 @@ inputs.
 Before native execution the Mac worker also binds **source provenance**. The
 tracked `app-prodn` and sibling `api-prodn` worktrees must be clean. The
 local app HEAD must contain reviewed canary implementation
-`aa39b283fbb8b508e79d902091de6244500194c1`, and the local API HEAD must
-contain canonical native-worker merge
-`51bd43ecadc9f830976925bcc3586a1bd29a4275`. The resulting app/API HEADs are
+`abdccc18f6f216ae2b166d70a7aac9665b3bb1ba`, and the local API HEAD must
+contain canonical exact-roster native-worker merge
+`cd99188c55d1d1ecd0465b1662a459db0b30f2a6`. The resulting app/API HEADs are
 stamped into the candidate result. A dirty, stale, or divergent local engine
 checkout therefore fails closed instead of becoming invisible runtime input.
 
@@ -137,8 +137,9 @@ Even then the receipt remains candidate-only:
 GameStats **32388** is the first positive semantic control. Its exact replay SHA
 is
 `02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b`
-and its independently trusted winning slots are `[1, 2]`. A native terminal
-candidate for that exact replay is automatically checked by
+its independently trusted roster slots are `[1, 2, 3, 4]`, and its
+independently trusted winning slots are `[1, 2]`. A native terminal candidate
+for that exact replay is automatically checked by
 `validate_replay_engine_terminal_control.py`. A PASS validates that one control;
 it does not globally authorize terminal semantics, broad execution, result
 promotion, betting, Wolo, or settlement.
