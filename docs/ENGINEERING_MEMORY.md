@@ -1758,3 +1758,29 @@ completion, rejects ordinary resume with the exact handoff-resume command, and
 may be rebound/released only by that same handoff after certified V2 authority is
 proven. New handoffs must refuse to hide an older incomplete takeover.
 
+## 2026-09-23 — Database restore points are evidence, not generic storage surplus
+
+The September storage census found multi-gigabyte deploy-time database dumps
+mixed into the broader release evidence estate. They are expensive enough to
+matter for capacity, but deleting them under the application rollback policy
+would trade unique recovery history for a disk-percentage target.
+
+Durable rule: deploy database snapshots are their own retention class. Modern
+migration-boundary dumps are recognized only from the exact
+`migration-<timestamp>-<release12>/pre-migration.dump` receipt contract with
+a valid status receipt, release SHA and sealed dump SHA-256. Financial,
+incident/recovery and legacy-ambiguous shapes remain protected rather than being
+coerced into the modern class.
+
+The read-only `aoe2war storage db-snapshots` planner keeps a named hot set plus
+weekly and monthly cold restore points, protects externally referenced evidence,
+and may identify older exact migration boundaries as informational retirement
+candidates. It does not delete them. Default inspection reuses sealed receipt
+hashes instead of rereading gigabytes; full-body hashing is an explicit
+read-only verification mode.
+
+General rule: retention eligibility and deletion authority are different
+things. First prove identity, provenance, purpose, references and recovery
+coverage; only a separately reviewed, receipt-backed apply transaction may turn
+a candidate into retired bytes.
+
