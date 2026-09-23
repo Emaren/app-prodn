@@ -17,6 +17,58 @@ SPEC.loader.exec_module(MODULE)
 
 
 class NativeReplayWorkerTests(unittest.TestCase):
+    def test_materialize_32388_prefers_exact_local_control(self):
+        with tempfile.TemporaryDirectory() as temp:
+            base = Path(temp)
+            source = base / "control.aoe2record"
+            source.write_bytes(b"native-control-bytes")
+            expected = MODULE.hashlib.sha256(source.read_bytes()).hexdigest()
+            destination_dir = base / "out"
+            destination_dir.mkdir()
+
+            with patch.dict(
+                MODULE.TRUSTED_LOCAL_CONTROLS,
+                {32388: source},
+                clear=True,
+            ), patch.object(MODULE, "download_replay") as download:
+                artifact, byte_size, artifact_source = MODULE.materialize_replay(
+                    game_stats_id=32388,
+                    replay_sha256=expected,
+                    base_url="https://example.invalid",
+                    token="unused",
+                    run_id="run",
+                    destination_dir=destination_dir,
+                )
+
+            download.assert_not_called()
+            self.assertEqual(artifact_source, "trusted_local_control")
+            self.assertEqual(byte_size, len(b"native-control-bytes"))
+            self.assertEqual(artifact.read_bytes(), b"native-control-bytes")
+            self.assertEqual(MODULE.sha256_file(artifact), expected)
+
+    def test_materialize_32388_rejects_wrong_local_hash(self):
+        with tempfile.TemporaryDirectory() as temp:
+            base = Path(temp)
+            source = base / "control.aoe2record"
+            source.write_bytes(b"wrong-control-bytes")
+            destination_dir = base / "out"
+            destination_dir.mkdir()
+
+            with patch.dict(
+                MODULE.TRUSTED_LOCAL_CONTROLS,
+                {32388: source},
+                clear=True,
+            ):
+                with self.assertRaises(MODULE.WorkerError):
+                    MODULE.materialize_replay(
+                        game_stats_id=32388,
+                        replay_sha256="a" * 64,
+                        base_url="https://example.invalid",
+                        token="unused",
+                        run_id="run",
+                        destination_dir=destination_dir,
+                    )
+
     def test_trusted_control_not_run_without_terminal_candidate(self):
         payload = {
             "status": "loaded_without_terminal",
