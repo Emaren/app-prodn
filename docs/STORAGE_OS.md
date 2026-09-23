@@ -303,7 +303,17 @@ therefore never launched while the old archive controller or one of its recorded
 descendants remains alive. The same family is revalidated again after V2
 certification before `V1_RETIRED`. The target must be a clean local `main`,
 equal to `origin/main`, and descend from the certified V1 source. Target drift
-after handoff authorization fails closed.
+before canonical Finish starts fails closed.
+
+Canonical Finish may legitimately append documentation-only descendants while
+reconciling Documentation OS around an unchanged implementation. The handoff
+therefore accepts a certified runtime only when it is either the exact target
+source or the existing Release OS `documentation_only_descendant` proof says
+every intervening path is documentation-owned. Any application,
+infrastructure, financial, database, Watcher, or Replay Truth implementation
+change after handoff authorization remains a hard blocker. The campaign is
+rebound to the actual certified descendant SHA and BUILD_ID, not to the earlier
+target label.
 
 After the seam is proven, the handoff starts canonical `aoe2war finish` in its
 own session and records the Finish PID and log. A lost initiating terminal
@@ -319,9 +329,10 @@ path.
 Finish owns maintenance-runner reconciliation, release serialization,
 certification, final Estate/Doctor proof and protected Wolo continuity. A
 successful handoff does not invent a second deployment authority. Only after the
-exact target source is the active certified runtime may the state advance through
+target implementation, or a Release-OS-proven documentation-only descendant of
+it, is the active certified runtime may the state advance through
 `RUNNER_RECONCILED` and `V2_CERTIFIED`. The bound Finish receipt must also
-prove its own protected Wolo continuity.
+prove that exact certified source and its own protected Wolo continuity.
 
 The handoff adds an independent observe-only continuity layer around that Finish
 proof. Before takeover it captures the validator service state, node PID, restart
