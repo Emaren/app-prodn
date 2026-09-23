@@ -139,10 +139,14 @@ promotion, betting, Wolo, or settlement.
 
 The widening ladder remains fail-closed: positive control 32388 first, then the
 documented disconnect/identity/conflict controls and deterministic validation
-cohort. Do not add a broad unresolved-game execution button until those controls
-show that the native slot/result surface is reproducible. The product target is
-100% disposition accounting and every provable winner resolved, not fabricated
-certainty for truncated/desynced/unprovable recordings.
+cohort. During this canary stage, the admin request parser, Operator Bridge, and
+Mac worker all reject every GameStats ID except **32388**; the unresolved-corpus
+table exposes no native-play button. Widening therefore requires an explicit,
+reviewed source change after the control gate passes. Do not add a broad
+unresolved-game execution surface until those controls show that the native
+slot/result surface is reproducible. The product target is 100% disposition
+accounting and every provable winner resolved, not fabricated certainty for
+truncated/desynced/unprovable recordings.
 
 The Replay Operations UI follows a queued native run through the existing OS
 receipt store and shows its terminal status, observed winner slots, and trusted
