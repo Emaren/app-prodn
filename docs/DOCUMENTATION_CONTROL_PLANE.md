@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/storage-handoff-state-machine-v1-20260923` at `7843ad4f0e5a1dbf734d62afe4cfbb9251864d84`
+Implementation baseline: `feature/storage-handoff-state-machine-v1-20260923` at `032e6b908cc625fbb291df7bd72ffa80e3bf0c8e`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
