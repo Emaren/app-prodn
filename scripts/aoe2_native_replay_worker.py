@@ -22,7 +22,8 @@ RUNNER_IMPL = API_ROOT / "utils" / "replay_engine_runner.py"
 TERMINAL_CONTROL_VALIDATOR = (
     API_ROOT / "scripts" / "validate_replay_engine_terminal_control.py"
 )
-TRUSTED_CONTROL_GAME_IDS = {32388}
+TRUSTED_CONTROL_SHA256 = {32388: "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b"}
+TRUSTED_CONTROL_GAME_IDS = set(TRUSTED_CONTROL_SHA256)
 TRUSTED_LOCAL_CONTROLS = {
     32388: (
         API_ROOT
@@ -474,6 +475,10 @@ def main() -> int:
     replay_sha256 = args.replay_sha256.strip().lower()
     if not SHA256_RE.fullmatch(replay_sha256):
         raise WorkerError("Invalid replay SHA-256.")
+    if replay_sha256 != TRUSTED_CONTROL_SHA256[args.game_stats_id]:
+        raise WorkerError(
+            "Replay SHA-256 does not match the trusted GameStats #32388 control."
+        )
     slots = sorted(set(args.roster_slot))
     if len(slots) < 2 or len(slots) > 8 or any(slot < 1 or slot > 8 for slot in slots):
         raise WorkerError("Native replay worker requires 2-8 unique roster slots 1-8.")
