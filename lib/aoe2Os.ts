@@ -667,9 +667,11 @@ export async function loadAoe2OsDashboard(): Promise<Aoe2OsDashboard> {
     kingdomIntelligence,
     activeRun,
     recentRuns: runs.slice(0, 12),
-    actions: (Object.keys(AOE2_OS_ACTIONS) as Aoe2OsAction[]).map((action) => ({
-      action,
-      ...AOE2_OS_ACTIONS[action],
-    })),
+    actions: (Object.keys(AOE2_OS_ACTIONS) as Aoe2OsAction[])
+      .filter((action) => action !== "replay_native_run")
+      .map((action) => ({
+        action,
+        ...AOE2_OS_ACTIONS[action],
+      })),
   };
 }
