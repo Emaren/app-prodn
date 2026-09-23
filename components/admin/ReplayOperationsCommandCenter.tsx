@@ -589,6 +589,33 @@ export default function ReplayOperationsCommandCenter() {
             Selects a bounded cohort from the immutable artifact catalog. It does not
             create a job receipt or invoke Python.
           </p>
+          <div className="mt-4 rounded-xl border border-violet-300/14 bg-violet-400/[0.045] px-3 py-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="text-[9px] font-bold uppercase tracking-[0.17em] text-violet-200/65">
+                  Native HD positive control
+                </div>
+                <div className="mt-1 text-xs leading-5 text-slate-300">
+                  Game #32388 · exact historical control · trusted winner slots 1, 2.
+                  Run this before widening native execution.
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={busy.native}
+                onClick={() => void runNativeReplay(32388)}
+                className="inline-flex min-h-9 shrink-0 items-center justify-center gap-2 rounded-full border border-violet-300/20 bg-violet-400/[0.09] px-3.5 py-2 text-xs font-semibold text-violet-50 transition hover:bg-violet-400/[0.15] disabled:cursor-wait disabled:opacity-50"
+              >
+                {busy.native ? (
+                  <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <PlayCircle className="h-3.5 w-3.5" />
+                )}
+                Run trusted control
+              </button>
+            </div>
+          </div>
+
           <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_7rem]">
             <label className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
               Cohort
