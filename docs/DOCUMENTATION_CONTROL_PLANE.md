@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/general-inspections-python-receipt-20260923` at `36db592d2075912353e09ac91acf70b5dea9ce69`
+Implementation baseline: `release/watcher-1.6.1-promotion-20260922` at `223892259c297a1da6e3f44fec43b43045f258c3`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "f8f5e686353274cde070f2618a5dea8a6791cb9d488acb2a6195129e60d6180f",
+      "sha256": "574e87e4c828c2ede8c583b7b5a244434ee943c5f9de15f0ca50f9bbe751485b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1646,9 +1646,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WATCHER_TELEMETRY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-21",
+      "reviewed_at": "2026-09-22",
       "sensitivity": "restricted",
-      "sha256": "66c0708548bff99e4d554170ef5726271f7f5802cb62e278e6e8d5721d1983ec",
+      "sha256": "8c3066f7befd6acc1fbf54688ad6ac9ab24c26f75853992734dfa597dacb6bd1",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/general-inspections-python-receipt-20260923",
-    "commit": "36db592d2075912353e09ac91acf70b5dea9ce69"
+    "branch": "release/watcher-1.6.1-promotion-20260922",
+    "commit": "223892259c297a1da6e3f44fec43b43045f258c3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
