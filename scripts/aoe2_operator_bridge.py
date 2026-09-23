@@ -19,6 +19,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 CLI = ROOT / "bin" / "aoe2war"
+NATIVE_REPLAY_WORKER = ROOT / "scripts" / "aoe2_native_replay_worker.py"
 FINISH_LOCK = ROOT / ".aoe2war-release" / "finish.lock"
 
 DEFAULT_URL = os.getenv("AOE2WAR_OS_BRIDGE_URL", "https://aoe2war.com").rstrip("/")
@@ -29,7 +30,10 @@ DEFAULT_TOKEN_FILE = Path(
     )
 ).expanduser()
 
-VERSION = "1.3.0"
+VERSION = "1.4.0"
+NATIVE_REPLAY_CANARY_SHA256 = {32388: "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b"}
+NATIVE_REPLAY_CANARY_GAME_IDS = set(NATIVE_REPLAY_CANARY_SHA256)
+NATIVE_REPLAY_CANARY_ROSTER = {32388: [1, 2, 3, 4]}
 
 ACTIONS = {
     "status",
@@ -45,6 +49,7 @@ ACTIONS = {
     "deploy_plan",
     "deploy",
     "finish",
+    "replay_native_run",
     "rollback_preview",
     "rollback",
 }
@@ -149,7 +154,9 @@ def local_head() -> str:
     ).strip()
 
 
-def command_for_run(run: dict[str, Any]) -> list[str]:
+def command_for_run(
+    run: dict[str, Any], *, base_url: str = DEFAULT_URL
+) -> list[str]:
     action = str(run.get("action") or "")
     if action not in ACTIONS:
         raise BridgeError(f"Unsupported bridge action: {action!r}")
@@ -195,6 +202,83 @@ def command_for_run(run: dict[str, Any]) -> list[str]:
             command.append("--dry-run")
         if parameters.get("preserveContextHistory") is True:
             command.append("--preserve-context-history")
+        return command
+    if action == "replay_native_run":
+        parameters = run.get("parameters")
+        if not isinstance(parameters, dict):
+            raise BridgeError("Native replay run is missing immutable parameters.")
+        if parameters.get("candidateOnly") is not True:
+            raise BridgeError("Native replay run must remain candidate-only.")
+        game_stats_id = parameters.get("gameStatsId")
+        replay_sha256 = str(parameters.get("replaySha256") or "").strip().lower()
+        roster_slots = parameters.get("rosterSlots")
+        performance_seconds = parameters.get("nativePerformanceSeconds")
+        timeout_seconds = parameters.get("timeoutSeconds")
+        if (
+            not isinstance(game_stats_id, int)
+            or isinstance(game_stats_id, bool)
+            or game_stats_id < 1
+        ):
+            raise BridgeError("Native replay run has invalid GameStats identity.")
+        if game_stats_id not in NATIVE_REPLAY_CANARY_GAME_IDS:
+            raise BridgeError(
+                "Native replay execution is still locked to trusted control GameStats #32388."
+            )
+        if __import__("re").fullmatch(r"[0-9a-f]{64}", replay_sha256) is None:
+            raise BridgeError("Native replay run has invalid replay SHA-256.")
+        if replay_sha256 != NATIVE_REPLAY_CANARY_SHA256[game_stats_id]:
+            raise BridgeError(
+                "Native replay SHA-256 does not match the trusted 32388 canary."
+            )
+        if (
+            not isinstance(roster_slots, list)
+            or len(roster_slots) < 2
+            or len(roster_slots) > 8
+            or any(
+                not isinstance(slot, int)
+                or isinstance(slot, bool)
+                or slot < 1
+                or slot > 8
+                for slot in roster_slots
+            )
+            or len(set(roster_slots)) != len(roster_slots)
+        ):
+            raise BridgeError("Native replay run has invalid roster slots.")
+        if roster_slots != NATIVE_REPLAY_CANARY_ROSTER[game_stats_id]:
+            raise BridgeError(
+                "Native replay roster does not match trusted 32388 slots 1,2,3,4."
+            )
+        if (
+            not isinstance(performance_seconds, int)
+            or isinstance(performance_seconds, bool)
+            or not 1 <= performance_seconds <= 240
+        ):
+            raise BridgeError("Native replay run has invalid performance bound.")
+        if (
+            not isinstance(timeout_seconds, int)
+            or isinstance(timeout_seconds, bool)
+            or not performance_seconds + 15 <= timeout_seconds <= 300
+        ):
+            raise BridgeError("Native replay run has invalid wall-time bound.")
+
+        command = [
+            sys.executable,
+            str(NATIVE_REPLAY_WORKER),
+            "--run-id",
+            str(run.get("id") or ""),
+            "--game-stats-id",
+            str(game_stats_id),
+            "--replay-sha256",
+            replay_sha256,
+            "--native-performance-seconds",
+            str(performance_seconds),
+            "--timeout-seconds",
+            str(timeout_seconds),
+            "--url",
+            base_url,
+        ]
+        for slot in roster_slots:
+            command.extend(["--roster-slot", str(slot)])
         return command
     if action == "rollback_preview":
         return [str(CLI), "rollback", "--dry-run", "--json"]
@@ -408,7 +492,7 @@ def execute_run(
         raise BridgeError("Claimed run is missing id.")
 
     try:
-        command = command_for_run(run)
+        command = command_for_run(run, base_url=base_url)
     except Exception as exc:
         post_bridge(
             {

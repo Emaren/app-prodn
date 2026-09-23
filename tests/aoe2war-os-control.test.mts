@@ -46,6 +46,11 @@ test("confirmation policy is server-side", () => {
   assert.equal(confirmationMatches("deploy", "DEPLOY"), true);
   assert.equal(confirmationMatches("finish", "FINISH"), true);
   assert.equal(confirmationMatches("finish", "finish"), false);
+  assert.equal(
+    confirmationMatches("replay_native_run", "RUN NATIVE REPLAY"),
+    true
+  );
+  assert.equal(confirmationMatches("replay_native_run", "run native replay"), false);
 });
 
 test("bridge online window is deterministic", () => {
@@ -139,5 +144,9 @@ test("file-backed control plane queues, claims, streams and completes", async ()
     assert.equal(dashboard.snapshot?.estate, "HEALTHY");
     assert.equal(dashboard.kingdomIntelligence?.warDate, "2026.249.1700Z");
     assert.equal(dashboard.kingdomIntelligence?.operatingState, "ATTENTION");
+    assert.equal(
+      dashboard.actions.some((action) => action.action === "replay_native_run"),
+      false
+    );
   });
 });

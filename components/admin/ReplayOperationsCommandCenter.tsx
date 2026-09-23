@@ -35,6 +35,7 @@ type BusyKey =
   | "inventory"
   | "plan"
   | "run"
+  | "native"
   | "review"
   | "receipts";
 
@@ -54,6 +55,16 @@ function formatBytes(value: string) {
 
 function humanize(value: string) {
   return value.replaceAll("_", " ");
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
+}
+
+function delay(milliseconds: number) {
+  return new Promise<void>((resolve) => window.setTimeout(resolve, milliseconds));
 }
 
 function toneForStatus(value: string) {
@@ -135,10 +146,12 @@ export default function ReplayOperationsCommandCenter() {
   const [candidateConfirmation, setCandidateConfirmation] =
     useState("");
   const [financialOnly, setFinancialOnly] = useState(true);
+  const [nativeMessage, setNativeMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState<Record<BusyKey, boolean>>({
     inventory: false,
     plan: false,
     run: false,
+    native: false,
     review: false,
     receipts: false,
   });
@@ -253,6 +266,102 @@ export default function ReplayOperationsCommandCenter() {
       }));
     } finally {
       finish("plan");
+    }
+  }
+
+  async function runNativeReplay(gameStatsId: number) {
+    start("native");
+    setNativeMessage(null);
+    try {
+      type NativeRun = {
+        id: string;
+        status: string;
+        result?: unknown;
+        error?: string | null;
+      };
+      type NativeDashboard = {
+        activeRun?: NativeRun | null;
+        recentRuns?: NativeRun[];
+      };
+
+      const queued = await loadJson<NativeDashboard>("/api/admin/aoe2war-os", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "replay_native_run",
+          gameStatsId,
+          confirmation: "RUN NATIVE REPLAY",
+        }),
+      });
+      const queuedRun = queued.activeRun;
+      if (!queuedRun?.id) {
+        throw new Error("Native replay run was queued but its run identity is unavailable.");
+      }
+
+      const runId = queuedRun.id;
+      setNativeMessage(
+        `Native HD #${gameStatsId} · ${runId} · queued — waiting for the Mac bridge…`
+      );
+
+      const deadline = Date.now() + 12 * 60 * 1000;
+      while (Date.now() < deadline) {
+        await delay(3000);
+        const dashboard = await loadJson<NativeDashboard>("/api/admin/aoe2war-os");
+        const run =
+          dashboard.activeRun?.id === runId
+            ? dashboard.activeRun
+            : (dashboard.recentRuns ?? []).find((candidate) => candidate.id === runId);
+        if (!run) continue;
+
+        if (["queued", "claimed", "running"].includes(run.status)) {
+          setNativeMessage(
+            `Native HD #${gameStatsId} · ${runId} · ${humanize(run.status)}…`
+          );
+          continue;
+        }
+
+        const result = asRecord(run.result);
+        const nativeStatus =
+          typeof result?.status === "string" ? result.status : run.status;
+        const terminal = result?.terminalOutcomeProven === true;
+        const nativeResult = asRecord(result?.result);
+        const winners = Array.isArray(nativeResult?.winning_slots)
+          ? nativeResult.winning_slots.filter((slot) => typeof slot === "number")
+          : [];
+        const control = asRecord(result?.trustedControlValidation);
+        const controlStatus =
+          typeof control?.status === "string" ? control.status : null;
+
+        const pieces = [
+          `Native HD #${gameStatsId}`,
+          humanize(nativeStatus),
+        ];
+        if (terminal) pieces.push("terminal witness recorded");
+        if (winners.length) pieces.push(`winner slots ${winners.join(", ")}`);
+        if (controlStatus) pieces.push(`trusted control ${controlStatus}`);
+        setNativeMessage(pieces.join(" · "));
+
+        if (run.status !== "succeeded" && !result) {
+          throw new Error(
+            run.error || `Native replay run ended with status ${run.status}.`
+          );
+        }
+        return;
+      }
+
+      setNativeMessage(
+        `Native HD #${gameStatsId} is still running after 12 minutes. The run remains receipt-tracked in AoE2WAR OS.`
+      );
+    } catch (error) {
+      setErrors((current) => ({
+        ...current,
+        native:
+          error instanceof Error
+            ? error.message
+            : "Native replay playthrough unavailable.",
+      }));
+    } finally {
+      finish("native");
     }
   }
 
@@ -480,6 +589,33 @@ export default function ReplayOperationsCommandCenter() {
             Selects a bounded cohort from the immutable artifact catalog. It does not
             create a job receipt or invoke Python.
           </p>
+          <div className="mt-4 rounded-xl border border-violet-300/14 bg-violet-400/[0.045] px-3 py-3">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <div className="text-[9px] font-bold uppercase tracking-[0.17em] text-violet-200/65">
+                  Native HD positive control
+                </div>
+                <div className="mt-1 text-xs leading-5 text-slate-300">
+                  Game #32388 · exact historical control · trusted winner slots 1, 2.
+                  Run this before widening native execution.
+                </div>
+              </div>
+              <button
+                type="button"
+                disabled={busy.native}
+                onClick={() => void runNativeReplay(32388)}
+                className="inline-flex min-h-9 shrink-0 items-center justify-center gap-2 rounded-full border border-violet-300/20 bg-violet-400/[0.09] px-3.5 py-2 text-xs font-semibold text-violet-50 transition hover:bg-violet-400/[0.15] disabled:cursor-wait disabled:opacity-50"
+              >
+                {busy.native ? (
+                  <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <PlayCircle className="h-3.5 w-3.5" />
+                )}
+                Run trusted control
+              </button>
+            </div>
+          </div>
+
           <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_7rem]">
             <label className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
               Cohort
@@ -540,19 +676,22 @@ export default function ReplayOperationsCommandCenter() {
                     key={artifact.artifactId}
                     className="flex items-center justify-between gap-3 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2 text-[11px]"
                   >
-                    <span className="font-mono text-cyan-100/75">
+                    <span className="min-w-0 font-mono text-cyan-100/75">
                       #{artifact.artifactId} · {artifact.hashPrefix}
                     </span>
-                    <span className="text-slate-500">
-                      {artifact.extension ?? "unknown"} ·{" "}
-                      {formatBytes(artifact.byteSize)}
-                    </span>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className="text-slate-500">
+                        {artifact.extension ?? "unknown"} ·{" "}
+                        {formatBytes(artifact.byteSize)}
+                      </span>
+                    </div>
                   </div>
                 ))}
               </div>
               <div className="mt-3 text-[11px] leading-5 text-slate-500">
-                Worker boundary: {plan.executionBoundary.label}. Each button run creates a
-                frozen one-replay manifest on the API host and remains candidate-only.
+                Worker boundary: {plan.executionBoundary.label}. Candidate parser runs remain
+                private and bounded. Native HD execution stays server-locked to trusted control
+                #32388 until the validation ladder is explicitly widened in reviewed source.
               </div>
               {plan.artifacts.some(
                 (artifact) => artifact.linkedGameStatsId !== null
@@ -631,8 +770,14 @@ export default function ReplayOperationsCommandCenter() {
               ) : null}
             </div>
           ) : null}
+          {nativeMessage ? (
+            <div className="mt-3 rounded-xl border border-violet-300/15 bg-violet-400/[0.06] px-3 py-2.5 text-xs leading-5 text-violet-100">
+              {nativeMessage}
+            </div>
+          ) : null}
           {errors.plan ? <PanelError>{errors.plan}</PanelError> : null}
           {errors.run ? <PanelError>{errors.run}</PanelError> : null}
+          {errors.native ? <PanelError>{errors.native}</PanelError> : null}
         </article>
 
         <article className="bg-slate-950/80 p-5 sm:p-6">

@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "cf0d04fe78ec92c2e3e18c6e2757aa322f6e8110faf105a2190caec0d914187a",
+      "sha256": "d878029ecac37d5bacd69fd9f5360afd013706d3f1a399fa1efb861db020809d",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1049,9 +1049,9 @@
       "owner": "aoe2war-web",
       "path": "docs/PARSER_ENGINE_ROOM.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-09-22",
+      "reviewed_at": "2026-09-23",
       "sensitivity": "restricted",
-      "sha256": "52b7f1ecce236b903dd146e90b7504ff3d58fc6f1163d10662dbc8c7f2280d11",
+      "sha256": "3297a0d9f7dfe1a037708bd75e07dfa488fa876502d64d0b364f339209d2c542",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/compact-clan-hall-signals-20260922",
-    "commit": "80b22db5254a87aa1d05543d6ff0989ef6b09581"
+    "branch": "feature/replay-native-admin-worker-v1-20260923",
+    "commit": "f1b9cb925057f9cf153d4dee97cb5c1481d1c147"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

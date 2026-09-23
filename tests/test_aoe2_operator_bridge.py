@@ -104,6 +104,159 @@ class OperatorBridgeTests(unittest.TestCase):
             ],
         )
 
+    def test_native_replay_command_is_fixed_and_identity_bound(self):
+        command = MODULE.command_for_run(
+            {
+                "id": "20260923120000-abcd1234",
+                "action": "replay_native_run",
+                "parameters": {
+                    "gameStatsId": 32388,
+                    "replaySha256": "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b",
+                    "rosterSlots": [1, 2, 3, 4],
+                    "candidateOnly": True,
+                    "nativePerformanceSeconds": 240,
+                    "timeoutSeconds": 300,
+                },
+            },
+            base_url="https://example.invalid",
+        )
+        self.assertEqual(
+            command,
+            [
+                sys.executable,
+                str(MODULE.NATIVE_REPLAY_WORKER),
+                "--run-id",
+                "20260923120000-abcd1234",
+                "--game-stats-id",
+                "32388",
+                "--replay-sha256",
+                "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b",
+                "--native-performance-seconds",
+                "240",
+                "--timeout-seconds",
+                "300",
+                "--url",
+                "https://example.invalid",
+                "--roster-slot",
+                "1",
+                "--roster-slot",
+                "2",
+                "--roster-slot",
+                "3",
+                "--roster-slot",
+                "4",
+            ],
+        )
+
+    def test_native_replay_command_rejects_non_canary_game(self):
+        with self.assertRaisesRegex(
+            MODULE.BridgeError,
+            "locked to trusted control GameStats #32388",
+        ):
+            MODULE.command_for_run(
+                {
+                    "id": "run",
+                    "action": "replay_native_run",
+                    "parameters": {
+                        "gameStatsId": 99999,
+                        "replaySha256": "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b",
+                        "rosterSlots": [1, 2],
+                        "candidateOnly": True,
+                        "nativePerformanceSeconds": 240,
+                        "timeoutSeconds": 300,
+                    },
+                }
+            )
+
+    def test_native_replay_command_rejects_wrong_canary_roster(self):
+        with self.assertRaisesRegex(
+            MODULE.BridgeError,
+            "does not match trusted 32388 slots 1,2,3,4",
+        ):
+            MODULE.command_for_run(
+                {
+                    "id": "run",
+                    "action": "replay_native_run",
+                    "parameters": {
+                        "gameStatsId": 32388,
+                        "replaySha256": "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b",
+                        "rosterSlots": [1, 2, 3],
+                        "candidateOnly": True,
+                        "nativePerformanceSeconds": 240,
+                        "timeoutSeconds": 300,
+                    },
+                }
+            )
+
+    def test_native_replay_command_rejects_wrong_canary_sha(self):
+        with self.assertRaisesRegex(
+            MODULE.BridgeError,
+            "does not match the trusted 32388 canary",
+        ):
+            MODULE.command_for_run(
+                {
+                    "id": "run",
+                    "action": "replay_native_run",
+                    "parameters": {
+                        "gameStatsId": 32388,
+                        "replaySha256": "a" * 64,
+                        "rosterSlots": [1, 2],
+                        "candidateOnly": True,
+                        "nativePerformanceSeconds": 240,
+                        "timeoutSeconds": 300,
+                    },
+                }
+            )
+
+    def test_native_replay_command_rejects_bounds_wider_than_engine(self):
+        with self.assertRaises(MODULE.BridgeError):
+            MODULE.command_for_run(
+                {
+                    "id": "run",
+                    "action": "replay_native_run",
+                    "parameters": {
+                        "gameStatsId": 32388,
+                        "replaySha256": "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b",
+                        "rosterSlots": [1, 2, 3, 4],
+                        "candidateOnly": True,
+                        "nativePerformanceSeconds": 241,
+                        "timeoutSeconds": 300,
+                    },
+                }
+            )
+        with self.assertRaises(MODULE.BridgeError):
+            MODULE.command_for_run(
+                {
+                    "id": "run",
+                    "action": "replay_native_run",
+                    "parameters": {
+                        "gameStatsId": 32388,
+                        "replaySha256": "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b",
+                        "rosterSlots": [1, 2, 3, 4],
+                        "candidateOnly": True,
+                        "nativePerformanceSeconds": 240,
+                        "timeoutSeconds": 301,
+                    },
+                }
+            )
+
+    def test_native_replay_command_rejects_untrusted_parameters(self):
+        with self.assertRaises(MODULE.BridgeError):
+            MODULE.command_for_run(
+                {
+                    "id": "run",
+                    "action": "replay_native_run",
+                    "parameters": {
+                        "gameStatsId": 32388,
+                        "replaySha256": "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b",
+                        "rosterSlots": [1, 2],
+                        "candidateOnly": False,
+                        "nativePerformanceSeconds": 240,
+                        "timeoutSeconds": 300,
+                    },
+                }
+            )
+
     def test_token_file(self):
         with tempfile.TemporaryDirectory() as temp:
             token_file = Path(temp) / "token"

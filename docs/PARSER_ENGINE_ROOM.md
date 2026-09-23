@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "architecture-explanation"
-reviewed_at: "2026-09-22"
+reviewed_at: "2026-09-23"
 review_interval_days: 60
 sensitivity: "restricted"
 ---
@@ -62,6 +62,104 @@ separately authorized invocation of `run_replay_engine_room_job.py` against a
 reviewed frozen manifest. The three-game button is an operator canary, not a
 replacement for the full-corpus worker. Opening a replay review case likewise
 does not authorize settlement.
+
+## Native HD terminal-witness canary
+
+Replay Operations also has a separate one-replay native execution rail for
+result research that the static parser cannot resolve. It is deliberately not an
+LLM runtime. ChatGPT/Codex may develop or diagnose the rail, but an ordinary
+playthrough is a deterministic AoE2WAR OS job:
+
+```text
+admin Replay Operations
+  -> canonical final GameStats identity
+  -> exact replay SHA-256 + canonical player slots
+  -> fixed replay_native_run
+  -> outbound-only Mac Operator Bridge
+  -> exact replay bytes re-hashed on the Mac
+  -> governed SteamReplayLab / AoK HD runtime
+  -> append-safe native AILog GAME OVER witness
+  -> candidate receipt
+  -> trusted-control referee when applicable
+```
+
+The browser never supplies a local path or arbitrary command. The server queues
+only a GameStats identity; the run freezes the current replay SHA and roster
+slots. During the canary stage, GameStats **32388** is additionally bound at the
+admin parser, bridge, and Mac worker to exact replay SHA
+`02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b`
+and exact roster slots `[1, 2, 3, 4]`. A historical presentation filename is
+not replay identity and cannot veto or substitute for that digest. The bridge exposes one fixed action and cannot turn
+request parameters into shell syntax.
+
+Ordinary unresolved replays are served from the canonical content-addressed
+archive through the authenticated internal bridge endpoint and are hashed again
+after transfer. The bridge response must agree with the queued GameStats ID,
+trusted replay SHA-256, and recorded-game extension before any bytes become
+native input. Archive admission requires the exact canonical filename
+`<replay-sha256>.aoe2record`; prefix lookalikes and alternate containers are
+not native-run inputs. This native lane accepts recorded HD `.aoe2record`
+battles only. Saved `.aoe2mpgame` checkpoints and legacy containers remain in
+their separate evidence/decoder lanes and are never renamed into native battle
+inputs.
+
+Before native execution the Mac worker also binds **source provenance**. The
+tracked `app-prodn` and sibling `api-prodn` worktrees must be clean. The
+local app HEAD must contain reviewed canary implementation
+`abdccc18f6f216ae2b166d70a7aac9665b3bb1ba`, and the local API HEAD must
+contain canonical exact-roster native-worker merge
+`cd99188c55d1d1ecd0465b1662a459db0b30f2a6`. The resulting app/API HEADs are
+stamped into the candidate result. A dirty, stale, or divergent local engine
+checkout therefore fails closed instead of becoming invisible runtime input.
+
+Historical positive control **32388** may instead use its preserved local
+control bytes on Tony's Mac when present; those bytes must match the exact
+checked-in control SHA before use. If the preserved local file is absent, the
+worker may use the exact canonical server archive object. If the local control
+exists but its identity, type, or byte bounds disagree, the run fails closed.
+
+The native runner may record a candidate terminal partition only when all of the
+following are true:
+
+- exact replay load is independently witnessed by the bound native performance
+  harness;
+- attempt-new native AILog bytes contain exactly one `GAME OVER!` block;
+- every expected player slot appears exactly once as native `Won` or `Lost`;
+- at least one winner and one loser exist;
+- the winner/loser partition covers the complete expected roster;
+- engine cleanup completes.
+
+Even then the receipt remains candidate-only:
+`production_results_mutated=false`, `replay_truth_mutated=false`,
+`betting_mutated=false`, `wolo_mutated=false`, and
+`settlement_mutated=false`.
+
+GameStats **32388** is the first positive semantic control. Its exact replay SHA
+is
+`02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b`
+its independently trusted roster slots are `[1, 2, 3, 4]`, and its
+independently trusted winning slots are `[1, 2]`. A native terminal candidate
+for that exact replay is automatically checked by
+`validate_replay_engine_terminal_control.py`. A PASS validates that one control;
+it does not globally authorize terminal semantics, broad execution, result
+promotion, betting, Wolo, or settlement.
+
+The widening ladder remains fail-closed: positive control 32388 first, then the
+documented disconnect/identity/conflict controls and deterministic validation
+cohort. During this canary stage, the admin request parser, Operator Bridge, and
+Mac worker all reject every GameStats ID except **32388**; the unresolved-corpus
+table exposes no native-play button. Widening therefore requires an explicit,
+reviewed source change after the control gate passes. Do not add a broad
+unresolved-game execution surface until those controls show that the native
+slot/result surface is reproducible. The product target is 100% disposition
+accounting and every provable winner resolved, not fabricated certainty for
+truncated/desynced/unprovable recordings.
+
+The Replay Operations UI follows a queued native run through the existing OS
+receipt store and shows its terminal status, observed winner slots, and trusted
+control status in the same panel. The persistent Operator Bridge heartbeat keeps
+the long-running native playthrough observable without Remote Desktop Commander
+or an LLM session.
 
 ## Data contract
 

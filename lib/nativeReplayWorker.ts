@@ -1,0 +1,305 @@
+import "server-only";
+
+import { createHash } from "node:crypto";
+import { promises as fs } from "node:fs";
+import { extname, join, relative, resolve } from "node:path";
+
+import { getPrisma } from "@/lib/prisma";
+import { normalizeReplayPlayers } from "@/lib/teamResolution";
+
+export const NATIVE_REPLAY_CONFIRMATION = "RUN NATIVE REPLAY";
+export const NATIVE_REPLAY_MAX_BYTES = 64 * 1024 * 1024;
+export const NATIVE_REPLAY_DEFAULT_PERFORMANCE_SECONDS = 240;
+export const NATIVE_REPLAY_MAX_PERFORMANCE_SECONDS = 240;
+export const NATIVE_REPLAY_DEFAULT_WALL_SECONDS = 300;
+export const NATIVE_REPLAY_MAX_WALL_SECONDS = 300;
+export const NATIVE_REPLAY_CANARY_SHA256_BY_GAME_ID = new Map<number, string>([
+  [
+    32388,
+    "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b",
+  ],
+]);
+export const NATIVE_REPLAY_CANARY_GAME_IDS = new Set(
+  NATIVE_REPLAY_CANARY_SHA256_BY_GAME_ID.keys()
+);
+export const NATIVE_REPLAY_CANARY_ROSTER_BY_GAME_ID = new Map<number, number[]>([
+  [32388, [1, 2, 3, 4]],
+]);
+
+const ARCHIVE_ROOT = "/mnt/HC_Volume_105319120/aoe2-replay-archive";
+const SHA256_RE = /^[0-9a-f]{64}$/;
+const SAFE_REPLAY_EXTENSIONS = new Set([".aoe2record"]);
+
+export type NativeReplayRunParameters = {
+  gameStatsId: number;
+  replaySha256: string;
+  rosterSlots: number[];
+  candidateOnly: true;
+  nativePerformanceSeconds: number;
+  timeoutSeconds: number;
+};
+
+function boundedPositiveInteger(
+  value: unknown,
+  field: string,
+  maximum: number,
+  fallback?: number
+) {
+  if (value === undefined || value === null || value === "") {
+    if (fallback !== undefined) return fallback;
+    throw new Error(`${field} is required.`);
+  }
+  const parsed =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && /^\d+$/.test(value.trim())
+        ? Number(value)
+        : Number.NaN;
+  if (!Number.isSafeInteger(parsed) || parsed < 1 || parsed > maximum) {
+    throw new Error(`${field} must be an integer between 1 and ${maximum}.`);
+  }
+  return parsed;
+}
+
+export function parseNativeReplayRunParameters(
+  value: unknown
+): NativeReplayRunParameters {
+  const source =
+    value && typeof value === "object" && !Array.isArray(value)
+      ? (value as Record<string, unknown>)
+      : {};
+
+  const gameStatsId = boundedPositiveInteger(
+    source.gameStatsId,
+    "gameStatsId",
+    Number.MAX_SAFE_INTEGER
+  );
+  if (!NATIVE_REPLAY_CANARY_GAME_IDS.has(gameStatsId)) {
+    throw new Error(
+      "Native HD execution is still locked to trusted control GameStats #32388."
+    );
+  }
+
+  const replaySha256 =
+    typeof source.replaySha256 === "string"
+      ? source.replaySha256.trim().toLowerCase()
+      : "";
+  if (!SHA256_RE.test(replaySha256)) {
+    throw new Error("replaySha256 must be a complete lowercase SHA-256 digest.");
+  }
+  const canarySha256 = NATIVE_REPLAY_CANARY_SHA256_BY_GAME_ID.get(gameStatsId);
+  if (!canarySha256 || replaySha256 !== canarySha256) {
+    throw new Error(
+      "Native HD canary replay SHA-256 does not match the trusted GameStats #32388 control."
+    );
+  }
+  if (source.candidateOnly !== true) {
+    throw new Error("Native replay execution is candidate-only.");
+  }
+  if (!Array.isArray(source.rosterSlots)) {
+    throw new Error("rosterSlots must be an array.");
+  }
+  const rosterSlots = [
+    ...new Set(
+      source.rosterSlots.map((item) =>
+        typeof item === "number"
+          ? item
+          : typeof item === "string" && /^\d+$/.test(item.trim())
+            ? Number(item)
+            : Number.NaN
+      )
+    ),
+  ].sort((left, right) => left - right);
+  if (
+    rosterSlots.length < 2 ||
+    rosterSlots.length > 8 ||
+    rosterSlots.some(
+      (slot) => !Number.isSafeInteger(slot) || slot < 1 || slot > 8
+    )
+  ) {
+    throw new Error("rosterSlots must contain 2-8 unique AoE2 player slots from 1 through 8.");
+  }
+
+  const trustedRoster = NATIVE_REPLAY_CANARY_ROSTER_BY_GAME_ID.get(gameStatsId);
+  if (
+    !trustedRoster ||
+    rosterSlots.length !== trustedRoster.length ||
+    rosterSlots.some((slot, index) => slot !== trustedRoster[index])
+  ) {
+    throw new Error(
+      "Native HD canary roster does not match trusted GameStats #32388 slots 1,2,3,4."
+    );
+  }
+
+  const nativePerformanceSeconds = boundedPositiveInteger(
+    source.nativePerformanceSeconds,
+    "nativePerformanceSeconds",
+    NATIVE_REPLAY_MAX_PERFORMANCE_SECONDS,
+    NATIVE_REPLAY_DEFAULT_PERFORMANCE_SECONDS
+  );
+  const timeoutSeconds = boundedPositiveInteger(
+    source.timeoutSeconds,
+    "timeoutSeconds",
+    NATIVE_REPLAY_MAX_WALL_SECONDS,
+    Math.max(
+      NATIVE_REPLAY_DEFAULT_WALL_SECONDS,
+      nativePerformanceSeconds + 45
+    )
+  );
+  if (timeoutSeconds < nativePerformanceSeconds + 15) {
+    throw new Error(
+      "timeoutSeconds must leave at least 15 seconds beyond nativePerformanceSeconds."
+    );
+  }
+
+  return {
+    gameStatsId,
+    replaySha256,
+    rosterSlots,
+    candidateOnly: true,
+    nativePerformanceSeconds,
+    timeoutSeconds,
+  };
+}
+
+export async function buildNativeReplayRunParameters(
+  gameStatsIdInput: unknown
+): Promise<NativeReplayRunParameters> {
+  const gameStatsId = boundedPositiveInteger(
+    gameStatsIdInput,
+    "gameStatsId",
+    Number.MAX_SAFE_INTEGER
+  );
+  const game = await getPrisma().gameStats.findUnique({
+    where: { id: gameStatsId },
+    select: {
+      id: true,
+      replayHash: true,
+      is_final: true,
+      players: true,
+    },
+  });
+  if (!game || !game.is_final) {
+    throw new Error("Native replay worker requires an existing final GameStats row.");
+  }
+
+  const replaySha256 = String(game.replayHash || "").trim().toLowerCase();
+  if (!SHA256_RE.test(replaySha256)) {
+    throw new Error("The selected battle has no canonical replay SHA-256.");
+  }
+
+  const normalized = normalizeReplayPlayers(game.players);
+  const slots = normalized
+    .map((player) => player.playerNumber)
+    .filter((slot): slot is number => Number.isInteger(slot))
+    .filter((slot) => slot >= 1 && slot <= 8);
+  const rosterSlots = [...new Set(slots)].sort((left, right) => left - right);
+  if (
+    rosterSlots.length < 2 ||
+    rosterSlots.length !== normalized.length
+  ) {
+    throw new Error(
+      "The selected battle does not have one unique canonical player slot for every roster member."
+    );
+  }
+
+  return parseNativeReplayRunParameters({
+    gameStatsId,
+    replaySha256,
+    rosterSlots,
+    candidateOnly: true,
+    nativePerformanceSeconds: NATIVE_REPLAY_DEFAULT_PERFORMANCE_SECONDS,
+    timeoutSeconds: NATIVE_REPLAY_DEFAULT_WALL_SECONDS,
+  });
+}
+
+async function locateArchiveReplay(replaySha256: string) {
+  const directory = join(
+    ARCHIVE_ROOT,
+    replaySha256.slice(0, 2),
+    replaySha256.slice(2, 4)
+  );
+  let entries;
+  try {
+    entries = await fs.readdir(directory, { withFileTypes: true });
+  } catch {
+    throw new Error("The canonical replay archive directory is missing.");
+  }
+
+  const canonicalName = `${replaySha256}.aoe2record`;
+  const candidate = entries.find(
+    (entry) =>
+      entry.isFile() &&
+      !entry.isSymbolicLink() &&
+      entry.name === canonicalName &&
+      SAFE_REPLAY_EXTENSIONS.has(extname(entry.name).toLowerCase())
+  );
+
+  if (!candidate) {
+    throw new Error(
+      "The exact SHA-named .aoe2record is not present in the canonical replay archive."
+    );
+  }
+  return join(directory, candidate.name);
+}
+
+export async function loadNativeReplayArtifact(
+  value: unknown
+): Promise<{
+  bytes: Buffer;
+  fileName: string;
+  sha256: string;
+  byteSize: number;
+}> {
+  const parameters = parseNativeReplayRunParameters(value);
+  const game = await getPrisma().gameStats.findUnique({
+    where: { id: parameters.gameStatsId },
+    select: {
+      id: true,
+      replayHash: true,
+      is_final: true,
+    },
+  });
+  if (!game || !game.is_final) {
+    throw new Error("Native replay source is no longer an existing final battle.");
+  }
+  const currentHash = String(game.replayHash || "").trim().toLowerCase();
+  if (currentHash !== parameters.replaySha256) {
+    throw new Error("Replay identity moved after the native-run request was queued.");
+  }
+
+  const source = await locateArchiveReplay(parameters.replaySha256);
+  const archiveRoot = (await fs.realpath(resolve(ARCHIVE_ROOT))) + "/";
+  const realSource = await fs.realpath(source);
+  if (!realSource.startsWith(archiveRoot)) {
+    throw new Error("Replay archive object escaped the canonical archive root.");
+  }
+  const metadata = await fs.lstat(realSource);
+  if (!metadata.isFile() || metadata.isSymbolicLink()) {
+    throw new Error("Replay archive object must be one regular file.");
+  }
+  if (metadata.size < 1 || metadata.size > NATIVE_REPLAY_MAX_BYTES) {
+    throw new Error("Replay archive object is outside the native-worker byte bound.");
+  }
+
+  const bytes = await fs.readFile(realSource);
+  const observed = createHash("sha256").update(bytes).digest("hex");
+  if (observed !== parameters.replaySha256) {
+    throw new Error("Replay archive object failed its content-addressed SHA-256 check.");
+  }
+
+  return {
+    bytes,
+    fileName: `${parameters.replaySha256}${extname(realSource).toLowerCase()}`,
+    sha256: observed,
+    byteSize: bytes.length,
+  };
+}
+
+export function nativeReplayArchiveRoot() {
+  return ARCHIVE_ROOT;
+}
+
+export function nativeReplayArtifactRelativePath(filePath: string) {
+  return relative(ARCHIVE_ROOT, filePath);
+}
