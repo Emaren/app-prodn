@@ -291,6 +291,24 @@ def recorded_family_dead(snapshot: dict[str, Any]) -> bool:
     return True
 
 
+def live_campaign_controller(campaign_id: str) -> dict[str, Any] | None:
+    matches = [
+        row
+        for row in process_table().values()
+        if (
+            "aoe2_storage_campaign.py" in str(row.get("command") or "")
+            and "_run" in str(row.get("command") or "")
+            and campaign_id in str(row.get("command") or "")
+        )
+    ]
+    if len(matches) > 1:
+        raise HandoffError(
+            f"multiple live Storage campaign controllers match {campaign_id}: "
+            + ", ".join(str(row.get("pid")) for row in matches)
+        )
+    return matches[0] if matches else None
+
+
 def git_output(*args: str) -> str:
     proc = subprocess.run(
         ["git", "-C", str(ROOT), *args],
@@ -862,8 +880,34 @@ def drive(handoff_id: str) -> int:
                     new_release_sha=release,
                     new_build_id=build,
                 )
-                resumed = campaign.resume(campaign_id)
-                state["resumed_pid"] = resumed.get("spawned_pid")
+
+                current_campaign = campaign.load_state(campaign_id)
+                if (
+                    current_campaign.get("release_sha") != release
+                    or current_campaign.get("build_id") != build
+                ):
+                    raise HandoffError(
+                        "V2 campaign authority drifted after handoff rebind"
+                    )
+
+                recovered_controller = live_campaign_controller(campaign_id)
+                if recovered_controller is not None:
+                    resumed_pid = int(recovered_controller["pid"])
+                    resume_mode = "RECOVERED_LIVE_V2_CONTROLLER"
+                elif current_campaign.get("resumed_at"):
+                    resumed_pid = (
+                        int(current_campaign["pid"])
+                        if isinstance(current_campaign.get("pid"), int)
+                        else None
+                    )
+                    resume_mode = "RECOVERED_COMPLETED_OR_TERMINAL_V2_RUN"
+                else:
+                    resumed = campaign.resume(campaign_id)
+                    resumed_pid = resumed.get("spawned_pid")
+                    resume_mode = "SPAWNED_V2_CONTROLLER"
+
+                state = load_state(handoff_id)
+                state["resumed_pid"] = resumed_pid
                 save_state(state)
                 transition(
                     state,
@@ -871,7 +915,8 @@ def drive(handoff_id: str) -> int:
                     evidence={
                         "new_release_sha": release,
                         "new_build_id": build,
-                        "resumed_pid": resumed.get("spawned_pid"),
+                        "resumed_pid": resumed_pid,
+                        "resume_mode": resume_mode,
                     },
                 )
                 continue
