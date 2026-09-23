@@ -314,6 +314,39 @@ def same_process_identity(current: dict[str, Any], recorded: dict[str, Any]) -> 
     )
 
 
+def recorded_process_alive(recorded: dict[str, Any] | None) -> bool:
+    if not isinstance(recorded, dict):
+        return False
+    pid = recorded.get("pid")
+    if not isinstance(pid, int) or pid <= 0:
+        return False
+    current = process_table().get(pid)
+    return bool(current is not None and same_process_identity(current, recorded))
+
+
+def capture_process_identity(
+    pid: int,
+    *,
+    required_tokens: tuple[str, ...] = (),
+    attempts: int = 20,
+) -> dict[str, Any]:
+    for _ in range(attempts):
+        row = process_table().get(pid)
+        command = str((row or {}).get("command") or "")
+        if row is not None and all(token in command for token in required_tokens):
+            return {
+                "pid": int(row["pid"]),
+                "ppid": int(row["ppid"]),
+                "pgid": int(row["pgid"]),
+                "command": command,
+            }
+        time.sleep(0.05)
+    raise HandoffError(
+        f"cannot bind process identity for pid={pid} "
+        f"tokens={list(required_tokens)}"
+    )
+
+
 def recorded_family_dead(snapshot: dict[str, Any]) -> bool:
     rows = process_table()
     members: list[dict[str, Any]] = []
@@ -624,7 +657,12 @@ def spawn_runner(handoff_id: str) -> int:
         close_fds=True,
     )
     log.close()
+    runner_identity = capture_process_identity(
+        int(proc.pid),
+        required_tokens=("aoe2_storage_handoff.py", "_run", handoff_id),
+    )
     state["runner_pid"] = int(proc.pid)
+    state["runner_process_identity"] = runner_identity
     state["runner_started_at"] = utc_now()
     save_state(state)
     return int(proc.pid)
@@ -659,7 +697,12 @@ def launch_finish(state: dict[str, Any]) -> subprocess.Popen[str]:
         close_fds=True,
     )
     log.close()
+    finish_identity = capture_process_identity(
+        int(proc.pid),
+        required_tokens=("aoe2_finish.py", str(state["handoff_id"])),
+    )
     state["finish_pid"] = int(proc.pid)
+    state["finish_process_identity"] = finish_identity
     state["finish_started_at"] = utc_now()
     state["finish_returncode"] = None
     save_state(state)
@@ -818,8 +861,13 @@ def wait_for_finish_or_recover(state: dict[str, Any]) -> tuple[str, str]:
             return current_release, current_build
 
     finish_pid = state.get("finish_pid")
-    if isinstance(finish_pid, int) and process_alive(finish_pid):
-        while process_alive(finish_pid):
+    finish_identity = state.get("finish_process_identity")
+    if isinstance(finish_pid, int) and recorded_process_alive(
+        finish_identity if isinstance(finish_identity, dict) else None
+    ):
+        while recorded_process_alive(
+            finish_identity if isinstance(finish_identity, dict) else None
+        ):
             time.sleep(2)
         state = load_state(str(state["handoff_id"]))
         try:
@@ -1067,8 +1115,16 @@ def resume(handoff_id: str | None) -> dict[str, Any]:
     if state.get("status") == "V2_RESUMED":
         return state
     runner_pid = state.get("runner_pid")
-    if process_alive(runner_pid if isinstance(runner_pid, int) else None):
+    runner_identity = state.get("runner_process_identity")
+    if recorded_process_alive(
+        runner_identity if isinstance(runner_identity, dict) else None
+    ):
         return state
+    if isinstance(runner_pid, int) and process_alive(runner_pid):
+        raise HandoffError(
+            "handoff runner PID is alive but its recorded process identity no "
+            "longer matches; refusing to treat a reused PID as the handoff"
+        )
     state["last_error"] = None
     save_state(state)
     pid = spawn_runner(selected)
@@ -1086,11 +1142,23 @@ def status_payload(handoff_id: str | None) -> dict[str, Any]:
     state = load_state(selected)
     runner_pid = state.get("runner_pid")
     finish_pid = state.get("finish_pid")
-    state["runner_alive"] = process_alive(
-        runner_pid if isinstance(runner_pid, int) else None
+    runner_identity = state.get("runner_process_identity")
+    finish_identity = state.get("finish_process_identity")
+    state["runner_alive"] = recorded_process_alive(
+        runner_identity if isinstance(runner_identity, dict) else None
     )
-    state["finish_alive"] = process_alive(
-        finish_pid if isinstance(finish_pid, int) else None
+    state["finish_alive"] = recorded_process_alive(
+        finish_identity if isinstance(finish_identity, dict) else None
+    )
+    state["runner_pid_present_but_identity_mismatch"] = bool(
+        isinstance(runner_pid, int)
+        and process_alive(runner_pid)
+        and not state["runner_alive"]
+    )
+    state["finish_pid_present_but_identity_mismatch"] = bool(
+        isinstance(finish_pid, int)
+        and process_alive(finish_pid)
+        and not state["finish_alive"]
     )
     return state
 
