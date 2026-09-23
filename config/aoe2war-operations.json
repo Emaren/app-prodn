@@ -315,5 +315,16 @@
     "retain_receipts_and_manifests": true,
     "unique_evidence_mutation": false,
     "wolo_mutation_allowed": false
+  },
+  "database_snapshot_retention": {
+    "default_mode": "read-only-design-v1",
+    "snapshot_root": "/mnt/HC_Volume_105319120/aoe2war/deploy-receipts",
+    "retirement_receipt_root": "/mnt/HC_Volume_105319120/aoe2war/os-control/db-snapshot-retention-receipts",
+    "hot_count": 5,
+    "weekly_cold_weeks": 8,
+    "monthly_cold_months": 12,
+    "max_metadata_file_bytes": 2097152,
+    "delete_enabled": false,
+    "wolo_mutation_allowed": false
   }
 }
