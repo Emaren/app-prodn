@@ -185,6 +185,7 @@ def download_replay(
     base_url: str,
     token: str,
     run_id: str,
+    expected_game_stats_id: int,
     expected_sha256: str,
     destination_dir: Path,
 ) -> tuple[Path, int]:
@@ -203,6 +204,13 @@ def download_replay(
             if advertised != expected_sha256:
                 raise WorkerError(
                     "Server replay identity does not match the queued native-run identity."
+                )
+            advertised_game_id = response.headers.get(
+                "X-AoE2WAR-Game-Stats-ID", ""
+            ).strip()
+            if advertised_game_id != str(expected_game_stats_id):
+                raise WorkerError(
+                    "Server GameStats identity does not match the queued native-run identity."
                 )
             extension = response.headers.get(
                 "X-AoE2WAR-Replay-Extension", ""
@@ -293,6 +301,7 @@ def materialize_replay(
         base_url=base_url,
         token=token,
         run_id=run_id,
+        expected_game_stats_id=game_stats_id,
         expected_sha256=replay_sha256,
         destination_dir=destination_dir,
     )
