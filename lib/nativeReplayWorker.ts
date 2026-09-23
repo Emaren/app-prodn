@@ -258,7 +258,7 @@ export async function loadNativeReplayArtifact(
     parameters.replaySha256,
     game.original_filename || game.replay_file || null
   );
-  const archiveRoot = resolve(ARCHIVE_ROOT) + "/";
+  const archiveRoot = (await fs.realpath(resolve(ARCHIVE_ROOT))) + "/";
   const realSource = await fs.realpath(source);
   if (!realSource.startsWith(archiveRoot)) {
     throw new Error("Replay archive object escaped the canonical archive root.");
