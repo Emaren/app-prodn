@@ -259,9 +259,10 @@ def run_campaign(campaign_id: str) -> int:
             state["last_plan"] = plan
             save_state(state)
 
+            continuation = int(state.get("continuation_generations") or 0)
             actionable, reason = actionable_plan(
                 plan,
-                completed=completed,
+                completed=completed + continuation,
                 force=bool(state.get("force")),
             )
             if not actionable:
@@ -377,8 +378,10 @@ def start(*, max_generations: int, force: bool) -> dict[str, Any]:
 
 def resume(campaign_id: str) -> dict[str, Any]:
     state = load_state(campaign_id)
-    if state.get("status") == "COMPLETE":
-        raise CampaignError("completed campaign cannot be resumed")
+    if state.get("status") in {"COMPLETE", "RETIRED_HANDOFF"}:
+        raise CampaignError(
+            f"{str(state.get('status')).lower()} campaign cannot be resumed"
+        )
     pid = state.get("pid")
     if process_alive(pid if isinstance(pid, int) else None):
         raise CampaignError(f"campaign is still active with pid={pid}")
