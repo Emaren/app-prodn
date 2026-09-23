@@ -479,7 +479,7 @@ verification pass.
 
 A canonical `migration-boundary` snapshot requires all of the following:
 
-- parent directory shape `migration-<UTC timestamp>-<release12>`;
+- parent directory shape `migration-<UTC timestamp>-<release12>` with a calendar-valid UTC timestamp;
 - filename exactly `pre-migration.dump`;
 - sibling direct regular `migration-status.txt` with one and only one
   `status=APPLIED`;
