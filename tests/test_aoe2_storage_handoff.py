@@ -530,6 +530,78 @@ class StorageHandoffTests(unittest.TestCase):
             self.assertEqual(handoff.resume("handoff-a"), state)
         spawn.assert_not_called()
 
+    def test_wolo_remote_script_is_syntax_valid(self):
+        proc = __import__("subprocess").run(
+            ["bash", "-n"],
+            input=handoff.WOLO_REMOTE_SCRIPT,
+            text=True,
+            stdout=__import__("subprocess").PIPE,
+            stderr=__import__("subprocess").PIPE,
+            check=False,
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+
+    def test_wolo_snapshot_requires_live_advancing_exact_listeners(self):
+        good = {
+            "service": "active",
+            "pid": 77,
+            "restart_counter": 0,
+            "active_enter_monotonic": 123456,
+            "listener_8092_count": 1,
+            "listener_8093_count": 1,
+            "height_before": 100,
+            "height_after": 101,
+            "block_age_seconds": 2,
+        }
+        completed = __import__("subprocess").CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout=__import__("json").dumps(good),
+            stderr="",
+        )
+        with (
+            mock.patch.object(handoff.storage, "policy", return_value={"root_maintenance_host": "root@hel1"}),
+            mock.patch.object(handoff.subprocess, "run", return_value=completed) as run,
+        ):
+            self.assertEqual(handoff.wolo_snapshot(), good)
+        self.assertEqual(run.call_args.kwargs["input"], handoff.WOLO_REMOTE_SCRIPT)
+
+        bad = dict(good)
+        bad["listener_8093_count"] = 0
+        failed = __import__("subprocess").CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout=__import__("json").dumps(bad),
+            stderr="",
+        )
+        with (
+            mock.patch.object(handoff.storage, "policy", return_value={"root_maintenance_host": "root@hel1"}),
+            mock.patch.object(handoff.subprocess, "run", return_value=failed),
+        ):
+            with self.assertRaises(handoff.HandoffError):
+                handoff.wolo_snapshot()
+
+    def test_wolo_continuity_rejects_restart_and_height_regression(self):
+        before = {
+            "pid": 77,
+            "restart_counter": 0,
+            "active_enter_monotonic": 123456,
+            "height_after": 100,
+        }
+        after = dict(before)
+        after["height_after"] = 110
+        handoff.verify_wolo_continuity(before, after)
+
+        restarted = dict(after)
+        restarted["restart_counter"] = 1
+        with self.assertRaises(handoff.HandoffError):
+            handoff.verify_wolo_continuity(before, restarted)
+
+        regressed = dict(after)
+        regressed["height_after"] = 99
+        with self.assertRaises(handoff.HandoffError):
+            handoff.verify_wolo_continuity(before, regressed)
+
     def test_v2_resume_rebinds_before_campaign_resume(self):
         source = Path(handoff.__file__).read_text(encoding="utf-8")
         rebind = source.index("campaign.rebind_after_handoff(")
