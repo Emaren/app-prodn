@@ -13,6 +13,7 @@ import aoe2_release
 import aoe2_recovery_campaign
 import aoe2_speed_campaign
 import aoe2_storage_campaign
+import aoe2_storage_handoff
 import aoe2_truth
 import aoe2_update
 
@@ -590,10 +591,39 @@ def brain_recommendations(
     truth: dict[str, Any],
     council_recommendations: list[dict[str, Any]],
     storage: dict[str, Any] | None = None,
+    storage_handoff: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
 
     storage = storage or {}
+    storage_handoff = storage_handoff or {}
+    handoff_status = str(storage_handoff.get("status") or "NONE")
+    if handoff_status not in {"NONE", aoe2_storage_handoff.FINAL_STATE}:
+        handoff_id = str(storage_handoff.get("handoff_id") or "")
+        active = bool(storage_handoff.get("process_alive"))
+        rows.append(
+            {
+                "rank": 1,
+                "level": "IN PROGRESS" if active else "MUST RESUME",
+                "key": "storage-handoff-incomplete",
+                "title": "Continue the proven Storage OS handoff",
+                "reason": (
+                    f"handoff={handoff_id or 'unknown'} state={handoff_status}; "
+                    + (
+                        "the detached handoff controller is still active."
+                        if active
+                        else "the controller is not active, so resume from the last durably receipted state."
+                    )
+                ),
+                "action": (
+                    f"aoe2war storage handoff status {handoff_id}"
+                    if active and handoff_id
+                    else f"aoe2war storage handoff resume {handoff_id}"
+                    if handoff_id
+                    else "aoe2war storage handoff status"
+                ),
+            }
+        )
     storage_health = str(
         storage.get("health")
         or storage.get("status")
@@ -1510,6 +1540,13 @@ def collect() -> dict[str, Any]:
     finish = latest_finish()
     control = control_summary(release)
     storage_campaign = storage_campaign_summary()
+    try:
+        storage_handoff = aoe2_storage_handoff.status_payload(None)
+    except Exception as exc:
+        storage_handoff = {
+            "status": "ERROR",
+            "error": str(exc),
+        }
     recovery_campaign = recovery_campaign_summary()
     activity = activity_24h(now)
     source_activity = recent_source_activity()
@@ -1530,6 +1567,7 @@ def collect() -> dict[str, Any]:
         truth=truth,
         council_recommendations=list(council.get("recommendations") or []),
         storage=council.get("storage") or {},
+        storage_handoff=storage_handoff,
     )
     system_agents = system_agent_rows(
         source=source,
@@ -1566,6 +1604,7 @@ def collect() -> dict[str, Any]:
             source,
         ),
         "storage_campaign": storage_campaign,
+        "storage_handoff": storage_handoff,
         "recovery_campaign": recovery_campaign,
         "activity_24h": activity,
         "system_agents": system_agents,
