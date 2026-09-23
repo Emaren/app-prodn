@@ -256,28 +256,72 @@ one-generation transaction before running canonical `aoe2war finish`.
 ## Live handoff into a newer Storage OS
 
 A Storage OS implementation may be upgraded without abandoning a proven
-one-generation transaction. The canonical seam is the boundary after a worker
-has sealed its replacement receipt and released the release, retention and
-archive locks, but before the local batch orchestrator starts the next
-generation.
+one-generation campaign. The first-class operator lane is:
 
-Maintenance authority binds to the exact **active certified production**
-source SHA and BUILD_ID. Mac and GitHub `main` must still be clean, equal, and
-contain that production commit, but they may be newer. This lets Storage OS
-recover capacity when a finished source release is waiting behind the capacity
-gate; the worker continues proving the actual runtime serving users instead of
-pretending the unpublished source tree is production.
+```bash
+aoe2war storage handoff start [CAMPAIGN]
+aoe2war storage handoff status [HANDOFF]
+aoe2war storage handoff resume [HANDOFF]
+```
 
-Finish now reconciles the installed root-owned maintenance runner at exactly
-that serialized boundary. If a worker is still active, the same locks make the
-handoff fail closed. Once the seam is free, the new runner is atomically
-installed with exact SHA, syntax, owner/mode, durable receipt and Wolo
-continuity proof before the normal operational Doctor proceeds.
+The handoff controller is detached from the initiating terminal and persists
+every transition atomically. Its state machine is:
 
-This permits a controlled "mid-air refuel": finish the current exact
-transaction, freeze the old batch from replanning, certify the new control
-plane, then resume the remaining storage backlog under the new governor. No
-partially verified generation is discarded or reinterpreted.
+1. `V1_RUNNING`
+2. `V1_FROZEN`
+3. `TRANSACTION_SEAM_PROVEN`
+4. `SOURCE_READY`
+5. `RUNNER_RECONCILED`
+6. `V2_CERTIFIED`
+7. `V1_RETIRED`
+8. `V2_RESUMED`
+
+The canonical seam is the boundary after a one-generation worker has sealed its
+replacement receipt and released the release, retention and archive locks, but
+before the campaign controller starts another generation. The handoff requests
+the existing cooperative campaign pause; it does not SIGSTOP, SIGTERM or SIGKILL
+the archive controller. `V1_FROZEN` is accepted only when the campaign itself
+reports `PAUSED` with
+`OPERATOR_PAUSE_BETWEEN_GENERATIONS`, no current generation timestamps remain,
+and the V1 controller PID is dead.
+
+The initial receipt records the V1 campaign source/build, the exact target
+`main` source, and the observed V1 PID/PGID/descendant family. The target must
+be a clean local `main`, equal to `origin/main`, and descend from the
+certified V1 source. Target drift after handoff authorization fails closed.
+
+After the seam is proven, the handoff starts canonical `aoe2war finish` in its
+own session and records the Finish PID and log. A lost initiating terminal
+therefore does not own either the handoff or Finish lifetime. On reinvocation,
+the controller resumes from the last durable state; if the prior Finish already
+certified the target source, it proves that fact instead of launching a duplicate
+release. Otherwise canonical Finish remains the only deployment path.
+
+Finish owns maintenance-runner reconciliation, release serialization,
+certification, final Estate/Doctor proof and protected Wolo continuity. A
+successful handoff does not invent a second deployment authority. Only after the
+exact target source is the active certified runtime may the state advance through
+`RUNNER_RECONCILED` and `V2_CERTIFIED`.
+
+Before V1 retirement, every PID recorded in the original V1 process-family
+snapshot must be dead. The paused campaign can then adopt the exact new certified
+source SHA and BUILD_ID through a dedicated handoff rebind receipt in its own
+state. Rebinding is allowed only from a proven `PAUSED` transaction seam and
+only when the requested V2 source/build equals current certified production.
+The existing campaign `resume` path then launches the backlog under V2 and the
+handoff seals `V2_RESUMED`.
+
+This creates the controlled "mid-air refuel" contract: finish the current exact
+transaction, freeze the old controller from replanning, certify the new control
+plane, retire the recorded V1 process family, then resume the same storage
+backlog under the new governor. No partially verified generation is discarded,
+reinterpreted, or replayed by guesswork.
+
+If a handoff is incomplete, Kingdom Intelligence ranks the exact
+`aoe2war storage handoff resume <id>` action ahead of generic Finish/storage
+advice. A handoff or campaign stopped inside an ambiguous one-generation
+transaction remains fail-closed until the exact transaction evidence is
+reconciled.
 
 
 ## Deployment boundary
