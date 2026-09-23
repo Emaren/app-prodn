@@ -357,6 +357,18 @@ def run_campaign(campaign_id: str) -> int:
             refresh_operator_signals(state)
             save_state(state)
 
+            # A pause or handoff reservation that arrived while the bounded
+            # worker was active owns the first between-generation decision.
+            # Freeze before evaluating natural completion so a takeover cannot
+            # be stranded by the same transaction reaching the healthy target.
+            if state.get("pause_requested"):
+                mark_terminal(
+                    state,
+                    status="PAUSED",
+                    reason="OPERATOR_PAUSE_BETWEEN_GENERATIONS",
+                )
+                return 0
+
             storage.print_status(current)
 
             if float(current["used_percent"]) < float(state["target_percent"]):
