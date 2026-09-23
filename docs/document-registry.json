@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "3357e95f062891df1e579e58fbb4b026ebd9d1f8cd6608af680f54ef75eb8bd6",
+      "sha256": "9c0e8b76d0badaf4947909eee2406a01191cb15224ba43ecce7435fc9fbb85ac",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1862,7 +1862,7 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/storage-handoff-reservation-20260923",
+    "branch": "main",
     "commit": "64a0381a4f6c4f3ae9d030a6ae8adf6f2fab68bf"
   },
   "owner": "aoe2war-web",
