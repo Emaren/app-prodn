@@ -50,6 +50,9 @@ EXPECTED_EXECUTABLE_SHA256 = (
 EXPECTED_DATA_SHA256 = (
     "21591ac67251d8674635d5634f2d8e9ff80ad90f3c792f9503d60dd658d61058"
 )
+REQUIRED_APP_IMPLEMENTATION_COMMIT = (
+    "7d99d07b6c5e215d1a029b701dabe76a9d8811c8"
+)
 REQUIRED_API_IMPLEMENTATION_COMMIT = (
     "51bd43ecadc9f830976925bcc3586a1bd29a4275"
 )
@@ -135,6 +138,11 @@ def require_runtime() -> dict[str, str]:
     app_head = require_clean_git_repo(ROOT, label="app-prodn")
     api_head = require_clean_git_repo(API_ROOT, label="api-prodn")
     require_git_ancestor(
+        ROOT,
+        REQUIRED_APP_IMPLEMENTATION_COMMIT,
+        label="app-prodn",
+    )
+    require_git_ancestor(
         API_ROOT,
         REQUIRED_API_IMPLEMENTATION_COMMIT,
         label="api-prodn",
@@ -167,6 +175,7 @@ def require_runtime() -> dict[str, str]:
     return {
         "appHead": app_head,
         "apiHead": api_head,
+        "requiredAppImplementationCommit": REQUIRED_APP_IMPLEMENTATION_COMMIT,
         "requiredApiImplementationCommit": REQUIRED_API_IMPLEMENTATION_COMMIT,
     }
 
