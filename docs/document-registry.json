@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "3f365d90c21297a60e8df9870ff7f877774f4331b210cc9e5d72a961ae12422e",
+      "sha256": "706beae9bf3f96eb2a85afc65f6dda80f19de417da4501cc422a14cf0ca44d70",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "chore/close-db-snapshot-test-files-20260924",
-    "commit": "b5db51f13b33a7495ea2eb8eae007a6013ad65e1"
+    "branch": "fix/replay-uneven-team-canonical-identity-20260924",
+    "commit": "f35d04a278222bb58450e48903fdbe8ef0fe61a8"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
