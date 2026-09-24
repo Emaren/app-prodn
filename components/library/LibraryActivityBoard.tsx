@@ -274,7 +274,10 @@ function ActiveBatchReactor({
           </div>
 
           <div className="relative h-2 overflow-hidden rounded-full border border-red-200/10 bg-black/35">
-            <div className="absolute inset-y-0 left-0 w-[68%] animate-pulse rounded-full bg-[linear-gradient(90deg,rgba(127,29,29,.5),rgba(248,113,113,.85),rgba(251,146,60,.65))] shadow-[0_0_16px_rgba(248,113,113,.45)]" />
+            <div
+              className="absolute inset-y-0 w-[34%] rounded-full bg-[linear-gradient(90deg,transparent,rgba(248,113,113,.9),rgba(251,146,60,.65),transparent)] shadow-[0_0_16px_rgba(248,113,113,.45)]"
+              style={{ animation: "librarySweep 2.4s linear infinite" }}
+            />
           </div>
 
           <div className="mt-5 grid grid-cols-4 gap-2">
