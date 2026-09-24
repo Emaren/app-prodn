@@ -488,7 +488,7 @@ Retirement planning has a separate external-reference census over the bounded
 deployment-receipt and AoE2WAR OS-control metadata roots. That census walks all
 direct directories rather than silently truncating at the snapshot-body depth,
 reads only known bounded metadata suffixes, and is capped at 10,000 metadata
-documents / 64 MiB of metadata text. A missing/unreadable metadata root,
+documents / 64 MiB of metadata text. A missing/unreadable metadata root, metadata traversal error,
 symlinked/non-regular metadata entry, oversized candidate metadata file,
 read/UTF-8 failure, census budget exhaustion, malformed counter, or contradictory
 "complete" flag plus blocker evidence makes the reference census
