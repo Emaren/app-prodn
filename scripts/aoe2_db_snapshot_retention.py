@@ -281,21 +281,28 @@ for release_short in release_prefix_candidates:
 
 metadata_documents = []
 metadata_scan_blockers = []
+metadata_scan_blocker_count = 0
 metadata_scan_files = 0
 metadata_scan_bytes = 0
-max_metadata_documents = 25000
-max_metadata_total_bytes = 256 * 1024 * 1024
+max_metadata_documents = 10000
+max_metadata_total_bytes = 64 * 1024 * 1024
+
+def record_metadata_blocker(value):
+    global metadata_scan_blocker_count
+    metadata_scan_blocker_count += 1
+    if len(metadata_scan_blockers) < 100:
+        metadata_scan_blockers.append(value)
 
 for base in metadata_roots:
     try:
         base_stat = base.stat(follow_symlinks=False)
     except OSError as exc:
-        metadata_scan_blockers.append(
+        record_metadata_blocker(
             "metadata-root-unreadable:" + str(base) + ":" + type(exc).__name__
         )
         continue
     if base.is_symlink() or not stat.S_ISDIR(base_stat.st_mode):
-        metadata_scan_blockers.append(
+        record_metadata_blocker(
             "metadata-root-not-direct-directory:" + str(base)
         )
         continue
@@ -309,7 +316,7 @@ for base in metadata_roots:
             try:
                 child_stat = child.stat(follow_symlinks=False)
             except OSError as exc:
-                metadata_scan_blockers.append(
+                record_metadata_blocker(
                     "metadata-directory-unreadable:"
                     + str(child)
                     + ":"
@@ -317,7 +324,7 @@ for base in metadata_roots:
                 )
                 continue
             if child.is_symlink() or not stat.S_ISDIR(child_stat.st_mode):
-                metadata_scan_blockers.append(
+                record_metadata_blocker(
                     "metadata-directory-not-direct:" + str(child)
                 )
                 continue
@@ -334,7 +341,7 @@ for base in metadata_roots:
             try:
                 st = path.stat(follow_symlinks=False)
             except OSError as exc:
-                metadata_scan_blockers.append(
+                record_metadata_blocker(
                     "metadata-file-unreadable:"
                     + str(path)
                     + ":"
@@ -342,12 +349,12 @@ for base in metadata_roots:
                 )
                 continue
             if path.is_symlink() or not stat.S_ISREG(st.st_mode):
-                metadata_scan_blockers.append(
+                record_metadata_blocker(
                     "metadata-file-not-direct-regular:" + str(path)
                 )
                 continue
             if st.st_size > max_meta:
-                metadata_scan_blockers.append(
+                record_metadata_blocker(
                     "metadata-file-oversize:"
                     + str(path)
                     + ":"
@@ -355,13 +362,13 @@ for base in metadata_roots:
                 )
                 continue
             if metadata_scan_files >= max_metadata_documents:
-                metadata_scan_blockers.append(
+                record_metadata_blocker(
                     "metadata-document-count-limit:"
                     + str(max_metadata_documents)
                 )
                 continue
             if metadata_scan_bytes + int(st.st_size) > max_metadata_total_bytes:
-                metadata_scan_blockers.append(
+                record_metadata_blocker(
                     "metadata-byte-limit:"
                     + str(max_metadata_total_bytes)
                 )
@@ -371,7 +378,7 @@ for base in metadata_roots:
                     encoding="utf-8", errors="strict"
                 )
             except Exception as exc:
-                metadata_scan_blockers.append(
+                record_metadata_blocker(
                     "metadata-file-read-failed:"
                     + str(path)
                     + ":"
@@ -382,7 +389,7 @@ for base in metadata_roots:
             metadata_scan_files += 1
             metadata_scan_bytes += int(st.st_size)
 
-reference_scan_complete = not metadata_scan_blockers
+reference_scan_complete = metadata_scan_blocker_count == 0
 
 snapshots = []
 if root.is_dir():
@@ -530,8 +537,8 @@ payload = {
     "reference_scan_complete": reference_scan_complete,
     "reference_scan_files": metadata_scan_files,
     "reference_scan_bytes": metadata_scan_bytes,
-    "reference_scan_blockers": metadata_scan_blockers[:100],
-    "reference_scan_blocker_count": len(metadata_scan_blockers),
+    "reference_scan_blockers": metadata_scan_blockers,
+    "reference_scan_blocker_count": metadata_scan_blocker_count,
     "snapshots": snapshots,
 }
 output_path = Path(sys.argv[3]) if len(sys.argv) > 3 and sys.argv[3] else None
