@@ -52,6 +52,7 @@
 /staking
 /statistics
 /submit
+/tournaments
 /traffic
 /upload
 /users
