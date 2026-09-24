@@ -1853,4 +1853,3 @@ directory, requires a root-owned mode-0400 regular file with the exact source
 digest, and creates result evidence with `O_EXCL`/`O_NOFOLLOW` at mode 0400
 from birth. General rule: hash verification does not replace ownership, mode,
 and race-safe path construction across a privilege boundary.
-
