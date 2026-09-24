@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "7d6d5c5d9f32da14aec2190b1235bd71e7b963745876ba645f10d40fff96b86b",
+      "sha256": "1bacbfc0feaf2712658a6f0f292574b1cde43a4e8051fa64b0df2e8551dfc133",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-22",
       "sensitivity": "internal",
-      "sha256": "29880ff7780b768e72fbd7821b4e248e19bf2bceb3a364ed01166fc562fd1c11",
+      "sha256": "432aa068fca52219d9418592130e10f7d72d8c3e77b029884387d82f3a152549",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1509,7 +1509,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-19",
       "sensitivity": "internal",
-      "sha256": "8e66640e5474539f0b85b400f73e4c0b898f7652f72564579cfb3e75df7a8b46",
+      "sha256": "74c9de726b5863e57bc9770d1dbcffb7ab7751b76292f86917a967dd768c6765",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/db-snapshot-os-bridge-20260923",
-    "commit": "827c742625ebaabece2a86cfe9ddf19f42206fdd"
+    "commit": "f3158ffa2d86a93f216e0b57f1e502efccadae5f"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
