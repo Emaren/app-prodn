@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "2f8ad533fa7ec826dbe2221770d4f7d2a610b7df0b609f405bf1064462e4b96f",
+      "sha256": "50a0812a43b446d232129b62caafa759e50b3d764ff20647cc391fcef2ad7307",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/db-snapshot-retention-v4-20260923",
-    "commit": "ca1355e01361b2a4fa9e1ce0cdea2bc6389fc8cf"
+    "branch": "main",
+    "commit": "f0ff34474dde7fc4063b0ffbe79ef29e94c7ba02"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
