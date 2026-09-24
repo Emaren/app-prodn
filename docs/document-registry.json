@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "8dec2eee9180673ad1a16dde3d4292612ef1e47b570c67f39391400fb6199aae",
+      "sha256": "91b7179f478d86c64cbd796e7667142cec3eec7951ed17dbc59028eaf8a5bf5b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/release-migration-receipt-proof-v2-20260923",
-    "commit": "b8dca620c8bef629c1ad3fda9cd1fdbbb52c8c36"
+    "branch": "main",
+    "commit": "87615119a399954d603c0351a39bbf40ab1c357a"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
