@@ -476,11 +476,22 @@ else:
     ):
         raise SystemExit("STOP: unsafe verification output path")
     encoded_payload = json.dumps(payload, sort_keys=True) + "\n"
-    with output_path.open("x", encoding="utf-8") as handle:
-        handle.write(encoded_payload)
-        handle.flush()
-        os.fsync(handle.fileno())
-    output_path.chmod(0o400)
+    flags = (
+        os.O_WRONLY
+        | os.O_CREAT
+        | os.O_EXCL
+        | getattr(os, "O_NOFOLLOW", 0)
+    )
+    fd = os.open(output_path, flags, 0o400)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            fd = -1
+            handle.write(encoded_payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+    finally:
+        if fd >= 0:
+            os.close(fd)
 '''
 
 
@@ -527,18 +538,47 @@ observed = hashlib.sha256(source.encode("utf-8")).hexdigest()
 if observed != expected:
     raise SystemExit("STOP: DB snapshot verification helper source drift")
 
-tool = Path("/tmp") / ("aoe2war-db-snapshot-inventory-" + expected + ".py")
+helper_root = Path("/run/aoe2war-db-snapshot-verify")
+helper_root.mkdir(mode=0o700, parents=False, exist_ok=True)
+root_stat = helper_root.stat(follow_symlinks=False)
+if (
+    helper_root.is_symlink()
+    or not helper_root.is_dir()
+    or root_stat.st_uid != 0
+):
+    raise SystemExit("STOP: unsafe DB snapshot verification helper root")
+if (root_stat.st_mode & 0o777) != 0o700:
+    helper_root.chmod(0o700)
+
+tool = helper_root / ("inventory-" + expected + ".py")
 if tool.exists():
-    if tool.is_symlink() or not tool.is_file():
+    tool_stat = tool.stat(follow_symlinks=False)
+    if (
+        tool.is_symlink()
+        or not tool.is_file()
+        or tool_stat.st_uid != 0
+        or (tool_stat.st_mode & 0o777) != 0o400
+    ):
         raise SystemExit("STOP: unsafe existing DB snapshot verification helper")
     if hashlib.sha256(tool.read_bytes()).hexdigest() != expected:
         raise SystemExit("STOP: existing DB snapshot verification helper drift")
 else:
-    with tool.open("x", encoding="utf-8") as handle:
-        handle.write(source)
-        handle.flush()
-        os.fsync(handle.fileno())
-    tool.chmod(0o400)
+    flags = (
+        os.O_WRONLY
+        | os.O_CREAT
+        | os.O_EXCL
+        | getattr(os, "O_NOFOLLOW", 0)
+    )
+    fd = os.open(tool, flags, 0o400)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            fd = -1
+            handle.write(source)
+            handle.flush()
+            os.fsync(handle.fileno())
+    finally:
+        if fd >= 0:
+            os.close(fd)
 
 output = Path("/tmp") / (
     "aoe2war-db-snapshot-verify-" + expected[:16] + f"{{os.getpid():x}}.json"
