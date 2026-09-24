@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/operator-bridge-idle-heartbeat-20260924` at `52705eb57ffe9c404d71d8e48504111bee7486c1`
+Implementation baseline: `chore/close-db-snapshot-test-files-20260924` at `b5db51f13b33a7495ea2eb8eae007a6013ad65e1`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
