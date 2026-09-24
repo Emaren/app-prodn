@@ -1,5 +1,15 @@
 import { createHash } from "node:crypto";
 
+import {
+  canonicalReplayStablePlayerKey,
+  normalizeReplayPlayerName,
+  normalizeReplaySteamId,
+} from "./replayPlayerIdentity.ts";
+
+export {
+  normalizeReplayPlayerName,
+} from "./replayPlayerIdentity.ts";
+
 export type ReplayTeamFormat = "1v1" | "2v2" | "3v3" | "4v4" | "unknown";
 export type ReplayTeamResolutionStatus =
   | "resolved"
@@ -66,10 +76,6 @@ function text(value: unknown) {
   return typeof value === "string" ? value.replace(/\s+/g, " ").trim() : "";
 }
 
-export function normalizeReplayPlayerName(value: unknown) {
-  return text(value).toLocaleLowerCase("en-US");
-}
-
 function finiteNumber(value: unknown) {
   if (typeof value === "number" && Number.isFinite(value)) return value;
   if (typeof value === "string" && value.trim()) {
@@ -88,11 +94,6 @@ function truth(value: unknown): boolean | null {
   if (value === true || value === "true" || value === 1 || value === "1") return true;
   if (value === false || value === "false" || value === 0 || value === "0") return false;
   return null;
-}
-
-function normalizeSteamId(value: unknown) {
-  const normalized = text(value);
-  return /^\d{15,20}$/.test(normalized) ? normalized : null;
 }
 
 function normalizeTeamId(value: unknown) {
@@ -122,16 +123,14 @@ function normalizePosition(value: unknown): [number, number] | null {
   return x === null || y === null ? null : [x, y];
 }
 
-function stableKey(name: string, steamId: string | null) {
-  return steamId ? `steam:${steamId}` : `name:${normalizeReplayPlayerName(name)}`;
-}
-
 export function normalizeReplayPlayer(value: unknown): CanonicalReplayPlayer | null {
   const record = asRecord(value);
   if (!record) return null;
   const name = text(record.name ?? record.player ?? record.player_name ?? record.displayName);
   if (!name) return null;
-  const steamId = normalizeSteamId(record.steam_id ?? record.steamId ?? record.user_id);
+  const steamId = normalizeReplaySteamId(
+    record.steam_id ?? record.steamId ?? record.user_id
+  );
   const aliases = Array.isArray(record.aliases)
     ? [...new Set(record.aliases.map(text).filter(Boolean))]
     : [];
@@ -144,7 +143,7 @@ export function normalizeReplayPlayer(value: unknown): CanonicalReplayPlayer | n
   return {
     name,
     normalizedName: normalizeReplayPlayerName(name),
-    stablePlayerKey: stableKey(name, steamId),
+    stablePlayerKey: canonicalReplayStablePlayerKey(name, steamId),
     steamId,
     civilizationId,
     civilizationName,
