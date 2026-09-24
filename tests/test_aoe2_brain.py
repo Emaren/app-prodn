@@ -115,6 +115,13 @@ def truth() -> dict:
         "unresolved": 1249,
         "parser_work_candidates": 1159,
         "production_source": "a" * 40,
+        "audit_available": True,
+        "audit_production_source": "a" * 40,
+        "audit_pass": True,
+        "audit_matches_current_release": True,
+        "contract_mismatches": 0,
+        "contract_mismatch_ids": [],
+        "scalar_incoherent": 0,
         "freshness": {
             "generated_at": "2026-09-05T20:00:00Z",
             "age_seconds": 0,
@@ -1085,6 +1092,45 @@ class KingdomIntelligenceTests(unittest.TestCase):
             council_recommendations=[],
         )
         self.assertEqual(recs[0]["key"], "replay-certainty-current-release")
+
+    def test_current_closure_with_failing_replay_audit_stays_attention(self):
+        current_truth = truth()
+        current_truth["matches_current_release"] = True
+        current_truth["audit_pass"] = False
+        current_truth["contract_mismatches"] = 1
+        current_truth["contract_mismatch_ids"] = [42581]
+
+        perf = performance()
+        perf["matches_current_release"] = True
+
+        rows = MODULE.invariant_rows(
+            source=MODULE.source_summary(release()),
+            council=council(),
+            truth=current_truth,
+            finish=finish(),
+            control=control(),
+            performance=perf,
+        )
+        replay = next(
+            row
+            for row in rows
+            if row["key"] == "replay-certainty-accounted"
+        )
+        self.assertEqual(replay["status"], "ATTENTION")
+        self.assertIn("mismatches=1", replay["evidence"])
+
+        recs = MODULE.brain_recommendations(
+            finish=finish(),
+            control=control(),
+            performance=perf,
+            truth=current_truth,
+            council_recommendations=[],
+        )
+        self.assertEqual(recs[0]["key"], "replay-contract-integrity")
+        self.assertEqual(
+            recs[0]["action"],
+            "aoe2war truth audit && aoe2war truth target 42581",
+        )
 
     def test_wolo_boundary_failure_blocks(self):
         broken_release = release()
