@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `chore/close-db-snapshot-test-files-20260924` at `b5db51f13b33a7495ea2eb8eae007a6013ad65e1`
+Implementation baseline: `fix/replay-uneven-team-canonical-identity-20260924` at `f866149f691fe60ad03381da8ac23ada4a0e8885`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

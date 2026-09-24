@@ -1,3 +1,8 @@
+import {
+  canonicalReplayStablePlayerKey,
+  normalizeReplaySteamId,
+} from "./replayPlayerIdentity.ts";
+
 export type ExplicitUnevenTeamStatsCandidate = {
   winningTeamId: string;
   losingTeamId: string;
@@ -193,50 +198,24 @@ function explicitTeamId(
 }
 
 function stablePlayerKey(
-  player: UnknownRecord,
-  index: number
+  player: UnknownRecord
 ) {
-  const explicit =
-    cleanText(
-      player.stablePlayerKey ??
-      player.stable_player_key
-    );
-
-  if (explicit) {
-    return explicit;
-  }
-
-  const steamId =
-    cleanText(
-      player.steam_id ??
-      player.steamId ??
-      player.user_id ??
-      player.userId
-    );
-
-  if (steamId) {
-    return `steam:${steamId}`;
-  }
-
-  const number =
-    playerNumber(
-      player
-    );
-
-  if (number !== null) {
-    return `number:${number}`;
-  }
-
   const name =
-    normalizedText(
+    cleanText(
       player.name
     );
 
-  if (name) {
-    return `name:${name}`;
-  }
+  const steamId =
+    normalizeReplaySteamId(
+      player.steam_id ??
+      player.steamId ??
+      player.user_id
+    );
 
-  return `index:${index}`;
+  return canonicalReplayStablePlayerKey(
+    name,
+    steamId
+  );
 }
 
 function normalizedNameSet(
@@ -350,11 +329,8 @@ export function resolveExplicitUnevenTeamStats(
     [];
 
   for (
-    const [
-      index,
-      rawPlayer,
-    ]
-    of rawPlayers.entries()
+    const rawPlayer
+    of rawPlayers
   ) {
     const name =
       cleanText(
@@ -391,8 +367,7 @@ export function resolveExplicitUnevenTeamStats(
 
       stablePlayerKey:
         stablePlayerKey(
-          rawPlayer,
-          index
+          rawPlayer
         ),
 
       playerNumber:

@@ -161,6 +161,112 @@ test("unsupported three-player scalar winner cannot create partial W/L", () => {
   );
 });
 
+test("explicit uneven 1v3 projects W/L with canonical identity keys", () => {
+  const game = {
+    winner:
+      "josh_mena94",
+
+    players: [
+      {
+        name:
+          "josh_mena94",
+        number:
+          1,
+        team_id:
+          0,
+        winner:
+          true,
+      },
+      {
+        name:
+          "rg.arias",
+        number:
+          2,
+        team_id:
+          1,
+        winner:
+          false,
+      },
+      {
+        name:
+          "jamesculhane",
+        number:
+          3,
+        team_id:
+          1,
+        winner:
+          false,
+      },
+      {
+        name:
+          "PrinceAshitaka",
+        number:
+          4,
+        team_id:
+          1,
+        winner:
+          false,
+      },
+    ],
+
+    parse_reason:
+      "team_resignation_not_complete",
+
+    parse_source:
+      "watcher_final",
+
+    is_final:
+      true,
+
+    disconnect_detected:
+      false,
+
+    event_types: [
+      "resign",
+    ],
+
+    key_events: {
+      resigned_player_names: [
+        "rg.arias",
+        "jamesculhane",
+        "PrinceAshitaka",
+      ],
+    },
+  };
+
+  assert.equal(
+    result(
+      game,
+      "josh_mena94"
+    ),
+    "win"
+  );
+
+  assert.equal(
+    result(
+      game,
+      "rg.arias"
+    ),
+    "loss"
+  );
+
+  assert.equal(
+    result(
+      game,
+      "jamesculhane"
+    ),
+    "loss"
+  );
+
+  assert.equal(
+    result(
+      game,
+      "PrinceAshitaka"
+    ),
+    "loss"
+  );
+});
+
 test("one isolated team winner flag cannot turn every other player into a loss", () => {
   const players = playersFor(2).map((player, index) => ({
     ...player,
