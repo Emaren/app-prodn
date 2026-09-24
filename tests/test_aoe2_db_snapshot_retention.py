@@ -35,6 +35,59 @@ def exact_row(index: int, *, year: int, month: int, day: int = 15) -> dict:
     }
 
 
+def canonical_receipt(
+    root: Path,
+    *,
+    stamp: str,
+    release: str = "a" * 40,
+    migrations: list[str] | None = None,
+) -> Path:
+    migrations = migrations or ["20260923000000_test"]
+    parent = root / f"migration-{stamp}-{release[:12]}"
+    parent.mkdir()
+    dump = parent / "pre-migration.dump"
+    dump.write_bytes(f"backup-{stamp}".encode("utf-8"))
+    status = parent / "migration-status.txt"
+    status.write_text(
+        "\n".join(
+            [
+                "status=APPLIED",
+                f"release_sha={release}",
+                "database=aoe2hdbets",
+                "dump=pre-migration.dump",
+                "dump_sha256=" + hashlib.sha256(dump.read_bytes()).hexdigest(),
+                *[f"migration={name}" for name in migrations],
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    status_sha = hashlib.sha256(status.read_bytes()).hexdigest()
+    (parent / "migration-status.txt.sha256").write_text(
+        f"{status_sha}  {status}\n",
+        encoding="utf-8",
+    )
+    return parent
+
+
+def run_remote_inventory(root: Path, *, verify_hashes: bool = False):
+    policy = {
+        "snapshot_root": str(root),
+        "max_metadata_file_bytes": 2 * 1024 * 1024,
+    }
+    encoded = base64.urlsafe_b64encode(
+        json.dumps(policy).encode("utf-8")
+    ).decode("ascii")
+    return subprocess.run(
+        [sys.executable, "-", encoded, "1" if verify_hashes else "0"],
+        input=retention.REMOTE_INVENTORY,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+    )
+
+
 class DatabaseSnapshotRetentionTests(unittest.TestCase):
     def test_exact_canonical_migration_shape_classifies_as_boundary(self):
         row = exact_row(1, year=2026, month=9)
@@ -386,6 +439,85 @@ class DatabaseSnapshotRetentionTests(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stderr)
         row = json.loads(proc.stdout)["snapshots"][0]
         self.assertIsNone(row["receipt_timestamp"])
+        self.assertFalse(row["migration_shape_exact"])
+
+    def test_remote_inventory_requires_exact_sidecar_path(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            parent = canonical_receipt(
+                root,
+                stamp="20260923T120000Z",
+            )
+            status = parent / "migration-status.txt"
+            sidecar = parent / "migration-status.txt.sha256"
+            digest = hashlib.sha256(status.read_bytes()).hexdigest()
+            sidecar.write_text(
+                f"{digest}  migration-status.txt\n",
+                encoding="utf-8",
+            )
+            proc = run_remote_inventory(root)
+
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        row = json.loads(proc.stdout)["snapshots"][0]
+        self.assertFalse(row["status_receipt_valid"])
+        self.assertFalse(row["migration_shape_exact"])
+
+    def test_remote_inventory_rejects_duplicate_migration_fields(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            canonical_receipt(
+                root,
+                stamp="20260923T120000Z",
+                migrations=[
+                    "20260923000000_test",
+                    "20260923000000_test",
+                ],
+            )
+            proc = run_remote_inventory(root)
+
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        row = json.loads(proc.stdout)["snapshots"][0]
+        self.assertTrue(row["status_receipt_valid"])
+        self.assertFalse(row["migration_shape_exact"])
+
+    def test_remote_inventory_protects_duplicate_receipts_for_same_release(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            canonical_receipt(root, stamp="20260923T120000Z")
+            canonical_receipt(root, stamp="20260923T120100Z")
+            proc = run_remote_inventory(root)
+
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        rows = json.loads(proc.stdout)["snapshots"]
+        self.assertEqual(len(rows), 2)
+        self.assertTrue(all(row["release_receipt_count"] == 2 for row in rows))
+        self.assertTrue(all(not row["migration_shape_exact"] for row in rows))
+        self.assertTrue(all(row["receipt_ambiguity"] for row in rows))
+        planned = retention.select_retention(rows)
+        self.assertTrue(
+            all(row["classification"] == "legacy-ambiguous" for row in planned)
+        )
+        self.assertTrue(
+            all(row["retention_class"] == "PROTECTED_EVIDENCE" for row in planned)
+        )
+        self.assertTrue(all(not row["retire_candidate"] for row in planned))
+
+    def test_remote_inventory_invalid_utf8_status_is_not_canonical(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            parent = canonical_receipt(root, stamp="20260923T120000Z")
+            status = parent / "migration-status.txt"
+            status.write_bytes(status.read_bytes() + b"\xff\xfe")
+            digest = hashlib.sha256(status.read_bytes()).hexdigest()
+            (parent / "migration-status.txt.sha256").write_text(
+                f"{digest}  {status}\n",
+                encoding="utf-8",
+            )
+            proc = run_remote_inventory(root)
+
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        row = json.loads(proc.stdout)["snapshots"][0]
+        self.assertFalse(row["status_receipt_valid"])
         self.assertFalse(row["migration_shape_exact"])
 
     def test_default_inventory_does_not_hash_snapshot_bodies(self):
