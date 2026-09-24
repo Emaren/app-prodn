@@ -1767,3 +1767,25 @@ completion, rejects ordinary resume with the exact handoff-resume command, and
 may be rebound/released only by that same handoff after certified V2 authority is
 proven. New handoffs must refuse to hide an older incomplete takeover.
 
+## 2026-09-23 — Migration activation trusts the sealed backup body, not a status filename
+
+The automatic production migration lane already wrote a strong receipt: one
+release-bound directory, a content-hashed pre-migration `pg_dump`, a status
+file naming the exact database/release/migrations/dump digest, and a SHA-256
+sidecar over that status. The manual receipt-driven activation verifier was
+weaker: it could accept a directory after checking only applied Prisma rows plus
+`release_sha`, `status=APPLIED`, and migration lines.
+
+Durable rule: a migration-bearing activation must re-prove the recovery artifact
+it would depend on. Release OS now requires one unambiguous direct canonical
+receipt directory, bounded direct regular status and sidecar files, exact sidecar
+verification, unique required fields, the exact manifest migration set, exact
+database identity, canonical dump name, a direct regular non-symlink dump body,
+and a fresh SHA-256 of that dump matching the sealed receipt. Missing, duplicate,
+symlinked, rewritten, ambiguously duplicated, or hash-drifted evidence fails
+closed before activation.
+
+General rule: receipt metadata is not enough when the safety claim depends on a
+separate recovery body. Re-prove both the manifest and the bytes at the final
+mutation boundary.
+
