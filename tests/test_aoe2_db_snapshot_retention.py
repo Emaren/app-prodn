@@ -221,14 +221,17 @@ class DatabaseSnapshotRetentionTests(unittest.TestCase):
         self.assertIn("for meta, text in metadata_documents:", source)
         self.assertNotIn("for meta in metadata_files:", source)
 
-    def test_read_only_contract_has_no_apply_or_delete_mode(self):
+    def test_read_only_contract_has_no_apply_or_snapshot_delete_mode(self):
         source = open(retention.__file__, encoding="utf-8").read()
         self.assertIn('"delete_enabled": False', source)
         self.assertIn('"apply": {', source)
         self.assertIn('"available": False', source)
-        self.assertNotIn("unlink(", source)
-        self.assertNotIn("os.remove(", source)
+        self.assertNotIn('sub.add_parser("apply")', source)
+        self.assertNotIn('sub.add_parser("delete")', source)
         self.assertNotIn("shutil.rmtree(", source)
+        self.assertNotIn("os.remove(", source)
+        # The governed full-body verifier may delete only its own /tmp result.
+        self.assertIn("output.unlink(missing_ok=True)", source)
 
     def test_remote_inventory_fails_closed_when_root_is_missing(self):
         with tempfile.TemporaryDirectory() as td:
@@ -644,6 +647,38 @@ class DatabaseSnapshotRetentionTests(unittest.TestCase):
         row = json.loads(proc.stdout)["snapshots"][0]
         self.assertFalse(row["status_receipt_valid"])
         self.assertFalse(row["migration_shape_exact"])
+
+    def test_governed_verify_result_marker_is_exact_and_validated(self):
+        payload = {
+            "kind": "aoe2war-db-snapshot-inventory",
+            "verify_hashes": True,
+            "snapshots": [],
+        }
+        raw = json.dumps(payload).encode("utf-8")
+        marker = (
+            "maintenance preflight\n"
+            "AOE2WAR_DB_SNAPSHOT_VERIFY_RESULT="
+            + base64.urlsafe_b64encode(raw).decode("ascii")
+            + "\nmaintenance postcheck\n"
+        )
+        self.assertEqual(
+            retention.decode_governed_verify_output(marker),
+            payload,
+        )
+        with self.assertRaises(retention.SnapshotRetentionError):
+            retention.decode_governed_verify_output("maintenance only\n")
+
+    def test_full_body_verify_uses_wolo_safe_maintenance_governor(self):
+        source = open(retention.__file__, encoding="utf-8").read()
+        self.assertIn('"/usr/local/sbin/aoe2war-maintenance-run"', source)
+        self.assertIn('"db-snapshot-verify"', source)
+        self.assertIn('"root_maintenance_host"', source)
+        self.assertIn("if verify_hashes:", source)
+        self.assertIn("return governed_remote_inventory(p, encoded)", source)
+        self.assertIn(
+            '"AOE2WAR_DB_SNAPSHOT_VERIFY_RESULT="',
+            source,
+        )
 
     def test_default_inventory_does_not_hash_snapshot_bodies(self):
         source = open(retention.__file__, encoding="utf-8").read()
