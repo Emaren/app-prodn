@@ -172,7 +172,11 @@ def parse_status(path):
         or path.stat().st_size > max_meta
     ):
         return result
-    for raw in path.read_text(encoding="utf-8", errors="replace").splitlines():
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeDecodeError):
+        return result
+    for raw in lines:
         key, sep, value = raw.partition("=")
         if sep and key and value:
             result.setdefault(key.strip(), []).append(value.strip())
@@ -203,21 +207,35 @@ def status_receipt_valid(parent, status):
     if (
         not stat.S_ISREG(status_stat.st_mode)
         or not stat.S_ISREG(sidecar_stat.st_mode)
+        or status_stat.st_size <= 0
         or status_stat.st_size > max_meta
-        or sidecar_stat.st_size > max_meta
+        or sidecar_stat.st_size <= 0
+        or sidecar_stat.st_size > 4096
     ):
         return False
     try:
-        tokens = sidecar.read_text(
-            encoding="utf-8", errors="replace"
-        ).split()
-        expected = tokens[0] if tokens else None
-    except Exception:
+        lines = [
+            line.strip()
+            for line in sidecar.read_text(encoding="utf-8").splitlines()
+            if line.strip()
+        ]
+    except (OSError, UnicodeDecodeError):
+        return False
+    if len(lines) != 1:
+        return False
+    parts = lines[0].split(None, 1)
+    if (
+        len(parts) != 2
+        or not sha_re.fullmatch(parts[0])
+        or parts[1].strip() != str(status_path)
+    ):
+        return False
+    try:
+        observed = hashlib.sha256(status_path.read_bytes()).hexdigest()
+    except OSError:
         return False
     return bool(
-        isinstance(expected, str)
-        and sha_re.fullmatch(expected)
-        and hashlib.sha256(status_path.read_bytes()).hexdigest() == expected
+        observed == parts[0]
         and one(status, "status") == "APPLIED"
     )
 
@@ -322,6 +340,7 @@ if root.is_dir():
                 and isinstance(database, str)
                 and database.strip()
                 and migrations
+                and len(migrations) == len(set(migrations))
             )
 
             actual_sha = sha256(path) if verify_hashes else None
@@ -368,6 +387,24 @@ if root.is_dir():
                 "external_reference_count": len(refs),
                 "external_reference_examples": refs[:6],
             })
+
+release_receipt_counts = {}
+for row in snapshots:
+    if row.get("migration_shape_exact") and row.get("release_sha"):
+        key = str(row["release_sha"])
+        release_receipt_counts[key] = release_receipt_counts.get(key, 0) + 1
+
+for row in snapshots:
+    release_sha = row.get("release_sha")
+    count = int(release_receipt_counts.get(str(release_sha), 0)) if release_sha else 0
+    row["release_receipt_count"] = count
+    if row.get("migration_shape_exact") and count != 1:
+        row["migration_shape_exact"] = False
+        row["receipt_ambiguity"] = (
+            "multiple canonical migration receipts claim the same release"
+        )
+    else:
+        row["receipt_ambiguity"] = None
 
 print(json.dumps({
     "schema": 1,
@@ -434,6 +471,11 @@ def token_set(row: dict[str, Any]) -> set[str]:
 
 
 def classify_snapshot(row: dict[str, Any]) -> tuple[str, str]:
+    if row.get("receipt_ambiguity"):
+        return (
+            "legacy-ambiguous",
+            str(row["receipt_ambiguity"]),
+        )
     if row.get("migration_shape_exact") is True:
         if row.get("hash_matches_declared") is False:
             return (
