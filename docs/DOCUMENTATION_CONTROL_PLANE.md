@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/replay-uneven-team-canonical-identity-20260924` at `f35d04a278222bb58450e48903fdbe8ef0fe61a8`
+Implementation baseline: `fix/replay-uneven-team-canonical-identity-20260924` at `f866149f691fe60ad03381da8ac23ada4a0e8885`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
