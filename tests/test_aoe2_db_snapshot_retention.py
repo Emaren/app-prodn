@@ -342,6 +342,59 @@ class DatabaseSnapshotRetentionTests(unittest.TestCase):
             )
         )
 
+    def test_remote_reference_census_matches_digest_only_reference(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td) / "receipts"
+            root.mkdir()
+            parent = canonical_receipt(root, stamp="20260923T120000Z")
+            status = parent / "migration-status.txt"
+            declared = next(
+                line.split("=", 1)[1]
+                for line in status.read_text(encoding="utf-8").splitlines()
+                if line.startswith("dump_sha256=")
+            )
+
+            meta = Path(td) / "os-control"
+            meta.mkdir()
+            proof = meta / "activation-proof.json"
+            proof.write_text(
+                json.dumps({"database_snapshot_sha256": declared}) + "\n",
+                encoding="utf-8",
+            )
+            source = retention.REMOTE_INVENTORY.replace(
+                'Path("/mnt/HC_Volume_105319120/aoe2war/os-control")',
+                f"Path({str(meta)!r})",
+            )
+            policy = {
+                "snapshot_root": str(root),
+                "max_metadata_file_bytes": 2 * 1024 * 1024,
+            }
+            encoded = base64.urlsafe_b64encode(
+                json.dumps(policy).encode("utf-8")
+            ).decode("ascii")
+            proc = subprocess.run(
+                [sys.executable, "-", encoded, "0"],
+                input=source,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        payload = json.loads(proc.stdout)
+        self.assertTrue(payload["reference_scan_complete"])
+        self.assertEqual(len(payload["snapshots"]), 1)
+        row = payload["snapshots"][0]
+        self.assertEqual(row["external_reference_count"], 1)
+        self.assertEqual(row["external_reference_examples"], [str(proof)])
+        planned = retention.select_retention(payload["snapshots"])
+        self.assertEqual(
+            planned[0]["retention_class"],
+            "PROTECTED_REFERENCE",
+        )
+        self.assertFalse(planned[0]["retire_candidate"])
+
     def test_remote_reference_census_bounds_blocker_evidence_memory(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td) / "receipts"
