@@ -1898,6 +1898,213 @@ def migration_names_from_manifest(manifest: dict) -> list[str]:
     return names
 
 
+def migration_receipt_verifier_python() -> str:
+    """Return the read-only verifier used by manual migration activation."""
+    return r'''
+from __future__ import annotations
+
+import datetime as dt
+import hashlib
+import re
+import stat
+import sys
+from pathlib import Path
+
+
+def fail(message: str, code: int = 82) -> None:
+    print(f"STOP: {message}", file=sys.stderr)
+    raise SystemExit(code)
+
+
+def direct_regular(
+    receipt: Path,
+    path: Path,
+    *,
+    label: str,
+    max_bytes: int | None = None,
+    require_nonempty: bool = False,
+) -> int:
+    if path.parent != receipt:
+        fail(f"{label} is not direct receipt content")
+    try:
+        info = path.lstat()
+    except FileNotFoundError:
+        fail(f"{label} is missing")
+    if stat.S_ISLNK(info.st_mode) or not stat.S_ISREG(info.st_mode):
+        fail(f"{label} is not a direct regular non-symlink file")
+    if max_bytes is not None and info.st_size > max_bytes:
+        fail(f"{label} exceeds bounded size")
+    if require_nonempty and info.st_size <= 0:
+        fail(f"{label} is empty")
+    return int(info.st_size)
+
+
+if len(sys.argv) != 5:
+    fail("migration receipt verifier arguments are invalid", 80)
+
+root = Path(sys.argv[1])
+release = sys.argv[2]
+database = sys.argv[3]
+expected_path = Path(sys.argv[4])
+
+if not re.fullmatch(r"[0-9a-f]{40}", release):
+    fail("release SHA is not exact lowercase Git identity", 80)
+if not database:
+    fail("production database name is empty", 80)
+if not root.is_dir():
+    fail("durable production migration receipt root is missing")
+if root.is_symlink():
+    fail("durable production migration receipt root may not be a symlink")
+
+try:
+    expected = [
+        line.strip()
+        for line in expected_path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+except Exception as exc:
+    fail(f"expected migration set is unreadable: {exc}", 80)
+if not expected or len(expected) != len(set(expected)):
+    fail("expected migration set is empty or ambiguous", 80)
+
+release_short = release[:12]
+identity = re.compile(r"^migration-(\d{8}T\d{6}Z)-([0-9a-f]{12})$")
+candidates: list[Path] = []
+
+for candidate in sorted(root.iterdir(), key=lambda path: path.name):
+    if not (
+        candidate.name.startswith("migration-")
+        and candidate.name.endswith(f"-{release_short}")
+    ):
+        continue
+    if candidate.is_symlink() or not candidate.is_dir():
+        fail(f"matching migration receipt is not a direct directory: {candidate}")
+    match = identity.fullmatch(candidate.name)
+    if match is None or match.group(2) != release_short:
+        fail(f"matching migration receipt has invalid identity: {candidate.name}")
+    try:
+        parsed = dt.datetime.strptime(match.group(1), "%Y%m%dT%H%M%SZ")
+    except ValueError:
+        fail(f"matching migration receipt has invalid UTC timestamp: {candidate.name}")
+    if parsed.strftime("%Y%m%dT%H%M%SZ") != match.group(1):
+        fail(f"matching migration receipt timestamp is not canonical: {candidate.name}")
+    candidates.append(candidate)
+
+if not candidates:
+    fail("durable production migration receipt is missing")
+if len(candidates) != 1:
+    fail(
+        "durable production migration receipt is ambiguous: "
+        + ", ".join(path.name for path in candidates)
+    )
+
+receipt = candidates[0]
+status_path = receipt / "migration-status.txt"
+sidecar_path = receipt / "migration-status.txt.sha256"
+dump_path = receipt / "pre-migration.dump"
+
+direct_regular(
+    receipt,
+    status_path,
+    label="migration-status.txt",
+    max_bytes=256 * 1024,
+    require_nonempty=True,
+)
+direct_regular(
+    receipt,
+    sidecar_path,
+    label="migration-status.txt.sha256",
+    max_bytes=4096,
+    require_nonempty=True,
+)
+
+try:
+    sidecar_lines = [
+        line.strip()
+        for line in sidecar_path.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+except UnicodeDecodeError:
+    fail("migration status SHA-256 sidecar is not UTF-8 text")
+if len(sidecar_lines) != 1:
+    fail("migration status SHA-256 sidecar is ambiguous")
+parts = sidecar_lines[0].split(None, 1)
+if len(parts) != 2 or not re.fullmatch(r"[0-9a-f]{64}", parts[0]):
+    fail("migration status SHA-256 sidecar is malformed")
+if parts[1].strip() != str(status_path):
+    fail("migration status SHA-256 sidecar path is not exact")
+observed_status_sha = hashlib.sha256(status_path.read_bytes()).hexdigest()
+if observed_status_sha != parts[0]:
+    fail("migration status SHA-256 sidecar does not match status bytes")
+
+try:
+    status_lines = status_path.read_text(encoding="utf-8").splitlines()
+except UnicodeDecodeError:
+    fail("migration status is not UTF-8 text")
+
+required_keys = {
+    "status",
+    "release_sha",
+    "database",
+    "dump",
+    "dump_sha256",
+}
+required: dict[str, str] = {}
+migrations: list[str] = []
+for line in status_lines:
+    if not line:
+        continue
+    if "=" not in line:
+        fail("migration status contains a malformed line")
+    key, value = line.split("=", 1)
+    if not key:
+        fail("migration status contains an empty field name")
+    if key == "migration":
+        if not value:
+            fail("migration status contains an empty migration")
+        migrations.append(value)
+        continue
+    if key in required_keys:
+        if key in required:
+            fail(f"migration status contains duplicate required field: {key}")
+        required[key] = value
+
+missing = sorted(required_keys - required.keys())
+if missing:
+    fail("migration status is missing required field(s): " + ", ".join(missing))
+if required["status"] != "APPLIED":
+    fail("migration status is not APPLIED")
+if required["release_sha"] != release:
+    fail("migration status release SHA does not match activation release")
+if required["database"] != database:
+    fail("migration status database does not match production database")
+if required["dump"] != "pre-migration.dump":
+    fail("migration status dump name is not canonical")
+if not re.fullmatch(r"[0-9a-f]{64}", required["dump_sha256"]):
+    fail("migration status dump SHA-256 is malformed")
+if len(migrations) != len(expected) or sorted(migrations) != sorted(expected):
+    fail(
+        "migration status migration set differs from release manifest: "
+        f"expected={sorted(expected)!r} observed={sorted(migrations)!r}"
+    )
+
+direct_regular(
+    receipt,
+    dump_path,
+    label="pre-migration.dump",
+    require_nonempty=True,
+)
+digest = hashlib.sha256()
+with dump_path.open("rb") as handle:
+    for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+        digest.update(chunk)
+if digest.hexdigest() != required["dump_sha256"]:
+    fail("pre-migration dump SHA-256 does not match sealed migration status")
+
+print(str(receipt))
+'''
+
+
 def verify_production_migration_receipt(manifest: dict) -> None:
     names = migration_names_from_manifest(manifest)
     if not names:
@@ -1906,11 +2113,15 @@ def verify_production_migration_receipt(manifest: dict) -> None:
         raise ShipError("Prisma migrations require a DATABASE or FINANCIAL release gate.")
 
     release_sha = str(manifest.get("release_sha") or "")
-    if len(release_sha) != 40:
+    if (
+        len(release_sha) != 40
+        or any(ch not in "0123456789abcdef" for ch in release_sha)
+    ):
         raise ShipError("Migration verification requires an exact release SHA.")
 
     q = shlex.quote
     expected = "\n".join(names)
+    receipt_verifier = migration_receipt_verifier_python()
     release_short = release_sha[:12]
     script = f"""
 set -Eeuo pipefail
@@ -1987,25 +2198,13 @@ while IFS= read -r migration; do
   }}
 done < "$expected_file"
 
-receipt_match=""
-while IFS= read -r candidate; do
-  status="$candidate/migration-status.txt"
-  [ -f "$status" ] || continue
-  grep -Fqx "release_sha=$RELEASE" "$status" || continue
-  grep -Fqx "status=APPLIED" "$status" || continue
-  ok=1
-  while IFS= read -r migration; do
-    [ -n "$migration" ] || continue
-    grep -Fqx "migration=$migration" "$status" || ok=0
-  done < "$expected_file"
-  [ "$ok" = 1 ] && receipt_match="$candidate"
-done < <(
-  find "$RECEIPT_ROOT" -mindepth 1 -maxdepth 1 -type d \
-    -name "migration-*-${{RELEASE_SHORT}}" -print 2>/dev/null | sort
-)
-
+receipt_match="$(
+python3 - "$RECEIPT_ROOT" "$RELEASE" "$PGDATABASE" "$expected_file" <<'PY'
+{receipt_verifier}
+PY
+)"
 [ -n "$receipt_match" ] || {{
-  echo "STOP: durable production migration receipt is missing" >&2
+  echo "STOP: durable production migration receipt verifier returned no path" >&2
   exit 82
 }}
 printf 'migration_receipt\\t%s\\n' "$receipt_match"
