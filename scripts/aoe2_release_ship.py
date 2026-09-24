@@ -1938,7 +1938,7 @@ if not expected or len(expected) != len(set(expected)):
 expected_set = set(expected)
 release_short = release[:12]
 name_re = re.compile(
-    r"migration-(?P<stamp>\\d{8}T\\d{6}Z)-(?P<short>[0-9a-f]{12})"
+    r"migration-(?P<stamp>\d{8}T\d{6}Z)-(?P<short>[0-9a-f]{12})"
 )
 
 def direct_regular(path: Path, *, maximum: int | None = None) -> os.stat_result:
@@ -1995,7 +1995,7 @@ def verify_sidecar(status: Path, sidecar: Path) -> None:
         raise SystemExit(
             "STOP: migration status sidecar must contain exactly one digest line"
         )
-    match = re.fullmatch(r"([0-9a-f]{64})\\s+\\*?(.+)", lines[0])
+    match = re.fullmatch(r"([0-9a-f]{64})\s+\*?(.+)", lines[0])
     if not match:
         raise SystemExit("STOP: migration status sidecar is malformed")
     recorded_digest, recorded_path = match.groups()
@@ -2082,7 +2082,7 @@ if dump_path.parent != receipt:
 if sha256_file(dump_path) != dump_sha:
     raise SystemExit("STOP: migration dump SHA-256 mismatch")
 
-print(f"migration_receipt\\t{receipt}")
+print(f"migration_receipt\t{receipt}")
 '''
 
 
