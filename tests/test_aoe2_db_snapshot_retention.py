@@ -319,6 +319,12 @@ class DatabaseSnapshotRetentionTests(unittest.TestCase):
         self.assertEqual(payload["reference_census"]["files_scanned"], 0)
         self.assertEqual(payload["reference_census"]["bytes_scanned"], 0)
 
+    def test_remote_reference_census_records_os_walk_errors(self):
+        source = retention.REMOTE_INVENTORY
+        self.assertIn("def record_metadata_walk_error(exc):", source)
+        self.assertIn("onerror=record_metadata_walk_error", source)
+        self.assertIn('"metadata-walk-error:"', source)
+
     def test_remote_reference_census_reports_unreadable_metadata_root(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td) / "receipts"
