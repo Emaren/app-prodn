@@ -75,6 +75,60 @@ function activityCount(metadata: JsonRecord, kind: "batch" | "watcher" | "manual
   );
 }
 
+function collapseManualBursts<T extends {
+  kind: "batch" | "watcher" | "manual";
+  uid: string | null;
+  warrior: string;
+  occurredAt: string;
+  count: number;
+  uploadedCount: number | null;
+  parsedCount: number | null;
+  resultReadyCount: number | null;
+  duplicateCount: number | null;
+  failedCount: number | null;
+}>(events: T[]) {
+  const windowMs = 5 * 60 * 1000;
+  const output: T[] = [];
+  const latestManualByActor = new Map<string, T>();
+
+  for (const event of events) {
+    if (event.kind !== "manual") {
+      output.push(event);
+      continue;
+    }
+
+    const actorKey = event.uid || event.warrior.toLowerCase();
+    const existing = latestManualByActor.get(actorKey);
+
+    if (
+      existing &&
+      Math.abs(
+        new Date(existing.occurredAt).getTime() -
+          new Date(event.occurredAt).getTime()
+      ) <= windowMs
+    ) {
+      existing.count += event.count;
+      existing.uploadedCount =
+        (existing.uploadedCount ?? 0) + (event.uploadedCount ?? event.count);
+      existing.parsedCount =
+        (existing.parsedCount ?? 0) + (event.parsedCount ?? 0);
+      existing.resultReadyCount =
+        (existing.resultReadyCount ?? 0) + (event.resultReadyCount ?? 0);
+      existing.duplicateCount =
+        (existing.duplicateCount ?? 0) + (event.duplicateCount ?? 0);
+      existing.failedCount =
+        (existing.failedCount ?? 0) + (event.failedCount ?? 0);
+      continue;
+    }
+
+    const clone = { ...event };
+    latestManualByActor.set(actorKey, clone);
+    output.push(clone);
+  }
+
+  return output;
+}
+
 export async function GET() {
   const prisma = getPrisma();
   const now = new Date();
@@ -293,7 +347,9 @@ export async function GET() {
             : "BATCH COMPLETE",
     }));
 
-  const feed = [...uploads, ...batchMilestones]
+  const displayUploads = collapseManualBursts(uploads);
+
+  const feed = [...displayUploads, ...batchMilestones]
     .sort(
       (left, right) =>
         new Date(right.occurredAt).getTime() -
