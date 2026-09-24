@@ -1822,3 +1822,21 @@ things. First prove identity, provenance, purpose, references and recovery
 coverage; only a separately reviewed, receipt-backed apply transaction may turn
 a candidate into retired bytes.
 
+## 2026-09-23 — Expensive read-only work still needs an operator load contract
+
+The database-snapshot planner is non-mutating, but its explicit full-body
+verification can read multiple gigabytes from the production evidence volume.
+Treating that as equivalent to a cheap metadata status call would make the
+control plane operationally dishonest.
+
+Durable rule: fixed-action operator controls distinguish cheap read-only census
+from expensive read-only verification. DB Snapshot Census uses bounded metadata
+and sealed receipt hashes. Verify DB Snapshot Bytes requires the exact
+`VERIFY DB SNAPSHOTS` confirmation and invokes only the fixed
+`aoe2war storage db-snapshots plan --json --verify-hashes` command through the
+outbound Operator Bridge.
+
+Read-only means no authoritative state changes; it does not mean zero load.
+Expensive observation must be explicit, bounded, auditable, and incapable of
+smuggling arbitrary shell or mutation parameters.
+
