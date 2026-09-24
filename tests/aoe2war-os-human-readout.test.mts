@@ -61,4 +61,3 @@ test("AoE2WAR OS keeps the latest completed command result visible", () => {
   assert.match(page, /run\.result/);
   assert.match(page, /run\.stdoutTail/);
 });
-

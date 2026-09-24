@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "f9c92effd7ce8b0892bd59462a9f1da70d92047e8ee6cef0df391341e2c1ef57",
+      "sha256": "2c388f357703a5df3a5209acad40797125728cf1ae2c5e6995a8b5b9670f2e76",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-22",
       "sensitivity": "internal",
-      "sha256": "7ee446d19bd209fe70d88a8bf10cbf2c6e3707551f96982319c5acd41e354a8c",
+      "sha256": "474fc00171192ff03ddb8c5a3a4cf536fd489ebed035448a1b4cab70d905da8d",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "main",
-    "commit": "61eb8e1ef410876244bb1f3d1563ef6161014acd"
+    "branch": "fix/release-gate-eof-whitespace-20260924",
+    "commit": "20b3e2d8987392888aef4bd56d57ead7a4630003"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
