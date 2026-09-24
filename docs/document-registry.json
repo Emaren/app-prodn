@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9418ab4c5fca44eff209b4580893862379d939ea8c2b32db04b63d04b8b2993c",
+      "sha256": "b24053250896b882f2a355fe49715de56181cc30ee80d2103bd21d9ea6789d3c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/db-snapshot-provenance-parity-20260923",
-    "commit": "5ac383982e601fb5322d877cdde6702c4c38a0cf"
+    "commit": "7e58a81b06bbd8e5cf48450444707da6abebab5a"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
