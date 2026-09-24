@@ -1,3 +1,7 @@
+import {
+  normalizeReplayPlayer,
+} from "./teamResolution.ts";
+
 export type ExplicitUnevenTeamStatsCandidate = {
   winningTeamId: string;
   losingTeamId: string;
@@ -102,141 +106,6 @@ function normalizedText(
 ) {
   return cleanText(value)
     .toLowerCase();
-}
-
-function explicitBoolean(
-  value: unknown
-): boolean | null {
-  if (
-    value === true ||
-    value === 1 ||
-    value === "1" ||
-    value === "true"
-  ) {
-    return true;
-  }
-
-  if (
-    value === false ||
-    value === 0 ||
-    value === "0" ||
-    value === "false"
-  ) {
-    return false;
-  }
-
-  return null;
-}
-
-function playerNumber(
-  player: UnknownRecord
-) {
-  const value =
-    player.number ??
-    player.player_number ??
-    player.playerNumber;
-
-  if (
-    typeof value === "number" &&
-    Number.isFinite(value)
-  ) {
-    return Math.floor(value);
-  }
-
-  if (
-    typeof value === "string" &&
-    /^\d+$/.test(
-      value.trim()
-    )
-  ) {
-    return Number(
-      value.trim()
-    );
-  }
-
-  return null;
-}
-
-function explicitTeamId(
-  player: UnknownRecord
-) {
-  const value =
-    player.team_id ??
-    player.teamId ??
-    player.team_number ??
-    player.teamNumber ??
-    player.team;
-
-  if (
-    value === null ||
-    value === undefined
-  ) {
-    return null;
-  }
-
-  const teamId =
-    String(value)
-      .trim();
-
-  if (
-    !teamId ||
-    teamId === "-1" ||
-    teamId.toLowerCase() ===
-      "none" ||
-    teamId.toLowerCase() ===
-      "unknown"
-  ) {
-    return null;
-  }
-
-  return teamId;
-}
-
-function stablePlayerKey(
-  player: UnknownRecord,
-  index: number
-) {
-  const explicit =
-    cleanText(
-      player.stablePlayerKey ??
-      player.stable_player_key
-    );
-
-  if (explicit) {
-    return explicit;
-  }
-
-  const steamId =
-    cleanText(
-      player.steam_id ??
-      player.steamId ??
-      player.user_id ??
-      player.userId
-    );
-
-  if (steamId) {
-    return `steam:${steamId}`;
-  }
-
-  const number =
-    playerNumber(
-      player
-    );
-
-  if (number !== null) {
-    return `number:${number}`;
-  }
-
-  const name =
-    normalizedText(
-      player.name
-    );
-
-  if (name) {
-    return `name:${name}`;
-  }
-
-  return `index:${index}`;
 }
 
 function normalizedNameSet(
@@ -350,58 +219,48 @@ export function resolveExplicitUnevenTeamStats(
     [];
 
   for (
-    const [
-      index,
-      rawPlayer,
-    ]
-    of rawPlayers.entries()
+    const rawPlayer
+    of rawPlayers
   ) {
-    const name =
-      cleanText(
-        rawPlayer.name
-      );
-
-    const normalizedName =
-      normalizedText(
-        rawPlayer.name
-      );
-
-    const teamId =
-      explicitTeamId(
+    /*
+     * Result projection must use the exact same player identity contract as
+     * the rest of Replay Truth. In particular, player-number is replay-slot
+     * evidence, not a stable public identity, and malformed/non-Steam IDs
+     * must not become `steam:...` keys here.
+     */
+    const canonical =
+      normalizeReplayPlayer(
         rawPlayer
       );
 
-    const winner =
-      explicitBoolean(
-        rawPlayer.winner
-      );
-
     if (
-      !name ||
-      !normalizedName ||
-      !teamId ||
-      winner === null
+      !canonical ||
+      !canonical.name ||
+      !canonical.normalizedName ||
+      !canonical.teamId ||
+      canonical.winner === null
     ) {
       return null;
     }
 
     players.push({
-      name,
-      normalizedName,
+      name:
+        canonical.name,
+
+      normalizedName:
+        canonical.normalizedName,
 
       stablePlayerKey:
-        stablePlayerKey(
-          rawPlayer,
-          index
-        ),
+        canonical.stablePlayerKey,
 
       playerNumber:
-        playerNumber(
-          rawPlayer
-        ),
+        canonical.playerNumber,
 
-      teamId,
-      winner,
+      teamId:
+        canonical.teamId,
+
+      winner:
+        canonical.winner,
     });
   }
 
