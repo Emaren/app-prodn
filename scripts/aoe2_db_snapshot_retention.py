@@ -220,7 +220,7 @@ def status_receipt_valid(parent, status, status_syntax_valid):
         not stat.S_ISREG(status_stat.st_mode)
         or not stat.S_ISREG(sidecar_stat.st_mode)
         or status_stat.st_size <= 0
-        or status_stat.st_size > max_meta
+        or status_stat.st_size > 256 * 1024
         or sidecar_stat.st_size <= 0
         or sidecar_stat.st_size > 4096
     ):
@@ -375,6 +375,7 @@ if root.is_dir():
             )
             migration_shape = bool(
                 name == "pre-migration.dump"
+                and int(st.st_size) > 0
                 and migration_match
                 and receipt_timestamp is not None
                 and status_ok
