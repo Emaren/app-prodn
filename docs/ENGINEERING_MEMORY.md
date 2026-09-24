@@ -1749,6 +1749,15 @@ takeover itself as a receipted state machine. Every restart must answer "what wa
 last proven?" rather than "what probably happened?".
 
 
+A follow-up race audit found that durable reservation alone is insufficient if
+two handoff starts can both pass the pre-reservation census concurrently. The
+permanent rule is now two-level serialization: a short admission lock owns
+`incomplete census -> create -> reserve -> spawn`, while the detached handoff
+runner owns the separate long-lived execution lock. Never reuse the execution
+lock for admission, because the child must be able to acquire it immediately
+after spawn without racing its parent.
+
+
 A second failure mode is control-plane competition during the frozen interval.
 The handoff state machine is not enough if an ordinary campaign command can
 restart V1 while the takeover is waiting on source reconciliation or Finish.
