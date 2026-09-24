@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "21d04cf0c6adc05463a3578bc4783064c144d805bd5d9e088d59d8ee85bd26a1",
+      "sha256": "f1f8df96ee2f4f7fcc33293e736022c9ac0c5f2ee64a979fee3f8a1302ae4640",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-22",
       "sensitivity": "internal",
-      "sha256": "75c3306ce896a709af2a3d564ccc5b44a314f5716dc6bbe0dd6f6d0bdb7c6857",
+      "sha256": "5a439df2769f5a8a9de6b7ad0a938d496e549445fa66782f508e4d1fce956273",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1279,7 +1279,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-22",
       "sensitivity": "internal",
-      "sha256": "4dd86423e4306e77557fcdc7ddba561109df1f08e2425e30fd76c27e4adf66f6",
+      "sha256": "134113bf4b8b735837995bd697a0ab7ce674179a514434140404da000544fb59",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "main",
-    "commit": "5330d56c66474f37fc7f3cf4deb29a9fc11a8342"
+    "branch": "fix/migration-activation-receipt-binding-20260923",
+    "commit": "12e74d3c8a8aaec12d033959d7ed4203e92098aa"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
