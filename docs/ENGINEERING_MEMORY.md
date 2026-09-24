@@ -1767,3 +1767,22 @@ completion, rejects ordinary resume with the exact handoff-resume command, and
 may be rebound/released only by that same handoff after certified V2 authority is
 proven. New handoffs must refuse to hide an older incomplete takeover.
 
+## 2026-09-23 — Migration activation must re-prove the sealed recovery dump
+
+A release can prove that Prisma migration rows are applied and still lack exact
+recovery provenance. The canonical migration writer already seals the full
+release SHA, database name, exact migration set, `pre-migration.dump` SHA-256
+and a status-file sidecar, but the manual activation verifier historically
+checked only applied rows plus a few status lines.
+
+Durable rule: migration activation must consume the migration receipt as sealed
+evidence, not as a directory-name hint. Before activation, re-prove the exact
+UTC/release directory identity, direct regular status and sidecar, unique
+required fields, exact migration set, canonical dump name, non-symlink dump
+body, and the dump's current SHA-256. Multiple full-release matches are
+ambiguous and block.
+
+General rule: a recovery artifact is not protected merely because the writer was
+strong. Every later authority boundary that relies on it must independently
+re-validate the same identity and integrity claims before mutation.
+
