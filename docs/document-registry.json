@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "2022521bc6609bf273dd5d3212cfa89e55a588f62e3b9cae29a5f82c84bab29e",
+      "sha256": "21d04cf0c6adc05463a3578bc4783064c144d805bd5d9e088d59d8ee85bd26a1",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/storage-handoff-admission-lock-20260923",
-    "commit": "6484428117f7d9ab44d911c184086a59b62ee77c"
+    "branch": "main",
+    "commit": "5330d56c66474f37fc7f3cf4deb29a9fc11a8342"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
