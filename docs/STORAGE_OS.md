@@ -529,8 +529,8 @@ The tiered migration-boundary policy is evidence-first:
 
 1. prove the bounded external durable-reference census is complete; if it is
    incomplete, no retirement candidate may exist;
-2. protect any snapshot whose exact snapshot/receipt path is referenced by
-   external durable metadata;
+2. protect any snapshot whose exact snapshot/receipt path, receipt directory,
+   or sealed dump SHA-256 is referenced by external durable metadata;
 3. keep the newest five remaining exact migration restore points as `HOT`;
 4. keep one additional exact restore point per ISO week for eight older weeks;
 5. keep one additional exact restore point per calendar month for twelve older
