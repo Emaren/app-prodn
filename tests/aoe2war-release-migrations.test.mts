@@ -48,10 +48,14 @@ test("migration phase runs after staging and before activation", () => {
   assert.ok(activationAt > applyAt);
 });
 
-test("manual receipt-driven activation refuses migration releases without DB proof", () => {
+test("manual receipt-driven activation re-proves the exact sealed DB receipt", () => {
+  assert.match(ship, /def migration_receipt_verifier_python/);
   assert.match(ship, /def verify_production_migration_receipt/);
+  assert.match(ship, /migration-status\.txt\.sha256/);
+  assert.match(ship, /pre-migration\.dump/);
+  assert.match(ship, /expected exactly one durable migration receipt for the exact release/);
+  assert.match(ship, /migration dump SHA-256 mismatch/);
   assert.match(ship, /Production migration verification failed/);
-  assert.match(ship, /durable production migration receipt is missing/);
   assert.match(ship, /verify_production_migration_receipt\(manifest\)/);
 });
 
