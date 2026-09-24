@@ -169,8 +169,8 @@ export async function GET() {
         },
       },
       orderBy: [
-        { createdAt: "asc" },
-        { id: "asc" },
+        { createdAt: "desc" },
+        { id: "desc" },
       ],
       take: 512,
       select: {
@@ -232,7 +232,7 @@ export async function GET() {
 
   const batches = new Map<string, BatchAccumulator>();
 
-  for (const event of batchEvents) {
+  for (const event of [...batchEvents].reverse()) {
     const identity =
       event.userUid ||
       event.user?.uid ||
