@@ -403,27 +403,75 @@ for base in metadata_roots:
 
 reference_scan_complete = metadata_scan_blocker_count == 0
 
+snapshot_scan_blockers = []
+snapshot_scan_blocker_count = 0
+
+def record_snapshot_blocker(value):
+    global snapshot_scan_blocker_count
+    snapshot_scan_blocker_count += 1
+    if len(snapshot_scan_blockers) < 100:
+        snapshot_scan_blockers.append(value)
+
+def record_snapshot_walk_error(exc):
+    filename = getattr(exc, "filename", None) or "unknown"
+    record_snapshot_blocker(
+        "snapshot-walk-error:"
+        + str(filename)
+        + ":"
+        + type(exc).__name__
+    )
+
 snapshots = []
 if root.is_dir():
     base_depth = len(root.parts)
-    for current, dirs, files in os.walk(root):
+    for current, dirs, files in os.walk(
+        root,
+        onerror=record_snapshot_walk_error,
+    ):
         current_path = Path(current)
         depth = len(current_path.parts) - base_depth
         if depth >= 4:
             dirs[:] = []
-        dirs[:] = [
-            name for name in dirs
-            if not (current_path / name).is_symlink()
-        ]
+
+        safe_dirs = []
+        for name in dirs:
+            child = current_path / name
+            try:
+                child_stat = child.stat(follow_symlinks=False)
+            except OSError as exc:
+                record_snapshot_blocker(
+                    "snapshot-directory-unreadable:"
+                    + str(child)
+                    + ":"
+                    + type(exc).__name__
+                )
+                continue
+            if child.is_symlink() or not stat.S_ISDIR(child_stat.st_mode):
+                record_snapshot_blocker(
+                    "snapshot-directory-not-direct:" + str(child)
+                )
+                continue
+            safe_dirs.append(name)
+        dirs[:] = safe_dirs
+
         for name in files:
             if not name.lower().endswith(allowed_suffixes):
                 continue
             path = current_path / name
             try:
                 st = path.stat(follow_symlinks=False)
-            except OSError:
+            except OSError as exc:
+                record_snapshot_blocker(
+                    "snapshot-file-unreadable:"
+                    + str(path)
+                    + ":"
+                    + type(exc).__name__
+                )
                 continue
-            if not stat.S_ISREG(st.st_mode):
+            if path.is_symlink() or not stat.S_ISREG(st.st_mode):
+                record_snapshot_blocker(
+                    "snapshot-file-not-direct-regular:" + str(path)
+                )
                 continue
 
             parent = path.parent
@@ -554,6 +602,9 @@ payload = {
     "reference_scan_bytes": metadata_scan_bytes,
     "reference_scan_blockers": metadata_scan_blockers,
     "reference_scan_blocker_count": metadata_scan_blocker_count,
+    "snapshot_scan_complete": snapshot_scan_blocker_count == 0,
+    "snapshot_scan_blockers": snapshot_scan_blockers,
+    "snapshot_scan_blocker_count": snapshot_scan_blocker_count,
     "snapshots": snapshots,
 }
 output_path = Path(sys.argv[3]) if len(sys.argv) > 3 and sys.argv[3] else None
@@ -852,6 +903,7 @@ def select_retention(
     rows: list[dict[str, Any]],
     *,
     reference_scan_complete: bool = True,
+    snapshot_scan_complete: bool = True,
 ) -> list[dict[str, Any]]:
     p = policy()
     now = datetime.now(timezone.utc)
@@ -970,6 +1022,13 @@ def select_retention(
             row["retention_class"] = "PROTECTED_EVIDENCE"
             row["retention_reason"] = "exact SHA-256 provenance is unavailable"
             continue
+        if not snapshot_scan_complete:
+            row["retention_class"] = "PROTECTED_SNAPSHOT_CENSUS"
+            row["retention_reason"] = (
+                "database snapshot census is incomplete; retention coverage "
+                "and retirement candidacy are fail-closed"
+            )
+            continue
         if not reference_scan_complete:
             row["retention_class"] = "PROTECTED_REFERENCE_CENSUS"
             row["retention_reason"] = (
@@ -1065,9 +1124,31 @@ def collect(*, verify_hashes: bool = False) -> dict[str, Any]:
     if blocker_count != 0 or blockers:
         reference_scan_complete = False
 
+    snapshot_scan_complete = inventory.get("snapshot_scan_complete")
+    if not isinstance(snapshot_scan_complete, bool):
+        snapshot_scan_complete = False
+
+    snapshot_blockers = inventory.get("snapshot_scan_blockers") or []
+    if not isinstance(snapshot_blockers, list):
+        snapshot_blockers = ["snapshot-scan-blocker-shape-invalid"]
+        snapshot_scan_complete = False
+
+    snapshot_blocker_count = inventory.get("snapshot_scan_blocker_count")
+    if (
+        not isinstance(snapshot_blocker_count, int)
+        or isinstance(snapshot_blocker_count, bool)
+        or snapshot_blocker_count < 0
+    ):
+        snapshot_blocker_count = max(1, len(snapshot_blockers))
+        snapshot_scan_complete = False
+
+    if snapshot_blocker_count != 0 or snapshot_blockers:
+        snapshot_scan_complete = False
+
     rows = select_retention(
         [row for row in raw if isinstance(row, dict)],
         reference_scan_complete=reference_scan_complete,
+        snapshot_scan_complete=snapshot_scan_complete,
     )
     return {
         "schema": 1,
@@ -1082,6 +1163,11 @@ def collect(*, verify_hashes: bool = False) -> dict[str, Any]:
             "bytes_scanned": scan_bytes,
             "blocker_count": blocker_count,
             "blockers": [str(item) for item in blockers[:100]],
+        },
+        "snapshot_census": {
+            "complete": snapshot_scan_complete,
+            "blocker_count": snapshot_blocker_count,
+            "blockers": [str(item) for item in snapshot_blockers[:100]],
         },
         "policy": {
             key: value
@@ -1127,6 +1213,12 @@ def print_status(payload: dict[str, Any], *, include_rows: bool) -> None:
         "Hash verified:"
         f" {summary['hash_verified_count']}"
         + (" (full-body verification requested)" if payload["verify_hashes"] else "")
+    )
+    snapshot_census = payload.get("snapshot_census") or {}
+    print(
+        "Snapshot scan:"
+        + (" COMPLETE" if snapshot_census.get("complete") else " INCOMPLETE")
+        + f" · blockers={snapshot_census.get('blocker_count', '—')}"
     )
     reference_census = payload.get("reference_census") or {}
     print(
