@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-22",
       "sensitivity": "internal",
-      "sha256": "432aa068fca52219d9418592130e10f7d72d8c3e77b029884387d82f3a152549",
+      "sha256": "7ee446d19bd209fe70d88a8bf10cbf2c6e3707551f96982319c5acd41e354a8c",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
