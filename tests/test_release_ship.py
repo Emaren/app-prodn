@@ -331,6 +331,14 @@ class ShipTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             root = pathlib.Path(td)
             receipt = write_migration_receipt(root, release=release)
+            (receipt / "migration-status.txt.sha256").unlink()
+            result = run_migration_receipt_verifier(root, release=release)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("sidecar is missing", result.stderr)
+
+        with tempfile.TemporaryDirectory() as td:
+            root = pathlib.Path(td)
+            receipt = write_migration_receipt(root, release=release)
             (receipt / "migration-status.txt.sha256").write_text(
                 "0" * 64 + f"  {receipt / 'migration-status.txt'}\n",
                 encoding="utf-8",
