@@ -189,6 +189,8 @@ def parse_status(path):
         key, value = raw.split("=", 1)
         if not key:
             return result, False
+        if key == "migration" and not value:
+            return result, False
         result.setdefault(key, []).append(value)
     return result, True
 
