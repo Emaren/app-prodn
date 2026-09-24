@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a3d42041ebb9cabfa204900f333a96be34bbf57c96318de12788ce0b4423852a",
+      "sha256": "a8da61ba1de0c2ea92f1cce3369275f9cbfeede08153e337c1a30b580fa0c1a0",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-22",
       "sensitivity": "internal",
-      "sha256": "434e6a56172569822513c7809538a2de0ca58023c305e9ce5ae46c561a260128",
+      "sha256": "1f825122b823560e1b76b0b8a8ad02811e7d447378a79a3228b4613f7c29871d",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1509,7 +1509,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-19",
       "sensitivity": "internal",
-      "sha256": "624b0fea4700554a8b74b01088fc93842ce2f4baf1e469cd9844ba99c8da8c5b",
+      "sha256": "9281f346df7ba8474a9bf0b26d0fff9df5cbf8ec717308e84f635997bb97ebc4",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/db-snapshot-reference-census-fail-closed-20260924",
-    "commit": "ac31d017fcffa77e61bf061c51dc23a7a6f5a03e"
+    "commit": "05ddbc3a653e306234d0873a51af95e1ae69d537"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
