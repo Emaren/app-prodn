@@ -70,7 +70,12 @@ def canonical_receipt(
     return parent
 
 
-def run_remote_inventory(root: Path, *, verify_hashes: bool = False):
+def run_remote_inventory(
+    root: Path,
+    *,
+    verify_hashes: bool = False,
+    output_path: Path | None = None,
+):
     policy = {
         "snapshot_root": str(root),
         "max_metadata_file_bytes": 2 * 1024 * 1024,
@@ -78,8 +83,11 @@ def run_remote_inventory(root: Path, *, verify_hashes: bool = False):
     encoded = base64.urlsafe_b64encode(
         json.dumps(policy).encode("utf-8")
     ).decode("ascii")
+    args = [sys.executable, "-", encoded, "1" if verify_hashes else "0"]
+    if output_path is not None:
+        args.append(str(output_path))
     return subprocess.run(
-        [sys.executable, "-", encoded, "1" if verify_hashes else "0"],
+        args,
         input=retention.REMOTE_INVENTORY,
         text=True,
         stdout=subprocess.PIPE,
@@ -647,6 +655,34 @@ class DatabaseSnapshotRetentionTests(unittest.TestCase):
         row = json.loads(proc.stdout)["snapshots"][0]
         self.assertFalse(row["status_receipt_valid"])
         self.assertFalse(row["migration_shape_exact"])
+
+    def test_remote_inventory_governed_output_path_is_exact_and_private(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            canonical_receipt(root, stamp="20260923T120000Z")
+            suffix = hashlib.sha256(str(root).encode("utf-8")).hexdigest()[:32]
+            output = Path("/tmp") / (
+                f"aoe2war-db-snapshot-verify-{suffix}.json"
+            )
+            output.unlink(missing_ok=True)
+            try:
+                proc = run_remote_inventory(
+                    root,
+                    verify_hashes=True,
+                    output_path=output,
+                )
+                self.assertEqual(proc.returncode, 0, proc.stderr)
+                self.assertEqual(proc.stdout, "")
+                self.assertTrue(output.is_file())
+                self.assertEqual(output.stat().st_mode & 0o777, 0o400)
+                payload = json.loads(output.read_text(encoding="utf-8"))
+                self.assertTrue(payload["verify_hashes"])
+                self.assertEqual(
+                    payload["kind"],
+                    "aoe2war-db-snapshot-inventory",
+                )
+            finally:
+                output.unlink(missing_ok=True)
 
     def test_governed_verify_result_marker_is_exact_and_validated(self):
         payload = {
