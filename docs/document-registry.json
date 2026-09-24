@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6a8e3ca270ed183aa0e6abbe62fa5131a367f9bcc0346c28221d545a7c46624d",
+      "sha256": "a594406e40c809629321b8d7cad3fb917d3686293cb3f241634a65c7345fb587",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1509,7 +1509,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-19",
       "sensitivity": "internal",
-      "sha256": "c328e07be882cc3eb92c2dfa388da4c006db17eaefda3dfd08a3f3743c27c581",
+      "sha256": "3b0079c73a400a35e7fd05d4fcb0bf0da487c9df74c7ba18a9310bb5936c5402",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/db-snapshot-reference-census-fail-closed-20260924",
-    "commit": "ca4b530bf17bf0f068778a27c6bcc58d22479aa8"
+    "commit": "6ca753254af5c1089cc5a71b7e56a5a5ad3c5895"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
