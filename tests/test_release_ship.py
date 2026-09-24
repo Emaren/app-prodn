@@ -7,6 +7,7 @@ import shlex
 import subprocess
 import tempfile
 import unittest
+import sys
 from unittest import mock
 
 SCRIPT = pathlib.Path(__file__).resolve().parents[1] / "scripts" / "aoe2_release_ship.py"
@@ -224,6 +225,81 @@ fi
     )
 
 
+def write_migration_receipt_fixture(
+    root: pathlib.Path,
+    *,
+    release: str,
+    database: str = "aoe2",
+    migrations: tuple[str, ...] = ("20260101000000_create_widget",),
+    directory_name: str | None = None,
+) -> tuple[pathlib.Path, pathlib.Path]:
+    root.mkdir(parents=True, exist_ok=True)
+    receipt = root / (
+        directory_name
+        or f"migration-20260923T123456Z-{release[:12]}"
+    )
+    receipt.mkdir()
+    dump = receipt / "pre-migration.dump"
+    dump.write_bytes(b"sealed database fixture\n")
+    dump_sha = hashlib.sha256(dump.read_bytes()).hexdigest()
+    status = receipt / "migration-status.txt"
+    status.write_text(
+        "\n".join(
+            [
+                "status=APPLIED",
+                f"release_sha={release}",
+                f"database={database}",
+                "dump=pre-migration.dump",
+                f"dump_sha256={dump_sha}",
+                *(f"migration={name}" for name in migrations),
+                "mode=additive",
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    status_sha = hashlib.sha256(status.read_bytes()).hexdigest()
+    (receipt / "migration-status.txt.sha256").write_text(
+        f"{status_sha}  {status.resolve()}\n",
+        encoding="utf-8",
+    )
+    expected = root / "expected-migrations.txt"
+    expected.write_text("\n".join(migrations) + "\n", encoding="utf-8")
+    return receipt, expected
+
+
+def reseal_migration_status(receipt: pathlib.Path) -> None:
+    status = receipt / "migration-status.txt"
+    digest = hashlib.sha256(status.read_bytes()).hexdigest()
+    (receipt / "migration-status.txt.sha256").write_text(
+        f"{digest}  {status.resolve()}\n",
+        encoding="utf-8",
+    )
+
+
+def run_migration_receipt_verifier(
+    root: pathlib.Path,
+    *,
+    release: str,
+    expected: pathlib.Path,
+    database: str = "aoe2",
+) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            MODULE.migration_receipt_verifier_python(),
+            str(root),
+            release,
+            database,
+            str(expected),
+        ],
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+
 class ShipTests(unittest.TestCase):
     def test_production_migration_verifier_renders_nested_python(self):
         manifest = {
@@ -269,6 +345,190 @@ class ShipTests(unittest.TestCase):
             check=False,
         )
         self.assertEqual(shell.returncode, 0, shell.stderr)
+
+    def test_migration_receipt_verifier_accepts_exact_sealed_receipt(self):
+        release = "e" * 40
+        with tempfile.TemporaryDirectory() as td:
+            root = pathlib.Path(td)
+            receipt, expected = write_migration_receipt_fixture(
+                root,
+                release=release,
+            )
+            result = run_migration_receipt_verifier(
+                root,
+                release=release,
+                expected=expected,
+            )
+
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn(f"migration_receipt\t{receipt}", result.stdout)
+
+    def test_migration_receipt_verifier_fails_closed_on_identity_and_timestamp(self):
+        release = "e" * 40
+        cases = (
+            (
+                "release-prefix-mismatch",
+                f"migration-20260923T123456Z-{'f' * 12}",
+                "expected exactly one",
+            ),
+            (
+                "invalid-timestamp",
+                f"migration-20261399T996099Z-{release[:12]}",
+                "timestamp is invalid",
+            ),
+        )
+        for label, directory_name, error in cases:
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as td:
+                root = pathlib.Path(td)
+                _, expected = write_migration_receipt_fixture(
+                    root,
+                    release=release,
+                    directory_name=directory_name,
+                )
+                result = run_migration_receipt_verifier(
+                    root,
+                    release=release,
+                    expected=expected,
+                )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(error, result.stderr)
+
+    def test_migration_receipt_verifier_rejects_missing_invalid_or_ambiguous_sidecar(self):
+        release = "e" * 40
+        for label in ("missing", "invalid"):
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as td:
+                root = pathlib.Path(td)
+                receipt, expected = write_migration_receipt_fixture(
+                    root,
+                    release=release,
+                )
+                sidecar = receipt / "migration-status.txt.sha256"
+                if label == "missing":
+                    sidecar.unlink()
+                else:
+                    sidecar.write_text(
+                        f"{'0' * 64}  {(receipt / 'migration-status.txt').resolve()}\n",
+                        encoding="utf-8",
+                    )
+                result = run_migration_receipt_verifier(
+                    root,
+                    release=release,
+                    expected=expected,
+                )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("migration status sidecar", result.stderr)
+
+        with tempfile.TemporaryDirectory() as td:
+            root = pathlib.Path(td)
+            receipt, expected = write_migration_receipt_fixture(
+                root,
+                release=release,
+            )
+            status = receipt / "migration-status.txt"
+            status.write_text(
+                status.read_text(encoding="utf-8") + "database=aoe2\n",
+                encoding="utf-8",
+            )
+            reseal_migration_status(receipt)
+            result = run_migration_receipt_verifier(
+                root,
+                release=release,
+                expected=expected,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("duplicate required field: database", result.stderr)
+
+    def test_migration_receipt_verifier_rejects_migration_set_and_multiple_receipts(self):
+        release = "e" * 40
+        with tempfile.TemporaryDirectory() as td:
+            root = pathlib.Path(td)
+            _, expected = write_migration_receipt_fixture(
+                root,
+                release=release,
+            )
+            expected.write_text(
+                "20260102000000_different_migration\n",
+                encoding="utf-8",
+            )
+            result = run_migration_receipt_verifier(
+                root,
+                release=release,
+                expected=expected,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("migration set mismatch", result.stderr)
+
+        with tempfile.TemporaryDirectory() as td:
+            root = pathlib.Path(td)
+            first, expected = write_migration_receipt_fixture(
+                root,
+                release=release,
+            )
+            second = root / f"migration-20260923T123457Z-{release[:12]}"
+            second.mkdir()
+            for source in first.iterdir():
+                if source.is_file():
+                    target = second / source.name
+                    target.write_bytes(source.read_bytes())
+            second_status = second / "migration-status.txt"
+            second_digest = hashlib.sha256(second_status.read_bytes()).hexdigest()
+            (second / "migration-status.txt.sha256").write_text(
+                f"{second_digest}  {second_status.resolve()}\n",
+                encoding="utf-8",
+            )
+            result = run_migration_receipt_verifier(
+                root,
+                release=release,
+                expected=expected,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("exactly one durable migration receipt", result.stderr)
+
+    def test_migration_receipt_verifier_rejects_symlinked_status_or_dump(self):
+        release = "e" * 40
+        for label in ("status", "dump"):
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as td:
+                root = pathlib.Path(td)
+                receipt, expected = write_migration_receipt_fixture(
+                    root,
+                    release=release,
+                )
+                if label == "status":
+                    status = receipt / "migration-status.txt"
+                    target = receipt / "status-target.txt"
+                    target.write_bytes(status.read_bytes())
+                    status.unlink()
+                    status.symlink_to(target.name)
+                else:
+                    dump = receipt / "pre-migration.dump"
+                    target = receipt / "dump-target.bin"
+                    target.write_bytes(dump.read_bytes())
+                    dump.unlink()
+                    dump.symlink_to(target.name)
+                result = run_migration_receipt_verifier(
+                    root,
+                    release=release,
+                    expected=expected,
+                )
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn("direct regular file", result.stderr)
+
+    def test_migration_receipt_verifier_rejects_dump_hash_mismatch(self):
+        release = "e" * 40
+        with tempfile.TemporaryDirectory() as td:
+            root = pathlib.Path(td)
+            receipt, expected = write_migration_receipt_fixture(
+                root,
+                release=release,
+            )
+            (receipt / "pre-migration.dump").write_bytes(b"tampered dump\n")
+            result = run_migration_receipt_verifier(
+                root,
+                release=release,
+                expected=expected,
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("dump SHA-256 mismatch", result.stderr)
 
     def test_activation_transport_timeout_recovers_exact_certified_result(self):
         data, receipt, transport = activation_sample()
