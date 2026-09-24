@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "1484b4d1bfeee407dd36d6f9365d9596a454278734607cc378ea7664721c4147",
+      "sha256": "e4e45676bbfef6aad1e0662c847148aa94cfb064c8ba18acdd557deb8e9d7fe2",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/db-snapshot-os-bridge-20260923",
-    "commit": "916b45d7b2719d6dc3e086be01f148cc9b2a2fb6"
+    "commit": "d720888081a97de022ca64f771787b968311d5e3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
