@@ -490,9 +490,12 @@ direct directories rather than silently truncating at the snapshot-body depth,
 reads only known bounded metadata suffixes, and is capped at 10,000 metadata
 documents / 64 MiB of metadata text. A missing/unreadable metadata root,
 symlinked/non-regular metadata entry, oversized candidate metadata file,
-read/UTF-8 failure, or census budget exhaustion makes the reference census
-**INCOMPLETE**. An incomplete reference census is not interpreted as “zero
-references”: every otherwise-retirable exact migration snapshot is demoted to
+read/UTF-8 failure, census budget exhaustion, malformed counter, or contradictory
+"complete" flag plus blocker evidence makes the reference census
+**INCOMPLETE**. Completeness is re-derived locally from the whole evidence
+envelope; it is never trusted as one remote boolean. An incomplete reference
+census is not interpreted as “zero references”: every otherwise-retirable exact
+migration snapshot is demoted to
 `PROTECTED_REFERENCE_CENSUS` and candidate count/bytes remain zero until the
 reference surface can be proved complete.
 
