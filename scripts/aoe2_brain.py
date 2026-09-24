@@ -157,6 +157,7 @@ def latest_truth(now: datetime) -> dict[str, Any]:
         return {
             "available": False,
             "receipt": None,
+            "audit_available": False,
             "freshness": {
                 "generated_at": None,
                 "age_seconds": None,
@@ -170,6 +171,7 @@ def latest_truth(now: datetime) -> dict[str, Any]:
         return {
             "available": False,
             "receipt": str(path),
+            "audit_available": False,
             "error": str(exc),
             "freshness": {
                 "generated_at": None,
@@ -178,8 +180,18 @@ def latest_truth(now: datetime) -> dict[str, Any]:
             },
         }
 
+    audit_path = aoe2_truth.latest_receipt("audit")
+    audit_envelope: dict[str, Any] | None = None
+    if audit_path is not None:
+        try:
+            audit_envelope = aoe2_truth.load_json(audit_path)
+        except Exception:
+            audit_envelope = None
+
     payload = envelope.get("payload") or {}
     closure = payload.get("closure") or {}
+    audit_payload = (audit_envelope or {}).get("payload") or {}
+    audit_contract = audit_payload.get("contract") or {}
     return {
         "available": True,
         "receipt": str(path.relative_to(ROOT) if path.is_relative_to(ROOT) else path),
@@ -200,6 +212,27 @@ def latest_truth(now: datetime) -> dict[str, Any]:
         ),
         "freshness": freshness(
             envelope.get("generated_at") or payload.get("generatedAt"),
+            now=now,
+            stale_after_seconds=TRUTH_STALE_SECONDS,
+        ),
+        "audit_available": bool(audit_payload),
+        "audit_receipt": (
+            str(
+                audit_path.relative_to(ROOT)
+                if audit_path is not None and audit_path.is_relative_to(ROOT)
+                else audit_path
+            )
+            if audit_path is not None
+            else None
+        ),
+        "audit_production_source": audit_payload.get("productionSource"),
+        "audit_pass": audit_payload.get("pass") is True,
+        "contract_mismatches": audit_contract.get("contractMismatchGames"),
+        "contract_mismatch_ids": audit_contract.get("contractMismatchIds") or [],
+        "scalar_incoherent": audit_contract.get("scalarAuthorityIncoherent"),
+        "audit_freshness": freshness(
+            (audit_envelope or {}).get("generated_at")
+            or audit_payload.get("generatedAt"),
             now=now,
             stale_after_seconds=TRUTH_STALE_SECONDS,
         ),
@@ -741,6 +774,41 @@ def brain_recommendations(
                 "action": "aoe2war truth closure",
             }
         )
+    elif (
+        truth.get("available")
+        and truth.get("matches_current_release") is True
+        and (
+            not truth.get("audit_available")
+            or truth.get("audit_matches_current_release") is not True
+            or truth.get("audit_pass") is not True
+        )
+    ):
+        mismatch_ids = [
+            str(value)
+            for value in truth.get("contract_mismatch_ids") or []
+            if isinstance(value, int) and value > 0
+        ]
+        target_commands = " && ".join(
+            f"aoe2war truth target {value}"
+            for value in mismatch_ids[:8]
+        )
+        rows.append(
+            {
+                "rank": 8,
+                "level": "INVESTIGATE",
+                "key": "replay-contract-integrity",
+                "title": "Resolve current Replay Truth contract mismatch",
+                "reason": (
+                    f"audit_current={'YES' if truth.get('audit_matches_current_release') else 'NO'} "
+                    f"audit_pass={'YES' if truth.get('audit_pass') else 'NO'} "
+                    f"mismatches={truth.get('contract_mismatches')}"
+                ),
+                "action": (
+                    "aoe2war truth audit"
+                    + (f" && {target_commands}" if target_commands else "")
+                ),
+            }
+        )
 
     if (
         performance.get("available")
@@ -860,13 +928,19 @@ def invariant_rows(
                 and truth.get("complete") is True
                 and int(truth.get("unclassified") or 0) == 0
                 and truth.get("matches_current_release") is True
+                and truth.get("audit_available")
+                and truth.get("audit_matches_current_release") is True
+                and truth.get("audit_pass") is True
                 else "ATTENTION"
             ),
             "evidence": (
                 f"accounted={truth.get('accounted_percent')}% "
                 f"unclassified={truth.get('unclassified')} "
                 f"release={str(truth.get('production_source') or '—')[:12]} "
-                f"current={'YES' if truth.get('matches_current_release') else 'NO'}"
+                f"current={'YES' if truth.get('matches_current_release') else 'NO'} "
+                f"audit={'PASS' if truth.get('audit_pass') else 'FAIL/UNKNOWN'} "
+                f"audit_current={'YES' if truth.get('audit_matches_current_release') else 'NO'} "
+                f"mismatches={truth.get('contract_mismatches')}"
                 if truth.get("available")
                 else "closure receipt unavailable"
             ),
@@ -1561,6 +1635,11 @@ def collect() -> dict[str, Any]:
     truth["matches_current_release"] = bool(
         truth.get("available")
         and truth.get("production_source")
+        == source.get("production", {}).get("source_sha")
+    )
+    truth["audit_matches_current_release"] = bool(
+        truth.get("audit_available")
+        and truth.get("audit_production_source")
         == source.get("production", {}).get("source_sha")
     )
     finish = latest_finish()
