@@ -476,13 +476,35 @@ aoe2war storage db-snapshots plan
 aoe2war storage db-snapshots plan --verify-hashes
 ```
 
-The default inventory is bounded to
+The snapshot-body inventory is bounded to
 `/mnt/HC_Volume_105319120/aoe2war/deploy-receipts`, walks at most four
 directory levels, ignores symlinks and non-regular files, and counts only known
 database-backup suffixes. It does **not** hash multi-gigabyte dump bodies by
 default. Canonical migration boundaries reuse the SHA-256 already sealed in
 `migration-status.txt`; `--verify-hashes` is an explicit read-only full-body
 verification pass.
+
+Snapshot-body inventory completeness is tracked independently from reference
+completeness. Traversal errors, unreadable entries, symlinked directories or
+backup-shaped symlink/non-regular files make the snapshot census **INCOMPLETE**.
+An incomplete snapshot census may still show observed evidence, but no observed
+migration boundary may become a retirement candidate because hot/weekly/monthly
+coverage cannot be proved against an unknown estate.
+
+Retirement planning has a separate external-reference census over the bounded
+deployment-receipt and AoE2WAR OS-control metadata roots. That census walks all
+direct directories rather than silently truncating at the snapshot-body depth,
+reads only known bounded metadata suffixes, and is capped at 10,000 metadata
+documents / 64 MiB of metadata text. A missing/unreadable metadata root, metadata traversal error,
+symlinked/non-regular metadata entry, oversized candidate metadata file,
+read/UTF-8 failure, census budget exhaustion, malformed counter, or contradictory
+"complete" flag plus blocker evidence makes the reference census
+**INCOMPLETE**. Completeness is re-derived locally from the whole evidence
+envelope; it is never trusted as one remote boolean. An incomplete reference
+census is not interpreted as “zero references”: every otherwise-retirable exact
+migration snapshot is demoted to
+`PROTECTED_REFERENCE_CENSUS` and candidate count/bytes remain zero until the
+reference surface can be proved complete.
 
 A canonical `migration-boundary` snapshot requires all of the following:
 
@@ -515,13 +537,17 @@ non-canonical classes are protected from generic retirement.
 
 The tiered migration-boundary policy is evidence-first:
 
-1. protect any snapshot whose exact snapshot/receipt path is referenced by
-   external durable metadata;
-2. keep the newest five remaining exact migration restore points as `HOT`;
-3. keep one additional exact restore point per ISO week for eight older weeks;
-4. keep one additional exact restore point per calendar month for twelve older
+1. prove the bounded snapshot-body census is complete; if it is incomplete,
+   no retirement candidate may exist;
+2. prove the bounded external durable-reference census is complete; if it is
+   incomplete, no retirement candidate may exist;
+3. protect any snapshot whose exact snapshot/receipt path, receipt directory,
+   or sealed dump SHA-256 is referenced by external durable metadata;
+4. keep the newest five remaining exact migration restore points as `HOT`;
+5. keep one additional exact restore point per ISO week for eight older weeks;
+6. keep one additional exact restore point per calendar month for twelve older
    months;
-5. mark only the remaining exact, unreferenced migration-boundary snapshots as
+7. mark only the remaining exact, unreferenced migration-boundary snapshots as
    `RETIRE_CANDIDATE`.
 
 A referenced exact migration snapshot already satisfies its week/month recovery
