@@ -118,23 +118,25 @@ function buildWing(players: Array<RosterPlayer | null>, side: Side): WingModel {
 
   const prefix = side === "left" ? "L" : "R";
 
-  const playIn = [
-    match(
-      `${prefix}P1`,
-      playerSeat(lower[0]),
-      playerSeat(lower[5])
-    ),
-    match(
-      `${prefix}P2`,
-      playerSeat(lower[1]),
-      playerSeat(lower[4])
-    ),
-    match(
-      `${prefix}P3`,
-      playerSeat(lower[2]),
-      playerSeat(lower[3])
-    ),
-  ];
+  const p1 = match(
+    `${prefix}P1`,
+    playerSeat(lower[0]),
+    playerSeat(lower[5])
+  );
+  const p2 = match(
+    `${prefix}P2`,
+    playerSeat(lower[1]),
+    playerSeat(lower[4])
+  );
+  const p3 = match(
+    `${prefix}P3`,
+    playerSeat(lower[2]),
+    playerSeat(lower[3])
+  );
+
+  // Visual order follows the seeded injection points in the Round of 16:
+  // P3 -> match 1, P2 -> match 3, P1 -> match 4.
+  const playIn = [p3, p2, p1];
 
   const roundOf16 = [
     match(
@@ -460,6 +462,100 @@ function RoundColumn({
   );
 }
 
+function BracketConnector({
+  leftCount,
+  rightCount,
+}: {
+  leftCount: number;
+  rightCount: number;
+}) {
+  const height = 860;
+  const ys = (count: number) =>
+    Array.from(
+      { length: count },
+      (_, index) => ((index + 0.5) * height) / count
+    );
+
+  const leftY = ys(leftCount);
+  const rightY = ys(rightCount);
+  const paths: string[] = [];
+
+  const connect = (
+    fromLeft: boolean,
+    sourceY: number,
+    targetY: number,
+    key: number
+  ) => {
+    const startX = fromLeft ? 0 : 20;
+    const elbowX = fromLeft ? 8 : 12;
+    const endX = fromLeft ? 20 : 0;
+
+    paths.push(
+      `M ${startX} ${sourceY.toFixed(2)} H ${elbowX} V ${targetY.toFixed(
+        2
+      )} H ${endX} /*${key}*/`
+    );
+  };
+
+  if (leftCount === rightCount * 2) {
+    for (let index = 0; index < rightCount; index += 1) {
+      const target = rightY[index];
+      connect(true, leftY[index * 2], target, index * 2);
+      connect(true, leftY[index * 2 + 1], target, index * 2 + 1);
+    }
+  } else if (rightCount === leftCount * 2) {
+    for (let index = 0; index < leftCount; index += 1) {
+      const target = leftY[index];
+      connect(false, rightY[index * 2], target, index * 2);
+      connect(false, rightY[index * 2 + 1], target, index * 2 + 1);
+    }
+  } else if (leftCount === 3 && rightCount === 4) {
+    [0, 2, 3].forEach((targetIndex, index) => {
+      connect(true, leftY[index], rightY[targetIndex], index);
+    });
+  } else if (leftCount === 4 && rightCount === 3) {
+    [0, 2, 3].forEach((sourceIndex, index) => {
+      connect(false, leftY[sourceIndex], rightY[index], index);
+    });
+  }
+
+  return (
+    <div className="relative h-[930px] w-5 shrink-0" aria-hidden="true">
+      <svg
+        className="absolute inset-x-0 bottom-4 top-[54px] h-[860px] w-5 overflow-visible"
+        viewBox="0 0 20 860"
+        preserveAspectRatio="none"
+      >
+        <defs>
+          <linearGradient id={`bracket-wire-${leftCount}-${rightCount}`} x1="0" x2="1">
+            <stop offset="0%" stopColor="rgba(103,232,249,.14)" />
+            <stop offset="50%" stopColor="rgba(103,232,249,.52)" />
+            <stop offset="100%" stopColor="rgba(103,232,249,.14)" />
+          </linearGradient>
+          <filter id={`bracket-glow-${leftCount}-${rightCount}`}>
+            <feGaussianBlur stdDeviation="0.7" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+        {paths.map((path, index) => (
+          <path
+            key={index}
+            d={path.replace(/ \/\*.*?\*\//g, "")}
+            fill="none"
+            stroke={`url(#bracket-wire-${leftCount}-${rightCount})`}
+            strokeWidth="0.85"
+            vectorEffect="non-scaling-stroke"
+            filter={`url(#bracket-glow-${leftCount}-${rightCount})`}
+          />
+        ))}
+      </svg>
+    </div>
+  );
+}
+
 function Wing({
   model,
   side,
@@ -505,19 +601,30 @@ function Wing({
   const ordered = side === "left" ? rounds : [...rounds].reverse();
 
   return (
-    <div className="flex shrink-0 items-stretch gap-5">
-      {ordered.map((round) => (
-        <RoundColumn
-          key={round.key}
-          label={round.label}
-          sublabel={round.sublabel}
-          matches={round.matches}
-          side={side}
-          ratings={ratings}
-          watcherFocus={watcherFocus}
-          intensity={round.intensity}
-        />
-      ))}
+    <div className="flex shrink-0 items-stretch">
+      {ordered.map((round, index) => {
+        const next = ordered[index + 1];
+
+        return (
+          <div key={round.key} className="flex shrink-0 items-stretch">
+            <RoundColumn
+              label={round.label}
+              sublabel={round.sublabel}
+              matches={round.matches}
+              side={side}
+              ratings={ratings}
+              watcherFocus={watcherFocus}
+              intensity={round.intensity}
+            />
+            {next ? (
+              <BracketConnector
+                leftCount={round.matches.length}
+                rightCount={next.matches.length}
+              />
+            ) : null}
+          </div>
+        );
+      })}
     </div>
   );
 }
