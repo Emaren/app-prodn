@@ -475,7 +475,7 @@ else:
         or output_path.is_symlink()
     ):
         raise SystemExit("STOP: unsafe verification output path")
-    encoded_payload = json.dumps(payload, sort_keys=True) + "\\n"
+    encoded_payload = json.dumps(payload, sort_keys=True) + "\n"
     with output_path.open("x", encoding="utf-8") as handle:
         handle.write(encoded_payload)
         handle.flush()
