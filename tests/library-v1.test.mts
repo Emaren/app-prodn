@@ -29,6 +29,8 @@ test("Library distinguishes package, manual, and watcher ingestion from durable 
   assert.match(activityRoute, /watcherClientEvent\.findMany/);
   assert.match(activityRoute, /batch_upload_started/);
   assert.match(activityRoute, /batch_upload_finished/);
+  assert.match(activityRoute, /collapseManualBursts/);
+  assert.match(activityRoute, /5 \* 60 \* 1000/);
 });
 
 test("Library public projection omits raw replay identity and private ingest metadata", () => {
