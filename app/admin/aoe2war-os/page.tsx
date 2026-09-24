@@ -55,6 +55,8 @@ type Run = {
   exitCode: number | null;
   error: string | null;
   expectedSourceSha: string | null;
+  result?: unknown;
+  stdoutTail?: string | null;
   events?: RunEvent[];
 };
 
@@ -144,6 +146,27 @@ function arrayOfRecords(value: unknown) {
           Boolean(item) && typeof item === "object" && !Array.isArray(item)
       )
     : [];
+}
+
+function completedRunOutput(run: Run | null) {
+  if (!run) return null;
+
+  let value = "";
+  if (run.result !== undefined && run.result !== null) {
+    try {
+      value = JSON.stringify(run.result, null, 2);
+    } catch {
+      value = String(run.result);
+    }
+  } else {
+    value = run.stdoutTail?.trim() || run.error?.trim() || "";
+  }
+
+  if (!value) return null;
+  const limit = 120_000;
+  return value.length > limit
+    ? `${value.slice(0, limit)}\n… output truncated in browser; durable run receipt remains authoritative …`
+    : value;
 }
 
 function formatElapsed(milliseconds: number) {
@@ -286,6 +309,11 @@ export default function AoE2WarOsAdminPage() {
   }, [sourceRepos]);
 
   const activeRun = dashboard?.activeRun ?? null;
+  const latestCompletedRun =
+    dashboard?.recentRuns?.find(
+      (run) => !["queued", "claimed", "running"].includes(run.status)
+    ) ?? null;
+  const latestCompletedOutput = completedRunOutput(latestCompletedRun);
   const events = activeRun?.events ?? [];
   const runIsActive = Boolean(
     activeRun && ["queued", "claimed", "running"].includes(activeRun.status)
@@ -1119,7 +1147,9 @@ export default function AoE2WarOsAdminPage() {
               <h2 className="mt-2 text-xl font-semibold">
                 {dashboard?.activeRun
                   ? `${dashboard.activeRun.label} · ${dashboard.activeRun.status}`
-                  : "Operator Nerve Console"}
+                  : latestCompletedRun
+                    ? `${latestCompletedRun.label} · ${latestCompletedRun.status}`
+                    : "Operator Nerve Console"}
               </h2>
             </div>
             {dashboard?.activeRun?.status === "queued" ? (
@@ -1226,6 +1256,20 @@ export default function AoE2WarOsAdminPage() {
                   </span>
                 </div>
               ))
+            ) : latestCompletedRun && latestCompletedOutput ? (
+              <div>
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-3 text-[10px] uppercase tracking-[0.22em] text-slate-600">
+                  <span>Latest completed result</span>
+                  <span>
+                    {new Date(
+                      latestCompletedRun.completedAt ?? latestCompletedRun.requestedAt
+                    ).toLocaleString()}
+                  </span>
+                </div>
+                <pre className="whitespace-pre-wrap break-words text-slate-300">
+                  {latestCompletedOutput}
+                </pre>
+              </div>
             ) : (
               <div className="flex h-full flex-col items-center justify-center text-center text-slate-600">
                 <TerminalSquare className="mb-4 h-8 w-8" />
