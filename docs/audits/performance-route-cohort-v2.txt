@@ -29,6 +29,7 @@
 /kingdom-forge
 /leaderboard
 /leaderboard/og
+/library
 /live-games
 /lobby
 /market
