@@ -48,6 +48,21 @@ class OperatorBridgeTests(unittest.TestCase):
             [str(MODULE.CLI), "storage", "campaign", "status", "--json"],
         )
         self.assertEqual(
+            MODULE.command_for_run({"action": "storage_db_snapshot_status"}),
+            [str(MODULE.CLI), "storage", "db-snapshots", "status", "--json"],
+        )
+        self.assertEqual(
+            MODULE.command_for_run({"action": "storage_db_snapshot_verify"}),
+            [
+                str(MODULE.CLI),
+                "storage",
+                "db-snapshots",
+                "plan",
+                "--json",
+                "--verify-hashes",
+            ],
+        )
+        self.assertEqual(
             MODULE.command_for_run({"action": "update_plan"}),
             [str(MODULE.CLI), "update", "--json"],
         )
