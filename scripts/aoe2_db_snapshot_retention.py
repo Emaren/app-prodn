@@ -488,15 +488,18 @@ if root.is_dir():
 
             abs_text = str(path)
             parent_text = str(parent)
+            reference_needles = [
+                abs_text,
+                parent_text,
+                parent.name,
+            ]
+            if isinstance(declared, str) and sha_re.fullmatch(declared):
+                reference_needles.append(declared)
             refs = []
             for meta, text in metadata_documents:
                 if meta.parent == parent:
                     continue
-                if (
-                    abs_text in text
-                    or parent_text in text
-                    or parent.name in text
-                ):
+                if any(needle in text for needle in reference_needles):
                     refs.append(str(meta))
                     if len(refs) >= 24:
                         break
