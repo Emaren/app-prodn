@@ -1811,9 +1811,10 @@ Financial, incident/recovery and legacy-ambiguous shapes remain protected rather
 than being coerced into the modern class.
 
 The read-only `aoe2war storage db-snapshots` planner keeps a named hot set plus
-weekly and monthly cold restore points, protects externally referenced evidence,
-and may identify older exact migration boundaries as informational retirement
-candidates. It does not delete them. Default inspection reuses sealed receipt
+weekly and monthly cold restore points, protects evidence referenced by exact
+path/receipt identity or the sealed dump SHA-256, and may identify older exact
+migration boundaries as informational retirement candidates. It does not delete
+them. Default inspection reuses sealed receipt
 hashes instead of rereading gigabytes; full-body hashing is an explicit
 read-only verification mode.
 
