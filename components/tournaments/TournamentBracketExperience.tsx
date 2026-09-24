@@ -483,8 +483,7 @@ function BracketConnector({
   const connect = (
     fromLeft: boolean,
     sourceY: number,
-    targetY: number,
-    key: number
+    targetY: number
   ) => {
     const startX = fromLeft ? 0 : 20;
     const elbowX = fromLeft ? 8 : 12;
@@ -493,29 +492,29 @@ function BracketConnector({
     paths.push(
       `M ${startX} ${sourceY.toFixed(2)} H ${elbowX} V ${targetY.toFixed(
         2
-      )} H ${endX} /*${key}*/`
+      )} H ${endX}`
     );
   };
 
   if (leftCount === rightCount * 2) {
     for (let index = 0; index < rightCount; index += 1) {
       const target = rightY[index];
-      connect(true, leftY[index * 2], target, index * 2);
-      connect(true, leftY[index * 2 + 1], target, index * 2 + 1);
+      connect(true, leftY[index * 2], target);
+      connect(true, leftY[index * 2 + 1], target);
     }
   } else if (rightCount === leftCount * 2) {
     for (let index = 0; index < leftCount; index += 1) {
       const target = leftY[index];
-      connect(false, rightY[index * 2], target, index * 2);
-      connect(false, rightY[index * 2 + 1], target, index * 2 + 1);
+      connect(false, rightY[index * 2], target);
+      connect(false, rightY[index * 2 + 1], target);
     }
   } else if (leftCount === 3 && rightCount === 4) {
     [0, 2, 3].forEach((targetIndex, index) => {
-      connect(true, leftY[index], rightY[targetIndex], index);
+      connect(true, leftY[index], rightY[targetIndex]);
     });
   } else if (leftCount === 4 && rightCount === 3) {
     [0, 2, 3].forEach((sourceIndex, index) => {
-      connect(false, leftY[sourceIndex], rightY[index], index);
+      connect(false, leftY[sourceIndex], rightY[index]);
     });
   }
 
