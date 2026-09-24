@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "fb25f5e71dd8eb72c8886b0f617d7dbd6f31cfa245a1c4c690fcd27786c940bd",
+      "sha256": "c8cd0a32511c423bb9de7b3b44fe451a0a9009244b9e9cc2b69c4938d5d0ba6e",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/replay-uneven-team-canonical-identity-20260924",
-    "commit": "f866149f691fe60ad03381da8ac23ada4a0e8885"
+    "branch": "feat/library-activity-board-v1",
+    "commit": "d090fdabc7a8ced125a0c7c930db5cc408b8e31d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
