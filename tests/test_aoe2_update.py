@@ -191,6 +191,159 @@ class UpdateCommandTests(unittest.TestCase):
         self.assertIn("WATCHER_RELEASE_DOCS_STALE", output)
         self.assertEqual(run_call.call_count, 2)
 
+    def test_collect_plan_allows_stale_central_wolo_vps_drift_to_self_heal(self):
+        deployed = "d" * 40
+        stale_central = "e" * 40
+        audit = mock.Mock()
+        audit.payload.return_value = {
+            "p0": 0,
+            "p1": 2,
+            "findings": [
+                {
+                    "severity": "P1",
+                    "area": "Documentation",
+                    "key": "central-source-snapshot-stale",
+                    "detail": "wolochain central snapshot is stale",
+                },
+                {
+                    "severity": "P1",
+                    "area": "WoloChain",
+                    "key": "vps-source-drift",
+                    "detail": (
+                        f"VPS={deployed} "
+                        f"implementation_baseline={stale_central}"
+                    ),
+                },
+            ],
+            "info": {
+                "wolo_vps": {
+                    "head": deployed,
+                    "expected_implementation_baseline": stale_central,
+                }
+            },
+        }
+
+        with tempfile.TemporaryDirectory() as temporary:
+            wolo = pathlib.Path(temporary)
+            (wolo / "docs").mkdir()
+            (wolo / "docs" / "document-registry.json").write_text(
+                json.dumps(
+                    {
+                        "implementation_baseline": {
+                            "branch": "wolo-1-mainnet-prep",
+                            "commit": deployed,
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with mock.patch.object(
+                MODULE.aoe2_audit,
+                "collect_audit",
+                return_value=audit,
+            ), mock.patch.object(
+                MODULE,
+                "source_checker",
+                return_value=(0, "PASS"),
+            ), mock.patch.object(
+                MODULE,
+                "estate_map_refresh_plan",
+                return_value={
+                    "status": "deferred",
+                    "reason": "post-deploy",
+                    "intended_source_sha": "a" * 40,
+                },
+            ), mock.patch.object(
+                MODULE,
+                "WOLOCHAIN",
+                wolo,
+            ):
+                plan = MODULE.collect_plan(release_data=certified_release())
+
+        self.assertFalse(plan["blocked"])
+        self.assertTrue(plan["central_sync"])
+        self.assertEqual(plan["unknown_p1"], [])
+        self.assertEqual(
+            [item["key"] for item in plan["auto_remediable_p1"]],
+            ["vps-source-drift"],
+        )
+
+    def test_collect_plan_keeps_real_wolo_vps_drift_blocking(self):
+        deployed = "d" * 40
+        stale_central = "e" * 40
+        current_source_baseline = "f" * 40
+        audit = mock.Mock()
+        audit.payload.return_value = {
+            "p0": 0,
+            "p1": 2,
+            "findings": [
+                {
+                    "severity": "P1",
+                    "area": "Documentation",
+                    "key": "central-source-snapshot-stale",
+                    "detail": "wolochain central snapshot is stale",
+                },
+                {
+                    "severity": "P1",
+                    "area": "WoloChain",
+                    "key": "vps-source-drift",
+                    "detail": (
+                        f"VPS={deployed} "
+                        f"implementation_baseline={stale_central}"
+                    ),
+                },
+            ],
+            "info": {
+                "wolo_vps": {
+                    "head": deployed,
+                    "expected_implementation_baseline": stale_central,
+                }
+            },
+        }
+
+        with tempfile.TemporaryDirectory() as temporary:
+            wolo = pathlib.Path(temporary)
+            (wolo / "docs").mkdir()
+            (wolo / "docs" / "document-registry.json").write_text(
+                json.dumps(
+                    {
+                        "implementation_baseline": {
+                            "branch": "wolo-1-mainnet-prep",
+                            "commit": current_source_baseline,
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            with mock.patch.object(
+                MODULE.aoe2_audit,
+                "collect_audit",
+                return_value=audit,
+            ), mock.patch.object(
+                MODULE,
+                "source_checker",
+                return_value=(0, "PASS"),
+            ), mock.patch.object(
+                MODULE,
+                "estate_map_refresh_plan",
+                return_value={
+                    "status": "deferred",
+                    "reason": "post-deploy",
+                    "intended_source_sha": "a" * 40,
+                },
+            ), mock.patch.object(
+                MODULE,
+                "WOLOCHAIN",
+                wolo,
+            ):
+                plan = MODULE.collect_plan(release_data=certified_release())
+
+        self.assertTrue(plan["blocked"])
+        self.assertEqual(
+            [item["key"] for item in plan["unknown_p1"]],
+            ["vps-source-drift"],
+        )
+
     def test_collect_plan_allows_central_quality_p0_self_remediation(self):
         audit = mock.Mock()
         audit.payload.return_value = {
