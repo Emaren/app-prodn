@@ -134,6 +134,7 @@ function FeedPulse({
       className={`group relative overflow-hidden rounded-[20px] border p-3 transition duration-300 hover:border-white/20 ${tone} ${
         item.kind === "watcher" ? "opacity-65 hover:opacity-100" : ""
       }`}
+      style={{ animation: "libraryArrival .42s ease-out both" }}
     >
       {item.kind === "batch" && item.state === "active" ? (
         <>
@@ -488,6 +489,14 @@ export default function LibraryActivityBoard() {
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#020409] text-white">
       <SpeedReadyMarker route="/library" ready={!loading && !failed} />
+
+      <style>{`
+        @keyframes libraryArrival {
+          0% { opacity: 0; transform: translateY(-8px) scale(.994); filter: brightness(1.6); }
+          55% { opacity: 1; filter: brightness(1.18); }
+          100% { opacity: 1; transform: translateY(0) scale(1); filter: brightness(1); }
+        }
+      `}</style>
 
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_0%_0%,rgba(239,68,68,0.07),transparent_29%),radial-gradient(circle_at_100%_0%,rgba(34,211,238,0.09),transparent_31%),radial-gradient(circle_at_50%_100%,rgba(59,130,246,0.055),transparent_34%),linear-gradient(180deg,#05060b_0%,#020409_58%,#020308_100%)]" />
