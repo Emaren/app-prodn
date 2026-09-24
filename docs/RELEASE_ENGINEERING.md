@@ -988,9 +988,22 @@ lane verifies that the production pending migration frontier exactly equals the
 release manifest. It then writes a durable PostgreSQL custom-format dump,
 records its SHA-256, applies the exact frontier from an isolated worktree, proves
 each migration landed exactly once with no unfinished Prisma rows, and writes a
-release-bound migration receipt. Activation refuses a partial or unexpected
-frontier, a previously applied release without its durable receipt, or any
-missing/invalid proof.
+release-bound migration receipt.
+
+Migration-bearing activation treats that receipt as sealed recovery evidence,
+not as a filename hint. The manual activation verifier requires exactly one
+direct `migration-<UTC>-<release12>` directory bound to the full release SHA;
+a direct bounded `migration-status.txt` plus its exact SHA-256 sidecar; unique
+`APPLIED`, release, database, dump-name and dump-digest fields; the exact
+manifest migration set; and a direct non-symlink
+`pre-migration.dump` whose bytes still hash to the sealed digest. Invalid
+timestamps, duplicate required fields, symlinked evidence, ambiguous matching
+receipts and dump/status drift all fail closed before activation. Verification
+is read-only and does not mutate PostgreSQL or Wolo.
+
+Activation therefore refuses a partial or unexpected frontier, a previously
+applied release without its exact durable recovery receipt, or any
+missing/invalid/ambiguous proof.
 
 Outside the separately proof-bound production-proven CHECK-replacement and
 production-proven index-canonicalization modes, this authority does not extend
