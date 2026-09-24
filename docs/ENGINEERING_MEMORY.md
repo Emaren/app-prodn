@@ -1838,5 +1838,9 @@ outbound Operator Bridge.
 
 Read-only means no authoritative state changes; it does not mean zero load.
 Expensive observation must be explicit, bounded, auditable, and incapable of
-smuggling arbitrary shell or mutation parameters.
+smuggling arbitrary shell or mutation parameters. When a proven maintenance
+governor already exists, expensive production reads belong under that governor:
+full DB snapshot hashing runs through `aoe2war-maintenance-run`, which watches
+Wolo progress and host pressure and aborts before protected service health is
+traded for observational completeness.
 
