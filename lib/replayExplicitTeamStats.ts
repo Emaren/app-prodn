@@ -329,11 +329,8 @@ export function resolveExplicitUnevenTeamStats(
     [];
 
   for (
-    const [
-      index,
-      rawPlayer,
-    ]
-    of rawPlayers.entries()
+    const rawPlayer
+    of rawPlayers
   ) {
     const name =
       cleanText(
