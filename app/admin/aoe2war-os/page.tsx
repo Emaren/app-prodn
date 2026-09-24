@@ -1424,6 +1424,7 @@ function ActionGroup({
   const iconFor = (action: string) => {
     if (action.includes("rollback")) return RotateCcw;
     if (action.includes("deploy")) return UploadCloud;
+    if (action.includes("db_snapshot")) return DatabaseZap;
     if (action.includes("update")) return DatabaseZap;
     if (action === "audit") return ShieldCheck;
     return Play;
