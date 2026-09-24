@@ -1822,3 +1822,35 @@ things. First prove identity, provenance, purpose, references and recovery
 coverage; only a separately reviewed, receipt-backed apply transaction may turn
 a candidate into retired bytes.
 
+## 2026-09-23 — Expensive read-only work still needs an operator load contract
+
+The database-snapshot planner is non-mutating, but its explicit full-body
+verification can read multiple gigabytes from the production evidence volume.
+Treating that as equivalent to a cheap metadata status call would make the
+control plane operationally dishonest.
+
+Durable rule: fixed-action operator controls distinguish cheap read-only census
+from expensive read-only verification. DB Snapshot Census uses bounded metadata
+and sealed receipt hashes. Verify DB Snapshot Bytes requires the exact
+`VERIFY DB SNAPSHOTS` confirmation and invokes only the fixed
+`aoe2war storage db-snapshots plan --json --verify-hashes` command through the
+outbound Operator Bridge.
+
+Read-only means no authoritative state changes; it does not mean zero load.
+Expensive observation must be explicit, bounded, auditable, and incapable of
+smuggling arbitrary shell or mutation parameters. When a proven maintenance
+governor already exists, expensive production reads belong under that governor:
+full DB snapshot hashing runs through `aoe2war-maintenance-run`, which watches
+Wolo progress and host pressure and aborts before protected service health is
+traded for observational completeness.
+
+A root-executed helper must not trust a deterministic executable path in a
+world-writable directory merely because the file's hash matches once. An
+unprivileged owner could pre-create the exact bytes and replace them after the
+hash check but before privileged execution. Governed snapshot verification
+therefore keeps its reusable helper beneath a root-owned mode-0700 runtime
+directory, requires a root-owned mode-0400 regular file with the exact source
+digest, and creates result evidence with `O_EXCL`/`O_NOFOLLOW` at mode 0400
+from birth. General rule: hash verification does not replace ownership, mode,
+and race-safe path construction across a privilege boundary.
+

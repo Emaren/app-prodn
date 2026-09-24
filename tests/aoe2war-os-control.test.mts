@@ -41,6 +41,15 @@ test("confirmation policy is server-side", () => {
   assert.equal(confirmationMatches("storage_status", ""), true);
   assert.equal(confirmationMatches("storage_plan", ""), true);
   assert.equal(confirmationMatches("storage_campaign_status", ""), true);
+  assert.equal(confirmationMatches("storage_db_snapshot_status", ""), true);
+  assert.equal(
+    confirmationMatches("storage_db_snapshot_verify", "VERIFY DB SNAPSHOTS"),
+    true
+  );
+  assert.equal(
+    confirmationMatches("storage_db_snapshot_verify", "verify db snapshots"),
+    false
+  );
   assert.equal(confirmationMatches("update_apply", "UPDATE"), true);
   assert.equal(confirmationMatches("update_apply", "update"), false);
   assert.equal(confirmationMatches("deploy", "DEPLOY"), true);
@@ -147,6 +156,18 @@ test("file-backed control plane queues, claims, streams and completes", async ()
     assert.equal(
       dashboard.actions.some((action) => action.action === "replay_native_run"),
       false
+    );
+    assert.equal(
+      dashboard.actions.some(
+        (action) => action.action === "storage_db_snapshot_status"
+      ),
+      true
+    );
+    assert.equal(
+      dashboard.actions.some(
+        (action) => action.action === "storage_db_snapshot_verify"
+      ),
+      true
     );
   });
 });

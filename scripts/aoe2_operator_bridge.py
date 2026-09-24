@@ -30,7 +30,7 @@ DEFAULT_TOKEN_FILE = Path(
     )
 ).expanduser()
 
-VERSION = "1.4.0"
+VERSION = "1.4.1"
 NATIVE_REPLAY_CANARY_SHA256 = {32388: "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b"}
 NATIVE_REPLAY_CANARY_GAME_IDS = set(NATIVE_REPLAY_CANARY_SHA256)
 NATIVE_REPLAY_CANARY_ROSTER = {32388: [1, 2, 3, 4]}
@@ -44,6 +44,8 @@ ACTIONS = {
     "storage_status",
     "storage_plan",
     "storage_campaign_status",
+    "storage_db_snapshot_status",
+    "storage_db_snapshot_verify",
     "update_plan",
     "update_apply",
     "deploy_plan",
@@ -177,6 +179,17 @@ def command_for_run(
         return [str(CLI), "storage", "plan", "--json"]
     if action == "storage_campaign_status":
         return [str(CLI), "storage", "campaign", "status", "--json"]
+    if action == "storage_db_snapshot_status":
+        return [str(CLI), "storage", "db-snapshots", "status", "--json"]
+    if action == "storage_db_snapshot_verify":
+        return [
+            str(CLI),
+            "storage",
+            "db-snapshots",
+            "plan",
+            "--json",
+            "--verify-hashes",
+        ]
     if action == "update_plan":
         return [str(CLI), "update", "--json"]
     if action == "update_apply":

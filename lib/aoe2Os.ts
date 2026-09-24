@@ -62,6 +62,22 @@ export const AOE2_OS_ACTIONS = {
     confirmation: null,
     requiresSourceSha: false,
   },
+  storage_db_snapshot_status: {
+    label: "DB Snapshot Census",
+    description:
+      "Read the bounded deploy-database snapshot estate and tiered-retention plan without hashing full dump bodies or changing anything.",
+    risk: "read",
+    confirmation: null,
+    requiresSourceSha: false,
+  },
+  storage_db_snapshot_verify: {
+    label: "Verify DB Snapshot Bytes",
+    description:
+      "Read and SHA-256 verify database snapshot bodies against sealed migration receipts. This is read-only but intentionally performs bounded production-volume I/O.",
+    risk: "read",
+    confirmation: "VERIFY DB SNAPSHOTS",
+    requiresSourceSha: false,
+  },
   update_plan: {
     label: "Plan Documentation Sync",
     description: "Show documentation/federation/context maintenance that would be performed.",

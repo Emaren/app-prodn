@@ -5,6 +5,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -70,7 +71,12 @@ def canonical_receipt(
     return parent
 
 
-def run_remote_inventory(root: Path, *, verify_hashes: bool = False):
+def run_remote_inventory(
+    root: Path,
+    *,
+    verify_hashes: bool = False,
+    output_path: Path | None = None,
+):
     policy = {
         "snapshot_root": str(root),
         "max_metadata_file_bytes": 2 * 1024 * 1024,
@@ -78,8 +84,11 @@ def run_remote_inventory(root: Path, *, verify_hashes: bool = False):
     encoded = base64.urlsafe_b64encode(
         json.dumps(policy).encode("utf-8")
     ).decode("ascii")
+    args = [sys.executable, "-", encoded, "1" if verify_hashes else "0"]
+    if output_path is not None:
+        args.append(str(output_path))
     return subprocess.run(
-        [sys.executable, "-", encoded, "1" if verify_hashes else "0"],
+        args,
         input=retention.REMOTE_INVENTORY,
         text=True,
         stdout=subprocess.PIPE,
@@ -221,14 +230,17 @@ class DatabaseSnapshotRetentionTests(unittest.TestCase):
         self.assertIn("for meta, text in metadata_documents:", source)
         self.assertNotIn("for meta in metadata_files:", source)
 
-    def test_read_only_contract_has_no_apply_or_delete_mode(self):
+    def test_read_only_contract_has_no_apply_or_snapshot_delete_mode(self):
         source = open(retention.__file__, encoding="utf-8").read()
         self.assertIn('"delete_enabled": False', source)
         self.assertIn('"apply": {', source)
         self.assertIn('"available": False', source)
-        self.assertNotIn("unlink(", source)
-        self.assertNotIn("os.remove(", source)
+        self.assertNotIn('sub.add_parser("apply")', source)
+        self.assertNotIn('sub.add_parser("delete")', source)
         self.assertNotIn("shutil.rmtree(", source)
+        self.assertNotIn("os.remove(", source)
+        # The governed full-body verifier may delete only its own /tmp result.
+        self.assertIn("output.unlink(missing_ok=True)", source)
 
     def test_remote_inventory_fails_closed_when_root_is_missing(self):
         with tempfile.TemporaryDirectory() as td:
@@ -644,6 +656,109 @@ class DatabaseSnapshotRetentionTests(unittest.TestCase):
         row = json.loads(proc.stdout)["snapshots"][0]
         self.assertFalse(row["status_receipt_valid"])
         self.assertFalse(row["migration_shape_exact"])
+
+    def test_remote_inventory_governed_output_path_is_exact_and_private(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            canonical_receipt(root, stamp="20260923T120000Z")
+            suffix = hashlib.sha256(str(root).encode("utf-8")).hexdigest()[:32]
+            output = Path("/tmp") / (
+                f"aoe2war-db-snapshot-verify-{suffix}.json"
+            )
+            output.unlink(missing_ok=True)
+            try:
+                proc = run_remote_inventory(
+                    root,
+                    verify_hashes=True,
+                    output_path=output,
+                )
+                self.assertEqual(proc.returncode, 0, proc.stderr)
+                self.assertEqual(proc.stdout, "")
+                self.assertTrue(output.is_file())
+                self.assertEqual(output.stat().st_mode & 0o777, 0o400)
+                payload = json.loads(output.read_text(encoding="utf-8"))
+                self.assertTrue(payload["verify_hashes"])
+                self.assertEqual(
+                    payload["kind"],
+                    "aoe2war-db-snapshot-inventory",
+                )
+            finally:
+                output.unlink(missing_ok=True)
+
+    def test_governed_verify_result_marker_is_exact_and_validated(self):
+        payload = {
+            "kind": "aoe2war-db-snapshot-inventory",
+            "verify_hashes": True,
+            "snapshots": [],
+        }
+        raw = json.dumps(payload).encode("utf-8")
+        marker = (
+            "maintenance preflight\n"
+            "AOE2WAR_DB_SNAPSHOT_VERIFY_RESULT="
+            + base64.urlsafe_b64encode(raw).decode("ascii")
+            + "\nmaintenance postcheck\n"
+        )
+        self.assertEqual(
+            retention.decode_governed_verify_output(marker),
+            payload,
+        )
+        with self.assertRaises(retention.SnapshotRetentionError):
+            retention.decode_governed_verify_output("maintenance only\n")
+
+    def test_governed_verify_helper_uses_root_owned_private_runtime_path(self):
+        payload = {
+            "kind": "aoe2war-db-snapshot-inventory",
+            "verify_hashes": True,
+            "snapshots": [],
+        }
+        raw = json.dumps(payload, sort_keys=True).encode("utf-8")
+        completed = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout=(
+                "AOE2WAR_DB_SNAPSHOT_VERIFY_RESULT="
+                + base64.urlsafe_b64encode(raw).decode("ascii")
+                + "\n"
+            ),
+            stderr="",
+        )
+        policy = {
+            "root_maintenance_host": "root@hel1",
+        }
+        with mock.patch.object(
+            retention.subprocess,
+            "run",
+            return_value=completed,
+        ) as run:
+            self.assertEqual(
+                retention.governed_remote_inventory(policy, "encoded"),
+                payload,
+            )
+
+        remote = run.call_args.kwargs["input"]
+        self.assertIn(
+            'helper_root = Path("/run/aoe2war-db-snapshot-verify")',
+            remote,
+        )
+        self.assertIn("root_stat.st_uid != 0", remote)
+        self.assertIn("tool_stat.st_uid != 0", remote)
+        self.assertIn('getattr(os, "O_NOFOLLOW", 0)', remote)
+        self.assertNotIn(
+            'tool = Path("/tmp") / ("aoe2war-db-snapshot-inventory-"',
+            remote,
+        )
+
+    def test_full_body_verify_uses_wolo_safe_maintenance_governor(self):
+        source = open(retention.__file__, encoding="utf-8").read()
+        self.assertIn('"/usr/local/sbin/aoe2war-maintenance-run"', source)
+        self.assertIn('"db-snapshot-verify"', source)
+        self.assertIn('"root_maintenance_host"', source)
+        self.assertIn("if verify_hashes:", source)
+        self.assertIn("return governed_remote_inventory(p, encoded)", source)
+        self.assertIn(
+            '"AOE2WAR_DB_SNAPSHOT_VERIFY_RESULT="',
+            source,
+        )
 
     def test_default_inventory_does_not_hash_snapshot_bodies(self):
         source = open(retention.__file__, encoding="utf-8").read()

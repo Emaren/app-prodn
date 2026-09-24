@@ -119,7 +119,15 @@ function safeMemorySeal(value: unknown) {
 function systemForAction(action: string) {
   if (["status", "deploy_plan", "deploy", "finish", "rollback_preview", "rollback"].includes(action)) return "Release OS";
   if (["control_refresh", "update_plan", "update_apply"].includes(action)) return "Documentation OS";
-  if (["storage_status", "storage_plan", "storage_campaign_status"].includes(action)) return "Storage OS";
+  if (
+    [
+      "storage_status",
+      "storage_plan",
+      "storage_campaign_status",
+      "storage_db_snapshot_status",
+      "storage_db_snapshot_verify",
+    ].includes(action)
+  ) return "Storage OS";
   if (action === "doctor" || action === "audit") return "System Doctor";
   if (action === "brain") return "Kingdom Intelligence";
   return "AoE2WAR OS";

@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "fce373420acf57f88924f95c26e952f2ef0915e15023267206d11807cc195c5c",
+      "sha256": "e4e45676bbfef6aad1e0662c847148aa94cfb064c8ba18acdd557deb8e9d7fe2",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-22",
       "sensitivity": "internal",
-      "sha256": "5361b16ba5a2f046d89d24d1d77de40c53a183f716a92777188f9f26417f3b50",
+      "sha256": "7ee446d19bd209fe70d88a8bf10cbf2c6e3707551f96982319c5acd41e354a8c",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1509,7 +1509,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-19",
       "sensitivity": "internal",
-      "sha256": "448cf8f635dfcbdc6c21942491a9871bd865785c01f436bb991d16500f18af9e",
+      "sha256": "74c9de726b5863e57bc9770d1dbcffb7ab7751b76292f86917a967dd768c6765",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "main",
-    "commit": "849fb8aac626c8dbfbccd0dcd322173e911f0fd8"
+    "branch": "feature/db-snapshot-os-bridge-20260923",
+    "commit": "d720888081a97de022ca64f771787b968311d5e3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

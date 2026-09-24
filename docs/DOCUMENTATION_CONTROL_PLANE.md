@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `main` at `849fb8aac626c8dbfbccd0dcd322173e911f0fd8`
+Implementation baseline: `feature/db-snapshot-os-bridge-20260923` at `d720888081a97de022ca64f771787b968311d5e3`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

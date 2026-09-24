@@ -119,9 +119,20 @@ def policy() -> dict[str, Any]:
     host = str(canonical.get("production_host") or "")
     if host != "hel1":
         raise SnapshotRetentionError("canonical production host drifted")
+    root_maintenance_host = str(
+        (contract.get("rollback_archive") or {}).get(
+            "root_maintenance_host"
+        )
+        or ""
+    )
+    if root_maintenance_host != "root@hel1":
+        raise SnapshotRetentionError(
+            "database snapshot verification root maintenance authority drifted"
+        )
 
     return {
         "production_host": host,
+        "root_maintenance_host": root_maintenance_host,
         "snapshot_root": expected_root,
         "retirement_receipt_root": expected_receipts,
         "hot_count": hot,
@@ -442,15 +453,195 @@ if root.is_dir():
                 "external_reference_examples": refs[:6],
             })
 
-print(json.dumps({
+payload = {
     "schema": 1,
     "kind": "aoe2war-db-snapshot-inventory",
     "generated_at": datetime.now(timezone.utc).isoformat(),
     "snapshot_root": str(root),
     "verify_hashes": verify_hashes,
     "snapshots": snapshots,
-}, sort_keys=True))
+}
+output_path = Path(sys.argv[3]) if len(sys.argv) > 3 and sys.argv[3] else None
+if output_path is None:
+    print(json.dumps(payload, sort_keys=True))
+else:
+    if (
+        output_path.parent != Path("/tmp")
+        or not re.fullmatch(
+            r"aoe2war-db-snapshot-verify-[0-9a-f]{16,64}\.json",
+            output_path.name,
+        )
+        or output_path.exists()
+        or output_path.is_symlink()
+    ):
+        raise SystemExit("STOP: unsafe verification output path")
+    encoded_payload = json.dumps(payload, sort_keys=True) + "\n"
+    flags = (
+        os.O_WRONLY
+        | os.O_CREAT
+        | os.O_EXCL
+        | getattr(os, "O_NOFOLLOW", 0)
+    )
+    fd = os.open(output_path, flags, 0o400)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            fd = -1
+            handle.write(encoded_payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+    finally:
+        if fd >= 0:
+            os.close(fd)
 '''
+
+
+def decode_governed_verify_output(output: str) -> dict[str, Any]:
+    marker = "AOE2WAR_DB_SNAPSHOT_VERIFY_RESULT="
+    matches = [
+        line[len(marker):].strip()
+        for line in output.splitlines()
+        if line.startswith(marker)
+    ]
+    if len(matches) != 1:
+        raise SnapshotRetentionError(
+            "governed snapshot verification did not return one result marker"
+        )
+    try:
+        raw = base64.urlsafe_b64decode(matches[0].encode("ascii"))
+        payload = json.loads(raw.decode("utf-8"))
+    except (ValueError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise SnapshotRetentionError(
+            "governed snapshot verification returned invalid result evidence"
+        ) from exc
+    if not isinstance(payload, dict):
+        raise SnapshotRetentionError(
+            "governed snapshot verification returned non-object evidence"
+        )
+    return payload
+
+
+def governed_remote_inventory(p: dict[str, Any], encoded: str) -> dict[str, Any]:
+    source_sha = hashlib.sha256(
+        REMOTE_INVENTORY.encode("utf-8")
+    ).hexdigest()
+    remote = f"""
+from pathlib import Path
+import base64
+import hashlib
+import os
+import subprocess
+import sys
+
+source = {REMOTE_INVENTORY!r}
+expected = {source_sha!r}
+observed = hashlib.sha256(source.encode("utf-8")).hexdigest()
+if observed != expected:
+    raise SystemExit("STOP: DB snapshot verification helper source drift")
+
+helper_root = Path("/run/aoe2war-db-snapshot-verify")
+helper_root.mkdir(mode=0o700, parents=False, exist_ok=True)
+root_stat = helper_root.stat(follow_symlinks=False)
+if (
+    helper_root.is_symlink()
+    or not helper_root.is_dir()
+    or root_stat.st_uid != 0
+):
+    raise SystemExit("STOP: unsafe DB snapshot verification helper root")
+if (root_stat.st_mode & 0o777) != 0o700:
+    helper_root.chmod(0o700)
+
+tool = helper_root / ("inventory-" + expected + ".py")
+if tool.exists():
+    tool_stat = tool.stat(follow_symlinks=False)
+    if (
+        tool.is_symlink()
+        or not tool.is_file()
+        or tool_stat.st_uid != 0
+        or (tool_stat.st_mode & 0o777) != 0o400
+    ):
+        raise SystemExit("STOP: unsafe existing DB snapshot verification helper")
+    if hashlib.sha256(tool.read_bytes()).hexdigest() != expected:
+        raise SystemExit("STOP: existing DB snapshot verification helper drift")
+else:
+    flags = (
+        os.O_WRONLY
+        | os.O_CREAT
+        | os.O_EXCL
+        | getattr(os, "O_NOFOLLOW", 0)
+    )
+    fd = os.open(tool, flags, 0o400)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            fd = -1
+            handle.write(source)
+            handle.flush()
+            os.fsync(handle.fileno())
+    finally:
+        if fd >= 0:
+            os.close(fd)
+
+output = Path("/tmp") / (
+    "aoe2war-db-snapshot-verify-" + expected[:16] + f"{{os.getpid():x}}.json"
+)
+try:
+    command = [
+        "/usr/local/sbin/aoe2war-maintenance-run",
+        "db-snapshot-verify",
+        "--",
+        "python3",
+        str(tool),
+        {encoded!r},
+        "1",
+        str(output),
+    ]
+    completed = subprocess.run(command, check=False)
+    if completed.returncode != 0:
+        raise SystemExit(completed.returncode)
+    if output.is_symlink() or not output.is_file():
+        raise SystemExit("STOP: governed DB snapshot verification output missing")
+    raw = output.read_bytes()
+    payload = __import__("json").loads(raw)
+    if (
+        not isinstance(payload, dict)
+        or payload.get("kind") != "aoe2war-db-snapshot-inventory"
+        or payload.get("verify_hashes") is not True
+    ):
+        raise SystemExit("STOP: governed DB snapshot verification output invalid")
+    print(
+        "AOE2WAR_DB_SNAPSHOT_VERIFY_RESULT="
+        + base64.urlsafe_b64encode(raw).decode("ascii")
+    )
+finally:
+    output.unlink(missing_ok=True)
+"""
+    cmd = [
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=8",
+        str(p["root_maintenance_host"]),
+        "python3",
+        "-",
+    ]
+    proc = subprocess.run(
+        cmd,
+        input=remote,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=900,
+        check=False,
+    )
+    if proc.returncode != 0:
+        raise SnapshotRetentionError(
+            (
+                proc.stderr
+                or proc.stdout
+                or "governed remote inventory verification failed"
+            ).strip()
+        )
+    return decode_governed_verify_output(proc.stdout)
 
 
 def remote_inventory(*, verify_hashes: bool = False) -> dict[str, Any]:
@@ -458,6 +649,10 @@ def remote_inventory(*, verify_hashes: bool = False) -> dict[str, Any]:
     encoded = base64.urlsafe_b64encode(
         json.dumps(p, sort_keys=True, separators=(",", ":")).encode("utf-8")
     ).decode("ascii")
+
+    if verify_hashes:
+        return governed_remote_inventory(p, encoded)
+
     cmd = [
         "ssh",
         "-o",
@@ -468,7 +663,7 @@ def remote_inventory(*, verify_hashes: bool = False) -> dict[str, Any]:
         "python3",
         "-",
         encoded,
-        "1" if verify_hashes else "0",
+        "0",
     ]
     proc = subprocess.run(
         cmd,
@@ -476,7 +671,7 @@ def remote_inventory(*, verify_hashes: bool = False) -> dict[str, Any]:
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
-        timeout=300 if verify_hashes else 90,
+        timeout=90,
         check=False,
     )
     if proc.returncode != 0:

@@ -535,6 +535,19 @@ silently grow outside Storage OS visibility. The detailed planner reports
 classification, retention tier, external-reference evidence and potential
 candidate bytes.
 
+The same read-only census is available through the fixed-action AoE2WAR OS
+Operator Bridge. **DB Snapshot Census** runs the metadata/sealed-receipt path and
+does not read dump bodies. **Verify DB Snapshot Bytes** requires the explicit
+`VERIFY DB SNAPSHOTS` confirmation and runs the full-body SHA-256 plan. That
+second action remains read-only, but the confirmation is deliberate because
+multi-gigabyte verification creates real production-volume I/O. Full-body
+verification is executed through the root-owned
+`aoe2war-maintenance-run db-snapshot-verify` governor, so Wolo liveness,
+memory pressure, CPU, I/O weight and emergency-abort rules are enforced while
+snapshot bytes are read. The cheap metadata census deliberately does not enter
+that maintenance lane. Neither bridge action accepts arbitrary paths, shell
+fragments, deletion flags, database credentials, or mutation parameters.
+
 **V1 has no apply/delete command.** The planner explicitly reports deletion as
 disabled. A future apply lane must be separately reviewed and must, at minimum,
 seal an immutable retirement ledger; rehash the exact candidate body; re-prove
