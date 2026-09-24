@@ -57,7 +57,13 @@ disagree, stop and reconcile them before production mutation.
     `DATABASE`/`FINANCIAL` additive migration lane: exact migration frontier,
     candidate staged before DB mutation, durable pre-migration `pg_dump` plus
     SHA-256, migration receipt verification, no destructive SQL, and no writes
-    to pre-existing columns. Existing tables may gain nullable columns,
+    to pre-existing columns. Manual receipt-driven activation re-proves one
+    unambiguous direct `migration-<UTC>-<release12>` directory, the sealed
+    `migration-status.txt.sha256` sidecar, unique required status fields, the
+    exact migration set and database identity, and the continued direct
+    non-symlink `pre-migration.dump` body by SHA-256 before activation. A
+    matching status line without the sealed dump bytes is not database recovery
+    authority. Existing tables may gain nullable columns,
     same-release constraints, and bounded backfills of only those new columns.
     A recovery-only production-proven-index canonicalization sublane may record
     an index migration only when every named production index already exists,
