@@ -264,7 +264,7 @@ class DatabaseSnapshotRetentionTests(unittest.TestCase):
             )
             status_sha = hashlib.sha256(status.read_bytes()).hexdigest()
             (modern / "migration-status.txt.sha256").write_text(
-                f"{status_sha}  migration-status.txt\n",
+                f"{status_sha}  {status}\\n",
                 encoding="utf-8",
             )
             policy = {
@@ -312,7 +312,7 @@ class DatabaseSnapshotRetentionTests(unittest.TestCase):
             )
             status_sha = hashlib.sha256(status.read_bytes()).hexdigest()
             (modern / "migration-status.txt.sha256").write_text(
-                f"{status_sha}  migration-status.txt\n",
+                f"{status_sha}  {status}\\n",
                 encoding="utf-8",
             )
             policy = {
@@ -364,7 +364,7 @@ class DatabaseSnapshotRetentionTests(unittest.TestCase):
             )
             status_sha = hashlib.sha256(status.read_bytes()).hexdigest()
             (modern / "migration-status.txt.sha256").write_text(
-                f"{status_sha}  migration-status.txt\n",
+                f"{status_sha}  {status}\\n",
                 encoding="utf-8",
             )
             policy = {
@@ -419,7 +419,7 @@ class DatabaseSnapshotRetentionTests(unittest.TestCase):
             )
             status_sha = hashlib.sha256(status.read_bytes()).hexdigest()
             (modern / "migration-status.txt.sha256").write_text(
-                f"{status_sha}  migration-status.txt\n",
+                f"{status_sha}  {status}\\n",
                 encoding="utf-8",
             )
 
