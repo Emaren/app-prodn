@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "bc1aefa45037d892096017ca7cf510af8e1e8e74b5c6c35a9fe77b738037c7ed",
+      "sha256": "3f365d90c21297a60e8df9870ff7f877774f4331b210cc9e5d72a961ae12422e",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/operator-bridge-idle-heartbeat-20260924",
-    "commit": "52705eb57ffe9c404d71d8e48504111bee7486c1"
+    "branch": "chore/close-db-snapshot-test-files-20260924",
+    "commit": "b5db51f13b33a7495ea2eb8eae007a6013ad65e1"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
