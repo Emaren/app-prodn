@@ -280,63 +280,198 @@ for release_short in release_prefix_candidates:
     release_prefix_candidates[release_short].sort()
 
 metadata_documents = []
+metadata_scan_blockers = []
+metadata_scan_blocker_count = 0
+metadata_scan_files = 0
+metadata_scan_bytes = 0
+max_metadata_documents = 10000
+max_metadata_total_bytes = 64 * 1024 * 1024
+
+def record_metadata_blocker(value):
+    global metadata_scan_blocker_count
+    metadata_scan_blocker_count += 1
+    if len(metadata_scan_blockers) < 100:
+        metadata_scan_blockers.append(value)
+
+def record_metadata_walk_error(exc):
+    filename = getattr(exc, "filename", None) or "unknown"
+    record_metadata_blocker(
+        "metadata-walk-error:"
+        + str(filename)
+        + ":"
+        + type(exc).__name__
+    )
+
 for base in metadata_roots:
-    if not base.is_dir():
+    try:
+        base_stat = base.stat(follow_symlinks=False)
+    except OSError as exc:
+        record_metadata_blocker(
+            "metadata-root-unreadable:" + str(base) + ":" + type(exc).__name__
+        )
         continue
-    base_depth = len(base.parts)
-    for current, dirs, files in os.walk(base):
+    if base.is_symlink() or not stat.S_ISDIR(base_stat.st_mode):
+        record_metadata_blocker(
+            "metadata-root-not-direct-directory:" + str(base)
+        )
+        continue
+
+    for current, dirs, files in os.walk(
+        base,
+        onerror=record_metadata_walk_error,
+    ):
         current_path = Path(current)
-        depth = len(current_path.parts) - base_depth
-        if depth >= 4:
-            dirs[:] = []
-        dirs[:] = [
-            name for name in dirs
-            if not (current_path / name).is_symlink()
-        ]
+
+        safe_dirs = []
+        for name in dirs:
+            child = current_path / name
+            try:
+                child_stat = child.stat(follow_symlinks=False)
+            except OSError as exc:
+                record_metadata_blocker(
+                    "metadata-directory-unreadable:"
+                    + str(child)
+                    + ":"
+                    + type(exc).__name__
+                )
+                continue
+            if child.is_symlink() or not stat.S_ISDIR(child_stat.st_mode):
+                record_metadata_blocker(
+                    "metadata-directory-not-direct:" + str(child)
+                )
+                continue
+            safe_dirs.append(name)
+        dirs[:] = safe_dirs
+
         for name in files:
+            if not any(
+                name.endswith(suffix)
+                for suffix in allowed_metadata_suffixes
+            ):
+                continue
             path = current_path / name
             try:
                 st = path.stat(follow_symlinks=False)
-            except OSError:
-                continue
-            if not (
-                stat.S_ISREG(st.st_mode)
-                and st.st_size <= max_meta
-                and any(
-                    name.endswith(suffix)
-                    for suffix in allowed_metadata_suffixes
+            except OSError as exc:
+                record_metadata_blocker(
+                    "metadata-file-unreadable:"
+                    + str(path)
+                    + ":"
+                    + type(exc).__name__
                 )
-            ):
+                continue
+            if path.is_symlink() or not stat.S_ISREG(st.st_mode):
+                record_metadata_blocker(
+                    "metadata-file-not-direct-regular:" + str(path)
+                )
+                continue
+            if st.st_size > max_meta:
+                record_metadata_blocker(
+                    "metadata-file-oversize:"
+                    + str(path)
+                    + ":"
+                    + str(st.st_size)
+                )
+                continue
+            if metadata_scan_files >= max_metadata_documents:
+                record_metadata_blocker(
+                    "metadata-document-count-limit:"
+                    + str(max_metadata_documents)
+                )
+                continue
+            if metadata_scan_bytes + int(st.st_size) > max_metadata_total_bytes:
+                record_metadata_blocker(
+                    "metadata-byte-limit:"
+                    + str(max_metadata_total_bytes)
+                )
                 continue
             try:
                 text = path.read_text(
-                    encoding="utf-8", errors="replace"
+                    encoding="utf-8", errors="strict"
                 )
-            except Exception:
+            except Exception as exc:
+                record_metadata_blocker(
+                    "metadata-file-read-failed:"
+                    + str(path)
+                    + ":"
+                    + type(exc).__name__
+                )
                 continue
             metadata_documents.append((path, text))
+            metadata_scan_files += 1
+            metadata_scan_bytes += int(st.st_size)
+
+reference_scan_complete = metadata_scan_blocker_count == 0
+
+snapshot_scan_blockers = []
+snapshot_scan_blocker_count = 0
+
+def record_snapshot_blocker(value):
+    global snapshot_scan_blocker_count
+    snapshot_scan_blocker_count += 1
+    if len(snapshot_scan_blockers) < 100:
+        snapshot_scan_blockers.append(value)
+
+def record_snapshot_walk_error(exc):
+    filename = getattr(exc, "filename", None) or "unknown"
+    record_snapshot_blocker(
+        "snapshot-walk-error:"
+        + str(filename)
+        + ":"
+        + type(exc).__name__
+    )
 
 snapshots = []
 if root.is_dir():
     base_depth = len(root.parts)
-    for current, dirs, files in os.walk(root):
+    for current, dirs, files in os.walk(
+        root,
+        onerror=record_snapshot_walk_error,
+    ):
         current_path = Path(current)
         depth = len(current_path.parts) - base_depth
         if depth >= 4:
             dirs[:] = []
-        dirs[:] = [
-            name for name in dirs
-            if not (current_path / name).is_symlink()
-        ]
+
+        safe_dirs = []
+        for name in dirs:
+            child = current_path / name
+            try:
+                child_stat = child.stat(follow_symlinks=False)
+            except OSError as exc:
+                record_snapshot_blocker(
+                    "snapshot-directory-unreadable:"
+                    + str(child)
+                    + ":"
+                    + type(exc).__name__
+                )
+                continue
+            if child.is_symlink() or not stat.S_ISDIR(child_stat.st_mode):
+                record_snapshot_blocker(
+                    "snapshot-directory-not-direct:" + str(child)
+                )
+                continue
+            safe_dirs.append(name)
+        dirs[:] = safe_dirs
+
         for name in files:
             if not name.lower().endswith(allowed_suffixes):
                 continue
             path = current_path / name
             try:
                 st = path.stat(follow_symlinks=False)
-            except OSError:
+            except OSError as exc:
+                record_snapshot_blocker(
+                    "snapshot-file-unreadable:"
+                    + str(path)
+                    + ":"
+                    + type(exc).__name__
+                )
                 continue
-            if not stat.S_ISREG(st.st_mode):
+            if path.is_symlink() or not stat.S_ISREG(st.st_mode):
+                record_snapshot_blocker(
+                    "snapshot-file-not-direct-regular:" + str(path)
+                )
                 continue
 
             parent = path.parent
@@ -413,15 +548,18 @@ if root.is_dir():
 
             abs_text = str(path)
             parent_text = str(parent)
+            reference_needles = [
+                abs_text,
+                parent_text,
+                parent.name,
+            ]
+            if isinstance(declared, str) and sha_re.fullmatch(declared):
+                reference_needles.append(declared)
             refs = []
             for meta, text in metadata_documents:
                 if meta.parent == parent:
                     continue
-                if (
-                    abs_text in text
-                    or parent_text in text
-                    or parent.name in text
-                ):
+                if any(needle in text for needle in reference_needles):
                     refs.append(str(meta))
                     if len(refs) >= 24:
                         break
@@ -459,6 +597,14 @@ payload = {
     "generated_at": datetime.now(timezone.utc).isoformat(),
     "snapshot_root": str(root),
     "verify_hashes": verify_hashes,
+    "reference_scan_complete": reference_scan_complete,
+    "reference_scan_files": metadata_scan_files,
+    "reference_scan_bytes": metadata_scan_bytes,
+    "reference_scan_blockers": metadata_scan_blockers,
+    "reference_scan_blocker_count": metadata_scan_blocker_count,
+    "snapshot_scan_complete": snapshot_scan_blocker_count == 0,
+    "snapshot_scan_blockers": snapshot_scan_blockers,
+    "snapshot_scan_blocker_count": snapshot_scan_blocker_count,
     "snapshots": snapshots,
 }
 output_path = Path(sys.argv[3]) if len(sys.argv) > 3 and sys.argv[3] else None
@@ -753,7 +899,12 @@ def retention_time(row: dict[str, Any]) -> datetime:
     return parse_mtime(row)
 
 
-def select_retention(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+def select_retention(
+    rows: list[dict[str, Any]],
+    *,
+    reference_scan_complete: bool = True,
+    snapshot_scan_complete: bool = True,
+) -> list[dict[str, Any]]:
     p = policy()
     now = datetime.now(timezone.utc)
 
@@ -871,6 +1022,20 @@ def select_retention(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             row["retention_class"] = "PROTECTED_EVIDENCE"
             row["retention_reason"] = "exact SHA-256 provenance is unavailable"
             continue
+        if not snapshot_scan_complete:
+            row["retention_class"] = "PROTECTED_SNAPSHOT_CENSUS"
+            row["retention_reason"] = (
+                "database snapshot census is incomplete; retention coverage "
+                "and retirement candidacy are fail-closed"
+            )
+            continue
+        if not reference_scan_complete:
+            row["retention_class"] = "PROTECTED_REFERENCE_CENSUS"
+            row["retention_reason"] = (
+                "external durable-reference census is incomplete; "
+                "retirement candidacy is fail-closed"
+            )
+            continue
         row["retention_class"] = "RETIRE_CANDIDATE"
         row["retention_reason"] = (
             "exact migration-boundary snapshot is outside hot/weekly/monthly "
@@ -917,8 +1082,73 @@ def collect(*, verify_hashes: bool = False) -> dict[str, Any]:
     raw = inventory.get("snapshots") or []
     if not isinstance(raw, list):
         raise SnapshotRetentionError("inventory snapshots is not a list")
+    reference_scan_complete = inventory.get("reference_scan_complete")
+    if not isinstance(reference_scan_complete, bool):
+        reference_scan_complete = False
+
+    blockers = inventory.get("reference_scan_blockers") or []
+    if not isinstance(blockers, list):
+        blockers = ["reference-scan-blocker-shape-invalid"]
+        reference_scan_complete = False
+
+    blocker_count = inventory.get("reference_scan_blocker_count")
+    if (
+        not isinstance(blocker_count, int)
+        or isinstance(blocker_count, bool)
+        or blocker_count < 0
+    ):
+        blocker_count = max(1, len(blockers))
+        reference_scan_complete = False
+
+    scan_files = inventory.get("reference_scan_files")
+    if (
+        not isinstance(scan_files, int)
+        or isinstance(scan_files, bool)
+        or scan_files < 0
+    ):
+        scan_files = 0
+        reference_scan_complete = False
+
+    scan_bytes = inventory.get("reference_scan_bytes")
+    if (
+        not isinstance(scan_bytes, int)
+        or isinstance(scan_bytes, bool)
+        or scan_bytes < 0
+    ):
+        scan_bytes = 0
+        reference_scan_complete = False
+
+    # A complete census is a conjunction, not a flag supplied by the remote
+    # helper. Any retained blocker evidence or non-zero blocker count makes
+    # absence-of-reference unproven and therefore retirement-ineligible.
+    if blocker_count != 0 or blockers:
+        reference_scan_complete = False
+
+    snapshot_scan_complete = inventory.get("snapshot_scan_complete")
+    if not isinstance(snapshot_scan_complete, bool):
+        snapshot_scan_complete = False
+
+    snapshot_blockers = inventory.get("snapshot_scan_blockers") or []
+    if not isinstance(snapshot_blockers, list):
+        snapshot_blockers = ["snapshot-scan-blocker-shape-invalid"]
+        snapshot_scan_complete = False
+
+    snapshot_blocker_count = inventory.get("snapshot_scan_blocker_count")
+    if (
+        not isinstance(snapshot_blocker_count, int)
+        or isinstance(snapshot_blocker_count, bool)
+        or snapshot_blocker_count < 0
+    ):
+        snapshot_blocker_count = max(1, len(snapshot_blockers))
+        snapshot_scan_complete = False
+
+    if snapshot_blocker_count != 0 or snapshot_blockers:
+        snapshot_scan_complete = False
+
     rows = select_retention(
-        [row for row in raw if isinstance(row, dict)]
+        [row for row in raw if isinstance(row, dict)],
+        reference_scan_complete=reference_scan_complete,
+        snapshot_scan_complete=snapshot_scan_complete,
     )
     return {
         "schema": 1,
@@ -927,6 +1157,18 @@ def collect(*, verify_hashes: bool = False) -> dict[str, Any]:
         "mode": "READ_ONLY",
         "delete_enabled": False,
         "verify_hashes": verify_hashes,
+        "reference_census": {
+            "complete": reference_scan_complete,
+            "files_scanned": scan_files,
+            "bytes_scanned": scan_bytes,
+            "blocker_count": blocker_count,
+            "blockers": [str(item) for item in blockers[:100]],
+        },
+        "snapshot_census": {
+            "complete": snapshot_scan_complete,
+            "blocker_count": snapshot_blocker_count,
+            "blockers": [str(item) for item in snapshot_blockers[:100]],
+        },
         "policy": {
             key: value
             for key, value in policy().items()
@@ -971,6 +1213,18 @@ def print_status(payload: dict[str, Any], *, include_rows: bool) -> None:
         "Hash verified:"
         f" {summary['hash_verified_count']}"
         + (" (full-body verification requested)" if payload["verify_hashes"] else "")
+    )
+    snapshot_census = payload.get("snapshot_census") or {}
+    print(
+        "Snapshot scan:"
+        + (" COMPLETE" if snapshot_census.get("complete") else " INCOMPLETE")
+        + f" · blockers={snapshot_census.get('blocker_count', '—')}"
+    )
+    reference_census = payload.get("reference_census") or {}
+    print(
+        "References:  "
+        + ("COMPLETE" if reference_census.get("complete") else "INCOMPLETE")
+        + f" · blockers={reference_census.get('blocker_count', '—')}"
     )
     print("Delete:      DISABLED")
     print()
