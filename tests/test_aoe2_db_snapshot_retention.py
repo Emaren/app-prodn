@@ -215,6 +215,379 @@ class DatabaseSnapshotRetentionTests(unittest.TestCase):
             )
         )
 
+    def test_incomplete_snapshot_census_never_emits_retire_candidate(self):
+        rows = []
+        year = 2026
+        month = 9
+        for i in range(32):
+            rows.append(exact_row(i, year=year, month=month, day=15))
+            month -= 1
+            if month == 0:
+                month = 12
+                year -= 1
+
+        planned = retention.select_retention(
+            rows,
+            snapshot_scan_complete=False,
+        )
+        self.assertFalse(any(row["retire_candidate"] for row in planned))
+        self.assertGreater(
+            sum(
+                row["retention_class"] == "PROTECTED_SNAPSHOT_CENSUS"
+                for row in planned
+            ),
+            0,
+        )
+
+    def test_collect_missing_snapshot_census_field_fails_closed(self):
+        rows = []
+        year = 2026
+        month = 9
+        for i in range(32):
+            rows.append(exact_row(i, year=year, month=month, day=15))
+            month -= 1
+            if month == 0:
+                month = 12
+                year -= 1
+
+        inventory = {
+            "snapshots": rows,
+            "reference_scan_complete": True,
+            "reference_scan_files": 1,
+            "reference_scan_bytes": 1,
+            "reference_scan_blocker_count": 0,
+            "reference_scan_blockers": [],
+        }
+        with mock.patch.object(
+            retention,
+            "remote_inventory",
+            return_value=inventory,
+        ):
+            payload = retention.collect()
+
+        self.assertFalse(payload["snapshot_census"]["complete"])
+        self.assertEqual(payload["summary"]["candidate_count"], 0)
+        self.assertIn(
+            "PROTECTED_SNAPSHOT_CENSUS",
+            payload["summary"]["retention_counts"],
+        )
+
+    def test_remote_snapshot_census_records_walk_error_contract(self):
+        source = retention.REMOTE_INVENTORY
+        self.assertIn("def record_snapshot_walk_error(exc):", source)
+        self.assertIn("onerror=record_snapshot_walk_error", source)
+        self.assertIn('"snapshot-walk-error:"', source)
+
+    def test_remote_snapshot_census_rejects_symlinked_snapshot_body(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            target = root / "target.dump"
+            target.write_bytes(b"backup")
+            link = root / "linked.dump"
+            link.symlink_to(target)
+            proc = run_remote_inventory(root)
+
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        payload = json.loads(proc.stdout)
+        self.assertFalse(payload["snapshot_scan_complete"])
+        self.assertGreater(payload["snapshot_scan_blocker_count"], 0)
+        self.assertTrue(
+            any(
+                blocker.startswith("snapshot-file-not-direct-regular:")
+                for blocker in payload["snapshot_scan_blockers"]
+            )
+        )
+
+    def test_incomplete_reference_census_never_emits_retire_candidate(self):
+        rows = []
+        year = 2026
+        month = 9
+        for i in range(32):
+            rows.append(exact_row(i, year=year, month=month, day=15))
+            month -= 1
+            if month == 0:
+                month = 12
+                year -= 1
+
+        planned = retention.select_retention(
+            rows,
+            reference_scan_complete=False,
+        )
+        self.assertFalse(any(row["retire_candidate"] for row in planned))
+        self.assertGreater(
+            sum(
+                row["retention_class"] == "PROTECTED_REFERENCE_CENSUS"
+                for row in planned
+            ),
+            0,
+        )
+
+    def test_collect_missing_reference_census_field_fails_closed(self):
+        rows = []
+        year = 2026
+        month = 9
+        for i in range(32):
+            rows.append(exact_row(i, year=year, month=month, day=15))
+            month -= 1
+            if month == 0:
+                month = 12
+                year -= 1
+
+        with mock.patch.object(
+            retention,
+            "remote_inventory",
+            return_value={
+                "snapshots": rows,
+                "snapshot_scan_complete": True,
+                "snapshot_scan_blocker_count": 0,
+                "snapshot_scan_blockers": [],
+            },
+        ):
+            payload = retention.collect()
+
+        self.assertFalse(payload["reference_census"]["complete"])
+        self.assertEqual(payload["summary"]["candidate_count"], 0)
+        self.assertIn(
+            "PROTECTED_REFERENCE_CENSUS",
+            payload["summary"]["retention_counts"],
+        )
+
+    def test_collect_contradictory_complete_census_with_blockers_fails_closed(self):
+        rows = []
+        year = 2026
+        month = 9
+        for i in range(32):
+            rows.append(exact_row(i, year=year, month=month, day=15))
+            month -= 1
+            if month == 0:
+                month = 12
+                year -= 1
+
+        inventory = {
+            "snapshots": rows,
+            "snapshot_scan_complete": True,
+            "snapshot_scan_blocker_count": 0,
+            "snapshot_scan_blockers": [],
+            "reference_scan_complete": True,
+            "reference_scan_files": 4,
+            "reference_scan_bytes": 1024,
+            "reference_scan_blocker_count": 1,
+            "reference_scan_blockers": ["contradictory-proof"],
+        }
+        with mock.patch.object(
+            retention,
+            "remote_inventory",
+            return_value=inventory,
+        ):
+            payload = retention.collect()
+
+        self.assertFalse(payload["reference_census"]["complete"])
+        self.assertEqual(payload["reference_census"]["blocker_count"], 1)
+        self.assertEqual(payload["summary"]["candidate_count"], 0)
+        self.assertIn(
+            "PROTECTED_REFERENCE_CENSUS",
+            payload["summary"]["retention_counts"],
+        )
+
+    def test_collect_invalid_reference_scan_counters_fail_closed(self):
+        row = exact_row(1, year=2026, month=9)
+        inventory = {
+            "snapshots": [row],
+            "snapshot_scan_complete": True,
+            "snapshot_scan_blocker_count": 0,
+            "snapshot_scan_blockers": [],
+            "reference_scan_complete": True,
+            "reference_scan_files": -1,
+            "reference_scan_bytes": "unknown",
+            "reference_scan_blocker_count": 0,
+            "reference_scan_blockers": [],
+        }
+        with mock.patch.object(
+            retention,
+            "remote_inventory",
+            return_value=inventory,
+        ):
+            payload = retention.collect()
+
+        self.assertFalse(payload["reference_census"]["complete"])
+        self.assertEqual(payload["reference_census"]["files_scanned"], 0)
+        self.assertEqual(payload["reference_census"]["bytes_scanned"], 0)
+
+    def test_remote_reference_census_records_os_walk_errors(self):
+        source = retention.REMOTE_INVENTORY
+        self.assertIn("def record_metadata_walk_error(exc):", source)
+        self.assertIn("onerror=record_metadata_walk_error", source)
+        self.assertIn('"metadata-walk-error:"', source)
+
+    def test_remote_reference_census_reports_unreadable_metadata_root(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td) / "receipts"
+            root.mkdir()
+            canonical_receipt(root, stamp="20260923T120000Z")
+            missing_meta = Path(td) / "missing-os-control"
+            source = retention.REMOTE_INVENTORY.replace(
+                'Path("/mnt/HC_Volume_105319120/aoe2war/os-control")',
+                f"Path({str(missing_meta)!r})",
+            )
+            policy = {
+                "snapshot_root": str(root),
+                "max_metadata_file_bytes": 2 * 1024 * 1024,
+            }
+            encoded = base64.urlsafe_b64encode(
+                json.dumps(policy).encode("utf-8")
+            ).decode("ascii")
+            proc = subprocess.run(
+                [sys.executable, "-", encoded, "0"],
+                input=source,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        payload = json.loads(proc.stdout)
+        self.assertFalse(payload["reference_scan_complete"])
+        self.assertGreater(payload["reference_scan_blocker_count"], 0)
+        self.assertTrue(
+            any(
+                str(missing_meta) in blocker
+                for blocker in payload["reference_scan_blockers"]
+            )
+        )
+
+    def test_remote_reference_census_reports_oversize_metadata(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td) / "receipts"
+            root.mkdir()
+            canonical_receipt(root, stamp="20260923T120000Z")
+            meta = Path(td) / "os-control"
+            meta.mkdir()
+            (meta / "oversize.json").write_text(
+                "x" * 4097,
+                encoding="utf-8",
+            )
+            source = retention.REMOTE_INVENTORY.replace(
+                'Path("/mnt/HC_Volume_105319120/aoe2war/os-control")',
+                f"Path({str(meta)!r})",
+            )
+            policy = {
+                "snapshot_root": str(root),
+                "max_metadata_file_bytes": 4096,
+            }
+            encoded = base64.urlsafe_b64encode(
+                json.dumps(policy).encode("utf-8")
+            ).decode("ascii")
+            proc = subprocess.run(
+                [sys.executable, "-", encoded, "0"],
+                input=source,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        payload = json.loads(proc.stdout)
+        self.assertFalse(payload["reference_scan_complete"])
+        self.assertTrue(
+            any(
+                blocker.startswith("metadata-file-oversize:")
+                for blocker in payload["reference_scan_blockers"]
+            )
+        )
+
+    def test_remote_reference_census_matches_digest_only_reference(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td) / "receipts"
+            root.mkdir()
+            parent = canonical_receipt(root, stamp="20260923T120000Z")
+            status = parent / "migration-status.txt"
+            declared = next(
+                line.split("=", 1)[1]
+                for line in status.read_text(encoding="utf-8").splitlines()
+                if line.startswith("dump_sha256=")
+            )
+
+            meta = Path(td) / "os-control"
+            meta.mkdir()
+            proof = meta / "activation-proof.json"
+            proof.write_text(
+                json.dumps({"database_snapshot_sha256": declared}) + "\n",
+                encoding="utf-8",
+            )
+            source = retention.REMOTE_INVENTORY.replace(
+                'Path("/mnt/HC_Volume_105319120/aoe2war/os-control")',
+                f"Path({str(meta)!r})",
+            )
+            policy = {
+                "snapshot_root": str(root),
+                "max_metadata_file_bytes": 2 * 1024 * 1024,
+            }
+            encoded = base64.urlsafe_b64encode(
+                json.dumps(policy).encode("utf-8")
+            ).decode("ascii")
+            proc = subprocess.run(
+                [sys.executable, "-", encoded, "0"],
+                input=source,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        payload = json.loads(proc.stdout)
+        self.assertTrue(payload["reference_scan_complete"])
+        self.assertEqual(len(payload["snapshots"]), 1)
+        row = payload["snapshots"][0]
+        self.assertEqual(row["external_reference_count"], 1)
+        self.assertEqual(row["external_reference_examples"], [str(proof)])
+        planned = retention.select_retention(payload["snapshots"])
+        self.assertEqual(
+            planned[0]["retention_class"],
+            "PROTECTED_REFERENCE",
+        )
+        self.assertFalse(planned[0]["retire_candidate"])
+
+    def test_remote_reference_census_bounds_blocker_evidence_memory(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td) / "receipts"
+            root.mkdir()
+            canonical_receipt(root, stamp="20260923T120000Z")
+            meta = Path(td) / "os-control"
+            meta.mkdir()
+            for index in range(150):
+                (meta / f"oversize-{index:03d}.json").write_text(
+                    "x" * 4097,
+                    encoding="utf-8",
+                )
+            source = retention.REMOTE_INVENTORY.replace(
+                'Path("/mnt/HC_Volume_105319120/aoe2war/os-control")',
+                f"Path({str(meta)!r})",
+            )
+            policy = {
+                "snapshot_root": str(root),
+                "max_metadata_file_bytes": 4096,
+            }
+            encoded = base64.urlsafe_b64encode(
+                json.dumps(policy).encode("utf-8")
+            ).decode("ascii")
+            proc = subprocess.run(
+                [sys.executable, "-", encoded, "0"],
+                input=source,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        payload = json.loads(proc.stdout)
+        self.assertFalse(payload["reference_scan_complete"])
+        self.assertEqual(payload["reference_scan_blocker_count"], 150)
+        self.assertEqual(len(payload["reference_scan_blockers"]), 100)
+
     def test_canonical_receipt_timestamp_outranks_mutable_file_mtime(self):
         row = exact_row(1, year=2024, month=1)
         row["receipt_timestamp"] = "20260923T120000Z"
