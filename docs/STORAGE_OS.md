@@ -484,6 +484,13 @@ default. Canonical migration boundaries reuse the SHA-256 already sealed in
 `migration-status.txt`; `--verify-hashes` is an explicit read-only full-body
 verification pass.
 
+Snapshot-body inventory completeness is tracked independently from reference
+completeness. Traversal errors, unreadable entries, symlinked directories or
+backup-shaped symlink/non-regular files make the snapshot census **INCOMPLETE**.
+An incomplete snapshot census may still show observed evidence, but no observed
+migration boundary may become a retirement candidate because hot/weekly/monthly
+coverage cannot be proved against an unknown estate.
+
 Retirement planning has a separate external-reference census over the bounded
 deployment-receipt and AoE2WAR OS-control metadata roots. That census walks all
 direct directories rather than silently truncating at the snapshot-body depth,
@@ -530,15 +537,17 @@ non-canonical classes are protected from generic retirement.
 
 The tiered migration-boundary policy is evidence-first:
 
-1. prove the bounded external durable-reference census is complete; if it is
+1. prove the bounded snapshot-body census is complete; if it is incomplete,
+   no retirement candidate may exist;
+2. prove the bounded external durable-reference census is complete; if it is
    incomplete, no retirement candidate may exist;
-2. protect any snapshot whose exact snapshot/receipt path, receipt directory,
+3. protect any snapshot whose exact snapshot/receipt path, receipt directory,
    or sealed dump SHA-256 is referenced by external durable metadata;
-3. keep the newest five remaining exact migration restore points as `HOT`;
-4. keep one additional exact restore point per ISO week for eight older weeks;
-5. keep one additional exact restore point per calendar month for twelve older
+4. keep the newest five remaining exact migration restore points as `HOT`;
+5. keep one additional exact restore point per ISO week for eight older weeks;
+6. keep one additional exact restore point per calendar month for twelve older
    months;
-6. mark only the remaining exact, unreferenced migration-boundary snapshots as
+7. mark only the remaining exact, unreferenced migration-boundary snapshots as
    `RETIRE_CANDIDATE`.
 
 A referenced exact migration snapshot already satisfies its week/month recovery
