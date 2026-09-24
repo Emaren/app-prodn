@@ -1822,6 +1822,20 @@ things. First prove identity, provenance, purpose, references and recovery
 coverage; only a separately reviewed, receipt-backed apply transaction may turn
 a candidate into retired bytes.
 
+A follow-up audit found that “no external reference found” is itself a proof
+claim. The first planner silently skipped unreadable, oversized, symlinked or
+out-of-budget metadata while still allowing unreferenced migration boundaries
+to become informational retirement candidates. That was conservative while
+delete remained disabled, but unsafe as a future mutation precondition.
+
+Durable rule: an incomplete durable-reference census is not equivalent to zero
+references. The database-snapshot planner now reports reference-census
+completeness explicitly and fail-closes every otherwise-retirable exact
+migration boundary as `PROTECTED_REFERENCE_CENSUS` whenever the bounded
+metadata roots, files, UTF-8 reads or census budgets cannot be proved complete.
+A future apply lane must inherit that rule rather than interpreting a partial
+search as absence of evidence.
+
 ## 2026-09-23 — Expensive read-only work still needs an operator load contract
 
 The database-snapshot planner is non-mutating, but its explicit full-body
