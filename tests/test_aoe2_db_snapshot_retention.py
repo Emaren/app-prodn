@@ -264,6 +264,61 @@ class DatabaseSnapshotRetentionTests(unittest.TestCase):
             payload["summary"]["retention_counts"],
         )
 
+    def test_collect_contradictory_complete_census_with_blockers_fails_closed(self):
+        rows = []
+        year = 2026
+        month = 9
+        for i in range(32):
+            rows.append(exact_row(i, year=year, month=month, day=15))
+            month -= 1
+            if month == 0:
+                month = 12
+                year -= 1
+
+        inventory = {
+            "snapshots": rows,
+            "reference_scan_complete": True,
+            "reference_scan_files": 4,
+            "reference_scan_bytes": 1024,
+            "reference_scan_blocker_count": 1,
+            "reference_scan_blockers": ["contradictory-proof"],
+        }
+        with mock.patch.object(
+            retention,
+            "remote_inventory",
+            return_value=inventory,
+        ):
+            payload = retention.collect()
+
+        self.assertFalse(payload["reference_census"]["complete"])
+        self.assertEqual(payload["reference_census"]["blocker_count"], 1)
+        self.assertEqual(payload["summary"]["candidate_count"], 0)
+        self.assertIn(
+            "PROTECTED_REFERENCE_CENSUS",
+            payload["summary"]["retention_counts"],
+        )
+
+    def test_collect_invalid_reference_scan_counters_fail_closed(self):
+        row = exact_row(1, year=2026, month=9)
+        inventory = {
+            "snapshots": [row],
+            "reference_scan_complete": True,
+            "reference_scan_files": -1,
+            "reference_scan_bytes": "unknown",
+            "reference_scan_blocker_count": 0,
+            "reference_scan_blockers": [],
+        }
+        with mock.patch.object(
+            retention,
+            "remote_inventory",
+            return_value=inventory,
+        ):
+            payload = retention.collect()
+
+        self.assertFalse(payload["reference_census"]["complete"])
+        self.assertEqual(payload["reference_census"]["files_scanned"], 0)
+        self.assertEqual(payload["reference_census"]["bytes_scanned"], 0)
+
     def test_remote_reference_census_reports_unreadable_metadata_root(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td) / "receipts"
