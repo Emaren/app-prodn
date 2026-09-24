@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/db-snapshot-provenance-parity-20260923` at `a510ba701210a3f1f190f1a3d5399868ae1f4969`
+Implementation baseline: `main` at `849fb8aac626c8dbfbccd0dcd322173e911f0fd8`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
