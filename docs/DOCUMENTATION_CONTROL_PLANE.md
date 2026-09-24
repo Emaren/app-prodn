@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `main` at `4f957139d02a3c2307c6c8f31af4f561fae6eaa7`
+Implementation baseline: `fix/update-wolo-stale-central-deadlock-20260924` at `1f4398bcbf0836d12c096b331816f9a64d82a3c2`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

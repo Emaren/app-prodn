@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "f8361b9b26af81357d1501beb94676ece4b3dad9c2a0270ccf0ae4da007fdea1",
+      "sha256": "0440d64d8656c1550b5291bd37e8c863d67310c60ef53dda8d2385ad6261cb29",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "main",
-    "commit": "4f957139d02a3c2307c6c8f31af4f561fae6eaa7"
+    "branch": "fix/update-wolo-stale-central-deadlock-20260924",
+    "commit": "1f4398bcbf0836d12c096b331816f9a64d82a3c2"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

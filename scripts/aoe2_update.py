@@ -365,6 +365,48 @@ def source_docs_refresh_needed(output: str) -> bool:
     return baseline_refresh_needed(output) or release_docs_refresh_needed(output)
 
 
+def stale_central_wolo_vps_drift_remediable(
+    payload: dict[str, Any],
+    *,
+    central_sync_needed: bool,
+    blocked_source_docs: list[dict[str, str]],
+) -> bool:
+    """Allow central sync to heal Wolo drift only when current source proves parity."""
+    if not central_sync_needed:
+        return False
+    if any(item.get("repo") == "wolochain" for item in blocked_source_docs):
+        return False
+
+    info = payload.get("info")
+    if not isinstance(info, dict):
+        return False
+    wolo_vps = info.get("wolo_vps")
+    if not isinstance(wolo_vps, dict):
+        return False
+
+    vps_head = wolo_vps.get("head")
+    central_expected = wolo_vps.get("expected_implementation_baseline")
+    if not (
+        isinstance(vps_head, str)
+        and re.fullmatch(r"[0-9a-f]{40}", vps_head)
+        and isinstance(central_expected, str)
+        and re.fullmatch(r"[0-9a-f]{40}", central_expected)
+        and central_expected != vps_head
+    ):
+        return False
+
+    registry = aoe2_audit.load_json(
+        WOLOCHAIN / "docs" / "document-registry.json"
+    )
+    if not isinstance(registry, dict):
+        return False
+    baseline = registry.get("implementation_baseline")
+    return bool(
+        isinstance(baseline, dict)
+        and baseline.get("commit") == vps_head
+    )
+
+
 def archive_project_from_finding(detail: str) -> str | None:
     for project in (
         "AoE2HDBets",
@@ -847,14 +889,6 @@ def collect_plan(
             and not preserve_context_history
         )
     ]
-    auto_remediable_p1_ids = {id(finding) for finding in auto_remediable_p1}
-    unknown_p1 = [
-        finding
-        for finding in payload["findings"]
-        if finding["severity"] == "P1"
-        and finding["key"] not in AUTO_P1_KEYS
-        and id(finding) not in auto_remediable_p1_ids
-    ]
 
     context_projects: set[str] = set()
     for finding in payload["findings"]:
@@ -885,6 +919,30 @@ def collect_plan(
     )
     if central_sync_needed:
         context_projects.add("AoE2WAR-docs")
+
+    if stale_central_wolo_vps_drift_remediable(
+        payload,
+        central_sync_needed=central_sync_needed,
+        blocked_source_docs=blocked_source_docs,
+    ):
+        auto_remediable_p1.extend(
+            finding
+            for finding in payload["findings"]
+            if (
+                finding["severity"] == "P1"
+                and finding.get("area") == "WoloChain"
+                and finding.get("key") == "vps-source-drift"
+            )
+        )
+
+    auto_remediable_p1_ids = {id(finding) for finding in auto_remediable_p1}
+    unknown_p1 = [
+        finding
+        for finding in payload["findings"]
+        if finding["severity"] == "P1"
+        and finding["key"] not in AUTO_P1_KEYS
+        and id(finding) not in auto_remediable_p1_ids
+    ]
 
     if estate_maps["status"] == "refresh":
         context_projects.add("VPSSentry")
