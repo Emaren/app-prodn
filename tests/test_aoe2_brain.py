@@ -1015,6 +1015,32 @@ class KingdomIntelligenceTests(unittest.TestCase):
             "aoe2war speed campaign verify",
         )
 
+    def test_source_ahead_finish_outranks_stale_speed_measurement(self):
+        perf = performance()
+        perf["matches_current_release"] = False
+        source = MODULE.source_summary(release(exact=False))
+        rows = MODULE.brain_recommendations(
+            source=source,
+            finish=finish(complete=False),
+            control={
+                "status": "deferred",
+                "reason": "production is not yet at intended Git source",
+            },
+            performance=perf,
+            truth=truth(),
+            council_recommendations=[],
+            storage={
+                "health": "HEALTHY",
+                "used_percent": 70.0,
+            },
+        )
+        self.assertEqual(rows[0]["key"], "finish-source-authority")
+        self.assertEqual(rows[0]["action"], "aoe2war finish")
+        self.assertIn(
+            "speed-verify-open-campaign",
+            [row["key"] for row in rows],
+        )
+
     def test_current_control_allows_finish_closure_recommendation(self):
         perf = performance()
         perf["matches_current_release"] = True

@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/update-wolo-stale-central-deadlock-20260924` at `1f4398bcbf0836d12c096b331816f9a64d82a3c2`
+Implementation baseline: `fix/brain-finish-before-release-measurements-20260924` at `e8d2d942313e6313d72ca1bf0a2229f3ac1061e5`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

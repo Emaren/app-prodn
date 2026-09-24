@@ -585,6 +585,7 @@ def control_summary(release: dict[str, Any]) -> dict[str, Any]:
 
 def brain_recommendations(
     *,
+    source: dict[str, Any] | None = None,
     finish: dict[str, Any],
     control: dict[str, Any],
     performance: dict[str, Any],
@@ -594,6 +595,7 @@ def brain_recommendations(
     storage_handoff: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
+    source = source or {}
 
     storage_handoff = storage_handoff or {}
     handoff_status = str(storage_handoff.get("status") or "").upper()
@@ -692,7 +694,23 @@ def brain_recommendations(
             }
         )
 
-    if finish.get("available") and not finish.get("closure_complete"):
+    source_requires_finish = source.get("implementation_equivalent") is False
+    if source_requires_finish and control_status in {"current", "deferred"}:
+        rows.append(
+            {
+                "rank": 6,
+                "level": "DO NOW",
+                "key": "finish-source-authority",
+                "title": "Promote current implementation authority through Finish",
+                "reason": (
+                    "current Git implementation authority is ahead of certified "
+                    "production; deploy and certify it before creating release-bound "
+                    "Speed or Replay receipts"
+                ),
+                "action": "aoe2war finish",
+            }
+        )
+    elif finish.get("available") and not finish.get("closure_complete"):
         if control_status == "current":
             rows.append(
                 {
@@ -1563,6 +1581,7 @@ def collect() -> dict[str, Any]:
     )
 
     recommendations = brain_recommendations(
+        source=source,
         finish=finish,
         control=control,
         performance=performance,
