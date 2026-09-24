@@ -157,5 +157,17 @@ test("file-backed control plane queues, claims, streams and completes", async ()
       dashboard.actions.some((action) => action.action === "replay_native_run"),
       false
     );
+    assert.equal(
+      dashboard.actions.some(
+        (action) => action.action === "storage_db_snapshot_status"
+      ),
+      true
+    );
+    assert.equal(
+      dashboard.actions.some(
+        (action) => action.action === "storage_db_snapshot_verify"
+      ),
+      true
+    );
   });
 });
