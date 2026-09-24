@@ -502,6 +502,131 @@ class DatabaseSnapshotRetentionTests(unittest.TestCase):
         )
         self.assertTrue(all(not row["retire_candidate"] for row in planned))
 
+    def test_remote_inventory_protects_canonical_receipt_when_malformed_sibling_shares_release_prefix(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            release = "a" * 40
+            canonical_receipt(
+                root,
+                stamp="20260923T120000Z",
+                release=release,
+            )
+            # The protected activation verifier considers every direct
+            # migration-*-<release12> entry before trusting receipt contents.
+            # A malformed sibling therefore makes the release receipt
+            # ambiguous even though this sibling contains no snapshot body.
+            malformed = root / f"migration-garbage-{release[:12]}"
+            malformed.mkdir()
+            proc = run_remote_inventory(root)
+
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        rows = json.loads(proc.stdout)["snapshots"]
+        self.assertEqual(len(rows), 1)
+        row = rows[0]
+        self.assertEqual(row["release_receipt_count"], 2)
+        self.assertTrue(row["receipt_ambiguity"])
+        self.assertFalse(row["migration_shape_exact"])
+        planned = retention.select_retention(rows)
+        self.assertEqual(planned[0]["classification"], "legacy-ambiguous")
+        self.assertEqual(planned[0]["retention_class"], "PROTECTED_EVIDENCE")
+        self.assertFalse(planned[0]["retire_candidate"])
+
+    def test_remote_inventory_rejects_malformed_status_line_even_with_valid_sidecar(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            parent = canonical_receipt(root, stamp="20260923T120000Z")
+            status = parent / "migration-status.txt"
+            status.write_text(
+                status.read_text(encoding="utf-8") + "MALFORMED_LINE\n",
+                encoding="utf-8",
+            )
+            digest = hashlib.sha256(status.read_bytes()).hexdigest()
+            (parent / "migration-status.txt.sha256").write_text(
+                f"{digest}  {status}\n",
+                encoding="utf-8",
+            )
+            proc = run_remote_inventory(root)
+
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        row = json.loads(proc.stdout)["snapshots"][0]
+        self.assertFalse(row["status_syntax_valid"])
+        self.assertFalse(row["status_receipt_valid"])
+        self.assertFalse(row["migration_shape_exact"])
+        planned = retention.select_retention([row])
+        self.assertEqual(planned[0]["classification"], "legacy-ambiguous")
+        self.assertFalse(planned[0]["retire_candidate"])
+
+    def test_remote_inventory_rejects_empty_migration_row_even_with_valid_migration(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            parent = canonical_receipt(root, stamp="20260923T120000Z")
+            status = parent / "migration-status.txt"
+            status.write_text(
+                status.read_text(encoding="utf-8") + "migration=\n",
+                encoding="utf-8",
+            )
+            digest = hashlib.sha256(status.read_bytes()).hexdigest()
+            (parent / "migration-status.txt.sha256").write_text(
+                f"{digest}  {status}\n",
+                encoding="utf-8",
+            )
+            proc = run_remote_inventory(root)
+
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        row = json.loads(proc.stdout)["snapshots"][0]
+        self.assertFalse(row["status_syntax_valid"])
+        self.assertFalse(row["status_receipt_valid"])
+        self.assertFalse(row["migration_shape_exact"])
+
+    def test_remote_inventory_rejects_status_larger_than_activation_limit(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            parent = canonical_receipt(root, stamp="20260923T120000Z")
+            status = parent / "migration-status.txt"
+            status.write_text(
+                status.read_text(encoding="utf-8")
+                + ("note=" + ("x" * (257 * 1024)) + "\n"),
+                encoding="utf-8",
+            )
+            digest = hashlib.sha256(status.read_bytes()).hexdigest()
+            (parent / "migration-status.txt.sha256").write_text(
+                f"{digest}  {status}\n",
+                encoding="utf-8",
+            )
+            proc = run_remote_inventory(root)
+
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        row = json.loads(proc.stdout)["snapshots"][0]
+        self.assertFalse(row["status_receipt_valid"])
+        self.assertFalse(row["migration_shape_exact"])
+
+    def test_remote_inventory_rejects_empty_pre_migration_dump(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            parent = canonical_receipt(root, stamp="20260923T120000Z")
+            dump = parent / "pre-migration.dump"
+            dump.write_bytes(b"")
+            status = parent / "migration-status.txt"
+            lines = [
+                line
+                for line in status.read_text(encoding="utf-8").splitlines()
+                if not line.startswith("dump_sha256=")
+            ]
+            lines.append("dump_sha256=" + hashlib.sha256(b"").hexdigest())
+            status.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            digest = hashlib.sha256(status.read_bytes()).hexdigest()
+            (parent / "migration-status.txt.sha256").write_text(
+                f"{digest}  {status}\n",
+                encoding="utf-8",
+            )
+            proc = run_remote_inventory(root, verify_hashes=True)
+
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        row = json.loads(proc.stdout)["snapshots"][0]
+        self.assertTrue(row["status_receipt_valid"])
+        self.assertTrue(row["hash_matches_declared"])
+        self.assertFalse(row["migration_shape_exact"])
+
     def test_remote_inventory_invalid_utf8_status_is_not_canonical(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)

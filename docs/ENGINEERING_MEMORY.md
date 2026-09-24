@@ -1802,8 +1802,11 @@ migration-boundary dumps are recognized only from the exact
 a valid status receipt, unique release/database/dump/hash fields, at least one
 recorded migration, and an exact release SHA whose first 12 hex characters match
 the directory identity. The sealed status sidecar must bind the exact status
-path, migration rows must be unique, and multiple canonical receipts claiming
-the same full release are treated as ambiguity rather than recovery authority.
+path and migration rows must be unique. The retention planner must mirror the
+activation verifier's receipt-identity boundary: every direct top-level
+`migration-*-<release12>` entry participates in the ambiguity census, even when
+a sibling is malformed and contains no usable dump. Status syntax is likewise
+fail-closed; a valid sidecar cannot make malformed status lines authoritative.
 Financial, incident/recovery and legacy-ambiguous shapes remain protected rather
 than being coerced into the modern class.
 

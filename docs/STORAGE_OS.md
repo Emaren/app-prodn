@@ -488,8 +488,10 @@ A canonical `migration-boundary` snapshot requires all of the following:
 
 - parent directory shape `migration-<UTC timestamp>-<release12>` with a calendar-valid UTC timestamp;
 - filename exactly `pre-migration.dump`;
-- sibling direct regular `migration-status.txt` with one and only one
+- sibling direct regular, non-empty `migration-status.txt` no larger than
+  the activation verifier's 256 KiB limit, with one and only one
   `status=APPLIED`;
+- a non-empty direct regular `pre-migration.dump` body;
 - a bounded direct regular SHA-256 sidecar over that status receipt whose named
   path is the exact status path;
 - one exact 40-hex release SHA whose first 12 hex characters equal the
@@ -498,7 +500,11 @@ A canonical `migration-boundary` snapshot requires all of the following:
 - one exact 64-hex `dump_sha256`;
 - one status `dump=pre-migration.dump`;
 - at least one unique recorded migration name;
-- exactly one canonical migration receipt claiming that full release SHA.
+- exactly one direct top-level `migration-*-<release12>` receipt entry for
+  that release prefix, including malformed or unsafe siblings in the ambiguity
+  census rather than silently ignoring them;
+- status text with the same line-syntax rules as the protected activation
+  verifier: every non-empty line must contain `=` and a non-empty key.
 
 Anything outside that contract is never guessed into the migration class.
 Paths/names that clearly identify settlement, betting, staking, escrow, Wolo or
