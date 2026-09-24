@@ -1811,9 +1811,10 @@ Financial, incident/recovery and legacy-ambiguous shapes remain protected rather
 than being coerced into the modern class.
 
 The read-only `aoe2war storage db-snapshots` planner keeps a named hot set plus
-weekly and monthly cold restore points, protects externally referenced evidence,
-and may identify older exact migration boundaries as informational retirement
-candidates. It does not delete them. Default inspection reuses sealed receipt
+weekly and monthly cold restore points, protects evidence referenced by exact
+path/receipt identity or the sealed dump SHA-256, and may identify older exact
+migration boundaries as informational retirement candidates. It does not delete
+them. Default inspection reuses sealed receipt
 hashes instead of rereading gigabytes; full-body hashing is an explicit
 read-only verification mode.
 
@@ -1821,6 +1822,26 @@ General rule: retention eligibility and deletion authority are different
 things. First prove identity, provenance, purpose, references and recovery
 coverage; only a separately reviewed, receipt-backed apply transaction may turn
 a candidate into retired bytes.
+
+A follow-up audit found two hidden absence-of-evidence claims. First, an
+`os.walk` traversal error in the snapshot-body tree could silently undercount
+restore points while the planner still computed hot/weekly/monthly coverage.
+Second, “no external reference found” could be reported after unreadable,
+oversized, symlinked or out-of-budget metadata was skipped. Both were
+conservative while delete remained disabled, but unsafe as future mutation
+preconditions.
+
+Durable rule: incomplete census is not absence of evidence. Snapshot-body
+census completeness and durable-reference census completeness are independent
+gates. An incomplete snapshot census protects otherwise-retirable rows as
+`PROTECTED_SNAPSHOT_CENSUS`; an incomplete reference census protects them as
+`PROTECTED_REFERENCE_CENSUS`. Either condition forces candidate count/bytes to
+zero until the missing evidence surface can be proved complete.
+A future apply lane must inherit that rule rather than interpreting a partial
+search as absence of evidence. Reference-census completeness is itself derived
+evidence: a contradictory remote flag, non-zero blocker count, retained blocker
+example, or malformed/negative scan counter forces the local planner back to
+incomplete.
 
 ## 2026-09-23 — Expensive read-only work still needs an operator load contract
 
