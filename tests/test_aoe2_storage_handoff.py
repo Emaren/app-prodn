@@ -1355,6 +1355,58 @@ class StorageHandoffTests(unittest.TestCase):
         with self.assertRaises(handoff.HandoffError):
             handoff.verify_wolo_continuity(before, regressed)
 
+    def test_start_admission_lock_fails_closed_when_busy(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            with (
+                mock.patch.object(handoff, "HANDOFF_DIR", root),
+                mock.patch.object(handoff, "START_LOCK_PATH", root / "start.lock"),
+                mock.patch.object(
+                    handoff.fcntl,
+                    "flock",
+                    side_effect=BlockingIOError(),
+                ),
+            ):
+                with self.assertRaisesRegex(
+                    handoff.HandoffError,
+                    "another Storage OS handoff admission is active",
+                ):
+                    handoff.acquire_start_lock()
+
+    def test_start_serializes_census_reservation_and_spawn(self):
+        events = []
+        state = {
+            "handoff_id": "handoff-a",
+            "old_release_sha": "a" * 40,
+            "old_build_id": "build-a",
+        }
+
+        class FakeLock:
+            def fileno(self):
+                return 9
+            def close(self):
+                events.append("close")
+
+        with (
+            mock.patch.object(handoff, "acquire_start_lock", side_effect=lambda: (events.append("lock") or FakeLock())),
+            mock.patch.object(handoff, "incomplete_handoff_ids", side_effect=lambda: (events.append("census") or [])),
+            mock.patch.object(handoff.campaign, "latest_campaign_id", return_value="campaign-a"),
+            mock.patch.object(handoff, "create_state", side_effect=lambda _id: (events.append("create") or dict(state))),
+            mock.patch.object(handoff.campaign, "reserve_handoff", side_effect=lambda *args, **kwargs: events.append("reserve")),
+            mock.patch.object(handoff, "load_state", side_effect=lambda _id: dict(state)),
+            mock.patch.object(handoff, "save_state", side_effect=lambda _state: events.append("save")),
+            mock.patch.object(handoff, "spawn_runner", side_effect=lambda _id: (events.append("spawn") or 456)),
+            mock.patch.object(handoff.fcntl, "flock", side_effect=lambda *args: events.append("flock")),
+        ):
+            result = handoff.start(None)
+
+        self.assertEqual(result["spawned_pid"], 456)
+        self.assertLess(events.index("lock"), events.index("census"))
+        self.assertLess(events.index("census"), events.index("create"))
+        self.assertLess(events.index("create"), events.index("reserve"))
+        self.assertLess(events.index("reserve"), events.index("spawn"))
+        self.assertLess(events.index("spawn"), events.index("close"))
+
     def test_v2_resume_rebinds_before_campaign_resume(self):
         source = Path(handoff.__file__).read_text(encoding="utf-8")
         rebind = source.index("campaign.rebind_after_handoff(")
