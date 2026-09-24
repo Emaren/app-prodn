@@ -336,7 +336,12 @@ class DatabaseSnapshotRetentionTests(unittest.TestCase):
         with mock.patch.object(
             retention,
             "remote_inventory",
-            return_value={"snapshots": rows},
+            return_value={
+                "snapshots": rows,
+                "snapshot_scan_complete": True,
+                "snapshot_scan_blocker_count": 0,
+                "snapshot_scan_blockers": [],
+            },
         ):
             payload = retention.collect()
 
@@ -360,6 +365,9 @@ class DatabaseSnapshotRetentionTests(unittest.TestCase):
 
         inventory = {
             "snapshots": rows,
+            "snapshot_scan_complete": True,
+            "snapshot_scan_blocker_count": 0,
+            "snapshot_scan_blockers": [],
             "reference_scan_complete": True,
             "reference_scan_files": 4,
             "reference_scan_bytes": 1024,
@@ -385,6 +393,9 @@ class DatabaseSnapshotRetentionTests(unittest.TestCase):
         row = exact_row(1, year=2026, month=9)
         inventory = {
             "snapshots": [row],
+            "snapshot_scan_complete": True,
+            "snapshot_scan_blocker_count": 0,
+            "snapshot_scan_blockers": [],
             "reference_scan_complete": True,
             "reference_scan_files": -1,
             "reference_scan_bytes": "unknown",
