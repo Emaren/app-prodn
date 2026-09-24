@@ -468,7 +468,7 @@ else:
     if (
         output_path.parent != Path("/tmp")
         or not re.fullmatch(
-            r"aoe2war-db-snapshot-verify-[0-9a-f]{16,64}\\.json",
+            r"aoe2war-db-snapshot-verify-[0-9a-f]{16,64}\.json",
             output_path.name,
         )
         or output_path.exists()
@@ -541,7 +541,7 @@ else:
     tool.chmod(0o400)
 
 output = Path("/tmp") / (
-    "aoe2war-db-snapshot-verify-" + expected[:16] + f"-{{os.getpid():x}}.json"
+    "aoe2war-db-snapshot-verify-" + expected[:16] + f"{{os.getpid():x}}.json"
 )
 try:
     command = [
