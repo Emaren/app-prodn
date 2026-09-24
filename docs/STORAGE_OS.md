@@ -488,8 +488,10 @@ A canonical `migration-boundary` snapshot requires all of the following:
 
 - parent directory shape `migration-<UTC timestamp>-<release12>` with a calendar-valid UTC timestamp;
 - filename exactly `pre-migration.dump`;
-- sibling direct regular `migration-status.txt` with one and only one
+- sibling direct regular, non-empty `migration-status.txt` no larger than
+  the activation verifier's 256 KiB limit, with one and only one
   `status=APPLIED`;
+- a non-empty direct regular `pre-migration.dump` body;
 - a bounded direct regular SHA-256 sidecar over that status receipt whose named
   path is the exact status path;
 - one exact 40-hex release SHA whose first 12 hex characters equal the
