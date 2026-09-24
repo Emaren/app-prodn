@@ -498,7 +498,11 @@ A canonical `migration-boundary` snapshot requires all of the following:
 - one exact 64-hex `dump_sha256`;
 - one status `dump=pre-migration.dump`;
 - at least one unique recorded migration name;
-- exactly one canonical migration receipt claiming that full release SHA.
+- exactly one direct top-level `migration-*-<release12>` receipt entry for
+  that release prefix, including malformed or unsafe siblings in the ambiguity
+  census rather than silently ignoring them;
+- status text with the same line-syntax rules as the protected activation
+  verifier: every non-empty line must contain `=` and a non-empty key.
 
 Anything outside that contract is never guessed into the migration class.
 Paths/names that clearly identify settlement, betting, staking, escrow, Wolo or
