@@ -704,6 +704,49 @@ class DatabaseSnapshotRetentionTests(unittest.TestCase):
         with self.assertRaises(retention.SnapshotRetentionError):
             retention.decode_governed_verify_output("maintenance only\n")
 
+    def test_governed_verify_helper_uses_root_owned_private_runtime_path(self):
+        payload = {
+            "kind": "aoe2war-db-snapshot-inventory",
+            "verify_hashes": True,
+            "snapshots": [],
+        }
+        raw = json.dumps(payload, sort_keys=True).encode("utf-8")
+        completed = subprocess.CompletedProcess(
+            args=[],
+            returncode=0,
+            stdout=(
+                "AOE2WAR_DB_SNAPSHOT_VERIFY_RESULT="
+                + base64.urlsafe_b64encode(raw).decode("ascii")
+                + "\n"
+            ),
+            stderr="",
+        )
+        policy = {
+            "root_maintenance_host": "root@hel1",
+        }
+        with mock.patch.object(
+            retention.subprocess,
+            "run",
+            return_value=completed,
+        ) as run:
+            self.assertEqual(
+                retention.governed_remote_inventory(policy, "encoded"),
+                payload,
+            )
+
+        remote = run.call_args.kwargs["input"]
+        self.assertIn(
+            'helper_root = Path("/run/aoe2war-db-snapshot-verify")',
+            remote,
+        )
+        self.assertIn("root_stat.st_uid != 0", remote)
+        self.assertIn("tool_stat.st_uid != 0", remote)
+        self.assertIn('getattr(os, "O_NOFOLLOW", 0)', remote)
+        self.assertNotIn(
+            'tool = Path("/tmp") / ("aoe2war-db-snapshot-inventory-"',
+            remote,
+        )
+
     def test_full_body_verify_uses_wolo_safe_maintenance_governor(self):
         source = open(retention.__file__, encoding="utf-8").read()
         self.assertIn('"/usr/local/sbin/aoe2war-maintenance-run"', source)
