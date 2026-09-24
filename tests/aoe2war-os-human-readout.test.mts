@@ -52,3 +52,13 @@ test("AoE2WAR OS presents Kingdom Intelligence as the operator Brain", () => {
   assert.match(os, /Refresh Kingdom Intelligence/);
   assert.match(os, /kingdomIntelligence/);
 });
+
+test("AoE2WAR OS keeps the latest completed command result visible", () => {
+  assert.match(page, /latestCompletedRun/);
+  assert.match(page, /completedRunOutput/);
+  assert.match(page, /Latest completed result/);
+  assert.match(page, /output truncated in browser/);
+  assert.match(page, /run\.result/);
+  assert.match(page, /run\.stdoutTail/);
+});
+
