@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "f1f8df96ee2f4f7fcc33293e736022c9ac0c5f2ee64a979fee3f8a1302ae4640",
+      "sha256": "3b01e319eb9cd2aee864ebce534f8a7dd86244e43e61098ecfdaae8f624c1513",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/migration-activation-receipt-binding-20260923",
-    "commit": "12e74d3c8a8aaec12d033959d7ed4203e92098aa"
+    "commit": "29c6a78d3790b0f3296f95bd8e98e8837c2ae4ca"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
