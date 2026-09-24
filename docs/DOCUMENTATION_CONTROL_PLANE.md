@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `chore/close-db-snapshot-test-files-20260924` at `b5db51f13b33a7495ea2eb8eae007a6013ad65e1`
+Implementation baseline: `fix/brain-replay-audit-integrity-20260924` at `beb3e7dcfde5bc9d3470d9f0273a2dfab418acfe`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
