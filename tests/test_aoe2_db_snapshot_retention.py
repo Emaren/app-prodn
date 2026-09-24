@@ -342,6 +342,44 @@ class DatabaseSnapshotRetentionTests(unittest.TestCase):
             )
         )
 
+    def test_remote_reference_census_bounds_blocker_evidence_memory(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td) / "receipts"
+            root.mkdir()
+            canonical_receipt(root, stamp="20260923T120000Z")
+            meta = Path(td) / "os-control"
+            meta.mkdir()
+            for index in range(150):
+                (meta / f"oversize-{index:03d}.json").write_text(
+                    "x" * 4097,
+                    encoding="utf-8",
+                )
+            source = retention.REMOTE_INVENTORY.replace(
+                'Path("/mnt/HC_Volume_105319120/aoe2war/os-control")',
+                f"Path({str(meta)!r})",
+            )
+            policy = {
+                "snapshot_root": str(root),
+                "max_metadata_file_bytes": 4096,
+            }
+            encoded = base64.urlsafe_b64encode(
+                json.dumps(policy).encode("utf-8")
+            ).decode("ascii")
+            proc = subprocess.run(
+                [sys.executable, "-", encoded, "0"],
+                input=source,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=False,
+            )
+
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        payload = json.loads(proc.stdout)
+        self.assertFalse(payload["reference_scan_complete"])
+        self.assertEqual(payload["reference_scan_blocker_count"], 150)
+        self.assertEqual(len(payload["reference_scan_blockers"]), 100)
+
     def test_canonical_receipt_timestamp_outranks_mutable_file_mtime(self):
         row = exact_row(1, year=2024, month=1)
         row["receipt_timestamp"] = "20260923T120000Z"
