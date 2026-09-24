@@ -302,7 +302,8 @@ export async function GET() {
     .slice(0, 48);
 
   const recentUploads = uploads.filter(
-    (event) => new Date(event.occurredAt) >= dayCutoff
+    (event) =>
+      new Date(event.occurredAt).getTime() >= dayCutoff.getTime()
   );
 
   const summary = {
