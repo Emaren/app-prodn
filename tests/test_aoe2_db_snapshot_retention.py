@@ -556,6 +556,28 @@ class DatabaseSnapshotRetentionTests(unittest.TestCase):
         self.assertEqual(planned[0]["classification"], "legacy-ambiguous")
         self.assertFalse(planned[0]["retire_candidate"])
 
+    def test_remote_inventory_rejects_empty_migration_row_even_with_valid_migration(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            parent = canonical_receipt(root, stamp="20260923T120000Z")
+            status = parent / "migration-status.txt"
+            status.write_text(
+                status.read_text(encoding="utf-8") + "migration=\n",
+                encoding="utf-8",
+            )
+            digest = hashlib.sha256(status.read_bytes()).hexdigest()
+            (parent / "migration-status.txt.sha256").write_text(
+                f"{digest}  {status}\n",
+                encoding="utf-8",
+            )
+            proc = run_remote_inventory(root)
+
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        row = json.loads(proc.stdout)["snapshots"][0]
+        self.assertFalse(row["status_syntax_valid"])
+        self.assertFalse(row["status_receipt_valid"])
+        self.assertFalse(row["migration_shape_exact"])
+
     def test_remote_inventory_invalid_utf8_status_is_not_canonical(self):
         with tempfile.TemporaryDirectory() as td:
             root = Path(td)
