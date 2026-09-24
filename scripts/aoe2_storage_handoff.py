@@ -27,6 +27,7 @@ CLI = ROOT / "bin" / "aoe2war"
 HANDOFF_DIR = ROOT / ".aoe2war-release" / "storage-handoffs"
 FINISH_RECEIPT_DIR = ROOT / ".aoe2war-release" / "finish-receipts"
 LOCK_PATH = HANDOFF_DIR / "handoff.lock"
+START_LOCK_PATH = HANDOFF_DIR / "handoff-start.lock"
 
 WOLO_REMOTE_SCRIPT = r"""set -euo pipefail
 NODE="wolochaind-mainnet.service"
@@ -892,37 +893,58 @@ def spawn_runner(handoff_id: str) -> int:
     return int(proc.pid)
 
 
-def start(campaign_id: str | None) -> dict[str, Any]:
-    incomplete = incomplete_handoff_ids()
-    if incomplete:
-        raise HandoffError(
-            "an incomplete Storage OS handoff already exists; resume it instead: "
-            f"aoe2war storage handoff resume {incomplete[0]}"
-        )
-
-    selected = campaign_id or campaign.latest_campaign_id()
-    if not selected:
-        raise HandoffError("no storage campaign exists")
-    state = create_state(selected)
-    handoff_id = str(state["handoff_id"])
+def acquire_start_lock():
+    HANDOFF_DIR.mkdir(parents=True, exist_ok=True)
+    lock = START_LOCK_PATH.open("a+")
     try:
-        campaign.reserve_handoff(
-            selected,
-            handoff_id=handoff_id,
-            old_release_sha=str(state["old_release_sha"]),
-            old_build_id=str(state["old_build_id"]),
-        )
-    except Exception as exc:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError as exc:
+        lock.close()
+        raise HandoffError(
+            "another Storage OS handoff admission is active; "
+            "retry the exact start command after it completes"
+        ) from exc
+    return lock
+
+
+def start(campaign_id: str | None) -> dict[str, Any]:
+    admission_lock = acquire_start_lock()
+    try:
+        incomplete = incomplete_handoff_ids()
+        if incomplete:
+            raise HandoffError(
+                "an incomplete Storage OS handoff already exists; resume it instead: "
+                f"aoe2war storage handoff resume {incomplete[0]}"
+            )
+
+        selected = campaign_id or campaign.latest_campaign_id()
+        if not selected:
+            raise HandoffError("no storage campaign exists")
+        state = create_state(selected)
+        handoff_id = str(state["handoff_id"])
+        try:
+            campaign.reserve_handoff(
+                selected,
+                handoff_id=handoff_id,
+                old_release_sha=str(state["old_release_sha"]),
+                old_build_id=str(state["old_build_id"]),
+            )
+        except Exception as exc:
+            state = load_state(handoff_id)
+            state["last_error"] = str(exc)
+            state["reservation_failed_at"] = utc_now()
+            save_state(state)
+            raise
         state = load_state(handoff_id)
-        state["last_error"] = str(exc)
-        state["reservation_failed_at"] = utc_now()
+        state["campaign_reserved_at"] = utc_now()
         save_state(state)
-        raise
-    state = load_state(handoff_id)
-    state["campaign_reserved_at"] = utc_now()
-    save_state(state)
-    pid = spawn_runner(handoff_id)
-    return {**load_state(handoff_id), "spawned_pid": pid}
+        pid = spawn_runner(handoff_id)
+        return {**load_state(handoff_id), "spawned_pid": pid}
+    finally:
+        try:
+            fcntl.flock(admission_lock.fileno(), fcntl.LOCK_UN)
+        finally:
+            admission_lock.close()
 
 
 def launch_finish(state: dict[str, Any]) -> subprocess.Popen[str]:
