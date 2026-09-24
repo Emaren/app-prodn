@@ -215,6 +215,89 @@ class DatabaseSnapshotRetentionTests(unittest.TestCase):
             )
         )
 
+    def test_incomplete_snapshot_census_never_emits_retire_candidate(self):
+        rows = []
+        year = 2026
+        month = 9
+        for i in range(32):
+            rows.append(exact_row(i, year=year, month=month, day=15))
+            month -= 1
+            if month == 0:
+                month = 12
+                year -= 1
+
+        planned = retention.select_retention(
+            rows,
+            snapshot_scan_complete=False,
+        )
+        self.assertFalse(any(row["retire_candidate"] for row in planned))
+        self.assertGreater(
+            sum(
+                row["retention_class"] == "PROTECTED_SNAPSHOT_CENSUS"
+                for row in planned
+            ),
+            0,
+        )
+
+    def test_collect_missing_snapshot_census_field_fails_closed(self):
+        rows = []
+        year = 2026
+        month = 9
+        for i in range(32):
+            rows.append(exact_row(i, year=year, month=month, day=15))
+            month -= 1
+            if month == 0:
+                month = 12
+                year -= 1
+
+        inventory = {
+            "snapshots": rows,
+            "reference_scan_complete": True,
+            "reference_scan_files": 1,
+            "reference_scan_bytes": 1,
+            "reference_scan_blocker_count": 0,
+            "reference_scan_blockers": [],
+        }
+        with mock.patch.object(
+            retention,
+            "remote_inventory",
+            return_value=inventory,
+        ):
+            payload = retention.collect()
+
+        self.assertFalse(payload["snapshot_census"]["complete"])
+        self.assertEqual(payload["summary"]["candidate_count"], 0)
+        self.assertIn(
+            "PROTECTED_SNAPSHOT_CENSUS",
+            payload["summary"]["retention_counts"],
+        )
+
+    def test_remote_snapshot_census_records_walk_error_contract(self):
+        source = retention.REMOTE_INVENTORY
+        self.assertIn("def record_snapshot_walk_error(exc):", source)
+        self.assertIn("onerror=record_snapshot_walk_error", source)
+        self.assertIn('"snapshot-walk-error:"', source)
+
+    def test_remote_snapshot_census_rejects_symlinked_snapshot_body(self):
+        with tempfile.TemporaryDirectory() as td:
+            root = Path(td)
+            target = root / "target.dump"
+            target.write_bytes(b"backup")
+            link = root / "linked.dump"
+            link.symlink_to(target)
+            proc = run_remote_inventory(root)
+
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        payload = json.loads(proc.stdout)
+        self.assertFalse(payload["snapshot_scan_complete"])
+        self.assertGreater(payload["snapshot_scan_blocker_count"], 0)
+        self.assertTrue(
+            any(
+                blocker.startswith("snapshot-file-not-direct-regular:")
+                for blocker in payload["snapshot_scan_blockers"]
+            )
+        )
+
     def test_incomplete_reference_census_never_emits_retire_candidate(self):
         rows = []
         year = 2026
