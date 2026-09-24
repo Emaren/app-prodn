@@ -5,6 +5,7 @@ import os
 import pathlib
 import shlex
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -224,7 +225,191 @@ fi
     )
 
 
+def write_migration_receipt(
+    root,
+    *,
+    release,
+    database="aoe2hdbets",
+    migrations=None,
+    stamp="20260923T120000Z",
+    duplicate_field=None,
+    dump_bytes=b"sealed-db-backup\n",
+):
+    migrations = migrations or ["20260101000000_create_widget"]
+    receipt = root / f"migration-{stamp}-{release[:12]}"
+    receipt.mkdir(parents=True)
+    dump = receipt / "pre-migration.dump"
+    dump.write_bytes(dump_bytes)
+    dump_sha = hashlib.sha256(dump_bytes).hexdigest()
+    lines = [
+        "status=APPLIED",
+        f"release_sha={release}",
+        f"database={database}",
+        "dump=pre-migration.dump",
+        f"dump_sha256={dump_sha}",
+        *[f"migration={name}" for name in migrations],
+        "mode=additive",
+    ]
+    if duplicate_field:
+        lines.append(f"{duplicate_field}=duplicate")
+    status = receipt / "migration-status.txt"
+    status.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    status_sha = hashlib.sha256(status.read_bytes()).hexdigest()
+    sidecar = receipt / "migration-status.txt.sha256"
+    sidecar.write_text(f"{status_sha}  {status}\n", encoding="utf-8")
+    return receipt
+
+
+def run_migration_receipt_verifier(
+    root,
+    *,
+    release,
+    database="aoe2hdbets",
+    migrations=None,
+):
+    migrations = migrations or ["20260101000000_create_widget"]
+    expected = root / "expected.txt"
+    expected.write_text("\n".join(migrations) + "\n", encoding="utf-8")
+    return subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            MODULE.migration_receipt_verifier_python(),
+            str(root),
+            release,
+            database,
+            str(expected),
+        ],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
 class ShipTests(unittest.TestCase):
+    def test_migration_receipt_verifier_accepts_exact_sealed_receipt(self):
+        release = "e" * 40
+        with tempfile.TemporaryDirectory() as td:
+            root = pathlib.Path(td)
+            receipt = write_migration_receipt(root, release=release)
+            result = run_migration_receipt_verifier(root, release=release)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout.strip(), str(receipt))
+
+    def test_migration_receipt_verifier_rejects_invalid_identity_and_ambiguity(self):
+        release = "e" * 40
+        with tempfile.TemporaryDirectory() as td:
+            root = pathlib.Path(td)
+            write_migration_receipt(
+                root,
+                release=release,
+                stamp="not-a-valid-utc-stamp",
+            )
+            result = run_migration_receipt_verifier(root, release=release)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("invalid identity", result.stderr)
+
+        with tempfile.TemporaryDirectory() as td:
+            root = pathlib.Path(td)
+            write_migration_receipt(
+                root,
+                release=release,
+                stamp="20260923T120000Z",
+            )
+            write_migration_receipt(
+                root,
+                release=release,
+                stamp="20260923T120100Z",
+            )
+            result = run_migration_receipt_verifier(root, release=release)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("ambiguous", result.stderr)
+
+    def test_migration_receipt_verifier_rejects_sidecar_field_and_migration_drift(self):
+        release = "e" * 40
+
+        with tempfile.TemporaryDirectory() as td:
+            root = pathlib.Path(td)
+            receipt = write_migration_receipt(root, release=release)
+            (receipt / "migration-status.txt.sha256").write_text(
+                "0" * 64 + f"  {receipt / 'migration-status.txt'}\n",
+                encoding="utf-8",
+            )
+            result = run_migration_receipt_verifier(root, release=release)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("sidecar does not match", result.stderr)
+
+        with tempfile.TemporaryDirectory() as td:
+            root = pathlib.Path(td)
+            write_migration_receipt(
+                root,
+                release=release,
+                duplicate_field="release_sha",
+            )
+            result = run_migration_receipt_verifier(root, release=release)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("duplicate required field", result.stderr)
+
+        with tempfile.TemporaryDirectory() as td:
+            root = pathlib.Path(td)
+            write_migration_receipt(
+                root,
+                release=release,
+                migrations=["20260101000000_other"],
+            )
+            result = run_migration_receipt_verifier(
+                root,
+                release=release,
+                migrations=["20260101000000_create_widget"],
+            )
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("migration set differs", result.stderr)
+
+    def test_migration_receipt_verifier_rejects_symlink_and_dump_hash_drift(self):
+        release = "e" * 40
+
+        with tempfile.TemporaryDirectory() as td:
+            root = pathlib.Path(td)
+            receipt = write_migration_receipt(root, release=release)
+            status = receipt / "migration-status.txt"
+            target = receipt / "real-status.txt"
+            status.rename(target)
+            status.symlink_to(target.name)
+            result = run_migration_receipt_verifier(root, release=release)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("non-symlink", result.stderr)
+
+        with tempfile.TemporaryDirectory() as td:
+            root = pathlib.Path(td)
+            receipt = write_migration_receipt(root, release=release)
+            dump = receipt / "pre-migration.dump"
+            original = dump.read_bytes()
+            dump.unlink()
+            target = receipt / "real.dump"
+            target.write_bytes(original)
+            dump.symlink_to(target.name)
+            result = run_migration_receipt_verifier(root, release=release)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("non-symlink", result.stderr)
+
+        with tempfile.TemporaryDirectory() as td:
+            root = pathlib.Path(td)
+            receipt = write_migration_receipt(root, release=release)
+            (receipt / "pre-migration.dump").write_bytes(b"tampered\n")
+            result = run_migration_receipt_verifier(root, release=release)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertIn("dump SHA-256 does not match", result.stderr)
+
+    def test_migration_receipt_verifier_rejects_release_prefix_mismatch(self):
+        release = "e" * 40
+        other_release = "f" * 40
+        with tempfile.TemporaryDirectory() as td:
+            root = pathlib.Path(td)
+            write_migration_receipt(root, release=other_release)
+            result = run_migration_receipt_verifier(root, release=release)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("receipt is missing", result.stderr)
+
     def test_production_migration_verifier_renders_nested_python(self):
         manifest = {
             "release_sha": "e" * 40,
