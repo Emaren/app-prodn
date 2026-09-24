@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/migration-activation-receipt-binding-20260923` at `12e74d3c8a8aaec12d033959d7ed4203e92098aa`
+Implementation baseline: `fix/migration-activation-receipt-binding-20260923` at `29c6a78d3790b0f3296f95bd8e98e8837c2ae4ca`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
