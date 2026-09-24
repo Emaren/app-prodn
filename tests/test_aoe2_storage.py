@@ -84,6 +84,16 @@ class StorageOSTests(unittest.TestCase):
             command,
         )
 
+    def test_storage_status_exposes_bounded_database_snapshot_estate(self):
+        source = MODULE.REMOTE_PROBE
+        self.assertIn('db_snapshot_root = volume / "aoe2war" / "deploy-receipts"', source)
+        self.assertIn("if depth >= 4:", source)
+        self.assertIn('"database_snapshots": {', source)
+        self.assertIn(
+            '"retention_command": "aoe2war storage db-snapshots status"',
+            source,
+        )
+
     def test_worker_shell_syntax(self):
         proc = subprocess.run(
             ["bash", "-n", str(WORKER)],

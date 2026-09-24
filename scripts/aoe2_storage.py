@@ -230,6 +230,33 @@ health = (
     "HEALTHY"
 )
 
+db_snapshot_root = volume / "aoe2war" / "deploy-receipts"
+db_snapshot_count = 0
+db_snapshot_bytes = 0
+if db_snapshot_root.is_dir():
+    base_depth = len(db_snapshot_root.parts)
+    for current, dirs, files in os.walk(db_snapshot_root):
+        current_path = Path(current)
+        depth = len(current_path.parts) - base_depth
+        if depth >= 4:
+            dirs[:] = []
+        dirs[:] = [
+            name for name in dirs
+            if not (current_path / name).is_symlink()
+        ]
+        for name in files:
+            if not name.lower().endswith((".dump", ".backup", ".bak", ".sql.gz")):
+                continue
+            path = current_path / name
+            try:
+                st = path.stat(follow_symlinks=False)
+            except OSError:
+                continue
+            if not stat.S_ISREG(st.st_mode):
+                continue
+            db_snapshot_count += 1
+            db_snapshot_bytes += int(st.st_size)
+
 print(json.dumps({
     "schema": 1,
     "kind": "aoe2war-storage-os-status",
@@ -249,6 +276,11 @@ print(json.dumps({
     "expired_archive_count": len(list(receipts.glob("*.expired.json"))),
     "verified_receipt_count": len(verified),
     "archive_file_count": len(archive_names),
+    "database_snapshots": {
+        "count": db_snapshot_count,
+        "bytes": db_snapshot_bytes,
+        "retention_command": "aoe2war storage db-snapshots status",
+    },
     "inconsistent_expanded_archived": inconsistent,
     "next_candidate": candidate,
     "candidate_policy": "rolling-hot-window",
@@ -524,6 +556,12 @@ def estate_snapshot(*, measure: bool = False) -> dict[str, Any]:
             "volume_used_percent": volume["used_percent"],
             "expanded_retention_debt": volume["eligible_expanded_count"],
             "cold_archive_count": volume["archive_file_count"],
+            "database_snapshot_count": (
+                (volume.get("database_snapshots") or {}).get("count")
+            ),
+            "database_snapshot_bytes": (
+                (volume.get("database_snapshots") or {}).get("bytes")
+            ),
         },
     }
 
@@ -538,6 +576,12 @@ def print_status(s: dict[str, Any]) -> None:
     print(f"Protected hot:   {len(s['protected_newest'])}")
     print(f"Cold eligible:   {s['eligible_expanded_count']}")
     print(f"Archived:        {s['archived_replaced_count']}")
+    db = s.get("database_snapshots") or {}
+    print(
+        "DB snapshots:    "
+        f"{db.get('count', '—')} · {gib(db.get('bytes'))} · "
+        "tiered plan available"
+    )
     print(f"Legacy dirs:     {s['legacy_directory_count']} · auto-action NEVER")
     print(f"Next candidate:  {s['next_candidate'] or '—'}")
     rt = s["runtime"]
@@ -570,6 +614,11 @@ def print_estate(payload: dict[str, Any]) -> None:
     )
     print(f"Expanded debt:   {volume['eligible_expanded_count']} generation(s)")
     print(f"Cold archives:   {volume['archive_file_count']}")
+    db = volume.get("database_snapshots") or {}
+    print(
+        "DB snapshots:    "
+        f"{db.get('count', '—')} · {gib(db.get('bytes'))}"
+    )
 
 
 def _assert_local_reclaim_path(home: Path, path: Path) -> None:
@@ -890,6 +939,8 @@ def parser() -> argparse.ArgumentParser:
     q.add_argument("campaign_args", nargs=argparse.REMAINDER)
     q = sub.add_parser("handoff")
     q.add_argument("handoff_args", nargs=argparse.REMAINDER)
+    q = sub.add_parser("db-snapshots")
+    q.add_argument("db_snapshot_args", nargs=argparse.REMAINDER)
     return p
 
 
@@ -935,6 +986,13 @@ def main() -> int:
             sys.executable,
             str(ROOT / "scripts" / "aoe2_storage_handoff.py"),
             *args.handoff_args,
+        ]
+        return subprocess.run(cmd, cwd=ROOT, check=False).returncode
+    if args.command == "db-snapshots":
+        cmd = [
+            sys.executable,
+            str(ROOT / "scripts" / "aoe2_db_snapshot_retention.py"),
+            *args.db_snapshot_args,
         ]
         return subprocess.run(cmd, cwd=ROOT, check=False).returncode
     raise StorageError(f"unknown command: {args.command}")
