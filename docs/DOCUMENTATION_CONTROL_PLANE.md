@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/tournaments-bracket-ui-v1` at `12d33b835753c00d3ef7fe11166826d604591373`
+Implementation baseline: `feat/library-activity-board-v1-integrated-20260924` at `7c02040367456195ee2090b8dcecf60c52ac0fc1`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
