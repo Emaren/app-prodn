@@ -293,6 +293,15 @@ def record_metadata_blocker(value):
     if len(metadata_scan_blockers) < 100:
         metadata_scan_blockers.append(value)
 
+def record_metadata_walk_error(exc):
+    filename = getattr(exc, "filename", None) or "unknown"
+    record_metadata_blocker(
+        "metadata-walk-error:"
+        + str(filename)
+        + ":"
+        + type(exc).__name__
+    )
+
 for base in metadata_roots:
     try:
         base_stat = base.stat(follow_symlinks=False)
@@ -307,7 +316,10 @@ for base in metadata_roots:
         )
         continue
 
-    for current, dirs, files in os.walk(base):
+    for current, dirs, files in os.walk(
+        base,
+        onerror=record_metadata_walk_error,
+    ):
         current_path = Path(current)
 
         safe_dirs = []
