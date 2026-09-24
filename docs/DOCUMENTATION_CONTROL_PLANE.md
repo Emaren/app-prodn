@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/brain-finish-before-release-measurements-20260924` at `e8d2d942313e6313d72ca1bf0a2229f3ac1061e5`
+Implementation baseline: `fix/operator-bridge-idle-heartbeat-20260924` at `52705eb57ffe9c404d71d8e48504111bee7486c1`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

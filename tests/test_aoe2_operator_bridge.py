@@ -283,6 +283,40 @@ class OperatorBridgeTests(unittest.TestCase):
         self.assertEqual(MODULE.try_parse_json('{"p0":0}'), {"p0": 0})
         self.assertIsNone(MODULE.try_parse_json("not json"))
 
+    def test_idle_heartbeat_cadence_is_real_and_bounded(self):
+        with patch.object(MODULE, "post_bridge") as post:
+            last = MODULE.maybe_idle_heartbeat(
+                last_heartbeat_at=100.0,
+                token="token",
+                base_url="https://example.invalid",
+                now=109.9,
+            )
+            self.assertEqual(last, 100.0)
+            post.assert_not_called()
+
+            last = MODULE.maybe_idle_heartbeat(
+                last_heartbeat_at=last,
+                token="token",
+                base_url="https://example.invalid",
+                now=110.0,
+            )
+            self.assertEqual(last, 110.0)
+            post.assert_called_once_with(
+                {"op": "heartbeat"},
+                token="token",
+                base_url="https://example.invalid",
+            )
+
+            post.reset_mock()
+            last = MODULE.maybe_idle_heartbeat(
+                last_heartbeat_at=last,
+                token="token",
+                base_url="https://example.invalid",
+                now=119.9,
+            )
+            self.assertEqual(last, 110.0)
+            post.assert_not_called()
+
     def test_finish_lock_pauses_claims(self):
         with tempfile.TemporaryDirectory() as temp:
             lock = Path(temp) / "finish.lock"
