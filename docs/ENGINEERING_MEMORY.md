@@ -1835,7 +1835,10 @@ completeness explicitly and fail-closes every otherwise-retirable exact
 migration boundary as `PROTECTED_REFERENCE_CENSUS` whenever the bounded
 metadata roots, files, UTF-8 reads or census budgets cannot be proved complete.
 A future apply lane must inherit that rule rather than interpreting a partial
-search as absence of evidence.
+search as absence of evidence. Reference-census completeness is itself derived
+evidence: a contradictory remote flag, non-zero blocker count, retained blocker
+example, or malformed/negative scan counter forces the local planner back to
+incomplete.
 
 ## 2026-09-23 — Expensive read-only work still needs an operator load contract
 
