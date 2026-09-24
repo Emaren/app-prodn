@@ -1014,14 +1014,45 @@ def collect(*, verify_hashes: bool = False) -> dict[str, Any]:
     reference_scan_complete = inventory.get("reference_scan_complete")
     if not isinstance(reference_scan_complete, bool):
         reference_scan_complete = False
+
     blockers = inventory.get("reference_scan_blockers") or []
     if not isinstance(blockers, list):
         blockers = ["reference-scan-blocker-shape-invalid"]
         reference_scan_complete = False
+
     blocker_count = inventory.get("reference_scan_blocker_count")
-    if not isinstance(blocker_count, int) or isinstance(blocker_count, bool):
-        blocker_count = len(blockers)
+    if (
+        not isinstance(blocker_count, int)
+        or isinstance(blocker_count, bool)
+        or blocker_count < 0
+    ):
+        blocker_count = max(1, len(blockers))
         reference_scan_complete = False
+
+    scan_files = inventory.get("reference_scan_files")
+    if (
+        not isinstance(scan_files, int)
+        or isinstance(scan_files, bool)
+        or scan_files < 0
+    ):
+        scan_files = 0
+        reference_scan_complete = False
+
+    scan_bytes = inventory.get("reference_scan_bytes")
+    if (
+        not isinstance(scan_bytes, int)
+        or isinstance(scan_bytes, bool)
+        or scan_bytes < 0
+    ):
+        scan_bytes = 0
+        reference_scan_complete = False
+
+    # A complete census is a conjunction, not a flag supplied by the remote
+    # helper. Any retained blocker evidence or non-zero blocker count makes
+    # absence-of-reference unproven and therefore retirement-ineligible.
+    if blocker_count != 0 or blockers:
+        reference_scan_complete = False
+
     rows = select_retention(
         [row for row in raw if isinstance(row, dict)],
         reference_scan_complete=reference_scan_complete,
@@ -1035,8 +1066,8 @@ def collect(*, verify_hashes: bool = False) -> dict[str, Any]:
         "verify_hashes": verify_hashes,
         "reference_census": {
             "complete": reference_scan_complete,
-            "files_scanned": int(inventory.get("reference_scan_files") or 0),
-            "bytes_scanned": int(inventory.get("reference_scan_bytes") or 0),
+            "files_scanned": scan_files,
+            "bytes_scanned": scan_bytes,
             "blocker_count": blocker_count,
             "blockers": [str(item) for item in blockers[:100]],
         },
