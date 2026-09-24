@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/db-snapshot-reference-census-fail-closed-20260924` at `ac31d017fcffa77e61bf061c51dc23a7a6f5a03e`
+Implementation baseline: `fix/db-snapshot-reference-census-fail-closed-20260924` at `05ddbc3a653e306234d0873a51af95e1ae69d537`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
