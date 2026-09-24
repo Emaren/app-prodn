@@ -6,7 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Anvil, BarChart3, Bot, BrainCircuit, Castle, ClipboardCheck, Crown, Eye, Globe2, GraduationCap, Hammer, MessageSquare, Radio, Scale, Store, Target, UsersRound, X, Zap } from "lucide-react";
+import { Anvil, Archive, BarChart3, Bot, BrainCircuit, Castle, ClipboardCheck, Crown, Eye, Globe2, GraduationCap, Hammer, MessageSquare, Radio, Scale, Store, Target, UsersRound, X, Zap } from "lucide-react";
 import { createPortal } from "react-dom";
 import SpeedRuntime from "@/components/speed/SpeedRuntime";
 import SpeedWebVitals from "@/components/speed/SpeedWebVitals";
@@ -130,6 +130,7 @@ const KINGDOM_LINKS = [
   { href: "/national-champions", label: "Nations", icon: Globe2, body: "Beacon map and national bounties" },
   { href: "/clans", label: "Clans", icon: UsersRound, body: "Teams, houses, and clan halls" },
   { href: "/academy", label: "Academy", icon: GraduationCap, body: "Lessons, build orders, replay study" },
+  { href: "/library", label: "Library", icon: Archive, body: "Live replay intake and game deposits" },
   { href: "/market", label: "Marketplace", icon: Store, body: "Player shops, craft, and commissions" },
   { href: "/ai", label: "AI Council", icon: Bot, body: "Ask the public house council" },
   { href: "/kingdom-intelligence", label: "Kingdom Intelligence", icon: BrainCircuit, body: "Watch the kingdom reason about itself" },
@@ -162,6 +163,7 @@ const PAGE_HEADINGS: ReadonlyArray<{ prefix: string; title: string }> = [
   { prefix: "/national-champions", title: "National Champions" },
   { prefix: "/clans", title: "Clan Halls" },
   { prefix: "/academy", title: "Academy" },
+  { prefix: "/library", title: "Game Library" },
   { prefix: "/market", title: "Marketplace" },
   { prefix: "/champions", title: "Championship Belts" },
   { prefix: "/kingdom-forge", title: "Kingdom Forge" },
