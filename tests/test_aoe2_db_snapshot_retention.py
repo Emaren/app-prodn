@@ -604,7 +604,7 @@ class DatabaseSnapshotRetentionTests(unittest.TestCase):
         self.assertNotIn("for meta in metadata_files:", source)
 
     def test_read_only_contract_has_no_apply_or_snapshot_delete_mode(self):
-        source = open(retention.__file__, encoding="utf-8").read()
+        source = Path(retention.__file__).read_text(encoding="utf-8")
         self.assertIn('"delete_enabled": False', source)
         self.assertIn('"apply": {', source)
         self.assertIn('"available": False', source)
@@ -1122,7 +1122,7 @@ class DatabaseSnapshotRetentionTests(unittest.TestCase):
         )
 
     def test_full_body_verify_uses_wolo_safe_maintenance_governor(self):
-        source = open(retention.__file__, encoding="utf-8").read()
+        source = Path(retention.__file__).read_text(encoding="utf-8")
         self.assertIn('"/usr/local/sbin/aoe2war-maintenance-run"', source)
         self.assertIn('"db-snapshot-verify"', source)
         self.assertIn('"root_maintenance_host"', source)
@@ -1134,7 +1134,7 @@ class DatabaseSnapshotRetentionTests(unittest.TestCase):
         )
 
     def test_default_inventory_does_not_hash_snapshot_bodies(self):
-        source = open(retention.__file__, encoding="utf-8").read()
+        source = Path(retention.__file__).read_text(encoding="utf-8")
         self.assertIn('verify_hashes = sys.argv[2] == "1"', source)
         self.assertIn("actual_sha = sha256(path) if verify_hashes else None", source)
         self.assertIn("default uses sealed", source)
