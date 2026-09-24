@@ -166,21 +166,31 @@ def sha256(path):
 
 def parse_status(path):
     result = {}
+    try:
+        st = path.stat(follow_symlinks=False)
+    except OSError:
+        return result, False
     if (
         path.is_symlink()
-        or not path.is_file()
-        or path.stat().st_size > max_meta
+        or not stat.S_ISREG(st.st_mode)
+        or st.st_size <= 0
+        or st.st_size > max_meta
     ):
-        return result
+        return result, False
     try:
         lines = path.read_text(encoding="utf-8").splitlines()
     except (OSError, UnicodeDecodeError):
-        return result
+        return result, False
     for raw in lines:
-        key, sep, value = raw.partition("=")
-        if sep and key and value:
-            result.setdefault(key.strip(), []).append(value.strip())
-    return result
+        if raw == "":
+            continue
+        if "=" not in raw:
+            return result, False
+        key, value = raw.split("=", 1)
+        if not key:
+            return result, False
+        result.setdefault(key, []).append(value)
+    return result, True
 
 def one(status, key):
     values = status.get(key) or []
@@ -189,7 +199,7 @@ def one(status, key):
     value = values[0]
     return value if value else None
 
-def status_receipt_valid(parent, status):
+def status_receipt_valid(parent, status, status_syntax_valid):
     status_path = parent / "migration-status.txt"
     sidecar = parent / "migration-status.txt.sha256"
     if (
@@ -235,9 +245,26 @@ def status_receipt_valid(parent, status):
     except OSError:
         return False
     return bool(
-        observed == parts[0]
+        status_syntax_valid
+        and observed == parts[0]
         and one(status, "status") == "APPLIED"
     )
+
+# Match the release activation verifier's ambiguity boundary. It considers
+# every direct top-level "migration-*-<release12>" entry before trusting any
+# one receipt's contents, so a malformed sibling must protect the otherwise
+# canonical dump rather than disappear from retention planning.
+release_prefix_candidates = {}
+for entry in root.iterdir():
+    name = entry.name
+    if not name.startswith("migration-") or "-" not in name:
+        continue
+    release_short = name.rsplit("-", 1)[-1]
+    if not re.fullmatch(r"[0-9a-f]{12}", release_short):
+        continue
+    release_prefix_candidates.setdefault(release_short, []).append(name)
+for release_short in release_prefix_candidates:
+    release_prefix_candidates[release_short].sort()
 
 metadata_documents = []
 for base in metadata_roots:
@@ -300,8 +327,14 @@ if root.is_dir():
                 continue
 
             parent = path.parent
-            status = parse_status(parent / "migration-status.txt")
-            status_ok = status_receipt_valid(parent, status)
+            status, status_syntax_valid = parse_status(
+                parent / "migration-status.txt"
+            )
+            status_ok = status_receipt_valid(
+                parent,
+                status,
+                status_syntax_valid,
+            )
             declared = one(status, "dump_sha256")
             release_sha = one(status, "release_sha")
             database = one(status, "database")
@@ -326,11 +359,25 @@ if root.is_dir():
             release_short = (
                 migration_match.group(2) if migration_match else None
             )
+            release_candidates = (
+                list(release_prefix_candidates.get(release_short, []))
+                if release_short
+                else []
+            )
+            release_receipt_count = len(release_candidates)
+            receipt_ambiguity = (
+                "multiple or malformed migration receipt entries share "
+                "the release prefix"
+                if release_short and release_receipt_count != 1
+                else None
+            )
             migration_shape = bool(
                 name == "pre-migration.dump"
                 and migration_match
                 and receipt_timestamp is not None
                 and status_ok
+                and status_syntax_valid
+                and receipt_ambiguity is None
                 and declared_dump == name
                 and isinstance(declared, str)
                 and sha_re.fullmatch(declared)
@@ -377,7 +424,11 @@ if root.is_dir():
                 ).isoformat(),
                 "receipt_timestamp": receipt_timestamp,
                 "status_receipt_valid": status_ok,
+                "status_syntax_valid": status_syntax_valid,
                 "migration_shape_exact": migration_shape,
+                "release_receipt_count": release_receipt_count,
+                "release_receipt_examples": release_candidates[:6],
+                "receipt_ambiguity": receipt_ambiguity,
                 "release_sha": release_sha,
                 "database": database,
                 "declared_sha256": declared,
@@ -387,24 +438,6 @@ if root.is_dir():
                 "external_reference_count": len(refs),
                 "external_reference_examples": refs[:6],
             })
-
-release_receipt_counts = {}
-for row in snapshots:
-    if row.get("migration_shape_exact") and row.get("release_sha"):
-        key = str(row["release_sha"])
-        release_receipt_counts[key] = release_receipt_counts.get(key, 0) + 1
-
-for row in snapshots:
-    release_sha = row.get("release_sha")
-    count = int(release_receipt_counts.get(str(release_sha), 0)) if release_sha else 0
-    row["release_receipt_count"] = count
-    if row.get("migration_shape_exact") and count != 1:
-        row["migration_shape_exact"] = False
-        row["receipt_ambiguity"] = (
-            "multiple canonical migration receipts claim the same release"
-        )
-    else:
-        row["receipt_ambiguity"] = None
 
 print(json.dumps({
     "schema": 1,
