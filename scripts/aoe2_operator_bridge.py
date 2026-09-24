@@ -472,6 +472,27 @@ def run_audit_snapshot(
     return payload
 
 
+IDLE_HEARTBEAT_SECONDS = 10.0
+
+
+def maybe_idle_heartbeat(
+    *,
+    last_heartbeat_at: float,
+    token: str,
+    base_url: str,
+    now: float | None = None,
+) -> float:
+    current = time.monotonic() if now is None else now
+    if current - last_heartbeat_at < IDLE_HEARTBEAT_SECONDS:
+        return last_heartbeat_at
+    post_bridge(
+        {"op": "heartbeat"},
+        token=token,
+        base_url=base_url,
+    )
+    return current
+
+
 def heartbeat_loop(
     stop: threading.Event,
     *,
@@ -718,6 +739,17 @@ def run_bridge(
     )
     intelligence_thread.start()
 
+    # Startup audit/intelligence collection can itself exceed the online
+    # heartbeat window. Reassert liveness after startup work, then maintain a
+    # real heartbeat while idle. Active runs keep their run-bound heartbeat
+    # thread so currentRunId remains authoritative.
+    post_bridge(
+        {"op": "heartbeat"},
+        token=token,
+        base_url=base_url,
+    )
+    last_idle_heartbeat = time.monotonic()
+
     while True:
         if finish_in_progress():
             post_bridge(
@@ -725,11 +757,18 @@ def run_bridge(
                 token=token,
                 base_url=base_url,
             )
+            last_idle_heartbeat = time.monotonic()
             if once:
                 print("finish in progress; no command claimed", flush=True)
                 return 0
             time.sleep(max(1.0, interval))
             continue
+
+        last_idle_heartbeat = maybe_idle_heartbeat(
+            last_heartbeat_at=last_idle_heartbeat,
+            token=token,
+            base_url=base_url,
+        )
 
         response = post_bridge(
             {"op": "claim"},
