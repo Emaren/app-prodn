@@ -416,7 +416,13 @@ class ShipTests(unittest.TestCase):
                     expected=expected,
                 )
                 self.assertNotEqual(result.returncode, 0)
-                self.assertIn("migration status sidecar", result.stderr)
+                if label == "missing":
+                    self.assertIn(
+                        "missing durable migration evidence",
+                        result.stderr,
+                    )
+                else:
+                    self.assertIn("migration status sidecar", result.stderr)
 
         with tempfile.TemporaryDirectory() as td:
             root = pathlib.Path(td)
