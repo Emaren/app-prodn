@@ -1844,3 +1844,13 @@ full DB snapshot hashing runs through `aoe2war-maintenance-run`, which watches
 Wolo progress and host pressure and aborts before protected service health is
 traded for observational completeness.
 
+A root-executed helper must not trust a deterministic executable path in a
+world-writable directory merely because the file's hash matches once. An
+unprivileged owner could pre-create the exact bytes and replace them after the
+hash check but before privileged execution. Governed snapshot verification
+therefore keeps its reusable helper beneath a root-owned mode-0700 runtime
+directory, requires a root-owned mode-0400 regular file with the exact source
+digest, and creates result evidence with `O_EXCL`/`O_NOFOLLOW` at mode 0400
+from birth. General rule: hash verification does not replace ownership, mode,
+and race-safe path construction across a privilege boundary.
+
