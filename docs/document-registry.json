@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9c0e8b76d0badaf4947909eee2406a01191cb15224ba43ecce7435fc9fbb85ac",
+      "sha256": "2022521bc6609bf273dd5d3212cfa89e55a588f62e3b9cae29a5f82c84bab29e",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-22",
       "sensitivity": "internal",
-      "sha256": "bdf49cd3a897ef9b3b1baf34ffaeb70a5e88b1f33a72322f255465d3990f4fbb",
+      "sha256": "75c3306ce896a709af2a3d564ccc5b44a314f5716dc6bbe0dd6f6d0bdb7c6857",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1509,7 +1509,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-19",
       "sensitivity": "internal",
-      "sha256": "908efe1e8e425c5fcc8d390c548d9b2059efeb3f3d8ff3a664b36ce4bcc4e464",
+      "sha256": "95919556316443c5ed4018e570297c5391032273f107e81c210c203aebabcf93",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "main",
-    "commit": "64a0381a4f6c4f3ae9d030a6ae8adf6f2fab68bf"
+    "branch": "fix/storage-handoff-admission-lock-20260923",
+    "commit": "6484428117f7d9ab44d911c184086a59b62ee77c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
