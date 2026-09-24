@@ -13,7 +13,6 @@ const WATCHER_LIVE_WINDOW_MS = 3 * 60 * 1000;
 const WATCHER_OFF_EVENTS = new Set([
   "watcher_stopped",
   "watching_stopped",
-  "monitor_stop",
   "watcher_error",
 ]);
 
