@@ -8,7 +8,7 @@ systems: ["app-prodn","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-09-05"
+reviewed_at: "2026-09-25"
 review_interval_days: 90
 sensitivity: "internal"
 ---
@@ -195,6 +195,43 @@ Guardian, record explicit eligibility overrides, version economics, attach
 replays, select verified winners, dry-run settlement, inspect/retry payout
 failures, edit Representing Country with a forfeiture audit, and log NFT
 mint/reassign/retire/burn intents.
+
+### Manual Commissioner title transfers
+
+A manual holder reassignment is a financial state transition, not a display-only
+edit. The mutation is serialized under a trophy-scoped advisory lock and the
+custody row is re-read inside the transaction before money obligations are
+derived.
+
+For a real holder change:
+
+- freeze the former holder's projected championship bounty at the transfer
+  instant;
+- queue one `dethrone_bounty` obligation to the incoming holder;
+- reset the stored bounty base to zero and start the incoming holder's bounty
+  clock at the transfer instant;
+- supersede only unpaid, non-tx-backed same-UTC-day `daily_tribute` rows that
+  still point at the former holder;
+- queue the incoming holder's same-day tribute only when that UTC day's title
+  tribute has not already been paid or tx-backed;
+- never rewrite paid or chain-backed payout history.
+
+The Payouts tab executes both `daily_tribute` and `dethrone_bounty` rows
+through the existing Founder Rewards settlement authority. This is deliberately
+separate from Bet Escrow and from the public numbered Bounty Pool. The chain memo
+for a title bounty includes `Championship Bounty` so the staking activity feed
+can classify it as belt-bounty activity without admitting it into the numbered
+public Bounty Board.
+
+Legacy holder reassignments recorded before this contract can expose a one-time
+`Repair transfer payouts` action. Repair is fail-closed: it requires a proven
+prior reign-start event, refuses to infer a bounty if economics changed during
+that reign, rejects duplicate/reconciled bounty rows, and records
+`LEGACY_HOLDER_TRANSFER_RECONCILED` with the reconstruction inputs.
+
+Trophy Command rating labels resolve canonical user UID first, then current and
+historical player names. Missing evidence is displayed as `Rating unavailable`
+rather than asserting that the player has no ELO.
 
 `dry_run_only` defaults to `true`, `app_only_fallback_enabled` defaults to
 `true`, and `chain_backed_trophies_enabled` defaults to `false`.
