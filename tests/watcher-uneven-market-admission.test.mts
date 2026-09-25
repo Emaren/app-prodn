@@ -65,7 +65,7 @@ test("explicit Jim + Emaren vs Zodiac 2v1 seeds a live winner market", () => {
   assert.ok(seed, "explicit 2v1 live battle must reach the betting board");
   assert.equal(seed.status, "live");
   assert.equal(seed.teamFormat, "2v1");
-  assert.equal(seed.leftLabel, "Jim + Emaren");
+  assert.equal(seed.leftLabel, "Emaren / Jim");
   assert.equal(seed.rightLabel, "Zodiac");
   assert.equal(seed.leftRosterSnapshot.length, 2);
   assert.equal(seed.rightRosterSnapshot.length, 1);
