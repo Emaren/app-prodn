@@ -34,10 +34,20 @@ test("Tournaments owns a dedicated bracket battlefield", () => {
   assert.match(experience, /window\.localStorage\.setItem/);
   assert.match(experience, /Bracket zoom:/);
   assert.match(experience, /ZoomIn/);
-  assert.match(experience, /overflow-auto overscroll-contain/);
+  assert.match(experience, /data-tournament-snap="overview"/);
+  assert.match(experience, /data-tournament-snap="battlefield"/);
+  assert.match(experience, /\[scroll-snap-type:y_proximity\]/);
+  assert.match(experience, /\[scroll-snap-stop:always\]/);
+  assert.match(experience, /data-app-shell-header/);
+  assert.match(experience, /translate3d\(0, -\$\{offset\}px, 0\)/);
+  assert.match(experience, /height \/ BRACKET_NATIVE_HEIGHT/);
+  assert.match(experience, /overscroll-x-contain/);
+  assert.match(experience, /overflow-x-auto overflow-y-hidden/);
+  assert.match(experience, /battlefieldFocused[\s\S]*?"overflow-auto"/);
   assert.match(experience, /touch-action:pan-x_pan-y/);
-  assert.match(experience, /currentFocusRatio/);
-  assert.doesNotMatch(experience, /overflow-x-hidden/);
+  assert.match(experience, /currentFocusX/);
+  assert.match(experience, /currentFocusY/);
+  assert.doesNotMatch(experience, /overscroll-contain/);
 });
 
 test("Tournament watcher beacons come from watcher telemetry, not site presence", () => {
@@ -65,4 +75,13 @@ test("Tournaments sits immediately after Champions in Kingdom navigation", () =>
   assert.match(shell, /War records, battlecraft, and victories preserved\./);
   assert.match(shell, /const isTournamentSurface/);
   assert.match(shell, /isTournamentSurface[\s\S]*?max-w-none/);
+  assert.match(
+    shell,
+    /isLivingLeaderboardSurface \|\| isTournamentSurface[\s\S]*?h-\[100dvh\]/
+  );
+  assert.match(
+    shell,
+    /isTournamentSurface \? "fixed inset-x-0 top-0" : "sticky top-0"/
+  );
+  assert.match(shell, /isTournamentSurface[\s\S]*?!py-0 !pb-0 overflow-hidden/);
 });
