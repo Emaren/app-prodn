@@ -63,16 +63,75 @@ test("missing and partial team ids remain unresolved", () => {
   assert.equal(resolveReplayTeams(partial).status, "incomplete");
 });
 
-test("three teams, unequal teams, and duplicate identity conflict", () => {
+test("three explicit teams and duplicate identity still fail closed", () => {
   const three = teamPlayers(3);
   three[0].team_id = 2;
   assert.equal(resolveReplayTeams(three).status, "conflicting");
-  const unequal = teamPlayers(3);
-  unequal[0].team_id = 1;
-  assert.equal(resolveReplayTeams(unequal).status, "conflicting");
   const duplicate = teamPlayers(2);
   duplicate[1].steam_id = duplicate[0].steam_id;
   assert.equal(resolveReplayTeams(duplicate).status, "conflicting");
+});
+
+test("explicit uneven two-team battles resolve without inferring from player count", () => {
+  const twoVsOne = resolveReplayTeams([
+    { name: "Jim", team_id: 1 },
+    { name: "Emaren", team_id: 1 },
+    { name: "Zodiac", team_id: 3 },
+  ]);
+  assert.equal(twoVsOne.status, "resolved");
+  assert.equal(twoVsOne.confidence, "high");
+  assert.equal(twoVsOne.format, "2v1");
+  assert.deepEqual(twoVsOne.teams.map((team) => team.teamKey), ["1", "3"]);
+  assert.deepEqual(twoVsOne.teams.map((team) => team.players.length), [2, 1]);
+  assert.ok(twoVsOne.propositionHash);
+
+  const missingTeams = resolveReplayTeams([
+    { name: "Jim" },
+    { name: "Emaren" },
+    { name: "Zodiac" },
+  ]);
+  assert.equal(missingTeams.status, "incomplete");
+  assert.ok(missingTeams.reasonCodes.includes("team_id_missing"));
+
+  const ffa = resolveReplayTeams([
+    { name: "Jim", team_id: 1 },
+    { name: "Emaren", team_id: 2 },
+    { name: "Zodiac", team_id: 3 },
+  ]);
+  assert.equal(ffa.status, "conflicting");
+  assert.ok(ffa.reasonCodes.includes("expected_exactly_two_teams"));
+});
+
+test("Sep 24 FOREST FUCKERY fixture resolves Jim and Emaren over Zodiac", () => {
+  const players = normalizeReplayPlayers([
+    { name: "Jim", team_id: 1, winner: true },
+    { name: "Emaren", team_id: 1, winner: true },
+    { name: "Zodiac", team_id: 3, winner: false },
+  ]);
+  const resolution = resolveReplayTeams(players, { final: true });
+  assert.equal(resolution.status, "resolved");
+  assert.equal(resolution.format, "2v1");
+  assert.equal(resolveWinningTeamIndex(players, resolution), 0);
+  assert.deepEqual(
+    resolution.teams[0].players.map((player) => player.name).sort(),
+    ["Emaren", "Jim"]
+  );
+});
+
+test("Sep 24 MegaRandom fixture resolves Zodiac over Jim and Emaren", () => {
+  const players = normalizeReplayPlayers([
+    { name: "Jim", team_id: 1, winner: false },
+    { name: "Emaren", team_id: 1, winner: false },
+    { name: "Zodiac", team_id: 3, winner: true },
+  ]);
+  const resolution = resolveReplayTeams(players, { final: true });
+  assert.equal(resolution.status, "resolved");
+  assert.equal(resolution.format, "2v1");
+  assert.equal(resolveWinningTeamIndex(players, resolution), 1);
+  assert.deepEqual(
+    resolution.teams[1].players.map((player) => player.name),
+    ["Zodiac"]
+  );
 });
 
 test("aliases resolve identity without assigning teams", () => {
@@ -165,4 +224,32 @@ test("settlement requires the same complete final proposition", () => {
   });
   assert.equal(invalid.ok, false);
   assert.ok(invalid.reasonCodes.includes("final_proposition_hash_mismatch"));
+});
+
+test("explicit 2v1 settlement preserves the frozen proposition and winning side", () => {
+  const livePlayers = normalizeReplayPlayers([
+    { name: "Jim", steam_id: "76561198000000001", team_id: 1 },
+    { name: "Emaren", steam_id: "76561198000000002", team_id: 1 },
+    { name: "Zodiac", steam_id: "76561198000000003", team_id: 3 },
+  ]);
+  const liveResolution = resolveReplayTeams(livePlayers);
+  assert.equal(liveResolution.status, "resolved");
+  assert.equal(liveResolution.format, "2v1");
+
+  const finalPlayers = livePlayers.map((player) => ({
+    ...player,
+    winner: player.name !== "Zodiac",
+  }));
+  const valid = validateMarketFinalIntegrity({
+    propositionHash: liveResolution.propositionHash,
+    leftRosterSnapshot: rosterSnapshot(liveResolution.teams[0]),
+    rightRosterSnapshot: rosterSnapshot(liveResolution.teams[1]),
+    finalPlayers,
+    finalWinner: "Jim",
+    finalBettingEligible: true,
+  });
+
+  assert.equal(valid.ok, true);
+  assert.equal(valid.winningSide, "left");
+  assert.equal(valid.finalResolution.format, "2v1");
 });
