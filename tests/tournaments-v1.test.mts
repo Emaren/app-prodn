@@ -30,8 +30,9 @@ test("Tournaments owns a dedicated bracket battlefield", () => {
     experience,
     /BRACKET_ZOOM_ORDER: BracketZoom\[\] = \["close", "medium", "full"\]/
   );
-  assert.match(experience, /useState<BracketZoom>\("close"\)/);
+  assert.match(experience, /useState<BracketZoom>\("full"\)/);
   assert.match(experience, /BRACKET_ZOOM_STORAGE_KEY/);
+  assert.match(experience, /aoe2war:tournaments:bracket-zoom:v2/);
   assert.match(experience, /window\.localStorage\.getItem/);
   assert.match(experience, /window\.localStorage\.setItem/);
   assert.match(experience, /Bracket zoom:/);
