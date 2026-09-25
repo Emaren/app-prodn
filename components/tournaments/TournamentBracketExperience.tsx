@@ -86,9 +86,12 @@ type WingModel = {
 type Side = "left" | "right";
 type BracketZoom = "close" | "medium" | "full";
 
-const BRACKET_NATIVE_WIDTH = 2070;
+// 2 wings × (4 × 228px columns + 3 × 20px connectors)
+// + 250px final core + 2 × 20px inter-section gaps + 2 × 20px outer padding.
+// Keep this in sync with the fixed lattice geometry below.
+const BRACKET_NATIVE_WIDTH = 2274;
 const BRACKET_NATIVE_HEIGHT = 982;
-const BRACKET_ZOOM_STORAGE_KEY = "aoe2war:tournaments:bracket-zoom";
+const BRACKET_ZOOM_STORAGE_KEY = "aoe2war:tournaments:bracket-zoom:v2";
 const BRACKET_ZOOM_ORDER: BracketZoom[] = ["close", "medium", "full"];
 const BRACKET_ZOOM_LABELS: Record<BracketZoom, string> = {
   close: "Close view",
@@ -864,7 +867,7 @@ export default function TournamentBracketExperience() {
     width: 0,
     height: 0,
   });
-  const [bracketZoom, setBracketZoom] = useState<BracketZoom>("close");
+  const [bracketZoom, setBracketZoom] = useState<BracketZoom>("full");
   const [bracketZoomReady, setBracketZoomReady] = useState(false);
 
   useEffect(() => {
@@ -1288,7 +1291,7 @@ export default function TournamentBracketExperience() {
               }}
             >
               <div
-                className="absolute left-0 top-0 flex w-[2070px] items-stretch justify-center gap-5 px-5 pb-7 pt-6"
+                className="absolute left-0 top-0 flex w-[2274px] items-stretch justify-center gap-5 px-5 pb-7 pt-6"
                 style={{
                   transform: `scale(${bracketScale})`,
                   transformOrigin: "top left",
