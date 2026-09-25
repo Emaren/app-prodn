@@ -21,6 +21,9 @@ test("Tournaments owns a dedicated bracket battlefield", () => {
   assert.match(experience, /LEFT WING CHAMPION/);
   assert.match(experience, /RIGHT WING CHAMPION/);
   assert.match(experience, /SpeedReadyMarker route="\/tournaments"/);
+  assert.match(experience, /BRACKET_NATIVE_WIDTH = 2070/);
+  assert.match(experience, /ResizeObserver/);
+  assert.match(experience, /transformOrigin: "top left"/);
 });
 
 test("Tournament watcher beacons come from watcher telemetry, not site presence", () => {
@@ -44,4 +47,8 @@ test("Tournaments sits immediately after Champions in Kingdom navigation", () =>
   assert.ok(champions >= 0);
   assert.ok(tournaments > champions);
   assert.ok(nations > tournaments);
+  assert.match(shell, /Enter the lists\. Survive the bracket\. Claim the crown\./);
+  assert.match(shell, /War records, battlecraft, and victories preserved\./);
+  assert.match(shell, /const isTournamentSurface/);
+  assert.match(shell, /isTournamentSurface[\s\S]*?max-w-none/);
 });
