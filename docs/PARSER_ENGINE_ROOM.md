@@ -193,6 +193,33 @@ The Engine Room reuses current truth rather than replacing it:
 These are provenance links only. Foreign keys are restrictive and the migration
 contains no `INSERT`, `UPDATE`, or `DELETE` against `game_stats`.
 
+### Cross-Watcher final observation receipts
+
+`ReplayParseAttempt.evidence` is an optional JSONB envelope for immutable
+per-upload evidence that must survive canonical `GameStats` deduplication.
+The first producer is
+`aoe2war-watcher-final-observation/v1` from `api-prodn`.
+
+That receipt is **candidate-only**. It may record privacy-bounded Watcher/session
+identity hashes, authenticated participant binding, platform-match identity,
+canonical roster/topology hashes, archive/finality facts, and a review-only
+winner-side claim. It does not alter public replay truth, betting eligibility,
+settlement, or WOLO.
+
+The API-side candidate quorum evaluator requires independent authenticated
+participant accounts and sessions, exact match/topology agreement, exact
+winner-side agreement, and witnesses spanning both the claimed winning and
+losing sides. Historical imports, unsigned provenance, disconnect-marked
+finals, ambiguous/non-Steam topology, same-side-only evidence, same-account
+multi-session evidence, and contradictory winner claims fail closed.
+
+Prisma and Alembic intentionally coexist against the shared
+`replay_parse_attempts` table. The Prisma migration adding `evidence` uses
+`ADD COLUMN IF NOT EXISTS` and mirrors API Alembic revision
+`d8d5f83c2b1a`; either migration rail may arrive first without rewriting
+existing rows. Promotion of corroboration to financial authority requires a
+separate corpus audit and reviewed contract change.
+
 ## Current deterministic HD parser contract
 
 The first producer contract is fixed as:
