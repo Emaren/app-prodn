@@ -239,6 +239,7 @@ model ReplayParseAttempt {
   fileSizeBytes    Int?      @map("file_size_bytes")
   gameStatsId      Int?      @map("game_stats_id")
   playedOn         DateTime? @map("played_on") @db.Timestamp(6)
+  evidence         Json?
 
   gameStats                   GameStats?                   @relation("GameStatsParseAttempts", fields: [gameStatsId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   engineRoomSubmission        ReplaySubmission?            @relation("ReplaySubmissionLegacyAttempt")
