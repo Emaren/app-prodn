@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "16827f7a7b164f02d3e8976c8390c68943f7e43b565b4dcc214b8391934c85a6",
+      "sha256": "c6ccceedfad004693f5d767d0a11a81e25e7159329e7d4fc7a3c40810833928b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -958,7 +958,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-22",
       "sensitivity": "restricted",
-      "sha256": "5c8cb515491817b8bca1e20b5b43be1f6a10be39f5624576b58b1a53c40bec85",
+      "sha256": "f07737e8e766e982ae0b0514e5a6da35e97a5f5e41d11c995903b63a2afe2be3",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/explicit-uneven-live-markets-20260925",
-    "commit": "c3cf2f80c5325b1da3e2890c09e4ea3053394659"
+    "commit": "0675e603da2ab61ac715a276dcb56c7fcf5c53a4"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
