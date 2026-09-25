@@ -127,11 +127,11 @@ const KINGDOM_LINKS = [
   { href: "/oracle", label: "The Oracle", icon: Eye, body: "Price the future of the Kingdom" },
   { href: "/leaderboard", label: "Leaderboard", icon: BarChart3, body: "Ratings, records, and ranked warriors" },
   { href: "/champions", label: "Champions", icon: Crown, body: "Belts, reigns, title rules" },
-  { href: "/tournaments", label: "Tournaments", icon: Trophy, body: "Neon brackets, match paths, and watcher signals" },
+  { href: "/tournaments", label: "Tournaments", icon: Trophy, body: "Enter the lists. Survive the bracket. Claim the crown." },
   { href: "/national-champions", label: "Nations", icon: Globe2, body: "Beacon map and national bounties" },
   { href: "/clans", label: "Clans", icon: UsersRound, body: "Teams, houses, and clan halls" },
   { href: "/academy", label: "Academy", icon: GraduationCap, body: "Lessons, build orders, replay study" },
-  { href: "/library", label: "Library", icon: Archive, body: "Live replay intake and game deposits" },
+  { href: "/library", label: "Library", icon: Archive, body: "War records, battlecraft, and victories preserved." },
   { href: "/market", label: "Marketplace", icon: Store, body: "Player shops, craft, and commissions" },
   { href: "/ai", label: "AI Council", icon: Bot, body: "Ask the public house council" },
   { href: "/kingdom-intelligence", label: "Kingdom Intelligence", icon: BrainCircuit, body: "Watch the kingdom reason about itself" },
@@ -1188,6 +1188,8 @@ function InnerShell({ children }: { children: React.ReactNode }) {
     );
 
   const isChampionsSurface = pathname === "/champions" || Boolean(pathname?.startsWith("/champions/"));
+  const isTournamentSurface =
+    pathname === "/tournaments" || Boolean(pathname?.startsWith("/tournaments/"));
   const isWarGraphSurface =
     pathname === "/wargraph" || Boolean(pathname?.startsWith("/wargraph/"));
   const isFullWidthPrestigeSurface =
@@ -1917,7 +1919,9 @@ function InnerShell({ children }: { children: React.ReactNode }) {
 
       <main
         className={`mx-auto flex min-h-0 min-w-0 w-full flex-1 flex-col py-4 pb-32 lg:pb-4 ${
-          isContactPage
+          isTournamentSurface
+            ? "max-w-none px-1 sm:px-2 2xl:px-3"
+            : isContactPage
             ? "max-w-[96rem] px-2 sm:px-3"
           : isMediaManagerSurface
             ? "max-w-none px-3 sm:px-4 2xl:px-6"
