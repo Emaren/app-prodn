@@ -972,6 +972,7 @@ function holderEligible(
     eloBandMin: number | null;
     eloBandMax: number | null;
     currentHolder: {
+      uid: string;
       representedCountry: string | null;
       inGameName: string | null;
       steamPersonaName: string | null;
@@ -985,6 +986,7 @@ function holderEligible(
   }
   if (trophy.family === "elo") {
     const rating =
+      ratings.byUid.get(trophy.currentHolder.uid) ??
       ratings.byName.get(normalizeName(trophy.currentHolder.inGameName)) ??
       ratings.byName.get(normalizeName(trophy.currentHolder.steamPersonaName)) ??
       null;
