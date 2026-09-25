@@ -161,6 +161,16 @@ Projected bounty is display math: stored bounty plus whole elapsed days times
 the configured bounty growth. It is not a chain balance and must not be called
 paid or escrowed.
 
+Daily Tribute obligations follow current-holder truth until money moves. If a
+belt changes hands during a UTC payout day and that day's prior-holder payout
+has no transaction hash and has not been paid, the old row is marked
+`superseded` and a new dry-run obligation is queued for the current holder.
+The trophy/day queue is serialized so the timer and Trophy Command cannot
+create duplicate obligations concurrently. Once any same-day payout is paid or
+tx-backed, it is immutable chain truth and no second daily tribute is created
+for that trophy/day. An operator-cancelled payout for the current holder is
+also preserved and is not silently recreated.
+
 ## Profile eligibility settings
 
 The user profile owns two title-identity settings:
