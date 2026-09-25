@@ -25,7 +25,7 @@ evidence, not current mutable production telemetry.
 
 No confident teams, no market. No matching final roster, no settlement.
 
-Watcher-created 2v2, 3v3, and 4v4 books require exactly two complete, equal-size teams from explicit replay team IDs. Team ID `0` is valid. Player-array order, display names, and aliases never assign team membership. A game with incomplete or conflicting team evidence may remain visible on `/live-games`, but it has no betting controls.
+Watcher-created team books require exactly two complete sides from explicit replay team IDs. The sides may be uneven (for example 2v1 or 3v2) when that cardinality is direct replay evidence; player count alone never infers a team split. Each side must contain 1–4 players, Team ID `0` is valid, and player-array order, display names, and aliases never assign team membership. A game with missing team IDs, more than two explicit teams, duplicate identities, or otherwise conflicting team evidence may remain visible on `/live-games`, but it has no betting controls.
 
 ## Data path
 
