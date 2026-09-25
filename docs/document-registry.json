@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5d9e719bd1036b44ac19345ef51d434a687fb6bf5df40551f317e5e3aef89c6a",
+      "sha256": "1064d486b3d98fe9b2213134eef6107f4bfe9d3e1c4a7cc4f7a6c17e712dc872",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/trophy-tribute-holder-reassignment-20260925",
-    "commit": "c0e33fef8f41b0c5129ee7cddb6d0ff20a96ffc5"
+    "commit": "e383cb1b0af9cd89ba8c1117fd573e3b15806080"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
