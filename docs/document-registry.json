@@ -385,7 +385,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-09-05",
       "sensitivity": "internal",
-      "sha256": "4f81784adac9cb91816771ce65cd5d023966ed8009f628073010049122e6b254",
+      "sha256": "fa7b87bbc17560f343730a15b405b81e8ac9e1dc66556b78191b1b74348b2d90",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0cfdfddf124744453cfbd7d3056bebf0e21020ee56a9bc337eb49a4674ef5e5c",
+      "sha256": "0698f3b85437daf5f6b901633de6f525d797cbf937191c00c90eaff0794c51e3",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "chore/pristine-actions-metadata-20260925",
-    "commit": "b9fd71fae19ffed5af3d4ad3bd10bdfdd654759c"
+    "branch": "fix/trophy-tribute-holder-reassignment-20260925",
+    "commit": "1c603ebd9b19de3a2e56a0bf33f60a8debe0c2ad"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `chore/pristine-actions-metadata-20260925` at `b9fd71fae19ffed5af3d4ad3bd10bdfdd654759c`
+Implementation baseline: `fix/trophy-tribute-holder-reassignment-20260925` at `1c603ebd9b19de3a2e56a0bf33f60a8debe0c2ad`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

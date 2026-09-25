@@ -9,6 +9,7 @@ import {
 } from "@/lib/champions/titles";
 import { managedMediaPublicUrl } from "@/lib/managedMediaAssets";
 import { countriesEligibilityMatch } from "@/lib/countryEligibility";
+import { reconcileDailyTrophyTribute } from "@/lib/trophies/dailyTributePolicy";
 import type {
   TrophyCommandSnapshot,
   TrophyHolding,
@@ -330,7 +331,8 @@ export async function ensureDailyTrophyTributePayouts(prisma: PrismaClient, now 
   for (const trophy of trophies) {
     // Queue the first daily tribute for the UTC day once the belt is actually held.
     // Only skip dates that end before the holder's reign begins.
-    if (!trophy.holderSince || trophy.holderSince.getTime() >= dayEnd.getTime()) {
+    const holderSince = trophy.holderSince;
+    if (!holderSince || holderSince.getTime() >= dayEnd.getTime()) {
       continue;
     }
 
@@ -341,61 +343,132 @@ export async function ensureDailyTrophyTributePayouts(prisma: PrismaClient, now 
     if (!recipientUserId && !recipientDisplayName && !recipientWoloAddress) continue;
     if (!recipientWoloAddress) continue;
 
-    const existing = await prisma.trophyPayout.findFirst({
-      where: {
-        trophyId: trophy.id,
-        payoutKind: "daily_tribute",
-        scheduledFor: {
-          gte: dayStart,
-          lt: dayEnd,
-        },
-      },
-      select: { id: true },
-    });
-
-    if (existing) continue;
-
     const holderName = recipientDisplayName || recipientWoloAddress;
     const memo = trophyTributeMemo(trophy, holderName, dayKey);
+    const lockKey = `trophy-daily-tribute:${trophy.id}:${dayKey}`;
 
-    const payout = await prisma.trophyPayout.create({
-      data: {
-        trophyId: trophy.id,
-        recipientUserId,
-        recipientDisplayName,
-        recipientWoloAddress,
-        amountWolo: trophy.tributeAmountWolo,
-        payoutKind: "daily_tribute",
-        status: "dry_run",
-        scheduledFor: dayStart,
-        rawRequest: {
-          dayKey,
-          memo,
-          trophyId: trophy.trophyId,
-          trophyName: trophy.displayName,
-          chainStatus: trophy.chainStatus,
-          holderSince: trophy.holderSince.toISOString(),
-          executionMode: "dry_run_until_trophy_settlement_enabled",
-        },
-      },
-    });
+    await prisma.$transaction(async (tx) => {
+      // The command center and the timer can both run the queue. Serialize one
+      // trophy/day so concurrent reads cannot create duplicate obligations.
+      await tx.$executeRaw`
+        SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))
+      `;
 
-    await prisma.trophyEvent.create({
-      data: {
-        trophyId: trophy.id,
-        eventType: "DAILY_TRIBUTE_PAYOUT_QUEUED",
-        actorRole: "system",
-        initiatedBy: "system",
-        toHolderUserId: recipientUserId,
-        toWoloAddress: recipientWoloAddress,
-        amountWolo: trophy.tributeAmountWolo,
-        status: "dry_run",
-        rawRequest: {
-          payoutId: payout.id,
-          dayKey,
-          memo,
+      const existing = await tx.trophyPayout.findMany({
+        where: {
+          trophyId: trophy.id,
+          payoutKind: "daily_tribute",
+          scheduledFor: {
+            gte: dayStart,
+            lt: dayEnd,
+          },
         },
-      },
+        select: {
+          id: true,
+          recipientUserId: true,
+          recipientWoloAddress: true,
+          status: true,
+          txHash: true,
+          amountWolo: true,
+        },
+        orderBy: { id: "asc" },
+      });
+
+      const reconciliation = reconcileDailyTrophyTribute(existing, {
+        userId: recipientUserId,
+        woloAddress: recipientWoloAddress,
+      });
+
+      // Any paid/tx-backed row is immutable money truth. Never create a second
+      // daily payment for the same trophy/day after chain execution.
+      if (reconciliation.action === "blocked_by_chain_truth") {
+        return;
+      }
+
+      // Preserve an existing row for the current holder, including an
+      // operator-cancelled row. Manual cancellation must not be silently undone.
+      if (reconciliation.action === "keep_current") {
+        return;
+      }
+
+      if (reconciliation.stalePayoutIds.length > 0) {
+        await tx.trophyPayout.updateMany({
+          where: {
+            id: { in: reconciliation.stalePayoutIds },
+            status: { not: "paid" },
+            txHash: null,
+          },
+          data: {
+            status: "superseded",
+          },
+        });
+
+        for (const stale of existing.filter((row) =>
+          reconciliation.stalePayoutIds.includes(row.id)
+        )) {
+          await tx.trophyEvent.create({
+            data: {
+              trophyId: trophy.id,
+              eventType: "DAILY_TRIBUTE_PAYOUT_SUPERSEDED",
+              actorRole: "system",
+              initiatedBy: "system",
+              fromHolderUserId: stale.recipientUserId,
+              fromWoloAddress: stale.recipientWoloAddress,
+              toHolderUserId: recipientUserId,
+              toWoloAddress: recipientWoloAddress,
+              amountWolo: stale.amountWolo,
+              status: "recorded",
+              rawRequest: {
+                payoutId: stale.id,
+                dayKey,
+                reason: "title_holder_changed_before_chain_execution",
+              },
+            },
+          });
+        }
+      }
+
+      const payout = await tx.trophyPayout.create({
+        data: {
+          trophyId: trophy.id,
+          recipientUserId,
+          recipientDisplayName,
+          recipientWoloAddress,
+          amountWolo: trophy.tributeAmountWolo,
+          payoutKind: "daily_tribute",
+          status: "dry_run",
+          scheduledFor: dayStart,
+          rawRequest: {
+            dayKey,
+            memo,
+            trophyId: trophy.trophyId,
+            trophyName: trophy.displayName,
+            chainStatus: trophy.chainStatus,
+            holderSince: holderSince.toISOString(),
+            executionMode: "dry_run_until_trophy_settlement_enabled",
+            supersededPayoutIds: reconciliation.stalePayoutIds,
+          },
+        },
+      });
+
+      await tx.trophyEvent.create({
+        data: {
+          trophyId: trophy.id,
+          eventType: "DAILY_TRIBUTE_PAYOUT_QUEUED",
+          actorRole: "system",
+          initiatedBy: "system",
+          toHolderUserId: recipientUserId,
+          toWoloAddress: recipientWoloAddress,
+          amountWolo: trophy.tributeAmountWolo,
+          status: "dry_run",
+          rawRequest: {
+            payoutId: payout.id,
+            dayKey,
+            memo,
+            supersededPayoutIds: reconciliation.stalePayoutIds,
+          },
+        },
+      });
     });
   }
 }
