@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "1c1c4accbbb2e1aec9b57a3459aad8f8410f53a444f7b5dbc1812ddd8d2d14de",
+      "sha256": "0cfdfddf124744453cfbd7d3056bebf0e21020ee56a9bc337eb49a4674ef5e5c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "chore/replay-parse-attempt-evidence-schema-20260925",
-    "commit": "69b339601d9d006fc49099a538bf7d4d5a0b8447"
+    "branch": "chore/pristine-actions-metadata-20260925",
+    "commit": "b9fd71fae19ffed5af3d4ad3bd10bdfdd654759c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
