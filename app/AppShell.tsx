@@ -127,7 +127,7 @@ const KINGDOM_LINKS = [
   { href: "/oracle", label: "The Oracle", icon: Eye, body: "Price the future of the Kingdom" },
   { href: "/leaderboard", label: "Leaderboard", icon: BarChart3, body: "Ratings, records, and ranked warriors" },
   { href: "/champions", label: "Champions", icon: Crown, body: "Belts, reigns, title rules" },
-  { href: "/tournaments", label: "Tournaments", icon: Trophy, body: "Enter the lists. Survive the bracket. Claim the crown." },
+  { href: "/tournaments", label: "Tournaments", icon: Trophy, body: "A warrior's calling." },
   { href: "/national-champions", label: "Nations", icon: Globe2, body: "Beacon map and national bounties" },
   { href: "/clans", label: "Clans", icon: UsersRound, body: "Teams, houses, and clan halls" },
   { href: "/academy", label: "Academy", icon: GraduationCap, body: "Lessons, build orders, replay study" },
