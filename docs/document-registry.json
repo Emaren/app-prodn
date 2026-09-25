@@ -383,7 +383,7 @@
       "owner": "aoe2war-web",
       "path": "docs/CHAMPIONS_TITLE_ECONOMY.md",
       "review_interval_days": 90,
-      "reviewed_at": "2026-09-05",
+      "reviewed_at": "2026-09-25",
       "sensitivity": "internal",
       "sha256": "67cf374f4d69d0ed69f9a1d0cf10c8366458cc12859e8690df98162d3d5af7be",
       "source_of_truth": "git",
@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "620d0e49c3346f937d59f007b53043cc341b785494b8deb4eea2a3e4fff4f5cc",
+      "sha256": "524afc79875b492610f0952260212388435fe416b8e3bd2093b1f4739647d6d7",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/trophy-transfer-payout-rail-20260925",
-    "commit": "39113c6af559849d38283589208e8d2da724d0c9"
+    "commit": "fc7bb23f494613d2736813265d45ae1e0a8016ef"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
