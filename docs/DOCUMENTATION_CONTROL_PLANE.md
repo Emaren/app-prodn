@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/tournament-battlefield-snap-v1-20260925` at `af8e94896b9bf2ccf00da377752d050ae486dfe8`
+Implementation baseline: `fix/trophy-transfer-payout-rail-20260925` at `39113c6af559849d38283589208e8d2da724d0c9`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
