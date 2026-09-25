@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "869f95919ccad124e9f9946d754fc10ac8af3f61ed4df93d98daccc2f34badfc",
+      "sha256": "3b6ef64e2867c3330548666c23065934e900eb2a0f8974cca4205ecce4ee2665",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -958,7 +958,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-22",
       "sensitivity": "restricted",
-      "sha256": "5c8cb515491817b8bca1e20b5b43be1f6a10be39f5624576b58b1a53c40bec85",
+      "sha256": "96c4f5a803c5d4772d7ef5191bf6dbe8f0af2edd00bebebc8ae44b12951f3ee6",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/tournament-native-width-20260925",
-    "commit": "7668b75e8f9672b831074ea6faefd3c6710da264"
+    "branch": "fix/explicit-uneven-live-markets-v2-20260925",
+    "commit": "bad1ec293a9d69b58a1cfaca1ba1e59618ae2dfa"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
