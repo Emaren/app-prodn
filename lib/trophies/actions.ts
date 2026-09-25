@@ -286,18 +286,31 @@ async function assignHolder(
     throw new TrophyActionError(`Holder is not eligible. ${eligibility.detail}`);
   }
 
-  const previousHolderId = trophy.currentHolderUserId;
-  const previousAddress = trophy.currentHolderWoloAddress;
   const nextName = displayName(user);
-  const sameHolder =
-    previousHolderId === user.id &&
-    trophy.status === "held";
   const now = new Date();
 
   await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw<Array<{ lock_acquired: number }>>`
+      SELECT 1::int AS lock_acquired
+      FROM pg_advisory_xact_lock(${trophy.id})
+    `;
+
+    const currentTrophy = await tx.trophy.findUnique({
+      where: { id: trophy.id },
+    });
+    if (!currentTrophy) {
+      throw new TrophyActionError("Trophy disappeared during title transfer.", 409);
+    }
+
+    const previousHolderId = currentTrophy.currentHolderUserId;
+    const previousAddress = currentTrophy.currentHolderWoloAddress;
+    const sameHolder =
+      previousHolderId === user.id &&
+      currentTrophy.status === "held";
+
     if (sameHolder) {
       await tx.trophy.update({
-        where: { id: trophy.id },
+        where: { id: currentTrophy.id },
         data: {
           currentHolderDisplayName: nextName,
           currentHolderWoloAddress: user.walletAddress,
@@ -308,7 +321,7 @@ async function assignHolder(
         },
       });
       await recordEvent(tx, {
-        trophyId: trophy.id,
+        trophyId: currentTrophy.id,
         eventType: "HOLDER_DETAILS_REFRESHED",
         actor,
         fromHolderUserId: previousHolderId,
@@ -326,9 +339,9 @@ async function assignHolder(
     }
 
     const transferPayouts = await prepareManualTrophyHolderTransferPayouts(tx, {
-      trophy,
+      trophy: currentTrophy,
       previousHolderUserId: previousHolderId,
-      previousHolderDisplayName: trophy.currentHolderDisplayName,
+      previousHolderDisplayName: currentTrophy.currentHolderDisplayName,
       nextHolderUserId: user.id,
       nextHolderDisplayName: nextName,
       nextHolderWoloAddress: user.walletAddress,
@@ -336,7 +349,7 @@ async function assignHolder(
     });
 
     await tx.trophy.update({
-      where: { id: trophy.id },
+      where: { id: currentTrophy.id },
       data: {
         currentHolderUserId: user.id,
         currentHolderDisplayName: nextName,
@@ -352,7 +365,7 @@ async function assignHolder(
     });
 
     await recordEvent(tx, {
-      trophyId: trophy.id,
+      trophyId: currentTrophy.id,
       eventType: previousHolderId ? "HOLDER_REASSIGNED" : "HOLDER_ASSIGNED",
       actor,
       fromHolderUserId: previousHolderId,
