@@ -7,9 +7,11 @@ import {
   loadDesyncIncidentsForSettlement,
 } from "@/lib/desyncChallenge";
 import {
-  executePendingTrophyTributePayouts,
+  executePendingTrophyPayouts,
+  prepareManualTrophyHolderTransferPayouts,
   projectedTrophyBounty,
   recordNationalityChange,
+  trophyUtcDayStart,
 } from "@/lib/trophies/service";
 
 export class TrophyActionError extends Error {
@@ -58,6 +60,12 @@ function boolValue(value: unknown) {
 
 function jsonValue(value: unknown): Prisma.InputJsonValue {
   return value as Prisma.InputJsonValue;
+}
+
+function recordValue(value: Prisma.JsonValue | null | undefined) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
 }
 
 function displayName(user: {
@@ -190,7 +198,7 @@ function eligibilityForUser(
 }
 
 async function recordEvent(
-  prisma: PrismaClient,
+  prisma: PrismaClient | Prisma.TransactionClient,
   input: {
     trophyId: number;
     eventType: string;
@@ -285,35 +293,309 @@ async function assignHolder(
     throw new TrophyActionError(`Holder is not eligible. ${eligibility.detail}`);
   }
 
-  const previousHolderId = trophy.currentHolderUserId;
-  const previousAddress = trophy.currentHolderWoloAddress;
   const nextName = displayName(user);
+  const now = new Date();
+
   await prisma.$transaction(async (tx) => {
-    await tx.trophy.update({
+    await tx.$queryRaw<Array<{ lock_acquired: number }>>`
+      SELECT 1::int AS lock_acquired
+      FROM pg_advisory_xact_lock(${trophy.id})
+    `;
+
+    const currentTrophy = await tx.trophy.findUnique({
       where: { id: trophy.id },
+    });
+    if (!currentTrophy) {
+      throw new TrophyActionError("Trophy disappeared during title transfer.", 409);
+    }
+
+    const previousHolderId = currentTrophy.currentHolderUserId;
+    const previousAddress = currentTrophy.currentHolderWoloAddress;
+    const sameHolder =
+      previousHolderId === user.id &&
+      currentTrophy.status === "held";
+
+    if (sameHolder) {
+      await tx.trophy.update({
+        where: { id: currentTrophy.id },
+        data: {
+          currentHolderDisplayName: nextName,
+          currentHolderWoloAddress: user.walletAddress,
+          forfeitureNeeded: false,
+          eligibilityNote: eligibility.eligible
+            ? eligibility.detail
+            : `Admin eligibility override: ${eligibility.detail}`,
+        },
+      });
+      await recordEvent(tx, {
+        trophyId: currentTrophy.id,
+        eventType: "HOLDER_DETAILS_REFRESHED",
+        actor,
+        fromHolderUserId: previousHolderId,
+        toHolderUserId: user.id,
+        fromWoloAddress: previousAddress,
+        toWoloAddress: user.walletAddress,
+        rawRequest: jsonValue({
+          eligibility,
+          eligibilityOverride: override,
+          custodyChanged: false,
+          bountyReset: false,
+        }),
+      });
+      return;
+    }
+
+    const transferPayouts = await prepareManualTrophyHolderTransferPayouts(tx, {
+      trophy: currentTrophy,
+      previousHolderUserId: previousHolderId,
+      previousHolderDisplayName: currentTrophy.currentHolderDisplayName,
+      nextHolderUserId: user.id,
+      nextHolderDisplayName: nextName,
+      nextHolderWoloAddress: user.walletAddress,
+      now,
+    });
+
+    await tx.trophy.update({
+      where: { id: currentTrophy.id },
       data: {
         currentHolderUserId: user.id,
         currentHolderDisplayName: nextName,
         currentHolderWoloAddress: user.walletAddress,
         status: "held",
-        holderSince: new Date(),
+        currentBountyWolo: 0,
+        holderSince: now,
         forfeitureNeeded: false,
         eligibilityNote: eligibility.eligible
           ? eligibility.detail
           : `Admin eligibility override: ${eligibility.detail}`,
       },
     });
-    await recordEvent(tx as PrismaClient, {
-      trophyId: trophy.id,
+
+    await recordEvent(tx, {
+      trophyId: currentTrophy.id,
       eventType: previousHolderId ? "HOLDER_REASSIGNED" : "HOLDER_ASSIGNED",
       actor,
       fromHolderUserId: previousHolderId,
       toHolderUserId: user.id,
       fromWoloAddress: previousAddress,
       toWoloAddress: user.walletAddress,
+      amountWolo:
+        transferPayouts.accruedBountyWolo > 0
+          ? transferPayouts.accruedBountyWolo
+          : null,
       rawRequest: jsonValue({
         eligibility,
         eligibilityOverride: override,
+        custodyChanged: true,
+        transferAt: now.toISOString(),
+        bountyResetToWolo: 0,
+        accruedBountyPayoutWolo: transferPayouts.accruedBountyWolo,
+        bountyPayoutId: transferPayouts.bountyPayoutId,
+        tributePayoutId: transferPayouts.tributePayoutId,
+        cancelledTributePayoutIds:
+          transferPayouts.cancelledTributePayoutIds,
+        paidOrTxBackedTributeAlreadyExistsToday:
+          transferPayouts.paidOrTxBackedToday,
+      }),
+    });
+  });
+}
+
+async function repairLegacyHolderTransfer(
+  prisma: PrismaClient,
+  actor: AdminActor,
+  payload: ActionPayload
+) {
+  const trophy = await getTrophy(prisma, payload);
+
+  await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw<Array<{ lock_acquired: number }>>`
+      SELECT 1::int AS lock_acquired
+      FROM pg_advisory_xact_lock(${trophy.id})
+    `;
+
+    const currentTrophy = await tx.trophy.findUnique({
+      where: { id: trophy.id },
+    });
+    if (!currentTrophy?.currentHolderUserId) {
+      throw new TrophyActionError(
+        "Legacy transfer repair requires a current title holder.",
+        409
+      );
+    }
+
+    const currentHolder = await tx.user.findUnique({
+      where: { id: currentTrophy.currentHolderUserId },
+      select: {
+        id: true,
+        uid: true,
+        inGameName: true,
+        steamPersonaName: true,
+        walletAddress: true,
+      },
+    });
+    if (!currentHolder) {
+      throw new TrophyActionError(
+        "Current title holder account is unavailable.",
+        409
+      );
+    }
+
+    const latestTransfer = await tx.trophyEvent.findFirst({
+      where: {
+        trophyId: currentTrophy.id,
+        eventType: "HOLDER_REASSIGNED",
+        toHolderUserId: currentTrophy.currentHolderUserId,
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    });
+    if (!latestTransfer?.fromHolderUserId) {
+      throw new TrophyActionError(
+        "No legacy holder reassignment is available to repair.",
+        409
+      );
+    }
+
+    const latestRequest = recordValue(latestTransfer.rawRequest);
+    if (
+      "bountyPayoutId" in latestRequest ||
+      "tributePayoutId" in latestRequest ||
+      "bountyResetToWolo" in latestRequest
+    ) {
+      throw new TrophyActionError(
+        "This holder transfer already used the current payout protocol.",
+        409
+      );
+    }
+
+    const priorReignStart = await tx.trophyEvent.findFirst({
+      where: {
+        trophyId: currentTrophy.id,
+        toHolderUserId: latestTransfer.fromHolderUserId,
+        eventType: {
+          in: [
+            "HOLDER_ASSIGNED",
+            "HOLDER_REASSIGNED",
+            "CHALLENGE_SETTLED_HOLDER_CHANGED",
+          ],
+        },
+        createdAt: { lt: latestTransfer.createdAt },
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    });
+    if (!priorReignStart) {
+      throw new TrophyActionError(
+        "Could not prove the former holder's reign start from the Trophy audit trail.",
+        409
+      );
+    }
+
+    const economicsChangesDuringReign = await tx.trophyEvent.count({
+      where: {
+        trophyId: currentTrophy.id,
+        eventType: "ECONOMICS_CHANGED",
+        createdAt: {
+          gt: priorReignStart.createdAt,
+          lt: latestTransfer.createdAt,
+        },
+      },
+    });
+    if (economicsChangesDuringReign > 0) {
+      throw new TrophyActionError(
+        "Cannot safely infer the legacy bounty because title economics changed during the former reign.",
+        409
+      );
+    }
+
+    const alreadyReconciled = await tx.trophyEvent.findFirst({
+      where: {
+        trophyId: currentTrophy.id,
+        eventType: "LEGACY_HOLDER_TRANSFER_RECONCILED",
+        fromHolderUserId: latestTransfer.fromHolderUserId,
+        toHolderUserId: currentTrophy.currentHolderUserId,
+        createdAt: { gte: latestTransfer.createdAt },
+      },
+      select: { id: true },
+    });
+    if (alreadyReconciled) {
+      throw new TrophyActionError(
+        "This legacy holder transfer has already been reconciled.",
+        409
+      );
+    }
+
+    const existingBounty = await tx.trophyPayout.findFirst({
+      where: {
+        trophyId: currentTrophy.id,
+        payoutKind: "dethrone_bounty",
+        recipientUserId: currentTrophy.currentHolderUserId,
+        createdAt: { gte: latestTransfer.createdAt },
+      },
+      select: { id: true, status: true, txHash: true },
+    });
+    if (existingBounty) {
+      throw new TrophyActionError(
+        "A championship bounty payout already exists for the current holder after this transfer.",
+        409
+      );
+    }
+
+    const startDay = trophyUtcDayStart(priorReignStart.createdAt).getTime();
+    const transferDay = trophyUtcDayStart(latestTransfer.createdAt).getTime();
+    const elapsedDays = Math.max(
+      0,
+      Math.floor((transferDay - startDay) / 86_400_000)
+    );
+    const inferredBountyWolo =
+      Math.max(0, currentTrophy.currentBountyWolo) +
+      elapsedDays * Math.max(0, currentTrophy.bountyGrowthWolo);
+
+    const nextName = displayName(currentHolder);
+    const transferPayouts = await prepareManualTrophyHolderTransferPayouts(tx, {
+      trophy: currentTrophy,
+      previousHolderUserId: latestTransfer.fromHolderUserId,
+      previousHolderDisplayName: null,
+      nextHolderUserId: currentHolder.id,
+      nextHolderDisplayName: nextName,
+      nextHolderWoloAddress: currentHolder.walletAddress,
+      now: latestTransfer.createdAt,
+      accruedBountyWoloOverride: inferredBountyWolo,
+    });
+
+    await tx.trophy.update({
+      where: { id: currentTrophy.id },
+      data: {
+        currentBountyWolo: 0,
+        holderSince: currentTrophy.holderSince ?? latestTransfer.createdAt,
+      },
+    });
+
+    await recordEvent(tx, {
+      trophyId: currentTrophy.id,
+      eventType: "LEGACY_HOLDER_TRANSFER_RECONCILED",
+      actor,
+      fromHolderUserId: latestTransfer.fromHolderUserId,
+      toHolderUserId: currentHolder.id,
+      fromWoloAddress: latestTransfer.fromWoloAddress,
+      toWoloAddress: currentHolder.walletAddress,
+      amountWolo: inferredBountyWolo > 0 ? inferredBountyWolo : null,
+      rawRequest: jsonValue({
+        legacyTransferEventId: latestTransfer.id,
+        formerReignStartEventId: priorReignStart.id,
+        formerReignStartAt: priorReignStart.createdAt.toISOString(),
+        transferAt: latestTransfer.createdAt.toISOString(),
+        elapsedUtcDays: elapsedDays,
+        bountyGrowthWolo: currentTrophy.bountyGrowthWolo,
+        storedBountyBaseWolo: currentTrophy.currentBountyWolo,
+        inferredBountyWolo,
+        bountyPayoutId: transferPayouts.bountyPayoutId,
+        tributePayoutId: transferPayouts.tributePayoutId,
+        cancelledTributePayoutIds:
+          transferPayouts.cancelledTributePayoutIds,
+        paidOrTxBackedTributeAlreadyExistsToday:
+          transferPayouts.paidOrTxBackedToday,
+        inferenceRule:
+          "No economics changes during proven former reign; stored bounty base plus elapsed UTC days times current growth.",
       }),
     });
   });
@@ -343,7 +625,7 @@ async function assignGuardian(
         eligibilityNote: "Commissioner Guardian custody; Guardian nationality does not define title eligibility.",
       },
     });
-    await recordEvent(tx as PrismaClient, {
+    await recordEvent(tx, {
       trophyId: trophy.id,
       eventType: "GUARDIAN_ASSIGNED",
       actor,
@@ -693,7 +975,7 @@ async function updateChallenge(
           errorState: reason,
         },
       });
-      await recordEvent(tx as PrismaClient, {
+      await recordEvent(tx, {
         trophyId: challenge.trophyId,
         eventType: titleEventType,
         actor,
@@ -782,7 +1064,7 @@ async function updateChallenge(
           errorState: null,
         },
       });
-      await recordEvent(tx as PrismaClient, {
+      await recordEvent(tx, {
         trophyId: challenge.trophyId,
         eventType: "REPLAY_VERIFIED",
         actor,
@@ -830,7 +1112,7 @@ async function updateChallenge(
           },
         });
       }
-      await recordEvent(tx as PrismaClient, {
+      await recordEvent(tx, {
         trophyId: challenge.trophyId,
         eventType: "SETTLEMENT_DRY_RUN",
         actor,
@@ -959,7 +1241,7 @@ async function updateChallenge(
           },
         });
       }
-      await recordEvent(tx as PrismaClient, {
+      await recordEvent(tx, {
         trophyId: challenge.trophyId,
         eventType: challengerWon ? "CHALLENGE_SETTLED_HOLDER_CHANGED" : "CHALLENGE_SETTLED_DEFENSE",
         actor,
@@ -1022,13 +1304,13 @@ async function updatePayout(
   }
 
   if (operation === "execute") {
-    const result = await executePendingTrophyTributePayouts(prisma, {
+    const result = await executePendingTrophyPayouts(prisma, {
       payoutId: payout.id,
       limit: 1,
     });
 
     if (result.scanned < 1) {
-      throw new TrophyActionError("No executable trophy payout found. It may already be paid, cancelled, or not due yet.", 409);
+      throw new TrophyActionError("No executable trophy payout found. It may already be paid, cancelled, unsupported, or not due yet.", 409);
     }
 
     const failed = result.results.find((row) => row.status === "failed");
@@ -1262,6 +1544,8 @@ export async function executeTrophyAdminAction(
       return updateTrophyDefinition(prisma, actor, payload);
     case "assign_holder":
       return assignHolder(prisma, actor, payload);
+    case "repair_legacy_holder_transfer":
+      return repairLegacyHolderTransfer(prisma, actor, payload);
     case "assign_guardian":
       return assignGuardian(prisma, actor, payload);
     case "change_status":

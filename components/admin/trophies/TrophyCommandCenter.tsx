@@ -773,6 +773,24 @@ function TrophyControlCard({
             (trophy.eloBandMax === null || user.rating <= trophy.eloBandMax)
         )
       : users;
+  const holderOptions = override ? users : eligibleUsers;
+  const selectedHolder =
+    users.find((user) => user.id === Number(holderUserId)) ?? null;
+  const custodyChanging =
+    Boolean(selectedHolder) &&
+    selectedHolder!.id !== trophy.currentHolderUserId;
+  const transferPreview =
+    custodyChanging && selectedHolder
+      ? {
+          from: trophy.currentHolderDisplayName || "Vacant",
+          to: selectedHolder.name,
+          bounty: trophy.currentHolderUserId
+            ? trophy.projectedBountyWolo
+            : 0,
+          tribute: trophy.tributeAmountWolo,
+          growth: trophy.bountyGrowthWolo,
+        }
+      : null;
 
   return (
     <article className="min-w-0 rounded-[1.7rem] border border-white/10 bg-[linear-gradient(145deg,rgba(255,255,255,0.045),rgba(0,0,0,0.24))] p-4 sm:p-5">
@@ -806,11 +824,16 @@ function TrophyControlCard({
           <div className="mt-2 text-xs text-slate-400">
             Eligibility: {trophy.currentHolderEligible === null ? "Unknown" : trophy.currentHolderEligible ? "Eligible" : "Conflict"}
           </div>
+          {trophy.holderSince ? (
+            <div className="mt-1 text-xs text-slate-500">
+              Reign began {formatDate(trophy.holderSince)}
+            </div>
+          ) : null}
         </div>
         <div className="rounded-2xl border border-white/8 bg-black/18 p-3">
           <div className="text-[10px] uppercase tracking-[0.22em] text-slate-500">Guardian custody</div>
           <div className="mt-2 font-semibold">{trophy.guardianHolderDisplayName || "No Guardian"}</div>
-          <div className="mt-1 text-xs text-slate-500">{shortAddress(trophy.chainOwnerAddress)}</div>
+          <div className="mt-1 text-xs text-slate-500">{shortAddress(trophy.guardianHolderWoloAddress)}</div>
           <div className="mt-2 text-xs text-slate-400">
             {trophy.eligibleNationality || `${trophy.eloBandMin ?? "open"}-${trophy.eloBandMax ?? "open"} ELO`}
           </div>
@@ -824,12 +847,18 @@ function TrophyControlCard({
       ) : null}
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <Field label={`Assign holder · ${eligibleUsers.length} eligible`}>
-          <select className={inputClass} value={holderUserId} onChange={(event) => setHolderUserId(event.target.value)}>
+        <Field
+          label={`Assign holder · ${eligibleUsers.length} eligible${override ? " · override shows all" : ""}`}
+        >
+          <select
+            className={inputClass}
+            value={holderUserId}
+            onChange={(event) => setHolderUserId(event.target.value)}
+          >
             <option value="">Choose player</option>
-            {users.map((user) => (
+            {holderOptions.map((user) => (
               <option key={user.id} value={user.id}>
-                {user.name} · {user.representedCountry || "No country"} · {user.rating ?? "No ELO"}
+                {user.name} · {user.representedCountry || "No country"} · {user.rating !== null ? `${user.rating} rating` : "Rating unavailable"}
               </option>
             ))}
           </select>
@@ -847,10 +876,85 @@ function TrophyControlCard({
         <input type="checkbox" checked={override} onChange={(event) => setOverride(event.target.checked)} />
         Record an explicit eligibility override
       </label>
+
+      {trophy.legacyTransferRepairNeeded ? (
+        <div className="mt-3 rounded-2xl border border-cyan-200/18 bg-cyan-300/[0.055] p-4">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-cyan-100/70">
+            Legacy transfer repair available
+          </div>
+          <div className="mt-2 text-sm font-semibold text-white">
+            {trophy.legacyTransferFromHolderName || "Former holder"} → {trophy.currentHolderDisplayName || "Current holder"}
+          </div>
+          <p className="mt-2 text-xs leading-5 text-slate-400">
+            This custody change predates the current payout protocol. Reconcile it once to reconstruct the former reign bounty from the Trophy audit trail, queue the current holder&apos;s missing championship bounty, and supersede any unpaid same-day tribute that still points at the former holder.
+          </p>
+          {trophy.legacyTransferAt ? (
+            <div className="mt-2 text-[11px] text-slate-500">
+              Transfer recorded {formatDate(trophy.legacyTransferAt)}
+            </div>
+          ) : null}
+          <div className="mt-3">
+            <Button
+              tone="gold"
+              disabled={busy}
+              onClick={() =>
+                void onAction(
+                  {
+                    action: "repair_legacy_holder_transfer",
+                    trophyId: trophy.id,
+                  },
+                  `${trophy.displayName} legacy transfer payouts reconciled.`
+                )
+              }
+            >
+              Repair transfer payouts
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      {transferPreview ? (
+        <div className="mt-3 rounded-2xl border border-amber-200/18 bg-amber-300/[0.055] p-4">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-amber-100/65">
+            Title transfer preview
+          </div>
+          <div className="mt-2 text-sm font-semibold text-white">
+            {transferPreview.from} → {transferPreview.to}
+          </div>
+          <div className="mt-2 grid gap-2 text-xs text-slate-300 sm:grid-cols-3">
+            <div className="rounded-xl border border-white/8 bg-black/20 px-3 py-2">
+              <div className="text-slate-500">Accrued bounty</div>
+              <div className="mt-1 font-semibold text-amber-100">
+                {transferPreview.bounty.toLocaleString()} WOLO → {transferPreview.to}
+              </div>
+            </div>
+            <div className="rounded-xl border border-white/8 bg-black/20 px-3 py-2">
+              <div className="text-slate-500">Daily tribute</div>
+              <div className="mt-1 font-semibold text-white">
+                {transferPreview.tribute.toLocaleString()} WOLO/day → {transferPreview.to}
+              </div>
+            </div>
+            <div className="rounded-xl border border-white/8 bg-black/20 px-3 py-2">
+              <div className="text-slate-500">New bounty clock</div>
+              <div className="mt-1 font-semibold text-white">
+                0 WOLO + {transferPreview.growth.toLocaleString()}/day
+              </div>
+            </div>
+          </div>
+          <p className="mt-3 text-xs leading-5 text-slate-400">
+            Unpaid same-day tribute for the former holder is superseded. Paid or tx-backed history is never rewritten. The accrued championship bounty is queued separately for manual execution.
+          </p>
+        </div>
+      ) : null}
+
       <div className="mt-3 flex flex-wrap gap-2">
         <Button
           tone="gold"
-          disabled={busy || !holderUserId}
+          disabled={
+            busy ||
+            !holderUserId ||
+            Number(holderUserId) === trophy.currentHolderUserId
+          }
           onClick={() => {
             const user = users.find((item) => item.id === Number(holderUserId));
             void onAction(
@@ -861,11 +965,11 @@ function TrophyControlCard({
                 rating: user?.rating ?? null,
                 eligibilityOverride: override,
               },
-              `${trophy.displayName} holder updated.`
+              `${trophy.displayName} custody and payout obligations updated.`
             );
           }}
         >
-          Assign holder
+          {trophy.currentHolderUserId ? "Transfer title" : "Assign holder"}
         </Button>
         <Button
           disabled={busy || !guardianUserId}
@@ -1140,7 +1244,7 @@ function Challenges({
             <select className={inputClass} value={challengerUserId} onChange={(event) => setChallengerUserId(event.target.value)}>
               <option value="">Choose challenger</option>
               {snapshot.users.map((user) => (
-                <option key={user.id} value={user.id}>{user.name} · {user.representedCountry || "No country"} · {user.rating ?? "No ELO"}</option>
+                <option key={user.id} value={user.id}>{user.name} · {user.representedCountry || "No country"} · {user.rating !== null ? `${user.rating} rating` : "Rating unavailable"}</option>
               ))}
             </select>
           </Field>
@@ -1316,23 +1420,73 @@ function Payouts({
   busy: boolean;
   onAction: (payload: Record<string, unknown>, success: string) => Promise<void>;
 }) {
+  const statusRank = (status: string) =>
+    ["pending", "dry_run", "retrying", "failed"].includes(status)
+      ? 0
+      : status === "paid"
+        ? 1
+        : 2;
+  const payouts = [...snapshot.payouts].sort(
+    (left, right) =>
+      statusRank(left.status) - statusRank(right.status) ||
+      new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
+  );
+  const openObligations = payouts.filter(
+    (payout) =>
+      ["pending", "dry_run", "retrying", "failed"].includes(payout.status) &&
+      !payout.txHash
+  ).length;
+  const openChampionshipBounties = payouts.filter(
+    (payout) =>
+      payout.payoutKind === "dethrone_bounty" &&
+      ["pending", "dry_run", "retrying", "failed"].includes(payout.status) &&
+      !payout.txHash
+  ).length;
+  const failedObligations = payouts.filter(
+    (payout) => payout.status === "failed" && !payout.txHash
+  ).length;
+
   return (
     <section className="space-y-4">
       <div className="rounded-[1.7rem] border border-amber-200/14 bg-amber-300/8 p-5">
         <div className="text-xs uppercase tracking-[0.3em] text-amber-100/70">Payout rail</div>
         <h2 className="mt-2 text-2xl font-semibold">Dry-run first, money truth second.</h2>
         <p className="mt-2 text-sm leading-6 text-slate-400">
-          Pending rows are operator obligations, not proof of escrow. Tx hashes only appear after a real payout rail records them.
+          Pending rows are operator obligations, not proof of escrow. Championship tributes and title bounties execute through the Founder Rewards settlement authority; the public Bounty Pool is a separate treasury domain. Tx hashes only appear after a real payout rail records them.
         </p>
+        <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="rounded-2xl border border-white/8 bg-black/20 px-4 py-3">
+            <div className="text-[9px] uppercase tracking-[0.22em] text-slate-500">Open obligations</div>
+            <div className="mt-1 text-xl font-semibold text-white">{openObligations}</div>
+          </div>
+          <div className="rounded-2xl border border-white/8 bg-black/20 px-4 py-3">
+            <div className="text-[9px] uppercase tracking-[0.22em] text-slate-500">Title bounties</div>
+            <div className="mt-1 text-xl font-semibold text-amber-100">{openChampionshipBounties}</div>
+          </div>
+          <div className="rounded-2xl border border-white/8 bg-black/20 px-4 py-3">
+            <div className="text-[9px] uppercase tracking-[0.22em] text-slate-500">Failed</div>
+            <div className="mt-1 text-xl font-semibold text-rose-100">{failedObligations}</div>
+          </div>
+          <div className="rounded-2xl border border-white/8 bg-black/20 px-4 py-3">
+            <div className="text-[9px] uppercase tracking-[0.22em] text-slate-500">Settlement source</div>
+            <div className="mt-1 font-semibold text-amber-100">Founder Rewards</div>
+            <div className="mt-1 text-[11px] text-slate-500">
+              {snapshot.overview.trophyRewardsWalletBalanceWolo !== null
+                ? `${snapshot.overview.trophyRewardsWalletBalanceWolo.toLocaleString()} WOLO visible`
+                : snapshot.overview.trophyRewardsWalletStatus}
+            </div>
+          </div>
+        </div>
       </div>
       <div className="overflow-x-auto rounded-[1.7rem] border border-white/10 bg-black/22">
-        <table className="min-w-[70rem] w-full text-left text-xs">
+        <table className="min-w-[78rem] w-full text-left text-xs">
           <thead className="border-b border-white/8 text-[10px] uppercase tracking-[0.18em] text-slate-500">
             <tr>
               <th className="px-4 py-3">Created</th>
               <th className="px-4 py-3">Trophy</th>
               <th className="px-4 py-3">Recipient</th>
               <th className="px-4 py-3">Kind</th>
+              <th className="px-4 py-3">Source</th>
               <th className="px-4 py-3">Amount</th>
               <th className="px-4 py-3">Status</th>
               <th className="px-4 py-3">Tx / Error</th>
@@ -1340,7 +1494,19 @@ function Payouts({
             </tr>
           </thead>
           <tbody>
-            {snapshot.payouts.map((payout) => (
+            {payouts.map((payout) => {
+              const terminal =
+                payout.status === "paid" ||
+                payout.status === "cancelled" ||
+                Boolean(payout.txHash);
+              const kindLabel =
+                payout.payoutKind === "daily_tribute"
+                  ? "Daily tribute"
+                  : payout.payoutKind === "dethrone_bounty"
+                    ? "Championship bounty"
+                    : payout.payoutKind.replace(/_/g, " ");
+
+              return (
               <tr key={payout.id} className="border-b border-white/[0.055] align-top">
                 <td className="px-4 py-3 text-slate-400">{formatDate(payout.createdAt)}</td>
                 <td className="px-4 py-3 font-semibold text-white">{payout.trophyName}</td>
@@ -1348,7 +1514,11 @@ function Payouts({
                   {payout.recipientName || "Unlinked"}
                   <div className="mt-1 text-slate-600">{shortAddress(payout.recipientWoloAddress)}</div>
                 </td>
-                <td className="px-4 py-3 text-slate-300">{payout.payoutKind.replace(/_/g, " ")}</td>
+                <td className="px-4 py-3 text-slate-300">{kindLabel}</td>
+                <td className="px-4 py-3 text-slate-400">
+                  Founder Rewards
+                  <div className="mt-1 text-[10px] text-slate-600">8093 settlement authority</div>
+                </td>
                 <td className="px-4 py-3 font-semibold text-amber-100">{payout.amountWolo.toLocaleString()} WOLO</td>
                 <td className="px-4 py-3"><StatusBadge value={payout.status} /></td>
                 <td className="max-w-xs px-4 py-3 text-slate-400">
@@ -1362,18 +1532,19 @@ function Payouts({
                   <div className="flex flex-wrap gap-2">
                     <Button
                       tone="gold"
-                      disabled={busy || payout.status === "paid" || Boolean(payout.txHash) || !payout.recipientWoloAddress}
+                      disabled={busy || terminal || !payout.recipientWoloAddress}
                       onClick={() => void onAction({ action: "payout_action", payoutId: payout.id, operation: "execute" }, "Payout executed through Founder Rewards.")}
                     >
                       Execute
                     </Button>
-                    <Button disabled={busy || payout.status === "paid" || Boolean(payout.txHash)} onClick={() => void onAction({ action: "payout_action", payoutId: payout.id, operation: "dry_run" }, "Payout returned to dry-run.")}>Dry-run</Button>
-                    <Button disabled={busy || payout.status === "paid" || Boolean(payout.txHash)} onClick={() => void onAction({ action: "payout_action", payoutId: payout.id, operation: "retry" }, "Payout retry requested.")}>Retry</Button>
-                    <Button tone="danger" disabled={busy || payout.status === "paid" || Boolean(payout.txHash)} onClick={() => void onAction({ action: "payout_action", payoutId: payout.id, operation: "cancel" }, "Payout cancelled.")}>Cancel</Button>
+                    <Button disabled={busy || terminal} onClick={() => void onAction({ action: "payout_action", payoutId: payout.id, operation: "dry_run" }, "Payout returned to dry-run.")}>Dry-run</Button>
+                    <Button disabled={busy || terminal} onClick={() => void onAction({ action: "payout_action", payoutId: payout.id, operation: "retry" }, "Payout retry requested.")}>Retry</Button>
+                    <Button tone="danger" disabled={busy || terminal} onClick={() => void onAction({ action: "payout_action", payoutId: payout.id, operation: "cancel" }, "Payout cancelled.")}>Cancel</Button>
                   </div>
                 </td>
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
         {snapshot.payouts.length === 0 ? <div className="p-8 text-center text-sm text-slate-500">No payout rows yet.</div> : null}
