@@ -129,7 +129,7 @@ export default async function GameStatsPage({
             <DefinitionMetric
               label="Logical roster complete / incomplete"
               value={`${data.corpus.logicalRosterComplete.toLocaleString()} / ${data.corpus.logicalRosterIncomplete.toLocaleString()}`}
-              definition="Complete public participant identity plus a defensible 1v1 or balanced 2v2–4v4 team composition."
+              definition="Complete public participant identity plus a defensible 1v1 or exactly two complete explicit replay teams, including uneven sides."
             />
             <DefinitionMetric
               label="Full battle truth / needs truth"
