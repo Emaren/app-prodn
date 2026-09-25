@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0d43c42c54dc18ad4a5811130a578cb9878c29b7eecc15003c28f28cad1ea5d0",
+      "sha256": "ba8eb38648ba5e06bbd1a62e46a6754541488ed89bbf7126d6b50477778de936",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feat/tournament-persistent-zoom-v1-20260925",
-    "commit": "2eed22e91b199935c35a04d4e9738962f2dacf16"
+    "commit": "c33013e2d336be839fb92d5491d3f9da48f07183"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
