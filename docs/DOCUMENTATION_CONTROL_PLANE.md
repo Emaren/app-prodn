@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `chore/replay-parse-attempt-evidence-schema-20260925` at `69b339601d9d006fc49099a538bf7d4d5a0b8447`
+Implementation baseline: `chore/pristine-actions-metadata-20260925` at `b9fd71fae19ffed5af3d4ad3bd10bdfdd654759c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
