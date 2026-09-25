@@ -877,6 +877,42 @@ function TrophyControlCard({
         Record an explicit eligibility override
       </label>
 
+      {trophy.legacyTransferRepairNeeded ? (
+        <div className="mt-3 rounded-2xl border border-cyan-200/18 bg-cyan-300/[0.055] p-4">
+          <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-cyan-100/70">
+            Legacy transfer repair available
+          </div>
+          <div className="mt-2 text-sm font-semibold text-white">
+            {trophy.legacyTransferFromHolderName || "Former holder"} → {trophy.currentHolderDisplayName || "Current holder"}
+          </div>
+          <p className="mt-2 text-xs leading-5 text-slate-400">
+            This custody change predates the current payout protocol. Reconcile it once to reconstruct the former reign bounty from the Trophy audit trail, queue the current holder&apos;s missing championship bounty, and supersede any unpaid same-day tribute that still points at the former holder.
+          </p>
+          {trophy.legacyTransferAt ? (
+            <div className="mt-2 text-[11px] text-slate-500">
+              Transfer recorded {formatDate(trophy.legacyTransferAt)}
+            </div>
+          ) : null}
+          <div className="mt-3">
+            <Button
+              tone="gold"
+              disabled={busy}
+              onClick={() =>
+                void onAction(
+                  {
+                    action: "repair_legacy_holder_transfer",
+                    trophyId: trophy.id,
+                  },
+                  `${trophy.displayName} legacy transfer payouts reconciled.`
+                )
+              }
+            >
+              Repair transfer payouts
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
       {transferPreview ? (
         <div className="mt-3 rounded-2xl border border-amber-200/18 bg-amber-300/[0.055] p-4">
           <div className="text-[10px] font-semibold uppercase tracking-[0.24em] text-amber-100/65">
