@@ -423,6 +423,7 @@ export async function prepareManualTrophyHolderTransferPayouts(
     nextHolderDisplayName: string;
     nextHolderWoloAddress: string | null;
     now?: Date;
+    accruedBountyWoloOverride?: number | null;
   }
 ) {
   const now = input.now ?? new Date();
@@ -432,9 +433,13 @@ export async function prepareManualTrophyHolderTransferPayouts(
   const isReassignment =
     Boolean(input.previousHolderUserId) &&
     input.previousHolderUserId !== input.nextHolderUserId;
-  const accruedBountyWolo = isReassignment
-    ? projectedTrophyBounty(input.trophy)
-    : 0;
+  const accruedBountyWolo =
+    input.accruedBountyWoloOverride !== undefined &&
+    input.accruedBountyWoloOverride !== null
+      ? Math.max(0, Math.round(input.accruedBountyWoloOverride))
+      : isReassignment
+        ? projectedTrophyBounty(input.trophy)
+        : 0;
 
   const sameDayTributes = await prisma.trophyPayout.findMany({
     where: {
@@ -1037,6 +1042,12 @@ export async function loadTrophyUsers(prisma: PrismaClient): Promise<TrophyUserO
   }));
 }
 
+function jsonObject(value: Prisma.JsonValue | null | undefined) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
 export async function loadTrophyCommandSnapshot(
   prisma: PrismaClient
 ): Promise<TrophyCommandSnapshot> {
@@ -1132,8 +1143,67 @@ export async function loadTrophyCommandSnapshot(
     }),
   ]);
 
+  const legacyTransferRepairByTrophy = new Map<
+    number,
+    {
+      needed: boolean;
+      fromHolderName: string | null;
+      transferAt: string | null;
+    }
+  >();
+
+  for (const trophy of trophies) {
+    const latestTransfer = events.find(
+      (event) =>
+        event.trophyId === trophy.id &&
+        event.eventType === "HOLDER_REASSIGNED" &&
+        Boolean(trophy.currentHolderUserId) &&
+        event.toHolderUserId === trophy.currentHolderUserId
+    );
+
+    if (!latestTransfer) {
+      legacyTransferRepairByTrophy.set(trophy.id, {
+        needed: false,
+        fromHolderName: null,
+        transferAt: null,
+      });
+      continue;
+    }
+
+    const request = jsonObject(latestTransfer.rawRequest);
+    const modernTransfer =
+      "bountyPayoutId" in request ||
+      "tributePayoutId" in request ||
+      "bountyResetToWolo" in request;
+    const alreadyReconciled = events.some((event) => {
+      if (
+        event.trophyId !== trophy.id ||
+        event.eventType !== "LEGACY_HOLDER_TRANSFER_RECONCILED" ||
+        event.createdAt < latestTransfer.createdAt
+      ) {
+        return false;
+      }
+      const repairRequest = jsonObject(event.rawRequest);
+      return repairRequest.legacyTransferEventId === latestTransfer.id;
+    });
+
+    legacyTransferRepairByTrophy.set(trophy.id, {
+      needed: !modernTransfer && !alreadyReconciled,
+      fromHolderName: latestTransfer.fromHolder
+        ? userName(latestTransfer.fromHolder)
+        : null,
+      transferAt: latestTransfer.createdAt.toISOString(),
+    });
+  }
+
   const trophyRows: TrophyRow[] = trophies.map((trophy) => {
     const eligible = holderEligible(trophy, ratings);
+    const legacyTransferRepair =
+      legacyTransferRepairByTrophy.get(trophy.id) ?? {
+        needed: false,
+        fromHolderName: null,
+        transferAt: null,
+      };
     const appChainMismatch = Boolean(
       trophy.chainOwnerAddress &&
         trophy.currentHolderWoloAddress &&
@@ -1178,6 +1248,9 @@ export async function loadTrophyCommandSnapshot(
       holderSince: trophy.holderSince?.toISOString() ?? null,
       appChainMismatch,
       currentHolderEligible: eligible,
+      legacyTransferRepairNeeded: legacyTransferRepair.needed,
+      legacyTransferFromHolderName: legacyTransferRepair.fromHolderName,
+      legacyTransferAt: legacyTransferRepair.transferAt,
       createdAt: trophy.createdAt.toISOString(),
       updatedAt: trophy.updatedAt.toISOString(),
       economics: trophy.economics.map((version) => ({
