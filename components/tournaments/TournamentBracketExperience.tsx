@@ -91,7 +91,7 @@ type BracketZoom = "close" | "medium" | "full";
 // Keep this in sync with the fixed lattice geometry below.
 const BRACKET_NATIVE_WIDTH = 2274;
 const BRACKET_NATIVE_HEIGHT = 982;
-const BRACKET_ZOOM_STORAGE_KEY = "aoe2war:tournaments:bracket-zoom";
+const BRACKET_ZOOM_STORAGE_KEY = "aoe2war:tournaments:bracket-zoom:v2";
 const BRACKET_ZOOM_ORDER: BracketZoom[] = ["close", "medium", "full"];
 const BRACKET_ZOOM_LABELS: Record<BracketZoom, string> = {
   close: "Close view",
@@ -867,7 +867,7 @@ export default function TournamentBracketExperience() {
     width: 0,
     height: 0,
   });
-  const [bracketZoom, setBracketZoom] = useState<BracketZoom>("close");
+  const [bracketZoom, setBracketZoom] = useState<BracketZoom>("full");
   const [bracketZoomReady, setBracketZoomReady] = useState(false);
 
   useEffect(() => {
