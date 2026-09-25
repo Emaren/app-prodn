@@ -365,7 +365,10 @@ export async function ensureDailyTrophyTributePayouts(prisma: TrophyDb, now = ne
 
     if (existing) continue;
 
-    const holderName = recipientDisplayName || recipientWoloAddress;
+    const holderName =
+      recipientDisplayName ||
+      recipientWoloAddress ||
+      `user #${recipientUserId}`;
     const memo = trophyTributeMemo(trophy, holderName, dayKey);
 
     const payout = await prisma.trophyPayout.create({
@@ -452,6 +455,7 @@ export async function prepareManualTrophyHolderTransferPayouts(
     (row) =>
       row.recipientUserId !== input.nextHolderUserId &&
       row.status !== "paid" &&
+      row.status !== "cancelled" &&
       !row.txHash
   );
 
