@@ -7,7 +7,8 @@ import {
   loadDesyncIncidentsForSettlement,
 } from "@/lib/desyncChallenge";
 import {
-  executePendingTrophyTributePayouts,
+  executePendingTrophyPayouts,
+  prepareManualTrophyHolderTransferPayouts,
   projectedTrophyBounty,
   recordNationalityChange,
 } from "@/lib/trophies/service";
@@ -190,7 +191,7 @@ function eligibilityForUser(
 }
 
 async function recordEvent(
-  prisma: PrismaClient,
+  prisma: PrismaClient | Prisma.TransactionClient,
   input: {
     trophyId: number;
     eventType: string;
@@ -288,7 +289,52 @@ async function assignHolder(
   const previousHolderId = trophy.currentHolderUserId;
   const previousAddress = trophy.currentHolderWoloAddress;
   const nextName = displayName(user);
+  const sameHolder =
+    previousHolderId === user.id &&
+    trophy.status === "held";
+  const now = new Date();
+
   await prisma.$transaction(async (tx) => {
+    if (sameHolder) {
+      await tx.trophy.update({
+        where: { id: trophy.id },
+        data: {
+          currentHolderDisplayName: nextName,
+          currentHolderWoloAddress: user.walletAddress,
+          forfeitureNeeded: false,
+          eligibilityNote: eligibility.eligible
+            ? eligibility.detail
+            : `Admin eligibility override: ${eligibility.detail}`,
+        },
+      });
+      await recordEvent(tx, {
+        trophyId: trophy.id,
+        eventType: "HOLDER_DETAILS_REFRESHED",
+        actor,
+        fromHolderUserId: previousHolderId,
+        toHolderUserId: user.id,
+        fromWoloAddress: previousAddress,
+        toWoloAddress: user.walletAddress,
+        rawRequest: jsonValue({
+          eligibility,
+          eligibilityOverride: override,
+          custodyChanged: false,
+          bountyReset: false,
+        }),
+      });
+      return;
+    }
+
+    const transferPayouts = await prepareManualTrophyHolderTransferPayouts(tx, {
+      trophy,
+      previousHolderUserId: previousHolderId,
+      previousHolderDisplayName: trophy.currentHolderDisplayName,
+      nextHolderUserId: user.id,
+      nextHolderDisplayName: nextName,
+      nextHolderWoloAddress: user.walletAddress,
+      now,
+    });
+
     await tx.trophy.update({
       where: { id: trophy.id },
       data: {
@@ -296,14 +342,16 @@ async function assignHolder(
         currentHolderDisplayName: nextName,
         currentHolderWoloAddress: user.walletAddress,
         status: "held",
-        holderSince: new Date(),
+        currentBountyWolo: 0,
+        holderSince: now,
         forfeitureNeeded: false,
         eligibilityNote: eligibility.eligible
           ? eligibility.detail
           : `Admin eligibility override: ${eligibility.detail}`,
       },
     });
-    await recordEvent(tx as PrismaClient, {
+
+    await recordEvent(tx, {
       trophyId: trophy.id,
       eventType: previousHolderId ? "HOLDER_REASSIGNED" : "HOLDER_ASSIGNED",
       actor,
@@ -311,9 +359,23 @@ async function assignHolder(
       toHolderUserId: user.id,
       fromWoloAddress: previousAddress,
       toWoloAddress: user.walletAddress,
+      amountWolo:
+        transferPayouts.accruedBountyWolo > 0
+          ? transferPayouts.accruedBountyWolo
+          : null,
       rawRequest: jsonValue({
         eligibility,
         eligibilityOverride: override,
+        custodyChanged: true,
+        transferAt: now.toISOString(),
+        bountyResetToWolo: 0,
+        accruedBountyPayoutWolo: transferPayouts.accruedBountyWolo,
+        bountyPayoutId: transferPayouts.bountyPayoutId,
+        tributePayoutId: transferPayouts.tributePayoutId,
+        cancelledTributePayoutIds:
+          transferPayouts.cancelledTributePayoutIds,
+        paidOrTxBackedTributeAlreadyExistsToday:
+          transferPayouts.paidOrTxBackedToday,
       }),
     });
   });
@@ -343,7 +405,7 @@ async function assignGuardian(
         eligibilityNote: "Commissioner Guardian custody; Guardian nationality does not define title eligibility.",
       },
     });
-    await recordEvent(tx as PrismaClient, {
+    await recordEvent(tx, {
       trophyId: trophy.id,
       eventType: "GUARDIAN_ASSIGNED",
       actor,
@@ -693,7 +755,7 @@ async function updateChallenge(
           errorState: reason,
         },
       });
-      await recordEvent(tx as PrismaClient, {
+      await recordEvent(tx, {
         trophyId: challenge.trophyId,
         eventType: titleEventType,
         actor,
@@ -782,7 +844,7 @@ async function updateChallenge(
           errorState: null,
         },
       });
-      await recordEvent(tx as PrismaClient, {
+      await recordEvent(tx, {
         trophyId: challenge.trophyId,
         eventType: "REPLAY_VERIFIED",
         actor,
@@ -830,7 +892,7 @@ async function updateChallenge(
           },
         });
       }
-      await recordEvent(tx as PrismaClient, {
+      await recordEvent(tx, {
         trophyId: challenge.trophyId,
         eventType: "SETTLEMENT_DRY_RUN",
         actor,
@@ -959,7 +1021,7 @@ async function updateChallenge(
           },
         });
       }
-      await recordEvent(tx as PrismaClient, {
+      await recordEvent(tx, {
         trophyId: challenge.trophyId,
         eventType: challengerWon ? "CHALLENGE_SETTLED_HOLDER_CHANGED" : "CHALLENGE_SETTLED_DEFENSE",
         actor,
@@ -1022,13 +1084,13 @@ async function updatePayout(
   }
 
   if (operation === "execute") {
-    const result = await executePendingTrophyTributePayouts(prisma, {
+    const result = await executePendingTrophyPayouts(prisma, {
       payoutId: payout.id,
       limit: 1,
     });
 
     if (result.scanned < 1) {
-      throw new TrophyActionError("No executable trophy payout found. It may already be paid, cancelled, or not due yet.", 409);
+      throw new TrophyActionError("No executable trophy payout found. It may already be paid, cancelled, unsupported, or not due yet.", 409);
     }
 
     const failed = result.results.find((row) => row.status === "failed");
