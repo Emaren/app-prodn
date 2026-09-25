@@ -21,7 +21,9 @@ test("Tournaments owns a dedicated bracket battlefield", () => {
   assert.match(experience, /LEFT WING CHAMPION/);
   assert.match(experience, /RIGHT WING CHAMPION/);
   assert.match(experience, /SpeedReadyMarker route="\/tournaments"/);
-  assert.match(experience, /BRACKET_NATIVE_WIDTH = 2070/);
+  assert.match(experience, /BRACKET_NATIVE_WIDTH = 2274/);
+  assert.match(experience, /2 wings × \(4 × 228px columns \+ 3 × 20px connectors\)/);
+  assert.match(experience, /w-\[2274px\]/);
   assert.match(experience, /ResizeObserver/);
   assert.match(experience, /transformOrigin: "top left"/);
   assert.match(
