@@ -13,7 +13,7 @@ import {
   Zap,
 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 
@@ -75,6 +75,10 @@ type WingModel = {
 };
 
 type Side = "left" | "right";
+
+const BRACKET_NATIVE_WIDTH = 2070;
+const BRACKET_NATIVE_HEIGHT = 982;
+const DESKTOP_FIT_MIN_WIDTH = 1024;
 
 const EMPTY_ROSTER: RosterPayload = {
   ok: true,
@@ -822,6 +826,33 @@ export default function TournamentBracketExperience() {
   const [watcherFocus, setWatcherFocus] = useState(false);
   const [ratings, setRatings] = useState(true);
   const [failed, setFailed] = useState(false);
+  const bracketViewportRef = useRef<HTMLDivElement | null>(null);
+  const [bracketFit, setBracketFit] = useState({ fit: false, scale: 1 });
+
+  useEffect(() => {
+    const viewport = bracketViewportRef.current;
+    if (!viewport || typeof ResizeObserver === "undefined") return;
+
+    const updateFit = () => {
+      const viewportWidth = viewport.clientWidth;
+      const fit = viewportWidth >= DESKTOP_FIT_MIN_WIDTH;
+      const scale = fit
+        ? Math.min(1, viewportWidth / BRACKET_NATIVE_WIDTH)
+        : 1;
+
+      setBracketFit((current) =>
+        current.fit === fit && Math.abs(current.scale - scale) < 0.001
+          ? current
+          : { fit, scale }
+      );
+    };
+
+    updateFit();
+    const observer = new ResizeObserver(updateFit);
+    observer.observe(viewport);
+
+    return () => observer.disconnect();
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -963,26 +994,53 @@ export default function TournamentBracketExperience() {
             </div>
           ) : null}
 
-          <div className="relative overflow-x-auto overscroll-x-contain [scrollbar-color:rgba(34,211,238,0.16)_transparent] [scrollbar-width:thin]">
-            <div className="flex min-w-[2070px] items-stretch justify-center gap-5 px-5 pb-7 pt-6">
-              <Wing
-                model={leftWing}
-                side="left"
-                ratings={ratings}
-                watcherFocus={watcherFocus}
-              />
+          <div
+            ref={bracketViewportRef}
+            className={`relative overscroll-x-contain [scrollbar-color:rgba(34,211,238,0.16)_transparent] [scrollbar-width:thin] ${
+              bracketFit.fit ? "overflow-x-hidden" : "overflow-x-auto"
+            }`}
+          >
+            <div
+              className="relative mx-auto"
+              style={{
+                width: bracketFit.fit
+                  ? BRACKET_NATIVE_WIDTH * bracketFit.scale
+                  : BRACKET_NATIVE_WIDTH,
+                height: bracketFit.fit
+                  ? BRACKET_NATIVE_HEIGHT * bracketFit.scale
+                  : BRACKET_NATIVE_HEIGHT,
+              }}
+            >
+              <div
+                className="absolute left-0 top-0 flex w-[2070px] items-stretch justify-center gap-5 px-5 pb-7 pt-6"
+                style={
+                  bracketFit.fit
+                    ? {
+                        transform: `scale(${bracketFit.scale})`,
+                        transformOrigin: "top left",
+                      }
+                    : undefined
+                }
+              >
+                <Wing
+                  model={leftWing}
+                  side="left"
+                  ratings={ratings}
+                  watcherFocus={watcherFocus}
+                />
 
-              <FinalCore
-                leftOnline={leftOnline}
-                rightOnline={rightOnline}
-              />
+                <FinalCore
+                  leftOnline={leftOnline}
+                  rightOnline={rightOnline}
+                />
 
-              <Wing
-                model={rightWing}
-                side="right"
-                ratings={ratings}
-                watcherFocus={watcherFocus}
-              />
+                <Wing
+                  model={rightWing}
+                  side="right"
+                  ratings={ratings}
+                  watcherFocus={watcherFocus}
+                />
+              </div>
             </div>
           </div>
         </section>

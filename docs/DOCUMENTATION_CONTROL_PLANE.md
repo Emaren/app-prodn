@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/library-activity-board-v1-integrated-20260924` at `7c02040367456195ee2090b8dcecf60c52ac0fc1`
+Implementation baseline: `fix/tournament-full-width-lore-nav-20260925` at `c018aec3b7063de82b56249f52ac72216e6c16ae`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
