@@ -285,23 +285,34 @@ async function findSeedUser(
 
 const TROPHY_DAY_MS = 86_400_000;
 
-function utcDayStart(input = new Date()) {
+type TrophyDb = PrismaClient | Prisma.TransactionClient;
+
+export function trophyUtcDayStart(input = new Date()) {
   return new Date(Date.UTC(input.getUTCFullYear(), input.getUTCMonth(), input.getUTCDate()));
 }
 
 function utcDayKey(input = new Date()) {
-  return utcDayStart(input).toISOString().slice(0, 10);
+  return trophyUtcDayStart(input).toISOString().slice(0, 10);
 }
 
 function elapsedTrophyDays(holderSince: Date | null, now = new Date()) {
   if (!holderSince) return 0;
-  const start = utcDayStart(holderSince).getTime();
-  const current = utcDayStart(now).getTime();
+  const start = trophyUtcDayStart(holderSince).getTime();
+  const current = trophyUtcDayStart(now).getTime();
   return Math.max(0, Math.floor((current - start) / TROPHY_DAY_MS));
 }
 
 function trophyTributeMemo(trophy: Pick<Trophy, "displayName" | "trophyId">, holderName: string, dayKey: string) {
   return `AoE2WAR ${trophy.displayName} Tribute — ${holderName} holds the belt. Daily title payout for ${dayKey}.`;
+}
+
+function trophyBountyMemo(
+  trophy: Pick<Trophy, "displayName" | "trophyId">,
+  winnerName: string,
+  defeatedName: string,
+  amountWolo: number
+) {
+  return `AoE2WAR ${trophy.displayName} Championship Bounty — ${winnerName} dethroned ${defeatedName}. ${amountWolo} WOLO accrued title bounty.`;
 }
 
 export function projectedTrophyBounty(
@@ -313,8 +324,8 @@ export function projectedTrophyBounty(
   return trophy.currentBountyWolo + elapsedTrophyDays(trophy.holderSince) * trophy.bountyGrowthWolo;
 }
 
-export async function ensureDailyTrophyTributePayouts(prisma: PrismaClient, now = new Date()) {
-  const dayStart = utcDayStart(now);
+export async function ensureDailyTrophyTributePayouts(prisma: TrophyDb, now = new Date()) {
+  const dayStart = trophyUtcDayStart(now);
   const dayEnd = new Date(dayStart.getTime() + TROPHY_DAY_MS);
   const dayKey = utcDayKey(now);
 
@@ -339,7 +350,6 @@ export async function ensureDailyTrophyTributePayouts(prisma: PrismaClient, now 
     const recipientWoloAddress = trophy.currentHolderWoloAddress;
 
     if (!recipientUserId && !recipientDisplayName && !recipientWoloAddress) continue;
-    if (!recipientWoloAddress) continue;
 
     const existing = await prisma.trophyPayout.findFirst({
       where: {
@@ -400,16 +410,234 @@ export async function ensureDailyTrophyTributePayouts(prisma: PrismaClient, now 
   }
 }
 
-export async function executePendingTrophyTributePayouts(
+export async function prepareManualTrophyHolderTransferPayouts(
+  prisma: Prisma.TransactionClient,
+  input: {
+    trophy: Trophy;
+    previousHolderUserId: number | null;
+    previousHolderDisplayName: string | null;
+    nextHolderUserId: number;
+    nextHolderDisplayName: string;
+    nextHolderWoloAddress: string | null;
+    now?: Date;
+  }
+) {
+  const now = input.now ?? new Date();
+  const dayStart = trophyUtcDayStart(now);
+  const dayEnd = new Date(dayStart.getTime() + TROPHY_DAY_MS);
+  const dayKey = utcDayKey(now);
+  const isReassignment =
+    Boolean(input.previousHolderUserId) &&
+    input.previousHolderUserId !== input.nextHolderUserId;
+  const accruedBountyWolo = isReassignment
+    ? projectedTrophyBounty(input.trophy)
+    : 0;
+
+  const sameDayTributes = await prisma.trophyPayout.findMany({
+    where: {
+      trophyId: input.trophy.id,
+      payoutKind: "daily_tribute",
+      scheduledFor: { gte: dayStart, lt: dayEnd },
+    },
+    select: {
+      id: true,
+      recipientUserId: true,
+      recipientDisplayName: true,
+      status: true,
+      txHash: true,
+    },
+  });
+
+  const staleUnpaidTributes = sameDayTributes.filter(
+    (row) =>
+      row.recipientUserId !== input.nextHolderUserId &&
+      row.status !== "paid" &&
+      !row.txHash
+  );
+
+  if (staleUnpaidTributes.length > 0) {
+    await prisma.trophyPayout.updateMany({
+      where: { id: { in: staleUnpaidTributes.map((row) => row.id) } },
+      data: {
+        status: "cancelled",
+        errorState: `Superseded by title transfer to ${input.nextHolderDisplayName}.`,
+      },
+    });
+
+    await prisma.trophyEvent.create({
+      data: {
+        trophyId: input.trophy.id,
+        eventType: "DAILY_TRIBUTE_PAYOUT_SUPERSEDED",
+        actorRole: "system",
+        initiatedBy: "system",
+        fromHolderUserId: input.previousHolderUserId,
+        toHolderUserId: input.nextHolderUserId,
+        toWoloAddress: input.nextHolderWoloAddress,
+        status: "recorded",
+        rawRequest: {
+          dayKey,
+          cancelledPayoutIds: staleUnpaidTributes.map((row) => row.id),
+          previousRecipients: staleUnpaidTributes.map((row) => row.recipientDisplayName),
+          reason: "Unpaid same-day tribute followed current title custody.",
+        },
+      },
+    });
+  }
+
+  const paidOrTxBackedToday = sameDayTributes.some(
+    (row) => row.status === "paid" || Boolean(row.txHash)
+  );
+  const existingNextHolderTribute = sameDayTributes.find(
+    (row) =>
+      row.recipientUserId === input.nextHolderUserId &&
+      row.status !== "cancelled" &&
+      !row.txHash
+  );
+
+  let tributePayoutId = existingNextHolderTribute?.id ?? null;
+  if (
+    input.trophy.tributeAmountWolo > 0 &&
+    !paidOrTxBackedToday &&
+    !existingNextHolderTribute
+  ) {
+    const memo = trophyTributeMemo(
+      input.trophy,
+      input.nextHolderDisplayName,
+      dayKey
+    );
+    const payout = await prisma.trophyPayout.create({
+      data: {
+        trophyId: input.trophy.id,
+        recipientUserId: input.nextHolderUserId,
+        recipientDisplayName: input.nextHolderDisplayName,
+        recipientWoloAddress: input.nextHolderWoloAddress,
+        amountWolo: input.trophy.tributeAmountWolo,
+        payoutKind: "daily_tribute",
+        status: "dry_run",
+        scheduledFor: dayStart,
+        rawRequest: {
+          dayKey,
+          memo,
+          trophyId: input.trophy.trophyId,
+          trophyName: input.trophy.displayName,
+          chainStatus: input.trophy.chainStatus,
+          holderSince: now.toISOString(),
+          createdBy: "manual_holder_transfer",
+          fundingAuthority: "Founder Rewards settlement",
+          executionMode: "manual_review",
+        },
+      },
+    });
+    tributePayoutId = payout.id;
+
+    await prisma.trophyEvent.create({
+      data: {
+        trophyId: input.trophy.id,
+        eventType: "DAILY_TRIBUTE_PAYOUT_QUEUED",
+        actorRole: "system",
+        initiatedBy: "system",
+        toHolderUserId: input.nextHolderUserId,
+        toWoloAddress: input.nextHolderWoloAddress,
+        amountWolo: input.trophy.tributeAmountWolo,
+        status: "dry_run",
+        rawRequest: {
+          payoutId: payout.id,
+          dayKey,
+          memo,
+          createdBy: "manual_holder_transfer",
+        },
+      },
+    });
+  }
+
+  let bountyPayoutId: number | null = null;
+  if (accruedBountyWolo > 0 && input.previousHolderUserId) {
+    const defeatedName =
+      input.previousHolderDisplayName || `holder #${input.previousHolderUserId}`;
+    const memo = trophyBountyMemo(
+      input.trophy,
+      input.nextHolderDisplayName,
+      defeatedName,
+      accruedBountyWolo
+    );
+    const payout = await prisma.trophyPayout.create({
+      data: {
+        trophyId: input.trophy.id,
+        recipientUserId: input.nextHolderUserId,
+        recipientDisplayName: input.nextHolderDisplayName,
+        recipientWoloAddress: input.nextHolderWoloAddress,
+        amountWolo: accruedBountyWolo,
+        payoutKind: "dethrone_bounty",
+        status: "dry_run",
+        scheduledFor: now,
+        rawRequest: {
+          memo,
+          trophyId: input.trophy.trophyId,
+          trophyName: input.trophy.displayName,
+          previousHolderUserId: input.previousHolderUserId,
+          previousHolderDisplayName: input.previousHolderDisplayName,
+          nextHolderUserId: input.nextHolderUserId,
+          nextHolderDisplayName: input.nextHolderDisplayName,
+          projectedBountyAtTransferWolo: accruedBountyWolo,
+          transferAt: now.toISOString(),
+          createdBy: "manual_holder_transfer",
+          fundingAuthority: "Founder Rewards settlement",
+          fundingTruth:
+            "Championship bounty is an operator-reviewed Trophy obligation; it is not Bet Escrow and is not the public Bounty Pool.",
+          executionMode: "manual_review",
+        },
+      },
+    });
+    bountyPayoutId = payout.id;
+
+    await prisma.trophyEvent.create({
+      data: {
+        trophyId: input.trophy.id,
+        eventType: "DETHRONE_BOUNTY_PAYOUT_QUEUED",
+        actorRole: "system",
+        initiatedBy: "system",
+        fromHolderUserId: input.previousHolderUserId,
+        toHolderUserId: input.nextHolderUserId,
+        toWoloAddress: input.nextHolderWoloAddress,
+        amountWolo: accruedBountyWolo,
+        status: "dry_run",
+        rawRequest: {
+          payoutId: payout.id,
+          memo,
+          fundingAuthority: "Founder Rewards settlement",
+        },
+      },
+    });
+  }
+
+  return {
+    accruedBountyWolo,
+    bountyPayoutId,
+    tributePayoutId,
+    cancelledTributePayoutIds: staleUnpaidTributes.map((row) => row.id),
+    paidOrTxBackedToday,
+  };
+}
+
+export async function executePendingTrophyPayouts(
   prisma: PrismaClient,
-  options: { payoutId?: number | null; limit?: number } = {}
+  options: {
+    payoutId?: number | null;
+    limit?: number;
+    payoutKinds?: string[];
+  } = {}
 ) {
   const now = new Date();
   const take = Math.max(1, Math.min(options.limit ?? 10, 25));
 
   const payouts = await prisma.trophyPayout.findMany({
     where: {
-      payoutKind: "daily_tribute",
+      payoutKind: {
+        in:
+          options.payoutKinds && options.payoutKinds.length > 0
+            ? options.payoutKinds
+            : ["daily_tribute", "dethrone_bounty"],
+      },
       status: { in: ["dry_run", "pending", "retrying", "failed"] },
       txHash: null,
       recipientWoloAddress: { not: null },
@@ -454,15 +682,29 @@ export async function executePendingTrophyTributePayouts(
     const memo =
       typeof rawRequest.memo === "string" && rawRequest.memo.trim()
         ? rawRequest.memo.trim()
-        : trophyTributeMemo(
-            payout.trophy,
-            payout.recipientDisplayName || toAddress,
-            payout.scheduledFor?.toISOString().slice(0, 10) || utcDayKey(now)
-          );
+        : payout.payoutKind === "dethrone_bounty"
+          ? `AoE2WAR ${payout.trophy.displayName} Championship Bounty — ${payout.recipientDisplayName || toAddress} receives the accrued title bounty.`
+          : trophyTributeMemo(
+              payout.trophy,
+              payout.recipientDisplayName || toAddress,
+              payout.scheduledFor?.toISOString().slice(0, 10) || utcDayKey(now)
+            );
+    const requestPrefix =
+      payout.payoutKind === "dethrone_bounty"
+        ? "trophy-bounty"
+        : "trophy-tribute";
+    const paidEventType =
+      payout.payoutKind === "dethrone_bounty"
+        ? "DETHRONE_BOUNTY_PAYOUT_PAID"
+        : "DAILY_TRIBUTE_PAYOUT_PAID";
+    const failedEventType =
+      payout.payoutKind === "dethrone_bounty"
+        ? "DETHRONE_BOUNTY_PAYOUT_FAILED"
+        : "DAILY_TRIBUTE_PAYOUT_FAILED";
 
     try {
       const execution = await executeFounderWoloPayout({
-        requestId: `trophy-tribute-${payout.id}`,
+        requestId: `${requestPrefix}-${payout.id}`,
         toAddress,
         amountWolo: payout.amountWolo,
         memo,
@@ -488,7 +730,7 @@ export async function executePendingTrophyTributePayouts(
             proofUrl: execution.proofUrl ?? null,
             toAddress: execution.toAddress,
             amountWolo: execution.amountWolo,
-            requestId: execution.requestId ?? `trophy-tribute-${payout.id}`,
+            requestId: execution.requestId ?? `${requestPrefix}-${payout.id}`,
             executedAt: paidAt.toISOString(),
           },
         },
@@ -497,7 +739,7 @@ export async function executePendingTrophyTributePayouts(
       await prisma.trophyEvent.create({
         data: {
           trophyId: payout.trophyId,
-          eventType: "DAILY_TRIBUTE_PAYOUT_PAID",
+          eventType: paidEventType,
           actorRole: "system",
           initiatedBy: "system",
           toHolderUserId: payout.recipientUserId,
@@ -528,7 +770,7 @@ export async function executePendingTrophyTributePayouts(
       });
     } catch (error) {
       const detail =
-        error instanceof Error ? error.message : "Trophy tribute payout execution failed.";
+        error instanceof Error ? error.message : "Trophy payout execution failed.";
 
       await prisma.trophyPayout.update({
         where: { id: payout.id },
@@ -548,7 +790,7 @@ export async function executePendingTrophyTributePayouts(
       await prisma.trophyEvent.create({
         data: {
           trophyId: payout.trophyId,
-          eventType: "DAILY_TRIBUTE_PAYOUT_FAILED",
+          eventType: failedEventType,
           actorRole: "system",
           initiatedBy: "system",
           toHolderUserId: payout.recipientUserId,
@@ -584,6 +826,16 @@ export async function executePendingTrophyTributePayouts(
     skipped: results.filter((row) => row.status === "skipped").length,
     results,
   };
+}
+
+export async function executePendingTrophyTributePayouts(
+  prisma: PrismaClient,
+  options: { payoutId?: number | null; limit?: number } = {}
+) {
+  return executePendingTrophyPayouts(prisma, {
+    ...options,
+    payoutKinds: ["daily_tribute"],
+  });
 }
 
 export async function ensureTrophySeedData(prisma: PrismaClient) {
@@ -667,23 +919,46 @@ export async function ensureTrophySeedData(prisma: PrismaClient) {
   }
 }
 
-async function loadRatings(prisma: PrismaClient) {
-  const ratings = new Map<string, number>();
+type TrophyRatingIndex = {
+  byName: Map<string, number>;
+  byUid: Map<string, number>;
+};
+
+async function loadRatings(prisma: PrismaClient): Promise<TrophyRatingIndex> {
+  const byName = new Map<string, number>();
+  const byUid = new Map<string, number>();
   try {
     const board = await loadLobbyLeaderboard(prisma, {
       limit: 500,
       includePendingClaimed: true,
     });
     for (const entry of board.entries) {
-      const rating = entry.primaryRating ?? entry.steamRmRating ?? entry.elo ?? entry.arenaElo;
-      if (typeof rating === "number" && Number.isFinite(rating)) {
-        ratings.set(normalizeName(entry.name), rating);
+      const rating =
+        entry.primaryRating ??
+        entry.steamRmRating ??
+        entry.elo ??
+        entry.arenaElo;
+      if (typeof rating !== "number" || !Number.isFinite(rating)) continue;
+
+      if (entry.uid) {
+        byUid.set(entry.uid, rating);
+      }
+
+      const aliases = [
+        entry.name,
+        entry.currentName,
+        entry.latestObservedName,
+        ...entry.nameHistory.map((history) => history.name),
+      ];
+      for (const alias of aliases) {
+        const key = normalizeName(alias);
+        if (key) byName.set(key, rating);
       }
     }
   } catch (error) {
     console.warn("Trophy rating lookup unavailable:", error);
   }
-  return ratings;
+  return { byName, byUid };
 }
 
 function holderEligible(
@@ -698,7 +973,7 @@ function holderEligible(
       steamPersonaName: string | null;
     } | null;
   },
-  ratings: Map<string, number>
+  ratings: TrophyRatingIndex
 ) {
   if (!trophy.currentHolder) return null;
   if (trophy.family === "national") {
@@ -706,8 +981,8 @@ function holderEligible(
   }
   if (trophy.family === "elo") {
     const rating =
-      ratings.get(normalizeName(trophy.currentHolder.inGameName)) ??
-      ratings.get(normalizeName(trophy.currentHolder.steamPersonaName)) ??
+      ratings.byName.get(normalizeName(trophy.currentHolder.inGameName)) ??
+      ratings.byName.get(normalizeName(trophy.currentHolder.steamPersonaName)) ??
       null;
     if (rating === null) return null;
     if (trophy.eloBandMax !== null && rating > trophy.eloBandMax) return false;
@@ -749,8 +1024,9 @@ export async function loadTrophyUsers(prisma: PrismaClient): Promise<TrophyUserO
     walletAddress: user.walletAddress,
     representedCountry: user.representedCountry,
     rating:
-      ratings.get(normalizeName(user.inGameName)) ??
-      ratings.get(normalizeName(user.steamPersonaName)) ??
+      ratings.byUid.get(user.uid) ??
+      ratings.byName.get(normalizeName(user.inGameName)) ??
+      ratings.byName.get(normalizeName(user.steamPersonaName)) ??
       null,
   }));
 }
@@ -934,7 +1210,7 @@ export async function loadTrophyCommandSnapshot(
     .reduce((sum, trophy) => sum + trophy.bountyGrowthWolo, 0);
 
   const now = new Date();
-  const todayStart = utcDayStart(now);
+  const todayStart = trophyUtcDayStart(now);
   const tomorrowStart = new Date(todayStart.getTime() + TROPHY_DAY_MS);
   const tributePayouts = payouts.filter((payout) => payout.payoutKind === "daily_tribute");
   const trophyTributeDueNow = tributePayouts.filter(
