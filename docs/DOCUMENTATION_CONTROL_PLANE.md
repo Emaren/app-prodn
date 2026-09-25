@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/tournament-persistent-zoom-v1-20260925` at `2eed22e91b199935c35a04d4e9738962f2dacf16`
+Implementation baseline: `feat/tournament-persistent-zoom-v1-20260925` at `c33013e2d336be839fb92d5491d3f9da48f07183`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
