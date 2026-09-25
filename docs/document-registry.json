@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "32440c8ef9f02b99d3158a0031f934fbe466d5e5b536d9132c61a1008e34b6d6",
+      "sha256": "88bbbfd3515c0ad1877073171a087bd31178f189c1a0b7b2b81cacee1950cbf0",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/tournament-warriors-calling-copy-20260925",
-    "commit": "9fb1a08de541ba93877e8ea44fa5390b756aebc3"
+    "branch": "fix/tournament-battlefield-snap-v1-20260925",
+    "commit": "af8e94896b9bf2ccf00da377752d050ae486dfe8"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
