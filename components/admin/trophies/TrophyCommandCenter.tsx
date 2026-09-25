@@ -1395,6 +1395,20 @@ function Payouts({
       statusRank(left.status) - statusRank(right.status) ||
       new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()
   );
+  const openObligations = payouts.filter(
+    (payout) =>
+      ["pending", "dry_run", "retrying", "failed"].includes(payout.status) &&
+      !payout.txHash
+  ).length;
+  const openChampionshipBounties = payouts.filter(
+    (payout) =>
+      payout.payoutKind === "dethrone_bounty" &&
+      ["pending", "dry_run", "retrying", "failed"].includes(payout.status) &&
+      !payout.txHash
+  ).length;
+  const failedObligations = payouts.filter(
+    (payout) => payout.status === "failed" && !payout.txHash
+  ).length;
 
   return (
     <section className="space-y-4">
@@ -1406,16 +1420,16 @@ function Payouts({
         </p>
         <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
           <div className="rounded-2xl border border-white/8 bg-black/20 px-4 py-3">
-            <div className="text-[9px] uppercase tracking-[0.22em] text-slate-500">Due now</div>
-            <div className="mt-1 text-xl font-semibold text-white">{snapshot.overview.trophyTributeDueNow}</div>
+            <div className="text-[9px] uppercase tracking-[0.22em] text-slate-500">Open obligations</div>
+            <div className="mt-1 text-xl font-semibold text-white">{openObligations}</div>
           </div>
           <div className="rounded-2xl border border-white/8 bg-black/20 px-4 py-3">
-            <div className="text-[9px] uppercase tracking-[0.22em] text-slate-500">Paid today</div>
-            <div className="mt-1 text-xl font-semibold text-emerald-100">{snapshot.overview.trophyTributePaidToday}</div>
+            <div className="text-[9px] uppercase tracking-[0.22em] text-slate-500">Title bounties</div>
+            <div className="mt-1 text-xl font-semibold text-amber-100">{openChampionshipBounties}</div>
           </div>
           <div className="rounded-2xl border border-white/8 bg-black/20 px-4 py-3">
             <div className="text-[9px] uppercase tracking-[0.22em] text-slate-500">Failed</div>
-            <div className="mt-1 text-xl font-semibold text-rose-100">{snapshot.overview.trophyTributeFailed}</div>
+            <div className="mt-1 text-xl font-semibold text-rose-100">{failedObligations}</div>
           </div>
           <div className="rounded-2xl border border-white/8 bg-black/20 px-4 py-3">
             <div className="text-[9px] uppercase tracking-[0.22em] text-slate-500">Settlement source</div>
