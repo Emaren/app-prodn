@@ -177,3 +177,20 @@ test("queue implementation serializes trophy/day and records supersession eviden
   assert.match(source, /title_holder_changed_before_chain_execution/);
   assert.match(source, /supersededPayoutIds: reconciliation\.stalePayoutIds/);
 });
+
+
+test("admin payout rail treats cancelled and superseded rows as terminal", () => {
+  const source = readFileSync(
+    new URL("../components/admin/trophies/TrophyCommandCenter.tsx", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(
+    source,
+    /\["paid", "cancelled", "superseded"\]\.includes\(payout\.status\)/
+  );
+  assert.match(
+    source,
+    /disabled=\{busy \|\| trophyPayoutIsTerminal\(payout\) \|\| !payout\.recipientWoloAddress\}/
+  );
+});
