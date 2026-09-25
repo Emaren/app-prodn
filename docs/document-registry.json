@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c6ccceedfad004693f5d767d0a11a81e25e7159329e7d4fc7a3c40810833928b",
+      "sha256": "bcb51e0d82e656d02f216abb59938dca03d9a115f11501dfe7d66e5aa83a5df2",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/explicit-uneven-live-markets-20260925",
-    "commit": "0675e603da2ab61ac715a276dcb56c7fcf5c53a4"
+    "commit": "ac6b211f6ffdb8849bcb931e7bab5dd0070aed68"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
