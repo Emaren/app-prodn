@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "3b6ef64e2867c3330548666c23065934e900eb2a0f8974cca4205ecce4ee2665",
+      "sha256": "1c1c4accbbb2e1aec9b57a3459aad8f8410f53a444f7b5dbc1812ddd8d2d14de",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1051,7 +1051,7 @@
       "review_interval_days": 60,
       "reviewed_at": "2026-09-23",
       "sensitivity": "restricted",
-      "sha256": "3297a0d9f7dfe1a037708bd75e07dfa488fa876502d64d0b364f339209d2c542",
+      "sha256": "239ebce8a2035ad85776e6066a0eec83c72857d3c2bef746693c89ea36d93f80",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/explicit-uneven-live-markets-v2-20260925",
-    "commit": "bad1ec293a9d69b58a1cfaca1ba1e59618ae2dfa"
+    "branch": "chore/replay-parse-attempt-evidence-schema-20260925",
+    "commit": "69b339601d9d006fc49099a538bf7d4d5a0b8447"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
