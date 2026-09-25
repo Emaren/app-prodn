@@ -66,6 +66,11 @@ const ADMIN_NAV = [
 ] as const;
 
 
+function trophyPayoutIsTerminal(payout: { status: string; txHash: string | null }) {
+  return ["paid", "cancelled", "superseded"].includes(payout.status) || Boolean(payout.txHash);
+}
+
+
 const CHAMPION_BELT_PRESETS = [
   {
     trophyKey: "world_champion",
@@ -1362,14 +1367,14 @@ function Payouts({
                   <div className="flex flex-wrap gap-2">
                     <Button
                       tone="gold"
-                      disabled={busy || payout.status === "paid" || Boolean(payout.txHash) || !payout.recipientWoloAddress}
+                      disabled={busy || trophyPayoutIsTerminal(payout) || !payout.recipientWoloAddress}
                       onClick={() => void onAction({ action: "payout_action", payoutId: payout.id, operation: "execute" }, "Payout executed through Founder Rewards.")}
                     >
                       Execute
                     </Button>
-                    <Button disabled={busy || payout.status === "paid" || Boolean(payout.txHash)} onClick={() => void onAction({ action: "payout_action", payoutId: payout.id, operation: "dry_run" }, "Payout returned to dry-run.")}>Dry-run</Button>
-                    <Button disabled={busy || payout.status === "paid" || Boolean(payout.txHash)} onClick={() => void onAction({ action: "payout_action", payoutId: payout.id, operation: "retry" }, "Payout retry requested.")}>Retry</Button>
-                    <Button tone="danger" disabled={busy || payout.status === "paid" || Boolean(payout.txHash)} onClick={() => void onAction({ action: "payout_action", payoutId: payout.id, operation: "cancel" }, "Payout cancelled.")}>Cancel</Button>
+                    <Button disabled={busy || trophyPayoutIsTerminal(payout)} onClick={() => void onAction({ action: "payout_action", payoutId: payout.id, operation: "dry_run" }, "Payout returned to dry-run.")}>Dry-run</Button>
+                    <Button disabled={busy || trophyPayoutIsTerminal(payout)} onClick={() => void onAction({ action: "payout_action", payoutId: payout.id, operation: "retry" }, "Payout retry requested.")}>Retry</Button>
+                    <Button tone="danger" disabled={busy || trophyPayoutIsTerminal(payout)} onClick={() => void onAction({ action: "payout_action", payoutId: payout.id, operation: "cancel" }, "Payout cancelled.")}>Cancel</Button>
                   </div>
                 </td>
               </tr>
