@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/trophy-transfer-payout-rail-20260925` at `39113c6af559849d38283589208e8d2da724d0c9`
+Implementation baseline: `fix/trophy-transfer-payout-rail-20260925` at `fc7bb23f494613d2736813265d45ae1e0a8016ef`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
