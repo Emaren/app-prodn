@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "88bbbfd3515c0ad1877073171a087bd31178f189c1a0b7b2b81cacee1950cbf0",
+      "sha256": "16827f7a7b164f02d3e8976c8390c68943f7e43b565b4dcc214b8391934c85a6",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/tournament-battlefield-snap-v1-20260925",
-    "commit": "af8e94896b9bf2ccf00da377752d050ae486dfe8"
+    "branch": "fix/explicit-uneven-live-markets-20260925",
+    "commit": "c3cf2f80c5325b1da3e2890c09e4ea3053394659"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
