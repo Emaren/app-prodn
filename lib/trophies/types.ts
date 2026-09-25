@@ -42,6 +42,9 @@ export type TrophyRow = {
   holderSince: string | null;
   appChainMismatch: boolean;
   currentHolderEligible: boolean | null;
+  legacyTransferRepairNeeded: boolean;
+  legacyTransferFromHolderName: string | null;
+  legacyTransferAt: string | null;
   createdAt: string;
   updatedAt: string;
   economics: Array<{
