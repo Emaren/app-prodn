@@ -11,6 +11,7 @@ import {
   Trophy,
   Users,
   Zap,
+  ZoomIn,
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -75,10 +76,17 @@ type WingModel = {
 };
 
 type Side = "left" | "right";
+type BracketZoom = "close" | "medium" | "full";
 
 const BRACKET_NATIVE_WIDTH = 2070;
 const BRACKET_NATIVE_HEIGHT = 982;
-const DESKTOP_FIT_MIN_WIDTH = 1024;
+const BRACKET_ZOOM_STORAGE_KEY = "aoe2war:tournaments:bracket-zoom";
+const BRACKET_ZOOM_ORDER: BracketZoom[] = ["close", "medium", "full"];
+const BRACKET_ZOOM_LABELS: Record<BracketZoom, string> = {
+  close: "Close view",
+  medium: "Tactical view",
+  full: "Full battlefield",
+};
 
 const EMPTY_ROSTER: RosterPayload = {
   ok: true,
@@ -738,16 +746,20 @@ function TournamentHeader({
   watcherFocus,
   ratings,
   loading,
+  bracketZoom,
   onToggleWatcherFocus,
   onToggleRatings,
+  onCycleBracketZoom,
   onRefresh,
 }: {
   roster: RosterPayload;
   watcherFocus: boolean;
   ratings: boolean;
   loading: boolean;
+  bracketZoom: BracketZoom;
   onToggleWatcherFocus: () => void;
   onToggleRatings: () => void;
+  onCycleBracketZoom: () => void;
   onRefresh: () => void;
 }) {
   const watcherOnline = roster.players.filter(
@@ -807,6 +819,12 @@ function TournamentHeader({
             <Eye className="h-4 w-4" />
           </ControlButton>
           <ControlButton
+            label={`Bracket zoom: ${BRACKET_ZOOM_LABELS[bracketZoom]}. Click for next view.`}
+            onClick={onCycleBracketZoom}
+          >
+            <ZoomIn className="h-4 w-4" />
+          </ControlButton>
+          <ControlButton
             label="Refresh bracket signals"
             onClick={onRefresh}
           >
@@ -827,31 +845,117 @@ export default function TournamentBracketExperience() {
   const [ratings, setRatings] = useState(true);
   const [failed, setFailed] = useState(false);
   const bracketViewportRef = useRef<HTMLDivElement | null>(null);
-  const [bracketFit, setBracketFit] = useState({ fit: false, scale: 1 });
+  const bracketInitialFocusSet = useRef(false);
+  const [bracketViewportWidth, setBracketViewportWidth] = useState(0);
+  const [bracketZoom, setBracketZoom] = useState<BracketZoom>("close");
+  const [bracketZoomReady, setBracketZoomReady] = useState(false);
+
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(BRACKET_ZOOM_STORAGE_KEY);
+      if (stored && BRACKET_ZOOM_ORDER.includes(stored as BracketZoom)) {
+        setBracketZoom(stored as BracketZoom);
+      }
+    } catch {
+      // Storage can be unavailable in hardened/private browser contexts.
+    } finally {
+      setBracketZoomReady(true);
+    }
+  }, []);
 
   useEffect(() => {
     const viewport = bracketViewportRef.current;
     if (!viewport || typeof ResizeObserver === "undefined") return;
 
-    const updateFit = () => {
-      const viewportWidth = viewport.clientWidth;
-      const fit = viewportWidth >= DESKTOP_FIT_MIN_WIDTH;
-      const scale = fit
-        ? Math.min(1, viewportWidth / BRACKET_NATIVE_WIDTH)
-        : 1;
-
-      setBracketFit((current) =>
-        current.fit === fit && Math.abs(current.scale - scale) < 0.001
-          ? current
-          : { fit, scale }
-      );
+    const updateViewportWidth = () => {
+      setBracketViewportWidth(viewport.clientWidth);
     };
 
-    updateFit();
-    const observer = new ResizeObserver(updateFit);
+    updateViewportWidth();
+    const observer = new ResizeObserver(updateViewportWidth);
     observer.observe(viewport);
 
     return () => observer.disconnect();
+  }, []);
+
+  const bracketScale = useMemo(() => {
+    const fitScale =
+      bracketViewportWidth > 0
+        ? Math.min(1, bracketViewportWidth / BRACKET_NATIVE_WIDTH)
+        : 1;
+
+    if (bracketZoom === "full") return fitScale;
+    if (bracketZoom === "medium") {
+      return fitScale + (1 - fitScale) * 0.5;
+    }
+
+    return 1;
+  }, [bracketViewportWidth, bracketZoom]);
+
+  useEffect(() => {
+    if (
+      !bracketZoomReady ||
+      !bracketViewportWidth ||
+      bracketInitialFocusSet.current
+    ) {
+      return;
+    }
+
+    const viewport = bracketViewportRef.current;
+    if (!viewport) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      viewport.scrollLeft = Math.max(
+        0,
+        (viewport.scrollWidth - viewport.clientWidth) / 2
+      );
+      bracketInitialFocusSet.current = true;
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [bracketViewportWidth, bracketZoomReady, bracketScale]);
+
+  const cycleBracketZoom = useCallback(() => {
+    const viewport = bracketViewportRef.current;
+    const currentFocusRatio = viewport
+      ? Math.min(
+          1,
+          Math.max(
+            0,
+            (viewport.scrollLeft + viewport.clientWidth / 2) /
+              Math.max(viewport.scrollWidth, 1)
+          )
+        )
+      : 0.5;
+
+    setBracketZoom((current) => {
+      const currentIndex = BRACKET_ZOOM_ORDER.indexOf(current);
+      const next =
+        BRACKET_ZOOM_ORDER[
+          (currentIndex + 1) % BRACKET_ZOOM_ORDER.length
+        ];
+
+      try {
+        window.localStorage.setItem(BRACKET_ZOOM_STORAGE_KEY, next);
+      } catch {
+        // Keep the in-session choice even if persistence is unavailable.
+      }
+
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => {
+          const nextViewport = bracketViewportRef.current;
+          if (!nextViewport) return;
+
+          nextViewport.scrollLeft = Math.max(
+            0,
+            currentFocusRatio * nextViewport.scrollWidth -
+              nextViewport.clientWidth / 2
+          );
+        });
+      });
+
+      return next;
+    });
   }, []);
 
   const load = useCallback(async () => {
@@ -979,8 +1083,10 @@ export default function TournamentBracketExperience() {
           watcherFocus={watcherFocus}
           ratings={ratings}
           loading={loading}
+          bracketZoom={bracketZoom}
           onToggleWatcherFocus={() => setWatcherFocus((value) => !value)}
           onToggleRatings={() => setRatings((value) => !value)}
+          onCycleBracketZoom={cycleBracketZoom}
           onRefresh={() => void load()}
         />
 
@@ -996,31 +1102,22 @@ export default function TournamentBracketExperience() {
 
           <div
             ref={bracketViewportRef}
-            className={`relative overscroll-x-contain [scrollbar-color:rgba(34,211,238,0.16)_transparent] [scrollbar-width:thin] ${
-              bracketFit.fit ? "overflow-x-hidden" : "overflow-x-auto"
-            }`}
+            aria-label="Tournament battlefield. Scroll to explore the bracket."
+            className="relative overflow-auto overscroll-contain [scrollbar-color:rgba(34,211,238,0.16)_transparent] [scrollbar-width:thin] [touch-action:pan-x_pan-y]"
           >
             <div
               className="relative mx-auto"
               style={{
-                width: bracketFit.fit
-                  ? BRACKET_NATIVE_WIDTH * bracketFit.scale
-                  : BRACKET_NATIVE_WIDTH,
-                height: bracketFit.fit
-                  ? BRACKET_NATIVE_HEIGHT * bracketFit.scale
-                  : BRACKET_NATIVE_HEIGHT,
+                width: BRACKET_NATIVE_WIDTH * bracketScale,
+                height: BRACKET_NATIVE_HEIGHT * bracketScale,
               }}
             >
               <div
                 className="absolute left-0 top-0 flex w-[2070px] items-stretch justify-center gap-5 px-5 pb-7 pt-6"
-                style={
-                  bracketFit.fit
-                    ? {
-                        transform: `scale(${bracketFit.scale})`,
-                        transformOrigin: "top left",
-                      }
-                    : undefined
-                }
+                style={{
+                  transform: `scale(${bracketScale})`,
+                  transformOrigin: "top left",
+                }}
               >
                 <Wing
                   model={leftWing}
