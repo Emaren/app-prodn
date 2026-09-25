@@ -331,7 +331,8 @@ export async function ensureDailyTrophyTributePayouts(prisma: PrismaClient, now 
   for (const trophy of trophies) {
     // Queue the first daily tribute for the UTC day once the belt is actually held.
     // Only skip dates that end before the holder's reign begins.
-    if (!trophy.holderSince || trophy.holderSince.getTime() >= dayEnd.getTime()) {
+    const holderSince = trophy.holderSince;
+    if (!holderSince || holderSince.getTime() >= dayEnd.getTime()) {
       continue;
     }
 
@@ -443,7 +444,7 @@ export async function ensureDailyTrophyTributePayouts(prisma: PrismaClient, now 
             trophyId: trophy.trophyId,
             trophyName: trophy.displayName,
             chainStatus: trophy.chainStatus,
-            holderSince: trophy.holderSince.toISOString(),
+            holderSince: holderSince.toISOString(),
             executionMode: "dry_run_until_trophy_settlement_enabled",
             supersededPayoutIds: reconciliation.stalePayoutIds,
           },
