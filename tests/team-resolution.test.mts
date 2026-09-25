@@ -102,11 +102,26 @@ test("explicit uneven two-team battles resolve without inferring from player cou
   assert.ok(ffa.reasonCodes.includes("expected_exactly_two_teams"));
 });
 
-test("Sep 24 FOREST FUCKERY fixture resolves Jim and Emaren over Zodiac", () => {
+test("Sep 24 FOREST FUCKERY fixture resolves allied pair plus lone unteamed Zodiac", () => {
   const players = normalizeReplayPlayers([
-    { name: "Jim", team_id: 1, winner: true },
-    { name: "Emaren", team_id: 1, winner: true },
-    { name: "Zodiac", team_id: 3, winner: false },
+    {
+      name: "Jim",
+      steam_id: "76561198166409520",
+      team_id: 0,
+      winner: true,
+    },
+    {
+      name: "Zodiac",
+      steam_id: "76561198103810510",
+      team_id: null,
+      winner: false,
+    },
+    {
+      name: "Emaren",
+      steam_id: "76561198065420384",
+      team_id: 0,
+      winner: true,
+    },
   ]);
   const resolution = resolveReplayTeams(players, { final: true });
   assert.equal(resolution.status, "resolved");
@@ -116,6 +131,11 @@ test("Sep 24 FOREST FUCKERY fixture resolves Jim and Emaren over Zodiac", () => 
     resolution.teams[0].players.map((player) => player.name).sort(),
     ["Emaren", "Jim"]
   );
+  assert.deepEqual(
+    resolution.teams[1].players.map((player) => player.name),
+    ["Zodiac"]
+  );
+  assert.match(resolution.teams[1].teamKey, /^solo:steam:/);
 });
 
 test("Sep 24 MegaRandom fixture resolves Zodiac over Jim and Emaren", () => {
