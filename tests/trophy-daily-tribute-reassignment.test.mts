@@ -13,10 +13,14 @@ function payout(overrides: Partial<{
 }> = {}) {
   return {
     id: overrides.id ?? 1,
-    recipientUserId: overrides.recipientUserId ?? 10,
-    recipientWoloAddress: overrides.recipientWoloAddress ?? "wolo1oldholder",
+    recipientUserId:
+      overrides.recipientUserId === undefined ? 10 : overrides.recipientUserId,
+    recipientWoloAddress:
+      overrides.recipientWoloAddress === undefined
+        ? "wolo1oldholder"
+        : overrides.recipientWoloAddress,
     status: overrides.status ?? "dry_run",
-    txHash: overrides.txHash ?? null,
+    txHash: overrides.txHash === undefined ? null : overrides.txHash,
   };
 }
 
