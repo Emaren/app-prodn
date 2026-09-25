@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/explicit-uneven-live-markets-20260925` at `ac6b211f6ffdb8849bcb931e7bab5dd0070aed68`
+Implementation baseline: `fix/explicit-uneven-live-markets-20260925` at `d085607bbad5455e8e73b9b611a1126fbc204396`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
