@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/trophy-tribute-holder-reassignment-20260925` at `c0e33fef8f41b0c5129ee7cddb6d0ff20a96ffc5`
+Implementation baseline: `fix/trophy-tribute-holder-reassignment-20260925` at `e383cb1b0af9cd89ba8c1117fd573e3b15806080`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
