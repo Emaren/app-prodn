@@ -14,7 +14,15 @@ import {
   ZoomIn,
 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type UIEvent,
+} from "react";
 
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 
@@ -844,9 +852,18 @@ export default function TournamentBracketExperience() {
   const [watcherFocus, setWatcherFocus] = useState(false);
   const [ratings, setRatings] = useState(true);
   const [failed, setFailed] = useState(false);
+  const tournamentViewportRef = useRef<HTMLDivElement | null>(null);
+  const battlefieldSnapRef = useRef<HTMLElement | null>(null);
   const bracketViewportRef = useRef<HTMLDivElement | null>(null);
+  const appHeaderRef = useRef<HTMLElement | null>(null);
+  const mobileNavRef = useRef<HTMLElement | null>(null);
   const bracketInitialFocusSet = useRef(false);
-  const [bracketViewportWidth, setBracketViewportWidth] = useState(0);
+  const [appHeaderHeight, setAppHeaderHeight] = useState(0);
+  const [battlefieldFocused, setBattlefieldFocused] = useState(false);
+  const [bracketViewportSize, setBracketViewportSize] = useState({
+    width: 0,
+    height: 0,
+  });
   const [bracketZoom, setBracketZoom] = useState<BracketZoom>("close");
   const [bracketZoomReady, setBracketZoomReady] = useState(false);
 
@@ -863,25 +880,115 @@ export default function TournamentBracketExperience() {
     }
   }, []);
 
+  useLayoutEffect(() => {
+    const header = document.querySelector<HTMLElement>("[data-app-shell-header]");
+    const mobileNav = document.querySelector<HTMLElement>(
+      "[data-mobile-floating-nav]"
+    );
+
+    if (!header) return;
+
+    appHeaderRef.current = header;
+    mobileNavRef.current = mobileNav;
+
+    const previousHeaderTransform = header.style.transform;
+    const previousMobileDisplay = mobileNav?.style.display ?? "";
+
+    const updateHeaderHeight = () => {
+      setAppHeaderHeight(Math.ceil(header.getBoundingClientRect().height));
+    };
+
+    updateHeaderHeight();
+
+    const observer =
+      typeof ResizeObserver === "undefined"
+        ? null
+        : new ResizeObserver(updateHeaderHeight);
+
+    observer?.observe(header);
+
+    return () => {
+      observer?.disconnect();
+      header.style.transform = previousHeaderTransform;
+
+      if (mobileNav) {
+        mobileNav.style.display = previousMobileDisplay;
+      }
+    };
+  }, []);
+
+  const syncAppChromeToTournamentScroll = useCallback(
+    (scrollTop: number) => {
+      const header = appHeaderRef.current;
+
+      if (header) {
+        const travel = Math.max(
+          1,
+          appHeaderHeight || Math.ceil(header.getBoundingClientRect().height)
+        );
+        const offset = Math.min(travel, Math.max(0, scrollTop));
+        header.style.transform = `translate3d(0, -${offset}px, 0)`;
+      }
+
+      const battlefieldTop =
+        battlefieldSnapRef.current?.offsetTop ?? Number.POSITIVE_INFINITY;
+      const nextBattlefieldFocused =
+        Number.isFinite(battlefieldTop) &&
+        scrollTop >= Math.max(1, battlefieldTop / 2);
+
+      setBattlefieldFocused((current) =>
+        current === nextBattlefieldFocused
+          ? current
+          : nextBattlefieldFocused
+      );
+
+      const mobileNav = mobileNavRef.current;
+      if (mobileNav) {
+        mobileNav.style.display = nextBattlefieldFocused ? "none" : "";
+      }
+    },
+    [appHeaderHeight]
+  );
+
+  const handleTournamentViewportScroll = (
+    event: UIEvent<HTMLDivElement>
+  ) => {
+    syncAppChromeToTournamentScroll(event.currentTarget.scrollTop);
+  };
+
   useEffect(() => {
     const viewport = bracketViewportRef.current;
     if (!viewport || typeof ResizeObserver === "undefined") return;
 
-    const updateViewportWidth = () => {
-      setBracketViewportWidth(viewport.clientWidth);
+    const updateViewportSize = () => {
+      const next = {
+        width: viewport.clientWidth,
+        height: viewport.clientHeight,
+      };
+
+      setBracketViewportSize((current) =>
+        current.width === next.width && current.height === next.height
+          ? current
+          : next
+      );
     };
 
-    updateViewportWidth();
-    const observer = new ResizeObserver(updateViewportWidth);
+    updateViewportSize();
+    const observer = new ResizeObserver(updateViewportSize);
     observer.observe(viewport);
 
     return () => observer.disconnect();
   }, []);
 
   const bracketScale = useMemo(() => {
+    const { width, height } = bracketViewportSize;
     const fitScale =
-      bracketViewportWidth > 0
-        ? Math.min(1, bracketViewportWidth / BRACKET_NATIVE_WIDTH)
+      width > 0 && height > 0
+        ? Math.min(
+            1,
+            width / BRACKET_NATIVE_WIDTH,
+            height / BRACKET_NATIVE_HEIGHT
+          )
         : 1;
 
     if (bracketZoom === "full") return fitScale;
@@ -890,12 +997,12 @@ export default function TournamentBracketExperience() {
     }
 
     return 1;
-  }, [bracketViewportWidth, bracketZoom]);
+  }, [bracketViewportSize, bracketZoom]);
 
   useEffect(() => {
     if (
       !bracketZoomReady ||
-      !bracketViewportWidth ||
+      !bracketViewportSize.width ||
       bracketInitialFocusSet.current
     ) {
       return;
@@ -909,21 +1016,32 @@ export default function TournamentBracketExperience() {
         0,
         (viewport.scrollWidth - viewport.clientWidth) / 2
       );
+      viewport.scrollTop = 0;
       bracketInitialFocusSet.current = true;
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [bracketViewportWidth, bracketZoomReady, bracketScale]);
+  }, [bracketViewportSize.width, bracketZoomReady, bracketScale]);
 
   const cycleBracketZoom = useCallback(() => {
     const viewport = bracketViewportRef.current;
-    const currentFocusRatio = viewport
+    const currentFocusX = viewport
       ? Math.min(
           1,
           Math.max(
             0,
             (viewport.scrollLeft + viewport.clientWidth / 2) /
               Math.max(viewport.scrollWidth, 1)
+          )
+        )
+      : 0.5;
+    const currentFocusY = viewport
+      ? Math.min(
+          1,
+          Math.max(
+            0,
+            (viewport.scrollTop + viewport.clientHeight / 2) /
+              Math.max(viewport.scrollHeight, 1)
           )
         )
       : 0.5;
@@ -948,8 +1066,13 @@ export default function TournamentBracketExperience() {
 
         nextViewport.scrollLeft = Math.max(
           0,
-          currentFocusRatio * nextViewport.scrollWidth -
+          currentFocusX * nextViewport.scrollWidth -
             nextViewport.clientWidth / 2
+        );
+        nextViewport.scrollTop = Math.max(
+          0,
+          currentFocusY * nextViewport.scrollHeight -
+            nextViewport.clientHeight / 2
         );
       });
     });
@@ -1041,7 +1164,7 @@ export default function TournamentBracketExperience() {
   ).length;
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#01050b] text-white">
+    <main className="relative h-full min-h-0 overflow-hidden bg-[#01050b] text-white">
       <SpeedReadyMarker route="/tournaments" ready={!loading && !failed} />
 
       <style>{`
@@ -1069,38 +1192,93 @@ export default function TournamentBracketExperience() {
               "linear-gradient(to bottom, black, rgba(0,0,0,.78) 62%, transparent)",
           }}
         />
-        <div className="absolute left-[8%] top-[22%] h-[32rem] w-[32rem] rounded-full bg-cyan-500/[0.035] blur-[110px]" style={{ animation: "aoe2warTournamentDrift 12s ease-in-out infinite" }} />
-        <div className="absolute right-[8%] top-[22%] h-[32rem] w-[32rem] rounded-full bg-indigo-500/[0.035] blur-[110px]" style={{ animation: "aoe2warTournamentDrift 14s ease-in-out infinite reverse" }} />
-        <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300/35 to-transparent shadow-[0_0_24px_rgba(34,211,238,0.28)]" style={{ animation: "aoe2warTournamentScan 7.5s linear infinite" }} />
+        <div
+          className="absolute left-[8%] top-[22%] h-[32rem] w-[32rem] rounded-full bg-cyan-500/[0.035] blur-[110px]"
+          style={{
+            animation: "aoe2warTournamentDrift 12s ease-in-out infinite",
+          }}
+        />
+        <div
+          className="absolute right-[8%] top-[22%] h-[32rem] w-[32rem] rounded-full bg-indigo-500/[0.035] blur-[110px]"
+          style={{
+            animation:
+              "aoe2warTournamentDrift 14s ease-in-out infinite reverse",
+          }}
+        />
+        <div
+          className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-300/35 to-transparent shadow-[0_0_24px_rgba(34,211,238,0.28)]"
+          style={{ animation: "aoe2warTournamentScan 7.5s linear infinite" }}
+        />
       </div>
 
-      <div className="relative mx-auto max-w-[2100px] px-3 py-5 sm:px-5 lg:px-7">
-        <TournamentHeader
-          roster={roster}
-          watcherFocus={watcherFocus}
-          ratings={ratings}
-          loading={loading}
-          bracketZoom={bracketZoom}
-          onToggleWatcherFocus={() => setWatcherFocus((value) => !value)}
-          onToggleRatings={() => setRatings((value) => !value)}
-          onCycleBracketZoom={cycleBracketZoom}
-          onRefresh={() => void load()}
+      <div
+        ref={tournamentViewportRef}
+        data-tournament-viewport
+        data-tournament-focus={battlefieldFocused ? "battlefield" : "overview"}
+        onScroll={handleTournamentViewportScroll}
+        className="relative z-10 h-full min-h-0 overflow-y-auto overscroll-y-contain scroll-smooth [scroll-snap-type:y_proximity] [scrollbar-width:thin]"
+      >
+        <div
+          data-tournament-snap="overview"
+          aria-hidden="true"
+          style={{
+            height:
+              appHeaderHeight > 0 ? `${appHeaderHeight}px` : "4.25rem",
+          }}
+          className="shrink-0 [scroll-snap-align:start] [scroll-snap-stop:always]"
         />
 
-        <section className="relative mt-4 overflow-hidden rounded-[34px] border border-cyan-200/[0.075] bg-[linear-gradient(180deg,rgba(3,12,20,0.92),rgba(1,5,11,0.985))] shadow-[0_30px_100px_rgba(0,0,0,0.55)]">
+        <div className="relative mx-auto w-full max-w-[2100px] px-3 pt-5 sm:px-5 lg:px-7">
+          <TournamentHeader
+            roster={roster}
+            watcherFocus={watcherFocus}
+            ratings={ratings}
+            loading={loading}
+            bracketZoom={bracketZoom}
+            onToggleWatcherFocus={() => setWatcherFocus((value) => !value)}
+            onToggleRatings={() => setRatings((value) => !value)}
+            onCycleBracketZoom={cycleBracketZoom}
+            onRefresh={() => void load()}
+          />
+        </div>
+
+        <section
+          ref={battlefieldSnapRef}
+          data-tournament-snap="battlefield"
+          className="relative mt-4 flex h-[100dvh] min-h-[100dvh] shrink-0 flex-col overflow-hidden border-y border-cyan-200/[0.075] bg-[linear-gradient(180deg,rgba(3,12,20,0.96),rgba(1,5,11,0.995))] shadow-[0_30px_100px_rgba(0,0,0,0.55)] sm:mx-2 sm:rounded-[34px] sm:border lg:mx-3 [scroll-snap-align:start] [scroll-snap-stop:always]"
+        >
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_46%,rgba(245,158,11,0.055),transparent_18%),radial-gradient(circle_at_12%_40%,rgba(34,211,238,0.045),transparent_24%),radial-gradient(circle_at_88%_40%,rgba(99,102,241,0.055),transparent_24%)]" />
           <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
 
           {failed ? (
-            <div className="absolute right-5 top-5 z-20 flex h-9 w-9 items-center justify-center rounded-xl border border-red-300/14 bg-red-500/[0.06]" title="Roster signal unavailable">
+            <div
+              className="absolute right-16 top-3 z-30 flex h-10 w-10 items-center justify-center rounded-xl border border-red-300/14 bg-red-500/[0.06]"
+              title="Roster signal unavailable"
+            >
               <Activity className="h-4 w-4 text-red-300/65" />
             </div>
           ) : null}
 
           <div
+            data-tournament-battlefield-zoom
+            className="absolute right-3 top-3 z-30"
+          >
+            <ControlButton
+              label={`Bracket zoom: ${BRACKET_ZOOM_LABELS[bracketZoom]}. Click for next view.`}
+              onClick={cycleBracketZoom}
+            >
+              <ZoomIn className="h-4 w-4" />
+            </ControlButton>
+          </div>
+
+          <div
             ref={bracketViewportRef}
             aria-label="Tournament battlefield. Scroll to explore the bracket."
-            className="relative overflow-auto overscroll-contain [scrollbar-color:rgba(34,211,238,0.16)_transparent] [scrollbar-width:thin] [touch-action:pan-x_pan-y]"
+            className={`relative min-h-0 flex-1 overscroll-x-contain [scrollbar-color:rgba(34,211,238,0.16)_transparent] [scrollbar-width:thin] [touch-action:pan-x_pan-y] ${
+              battlefieldFocused
+                ? "overflow-auto"
+                : "overflow-x-auto overflow-y-hidden"
+            }`}
           >
             <div
               className="relative mx-auto"
@@ -1137,17 +1315,17 @@ export default function TournamentBracketExperience() {
               </div>
             </div>
           </div>
-        </section>
 
-        <div className="mt-3 flex items-center justify-center gap-3 text-cyan-100/20">
-          <div className="h-px w-20 bg-gradient-to-r from-transparent to-current" />
-          <Swords className="h-3.5 w-3.5" />
-          <div className="font-mono text-[8px] font-semibold uppercase tracking-[0.32em]">
-            AOE2WAR BRACKET CORE
+          <div className="relative z-20 flex shrink-0 items-center justify-center gap-3 border-t border-cyan-100/[0.04] px-4 py-2.5 text-cyan-100/20">
+            <div className="h-px w-20 bg-gradient-to-r from-transparent to-current" />
+            <Swords className="h-3.5 w-3.5" />
+            <div className="font-mono text-[8px] font-semibold uppercase tracking-[0.32em]">
+              AOE2WAR BRACKET CORE
+            </div>
+            <Swords className="h-3.5 w-3.5" />
+            <div className="h-px w-20 bg-gradient-to-l from-transparent to-current" />
           </div>
-          <Swords className="h-3.5 w-3.5" />
-          <div className="h-px w-20 bg-gradient-to-l from-transparent to-current" />
-        </div>
+        </section>
       </div>
     </main>
   );

@@ -1577,7 +1577,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
     <div
       className={`${isAcademySurface ? "academy-route-shell" : ""} flex w-full flex-col overflow-x-hidden text-white transition-[background-image,background-color] duration-500 ${isContactPage
         ? "h-[100dvh] min-h-0 max-h-[100dvh] overflow-hidden"
-        : isLivingLeaderboardSurface
+        : isLivingLeaderboardSurface || isTournamentSurface
           ? "h-[100dvh] min-h-0 overflow-y-hidden"
           : "min-h-screen"}`}
       onWheel={handleContactShellWheel}
@@ -1625,7 +1625,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
       ) : null}
       <header
         data-app-shell-header
-        className={`sticky top-0 z-[180] shrink-0 overflow-visible border-b px-3 pb-3 pt-[calc(env(safe-area-inset-top)+0.7rem)] backdrop-blur-md transition-[background-color,border-color] duration-500 sm:px-4 sm:backdrop-blur-xl lg:py-3 lg:backdrop-blur-2xl ${headerSkin.shell}`}
+        className={`${isTournamentSurface ? "fixed inset-x-0 top-0" : "sticky top-0"} z-[180] shrink-0 overflow-visible border-b px-3 pb-3 pt-[calc(env(safe-area-inset-top)+0.7rem)] backdrop-blur-md transition-[background-color,border-color] duration-500 sm:px-4 sm:backdrop-blur-xl lg:py-3 lg:backdrop-blur-2xl ${headerSkin.shell}`}
         style={
           isClanSurface
             ? clanHeaderStyle
@@ -1920,7 +1920,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
       <main
         className={`mx-auto flex min-h-0 min-w-0 w-full flex-1 flex-col py-4 pb-32 lg:pb-4 ${
           isTournamentSurface
-            ? "max-w-none px-1 sm:px-2 2xl:px-3"
+            ? "max-w-none px-0"
             : isContactPage
             ? "max-w-[96rem] px-2 sm:px-3"
           : isMediaManagerSurface
@@ -1959,7 +1959,9 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                           : "max-w-6xl"
               }`
         } ${isAcademySurface ? "academy-shell-skin" : ""} ${
-          isContactPage
+          isTournamentSurface
+            ? "!py-0 !pb-0 overflow-hidden"
+            : isContactPage
             ? "!py-2 !pb-2 overflow-hidden sm:!py-3 sm:!pb-3"
             : isLivingLeaderboardSurface
               ? "!py-2 !pb-2 overflow-hidden"
@@ -1973,7 +1975,8 @@ function InnerShell({ children }: { children: React.ReactNode }) {
       </main>
       {!isContactPage &&
       !isHeroStudioSurface &&
-      !isLivingLeaderboardSurface ? (
+      !isLivingLeaderboardSurface &&
+      !isTournamentSurface ? (
         <div ref={footerWarmupRef} className={footerReady ? undefined : "h-px"}>
           {footerReady ? (
             isClanSurface ? (
