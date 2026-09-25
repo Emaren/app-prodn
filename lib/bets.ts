@@ -2083,7 +2083,7 @@ export function watcherMissingProofDeadlineRepairDeadline(
   );
 }
 
-function buildSessionMarketSeed(
+export function buildSessionMarketSeed(
   session: LiveGameSession,
   index: number,
   featured: boolean

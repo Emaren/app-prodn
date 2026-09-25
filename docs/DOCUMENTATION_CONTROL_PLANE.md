@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/tournament-native-width-20260925` at `7668b75e8f9672b831074ea6faefd3c6710da264`
+Implementation baseline: `fix/explicit-uneven-live-markets-v2-20260925` at `bad1ec293a9d69b58a1cfaca1ba1e59618ae2dfa`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

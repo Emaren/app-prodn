@@ -10,7 +10,10 @@ export {
   normalizeReplayPlayerName,
 } from "./replayPlayerIdentity.ts";
 
-export type ReplayTeamFormat = "1v1" | "2v2" | "3v3" | "4v4" | "unknown";
+export type ReplayTeamSize = 1 | 2 | 3 | 4;
+export type ReplayTeamFormat =
+  | `${ReplayTeamSize}v${ReplayTeamSize}`
+  | "unknown";
 export type ReplayTeamResolutionStatus =
   | "resolved"
   | "incomplete"
@@ -251,38 +254,82 @@ export function resolveReplayTeams(
     };
   }
 
-  if (![4, 6, 8].includes(players.length)) {
+  if (players.length > 8) {
     return unresolved(players, "unsupported", ["unsupported_team_format"]);
-  }
-  if (players.some((player) => player.teamId === null)) {
-    return unresolved(players, "incomplete", ["team_id_missing"]);
   }
 
   const grouped = new Map<string, CanonicalReplayPlayer[]>();
+  const unteamedPlayers: CanonicalReplayPlayer[] = [];
   for (const player of players) {
-    const teamKey = player.teamId as string;
-    const team = grouped.get(teamKey) ?? [];
+    if (player.teamId === null) {
+      unteamedPlayers.push(player);
+      continue;
+    }
+    const team = grouped.get(player.teamId) ?? [];
     team.push(player);
-    grouped.set(teamKey, team);
+    grouped.set(player.teamId, team);
   }
+
+  /*
+   * HD represents a lone opponent in some explicit 2v1/3v1/4v1 lobbies as
+   * "no team" while the allied side carries one shared team ID. That is still
+   * a complete two-side proposition when, and only when, there is exactly one
+   * explicit multi-player team plus exactly one unteamed singleton.
+   *
+   * Two unteamed players, two explicit teams plus an unteamed player, or an
+   * all-unteamed FFA remain ambiguous and fail closed.
+   */
+  if (unteamedPlayers.length > 0) {
+    const explicitTeams = [...grouped.values()];
+    const canResolveSoloOpponent =
+      unteamedPlayers.length === 1 &&
+      grouped.size === 1 &&
+      explicitTeams[0].length >= 2;
+
+    if (!canResolveSoloOpponent) {
+      return unresolved(players, "incomplete", ["team_id_missing"]);
+    }
+
+    const solo = unteamedPlayers[0];
+    grouped.set(`solo:${solo.stablePlayerKey}`, [solo]);
+  }
+
   if (grouped.size !== 2) {
     return unresolved(players, "conflicting", ["expected_exactly_two_teams"]);
   }
 
-  const expectedSize = players.length / 2;
-  if ([...grouped.values()].some((team) => team.length !== expectedSize)) {
-    return unresolved(players, "conflicting", ["unequal_team_sizes"]);
+  const teamEntries = [...grouped.entries()]
+    .sort(([left], [right]) => compareTeamKeys(left, right));
+
+  /*
+   * Team cardinality is proposition evidence, not an inference rule.
+   *
+   * A three-player row is NOT automatically a 2v1. It becomes one only when
+   * the replay proves exactly two coherent sides: either two explicit team IDs,
+   * or one explicit allied team plus one lone unteamed opponent. The same rule
+   * safely supports explicit 3v2,
+   * 4v1, 4v2 and 4v3 battles while preserving AoE2's four-player-per-side
+   * ceiling. FFA/missing-team/three-team rows still fail closed.
+   */
+  if (
+    teamEntries.some(
+      ([, teamPlayers]) =>
+        teamPlayers.length < 1 ||
+        teamPlayers.length > 4
+    )
+  ) {
+    return unresolved(players, "unsupported", ["unsupported_team_size"]);
   }
 
-  const format = `${expectedSize}v${expectedSize}` as ReplayTeamFormat;
-  const teams = [...grouped.entries()]
-    .sort(([left], [right]) => compareTeamKeys(left, right))
-    .map(([teamKey, teamPlayers]) => ({
-      teamKey,
-      players: [...teamPlayers].sort((left, right) =>
-        left.stablePlayerKey.localeCompare(right.stablePlayerKey)
-      ),
-    }));
+  const leftSize = teamEntries[0][1].length as ReplayTeamSize;
+  const rightSize = teamEntries[1][1].length as ReplayTeamSize;
+  const format = `${leftSize}v${rightSize}` as ReplayTeamFormat;
+  const teams = teamEntries.map(([teamKey, teamPlayers]) => ({
+    teamKey,
+    players: [...teamPlayers].sort((left, right) =>
+      left.stablePlayerKey.localeCompare(right.stablePlayerKey)
+    ),
+  }));
   const provenance = options.provenance ??
     (options.final ? "explicit_final_team_ids" : "explicit_replay_team_ids");
   return {
