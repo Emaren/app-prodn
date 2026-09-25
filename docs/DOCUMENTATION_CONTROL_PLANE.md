@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/tournament-full-width-lore-nav-20260925` at `c018aec3b7063de82b56249f52ac72216e6c16ae`
+Implementation baseline: `feat/tournament-persistent-zoom-v1-20260925` at `2eed22e91b199935c35a04d4e9738962f2dacf16`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
