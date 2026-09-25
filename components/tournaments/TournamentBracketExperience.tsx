@@ -927,36 +927,33 @@ export default function TournamentBracketExperience() {
           )
         )
       : 0.5;
+    const currentIndex = BRACKET_ZOOM_ORDER.indexOf(bracketZoom);
+    const next =
+      BRACKET_ZOOM_ORDER[
+        (currentIndex + 1) % BRACKET_ZOOM_ORDER.length
+      ];
 
-    setBracketZoom((current) => {
-      const currentIndex = BRACKET_ZOOM_ORDER.indexOf(current);
-      const next =
-        BRACKET_ZOOM_ORDER[
-          (currentIndex + 1) % BRACKET_ZOOM_ORDER.length
-        ];
+    try {
+      window.localStorage.setItem(BRACKET_ZOOM_STORAGE_KEY, next);
+    } catch {
+      // Keep the in-session choice even if persistence is unavailable.
+    }
 
-      try {
-        window.localStorage.setItem(BRACKET_ZOOM_STORAGE_KEY, next);
-      } catch {
-        // Keep the in-session choice even if persistence is unavailable.
-      }
+    setBracketZoom(next);
 
+    window.requestAnimationFrame(() => {
       window.requestAnimationFrame(() => {
-        window.requestAnimationFrame(() => {
-          const nextViewport = bracketViewportRef.current;
-          if (!nextViewport) return;
+        const nextViewport = bracketViewportRef.current;
+        if (!nextViewport) return;
 
-          nextViewport.scrollLeft = Math.max(
-            0,
-            currentFocusRatio * nextViewport.scrollWidth -
-              nextViewport.clientWidth / 2
-          );
-        });
+        nextViewport.scrollLeft = Math.max(
+          0,
+          currentFocusRatio * nextViewport.scrollWidth -
+            nextViewport.clientWidth / 2
+        );
       });
-
-      return next;
     });
-  }, []);
+  }, [bracketZoom]);
 
   const load = useCallback(async () => {
     setLoading(true);
