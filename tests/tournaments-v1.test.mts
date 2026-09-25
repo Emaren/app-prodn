@@ -61,7 +61,7 @@ test("Tournaments sits immediately after Champions in Kingdom navigation", () =>
   assert.ok(champions >= 0);
   assert.ok(tournaments > champions);
   assert.ok(nations > tournaments);
-  assert.match(shell, /Enter the lists\. Survive the bracket\. Claim the crown\./);
+  assert.match(shell, /A warrior's calling\./);
   assert.match(shell, /War records, battlecraft, and victories preserved\./);
   assert.match(shell, /const isTournamentSurface/);
   assert.match(shell, /isTournamentSurface[\s\S]*?max-w-none/);
