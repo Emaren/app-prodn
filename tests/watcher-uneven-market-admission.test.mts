@@ -48,7 +48,7 @@ function liveTwoVsOneSession(): LiveGameSession {
     watcherVersions: ["1.6.1"],
     parseRows: 3,
     coverageLevel: "stacked",
-    disposition: "active",
+    disposition: "live",
     uploader: null,
     reviewMarket: null,
   } as LiveGameSession;
