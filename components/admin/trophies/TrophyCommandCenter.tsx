@@ -1244,7 +1244,7 @@ function Challenges({
             <select className={inputClass} value={challengerUserId} onChange={(event) => setChallengerUserId(event.target.value)}>
               <option value="">Choose challenger</option>
               {snapshot.users.map((user) => (
-                <option key={user.id} value={user.id}>{user.name} · {user.representedCountry || "No country"} · {user.rating ?? "No ELO"}</option>
+                <option key={user.id} value={user.id}>{user.name} · {user.representedCountry || "No country"} · {user.rating !== null ? `${user.rating} rating` : "Rating unavailable"}</option>
               ))}
             </select>
           </Field>
