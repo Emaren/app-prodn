@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ba8eb38648ba5e06bbd1a62e46a6754541488ed89bbf7126d6b50477778de936",
+      "sha256": "32440c8ef9f02b99d3158a0031f934fbe466d5e5b536d9132c61a1008e34b6d6",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/tournament-persistent-zoom-v1-20260925",
-    "commit": "c33013e2d336be839fb92d5491d3f9da48f07183"
+    "branch": "fix/tournament-warriors-calling-copy-20260925",
+    "commit": "9fb1a08de541ba93877e8ea44fa5390b756aebc3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
