@@ -24,6 +24,20 @@ test("Tournaments owns a dedicated bracket battlefield", () => {
   assert.match(experience, /BRACKET_NATIVE_WIDTH = 2070/);
   assert.match(experience, /ResizeObserver/);
   assert.match(experience, /transformOrigin: "top left"/);
+  assert.match(
+    experience,
+    /BRACKET_ZOOM_ORDER: BracketZoom\[\] = \["close", "medium", "full"\]/
+  );
+  assert.match(experience, /useState<BracketZoom>\("close"\)/);
+  assert.match(experience, /BRACKET_ZOOM_STORAGE_KEY/);
+  assert.match(experience, /window\.localStorage\.getItem/);
+  assert.match(experience, /window\.localStorage\.setItem/);
+  assert.match(experience, /Bracket zoom:/);
+  assert.match(experience, /ZoomIn/);
+  assert.match(experience, /overflow-auto overscroll-contain/);
+  assert.match(experience, /touch-action:pan-x_pan-y/);
+  assert.match(experience, /currentFocusRatio/);
+  assert.doesNotMatch(experience, /overflow-x-hidden/);
 });
 
 test("Tournament watcher beacons come from watcher telemetry, not site presence", () => {
