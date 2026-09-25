@@ -10,9 +10,21 @@ import {
 
 function liveTwoVsOneSession(): LiveGameSession {
   const players = normalizeReplayPlayers([
-    { name: "Jim", team_id: 1 },
-    { name: "Emaren", team_id: 1 },
-    { name: "Zodiac", team_id: 3 },
+    {
+      name: "Jim",
+      steam_id: "76561198166409520",
+      team_id: 0,
+    },
+    {
+      name: "Zodiac",
+      steam_id: "76561198103810510",
+      team_id: null,
+    },
+    {
+      name: "Emaren",
+      steam_id: "76561198065420384",
+      team_id: 0,
+    },
   ]);
   const teamResolution = resolveReplayTeams(players);
 
@@ -21,7 +33,7 @@ function liveTwoVsOneSession(): LiveGameSession {
     sessionKey: "watcher-sep24-2v1",
     identityAliases: [],
     replayFile: null,
-    replayHash: "fixture-hash",
+    replayHash: "ff606a01553c1063ca2ea5ce1cc7e89d97c2a247021fa1fa9bf330adfa1cb406",
     parseIteration: 1,
     createdAt: "2026-09-25T00:02:00.000Z",
     updatedAt: "2026-09-25T00:03:00.000Z",
