@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/library-activity-board-v1-integrated-20260924",
-    "commit": "7c02040367456195ee2090b8dcecf60c52ac0fc1"
+    "branch": "fix/tournament-full-width-lore-nav-20260925",
+    "commit": "c018aec3b7063de82b56249f52ac72216e6c16ae"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
