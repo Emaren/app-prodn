@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `performance/war-chest-concurrent-period-v1` at `1a096a66ab098fc153f8e85ec31655b259318e1c`
+Implementation baseline: `performance/war-chest-concurrent-period-v1` at `868ec528d0553bdbd384f9078a546eb37c9a188f`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
