@@ -143,10 +143,9 @@ export async function loadWarChestSnapshot(
   const generatedAt = new Date();
   const weeklyWindowStart =
     getWarChestUtcWeekStart(generatedAt);
-  const weeklyWagerWhere =
-    visibleMainnetWagerWhere({
-      createdAt: { gte: weeklyWindowStart },
-    });
+  const weeklyWagerWhere = visibleMainnetWagerWhere({
+    createdAt: { gte: weeklyWindowStart },
+  });
 
   // Reconciliation may call external settlement rails and should not hold the
   // public page response open. Queue it once, then start every independent
