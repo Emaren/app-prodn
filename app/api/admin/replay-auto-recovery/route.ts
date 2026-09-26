@@ -246,6 +246,8 @@ const RECURRENT_OUTPUT_SELECTION = {
     true,
   missingAcceptedIdentityProjectionOrResultRequired:
     true,
+  rawScalarWinnerDoesNotSuppressReconciliation:
+    true,
   parserRedispatch:
     false,
   identityGapsFirst:
@@ -467,22 +469,15 @@ export async function POST(
               )
           ) AS "hasResolvedIdentityProjection",
           (
-            lower(
-              btrim(
-                coalesce(game.winner, '')
-              )
-            ) NOT IN (
-              '',
-              'unknown',
-              'n/a',
-              'na',
-              'none',
-              'pending',
-              'unresolved',
-              'result under review',
-              'to be determined'
-            )
-            OR EXISTS (
+            /*
+             * A raw scalar game.winner is not public result authority by
+             * itself. The public truth resolver may reject that stored label
+             * when it does not map to canonical replay/team evidence.
+             *
+             * Only an accepted statistics adjudication or a resolved accepted
+             * public projection suppresses result reconciliation here.
+             */
+            EXISTS (
               SELECT 1
               FROM replay_result_adjudications AS adjudication
               WHERE adjudication.game_stats_id = game.id
