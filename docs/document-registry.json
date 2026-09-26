@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a077eb8ae53aba84bbbeae13f5cc5f6f49e0d9a0984233335c60166586c593a8",
+      "sha256": "e18ee5c4997f19dc801fc1b0095aa3cafc7914a93883e26d9738e2e395e85832",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "performance/rivalries-payload-v1",
-    "commit": "72e90938567b4aa7041d83e056c8cc919bdd59ad"
+    "commit": "31f818bc9ee1188efaaae494b50bbb215efdd2cc"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
