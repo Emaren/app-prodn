@@ -7,6 +7,10 @@ export const PUBLIC_REPLAY_ROSTER_V2_POLICY =
   "public_replay_roster_v2" as const;
 
 
+export const PUBLIC_REPLAY_ROSTER_V3_POLICY =
+  "public_replay_roster_v3" as const;
+
+
 export const PUBLIC_REPLAY_ROSTER_V2_ALLOWED_PROVENANCE = [
   "explicit_replay_team_ids",
   "explicit_final_team_ids",
@@ -89,7 +93,7 @@ type PlayerEvidence = {
     number | null;
 
   observedTeamId:
-    number | null;
+    string | number | null;
 };
 
 
@@ -203,6 +207,81 @@ function booleanValue(
     value === 1 ||
     value === "1"
   );
+}
+
+
+function teamIdValue(
+  value: unknown
+): string | number | null {
+  const numeric =
+    numberValue(
+      value
+    );
+
+  if (numeric !== null) {
+    return numeric;
+  }
+
+  const text =
+    textValue(
+      value
+    );
+
+  if (
+    !text ||
+    [
+      "none",
+      "null",
+      "unknown",
+    ].includes(
+      text.toLowerCase()
+    )
+  ) {
+    return null;
+  }
+
+  return text;
+}
+
+
+function uniqueTeamId(
+  values:
+    unknown[]
+) {
+  const normalized =
+    values
+      .map(
+        teamIdValue
+      )
+      .filter(
+        (
+          value
+        ): value is string | number =>
+          value !== null
+      );
+
+  const keyed =
+    new Map<
+      string,
+      string | number
+    >();
+
+  for (
+    const value of
+    normalized
+  ) {
+    keyed.set(
+      `${typeof value}:${String(value)}`,
+      value
+    );
+  }
+
+  return keyed.size ===
+      1
+    ? [
+        ...keyed.values(),
+      ][0]
+    : null;
 }
 
 
@@ -888,17 +967,34 @@ function cleanExistingPlayer(
 }
 
 
-export function buildPublicReplayRosterV2Projection(
-  input: {
-    currentPlayers:
-      unknown;
+type PublicReplayRosterProjectionInput = {
+  currentPlayers:
+    unknown;
 
-    observations:
-      PublicReplayRosterV2Observation[];
+  observations:
+    PublicReplayRosterV2Observation[];
 
-    parseRunId:
-      number;
-  }
+  parseRunId:
+    number;
+};
+
+
+type PublicReplayRosterProjectionMode = {
+  policyVersion:
+    typeof PUBLIC_REPLAY_ROSTER_V2_POLICY |
+    typeof PUBLIC_REPLAY_ROSTER_V3_POLICY;
+
+  allowUnevenTeams:
+    boolean;
+};
+
+
+function buildPublicReplayRosterProjection(
+  input:
+    PublicReplayRosterProjectionInput,
+
+  mode:
+    PublicReplayRosterProjectionMode
 ): PublicReplayRosterV2Projection {
   const blockers:
     string[] =
@@ -1041,15 +1137,84 @@ export function buildPublicReplayRosterV2Projection(
   }
 
 
-  if (
-    ![
-      "2v2",
-      "3v3",
-      "4v4",
-    ].includes(
-      format
-    )
-  ) {
+  const formatMatch =
+    /^([1-4])v([1-4])$/
+      .exec(
+        format
+      );
+
+  const parsedTeamSizes =
+    formatMatch
+      ? [
+          Number(
+            formatMatch[1]
+          ),
+          Number(
+            formatMatch[2]
+          ),
+        ]
+      : [];
+
+  /*
+   * V2 is a sealed historical authority. Preserve its exact balanced-only
+   * envelope, including the historical secondary team-size blocker for
+   * unsupported formats.
+   *
+   * V3 alone consumes the broader exact two-team parser contract.
+   */
+  const expectedTeamSizes =
+    mode.allowUnevenTeams
+      ? parsedTeamSizes
+      : format ===
+          "2v2"
+        ? [
+            2,
+            2,
+          ]
+        : format ===
+            "3v3"
+          ? [
+              3,
+              3,
+            ]
+          : format ===
+              "4v4"
+            ? [
+                4,
+                4,
+              ]
+            : [];
+
+  const expectedPlayerCount =
+    expectedTeamSizes
+      .length ===
+        2
+      ? expectedTeamSizes[0] +
+        expectedTeamSizes[1]
+      : null;
+
+  const formatAllowed =
+    mode.allowUnevenTeams
+      ? (
+          expectedTeamSizes
+            .length ===
+              2 &&
+          expectedPlayerCount !==
+            null &&
+          expectedPlayerCount >=
+            3 &&
+          expectedPlayerCount <=
+            8
+        )
+      : [
+          "2v2",
+          "3v3",
+          "4v4",
+        ].includes(
+          format
+        );
+
+  if (!formatAllowed) {
     blockers.push(
       `unsupported_format:${format || "missing"}`
     );
@@ -1080,19 +1245,6 @@ export function buildPublicReplayRosterV2Projection(
   }
 
 
-  const expectedPlayerCount =
-    format ===
-      "2v2"
-      ? 4
-      : format ===
-          "3v3"
-        ? 6
-        : format ===
-            "4v4"
-          ? 8
-          : null;
-
-
   if (
     expectedPlayerCount !==
       null &&
@@ -1106,7 +1258,10 @@ export function buildPublicReplayRosterV2Projection(
 
 
   const teamIds:
-    number[] =
+    Array<
+      string |
+      number
+    > =
       [];
 
 
@@ -1118,6 +1273,7 @@ export function buildPublicReplayRosterV2Projection(
   const teamByPlayerKey =
     new Map<
       string,
+      string |
       number
     >();
 
@@ -1127,9 +1283,13 @@ export function buildPublicReplayRosterV2Projection(
     teams
   ) {
     const teamId =
-      numberValue(
-        team.team_id
-      );
+      mode.allowUnevenTeams
+        ? teamIdValue(
+            team.team_id
+          )
+        : numberValue(
+            team.team_id
+          );
 
 
     const playerKeys =
@@ -1152,7 +1312,19 @@ export function buildPublicReplayRosterV2Projection(
 
     if (
       teamId === null ||
-      teamId < 0
+      (
+        typeof teamId ===
+          "number" &&
+        teamId < 0
+      ) ||
+      (
+        typeof teamId ===
+          "string" &&
+        (
+          !teamId ||
+          teamId === "-1"
+        )
+      )
     ) {
       blockers.push(
         `invalid_team_id:${textValue(team.team_id) || "missing"}`
@@ -1241,19 +1413,31 @@ export function buildPublicReplayRosterV2Projection(
   }
 
 
+  const expectedSortedTeamSizes =
+    expectedTeamSizes
+      .slice()
+      .sort(
+        (
+          left,
+          right
+        ) =>
+          left -
+          right
+      );
+
   if (
     teamSizes.length !==
       2 ||
     teamSizes[0] ===
       0 ||
-    teamSizes[0] !==
-      teamSizes[1] ||
-    (
-      expectedPlayerCount !==
-        null &&
-      teamSizes[0] +
-        teamSizes[1] !==
-        expectedPlayerCount
+    expectedSortedTeamSizes
+      .length !==
+      2 ||
+    JSON.stringify(
+      teamSizes
+    ) !==
+    JSON.stringify(
+      expectedSortedTeamSizes
     )
   ) {
     blockers.push(
@@ -1370,8 +1554,14 @@ export function buildPublicReplayRosterV2Projection(
     const observedTeamId =
       teamValues.length >
         0
-        ? uniqueNumber(
-            teamValues
+        ? (
+            mode.allowUnevenTeams
+              ? uniqueTeamId(
+                  teamValues
+                )
+              : uniqueNumber(
+                  teamValues
+                )
           )
         : null;
 
@@ -1661,10 +1851,10 @@ export function buildPublicReplayRosterV2Projection(
               "Unknown",
 
             roster_source:
-              PUBLIC_REPLAY_ROSTER_V2_POLICY,
+              mode.policyVersion,
 
             team_id_source:
-              PUBLIC_REPLAY_ROSTER_V2_POLICY,
+              mode.policyVersion,
 
             roster_recovered:
               true,
@@ -1751,4 +1941,38 @@ export function buildPublicReplayRosterV2Projection(
           )
         : null,
   };
+}
+
+
+export function buildPublicReplayRosterV2Projection(
+  input:
+    PublicReplayRosterProjectionInput
+) {
+  return buildPublicReplayRosterProjection(
+    input,
+    {
+      policyVersion:
+        PUBLIC_REPLAY_ROSTER_V2_POLICY,
+
+      allowUnevenTeams:
+        false,
+    }
+  );
+}
+
+
+export function buildPublicReplayRosterV3Projection(
+  input:
+    PublicReplayRosterProjectionInput
+) {
+  return buildPublicReplayRosterProjection(
+    input,
+    {
+      policyVersion:
+        PUBLIC_REPLAY_ROSTER_V3_POLICY,
+
+      allowUnevenTeams:
+        true,
+    }
+  );
 }

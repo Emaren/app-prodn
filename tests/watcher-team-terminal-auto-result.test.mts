@@ -513,12 +513,307 @@ function teamInput21211() {
   return input;
 }
 
+function teamInput2v1():
+  WatcherTeamTerminalInput {
+  const hash =
+    "8".repeat(
+      64
+    );
+
+  return {
+    id:
+      44862,
+
+    replayHash:
+      hash,
+
+    parseIteration:
+      20,
+
+    parseSource:
+      "watcher_final",
+
+    parseReason:
+      "team_resignation_not_complete",
+
+    isFinal:
+      true,
+
+    winner:
+      "Unknown",
+
+    players: [
+      {
+        name:
+          "Jim",
+
+        steam_id:
+          "76561198000000001",
+
+        number:
+          1,
+
+        team_id:
+          0,
+
+        winner:
+          null,
+      },
+      {
+        name:
+          "Emaren",
+
+        steam_id:
+          "76561198000000002",
+
+        number:
+          2,
+
+        team_id:
+          0,
+
+        winner:
+          null,
+      },
+      {
+        name:
+          "Zodiac",
+
+        steam_id:
+          "76561198000000003",
+
+        number:
+          3,
+
+        team_id:
+          1,
+
+        winner:
+          null,
+      },
+    ],
+
+    keyEvents: {
+      restored:
+        false,
+
+      completed:
+        false,
+
+      platform_id:
+        "hd",
+
+      watcher_upload: {
+        file_role:
+          "final_recording",
+
+        final_candidate:
+          true,
+
+        checkpoint_final_rejected:
+          false,
+
+        server_sha256:
+          hash,
+      },
+
+      team_resolution: {
+        format:
+          "2v1",
+
+        status:
+          "resolved",
+
+        confidence:
+          "high",
+
+        provenance:
+          "explicit_final_team_ids",
+
+        teams: [
+          {
+            team_id:
+              0,
+
+            player_keys: [
+              "steam:76561198000000001",
+              "steam:76561198000000002",
+            ],
+          },
+          {
+            team_id:
+              1,
+
+            player_keys: [
+              "steam:76561198000000003",
+            ],
+          },
+        ],
+      },
+
+      result_resolution: {
+        result_status:
+          "review_required",
+
+        result_trusted:
+          false,
+
+        winning_team_id:
+          null,
+
+        winning_player_names:
+          [],
+
+        winning_player_keys:
+          [],
+
+        result_evidence: {
+          winner_flags_coherent:
+            false,
+
+          resignation_result_conflict:
+            false,
+
+          complete_losing_team_resignation:
+            false,
+
+          resignation_counts_by_team: [
+            {
+              team_id:
+                0,
+
+              player_count:
+                2,
+
+              resigned_player_count:
+                1,
+            },
+            {
+              team_id:
+                1,
+
+              player_count:
+                1,
+
+              resigned_player_count:
+                0,
+            },
+          ],
+        },
+      },
+
+      resigned_player_numbers:
+        [2],
+
+      resigned_player_names:
+        [
+          "Emaren",
+        ],
+    },
+
+    eventTypes: [
+      "move",
+      "resign",
+    ],
+
+    disconnectDetected:
+      false,
+
+    durationSeconds:
+      120,
+
+    uploaderSteamId:
+      "76561198000000003",
+
+    uploaderUid:
+      "u_zodiac",
+
+    uploaderUserId:
+      12,
+
+    hasAdjudicationHistory:
+      false,
+
+    currentDesyncOccurred:
+      null,
+
+    terminalReceipt:
+      null,
+
+    terminalFailureCount:
+      0,
+
+    rawActivityByPlayer: [
+      {
+        player_number:
+          1,
+
+        player_name:
+          "Jim",
+
+        action_packet_count:
+          100,
+
+        first_action_ms:
+          1000,
+
+        last_action_ms:
+          100000,
+      },
+      {
+        player_number:
+          2,
+
+        player_name:
+          "Emaren",
+
+        action_packet_count:
+          80,
+
+        first_action_ms:
+          1000,
+
+        last_action_ms:
+          90000,
+      },
+      {
+        player_number:
+          3,
+
+        player_name:
+          "Zodiac",
+
+        action_packet_count:
+          130,
+
+        first_action_ms:
+          1000,
+
+        last_action_ms:
+          119900,
+      },
+    ],
+
+    parseRun: {
+      id:
+        7670,
+
+      passName:
+        "hd_deterministic_evidence",
+
+      passVersion:
+        "10",
+    },
+  };
+}
+
+
 test(
   "team policy uses strict stats-only terminal thresholds",
   () => {
     assert.equal(
       WATCHER_TEAM_TERMINAL_POLICY_VERSION,
-      "replay-team-terminal-action-tail-v3"
+      "replay-team-terminal-action-tail-v4"
     );
 
     assert.equal(
@@ -624,6 +919,129 @@ test(
     );
   }
 );
+
+test(
+  "exact 2v1 terminal action-tail proof remains stats-only",
+  () => {
+    const evaluation =
+      evaluateWatcherTeamTerminalResult(
+        teamInput2v1()
+      );
+
+    assert.equal(
+      evaluation.eligible,
+      true,
+      evaluation.eligible
+        ? undefined
+        : evaluation.reason
+    );
+
+    if (!evaluation.eligible) {
+      return;
+    }
+
+    assert.equal(
+      evaluation.winningTeamKey,
+      "team:1"
+    );
+
+    assert.deepEqual(
+      evaluation.winningTeam
+        .players
+        .map(
+          (
+            player
+          ) =>
+            player.name
+        ),
+      [
+        "Zodiac",
+      ]
+    );
+
+    const evidence =
+      evaluation.evidence as {
+        financialAuthority?:
+          unknown;
+      };
+
+    assert.equal(
+      evidence.financialAuthority,
+      false
+    );
+  }
+);
+
+
+test(
+  "three-player topology still fails closed unless exactly two teams cover the roster",
+  () => {
+    const input =
+      teamInput2v1();
+
+    const keyEvents =
+      input.keyEvents as
+        Record<
+          string,
+          unknown
+        >;
+
+    keyEvents.team_resolution = {
+      format:
+        "2v1",
+
+      status:
+        "resolved",
+
+      confidence:
+        "high",
+
+      provenance:
+        "explicit_final_team_ids",
+
+      teams: [
+        {
+          team_id:
+            0,
+
+          player_keys: [
+            "steam:76561198000000001",
+          ],
+        },
+        {
+          team_id:
+            1,
+
+          player_keys: [
+            "steam:76561198000000002",
+          ],
+        },
+        {
+          team_id:
+            2,
+
+          player_keys: [
+            "steam:76561198000000003",
+          ],
+        },
+      ],
+    };
+
+    assert.deepEqual(
+      evaluateWatcherTeamTerminalResult(
+        input
+      ),
+      {
+        eligible:
+          false,
+
+        reason:
+          "team_assignment_not_exact",
+      }
+    );
+  }
+);
+
 
 test(
   "untrusted stored scalar winner does not suppress canonical terminal recovery",

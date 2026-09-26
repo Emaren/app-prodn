@@ -10,7 +10,7 @@ import {
 } from "./unresolvedWatcherResult.ts";
 
 export const WATCHER_TEAM_TERMINAL_POLICY_VERSION =
-  "replay-team-terminal-action-tail-v3" as const;
+  "replay-team-terminal-action-tail-v4" as const;
 
 export const WATCHER_TEAM_TERMINAL_MIN_LEAD_MS = 10_000;
 export const WATCHER_TEAM_TERMINAL_MIN_LOSER_SILENCE_MS = 10_000;
@@ -410,7 +410,7 @@ function canonicalTeamPlayers(
       .filter(Boolean);
 
   if (
-    playerKeys.length < 2 ||
+    playerKeys.length < 1 ||
     new Set(playerKeys).size !==
       playerKeys.length
   ) {
@@ -1019,9 +1019,10 @@ export function evaluateWatcherTeamTerminalResult(
     );
 
   if (
-    ![4, 6, 8].includes(
-      players.length
-    ) ||
+    players.length <
+      3 ||
+    players.length >
+      8 ||
     players.some(
       (player) =>
         !player.steamId ||
@@ -1157,18 +1158,48 @@ export function evaluateWatcherTeamTerminalResult(
     };
   }
 
-  const expectedSize =
-    players.length / 2;
-
-  const expectedFormat =
-    `${expectedSize}v${expectedSize}`;
-
-  if (
+  const declaredFormat =
     cleanText(
       teamResolution.format,
       20
-    ).toLowerCase() !==
-      expectedFormat ||
+    ).toLowerCase();
+
+  const formatMatch =
+    /^([1-4])v([1-4])$/
+      .exec(
+        declaredFormat
+      );
+
+  const expectedTeamSizes =
+    formatMatch
+      ? [
+          Number(
+            formatMatch[1]
+          ),
+          Number(
+            formatMatch[2]
+          ),
+        ]
+      : [];
+
+  const declaredPlayerCount =
+    expectedTeamSizes
+      .reduce(
+        (
+          total,
+          size
+        ) =>
+          total +
+          size,
+        0
+      );
+
+  if (
+    expectedTeamSizes
+      .length !==
+      2 ||
+    declaredPlayerCount !==
+      players.length ||
     cleanText(
       teamResolution.status,
       20
@@ -1258,12 +1289,41 @@ export function evaluateWatcherTeamTerminalResult(
       players
     );
 
+  const actualTeamSizes =
+    teams
+      ?.map(
+        (team) =>
+          team.players.length
+      )
+      .sort(
+        (
+          left,
+          right
+        ) =>
+          left -
+          right
+      ) ??
+    [];
+
+  const sortedExpectedTeamSizes =
+    expectedTeamSizes
+      .slice()
+      .sort(
+        (
+          left,
+          right
+        ) =>
+          left -
+          right
+      );
+
   if (
     !teams ||
-    teams.some(
-      (team) =>
-        team.players.length !==
-          expectedSize
+    JSON.stringify(
+      actualTeamSizes
+    ) !==
+    JSON.stringify(
+      sortedExpectedTeamSizes
     )
   ) {
     return {
