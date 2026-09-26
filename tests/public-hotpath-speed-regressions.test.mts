@@ -58,3 +58,122 @@ test("public hot paths keep expensive work off request-critical rails", () => {
   assert.doesNotMatch(observatory, /loadPhysicalReplayArchiveSnapshot/);
   assert.match(observatory, /Physical archive enumeration is an operator\/background responsibility/);
 });
+
+
+test("player directory overlaps independent generation enrichment reads", () => {
+  const directory = readFileSync(
+    "lib/publicPlayerDirectory.ts",
+    "utf8",
+  );
+
+  const communityStart = directory.indexOf(
+    "const communityMapPromise",
+  );
+  const canonicalStart = directory.indexOf(
+    "const canonicalSnapshotsPromise",
+  );
+  const pendingGiftStart = directory.indexOf(
+    "const pendingGiftByUserUidPromise",
+  );
+  const join = directory.indexOf(
+    "] = await Promise.all([",
+    pendingGiftStart,
+  );
+
+  assert.ok(communityStart >= 0);
+  assert.ok(canonicalStart > communityStart);
+  assert.ok(pendingGiftStart > canonicalStart);
+  assert.ok(join > pendingGiftStart);
+
+  const concurrentBlock = directory.slice(
+    communityStart,
+    join + 320,
+  );
+
+  assert.match(
+    concurrentBlock,
+    /communityMapPromise,[\s\S]*canonicalSnapshotsPromise,[\s\S]*pendingGiftByUserUidPromise/,
+  );
+  assert.doesNotMatch(
+    directory.slice(
+      communityStart,
+      pendingGiftStart,
+    ),
+    /const communityMap = await/,
+  );
+  assert.doesNotMatch(
+    directory.slice(
+      canonicalStart,
+      pendingGiftStart,
+    ),
+    /canonicalSnapshots\s*=\s*[\s\S]*?await prisma\.replayPlayerSnapshot/,
+  );
+});
+
+test("player profile overlaps optional claim and community rails", () => {
+  const profile = readFileSync(
+    "lib/playerProfile.ts",
+    "utf8",
+  );
+
+  const buildStart = profile.indexOf(
+    "async function buildProfileFromPlayer",
+  );
+  const buildEnd = profile.indexOf(
+    "async function resolveProfileDirectoryIdentity",
+    buildStart,
+  );
+  assert.ok(buildStart >= 0);
+  assert.ok(buildEnd > buildStart);
+
+  const build = profile.slice(
+    buildStart,
+    buildEnd,
+  );
+
+  assert.match(
+    profile,
+    /async function safeLoadUserCommunitySummary/,
+  );
+  assert.match(
+    build,
+    /\[\s*pendingClaimSummaries,\s*community,\s*\] = await Promise\.all\(\[/,
+  );
+  assert.match(
+    build,
+    /safeLoadPendingWoloClaimSummaries\([\s\S]*safeLoadUserCommunitySummary\(/,
+  );
+  assert.doesNotMatch(
+    build,
+    /const pendingClaimSummaries = await safeLoadPendingWoloClaimSummaries/,
+  );
+  assert.doesNotMatch(
+    build,
+    /community = \(await loadUserCommunitySummaries/,
+  );
+
+  const safeCommunityStart = profile.indexOf(
+    "async function safeLoadUserCommunitySummary",
+  );
+  const safeCommunityEnd = profile.indexOf(
+    "function normalizeKey",
+    safeCommunityStart,
+  );
+  const safeCommunity = profile.slice(
+    safeCommunityStart,
+    safeCommunityEnd,
+  );
+
+  assert.match(
+    safeCommunity,
+    /isMissingPrismaStorageError/,
+  );
+  assert.match(
+    safeCommunity,
+    /warnOptionalProfileRail\(\s*"community honor"/,
+  );
+  assert.match(
+    safeCommunity,
+    /return empty/,
+  );
+});
