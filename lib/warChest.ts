@@ -12,6 +12,7 @@ import type {
   LobbyWoloSnapshot,
 } from "@/lib/lobby";
 import { loadLobbyWoloEarnersBoard } from "@/lib/lobbyWoloEarners";
+import { getWarChestUtcWeekStart } from "@/lib/warChestPeriodTruth";
 import {
   buildClaimedPlayerHref,
   buildReplayPlayerHref,
@@ -139,12 +140,28 @@ export async function loadWarChestSnapshot(
   options: { mode?: WarChestMode } = {}
 ): Promise<WarChestSnapshot> {
   const mode = options.mode ?? "weekly";
+  const generatedAt = new Date();
+  const weeklyWindowStart =
+    getWarChestUtcWeekStart(generatedAt);
+  const weeklyWagerWhere =
+    visibleMainnetWagerWhere({
+      createdAt: { gte: weeklyWindowStart },
+    });
 
   // Reconciliation may call external settlement rails and should not hold the
   // public page response open. Queue it once, then start every independent
-  // evidence family immediately. Weekly aggregates alone depend on the earners
-  // window, so only that small rail waits for the period boundary.
+  // evidence family immediately. The reporting clock is captured once so the
+  // earner board and weekly SQL lane share one exact UTC-week boundary.
   queueBetMarketEnsure(prisma);
+
+  const earnersPromise =
+    loadLobbyWoloEarnersBoard(
+      prisma,
+      {
+        mode,
+        generatedAt,
+      },
+    );
 
   const sharedSnapshotPromise = Promise.all([
     loadBetBoardSnapshot(prisma, viewerUid, {
@@ -242,18 +259,6 @@ export async function loadWarChestSnapshot(
     }),
   ]);
 
-  const earners = await loadLobbyWoloEarnersBoard(
-    prisma,
-    { mode },
-  );
-  const weekStartsAt = new Date(earners.weekStartsAt);
-  const weeklyWindowStart = Number.isNaN(weekStartsAt.getTime())
-    ? new Date(Date.now() - earners.timeframeDays * 24 * 60 * 60 * 1000)
-    : weekStartsAt;
-  const weeklyWagerWhere = visibleMainnetWagerWhere({
-    createdAt: { gte: weeklyWindowStart },
-  });
-
   const weeklySnapshotPromise = Promise.all([
     prisma.betWager.aggregate({
       where: weeklyWagerWhere,
@@ -286,6 +291,7 @@ export async function loadWarChestSnapshot(
   ]);
 
   const [
+    earners,
     [
       weeklyWagerSummary,
       weeklyBettors,
@@ -303,6 +309,7 @@ export async function loadWarChestSnapshot(
       settledMarketCount,
     ],
   ] = await Promise.all([
+    earnersPromise,
     weeklySnapshotPromise,
     sharedSnapshotPromise,
   ]);
@@ -341,7 +348,7 @@ export async function loadWarChestSnapshot(
   });
 
   return {
-    generatedAt: new Date().toISOString(),
+    generatedAt: generatedAt.toISOString(),
     wolo,
     earners,
     betBoard,
