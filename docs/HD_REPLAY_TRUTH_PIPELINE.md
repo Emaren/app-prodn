@@ -101,6 +101,15 @@ coherent complete winning team, and direct result evidence such as postgame or
 scoreboard truth or resignation by every member of the losing team. The legacy
 scalar `winner` field is never sufficient team settlement truth.
 
+The same rule applies to replay-recovery suppression. A non-empty
+`game_stats.winner` value must not make recurrent recovery conclude that public
+result truth already exists when the public replay resolver rejects that scalar.
+Only an accepted statistics adjudication or an accepted public projection with
+`result_eligibility = resolved` suppresses result reconciliation. Automatic
+terminal evidence may therefore replace an untrusted legacy scalar with a
+stats-only append-only adjudication when its own evidence contract passes.
+That promotion never grants betting or settlement authority.
+
 A trusted duel has one winning player, not a two-player winning team. Shared
 structured-result adapters must accept that cardinality only when the final
 roster is exactly 1v1 and the same frozen proposition checks pass. Missing
