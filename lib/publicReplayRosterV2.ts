@@ -210,6 +210,81 @@ function booleanValue(
 }
 
 
+function teamIdValue(
+  value: unknown
+): string | number | null {
+  const numeric =
+    numberValue(
+      value
+    );
+
+  if (numeric !== null) {
+    return numeric;
+  }
+
+  const text =
+    textValue(
+      value
+    );
+
+  if (
+    !text ||
+    [
+      "none",
+      "null",
+      "unknown",
+    ].includes(
+      text.toLowerCase()
+    )
+  ) {
+    return null;
+  }
+
+  return text;
+}
+
+
+function uniqueTeamId(
+  values:
+    unknown[]
+) {
+  const normalized =
+    values
+      .map(
+        teamIdValue
+      )
+      .filter(
+        (
+          value
+        ): value is string | number =>
+          value !== null
+      );
+
+  const keyed =
+    new Map<
+      string,
+      string | number
+    >();
+
+  for (
+    const value of
+    normalized
+  ) {
+    keyed.set(
+      `${typeof value}:${String(value)}`,
+      value
+    );
+  }
+
+  return keyed.size ===
+      1
+    ? [
+        ...keyed.values(),
+      ][0]
+    : null;
+}
+
+
 export function stableReplayRosterV2Value(
   value: unknown
 ): unknown {
@@ -1153,7 +1228,10 @@ function buildPublicReplayRosterProjection(
 
 
   const teamIds:
-    number[] =
+    Array<
+      string |
+      number
+    > =
       [];
 
 
@@ -1165,6 +1243,7 @@ function buildPublicReplayRosterProjection(
   const teamByPlayerKey =
     new Map<
       string,
+      string |
       number
     >();
 
@@ -1174,9 +1253,13 @@ function buildPublicReplayRosterProjection(
     teams
   ) {
     const teamId =
-      numberValue(
-        team.team_id
-      );
+      mode.allowUnevenTeams
+        ? teamIdValue(
+            team.team_id
+          )
+        : numberValue(
+            team.team_id
+          );
 
 
     const playerKeys =
@@ -1199,7 +1282,19 @@ function buildPublicReplayRosterProjection(
 
     if (
       teamId === null ||
-      teamId < 0
+      (
+        typeof teamId ===
+          "number" &&
+        teamId < 0
+      ) ||
+      (
+        typeof teamId ===
+          "string" &&
+        (
+          !teamId ||
+          teamId === "-1"
+        )
+      )
     ) {
       blockers.push(
         `invalid_team_id:${textValue(team.team_id) || "missing"}`
@@ -1429,8 +1524,14 @@ function buildPublicReplayRosterProjection(
     const observedTeamId =
       teamValues.length >
         0
-        ? uniqueNumber(
-            teamValues
+        ? (
+            mode.allowUnevenTeams
+              ? uniqueTeamId(
+                  teamValues
+                )
+              : uniqueNumber(
+                  teamValues
+                )
           )
         : null;
 
