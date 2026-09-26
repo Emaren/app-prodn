@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e0d2324717c694a3f452c40d109565dfdc6611efda84f18123eead62a3af76d2",
+      "sha256": "e4d822afc6928d25cf3cd54b5eca3d20a520a18416d1bd7eae817bb8ec1ba846",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/game-stats-public-winner-authority-v1",
-    "commit": "7ace99f0d067ede4e3e87a8fc386fd3fdc19a824"
+    "commit": "c73c989a0709c8d56f51e63dc91de1f4a1f1400c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
