@@ -162,6 +162,43 @@ It must not directly redefine Watcher-owned current Steam DM rating.
 
 Statistics authority remains independent from betting and Wolo authority.
 
+## Targeted roster-only recovery
+
+The internal `/api/admin/replay-roster-recovery` rail closes a narrower gap
+than result adjudication: an exact current Pass-8 parser run may contain
+complete direct Steam/team/player-number evidence while the stored
+`GameStats.players` roster remains too incomplete for later result policies to
+consume.
+
+This rail reuses `public_replay_roster_v2` projection authority. It is
+deliberately **roster-only**:
+
+- source must be the exact current replay hash and canonical Pass-8 contract;
+- only candidate observations with no public-aggregate authority are consumed;
+- direct Steam identity and explicit replay/final team-ID provenance are
+  required;
+- finality, disconnect/desync, linked-market, linked-claim,
+  accepted-adjudication and prior promotion boundaries are rechecked;
+- every projected player winner flag must remain `null`;
+- the complete public result-authority snapshot before and after roster
+  projection must be identical;
+- apply runs under a per-game advisory lock inside a SERIALIZABLE transaction;
+- the only permitted mutations are one append-only `ReplayRosterPromotion`
+  row and replacement of that GameStats row's `players` JSON;
+- `affectsResults=false`, `affectsBets=false` and
+  `settlementAuthority=false` are explicit ledger facts.
+
+Dry-run is the default. Mutation requires `apply=1`, the protected internal
+API key and the configured admin recovery actor.
+
+Roster recovery never declares a winner. After an eligible roster repair, the
+existing automatic terminal-result reconciler must independently re-evaluate
+the game. A result may advance only if that separate policy has its own required
+terminal/action evidence; otherwise the game remains under review.
+
+Historical sealed V2 campaign scripts remain immutable. The targeted rail does
+not relax or reuse their campaign-specific manifest, plan or game-ID seals.
+
 ## Full-vault certainty closure
 
 `aoe2war truth closure` complements the census by forcing every final game into

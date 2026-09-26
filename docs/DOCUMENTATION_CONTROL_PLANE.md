@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `performance/players-concurrent-read-lanes-v1` at `8cc64b7657012c7b91faaa2b6776f59b73509128`
+Implementation baseline: `feature/targeted-replay-roster-recovery-v1` at `bb014af3dc033306eb0410564ca29426d6922aad`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

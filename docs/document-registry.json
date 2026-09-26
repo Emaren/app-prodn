@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e24c9b4fe18b806f669b128c0f5e3dc8d843e34eb705f3a55cb01f0470613ed1",
+      "sha256": "c54d1e22eddbadf25b78eab9540fd654fd8046c1dbcea55e554a1fb9d9b85208",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1395,7 +1395,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-04",
       "sensitivity": "restricted",
-      "sha256": "729d2435c96f75f789e915435ae85aaf7b155587090dce7f4f77f27aced07419",
+      "sha256": "ad54ca840396bdf2abb0d699b419c6d8e16bf1b06436d915b0845a5b2f257a3f",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "performance/players-concurrent-read-lanes-v1",
-    "commit": "8cc64b7657012c7b91faaa2b6776f59b73509128"
+    "branch": "feature/targeted-replay-roster-recovery-v1",
+    "commit": "bb014af3dc033306eb0410564ca29426d6922aad"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
