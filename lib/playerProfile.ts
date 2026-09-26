@@ -343,6 +343,44 @@ async function safeLoadPendingWoloClaimSummaries(
   }
 }
 
+
+async function safeLoadUserCommunitySummary(
+  prisma: PrismaClient,
+  userId: number | null,
+): Promise<UserCommunitySummary> {
+  const empty: UserCommunitySummary = {
+    badges: [],
+    gifts: [],
+    giftedWolo: 0,
+  };
+
+  if (userId === null) {
+    return empty;
+  }
+
+  try {
+    return (
+      (
+        await loadUserCommunitySummaries(
+          prisma,
+          [userId],
+        )
+      ).get(userId) ??
+      empty
+    );
+  } catch (error) {
+    if (!isMissingPrismaStorageError(error)) {
+      throw error;
+    }
+
+    warnOptionalProfileRail(
+      "community honor",
+      error,
+    );
+    return empty;
+  }
+}
+
 function normalizeKey(value: string | null | undefined) {
   return (value || "").trim().replace(/\s+/g, " ").toLowerCase();
 }
@@ -2109,25 +2147,30 @@ async function buildProfileFromPlayer(
     input.currentPlayer,
     profileAliases,
   );
-  const pendingClaimSummaries = await safeLoadPendingWoloClaimSummaries(
-    prisma,
-    profileAliases,
-  );
+
+  /*
+   * Pending-claim projection and community honors are independent optional
+   * rails. Preserve their existing old-schema fallbacks, but do not make one
+   * database wait block the start of the other on every public profile load.
+   */
+  const [
+    pendingClaimSummaries,
+    community,
+  ] = await Promise.all([
+    safeLoadPendingWoloClaimSummaries(
+      prisma,
+      profileAliases,
+    ),
+    safeLoadUserCommunitySummary(
+      prisma,
+      input.user?.id ?? null,
+    ),
+  ]);
+
   const currentPlayer = applyPendingWoloClaimSummary(
     replayAwarePlayer,
     pendingClaimSummaries,
   );
-  let community: UserCommunitySummary = { badges: [], gifts: [], giftedWolo: 0 };
-  if (input.user) {
-    try {
-      community = (await loadUserCommunitySummaries(prisma, [input.user.id])).get(input.user.id) ?? community;
-    } catch (error) {
-      if (!isMissingPrismaStorageError(error)) {
-        throw error;
-      }
-      warnOptionalProfileRail("community honor", error);
-    }
-  }
 
   const performance = buildPlayerPerformanceStats(matchedGames, currentPlayer);
   const command = buildCommandStats(matchedGames, currentPlayer);

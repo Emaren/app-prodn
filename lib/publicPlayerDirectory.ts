@@ -429,11 +429,6 @@ export async function loadPublicPlayerDirectoryFresh(
     .map((game) => applyReplayAdjudicationToGameStats(game) as CandidateGameRow)
     .sort(sortCandidateGamesByPlayedAtDesc);
 
-  const communityMap = await loadUserCommunitySummaries(
-    prisma,
-    users.map((user) => user.id)
-  );
-
   /*
    * Public player totals use the canonical public replay truth policy.
    *
@@ -452,14 +447,22 @@ export async function loadPublicPlayerDirectoryFresh(
   );
 
   /*
-   * Identity grain comes from the accepted, current normalized replay
-   * projection corpus. Raw GameStats JSON remains useful for rating snapshots
-   * and presentation, but an unaccepted raw participant can never create a
-   * leaderboard identity.
+   * Community honors, accepted replay-player projections, and pending WOLO
+   * gifts are independent read lanes once users + raw replay rows are loaded.
+   * Start all three together so a generation rebuild pays the slowest lane,
+   * not the sum of three unrelated database waits.
    */
-  const canonicalSnapshots =
+  const communityMapPromise =
+    loadUserCommunitySummaries(
+      prisma,
+      users.map((user) => user.id),
+    );
+
+  const canonicalSnapshotsPromise: Promise<
+    CanonicalPlayerSnapshot[]
+  > =
     uniqueGames.length > 0
-      ? await prisma.replayPlayerSnapshot.findMany(
+      ? prisma.replayPlayerSnapshot.findMany(
           {
             where: {
               gameStatsId: {
@@ -493,39 +496,95 @@ export async function loadPublicPlayerDirectoryFresh(
             },
           },
         )
-      : [];
+      : Promise.resolve([]);
 
-    const pendingGiftByUserUid = new Map<string, { count: number; amount: number }>();
-    const userIdToUid = new Map(users.map((user) => [user.id, user.uid]));
-    const claimedUserIds = users.map((user) => user.id);
+  const pendingGiftByUserUidPromise =
+    (async () => {
+      const pendingGiftByUserUid =
+        new Map<
+          string,
+          { count: number; amount: number }
+        >();
+      const userIdToUid =
+        new Map(
+          users.map(
+            (user) => [
+              user.id,
+              user.uid,
+            ],
+          ),
+        );
+      const claimedUserIds =
+        users.map(
+          (user) => user.id,
+        );
 
-    if (claimedUserIds.length > 0) {
+      if (claimedUserIds.length === 0) {
+        return pendingGiftByUserUid;
+      }
+
       try {
-        const pendingGiftGroups = await prisma.userGift.groupBy({
-          by: ["userId"],
-          where: {
-            userId: { in: claimedUserIds },
-            kind: "WOLO",
-            status: "pending",
-            amount: { gt: 0 },
-          },
-          _count: { _all: true },
-          _sum: { amount: true },
-        });
+        const pendingGiftGroups =
+          await prisma.userGift.groupBy({
+            by: ["userId"],
+            where: {
+              userId: {
+                in: claimedUserIds,
+              },
+              kind: "WOLO",
+              status: "pending",
+              amount: { gt: 0 },
+            },
+            _count: { _all: true },
+            _sum: { amount: true },
+          });
 
         for (const group of pendingGiftGroups) {
-          const uid = userIdToUid.get(group.userId);
+          const uid =
+            userIdToUid.get(
+              group.userId,
+            );
+
           if (!uid) continue;
 
-          pendingGiftByUserUid.set(uid, {
-            count: group._count._all,
-            amount: group._sum.amount ?? 0,
-          });
+          pendingGiftByUserUid.set(
+            uid,
+            {
+              count: group._count._all,
+              amount:
+                group._sum.amount ??
+                0,
+            },
+          );
         }
       } catch (error) {
-        console.warn(`Public player directory pending WOLO gift rail unavailable: ${error instanceof Error ? error.message : String(error)}`);
+        console.warn(
+          `Public player directory pending WOLO gift rail unavailable: ${
+            error instanceof Error
+              ? error.message
+              : String(error)
+          }`,
+        );
       }
-    }
+
+      return pendingGiftByUserUid;
+    })();
+
+  /*
+   * Identity grain comes from the accepted, current normalized replay
+   * projection corpus. Raw GameStats JSON remains useful for rating snapshots
+   * and presentation, but an unaccepted raw participant can never create a
+   * leaderboard identity.
+   */
+  const [
+    communityMap,
+    canonicalSnapshots,
+    pendingGiftByUserUid,
+  ] = await Promise.all([
+    communityMapPromise,
+    canonicalSnapshotsPromise,
+    pendingGiftByUserUidPromise,
+  ]);
 
 
   const directory = new Map<string, PublicPlayerDirectoryEntry>();
