@@ -659,10 +659,7 @@ export async function executePendingTrophyTributePayouts(
   };
 }
 
-const trophySeedEnsureByClient =
-  new WeakMap<PrismaClient, Promise<void>>();
-
-async function ensureTrophySeedDataFresh(prisma: PrismaClient) {
+export async function ensureTrophySeedData(prisma: PrismaClient) {
   for (const seed of SEEDS) {
     const existing = await prisma.trophy.findUnique({ where: { trophyId: seed.trophyId } });
     if (existing) continue;
@@ -743,35 +740,38 @@ async function ensureTrophySeedDataFresh(prisma: PrismaClient) {
   }
 }
 
+const publicTrophySeedEnsureByClient =
+  new WeakMap<PrismaClient, Promise<void>>();
+
 /**
- * Trophy seed reconciliation is bootstrap/repair work, not per-request work.
+ * Public trophy reads keep lazy bootstrap safety without paying the seed
+ * reconciliation transaction on every request.
  *
- * Production shares one Prisma client, so retain the successful reconciliation
- * promise for that client for the lifetime of the process. Concurrent cold
- * callers join the same run. A failed run is evicted so a later request or
- * operator action may retry safely.
+ * The canonical ensureTrophySeedData() function above deliberately remains
+ * fully re-runnable for admin/operator repair paths. Only public reads retain
+ * one successful reconciliation promise per production Prisma client.
  */
-export function ensureTrophySeedData(prisma: PrismaClient) {
+function ensurePublicTrophySeedData(prisma: PrismaClient) {
   const existing =
-    trophySeedEnsureByClient.get(prisma);
+    publicTrophySeedEnsureByClient.get(prisma);
 
   if (existing) {
     return existing;
   }
 
   const run =
-    ensureTrophySeedDataFresh(prisma)
+    ensureTrophySeedData(prisma)
       .catch((error) => {
         if (
-          trophySeedEnsureByClient.get(prisma) ===
+          publicTrophySeedEnsureByClient.get(prisma) ===
           run
         ) {
-          trophySeedEnsureByClient.delete(prisma);
+          publicTrophySeedEnsureByClient.delete(prisma);
         }
         throw error;
       });
 
-  trophySeedEnsureByClient.set(
+  publicTrophySeedEnsureByClient.set(
     prisma,
     run,
   );
@@ -1226,7 +1226,7 @@ export async function loadTrophyCommandSnapshot(
 }
 
 export async function loadPublicTrophies(prisma: PrismaClient) {
-  await ensureTrophySeedData(prisma);
+  await ensurePublicTrophySeedData(prisma);
   return prisma.trophy.findMany({
     include: {
       currentHolder: {
