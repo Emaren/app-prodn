@@ -2255,6 +2255,16 @@ export function resolveReplayWinnerTruth(
   };
 }
 
+export function replayWinnerHasPublicStatsAuthority(
+  input: ReplayWinnerTruthInput
+) {
+  const truth = resolveReplayWinnerTruth(input);
+  return Boolean(
+    truth.statsEligible &&
+    truth.winner
+  );
+}
+
 export function resolveReliableReplayWinner(input: ReplayWinnerTruthInput) {
   const truth = resolveReplayWinnerTruth(input);
   if (!truth.statsEligible) {

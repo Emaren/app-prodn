@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0698f3b85437daf5f6b901633de6f525d797cbf937191c00c90eaff0794c51e3",
+      "sha256": "03165c4ba2c428f9f1b317f48e6cd236a2ff33144a81b2dada01d4a4ea94ce70",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-20",
       "sensitivity": "restricted",
-      "sha256": "cca2ef09cbc4bdd32c7ad81f7a761b9420c6e9ce5d01763ed21b5ff0d0350940",
+      "sha256": "30423154d417cf8a21063d287b12fd488cb577db191c99fe3ae84f5687c073f4",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/trophy-tribute-holder-reassignment-20260925",
-    "commit": "1c603ebd9b19de3a2e56a0bf33f60a8debe0c2ad"
+    "branch": "fix/replay-reconciliation-trust-scalar-20260926",
+    "commit": "6d5ad91f7722fc271b5c66b18f642c241b20709e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
