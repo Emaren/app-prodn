@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c54d1e22eddbadf25b78eab9540fd654fd8046c1dbcea55e554a1fb9d9b85208",
+      "sha256": "7b117d1e59d3cb151244edc8fb327467c9e712a1f8b21565fc9b5009dd4609bf",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/targeted-replay-roster-recovery-v1",
-    "commit": "bb014af3dc033306eb0410564ca29426d6922aad"
+    "branch": "fix/targeted-roster-eslint-v1",
+    "commit": "7d8c625f44135c52aa776bb2165b325d7e791f57"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
