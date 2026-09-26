@@ -94,6 +94,9 @@ export type TargetedReplayRosterGameSnapshot = {
   linkedMarketCount:
     number;
 
+  linkedClaimCount:
+    number;
+
   acceptedAdjudicationCount:
     number;
 
@@ -711,6 +714,17 @@ export function evaluateTargetedReplayRosterRecovery(
   }
 
   if (
+    game.linkedClaimCount >
+      0
+  ) {
+    blockers.push(
+      `linked_claims:${
+        game.linkedClaimCount
+      }`
+    );
+  }
+
+  if (
     game.acceptedAdjudicationCount >
       0
   ) {
@@ -1229,13 +1243,6 @@ const TARGET_GAME_SELECT =
     event_types:
       true,
 
-    linkedBetMarkets: {
-      select: {
-        id:
-          true,
-      },
-    },
-
     replayResultAdjudications: {
       where: {
         decisionStatus:
@@ -1335,6 +1342,86 @@ async function loadGameSnapshot(
         -1
       );
 
+  const sessionKeys =
+    [
+      game.original_filename,
+      game.replay_file,
+    ]
+      .map(
+        (
+          value
+        ) =>
+          value
+            ?.trim() ??
+          "",
+      )
+      .filter(
+        Boolean,
+      );
+
+  const linkedMarkets =
+    await db
+      .betMarket
+      .findMany({
+        where: {
+          OR: [
+            {
+              linkedGameStatsId:
+                game.id,
+            },
+            ...(sessionKeys.length >
+              0
+              ? [
+                  {
+                    linkedSessionKey: {
+                      in:
+                        sessionKeys,
+                    },
+                  },
+                ]
+              : []),
+          ],
+        },
+
+        select: {
+          id:
+            true,
+        },
+      });
+
+  const linkedMarketIds =
+    linkedMarkets.map(
+      (
+        market
+      ) =>
+        market.id
+    );
+
+  const linkedClaimCount =
+    await db
+      .pendingWoloClaim
+      .count({
+        where: {
+          OR: [
+            {
+              sourceGameStatsId:
+                game.id,
+            },
+            ...(linkedMarketIds.length >
+              0
+              ? [
+                  {
+                    sourceMarketId: {
+                      in:
+                        linkedMarketIds,
+                    },
+                  },
+                ]
+              : []),
+          ],
+        },
+      });
+
   return {
     id:
       game.id,
@@ -1373,9 +1460,9 @@ async function loadGameSnapshot(
       game.event_types,
 
     linkedMarketCount:
-      game
-        .linkedBetMarkets
-        .length,
+      linkedMarkets.length,
+
+    linkedClaimCount,
 
     acceptedAdjudicationCount:
       game
