@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `performance/bounty-single-directory-v1` at `72240c51f387584f933fe8f571a13c23570955fb`
+Implementation baseline: `performance/bounty-single-directory-v1` at `74a810800ffcc395f39c4d06811cd1c19803dbec`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
