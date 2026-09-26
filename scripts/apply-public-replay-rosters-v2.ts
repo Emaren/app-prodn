@@ -19,7 +19,7 @@ import {
 } from "../lib/publicReplayTruth.ts";
 
 import {
-  HD_REPLAY_PARSER_CONTRACT,
+  HD_REPLAY_PARSER_PASS8_CONTRACT,
 } from "../lib/replayEngineRoom.ts";
 
 import {
@@ -100,7 +100,7 @@ type ManifestEntry = {
       string;
 
     parserContract:
-      typeof HD_REPLAY_PARSER_CONTRACT;
+      typeof HD_REPLAY_PARSER_PASS8_CONTRACT;
 
     candidateOutputHash:
       string;
@@ -197,7 +197,7 @@ type Manifest = {
     string;
 
   parserContract:
-    typeof HD_REPLAY_PARSER_CONTRACT;
+    typeof HD_REPLAY_PARSER_PASS8_CONTRACT;
 
   authorityBoundary: {
     rosterOnly:
@@ -1410,19 +1410,19 @@ async function validateEntry(
 
   if (
     run.parserName !==
-      HD_REPLAY_PARSER_CONTRACT
+      HD_REPLAY_PARSER_PASS8_CONTRACT
         .parserName ||
     run.parserVersion !==
-      HD_REPLAY_PARSER_CONTRACT
+      HD_REPLAY_PARSER_PASS8_CONTRACT
         .parserVersion ||
     run.schemaVersion !==
-      HD_REPLAY_PARSER_CONTRACT
+      HD_REPLAY_PARSER_PASS8_CONTRACT
         .schemaVersion ||
     run.passName !==
-      HD_REPLAY_PARSER_CONTRACT
+      HD_REPLAY_PARSER_PASS8_CONTRACT
         .passName ||
     run.passVersion !==
-      HD_REPLAY_PARSER_CONTRACT
+      HD_REPLAY_PARSER_PASS8_CONTRACT
         .passVersion
   ) {
     blockers.push(
@@ -1435,7 +1435,7 @@ async function validateEntry(
     !sameStable(
       entry.source
         .parserContract,
-      HD_REPLAY_PARSER_CONTRACT
+      HD_REPLAY_PARSER_PASS8_CONTRACT
     )
   ) {
     blockers.push(
@@ -2236,7 +2236,7 @@ async function main() {
   if (
     !sameStable(
       manifest.parserContract,
-      HD_REPLAY_PARSER_CONTRACT
+      HD_REPLAY_PARSER_PASS8_CONTRACT
     )
   ) {
     throw new Error(
