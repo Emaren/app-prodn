@@ -5,6 +5,9 @@ import {
 import {
   evaluateWatcherTerminalParserStability,
 } from "./watcherTerminalParserStability.ts";
+import {
+  replayWinnerHasPublicStatsAuthority,
+} from "./unresolvedWatcherResult.ts";
 
 export const WATCHER_TEAM_TERMINAL_POLICY_VERSION =
   "replay-team-terminal-action-tail-v3" as const;
@@ -258,23 +261,6 @@ function eventTypes(value: unknown) {
   );
 }
 
-function knownWinner(value: unknown) {
-  const normalized =
-    cleanText(value, 100).toLowerCase();
-
-  return Boolean(
-    normalized &&
-      ![
-        "unknown",
-        "unresolved",
-        "undetermined",
-        "none",
-        "null",
-        "n/a",
-        "tbd",
-      ].includes(normalized)
-  );
-}
 
 function activityRows(value: unknown): ActivityRow[] {
   return arrayValue(value)
@@ -993,11 +979,24 @@ export function evaluateWatcherTeamTerminalResult(
     };
   }
 
-  if (knownWinner(input.winner)) {
+  if (
+    replayWinnerHasPublicStatsAuthority({
+      winner: input.winner,
+      players: Array.isArray(parseJson(input.players))
+        ? (parseJson(input.players) as Array<{ name?: unknown; winner?: unknown }>)
+        : [],
+      parseReason: input.parseReason,
+      parseSource: input.parseSource,
+      keyEvents: input.keyEvents,
+      eventTypes: input.eventTypes,
+      disconnectDetected: input.disconnectDetected,
+      isFinal: input.isFinal,
+    })
+  ) {
     return {
       eligible: false,
       reason:
-        "stored_winner_exists",
+        "public_winner_already_accepted",
     };
   }
 
