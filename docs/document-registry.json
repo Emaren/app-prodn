@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "f9267edaf89d847c98df355b7b807fea1fe6e443f2c94fb3aac1aafdca601734",
+      "sha256": "c44be0f6dbb383d75672c3391c4e7079b21a90f788b9cf2ce1d7347371c795c9",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "integration/replay-truth-speed-hardening-v1",
-    "commit": "6df2ddd52c88953e407cfef83315671907ed0a67"
+    "branch": "performance/war-chest-concurrent-period-v1",
+    "commit": "1a096a66ab098fc153f8e85ec31655b259318e1c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
