@@ -970,11 +970,12 @@ test(
 
         update:
           async (
-            args:
-              Record<
-                string,
-                any
-              >,
+            args: {
+              data: {
+                players:
+                  unknown;
+              };
+            },
           ) => {
             writes.push(
               "gameStats.update",
@@ -1010,11 +1011,13 @@ test(
       replayRosterPromotion: {
         create:
           async (
-            args:
-              Record<
-                string,
-                any
-              >,
+            args: {
+              data:
+                Record<
+                  string,
+                  unknown
+                >;
+            },
           ) => {
             writes.push(
               "replayRosterPromotion.create",
