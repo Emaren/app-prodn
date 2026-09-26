@@ -239,67 +239,11 @@ function contendersForTitle(
   };
 }
 
-export async function loadChampionTitleEconomyState(
+async function loadLiveChampionDefinitionMap(
   prisma: PrismaClient
-): Promise<ChampionTitleEconomyState> {
-  let leaderboardEntries: CountryAwareLeaderboardEntry[] = [];
-  let leaderboardAvailable = false;
+): Promise<Map<string, ChampionTitleDefinition>> {
   const liveDefinitionMap = new Map<string, ChampionTitleDefinition>();
   const lastTributeByTrophyId = new Map<number, LastTributeProof>();
-
-  try {
-    const leaderboard = await loadLobbyLeaderboard(prisma, {
-      limit: 120,
-      includePendingClaimed: false,
-    });
-    leaderboardEntries = leaderboard.entries;
-    leaderboardAvailable = true;
-  } catch (error) {
-    console.warn("Champion contender leaderboard unavailable:", error);
-  }
-
-  if (leaderboardEntries.length > 0) {
-    try {
-      const users = await prisma.user.findMany({
-        where: {
-          OR: [
-            { representedCountry: { not: null } },
-            { genderDivision: "Woman" },
-          ],
-        },
-        select: {
-          uid: true,
-          inGameName: true,
-          steamPersonaName: true,
-          representedCountry: true,
-          genderDivision: true,
-        },
-        take: 1000,
-      });
-      const profileByKey = new Map<string, { representedCountry: string | null; genderDivision: string | null }>();
-
-      for (const user of users) {
-        const profile = {
-          representedCountry: user.representedCountry,
-          genderDivision: user.genderDivision || "Man",
-        };
-        putProfileKey(profileByKey, user.uid, profile);
-        putProfileKey(profileByKey, user.inGameName, profile);
-        putProfileKey(profileByKey, user.steamPersonaName, profile);
-      }
-
-      leaderboardEntries = leaderboardEntries.map((entry) => {
-        const profile = profileForEntry(entry, profileByKey);
-        return {
-          ...entry,
-          representedCountry: profile?.representedCountry ?? null,
-          genderDivision: profile?.genderDivision ?? null,
-        };
-      });
-    } catch (error) {
-      console.warn("Champion represented-country enrichment unavailable:", error);
-    }
-  }
 
   try {
     const trophies = await loadPublicTrophies(prisma);
@@ -398,6 +342,78 @@ export async function loadChampionTitleEconomyState(
   } catch (error) {
     console.warn("Live Trophy registry unavailable; using title definitions:", error);
   }
+
+  return liveDefinitionMap;
+}
+
+export async function loadChampionTitleEconomyState(
+  prisma: PrismaClient
+): Promise<ChampionTitleEconomyState> {
+  let leaderboardEntries: CountryAwareLeaderboardEntry[] = [];
+  let leaderboardAvailable = false;
+
+  // Trophy/payout state and leaderboard/profile state are independent read
+  // lanes. Start the trophy lane immediately so a cold public /champions
+  // request pays the slower lane, not the sum of both lanes.
+  const liveDefinitionPromise =
+    loadLiveChampionDefinitionMap(prisma);
+
+  try {
+    const leaderboard = await loadLobbyLeaderboard(prisma, {
+      limit: 120,
+      includePendingClaimed: false,
+    });
+    leaderboardEntries = leaderboard.entries;
+    leaderboardAvailable = true;
+  } catch (error) {
+    console.warn("Champion contender leaderboard unavailable:", error);
+  }
+
+  if (leaderboardEntries.length > 0) {
+    try {
+      const users = await prisma.user.findMany({
+        where: {
+          OR: [
+            { representedCountry: { not: null } },
+            { genderDivision: "Woman" },
+          ],
+        },
+        select: {
+          uid: true,
+          inGameName: true,
+          steamPersonaName: true,
+          representedCountry: true,
+          genderDivision: true,
+        },
+        take: 1000,
+      });
+      const profileByKey = new Map<string, { representedCountry: string | null; genderDivision: string | null }>();
+
+      for (const user of users) {
+        const profile = {
+          representedCountry: user.representedCountry,
+          genderDivision: user.genderDivision || "Man",
+        };
+        putProfileKey(profileByKey, user.uid, profile);
+        putProfileKey(profileByKey, user.inGameName, profile);
+        putProfileKey(profileByKey, user.steamPersonaName, profile);
+      }
+
+      leaderboardEntries = leaderboardEntries.map((entry) => {
+        const profile = profileForEntry(entry, profileByKey);
+        return {
+          ...entry,
+          representedCountry: profile?.representedCountry ?? null,
+          genderDivision: profile?.genderDivision ?? null,
+        };
+      });
+    } catch (error) {
+      console.warn("Champion represented-country enrichment unavailable:", error);
+    }
+  }
+
+  const liveDefinitionMap =
+    await liveDefinitionPromise;
 
   return {
     titles: allChampionTitles.map((definition) => {

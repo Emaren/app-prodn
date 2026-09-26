@@ -61,7 +61,7 @@ test("critical performance safeguards stay wired into the public surfaces", () =
   assert.doesNotMatch(home, /image\.loading = "eager"[\s\S]{0,900}for \(const warrior of pool\)/);
   assert.match(shell, /fetch\("\/api\/header-summary"/);
   assert.doesNotMatch(shell, /fetch\("\/api\/(?:live-games|requests|workshop)\?summary=1"/);
-  assert.match(rivalries, /const RIVALRIES_PER_PAGE = 72/);
+  assert.match(rivalries, /const RIVALRIES_PER_PAGE = 36/);
   assert.match(earners, /\$\{Math\.max\(totalParticipants, entries\.length\)\} earners/);
   assert.doesNotMatch(earners, /\$\{[^}]+\}\s*\/\s*\$\{[^}]+\}\s*earners/);
   assert.match(playerFeed, /distanceFromBottom < 1600/);

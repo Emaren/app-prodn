@@ -215,21 +215,29 @@ async function loadPreviewLeaderboardEntries(
 async function loadBountyDirectory(
   prisma: PrismaClient,
 ) {
-  const claimedPreview =
-    await loadPreviewLeaderboardEntries(
+  /*
+   * Claimed and all-player boards are distinct ranking scopes, so preserve
+   * both exact queries. Run them together: /bounties needs both projections,
+   * but there is no reason for one network/serialization wait to block the
+   * start of the other.
+   */
+  const [
+    claimedPreview,
+    allPreview,
+  ] = await Promise.all([
+    loadPreviewLeaderboardEntries(
       "claimed",
-    );
+    ),
+    loadPreviewLeaderboardEntries(
+      "all",
+    ),
+  ]);
 
   if (!claimedPreview) {
     return loadPublicPlayerDirectory(
       prisma,
     );
   }
-
-  const allPreview =
-    (await loadPreviewLeaderboardEntries(
-      "all",
-    )) ?? [];
 
   return {
     claimedEntries:
@@ -238,7 +246,7 @@ async function loadBountyDirectory(
           entry.claimed,
       ),
     replayEntries:
-      allPreview.filter(
+      (allPreview ?? []).filter(
         (entry) =>
           !entry.claimed,
       ),

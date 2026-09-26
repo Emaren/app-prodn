@@ -485,6 +485,62 @@ test("public loader admits only official numbered on-chain bounty transfers", ()
   );
 });
 
+test("public bounty Hall loads exact claimed and all-player scopes concurrently", () => {
+  const source = readFileSync(
+    new URL(
+      "../lib/bounties.ts",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+
+  const loader = source.slice(
+    source.indexOf(
+      "async function loadBountyDirectory",
+    ),
+    source.indexOf(
+      "export async function loadBountyBoard",
+    ),
+  );
+
+  assert.match(
+    loader,
+    /await Promise\.all\(\[/,
+  );
+  assert.match(
+    loader,
+    /loadPreviewLeaderboardEntries\(\s*"claimed"/s,
+  );
+  assert.match(
+    loader,
+    /loadPreviewLeaderboardEntries\(\s*"all"/s,
+  );
+  assert.match(
+    loader,
+    /claimedEntries:[\s\S]*claimedPreview\.filter/,
+  );
+  assert.match(
+    loader,
+    /replayEntries:[\s\S]*allPreview[\s\S]*\.filter/,
+  );
+
+  const promiseAll = loader.indexOf(
+    "await Promise.all",
+  );
+  const claimed = loader.indexOf(
+    'loadPreviewLeaderboardEntries(\n      "claimed"',
+  );
+  const all = loader.indexOf(
+    'loadPreviewLeaderboardEntries(\n      "all"',
+  );
+
+  assert.ok(
+    promiseAll >= 0 &&
+      claimed > promiseAll &&
+      all > promiseAll,
+  );
+});
+
 test("staking bounty history shares the official numbered memo rule", () => {
   const route = readFileSync(
     new URL(
