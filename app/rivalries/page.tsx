@@ -13,7 +13,11 @@ import {
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-const RIVALRIES_PER_PAGE = 72;
+// Rivalry cards are deliberately rich and can make the RSC/HTML payload the
+// dominant cost after the generation-keyed data projection is warm. Keep the
+// first navigation bounded; the full corpus remains reachable through the
+// existing deterministic pagination.
+const RIVALRIES_PER_PAGE = 36;
 
 type RivalriesPageProps = {
   searchParams?: Promise<{ page?: string | string[] }>;
