@@ -216,20 +216,24 @@ async function loadBountyDirectory(
   prisma: PrismaClient,
 ) {
   /*
-   * The complete leaderboard preview already carries each entry's claimed
-   * state. One authoritative snapshot can therefore feed both Hall cohorts.
-   *
-   * Avoid fetching the same production leaderboard twice in series on every
-   * /bounties render: that duplicated a same-origin dynamic request and could
-   * make the page pay two independent network/serialization waits before the
-   * Hall was allowed to render.
+   * Claimed and all-player boards are distinct ranking scopes, so preserve
+   * both exact queries. Run them together: /bounties needs both projections,
+   * but there is no reason for one network/serialization wait to block the
+   * start of the other.
    */
-  const allPreview =
-    await loadPreviewLeaderboardEntries(
+  const [
+    claimedPreview,
+    allPreview,
+  ] = await Promise.all([
+    loadPreviewLeaderboardEntries(
+      "claimed",
+    ),
+    loadPreviewLeaderboardEntries(
       "all",
-    );
+    ),
+  ]);
 
-  if (!allPreview) {
+  if (!claimedPreview) {
     return loadPublicPlayerDirectory(
       prisma,
     );
@@ -237,12 +241,12 @@ async function loadBountyDirectory(
 
   return {
     claimedEntries:
-      allPreview.filter(
+      claimedPreview.filter(
         (entry) =>
           entry.claimed,
       ),
     replayEntries:
-      allPreview.filter(
+      (allPreview ?? []).filter(
         (entry) =>
           !entry.claimed,
       ),
