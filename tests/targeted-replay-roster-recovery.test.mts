@@ -411,6 +411,9 @@ function gameFixture():
     linkedMarketCount:
       0,
 
+    linkedClaimCount:
+      0,
+
     acceptedAdjudicationCount:
       0,
 
@@ -565,6 +568,9 @@ test(
     game.linkedMarketCount =
       1;
 
+    game.linkedClaimCount =
+      2;
+
     game.acceptedAdjudicationCount =
       1;
 
@@ -583,6 +589,12 @@ test(
     assert.ok(
       plan.blockers.includes(
         "linked_markets:1",
+      ),
+    );
+
+    assert.ok(
+      plan.blockers.includes(
+        "linked_claims:2",
       ),
     );
 
@@ -745,9 +757,6 @@ test(
             event_types:
               game.event_types,
 
-            linkedBetMarkets:
-              [],
-
             replayResultAdjudications:
               [],
 
@@ -798,6 +807,16 @@ test(
                 game.id,
             };
           },
+      },
+
+      betMarket: {
+        findMany:
+          async () => [],
+      },
+
+      pendingWoloClaim: {
+        count:
+          async () => 0,
       },
 
       replayParseRun: {
