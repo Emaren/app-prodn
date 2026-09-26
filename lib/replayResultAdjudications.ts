@@ -16,6 +16,9 @@ import {
   evaluateWatcherTerminalParserStability,
   WATCHER_TERMINAL_RAW_ACTIVITY_PATH,
 } from "./watcherTerminalParserStability.ts";
+import {
+  replayWinnerHasPublicStatsAuthority,
+} from "./unresolvedWatcherResult.ts";
 
 export const REPLAY_RESULT_ACCEPTED = "accepted" as const;
 export const REPLAY_RESULT_PENDING_ADMIN = "pending_admin_approval" as const;
@@ -1448,21 +1451,6 @@ function automaticEventTypes(value: unknown) {
   );
 }
 
-function automaticKnownWinner(value: unknown) {
-  const normalized = cleanText(value, 100).toLowerCase();
-  return Boolean(
-    normalized &&
-      ![
-        "unknown",
-        "unresolved",
-        "undetermined",
-        "none",
-        "null",
-        "n/a",
-        "tbd",
-      ].includes(normalized)
-  );
-}
 
 function automaticFiniteNumber(value: unknown) {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -1615,10 +1603,23 @@ export function evaluateWatcherRecorderExitResult(
     };
   }
 
-  if (automaticKnownWinner(input.winner)) {
+  if (
+    replayWinnerHasPublicStatsAuthority({
+      winner: input.winner,
+      players: Array.isArray(parseJson(input.players))
+        ? (parseJson(input.players) as Array<{ name?: unknown; winner?: unknown }>)
+        : [],
+      parseReason: input.parseReason,
+      parseSource: input.parseSource,
+      keyEvents: input.keyEvents,
+      eventTypes: input.eventTypes,
+      disconnectDetected: input.disconnectDetected,
+      isFinal: input.isFinal,
+    })
+  ) {
     return {
       eligible: false,
-      reason: "stored_winner_exists",
+      reason: "public_winner_already_accepted",
     };
   }
 
