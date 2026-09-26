@@ -1143,7 +1143,7 @@ function buildPublicReplayRosterProjection(
         format
       );
 
-  const expectedTeamSizes =
+  const parsedTeamSizes =
     formatMatch
       ? [
           Number(
@@ -1154,6 +1154,36 @@ function buildPublicReplayRosterProjection(
           ),
         ]
       : [];
+
+  /*
+   * V2 is a sealed historical authority. Preserve its exact balanced-only
+   * envelope, including the historical secondary team-size blocker for
+   * unsupported formats.
+   *
+   * V3 alone consumes the broader exact two-team parser contract.
+   */
+  const expectedTeamSizes =
+    mode.allowUnevenTeams
+      ? parsedTeamSizes
+      : format ===
+          "2v2"
+        ? [
+            2,
+            2,
+          ]
+        : format ===
+            "3v3"
+          ? [
+              3,
+              3,
+            ]
+          : format ===
+              "4v4"
+            ? [
+                4,
+                4,
+              ]
+            : [];
 
   const expectedPlayerCount =
     expectedTeamSizes
