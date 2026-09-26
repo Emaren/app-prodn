@@ -9,6 +9,7 @@ import {
 import {
   applyTargetedReplayRosterRecovery,
   evaluateTargetedReplayRosterRecovery,
+  planTargetedReplayRosterRecovery,
   type TargetedReplayRosterGameSnapshot,
   type TargetedReplayRosterRunSnapshot,
 } from "../lib/targetedReplayRosterRecovery.ts";
@@ -602,6 +603,186 @@ test(
       plan.blockers.includes(
         "accepted_result_adjudication",
       ),
+    );
+  },
+);
+
+
+test(
+  "planner discovers session-key markets and claims before allowing roster mutation",
+  async () => {
+    const game =
+      gameFixture();
+
+    let marketWhere:
+      unknown =
+      null;
+
+    let claimWhere:
+      unknown =
+      null;
+
+    const db = {
+      gameStats: {
+        findUnique:
+          async () => ({
+            id:
+              game.id,
+
+            replayHash:
+              game.replayHash,
+
+            replay_file:
+              game.replay_file,
+
+            original_filename:
+              game.original_filename,
+
+            parse_source:
+              game.parse_source,
+
+            parse_reason:
+              game.parse_reason,
+
+            is_final:
+              game.is_final,
+
+            disconnect_detected:
+              game.disconnect_detected,
+
+            winner:
+              game.winner,
+
+            players:
+              game.players,
+
+            key_events:
+              game.key_events,
+
+            event_types:
+              game.event_types,
+
+            replayResultAdjudications:
+              [],
+
+            replayDesyncIncidents:
+              [],
+
+            replayRosterPromotions:
+              [],
+          }),
+      },
+
+      betMarket: {
+        findMany:
+          async (
+            args:
+              Record<
+                string,
+                unknown
+              >,
+          ) => {
+            marketWhere =
+              args.where;
+
+            return [
+              {
+                id:
+                  77,
+              },
+            ];
+          },
+      },
+
+      pendingWoloClaim: {
+        count:
+          async (
+            args:
+              Record<
+                string,
+                unknown
+              >,
+          ) => {
+            claimWhere =
+              args.where;
+
+            return 1;
+          },
+      },
+
+      replayParseRun: {
+        findMany:
+          async () => [
+            runFixture(),
+          ],
+      },
+    };
+
+    const plan =
+      await planTargetedReplayRosterRecovery(
+        db as never,
+        game.id,
+      );
+
+    assert.ok(
+      plan,
+    );
+
+    assert.equal(
+      plan.status,
+      "blocked",
+    );
+
+    assert.ok(
+      plan.blockers.includes(
+        "linked_markets:1",
+      ),
+    );
+
+    assert.ok(
+      plan.blockers.includes(
+        "linked_claims:1",
+      ),
+    );
+
+    const marketShape =
+      JSON.stringify(
+        marketWhere,
+      );
+
+    assert.match(
+      marketShape,
+      /linkedGameStatsId/,
+    );
+
+    assert.match(
+      marketShape,
+      /linkedSessionKey/,
+    );
+
+    assert.match(
+      marketShape,
+      /game\.aoe2record/,
+    );
+
+    const claimShape =
+      JSON.stringify(
+        claimWhere,
+      );
+
+    assert.match(
+      claimShape,
+      /sourceGameStatsId/,
+    );
+
+    assert.match(
+      claimShape,
+      /sourceMarketId/,
+    );
+
+    assert.match(
+      claimShape,
+      /77/,
     );
   },
 );
