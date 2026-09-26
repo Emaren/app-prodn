@@ -10,6 +10,14 @@ const page = readFileSync(
   "utf8",
 );
 
+const matchups = readFileSync(
+  new URL(
+    "../lib/publicMatchups.ts",
+    import.meta.url,
+  ),
+  "utf8",
+);
+
 test("game detail binds winner presentation to the shared public-result resolver", () => {
   const start = page.indexOf(
     "const reliableWinner = resolveReliableReplayWinner",
@@ -68,5 +76,29 @@ test("game detail cannot manufacture a public winner from raw player flags", () 
   assert.doesNotMatch(
     block,
     /player\.winner === 1/,
+  );
+});
+
+test("public matchup winner authority binds finality and disconnect evidence", () => {
+  const start = matchups.indexOf(
+    "function resolveMatchWinnerName",
+  );
+  const end = matchups.indexOf(
+    "function sideContainsName",
+    start,
+  );
+
+  assert.ok(start >= 0);
+  assert.ok(end > start);
+
+  const block = matchups.slice(start, end);
+
+  assert.match(
+    block,
+    /isFinal:\s*adjudicatedGame\.is_final/,
+  );
+  assert.match(
+    block,
+    /disconnectDetected:\s*adjudicatedGame\.disconnect_detected/,
   );
 });
