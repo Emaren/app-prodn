@@ -2194,8 +2194,21 @@ export function evaluateWatcherTerminalOwnerLoss(
   if (input.currentDesyncOccurred === true) {
     return { eligible: false, reason: "confirmed_desync" };
   }
-  if (automaticKnownWinner(input.winner)) {
-    return { eligible: false, reason: "stored_winner_exists" };
+  if (
+    replayWinnerHasPublicStatsAuthority({
+      winner: input.winner,
+      players: Array.isArray(parseJson(input.players))
+        ? (parseJson(input.players) as Array<{ name?: unknown; winner?: unknown }>)
+        : [],
+      parseReason: input.parseReason,
+      parseSource: input.parseSource,
+      keyEvents: input.keyEvents,
+      eventTypes: input.eventTypes,
+      disconnectDetected: input.disconnectDetected,
+      isFinal: input.isFinal,
+    })
+  ) {
+    return { eligible: false, reason: "public_winner_already_accepted" };
   }
   if (!Number.isSafeInteger(input.terminalFailureCount) || input.terminalFailureCount !== 0) {
     return { eligible: false, reason: "terminal_failure_present" };
