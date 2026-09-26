@@ -460,6 +460,33 @@ test(
 
 
 test(
+  "missing current parser run fails closed with a contract-neutral blocker",
+  () => {
+    const plan =
+      evaluateTargetedReplayRosterRecovery({
+        game:
+          gameFixture(),
+
+        run:
+          null,
+      });
+
+    assert.equal(
+      plan.status,
+      "blocked",
+    );
+
+    assert.deepEqual(
+      plan.blockers,
+      [
+        "exact_current_parser_run_missing",
+      ],
+    );
+  },
+);
+
+
+test(
   "exact current Pass-10 2v2 roster is eligible without granting result authority",
   () => {
     const plan =
