@@ -316,6 +316,8 @@ function resolveMatchWinnerName(
       parseSource: adjudicatedGame.parse_source,
       keyEvents: adjudicatedGame.key_events,
       eventTypes: adjudicatedGame.event_types,
+      isFinal: adjudicatedGame.is_final,
+      disconnectDetected: adjudicatedGame.disconnect_detected,
     })
   );
 }
