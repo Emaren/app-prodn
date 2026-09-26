@@ -4,6 +4,7 @@ import test from "node:test";
 
 import {
   HD_REPLAY_PARSER_CONTRACT,
+  HD_REPLAY_PARSER_PASS8_CONTRACT,
 } from "../lib/replayEngineRoom.ts";
 
 import {
@@ -428,7 +429,38 @@ function gameFixture():
 
 
 test(
-  "exact current Pass-8 2v2 roster is eligible without granting result authority",
+  "current and frozen parser contracts remain explicitly separated",
+  () => {
+    assert.equal(
+      HD_REPLAY_PARSER_CONTRACT
+        .passVersion,
+      "10",
+    );
+
+    assert.equal(
+      HD_REPLAY_PARSER_PASS8_CONTRACT
+        .passVersion,
+      "8",
+    );
+
+    assert.deepEqual(
+      {
+        ...HD_REPLAY_PARSER_CONTRACT,
+        passVersion:
+          undefined,
+      },
+      {
+        ...HD_REPLAY_PARSER_PASS8_CONTRACT,
+        passVersion:
+          undefined,
+      },
+    );
+  },
+);
+
+
+test(
+  "exact current Pass-10 2v2 roster is eligible without granting result authority",
   () => {
     const plan =
       evaluateTargetedReplayRosterRecovery({
