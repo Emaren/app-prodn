@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `performance/trophy-seed-once-v1` at `b28f118d5d3c48dba151a0e193ada11ac6886a9a`
+Implementation baseline: `performance/trophy-seed-once-v1` at `0123ff14c07f84f8c05ffbc92abc6a0d27649ca1`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
