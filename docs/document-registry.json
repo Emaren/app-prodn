@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ca95eb79c39939c3a22e38e9e5689383232e9dde0d68984cd2089c16ebef76ba",
+      "sha256": "1204259f7c871bba2815711676c2aabf016423d31d35b3ec1ada79f5bf8aaed4",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/targeted-replay-roster-recovery-v1",
-    "commit": "1359dac99808aec23c1fc3e26fa2315adb7c1452"
+    "commit": "0cdd6efaf7799babca22437593d703330832716e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
