@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/current-parser-contract-pass10-v1` at `34b5be41dced69e690232bfb210eaca684f3a219`
+Implementation baseline: `fix/asymmetric-two-team-recovery-v1` at `ebb5fdd579e92668d4dabd40818e1c65e0f00f4c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
