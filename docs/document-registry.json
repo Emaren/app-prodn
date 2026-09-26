@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5d3bf7590bd447b83b37866dd7b02f62285a4fdd58a4f09a6e2ef3a8166bc4ec",
+      "sha256": "55962b623b0990e6ba92f16651a77242c47cb4eddbb4a15a3a4ec2987f02c8a3",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/current-parser-contract-pass10-v1",
-    "commit": "6d96cd9bae7e19c8a01fbbf894e4bb33c3f67897"
+    "commit": "34b5be41dced69e690232bfb210eaca684f3a219"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
