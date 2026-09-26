@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "55962b623b0990e6ba92f16651a77242c47cb4eddbb4a15a3a4ec2987f02c8a3",
+      "sha256": "74852a6619bf1dd034c306e2ac79e7c4a8571f0347a7f0d28e0cdbfe85553ce9",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1395,7 +1395,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-04",
       "sensitivity": "restricted",
-      "sha256": "36f5eefc2c913977a119b354e28bc3e5d3dda0c9cd88be5c70958e1921951722",
+      "sha256": "2c2c460a7cf9382ba61b2fae718f199b0b163a86026cab09a7dae0f25a9fc86e",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/current-parser-contract-pass10-v1",
-    "commit": "34b5be41dced69e690232bfb210eaca684f3a219"
+    "branch": "fix/asymmetric-two-team-recovery-v1",
+    "commit": "ebb5fdd579e92668d4dabd40818e1c65e0f00f4c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
