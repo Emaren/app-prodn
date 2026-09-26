@@ -728,6 +728,84 @@ test(
 
 
 test(
+  "V3 still blocks unresolved three-player topology with no proven teams",
+  () => {
+    const run =
+      runFixture2v1();
+
+    const resolution =
+      run.observations
+        .find(
+          (
+            observation
+          ) =>
+            observation
+              .fieldPath ===
+            "teams.resolution"
+        );
+
+    assert.ok(
+      resolution
+    );
+
+    resolution.value = {
+      format:
+        "unknown",
+
+      status:
+        "incomplete",
+
+      confidence:
+        "low",
+
+      provenance:
+        "unresolved",
+
+      team_count:
+        0,
+
+      player_count:
+        3,
+
+      teams:
+        [],
+    };
+
+    const plan =
+      evaluateTargetedReplayRosterRecovery({
+        game:
+          gameFixture(),
+
+        run,
+      });
+
+    assert.equal(
+      plan.status,
+      "blocked"
+    );
+
+    for (
+      const blocker of
+      [
+        "projection:teams_resolution_status:incomplete",
+        "projection:unsupported_format:unknown",
+        "projection:unsupported_provenance:unresolved",
+        "projection:team_count:0",
+      ]
+    ) {
+      assert.ok(
+        plan.blockers
+          .includes(
+            blocker
+          ),
+        blocker
+      );
+    }
+  },
+);
+
+
+test(
   "missing direct Steam evidence blocks targeted roster recovery",
   () => {
     const run =
