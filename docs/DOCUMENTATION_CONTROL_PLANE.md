@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `integration/replay-truth-speed-hardening-v1` at `6df2ddd52c88953e407cfef83315671907ed0a67`
+Implementation baseline: `performance/war-chest-concurrent-period-v1` at `1a096a66ab098fc153f8e85ec31655b259318e1c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
