@@ -659,7 +659,10 @@ export async function executePendingTrophyTributePayouts(
   };
 }
 
-export async function ensureTrophySeedData(prisma: PrismaClient) {
+const trophySeedEnsureByClient =
+  new WeakMap<PrismaClient, Promise<void>>();
+
+async function ensureTrophySeedDataFresh(prisma: PrismaClient) {
   for (const seed of SEEDS) {
     const existing = await prisma.trophy.findUnique({ where: { trophyId: seed.trophyId } });
     if (existing) continue;
@@ -738,6 +741,42 @@ export async function ensureTrophySeedData(prisma: PrismaClient) {
       create: setting,
     });
   }
+}
+
+/**
+ * Trophy seed reconciliation is bootstrap/repair work, not per-request work.
+ *
+ * Production shares one Prisma client, so retain the successful reconciliation
+ * promise for that client for the lifetime of the process. Concurrent cold
+ * callers join the same run. A failed run is evicted so a later request or
+ * operator action may retry safely.
+ */
+export function ensureTrophySeedData(prisma: PrismaClient) {
+  const existing =
+    trophySeedEnsureByClient.get(prisma);
+
+  if (existing) {
+    return existing;
+  }
+
+  const run =
+    ensureTrophySeedDataFresh(prisma)
+      .catch((error) => {
+        if (
+          trophySeedEnsureByClient.get(prisma) ===
+          run
+        ) {
+          trophySeedEnsureByClient.delete(prisma);
+        }
+        throw error;
+      });
+
+  trophySeedEnsureByClient.set(
+    prisma,
+    run,
+  );
+
+  return run;
 }
 
 async function loadRatings(prisma: PrismaClient) {
