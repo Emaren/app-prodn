@@ -4,12 +4,34 @@ export const REPLAY_ENGINE_MAX_BATCH_SIZE = 500;
 export const REPLAY_ENGINE_MAX_JOB_ARTIFACTS = 100_000;
 export const REPLAY_ENGINE_MAX_ATTEMPTS_PER_ARTIFACT = 10;
 
-export const HD_REPLAY_PARSER_CONTRACT = {
+const HD_REPLAY_PARSER_BASE_CONTRACT = {
   parserName: "aoe2war.mgz_hd",
   parserVersion: "1.8.51",
   schemaVersion: "2026-07-25.1",
   passName: "hd_deterministic_evidence",
+} as const;
+
+/**
+ * Frozen source identity for the sealed public_replay_roster_v2 campaign.
+ *
+ * Pass 8 is historical authority for that immutable manifest/apply rail only.
+ * New Engine Room work must use HD_REPLAY_PARSER_CONTRACT below.
+ */
+export const HD_REPLAY_PARSER_PASS8_CONTRACT = {
+  ...HD_REPLAY_PARSER_BASE_CONTRACT,
   passVersion: "8",
+} as const;
+
+/**
+ * Canonical current Parser Engine Room identity.
+ *
+ * api-prodn pass 9 added candidate-only terminal observations and pass 10 added
+ * terminal.saved_chapters. Those upgrades are additive to the roster-bearing
+ * observation paths consumed by current recovery.
+ */
+export const HD_REPLAY_PARSER_CONTRACT = {
+  ...HD_REPLAY_PARSER_BASE_CONTRACT,
+  passVersion: "10",
 } as const;
 
 export const REPLAY_ENGINE_APPEND_ONLY_TABLES = [
