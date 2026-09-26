@@ -17,6 +17,7 @@ import {
 
 import {
   PUBLIC_REPLAY_ROSTER_V2_POLICY,
+  PUBLIC_REPLAY_ROSTER_V3_POLICY,
   stableReplayRosterV2Hash,
 } from "../lib/publicReplayRosterV2.ts";
 
@@ -353,6 +354,95 @@ function runFixture(): TargetedReplayRosterRunSnapshot {
 }
 
 
+function runFixture2v1():
+  TargetedReplayRosterRunSnapshot {
+  const run =
+    runFixture();
+
+  run.observations =
+    run.observations
+      .filter(
+        (
+          observation
+        ) =>
+          ![
+            41,
+            42,
+            43,
+            44,
+          ].includes(
+            observation.id
+          )
+      );
+
+  const resolution =
+    run.observations
+      .find(
+        (
+          observation
+        ) =>
+          observation
+            .fieldPath ===
+          "teams.resolution"
+      );
+
+  assert.ok(
+    resolution
+  );
+
+  resolution.value = {
+    format:
+      "2v1",
+
+    status:
+      "resolved",
+
+    confidence:
+      "high",
+
+    provenance:
+      "explicit_replay_team_ids",
+
+    team_count:
+      2,
+
+    player_count:
+      3,
+
+    teams: [
+      {
+        team_id:
+          0,
+
+        players: [
+          "Jim",
+          "Emaren",
+        ],
+
+        player_keys: [
+          "steam:76561198000000001",
+          "steam:76561198000000002",
+        ],
+      },
+      {
+        team_id:
+          1,
+
+        players: [
+          "Zodiac",
+        ],
+
+        player_keys: [
+          "steam:76561198000000003",
+        ],
+      },
+    ],
+  };
+
+  return run;
+}
+
+
 function gameFixture():
   TargetedReplayRosterGameSnapshot {
   return {
@@ -518,7 +608,7 @@ test(
     assert.ok(
       plan.idempotencyKey
         ?.startsWith(
-          "public-roster-v2:44862:",
+          "public-roster-v3:44862:",
         ),
     );
 
@@ -564,6 +654,74 @@ test(
         .resultAuthority,
       plan.projection
         .resultAuthority,
+    );
+  },
+);
+
+
+test(
+  "exact current Pass-10 2v1 roster is eligible under V3 without result authority",
+  () => {
+    const plan =
+      evaluateTargetedReplayRosterRecovery({
+        game:
+          gameFixture(),
+
+        run:
+          runFixture2v1(),
+      });
+
+    assert.equal(
+      plan.status,
+      "eligible",
+      plan.blockers.join(
+        ","
+      )
+    );
+
+    assert.equal(
+      plan.projection.format,
+      "2v1"
+    );
+
+    assert.equal(
+      plan.projection
+        .projectedPlayers
+        .length,
+      3
+    );
+
+    assert.ok(
+      plan.projection
+        .projectedPlayers
+        .every(
+          (
+            player
+          ) =>
+            player
+              .roster_source ===
+              PUBLIC_REPLAY_ROSTER_V3_POLICY &&
+            player.winner ===
+              null
+        )
+    );
+
+    assert.equal(
+      plan.authorityBoundary
+        .affectsResults,
+      false
+    );
+
+    assert.equal(
+      plan.authorityBoundary
+        .affectsBets,
+      false
+    );
+
+    assert.equal(
+      plan.authorityBoundary
+        .settlementAuthority,
+      false
     );
   },
 );
