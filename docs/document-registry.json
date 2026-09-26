@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "03165c4ba2c428f9f1b317f48e6cd236a2ff33144a81b2dada01d4a4ea94ce70",
+      "sha256": "a077eb8ae53aba84bbbeae13f5cc5f6f49e0d9a0984233335c60166586c593a8",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/replay-reconciliation-trust-scalar-20260926",
-    "commit": "6d5ad91f7722fc271b5c66b18f642c241b20709e"
+    "branch": "performance/rivalries-payload-v1",
+    "commit": "72e90938567b4aa7041d83e056c8cc919bdd59ad"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
