@@ -165,15 +165,17 @@ Statistics authority remains independent from betting and Wolo authority.
 ## Targeted roster-only recovery
 
 The internal `/api/admin/replay-roster-recovery` rail closes a narrower gap
-than result adjudication: an exact current Pass-8 parser run may contain
+than result adjudication: an exact current canonical parser run may contain
 complete direct Steam/team/player-number evidence while the stored
 `GameStats.players` roster remains too incomplete for later result policies to
 consume.
 
+The sealed historical `public_replay_roster_v2` campaign remains bound to its original Pass-8 parser identity. Current targeted recovery does not reuse or rewrite that frozen campaign contract; it consumes the live `HD_REPLAY_PARSER_CONTRACT` instead. Pass 9 added candidate-only terminal observations and Pass 10 added `terminal.saved_chapters`; both were additive to the roster-bearing observation paths used here.
+
 This rail reuses `public_replay_roster_v2` projection authority. It is
 deliberately **roster-only**:
 
-- source must be the exact current replay hash and canonical Pass-8 contract;
+- source must be the exact current replay hash and canonical current parser contract (Pass 10 as of this release);
 - only candidate observations with no public-aggregate authority are consumed;
 - direct Steam identity and explicit replay/final team-ID provenance are
   required;
