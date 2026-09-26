@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 
 import {
@@ -902,6 +903,68 @@ test(
           player.winner ===
             null,
       ),
+    );
+  },
+);
+
+
+test(
+  "admin route remains roster-only and defaults to dry-run",
+  () => {
+    const route =
+      readFileSync(
+        "app/api/admin/replay-roster-recovery/route.ts",
+        "utf8",
+      );
+
+    assert.match(
+      route,
+      /const apply =[\s\S]*searchParams[\s\S]*\.get\([\s\S]*"apply"[\s\S]*\) ===[\s\S]*"1"/,
+    );
+
+    assert.match(
+      route,
+      /if \(!apply\)[\s\S]*planTargetedReplayRosterRecovery/,
+    );
+
+    assert.match(
+      route,
+      /applyTargetedReplayRosterRecovery/,
+    );
+
+    assert.match(
+      route,
+      /resultChanges:[\s\S]*0/,
+    );
+
+    assert.match(
+      route,
+      /bettingAuthority:[\s\S]*false/,
+    );
+
+    assert.match(
+      route,
+      /settlementAuthority:[\s\S]*false/,
+    );
+
+    assert.match(
+      route,
+      /woloAuthority:[\s\S]*false/,
+    );
+
+    assert.doesNotMatch(
+      route,
+      /reconcileAutomaticWatcherTerminalResults/,
+    );
+
+    assert.doesNotMatch(
+      route,
+      /ensureReplayIdentityProjections/,
+    );
+
+    assert.doesNotMatch(
+      route,
+      /BetMarket|BetWager|PendingWoloClaim/,
     );
   },
 );
