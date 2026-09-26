@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/targeted-roster-eslint-v1` at `7d8c625f44135c52aa776bb2165b325d7e791f57`
+Implementation baseline: `fix/current-parser-contract-pass10-v1` at `6d96cd9bae7e19c8a01fbbf894e4bb33c3f67897`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
