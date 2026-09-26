@@ -480,21 +480,24 @@ export default async function GameStatsDetailPage({
     winner: game.winner,
     players,
     parseReason: game.parse_reason,
+    parseSource: game.parse_source,
     keyEvents: game.key_events,
     eventTypes,
+    isFinal: game.is_final,
+    disconnectDetected: game.disconnect_detected,
   });
   const outcomeLabel = !confirmedDesync && reliableWinner
     ? outcomeBadgeLabel(game.parse_reason, game.winner)
     : null;
-  const winningPlayerNames = players
-    .filter((player) => player.winner === true || player.winner === "true" || player.winner === 1)
-    .map((player) => displayPlayerName(player));
+  /*
+   * Public winner presentation must use the same stats-authority resolver as
+   * the rest of the replay surface. Raw player.winner flags are parser
+   * evidence, not an independent public-result authority.
+   */
   const publicWinnerLabel =
     confirmedDesync
       ? null
-      : winningPlayerNames.length > 0
-        ? winningPlayerNames.join(" / ")
-        : reliableWinner;
+      : reliableWinner;
   const replayFilename = displayReplayFilename(
     game.original_filename,
     game.replay_file
