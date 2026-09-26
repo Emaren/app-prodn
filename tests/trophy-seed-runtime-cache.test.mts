@@ -10,29 +10,29 @@ const service = readFileSync(
   "utf8",
 );
 
-test("trophy seed reconciliation is retained per Prisma client", () => {
+test("public trophy seed reconciliation is retained per Prisma client", () => {
   assert.match(
     service,
     /new WeakMap<PrismaClient, Promise<void>>\(\)/,
   );
   assert.match(
     service,
-    /trophySeedEnsureByClient\.get\(prisma\)/,
+    /publicTrophySeedEnsureByClient\.get\(prisma\)/,
   );
   assert.match(
     service,
-    /trophySeedEnsureByClient\.set\(\s*prisma,\s*run,/s,
+    /publicTrophySeedEnsureByClient\.set\(\s*prisma,\s*run,/s,
   );
   assert.match(
     service,
-    /ensureTrophySeedDataFresh\(prisma\)/,
+    /ensureTrophySeedData\(prisma\)/,
   );
 });
 
-test("failed seed reconciliation is evicted and remains retryable", () => {
-  const ensureBlock = service.slice(
+test("failed public seed reconciliation is evicted and remains retryable", () => {
+  const publicEnsureBlock = service.slice(
     service.indexOf(
-      "export function ensureTrophySeedData",
+      "function ensurePublicTrophySeedData",
     ),
     service.indexOf(
       "async function loadRatings",
@@ -40,20 +40,44 @@ test("failed seed reconciliation is evicted and remains retryable", () => {
   );
 
   assert.match(
-    ensureBlock,
+    publicEnsureBlock,
     /\.catch\(\(error\) =>/,
   );
   assert.match(
-    ensureBlock,
-    /trophySeedEnsureByClient\.delete\(prisma\)/,
+    publicEnsureBlock,
+    /publicTrophySeedEnsureByClient\.delete\(prisma\)/,
   );
   assert.match(
-    ensureBlock,
+    publicEnsureBlock,
     /throw error/,
   );
 });
 
-test("public trophy reads preserve bootstrap safety without repeating reconciliation", () => {
+test("canonical operator seed ensure remains fully re-runnable", () => {
+  const canonicalEnsure = service.slice(
+    service.indexOf(
+      "export async function ensureTrophySeedData",
+    ),
+    service.indexOf(
+      "const publicTrophySeedEnsureByClient",
+    ),
+  );
+
+  assert.match(
+    canonicalEnsure,
+    /for \(const seed of SEEDS\)/,
+  );
+  assert.match(
+    canonicalEnsure,
+    /for \(const setting of DEFAULT_SETTINGS\)/,
+  );
+  assert.doesNotMatch(
+    canonicalEnsure,
+    /WeakMap/,
+  );
+});
+
+test("public trophy reads use the retained bootstrap wrapper", () => {
   const publicLoader = service.slice(
     service.indexOf(
       "export async function loadPublicTrophies",
@@ -65,10 +89,14 @@ test("public trophy reads preserve bootstrap safety without repeating reconcilia
 
   assert.match(
     publicLoader,
-    /await ensureTrophySeedData\(prisma\)/,
+    /await ensurePublicTrophySeedData\(prisma\)/,
   );
   assert.match(
     publicLoader,
     /prisma\.trophy\.findMany/,
+  );
+  assert.doesNotMatch(
+    publicLoader,
+    /await ensureTrophySeedData\(prisma\)/,
   );
 });
