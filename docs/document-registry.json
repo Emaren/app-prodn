@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "2dba87da5011bef48a60c6b8ab876733ef57d81e16caa28209931b79a1e27cce",
+      "sha256": "c3340c1b787ba578c8899e234f7c5ae24e0337cd5a76f7535025ecc00e94d93b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "performance/bounty-single-directory-v1",
-    "commit": "72240c51f387584f933fe8f571a13c23570955fb"
+    "commit": "74a810800ffcc395f39c4d06811cd1c19803dbec"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
