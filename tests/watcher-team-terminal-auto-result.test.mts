@@ -626,6 +626,41 @@ test(
 );
 
 test(
+  "untrusted stored scalar winner does not suppress canonical terminal recovery",
+  () => {
+    const input =
+      teamInput21197();
+
+    /*
+     * This is the production failure shape: a legacy scalar winner exists,
+     * but the structured team result is still review_required/untrusted.
+     * Public truth rejects that scalar, so automatic stats reconciliation
+     * must remain eligible to evaluate stronger terminal evidence.
+     */
+    input.winner = "Jim";
+
+    const evaluation =
+      evaluateWatcherTeamTerminalResult(
+        input
+      );
+
+    assert.equal(
+      evaluation.eligible,
+      true
+    );
+
+    if (!evaluation.eligible) {
+      return;
+    }
+
+    assert.equal(
+      evaluation.winningTeamKey,
+      "team:1"
+    );
+  }
+);
+
+test(
   "21211-shaped terminal evidence awards JimmyReb, Advan, agempire, and Raymond",
   () => {
     const evaluation =
