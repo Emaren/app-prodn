@@ -745,7 +745,7 @@ export function evaluateTargetedReplayRosterRecovery(
 
   if (!run) {
     blockers.push(
-      "exact_current_pass8_missing"
+      "exact_current_parser_run_missing"
     );
 
     return emptyPlan(
@@ -1960,7 +1960,7 @@ export async function applyTargetedReplayRosterRecovery(
                     Prisma.InputJsonValue,
 
                 reason:
-                  "Targeted exact-current Pass-8 roster recovery; result authority unchanged.",
+                  "Targeted exact-current canonical parser roster recovery; result authority unchanged.",
 
                 affectsPublicAggregates:
                   true,
