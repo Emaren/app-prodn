@@ -14,6 +14,7 @@ import {
   buildReplaySubmissionReceipt,
   deriveReplayReprocessJobState,
   HD_REPLAY_PARSER_CONTRACT,
+  HD_REPLAY_PARSER_PASS8_CONTRACT,
   planReplayReprocessBatch,
   REPLAY_ENGINE_APPEND_ONLY_TABLES,
   ReplayEngineRoomContractError,
@@ -95,9 +96,45 @@ test("the same parser pass is idempotent while a version change creates a new ru
   assert.equal(left.idempotencyKey, reordered.idempotencyKey);
   assert.equal(
     left.runIdentityHash,
-    "b4a58d7aa2fb729e333fd3a84510ee733bc9b2e08d748ad29acc0b3842b19a1a"
+    "0bcc9304aa7b0564c2c534cbfaf63a08878498eb77e2ca13c79bc8232d528061"
   );
   assert.equal(left.idempotencyKey, left.runIdentityHash);
+
+  const frozenPass8 =
+    buildReplayParseRunIdentity({
+      artifactSha256:
+        replayHash,
+      parserName:
+        HD_REPLAY_PARSER_PASS8_CONTRACT
+          .parserName,
+      parserVersion:
+        HD_REPLAY_PARSER_PASS8_CONTRACT
+          .parserVersion,
+      passName:
+        HD_REPLAY_PARSER_PASS8_CONTRACT
+          .passName,
+      passVersion:
+        HD_REPLAY_PARSER_PASS8_CONTRACT
+          .passVersion,
+      schemaVersion:
+        HD_REPLAY_PARSER_PASS8_CONTRACT
+          .schemaVersion,
+      parserConfig: {
+        apply_hd_early_exit_rules:
+          true,
+      },
+    });
+
+  assert.equal(
+    frozenPass8
+      .runIdentityHash,
+    "b4a58d7aa2fb729e333fd3a84510ee733bc9b2e08d748ad29acc0b3842b19a1a",
+  );
+  assert.notEqual(
+    left.runIdentityHash,
+    frozenPass8
+      .runIdentityHash,
+  );
   assert.notEqual(left.runIdentityHash, upgraded.runIdentityHash);
   assert.equal(left.candidateOnly, true);
   assert.equal(left.affectsPublicAggregates, false);
@@ -250,7 +287,7 @@ test("reprocess manifests are bounded, candidate-only, and deterministic", () =>
   assert.equal(manifest.jobIdentityHash, duplicate.jobIdentityHash);
   assert.equal(
     manifest.jobIdentityHash,
-    "04345bc7319886f642b43e44ca48fb7c2daba9e8ecfda73e51f60bfd2ed4d4df"
+    "8a1bb5c7dafbf93dd2c47a4de281e2d6d1a703370c6a36cf08ed96155465d0f4"
   );
   assert.equal(manifest.idempotencyKey, `replay-engine-room:${manifest.jobIdentityHash}`);
   assert.equal(manifest.candidateOnly, true);
