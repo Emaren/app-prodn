@@ -485,6 +485,46 @@ test("public loader admits only official numbered on-chain bounty transfers", ()
   );
 });
 
+test("public bounty Hall derives claimed and replay cohorts from one leaderboard snapshot", () => {
+  const source = readFileSync(
+    new URL(
+      "../lib/bounties.ts",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+
+  const loader = source.slice(
+    source.indexOf(
+      "async function loadBountyDirectory",
+    ),
+    source.indexOf(
+      "export async function loadBountyBoard",
+    ),
+  );
+
+  assert.equal(
+    (loader.match(/loadPreviewLeaderboardEntries\(/g) || []).length,
+    1,
+  );
+  assert.match(
+    loader,
+    /loadPreviewLeaderboardEntries\(\s*"all"/s,
+  );
+  assert.doesNotMatch(
+    loader,
+    /loadPreviewLeaderboardEntries\(\s*"claimed"/s,
+  );
+  assert.match(
+    loader,
+    /claimedEntries:[\s\S]*entry\.claimed/,
+  );
+  assert.match(
+    loader,
+    /replayEntries:[\s\S]*!entry\.claimed/,
+  );
+});
+
 test("staking bounty history shares the official numbered memo rule", () => {
   const route = readFileSync(
     new URL(
