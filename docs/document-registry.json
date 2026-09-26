@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c44be0f6dbb383d75672c3391c4e7079b21a90f788b9cf2ce1d7347371c795c9",
+      "sha256": "c6253283a195b86fc67a2e1b00f5bdeeba2634e2f99a86b68092efa042b3f847",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "performance/war-chest-concurrent-period-v1",
-    "commit": "1a096a66ab098fc153f8e85ec31655b259318e1c"
+    "commit": "868ec528d0553bdbd384f9078a546eb37c9a188f"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
