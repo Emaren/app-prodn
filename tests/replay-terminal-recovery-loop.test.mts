@@ -52,6 +52,31 @@ test(
 );
 
 test(
+  "recurrent recovery does not treat a raw scalar winner as accepted public result authority",
+  () => {
+    assert.match(
+      recovery,
+      /rawScalarWinnerDoesNotSuppressReconciliation:\s*true/,
+    );
+
+    assert.doesNotMatch(
+      recovery,
+      /coalesce\(game\.winner,\s*''\)/,
+    );
+
+    assert.match(
+      recovery,
+      /replay_result_adjudications AS adjudication/,
+    );
+
+    assert.match(
+      recovery,
+      /result_projection\.result_eligibility = 'resolved'/,
+    );
+  },
+);
+
+test(
   "Engine Room recovery immediately retries automatic terminal result evidence",
   () => {
     assert.match(
