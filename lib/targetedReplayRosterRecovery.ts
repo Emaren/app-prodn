@@ -387,7 +387,17 @@ function resultAuthoritySnapshot(
         game.winner,
 
       players:
-        game.players,
+        Array.isArray(
+          game.players
+        )
+          ? game.players as Array<{
+              name?:
+                unknown;
+
+              winner?:
+                unknown;
+            }>
+          : [],
 
       parseReason:
         game.parse_reason,
