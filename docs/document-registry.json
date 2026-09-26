@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "895c5adb59e6ff553789a18734d7384677b07847d2b5f5607283ec9d4d69101d",
+      "sha256": "21879e871fbe6fcc3e6121e78bbd3a40486884d93148c873b93ab950e11cd83b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "performance/trophy-seed-once-v1",
-    "commit": "0123ff14c07f84f8c05ffbc92abc6a0d27649ca1"
+    "commit": "1e767672dd2de4dd436995b71106473083548cbb"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
