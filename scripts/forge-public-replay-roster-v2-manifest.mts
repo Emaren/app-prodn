@@ -18,7 +18,7 @@ import {
 } from "../lib/publicReplayTruth.ts";
 
 import {
-  HD_REPLAY_PARSER_CONTRACT,
+  HD_REPLAY_PARSER_PASS8_CONTRACT,
 } from "../lib/replayEngineRoom.ts";
 
 import {
@@ -591,23 +591,23 @@ try {
               },
 
               parserName:
-                HD_REPLAY_PARSER_CONTRACT
+                HD_REPLAY_PARSER_PASS8_CONTRACT
                   .parserName,
 
               parserVersion:
-                HD_REPLAY_PARSER_CONTRACT
+                HD_REPLAY_PARSER_PASS8_CONTRACT
                   .parserVersion,
 
               schemaVersion:
-                HD_REPLAY_PARSER_CONTRACT
+                HD_REPLAY_PARSER_PASS8_CONTRACT
                   .schemaVersion,
 
               passName:
-                HD_REPLAY_PARSER_CONTRACT
+                HD_REPLAY_PARSER_PASS8_CONTRACT
                   .passName,
 
               passVersion:
-                HD_REPLAY_PARSER_CONTRACT
+                HD_REPLAY_PARSER_PASS8_CONTRACT
                   .passVersion,
 
               status:
@@ -970,19 +970,19 @@ try {
 
       if (
         run.parserName !==
-          HD_REPLAY_PARSER_CONTRACT
+          HD_REPLAY_PARSER_PASS8_CONTRACT
             .parserName ||
         run.parserVersion !==
-          HD_REPLAY_PARSER_CONTRACT
+          HD_REPLAY_PARSER_PASS8_CONTRACT
             .parserVersion ||
         run.schemaVersion !==
-          HD_REPLAY_PARSER_CONTRACT
+          HD_REPLAY_PARSER_PASS8_CONTRACT
             .schemaVersion ||
         run.passName !==
-          HD_REPLAY_PARSER_CONTRACT
+          HD_REPLAY_PARSER_PASS8_CONTRACT
             .passName ||
         run.passVersion !==
-          HD_REPLAY_PARSER_CONTRACT
+          HD_REPLAY_PARSER_PASS8_CONTRACT
             .passVersion
       ) {
         blockers.push(
@@ -1274,7 +1274,7 @@ try {
                   run.parserConfigHash,
 
                 parserContract:
-                  HD_REPLAY_PARSER_CONTRACT,
+                  HD_REPLAY_PARSER_PASS8_CONTRACT,
 
                 candidateOutputHash:
                   run.candidateOutputHash,
@@ -1499,7 +1499,7 @@ try {
       PUBLIC_REPLAY_ROSTER_V2_POLICY,
 
     parserContract:
-      HD_REPLAY_PARSER_CONTRACT,
+      HD_REPLAY_PARSER_PASS8_CONTRACT,
 
     authorityBoundary: {
       rosterOnly:
@@ -1561,7 +1561,7 @@ try {
     },
 
     parserContract:
-      HD_REPLAY_PARSER_CONTRACT,
+      HD_REPLAY_PARSER_PASS8_CONTRACT,
 
     corpus: {
       rawFinalRows:
