@@ -172,8 +172,16 @@ consume.
 
 The sealed historical `public_replay_roster_v2` campaign remains bound to its original Pass-8 parser identity. Current targeted recovery does not reuse or rewrite that frozen campaign contract; it consumes the live `HD_REPLAY_PARSER_CONTRACT` instead. Pass 9 added candidate-only terminal observations and Pass 10 added `terminal.saved_chapters`; both were additive to the roster-bearing observation paths used here.
 
-This rail reuses `public_replay_roster_v2` projection authority. It is
-deliberately **roster-only**:
+The sealed historical campaign remains `public_replay_roster_v2`. Current
+targeted recovery uses `public_replay_roster_v3`, which extends only the
+topology envelope: an exact resolved two-team roster may be asymmetric
+(`2v1`, `3v1`, `3v2`, `4v1`, `4v2`, or `4v3`) when each side has
+1-4 players, the declared format/player count agrees with the two explicit
+teams, and those teams cover the complete exact Steam roster. Odd player count
+alone is never team evidence; FFA, missing-team, incomplete, conflicting, and
+three-team shapes remain blocked.
+
+The rail remains deliberately **roster-only**:
 
 - source must be the exact current replay hash and canonical current parser contract (Pass 10 as of this release);
 - only candidate observations with no public-aggregate authority are consumed;
@@ -194,9 +202,14 @@ Dry-run is the default. Mutation requires `apply=1`, the protected internal
 API key and the configured admin recovery actor.
 
 Roster recovery never declares a winner. After an eligible roster repair, the
-existing automatic terminal-result reconciler must independently re-evaluate
-the game. A result may advance only if that separate policy has its own required
-terminal/action evidence; otherwise the game remains under review.
+automatic terminal-result reconciler independently re-evaluates the game under
+`replay-team-terminal-action-tail-v4`. V4 removes only the stale balanced-team
+assumption: it still requires exactly two teams covering the exact roster,
+exact Steam/player-number/team identity, exact parser resignation counts,
+per-player action evidence, the existing resignation advantage and terminal
+activity gaps, and no conflicting serialized result. It does not add a new
+winner heuristic; an asymmetric game that cannot satisfy those existing proof
+requirements remains under review.
 
 Historical sealed V2 campaign scripts remain immutable. The targeted rail does
 not relax or reuse their campaign-specific manifest, plan or game-ID seals.
