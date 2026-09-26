@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "7b117d1e59d3cb151244edc8fb327467c9e712a1f8b21565fc9b5009dd4609bf",
+      "sha256": "55962b623b0990e6ba92f16651a77242c47cb4eddbb4a15a3a4ec2987f02c8a3",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1395,7 +1395,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-04",
       "sensitivity": "restricted",
-      "sha256": "ad54ca840396bdf2abb0d699b419c6d8e16bf1b06436d915b0845a5b2f257a3f",
+      "sha256": "36f5eefc2c913977a119b354e28bc3e5d3dda0c9cd88be5c70958e1921951722",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/targeted-roster-eslint-v1",
-    "commit": "7d8c625f44135c52aa776bb2165b325d7e791f57"
+    "branch": "fix/current-parser-contract-pass10-v1",
+    "commit": "34b5be41dced69e690232bfb210eaca684f3a219"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
