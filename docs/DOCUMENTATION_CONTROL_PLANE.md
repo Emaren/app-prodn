@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/asymmetric-two-team-recovery-v1` at `ebb5fdd579e92668d4dabd40818e1c65e0f00f4c`
+Implementation baseline: `fix/asymmetric-two-team-recovery-v1` at `d18d9b043e267b234bea7056a02406f7ed122b6e`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
