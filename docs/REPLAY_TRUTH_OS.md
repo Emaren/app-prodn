@@ -177,8 +177,8 @@ deliberately **roster-only**:
 - only candidate observations with no public-aggregate authority are consumed;
 - direct Steam identity and explicit replay/final team-ID provenance are
   required;
-- finality, disconnect/desync, linked-market, accepted-adjudication and prior
-  promotion boundaries are rechecked;
+- finality, disconnect/desync, linked-market, linked-claim,
+  accepted-adjudication and prior promotion boundaries are rechecked;
 - every projected player winner flag must remain `null`;
 - the complete public result-authority snapshot before and after roster
   projection must be identical;
