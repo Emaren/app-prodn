@@ -5,7 +5,9 @@ import test from "node:test";
 
 import {
   PUBLIC_REPLAY_ROSTER_V2_POLICY,
+  PUBLIC_REPLAY_ROSTER_V3_POLICY,
   buildPublicReplayRosterV2Projection,
+  buildPublicReplayRosterV3Projection,
   publicReplayRosterV2DisplayState,
   stableReplayRosterV2Hash,
 } from "../lib/publicReplayRosterV2.ts";
@@ -345,6 +347,185 @@ for (
     }
   );
 }
+
+
+test(
+  "V3 admits exact 2v1 topology while frozen V2 remains balanced-only",
+  () => {
+    const observations =
+      fixture(
+        "2v2"
+      ) as Array<
+        Record<
+          string,
+          unknown
+        >
+      >;
+
+    const uneven =
+      observations
+        .filter(
+          (
+            observation
+          ) => {
+            const provenance =
+              observation.provenance as
+                Record<
+                  string,
+                  unknown
+                > |
+                undefined;
+
+            const subject =
+              provenance
+                ?.subject as
+                  Record<
+                    string,
+                    unknown
+                  > |
+                  undefined;
+
+            return subject
+              ?.player_number !==
+              4;
+          }
+        );
+
+    const resolution =
+      uneven.find(
+        (
+          observation
+        ) =>
+          observation
+            .fieldPath ===
+          "teams.resolution"
+      );
+
+    assert.ok(
+      resolution
+    );
+
+    resolution.value = {
+      format:
+        "2v1",
+
+      status:
+        "resolved",
+
+      confidence:
+        "high",
+
+      provenance:
+        "explicit_replay_team_ids",
+
+      team_count:
+        2,
+
+      player_count:
+        3,
+
+      teams: [
+        {
+          team_id:
+            0,
+
+          players: [
+            "Player 1",
+            "Player 2",
+          ],
+
+          player_keys: [
+            "steam:76561198000000001",
+            "steam:76561198000000002",
+          ],
+        },
+        {
+          team_id:
+            1,
+
+          players: [
+            "Player 3",
+          ],
+
+          player_keys: [
+            "steam:76561198000000003",
+          ],
+        },
+      ],
+    };
+
+    const frozen =
+      buildPublicReplayRosterV2Projection({
+        currentPlayers:
+          [],
+
+        observations:
+          uneven as never,
+
+        parseRunId:
+          123,
+      });
+
+    assert.equal(
+      frozen.ok,
+      false
+    );
+
+    assert.ok(
+      frozen.blockers
+        .includes(
+          "unsupported_format:2v1"
+        )
+    );
+
+    const current =
+      buildPublicReplayRosterV3Projection({
+        currentPlayers:
+          [],
+
+        observations:
+          uneven as never,
+
+        parseRunId:
+          123,
+      });
+
+    assert.equal(
+      current.ok,
+      true,
+      current.blockers.join(
+        ","
+      )
+    );
+
+    assert.equal(
+      current.format,
+      "2v1"
+    );
+
+    assert.equal(
+      current
+        .projectedPlayers
+        .length,
+      3
+    );
+
+    assert.ok(
+      current
+        .projectedPlayers
+        .every(
+          (
+            player
+          ) =>
+            player
+              .roster_source ===
+              PUBLIC_REPLAY_ROSTER_V3_POLICY &&
+            player.winner ===
+              null
+        )
+    );
+  }
+);
 
 
 test(
