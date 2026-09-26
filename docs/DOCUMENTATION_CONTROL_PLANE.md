@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/replay-reconciliation-trust-scalar-20260926` at `6d5ad91f7722fc271b5c66b18f642c241b20709e`
+Implementation baseline: `performance/rivalries-payload-v1` at `72e90938567b4aa7041d83e056c8cc919bdd59ad`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
