@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "03165c4ba2c428f9f1b317f48e6cd236a2ff33144a81b2dada01d4a4ea94ce70",
+      "sha256": "2dba87da5011bef48a60c6b8ab876733ef57d81e16caa28209931b79a1e27cce",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/replay-reconciliation-trust-scalar-20260926",
-    "commit": "6d5ad91f7722fc271b5c66b18f642c241b20709e"
+    "branch": "performance/bounty-single-directory-v1",
+    "commit": "72240c51f387584f933fe8f571a13c23570955fb"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
