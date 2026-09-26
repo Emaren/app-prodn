@@ -21,6 +21,7 @@ import {
   warChestClaimCountsAsTake,
   warChestWagerTakeWolo,
 } from "@/lib/warChestWoloAccounting";
+import { getWarChestUtcWeekStart } from "@/lib/warChestPeriodTruth";
 
 const WEEKLY_TIMEFRAME_DAYS = 7;
 const MIN_VISIBLE_SLOTS = 3;
@@ -28,6 +29,7 @@ const MIN_VISIBLE_SLOTS = 3;
 type LoadLobbyWoloEarnersBoardOptions = {
   mode?: LobbyWoloEarnersMode;
   prefetchAlternate?: boolean;
+  generatedAt?: Date;
 };
 
 type UserIdentity = {
@@ -176,13 +178,6 @@ function buildEntriesForMode(
         entry.weeklyTakeWolo > 0 ? "weekly" : "backfill",
       ),
     );
-}
-
-function getCurrentUtcWeekStart(now: Date) {
-  const weekStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-  const daysSinceMonday = (weekStart.getUTCDay() + 6) % 7;
-  weekStart.setUTCDate(weekStart.getUTCDate() - daysSinceMonday);
-  return weekStart;
 }
 
 function buildEntry(
@@ -674,8 +669,9 @@ export async function loadLobbyWoloEarnersBoard(
   options: LoadLobbyWoloEarnersBoardOptions = {}
 ): Promise<LobbyWoloEarnersBoard> {
   const mode = options.mode ?? "weekly";
-  const generatedAt = new Date();
-  const weekStartsAt = getCurrentUtcWeekStart(generatedAt);
+  const generatedAt = options.generatedAt ?? new Date();
+  const weekStartsAt =
+    getWarChestUtcWeekStart(generatedAt);
   const allMetrics = await loadBoardMetrics(prisma, weekStartsAt);
 
   const entries = buildEntriesForMode(allMetrics, mode);

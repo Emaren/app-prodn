@@ -7,10 +7,84 @@ import { fileURLToPath } from "node:url";
 import {
   getWarChestModeSeedEntries,
   getWarChestPeriodMetrics,
+  getWarChestUtcWeekStart,
 } from "../lib/warChestPeriodTruth.ts";
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.resolve(dirname, "..");
+
+
+test("War Chest UTC weeks begin Monday at midnight from one captured clock", () => {
+  assert.equal(
+    getWarChestUtcWeekStart(
+      new Date("2026-09-27T23:59:59.999Z"),
+    ).toISOString(),
+    "2026-09-21T00:00:00.000Z",
+  );
+  assert.equal(
+    getWarChestUtcWeekStart(
+      new Date("2026-09-28T00:00:00.000Z"),
+    ).toISOString(),
+    "2026-09-28T00:00:00.000Z",
+  );
+});
+
+test("War Chest starts earner and weekly evidence lanes before the shared await", () => {
+  const source = fs.readFileSync(
+    path.join(root, "lib/warChest.ts"),
+    "utf8",
+  );
+
+  const earnerStart = source.indexOf(
+    "const earnersPromise",
+  );
+  const weeklyStart = source.indexOf(
+    "const weeklySnapshotPromise",
+  );
+  const join = source.indexOf(
+    "] = await Promise.all([",
+  );
+
+  assert.ok(earnerStart >= 0);
+  assert.ok(weeklyStart > earnerStart);
+  assert.ok(join > weeklyStart);
+  assert.match(
+    source.slice(earnerStart, join + 240),
+    /earnersPromise,[\s\S]*weeklySnapshotPromise,[\s\S]*sharedSnapshotPromise/,
+  );
+  assert.doesNotMatch(
+    source.slice(earnerStart, weeklyStart),
+    /await loadLobbyWoloEarnersBoard/,
+  );
+});
+
+test("War Chest earner and weekly lanes share the same generatedAt boundary", () => {
+  const chest = fs.readFileSync(
+    path.join(root, "lib/warChest.ts"),
+    "utf8",
+  );
+  const earners = fs.readFileSync(
+    path.join(root, "lib/lobbyWoloEarners.ts"),
+    "utf8",
+  );
+
+  assert.match(
+    chest,
+    /const generatedAt = new Date\(\);[\s\S]*getWarChestUtcWeekStart\(generatedAt\)/,
+  );
+  assert.match(
+    chest,
+    /loadLobbyWoloEarnersBoard\([\s\S]*generatedAt,[\s\S]*\)/,
+  );
+  assert.match(
+    earners,
+    /const generatedAt = options\.generatedAt \?\? new Date\(\)/,
+  );
+  assert.match(
+    earners,
+    /getWarChestUtcWeekStart\(generatedAt\)/,
+  );
+});
 
 test("weekly mode selects weekly settled and wagered truth", () => {
   const metrics = getWarChestPeriodMetrics(
