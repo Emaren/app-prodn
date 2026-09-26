@@ -485,7 +485,7 @@ test("public loader admits only official numbered on-chain bounty transfers", ()
   );
 });
 
-test("public bounty Hall derives claimed and replay cohorts from one leaderboard snapshot", () => {
+test("public bounty Hall loads exact claimed and all-player scopes concurrently", () => {
   const source = readFileSync(
     new URL(
       "../lib/bounties.ts",
@@ -503,25 +503,41 @@ test("public bounty Hall derives claimed and replay cohorts from one leaderboard
     ),
   );
 
-  assert.equal(
-    (loader.match(/loadPreviewLeaderboardEntries\(/g) || []).length,
-    1,
-  );
   assert.match(
     loader,
-    /loadPreviewLeaderboardEntries\(\s*"all"/s,
+    /await Promise\.all\(\[/,
   );
-  assert.doesNotMatch(
+  assert.match(
     loader,
     /loadPreviewLeaderboardEntries\(\s*"claimed"/s,
   );
   assert.match(
     loader,
-    /claimedEntries:[\s\S]*entry\.claimed/,
+    /loadPreviewLeaderboardEntries\(\s*"all"/s,
   );
   assert.match(
     loader,
-    /replayEntries:[\s\S]*!entry\.claimed/,
+    /claimedEntries:[\s\S]*claimedPreview\.filter/,
+  );
+  assert.match(
+    loader,
+    /replayEntries:[\s\S]*allPreview[\s\S]*\.filter/,
+  );
+
+  const promiseAll = loader.indexOf(
+    "await Promise.all",
+  );
+  const claimed = loader.indexOf(
+    'loadPreviewLeaderboardEntries(\n      "claimed"',
+  );
+  const all = loader.indexOf(
+    'loadPreviewLeaderboardEntries(\n      "all"',
+  );
+
+  assert.ok(
+    promiseAll >= 0 &&
+      claimed > promiseAll &&
+      all > promiseAll,
   );
 });
 
