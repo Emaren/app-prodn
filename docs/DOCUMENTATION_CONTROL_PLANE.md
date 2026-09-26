@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/targeted-replay-roster-recovery-v1` at `00fd76fbe9269a2d964f7addf2d82627a1ac51ab`
+Implementation baseline: `feature/targeted-replay-roster-recovery-v1` at `1359dac99808aec23c1fc3e26fa2315adb7c1452`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
