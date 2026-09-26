@@ -15,7 +15,8 @@ import {
 
 import {
   PUBLIC_REPLAY_ROSTER_V2_POLICY,
-  buildPublicReplayRosterV2Projection,
+  PUBLIC_REPLAY_ROSTER_V3_POLICY,
+  buildPublicReplayRosterV3Projection,
   publicReplayRosterV2DisplayState,
   stableReplayRosterV2Hash,
   type PublicReplayRosterV2Observation,
@@ -623,9 +624,14 @@ export function evaluateTargetedReplayRosterRecovery(
           (
             promotion
           ) =>
-            promotion
-              .promotionKey ===
-              PUBLIC_REPLAY_ROSTER_V2_POLICY &&
+            (
+              promotion
+                .promotionKey ===
+                PUBLIC_REPLAY_ROSTER_V2_POLICY ||
+              promotion
+                .promotionKey ===
+                PUBLIC_REPLAY_ROSTER_V3_POLICY
+            ) &&
             lower(
               promotion.replayHash
             ) ===
@@ -870,7 +876,7 @@ export function evaluateTargetedReplayRosterRecovery(
   }
 
   const projection =
-    buildPublicReplayRosterV2Projection({
+    buildPublicReplayRosterV3Projection({
       currentPlayers:
         game.players,
 
@@ -1051,7 +1057,7 @@ export function evaluateTargetedReplayRosterRecovery(
     )
       ? stableReplayRosterV2Hash({
           policyVersion:
-            PUBLIC_REPLAY_ROSTER_V2_POLICY,
+            PUBLIC_REPLAY_ROSTER_V3_POLICY,
 
           gameStatsId:
             game.id,
@@ -1104,7 +1110,7 @@ export function evaluateTargetedReplayRosterRecovery(
   const idempotencyKey =
     decisionHash
       ? [
-          "public-roster-v2",
+          "public-roster-v3",
           game.id,
           decisionHash,
         ].join(
@@ -1921,13 +1927,13 @@ export async function applyTargetedReplayRosterRecovery(
                   plan.idempotencyKey,
 
                 promotionKey:
-                  PUBLIC_REPLAY_ROSTER_V2_POLICY,
+                  PUBLIC_REPLAY_ROSTER_V3_POLICY,
 
                 decisionHash:
                   plan.decisionHash,
 
                 policyVersion:
-                  PUBLIC_REPLAY_ROSTER_V2_POLICY,
+                  PUBLIC_REPLAY_ROSTER_V3_POLICY,
 
                 replayHash:
                   plan.source
@@ -1960,7 +1966,7 @@ export async function applyTargetedReplayRosterRecovery(
                     Prisma.InputJsonValue,
 
                 reason:
-                  "Targeted exact-current canonical parser roster recovery; result authority unchanged.",
+                  "Targeted exact-current canonical parser roster v3 recovery; exact asymmetric two-team topology allowed; result authority unchanged.",
 
                 affectsPublicAggregates:
                   true,
