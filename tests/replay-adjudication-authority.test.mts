@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  replayWinnerHasPublicStatsAuthority,
   resolveReplayWinnerTruth,
   resolveReliableReplayWinner,
 } from "../lib/unresolvedWatcherResult.ts";
@@ -31,6 +32,68 @@ function adjudicationEvidence(
     ...overrides,
   };
 }
+
+test(
+  "public stats authority rejects a scalar winner when structured team truth is still untrusted",
+  () => {
+    const input = {
+      winner: "Jim",
+      players: [
+        { name: "Jim", winner: null },
+        { name: "Emaren", winner: null },
+        { name: "Zodiac", winner: null },
+        { name: "Other", winner: null },
+      ],
+      parseReason: "team_resignation_not_complete",
+      parseSource: "watcher_final",
+      isFinal: true,
+      keyEvents: {
+        team_resolution: {
+          status: "resolved",
+          confidence: "high",
+          teams: [
+            { team_id: 0, players: ["Jim", "Emaren"] },
+            { team_id: 1, players: ["Zodiac", "Other"] },
+          ],
+        },
+        result_resolution: {
+          result_status: "review_required",
+          result_trusted: false,
+          winning_team_id: null,
+          winning_player_names: [],
+        },
+      },
+    };
+
+    assert.equal(
+      replayWinnerHasPublicStatsAuthority(input),
+      false
+    );
+  }
+);
+
+test(
+  "public stats authority accepts a canonical stored 1v1 winner",
+  () => {
+    assert.equal(
+      replayWinnerHasPublicStatsAuthority({
+        winner: "Jim",
+        players: [
+          { name: "Jim", winner: true },
+          { name: "Zodiac", winner: false },
+        ],
+        parseReason: "recorded_resignation_final",
+        parseSource: "watcher_final",
+        isFinal: true,
+        keyEvents: {
+          completed: true,
+          resigned_player_names: ["Zodiac"],
+        },
+      }),
+      true
+    );
+  }
+);
 
 test(
   "accepted team adjudication authorizes the complete winning side for statistics only",
