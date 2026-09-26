@@ -740,6 +740,45 @@ export async function ensureTrophySeedData(prisma: PrismaClient) {
   }
 }
 
+const publicTrophySeedEnsureByClient =
+  new WeakMap<PrismaClient, Promise<void>>();
+
+/**
+ * Public trophy reads keep lazy bootstrap safety without paying the seed
+ * reconciliation transaction on every request.
+ *
+ * The canonical ensureTrophySeedData() function above deliberately remains
+ * fully re-runnable for admin/operator repair paths. Only public reads retain
+ * one successful reconciliation promise per production Prisma client.
+ */
+function ensurePublicTrophySeedData(prisma: PrismaClient) {
+  const existing =
+    publicTrophySeedEnsureByClient.get(prisma);
+
+  if (existing) {
+    return existing;
+  }
+
+  const run =
+    ensureTrophySeedData(prisma)
+      .catch((error) => {
+        if (
+          publicTrophySeedEnsureByClient.get(prisma) ===
+          run
+        ) {
+          publicTrophySeedEnsureByClient.delete(prisma);
+        }
+        throw error;
+      });
+
+  publicTrophySeedEnsureByClient.set(
+    prisma,
+    run,
+  );
+
+  return run;
+}
+
 async function loadRatings(prisma: PrismaClient) {
   const ratings = new Map<string, number>();
   try {
@@ -1187,7 +1226,7 @@ export async function loadTrophyCommandSnapshot(
 }
 
 export async function loadPublicTrophies(prisma: PrismaClient) {
-  await ensureTrophySeedData(prisma);
+  await ensurePublicTrophySeedData(prisma);
   return prisma.trophy.findMany({
     include: {
       currentHolder: {
