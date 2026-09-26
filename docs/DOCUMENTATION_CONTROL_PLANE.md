@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `performance/rivalries-payload-v1` at `72e90938567b4aa7041d83e056c8cc919bdd59ad`
+Implementation baseline: `performance/rivalries-payload-v1` at `31f818bc9ee1188efaaae494b50bbb215efdd2cc`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
