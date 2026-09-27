@@ -54,7 +54,9 @@ append-only `ReplayRosterPromotion`.
 The safe bridge is evidence re-use, not authority expansion. V4 may substitute the exact
 `teams.resolution` observation only when a current `public_replay_roster_v3` promotion
 re-binds to the same game, replay hash, persisted roster hash, candidate-only observation,
-and exact current parser contract. The promotion must still be explicitly roster-only
+and exact current parser contract. The durable semantic identity is the canonical
+`fieldPath = "teams.resolution"`; `observationKind` is producer metadata and must not become
+a second, invented authority gate. The promotion must still be explicitly roster-only
 (`affectsResults=false`, `affectsBets=false`, `settlementAuthority=false`). Result,
 resignation and action-tail evidence continue to come from the independent terminal-result
 rail and every existing V4 fail-closed check still runs.
