@@ -1522,6 +1522,27 @@ code, and shell command. This changes diagnosis only; fail-closed behavior,
 rollback traps, Wolo protection, and mutation authority remain unchanged.
 
 
+## 2026-09-27 — Root-headroom recovery needs hysteresis, not threshold luck
+
+A same-source Finish run entered the existing bounded root-headroom recovery at
+4.91 GiB free. The approved lane reclaimed 107,672 KiB: 3,824 KiB from
+regenerable APT material and 103,848 KiB from the bounded journal, with no nginx
+log removal and Wolo listener counts remaining 1/1. Its own capacity proof ended
+at 5,252,092 KiB against a 5,242,880 KiB floor: only 9,212 KiB of margin.
+
+Ordinary root activity consumed that tiny margin before Finish's independent
+capacity re-proof, which then measured 4.98 GiB and correctly failed closed.
+The recovery was safe; the controller contract was too close to the threshold.
+
+Durable rule: the release warning floor remains the hard pass/fail threshold,
+but learned recovery must target a bounded amount above it. The target is the
+floor plus a configured hysteresis margin, capped by preferred root headroom.
+Current policy uses 128 MiB. Recovery tier ordering and deletion authority do
+not change: APT material first, bounded journal second, then only closed rotated
+nginx `.log.1` files after durable copy and SHA-256 proof. Active runtime,
+dependencies, rollback bodies, PostgreSQL, Wolo and arbitrary files remain out
+of bounds.
+
 ## 2026-09-19 — A planner must not block before its own authorized remediation
 
 Finish recovered root headroom successfully, then stopped before documentation
