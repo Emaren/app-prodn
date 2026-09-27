@@ -333,6 +333,7 @@ function manualContender(
 async function loadChaosActivityContenders(
   prisma: PrismaClient,
   claimedEntries: PublicPlayerDirectoryEntry[],
+  excludedIdentities: Set<string>,
 ) {
   let rows: WatcherActivityRow[] = [];
 
@@ -396,6 +397,11 @@ async function loadChaosActivityContenders(
   );
 
   return claimedEntries
+    .filter(
+      (entry) =>
+        !excludedIdentities.has(normalizedIdentity(entry.name)) &&
+        !excludedIdentities.has(normalizedIdentity(entry.uid)),
+    )
     .map((entry) => {
       const activity = entry.uid ? activityByUid.get(entry.uid) : null;
       return {
@@ -562,9 +568,16 @@ export async function loadChampionsV2State(
   const chaosBase = getTitleState(titleEconomy, podiumTitles[1]);
   const womensBase = getTitleState(titleEconomy, podiumTitles[2]);
 
+  const chaosHolderIdentities = new Set(
+    chaosBase.holders.flatMap((holder) => [
+      normalizedIdentity(holder.name),
+      normalizedIdentity(holder.uid),
+    ]).filter(Boolean),
+  );
   const chaosContenders = await loadChaosActivityContenders(
     prisma,
     directory.claimedEntries,
+    chaosHolderIdentities,
   );
 
   const world: ChampionTitleState = {
