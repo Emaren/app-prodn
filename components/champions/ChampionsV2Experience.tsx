@@ -440,14 +440,25 @@ function NationalBeltCard({
     <article className="relative w-[19rem] shrink-0 snap-start overflow-hidden rounded-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(12,20,34,0.97),rgba(3,7,17,0.99))] shadow-[0_22px_70px_rgba(0,0,0,0.28)] sm:w-[21rem]">
       <div className="relative h-[24rem] overflow-hidden">
         {showcaseBackground ? (
-          <Image
-            src={belt.beltUrl}
-            alt={`${belt.country} championship belt showcase`}
-            fill
-            unoptimized
-            sizes="340px"
-            className="object-cover object-center opacity-80"
-          />
+          <>
+            <Image
+              src={belt.beltUrl}
+              alt=""
+              fill
+              unoptimized
+              sizes="340px"
+              className="scale-110 object-cover object-center opacity-32 blur-xl"
+            />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(15,23,42,0.10),rgba(2,6,23,0.54)_74%)]" />
+            <Image
+              src={belt.beltUrl}
+              alt={`${belt.country} championship belt showcase`}
+              fill
+              unoptimized
+              sizes="340px"
+              className="object-contain object-center p-3 drop-shadow-[0_18px_28px_rgba(0,0,0,0.62)]"
+            />
+          </>
         ) : (
           <Image
             src={holderAvatarUrl}
@@ -461,7 +472,7 @@ function NationalBeltCard({
         <div
           className={
             showcaseBackground
-              ? "absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,0.18),rgba(2,6,23,0.18)_48%,#030711_100%)]"
+              ? "absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,0.10),transparent_42%,#030711_100%)]"
               : "absolute inset-0 bg-[linear-gradient(180deg,transparent_36%,rgba(3,7,17,0.16)_60%,#030711_100%)]"
           }
         />
