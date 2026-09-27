@@ -1672,6 +1672,14 @@ test(
         2,
     };
 
+    const exactPromotedResignationCounts =
+      productionResignationCounts
+        .map(
+          (entry) => ({
+            ...entry,
+          })
+        );
+
     const promotedTeamResolution = {
       ...(
         keyEvents
@@ -1687,7 +1695,37 @@ test(
 
       team_count:
         2,
+
+      /*
+       * Production 44862's exact promoted topology observation carries
+       * parser-generated resignation counts plus review-only winner-flag
+       * metadata. Only the count array may cross into V4 result evidence.
+       */
+      result_evidence: {
+        ...productionResultEvidence,
+
+        sources: [
+          "coherent_player_winner_flags",
+        ],
+
+        winner_flag_team_id:
+          2,
+
+        winner_flags_coherent:
+          true,
+
+        resignation_counts_by_team:
+          exactPromotedResignationCounts,
+      },
     };
+
+    /*
+     * Historical GameStats.result_resolution predates the roster repair and
+     * therefore still has no team resignation counts.
+     */
+    productionResultEvidence
+      .resignation_counts_by_team =
+        [];
 
     /*
      * Production 44862 shape after roster promotion:
@@ -2131,6 +2169,7 @@ test(
                 rosterPromotionId?: unknown;
                 rosterObservationId?: unknown;
                 rosterPolicyVersion?: unknown;
+                resignationCountsPolicyVersion?: unknown;
               };
             };
           }
@@ -2159,6 +2198,71 @@ test(
         ?.rosterPolicyVersion,
       "public_replay_roster_v3"
     );
+
+    assert.equal(
+      evidence
+        ?.parseRun
+        ?.promotedRosterTopology
+        ?.resignationCountsPolicyVersion,
+      "watcher-team-promoted-resignation-counts-v1"
+    );
+
+    /*
+     * Break only the promoted parser-count shape. The topology remains exact,
+     * but V4 must not manufacture or infer counts from the roster/resign list.
+     */
+    exactPromotedResignationCounts[0] = {
+      ...exactPromotedResignationCounts[0],
+
+      player_count:
+        99,
+    };
+
+    createdData =
+      null;
+
+    const staleCountsReport =
+      await reconcileAutomaticWatcherTerminalResults(
+        prisma as never,
+        [
+          input.id,
+        ]
+      );
+
+    assert.equal(
+      staleCountsReport
+        .createdCount,
+      0
+    );
+
+    assert.equal(
+      staleCountsReport
+        .skippedCount,
+      1
+    );
+
+    assert.equal(
+      staleCountsReport
+        .outcomes[0]
+        ?.detail,
+      "parser_resignation_counts_missing"
+    );
+
+    assert.equal(
+      createdData,
+      null
+    );
+
+    exactPromotedResignationCounts[0] = {
+      team_id:
+        0,
+
+      player_count:
+        2,
+
+      resigned_player_count:
+        1,
+    };
 
     /*
      * Break only the ledger -> current-roster binding.
