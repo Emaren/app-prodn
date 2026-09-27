@@ -1636,6 +1636,9 @@ test(
         input.players
       );
 
+    let promotionProjectedPlayersHash =
+      rosterHash;
+
     let createdData:
       | Record<
           string,
@@ -1866,7 +1869,7 @@ test(
               input.replayHash,
 
             projectedPlayersHash:
-              rosterHash,
+              promotionProjectedPlayersHash,
 
             projectedPlayers:
               input.players,
@@ -2070,6 +2073,53 @@ test(
         ?.promotedRosterTopology
         ?.rosterPolicyVersion,
       "public_replay_roster_v3"
+    );
+
+    /*
+     * Break only the ledger -> current-roster binding.
+     *
+     * The same stale historical team_resolution must remain unresolved;
+     * the bridge may not consume a promotion whose projected roster hash no
+     * longer matches the persisted current roster.
+     */
+    promotionProjectedPlayersHash =
+      "0".repeat(
+        64
+      );
+
+    createdData =
+      null;
+
+    const staleBindingReport =
+      await reconcileAutomaticWatcherTerminalResults(
+        prisma as never,
+        [
+          input.id,
+        ]
+      );
+
+    assert.equal(
+      staleBindingReport
+        .createdCount,
+      0
+    );
+
+    assert.equal(
+      staleBindingReport
+        .skippedCount,
+      1
+    );
+
+    assert.equal(
+      staleBindingReport
+        .outcomes[0]
+        ?.detail,
+      "team_resolution_not_exact"
+    );
+
+    assert.equal(
+      createdData,
+      null
     );
   }
 );
