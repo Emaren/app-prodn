@@ -19,6 +19,7 @@ import { getWoloMainnetDisplayStartAt, isWoloMainnet } from "@/lib/woloChain";
 import { planMatchedWagerExposure } from "@/lib/betWagerSettlement";
 import {
   warChestClaimCountsAsTake,
+  warChestWagerEarnedWolo,
   warChestWagerTakeWolo,
 } from "@/lib/warChestWoloAccounting";
 import { getWarChestUtcWeekStart } from "@/lib/warChestPeriodTruth";
@@ -70,8 +71,10 @@ type ActorMetrics = {
   replayName: string | null;
   weeklyTakeWolo: number;
   settledWolo: number;
+  earnedWolo: number;
   wageredWolo: number;
   weeklySettledWolo: number;
+  weeklyEarnedWolo: number;
   weeklyWageredWolo: number;
   claimCount: number;
   wagerCount: number;
@@ -199,8 +202,10 @@ function buildEntry(
       allTimeTakeWolo: getAllTimeTakeWolo(metrics),
       weeklyTakeWolo: metrics.weeklyTakeWolo,
       settledWolo: metrics.settledWolo,
+      earnedWolo: metrics.earnedWolo,
       wageredWolo: metrics.wageredWolo,
       weeklySettledWolo: metrics.weeklySettledWolo,
+      weeklyEarnedWolo: metrics.weeklyEarnedWolo,
       weeklyWageredWolo: metrics.weeklyWageredWolo,
       claimCount: metrics.claimCount,
       wagerCount: metrics.wagerCount,
@@ -327,8 +332,10 @@ function getOrCreateActor(
     replayName: input.replayName,
     weeklyTakeWolo: 0,
     settledWolo: 0,
+    earnedWolo: 0,
     wageredWolo: 0,
     weeklySettledWolo: 0,
+    weeklyEarnedWolo: 0,
     weeklyWageredWolo: 0,
     claimCount: 0,
     wagerCount: 0,
@@ -380,8 +387,10 @@ function mergeDuplicateActorNames(entries: ActorMetrics[]) {
 
     current.weeklyTakeWolo += entry.weeklyTakeWolo;
     current.settledWolo += entry.settledWolo;
+    current.earnedWolo += entry.earnedWolo;
     current.wageredWolo += entry.wageredWolo;
     current.weeklySettledWolo += entry.weeklySettledWolo;
+    current.weeklyEarnedWolo += entry.weeklyEarnedWolo;
     current.weeklyWageredWolo += entry.weeklyWageredWolo;
     current.claimCount += entry.claimCount;
     current.wagerCount += entry.wagerCount;
@@ -566,12 +575,15 @@ async function loadBoardMetrics(prisma: PrismaClient, weekStartsAt: Date) {
     }
     if (claimCountsAsSettled(claim)) {
       actor.settledWolo += claim.amountWolo;
+      actor.earnedWolo += claim.amountWolo;
 
       if (
         claim.createdAt.getTime() >=
         weekStartsAt.getTime()
       ) {
         actor.weeklySettledWolo +=
+          claim.amountWolo;
+        actor.weeklyEarnedWolo +=
           claim.amountWolo;
       }
     }
@@ -629,10 +641,16 @@ async function loadBoardMetrics(prisma: PrismaClient, weekStartsAt: Date) {
       warChestWagerTakeWolo(
         wager,
       );
+    const wagerEarnedWolo =
+      warChestWagerEarnedWolo(
+        wager,
+      );
 
     if (wagerTakeWolo > 0) {
       actor.settledWolo +=
         wagerTakeWolo;
+      actor.earnedWolo +=
+        wagerEarnedWolo;
 
       if (
         takeSettledAt.getTime() >=
@@ -643,6 +661,8 @@ async function loadBoardMetrics(prisma: PrismaClient, weekStartsAt: Date) {
 
         actor.weeklySettledWolo +=
           wagerTakeWolo;
+        actor.weeklyEarnedWolo +=
+          wagerEarnedWolo;
       }
 
       actor.lastActiveAt =
