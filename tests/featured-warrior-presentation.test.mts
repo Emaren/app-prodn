@@ -55,7 +55,7 @@ test("featured championship labels preserve public wording", () => {
   assert.equal(
     featuredWarriorHonorLabel(
       "mexico_champion_belt",
-      "Mexican Champion"
+      "Mexico Champion"
     ),
     "Mexican Champion"
   );
