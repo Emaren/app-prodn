@@ -224,10 +224,17 @@ V4 may consume the exact topology observation already bound to a
 re-validating the promotion against the current game, replay hash, persisted projected-roster
 hash, candidate-only observation and exact current parser contract. The topology observation
 is identified by canonical `fieldPath = "teams.resolution"`; producer-specific
-`observationKind` labels are informational and do not grant or revoke authority. Only
-`teams.resolution` is substituted for policy evaluation; result-resolution, resignation and
-terminal action evidence are not rewritten or supplied by the roster ledger. A broken binding
-falls back to the historical input and remains fail-closed.
+`observationKind` labels are informational and do not grant or revoke authority.
+
+If V4 then fails specifically at `parser_resignation_counts_missing`, it may consume only
+`teams.resolution.result_evidence.resignation_counts_by_team` from that same exact promoted
+observation. The bridge requires exactly two unique count rows whose team IDs and
+`player_count` values match the promoted canonical topology; invalid or absent rows are not
+derived or synthesized. No other promoted result metadata is copied. Historical result trust,
+winner flags, candidate winner/team fields, resignation conclusion fields and sources remain
+unchanged, and V4 independently cross-checks the counts against the serialized resignation
+roster and raw player activity before applying its existing action-tail thresholds. A broken
+binding or count mismatch remains fail-closed.
 
 
 Historical sealed V2 campaign scripts remain immutable. The targeted rail does
