@@ -386,7 +386,8 @@ export function avatarPresenceUrlForUser(
 
 export function featuredAvatarCardUrlForUser(
   uid: string | null | undefined,
-  name: string | null | undefined
+  name: string | null | undefined,
+  revision?: string | number | null
 ) {
   const normalizedUid = slugifyAvatarTarget(uid);
   const profileFallback = avatarCardUrlForUser(uid, name);
@@ -395,16 +396,25 @@ export function featuredAvatarCardUrlForUser(
     return profileFallback;
   }
 
-  return managedAvatarUrl(
+  const url = managedAvatarUrl(
     `user-${normalizedUid}-featured`,
     profileFallback,
     { size: "card" }
   );
+
+  return revision == null
+    ? url
+    : appendQueryParam(
+        url,
+        "rev",
+        String(revision)
+      );
 }
 
 export function featuredAvatarThumbUrlForUser(
   uid: string | null | undefined,
-  name: string | null | undefined
+  name: string | null | undefined,
+  revision?: string | number | null
 ) {
   const normalizedUid = slugifyAvatarTarget(uid);
   const profileFallback = avatarThumbUrlForUser(uid, name);
@@ -413,11 +423,19 @@ export function featuredAvatarThumbUrlForUser(
     return profileFallback;
   }
 
-  return managedAvatarUrl(
+  const url = managedAvatarUrl(
     `user-${normalizedUid}-featured`,
     profileFallback,
     { size: "thumb" }
   );
+
+  return revision == null
+    ? url
+    : appendQueryParam(
+        url,
+        "rev",
+        String(revision)
+      );
 }
 
 export function thumbnailUrlForAvatarAsset(url: string | null | undefined) {
