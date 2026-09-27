@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "repository-entrypoint"
-reviewed_at: "2026-09-22"
+reviewed_at: "2026-09-27"
 review_interval_days: 14
 sensitivity: "internal"
 ---
@@ -40,6 +40,30 @@ memory before closing the work.
 4. `aoe2war finish` remains the canonical end-of-work transaction and owns
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
+
+## 2026-09-27 — Replay Roster V3 application and database envelopes must advance together
+
+Production game 44862 proved an authority-layer drift after exact asymmetric two-team roster
+recovery was admitted by the current V3 application policy. The dry-run correctly produced a
+2v1 Jim/Emaren vs Zodiac roster with all winner flags null and no result, betting, settlement,
+or Wolo authority, but the roster-only apply failed atomically at
+`replayRosterPromotion.create()` because the historical PostgreSQL
+`ck_replay_roster_promotions_format` CHECK still admitted only 2v2, 3v3, and 4v4.
+
+The database rejected the insert with SQLSTATE 23514 and the SERIALIZABLE transaction rolled
+back, leaving the plan eligible and unapplied. Live production proof sealed the old CHECK
+definition at SHA-256
+`e1a8a48953aae85038e714f79bd039c0dbdcf6e44ae558fde52d63a780f78bb8`. The required V3
+two-team envelope is proof-bound at
+`c9043cbd4f568543c7238b0f3599f233c5715ef3f66cc4b170a219bcd7fb0360` and permits exactly
+1-4 players per side with total roster size 3-8; ordinary 1v1 remains complete without roster
+promotion and FFA/three-team/arbitrary formats remain excluded.
+
+Durable rule: when a source-level authority envelope is widened for an append-only production
+ledger, audit every persistent CHECK/enum/index contract that constrains the same vocabulary.
+Unit mocks can prove application policy while still missing live-schema rejection. Schema
+alignment must ship through the proof-bound migration rail; never bypass an atomic production
+rejection with manual SQL.
 
 ## 2026-09-22 — A quiet edge-review window cannot overrule later certified churn
 
