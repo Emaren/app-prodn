@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/war-chest-gross-take-avatar-fallback-20260927` at `278468bd276bb065ac4bfc8f522ffe79740759a4`
+Implementation baseline: `fix/war-chest-gross-take-avatar-fallback-20260927` at `5b12b496d2b61f492755b7f3b163eeb471b7a9dc`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
