@@ -190,6 +190,26 @@ test("lobby snapshot prefetches both War Chest rankings before interaction", () 
   assert.match(source, /prefetchedEntriesByMode/);
 });
 
+test("full War Chest captain uses active-period settled and earned truth", () => {
+  const source = fs.readFileSync(
+    path.join(root, "app/war-chest/page.tsx"),
+    "utf8",
+  );
+
+  assert.match(
+    source,
+    /getWarChestPeriodMetrics\(leader, mode\)/,
+  );
+  assert.match(
+    source,
+    /leaderPeriodMetrics\.settledWolo/,
+  );
+  assert.match(
+    source,
+    /leaderPeriodMetrics\.earnedWolo/,
+  );
+});
+
 test("home War Chest defaults to settled gross Take and reveals net Earned on hover", () => {
   const source = fs.readFileSync(
     path.join(root, "components/lobby/TopWoloEarnersTile.tsx"),
