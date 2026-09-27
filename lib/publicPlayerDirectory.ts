@@ -394,7 +394,6 @@ export async function loadPublicPlayerDirectoryFresh(
         active: true,
         target: {
           startsWith: "user-",
-          endsWith: "-featured",
         },
       },
       select: {
@@ -443,17 +442,30 @@ export async function loadPublicPlayerDirectoryFresh(
 
   const featuredAvatarForUid =
     (uid: string) => {
-      const target =
+      const featuredTarget =
         normalizeManagedMediaTarget(
           `user-${uid}-featured`
         );
+      const profileTarget =
+        normalizeManagedMediaTarget(
+          `user-${uid}`
+        );
 
       const asset =
-        target
-          ? activeFeaturedAvatarByTarget.get(
-              target
-            )
-          : null;
+        (
+          featuredTarget
+            ? activeFeaturedAvatarByTarget.get(
+                featuredTarget
+              )
+            : null
+        ) ??
+        (
+          profileTarget
+            ? activeFeaturedAvatarByTarget.get(
+                profileTarget
+              )
+            : null
+        );
 
       return {
         hasFeaturedAvatar:
