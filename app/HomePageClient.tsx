@@ -1200,7 +1200,7 @@ function FeaturedWarriorSubtitle({ warrior }: { warrior: FeaturedWarrior }) {
         ))}
         {honorTitles.length > visibleHonors.length ? (
           <div>
-            +{honorTitles.length - visibleHonors.length} {h("titles")}
+            +{honorTitles.length - visibleHonors.length} titles
           </div>
         ) : null}
       </div>
