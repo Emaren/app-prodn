@@ -7,6 +7,7 @@ import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 
 import { getPrisma } from "@/lib/prisma";
 import { loadWarChestSnapshot, normalizeWarChestMode, type WarChestMode } from "@/lib/warChest";
+import { getWarChestPeriodMetrics } from "@/lib/warChestPeriodTruth";
 import { SESSION_COOKIE_NAME, verifySession } from "@/lib/session";
 
 export const runtime = "nodejs";
@@ -111,6 +112,9 @@ export default async function WarChestPage({ searchParams }: WarChestPageProps) 
   const trackedEntries = snapshot.earners.entries;
   const reserve = snapshot.wolo?.accounts.ecosystembounties?.wolo ?? null;
   const leaderModeTake = leader ? entryModeTake(leader, mode) : 0;
+  const leaderPeriodMetrics = leader
+    ? getWarChestPeriodMetrics(leader, mode)
+    : { settledWolo: 0, earnedWolo: 0, wageredWolo: 0 };
   const oppositeModeLabel = mode === "weekly" ? "All Time" : "This Week";
   const oppositeModeTake = leader
     ? mode === "weekly"
@@ -222,9 +226,9 @@ export default async function WarChestPage({ searchParams }: WarChestPageProps) 
                 />
                 <MetricTile
                   label="Settled"
-                  value={leader ? `${formatNumber(leader.settledWolo)} WOLO` : "0 WOLO"}
+                  value={`${formatNumber(leaderPeriodMetrics.settledWolo)} WOLO`}
                   hoverLabel="Earned"
-                  hoverValue={leader ? `${formatNumber(leader.earnedWolo)} WOLO` : "0 WOLO"}
+                  hoverValue={`${formatNumber(leaderPeriodMetrics.earnedWolo)} WOLO`}
                 />
               </div>
 
