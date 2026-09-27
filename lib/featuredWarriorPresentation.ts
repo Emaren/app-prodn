@@ -38,5 +38,12 @@ export function featuredWarriorHonorLabel(
     return "American Champion";
   }
 
+  if (
+    normalizedId === "mexico_champion_belt" ||
+    /^mexico champion$/i.test(cleanedDisplayName)
+  ) {
+    return "Mexican Champion";
+  }
+
   return cleanedDisplayName || "Champion";
 }
