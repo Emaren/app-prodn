@@ -1639,6 +1639,9 @@ test(
     let promotionProjectedPlayersHash =
       rosterHash;
 
+    let promotedObservationFieldPath =
+      "teams.resolution";
+
     let createdData:
       | Record<
           string,
@@ -1899,7 +1902,7 @@ test(
                 "topology_candidate",
 
               fieldPath:
-                "teams.resolution",
+                promotedObservationFieldPath,
 
               value:
                 promotedTeamResolution,
@@ -2117,6 +2120,50 @@ test(
 
     assert.equal(
       staleBindingReport
+        .outcomes[0]
+        ?.detail,
+      "team_resolution_not_exact"
+    );
+
+    assert.equal(
+      createdData,
+      null
+    );
+
+    /*
+     * Restore the roster binding and break only the semantic field identity.
+     *
+     * observationKind is intentionally flexible producer metadata, but the
+     * durable topology contract is exactly teams.resolution.
+     */
+    promotionProjectedPlayersHash =
+      rosterHash;
+
+    promotedObservationFieldPath =
+      "teams.not_resolution";
+
+    const wrongFieldReport =
+      await reconcileAutomaticWatcherTerminalResults(
+        prisma as never,
+        [
+          input.id,
+        ]
+      );
+
+    assert.equal(
+      wrongFieldReport
+        .createdCount,
+      0
+    );
+
+    assert.equal(
+      wrongFieldReport
+        .skippedCount,
+      1
+    );
+
+    assert.equal(
+      wrongFieldReport
         .outcomes[0]
         ?.detail,
       "team_resolution_not_exact"
