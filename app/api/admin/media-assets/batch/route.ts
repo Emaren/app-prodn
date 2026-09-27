@@ -7,6 +7,7 @@ import { promisify } from "node:util";
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/adminSession";
+import type { PrismaClient } from "@/lib/generated/prisma";
 import {
   buildManagedMediaBatchManifest,
   managedMediaBatchMimeType,
@@ -113,9 +114,7 @@ function manifestEntryByNormalizedPath(
 }
 
 async function saveBatchAsset(options: {
-  prisma: Awaited<ReturnType<typeof requireAdmin>> extends { prisma: infer P }
-    ? P
-    : never;
+  prisma: PrismaClient;
   uploadedByUid: string;
   zipPath: string;
   archiveEntries: string[];
