@@ -30,7 +30,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/olympia",
     label: "Olympia",
-    version: "src-71aefcaccc2e4c970235",
+    version: "src-0d8452e4afbc18953935",
   },
   {
     href: "/leagues",
