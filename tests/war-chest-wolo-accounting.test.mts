@@ -25,6 +25,21 @@ test(
       140,
     );
 
+    const evenBookAfterFee = {
+      status: "won",
+      amountWolo: 100,
+      payoutWolo: 196,
+    };
+
+    assert.equal(
+      warChestWagerTakeWolo(evenBookAfterFee),
+      196,
+    );
+    assert.equal(
+      warChestWagerEarnedWolo(evenBookAfterFee),
+      96,
+    );
+
     const principalOnlyWin = {
       status: "won",
       amountWolo: 100,
