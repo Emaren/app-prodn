@@ -1,5 +1,10 @@
 import { executeFounderWoloPayout } from "@/lib/woloBetSettlement";
 import type { Prisma, PrismaClient, Trophy } from "@/lib/generated/prisma";
+import {
+  ACTIVE_REIGN_TRIBUTE_TROPHY_IDS,
+  titleIsPubliclyForcedVacant,
+  trophyHasActiveReignTribute,
+} from "@/lib/champions/championshipPolicy";
 import { loadLobbyLeaderboard } from "@/lib/lobbyLeaderboard";
 import {
   allChampionTitles,
@@ -57,8 +62,7 @@ const SEEDS: TrophySeed[] = [
     definition: nationalTitles.find((title) => title.country === "UK")!,
     family: "national",
     tier: "National",
-    holderName: "Sniper",
-    status: "held",
+    status: "vacant",
   },
   {
     trophyId: "elite_champion_belt",
@@ -321,6 +325,7 @@ export async function ensureDailyTrophyTributePayouts(prisma: PrismaClient, now 
 
   const trophies = await prisma.trophy.findMany({
     where: {
+      trophyId: { in: [...ACTIVE_REIGN_TRIBUTE_TROPHY_IDS] },
       status: { in: ["held", "active"] },
       payoutFrequency: "daily",
       tributeAmountWolo: { gt: 0 },
@@ -484,6 +489,9 @@ export async function executePendingTrophyTributePayouts(
     where: {
       payoutKind: "daily_tribute",
       status: { in: ["dry_run", "pending", "retrying", "failed"] },
+      trophy: {
+        trophyId: { in: [...ACTIVE_REIGN_TRIBUTE_TROPHY_IDS] },
+      },
       txHash: null,
       recipientWoloAddress: { not: null },
       amountWolo: { gt: 0 },
@@ -1039,7 +1047,11 @@ export async function loadTrophyCommandSnapshot(
   ]);
   const failedChainTypes = new Set(["CHAIN_QUERY_FAILED", "CHAIN_TX_FAILED", "SETTLEMENT_FAILED"]);
   const totalDailyTribute = trophyRows
-    .filter((trophy) => ["held", "active"].includes(trophy.status))
+    .filter(
+      (trophy) =>
+        ["held", "active"].includes(trophy.status) &&
+        trophyHasActiveReignTribute(trophy.trophyId),
+    )
     .reduce((sum, trophy) => sum + trophy.tributeAmountWolo, 0);
   const totalDailyBountyGrowth = trophyRows
     .filter((trophy) => ["held", "active", "guardian_held"].includes(trophy.status))
@@ -1227,7 +1239,7 @@ export async function loadTrophyCommandSnapshot(
 
 export async function loadPublicTrophies(prisma: PrismaClient) {
   await ensurePublicTrophySeedData(prisma);
-  return prisma.trophy.findMany({
+  const trophies = await prisma.trophy.findMany({
     include: {
       currentHolder: {
         select: {
@@ -1241,6 +1253,30 @@ export async function loadPublicTrophies(prisma: PrismaClient) {
       },
     },
     orderBy: [{ family: "asc" }, { displayName: "asc" }],
+  });
+
+  return trophies
+    .filter((trophy) => {
+      const definition = trophyDefinitionForRow(trophy.trophyId);
+      return !definition || !titleIsPubliclyForcedVacant(definition.id);
+    })
+    .map((trophy) => {
+    const definition = trophyDefinitionForRow(trophy.trophyId);
+    if (!definition || !titleIsPubliclyForcedVacant(definition.id)) {
+      return trophy;
+    }
+
+    return {
+      ...trophy,
+      status: "vacant",
+      currentHolderUserId: null,
+      currentHolderDisplayName: null,
+      currentHolderWoloAddress: null,
+      currentHolder: null,
+      holderSince: null,
+      currentBountyWolo: 0,
+      forfeitureNeeded: false,
+    };
   });
 }
 

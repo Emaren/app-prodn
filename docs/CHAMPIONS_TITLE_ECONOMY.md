@@ -24,7 +24,10 @@ operator intents until a future Warbound chain module exists.
 
 ## Public routes
 
-- `/champions` is the title-economy hub.
+- `/champions` is the title-economy hub. Champions V2 separates RM and DM
+  rating authority, derives Chaos contenders from linked Watcher activity,
+  presents team crowns with one persisted RM/DM preference, and renders the
+  national catalog as a horizontal belt hall.
 - `/champions/[...slug]` renders detail pages for belts, national titles, ELO
   titles, tag titles, and designations.
 - `/national-champions` is the cinematic national-title projection. It must
@@ -54,9 +57,15 @@ operator intents until a future Warbound chain module exists.
 The title config lives in `lib/champions/titles.ts`.
 
 - Podium belts: AoE2WAR World Champion, Chaos Champion, Women's Champion.
-- Tag titles: Tag Team Champions.
-- National titles: Canada, United States, Mexico, United Kingdom.
-- ELO titles: Rising, Challenger, Veteran, Elite, Legend.
+- Mode crowns: Random Map Champion and Death Match Champion, each with its own
+  top-ten rating lane.
+- Team crowns: 2v2, 3v3, and 4v4, each with RM and DM presentations. Their
+  public holder seats remain vacant until custody is explicitly created.
+- National titles: Canada, United States, Mexico, United Kingdom, plus the
+  managed-media national roadmap catalog represented by the public horizontal
+  belt hall.
+- ELO titles: Rising, Challenger, Veteran, Elite, Legend, each rendered against
+  either the RM or DM rating lane without mixed-primary-rating fallbacks.
 - Special designations: Giant Killer, Comeback King, Siege Lord, Silent Killer,
   Untouchable, Raid Demon, Boom Lord, Slayer King, Relic Baron, Blitz Lord,
   Wololo Lord, Iron Wall.
@@ -108,6 +117,25 @@ media armory.
 
 ## Data and state
 
+Current-season public policy lives in
+`lib/champions/championshipPolicy.ts`.
+
+- The live public summary is **4 active / 18 vacant / 45 WOLO per day**.
+- The four current paying reigns are Chaos, Canada, USA, and Mexico.
+- World and United Kingdom are explicitly vacant public titles. Historical
+  Trophy rows may remain auditable, but they do not grant current public
+  custody or future daily Tribute.
+- Pending/future daily Tribute execution is bounded to the four explicit
+  current-season trophy ids. This prevents an obsolete seeded title from
+  silently creating new money obligations.
+- `lib/champions/championsV2.ts` owns the Champions V2 contender projection:
+  World alternates explicit RM/DM leaders; RM and DM crowns use their own
+  rating columns; Chaos ranks signed-up Kingdom users by linked Watcher
+  presence and replay-bearing activity; ELO divisions use lane-specific
+  ratings; national override entries preserve known challengers without
+  inventing site accounts.
+- Women's Champion is vacant and currently presents Moose as the invited #1
+  contender only; no AoE2WAR identity is fabricated for her.
 - `lib/champions/titleState.ts` builds the current app-side title view model.
 - `lib/trophies/service.ts` owns seeded trophy definitions, projected bounty
   display, holder eligibility, profile holdings, and nationality-change audit.
@@ -152,13 +180,17 @@ It creates:
 - `trophy_payouts`
 - `trophy_settings`
 
-Initial app-side custody seeds:
+Initial app-side custody seeds currently retained by source:
 
 - Canada Champion: Emaren
 - USA Champion: Jim
 - Mexico Champion: Julio Alvarez
-- UK Champion: Sniper
+- UK Champion: vacant
 - Elite Championship: Commissioner Guardian custody with Emaren
+
+Older databases may still retain historical UK/Sniper seed evidence. Public
+title projection and the live Tribute rail explicitly treat that obsolete seed
+as non-current rather than rewriting historical custody evidence on read.
 
 Seed names remain visible even when a matching app user does not exist. In that
 case the display custody is retained while the user relation and wallet address

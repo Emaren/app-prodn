@@ -47,7 +47,6 @@ const migratedTimestampSurfaces = [
   "components/admin/ReplayOperationsCommandCenter.tsx",
   "app/requests/page.tsx",
   "components/zodiac/ZodiacTrainingPage.tsx",
-  "app/champions/page.tsx",
   "app/champions/[...slug]/page.tsx",
   "components/lobby/WolomaniaPromoTile.tsx",
   "app/wolomania/WolomaniaPageClient.tsx",
