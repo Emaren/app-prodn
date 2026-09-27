@@ -188,6 +188,8 @@ export type LobbyLeaderboardEntry = {
   isOnline: boolean;
   claimed: boolean;
   hasFeaturedAvatar?: boolean;
+  featuredAvatarRevision?: string | null;
+  featuredRank?: number | null;
   pendingWoloClaimCount: number;
   pendingWoloClaimAmount: number;
   totalMatches: number;
@@ -289,6 +291,13 @@ export type LobbyWoloEarnersBoard = {
   >;
 };
 
+export type LobbyFeaturedWarriorHonor = {
+  uid: string | null;
+  name: string;
+  title: string;
+  holderSince: string | null;
+};
+
 export type LobbySnapshot = {
   tournament: LobbyTournament;
   onlineUsers: LobbyOnlineUser[];
@@ -296,6 +305,7 @@ export type LobbySnapshot = {
   messages: LobbyMessage[];
   leaderboard: LobbyLeaderboardSummary;
   featuredWarriorEntries?: LobbyLeaderboardEntry[];
+  featuredWarriorHonors?: LobbyFeaturedWarriorHonor[];
   wolo: LobbyWoloSnapshot | null;
   woloEarners: LobbyWoloEarnersBoard;
   aoe2hdPulse: Aoe2HdPulseSnapshot;
