@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "89a07c9c2af7566c9a1517b45caa101592ceaba29fd29b1e9288e405c150fdfa",
+      "sha256": "a799b9ec12e2514157abbc9fdfb842484595b6355b023788807e18a6f664e735",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/replay-v3-terminal-topology-bridge",
-    "commit": "95de0530484cd57f931c384b6872103507ff20a6"
+    "commit": "e44c1210ed62ac9c882f03b98c5cd0a42b04a47d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
