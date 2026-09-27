@@ -1,5 +1,10 @@
 import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
 
+import {
+  CHAMPIONS_V2_ACTIVE_COUNT,
+  CHAMPIONS_V2_TRIBUTE_POOL_WOLO,
+  CHAMPIONS_V2_VACANT_COUNT,
+} from "@/lib/champions/championshipPolicy";
 import type { ChampionTitleState } from "@/lib/champions/titleState";
 import { getTitleState, loadChampionTitleEconomyState } from "@/lib/champions/titleState";
 import {
@@ -15,21 +20,6 @@ import {
 } from "@/lib/publicPlayerDirectory";
 
 export type ChampionsLane = "rm" | "dm";
-
-export const CHAMPIONS_V2_ACTIVE_COUNT = 4;
-export const CHAMPIONS_V2_VACANT_COUNT = 18;
-export const CHAMPIONS_V2_TRIBUTE_POOL_WOLO = 45;
-
-export const ACTIVE_REIGN_TRIBUTE_TROPHY_IDS = new Set([
-  "canada_champion_belt",
-  "usa_champion_belt",
-  "mexico_champion_belt",
-  "chaos_champion",
-]);
-
-export function trophyHasActiveReignTribute(trophyId: string | null | undefined) {
-  return Boolean(trophyId && ACTIVE_REIGN_TRIBUTE_TROPHY_IDS.has(trophyId.trim().toLowerCase()));
-}
 
 type WatcherActivityRow = {
   userUid: string;
