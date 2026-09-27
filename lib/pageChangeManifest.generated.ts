@@ -35,7 +35,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/leagues",
     label: "Leagues",
-    version: "src-6a946cbfb0154cbd2a86",
+    version: "src-00d9aea68083ee2a9aab",
   },
   {
     href: "/national-champions",
