@@ -11,12 +11,16 @@ export const CHAMPIONS_V2_TRIBUTE_POOL_WOLO = 45;
  * create daily reign obligations until their economics are explicitly
  * activated.
  */
-export const ACTIVE_REIGN_TRIBUTE_TROPHY_IDS = new Set([
+export const ACTIVE_REIGN_TRIBUTE_TROPHY_IDS = [
   "canada_champion_belt",
   "usa_champion_belt",
   "mexico_champion_belt",
   "chaos_champion",
-]);
+] as const;
+
+const ACTIVE_REIGN_TRIBUTE_TROPHY_ID_SET = new Set<string>(
+  ACTIVE_REIGN_TRIBUTE_TROPHY_IDS,
+);
 
 /*
  * Historical seeds are not public custody authority forever. These titles are
@@ -33,7 +37,7 @@ export function trophyHasActiveReignTribute(
 ) {
   return Boolean(
     trophyId &&
-      ACTIVE_REIGN_TRIBUTE_TROPHY_IDS.has(
+      ACTIVE_REIGN_TRIBUTE_TROPHY_ID_SET.has(
         trophyId.trim().toLowerCase(),
       ),
   );
