@@ -175,7 +175,7 @@ rules.
 - Advanced `/lobby` arena stack with the moving live ticker, Watch & Chat hero/comments rail, compact hero bet slip, compact WOLO swap tile, and the preserved Basic/Advanced/Extreme community lobby toggle. Extreme owns the widened lobby frame, oversized Featured Warriors stage, and side-by-side leaderboard contender hero.
 - Claimed player profiles default to the Advanced command center; unclaimed replay-built profiles default to the classic Basic claim page, and both can toggle Basic/Advanced
 - Advanced player profiles include lazy match archive, watcher proof, form/rivalry diagnostics, resource emblems, AI Scribe/Grimer readout, stream signal, and premium `$WOLO`/staking stats
-- The public Kingdom spine includes `/kingdom`, `/champions`, `/national-champions`, `/clans`, and `/forum`, with the legacy `/belts`, `/nations`, and `/realm` paths redirecting into the new route names
+- The public Kingdom spine includes `/kingdom`, `/champions`, `/chaosium`, `/olympia`, `/leagues`, `/national-champions`, `/clans`, and `/forum`, with the legacy `/belts`, `/nations`, and `/realm` paths redirecting into the canonical route names
 - The global command bar leaves the Universal Translator’s language signal and wireframe globe loose before NavChat and the player control; Auto spells in and crossfades a randomized sequence, German fills the last Core slot, explicit choices persist locally and in a cookie, and only `/academy` uses the crimson selector while the rest of the product uses navy/steel blue
 - Nav Chat and `/contact-emaren` share three persisted direct-chat presentations: upgraded V1 floating bubbles, V2 compact Steam/Discord-style lines, and V3 obsidian glass. Their shared timeline uses deliberate click/long-press reactions, latest-message anchoring, a lower-left typing-display control, and cross-surface preference sync.
 - `/clans` launches with the Mystikal Clan hall and an equal-weight add-your-clan invitation; both the directory and `/clans/[slug]` expose Basic/Advanced/Extreme views with Advanced as the default
@@ -189,6 +189,9 @@ rules.
 - `/` and `/lobby` share the published Hero Main Stage: an accessible, responsive carousel of typed Featured Event, Wolo Chronicle, Warrior Quote, and media-takeover screens with operator-defined ordering, schedules, dwell time, and motion presets; the Featured Event slot always resolves the current published + active EventTile and its CTA automatically
 - `/` and `/lobby` place the founding AoE2 Shorts reel directly below the Hero Main Stage: real replay clips, vertical and wide presentations, a mobile portrait rail, full-screen swipe playback, uploader links, reactions, comments handoff, and sharing
 - `/champions` owns the app-side championship title economy: podium belts, tag titles, national titles, ELO titles, special designations, live custody/bounty overlays, challenge links, and detail pages
+- `/chaosium` is the belt-lineage chamber for Chaos, Canada, USA, and Mexico: current custody is the live beacon and prior holder-changing Trophy events form the road back to belt origin
+- `/olympia` is the between-Games national champions hall, opening with Canada, USA, and Mexico plus a Commissioner challenge path for vacant nations; it deliberately excludes Chaos because Chaos is not a national crown
+- `/leagues` is the community league hall: 1v1, 2v2, 3v3, and 4v4 each expose RM/DM lanes, and a signed-in warrior may found a persistent league with one verified 100 WOLO WoloChain charter payment
 - `/admin/trophies` is the persistent War Trophy command center for definitions, holder/Guardian custody, challenges, replay proof, dry-run settlement, payouts, NFT intents, settings, and audit history
 - `/admin/hero-studio` owns the reusable screen library, ordered transition chain, scheduling, carousel settings, exact preview, atomic publication history, and rollback
 - `/admin/events` is the single control point for Featured Event content: **Make live** publishes and activates one EventTile, and every Featured Event Hero screen resolves it automatically without a Hero Studio tile binding or republish; the Wolomania composition remains the hard production fallback
@@ -203,6 +206,9 @@ Current notable product routes include:
 - `/bets`
 - `/kingdom`
 - `/champions`
+- `/chaosium`
+- `/olympia`
+- `/leagues`
 - `/national-champions`
 - `/clans`
 - `/academy`
