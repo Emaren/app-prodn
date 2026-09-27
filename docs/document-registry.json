@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "8b153fbedc60afb4ef580f3b147195e8e5c3c2552231176b1995b953eb65901f",
+      "sha256": "6d67dce0ff82fa33144b666b36d40897a7a99af9319cb388053f6ff084ee542f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/root-headroom-recovery-hysteresis",
-    "commit": "7d4007839e5f93fdd0c7b8233bcd7623a4524362"
+    "branch": "fix/featured-warrior-authority-20260927",
+    "commit": "722c7cc0875d7100dc417de04b80841b2e0139e5"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
