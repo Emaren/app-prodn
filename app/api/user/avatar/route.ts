@@ -6,6 +6,7 @@ import {
   saveManagedMediaUpload,
 } from "@/lib/managedMediaAssets";
 import { invalidateLivingKingdomIdentity } from "@/lib/livingKingdom/identity";
+import { invalidateFeaturedWarriorProjectionCaches } from "@/lib/featuredWarriorCache";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 
@@ -34,6 +35,45 @@ function userAvatarPoolTarget(uid: string) {
   }
 
   return target;
+}
+
+function userFeaturedAvatarTarget(uid: string) {
+  const target = normalizeManagedMediaTarget(
+    `user-${uid}-featured`
+  );
+
+  if (!target) {
+    throw new Error(
+      "Could not build Featured Warrior avatar target."
+    );
+  }
+
+  return target;
+}
+
+async function syncFeaturedWarriorAvatar(
+  prisma: ReturnType<typeof getPrisma>,
+  input: {
+    uid: string;
+    url: string;
+    label: string;
+    alt: string;
+  }
+) {
+  await saveManagedMediaReference({
+    prisma,
+    kind: "avatar",
+    target: userFeaturedAvatarTarget(
+      input.uid
+    ),
+    url: input.url,
+    label:
+      `${input.label} Featured Warrior avatar`,
+    alt: input.alt,
+    uploadedByUid: input.uid,
+  });
+
+  invalidateFeaturedWarriorProjectionCaches();
 }
 
 async function requireViewer(request: NextRequest) {
@@ -104,6 +144,17 @@ export async function POST(request: NextRequest) {
       alt: `${label} avatar`,
       uploadedByUid: gate.user.uid,
     });
+
+    await syncFeaturedWarriorAvatar(
+      gate.prisma,
+      {
+        uid: gate.user.uid,
+        url: asset.url,
+        label,
+        alt: asset.alt || `${label} avatar`,
+      }
+    );
+
     invalidateLivingKingdomIdentity(gate.user.uid);
 
     return NextResponse.json(
@@ -203,6 +254,20 @@ export async function PATCH(request: NextRequest) {
       alt: asset.alt || `${label} avatar`,
       uploadedByUid: gate.user.uid,
     });
+
+    await syncFeaturedWarriorAvatar(
+      gate.prisma,
+      {
+        uid: gate.user.uid,
+        url: selectedAsset.url,
+        label,
+        alt:
+          selectedAsset.alt ||
+          asset.alt ||
+          `${label} avatar`,
+      }
+    );
+
     invalidateLivingKingdomIdentity(gate.user.uid);
 
     return NextResponse.json(
