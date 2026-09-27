@@ -5,6 +5,7 @@ import { loadLobbyLeaderboard } from "@/lib/lobbyLeaderboard";
 import { countriesEligibilityMatch } from "@/lib/countryEligibility";
 import {
   allChampionTitles,
+  REPRESENTED_COUNTRIES,
   type ChampionHolder,
   type ChampionTitleDefinition,
   type TitleContender,
@@ -308,7 +309,7 @@ async function loadLiveChampionDefinitionMap(
                   : trophy.eligibleNationality || "Current title holder",
               representedCountry:
                 trophy.eligibleNationality &&
-                ["Canada", "USA", "Mexico", "UK"].includes(trophy.eligibleNationality)
+                (REPRESENTED_COUNTRIES as readonly string[]).includes(trophy.eligibleNationality)
                   ? (trophy.eligibleNationality as ChampionHolder["representedCountry"])
                   : undefined,
             },
