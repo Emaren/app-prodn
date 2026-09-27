@@ -680,7 +680,7 @@ export function applyReplayResultAdjudication<T extends object>(
   } as T;
 }
 
-async function buildMarketSnapshot(
+export async function buildMarketSnapshot(
   prisma: MarketSnapshotPrisma,
   gameStatsId: number,
   linkedSessionKeys: Array<string | null | undefined> = []
@@ -839,7 +839,7 @@ async function buildMarketSnapshot(
   };
 }
 
-function rawParserSnapshot(game: ReviewableGame) {
+export function rawParserSnapshot(game: ReviewableGame) {
   return jsonClone({
     id: game.id,
     replayHash: game.replayHash,
@@ -911,7 +911,7 @@ export async function requireReplayResultReviewAccess(
   return { viewer, access };
 }
 
-const REVIEWABLE_GAME_SELECT = {
+export const REVIEWABLE_GAME_SELECT = {
   id: true,
   userUid: true,
   replay_file: true,
