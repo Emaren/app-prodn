@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/featured-warrior-authority-20260927` at `534317b15ec3809dde04f3d48ae9370391ed6690`
+Implementation baseline: `fix/war-chest-gross-take-avatar-fallback-20260927` at `278468bd276bb065ac4bfc8f522ffe79740759a4`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
