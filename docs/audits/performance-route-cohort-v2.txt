@@ -17,6 +17,7 @@
 /bounties
 /challenge
 /champions
+/chaosium
 /clans
 /connect-wallet
 /contact-emaren
@@ -28,13 +29,16 @@
 /kingdom-intelligence
 /kingdom-forge
 /leaderboard
+/leagues
 /leaderboard/og
+/leagues/founding-charter-preview
 /library
 /live-games
 /lobby
 /market
 /national-champions
 /nations
+/olympia
 /offline
 /oracle
 /past-earnings
