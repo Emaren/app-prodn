@@ -536,6 +536,28 @@ amount through WoloChain REST, plus the structured
 `academy_lesson_payment` receipt to `UserActivityEvent`. Do not label a
 reservation paid until that verification succeeds.
 
+### Community leagues / signed charters
+
+`/leagues` is the public competition hall for 1v1, 2v2, 3v3, and 4v4
+formats. Each format exposes separate RM and DM lanes. The `League` model is
+the durable charter ledger; standings, schedules, roster registration, and
+future league trophies attach to that identity rather than inventing a second
+league namespace.
+
+Founding a league costs exactly 100 WOLO. The browser first requests a
+user-bound quote from `GET /api/leagues/quote`, then signs one direct
+`wolo-1` transfer to the current primary Commissioner/admin wallet. The memo
+binds the creation request id, creator uid, and exact price. `POST /api/leagues`
+verifies sender, recipient, exact amount, successful WoloChain transaction, and
+exact memo before persisting the League. The creation transaction hash and memo
+are unique and become permanent founding proof.
+
+A signed charter must never be charged twice because the recording request
+failed. The client retains the already-signed request locally for retry, and
+the server treats a matching transaction already recorded for the same creator
+as a successful recovery. A transaction already attached to another creator is
+rejected. App state never substitutes for the signed chain movement.
+
 ### Marketplace / player-built commerce
 
 `/market` is the app-owned Agora for player services and ecosystem businesses.
