@@ -266,6 +266,9 @@ export default function AdminMediaAssetsPage() {
 
   const [files, setFiles] = useState<File[]>([]);
   const [uploadLabel, setUploadLabel] = useState("");
+  const [batchFile, setBatchFile] = useState<File | null>(null);
+  const [batchTargetPrefix, setBatchTargetPrefix] = useState("");
+  const [batchSaving, setBatchSaving] = useState(false);
 
   const [loadingAssets, setLoadingAssets] = useState(true);
   const [loadingUsers, setLoadingUsers] = useState(false);
@@ -569,6 +572,60 @@ export default function AdminMediaAssetsPage() {
       setError(uploadError instanceof Error ? uploadError.message : "Upload failed.");
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function submitBatchUpload(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (!batchFile) {
+      setError("Choose a ZIP asset pack first.");
+      return;
+    }
+
+    setBatchSaving(true);
+    setError(null);
+    setNotice(null);
+
+    try {
+      const body = new FormData();
+      body.set("file", batchFile);
+      body.set("kind", category);
+      body.set("targetPrefix", batchTargetPrefix);
+
+      const response = await fetch("/api/admin/media-assets/batch", {
+        method: "POST",
+        body,
+      });
+
+      const payload = (await response.json().catch(() => ({}))) as {
+        message?: string;
+        detail?: string;
+        uploadedAssets?: number;
+        boundTargets?: number;
+        failed?: number;
+        manifestMode?: "embedded" | "automatic";
+      };
+
+      if (!response.ok) {
+        throw new Error(payload.detail || "Batch import failed.");
+      }
+
+      setBatchFile(null);
+      setBatchTargetPrefix("");
+      setNotice(
+        payload.message ||
+          `${payload.uploadedAssets || 0} assets imported from ZIP.`,
+      );
+      await loadAssets();
+    } catch (uploadError) {
+      setError(
+        uploadError instanceof Error
+          ? uploadError.message
+          : "Batch import failed.",
+      );
+    } finally {
+      setBatchSaving(false);
     }
   }
 
@@ -1012,6 +1069,66 @@ export default function AdminMediaAssetsPage() {
                 className="rounded-full bg-amber-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {saving ? "Uploading..." : `Upload ${files.length || ""} asset${files.length === 1 ? "" : "s"}`}
+              </button>
+            </div>
+          </form>
+
+          <form
+            onSubmit={submitBatchUpload}
+            className="rounded-[1.65rem] border border-violet-200/14 bg-[radial-gradient(circle_at_top_left,rgba(167,139,250,0.12),transparent_42%),linear-gradient(135deg,rgba(255,255,255,0.05),rgba(255,255,255,0.018))] p-4 shadow-[0_26px_90px_rgba(0,0,0,0.26)]"
+          >
+            <div className="flex items-center gap-2 text-xs uppercase tracking-[0.22em] text-violet-100/75">
+              <UploadCloud className="h-4 w-4" />
+              Batch asset pack
+            </div>
+
+            <p className="mt-3 text-xs leading-5 text-slate-400">
+              Upload one ZIP instead of feeding the Armory file by file. If the
+              ZIP contains <code className="text-violet-100">asset-manifest.json</code>,
+              its exact kinds and targets are applied. Otherwise each supported
+              file maps to the current category using its filename.
+            </p>
+
+            <div className="mt-4 grid gap-3">
+              <label className="grid gap-2 rounded-2xl border border-dashed border-violet-200/22 bg-black/24 px-3 py-5">
+                <span className="inline-flex items-center gap-2 text-sm font-semibold text-slate-200">
+                  <ImagePlus className="h-4 w-4" />
+                  ZIP pack
+                </span>
+                <input
+                  type="file"
+                  accept=".zip,application/zip"
+                  onChange={(event) =>
+                    setBatchFile(event.target.files?.[0] ?? null)
+                  }
+                />
+                <span className="text-xs text-slate-500">
+                  {batchFile
+                    ? `${batchFile.name} · ${formatSize(batchFile.size)}`
+                    : "Up to 64 MB compressed. Manifest-driven packs may bind one file to multiple managed targets."}
+                </span>
+              </label>
+
+              <label className="grid gap-2">
+                <span className="text-sm font-semibold text-slate-200">
+                  Optional target prefix
+                </span>
+                <input
+                  value={batchTargetPrefix}
+                  onChange={(event) =>
+                    setBatchTargetPrefix(event.target.value)
+                  }
+                  placeholder="Only used when the ZIP has no manifest"
+                  className="rounded-2xl border border-white/10 bg-slate-950/80 px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-600 focus:border-violet-300/40"
+                />
+              </label>
+
+              <button
+                type="submit"
+                disabled={batchSaving || !batchFile}
+                className="rounded-full bg-violet-300 px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-violet-200 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {batchSaving ? "Importing pack..." : "Import ZIP pack"}
               </button>
             </div>
           </form>
