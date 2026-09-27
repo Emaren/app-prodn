@@ -1861,8 +1861,8 @@ def recover_root_headroom(
         if result.get("status") == "INSUFFICIENT":
             raise FinishError(
                 "bounded root-headroom recovery exhausted "
-                "approved reclaim classes but the release "
-                "floor is still unmet"
+                "approved reclaim classes but the recovery "
+                "target is still unmet"
             )
 
         raise FinishError(
