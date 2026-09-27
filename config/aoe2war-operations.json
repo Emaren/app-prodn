@@ -197,7 +197,8 @@
       "owner": "tony",
       "group": "tony",
       "mode": "0750"
-    }
+    },
+    "root_headroom_recovery_margin_mib": 128
   },
   "semantic_maps": {
     "required_terms": [

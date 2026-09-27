@@ -1308,10 +1308,45 @@ def root_below_release_floor(
     )
 
 
+def root_headroom_recovery_target_bytes() -> int:
+    contract = aoe2_doctor.load_contract()
+    capacity = contract.get("capacity", {})
+    finish = contract.get("finish", {})
+
+    floor = root_release_floor_bytes()
+    preferred_gib = float(
+        capacity.get("root_free_preferred_gib")
+        or capacity.get("root_free_warn_gib")
+        or 5.0
+    )
+    preferred = int(preferred_gib * (1024 ** 3))
+
+    margin_mib = int(
+        finish.get("root_headroom_recovery_margin_mib")
+        or 128
+    )
+    if not 32 <= margin_mib <= 1024:
+        raise FinishError(
+            "root-headroom recovery margin must be between 32 and 1024 MiB"
+        )
+
+    target = floor + margin_mib * 1024 ** 2
+    if preferred > floor:
+        target = min(target, preferred)
+
+    if target <= floor:
+        raise FinishError(
+            "root-headroom recovery target must exceed the release floor"
+        )
+
+    return target
+
+
 def remote_root_headroom_recovery_script(
     *,
     volume: str,
     floor_kb: int,
+    target_kb: int,
     journal_limit_mib: int,
     expected_source_sha: str,
     expected_active_build_id: str,
@@ -1325,6 +1360,11 @@ def remote_root_headroom_recovery_script(
     if floor_kb < 1024 * 1024:
         raise FinishError(
             "root-headroom recovery floor is unexpectedly small"
+        )
+
+    if target_kb <= floor_kb:
+        raise FinishError(
+            "root-headroom recovery target must exceed the release floor"
         )
 
     if not 50 <= journal_limit_mib <= 512:
@@ -1348,6 +1388,7 @@ def remote_root_headroom_recovery_script(
 
 VOL={q(volume)}
 FLOOR_KB={int(floor_kb)}
+TARGET_KB={int(target_kb)}
 JOURNAL_LIMIT_MIB={int(journal_limit_mib)}
 EXPECTED_SOURCE={q(expected_source_sha)}
 EXPECTED_ACTIVE={q(expected_active_build_id)}
@@ -1391,7 +1432,7 @@ test "$W8093_BEFORE" = 1
 
 BEFORE_KB="$(free_kb)"
 
-test "$BEFORE_KB" -lt "$FLOOR_KB" || {{
+test "$BEFORE_KB" -lt "$TARGET_KB" || {{
     printf 'status\\tNOOP\\n'
     printf 'before_kb\\t%s\\n' "$BEFORE_KB"
     printf 'after_kb\\t%s\\n' "$BEFORE_KB"
@@ -1413,6 +1454,7 @@ started_at=$STAMP
 production_source_sha=$EXPECTED_SOURCE
 active_build_id=$EXPECTED_ACTIVE
 root_floor_kb=$FLOOR_KB
+root_target_kb=$TARGET_KB
 root_free_before_kb=$BEFORE_KB
 journal_limit_mib=$JOURNAL_LIMIT_MIB
 wolo8092_before=$W8092_BEFORE
@@ -1432,7 +1474,7 @@ NGINX_OPEN_SKIPPED=0
 
 CURRENT_KB="$(free_kb)"
 
-if [ "$CURRENT_KB" -lt "$FLOOR_KB" ]; then
+if [ "$CURRENT_KB" -lt "$TARGET_KB" ]; then
     APT_BUSY=0
 
     for proc in apt apt-get dpkg unattended-upgrade; do
@@ -1483,7 +1525,7 @@ fi
 
 CURRENT_KB="$(free_kb)"
 
-if [ "$CURRENT_KB" -lt "$FLOOR_KB" ]; then
+if [ "$CURRENT_KB" -lt "$TARGET_KB" ]; then
     TIER_BEFORE="$(free_kb)"
 
     journalctl \
@@ -1507,7 +1549,7 @@ fi
 
 CURRENT_KB="$(free_kb)"
 
-if [ "$CURRENT_KB" -lt "$FLOOR_KB" ]; then
+if [ "$CURRENT_KB" -lt "$TARGET_KB" ]; then
     shopt -s nullglob
 
     mapfile -t CANDIDATES < <(
@@ -1523,7 +1565,7 @@ if [ "$CURRENT_KB" -lt "$FLOOR_KB" ]; then
     for row in "${{CANDIDATES[@]}}"; do
         CURRENT_KB="$(free_kb)"
 
-        if [ "$CURRENT_KB" -ge "$FLOOR_KB" ]; then
+        if [ "$CURRENT_KB" -ge "$TARGET_KB" ]; then
             break
         fi
 
@@ -1622,7 +1664,7 @@ RECLAIMED_KB=$((
     AFTER_KB - BEFORE_KB
 ))
 
-test "$AFTER_KB" -ge "$FLOOR_KB" || {{
+test "$AFTER_KB" -ge "$TARGET_KB" || {{
     cat >> "$RECEIPT_DIR/recovery.txt" <<EOF
 root_free_after_kb=$AFTER_KB
 root_reclaimed_kb=$RECLAIMED_KB
@@ -1786,9 +1828,15 @@ def recover_root_headroom(
         + 1023
     ) // 1024
 
+    target_kb = (
+        root_headroom_recovery_target_bytes()
+        + 1023
+    ) // 1024
+
     script = remote_root_headroom_recovery_script(
         volume=volume,
         floor_kb=floor_kb,
+        target_kb=target_kb,
         journal_limit_mib=journal_limit_mib,
         expected_source_sha=source_sha,
         expected_active_build_id=active_build_id,
@@ -1813,8 +1861,8 @@ def recover_root_headroom(
         if result.get("status") == "INSUFFICIENT":
             raise FinishError(
                 "bounded root-headroom recovery exhausted "
-                "approved reclaim classes but the release "
-                "floor is still unmet"
+                "approved reclaim classes but the recovery "
+                "target is still unmet"
             )
 
         raise FinishError(
@@ -1856,10 +1904,10 @@ def recover_root_headroom(
             "root-headroom recovery returned invalid capacity evidence"
         ) from exc
 
-    if after_kb < floor_kb:
+    if after_kb < target_kb:
         raise FinishError(
             "root-headroom recovery claimed success below "
-            "the configured release floor"
+            "the configured recovery target"
         )
 
     if result.get("source_sha") != source_sha:
