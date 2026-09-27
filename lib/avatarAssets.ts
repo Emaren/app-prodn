@@ -146,6 +146,47 @@ const MANAGED_NAME_AVATAR_TARGETS = new Set([
   "c0lorz",
 ]);
 
+function managedNameAvatarFallbackUrl(
+  name: string | null | undefined,
+  size?: "thumb" | "card",
+) {
+  const normalized = normalizeLeaderboardAvatarTarget(name);
+
+  if (
+    !normalized ||
+    !MANAGED_NAME_AVATAR_TARGETS.has(normalized)
+  ) {
+    if (size === "thumb") {
+      return avatarThumbFallbackForName(normalized);
+    }
+
+    if (size === "card") {
+      return avatarFallbackForName(normalized).replace(
+        /\.(avif|webp|png|jpe?g)$/i,
+        ".card.webp",
+      );
+    }
+
+    return avatarFallbackForName(normalized);
+  }
+
+  const staticFallback =
+    size === "thumb"
+      ? avatarThumbFallbackForName(normalized)
+      : size === "card"
+        ? avatarFallbackForName(normalized).replace(
+            /\.(avif|webp|png|jpe?g)$/i,
+            ".card.webp",
+          )
+        : avatarFallbackForName(normalized);
+
+  return managedAvatarUrl(
+    normalized,
+    staticFallback,
+    size ? { size } : undefined,
+  );
+}
+
 export function avatarUrlForName(name: string | null | undefined) {
 
   const managedOverrideTarget = managedAvatarTargetOverrideForName(name);
@@ -153,13 +194,7 @@ export function avatarUrlForName(name: string | null | undefined) {
     return managedAvatarUrl(managedOverrideTarget, avatarFallbackForName(name));
   }
 
-  const normalized = normalizeLeaderboardAvatarTarget(name);
-
-  if (!normalized || !MANAGED_NAME_AVATAR_TARGETS.has(normalized)) {
-    return avatarFallbackForName(normalized);
-  }
-
-  return managedAvatarUrl(normalized, avatarFallbackForName(normalized));
+  return managedNameAvatarFallbackUrl(name);
 }
 
 export function avatarThumbUrlForName(name: string | null | undefined) {
@@ -169,13 +204,7 @@ export function avatarThumbUrlForName(name: string | null | undefined) {
     return managedAvatarUrl(managedThumbOverrideTarget, avatarFallbackForName(name), { size: "thumb" });
   }
 
-  const normalized = normalizeLeaderboardAvatarTarget(name);
-
-  if (!normalized || !MANAGED_NAME_AVATAR_TARGETS.has(normalized)) {
-    return avatarThumbFallbackForName(normalized);
-  }
-
-  return managedAvatarUrl(normalized, avatarFallbackForName(normalized), { size: "thumb" });
+  return managedNameAvatarFallbackUrl(name, "thumb");
 }
 
 export function avatarCardUrlForName(name: string | null | undefined) {
@@ -185,13 +214,7 @@ export function avatarCardUrlForName(name: string | null | undefined) {
     return managedAvatarUrl(managedCardOverrideTarget, avatarFallbackForName(name), { size: "card" });
   }
 
-  const normalized = normalizeLeaderboardAvatarTarget(name);
-
-  if (!normalized || !MANAGED_NAME_AVATAR_TARGETS.has(normalized)) {
-    return avatarFallbackForName(normalized).replace(/\.(avif|webp|png|jpe?g)$/i, ".card.webp");
-  }
-
-  return managedAvatarUrl(normalized, avatarFallbackForName(normalized), { size: "card" });
+  return managedNameAvatarFallbackUrl(name, "card");
 }
 
 function managedAvatarCardUrlWithFallbackTargets(
@@ -316,7 +339,7 @@ export function avatarCardUrlForUser(
 
   return managedAvatarUrl(
     `user-${normalizedUid}`,
-    avatarFallbackForName(name),
+    managedNameAvatarFallbackUrl(name, "card"),
     { size: "card" }
   );
 }
@@ -333,7 +356,7 @@ export function avatarUrlForUser(
 
   return managedAvatarUrl(
     `user-${normalizedUid}`,
-    avatarFallbackForName(name)
+    managedNameAvatarFallbackUrl(name)
   );
 }
 
@@ -349,7 +372,7 @@ export function avatarThumbUrlForUser(
 
   return managedAvatarUrl(
     `user-${normalizedUid}`,
-    avatarFallbackForName(name),
+    managedNameAvatarFallbackUrl(name, "thumb"),
     { size: "thumb" }
   );
 }
@@ -367,7 +390,7 @@ export function avatarPresenceUrlForTarget(
 
   const url = managedAvatarUrl(
     normalizedTarget,
-    avatarThumbFallbackForName(name),
+    managedNameAvatarFallbackUrl(name, "thumb"),
     { size: "presence" }
   );
 
