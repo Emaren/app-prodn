@@ -1890,8 +1890,13 @@ test(
               parseRunId:
                 7670,
 
+              /*
+               * observationKind is producer metadata, not the durable
+               * topology identity. The bridge must bind through the
+               * canonical field path plus exact parser/provenance evidence.
+               */
               observationKind:
-                "team_resolution",
+                "topology_candidate",
 
               fieldPath:
                 "teams.resolution",
