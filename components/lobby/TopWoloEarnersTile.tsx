@@ -480,8 +480,8 @@ export function TopWoloEarnersTile({
                 const periodMetrics = getWarChestPeriodMetrics(entry, mode);
                 const avatarSrc = featuredAvatarThumbUrlForUser(entry.uid, entry.name);
                 const rowClassName = isExtreme
-                  ? "relative block overflow-hidden rounded-[1.25rem] border border-amber-200/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),rgba(255,255,255,0.018))] px-3 py-3 transition [content-visibility:auto] [contain-intrinsic-size:auto_7rem] hover:border-amber-200/22 hover:bg-amber-300/7 sm:px-4 sm:py-4"
-                  : `block rounded-[1.25rem] border px-4 py-4 transition [content-visibility:auto] [contain-intrinsic-size:auto_7rem] ${tone.card} ${tone.cardHover}`;
+                  ? "group relative block overflow-hidden rounded-[1.25rem] border border-amber-200/8 bg-[linear-gradient(135deg,rgba(255,255,255,0.04),rgba(255,255,255,0.018))] px-3 py-3 transition [content-visibility:auto] [contain-intrinsic-size:auto_7rem] hover:border-amber-200/22 hover:bg-amber-300/7 sm:px-4 sm:py-4"
+                  : `group block rounded-[1.25rem] border px-4 py-4 transition [content-visibility:auto] [contain-intrinsic-size:auto_7rem] ${tone.card} ${tone.cardHover}`;
 
                 return (
                   <Link
@@ -538,8 +538,16 @@ export function TopWoloEarnersTile({
 
                       <div className="col-start-2 min-w-0 sm:col-span-2 sm:col-start-2">
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-slate-300">
-                          <span className="break-words sm:whitespace-nowrap">
-                            <span className="font-medium text-slate-200">{h("Earned")}</span> {formatWolo(periodMetrics.settledWolo)} WOLO
+                          <span
+                            className="break-words sm:whitespace-nowrap"
+                            aria-label={`${h("Settled")} ${formatWolo(periodMetrics.settledWolo)} WOLO; ${h("Earned")} ${formatWolo(periodMetrics.earnedWolo)} WOLO`}
+                          >
+                            <span className="group-hover:hidden group-focus-visible:hidden">
+                              <span className="font-medium text-slate-200">{h("Settled")}</span> {formatWolo(periodMetrics.settledWolo)} WOLO
+                            </span>
+                            <span className="hidden group-hover:inline group-focus-visible:inline" aria-hidden="true">
+                              <span className="font-medium text-slate-200">{h("Earned")}</span> {formatWolo(periodMetrics.earnedWolo)} WOLO
+                            </span>
                           </span>
                           <span className="hidden h-1 w-1 rounded-full bg-white/15 sm:inline-block" />
                           <span className="break-words sm:whitespace-nowrap">

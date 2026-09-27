@@ -835,9 +835,11 @@ Replay history and current operational truth are different products.
 For current Steam rating, exact Watcher observation outranks generic replay
 availability, and actual replay `played_on` outranks upload/parse recency.
 
-For War Chest accounting, economic gain outranks gross money movement, and
-period-specific displays must carry period-specific counters all the way from
-the server accumulator to the rendered row.
+For War Chest accounting, the public `Take` metric is intentional gross
+winning payout cashflow while `Earned` remains net economic gain. Keep those
+two meanings separate, exclude void/refund rails from both, and carry
+period-specific counters all the way from the server accumulator to the
+rendered row.
 
 General rule: preserve broad historical evidence, but require the strongest
 available provenance before that evidence can redefine a current-state number.

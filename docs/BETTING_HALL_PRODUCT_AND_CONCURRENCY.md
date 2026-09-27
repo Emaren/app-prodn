@@ -310,19 +310,27 @@ Terminal, proof, review, settled, and voided states fail closed.
 This compatibility bridge restores live betting immediately. It does not yet
 provide economic isolation between Opening Minute and Late Book wagers.
 
-## War Chest earnings and period truth
+## War Chest Take, Settled, Earned, and period truth
 
-War Chest `Take` is economic gain, not gross payout cashflow.
+War Chest `Take` is the gross payout cashflow from genuine winning wagers,
+plus eligible non-bet reward earnings. For a winning wager:
 
-For a winning wager:
+`Take = payoutWolo`
 
-`Take = max(payoutWolo - amountWolo, 0)`
+That means Take includes the winner's returned principal as well as profit.
+`Earned` is the narrower economic-gain view:
 
-Returned principal, voids, refunds, corrective refunds, and duplicate
-bet-settlement payment claims are not earnings.
+`Earned = max(payoutWolo - amountWolo, 0)`
 
-Weekly mode presents weekly Take, weekly settled earnings, and weekly gross
-wagered stake. All-Time mode presents the corresponding lifetime values.
+Voids, losses, refunds, corrective refunds, unmatched-principal refunds, and
+duplicate bet-settlement payment claims create neither Take nor Earned.
+Eligible non-bet reward claims have no bettor principal component, so their
+settled amount is also their earned amount.
+
+Weekly and All-Time rankings are ordered by Take. The public War Chest shows
+`Settled` by default as gross settled Take and reveals `Earned` on hover as
+net economic gain. `Wagered` remains matched wager exposure only; unmatched
+principal does not inflate the wagered rail.
 
 `Claimable` remains current claimable cashflow and may include returned
-capital; returned capital does not become Take.
+capital. Only claim kinds admitted by the Take policy may increase ranked Take.

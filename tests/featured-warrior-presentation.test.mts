@@ -6,6 +6,11 @@ import {
   featuredWarriorBestRank,
   featuredWarriorHonorLabel,
 } from "../lib/featuredWarriorPresentation.ts";
+import {
+  avatarCardUrlForUser,
+  avatarThumbUrlForUser,
+  avatarUrlForUser,
+} from "../lib/avatarAssets.ts";
 
 function source(path: string) {
   return readFileSync(
@@ -59,6 +64,26 @@ test("featured championship labels preserve public wording", () => {
     ),
     "Mexican Champion"
   );
+});
+
+test("claimed-user avatars fall through managed name targets before silhouette", () => {
+  const urls = [
+    avatarUrlForUser("u-avatar-test", "c0LoRz"),
+    avatarThumbUrlForUser("u-avatar-test", "c0LoRz"),
+    avatarCardUrlForUser("u-avatar-test", "c0LoRz"),
+  ];
+
+  for (const url of urls) {
+    const decoded = decodeURIComponent(url);
+    assert.match(
+      decoded,
+      /\/api\/media-assets\/avatar\/user-u-avatar-test/,
+    );
+    assert.match(
+      decoded,
+      /fallback=\/api\/media-assets\/avatar\/c0lorz/,
+    );
+  }
 });
 
 test("featured warrior cards bind live titles, rank and avatar revisions", () => {
