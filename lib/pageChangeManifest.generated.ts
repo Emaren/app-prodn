@@ -25,12 +25,12 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/chaosium",
     label: "Chaosium",
-    version: "src-12b6bd3c045d34cb2567",
+    version: "src-f842f36967b2e81f61ac",
   },
   {
     href: "/olympia",
     label: "Olympia",
-    version: "src-4066bb1f677c9f63b267",
+    version: "src-71aefcaccc2e4c970235",
   },
   {
     href: "/leagues",
