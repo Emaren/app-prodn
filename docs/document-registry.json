@@ -85,7 +85,7 @@
       "review_interval_days": 60,
       "reviewed_at": "2026-09-21",
       "sensitivity": "internal",
-      "sha256": "1790b51f8d4c3267ac9593025453071f7c265177fe90f633c8f9aea8b371c68e",
+      "sha256": "93d62e435fe75534e9f8e942662872e570548433dcb5f40b3aaf4fafe6104183",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -385,7 +385,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-09-27",
       "sensitivity": "internal",
-      "sha256": "f849630bd7e3001e3b1e310bcc5ac3fc0f0576bf7dde285ea4399e12fc042e3a",
+      "sha256": "567007702c3c0fe6cd46e935d06f35dd7185be8e994501224a9152b570cb5717",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "12dba280e4b881e585510b678a8d3664d804bbc47ddc58a8a9a57df48633a08b",
+      "sha256": "7041483660e51cebd387d00c91bfe529327b107a852d2b67bb06e1b44840cfff",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -707,7 +707,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6c8c96c2815446cc685790013b5b27a02b197314585f617c7213bfd24003bd74",
+      "sha256": "e3890fae6cc6f07ef262d9d36eb249424180adb14dd1e610d90f1b200c522595",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "hotfix/champions-v2-eslint-20260927",
-    "commit": "f5a4b4a35d705e3cd2487d0504a42a1a2a6aedec"
+    "branch": "feature/media-armory-batch-ingest-20260927",
+    "commit": "8de835b4580f5e2af4ed529c2f59ad0bb3390b8a"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
