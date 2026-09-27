@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-08-18"
+reviewed_at: "2026-09-27"
 review_interval_days: 60
 sensitivity: "internal"
 ---
@@ -40,12 +40,13 @@ alerts, and transient live activity.
 
 ## Covered Kingdom routes
 
-Gray Dot V2 covers 19 routes:
+Gray Dot V2 covers 23 routes:
 
-`/kingdom`, `/oracle`, `/leaderboard`, `/champions`,
-`/national-champions`, `/clans`, `/academy`, `/market`, `/ai`,
-`/bounties`, `/forum`, `/radio`, `/workshop`, `/game-stats`, `/traffic`,
-`/kingdom-forge`, `/round-chamber`, `/statistics`, and `/speed`.
+`/kingdom`, `/oracle`, `/leaderboard`, `/champions`, `/chaosium`,
+`/olympia`, `/leagues`, `/national-champions`, `/clans`, `/academy`,
+`/market`, `/ai`, `/kingdom-intelligence`, `/bounties`, `/forum`,
+`/radio`, `/workshop`, `/game-stats`, `/traffic`, `/kingdom-forge`,
+`/round-chamber`, `/statistics`, and `/speed`.
 
 `scripts/generate_page_change_manifest.py` owns the source fingerprints.
 Do not hand-edit `pageChangeManifest.generated.ts`.
