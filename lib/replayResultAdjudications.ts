@@ -2578,9 +2578,6 @@ async function loadExactPromotedTeamResolution(
             parseRunId:
               true,
 
-            observationKind:
-              true,
-
             fieldPath:
               true,
 
@@ -2697,8 +2694,6 @@ async function loadExactPromotedTeamResolution(
       currentPlayersHash &&
     promotion.projectedPlayersHash ===
       persistedProjectedPlayersHash &&
-    observation.observationKind ===
-      "team_resolution" &&
     observation.fieldPath ===
       "teams.resolution" &&
     observation.candidateOnly ===
