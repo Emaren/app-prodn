@@ -126,7 +126,7 @@ function parseMapName(match: LobbyMatchRow | null | undefined) {
 
 function formatWoloMarketTickerPrice(value: number | null) {
   if (value == null || !Number.isFinite(value)) return "pool syncing";
-  if (value < 0.001) return `$${value.toFixed(7)}`;
+  if (value < 0.001) return `$${value.toFixed(6)}`;
   if (value < 1) return `$${value.toFixed(6)}`;
   return `$${value.toLocaleString(undefined, { maximumFractionDigits: 4 })}`;
 }

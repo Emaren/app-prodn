@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/adminSession";
 import { invalidateLivingKingdomIdentity } from "@/lib/livingKingdom/identity";
+import { invalidateFeaturedWarriorProjectionCaches } from "@/lib/featuredWarriorCache";
 import {
   normalizeManagedMediaTarget,
   saveManagedMediaReference,
@@ -207,6 +208,7 @@ export async function POST(request: NextRequest) {
     invalidateLivingKingdomIdentity(
       user.uid
     );
+    invalidateFeaturedWarriorProjectionCaches();
 
     return NextResponse.json(
       {

@@ -46,6 +46,7 @@ import {
   type LeaderboardRankDelta24h,
 } from "@/lib/leaderboardIdentity";
 import { isLeaderboardExcludedSystemUid } from "@/lib/internalSystemAccounts";
+import { featuredWarriorBestRank } from "@/lib/featuredWarriorPresentation";
 
 import {
   loadPublicLeaderboardRawGames,
@@ -1282,6 +1283,7 @@ function toLobbyLeaderboardEntry(
   rank: number,
   lane: LeaderboardLane,
   asOfMs: number,
+  featuredRank: number | null,
 ): LobbyLeaderboardEntry {
   const last30 =
     buildLast30Record(
@@ -1322,6 +1324,9 @@ function toLobbyLeaderboardEntry(
     isOnline: entry.isOnline,
     claimed: entry.claimed,
     hasFeaturedAvatar: entry.hasFeaturedAvatar,
+    featuredAvatarRevision:
+      entry.featuredAvatarRevision,
+    featuredRank,
     pendingWoloClaimCount: entry.pendingWoloClaimCount,
     pendingWoloClaimAmount: entry.pendingWoloClaimAmount,
     totalMatches: entry.totalMatches,
@@ -1542,6 +1547,24 @@ async function loadLobbyLeaderboardFresh(
     .map(buildEnrichedEntry);
 
   buildArenaElo(candidates, preparedGames);
+
+  const featuredRankCandidates =
+    scope === "claimed"
+      ? candidates.filter(
+          (entry) => entry.claimed
+        )
+      : candidates;
+  const featuredRmRankByKey =
+    buildCanonicalRankMap(
+      featuredRankCandidates,
+      "rm"
+    );
+  const featuredDmRankByKey =
+    buildCanonicalRankMap(
+      featuredRankCandidates,
+      "dm"
+    );
+
   const rankDeltaWindow =
     populateRankDelta24h(
       candidates,
@@ -1633,6 +1656,14 @@ async function loadLobbyLeaderboardFresh(
         rankByKey.get(entry.key) ?? 1,
         lane,
         rankDeltaAsOf.getTime(),
+        featuredWarriorBestRank(
+          featuredRmRankByKey.get(
+            entry.key
+          ),
+          featuredDmRankByKey.get(
+            entry.key
+          )
+        ),
       )
     ),
     activePlayers:

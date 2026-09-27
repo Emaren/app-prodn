@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/root-headroom-recovery-hysteresis` at `7d4007839e5f93fdd0c7b8233bcd7623a4524362`
+Implementation baseline: `fix/featured-warrior-authority-20260927` at `534317b15ec3809dde04f3d48ae9370391ed6690`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

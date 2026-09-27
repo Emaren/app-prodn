@@ -27,6 +27,8 @@ const NAME_TARGETS: Record<string, string> = {
   "the ai scribe": "ai-scribe",
   "ai scribe": "ai-scribe",
   grimer: "grimer",
+  c0lorz: "c0lorz",
+  colors: "c0lorz",
 
   myth: "myth",
   ra: "ra",
@@ -141,6 +143,7 @@ const MANAGED_NAME_AVATAR_TARGETS = new Set([
   "ai-scribe",
   "the-ai-scribe",
   "moose",
+  "c0lorz",
 ]);
 
 export function avatarUrlForName(name: string | null | undefined) {
@@ -386,7 +389,8 @@ export function avatarPresenceUrlForUser(
 
 export function featuredAvatarCardUrlForUser(
   uid: string | null | undefined,
-  name: string | null | undefined
+  name: string | null | undefined,
+  revision?: string | number | null
 ) {
   const normalizedUid = slugifyAvatarTarget(uid);
   const profileFallback = avatarCardUrlForUser(uid, name);
@@ -395,16 +399,25 @@ export function featuredAvatarCardUrlForUser(
     return profileFallback;
   }
 
-  return managedAvatarUrl(
+  const url = managedAvatarUrl(
     `user-${normalizedUid}-featured`,
     profileFallback,
     { size: "card" }
   );
+
+  return revision == null
+    ? url
+    : appendQueryParam(
+        url,
+        "rev",
+        String(revision)
+      );
 }
 
 export function featuredAvatarThumbUrlForUser(
   uid: string | null | undefined,
-  name: string | null | undefined
+  name: string | null | undefined,
+  revision?: string | number | null
 ) {
   const normalizedUid = slugifyAvatarTarget(uid);
   const profileFallback = avatarThumbUrlForUser(uid, name);
@@ -413,11 +426,19 @@ export function featuredAvatarThumbUrlForUser(
     return profileFallback;
   }
 
-  return managedAvatarUrl(
+  const url = managedAvatarUrl(
     `user-${normalizedUid}-featured`,
     profileFallback,
     { size: "thumb" }
   );
+
+  return revision == null
+    ? url
+    : appendQueryParam(
+        url,
+        "rev",
+        String(revision)
+      );
 }
 
 export function thumbnailUrlForAvatarAsset(url: string | null | undefined) {
