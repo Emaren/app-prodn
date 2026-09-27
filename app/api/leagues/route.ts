@@ -95,9 +95,42 @@ export async function POST(request: NextRequest) {
       requestId,
     });
 
-    const identity = newLeagueIdentity(name);
     const creatorDisplayName =
       viewer.inGameName || viewer.steamPersonaName || viewer.uid;
+
+    const existingLeague = await prisma.league.findUnique({
+      where: { creationTxHash: payment.txHash },
+    });
+
+    if (existingLeague) {
+      if (existingLeague.createdByUserId !== viewer.id) {
+        throw new Error("That league creation payment has already been used.");
+      }
+
+      return NextResponse.json(
+        {
+          ok: true,
+          recovered: true,
+          league: {
+            publicId: existingLeague.publicId,
+            slug: existingLeague.slug,
+            name: existingLeague.name,
+            description: existingLeague.description,
+            mode: existingLeague.mode,
+            teamSize: existingLeague.teamSize,
+            creatorDisplayName: existingLeague.creatorDisplayNameSnapshot,
+            creationPriceWolo: existingLeague.creationPriceWolo,
+            creationTxHash: existingLeague.creationTxHash,
+            creationProofUrl: existingLeague.creationProofUrl,
+            createdAt: existingLeague.createdAt.toISOString(),
+          },
+          href: `/leagues/${encodeURIComponent(existingLeague.slug)}`,
+        },
+        { status: 200, headers: NO_STORE_HEADERS },
+      );
+    }
+
+    const identity = newLeagueIdentity(name);
 
     const league = await prisma.$transaction(async (tx) => {
       const created = await tx.league.create({
