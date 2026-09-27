@@ -103,6 +103,14 @@ test("featured warrior cards bind live titles, rank and avatar revisions", () =>
     /asset\.updatedAt\.getTime\(\)/
   );
   assert.match(
+    directory,
+    /profileTarget[\s\S]*user-\$\{uid\}[\s\S]*activeFeaturedAvatarByTarget\.get/
+  );
+  assert.doesNotMatch(
+    directory,
+    /startsWith:\s*"user-"[\s\S]{0,120}endsWith:\s*"-featured"/
+  );
+  assert.match(
     leaderboard,
     /featuredAvatarRevision:\s*entry\.featuredAvatarRevision/
   );
