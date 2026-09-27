@@ -137,7 +137,8 @@ export default async function OlympiaPage() {
         <p className="mx-auto mt-5 max-w-3xl text-base leading-7 text-slate-300">
           The Games are not underway. This is the hall between them: national champions
           standing beneath their flags, carrying their belts, building the records that
-          will one day walk into the AoE2WAR Olympia.
+          will one day walk into the AoE2WAR Olympia. The future Games are a four-year
+          summit; Olympia remains their living hall between cycles.
         </p>
         <div className="mx-auto mt-7 h-px max-w-3xl bg-[linear-gradient(90deg,transparent,rgba(251,191,36,0.45),transparent)]" />
       </section>
@@ -169,7 +170,7 @@ export default async function OlympiaPage() {
                     priority
                     unoptimized
                     sizes="(min-width:1280px) 24vw, (min-width:768px) 48vw, 92vw"
-                    className="object-cover object-top opacity-95 transition duration-500 group-hover:scale-[1.025]"
+                    className="object-contain object-bottom opacity-95 transition duration-500 group-hover:scale-[1.025]"
                   />
                   <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_38%,rgba(3,7,18,0.30)_66%,#030712_100%)]" />
                   <div className="absolute bottom-3 left-4 right-4 z-10">
