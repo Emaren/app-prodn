@@ -7,6 +7,13 @@ import {
   normalizeReplayPlayers,
   type CanonicalReplayPlayer,
 } from "./teamResolution.ts";
+import {
+  PUBLIC_REPLAY_ROSTER_V3_POLICY,
+  stableReplayRosterV2Hash,
+} from "./publicReplayRosterV2.ts";
+import {
+  HD_REPLAY_PARSER_CONTRACT,
+} from "./replayEngineRoom.ts";
 import { loadReplayDesyncIncidentProvenance } from "./replayDesyncIncidents.ts";
 import {
   evaluateWatcherTeamTerminalResult,
@@ -2488,6 +2495,310 @@ function automaticEventReceipt(entry: {
   };
 }
 
+
+const WATCHER_TEAM_PROMOTED_TOPOLOGY_POLICY_VERSION =
+  "watcher-team-promoted-topology-v1" as const;
+
+async function loadExactPromotedTeamResolution(
+  tx: Prisma.TransactionClient,
+  game: Pick<
+    ReviewableGame,
+    "id" | "replayHash" | "players"
+  >
+) {
+  const promotion =
+    await tx.replayRosterPromotion.findFirst({
+      where: {
+        gameStatsId:
+          game.id,
+
+        promotionKey:
+          PUBLIC_REPLAY_ROSTER_V3_POLICY,
+
+        policyVersion:
+          PUBLIC_REPLAY_ROSTER_V3_POLICY,
+
+        replayHash:
+          game.replayHash,
+
+        affectsPublicAggregates:
+          true,
+
+        affectsResults:
+          false,
+
+        affectsBets:
+          false,
+
+        settlementAuthority:
+          false,
+      },
+
+      orderBy: [
+        {
+          createdAt:
+            "desc",
+        },
+        {
+          id:
+            "desc",
+        },
+      ],
+
+      select: {
+        id:
+          true,
+
+        observationId:
+          true,
+
+        replayHash:
+          true,
+
+        projectedPlayersHash:
+          true,
+
+        projectedPlayers:
+          true,
+
+        format:
+          true,
+
+        playerCount:
+          true,
+
+        policyVersion:
+          true,
+
+        observation: {
+          select: {
+            id:
+              true,
+
+            parseRunId:
+              true,
+
+            fieldPath:
+              true,
+
+            value:
+              true,
+
+            confidenceBps:
+              true,
+
+            provenance:
+              true,
+
+            candidateOnly:
+              true,
+
+            affectsPublicAggregates:
+              true,
+
+            parseRun: {
+              select: {
+                id:
+                  true,
+
+                gameStatsId:
+                  true,
+
+                inputHash:
+                  true,
+
+                parserName:
+                  true,
+
+                parserVersion:
+                  true,
+
+                schemaVersion:
+                  true,
+
+                passName:
+                  true,
+
+                passVersion:
+                  true,
+
+                status:
+                  true,
+
+                candidateOnly:
+                  true,
+
+                affectsPublicAggregates:
+                  true,
+
+                artifact: {
+                  select: {
+                    sha256:
+                      true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+  if (!promotion) {
+    return null;
+  }
+
+  const replayHash =
+    game.replayHash
+      .trim()
+      .toLowerCase();
+
+  const currentPlayersHash =
+    stableReplayRosterV2Hash(
+      parseJson(
+        game.players
+      )
+    );
+
+  const persistedProjectedPlayersHash =
+    stableReplayRosterV2Hash(
+      parseJson(
+        promotion.projectedPlayers
+      )
+    );
+
+  const observation =
+    promotion.observation;
+
+  const parseRun =
+    observation.parseRun;
+
+  const observationProvenance =
+    jsonRecord(
+      observation.provenance
+    );
+
+  const teamResolution =
+    jsonRecord(
+      observation.value
+    );
+
+  const exact =
+    promotion.observationId ===
+      observation.id &&
+    promotion.replayHash
+      .trim()
+      .toLowerCase() ===
+      replayHash &&
+    promotion.projectedPlayersHash ===
+      currentPlayersHash &&
+    promotion.projectedPlayersHash ===
+      persistedProjectedPlayersHash &&
+    observation.fieldPath ===
+      "teams.resolution" &&
+    observation.candidateOnly ===
+      true &&
+    observation.affectsPublicAggregates ===
+      false &&
+    (
+      observation.confidenceBps ??
+      0
+    ) >=
+      9_000 &&
+    automaticTruth(
+      observationProvenance.exact
+    ) &&
+    cleanText(
+      observationProvenance
+        .conflict_state,
+      40
+    ) ===
+      "none" &&
+    parseRun.id ===
+      observation.parseRunId &&
+    parseRun.gameStatsId ===
+      game.id &&
+    cleanText(
+      parseRun.inputHash,
+      64
+    ).toLowerCase() ===
+      replayHash &&
+    cleanText(
+      parseRun.artifact.sha256,
+      64
+    ).toLowerCase() ===
+      replayHash &&
+    parseRun.parserName ===
+      HD_REPLAY_PARSER_CONTRACT
+        .parserName &&
+    parseRun.parserVersion ===
+      HD_REPLAY_PARSER_CONTRACT
+        .parserVersion &&
+    parseRun.schemaVersion ===
+      HD_REPLAY_PARSER_CONTRACT
+        .schemaVersion &&
+    parseRun.passName ===
+      HD_REPLAY_PARSER_CONTRACT
+        .passName &&
+    parseRun.passVersion ===
+      HD_REPLAY_PARSER_CONTRACT
+        .passVersion &&
+    parseRun.status ===
+      "completed" &&
+    parseRun.candidateOnly ===
+      true &&
+    parseRun.affectsPublicAggregates ===
+      false &&
+    cleanText(
+      teamResolution.format,
+      20
+    ).toLowerCase() ===
+      promotion.format
+        .trim()
+        .toLowerCase() &&
+    positiveInteger(
+      teamResolution.player_count
+    ) ===
+      promotion.playerCount;
+
+  if (!exact) {
+    return null;
+  }
+
+  return {
+    teamResolution:
+      observation.value,
+
+    evidence: {
+      policyVersion:
+        WATCHER_TEAM_PROMOTED_TOPOLOGY_POLICY_VERSION,
+
+      rosterPolicyVersion:
+        promotion.policyVersion,
+
+      rosterPromotionId:
+        promotion.id,
+
+      rosterObservationId:
+        observation.id,
+
+      rosterParseRunId:
+        parseRun.id,
+
+      replayHash,
+
+      projectedPlayersHash:
+        promotion.projectedPlayersHash,
+
+      format:
+        promotion.format,
+
+      playerCount:
+        promotion.playerCount,
+    },
+  };
+}
+
 export async function reconcileAutomaticWatcherTerminalResults(
   prisma: PrismaClient,
   rawGameStatsIds: readonly (string | number | null | undefined)[]
@@ -2853,7 +3164,7 @@ export async function reconcileAutomaticWatcherTerminalResults(
           },
         };
 
-        const evaluation =
+        let evaluation =
           automaticRoster.length === 2
             ? WATCHER_TERMINAL_RECORDER_EXIT_RESULT_AUTHORITY
               ? evaluateWatcherRecorderExitResult(
@@ -2866,6 +3177,58 @@ export async function reconcileAutomaticWatcherTerminalResults(
             : evaluateWatcherTeamTerminalResult(
                 terminalEvaluationInput
               );
+
+        /*
+         * Replay Roster V3 may repair exact topology without rewriting
+         * historical GameStats.key_events. If the team terminal policy is
+         * blocked only because that legacy team_resolution is stale, consume
+         * the exact append-only V3 promotion observation instead.
+         *
+         * This is topology authority only. Result/resignation/action-tail
+         * evidence remains the original terminal evidence and every existing
+         * V4 fail-closed check still runs.
+         */
+        if (
+          automaticRoster.length !== 2 &&
+          !evaluation.eligible &&
+          evaluation.reason ===
+            "team_resolution_not_exact"
+        ) {
+          const promotedTopology =
+            await loadExactPromotedTeamResolution(
+              tx,
+              game
+            );
+
+          if (promotedTopology) {
+            evaluation =
+              evaluateWatcherTeamTerminalResult({
+                ...terminalEvaluationInput,
+
+                keyEvents: {
+                  ...jsonRecord(
+                    game.key_events
+                  ),
+
+                  team_resolution:
+                    promotedTopology
+                      .teamResolution,
+                },
+
+                parseRun: {
+                  ...jsonRecord(
+                    terminalEvaluationInput
+                      .parseRun
+                  ),
+
+                  promotedRosterTopology:
+                    promotedTopology
+                      .evidence,
+                },
+              });
+          }
+        }
+
         if (!evaluation.eligible) {
           return {
             gameStatsId,

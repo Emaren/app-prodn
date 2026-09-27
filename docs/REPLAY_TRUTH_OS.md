@@ -218,6 +218,18 @@ activity gaps, and no conflicting serialized result. It does not add a new
 winner heuristic; an asymmetric game that cannot satisfy those existing proof
 requirements remains under review.
 
+V4 may consume the exact topology observation already bound to a
+`public_replay_roster_v3` promotion when the historical
+`GameStats.key_events.team_resolution` is stale. That substitution is permitted only after
+re-validating the promotion against the current game, replay hash, persisted projected-roster
+hash, candidate-only observation and exact current parser contract. The topology observation
+is identified by canonical `fieldPath = "teams.resolution"`; producer-specific
+`observationKind` labels are informational and do not grant or revoke authority. Only
+`teams.resolution` is substituted for policy evaluation; result-resolution, resignation and
+terminal action evidence are not rewritten or supplied by the roster ledger. A broken binding
+falls back to the historical input and remains fail-closed.
+
+
 Historical sealed V2 campaign scripts remain immutable. The targeted rail does
 not relax or reuse their campaign-specific manifest, plan or game-ID seals.
 

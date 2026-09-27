@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "43483c0349359a4266cf5ea0cc86ac8982d4503a1afecdbf2300b37e86b7f022",
+      "sha256": "a799b9ec12e2514157abbc9fdfb842484595b6355b023788807e18a6f664e735",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-27",
       "sensitivity": "internal",
-      "sha256": "63c547e0c9b2882f48d176544533bee622535b932ce1bb102c7a6523b8dab135",
+      "sha256": "64354484282fce7130a742b2a397f1006dcfeca6d305d603c396083827161421",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1395,7 +1395,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-27",
       "sensitivity": "restricted",
-      "sha256": "d8827b4751790f1f5131598db2c0f4a08387a4ec8536c9d0ea0b8a91b4c1e16d",
+      "sha256": "66228ec9242592ac83bf1824273a3ab3caf8a72f7d3ec6f73aee9d51c39d58e4",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/replay-roster-v3-db-constraint",
-    "commit": "bc0050b59cdd9195faec1c1b6ca559da87cee9f8"
+    "branch": "fix/replay-v3-terminal-topology-bridge",
+    "commit": "e44c1210ed62ac9c882f03b98c5cd0a42b04a47d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
