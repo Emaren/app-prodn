@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/replay-v3-resignation-count-bridge` at `456056e99ce8a64305f48a5ee4087cfcd6df8d17`
+Implementation baseline: `fix/root-headroom-recovery-hysteresis` at `7d4007839e5f93fdd0c7b8233bcd7623a4524362`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
