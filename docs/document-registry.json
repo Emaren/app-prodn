@@ -245,7 +245,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-05",
       "sensitivity": "internal",
-      "sha256": "e60cc20d259219195cec7940f0bfd79e5499423d935ba57e262290f20a8aac6c",
+      "sha256": "44761394f98086a6c0348add182d3e398328fc210c5b5490d9097c9eeb4a1540",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "fd13cacba42f7ed6b05e3ecefa4f7a46fb625066cab66a2f0afd713cbe3fa664",
+      "sha256": "7380a99e184e681dc2802bfe30d1305a02dde3426fd3e0cc28f39b92cc990d24",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-27",
       "sensitivity": "internal",
-      "sha256": "0c559b8a959148321f5d35bff3f17d81b61c5ef802d5a7689cbab46a6b082226",
+      "sha256": "4942f2bd792102d398a7287ca69ecc083d24daaca2bf8bf230c3511adcd27a8f",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/featured-warrior-authority-20260927",
-    "commit": "534317b15ec3809dde04f3d48ae9370391ed6690"
+    "branch": "fix/war-chest-gross-take-avatar-fallback-20260927",
+    "commit": "278468bd276bb065ac4bfc8f522ffe79740759a4"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
