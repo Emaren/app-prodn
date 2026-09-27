@@ -13,7 +13,7 @@
       "review_interval_days": 60,
       "reviewed_at": "2026-09-06",
       "sensitivity": "internal",
-      "sha256": "6a47740fef3f6224ce567358b4458a1735410fb9f20bf9ceb67b471619a06629",
+      "sha256": "82ce11e1b1e7749a950e102d4cb9d7bd67005a99c76ffa40549bbaaa02f9e84a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -85,7 +85,7 @@
       "review_interval_days": 60,
       "reviewed_at": "2026-09-21",
       "sensitivity": "internal",
-      "sha256": "52e2dd4de32683dad103b3d9a04d535f0a75125dfec1908a1216652b796162ef",
+      "sha256": "1907c6042377bd6cfa307aa4dabd8f3c1b959bcae265fd7752e84d4a80accbc8",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -383,9 +383,9 @@
       "owner": "aoe2war-web",
       "path": "docs/CHAMPIONS_TITLE_ECONOMY.md",
       "review_interval_days": 90,
-      "reviewed_at": "2026-09-05",
+      "reviewed_at": "2026-09-27",
       "sensitivity": "internal",
-      "sha256": "fa7b87bbc17560f343730a15b405b81e8ac9e1dc66556b78191b1b74348b2d90",
+      "sha256": "d9d261f56eb0639d9cef6f455a60b2f107b56aec872fd36f3b6f465f05da9dfa",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d46dd64b76db3227cff0b4e262d2aac7440e08655694a05ec63f74a3723d7304",
+      "sha256": "e2849d7044f3ae6df65c85f6df4eb2c1449fde01dbd0fddac087219e4b40c184",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1006,9 +1006,9 @@
       "owner": "aoe2war-web",
       "path": "docs/PAGE_CHANGE_NOTICES.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-08-18",
+      "reviewed_at": "2026-09-27",
       "sensitivity": "internal",
-      "sha256": "4a53a4dec3b684b3a5663cfe69b6662d52ed94a79441decbe8ac839bcc4e7c59",
+      "sha256": "300f45b733468ebfbac87b125d5f81479e4b77b3a5c6c15f01322daaf279273a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1139,9 +1139,9 @@
       "owner": "aoe2war-web",
       "path": "docs/PERFORMANCE_OS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-22",
+      "reviewed_at": "2026-09-27",
       "sensitivity": "internal",
-      "sha256": "95904126e47591112886bbcbbf0751430f912966022afabfb1b3dbb2002f8ae9",
+      "sha256": "3ed0bf8254d57b43abf72e335c639e21b2fef132f58c046e106b180834cd6bb0",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "main",
-    "commit": "667634511af816fd0bf110af7a69f61a0a07a623"
+    "branch": "feature/chaosium-olympia-leagues-20260927",
+    "commit": "f4f1d9c08a2e415be4da521b64e12faa983ddbc3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
