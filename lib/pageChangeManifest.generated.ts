@@ -23,6 +23,21 @@ export const PAGE_CHANGE_MANIFEST = [
     version: "src-c5808212a6a119138152",
   },
   {
+    href: "/chaosium",
+    label: "Chaosium",
+    version: "src-12b6bd3c045d34cb2567",
+  },
+  {
+    href: "/olympia",
+    label: "Olympia",
+    version: "src-4066bb1f677c9f63b267",
+  },
+  {
+    href: "/leagues",
+    label: "Leagues",
+    version: "src-218a72e4ae4a274875f7",
+  },
+  {
     href: "/national-champions",
     label: "Nations",
     version: "src-eccd52b4dedf36a15699",
