@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/featured-warrior-authority-20260927` at `2fecfafee5533ee27dcdeb889b50039ccfe936e2`
+Implementation baseline: `fix/featured-warrior-authority-20260927` at `e52d55827ad2b81be807a2e521ad6e24b8efbb83`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
