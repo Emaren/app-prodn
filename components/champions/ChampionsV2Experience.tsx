@@ -39,10 +39,17 @@ import {
   readStoredLeaderboardLane,
   writeStoredLeaderboardLane,
 } from "@/lib/leaderboardLane";
-import { managedMediaPublicUrl } from "@/lib/managedMediaAssets";
 
 const MALE_SILHOUETTE = "/champions/players/silhouette.webp";
 const FEMALE_SILHOUETTE = "/champions/players/female_silhouette.webp";
+
+function managedMediaPublicUrl(
+  kind: "belt" | "artifact",
+  target: string,
+  fallback: string,
+) {
+  return `/api/media-assets/${encodeURIComponent(kind)}/${encodeURIComponent(target)}?fallback=${encodeURIComponent(fallback)}`;
+}
 
 function laneName(lane: ChampionsLane) {
   return lane === "rm" ? "Random Map" : "Death Match";
