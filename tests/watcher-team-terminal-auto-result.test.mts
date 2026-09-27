@@ -19,6 +19,10 @@ import {
   normalizeReplayPlayers,
 } from "../lib/teamResolution.ts";
 
+import {
+  stableReplayRosterV2Hash,
+} from "../lib/publicReplayRosterV2.ts";
+
 const replayHash =
   "7".repeat(64);
 
@@ -1578,6 +1582,498 @@ test(
     );
   }
 );
+
+test(
+  "automatic reconciliation may consume exact V3 promoted topology without rewriting legacy key events",
+  async () => {
+    const input =
+      teamInput2v1();
+
+    const keyEvents =
+      input.keyEvents as Record<
+        string,
+        unknown
+      >;
+
+    const promotedTeamResolution = {
+      ...(
+        keyEvents
+          .team_resolution as
+          Record<
+            string,
+            unknown
+          >
+      ),
+
+      player_count:
+        3,
+
+      team_count:
+        2,
+    };
+
+    /*
+     * Production 44862 shape after roster promotion:
+     * canonical players/team IDs are exact, but the historical
+     * GameStats.key_events.team_resolution remains stale.
+     */
+    keyEvents.team_resolution = {
+      format:
+        "unknown",
+
+      status:
+        "review_required",
+
+      confidence:
+        "low",
+
+      provenance:
+        "legacy",
+    };
+
+    const rosterHash =
+      stableReplayRosterV2Hash(
+        input.players
+      );
+
+    let createdData:
+      | Record<
+          string,
+          unknown
+        >
+      | null =
+        null;
+
+    const game = {
+      id:
+        input.id,
+
+      userUid:
+        input.uploaderUid,
+
+      replay_file:
+        "MP Replay.aoe2record",
+
+      replayHash:
+        input.replayHash,
+
+      createdAt:
+        new Date(
+          "2026-09-25T00:44:14.737Z"
+        ),
+
+      game_version:
+        "HD",
+
+      map: {
+        name:
+          "MegaRandom",
+      },
+
+      game_type:
+        "Team Game",
+
+      duration:
+        input.durationSeconds,
+
+      game_duration:
+        input.durationSeconds,
+
+      winner:
+        "Zodiac",
+
+      players:
+        input.players,
+
+      event_types:
+        input.eventTypes,
+
+      key_events:
+        input.keyEvents,
+
+      timestamp:
+        new Date(
+          "2026-09-25T00:44:14.737Z"
+        ),
+
+      played_on:
+        new Date(
+          "2026-09-25T00:44:14.737Z"
+        ),
+
+      parse_iteration:
+        input.parseIteration,
+
+      is_final:
+        true,
+
+      disconnect_detected:
+        false,
+
+      parse_source:
+        "watcher_final",
+
+      parse_reason:
+        "team_resignation_not_complete",
+
+      original_filename:
+        "MP Replay.aoe2record",
+
+      user: {
+        id:
+          input.uploaderUserId,
+
+        uid:
+          input.uploaderUid,
+
+        steamId:
+          input.uploaderSteamId,
+
+        inGameName:
+          "Zodiac",
+
+        steamPersonaName:
+          "Zodiac",
+      },
+    };
+
+    const tx = {
+      $queryRaw:
+        async () => [
+          {
+            lock_acquired:
+              1,
+          },
+        ],
+
+      gameStats: {
+        findUnique:
+          async () =>
+            game,
+      },
+
+      replayResultAdjudication: {
+        findUnique:
+          async () =>
+            null,
+
+        findFirst:
+          async () =>
+            null,
+
+        create:
+          async (
+            args: {
+              data:
+                Record<
+                  string,
+                  unknown
+                >;
+            }
+          ) => {
+            createdData =
+              args.data;
+
+            return {
+              id:
+                9200,
+            };
+          },
+      },
+
+      replayDesyncIncident: {
+        findFirst:
+          async () =>
+            null,
+      },
+
+      watcherClientEvent: {
+        findFirst:
+          async () =>
+            null,
+
+        count:
+          async () =>
+            0,
+      },
+
+      replayParseRun: {
+        findFirst:
+          async () => ({
+            id:
+              7670,
+
+            parserName:
+              "aoe2war.mgz_hd",
+
+            parserVersion:
+              "1.8.51",
+
+            parserBuild:
+              "test",
+
+            passName:
+              "hd_deterministic_evidence",
+
+            passVersion:
+              "10",
+
+            schemaVersion:
+              "2026-07-25.1",
+
+            status:
+              "completed",
+
+            candidateOnly:
+              true,
+
+            affectsPublicAggregates:
+              false,
+
+            completedAt:
+              new Date(
+                "2026-09-25T00:45:00.000Z"
+              ),
+
+            observations: [
+              {
+                id:
+                  8000,
+
+                value:
+                  input
+                    .rawActivityByPlayer,
+
+                provenance: {
+                  source:
+                    "test",
+                },
+              },
+            ],
+          }),
+      },
+
+      replayRosterPromotion: {
+        findFirst:
+          async () => ({
+            id:
+              126,
+
+            observationId:
+              7999,
+
+            replayHash:
+              input.replayHash,
+
+            projectedPlayersHash:
+              rosterHash,
+
+            projectedPlayers:
+              input.players,
+
+            format:
+              "2v1",
+
+            playerCount:
+              3,
+
+            policyVersion:
+              "public_replay_roster_v3",
+
+            observation: {
+              id:
+                7999,
+
+              parseRunId:
+                7670,
+
+              observationKind:
+                "team_resolution",
+
+              fieldPath:
+                "teams.resolution",
+
+              value:
+                promotedTeamResolution,
+
+              confidenceBps:
+                9500,
+
+              provenance: {
+                class:
+                  "derived_coherent",
+
+                exact:
+                  true,
+
+                conflict_state:
+                  "none",
+
+                subject: {
+                  type:
+                    "game",
+                },
+              },
+
+              candidateOnly:
+                true,
+
+              affectsPublicAggregates:
+                false,
+
+              parseRun: {
+                id:
+                  7670,
+
+                gameStatsId:
+                  input.id,
+
+                inputHash:
+                  input.replayHash,
+
+                parserName:
+                  "aoe2war.mgz_hd",
+
+                parserVersion:
+                  "1.8.51",
+
+                schemaVersion:
+                  "2026-07-25.1",
+
+                passName:
+                  "hd_deterministic_evidence",
+
+                passVersion:
+                  "10",
+
+                status:
+                  "completed",
+
+                candidateOnly:
+                  true,
+
+                affectsPublicAggregates:
+                  false,
+
+                artifact: {
+                  sha256:
+                    input.replayHash,
+                },
+              },
+            },
+          }),
+      },
+
+      betMarket: {
+        findMany:
+          async () =>
+            [],
+      },
+
+      pendingWoloClaim: {
+        findMany:
+          async () =>
+            [],
+      },
+    };
+
+    const prisma = {
+      $transaction:
+        async (
+          callback: (
+            transaction:
+              typeof tx
+          ) => Promise<
+            unknown
+          >
+        ) =>
+          callback(
+            tx
+          ),
+    };
+
+    const report =
+      await reconcileAutomaticWatcherTerminalResults(
+        prisma as never,
+        [
+          input.id,
+        ]
+      );
+
+    assert.equal(
+      report.createdCount,
+      1
+    );
+
+    assert.equal(
+      report.skippedCount,
+      0
+    );
+
+    assert.equal(
+      report.outcomes[0]
+        ?.detail,
+      "decisive_team_terminal_action_tail"
+    );
+
+    assert.equal(
+      createdData
+        ?.affectsStats,
+      true
+    );
+
+    assert.equal(
+      createdData
+        ?.affectsBets,
+      false
+    );
+
+    assert.equal(
+      createdData
+        ?.winningTeamKey,
+      "team:1"
+    );
+
+    const evidence =
+      createdData
+        ?.evidence as
+        | {
+            parseRun?: {
+              promotedRosterTopology?: {
+                rosterPromotionId?: unknown;
+                rosterObservationId?: unknown;
+                rosterPolicyVersion?: unknown;
+              };
+            };
+          }
+        | undefined;
+
+    assert.equal(
+      evidence
+        ?.parseRun
+        ?.promotedRosterTopology
+        ?.rosterPromotionId,
+      126
+    );
+
+    assert.equal(
+      evidence
+        ?.parseRun
+        ?.promotedRosterTopology
+        ?.rosterObservationId,
+      7999
+    );
+
+    assert.equal(
+      evidence
+        ?.parseRun
+        ?.promotedRosterTopology
+        ?.rosterPolicyVersion,
+      "public_replay_roster_v3"
+    );
+  }
+);
+
 
 test(
   "watcher 1.5.7 completion receipt may omit finalStored and system player zero is ignored",
