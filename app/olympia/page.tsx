@@ -92,10 +92,12 @@ function dateLabel(value: string | null | undefined) {
   }).format(new Date(value));
 }
 
-function vacantChallengeHref() {
-  return `/contact-emaren?challenge=${encodeURIComponent(
-    "vacant-national-belt",
-  )}&to=${encodeURIComponent("Emaren")}&role=${encodeURIComponent("Commissioner")}`;
+function vacantChallengeHref(commissionerUid: string | null) {
+  const params = new URLSearchParams({ kind: "national" });
+  if (commissionerUid) {
+    params.set("opponent", commissionerUid);
+  }
+  return `/challenge?${params.toString()}#schedule-game`;
 }
 
 export default async function OlympiaPage() {
@@ -104,6 +106,11 @@ export default async function OlympiaPage() {
     loadChampionTitleEconomyState(prisma),
     loadPublicPlayerDirectory(prisma),
   ]);
+
+  const commissioner =
+    directory.allEntries.find(
+      (entry) => normalizeIdentity(entry.name) === "emaren",
+    ) ?? null;
 
   const champions = OLYMPIA_TITLES.flatMap((slot) => {
     const title = titles.titles.find((row) => row.id === slot.id);
@@ -256,7 +263,7 @@ export default async function OlympiaPage() {
             </div>
 
             <Link
-              href={vacantChallengeHref()}
+              href={vacantChallengeHref(commissioner?.uid ?? null)}
               className="mt-8 inline-flex min-h-12 items-center justify-center gap-2 rounded-full border border-amber-200/30 bg-amber-300 px-5 text-sm font-black text-slate-950 transition hover:bg-amber-200"
             >
               Challenge the Commissioner
