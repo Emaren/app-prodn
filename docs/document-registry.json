@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "cda2a04ee65ca1a1404242ab2bd91a9bf05196847003af09beb0503dbce7c35a",
+      "sha256": "8b153fbedc60afb4ef580f3b147195e8e5c3c2552231176b1995b953eb65901f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-27",
       "sensitivity": "internal",
-      "sha256": "4cb8cb1991808a312fc5fbb78cda7e58db140c932f4f4e72663ba523410535ba",
+      "sha256": "0c559b8a959148321f5d35bff3f17d81b61c5ef802d5a7689cbab46a6b082226",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1325,7 +1325,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-22",
       "sensitivity": "internal",
-      "sha256": "1f8240aa74b59765754a434cfc4e0c980b6ab66ffab82298a396b858894994b3",
+      "sha256": "2f743e0cd5783a224a2d3672456c1b52cd8d61ce4ed7061a1f445c10bcc55eca",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/replay-v3-resignation-count-bridge",
-    "commit": "456056e99ce8a64305f48a5ee4087cfcd6df8d17"
+    "branch": "fix/root-headroom-recovery-hysteresis",
+    "commit": "7d4007839e5f93fdd0c7b8233bcd7623a4524362"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
