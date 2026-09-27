@@ -222,7 +222,9 @@ V4 may consume the exact topology observation already bound to a
 `public_replay_roster_v3` promotion when the historical
 `GameStats.key_events.team_resolution` is stale. That substitution is permitted only after
 re-validating the promotion against the current game, replay hash, persisted projected-roster
-hash, candidate-only observation and exact current parser contract. Only
+hash, candidate-only observation and exact current parser contract. The topology observation
+is identified by canonical `fieldPath = "teams.resolution"`; producer-specific
+`observationKind` labels are informational and do not grant or revoke authority. Only
 `teams.resolution` is substituted for policy evaluation; result-resolution, resignation and
 terminal action evidence are not rewritten or supplied by the roster ledger. A broken binding
 falls back to the historical input and remains fail-closed.
