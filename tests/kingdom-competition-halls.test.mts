@@ -65,4 +65,7 @@ test("Leagues exposes every team size with independent RM and DM controls", () =
   assert.match(leagueUi, /Found league · 100 WOLO/);
   assert.match(leagueUi, /pendingPayment/);
   assert.match(leagueUi, /Retry charter · already paid/);
+  assert.match(leagueUi, /PENDING_LEAGUE_PAYMENT_STORAGE_PREFIX/);
+  assert.match(leagueUi, /localStorage\.setItem/);
+  assert.match(leagueUi, /localStorage\.removeItem/);
 });
