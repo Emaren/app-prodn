@@ -57,11 +57,20 @@ function normalizeIdentity(value: string | null | undefined) {
     .replace(/[^a-z0-9]+/g, "");
 }
 
-function eventLabel(eventType: string) {
-  if (eventType === "CHALLENGE_SETTLED_HOLDER_CHANGED") return "Won the belt";
-  if (eventType === "HOLDER_REASSIGNED") return "Title transferred";
-  if (eventType === "HOLDER_ASSIGNED") return "First holder";
-  return "Title event";
+function holderIdentity(
+  uid: string | null | undefined,
+  name: string | null | undefined,
+) {
+  const normalizedUid = String(uid ?? "").trim().toLowerCase();
+  if (normalizedUid) return `uid:${normalizedUid}`;
+  const normalizedName = normalizeIdentity(name);
+  return normalizedName ? `name:${normalizedName}` : "";
+}
+
+function previousReignLabel(eventType: string) {
+  return eventType === "CHALLENGE_SETTLED_HOLDER_CHANGED"
+    ? "Reign ended · challenge transfer"
+    : "Reign ended · title transfer";
 }
 
 export async function loadChaosium(prisma: PrismaClient): Promise<ChaosiumBelt[]> {
@@ -78,6 +87,11 @@ export async function loadChaosium(prisma: PrismaClient): Promise<ChaosiumBelt[]
       id: number;
       eventType: string;
       createdAt: Date;
+      fromHolder: {
+        uid: string;
+        inGameName: string | null;
+        steamPersonaName: string | null;
+      } | null;
       toHolder: {
         uid: string;
         inGameName: string | null;
@@ -96,6 +110,13 @@ export async function loadChaosium(prisma: PrismaClient): Promise<ChaosiumBelt[]
             },
           },
           include: {
+            fromHolder: {
+              select: {
+                uid: true,
+                inGameName: true,
+                steamPersonaName: true,
+              },
+            },
             toHolder: {
               select: {
                 uid: true,
@@ -140,7 +161,10 @@ export async function loadChaosium(prisma: PrismaClient): Promise<ChaosiumBelt[]
 
     const trophy = trophyByDefinitionId.get(title.id) ?? null;
     const lineage: ChaosiumLineageEntry[] = [];
-    let skippedCurrentHolderEvent = false;
+    let lineageCursor = holderIdentity(
+      holder?.uid ?? holderPlayer?.uid,
+      holderName,
+    );
 
     if (holderName) {
       const key = `current:${holderKey}`;
@@ -162,52 +186,63 @@ export async function loadChaosium(prisma: PrismaClient): Promise<ChaosiumBelt[]
     }
 
     for (const event of trophy?.events ?? []) {
-      const toHolder = event.toHolder;
-      const name =
-        toHolder?.inGameName ||
-        toHolder?.steamPersonaName ||
+      const toName =
+        event.toHolder?.inGameName ||
+        event.toHolder?.steamPersonaName ||
         null;
-      if (!name) continue;
+      const toIdentity = holderIdentity(event.toHolder?.uid, toName);
 
-      const identity = normalizeIdentity(name);
-      if (!identity) continue;
-
-      // The current reign is already rendered as the live beacon from Trophy
-      // custody. Skip only its newest matching event; preserve older reigns if
-      // the same warrior later regained a belt.
-      if (
-        !skippedCurrentHolderEvent &&
-        holderKey &&
-        identity === holderKey
-      ) {
-        skippedCurrentHolderEvent = true;
+      // Walk the custody chain backward. A newer transfer's fromHolder is the
+      // previous reign even when that earlier acquisition was seeded before
+      // TrophyEvent history existed.
+      if (lineageCursor && toIdentity && lineageCursor !== toIdentity) {
         continue;
       }
 
+      const previousHolder = event.fromHolder;
+      const previousName =
+        previousHolder?.inGameName ||
+        previousHolder?.steamPersonaName ||
+        null;
+
+      if (!previousHolder || !previousName) {
+        lineageCursor = "";
+        break;
+      }
+
+      const previousIdentity = holderIdentity(previousHolder.uid, previousName);
+      if (!previousIdentity) continue;
+
       const player =
         directory.allEntries.find(
-          (entry) => entry.uid?.toLowerCase() === toHolder?.uid.toLowerCase(),
+          (entry) =>
+            entry.uid?.toLowerCase() === previousHolder.uid.toLowerCase(),
         ) ??
         directory.allEntries.find(
-          (entry) => normalizeIdentity(entry.name) === identity,
+          (entry) =>
+            normalizeIdentity(entry.name) === normalizeIdentity(previousName),
         ) ??
         null;
 
       lineage.push({
-        key: `event:${event.id}`,
+        key: `event:${event.id}:from:${previousIdentity}`,
         kind: "holder",
-        name,
-        uid: toHolder?.uid ?? player?.uid ?? null,
-        href: player?.href ?? (toHolder?.uid ? `/players/${encodeURIComponent(toHolder.uid)}` : null),
+        name: previousName,
+        uid: previousHolder.uid ?? player?.uid ?? null,
+        href:
+          player?.href ??
+          `/players/${encodeURIComponent(previousHolder.uid)}`,
         avatarUrl: featuredAvatarCardUrlForUser(
-          toHolder?.uid ?? player?.uid,
-          name,
+          previousHolder.uid ?? player?.uid,
+          previousName,
           player?.featuredAvatarRevision,
         ),
         at: event.createdAt.toISOString(),
-        eventType: eventLabel(event.eventType),
+        eventType: previousReignLabel(event.eventType),
         current: false,
       });
+
+      lineageCursor = previousIdentity;
     }
 
     if (trophy) {
