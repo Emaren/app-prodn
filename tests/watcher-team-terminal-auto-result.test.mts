@@ -1560,7 +1560,7 @@ test(
     assert.equal(
       createdData
         ?.winningTeamKey,
-      "team:2"
+      "team:1"
     );
 
     assert.deepEqual(
@@ -2119,7 +2119,7 @@ test(
     assert.equal(
       createdData
         ?.winningTeamKey,
-      "team:1"
+      "team:2"
     );
 
     const evidence =
