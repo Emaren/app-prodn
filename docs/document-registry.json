@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e9b8bc56625f6f0155d6f16db7b6f13abe0b8692a1462f69ca87e5b93910a05b",
+      "sha256": "d46dd64b76db3227cff0b4e262d2aac7440e08655694a05ec63f74a3723d7304",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/war-chest-gross-take-avatar-fallback-20260927",
-    "commit": "e32bee93ece36f1e619065204c951dae6eaa07ca"
+    "branch": "main",
+    "commit": "667634511af816fd0bf110af7a69f61a0a07a623"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
