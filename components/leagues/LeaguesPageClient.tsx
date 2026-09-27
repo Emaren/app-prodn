@@ -26,6 +26,16 @@ type LeagueCreationResponse = {
   league: PublicLeague;
 };
 
+type PendingLeaguePayment = {
+  requestId: string;
+  name: string;
+  description: string;
+  teamSize: LeagueTeamSize;
+  mode: LeagueMode;
+  txHash: string;
+  fromAddress: string;
+};
+
 const FORMATS: Array<{ teamSize: LeagueTeamSize; label: string; detail: string }> = [
   { teamSize: 1, label: "1v1", detail: "The pure duel. One throne, one rival, nowhere to hide." },
   { teamSize: 2, label: "2v2", detail: "Pairs, chemistry, rescues, collapses, and shared pressure." },
@@ -69,6 +79,8 @@ export default function LeaguesPageClient({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [created, setCreated] = useState<LeagueCreationResponse | null>(null);
+  const [pendingPayment, setPendingPayment] =
+    useState<PendingLeaguePayment | null>(null);
 
   const leagueCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -94,26 +106,26 @@ export default function LeaguesPageClient({
     setCreated(null);
 
     try {
-      const requestId = crypto.randomUUID();
-      const quoteResponse = await fetch(
-        `/api/leagues/quote?requestId=${encodeURIComponent(requestId)}`,
-        { cache: "no-store" },
-      );
-      const quote = await readJson<LeaguePaymentQuote>(quoteResponse);
-      if (!quoteResponse.ok || !quote.ok) {
-        throw new Error(quote.detail || "League creation quote unavailable.");
-      }
+      let charter = pendingPayment;
 
-      const payment = await payWoloOnChain({
-        recipientAddress: quote.recipientAddress,
-        amountWolo: quote.amountWolo,
-        memo: quote.memo,
-      });
+      if (!charter) {
+        const requestId = crypto.randomUUID();
+        const quoteResponse = await fetch(
+          `/api/leagues/quote?requestId=${encodeURIComponent(requestId)}`,
+          { cache: "no-store" },
+        );
+        const quote = await readJson<LeaguePaymentQuote>(quoteResponse);
+        if (!quoteResponse.ok || !quote.ok) {
+          throw new Error(quote.detail || "League creation quote unavailable.");
+        }
 
-      const response = await fetch("/api/leagues", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+        const payment = await payWoloOnChain({
+          recipientAddress: quote.recipientAddress,
+          amountWolo: quote.amountWolo,
+          memo: quote.memo,
+        });
+
+        charter = {
           requestId,
           name: trimmedName,
           description,
@@ -121,7 +133,14 @@ export default function LeaguesPageClient({
           mode,
           txHash: payment.transactionHash,
           fromAddress: payment.walletAddress,
-        }),
+        };
+        setPendingPayment(charter);
+      }
+
+      const response = await fetch("/api/leagues", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(charter),
       });
       const payload = await readJson<LeagueCreationResponse>(response);
       if (!response.ok || !payload.ok) {
@@ -129,6 +148,7 @@ export default function LeaguesPageClient({
       }
 
       setCreated(payload);
+      setPendingPayment(null);
       setName("");
       setDescription("");
       router.refresh();
@@ -306,6 +326,7 @@ export default function LeaguesPageClient({
               value={name}
               onChange={(event) => setName(event.target.value.slice(0, 160))}
               maxLength={160}
+              disabled={Boolean(pendingPayment)}
               placeholder="Northern Siege League"
               className="mt-2 min-h-11 w-full rounded-xl border border-white/10 bg-black/25 px-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-amber-200/30"
             />
@@ -316,6 +337,7 @@ export default function LeaguesPageClient({
               <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Format</span>
               <select
                 value={teamSize}
+                disabled={Boolean(pendingPayment)}
                 onChange={(event) => setTeamSize(Number(event.target.value) as LeagueTeamSize)}
                 className="mt-2 min-h-11 w-full rounded-xl border border-white/10 bg-[#070b14] px-3 text-sm text-white outline-none"
               >
@@ -328,6 +350,7 @@ export default function LeaguesPageClient({
               <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Ruleset</span>
               <select
                 value={mode}
+                disabled={Boolean(pendingPayment)}
                 onChange={(event) => setMode(event.target.value as LeagueMode)}
                 className="mt-2 min-h-11 w-full rounded-xl border border-white/10 bg-[#070b14] px-3 text-sm text-white outline-none"
               >
@@ -343,11 +366,18 @@ export default function LeaguesPageClient({
               value={description}
               onChange={(event) => setDescription(event.target.value.slice(0, 1200))}
               maxLength={1200}
+              disabled={Boolean(pendingPayment)}
               rows={5}
               placeholder="Who is this league for? What should its season feel like?"
               className="mt-2 w-full resize-y rounded-xl border border-white/10 bg-black/25 px-3 py-3 text-sm leading-6 text-white outline-none placeholder:text-slate-600 focus:border-amber-200/30"
             />
           </label>
+
+          {pendingPayment ? (
+            <div className="mt-4 rounded-xl border border-amber-200/18 bg-amber-300/[0.07] px-3 py-2.5 text-xs leading-5 text-amber-100">
+              100 WOLO is already signed for this charter. Retry records the same transaction; it does not charge again.
+            </div>
+          ) : null}
 
           {error ? (
             <div className="mt-4 rounded-xl border border-rose-200/18 bg-rose-300/[0.07] px-3 py-2.5 text-xs leading-5 text-rose-100">
@@ -377,7 +407,12 @@ export default function LeaguesPageClient({
               {busy ? (
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Signing 100 WOLO…
+                  {pendingPayment ? "Recording charter…" : "Signing 100 WOLO…"}
+                </>
+              ) : pendingPayment ? (
+                <>
+                  Retry charter · already paid
+                  <ArrowRight className="h-4 w-4" />
                 </>
               ) : (
                 <>
