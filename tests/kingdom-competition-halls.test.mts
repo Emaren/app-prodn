@@ -34,7 +34,8 @@ test("Chaosium reads holder-changing Trophy events and preserves an origin marke
   assert.match(chaosium, /CHALLENGE_SETTLED_HOLDER_CHANGED/);
   assert.match(chaosium, /Belt entered the Kingdom/);
   assert.match(chaosium, /trophy\.createdAt\.toISOString\(\)/);
-  assert.match(chaosium, /skippedCurrentHolderEvent/);
+  assert.match(chaosium, /fromHolder/);
+  assert.match(chaosium, /Walk the custody chain backward/);
   assert.match(chaosiumPage, /animate-ping/);
   assert.match(chaosiumPage, /Newest reign to origin/);
 });
