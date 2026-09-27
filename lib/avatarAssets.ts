@@ -410,6 +410,32 @@ export function avatarPresenceUrlForUser(
   );
 }
 
+export function featuredAvatarUrlForUser(
+  uid: string | null | undefined,
+  name: string | null | undefined,
+  revision?: string | number | null
+) {
+  const normalizedUid = slugifyAvatarTarget(uid);
+  const profileFallback = avatarUrlForUser(uid, name);
+
+  if (!normalizedUid) {
+    return profileFallback;
+  }
+
+  const url = managedAvatarUrl(
+    `user-${normalizedUid}-featured`,
+    profileFallback
+  );
+
+  return revision == null
+    ? url
+    : appendQueryParam(
+        url,
+        "rev",
+        String(revision)
+      );
+}
+
 export function featuredAvatarCardUrlForUser(
   uid: string | null | undefined,
   name: string | null | undefined,
