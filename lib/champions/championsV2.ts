@@ -57,6 +57,7 @@ export type ChampionsV2NationalBelt = {
   slug: string;
   country: string;
   flag: string;
+  scope: "national" | "regional";
   beltUrl: string;
   routeHref: string | null;
   active: boolean;
@@ -89,6 +90,8 @@ type CountryCatalogRow = {
   slug: string;
   country: string;
   flag: string;
+  managedTarget?: string;
+  scope?: "national" | "regional";
 };
 
 const COUNTRY_BELT_CATALOG: CountryCatalogRow[] = [
@@ -132,6 +135,20 @@ const COUNTRY_BELT_CATALOG: CountryCatalogRow[] = [
   { slug: "finland", country: "Finland", flag: "🇫🇮" },
   { slug: "norway", country: "Norway", flag: "🇳🇴" },
   { slug: "philippines", country: "Philippines", flag: "🇵🇭" },
+  {
+    slug: "norse",
+    country: "Norse",
+    flag: "⚔️",
+    managedTarget: "regional-norse",
+    scope: "regional",
+  },
+  {
+    slug: "southeast-asia",
+    country: "Southeast Asia",
+    flag: "🌏",
+    managedTarget: "regional-southeast-asia",
+    scope: "regional",
+  },
 ];
 
 const NATIONAL_CONTENDER_OVERRIDES: Record<string, string[]> = {
@@ -505,9 +522,10 @@ function buildNationalBelts(
       slug: country.slug,
       country: country.country,
       flag: country.flag,
+      scope: country.scope ?? "national",
       beltUrl: managedMediaPublicUrl(
         "belt",
-        `national-${country.slug}`,
+        country.managedTarget ?? `national-${country.slug}`,
         fallback,
       ),
       routeHref: live?.routeHref ?? null,
