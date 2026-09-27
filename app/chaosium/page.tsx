@@ -106,13 +106,19 @@ export default async function ChaosiumPage() {
                 </Link>
               </div>
 
-              <div className="absolute right-5 top-5 z-20 flex items-center gap-2 rounded-full border border-emerald-200/25 bg-emerald-400/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-100">
-                <span className="relative flex h-2.5 w-2.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300 opacity-60" />
-                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-200" />
-                </span>
-                Current
-              </div>
+              {belt.currentHolder ? (
+                <div className="absolute right-5 top-5 z-20 flex items-center gap-2 rounded-full border border-emerald-200/25 bg-emerald-400/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-emerald-100">
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300 opacity-60" />
+                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-200" />
+                  </span>
+                  Current
+                </div>
+              ) : (
+                <div className="absolute right-5 top-5 z-20 rounded-full border border-slate-400/18 bg-slate-700/20 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.18em] text-slate-400">
+                  Vacant
+                </div>
+              )}
 
               <div className="absolute bottom-5 left-5 right-5 z-20">
                 <div className="text-[10px] font-black uppercase tracking-[0.26em] text-amber-100/65">
