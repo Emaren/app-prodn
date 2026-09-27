@@ -974,11 +974,13 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
             },
             "capacity": {
                 "root_free_warn_gib": 5.0,
+                "root_free_preferred_gib": 6.0,
                 "volume_used_critical_percent": 92.0,
             },
             "finish": {
                 "auto_root_headroom_recovery": True,
                 "root_headroom_journal_limit_mib": 100,
+                "root_headroom_recovery_margin_mib": 128,
             },
         }
 
@@ -1000,13 +1002,61 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
             },
         }
 
+    def test_recovery_target_adds_bounded_hysteresis_below_preferred(self):
+        with mock.patch.object(
+            MODULE.aoe2_doctor,
+            "load_contract",
+            return_value=self.contract(),
+        ):
+            target = MODULE.root_headroom_recovery_target_bytes()
+
+        self.assertEqual(
+            target,
+            (5 * 1024 ** 3) + (128 * 1024 ** 2),
+        )
+
+    def test_recovery_target_caps_at_preferred_headroom(self):
+        contract = self.contract()
+        contract["capacity"]["root_free_preferred_gib"] = 5.0625
+        contract["finish"]["root_headroom_recovery_margin_mib"] = 256
+
+        with mock.patch.object(
+            MODULE.aoe2_doctor,
+            "load_contract",
+            return_value=contract,
+        ):
+            target = MODULE.root_headroom_recovery_target_bytes()
+
+        self.assertEqual(
+            target,
+            int(5.0625 * 1024 ** 3),
+        )
+
     def test_generated_recovery_script_is_strictly_bounded(self):
         script = MODULE.remote_root_headroom_recovery_script(
             volume="/mnt/HC_Volume_105319120",
             floor_kb=5 * 1024 * 1024,
+            target_kb=(5 * 1024 * 1024) + (128 * 1024),
             journal_limit_mib=100,
             expected_source_sha="a" * 40,
             expected_active_build_id="active-build",
+        )
+
+        self.assertIn(
+            "TARGET_KB=",
+            script,
+        )
+        self.assertIn(
+            'root_target_kb=$TARGET_KB',
+            script,
+        )
+        self.assertIn(
+            '"$CURRENT_KB" -lt "$TARGET_KB"',
+            script,
+        )
+        self.assertIn(
+            'test "$AFTER_KB" -ge "$TARGET_KB"',
+            script,
         )
 
         # Approved low-value reclaim classes.
