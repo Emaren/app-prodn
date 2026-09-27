@@ -27,6 +27,8 @@ const NAME_TARGETS: Record<string, string> = {
   "the ai scribe": "ai-scribe",
   "ai scribe": "ai-scribe",
   grimer: "grimer",
+  c0lorz: "c0lorz",
+  colors: "c0lorz",
 
   myth: "myth",
   ra: "ra",
@@ -141,6 +143,7 @@ const MANAGED_NAME_AVATAR_TARGETS = new Set([
   "ai-scribe",
   "the-ai-scribe",
   "moose",
+  "c0lorz",
 ]);
 
 export function avatarUrlForName(name: string | null | undefined) {
