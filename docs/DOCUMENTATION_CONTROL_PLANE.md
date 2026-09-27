@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/replay-v3-terminal-topology-bridge` at `f5ac10c99c5cb5b8388307ad95df75d2691ac425`
+Implementation baseline: `fix/replay-v3-terminal-topology-bridge` at `95de0530484cd57f931c384b6872103507ff20a6`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
