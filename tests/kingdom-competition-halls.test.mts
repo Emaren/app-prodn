@@ -47,6 +47,8 @@ test("league charter is a verified 100 WOLO signed creation rail", () => {
   assert.match(leagueQuote, /recipientAddress: commissioner\.walletAddress/);
   assert.match(leagueApi, /verifyLeagueCreationPayment\(/);
   assert.match(leagueApi, /tx\.league\.create/);
+  assert.match(leagueApi, /existingLeague/);
+  assert.match(leagueApi, /recovered: true/);
   assert.match(schema, /model League/);
   assert.match(schema, /creationTxHash\s+String\s+@unique/);
 });
@@ -58,4 +60,6 @@ test("Leagues exposes every team size with independent RM and DM controls", () =
   assert.match(leagueUi, /\["rm", "dm"\]/);
   assert.match(leagueUi, /setLaneModes/);
   assert.match(leagueUi, /Found league · 100 WOLO/);
+  assert.match(leagueUi, /pendingPayment/);
+  assert.match(leagueUi, /Retry charter · already paid/);
 });
