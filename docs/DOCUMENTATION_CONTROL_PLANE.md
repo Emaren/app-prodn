@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `hotfix/champions-v2-eslint-20260927` at `f5a4b4a35d705e3cd2487d0504a42a1a2a6aedec`
+Implementation baseline: `feature/media-armory-batch-ingest-20260927` at `8de835b4580f5e2af4ed529c2f59ad0bb3390b8a`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
