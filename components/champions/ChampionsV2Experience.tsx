@@ -8,7 +8,6 @@ import {
   Crown,
   Shield,
   Sparkles,
-  Swords,
   Trophy,
   UsersRound,
 } from "lucide-react";
