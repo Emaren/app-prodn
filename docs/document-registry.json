@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a799b9ec12e2514157abbc9fdfb842484595b6355b023788807e18a6f664e735",
+      "sha256": "cda2a04ee65ca1a1404242ab2bd91a9bf05196847003af09beb0503dbce7c35a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-27",
       "sensitivity": "internal",
-      "sha256": "64354484282fce7130a742b2a397f1006dcfeca6d305d603c396083827161421",
+      "sha256": "4cb8cb1991808a312fc5fbb78cda7e58db140c932f4f4e72663ba523410535ba",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1395,7 +1395,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-27",
       "sensitivity": "restricted",
-      "sha256": "66228ec9242592ac83bf1824273a3ab3caf8a72f7d3ec6f73aee9d51c39d58e4",
+      "sha256": "933e6ec8cafa5b1f34aa5c8649e2972810043fc8953377b4b2389533b876b440",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/replay-v3-terminal-topology-bridge",
-    "commit": "e44c1210ed62ac9c882f03b98c5cd0a42b04a47d"
+    "branch": "fix/replay-v3-resignation-count-bridge",
+    "commit": "456056e99ce8a64305f48a5ee4087cfcd6df8d17"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

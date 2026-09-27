@@ -57,14 +57,27 @@ re-binds to the same game, replay hash, persisted roster hash, candidate-only ob
 and exact current parser contract. The durable semantic identity is the canonical
 `fieldPath = "teams.resolution"`; `observationKind` is producer metadata and must not become
 a second, invented authority gate. The promotion must still be explicitly roster-only
-(`affectsResults=false`, `affectsBets=false`, `settlementAuthority=false`). Result,
-resignation and action-tail evidence continue to come from the independent terminal-result
-rail and every existing V4 fail-closed check still runs.
+(`affectsResults=false`, `affectsBets=false`, `settlementAuthority=false`).
+
+Production game 44862 then exposed the same stale-snapshot seam one layer deeper. Its
+historical `GameStats.result_resolution.result_evidence.resignation_counts_by_team` remained
+empty, while the exact promoted `teams.resolution` observation already carried the parser's
+canonical per-team resignation counts for the repaired 2v1 topology. V4 may consume only that
+count array from the same fully re-bound observation when it is otherwise blocked at
+`parser_resignation_counts_missing`. The count rows must exactly match the two promoted team
+IDs and roster cardinalities; malformed, incomplete, duplicated or drifted rows remain absent.
+
+No other promoted result metadata crosses the boundary. Winner flags, winner-team candidates,
+sources, trust state, complete-team-resignation claims and result conclusions remain the
+historical terminal-result inputs. V4 still cross-checks the imported counts against
+`resigned_player_numbers`, canonical teams and raw per-player activity before any adjudication
+can exist, and all existing terminal-tail thresholds remain unchanged.
 
 Durable rule: when one append-only authority layer proves topology for a later policy, consume
-that proof through its immutable ledger and source observation. Do not mutate historical
-parser/result snapshots merely to make the next policy see newer topology, and never let a
-roster promotion become result authority by implication.
+only the minimum immutable evidence needed by that policy through the bound ledger/source
+observation. Do not mutate historical parser/result snapshots, do not copy a whole result blob
+when one field is sufficient, and never let a roster promotion become winner authority by
+implication.
 
 ## 2026-09-27 — Replay Roster V3 application and database envelopes must advance together
 
