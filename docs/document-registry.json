@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6c6b45282d7863caac2fa69d74af5c37630a58aa2208a76e428e500156b02d9d",
+      "sha256": "76a0b72e68f2e1905ba1ecbd671e7b59a8945a821b476c09ae578ac512b93b86",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/chaosium-olympia-leagues-20260927",
-    "commit": "2e206ff48d19d81183b62fd2c6790cd9c6b747ab"
+    "commit": "7a91888e3886889632fcebd0b2a3fd0fe096cdfa"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
