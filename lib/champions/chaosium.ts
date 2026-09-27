@@ -140,11 +140,10 @@ export async function loadChaosium(prisma: PrismaClient): Promise<ChaosiumBelt[]
 
     const trophy = trophyByDefinitionId.get(title.id) ?? null;
     const lineage: ChaosiumLineageEntry[] = [];
-    const seen = new Set<string>();
+    let skippedCurrentHolderEvent = false;
 
     if (holderName) {
       const key = `current:${holderKey}`;
-      seen.add(holderKey);
       lineage.push({
         key,
         kind: "holder",
@@ -171,8 +170,19 @@ export async function loadChaosium(prisma: PrismaClient): Promise<ChaosiumBelt[]
       if (!name) continue;
 
       const identity = normalizeIdentity(name);
-      if (!identity || seen.has(identity)) continue;
-      seen.add(identity);
+      if (!identity) continue;
+
+      // The current reign is already rendered as the live beacon from Trophy
+      // custody. Skip only its newest matching event; preserve older reigns if
+      // the same warrior later regained a belt.
+      if (
+        !skippedCurrentHolderEvent &&
+        holderKey &&
+        identity === holderKey
+      ) {
+        skippedCurrentHolderEvent = true;
+        continue;
+      }
 
       const player =
         directory.allEntries.find(
