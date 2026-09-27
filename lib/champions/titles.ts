@@ -36,6 +36,9 @@ export const REPRESENTED_COUNTRIES = [
   "Germany",
   "China",
   "Australia",
+  "Finland",
+  "Norway",
+  "Philippines",
 ] as const;
 export const GENDER_DIVISIONS = ["Man", "Woman"] as const;
 
