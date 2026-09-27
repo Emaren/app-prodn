@@ -144,6 +144,7 @@ model User {
   warGraphEventsActed         WarGraphEvent[]              @relation("WarGraphEventActor")
   warGraphRewards             WarGraphReward[]             @relation("WarGraphRewardUser")
   warGraphSpectatorSessions   WarGraphSpectatorSession[]   @relation("WarGraphSpectatorUser")
+  leaguesCreated              League[]                     @relation("LeagueCreator")
 
   radioListenerStates RadioListenerState[]
   radioTrackRatings   RadioTrackRating[]
@@ -1363,6 +1364,33 @@ model TrophySetting {
 
   @@index([changedByUserId], map: "ix_trophy_settings_changed_by")
   @@map("trophy_settings")
+}
+
+model League {
+  id                         Int      @id @default(autoincrement())
+  publicId                   String   @unique(map: "uq_leagues_public_id") @map("public_id") @db.VarChar(80)
+  slug                       String   @unique(map: "uq_leagues_slug") @db.VarChar(160)
+  name                       String   @db.VarChar(160)
+  description                String?  @db.Text
+  mode                       String   @db.VarChar(8)
+  teamSize                   Int      @map("team_size")
+  status                     String   @default("active") @db.VarChar(24)
+  createdByUserId            Int      @map("created_by_user_id")
+  creatorDisplayNameSnapshot String   @map("creator_display_name_snapshot") @db.VarChar(120)
+  senderAddressSnapshot      String   @map("sender_address_snapshot") @db.VarChar(100)
+  recipientAddressSnapshot   String   @map("recipient_address_snapshot") @db.VarChar(100)
+  creationPriceWolo          Int      @default(100) @map("creation_price_wolo")
+  creationMemo               String   @unique(map: "uq_leagues_creation_memo") @map("creation_memo") @db.VarChar(255)
+  creationTxHash             String   @unique(map: "uq_leagues_creation_tx_hash") @map("creation_tx_hash") @db.VarChar(128)
+  creationProofUrl           String?  @map("creation_proof_url") @db.VarChar(500)
+  createdAt                  DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt                  DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  creator User @relation("LeagueCreator", fields: [createdByUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([status, mode, teamSize, createdAt], map: "ix_leagues_public_lane")
+  @@index([createdByUserId, createdAt], map: "ix_leagues_creator_created")
+  @@map("leagues")
 }
 
 model EventTile {
