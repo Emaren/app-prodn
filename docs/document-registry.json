@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/featured-warrior-authority-20260927",
-    "commit": "722c7cc0875d7100dc417de04b80841b2e0139e5"
+    "commit": "2fecfafee5533ee27dcdeb889b50039ccfe936e2"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
