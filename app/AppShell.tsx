@@ -130,7 +130,7 @@ const KINGDOM_LINKS = [
   { href: "/chaosium", label: "Chaosium", icon: Crown, body: "Every belt, every reign, every transfer" },
   { href: "/olympia", label: "Olympia", icon: Globe2, body: "National champions under one standard" },
   { href: "/leagues", label: "Leagues", icon: Trophy, body: "1v1 to 4v4 · RM and DM" },
-  { href: "/tournaments", label: "Tournaments", icon: Trophy, body: "A warrior's calling." },
+  { href: "/tournaments", label: "Tournaments", icon: Trophy, body: "Where all the warriors go" },
   { href: "/national-champions", label: "Nations", icon: Globe2, body: "Beacon map and national bounties" },
   { href: "/clans", label: "Clans", icon: UsersRound, body: "Teams, houses, and clan halls" },
   { href: "/academy", label: "Academy", icon: GraduationCap, body: "Lessons, build orders, replay study" },
