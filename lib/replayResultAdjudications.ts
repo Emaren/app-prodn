@@ -2499,6 +2499,189 @@ function automaticEventReceipt(entry: {
 const WATCHER_TEAM_PROMOTED_TOPOLOGY_POLICY_VERSION =
   "watcher-team-promoted-topology-v1" as const;
 
+const WATCHER_TEAM_PROMOTED_RESIGNATION_COUNTS_POLICY_VERSION =
+  "watcher-team-promoted-resignation-counts-v1" as const;
+
+function exactPromotedResignationCounts(
+  teamResolution: Record<string, unknown>
+) {
+  const teams =
+    automaticArray(
+      teamResolution.teams
+    )
+      .map((entry) => {
+        const source =
+          jsonRecord(entry);
+
+        const teamKey =
+          cleanTeamKey(
+            source.team_id
+          );
+
+        const playerKeys =
+          automaticArray(
+            source.player_keys
+          )
+            .map((value) =>
+              cleanText(
+                value,
+                160
+              )
+            )
+            .filter(Boolean);
+
+        const playerNames =
+          automaticArray(
+            source.players
+          )
+            .map((value) =>
+              cleanText(
+                value,
+                100
+              )
+            )
+            .filter(Boolean);
+
+        const playerCount =
+          playerKeys.length > 0
+            ? playerKeys.length
+            : playerNames.length;
+
+        return teamKey &&
+          playerCount > 0
+          ? {
+              teamKey,
+              playerCount,
+            }
+          : null;
+      })
+      .filter(
+        (
+          entry
+        ): entry is {
+          teamKey: string;
+          playerCount: number;
+        } =>
+          entry !== null
+      );
+
+  if (
+    teams.length !== 2 ||
+    new Set(
+      teams.map(
+        (team) =>
+          team.teamKey
+      )
+    ).size !== 2
+  ) {
+    return null;
+  }
+
+  const expected =
+    new Map(
+      teams.map(
+        (team) => [
+          team.teamKey,
+          team.playerCount,
+        ]
+      )
+    );
+
+  const counts =
+    automaticArray(
+      jsonRecord(
+        teamResolution
+          .result_evidence
+      )
+        .resignation_counts_by_team
+    )
+      .map((entry) => {
+        const source =
+          jsonRecord(entry);
+
+        const teamKey =
+          cleanTeamKey(
+            source.team_id
+          );
+
+        const playerCount =
+          positiveInteger(
+            source.player_count
+          );
+
+        const resignedPlayerCount =
+          nonNegativeInteger(
+            source
+              .resigned_player_count
+          );
+
+        if (
+          !teamKey ||
+          playerCount === null ||
+          resignedPlayerCount ===
+            null ||
+          resignedPlayerCount >
+            playerCount ||
+          expected.get(
+            teamKey
+          ) !== playerCount
+        ) {
+          return null;
+        }
+
+        return {
+          team_id:
+            source.team_id,
+
+          player_count:
+            playerCount,
+
+          resigned_player_count:
+            resignedPlayerCount,
+        };
+      });
+
+  if (
+    counts.length !== 2 ||
+    counts.some(
+      (entry) =>
+        entry === null
+    )
+  ) {
+    return null;
+  }
+
+  const exactCounts =
+    counts as Array<{
+      team_id: unknown;
+      player_count: number;
+      resigned_player_count: number;
+    }>;
+
+  if (
+    new Set(
+      exactCounts.map(
+        (entry) =>
+          cleanTeamKey(
+            entry.team_id
+          )
+      )
+    ).size !== 2 ||
+    !exactCounts.every(
+      (entry) =>
+        expected.has(
+          cleanTeamKey(
+            entry.team_id
+          )
+        )
+    )
+  ) {
+    return null;
+  }
+
+  return exactCounts;
+}
+
 async function loadExactPromotedTeamResolution(
   tx: Prisma.TransactionClient,
   game: Pick<
@@ -2765,13 +2948,25 @@ async function loadExactPromotedTeamResolution(
     return null;
   }
 
+  const resignationCountsByTeam =
+    exactPromotedResignationCounts(
+      teamResolution
+    );
+
   return {
     teamResolution:
       observation.value,
 
+    resignationCountsByTeam,
+
     evidence: {
       policyVersion:
         WATCHER_TEAM_PROMOTED_TOPOLOGY_POLICY_VERSION,
+
+      resignationCountsPolicyVersion:
+        resignationCountsByTeam
+          ? WATCHER_TEAM_PROMOTED_RESIGNATION_COUNTS_POLICY_VERSION
+          : null,
 
       rosterPolicyVersion:
         promotion.policyVersion,
@@ -3185,16 +3380,23 @@ export async function reconcileAutomaticWatcherTerminalResults(
          * the exact append-only V3 promotion observation instead.
          *
          * This is topology authority only. Result/resignation/action-tail
-         * evidence remains the original terminal evidence and every existing
-         * V4 fail-closed check still runs.
+         * evidence remains independently fail-closed.
          */
+        let promotedTopology:
+          Awaited<
+            ReturnType<
+              typeof loadExactPromotedTeamResolution
+            >
+          > =
+            null;
+
         if (
           automaticRoster.length !== 2 &&
           !evaluation.eligible &&
           evaluation.reason ===
             "team_resolution_not_exact"
         ) {
-          const promotedTopology =
+          promotedTopology =
             await loadExactPromotedTeamResolution(
               tx,
               game
@@ -3213,6 +3415,90 @@ export async function reconcileAutomaticWatcherTerminalResults(
                   team_resolution:
                     promotedTopology
                       .teamResolution,
+                },
+
+                parseRun: {
+                  ...jsonRecord(
+                    terminalEvaluationInput
+                      .parseRun
+                  ),
+
+                  promotedRosterTopology:
+                    promotedTopology
+                      .evidence,
+                },
+              });
+          }
+        }
+
+        /*
+         * The exact V3 topology observation also carries parser-generated
+         * resignation counts computed under that same canonical team
+         * contract. Historical GameStats.result_resolution can predate the
+         * roster repair and therefore retain an empty count array.
+         *
+         * Only this count array may cross the boundary, and only after the
+         * topology promotion has been fully re-bound to the current replay,
+         * roster, parser contract and immutable observation. Every other
+         * serialized result field remains historical. V4 then independently
+         * cross-checks the counts against resigned_player_numbers, canonical
+         * teams and raw per-player activity before any adjudication can exist.
+         */
+        if (
+          automaticRoster.length !== 2 &&
+          !evaluation.eligible &&
+          evaluation.reason ===
+            "parser_resignation_counts_missing"
+        ) {
+          promotedTopology ??=
+            await loadExactPromotedTeamResolution(
+              tx,
+              game
+            );
+
+          if (
+            promotedTopology
+              ?.resignationCountsByTeam
+          ) {
+            const currentKeyEvents =
+              jsonRecord(
+                game.key_events
+              );
+
+            const currentResultResolution =
+              jsonRecord(
+                currentKeyEvents
+                  .result_resolution
+              );
+
+            const currentResultEvidence =
+              jsonRecord(
+                currentResultResolution
+                  .result_evidence
+              );
+
+            evaluation =
+              evaluateWatcherTeamTerminalResult({
+                ...terminalEvaluationInput,
+
+                keyEvents: {
+                  ...currentKeyEvents,
+
+                  team_resolution:
+                    promotedTopology
+                      .teamResolution,
+
+                  result_resolution: {
+                    ...currentResultResolution,
+
+                    result_evidence: {
+                      ...currentResultEvidence,
+
+                      resignation_counts_by_team:
+                        promotedTopology
+                          .resignationCountsByTeam,
+                    },
+                  },
                 },
 
                 parseRun: {
