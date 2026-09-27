@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-09-04"
+reviewed_at: "2026-09-27"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
@@ -197,6 +197,13 @@ The rail remains deliberately **roster-only**:
   row and replacement of that GameStats row's `players` JSON;
 - `affectsResults=false`, `affectsBets=false` and
   `settlementAuthority=false` are explicit ledger facts.
+
+The append-only `replay_roster_promotions` ledger carries the same bounded V3
+format envelope at the database layer. Its format CHECK permits exactly two-team
+`1v2` through `4v4` combinations whose total roster size is 3-8, including
+asymmetric `2v1`; ordinary `1v1` remains outside roster recovery. A source-level
+format expansion is incomplete until this persistent CHECK contract advances through
+the production-proven CHECK-replacement migration rail.
 
 Dry-run is the default. Mutation requires `apply=1`, the protected internal
 API key and the configured admin recovery actor.
