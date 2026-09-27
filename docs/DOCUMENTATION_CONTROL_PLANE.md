@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/asymmetric-two-team-recovery-v1` at `d18d9b043e267b234bea7056a02406f7ed122b6e`
+Implementation baseline: `fix/replay-roster-v3-db-constraint` at `bc0050b59cdd9195faec1c1b6ca559da87cee9f8`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
