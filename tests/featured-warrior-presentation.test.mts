@@ -177,6 +177,7 @@ test("admin avatar and trophy writes invalidate featured-warrior projections", (
     source("app/api/admin/media-assets/assign-user-avatar/route.ts"),
     source("app/api/admin/media-assets/assign-user-assets/route.ts"),
     source("app/api/admin/trophies/route.ts"),
+    source("app/api/user/avatar/route.ts"),
   ];
 
   assert.match(
@@ -198,4 +199,15 @@ test("admin avatar and trophy writes invalidate featured-warrior projections", (
       /invalidateFeaturedWarriorProjectionCaches\(\)/
     );
   }
+
+  const profileAvatarRoute =
+    source("app/api/user/avatar/route.ts");
+  assert.match(
+    profileAvatarRoute,
+    /user-\$\{uid\}-featured/
+  );
+  assert.match(
+    profileAvatarRoute,
+    /syncFeaturedWarriorAvatar/
+  );
 });
