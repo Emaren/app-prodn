@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `main` at `667634511af816fd0bf110af7a69f61a0a07a623`
+Implementation baseline: `feature/chaosium-olympia-leagues-20260927` at `f4f1d9c08a2e415be4da521b64e12faa983ddbc3`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
