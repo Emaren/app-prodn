@@ -262,8 +262,10 @@ export type LobbyWoloEarnersEntry = {
   allTimeTakeWolo: number;
   weeklyTakeWolo: number;
   settledWolo: number;
+  earnedWolo: number;
   wageredWolo: number;
   weeklySettledWolo: number;
+  weeklyEarnedWolo: number;
   weeklyWageredWolo: number;
   claimCount: number;
   wagerCount: number;
