@@ -12,6 +12,24 @@ type PageProps = {
   params: Promise<{ slug: string }>;
 };
 
+const LEAGUE_PERFORMANCE_PREVIEW_SLUG = "founding-charter-preview";
+
+function previewLeague() {
+  return {
+    name: "Founding Charter Preview",
+    mode: "rm",
+    teamSize: 1,
+    status: "active",
+    description:
+      "A permanent preview of the player-founded league hall. A real charter replaces this copy with its founder, format, season identity, and verified WoloChain proof.",
+    creatorDisplayNameSnapshot: "Your name here",
+    createdAt: new Date("2026-09-27T00:00:00.000Z"),
+    creationPriceWolo: 100,
+    creationTxHash: "Preview only — no WOLO transaction has been signed.",
+    creationProofUrl: null as string | null,
+  };
+}
+
 function formatDate(value: Date) {
   return new Intl.DateTimeFormat("en-CA", {
     month: "long",
@@ -22,10 +40,13 @@ function formatDate(value: Date) {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
-  const league = await getPrisma().league.findUnique({
-    where: { slug },
-    select: { name: true, mode: true, teamSize: true },
-  }).catch(() => null);
+  const league =
+    slug === LEAGUE_PERFORMANCE_PREVIEW_SLUG
+      ? previewLeague()
+      : await getPrisma().league.findUnique({
+          where: { slug },
+          select: { name: true, mode: true, teamSize: true },
+        }).catch(() => null);
 
   return {
     title: league ? `${league.name} · Leagues` : "League",
@@ -37,9 +58,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function LeagueDetailPage({ params }: PageProps) {
   const { slug } = await params;
-  const league = await getPrisma().league.findUnique({
-    where: { slug },
-  }).catch(() => null);
+  const isPreview = slug === LEAGUE_PERFORMANCE_PREVIEW_SLUG;
+  const league = isPreview
+    ? previewLeague()
+    : await getPrisma().league.findUnique({
+        where: { slug },
+      }).catch(() => null);
 
   if (!league || league.status !== "active") notFound();
 
@@ -59,7 +83,7 @@ export default async function LeagueDetailPage({ params }: PageProps) {
         <div className="flex flex-wrap items-start justify-between gap-5">
           <div>
             <div className="text-[10px] font-black uppercase tracking-[0.35em] text-amber-100/60">
-              Community league
+              {isPreview ? "League charter preview" : "Community league"}
             </div>
             <h1 className="mt-4 font-serif text-5xl font-semibold tracking-[-0.045em]">
               {league.name}
@@ -114,11 +138,13 @@ export default async function LeagueDetailPage({ params }: PageProps) {
             <Shield className="h-4 w-4" />
             <span className="text-[10px] font-black uppercase tracking-[0.26em]">Founding proof</span>
           </div>
-          <h2 className="mt-3 text-2xl font-semibold">Settled on WoloChain</h2>
+          <h2 className="mt-3 text-2xl font-semibold">
+            {isPreview ? "WoloChain proof appears here" : "Settled on WoloChain"}
+          </h2>
           <p className="mt-2 break-all font-mono text-xs leading-5 text-slate-400">
             {league.creationTxHash}
           </p>
-          {league.creationProofUrl ? (
+          {!isPreview && league.creationProofUrl ? (
             <Link
               href={league.creationProofUrl}
               className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-emerald-100 transition hover:text-white"
