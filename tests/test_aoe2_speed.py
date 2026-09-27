@@ -992,11 +992,15 @@ class PerformanceOSTests(unittest.TestCase):
 
     def test_full_speed_cohort_v2_covers_current_world_surfaces(self):
         routes = SPEED_MODULE.route_list(True)
-        self.assertEqual(len(routes), 81)
+        self.assertEqual(len(routes), 85)
         self.assertEqual(len(routes), len(set(routes)))
         for route in (
             "/wargraph",
             "/national-champions",
+            "/chaosium",
+            "/olympia",
+            "/leagues",
+            "/leagues/founding-charter-preview",
             "/kingdom-forge",
             "/kingdom-intelligence",
             "/general-inspections",
