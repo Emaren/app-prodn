@@ -129,6 +129,9 @@ const COUNTRY_BELT_CATALOG: CountryCatalogRow[] = [
   { slug: "germany", country: "Germany", flag: "🇩🇪" },
   { slug: "china", country: "China", flag: "🇨🇳" },
   { slug: "australia", country: "Australia", flag: "🇦🇺" },
+  { slug: "finland", country: "Finland", flag: "🇫🇮" },
+  { slug: "norway", country: "Norway", flag: "🇳🇴" },
+  { slug: "philippines", country: "Philippines", flag: "🇵🇭" },
 ];
 
 const NATIONAL_CONTENDER_OVERRIDES: Record<string, string[]> = {
