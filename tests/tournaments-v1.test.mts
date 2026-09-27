@@ -60,7 +60,7 @@ test("Tournament watcher beacons come from watcher telemetry, not site presence"
   assert.doesNotMatch(rosterRoute, /loadPublicPresenceSnapshot/);
 });
 
-test("Tournaments sits immediately after Champions in Kingdom navigation", () => {
+test("Tournaments remains in the Kingdom competition navigation", () => {
   const champions = shell.indexOf(
     '{ href: "/champions", label: "Champions"'
   );
@@ -74,7 +74,7 @@ test("Tournaments sits immediately after Champions in Kingdom navigation", () =>
   assert.ok(champions >= 0);
   assert.ok(tournaments > champions);
   assert.ok(nations > tournaments);
-  assert.match(shell, /A warrior's calling\./);
+  assert.match(shell, /Where all the warriors go/);
   assert.match(shell, /War records, battlecraft, and victories preserved\./);
   assert.match(shell, /const isTournamentSurface/);
   assert.match(shell, /isTournamentSurface[\s\S]*?max-w-none/);
