@@ -110,8 +110,10 @@ test("all-time mode selects lifetime settled and wagered truth", () => {
   const metrics = getWarChestPeriodMetrics(
     {
       settledWolo: 738_311,
+      earnedWolo: 412_777,
       wageredWolo: 1_255_500,
       weeklySettledWolo: 41_250,
+      weeklyEarnedWolo: 19_875,
       weeklyWageredWolo: 93_000,
     },
     "all_time",
