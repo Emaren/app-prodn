@@ -160,7 +160,16 @@ The configured release floor remains authoritative. When root capacity is below
 that floor, `finish` may enter learned recovery before operational release work
 continues.
 
-Recovery consumes the lowest-value approved storage first.
+The release floor and the recovery target are intentionally different. The floor
+remains the hard pass/fail threshold; recovery adds a bounded hysteresis margin
+and caps that target at the configured preferred root headroom. Current policy
+adds 128 MiB above the floor, never exceeding `root_free_preferred_gib`.
+This prevents a recovery that barely crosses the floor from immediately falling
+back below it because of ordinary root writes between the recovery proof and the
+independent Finish capacity re-proof.
+
+Recovery consumes the lowest-value approved storage first and stops only after
+the recovery target, not merely the warning floor, has been reached.
 
 ### Tier 1 — regenerable APT material
 
@@ -208,7 +217,7 @@ For each candidate the controller must:
 8. remove only the verified root copy;
 9. remeasure capacity.
 
-Selection stops immediately when the configured release floor is met.
+Selection stops immediately when the configured recovery target is met.
 
 Durable evidence lives beneath:
 
@@ -233,7 +242,7 @@ Root-headroom recovery does not automatically remove:
 - arbitrary application/runtime data;
 - unknown files merely because they are large.
 
-If approved classes cannot restore the release floor, `finish` stops.
+If approved classes cannot restore the configured recovery target, `finish` stops.
 
 ## Superseded staged-candidate recovery
 
@@ -446,7 +455,9 @@ scripts/aoe2_release_gate.py
 config/aoe2war-operations.json
   finish.auto_root_headroom_recovery
   finish.root_headroom_journal_limit_mib
+  finish.root_headroom_recovery_margin_mib
   capacity.root_free_warn_gib
+  capacity.root_free_preferred_gib
 ~~~
 
 Regression protection:
