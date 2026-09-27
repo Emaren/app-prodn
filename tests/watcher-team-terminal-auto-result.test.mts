@@ -1560,7 +1560,7 @@ test(
     assert.equal(
       createdData
         ?.winningTeamKey,
-      "team:1"
+      "team:2"
     );
 
     assert.deepEqual(
@@ -1594,6 +1594,83 @@ test(
         string,
         unknown
       >;
+
+    /*
+     * Match production 44862's non-contiguous explicit side IDs: team 0
+     * (Jim + Emaren) versus team 2 (Zodiac). V4 must care about exact side
+     * membership/cardinality, not assume team IDs are contiguous.
+     */
+    const productionPlayers =
+      input.players as Array<
+        Record<
+          string,
+          unknown
+        >
+      >;
+
+    productionPlayers[2] = {
+      ...productionPlayers[2],
+
+      team_id:
+        2,
+    };
+
+    const productionTeamResolution =
+      keyEvents
+        .team_resolution as
+        Record<
+          string,
+          unknown
+        >;
+
+    const productionTeams =
+      productionTeamResolution
+        .teams as Array<
+          Record<
+            string,
+            unknown
+          >
+        >;
+
+    productionTeams[1] = {
+      ...productionTeams[1],
+
+      team_id:
+        2,
+    };
+
+    const productionResultResolution =
+      keyEvents
+        .result_resolution as
+        Record<
+          string,
+          unknown
+        >;
+
+    const productionResultEvidence =
+      productionResultResolution
+        .result_evidence as
+        Record<
+          string,
+          unknown
+        >;
+
+    const productionResignationCounts =
+      productionResultEvidence
+        .resignation_counts_by_team as
+        Array<
+          Record<
+            string,
+            unknown
+          >
+        >;
+
+    productionResignationCounts[1] = {
+      ...productionResignationCounts[1],
+
+      team_id:
+        2,
+    };
 
     const promotedTeamResolution = {
       ...(
