@@ -114,6 +114,14 @@ test("featured warrior cards bind live titles, rank and avatar revisions", () =>
     home,
     /leaderboardEntry\.featuredAvatarRevision/
   );
+  assert.match(
+    avatars,
+    /c0lorz:\s*"c0lorz"/
+  );
+  assert.match(
+    avatars,
+    /"c0lorz"/
+  );
 
   assert.match(
     snapshot,
