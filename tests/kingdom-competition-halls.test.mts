@@ -26,6 +26,8 @@ test("Olympia is deliberately the three-nation opening delegation", () => {
   assert.doesNotMatch(olympia, /id: "chaos"/);
   assert.match(olympia, /Claim your nation&apos;s vacant belt/);
   assert.match(olympia, /Commissioner/);
+  assert.match(olympia, /\/challenge\?/);
+  assert.match(olympia, /kind: "national"/);
 });
 
 test("Chaosium reads holder-changing Trophy events and preserves an origin marker", () => {
