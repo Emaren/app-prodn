@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "performance-operating-contract"
-reviewed_at: "2026-09-22"
+reviewed_at: "2026-09-27"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -54,7 +54,7 @@ aoe2war speed campaign verify
 ```
 
 `benchmark` defaults to a small critical public cohort. New `--full`
-benchmarks use the current 79-route V2 public cohort in
+benchmarks use the current 83-route V2 public cohort in
 `docs/audits/performance-route-cohort-v2.txt`: current static public surfaces
 plus stable representatives of dynamic route families. The frozen August 13
 66-route cohort remains historical comparison evidence only; it is not silently
@@ -856,8 +856,8 @@ for complete route-level Ready authority.
 Performance observability is not allowed to become meaningful production load
 without declaring that load in the evidence contract. A full route campaign is
 more than its visible `route_count × rounds` cold pass: Speed OS also runs a
-bounded warm public keepalive pass and a direct-origin route-compute pass. On a
-79-route, five-round campaign that can approach roughly 870 measured route
+bounded warm public keepalive pass and a direct-origin route-compute pass. On an
+83-route, five-round campaign that can approach roughly 913 measured route
 transfers before any bounded retry or stability probe is added.
 
 The `operator-safe-paced-v1` contract therefore governs new full benchmarks:
