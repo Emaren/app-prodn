@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
+import { titleIsPubliclyForcedVacant } from "@/lib/champions/championshipPolicy";
 import type { LobbyLeaderboardEntry } from "@/lib/lobby";
 import { loadLobbyLeaderboard } from "@/lib/lobbyLeaderboard";
 import { countriesEligibilityMatch } from "@/lib/countryEligibility";
@@ -314,22 +315,24 @@ async function loadLiveChampionDefinitionMap(
           ]
         : [];
       const lastTribute = lastTributeByTrophyId.get(trophy.id) ?? null;
+      const forceVacant = titleIsPubliclyForcedVacant(definition.id);
       liveDefinitionMap.set(definition.id, {
         ...definition,
         assetUrl: trophy.nftImageUri?.trim() || definition.assetUrl,
         dailyWolo: trophy.tributeAmountWolo,
         status:
-          trophy.status === "held" || trophy.status === "active" || trophy.status === "guardian_held"
+          !forceVacant &&
+          (trophy.status === "held" || trophy.status === "active" || trophy.status === "guardian_held")
             ? "held"
             : "vacant",
-        holders,
+        holders: forceVacant ? [] : holders,
         trophyId: trophy.trophyId,
         trophyStatus: trophy.status,
-        currentBountyWolo: projectedTrophyBounty(trophy),
+        currentBountyWolo: forceVacant ? 0 : projectedTrophyBounty(trophy),
         bountyGrowthWolo: trophy.bountyGrowthWolo,
         chainStatus: trophy.chainStatus,
-        guardianHeld: trophy.status === "guardian_held",
-        holderSince: trophy.holderSince?.toISOString() ?? null,
+        guardianHeld: !forceVacant && trophy.status === "guardian_held",
+        holderSince: forceVacant ? null : trophy.holderSince?.toISOString() ?? null,
         lastTributeTxHash: lastTribute?.txHash ?? null,
         lastTributePaidAt: lastTribute?.paidAt?.toISOString() ?? null,
         lastTributeAmountWolo: lastTribute?.amountWolo ?? null,
