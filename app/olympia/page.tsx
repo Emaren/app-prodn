@@ -4,7 +4,7 @@ import Link from "next/link";
 import { ArrowRight, Crown, Flag, Shield, Sparkles, Swords } from "lucide-react";
 
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
-import { featuredAvatarCardUrlForUser } from "@/lib/avatarAssets";
+import { featuredAvatarUrlForUser } from "@/lib/avatarAssets";
 import { loadChampionTitleEconomyState } from "@/lib/champions/titleState";
 import { loadPublicPlayerDirectory, type PublicPlayerDirectoryEntry } from "@/lib/publicPlayerDirectory";
 import { getPrisma } from "@/lib/prisma";
@@ -146,7 +146,7 @@ export default async function OlympiaPage() {
       <section>
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
           {champions.map(({ title, holder, player, persona, flag, nation, crown }) => {
-            const avatar = featuredAvatarCardUrlForUser(
+            const avatar = featuredAvatarUrlForUser(
               holder.uid,
               holder.name,
               player?.featuredAvatarRevision,
