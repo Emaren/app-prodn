@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRight, CheckCircle2, Loader2, Shield, Swords, Trophy, UsersRound } from "lucide-react";
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 import SteamLoginButton from "@/components/SteamLoginButton";
 import { useUserAuth } from "@/context/UserAuthContext";
@@ -35,6 +35,8 @@ type PendingLeaguePayment = {
   txHash: string;
   fromAddress: string;
 };
+
+const PENDING_LEAGUE_PAYMENT_STORAGE_PREFIX = "aoe2war:league-charter:v1:";
 
 const FORMATS: Array<{ teamSize: LeagueTeamSize; label: string; detail: string }> = [
   { teamSize: 1, label: "1v1", detail: "The pure duel. One throne, one rival, nowhere to hide." },
@@ -81,6 +83,49 @@ export default function LeaguesPageClient({
   const [created, setCreated] = useState<LeagueCreationResponse | null>(null);
   const [pendingPayment, setPendingPayment] =
     useState<PendingLeaguePayment | null>(null);
+
+  useEffect(() => {
+    if (!uid) {
+      setPendingPayment(null);
+      return;
+    }
+
+    const storageKey = `${PENDING_LEAGUE_PAYMENT_STORAGE_PREFIX}${uid}`;
+    try {
+      const raw = window.localStorage.getItem(storageKey);
+      if (!raw) return;
+      const saved = JSON.parse(raw) as Partial<PendingLeaguePayment>;
+      if (
+        typeof saved.requestId !== "string" ||
+        typeof saved.name !== "string" ||
+        typeof saved.description !== "string" ||
+        typeof saved.txHash !== "string" ||
+        typeof saved.fromAddress !== "string" ||
+        !["rm", "dm"].includes(String(saved.mode)) ||
+        ![1, 2, 3, 4].includes(Number(saved.teamSize))
+      ) {
+        window.localStorage.removeItem(storageKey);
+        return;
+      }
+
+      const restored: PendingLeaguePayment = {
+        requestId: saved.requestId,
+        name: saved.name,
+        description: saved.description,
+        teamSize: Number(saved.teamSize) as LeagueTeamSize,
+        mode: saved.mode as LeagueMode,
+        txHash: saved.txHash,
+        fromAddress: saved.fromAddress,
+      };
+      setPendingPayment(restored);
+      setName(restored.name);
+      setDescription(restored.description);
+      setTeamSize(restored.teamSize);
+      setMode(restored.mode);
+    } catch {
+      window.localStorage.removeItem(storageKey);
+    }
+  }, [uid]);
 
   const leagueCounts = useMemo(() => {
     const counts = new Map<string, number>();
@@ -135,6 +180,10 @@ export default function LeaguesPageClient({
           fromAddress: payment.walletAddress,
         };
         setPendingPayment(charter);
+        window.localStorage.setItem(
+          `${PENDING_LEAGUE_PAYMENT_STORAGE_PREFIX}${uid}`,
+          JSON.stringify(charter),
+        );
       }
 
       const response = await fetch("/api/leagues", {
@@ -149,6 +198,9 @@ export default function LeaguesPageClient({
 
       setCreated(payload);
       setPendingPayment(null);
+      window.localStorage.removeItem(
+        `${PENDING_LEAGUE_PAYMENT_STORAGE_PREFIX}${uid}`,
+      );
       setName("");
       setDescription("");
       router.refresh();
