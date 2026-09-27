@@ -8,14 +8,14 @@ systems: ["app-prodn","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-09-05"
+reviewed_at: "2026-09-27"
 review_interval_days: 90
 sensitivity: "internal"
 ---
 
 # Championship Title Economy
 
-Last updated: 2026-09-05
+Last updated: 2026-09-27
 
 AoE2HDBets owns the app-side championship presentation, eligibility settings,
 challenge entry points, Trophy Command workflow, and app-side custody ledger.
@@ -32,6 +32,16 @@ operator intents until a future Warbound chain module exists.
   same `loadChampionTitleEconomyState()` / persistent Trophy authority as the
   main Champions surface; it must not maintain a second handwritten holder
   table.
+- `/olympia` is the between-Games national presentation hall. Its opening
+  delegation is Canada, United States, and Mexico only; Chaos is excluded
+  because it is not a national title. Holder identity and live player stats
+  remain projections of the same title/player authorities, never a second
+  handwritten custody table.
+- `/chaosium` is the belt-lineage projection for Chaos, Canada, United States,
+  and Mexico. Current custody comes from Champion/Trophy authority. Historical
+  reigns come from holder-changing `TrophyEvent` rows, preserving repeated
+  reigns when a warrior later regains the same title. The belt's persisted
+  `createdAt` is the origin marker.
 - The world map may also show explicit planned-country placeholders before a
   Trophy definition or belt asset exists. Those placeholders are roadmap
   visualization only: they have no holder, Tribute, bounty, challenge right, or
