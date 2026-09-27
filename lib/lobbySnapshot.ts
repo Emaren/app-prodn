@@ -18,12 +18,83 @@ import { loadPublicPresenceSnapshot } from "@/lib/publicPresence";
 import { reconcileTournamentMatchProofs } from "@/lib/tournamentProofReconciler";
 import { loadWoloDevSnapshot } from "@/lib/woloDevSnapshot";
 import { loadWoloMarketSnapshot } from "@/lib/woloMarket";
+import { featuredWarriorHonorLabel } from "@/lib/featuredWarriorPresentation";
 
 const LOBBY_RECENT_MATCH_INITIAL_LIMIT = 8;
 const LOBBY_MAINTENANCE_INTERVAL_MS = 15_000;
 
 let lastLobbyMaintenanceAt = 0;
 let lobbyMaintenancePromise: Promise<void> | null = null;
+
+async function loadFeaturedWarriorHonors(
+  prisma: PrismaClient
+) {
+  try {
+    const trophies =
+      await prisma.trophy.findMany({
+        where: {
+          status: {
+            in: ["held", "active"],
+          },
+        },
+        select: {
+          id: true,
+          trophyId: true,
+          displayName: true,
+          holderSince: true,
+          currentHolderDisplayName: true,
+          currentHolder: {
+            select: {
+              uid: true,
+              inGameName: true,
+              steamPersonaName: true,
+            },
+          },
+        },
+        orderBy: [
+          { holderSince: "desc" },
+          { id: "desc" },
+        ],
+      });
+
+    return trophies.flatMap(
+      (trophy) => {
+        const name =
+          trophy.currentHolderDisplayName ||
+          trophy.currentHolder?.inGameName ||
+          trophy.currentHolder?.steamPersonaName ||
+          trophy.currentHolder?.uid ||
+          "";
+
+        if (!name) {
+          return [];
+        }
+
+        return [{
+          uid:
+            trophy.currentHolder?.uid ??
+            null,
+          name,
+          title:
+            featuredWarriorHonorLabel(
+              trophy.trophyId,
+              trophy.displayName
+            ),
+          holderSince:
+            trophy.holderSince
+              ?.toISOString() ??
+            null,
+        }];
+      }
+    );
+  } catch (error) {
+    console.warn(
+      "Featured Warrior title honors unavailable:",
+      error
+    );
+    return [];
+  }
+}
 
 function queueLobbyMaintenance(prisma: PrismaClient) {
   const now = Date.now();
@@ -74,6 +145,7 @@ async function loadLobbySnapshotFresh(
       leaderboard,
       woloEarners,
       aoe2hdPulse,
+      featuredWarriorHonors,
     ] = await Promise.all([
       getLobbyMessages(prisma, tournament.roomSlug, 24, {
         uid: viewerUid,
@@ -95,6 +167,7 @@ async function loadLobbySnapshotFresh(
         prefetchAlternate: true,
       }),
       loadAoe2HdPulseSnapshot(),
+      loadFeaturedWarriorHonors(prisma),
     ]);
     const visibleLeaderboard = {
       ...leaderboard,
@@ -150,6 +223,7 @@ async function loadLobbySnapshotFresh(
       recentMatches: recentMatches.map(projectLobbyMatchRow),
       leaderboard: visibleLeaderboard,
       featuredWarriorEntries,
+      featuredWarriorHonors,
       wolo,
       woloEarners: visibleWoloEarners,
       aoe2hdPulse,
@@ -169,6 +243,7 @@ async function loadLobbySnapshotFresh(
       })).map(projectLobbyMatchRow),
       leaderboard: getFallbackLeaderboard(),
       featuredWarriorEntries: [],
+      featuredWarriorHonors: [],
       wolo,
       woloEarners: getFallbackWoloEarnersBoard(),
       aoe2hdPulse: getEmptyAoe2HdPulseSnapshot(),
@@ -187,6 +262,10 @@ type LobbySnapshotCacheEntry = {
 const LOBBY_SNAPSHOT_CACHE_TTL_MS = 15000;
 const LOBBY_SNAPSHOT_STALE_TTL_MS = 10 * 60 * 1000;
 const lobbySnapshotCache = new Map<string, LobbySnapshotCacheEntry>();
+
+export function invalidateLobbySnapshotCache() {
+  lobbySnapshotCache.clear();
+}
 
 export async function loadLobbySnapshot(
   prisma: Parameters<typeof loadLobbySnapshotFresh>[0],
