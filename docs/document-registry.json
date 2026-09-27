@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5bf53acd136b0e15d830f4593f2285342d0a4c2988ada7f33d7a4ca774647eb1",
+      "sha256": "12dba280e4b881e585510b678a8d3664d804bbc47ddc58a8a9a57df48633a08b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/champions-v2-20260927",
-    "commit": "7cbb60385347b010c0e67826221db408813f0c85"
+    "branch": "hotfix/champions-v2-eslint-20260927",
+    "commit": "f5a4b4a35d705e3cd2487d0504a42a1a2a6aedec"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
