@@ -24,7 +24,7 @@ const WOLO_LOGO_SRC = "/api/media-assets/logo/footer-wolo?fallback=%2Flegacy%2Fw
 
 function formatUsdPrice(value: number | null) {
   if (value == null || !Number.isFinite(value)) return "Pool syncing";
-  if (value < 0.001) return `$${value.toFixed(7)}`;
+  if (value < 0.001) return `$${value.toFixed(6)}`;
   if (value < 1) return `$${value.toFixed(6)}`;
   return `$${value.toLocaleString(undefined, { maximumFractionDigits: 4 })}`;
 }
