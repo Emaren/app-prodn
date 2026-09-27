@@ -65,6 +65,7 @@ export type PublicPlayerDirectoryEntry = {
   verificationLevel: number;
   isOnline: boolean;
   hasFeaturedAvatar: boolean;
+  featuredAvatarRevision: string | null;
   totalMatches: number;
   wins: number;
   losses: number;
@@ -397,32 +398,71 @@ export async function loadPublicPlayerDirectoryFresh(
         },
       },
       select: {
+        id: true,
         target: true,
+        updatedAt: true,
       },
     }),
   ]);
 
-  const activeFeaturedAvatarTargets =
-    new Set(
-      activeFeaturedAvatarAssets
-        .map((asset) => asset.target)
-        .filter(
-          (target): target is string =>
-            Boolean(target)
-        )
-    );
+  const activeFeaturedAvatarByTarget =
+    new Map<
+      string,
+      {
+        id: number;
+        updatedAt: Date;
+      }
+    >();
 
-  const hasFeaturedAvatarForUid =
+  for (const asset of activeFeaturedAvatarAssets) {
+    if (!asset.target) continue;
+
+    const current =
+      activeFeaturedAvatarByTarget.get(
+        asset.target
+      );
+
+    if (
+      !current ||
+      asset.updatedAt > current.updatedAt ||
+      (
+        asset.updatedAt.getTime() ===
+          current.updatedAt.getTime() &&
+        asset.id > current.id
+      )
+    ) {
+      activeFeaturedAvatarByTarget.set(
+        asset.target,
+        {
+          id: asset.id,
+          updatedAt: asset.updatedAt,
+        }
+      );
+    }
+  }
+
+  const featuredAvatarForUid =
     (uid: string) => {
       const target =
         normalizeManagedMediaTarget(
           `user-${uid}-featured`
         );
 
-      return Boolean(
-        target &&
-        activeFeaturedAvatarTargets.has(target)
-      );
+      const asset =
+        target
+          ? activeFeaturedAvatarByTarget.get(
+              target
+            )
+          : null;
+
+      return {
+        hasFeaturedAvatar:
+          Boolean(asset),
+        featuredAvatarRevision:
+          asset
+            ? `${asset.id}-${asset.updatedAt.getTime()}`
+            : null,
+      };
     };
 
   const games = rawGames
@@ -610,6 +650,10 @@ export async function loadPublicPlayerDirectoryFresh(
       user.inGameName ||
       user.steamPersonaName ||
       user.uid;
+    const featuredAvatar =
+      featuredAvatarForUid(
+        user.uid
+      );
     const entry: PublicPlayerDirectoryEntry = {
       key,
       identityKind: steamId
@@ -624,7 +668,10 @@ export async function loadPublicPlayerDirectoryFresh(
       verified: user.verified,
       verificationLevel: user.verificationLevel,
       isOnline: userIsOnline(user.uid, user.lastSeen, onlineSampleAt),
-      hasFeaturedAvatar: hasFeaturedAvatarForUid(user.uid),
+      hasFeaturedAvatar:
+        featuredAvatar.hasFeaturedAvatar,
+      featuredAvatarRevision:
+        featuredAvatar.featuredAvatarRevision,
       totalMatches: 0,
       wins: 0,
       losses: 0,
@@ -721,6 +768,7 @@ export async function loadPublicPlayerDirectoryFresh(
         verificationLevel: 0,
         isOnline: false,
         hasFeaturedAvatar: false,
+        featuredAvatarRevision: null,
         totalMatches: 0,
         wins: 0,
         losses: 0,
