@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/replay-roster-v3-db-constraint` at `bc0050b59cdd9195faec1c1b6ca559da87cee9f8`
+Implementation baseline: `fix/replay-v3-terminal-topology-bridge` at `4d9ab07d7c610b5143c0c97176ac529e21a085ed`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
