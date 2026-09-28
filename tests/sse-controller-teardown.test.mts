@@ -1,0 +1,55 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import test from "node:test";
+
+const source = (path: string) => readFileSync(path, "utf8");
+
+test("direct-message SSE treats closed controllers as teardown", () => {
+  const route = source("app/api/contact-emaren/events/route.ts");
+
+  assert.match(route, /let closed = false/);
+  assert.match(route, /const cleanup = \(\) =>/);
+  assert.match(route, /const safeEnqueue = \(payload: Uint8Array\) =>/);
+  assert.match(route, /closed \|\| request\.signal\.aborted/);
+  assert.match(route, /try \{\s*controller\.enqueue\(payload\)/);
+  assert.match(route, /catch \{[\s\S]*cleanup\(\)/);
+  assert.match(route, /request\.signal\.addEventListener\("abort", abortStream, \{ once: true \}\)/);
+  assert.match(route, /heartbeat\.unref\?\.\(\)/);
+  assert.doesNotMatch(
+    route,
+    /heartbeat = setInterval\(\(\) => \{\s*controller\.enqueue/,
+  );
+});
+
+test("Clan Hall SSE uses the same fail-closed write contract", () => {
+  const route = source("app/api/clans/[slug]/events/route.ts");
+
+  assert.match(route, /let closed = false/);
+  assert.match(route, /const cleanup = \(\) =>/);
+  assert.match(route, /const safeEnqueue = \(payload: Uint8Array\) =>/);
+  assert.match(route, /closed \|\| request\.signal\.aborted/);
+  assert.match(route, /try \{\s*controller\.enqueue\(payload\)/);
+  assert.match(route, /catch \{\s*cleanup\(\)/);
+  assert.match(route, /request\.signal\.addEventListener\("abort", abortStream, \{ once: true \}\)/);
+  assert.match(route, /heartbeat\.unref\?\.\(\)/);
+  assert.doesNotMatch(
+    route,
+    /heartbeat = setInterval\(\(\) => \{\s*if \(closed\) return;\s*controller\.enqueue/,
+  );
+});
+
+test("all long-lived public SSE routes guard controller writes", () => {
+  const routes = [
+    source("app/api/contact-emaren/events/route.ts"),
+    source("app/api/clans/[slug]/events/route.ts"),
+    source("app/api/kingdom-presence/events/route.ts"),
+    source("app/api/lobby/stream/route.ts"),
+  ];
+
+  for (const route of routes) {
+    assert.match(route, /closed/);
+    assert.match(route, /try \{/);
+    assert.match(route, /controller\.enqueue/);
+    assert.match(route, /catch/);
+  }
+});
