@@ -164,11 +164,11 @@ test("E2 restores the premium hero tile while stripping explanatory SaaS copy", 
     assert.ok(!experience.includes(copy), `SaaS copy should stay removed: ${copy}`);
   }
   for (const kicker of [
-    'kicker="The open thrones"',
+    'kicker="AoE2WAR Champions"',
     'kicker="RM / DM"',
     'kicker="War parties"',
     'kicker="National & regional standards"',
-    'kicker="ELO crowns"',
+    'kicker="ELO Belts"',
   ]) {
     assert.ok(experience.includes(kicker), `structural kicker should remain: ${kicker}`);
   }
