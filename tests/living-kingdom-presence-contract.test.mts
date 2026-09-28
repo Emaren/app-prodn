@@ -230,7 +230,9 @@ test("movement stays out of Traffic, user ping, activity ledgers, and database w
   );
   assert.match(eventsRoute, /Content-Type": "text\/event-stream; charset=utf-8"/);
   assert.match(eventsRoute, /"X-Accel-Buffering": "no"/);
-  assert.match(eventsRoute, /if \(request\.signal\.aborted\) abortStream\(\)/);
+  assert.match(eventsRoute, /request\.signal\.addEventListener\("abort", cleanup, \{ once: true \}\)/);
+  assert.match(eventsRoute, /if \(request\.signal\.aborted\) cleanup\(\)/);
+  assert.doesNotMatch(eventsRoute, /controllerRef|controller\.close\(\)/);
   assert.match(eventsRoute, /controller\.error\(error\)/);
   assert.match(mediaRoute, /serveOpaqueLivingKingdomAvatar/);
   assert.match(mediaRoute, /Never redirect these requests/);
