@@ -385,7 +385,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-09-27",
       "sensitivity": "internal",
-      "sha256": "7a47da7c297e2cacfa5b498aba8326bac83a5de75117dc9f28780316ea56589d",
+      "sha256": "e9855b1f8e157a60a7272e7c42040859701a5c8ec554e70d564485fe771d41c0",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "3fe6162bc61ac819c5b831b03a19df8ba92a3790fc615f95f3749c1f5c27d1ec",
+      "sha256": "a16b98419524e3826ecc1657ab667660b85b7ce9fe265ae289afd25fdff7672f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-27",
       "sensitivity": "internal",
-      "sha256": "4942f2bd792102d398a7287ca69ecc083d24daaca2bf8bf230c3511adcd27a8f",
+      "sha256": "5d8b2a3ee47ea75cc2a6ba3dfb393a53aa11ec7bffea8947561cd6f870ff0a48",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1141,7 +1141,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-27",
       "sensitivity": "internal",
-      "sha256": "f854fd4f373e380cf2d8cc64a0fa01fba43fba3e169d25caac7dffbb78052c89",
+      "sha256": "934b58ed9436eb43ec0b1643bdfb22436cd58a50827474a595405f8caba0b0b4",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/speedos-route-representative-ownership-20260928",
-    "commit": "9d6f4a6da2ec6ad25354f37a21b235fef0d83e7d"
+    "branch": "feature/champions-e2-polish-20260928",
+    "commit": "3fda1044c3e961f7faea4041d300ebaeda5e9c2d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

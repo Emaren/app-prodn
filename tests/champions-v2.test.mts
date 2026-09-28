@@ -71,14 +71,14 @@ test("World contender queue alternates explicit RM and DM ladders", () => {
   assert.match(state, /dmTop > rmTop/);
 });
 
-test("RM and DM crowns expose top-ten lanes plus the hidden two-games layout toggle", () => {
+test("RM and DM crowns default to on-top presentation with the hidden RM / DM toggle", () => {
   assert.match(state, /rmChampion: modeChampion\("rm", rmContenders\)/);
   assert.match(state, /dmChampion: modeChampion\("dm", dmContenders\)/);
   assert.match(experience, /Top ten by/);
-  assert.match(experience, /stackModeChampions/);
-  assert.match(experience, /kicker="The two games"/);
+  assert.match(experience, /useState\(true\)/);
+  assert.match(experience, /kicker="RM \/ DM"/);
+  assert.match(experience, /title="RM Champion · DM Champion"/);
   assert.match(experience, /onKickerClick/);
-  assert.doesNotMatch(experience, /RM Champion · DM Champion/);
 });
 
 test("Women\'s championship starts with Moose and pads the throne to ten honest seats", () => {
@@ -88,25 +88,37 @@ test("Women\'s championship starts with Moose and pads the throne to ten honest 
   assert.match(experience, /placeholderLabel="Unclaimed"/);
 });
 
-test("team crowns are full-width rows with five honest contender seats", () => {
-  assert.match(state, /teamTitles\("rm"\)/);
-  assert.match(state, /teamTitles\("dm"\)/);
+test("team crowns preserve commissioner-curated contender teams and tapered holder stages", () => {
+  assert.match(state, /teamTitles\("rm", directoryEntries\)/);
+  assert.match(state, /teamTitles\("dm", directoryEntries\)/);
   assert.match(state, /holderSlots: size/);
   assert.match(state, /`\$\{size\}v\$\{size\}-\$\{lane\}`/);
-  assert.match(experience, /readStoredLeaderboardLane/);
-  assert.match(experience, /writeStoredLeaderboardLane/);
-  assert.match(experience, /state\.teams\[lane\]/);
-  assert.match(experience, /className="space-y-5"/);
-  assert.match(experience, /padTo=\{5\}/);
+  for (const pair of [
+    '["Jim", "Scavanger_Ab"]',
+    '["Emaren", "Tekki"]',
+    '["Zodiac", "MouldyBoars39381"]',
+    '["Julio Alvarez", "Sniper"]',
+  ]) assert.ok(state.includes(pair));
+  assert.match(state, /\["Jim", "Scavanger_Ab", "Tekki"\]/);
+  assert.match(state, /\["Emaren", "Zodiac", "MouldyBoars39381"\]/);
+  assert.match(state, /\["Jim", "Scavanger_Ab", "Tekki", "Zodiac"\]/);
+  assert.match(state, /\["Emaren", "Julio Alvarez", "MouldyBoars39381", "Sniper"\]/);
+  assert.match(experience, /min-h-\[29rem\]/);
+  assert.match(experience, /min-h-\[26rem\]/);
+  assert.match(experience, /min-h-\[23rem\]/);
+  assert.match(experience, /scale-\[1\.10\]/);
+  assert.match(experience, /Commissioner queue/);
   assert.match(experience, /Open team contender/);
 });
 
-test("ELO crowns use exact managed-media targets for the imported belt pack", () => {
+test("ELO crowns use exact managed-media targets and avatar-backed holder stages", () => {
   assert.match(state, /lane === "dm" \? entry\.steamDmRating : entry\.steamRmRating/);
   assert.match(state, /if \(lane === "rm"\)[\s\S]*return definition\.id/);
   assert.match(state, /division === "challenger" \? "dm-contender"/);
   assert.match(state, /rm \? "random-map-champion" : "deathmatch-champion"/);
-  assert.match(state, /eloTitles\.map/);
+  assert.match(state, /const holder = titleState\.holders\[0\] \?\? null/);
+  assert.match(experience, /holderAvatarUrl/);
+  assert.match(experience, /division\.holder\?\.name \|\| "Vacant"/);
   assert.match(experience, /state\.elo\[lane\]/);
 });
 
@@ -125,20 +137,34 @@ test("national belt hall reads represented-country truth for every crown", () =>
   assert.match(experience, /scrollBy/);
 });
 
-test("E2 removes presentation copy and uses deliberate crown line breaks", () => {
+test("E2 removes only the oversized top intro while restoring useful section copy", () => {
+  assert.doesNotMatch(experience, /CHAMPIONSHIP/);
+  assert.doesNotMatch(experience, /Real custody, real contenders/);
   for (const copy of [
-    "Real custody, real contenders",
     "The three crowns everybody sees first",
     "No mixed ladder math",
     "One switch changes every team crown",
     "Every flag gets a road to the belt",
     "Five belts, five rating bands",
   ]) {
-    assert.ok(!experience.includes(copy), `removed copy should stay gone: ${copy}`);
+    assert.ok(experience.includes(copy), `section copy should be present: ${copy}`);
   }
   assert.match(experience, /\["Chaos", "Champion"\]/);
   assert.match(experience, /\["AoE2WAR", "World", "Champion"\]/);
   assert.match(experience, /\["Women's", "Champion"\]/);
+});
+
+test("podium and national action buttons are bottom-anchored for card symmetry", () => {
+  assert.match(experience, /flex h-full flex-col/);
+  assert.match(experience, /flex flex-1 flex-col gap-4 p-4/);
+  assert.match(experience, /mt-auto inline-flex min-h-10/);
+  assert.match(experience, /mt-auto inline-flex w-full/);
+});
+
+test("RM DM switches use muted graphite styling instead of pale yellow", () => {
+  assert.match(experience, /rgba\(71,85,105,0\.78\)/);
+  assert.match(experience, /text-stone-200/);
+  assert.doesNotMatch(experience, /bg-amber-200 text-slate-950/);
 });
 
 test("Saudi Arabia and Taiwan use bounded cinematic art instead of full-card takeover", () => {

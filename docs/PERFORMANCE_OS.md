@@ -301,7 +301,7 @@ proofs do not authorize mutation.
 
 The homepage LCP image has its own fail-closed edge lane. It is deliberately
 independent of both HTML cache rules: no `/_next/image` request is admitted by the
-28-route static rule or the 22-route dynamic rule.
+28-route static rule or the 21-route dynamic rule.
 
 `aoe2war speed edge plan-asset` first requires exact certified production identity:
 production SHA, GitHub `main`, and the clean operator `main` worktree must agree. It
@@ -331,7 +331,7 @@ variants must each preserve one stable body hash across the MISS-to-HIT boundary
 remain image content, retain `Vary: Accept`, and converge to `CF-Cache-Status: HIT`.
 Both 1080px and 1920px q95 variants must HIT. The same hero at q90 must remain
 outside the rule. Every route in the authoritative 28-route static cohort and
-22-route dynamic cohort must still converge to HIT, while
+21-route dynamic cohort must still converge to HIT, while
 `/api/deployment-version` must remain outside shared cache.
 
 A hero change invalidates the source-bound plan. The operator must build a fresh

@@ -43,7 +43,20 @@ export type ChampionsV2EloDivision = {
   displayName: string;
   eyebrow: string;
   beltUrl: string;
+  holder: {
+    name: string;
+    uid: string | null;
+    href: string | null;
+  } | null;
   contenders: TitleContender[];
+};
+
+export type ChampionsV2TeamContender = {
+  rank: number;
+  members: Array<{
+    name: string;
+    href: string | null;
+  }>;
 };
 
 export type ChampionsV2TeamTitle = {
@@ -51,6 +64,7 @@ export type ChampionsV2TeamTitle = {
   name: string;
   beltUrl: string;
   holderSlots: number;
+  contenders: ChampionsV2TeamContender[];
 };
 
 export type ChampionsV2NationalBelt = {
@@ -302,8 +316,11 @@ function eloManagedTarget(
 function buildEloDivisions(
   entries: PublicPlayerDirectoryEntry[],
   lane: ChampionsLane,
+  titleEconomy: Awaited<ReturnType<typeof loadChampionTitleEconomyState>>,
 ): ChampionsV2EloDivision[] {
   return eloTitles.map((definition) => {
+    const titleState = getTitleState(titleEconomy, definition);
+    const holder = titleState.holders[0] ?? null;
     const contenders = sortedLaneEntries(
       entries.filter((entry) =>
         inEloBand(
@@ -328,6 +345,13 @@ function buildEloDivisions(
         eloManagedTarget(definition, lane),
         definition.assetUrl,
       ),
+      holder: holder
+        ? {
+            name: holder.name,
+            uid: holder.uid ?? null,
+            href: holder.href ?? null,
+          }
+        : null,
       contenders,
     };
   });
@@ -651,7 +675,43 @@ function modeChampion(
   };
 }
 
-function teamTitles(lane: ChampionsLane): ChampionsV2TeamTitle[] {
+const CURATED_TEAM_CONTENDERS: Record<2 | 3 | 4, string[][]> = {
+  2: [
+    ["Jim", "Scavanger_Ab"],
+    ["Emaren", "Tekki"],
+    ["Zodiac", "MouldyBoars39381"],
+    ["Julio Alvarez", "Sniper"],
+  ],
+  3: [
+    ["Jim", "Scavanger_Ab", "Tekki"],
+    ["Emaren", "Zodiac", "MouldyBoars39381"],
+  ],
+  4: [
+    ["Jim", "Scavanger_Ab", "Tekki", "Zodiac"],
+    ["Emaren", "Julio Alvarez", "MouldyBoars39381", "Sniper"],
+  ],
+};
+
+function curatedTeamContenders(
+  entries: PublicPlayerDirectoryEntry[],
+  size: 2 | 3 | 4,
+): ChampionsV2TeamContender[] {
+  return CURATED_TEAM_CONTENDERS[size].map((names, index) => ({
+    rank: index + 1,
+    members: names.map((name) => {
+      const entry = lookupDirectoryEntry(entries, [name]);
+      return {
+        name: entry?.name || name,
+        href: entry?.href ?? null,
+      };
+    }),
+  }));
+}
+
+function teamTitles(
+  lane: ChampionsLane,
+  entries: PublicPlayerDirectoryEntry[],
+): ChampionsV2TeamTitle[] {
   return ([2, 3, 4] as const).map((size) => ({
     size,
     name: `${size}v${size} ${lane.toUpperCase()} Champions`,
@@ -661,6 +721,7 @@ function teamTitles(lane: ChampionsLane): ChampionsV2TeamTitle[] {
       "/champions/belts/tag-team.webp",
     ),
     holderSlots: size,
+    contenders: curatedTeamContenders(entries, size),
   }));
 }
 
@@ -734,12 +795,12 @@ export async function loadChampionsV2State(
     rmChampion: modeChampion("rm", rmContenders),
     dmChampion: modeChampion("dm", dmContenders),
     teams: {
-      rm: teamTitles("rm"),
-      dm: teamTitles("dm"),
+      rm: teamTitles("rm", directoryEntries),
+      dm: teamTitles("dm", directoryEntries),
     },
     elo: {
-      rm: buildEloDivisions(directoryEntries, "rm"),
-      dm: buildEloDivisions(directoryEntries, "dm"),
+      rm: buildEloDivisions(directoryEntries, "rm", titleEconomy),
+      dm: buildEloDivisions(directoryEntries, "dm", titleEconomy),
     },
     nationals: buildNationalBelts(titleEconomy, directoryEntries),
     designationTitles,

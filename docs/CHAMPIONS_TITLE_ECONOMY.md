@@ -134,6 +134,21 @@ Current-season public policy lives in
   silently creating new money obligations.
 - Champions belt artwork is managed through Media Armory targets. National crowns use `national-<slug>`; Norse and Southeast Asia use `regional-norse` / `regional-southeast-asia`; the main RM/DM crowns retain `random-map-champion` / `deathmatch-champion`; shared team bytes bind independently to `2v2-rm` + `2v2-dm`, `3v3-rm` + `3v3-dm`, and `4v4-rm` + `4v4-dm`; RM ELO art uses the imported canonical title ids `elo-rising`, `elo-challenger`, `elo-veteran`, `elo-elite`, and `elo-legend`; DM ELO art uses `dm-rising`, the retained import alias `dm-contender` for the displayed Challenger division, `dm-veteran`, `dm-elite`, and `dm-legend`.
 - Saudi Arabia and Taiwan intentionally retain cinematic full-frame source artwork, but E2 bounds that art inside a controlled focal window instead of allowing it to take over the whole crown card. Ordinary belt assets remain transparent foreground art.
+- E2 removes the oversized top marketing/title hero while retaining a compact
+  Active / Vacant / Tribute status rail. Section identity copy remains in the
+  title-specific lanes rather than disappearing with the hero.
+- RM / DM champion presentation defaults to the stacked avatar-above-contenders
+  composition; the muted `RM / DM` kicker remains a hidden layout toggle for
+  the preserved side-by-side alternative.
+- RM/DM lane switches use a muted graphite/steel active treatment rather than a
+  pale-gold control state.
+- Podium and national-card actions are bottom-anchored within their card family
+  so cards with fewer contenders remain visually symmetrical with fuller cards.
+- Team holder stages deliberately taper in vertical scale from 2v2 to 3v3 to
+  4v4 while remaining materially taller than the earlier compressed layout.
+- RM and DM ELO crown cards include an avatar/holder stage above the belt.
+  Vacant crowns use the neutral male silhouette; when title custody is present,
+  the current title holder avatar/name is projected into that stage.
 - `lib/champions/championsV2.ts` owns the Champions E2 contender projection:
   World alternates explicit RM/DM leaders; RM and DM crowns use their own
   rating columns; Chaos ranks signed-up Kingdom users by linked Watcher
@@ -146,10 +161,17 @@ Current-season public policy lives in
   so a Pakistan-representing warrior can surface there without inventing a
   second national identity.
 - Team crowns deliberately do not fabricate RM/DM team rankings from solo ELO.
-  Until an authoritative lane-specific team-ranking source exists, each
-  2v2/3v3/4v4 row exposes five honest open contender seats. Exact replay-backed
-  team rivalry evidence remains available elsewhere but is not mislabeled as a
-  team leaderboard.
+  Until an authoritative lane-specific team-rating source exists, E2 presents
+  the Commissioner's explicit contender combinations as a curated queue and
+  labels that lane accordingly. The current queue is:
+  - 2v2: Jim + Scavanger_Ab; Emaren + Tekki; Zodiac + MouldyBoars39381;
+    Julio Alvarez + Sniper.
+  - 3v3: Jim + Scavanger_Ab + Tekki; Emaren + Zodiac + MouldyBoars39381.
+  - 4v4: Jim + Scavanger_Ab + Tekki + Zodiac; Emaren + Julio Alvarez +
+    MouldyBoars39381 + Sniper.
+  Remaining positions stay visibly open. Exact replay-backed team rivalry
+  evidence remains available elsewhere but is not mislabeled as a rated team
+  leaderboard.
 - Women's Champion is vacant and currently presents Moose as the invited #1
   contender only; no AoE2WAR identity is fabricated for her.
 - `lib/champions/titleState.ts` builds the current app-side title view model.

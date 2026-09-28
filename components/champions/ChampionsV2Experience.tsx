@@ -24,6 +24,7 @@ import type {
   ChampionsV2ModeChampion,
   ChampionsV2NationalBelt,
   ChampionsV2State,
+  ChampionsV2TeamContender,
   ChampionsV2TeamTitle,
 } from "@/lib/champions/championsV2";
 import type {
@@ -78,15 +79,15 @@ function ModeSwitch({
               compact ? "min-w-10 px-2.5 py-1.5 text-[9px]" : "min-w-14 px-4 py-2 text-[10px]"
             } ${
               active
-                ? "bg-amber-200 text-slate-950 shadow-[0_0_22px_rgba(251,191,36,0.18)]"
-                : "text-slate-500 hover:bg-white/[0.05] hover:text-slate-200"
+                ? "bg-[linear-gradient(180deg,rgba(71,85,105,0.78),rgba(15,23,42,0.98))] text-stone-200 shadow-[0_0_24px_rgba(2,6,23,0.48)]"
+                : "text-slate-500 hover:bg-slate-700/35 hover:text-slate-200"
             }`}
           >
             <span
               className={`absolute inset-0 rounded-full border transition ${
                 active
-                  ? "border-amber-100/45"
-                  : "border-transparent group-hover:border-white/8"
+                  ? "border-stone-300/24"
+                  : "border-transparent group-hover:border-slate-400/14"
               }`}
             />
             <span className="relative">{option.toUpperCase()}</span>
@@ -99,10 +100,14 @@ function ModeSwitch({
 
 function SectionHeading({
   kicker,
+  title,
+  description,
   action,
   onKickerClick,
 }: {
   kicker: string;
+  title?: string;
+  description?: string;
   action?: ReactNode;
   onKickerClick?: () => void;
 }) {
@@ -110,19 +115,31 @@ function SectionHeading({
     "text-[9px] font-black uppercase tracking-[0.34em] text-amber-100/55";
 
   return (
-    <div className="flex min-h-8 items-center justify-between gap-4">
-      {onKickerClick ? (
-        <button
-          type="button"
-          onClick={onKickerClick}
-          className={`${kickerClass} cursor-default text-left`}
-          aria-label={`Toggle ${kicker} championship layout`}
-        >
-          {kicker}
-        </button>
-      ) : (
-        <div className={kickerClass}>{kicker}</div>
-      )}
+    <div className="flex items-end justify-between gap-5">
+      <div className="min-w-0">
+        {onKickerClick ? (
+          <button
+            type="button"
+            onClick={onKickerClick}
+            className={`${kickerClass} cursor-default text-left`}
+            aria-label={`Toggle ${kicker} championship layout`}
+          >
+            {kicker}
+          </button>
+        ) : (
+          <div className={kickerClass}>{kicker}</div>
+        )}
+        {title ? (
+          <h2 className="mt-2 font-serif text-3xl font-semibold tracking-[-0.035em] text-white sm:text-4xl">
+            {title}
+          </h2>
+        ) : null}
+        {description ? (
+          <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-500">
+            {description}
+          </p>
+        ) : null}
+      </div>
       {action}
     </div>
   );
@@ -215,6 +232,57 @@ function ContenderRows({
   );
 }
 
+function TeamContenderRows({
+  contenders,
+}: {
+  contenders: ChampionsV2TeamContender[];
+}) {
+  return (
+    <div className="space-y-1.5">
+      {Array.from({ length: 5 }, (_, index) => {
+        const contender = contenders[index] ?? null;
+        return (
+          <div
+            key={contender ? `team:${contender.rank}` : `open-team:${index + 1}`}
+            className={`flex min-h-10 items-center gap-2 rounded-xl border px-2.5 py-2 ${
+              contender
+                ? "border-white/[0.065] bg-white/[0.018]"
+                : "border-dashed border-white/[0.055] bg-black/[0.08] text-slate-700"
+            }`}
+          >
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-white/[0.08] bg-black/25 text-[9px] font-black text-slate-500">
+              {index + 1}
+            </div>
+            {contender ? (
+              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-1.5 gap-y-0.5">
+                {contender.members.map((member, memberIndex) => (
+                  <span key={`${contender.rank}:${member.name}`} className="inline-flex items-center gap-1.5">
+                    {memberIndex > 0 ? (
+                      <span className="text-slate-700">+</span>
+                    ) : null}
+                    {member.href ? (
+                      <Link
+                        href={member.href}
+                        className="text-xs font-semibold text-slate-200 transition hover:text-sky-100"
+                      >
+                        {member.name}
+                      </Link>
+                    ) : (
+                      <span className="text-xs font-semibold text-slate-200">{member.name}</span>
+                    )}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <div className="text-xs font-semibold">Open team contender</div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function holderAvatar(title: ChampionTitleState) {
   const holder = title.holders[0];
   if (!holder) {
@@ -248,7 +316,7 @@ function ChampionshipCard({
 
   return (
     <article
-      className={`relative overflow-hidden rounded-[2rem] border bg-[linear-gradient(180deg,rgba(13,22,38,0.96),rgba(3,8,18,0.99))] shadow-[0_28px_90px_rgba(0,0,0,0.32)] ${
+      className={`relative flex h-full flex-col overflow-hidden rounded-[2rem] border bg-[linear-gradient(180deg,rgba(13,22,38,0.96),rgba(3,8,18,0.99))] shadow-[0_28px_90px_rgba(0,0,0,0.32)] ${
         emphasis ? "border-amber-200/22" : "border-white/10"
       }`}
     >
@@ -300,7 +368,7 @@ function ChampionshipCard({
         </div>
       </div>
 
-      <div className="space-y-4 p-4">
+      <div className="flex flex-1 flex-col gap-4 p-4">
         <div className="rounded-xl border border-white/8 bg-black/22 px-3 py-3">
           <div className="text-[8px] font-black uppercase tracking-[0.22em] text-slate-600">
             Holder
@@ -331,7 +399,7 @@ function ChampionshipCard({
 
         <Link
           href={title.routeHref}
-          className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full border border-amber-200/22 bg-amber-300/10 px-4 text-xs font-black text-amber-100 transition hover:bg-amber-300/18"
+          className="mt-auto inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-full border border-amber-200/22 bg-amber-300/10 px-4 text-xs font-black text-amber-100 transition hover:bg-amber-300/18"
         >
           Open championship
           <ArrowRight className="h-3.5 w-3.5" />
@@ -419,11 +487,30 @@ function TeamTitleCard({
   title: ChampionsV2TeamTitle;
   lane: ChampionsLane;
 }) {
+  const stageHeight =
+    title.size === 2
+      ? "min-h-[29rem]"
+      : title.size === 3
+        ? "min-h-[26rem]"
+        : "min-h-[23rem]";
+  const beltHeight =
+    title.size === 2
+      ? "h-32"
+      : title.size === 3
+        ? "h-28"
+        : "h-24";
+  const avatarScale =
+    title.size === 2
+      ? "scale-[1.10]"
+      : title.size === 3
+        ? "scale-[1.05]"
+        : "scale-100";
+
   return (
     <article className="overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(12,20,35,0.95),rgba(3,7,17,0.99))]">
       <div className="flex items-start justify-between gap-4 p-5">
         <div>
-          <div className="text-[9px] font-black uppercase tracking-[0.26em] text-amber-100/50">
+          <div className="text-[9px] font-black uppercase tracking-[0.26em] text-slate-500">
             {lane.toUpperCase()} · {title.size}v{title.size}
           </div>
           <h3 className="mt-1 font-serif text-3xl font-semibold">{title.name}</h3>
@@ -442,25 +529,25 @@ function TeamTitleCard({
         {Array.from({ length: title.holderSlots }, (_, index) => (
           <div
             key={index}
-            className="relative min-h-[18rem] overflow-hidden rounded-[1.25rem] border border-white/[0.065] bg-[radial-gradient(circle_at_50%_18%,rgba(96,165,250,0.09),transparent_46%),rgba(0,0,0,0.18)]"
+            className={`relative ${stageHeight} overflow-hidden rounded-[1.25rem] border border-white/[0.065] bg-[radial-gradient(circle_at_50%_18%,rgba(96,165,250,0.09),transparent_46%),rgba(0,0,0,0.18)]`}
           >
             <Image
               src={MALE_SILHOUETTE}
               alt=""
               fill
               unoptimized
-              sizes="320px"
-              className="object-contain object-bottom opacity-46"
+              sizes="420px"
+              className={`object-contain object-bottom opacity-52 ${avatarScale}`}
             />
-            <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_40%,rgba(3,7,17,0.12)_60%,#030711_100%)]" />
-            <div className="absolute bottom-2 left-1/2 h-24 w-[95%] -translate-x-1/2">
+            <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_40%,rgba(3,7,17,0.10)_60%,#030711_100%)]" />
+            <div className={`absolute bottom-3 left-1/2 ${beltHeight} w-[96%] -translate-x-1/2`}>
               <Image
                 src={title.beltUrl}
                 alt={`${title.name} belt ${index + 1}`}
                 fill
                 unoptimized
-                sizes="280px"
-                className="object-contain drop-shadow-[0_10px_16px_rgba(0,0,0,0.76)]"
+                sizes="360px"
+                className="object-contain drop-shadow-[0_14px_20px_rgba(0,0,0,0.78)]"
               />
             </div>
           </div>
@@ -468,20 +555,19 @@ function TeamTitleCard({
       </div>
 
       <div className="p-4">
-        <div className="mb-2 text-[9px] font-black uppercase tracking-[0.22em] text-slate-500">
-          Team contenders
+        <div className="mb-2 flex items-center justify-between gap-3">
+          <div className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-500">
+            Team contenders
+          </div>
+          <div className="text-[8px] font-bold uppercase tracking-[0.16em] text-slate-700">
+            Commissioner queue
+          </div>
         </div>
-        <ContenderRows
-          contenders={[]}
-          max={5}
-          padTo={5}
-          placeholderLabel="Open team contender"
-        />
+        <TeamContenderRows contenders={title.contenders} />
       </div>
     </article>
   );
 }
-
 function NationalBeltCard({
   belt,
 }: {
@@ -495,7 +581,7 @@ function NationalBeltCard({
     belt.slug === "saudi-arabia" || belt.slug === "taiwan";
 
   return (
-    <article className="relative w-[19rem] shrink-0 snap-start overflow-hidden rounded-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(12,20,34,0.97),rgba(3,7,17,0.99))] shadow-[0_22px_70px_rgba(0,0,0,0.28)] sm:w-[21rem]">
+    <article className="relative flex w-[19rem] shrink-0 snap-start flex-col overflow-hidden rounded-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(12,20,34,0.97),rgba(3,7,17,0.99))] shadow-[0_22px_70px_rgba(0,0,0,0.28)] sm:w-[21rem]">
       <div className="relative h-[24rem] overflow-hidden">
         {showcaseBackground ? (
           <>
@@ -574,7 +660,7 @@ function NationalBeltCard({
         ) : null}
       </div>
 
-      <div className="space-y-4 p-4">
+      <div className="flex flex-1 flex-col gap-4 p-4">
         <div className="rounded-xl border border-white/8 bg-black/22 px-3 py-3">
           <div className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-600">
             Holder
@@ -600,7 +686,7 @@ function NationalBeltCard({
         {belt.routeHref ? (
           <Link
             href={belt.routeHref}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.025] px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.16em] text-slate-300 transition hover:border-amber-200/20 hover:text-amber-100"
+            className="mt-auto inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.025] px-4 py-2.5 text-[10px] font-black uppercase tracking-[0.16em] text-slate-300 transition hover:border-amber-200/20 hover:text-slate-100"
           >
             Open belt
             <ArrowRight className="h-3.5 w-3.5" />
@@ -618,29 +704,52 @@ function EloCard({
   division: ChampionsV2EloDivision;
   lane: ChampionsLane;
 }) {
+  const holderAvatarUrl = division.holder
+    ? avatarCardUrlForUser(division.holder.uid, division.holder.name)
+    : MALE_SILHOUETTE;
+
   return (
     <article className="overflow-hidden rounded-[1.7rem] border border-white/10 bg-[linear-gradient(180deg,rgba(12,20,34,0.94),rgba(3,7,17,0.99))]">
-      <div className="relative h-56 overflow-hidden border-b border-white/8">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_26%,rgba(251,191,36,0.10),transparent_44%)]" />
+      <div className="relative h-72 overflow-hidden border-b border-white/8">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_24%,rgba(96,165,250,0.10),transparent_44%)]" />
         <Image
-          src={division.beltUrl}
-          alt={division.displayName}
+          src={holderAvatarUrl}
+          alt=""
           fill
           unoptimized
           sizes="320px"
-          className="object-contain p-5 drop-shadow-[0_14px_20px_rgba(0,0,0,0.72)]"
+          className={`object-contain object-bottom ${division.holder ? "opacity-92" : "opacity-48"}`}
         />
+        <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_40%,rgba(3,7,17,0.10)_62%,#030711_100%)]" />
+        <div className="absolute bottom-1 left-1/2 h-28 w-[94%] -translate-x-1/2">
+          <Image
+            src={division.beltUrl}
+            alt={division.displayName}
+            fill
+            unoptimized
+            sizes="300px"
+            className="object-contain drop-shadow-[0_14px_20px_rgba(0,0,0,0.74)]"
+          />
+        </div>
         <div className="absolute left-4 top-4 rounded-full border border-white/10 bg-black/35 px-2.5 py-1 text-[8px] font-black uppercase tracking-[0.18em] text-slate-400 backdrop-blur">
           {lane.toUpperCase()}
         </div>
       </div>
       <div className="p-4">
-        <div className="text-[8px] font-black uppercase tracking-[0.22em] text-amber-100/50">
+        <div className="text-[8px] font-black uppercase tracking-[0.22em] text-slate-500">
           {division.eyebrow}
         </div>
         <h3 className="mt-1 font-serif text-2xl font-semibold text-white">
           {division.shortName}
         </h3>
+        <div className="mt-3 rounded-xl border border-white/[0.065] bg-black/20 px-3 py-2.5">
+          <div className="text-[8px] font-black uppercase tracking-[0.18em] text-slate-600">
+            Holder
+          </div>
+          <div className="mt-1 truncate text-xs font-semibold text-slate-200">
+            {division.holder?.name || "Vacant"}
+          </div>
+        </div>
         <div className="mt-4">
           <ContenderRows contenders={division.contenders} />
         </div>
@@ -648,7 +757,6 @@ function EloCard({
     </article>
   );
 }
-
 function DesignationCard({
   title,
 }: {
@@ -693,7 +801,7 @@ export default function ChampionsV2Experience({
   state: ChampionsV2State;
 }) {
   const [lane, setLane] = useState<ChampionsLane>("rm");
-  const [stackModeChampions, setStackModeChampions] = useState(false);
+  const [stackModeChampions, setStackModeChampions] = useState(true);
   const nationalRailRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -713,38 +821,34 @@ export default function ChampionsV2Experience({
   }
 
   return (
-    <main className="mx-auto w-full max-w-[108rem] space-y-10 overflow-x-hidden px-3 py-5 text-white sm:px-5 sm:py-7">
-      <section className="relative overflow-hidden rounded-[2.5rem] border border-amber-100/14 bg-[radial-gradient(circle_at_75%_15%,rgba(251,191,36,0.13),transparent_28%),radial-gradient(circle_at_12%_40%,rgba(59,130,246,0.11),transparent_26%),linear-gradient(145deg,#07101d,#070b14_56%,#140d08)] p-6 shadow-[0_44px_145px_rgba(0,0,0,0.48)] sm:p-8 lg:p-10">
-        <div className="relative z-10 grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end">
-          <h1 className="font-serif text-5xl font-semibold leading-[0.92] tracking-[-0.055em] sm:text-6xl lg:text-7xl">
-            CHAMPIONSHIP
-            <br />
-            BELTS
-          </h1>
-
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              ["Active", state.summary.active],
-              ["Vacant", state.summary.vacant],
-              ["Tribute", `${state.summary.tributePoolWolo} WOLO/day`],
-            ].map(([label, value]) => (
-              <div
-                key={String(label)}
-                className="min-w-[7.2rem] rounded-[1rem] border border-white/10 bg-black/25 px-3 py-3 backdrop-blur"
-              >
-                <div className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-600">
-                  {label}
-                </div>
-                <div className="mt-1 text-lg font-semibold text-white">{value}</div>
+    <main className="mx-auto w-full max-w-[108rem] space-y-12 overflow-x-hidden px-3 py-5 text-white sm:px-5 sm:py-7">
+      <div className="flex justify-end">
+        <div className="grid grid-cols-3 gap-2">
+          {[
+            ["Active", state.summary.active],
+            ["Vacant", state.summary.vacant],
+            ["Tribute", `${state.summary.tributePoolWolo} WOLO/day`],
+          ].map(([label, value]) => (
+            <div
+              key={String(label)}
+              className="min-w-[6.8rem] rounded-[0.95rem] border border-white/[0.07] bg-slate-950/45 px-3 py-2.5 shadow-[0_12px_38px_rgba(0,0,0,0.22)] backdrop-blur"
+            >
+              <div className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-600">
+                {label}
               </div>
-            ))}
-          </div>
+              <div className="mt-1 text-sm font-semibold text-slate-200">{value}</div>
+            </div>
+          ))}
         </div>
-      </section>
+      </div>
 
       <section className="space-y-5">
-        <SectionHeading kicker="The open thrones" />
-        <div className="grid gap-5 xl:grid-cols-3">
+        <SectionHeading
+          kicker="The open thrones"
+          title="The three crowns everybody sees first"
+          description="Chaos is activity-driven. World alternates the strongest DM and RM challengers. The Women's throne opens with Moose as the first invited contender."
+        />
+        <div className="grid items-stretch gap-5 xl:grid-cols-3">
           <ChampionshipCard title={state.chaos} />
           <ChampionshipCard title={state.world} emphasis />
           <ChampionshipCard title={state.womens} />
@@ -753,7 +857,9 @@ export default function ChampionsV2Experience({
 
       <section className="space-y-5">
         <SectionHeading
-          kicker="The two games"
+          kicker="RM / DM"
+          title="RM Champion · DM Champion"
+          description="No mixed ladder math. Each crown reads its own official Watcher-backed rating lane and publishes the ten highest challengers."
           onKickerClick={() => setStackModeChampions((current) => !current)}
         />
         <div className="grid gap-5 xl:grid-cols-2">
@@ -765,9 +871,11 @@ export default function ChampionsV2Experience({
       <section className="space-y-5">
         <SectionHeading
           kicker="War parties"
+          title={`${lane.toUpperCase()} team championships`}
+          description={`One switch changes every team crown together. The choice persists, so ${lane.toUpperCase()} players can live in their side of the Kingdom without reselecting it.`}
           action={<ModeSwitch lane={lane} onChange={chooseLane} />}
         />
-        <div className="space-y-5">
+        <div className="space-y-6">
           {state.teams[lane].map((title) => (
             <TeamTitleCard key={title.size} title={title} lane={lane} />
           ))}
@@ -775,12 +883,16 @@ export default function ChampionsV2Experience({
       </section>
 
       <section className="space-y-5">
-        <SectionHeading kicker="National & regional standards" />
+        <SectionHeading
+          kicker="National & regional standards"
+          title="Every flag gets a road to the belt"
+          description="Canada, USA, and Mexico are lit. National and regional crowns stay vacant until a verified challenger carries the banner into title custody."
+        />
 
         <div className="relative">
           <div
             ref={nationalRailRef}
-            className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 [scrollbar-color:rgba(148,163,184,0.24)_transparent] [scrollbar-width:thin]"
+            className="flex snap-x snap-mandatory items-stretch gap-4 overflow-x-auto pb-4 [scrollbar-color:rgba(148,163,184,0.24)_transparent] [scrollbar-width:thin]"
           >
             {state.nationals.map((belt) => (
               <NationalBeltCard key={belt.slug} belt={belt} />
@@ -805,6 +917,8 @@ export default function ChampionsV2Experience({
       <section className="space-y-5">
         <SectionHeading
           kicker="ELO crowns"
+          title={`${lane.toUpperCase()} rating divisions`}
+          description={`Five belts, five rating bands, and ten real ${lane.toUpperCase()} contenders in every band where the leaderboard has enough rated warriors.`}
           action={<ModeSwitch lane={lane} onChange={chooseLane} />}
         />
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
