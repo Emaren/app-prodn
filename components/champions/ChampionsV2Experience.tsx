@@ -808,11 +808,9 @@ export default function ChampionsV2Experience({
     <main className="mx-auto w-full max-w-[108rem] space-y-10 overflow-x-hidden px-3 py-5 text-white sm:px-5 sm:py-7">
       <section className="relative overflow-hidden rounded-[2.5rem] border border-amber-100/14 bg-[radial-gradient(circle_at_75%_15%,rgba(251,191,36,0.13),transparent_28%),radial-gradient(circle_at_12%_40%,rgba(59,130,246,0.11),transparent_26%),linear-gradient(145deg,#07101d,#070b14_56%,#140d08)] p-6 shadow-[0_44px_145px_rgba(0,0,0,0.48)] sm:p-8 lg:p-10">
         <div className="relative z-10 grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end">
-          <h1 className="font-serif text-5xl font-semibold leading-[0.92] tracking-[-0.055em] sm:text-6xl lg:text-7xl">
-            CHAMPIONSHIP
-            <br />
-            BELTS
-          </h1>
+          <div className="text-[11px] font-black uppercase tracking-[0.34em] text-amber-100/70">
+            AoE2WAR title economy
+          </div>
 
           <div className="grid grid-cols-3 gap-2">
             {[
