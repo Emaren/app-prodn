@@ -665,10 +665,13 @@ cache invalidation.
 `lib/lobbyLeaderboard.ts` keeps the expensive ranking base presence-neutral and
 overlays live presence only for callers that render it. Server-side consumers
 such as title-economy calculations request the neutral projection. When a
-previously valid leaderboard or complete rivalry corpus exists and its
-generation advances, the last good historical snapshot may be returned while a
-single coalesced background refresh computes the new generation. The initial
-process-local cold population still waits for authoritative truth.
+previously valid player directory, leaderboard, complete rivalry corpus or
+logical battle-archive page exists and its generation advances, the last good
+historical snapshot may be returned while a single coalesced background refresh
+computes the new generation. This also keeps the four-second Live Games archive
+lane from synchronously paying the complete archive identity/census CTE after a
+new final replay. The initial process-local cold population still waits for
+authoritative truth.
 
 This boundary is deliberately independent from Cloudflare SpeedOS authority:
 process-local generation reuse never makes a route eligible for shared edge
