@@ -33,6 +33,12 @@ export default async function PlayersDirectoryPage() {
   const directory = await loadPublicPlayerDirectory(
     prisma,
     initialGeneration,
+    {
+      // Presence is already owned by PublicPresenceProvider's five-second
+      // client rail. Keep server rendering on current Watcher rating/name
+      // state without paying a duplicate presence query.
+      includePresence: false,
+    },
   );
   const boardCount = directory.allEntries.length;
   const claimedUids = directory.claimedEntries.flatMap((entry) =>
