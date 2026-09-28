@@ -55,7 +55,17 @@ test(
 
     assert.match(
       server,
-      /leaderboardPromises\.has\(/,
+      /const existing =\s*leaderboardPromises\.get\(/,
+    );
+
+    assert.match(
+      server,
+      /leaderboardPromises\.set\(/,
+    );
+
+    assert.match(
+      server,
+      /leaderboardPromises\.delete\(/,
     );
   },
 );
