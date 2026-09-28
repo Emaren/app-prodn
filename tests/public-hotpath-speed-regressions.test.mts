@@ -268,4 +268,29 @@ test("live games batches completed uploader hydration into one query", () => {
     hydrate,
     /for \(const session of sessions\)/,
   );
+
+  const freshStart = liveGames.indexOf(
+    "export async function loadLiveGamesSnapshotFresh",
+  );
+  const freshEnd = liveGames.indexOf(
+    "async function loadStreamsBySession",
+    freshStart,
+  );
+  const fresh = liveGames.slice(
+    freshStart,
+    freshEnd,
+  );
+
+  assert.match(
+    fresh,
+    /\[\s*hydratedCompletedSessions,\s*activeMarketSummaries,\s*reviewMarketSummaries,\s*archiveProjection,\s*\] = await Promise\.all/,
+  );
+  assert.match(
+    fresh,
+    /hydrateCompletedSessionUploaders[\s\S]*loadLiveBetMarketSummaryMap[\s\S]*loadReplayReviewMarketSummaryMap[\s\S]*projectArchiveLaneAcrossPages/,
+  );
+  assert.doesNotMatch(
+    fresh,
+    /const reviewMarketSummaries = await/,
+  );
 });
