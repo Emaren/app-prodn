@@ -60,11 +60,22 @@ test("blocker taxonomy preserves specific evidence failures", () => {
   assert.equal(blockerCategory("source_snapshot_changed_during_evaluation"), "freshness_or_source_mutation");
   assert.equal(blockerCategory("new_unknown_failure"), "other");
 });
-test("source drift cannot retain an eligible candidate or projected improvement", () => {
-  const cases = [{ gameStatsId: 1, outcome: "eligible", reason: "explicit_apply_required", rosterComplete: true, resultEligible: false, registeredPlayerIds: [5] }];
-  assert.equal(finalizeCensusCases(cases, false)[0].outcome, "eligible");
-  const fenced = finalizeCensusCases(cases, true);
+test("only battle-specific source drift fences an otherwise eligible candidate", () => {
+  const cases = [
+    { gameStatsId: 1, outcome: "eligible", reason: "explicit_apply_required", rosterComplete: true, resultEligible: false, registeredPlayerIds: [5] },
+    { gameStatsId: 2, outcome: "eligible", reason: "explicit_apply_required", rosterComplete: true, resultEligible: false, registeredPlayerIds: [] },
+  ];
+  const stable = finalizeCensusCases(cases, new Set());
+  assert.equal(stable[0].outcome, "eligible");
+  assert.equal(stable[1].outcome, "eligible");
+
+  const fenced = finalizeCensusCases(cases, new Set([1]));
   assert.equal(fenced[0].outcome, "blocked");
-  assert.equal(fenced[0].reason, "inventory_changed_after_evaluation");
-  assert.equal(projectedYield({ uniqueLogicalBattles: 100, logicalBattleTruthComplete: 68 }, fenced).percentagePointGain, 0);
+  assert.equal(fenced[0].reason, "battle_source_changed_during_census");
+  assert.equal(fenced[1].outcome, "eligible");
+  assert.equal(projectedYield({ uniqueLogicalBattles: 100, logicalBattleTruthComplete: 68 }, fenced).percentagePointGain, 1);
+});
+
+test("battle-specific drift belongs to freshness/source-mutation taxonomy", () => {
+  assert.equal(blockerCategory("battle_source_changed_during_census"), "freshness_or_source_mutation");
 });
