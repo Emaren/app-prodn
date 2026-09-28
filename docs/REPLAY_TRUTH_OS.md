@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-09-27"
+reviewed_at: "2026-09-28"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
@@ -259,3 +259,102 @@ The per-disposition game-ID manifests are the canonical handoff for bounded
 parser/backfill campaigns. Parser work should target artifact-present reparse
 and parser-research cohorts first; source-missing rows require evidence recovery,
 not looser parsing.
+
+
+## Modern signed-receipt rail — implementation checkpoint
+
+The modern receipt policy has its own evidence family. It never reconstructs
+missing historical signatures, borrows raw legacy winner flags as authority, or
+accepts native memory observations. The planner remains candidate-only even when
+its independent cross-side quorum is eligible.
+
+`lib/watcherReceiptPromotion.ts` is the app-owned writer. Its only inputs are an
+exact GameStats ID and trusted operator runtime locations; it accepts neither a
+saved plan nor caller-supplied eligibility. It invokes the API planner against the
+complete PostgreSQL JSONB snapshot. Planning binds every logical-battle alias and
+attempt, including duplicate/refreshed sources; uploader identities; exact Steam
+roster and topology; original receipt claims recomputed from their own bytes;
+archive sizes/hashes; current parser/dependency/runtime identity; and conflicting
+adjudication/desync history.
+
+Before an explicit write, the writer acquires existing per-game advisory locks,
+fences relevant source tables against inserts/updates, locks participant accounts,
+and compares the exact original snapshot again. It rehashes archive/parser inputs
+immediately before inserting one accepted **statistics-only** adjudication using
+the existing validator. Betting, settlement and Wolo authority remain false. No
+HTTP endpoint or timer enables this policy.
+
+`node --experimental-strip-types --experimental-loader ./scripts/aoe2-alias-loader.mjs
+scripts/reconcile-watcher-receipt-promotions.mts --api-root /governed/api
+--python /governed/venv/bin/python --archive-dir /immutable/archive
+--receipt-dir /private/receipts GAME_STATS_ID`
+
+This operator command defaults to dry-run and accepts 1–10 exact IDs, serially.
+Its explicit apply option exists for later governed execution; **production apply
+is not authorized for the September 28 research/census session**. Full plans are
+private content-addressed files; public adjudication provenance contains only
+bounded hashes and policy facts. Retrying a committed result independently plans
+again, verifies the original immutable receipt and cannot create a second row.
+Projection uses the existing append-safe identity/statistics machinery; projection
+failure is reported separately from an already committed adjudication and can be
+retried.
+
+Writer checkpoints: `1a35c23e` (20 writer plus 38 existing authority tests and type
+validation), `71a6284b` (isolated PostgreSQL fence proof), and `c6b9ff92` (four
+additional retry/privacy/freshness regressions). The PostgreSQL proof uses a
+private temporary cluster with TCP disabled; it exercises real concurrent
+receipt, alias, adjudication, desync and account-identity writes, plus advisory
+serialization. It does not connect to production.
+
+The companion `scripts/census-watcher-receipt-yield.mts` uses the exact Workshop
+logical-battle winner-plus-complete-roster grain and a PostgreSQL read-only pool.
+It has no apply mode. Ingestion-row truth percentages are a different metric and
+must not be substituted for its numerator or denominator. Full evidence reports
+stay private; dated measurements below are observations, not evergreen counts.
+
+
+### Sealed read-only yield observation — 2026-09-28 12:38:35.500 UTC
+
+Full Battle Truth: **3,584 / 5,230 = 68.52772466539197%**. Unresolved:
+**1,646**, including **1,420** with exact Steam linkage to registered accounts.
+The 118 persisted modern receipts touch 17 unresolved logical battles. All 17
+were independently planned; none had potential cross-side quorum and **zero
+were promotion-eligible**. All 1,646 unresolved battles are accounted for.
+
+Raw first blockers: `no_supported_modern_receipt=1629`,
+`target_disconnected=7`, `adjudication_history_exists=1`,
+`malformed_or_ineligible_modern_receipt=9`. Normalized: no supported modern
+receipt 1,629; pre-existing adjudication/desync/review 8; parser/evidence contract
+mismatch 9; every other requested category 0. Player-first eligible IDs/names/UIDs
+are an empty set. Actual projected Full Truth additions are 0; projected truth
+remains 3,584 / 5,230 with **0 percentage-point gain**. No source drift was observed.
+No database, adjudication, projection, market, settlement or Wolo writes occurred.
+
+The immutable full receipt SHA-256 is
+`69cd8f66ac7b6206bcef09aeb0d655467c376aee0efebf7b0179a12adc49f524`.
+Full private paths, source identities, zero-filled normalized/raw blockers,
+generation evidence, and controller/native status are recorded in
+[`replay-receipts/census-2026-09-28.json`](replay-receipts/census-2026-09-28.json).
+The isolated client was generated with installed Prisma **7.10.0** from this
+branch's own `prisma/schema.prisma`; copying current main's generated client is
+not a supported staging shortcut. Inventory-only (`--max-plans 0`) succeeded
+before the full serial run (`--max-plans 256`); no pagination was needed.
+
+Next highest-value measured lane: audit the **235 result-known but
+roster-incomplete** logical battles for exact-source identity/roster recovery,
+starting with the **102 involving registered players**. These are opportunity
+counts, not promised recoveries. The remaining split is 1,091 result-only missing
+and 320 missing both. Modern receipt authority cannot recover the 1,629 battles
+with no modern receipts; do not rerun this family hoping for a different answer
+without new evidence. Native simulation is a later candidate family, after its
+32388 terminal canary and the preserved control ladder pass.
+
+The app worktree remains
+`.aoe2war-workspaces/app-prodn/integration-replay-receipt-promotion-20260927`
+on `integration/replay-receipt-promotion-20260927`; implementation source at the
+observation is `c244083969bde3e822720f60250fbd812ff83114`. API worktree
+`.aoe2war-workspaces/api-prodn/integration-replay-open-gate-20260922` remains
+clean on `integration/replay-open-gate-20260922` at
+`9f2b3d15df8bb3a32db76dd7cdccb446f63a086a`. No native run began in this tranche.
+A unified resume/apply/post-write/closure campaign wrapper is still outstanding;
+its tested census, planner, writer and projection pieces are already preserved.

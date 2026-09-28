@@ -1,0 +1,116 @@
+{
+  "api_source_commit": "9f2b3d15df8bb3a32db76dd7cdccb446f63a086a",
+  "app_source_commit": "c244083969bde3e822720f60250fbd812ff83114",
+  "betting_authority": false,
+  "candidate_evidence_only": true,
+  "controller_status": {
+    "apply": "Disabled/unused for this session; separate explicit authorization required.",
+    "implemented": [
+      "fresh Workshop-grain census",
+      "player-first modern case ordering",
+      "serial bounded dry-run planner",
+      "immutable per-case plans and census receipt",
+      "stats-only fenced writer",
+      "idempotent retry",
+      "shared projection with retry reporting"
+    ],
+    "not_completed": [
+      "one combined resumable campaign receipt across inventory/apply/projection/post-write verification/closure"
+    ]
+  },
+  "counting_grain": "Workshop canonical public logical battles; winner authority and complete public roster",
+  "database_writes": 0,
+  "freshness": {
+    "changed_battle_ids": [],
+    "inventory_changed_after_observation": false,
+    "policy": "Historical observation with battle-scoped eligibility freshness; unrelated uploads do not erase the observation."
+  },
+  "full_battle_truth": {
+    "logical_battles": 5230,
+    "percent": 68.52772466539197,
+    "registered_player_unresolved": 1420,
+    "resolved": 3584,
+    "unresolved": 1646
+  },
+  "immutable_receipt": {
+    "durable_path": "hel1:/mnt/HC_Volume_105319120/aoe2-parser-engine/reports/modern-receipt-inventory-20260928T123718Z/receipts-full/yield-69cd8f66ac7b6206bcef09aeb0d655467c376aee0efebf7b0179a12adc49f524.json",
+    "evidence_manifest_sha256": "5407787690d5b2f86bdb93164ce02ec489a6bb85e4083993e2156d1bfe164df0",
+    "local_path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/targeted-recovery-20260926/modern-receipt-inventory-20260928T123718Z/evidence/receipts-full/yield-69cd8f66ac7b6206bcef09aeb0d655467c376aee0efebf7b0179a12adc49f524.json",
+    "sha256": "69cd8f66ac7b6206bcef09aeb0d655467c376aee0efebf7b0179a12adc49f524"
+  },
+  "modern_receipt_rail": {
+    "complete_at_observation": true,
+    "eligible_count": 0,
+    "eligible_registered_player_cases": [],
+    "global_receipt_count": 118,
+    "modern_bearing_unresolved": 17,
+    "modern_cases_inspected": 17,
+    "normalized_blockers": {
+      "archive_missing_or_mismatch": 0,
+      "freshness_or_source_mutation": 0,
+      "insufficient_cross_side_quorum": 0,
+      "logical_battle_identity": 0,
+      "no_supported_modern_signed_receipt": 1629,
+      "other": 0,
+      "parser_contract_or_evidence_mismatch": 9,
+      "preexisting_adjudication_desync_review": 8,
+      "roster_identity": 0,
+      "topology": 0
+    },
+    "potential_cross_side_quorum": 0,
+    "raw_blockers": {
+      "adjudication_history_exists": 1,
+      "malformed_or_ineligible_modern_receipt": 9,
+      "no_supported_modern_receipt": 1629,
+      "target_disconnected": 7
+    },
+    "unexamined_ids": [],
+    "unresolved_battles_accounted": 1646
+  },
+  "native_simulation_runs": 0,
+  "native_status": {
+    "checkpoint": "9f2b3d15df8bb3a32db76dd7cdccb446f63a086a",
+    "engine_and_controller_tests": 304,
+    "next_experiment": "One bounded 32388 normal Steam-context replay with audited playback controller and read-only observer, then independent terminal referee. Native authority remains disabled.",
+    "terminal_control_live_pass": false
+  },
+  "newly_resolved_games": 0,
+  "observation_timestamp": "2026-09-28T12:38:35.500Z",
+  "projected_full_battle_truth": {
+    "actual_additions": 0,
+    "logical_battles": 5230,
+    "percent": 68.52772466539197,
+    "percentage_point_gain": 0,
+    "resolved": 3584
+  },
+  "remaining_families": {
+    "both_missing": 320,
+    "priority": "Read-only exact-source roster/identity recovery audit for the 235 result-known, roster-incomplete logical battles; prioritize the 102 involving registered users. These are opportunity counts, not proven eligible additions.",
+    "registered_player_roster_only_missing": 102,
+    "result_only_missing": 1091,
+    "roster_only_missing": 235
+  },
+  "runtime": {
+    "client_source": "Generated in isolated staging from receipt branch schema; current-main generated client not used.",
+    "generated_client_sha256": "be0794654813e1b6757b502e2a5605df963caec41531be04de826ed2e35ef5a2",
+    "prisma_client": "7.10.0",
+    "prisma_generator": "7.10.0",
+    "prisma_schema_sha256": "ca3ea6945ce398935e5f2ecd719ff4492f38a0e0cbfcb6fbd2e89505701a1bb4",
+    "read_only": {
+      "default_mode": "on",
+      "transaction_mode": "on"
+    }
+  },
+  "schema": "aoe2war-receipt-yield-checkpoint/v1",
+  "settlement_authority": false,
+  "validation": {
+    "census_regressions": 9,
+    "inventory_then_full_census": "PASS",
+    "isolated_postgresql_checks": 5,
+    "prior_public_adjudication_authority_regressions": 38,
+    "production_source_service_and_protected_listener_checks": "PASS",
+    "typecheck": "PASS",
+    "writer_regressions": 24
+  },
+  "wolo_authority": false
+}
