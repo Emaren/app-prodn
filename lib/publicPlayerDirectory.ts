@@ -1216,21 +1216,47 @@ async function overlayPublicPlayerDirectoryPresence(
 export async function loadPublicPlayerDirectory(
   prisma: PrismaClient,
   replayGeneration: string | null = null,
+  options: {
+    includePresence?: boolean;
+  } = {},
 ): Promise<PublicPlayerDirectory> {
-  const resolvedGeneration =
-    replayGeneration ??
-    await loadPublicPlayerDirectoryGeneration(
-      prisma,
-    );
+  let resolvedGeneration =
+    replayGeneration;
+
+  if (!resolvedGeneration) {
+    try {
+      resolvedGeneration =
+        await loadPublicPlayerDirectoryGeneration(
+          prisma,
+        );
+    } catch (error) {
+      // Tests, isolated tools, or a degraded optional rail may not expose the
+      // complete generation authority. Fail safe to the old bounded freshness
+      // window instead of retaining an unversioned projection indefinitely.
+      console.warn(
+        "Public player-directory generation unavailable; using bounded fallback:",
+        error,
+      );
+      resolvedGeneration =
+        `fallback:${Math.floor(
+          Date.now() / 15_000,
+        )}`;
+    }
+  }
+
+  const withPresence =
+    options.includePresence !== false;
 
   if (
     publicPlayerDirectoryCache?.generation ===
     resolvedGeneration
   ) {
-    return overlayPublicPlayerDirectoryPresence(
-      prisma,
-      publicPlayerDirectoryCache.value,
-    );
+    return withPresence
+      ? overlayPublicPlayerDirectoryPresence(
+          prisma,
+          publicPlayerDirectoryCache.value,
+        )
+      : publicPlayerDirectoryCache.value;
   }
 
   const promiseKey =
@@ -1241,10 +1267,13 @@ export async function loadPublicPlayerDirectory(
     );
 
   if (existing) {
-    return overlayPublicPlayerDirectoryPresence(
-      prisma,
-      await existing,
-    );
+    const value = await existing;
+    return withPresence
+      ? overlayPublicPlayerDirectoryPresence(
+          prisma,
+          value,
+        )
+      : value;
   }
 
   const cacheEpoch =
@@ -1282,8 +1311,12 @@ export async function loadPublicPlayerDirectory(
     run,
   );
 
-  return overlayPublicPlayerDirectoryPresence(
-    prisma,
-    await run,
-  );
+  const value = await run;
+
+  return withPresence
+    ? overlayPublicPlayerDirectoryPresence(
+        prisma,
+        value,
+      )
+    : value;
 }
