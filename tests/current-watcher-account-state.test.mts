@@ -99,12 +99,22 @@ test(
 
     assert.match(
       source,
-      /directory\.get\(\s*`steam:\$\{state\.steamId\}`/,
+      /const watcherByKey\s*=\s*new Map/,
     );
 
     assert.match(
       source,
-      /if \(!entry\) \{\s*continue;/,
+      /`steam:\$\{state\.steamId\}`/,
+    );
+
+    assert.match(
+      source,
+      /watcherByKey\.get\(\s*entry\.key/,
+    );
+
+    assert.match(
+      source,
+      /if \(!state\) \{\s*return entry;/,
     );
 
     assert.match(
