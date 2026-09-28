@@ -11,9 +11,9 @@
       "owner": "aoe2war-web",
       "path": "ARCHITECTURE.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-09-06",
+      "reviewed_at": "2026-09-28",
       "sensitivity": "internal",
-      "sha256": "82ce11e1b1e7749a950e102d4cb9d7bd67005a99c76ffa40549bbaaa02f9e84a",
+      "sha256": "a98226a826cbdd715c22f221579e6d5e3c0633ebdfb9f4965a56050e9420a9fa",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -110,7 +110,7 @@
       "review_interval_days": 60,
       "reviewed_at": "2026-08-22",
       "sensitivity": "internal",
-      "sha256": "5f1f1d5b4e10b8ba3ba0ae024495ad494ce59c3aa43455906eadaf60b0e3081a",
+      "sha256": "c3d8a1982216f60c523766cde8b3058cc4c0feb3eabdeb2829329edcfe8caa0a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "29c5c48e65048929e49b7e64e0c281b5e95b96bb256e19d00dedecad69424cf2",
+      "sha256": "bfe2108cd3bcca02b8a41cddb3d08138490294c05898c27b0c34ef82e31f5de7",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1139,9 +1139,9 @@
       "owner": "aoe2war-web",
       "path": "docs/PERFORMANCE_OS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-27",
+      "reviewed_at": "2026-09-28",
       "sensitivity": "internal",
-      "sha256": "93c57594715aa8358137ba07d4b0a8f2c23b2e6e3a74dae196d6c7840b9656ff",
+      "sha256": "2661c97e20df00c184c45addf1b6f3bc1c906bf13a8bf26d8ad505c7a9dddfdf",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/speedos-remove-kingdom-20260928",
-    "commit": "2e6b3be81f17c3110e80e7fcb6c34a5b661c1898"
+    "branch": "perf/replay-projection-cache-v2-20260928",
+    "commit": "ac59d337082afa0699dabacd4686caf7d2839fea"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
