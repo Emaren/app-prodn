@@ -644,7 +644,7 @@ function modeChampion(
     shortName: rm ? "RM Champion" : "DM Champion",
     beltUrl: managedMediaPublicUrl(
       "belt",
-      rm ? "rm-champion" : "dm-champion",
+      rm ? "random-map-champion" : "deathmatch-champion",
       "/champions/belts/aoe2war-world.webp",
     ),
     contenders,
@@ -657,7 +657,7 @@ function teamTitles(lane: ChampionsLane): ChampionsV2TeamTitle[] {
     name: `${size}v${size} ${lane.toUpperCase()} Champions`,
     beltUrl: managedMediaPublicUrl(
       "belt",
-      `${size}v${size}`,
+      `${size}v${size}-${lane}`,
       "/champions/belts/tag-team.webp",
     ),
     holderSlots: size,
