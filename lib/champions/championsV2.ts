@@ -593,7 +593,7 @@ function buildNationalBelts(
     const automatic = countryDirectoryContenders(directoryEntries, country);
     const liveRows = live?.contenders ?? [];
     const contenders = dedupeContenders(
-      [...automatic, ...manual, ...liveRows],
+      [...manual, ...automatic, ...liveRows],
       liveHolder?.name ?? null,
     );
 
