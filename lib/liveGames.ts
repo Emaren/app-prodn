@@ -741,6 +741,7 @@ export async function loadLiveGamesSnapshotFresh(
   const [
     hydratedCompletedSessions,
     activeMarketSummaries,
+    reviewMarketSummaries,
     archiveProjection,
   ] = await Promise.all([
     hydrateCompletedSessionUploaders(
@@ -755,6 +756,15 @@ export async function loadLiveGamesSnapshotFresh(
         .map((session) => ({ id: session.id, sessionKey: session.sessionKey }))
     ).catch((error) => {
       console.warn("Failed to load active live market summaries:", error);
+      return new Map();
+    }),
+    loadReplayReviewMarketSummaryMap(
+      prisma,
+      displayedCompletedSessionsBase
+        .filter((session) => Boolean(session.unresolvedResult))
+        .map((session) => ({ id: session.id, sessionKey: session.sessionKey }))
+    ).catch((error) => {
+      console.warn("Failed to load replay review market summaries:", error);
       return new Map();
     }),
     // A battle occupies exactly one public lifecycle lane. It enters the archive
@@ -779,15 +789,6 @@ export async function loadLiveGamesSnapshotFresh(
       : activeMarketSummaries.get(session.id) ?? null,
   }));
 
-  const reviewMarketSummaries = await loadReplayReviewMarketSummaryMap(
-    prisma,
-    hydratedCompletedSessions
-      .filter((session) => Boolean(session.unresolvedResult))
-      .map((session) => ({ id: session.id, sessionKey: session.sessionKey }))
-  ).catch((error) => {
-    console.warn("Failed to load replay review market summaries:", error);
-    return new Map();
-  });
   const displayedCompletedSessions = hydratedCompletedSessions.map((session) => ({
     ...session,
     reviewMarket: reviewMarketSummaries.get(session.id) ?? null,
