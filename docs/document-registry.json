@@ -385,7 +385,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-09-27",
       "sensitivity": "internal",
-      "sha256": "2515427aff8cad3cc5acbcf23ea8b4f394c278d444b0003ca8d029a4fcde9c53",
+      "sha256": "7a47da7c297e2cacfa5b498aba8326bac83a5de75117dc9f28780316ea56589d",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "2116ba178a956de76771d33b6804d268fd9a84a0ee60fe9a4cb153d7ddad4586",
+      "sha256": "6c8efa253a401e2eecc49115ddceb9ce2d764a331ebb4e7e044585c96dfff79c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/champions-e2-refinement-20260927",
-    "commit": "af5e934b4b228f80786ec545b5cbd591c043bf83"
+    "commit": "75f3e51dd6a4a50f80617c096f9cf80ba9c06ab9"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
