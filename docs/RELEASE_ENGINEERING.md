@@ -26,6 +26,12 @@ public truth, recovery truth, and protected WOLO dependency state.
 defines the automated release model. If the implementation and either document
 disagree, stop and reconcile them before production mutation.
 
+When root headroom is below the release floor and a staged candidate already
+exists, Finish must evaluate the existing receipt-bound superseded-stage
+retirement contract before generic cache/log cleanup. A provably superseded
+stage is non-live release material and may itself be the dominant root-space
+consumer; current or ambiguous stages remain preserved.
+
 ## Core invariants
 
 1. Production advances only to an exact sealed Git commit.
