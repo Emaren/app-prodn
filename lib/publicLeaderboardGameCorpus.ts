@@ -23,6 +23,13 @@ export type PublicLeaderboardRawGame = {
   replayResultAdjudications: unknown;
 };
 
+/*
+ * Historical public leaderboard truth must remain complete. Transport stays
+ * bounded at 1,000 rows per PostgreSQL result stream; generation-keyed reuse
+ * removes repeated whole-corpus transport and JS rebuilding without truncation.
+ */
+const RAW_CORPUS_PAGE_SIZE = 1_000;
+
 const loadRawCorpusByGeneration =
   createGenerationKeyedLoader<
     PrismaClient,
