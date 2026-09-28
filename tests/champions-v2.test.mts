@@ -90,7 +90,7 @@ test("team crowns are full-width rows with five honest contender seats", () => {
   assert.match(state, /teamTitles\("rm"\)/);
   assert.match(state, /teamTitles\("dm"\)/);
   assert.match(state, /holderSlots: size/);
-  assert.match(state, /`\$\{size\}v\$\{size\}`/);
+  assert.match(state, /`\$\{size\}v\$\{size\}-\$\{lane\}`/);
   assert.match(experience, /readStoredLeaderboardLane/);
   assert.match(experience, /writeStoredLeaderboardLane/);
   assert.match(experience, /state\.teams\[lane\]/);
@@ -103,7 +103,7 @@ test("ELO crowns use exact managed-media targets for the imported belt pack", ()
   assert.match(state, /lane === "dm" \? entry\.steamDmRating : entry\.steamRmRating/);
   assert.match(state, /if \(lane === "rm"\)[\s\S]*return definition\.id/);
   assert.match(state, /division === "challenger" \? "dm-contender"/);
-  assert.match(state, /rm \? "rm-champion" : "dm-champion"/);
+  assert.match(state, /rm \? "random-map-champion" : "deathmatch-champion"/);
   assert.match(state, /eloTitles\.map/);
   assert.match(experience, /state\.elo\[lane\]/);
 });
