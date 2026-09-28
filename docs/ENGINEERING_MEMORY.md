@@ -103,6 +103,29 @@ Unit mocks can prove application policy while still missing live-schema rejectio
 alignment must ship through the proof-bound migration rail; never bypass an atomic production
 rejection with manual SQL.
 
+## 2026-09-28 — A re-qualified dynamic route can still lose cache authority later
+
+The certified Champions E2 release `fa04c02f320f` completed cleanly, but its governed
+dynamic-edge qualification returned 20/21 because `/kingdom` produced two public
+HTML body hashes across t=0/15/30 and failed public/origin byte equality on two
+samples. This was not treated as a flaky transport result. The Kingdom page renders
+request-time public truth from `loadKingdomSummary()`: core citizen/watcher/chronicle/
+bounty state is cached for 30 seconds and Kingdom WOLO wealth for 60 seconds. A page
+whose authoritative inputs can legitimately advance inside the proposed 30-second
+shared-cache window cannot rely on a single quiet historical proof as permanent
+authority.
+
+The earlier September 18 quiet-window PASS is preserved as historical admission
+evidence, but the September 28 certified churn supersedes it for current policy.
+SpeedOS removes `/kingdom` from both the source-controlled dynamic policy and the
+privileged Cloudflare allowlist. The page remains force-dynamic and fully live; only
+shared edge HTML caching is revoked. The governed cohort is now 20 exact routes.
+
+Durable rule: cache admission is continuously revocable evidence. When a certified
+release later proves legitimate body churn inside the TTL, shrink the shared-cache
+boundary even if the same route passed previously. Never rerun until a quiet interval
+manufactures a green receipt.
+
 ## 2026-09-22 — A quiet edge-review window cannot overrule later certified churn
 
 The read-only dynamic-edge review initially observed `/rivalries` as byte-stable for one
@@ -114,8 +137,9 @@ generation changes, so the certified churn is consistent with real live corpus u
 than a transport anomaly.
 
 SpeedOS therefore removed `/rivalries` from the shared dynamic-edge allowlist instead of
-retrying until a quiet interval happened to pass. The remaining dynamic cohort is 21 exact
-routes and still requires all-policy qualification before mutation.
+retrying until a quiet interval happened to pass. The remaining dynamic cohort at that September 22 checkpoint was 21 exact
+routes; the September 28 Kingdom revocation reduces current authority to 20 and still
+requires all-policy qualification before mutation.
 
 Durable rule: an earlier technical PASS is admission evidence, not permanent cache authority.
 When the exact certified generation later proves body churn inside the proposed TTL window,
