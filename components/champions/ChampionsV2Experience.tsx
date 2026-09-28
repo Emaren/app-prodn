@@ -833,7 +833,7 @@ export default function ChampionsV2Experience({
       </section>
 
       <section className="space-y-5">
-        <SectionHeading kicker="The open thrones" />
+        <SectionHeading kicker="AoE2WAR Champions" />
         <div className="grid items-stretch gap-5 xl:grid-cols-3">
           <ChampionshipCard title={state.chaos} />
           <ChampionshipCard title={state.world} emphasis />
@@ -894,7 +894,7 @@ export default function ChampionsV2Experience({
 
       <section className="space-y-5">
         <SectionHeading
-          kicker="ELO crowns"
+          kicker="ELO Belts"
           action={<ModeSwitch lane={lane} onChange={chooseLane} />}
         />
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
