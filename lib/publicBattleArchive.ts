@@ -299,6 +299,105 @@ const loadGenerationCachedPublicBattleArchivePage =
     >
   >(48);
 
+type PublicBattleArchivePage =
+  Awaited<
+    ReturnType<
+      typeof loadPublicBattleArchivePageFresh
+    >
+  >;
+
+type PublicBattleArchivePageCacheEntry = {
+  generation: string;
+  value: PublicBattleArchivePage;
+};
+
+const publicBattleArchivePageCache =
+  new Map<
+    string,
+    PublicBattleArchivePageCacheEntry
+  >();
+const latestRequestedArchiveGeneration =
+  new Map<string, string>();
+const PUBLIC_BATTLE_ARCHIVE_PAGE_CACHE_MAX = 48;
+
+function rememberPublicBattleArchivePage(
+  coordinateKey: string,
+  generation: string,
+  value: PublicBattleArchivePage,
+) {
+  if (
+    latestRequestedArchiveGeneration.get(
+      coordinateKey,
+    ) !== generation
+  ) {
+    return;
+  }
+
+  publicBattleArchivePageCache.delete(
+    coordinateKey,
+  );
+  publicBattleArchivePageCache.set(
+    coordinateKey,
+    {
+      generation,
+      value,
+    },
+  );
+
+  while (
+    publicBattleArchivePageCache.size >
+    PUBLIC_BATTLE_ARCHIVE_PAGE_CACHE_MAX
+  ) {
+    const oldest =
+      publicBattleArchivePageCache
+        .keys()
+        .next()
+        .value;
+
+    if (oldest === undefined) {
+      break;
+    }
+
+    publicBattleArchivePageCache.delete(
+      oldest,
+    );
+    latestRequestedArchiveGeneration.delete(
+      oldest,
+    );
+  }
+}
+
+function startPublicBattleArchivePageRefresh(
+  prisma: PrismaClient,
+  generation: string,
+  offset: number,
+  limit: number,
+) {
+  const coordinateKey =
+    `${offset}:${limit}`;
+  latestRequestedArchiveGeneration.set(
+    coordinateKey,
+    generation,
+  );
+
+  return loadGenerationCachedPublicBattleArchivePage(
+    prisma,
+    `${generation}:archive-page-v2:${offset}:${limit}`,
+    () =>
+      loadPublicBattleArchivePageFresh(
+        prisma,
+        { offset, limit },
+      ),
+  ).then((value) => {
+    rememberPublicBattleArchivePage(
+      coordinateKey,
+      generation,
+      value,
+    );
+    return value;
+  });
+}
+
 /**
  * The logical archive page and census are deterministic for one public replay
  * generation. Cache exact page coordinates by that generation so ordinary
@@ -329,15 +428,45 @@ export async function loadPublicBattleArchivePage(
       await loadPublicReplayGeneration(
         prisma,
       );
+    const coordinateKey =
+      `${offset}:${limit}`;
+    const cached =
+      publicBattleArchivePageCache.get(
+        coordinateKey,
+      );
 
-    return loadGenerationCachedPublicBattleArchivePage(
-      prisma,
-      `${generation}:archive-page-v2:${offset}:${limit}`,
-      () =>
-        loadPublicBattleArchivePageFresh(
+    if (cached) {
+      if (
+        cached.generation !==
+        generation
+      ) {
+        /*
+         * The archive is historical projection truth. A newly-final replay
+         * must not make the next Live Games poll or archive navigation pay the
+         * complete identity/census CTE. Rebuild one exact-generation page in
+         * the background and serve the last-good page for this poll.
+         */
+        void startPublicBattleArchivePageRefresh(
           prisma,
-          { offset, limit },
-        ),
+          generation,
+          offset,
+          limit,
+        ).catch((error) => {
+          console.warn(
+            "Public battle archive background refresh failed:",
+            error,
+          );
+        });
+      }
+
+      return cached.value;
+    }
+
+    return await startPublicBattleArchivePageRefresh(
+      prisma,
+      generation,
+      offset,
+      limit,
     );
   } catch (error) {
     console.warn(
