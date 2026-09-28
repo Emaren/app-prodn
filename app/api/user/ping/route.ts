@@ -323,10 +323,6 @@ export async function POST(request: NextRequest) {
   }
 
   const heartbeatAt = new Date();
-  const previousLeaseState = userOnlineLeaseState(
-    uid,
-    heartbeatAt.getTime(),
-  );
   const lease = presenceClientId
     ? touchUserOnlineLease(
         uid,
@@ -347,7 +343,6 @@ export async function POST(request: NextRequest) {
    * Arrival is authoritative in the presence lease itself. Do not couple
    * heartbeat churn to historical player-directory reconstruction.
    */
-  void previousLeaseState;
 
   const heartbeatUpdate = await userOnlineLastSeenPersister.persist(
     uid,
