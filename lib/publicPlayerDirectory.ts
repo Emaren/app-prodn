@@ -1171,11 +1171,11 @@ async function overlayPublicPlayerDirectoryLiveState(
     entry.ratingLastSeenAt =
       state.ratingObservedAt;
 
-    updateLastPlayedAt(
-      entry,
-      state.lastObservedAt,
-    );
-
+    /*
+     * Do not project current Watcher chronology into historical lastPlayedAt.
+     * watcher_live may be the newest account observation, but it is not a final
+     * battle and must not influence leaderboard recency tie-breaks.
+     */
     return entry;
   };
 
