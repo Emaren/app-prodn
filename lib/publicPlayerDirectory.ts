@@ -351,15 +351,6 @@ function playerForCanonicalSnapshot(
 export async function loadPublicPlayerDirectoryFresh(
   prisma: PrismaClient
 ): Promise<PublicPlayerDirectory> {
-  /*
-   * Current Watcher state is independent from the historical final-game
-   * corpus, so start it beside the larger history read.
-   */
-  const currentWatcherAccountStatesPromise =
-    loadCurrentWatcherAccountStates(
-      prisma,
-    );
-
   const [
     users,
     rawGames,
@@ -915,85 +906,6 @@ export async function loadPublicPlayerDirectoryFresh(
     }
   }
 
-  /*
-   * Overlay current exact-Steam account state after historical replay
-   * accounting is complete.
-   *
-   * This rail never changes W/L, replay counts, or accepted history.
-   * It owns only current presentation and current rating.
-   */
-  const currentWatcherAccountStates =
-    await currentWatcherAccountStatesPromise;
-
-  for (
-    const state of
-    currentWatcherAccountStates
-  ) {
-    const entry =
-      directory.get(
-        `steam:${state.steamId}`,
-      );
-
-    /*
-     * Current telemetry may enrich an already accepted account identity,
-     * but raw live telemetry does not create a brand-new public identity.
-     */
-    if (!entry) {
-      continue;
-    }
-
-    const currentName =
-      normalizeLeaderboardDisplayName(
-        state.latestObservedName,
-      );
-
-    if (
-      currentName &&
-      isSafePublicReplayObservedName(
-        currentName,
-      )
-    ) {
-      pushAlias(
-        entry,
-        currentName,
-      );
-
-      entry.latestObservedName =
-        currentName;
-
-      if (!entry.claimed) {
-        entry.name =
-          currentName;
-        entry.href =
-          buildReplayPlayerHref(
-            currentName,
-          );
-      }
-    }
-
-    if (
-      state.steamRmRating !== null
-    ) {
-      entry.steamRmRating =
-        state.steamRmRating;
-    }
-
-    if (
-      state.steamDmRating !== null
-    ) {
-      entry.steamDmRating =
-        state.steamDmRating;
-    }
-
-    entry.ratingLastSeenAt =
-      state.ratingObservedAt;
-
-    updateLastPlayedAt(
-      entry,
-      state.lastObservedAt,
-    );
-  }
-
   for (const entry of directory.values()) {
     entry.replayEvidence.sort(
       (left, right) =>
@@ -1142,52 +1054,133 @@ export async function loadPublicPlayerDirectoryFresh(
   };
 }
 
-async function overlayPublicPlayerDirectoryPresence(
+async function overlayPublicPlayerDirectoryLiveState(
   prisma: PrismaClient,
   directory: PublicPlayerDirectory,
 ): Promise<PublicPlayerDirectory> {
-  const presence =
-    await loadPublicPresenceSnapshot(prisma);
+  const [
+    presence,
+    currentWatcherAccountStates,
+  ] = await Promise.all([
+    loadPublicPresenceSnapshot(prisma),
+    loadCurrentWatcherAccountStates(
+      prisma,
+    ),
+  ]);
+
   const onlineUids =
     new Set(
       presence.onlineUsers.map(
         (user) => user.uid,
       ),
     );
-
-  const claimedEntries =
-    directory.claimedEntries.map(
-      (entry) => ({
-        ...entry,
-        isOnline:
-          Boolean(
-            entry.uid &&
-            onlineUids.has(entry.uid),
-          ),
-      }),
-    );
-  const claimedByKey =
+  const watcherByKey =
     new Map(
-      claimedEntries.map(
-        (entry) => [
-          entry.key,
-          entry,
+      currentWatcherAccountStates.map(
+        (state) => [
+          `steam:${state.steamId}`,
+          state,
         ],
       ),
     );
+
+  const overlayEntry = (
+    source: PublicPlayerDirectoryEntry,
+  ): PublicPlayerDirectoryEntry => {
+    const entry = {
+      ...source,
+      aliases: [
+        ...source.aliases,
+      ],
+      isOnline:
+        Boolean(
+          source.uid &&
+          onlineUids.has(
+            source.uid,
+          ),
+        ),
+    };
+    const state =
+      watcherByKey.get(
+        entry.key,
+      );
+
+    if (!state) {
+      return entry;
+    }
+
+    /*
+     * Current exact-Steam Watcher evidence enriches presentation only. It does
+     * not rewrite historical replay counts, W/L, accepted aliases, or public
+     * identity authority inside the generation-cached base projection.
+     */
+    const currentName =
+      normalizeLeaderboardDisplayName(
+        state.latestObservedName,
+      );
+
+    if (
+      currentName &&
+      isSafePublicReplayObservedName(
+        currentName,
+      )
+    ) {
+      pushAlias(
+        entry,
+        currentName,
+      );
+      entry.latestObservedName =
+        currentName;
+
+      if (!entry.claimed) {
+        entry.name =
+          currentName;
+        entry.href =
+          buildReplayPlayerHref(
+            currentName,
+          );
+      }
+    }
+
+    if (
+      state.steamRmRating !== null
+    ) {
+      entry.steamRmRating =
+        state.steamRmRating;
+    }
+
+    if (
+      state.steamDmRating !== null
+    ) {
+      entry.steamDmRating =
+        state.steamDmRating;
+    }
+
+    entry.ratingLastSeenAt =
+      state.ratingObservedAt;
+
+    updateLastPlayedAt(
+      entry,
+      state.lastObservedAt,
+    );
+
+    return entry;
+  };
+
+  const claimedEntries =
+    directory.claimedEntries.map(
+      overlayEntry,
+    );
   const replayEntries =
     directory.replayEntries.map(
-      (entry) =>
-        entry.isOnline
-          ? {
-              ...entry,
-              isOnline: false,
-            }
-          : entry,
+      overlayEntry,
     );
-  const replayByKey =
+  const byKey =
     new Map(
-      replayEntries.map(
+      [
+        ...claimedEntries,
+        ...replayEntries,
+      ].map(
         (entry) => [
           entry.key,
           entry,
@@ -1197,9 +1190,8 @@ async function overlayPublicPlayerDirectoryPresence(
   const allEntries =
     directory.allEntries.map(
       (entry) =>
-        claimedByKey.get(entry.key) ??
-        replayByKey.get(entry.key) ??
-        entry,
+        byKey.get(entry.key) ??
+        overlayEntry(entry),
     );
 
   return {
@@ -1252,7 +1244,7 @@ export async function loadPublicPlayerDirectory(
     resolvedGeneration
   ) {
     return withPresence
-      ? overlayPublicPlayerDirectoryPresence(
+      ? overlayPublicPlayerDirectoryLiveState(
           prisma,
           publicPlayerDirectoryCache.value,
         )
@@ -1269,7 +1261,7 @@ export async function loadPublicPlayerDirectory(
   if (existing) {
     const value = await existing;
     return withPresence
-      ? overlayPublicPlayerDirectoryPresence(
+      ? overlayPublicPlayerDirectoryLiveState(
           prisma,
           value,
         )
@@ -1314,7 +1306,7 @@ export async function loadPublicPlayerDirectory(
   const value = await run;
 
   return withPresence
-    ? overlayPublicPlayerDirectoryPresence(
+    ? overlayPublicPlayerDirectoryLiveState(
         prisma,
         value,
       )
