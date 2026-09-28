@@ -41,6 +41,31 @@ memory before closing the work.
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
 
+## 2026-09-28 — Reclaim evidence, not advertised reclaimability
+
+A SpeedOS release was correctly stopped below the 5 GiB root release floor.
+The established APT/journal/closed-nginx recovery ladder reclaimed only about
+22 MiB. A read-only storage census then identified several apparently
+regenerable pools.
+
+The live experiment proved that advertised size is not the same as reclaimed
+root headroom:
+
+- removing one Snap revision explicitly marked `disabled` reclaimed roughly
+  520 MiB and preserved production source, BUILD_ID, web-service state, and Wolo
+  8092/8093 listener identity;
+- deleting a roughly 510 MiB Snap download-cache pathname produced no measurable
+  `df` improvement during the experiment;
+- Docker reported roughly 356 MiB reclaimable but pruning unused images released
+  only about 8.45 MiB;
+- PNPM pruning was not executed because the first wrapper incorrectly attempted
+  `runuser` from the already-unprivileged `tony` session.
+
+Permanent rule: promote only the reclaim class whose real capacity delta and
+runtime safety were observed. Disabled Snap revisions therefore belong in
+Release Recovery OS. Snap cache, Docker pruning, and PNPM store pruning remain
+outside automatic recovery until separately proven.
+
 ## 2026-09-27 — Promoted topology must be consumable without rewriting historical result evidence
 
 Production game 44862 proved a second authority-layer seam after the V3 roster repair itself
