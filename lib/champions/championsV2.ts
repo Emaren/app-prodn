@@ -158,6 +158,17 @@ const NATIONAL_CONTENDER_OVERRIDES: Record<string, string[]> = {
   argentina: ["Maxi"],
 };
 
+const NATIONAL_COUNTRY_ALIASES: Record<string, string[]> = {
+  usa: ["USA", "United States", "United States of America"],
+  uk: ["UK", "United Kingdom", "Great Britain"],
+};
+
+const REGIONAL_COUNTRY_ELIGIBILITY: Record<string, string[]> = {
+  // Product-policy lane: Pakistan is intentionally represented by the
+  // Southeast Asia regional crown even though it is not a national target.
+  "southeast-asia": ["Pakistan"],
+};
+
 function normalizedIdentity(value: string | null | undefined) {
   return String(value ?? "")
     .trim()
@@ -276,6 +287,18 @@ function inEloBand(
   return true;
 }
 
+function eloManagedTarget(
+  definition: (typeof eloTitles)[number],
+  lane: ChampionsLane,
+) {
+  if (lane === "rm") {
+    return definition.id;
+  }
+
+  const division = definition.id.replace(/^elo-/, "");
+  return division === "challenger" ? "dm-contender" : `dm-${division}`;
+}
+
 function buildEloDivisions(
   entries: PublicPlayerDirectoryEntry[],
   lane: ChampionsLane,
@@ -302,7 +325,7 @@ function buildEloDivisions(
       eyebrow: definition.eyebrow,
       beltUrl: managedMediaPublicUrl(
         "belt",
-        `${lane}-${definition.id.replace(/^elo-/, "")}`,
+        eloManagedTarget(definition, lane),
         definition.assetUrl,
       ),
       contenders,
@@ -348,6 +371,82 @@ function manualContender(
     meta: entry ? `${entry.wins}-${entry.losses} · ${entry.totalMatches} battles` : "Invited contender",
     badge,
   };
+}
+
+function representedCountryKey(value: string | null | undefined) {
+  return normalizedIdentity(value);
+}
+
+function countryEligibilityValues(country: CountryCatalogRow) {
+  if (country.scope === "regional") {
+    return REGIONAL_COUNTRY_ELIGIBILITY[country.slug] ?? [];
+  }
+
+  return NATIONAL_COUNTRY_ALIASES[country.slug] ?? [country.country];
+}
+
+function countryDirectoryContenders(
+  entries: PublicPlayerDirectoryEntry[],
+  country: CountryCatalogRow,
+): TitleContender[] {
+  const eligible = new Set(
+    countryEligibilityValues(country)
+      .map(representedCountryKey)
+      .filter(Boolean),
+  );
+
+  if (!eligible.size) return [];
+
+  return entries
+    .filter(
+      (entry) =>
+        entry.claimed &&
+        eligible.has(representedCountryKey(entry.representedCountry)),
+    )
+    .sort((left, right) => {
+      if (left.totalMatches !== right.totalMatches) {
+        return right.totalMatches - left.totalMatches;
+      }
+
+      const leftRating = left.steamRmRating ?? left.steamDmRating ?? Number.NEGATIVE_INFINITY;
+      const rightRating = right.steamRmRating ?? right.steamDmRating ?? Number.NEGATIVE_INFINITY;
+      if (leftRating !== rightRating) return rightRating - leftRating;
+      if (left.wins !== right.wins) return right.wins - left.wins;
+      return left.name.localeCompare(right.name, undefined, {
+        numeric: true,
+        sensitivity: "base",
+      });
+    })
+    .slice(0, 10)
+    .map((entry, index) => ({
+      rank: index + 1,
+      name: entry.name,
+      href: entry.href,
+      rating: entry.steamRmRating ?? entry.steamDmRating ?? null,
+      ratingLabel:
+        entry.steamRmRating !== null
+          ? `${entry.steamRmRating} RM`
+          : entry.steamDmRating !== null
+            ? `${entry.steamDmRating} DM`
+            : null,
+      meta: `${entry.wins}-${entry.losses} · ${entry.totalMatches} battles`,
+      badge: `${country.flag} contender`,
+    }));
+}
+
+function dedupeContenders(rows: TitleContender[], holderName?: string | null) {
+  const seen = new Set<string>();
+  const holderKey = normalizedIdentity(holderName);
+
+  return rows
+    .filter((row) => {
+      const key = normalizedIdentity(row.name);
+      if (!key || key === holderKey || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, 10)
+    .map((row, index) => ({ ...row, rank: index + 1 }));
 }
 
 async function loadChaosActivityContenders(
@@ -491,20 +590,12 @@ function buildNationalBelts(
     const manual = contenderGroups.map((names, index) =>
       manualContender(directoryEntries, names, index + 1, `${country.flag} contender`),
     );
-
-    const liveRows = active
-      ? (live?.contenders ?? []).filter(
-          (row) =>
-            !manual.some(
-              (existing) =>
-                normalizedIdentity(existing.name) === normalizedIdentity(row.name),
-            ),
-        )
-      : [];
-
-    const contenders = [...manual, ...liveRows]
-      .slice(0, 10)
-      .map((row, index) => ({ ...row, rank: index + 1 }));
+    const automatic = countryDirectoryContenders(directoryEntries, country);
+    const liveRows = live?.contenders ?? [];
+    const contenders = dedupeContenders(
+      [...manual, ...automatic, ...liveRows],
+      liveHolder?.name ?? null,
+    );
 
     const fallback =
       live?.assetUrl ||
