@@ -351,7 +351,10 @@ async function loadLiveChampionDefinitionMap(
 }
 
 export async function loadChampionTitleEconomyState(
-  prisma: PrismaClient
+  prisma: PrismaClient,
+  options: {
+    projectionGeneration?: string | null;
+  } = {},
 ): Promise<ChampionTitleEconomyState> {
   let leaderboardEntries: CountryAwareLeaderboardEntry[] = [];
   let leaderboardAvailable = false;
@@ -366,6 +369,9 @@ export async function loadChampionTitleEconomyState(
     const leaderboard = await loadLobbyLeaderboard(prisma, {
       limit: 120,
       includePendingClaimed: false,
+      includePresence: false,
+      projectionGeneration:
+        options.projectionGeneration,
     });
     leaderboardEntries = leaderboard.entries;
     leaderboardAvailable = true;
