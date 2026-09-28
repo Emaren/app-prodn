@@ -755,7 +755,30 @@ Before the runtime swap, activation re-verifies:
 - internal/public live version parity;
 - critical routes;
 - canonical Git transport;
+- tracked-worktree ownership and writability for every existing Git-tracked
+  entry plus every parent directory required to replace it;
 - protected WOLO counts.
+
+Git metadata health is not sufficient activation authority. The tracked
+worktree probe requires canonical deploy UID/GID ownership, writable tracked
+regular files, and writable/traversable tracked parent directories. It returns
+bounded JSON path samples for any non-zero class. Missing/invalid probe output
+fails closed.
+
+The same tracked-worktree probe runs again immediately before the activation
+service-stop seam and is persisted as
+`tracked-worktree-pre-mutation.tsv`. This closes the race where ownership can
+drift after candidate staging but before source advancement.
+
+Release Ship does not silently broaden activation into recursive root ownership
+mutation. The canonical operator repair remains explicit:
+
+```bash
+sudo chown -R tony:tony /var/www/AoE2HDBets/app-prodn
+```
+
+After repair, the release transaction must re-run and re-prove the complete
+source/transport/runtime/Wolo boundary.
 
 Dry-run activation performs zero production mutation. Remote activation assertions
 emit a bounded `ACTIVATION_ASSERTION_FAILED` line with the failing shell line,
