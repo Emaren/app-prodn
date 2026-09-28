@@ -94,7 +94,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.7",
-    "@types/node": "^20",
+    "@types/node": "^26",
     "@types/react": "19.0.10",
     "@types/react-dom": "^19",
     "autoprefixer": "^10.6.1",
