@@ -104,7 +104,11 @@ export default async function OlympiaPage() {
   const prisma = getPrisma();
   const [titles, directory] = await Promise.all([
     loadChampionTitleEconomyState(prisma),
-    loadPublicPlayerDirectory(prisma),
+    loadPublicPlayerDirectory(
+      prisma,
+      null,
+      { includePresence: false },
+    ),
   ]);
 
   const commissioner =
