@@ -54,7 +54,7 @@ aoe2war speed campaign verify
 ```
 
 `benchmark` defaults to a small critical public cohort. New `--full`
-benchmarks use the current 85-route V2 public cohort in
+benchmarks use the current 86-route V2 public cohort in
 `docs/audits/performance-route-cohort-v2.txt`: current static public surfaces
 plus stable representatives of dynamic route families. The frozen August 13
 66-route cohort remains historical comparison evidence only; it is not silently
@@ -653,16 +653,21 @@ samples before claiming a route-level latency improvement.
 
 `aoe2war speed inventory` derives the performance estate from the current
 Next.js source tree instead of relying on a hand-maintained page count. At this
-revision the application contains 100 page entry points: 22 authenticated admin
-pages, 77 ordinary public page templates, and one sensitive dynamic public
+revision the application contains 110 page entry points: 23 authenticated admin
+pages, 86 ordinary public page templates, and one sensitive dynamic public
 invoice template.
 
 Every ordinary public page template must have a stable representative in
 `docs/audits/performance-route-cohort-v2.txt`. The inventory command maps
 dynamic templates such as player, battle, clan, marketplace-shop, matchup and
-watch routes onto stable real representatives. CI fails when a new ordinary
-public page is added without a benchmark representative, so the Speed OS route
-universe grows with the product instead of silently falling behind.
+watch routes onto stable real representatives. Representative ownership is
+one-to-one: when an exact page and a broader dynamic/catch-all template both
+match the same cohort route, the most-specific source template owns that route
+and the broader family must use a different representative. Equally specific
+overlaps fail closed instead of silently depending on cohort ordering. CI fails
+when a new ordinary public page is added without a benchmark representative, so
+the Speed OS route universe grows with the product instead of silently falling
+behind.
 
 `/market/invoices/[publicId]` is intentionally classified separately. An
 invoice is user-specific state; a made-up UUID would measure an error path, not

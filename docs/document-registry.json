@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6c8efa253a401e2eecc49115ddceb9ce2d764a331ebb4e7e044585c96dfff79c",
+      "sha256": "3fe6162bc61ac819c5b831b03a19df8ba92a3790fc615f95f3749c1f5c27d1ec",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1141,7 +1141,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-27",
       "sensitivity": "internal",
-      "sha256": "3ed0bf8254d57b43abf72e335c639e21b2fef132f58c046e106b180834cd6bb0",
+      "sha256": "f854fd4f373e380cf2d8cc64a0fa01fba43fba3e169d25caac7dffbb78052c89",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/champions-e2-refinement-20260927",
-    "commit": "75f3e51dd6a4a50f80617c096f9cf80ba9c06ab9"
+    "branch": "fix/speedos-route-representative-ownership-20260928",
+    "commit": "9d6f4a6da2ec6ad25354f37a21b235fef0d83e7d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

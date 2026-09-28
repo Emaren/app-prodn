@@ -308,7 +308,69 @@ def template_regex(template: str) -> re.Pattern[str]:
     return re.compile(r"^/" + "/".join(parts) + r"$")
 
 
+def template_specificity(template: str) -> tuple[int, int, int, int]:
+    segments = [segment for segment in template.split("/") if segment]
+    literal_segments = sum(1 for segment in segments if not segment.startswith("["))
+    catchall_segments = sum(
+        1
+        for segment in segments
+        if segment.startswith("[...") or segment.startswith("[[...")
+    )
+    dynamic_segments = sum(1 for segment in segments if segment.startswith("["))
+    return (
+        literal_segments,
+        -catchall_segments,
+        -dynamic_segments,
+        len(segments),
+    )
+
+
+def representative_routes_by_template(
+    templates: list[str],
+    cohort: list[str],
+) -> dict[str, str | None]:
+    patterns = {template: template_regex(template) for template in templates}
+    representatives: dict[str, str | None] = {
+        template: None for template in templates
+    }
+
+    for route in cohort:
+        matches = [
+            template
+            for template in templates
+            if patterns[template].fullmatch(route)
+        ]
+        if not matches:
+            continue
+
+        ranked = sorted(
+            matches,
+            key=lambda template: (template_specificity(template), template),
+            reverse=True,
+        )
+        best_specificity = template_specificity(ranked[0])
+        equally_specific = [
+            template
+            for template in ranked
+            if template_specificity(template) == best_specificity
+        ]
+        if len(equally_specific) > 1:
+            raise InventoryError(
+                "benchmark route has ambiguous source-template ownership: "
+                f"{route} -> {', '.join(sorted(equally_specific))}"
+            )
+
+        owner = ranked[0]
+        if representatives[owner] is None:
+            representatives[owner] = route
+
+    return representatives
+
+
 def representative_for(template: str, cohort: list[str]) -> str | None:
+    # Compatibility helper for callers that do not have the complete source
+    # template universe. snapshot() uses representative_routes_by_template()
+    # so overlapping exact/dynamic routes receive one deterministic owner.
     pattern = template_regex(template)
     return next((route for route in cohort if pattern.fullmatch(route)), None)
 
@@ -423,6 +485,7 @@ def snapshot() -> dict[str, Any]:
     }
     source = sorted(page_by_template)
     cohort = cohort_routes()
+    representatives = representative_routes_by_template(source, cohort)
 
     page_rows: list[dict[str, Any]] = []
     uncovered_public: list[str] = []
@@ -431,7 +494,7 @@ def snapshot() -> dict[str, Any]:
     for template in source:
         classification, reason = classify_route(template)
         counts[classification] += 1
-        representative = representative_for(template, cohort)
+        representative = representatives[template]
         covered = representative is not None
         if classification == "public" and not covered:
             uncovered_public.append(template)
