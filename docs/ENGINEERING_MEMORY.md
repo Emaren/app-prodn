@@ -93,7 +93,8 @@ parent makes source activation impossible.
 
 Permanent rule: release transport has two ownership surfaces — Git metadata and
 the tracked worktree. Both are proved before staging, and the tracked worktree
-is re-proved at the final pre-mutation seam before the service is stopped.
+is re-proved at the final pre-mutation seam before the service is stopped. That
+final proof also rejects a tracked path that disappeared after staging.
 Failures return bounded path samples plus the canonical explicit ownership
 repair. Activation does not silently escalate itself into recursive root
 mutation.
