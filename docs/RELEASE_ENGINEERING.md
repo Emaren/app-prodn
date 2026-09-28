@@ -760,10 +760,10 @@ Before the runtime swap, activation re-verifies:
 - protected WOLO counts.
 
 Git metadata health is not sufficient activation authority. The tracked
-worktree probe requires canonical deploy UID/GID ownership, writable tracked
-regular files, and writable/traversable tracked parent directories. It returns
-bounded JSON path samples for any non-zero class. Missing/invalid probe output
-fails closed.
+worktree probe requires every tracked path to exist, canonical deploy UID/GID
+ownership, writable tracked regular files, and writable/traversable tracked
+parent directories. It returns bounded JSON path samples for any non-zero
+class. Missing/invalid probe output fails closed.
 
 The same tracked-worktree probe runs again immediately before the activation
 service-stop seam and is persisted as
