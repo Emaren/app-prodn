@@ -1970,9 +1970,11 @@ cards from the same championship family can look inconsistent when action
 controls flow immediately after variable-length contender content.
 
 Durable rule: remove marketing copy at the intended scope, not by flattening the
-information hierarchy. Champions E2 therefore removes the oversized top title
-hero while preserving compact current-state counters and the section-level
-identity copy that explains each championship lane.
+visual hierarchy. Champions E2 keeps the premium hero frame, reduces its text
+to the small `AoE2WAR title economy` identity plus live Active / Vacant /
+Tribute counters, and removes the large headline/tagline/explainer copy.
+Between championship families E2 keeps only compact structural labels rather
+than explanatory SaaS-style prose.
 
 Durable rule: repeated championship card families have one bottom action
 baseline. Podium and national cards use flex-column bodies with the action
@@ -1995,3 +1997,24 @@ General rule: UI polish must not invent authority. Visual prominence, symmetry,
 default layout and curated ordering are product presentation decisions; holder,
 rating, result, betting, settlement and Wolo truth remain owned by their
 existing authority lanes.
+
+
+## 2026-09-28 — Local live-data previews must prove browser readiness
+
+A Champions E2 visual review exposed a preview-harness race rather than a page
+implementation failure. The local read-only production-data launcher treated an
+open HTTPS port as browser readiness, then opened Chrome while Next.js was still
+performing the first heavy App Router render. The browser could request
+`app/layout.js` or a speculative navigation chunk before that chunk was ready
+and surface a `ChunkLoadError`.
+
+Durable rule: `npm run dev:prod` preserves its production PostgreSQL read-only
+fence, but browser auto-open now waits for the requested preview route to render
+successfully and then independently proves every emitted Next.js JavaScript
+chunk referenced by that HTML. Failed prewarm/chunk proof suppresses auto-open
+instead of handing the browser a half-ready surface.
+
+Durable rule: speculative navigation warmups are optimization only. A transient
+dynamic-import failure must be caught, must never crash the page the user is
+currently viewing, and must clear its cached failed promise so later user intent
+can retry against fresh chunks.
