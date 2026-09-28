@@ -6,10 +6,12 @@ from pathlib import Path
 from typing import Optional
 import re
 import socket
+import ssl
 import subprocess
 import sys
 import time
 from urllib.parse import quote, unquote, urlsplit, urlunsplit
+from urllib.request import Request, urlopen
 
 SSH_TARGET = "root@157.180.114.124"
 LOCAL_DB_PORT = 55432
@@ -326,6 +328,115 @@ def wait_for_local_https(process) -> bool:
 
 
 
+def warm_preview_route(process, preview_path: str) -> bool:
+    """
+    Compile and fully render the requested preview route before a browser is
+    opened. Next dev starts listening before an App Router surface and its
+    layout chunks are actually browser-ready; heavy live-data pages can
+    otherwise trip the browser's ChunkLoadError timeout during first render.
+    """
+    preview_url = f"https://localhost:3000{preview_path}"
+    request = Request(
+        preview_url,
+        headers={
+            "User-Agent": "aoe2war-dev-prod-readonly-prewarm/1",
+            "Cache-Control": "no-cache",
+        },
+    )
+    context = ssl._create_unverified_context()
+    started = time.monotonic()
+
+    print(
+        "→ Prewarming requested preview route before browser launch: "
+        f"{preview_path}"
+    )
+
+    try:
+        with urlopen(
+            request,
+            context=context,
+            timeout=300,
+        ) as response:
+            body = response.read()
+            status = int(response.status)
+    except Exception as error:
+        if process.poll() is not None:
+            print(
+                "WARN: preview process exited during route prewarm",
+                file=sys.stderr,
+            )
+        else:
+            print(
+                "WARN: preview route prewarm failed; browser auto-open "
+                f"suppressed ({error})",
+                file=sys.stderr,
+            )
+        return False
+
+    elapsed = time.monotonic() - started
+    if status < 200 or status >= 400:
+        print(
+            "WARN: preview route prewarm returned "
+            f"HTTP {status}; browser auto-open suppressed",
+            file=sys.stderr,
+        )
+        return False
+
+    # App Router dev HTML names the exact chunks the browser will request.
+    # Prove those emitted JS chunks are independently retrievable before
+    # handing control to Chrome. This catches the class of failure where the
+    # route returned 200 but app/layout.js was not yet ready.
+    html = body.decode("utf-8", "ignore")
+    chunk_paths = sorted(
+        set(
+            re.findall(
+                r'''src=["'](/_next/static/chunks/[^"']+\.js)["']''',
+                html,
+            )
+        )
+    )
+
+    for chunk_path in chunk_paths:
+        chunk_url = f"https://localhost:3000{chunk_path}"
+        chunk_request = Request(
+            chunk_url,
+            headers={
+                "User-Agent": "aoe2war-dev-prod-readonly-prewarm/1",
+                "Cache-Control": "no-cache",
+            },
+        )
+        try:
+            with urlopen(
+                chunk_request,
+                context=context,
+                timeout=30,
+            ) as response:
+                response.read(1)
+                chunk_status = int(response.status)
+        except Exception as error:
+            print(
+                "WARN: preview chunk readiness proof failed for "
+                f"{chunk_path}; browser auto-open suppressed ({error})",
+                file=sys.stderr,
+            )
+            return False
+
+        if chunk_status < 200 or chunk_status >= 400:
+            print(
+                "WARN: preview chunk readiness proof returned "
+                f"HTTP {chunk_status} for {chunk_path}; "
+                "browser auto-open suppressed",
+                file=sys.stderr,
+            )
+            return False
+
+    print(
+        "PASS: preview route browser-ready "
+        f"({elapsed:.1f}s warmup · {len(chunk_paths)} JS chunk(s) proven)"
+    )
+    return True
+
+
 def normalize_preview_path(value: str) -> str:
     path = value.strip()
 
@@ -549,7 +660,7 @@ def main() -> int:
         if wait_for_local_https(node):
             if no_browser:
                 print("PASS: localhost browser auto-open disabled")
-            else:
+            elif warm_preview_route(node, preview_path):
                 preview_url = (
                     f"https://localhost:3000"
                     f"{preview_path}"
@@ -562,7 +673,7 @@ def main() -> int:
                 )
 
                 print(
-                    "PASS: opened local preview: "
+                    "PASS: opened browser-ready local preview: "
                     f"{preview_url}"
                 )
 
