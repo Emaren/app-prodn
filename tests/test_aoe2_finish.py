@@ -1354,6 +1354,64 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
                     production=production,
                 )
 
+    def test_pre_capacity_stage_recovery_skips_when_no_stage_exists(self):
+        result = MODULE.recover_superseded_stage_before_capacity(
+            local_head="a" * 40,
+            github_head="a" * 40,
+            production={},
+            plan=MODULE.SourcePlan(
+                mode="clean",
+                detail="exact",
+            ),
+        )
+
+        self.assertEqual(
+            result["status"],
+            "NOT_PRESENT",
+        )
+
+    def test_pre_capacity_stage_recovery_defers_until_source_authority_is_exact(self):
+        result = MODULE.recover_superseded_stage_before_capacity(
+            local_head="a" * 40,
+            github_head="b" * 40,
+            production={
+                "staged_build_id": "staged-build",
+            },
+            plan=MODULE.SourcePlan(
+                mode="history_reconcile",
+                detail="history differs",
+            ),
+        )
+
+        self.assertEqual(
+            result["status"],
+            "DEFERRED",
+        )
+
+    def test_finish_attempts_superseded_stage_retirement_before_generic_root_cleanup(self):
+        import inspect
+
+        source = inspect.getsource(
+            MODULE.execute_finish
+        )
+
+        self.assertIn(
+            "recover_superseded_stage_before_capacity",
+            source,
+        )
+        self.assertLess(
+            source.index(
+                "recover_superseded_stage_before_capacity"
+            ),
+            source.index(
+                "recover_root_headroom"
+            ),
+        )
+        self.assertIn(
+            "pre_capacity_stage_recovery",
+            source,
+        )
+
     def test_finish_wires_recovery_only_for_low_root(self):
         import inspect
 
