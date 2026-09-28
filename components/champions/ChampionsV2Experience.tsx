@@ -5,11 +5,7 @@ import Link from "next/link";
 import {
   ArrowLeft,
   ArrowRight,
-  Crown,
-  Shield,
-  Sparkles,
   Trophy,
-  UsersRound,
 } from "lucide-react";
 import {
   useEffect,
@@ -18,6 +14,7 @@ import {
   type ReactNode,
 } from "react";
 
+import ChampionsDisplayRail from "@/components/champions/ChampionsDisplayRail";
 import {
   avatarCardUrlForUser,
   featuredAvatarCardUrlForUser,
@@ -103,26 +100,30 @@ function ModeSwitch({
 
 function SectionHeading({
   kicker,
-  title,
-  body,
   action,
+  onKickerClick,
 }: {
   kicker: string;
-  title: string;
-  body: string;
   action?: ReactNode;
+  onKickerClick?: () => void;
 }) {
+  const kickerClass =
+    "text-[9px] font-black uppercase tracking-[0.34em] text-amber-100/55";
+
   return (
-    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-      <div className="max-w-3xl">
-        <div className="text-[9px] font-black uppercase tracking-[0.34em] text-amber-100/55">
+    <div className="flex min-h-8 items-center justify-between gap-4">
+      {onKickerClick ? (
+        <button
+          type="button"
+          onClick={onKickerClick}
+          className={`${kickerClass} cursor-default text-left`}
+          aria-label={`Toggle ${kicker} championship layout`}
+        >
           {kicker}
-        </div>
-        <h2 className="mt-2 font-serif text-3xl font-semibold tracking-[-0.035em] text-white sm:text-4xl">
-          {title}
-        </h2>
-        <p className="mt-2 text-sm leading-6 text-slate-400">{body}</p>
-      </div>
+        </button>
+      ) : (
+        <div className={kickerClass}>{kicker}</div>
+      )}
       {action}
     </div>
   );
@@ -131,11 +132,18 @@ function SectionHeading({
 function ContenderRows({
   contenders,
   max = 10,
+  padTo = 0,
+  placeholderLabel = "Unclaimed",
 }: {
   contenders: TitleContender[];
   max?: number;
+  padTo?: number;
+  placeholderLabel?: string;
 }) {
-  if (!contenders.length) {
+  const visible = contenders.slice(0, max);
+  const placeholderCount = Math.max(0, Math.min(max, padTo) - visible.length);
+
+  if (!visible.length && placeholderCount === 0) {
     return (
       <div className="rounded-xl border border-dashed border-white/8 bg-black/14 px-3 py-4 text-center text-xs text-slate-600">
         No verified contender data yet.
@@ -145,7 +153,7 @@ function ContenderRows({
 
   return (
     <div className="space-y-1.5">
-      {contenders.slice(0, max).map((row) => {
+      {visible.map((row) => {
         const content = (
           <div className="flex min-w-0 flex-1 items-center justify-between gap-3">
             <div className="min-w-0">
@@ -189,6 +197,21 @@ function ContenderRows({
           </div>
         );
       })}
+
+      {Array.from({ length: placeholderCount }, (_, index) => {
+        const rank = visible.length + index + 1;
+        return (
+          <div
+            key={`open:${rank}`}
+            className="flex items-center gap-2 rounded-xl border border-dashed border-white/[0.055] bg-black/[0.08] px-2.5 py-2 text-slate-700"
+          >
+            <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-white/[0.06] bg-black/20 text-[9px] font-black">
+              {rank}
+            </div>
+            <div className="text-xs font-semibold">{placeholderLabel}</div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -204,6 +227,13 @@ function holderAvatar(title: ChampionTitleState) {
     holder.name,
     null,
   );
+}
+
+function championshipTitleLines(title: ChampionTitleState) {
+  if (title.type === "chaos") return ["Chaos", "Champion"];
+  if (title.type === "world") return ["AoE2WAR", "World", "Champion"];
+  if (title.type === "womens") return ["Women's", "Champion"];
+  return [title.displayName];
 }
 
 function ChampionshipCard({
@@ -243,7 +273,9 @@ function ChampionshipCard({
               {title.eyebrow}
             </div>
             <h3 className="mt-1 max-w-[16rem] font-serif text-3xl font-semibold leading-[0.98] tracking-[-0.035em]">
-              {title.displayName}
+              {championshipTitleLines(title).map((line) => (
+                <span key={line} className="block">{line}</span>
+              ))}
             </h3>
           </div>
           <span
@@ -288,10 +320,14 @@ function ChampionshipCard({
               Contenders
             </div>
             <div className="text-[9px] text-slate-600">
-              {title.contenders.length}/10
+              {Math.min(title.contenders.length, 10)}/10
             </div>
           </div>
-          <ContenderRows contenders={title.contenders} />
+          <ContenderRows
+            contenders={title.contenders}
+            padTo={title.type === "womens" ? 10 : 0}
+            placeholderLabel="Unclaimed"
+          />
         </div>
 
         <Link
@@ -308,55 +344,71 @@ function ChampionshipCard({
 
 function ModeChampionCard({
   champion,
+  stacked = false,
 }: {
   champion: ChampionsV2ModeChampion;
+  stacked?: boolean;
 }) {
-  return (
-    <article className="overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(145deg,rgba(10,20,36,0.96),rgba(3,7,18,0.99))] shadow-[0_28px_90px_rgba(0,0,0,0.28)]">
-      <div className="grid gap-0 lg:grid-cols-[0.9fr_1.1fr]">
-        <div className="relative min-h-[26rem] overflow-hidden">
-          <Image
-            src={MALE_SILHOUETTE}
-            alt=""
-            fill
-            unoptimized
-            sizes="(min-width:1024px) 45vw, 92vw"
-            className="object-contain object-bottom opacity-60"
-          />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_24%,rgba(96,165,250,0.13),transparent_43%),linear-gradient(180deg,transparent_45%,#050914_100%)]" />
-          <div className="absolute left-5 right-5 top-5">
-            <div className="text-[9px] font-black uppercase tracking-[0.28em] text-sky-100/55">
-              {laneName(champion.lane)} throne
-            </div>
-            <h3 className="mt-2 font-serif text-4xl font-semibold tracking-[-0.04em] text-white">
-              {champion.shortName}
-            </h3>
-            <div className="mt-2 inline-flex rounded-full border border-slate-400/14 bg-slate-600/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
-              Vacant
-            </div>
-          </div>
-          <div className="absolute bottom-2 left-1/2 h-36 w-[85%] -translate-x-1/2">
-            <Image
-              src={champion.beltUrl}
-              alt={champion.name}
-              fill
-              unoptimized
-              sizes="460px"
-              className="object-contain drop-shadow-[0_15px_24px_rgba(0,0,0,0.72)]"
-            />
-          </div>
+  const throne = (
+    <div className={`relative overflow-hidden ${stacked ? "h-[26rem]" : "min-h-[26rem]"}`}>
+      <Image
+        src={MALE_SILHOUETTE}
+        alt=""
+        fill
+        unoptimized
+        sizes={stacked ? "(min-width:1280px) 50vw, 92vw" : "(min-width:1024px) 45vw, 92vw"}
+        className="object-contain object-bottom opacity-60"
+      />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_24%,rgba(96,165,250,0.13),transparent_43%),linear-gradient(180deg,transparent_45%,#050914_100%)]" />
+      <div className="absolute left-5 right-5 top-5">
+        <div className="text-[9px] font-black uppercase tracking-[0.28em] text-sky-100/55">
+          {laneName(champion.lane)} throne
         </div>
-
-        <div className="border-t border-white/8 p-4 lg:border-l lg:border-t-0">
-          <div className="mb-3 flex items-center justify-between">
-            <div className="text-[9px] font-black uppercase tracking-[0.23em] text-slate-500">
-              Top ten by {champion.lane.toUpperCase()} ELO
-            </div>
-            <Trophy className="h-4 w-4 text-amber-100/45" />
-          </div>
-          <ContenderRows contenders={champion.contenders} />
+        <h3 className="mt-2 font-serif text-4xl font-semibold tracking-[-0.04em] text-white">
+          {champion.shortName}
+        </h3>
+        <div className="mt-2 inline-flex rounded-full border border-slate-400/14 bg-slate-600/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
+          Vacant
         </div>
       </div>
+      <div className="absolute bottom-2 left-1/2 h-36 w-[85%] -translate-x-1/2">
+        <Image
+          src={champion.beltUrl}
+          alt={champion.name}
+          fill
+          unoptimized
+          sizes="460px"
+          className="object-contain drop-shadow-[0_15px_24px_rgba(0,0,0,0.72)]"
+        />
+      </div>
+    </div>
+  );
+
+  const contenders = (
+    <div className={stacked ? "border-t border-white/8 p-4" : "border-t border-white/8 p-4 lg:border-l lg:border-t-0"}>
+      <div className="mb-3 flex items-center justify-between">
+        <div className="text-[9px] font-black uppercase tracking-[0.23em] text-slate-500">
+          Top ten by {champion.lane.toUpperCase()} ELO
+        </div>
+        <Trophy className="h-4 w-4 text-amber-100/45" />
+      </div>
+      <ContenderRows contenders={champion.contenders} />
+    </div>
+  );
+
+  return (
+    <article className="overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(145deg,rgba(10,20,36,0.96),rgba(3,7,18,0.99))] shadow-[0_28px_90px_rgba(0,0,0,0.28)]">
+      {stacked ? (
+        <>
+          {throne}
+          {contenders}
+        </>
+      ) : (
+        <div className="grid gap-0 lg:grid-cols-[0.9fr_1.1fr]">
+          {throne}
+          {contenders}
+        </div>
+      )}
     </article>
   );
 }
@@ -373,12 +425,9 @@ function TeamTitleCard({
       <div className="flex items-start justify-between gap-4 p-5">
         <div>
           <div className="text-[9px] font-black uppercase tracking-[0.26em] text-amber-100/50">
-            Team crown · {lane.toUpperCase()}
+            {lane.toUpperCase()} · {title.size}v{title.size}
           </div>
-          <h3 className="mt-2 font-serif text-3xl font-semibold">{title.name}</h3>
-          <div className="mt-2 text-xs text-slate-500">
-            {title.holderSlots} warriors · all seats vacant
-          </div>
+          <h3 className="mt-1 font-serif text-3xl font-semibold">{title.name}</h3>
         </div>
         <span className="rounded-full border border-slate-400/14 bg-slate-600/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">
           Vacant
@@ -386,7 +435,7 @@ function TeamTitleCard({
       </div>
 
       <div
-        className="grid gap-2 px-3 pb-5"
+        className="grid gap-2 px-3"
         style={{
           gridTemplateColumns: `repeat(${title.holderSlots}, minmax(0, 1fr))`,
         }}
@@ -401,7 +450,7 @@ function TeamTitleCard({
               alt=""
               fill
               unoptimized
-              sizes="240px"
+              sizes="320px"
               className="object-contain object-bottom opacity-46"
             />
             <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_40%,rgba(3,7,17,0.12)_60%,#030711_100%)]" />
@@ -411,15 +460,24 @@ function TeamTitleCard({
                 alt={`${title.name} belt ${index + 1}`}
                 fill
                 unoptimized
-                sizes="220px"
+                sizes="280px"
                 className="object-contain drop-shadow-[0_10px_16px_rgba(0,0,0,0.76)]"
               />
             </div>
-            <div className="absolute bottom-2 right-2 z-10 rounded-full border border-white/8 bg-black/45 px-2 py-1 text-[8px] font-black uppercase tracking-[0.16em] text-slate-500">
-              Seat {index + 1}
-            </div>
           </div>
         ))}
+      </div>
+
+      <div className="p-4">
+        <div className="mb-2 text-[9px] font-black uppercase tracking-[0.22em] text-slate-500">
+          Team contenders
+        </div>
+        <ContenderRows
+          contenders={[]}
+          max={5}
+          padTo={5}
+          placeholderLabel="Open team contender"
+        />
       </div>
     </article>
   );
@@ -430,6 +488,7 @@ function NationalBeltCard({
 }: {
   belt: ChampionsV2NationalBelt;
 }) {
+  const hasRealHolder = Boolean(belt.holder);
   const holderAvatarUrl = belt.holder
     ? avatarCardUrlForUser(belt.holder.uid, belt.holder.name)
     : MALE_SILHOUETTE;
@@ -447,17 +506,19 @@ function NationalBeltCard({
               fill
               unoptimized
               sizes="340px"
-              className="scale-110 object-cover object-center opacity-32 blur-xl"
+              className="scale-105 object-cover object-center opacity-20 blur-2xl"
             />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(15,23,42,0.10),rgba(2,6,23,0.54)_74%)]" />
-            <Image
-              src={belt.beltUrl}
-              alt={`${belt.country} championship belt showcase`}
-              fill
-              unoptimized
-              sizes="340px"
-              className="object-contain object-center p-3 drop-shadow-[0_18px_28px_rgba(0,0,0,0.62)]"
-            />
+            <div className="absolute inset-0 z-[2] bg-[radial-gradient(circle_at_50%_40%,rgba(15,23,42,0.08),rgba(2,6,23,0.64)_72%)]" />
+            <div className="absolute left-1/2 top-[7.2rem] z-10 h-[9.5rem] w-[91%] -translate-x-1/2">
+              <Image
+                src={belt.beltUrl}
+                alt={`${belt.country} championship belt showcase`}
+                fill
+                unoptimized
+                sizes="320px"
+                className="object-contain object-center drop-shadow-[0_18px_28px_rgba(0,0,0,0.62)]"
+              />
+            </div>
           </>
         ) : (
           <Image
@@ -466,40 +527,42 @@ function NationalBeltCard({
             fill
             unoptimized
             sizes="340px"
-            className={`object-contain object-bottom ${belt.active ? "opacity-92" : "opacity-50"}`}
+            className={`z-10 object-contain object-bottom ${belt.active ? "opacity-92" : "opacity-50"}`}
           />
         )}
+
         <div
           className={
             showcaseBackground
-              ? "absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,0.10),transparent_42%,#030711_100%)]"
-              : "absolute inset-0 bg-[linear-gradient(180deg,transparent_36%,rgba(3,7,17,0.16)_60%,#030711_100%)]"
+              ? "absolute inset-0 z-[12] bg-[linear-gradient(180deg,rgba(2,6,23,0.06),transparent_48%,#030711_100%)]"
+              : "absolute inset-0 z-[12] bg-[linear-gradient(180deg,transparent_36%,rgba(3,7,17,0.10)_60%,#030711_100%)]"
           }
         />
 
-        <div className="absolute left-4 right-4 top-4 flex items-start justify-between gap-3">
-          <div>
-            <div className="text-4xl">{belt.flag}</div>
-            <div className="mt-2 text-[9px] font-black uppercase tracking-[0.24em] text-amber-100/55">
-              {belt.scope === "regional" ? "Regional crown" : "National crown"}
-            </div>
-            <h3 className="mt-1 font-serif text-2xl font-semibold text-white">
-              {belt.country}
-            </h3>
-          </div>
-          <span
-            className={`rounded-full border px-2 py-1 text-[8px] font-black uppercase tracking-[0.15em] ${
-              belt.active
-                ? "border-emerald-200/18 bg-emerald-300/8 text-emerald-100"
-                : "border-slate-400/12 bg-slate-600/8 text-slate-500"
-            }`}
-          >
-            {belt.active ? "Held" : "Vacant"}
-          </span>
+        <div className="absolute left-4 top-4 z-30 text-4xl">{belt.flag}</div>
+        <div
+          className={`absolute left-4 top-[4.4rem] text-[9px] font-black uppercase tracking-[0.24em] text-amber-100/55 ${
+            hasRealHolder && !showcaseBackground ? "z-[5]" : "z-30"
+          }`}
+        >
+          {belt.scope === "regional" ? "Regional crown" : "National crown"}
         </div>
+        <h3 className="absolute left-4 top-[5.65rem] z-30 font-serif text-2xl font-semibold text-white">
+          {belt.country}
+        </h3>
+
+        <span
+          className={`absolute right-4 top-4 z-30 rounded-full border px-2 py-1 text-[8px] font-black uppercase tracking-[0.15em] ${
+            belt.active
+              ? "border-emerald-200/18 bg-emerald-300/8 text-emerald-100"
+              : "border-slate-400/12 bg-slate-600/8 text-slate-500"
+          }`}
+        >
+          {belt.active ? "Held" : "Vacant"}
+        </span>
 
         {!showcaseBackground ? (
-          <div className="absolute bottom-0 left-1/2 h-28 w-[90%] -translate-x-1/2">
+          <div className="absolute bottom-0 left-1/2 z-20 h-28 w-[90%] -translate-x-1/2">
             <Image
               src={belt.beltUrl}
               alt={`${belt.country} championship belt`}
@@ -631,6 +694,7 @@ export default function ChampionsV2Experience({
   state: ChampionsV2State;
 }) {
   const [lane, setLane] = useState<ChampionsLane>("rm");
+  const [stackModeChampions, setStackModeChampions] = useState(false);
   const nationalRailRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -653,24 +717,11 @@ export default function ChampionsV2Experience({
     <main className="mx-auto w-full max-w-[108rem] space-y-10 overflow-x-hidden px-3 py-5 text-white sm:px-5 sm:py-7">
       <section className="relative overflow-hidden rounded-[2.5rem] border border-amber-100/14 bg-[radial-gradient(circle_at_75%_15%,rgba(251,191,36,0.13),transparent_28%),radial-gradient(circle_at_12%_40%,rgba(59,130,246,0.11),transparent_26%),linear-gradient(145deg,#07101d,#070b14_56%,#140d08)] p-6 shadow-[0_44px_145px_rgba(0,0,0,0.48)] sm:p-8 lg:p-10">
         <div className="relative z-10 grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end">
-          <div className="max-w-4xl">
-            <div className="flex items-center gap-2 text-amber-100/65">
-              <Crown className="h-4 w-4" />
-              <span className="text-[9px] font-black uppercase tracking-[0.38em]">
-                AoE2WAR title economy · rebuilt
-              </span>
-            </div>
-            <h1 className="mt-4 font-serif text-5xl font-semibold leading-[0.92] tracking-[-0.055em] sm:text-6xl lg:text-7xl">
-              CHAMPIONSHIP
-              <br />
-              BELTS
-            </h1>
-            <p className="mt-5 max-w-3xl text-sm leading-7 text-slate-300 sm:text-base">
-              Real custody, real contenders, two games under one roof. RM and DM
-              have their own ladders; national crowns carry their own flags; the
-              Chaos line rewards the warriors actually feeding the Kingdom.
-            </p>
-          </div>
+          <h1 className="font-serif text-5xl font-semibold leading-[0.92] tracking-[-0.055em] sm:text-6xl lg:text-7xl">
+            CHAMPIONSHIP
+            <br />
+            BELTS
+          </h1>
 
           <div className="grid grid-cols-3 gap-2">
             {[
@@ -693,11 +744,7 @@ export default function ChampionsV2Experience({
       </section>
 
       <section className="space-y-5">
-        <SectionHeading
-          kicker="The open thrones"
-          title="The three crowns everybody sees first"
-          body="Chaos is activity-driven. World alternates the strongest DM and RM challengers. The Women's throne opens with Moose as the first invited contender."
-        />
+        <SectionHeading kicker="The open thrones" />
         <div className="grid gap-5 xl:grid-cols-3">
           <ChampionshipCard title={state.chaos} />
           <ChampionshipCard title={state.world} emphasis />
@@ -708,23 +755,20 @@ export default function ChampionsV2Experience({
       <section className="space-y-5">
         <SectionHeading
           kicker="The two games"
-          title="RM Champion · DM Champion"
-          body="No mixed ladder math. Each crown reads its own official Watcher-backed rating lane and publishes the ten highest challengers."
+          onKickerClick={() => setStackModeChampions((current) => !current)}
         />
         <div className="grid gap-5 xl:grid-cols-2">
-          <ModeChampionCard champion={state.rmChampion} />
-          <ModeChampionCard champion={state.dmChampion} />
+          <ModeChampionCard champion={state.rmChampion} stacked={stackModeChampions} />
+          <ModeChampionCard champion={state.dmChampion} stacked={stackModeChampions} />
         </div>
       </section>
 
       <section className="space-y-5">
         <SectionHeading
           kicker="War parties"
-          title={`${lane.toUpperCase()} team championships`}
-          body="One switch changes every team crown together. The choice persists, so DM players can live in the DM side of the Kingdom without reselecting it."
           action={<ModeSwitch lane={lane} onChange={chooseLane} />}
         />
-        <div className="grid gap-5 xl:grid-cols-3">
+        <div className="space-y-5">
           {state.teams[lane].map((title) => (
             <TeamTitleCard key={title.size} title={title} lane={lane} />
           ))}
@@ -732,47 +776,40 @@ export default function ChampionsV2Experience({
       </section>
 
       <section className="space-y-5">
-        <SectionHeading
-          kicker="National & regional standards"
-          title="Every flag gets a road to the belt"
-          body="Canada, USA, and Mexico are lit. National and regional crowns stay vacant until a verified challenger carries the banner into title custody."
-          action={
-            <div className="flex gap-2">
-              <button
-                type="button"
-                aria-label="Previous national belts"
-                onClick={() => scrollNation(-1)}
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.025] text-slate-400 transition hover:border-amber-200/20 hover:text-amber-100"
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                aria-label="Next national belts"
-                onClick={() => scrollNation(1)}
-                className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 bg-white/[0.025] text-slate-400 transition hover:border-amber-200/20 hover:text-amber-100"
-              >
-                <ArrowRight className="h-4 w-4" />
-              </button>
-            </div>
-          }
-        />
+        <SectionHeading kicker="National & regional standards" />
 
-        <div
-          ref={nationalRailRef}
-          className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 [scrollbar-color:rgba(148,163,184,0.24)_transparent] [scrollbar-width:thin]"
-        >
-          {state.nationals.map((belt) => (
-            <NationalBeltCard key={belt.slug} belt={belt} />
-          ))}
+        <div className="group/nations relative">
+          <div
+            ref={nationalRailRef}
+            className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 [scrollbar-color:rgba(148,163,184,0.24)_transparent] [scrollbar-width:thin]"
+          >
+            {state.nationals.map((belt) => (
+              <NationalBeltCard key={belt.slug} belt={belt} />
+            ))}
+          </div>
+
+          <button
+            type="button"
+            aria-label="Previous national belts"
+            onClick={() => scrollNation(-1)}
+            className="pointer-events-none absolute inset-y-3 left-0 z-40 flex w-12 items-center justify-start rounded-r-[2rem] bg-[linear-gradient(90deg,rgba(125,211,252,0.16),rgba(59,130,246,0.05),transparent)] pl-2 text-sky-100 opacity-0 shadow-[inset_-10px_0_24px_rgba(59,130,246,0.08)] transition duration-200 group-hover/nations:pointer-events-auto group-hover/nations:opacity-100 hover:!bg-[linear-gradient(90deg,rgba(186,230,253,0.26),rgba(59,130,246,0.09),transparent)] sm:w-16"
+          >
+            <ArrowLeft className="h-4 w-4 opacity-50" />
+          </button>
+          <button
+            type="button"
+            aria-label="Next national belts"
+            onClick={() => scrollNation(1)}
+            className="pointer-events-none absolute inset-y-3 right-0 z-40 flex w-12 items-center justify-end rounded-l-[2rem] bg-[linear-gradient(270deg,rgba(125,211,252,0.16),rgba(59,130,246,0.05),transparent)] pr-2 text-sky-100 opacity-0 shadow-[inset_10px_0_24px_rgba(59,130,246,0.08)] transition duration-200 group-hover/nations:pointer-events-auto group-hover/nations:opacity-100 hover:!bg-[linear-gradient(270deg,rgba(186,230,253,0.26),rgba(59,130,246,0.09),transparent)] sm:w-16"
+          >
+            <ArrowRight className="h-4 w-4 opacity-50" />
+          </button>
         </div>
       </section>
 
       <section className="space-y-5">
         <SectionHeading
           kicker="ELO crowns"
-          title={`${lane.toUpperCase()} rating divisions`}
-          body={`Five belts, five rating bands, and ten real ${lane.toUpperCase()} contenders in every band where the leaderboard has enough rated warriors.`}
           action={<ModeSwitch lane={lane} onChange={chooseLane} />}
         />
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
@@ -784,11 +821,7 @@ export default function ChampionsV2Experience({
 
       {state.designationTitles.length ? (
         <section className="space-y-5">
-          <SectionHeading
-            kicker="Artifacts"
-            title="Special designations"
-            body="The old artifacts remain part of the title economy, but they no longer compete visually with the championship ladders above."
-          />
+          <SectionHeading kicker="Artifacts" />
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {state.designationTitles.map((title) => (
               <DesignationCard key={title.id} title={title} />
@@ -797,35 +830,7 @@ export default function ChampionsV2Experience({
         </section>
       ) : null}
 
-      <section className="grid gap-4 rounded-[2rem] border border-white/9 bg-white/[0.018] p-5 md:grid-cols-3">
-        <div className="flex gap-3">
-          <Shield className="mt-0.5 h-5 w-5 shrink-0 text-amber-100/55" />
-          <div>
-            <div className="text-sm font-semibold text-white">Four active crowns</div>
-            <div className="mt-1 text-xs leading-5 text-slate-500">
-              Chaos, Canada, USA, and Mexico are the current active title economy.
-            </div>
-          </div>
-        </div>
-        <div className="flex gap-3">
-          <UsersRound className="mt-0.5 h-5 w-5 shrink-0 text-sky-100/55" />
-          <div>
-            <div className="text-sm font-semibold text-white">Contenders come from evidence</div>
-            <div className="mt-1 text-xs leading-5 text-slate-500">
-              RM and DM rating lanes stay separate; Chaos follows linked Watcher activity.
-            </div>
-          </div>
-        </div>
-        <div className="flex gap-3">
-          <Sparkles className="mt-0.5 h-5 w-5 shrink-0 text-violet-100/55" />
-          <div>
-            <div className="text-sm font-semibold text-white">Vacancy is visible</div>
-            <div className="mt-1 text-xs leading-5 text-slate-500">
-              Unknown warriors stay unknown until somebody actually wins the belt.
-            </div>
-          </div>
-        </div>
-      </section>
+      <ChampionsDisplayRail active="e2" />
     </main>
   );
 }
