@@ -554,7 +554,7 @@ test("client and routes implement idle-safe heartbeat, unload, and logout contra
   assert.match(pingRoute, /USER_ONLINE_LEAVE_GRACE_MS/);
   assert.match(pingRoute, /report_traffic_identity !== false/);
   assert.doesNotMatch(pingRoute, /lastSeen:\s*null/);
-  assert.match(pingRoute, /invalidatePublicPlayerDirectoryCache/);
+  assert.doesNotMatch(pingRoute, /invalidatePublicPlayerDirectoryCache/);
   assert.match(pingRoute, /readUserOnlineJsonBody/);
   assert.doesNotMatch(pingRoute, /request\.json\(/);
   assert.match(pingRoute, /isUserOnlineSameOrigin\(request\)/);
@@ -581,10 +581,13 @@ test("client and routes implement idle-safe heartbeat, unload, and logout contra
   assert.match(onlineGuards, /evictOldest/);
   assert.match(sessionRoute, /forceUserOnlineOffline/);
   assert.match(sessionRoute, /livingKingdomHub\.removeUser\(uid\)/);
+  assert.doesNotMatch(sessionRoute, /invalidatePublicPlayerDirectoryCache/);
   assert.doesNotMatch(sessionRoute, /lastSeen:\s*null/);
   assert.match(steamRoute, /lastSeen: new Date\(\)/);
   assert.match(publicPresence, /userIsOnline/);
-  assert.match(publicPlayerDirectory, /userIsOnline/);
+  assert.doesNotMatch(publicPlayerDirectory, /userIsOnline/);
+  assert.match(publicPlayerDirectory, /loadPublicPresenceSnapshot/);
+  assert.match(publicPlayerDirectory, /overlayPublicPlayerDirectoryPresence/);
   assert.match(playerProfile, /userIsOnline/);
   assert.match(challenges, /userIsOnline/);
 
