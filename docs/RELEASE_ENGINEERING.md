@@ -637,8 +637,9 @@ whose safe resolution is already machine-provable. The canonical contract is
 Current automatic recovery classes are:
 
 - **low production-root headroom** — reclaim regenerable APT material first,
-  then bound the journal, then checksum-archive only closed rotated nginx
-  `.log.1` files until the configured floor is restored;
+  then exact Snap revisions already marked `disabled` by Snap itself, then
+  bound the journal, then checksum-archive only closed rotated nginx `.log.1`
+  files until the configured recovery target is restored;
 - **superseded staged candidates** — exact current-release resume remains first,
   then `.next-release` and `.node_modules-release` may be retired only when one
   durable receipt proves older provenance and staged trees have zero runtime
