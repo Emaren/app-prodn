@@ -119,7 +119,7 @@ test("national belt hall reads represented-country truth for every crown", () =>
   for (const name of ["Scavanger_Ab", "Zodiac", "Sniper", "Dil Pascana", "Maxi"]) assert.ok(state.includes(name));
   for (const country of ["Brazil", "Argentina", "France", "Japan", "Taiwan", "Saudi Arabia"]) assert.ok(state.includes(`country: "${country}"`));
   assert.match(experience, /snap-x/);
-  assert.match(experience, /group\/nations/);
+  assert.match(experience, /hover:opacity-100/);
   assert.match(experience, /scrollBy/);
 });
 
