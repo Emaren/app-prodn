@@ -18,6 +18,7 @@ import {
   loadPublicPlayerDirectory,
   type PublicPlayerDirectoryEntry,
 } from "@/lib/publicPlayerDirectory";
+import { loadPublicPlayerDirectoryGeneration } from "@/lib/publicPlayerDirectoryGeneration";
 
 export type ChampionsLane = "rm" | "dm";
 
@@ -728,9 +729,20 @@ function teamTitles(
 export async function loadChampionsV2State(
   prisma: PrismaClient,
 ): Promise<ChampionsV2State> {
+  const projectionGeneration =
+    await loadPublicPlayerDirectoryGeneration(
+      prisma,
+    );
   const [titleEconomy, directory] = await Promise.all([
-    loadChampionTitleEconomyState(prisma),
-    loadPublicPlayerDirectory(prisma),
+    loadChampionTitleEconomyState(
+      prisma,
+      { projectionGeneration },
+    ),
+    loadPublicPlayerDirectory(
+      prisma,
+      projectionGeneration,
+      { includePresence: false },
+    ),
   ]);
 
   const directoryEntries = directory.allEntries;
