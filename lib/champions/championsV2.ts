@@ -197,7 +197,12 @@ function entryIdentity(entry: PublicPlayerDirectoryEntry) {
   return entry.uid || entry.steamId || entry.key;
 }
 
-function laneRating(entry: PublicPlayerDirectoryEntry, lane: ChampionsLane) {
+function laneRating(
+  entry: PublicPlayerDirectoryEntry | null | undefined,
+  lane: ChampionsLane,
+) {
+  if (!entry) return null;
+
   const rating = lane === "dm" ? entry.steamDmRating : entry.steamRmRating;
   return typeof rating === "number" && Number.isFinite(rating) ? Math.round(rating) : null;
 }
