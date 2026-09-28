@@ -115,13 +115,39 @@ def production_transport() -> tuple[dict[str, str], str | None]:
         "executor=$(id -un)",
         "git_foreign_entries=$(find .git ! -user \"$executor\" -printf . 2>/dev/null | wc -c | tr -d ' ')",
         "git_unwritable_dirs=$(find .git -type d ! -writable -printf . 2>/dev/null | wc -c | tr -d ' ')",
+        (
+            "tracked_probe=$(git ls-files -z | python3 -c "
+            + shlex.quote(
+                "import os,sys\n"
+                "uid=os.getuid(); gid=os.getgid(); files=sys.stdin.buffer.read().split(b'\\0')\n"
+                "foreign=0; bad=set(); foreign_sample=''; bad_sample=''; seen=set()\n"
+                "for raw in files:\n"
+                "    if not raw: continue\n"
+                "    path=os.fsdecode(raw)\n"
+                "    try: st=os.lstat(path)\n"
+                "    except FileNotFoundError: continue\n"
+                "    if st.st_uid != uid or st.st_gid != gid:\n"
+                "        foreign += 1\n"
+                "        if not foreign_sample: foreign_sample=path\n"
+                "    parent=os.path.dirname(path) or '.'\n"
+                "    if parent not in seen:\n"
+                "        seen.add(parent)\n"
+                "        if not (os.access(parent, os.W_OK) and os.access(parent, os.X_OK)):\n"
+                "            bad.add(parent)\n"
+                "            if not bad_sample: bad_sample=parent\n"
+                "clean=lambda value: value.replace('\\t','?').replace('\\n','?')\n"
+                "print(f'{foreign}\\t{len(bad)}\\t{clean(foreign_sample)}\\t{clean(bad_sample)}')"
+            )
+            + ")"
+        ),
+        "IFS=$(printf '\\t') read -r tracked_foreign_entries tracked_unwritable_parents tracked_foreign_sample tracked_unwritable_sample <<< \"$tracked_probe\"",
         f"deploy_key={shlex.quote(EXPECTED_DEPLOY_KEY)}",
         "deploy_key_readable=$([ -r \"$deploy_key\" ] && echo 1 || echo 0)",
         "deploy_key_owner=$(stat -c '%U:%G' \"$deploy_key\" 2>/dev/null || true)",
         "deploy_key_mode=$(stat -c '%a' \"$deploy_key\" 2>/dev/null || true)",
         "deploy_key_fingerprint=$(ssh-keygen -lf \"$deploy_key\" 2>/dev/null | awk '{print $2}' || true)",
         "remote_main=$(git ls-remote --exit-code origin refs/heads/main 2>/dev/null | awk '{print $1}' || true)",
-        'printf "origin\\t%s\\nsshcmd\\t%s\\nprotocol\\t%s\\nexecutor\\t%s\\ngit_foreign_entries\\t%s\\ngit_unwritable_dirs\\t%s\\ndeploy_key_readable\\t%s\\ndeploy_key_owner\\t%s\\ndeploy_key_mode\\t%s\\ndeploy_key_fingerprint\\t%s\\nremote_main\\t%s\\n" "$origin" "$sshcmd" "$protocol" "$executor" "$git_foreign_entries" "$git_unwritable_dirs" "$deploy_key_readable" "$deploy_key_owner" "$deploy_key_mode" "$deploy_key_fingerprint" "$remote_main"',
+        'printf "origin\\t%s\\nsshcmd\\t%s\\nprotocol\\t%s\\nexecutor\\t%s\\ngit_foreign_entries\\t%s\\ngit_unwritable_dirs\\t%s\\ntracked_foreign_entries\\t%s\\ntracked_unwritable_parents\\t%s\\ntracked_foreign_sample\\t%s\\ntracked_unwritable_sample\\t%s\\ndeploy_key_readable\\t%s\\ndeploy_key_owner\\t%s\\ndeploy_key_mode\\t%s\\ndeploy_key_fingerprint\\t%s\\nremote_main\\t%s\\n" "$origin" "$sshcmd" "$protocol" "$executor" "$git_foreign_entries" "$git_unwritable_dirs" "$tracked_foreign_entries" "$tracked_unwritable_parents" "$tracked_foreign_sample" "$tracked_unwritable_sample" "$deploy_key_readable" "$deploy_key_owner" "$deploy_key_mode" "$deploy_key_fingerprint" "$remote_main"',
     ]
     remote = "; ".join(commands)
     p = run(
@@ -271,6 +297,18 @@ def validation_errors(
         errors.append("production .git contains entries not owned by the deploy user")
     if transport.get("git_unwritable_dirs") != "0":
         errors.append("production .git contains directories not writable by the deploy user")
+    if transport.get("tracked_foreign_entries") != "0":
+        sample = transport.get("tracked_foreign_sample") or "unknown"
+        errors.append(
+            "production tracked source contains entries not owned by the deploy user "
+            f"(sample: {sample})"
+        )
+    if transport.get("tracked_unwritable_parents") != "0":
+        sample = transport.get("tracked_unwritable_sample") or "unknown"
+        errors.append(
+            "production tracked source has parent directories not writable by the deploy user "
+            f"(sample: {sample})"
+        )
     if transport.get("deploy_key_readable") != "1":
         errors.append("production dedicated deploy key is not readable by the deploy user")
     if transport.get("deploy_key_owner") != f"{EXPECTED_PROD_USER}:{EXPECTED_PROD_USER}":
@@ -646,6 +684,18 @@ def activation_validation_errors(
         errors.append("production .git contains entries not owned by the deploy user")
     if transport.get("git_unwritable_dirs") != "0":
         errors.append("production .git contains directories not writable by the deploy user")
+    if transport.get("tracked_foreign_entries") != "0":
+        sample = transport.get("tracked_foreign_sample") or "unknown"
+        errors.append(
+            "production tracked source contains entries not owned by the deploy user "
+            f"(sample: {sample})"
+        )
+    if transport.get("tracked_unwritable_parents") != "0":
+        sample = transport.get("tracked_unwritable_sample") or "unknown"
+        errors.append(
+            "production tracked source has parent directories not writable by the deploy user "
+            f"(sample: {sample})"
+        )
     if transport.get("deploy_key_readable") != "1":
         errors.append("production dedicated deploy key is not readable by deploy user")
     if transport.get("deploy_key_owner") != f"{EXPECTED_PROD_USER}:{EXPECTED_PROD_USER}":
