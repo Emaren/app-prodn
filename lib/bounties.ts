@@ -236,6 +236,8 @@ async function loadBountyDirectory(
   if (!claimedPreview) {
     return loadPublicPlayerDirectory(
       prisma,
+      null,
+      { includePresence: false },
     );
   }
 
