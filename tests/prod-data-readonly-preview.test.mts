@@ -237,3 +237,17 @@ test("dev:prod opens the page inferred from the active work lane", () => {
     /https:\/\/localhost:3000\/clans\/aoe2war/,
   );
 });
+
+test("dev:prod waits for a fully rendered route and emitted chunks before opening Chrome", () => {
+  const launcher = source("scripts/dev-prod-readonly.py");
+
+  assert.match(launcher, /def warm_preview_route\(process, preview_path: str\) -> bool:/);
+  assert.match(launcher, /urlopen\([\s\S]*timeout=300/);
+  assert.match(launcher, /_next\/static\/chunks/);
+  assert.match(launcher, /timeout=30/);
+  assert.match(launcher, /browser-ready/);
+  assert.match(
+    launcher,
+    /elif warm_preview_route\(node, preview_path\):[\s\S]*subprocess\.Popen\([\s\S]*\["open", preview_url\]/,
+  );
+});
