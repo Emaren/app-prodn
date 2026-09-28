@@ -143,8 +143,9 @@ test("E2 restores the premium hero tile while stripping explanatory SaaS copy", 
   assert.match(experience, /\["Active", state\.summary\.active\]/);
   assert.match(experience, /\["Vacant", state\.summary\.vacant\]/);
   assert.match(experience, /\["Tribute",/);
+  assert.match(experience, /CHAMPIONSHIP/);
+  assert.match(experience, /BELTS/);
   for (const copy of [
-    "CHAMPIONSHIP",
     "Real custody, real contenders",
     "The three crowns everybody sees first",
     "Chaos is activity-driven",
