@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/champions-e2-polish-20260928` at `3fda1044c3e961f7faea4041d300ebaeda5e9c2d`
+Implementation baseline: `preview/champions-clean-hero-20260928` at `ed9ef4dc2eb6de2d49be3a6f4d951c7186162e3b`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
