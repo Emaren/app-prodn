@@ -14,7 +14,7 @@ const titleState = fs.readFileSync("lib/champions/titleState.ts", "utf8");
 const trophyService = fs.readFileSync("lib/trophies/service.ts", "utf8");
 const shell = fs.readFileSync("app/AppShell.tsx", "utf8");
 
-test("Champions E2 is the default while legacy B A E1 stays preserved", () => {
+test("Champions E2 is default while B A E preserves E1 behind the Extreme hover", () => {
   assert.match(page, /ChampionsV2Experience/);
   assert.match(page, /loadChampionsV2State/);
   assert.doesNotMatch(page, /function PodiumCard/);
@@ -23,6 +23,8 @@ test("Champions E2 is the default while legacy B A E1 stays preserved", () => {
   assert.match(legacyPage, /ChampionsDisplayRail/);
   assert.match(displayRail, /\/champions\/legacy\?view=b/);
   assert.match(displayRail, /\/champions\/legacy\?view=a/);
+  assert.match(displayRail, /group\/extreme/);
+  assert.match(displayRail, /group-hover\/extreme/);
   assert.match(displayRail, /E1/);
   assert.match(displayRail, /E2/);
 });
