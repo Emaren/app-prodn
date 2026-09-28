@@ -385,7 +385,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-09-27",
       "sensitivity": "internal",
-      "sha256": "c8c642b251e92103bb9a0d76907933377ac61e6c78949641046f0464eaccdeb4",
+      "sha256": "b6fe78cc7f6da1360074e6236955e7eb75d174e25a082835de8699541ae38cc2",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "7980de345c816805634fe1619372f93375b592daf916507b44238931cb059164",
+      "sha256": "0dd1a46662e0f490e3e8397d4cc93b453c186bc528275efeaca5d01de902c38b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/media-armory-batch-ingest-20260927",
-    "commit": "4f7d4da50b94a8b8c276bd672c59239dd843f29d"
+    "branch": "feature/champions-e2-refinement-20260927",
+    "commit": "2cd953e9a32d14588886d298097fb5e7833f9a23"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
