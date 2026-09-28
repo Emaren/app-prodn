@@ -76,7 +76,11 @@ function previousReignLabel(eventType: string) {
 export async function loadChaosium(prisma: PrismaClient): Promise<ChaosiumBelt[]> {
   const [economy, directory] = await Promise.all([
     loadChampionTitleEconomyState(prisma),
-    loadPublicPlayerDirectory(prisma),
+    loadPublicPlayerDirectory(
+      prisma,
+      null,
+      { includePresence: false },
+    ),
   ]);
 
   let trophyRows: Array<{
