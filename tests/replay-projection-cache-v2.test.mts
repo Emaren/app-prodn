@@ -85,6 +85,22 @@ test("player history is cached separately from current Watcher and presence stat
     directory,
     /loadCurrentWatcherAccountStates/,
   );
+  assert.match(
+    directory,
+    /includeCurrentWatcherState/,
+  );
+  assert.match(
+    directory,
+    /options\.includePresence[\s\S]*options\.includeCurrentWatcherState/,
+  );
+  assert.match(
+    directory,
+    /options\.includePresence[\s\S]*loadPublicPresenceSnapshot/,
+  );
+  assert.match(
+    directory,
+    /options\.includeCurrentWatcherState[\s\S]*loadCurrentWatcherAccountStates/,
+  );
   assert.doesNotMatch(
     ping,
     /invalidatePublicPlayerDirectoryCache/,
