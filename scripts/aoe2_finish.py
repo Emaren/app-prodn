@@ -2035,6 +2035,73 @@ def recover_root_headroom(
     }
 
 
+
+def recover_superseded_stage_before_capacity(
+    *,
+    local_head: str,
+    github_head: str,
+    production: dict[str, Any],
+    plan: SourcePlan,
+) -> dict[str, Any]:
+    staged_build_id = str(
+        production.get("staged_build_id")
+        or ""
+    )
+
+    if not staged_build_id:
+        return {
+            "status": "NOT_PRESENT",
+        }
+
+    if (
+        plan.mode != "clean"
+        or not local_head
+        or local_head != github_head
+    ):
+        return {
+            "status": "DEFERRED",
+            "staged_build_id": staged_build_id,
+            "reason": (
+                "source authority is not yet exact; "
+                "stage retirement remains fail-closed"
+            ),
+        }
+
+    from aoe2_release_auto import (
+        AutoShipError,
+        retire_superseded_stage,
+    )
+
+    try:
+        retired = retire_superseded_stage(
+            current_release_sha=local_head,
+            staged_build_id=staged_build_id,
+            production=production,
+        )
+    except AutoShipError as exc:
+        detail = str(exc)
+
+        if (
+            "staged candidate belongs to the current release"
+            in detail
+        ):
+            return {
+                "status": "CURRENT_STAGE_PRESERVED",
+                "staged_build_id": staged_build_id,
+                "reason": detail,
+            }
+
+        return {
+            "status": "UNAVAILABLE",
+            "staged_build_id": staged_build_id,
+            "reason": detail,
+        }
+
+    return {
+        **retired,
+        "status": "RETIRED",
+    }
+
 def capacity_human(snapshot: dict[str, Any]) -> str:
     root_gib = int(snapshot["root"]["available_bytes"]) / (1024 ** 3)
     volume_gib = int(snapshot["volume"]["available_bytes"]) / (1024 ** 3)
@@ -3615,14 +3682,65 @@ def execute_finish(
     preflight_capacity = production_capacity_snapshot()
     receipt["preflight_capacity_before_recovery"] = preflight_capacity
 
-    if root_below_release_floor(preflight_capacity):
+    receipt["pre_capacity_stage_recovery"] = {
+        "status": "NOT_REQUIRED",
+    }
+
+    if (
+        root_below_release_floor(preflight_capacity)
+        and production.get("staged_build_id")
+    ):
         progress.done(
             "Root is below the release floor; "
-            "entering bounded learned recovery"
+            "evaluating staged artifacts before generic cleanup"
         )
+
+        stage_recovery = (
+            recover_superseded_stage_before_capacity(
+                local_head=str(local.get("head") or ""),
+                github_head=str(github_head or ""),
+                production=production,
+                plan=plan,
+            )
+        )
+
+        receipt["pre_capacity_stage_recovery"] = (
+            stage_recovery
+        )
+        checkpoint()
+
+        if stage_recovery.get("status") == "RETIRED":
+            progress.done(
+                "Superseded staged release retired safely — "
+                f"reclaimed={stage_recovery.get('root_reclaimed_kb', '0')} KiB"
+            )
+
+            refreshed = aoe2_release.collect()
+            production = refreshed["production"]
+            preflight_capacity = (
+                production_capacity_snapshot()
+            )
+
+        elif (
+            stage_recovery.get("status")
+            == "CURRENT_STAGE_PRESERVED"
+        ):
+            progress.done(
+                "Current staged release preserved; "
+                "continuing bounded root recovery"
+            )
+
+        else:
+            progress.done(
+                "Staged artifacts were not safely retireable; "
+                "continuing bounded root recovery"
+            )
+
+    if root_below_release_floor(preflight_capacity):
         progress.start(
             "Recovering approved root headroom "
-            "(APT → journal → archived closed nginx logs)..."
+            "(APT → disabled Snap revisions → journal → "
+            "archived closed nginx logs)..."
         )
 
         recovery = recover_root_headroom(
