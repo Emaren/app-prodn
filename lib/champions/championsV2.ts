@@ -474,15 +474,26 @@ function dedupeContenders(rows: TitleContender[], holderName?: string | null) {
     .map((row, index) => ({ ...row, rank: index + 1 }));
 }
 
-async function loadChaosActivityContenders(
-  prisma: PrismaClient,
-  claimedEntries: PublicPlayerDirectoryEntry[],
-  excludedIdentities: Set<string>,
-) {
-  let rows: WatcherActivityRow[] = [];
+const CHAOS_ACTIVITY_CACHE_TTL_MS =
+  30_000;
 
+type ChaosActivityCacheEntry = {
+  expiresAt: number;
+  value: WatcherActivityRow[];
+};
+
+let chaosActivityCache:
+  ChaosActivityCacheEntry | null =
+  null;
+let chaosActivityPromise:
+  Promise<WatcherActivityRow[]> | null =
+  null;
+
+async function loadChaosActivityRowsFresh(
+  prisma: PrismaClient,
+): Promise<WatcherActivityRow[]> {
   try {
-    rows = await prisma.$queryRaw<WatcherActivityRow[]>(Prisma.sql`
+    return await prisma.$queryRaw<WatcherActivityRow[]>(Prisma.sql`
       WITH watcher_activity AS (
         SELECT
           COALESCE(w.user_uid, u.uid) AS user_uid,
@@ -525,17 +536,93 @@ async function loadChaosActivityContenders(
         ON k.user_uid = u.uid
     `);
   } catch (error) {
-    console.warn("Champion Chaos watcher activity unavailable:", error);
+    console.warn(
+      "Champion Chaos watcher activity unavailable:",
+      error,
+    );
+    return [];
+  }
+}
+
+function startChaosActivityRefresh(
+  prisma: PrismaClient,
+) {
+  if (chaosActivityPromise) {
+    return chaosActivityPromise;
   }
 
+  const run =
+    loadChaosActivityRowsFresh(
+      prisma,
+    )
+      .then((value) => {
+        chaosActivityCache = {
+          expiresAt:
+            Date.now() +
+            CHAOS_ACTIVITY_CACHE_TTL_MS,
+          value,
+        };
+        return value;
+      })
+      .finally(() => {
+        if (
+          chaosActivityPromise ===
+          run
+        ) {
+          chaosActivityPromise = null;
+        }
+      });
+
+  chaosActivityPromise = run;
+  return run;
+}
+
+async function loadChaosActivityRows(
+  prisma: PrismaClient,
+) {
+  const cached =
+    chaosActivityCache;
+
+  if (cached) {
+    if (
+      cached.expiresAt <= Date.now() &&
+      !chaosActivityPromise
+    ) {
+      void startChaosActivityRefresh(
+        prisma,
+      ).catch((error) => {
+        console.warn(
+          "Champion Chaos activity background refresh failed:",
+          error,
+        );
+      });
+    }
+
+    return cached.value;
+  }
+
+  return startChaosActivityRefresh(
+    prisma,
+  );
+}
+
+function buildChaosActivityContenders(
+  rows: WatcherActivityRow[],
+  claimedEntries: PublicPlayerDirectoryEntry[],
+  excludedIdentities: Set<string>,
+) {
   const activityByUid = new Map(
     rows.map((row) => [
       row.userUid,
       {
         eventCount: Number(row.eventCount || 0),
         streamedGames: Number(row.streamedGames || 0),
-        lastWatcherAt: row.lastWatcherAt?.getTime() ?? 0,
-        hasWatcher: row.hasWatcherKey || Number(row.eventCount || 0) > 0,
+        lastWatcherAt:
+          row.lastWatcherAt?.getTime() ??
+          0,
+        hasWatcher:
+          row.hasWatcherKey ||
+          Number(row.eventCount || 0) > 0,
       },
     ]),
   );
@@ -543,51 +630,125 @@ async function loadChaosActivityContenders(
   return claimedEntries
     .filter(
       (entry) =>
-        !excludedIdentities.has(normalizedIdentity(entry.name)) &&
-        !excludedIdentities.has(normalizedIdentity(entry.uid)),
+        !excludedIdentities.has(
+          normalizedIdentity(
+            entry.name,
+          ),
+        ) &&
+        !excludedIdentities.has(
+          normalizedIdentity(
+            entry.uid,
+          ),
+        ),
     )
     .map((entry) => {
-      const activity = entry.uid ? activityByUid.get(entry.uid) : null;
+      const activity =
+        entry.uid
+          ? activityByUid.get(
+              entry.uid,
+            )
+          : null;
+
       return {
         entry,
-        hasWatcher: activity?.hasWatcher ?? false,
-        streamedGames: activity?.streamedGames ?? 0,
-        eventCount: activity?.eventCount ?? 0,
-        lastWatcherAt: activity?.lastWatcherAt ?? 0,
+        hasWatcher:
+          activity?.hasWatcher ??
+          false,
+        streamedGames:
+          activity?.streamedGames ??
+          0,
+        eventCount:
+          activity?.eventCount ??
+          0,
+        lastWatcherAt:
+          activity?.lastWatcherAt ??
+          0,
       };
     })
     .sort((left, right) => {
-      if (left.hasWatcher !== right.hasWatcher) {
-        return Number(right.hasWatcher) - Number(left.hasWatcher);
+      if (
+        left.hasWatcher !==
+        right.hasWatcher
+      ) {
+        return (
+          Number(right.hasWatcher) -
+          Number(left.hasWatcher)
+        );
       }
-      if (left.streamedGames !== right.streamedGames) {
-        return right.streamedGames - left.streamedGames;
+
+      if (
+        left.streamedGames !==
+        right.streamedGames
+      ) {
+        return (
+          right.streamedGames -
+          left.streamedGames
+        );
       }
-      if (left.eventCount !== right.eventCount) {
-        return right.eventCount - left.eventCount;
+
+      if (
+        left.eventCount !==
+        right.eventCount
+      ) {
+        return (
+          right.eventCount -
+          left.eventCount
+        );
       }
-      if (left.lastWatcherAt !== right.lastWatcherAt) {
-        return right.lastWatcherAt - left.lastWatcherAt;
+
+      if (
+        left.lastWatcherAt !==
+        right.lastWatcherAt
+      ) {
+        return (
+          right.lastWatcherAt -
+          left.lastWatcherAt
+        );
       }
-      if (left.entry.totalMatches !== right.entry.totalMatches) {
-        return right.entry.totalMatches - left.entry.totalMatches;
+
+      if (
+        left.entry.totalMatches !==
+        right.entry.totalMatches
+      ) {
+        return (
+          right.entry.totalMatches -
+          left.entry.totalMatches
+        );
       }
-      return left.entry.name.localeCompare(right.entry.name);
+
+      return left.entry.name.localeCompare(
+        right.entry.name,
+      );
     })
     .slice(0, 10)
-    .map(({ entry, hasWatcher, streamedGames }, index) => ({
-      rank: index + 1,
-      name: entry.name,
-      href: entry.href,
-      rating: entry.steamRmRating ?? entry.steamDmRating ?? null,
-      ratingLabel: null,
-      meta: hasWatcher
-        ? `Watcher · ${streamedGames} streamed battle${streamedGames === 1 ? "" : "s"}`
-        : entry.totalMatches > 0
-          ? `${entry.totalMatches} archived battles · Watcher not linked`
-          : "Kingdom member · Watcher not linked",
-      badge: hasWatcher ? "Watcher" : "Member",
-    } satisfies TitleContender));
+    .map(
+      (
+        {
+          entry,
+          hasWatcher,
+          streamedGames,
+        },
+        index,
+      ) => ({
+        rank: index + 1,
+        name: entry.name,
+        href: entry.href,
+        rating:
+          entry.steamRmRating ??
+          entry.steamDmRating ??
+          null,
+        ratingLabel: null,
+        meta: hasWatcher
+          ? `Watcher · ${streamedGames} streamed battle${streamedGames === 1 ? "" : "s"}`
+          : entry.totalMatches > 0
+            ? `${entry.totalMatches} archived battles · Watcher not linked`
+            : "Kingdom member · Watcher not linked",
+        badge:
+          hasWatcher
+            ? "Watcher"
+            : "Member",
+      } satisfies TitleContender),
+    );
 }
 
 function buildNationalBelts(
@@ -733,7 +894,11 @@ export async function loadChampionsV2State(
     await loadPublicPlayerDirectoryGeneration(
       prisma,
     );
-  const [titleEconomy, directory] = await Promise.all([
+  const [
+    titleEconomy,
+    directory,
+    chaosActivityRows,
+  ] = await Promise.all([
     loadChampionTitleEconomyState(
       prisma,
       { projectionGeneration },
@@ -742,6 +907,9 @@ export async function loadChampionsV2State(
       prisma,
       projectionGeneration,
       { includePresence: false },
+    ),
+    loadChaosActivityRows(
+      prisma,
     ),
   ]);
 
@@ -759,11 +927,12 @@ export async function loadChampionsV2State(
       normalizedIdentity(holder.uid),
     ]).filter(Boolean),
   );
-  const chaosContenders = await loadChaosActivityContenders(
-    prisma,
-    directory.claimedEntries,
-    chaosHolderIdentities,
-  );
+  const chaosContenders =
+    buildChaosActivityContenders(
+      chaosActivityRows,
+      directory.claimedEntries,
+      chaosHolderIdentities,
+    );
 
   const world: ChampionTitleState = {
     ...worldBase,
