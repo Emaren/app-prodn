@@ -244,7 +244,7 @@ test("Champions overlaps independent evidence and shares one directory generatio
   );
 });
 
-test("battle archive page/census projection is retained by exact replay generation", () => {
+test("battle archive page/census projection is retained and refreshed off the request path", () => {
   const archive = source(
     "lib/publicBattleArchive.ts",
   );
@@ -260,5 +260,25 @@ test("battle archive page/census projection is retained by exact replay generati
   assert.match(
     archive,
     /archive-page-v2/,
+  );
+  assert.match(
+    archive,
+    /publicBattleArchivePageCache/,
+  );
+  assert.match(
+    archive,
+    /cached\.generation !==[\s\S]*generation/,
+  );
+  assert.match(
+    archive,
+    /void startPublicBattleArchivePageRefresh/,
+  );
+  assert.match(
+    archive,
+    /return cached\.value/,
+  );
+  assert.match(
+    archive,
+    /latestRequestedArchiveGeneration/,
   );
 });
