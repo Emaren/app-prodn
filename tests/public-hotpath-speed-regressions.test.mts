@@ -294,3 +294,25 @@ test("live games batches completed uploader hydration into one query", () => {
     /const reviewMarketSummaries = await/,
   );
 });
+
+
+test("release prewarm pays heavyweight projection cold starts before users", () => {
+  const prewarm = readFileSync(
+    "scripts/prewarm-production.mjs",
+    "utf8",
+  );
+
+  for (const route of [
+    '"/players"',
+    '"/champions"',
+    '"/rivalries"',
+    '"/battle-archive"',
+    '"/api/lobby"',
+    '"/api/live-games"',
+  ]) {
+    assert.match(prewarm, new RegExp(route.replaceAll("/", "\\/")));
+  }
+
+  assert.match(prewarm, /for \(let round = 1; round <= 2; round \+= 1\)/);
+  assert.match(prewarm, /AOE2WAR_PREWARM_BASE_URL \|\| "http:\/\/127\.0\.0\.1:3030"/);
+});
