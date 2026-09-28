@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/release-tracked-worktree-ownership-preflight-20260928` at `3da0f77594df7359eb13091875ed570db4d3253f`
+Implementation baseline: `fix/release-tracked-worktree-ownership-preflight-20260928` at `637645354a7cf35db002b17a5d2115b2aae7770f`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
