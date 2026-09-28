@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ef3ec42f45bf4fbbd217989e55a5013493708707ef8e93a222d50c4cec4673ef",
+      "sha256": "29c5c48e65048929e49b7e64e0c281b5e95b96bb256e19d00dedecad69424cf2",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-27",
       "sensitivity": "internal",
-      "sha256": "4b5a945636f133e183bff56471bffbc8ac02e2910a2a00853e84a5b7aeb23d00",
+      "sha256": "0c60fd96f4dc7c083dbe82e56d5a1240639df40030698c2169e6916655f80f0d",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1141,7 +1141,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-27",
       "sensitivity": "internal",
-      "sha256": "934b58ed9436eb43ec0b1643bdfb22436cd58a50827474a595405f8caba0b0b4",
+      "sha256": "93c57594715aa8358137ba07d4b0a8f2c23b2e6e3a74dae196d6c7840b9656ff",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "preview/champions-clean-hero-20260928",
-    "commit": "ed9ef4dc2eb6de2d49be3a6f4d951c7186162e3b"
+    "branch": "fix/speedos-remove-kingdom-20260928",
+    "commit": "2e6b3be81f17c3110e80e7fcb6c34a5b661c1898"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `preview/champions-clean-hero-20260928` at `ed9ef4dc2eb6de2d49be3a6f4d951c7186162e3b`
+Implementation baseline: `fix/speedos-remove-kingdom-20260928` at `2e6b3be81f17c3110e80e7fcb6c34a5b661c1898`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
