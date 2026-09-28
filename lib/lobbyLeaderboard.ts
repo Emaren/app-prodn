@@ -11,6 +11,10 @@ import {
   type PublicPlayerDirectoryEntry,
   type PublicPlayerReplayEvidence,
 } from "@/lib/publicPlayerDirectory";
+import { loadPublicPlayerDirectoryGeneration } from "@/lib/publicPlayerDirectoryGeneration";
+import { loadPublicPresenceSnapshot } from "@/lib/publicPresence";
+import { createGenerationKeyedLoader } from "@/lib/generationKeyedLoader";
+import { loadPublicReplayGeneration } from "@/lib/publicReplayGeneration";
 import { isPublicBattleArchiveRow } from "@/lib/publicBattleArchiveEligibility";
 import { normalizePublicPlayerName } from "@/lib/publicPlayers";
 import { cleanPublicGameRows } from "@/lib/publicReplayTruth";
@@ -58,11 +62,12 @@ import {
 
 const BASE_ARENA_ELO = 1500;
 const ARENA_ELO_K_FACTOR = 32;
-const LEADERBOARD_CACHE_TTL_MS = 15_000;
+const LEADERBOARD_TIME_BUCKET_MS = 5 * 60_000;
 const LEADERBOARD_CACHE_MAX_ENTRIES = 24;
 
 type LeaderboardCacheEntry = {
-  expiresAt: number;
+  generation: string;
+  timeBucket: number;
   value: LobbyLeaderboardSummary;
 };
 
@@ -77,17 +82,12 @@ type LeaderboardGameCorpus = {
   recentGames: PreparedLeaderboardGame[];
 };
 
-type LeaderboardGameCorpusCacheEntry = {
-  expiresAt: number;
-  value: LeaderboardGameCorpus;
-};
-
-let leaderboardGameCorpusCache:
-  LeaderboardGameCorpusCacheEntry | null =
-  null;
-let leaderboardGameCorpusPromise:
-  Promise<LeaderboardGameCorpus> | null =
-  null;
+const loadLeaderboardGameCorpusByGeneration =
+  createGenerationKeyedLoader<
+    PrismaClient,
+    LeaderboardGameCorpus
+  >(2);
+let leaderboardGameCorpusEpoch = 0;
 
 
 export type LoadLobbyLeaderboardOptions = {
@@ -439,10 +439,9 @@ function buildLeaderboardSelection(
         entry.totalMatches === 0
     )
     .sort((left, right) => {
-      if (left.isOnline !== right.isOnline) {
-        return Number(right.isOnline) - Number(left.isOnline);
-      }
-
+      // Presence is a request-time overlay, not ranking authority. Keeping it
+      // out of the expensive projection lets heartbeat churn stay off the
+      // historical leaderboard critical path.
       if (left.verified !== right.verified) {
         return Number(right.verified) - Number(left.verified);
       }
@@ -1372,136 +1371,134 @@ function sortCandidateGamesByPlayedAtDesc(
 }
 
 
+async function buildLeaderboardGameCorpusFresh(
+  prisma: PrismaClient,
+  replayGeneration: string | null,
+): Promise<LeaderboardGameCorpus> {
+  const rawLeaderboardGames =
+    await loadPublicLeaderboardRawGames(
+      prisma,
+      replayGeneration,
+    );
+
+  const leaderboardGames =
+    rawLeaderboardGames
+      .map(
+        (game) =>
+          applyReplayAdjudicationToGameStats(
+            game,
+          ) as CandidateLeaderboardGame,
+      )
+      .sort(
+        sortCandidateGamesByPlayedAtDesc,
+      );
+
+  const publicBattleGames =
+    leaderboardGames.filter(
+      isPublicBattleArchiveRow,
+    );
+
+  const uniqueGames =
+    cleanPublicGameRows(
+      publicBattleGames,
+      {
+        includeReview: true,
+        includeLive: false,
+      },
+    ) as CandidateLeaderboardGame[];
+
+  const resolvedGames =
+    cleanPublicGameRows(
+      publicBattleGames,
+      {
+        includeReview: false,
+        includeLive: false,
+      },
+    ) as CandidateLeaderboardGame[];
+
+  const preparedGames:
+    PreparedLeaderboardGame[] =
+    resolvedGames.map(
+      (game) => {
+        const playedAt =
+          readPlayedAt(game);
+
+        return {
+          ...game,
+          players:
+            parsePlayers(
+              game.players,
+            ),
+          playedAtMs:
+            playedAt
+              ? new Date(
+                  playedAt,
+                ).getTime()
+              : 0,
+        };
+      },
+    );
+
+  const recentGames =
+    [...preparedGames].sort(
+      (left, right) =>
+        right.playedAtMs -
+        left.playedAtMs,
+    );
+
+  return {
+    uniqueGames,
+    resolvedGames,
+    preparedGames,
+    recentGames,
+  };
+}
+
 async function loadLeaderboardGameCorpus(
   prisma: PrismaClient,
 ): Promise<LeaderboardGameCorpus> {
-  const now = Date.now();
-
-  if (
-    leaderboardGameCorpusCache &&
-    leaderboardGameCorpusCache.expiresAt >
-      now
-  ) {
-    return leaderboardGameCorpusCache.value;
-  }
-
-  if (leaderboardGameCorpusPromise) {
-    return leaderboardGameCorpusPromise;
-  }
-
-  const run = (async () => {
-    const rawLeaderboardGames =
-      await loadPublicLeaderboardRawGames(
-        prisma,
-      );
-
-    const leaderboardGames =
-      rawLeaderboardGames
-        .map(
-          (game) =>
-            applyReplayAdjudicationToGameStats(
-              game,
-            ) as CandidateLeaderboardGame,
-        )
-        .sort(
-          sortCandidateGamesByPlayedAtDesc,
-        );
-
-    const publicBattleGames =
-      leaderboardGames.filter(
-        isPublicBattleArchiveRow,
-      );
-
-    const uniqueGames =
-      cleanPublicGameRows(
-        publicBattleGames,
-        {
-          includeReview: true,
-          includeLive: false,
-        },
-      ) as CandidateLeaderboardGame[];
-
-    const resolvedGames =
-      cleanPublicGameRows(
-        publicBattleGames,
-        {
-          includeReview: false,
-          includeLive: false,
-        },
-      ) as CandidateLeaderboardGame[];
-
-    const preparedGames:
-      PreparedLeaderboardGame[] =
-      resolvedGames.map(
-        (game) => {
-          const playedAt =
-            readPlayedAt(game);
-
-          return {
-            ...game,
-            players:
-              parsePlayers(
-                game.players,
-              ),
-            playedAtMs:
-              playedAt
-                ? new Date(
-                    playedAt,
-                  ).getTime()
-                : 0,
-          };
-        },
-      );
-
-    const recentGames =
-      [...preparedGames].sort(
-        (left, right) =>
-          right.playedAtMs -
-          left.playedAtMs,
-      );
-
-    return {
-      uniqueGames,
-      resolvedGames,
-      preparedGames,
-      recentGames,
-    };
-  })();
-
-  leaderboardGameCorpusPromise = run;
+  let replayGeneration: string;
 
   try {
-    const value = await run;
-
-    leaderboardGameCorpusCache = {
-      expiresAt:
-        Date.now() +
-        LEADERBOARD_CACHE_TTL_MS,
-      value,
-    };
-
-    return value;
-  } finally {
-    if (
-      leaderboardGameCorpusPromise ===
-      run
-    ) {
-      leaderboardGameCorpusPromise =
-        null;
-    }
+    replayGeneration =
+      await loadPublicReplayGeneration(
+        prisma,
+      );
+  } catch (error) {
+    console.warn(
+      "Leaderboard replay generation unavailable; building fresh corpus:",
+      error,
+    );
+    return buildLeaderboardGameCorpusFresh(
+      prisma,
+      null,
+    );
   }
+
+  const generationKey =
+    `${replayGeneration}:epoch:${leaderboardGameCorpusEpoch}`;
+
+  return loadLeaderboardGameCorpusByGeneration(
+    prisma,
+    generationKey,
+    () =>
+      buildLeaderboardGameCorpusFresh(
+        prisma,
+        replayGeneration,
+      ),
+  );
 }
 
 export function invalidateLobbyLeaderboardCache() {
   leaderboardCache.clear();
   leaderboardPromises.clear();
-  leaderboardGameCorpusCache = null;
-  leaderboardGameCorpusPromise = null;
+  leaderboardGameCorpusEpoch += 1;
 }
 
 async function loadLobbyLeaderboardFresh(
   prisma: PrismaClient,
-  options: LoadLobbyLeaderboardOptions = {}
+  options: LoadLobbyLeaderboardOptions = {},
+  projectionGeneration: string,
 ): Promise<LobbyLeaderboardSummary> {
   const lane = normalizeLeaderboardLane(options.lane);
   const scope = normalizeLeaderboardScope(
@@ -1515,7 +1512,11 @@ async function loadLobbyLeaderboardFresh(
 
     const [directory, gameCorpus] =
     await Promise.all([
-      loadPublicPlayerDirectory(prisma),
+      loadPublicPlayerDirectory(
+        prisma,
+        projectionGeneration,
+        { includePresence: false },
+      ),
       loadLeaderboardGameCorpus(prisma),
     ]);
 
@@ -1666,12 +1667,9 @@ async function loadLobbyLeaderboardFresh(
         ),
       )
     ),
-    activePlayers:
-      candidates.filter(
-        (entry) =>
-          entry.claimed &&
-          entry.isOnline,
-      ).length,
+    // Live presence is overlaid after cache lookup. The expensive projection
+    // is deliberately presence-neutral.
+    activePlayers: 0,
     matchesToday,
     resolvedGamesToday: matchesToday,
     uniqueReplaysToday,
