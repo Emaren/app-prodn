@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/media-armory-batch-ingest-20260927` at `e2aeb09cfe5d90374e8b76051a43ea9239efedc6`
+Implementation baseline: `feature/media-armory-batch-ingest-20260927` at `4f7d4da50b94a8b8c276bd672c59239dd843f29d`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
