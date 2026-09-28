@@ -43,6 +43,128 @@ EXPECTED_DEPLOY_KEY_FINGERPRINT = "SHA256:229KVsTphLtYRwmLbqR82g+uIBRip3wzmXfR3e
 EXPECTED_KNOWN_HOSTS = "/home/tony/.ssh/known_hosts"
 EXPECTED_PROTOCOL = "0"
 
+TRACKED_WORKTREE_PROBE = r"""
+import json
+import os
+import pathlib
+import subprocess
+
+root = pathlib.Path.cwd()
+uid = os.geteuid()
+gid = os.getegid()
+
+raw = subprocess.check_output(
+    ["git", "ls-files", "-z"],
+)
+tracked = [
+    item
+    for item in raw.decode(
+        "utf-8",
+        "surrogateescape",
+    ).split("\0")
+    if item
+]
+
+foreign = []
+unwritable = []
+parent_foreign = []
+parent_unwritable = []
+parents = set()
+
+for relative in tracked:
+    path = root / relative
+
+    try:
+        info = path.lstat()
+    except FileNotFoundError:
+        continue
+
+    if info.st_uid != uid or info.st_gid != gid:
+        foreign.append(relative)
+
+    if (
+        not path.is_symlink()
+        and not os.access(path, os.W_OK)
+    ):
+        unwritable.append(relative)
+
+    parent = path.parent
+
+    while True:
+        parents.add(parent)
+
+        if parent == root:
+            break
+
+        try:
+            parent.relative_to(root)
+        except ValueError:
+            break
+
+        parent = parent.parent
+
+for parent in sorted(
+    parents,
+    key=lambda item: str(item),
+):
+    try:
+        info = parent.lstat()
+    except FileNotFoundError:
+        continue
+
+    try:
+        relative = (
+            "."
+            if parent == root
+            else str(parent.relative_to(root))
+        )
+    except ValueError:
+        continue
+
+    if info.st_uid != uid or info.st_gid != gid:
+        parent_foreign.append(relative)
+
+    if not os.access(
+        parent,
+        os.W_OK | os.X_OK,
+    ):
+        parent_unwritable.append(relative)
+
+def emit(name, value):
+    print(f"{name}\t{value}")
+
+def sample(values):
+    return json.dumps(
+        values[:5],
+        ensure_ascii=True,
+        separators=(",", ":"),
+    )
+
+emit("tracked_foreign_entries", len(foreign))
+emit("tracked_unwritable_entries", len(unwritable))
+emit(
+    "tracked_parent_foreign_dirs",
+    len(parent_foreign),
+)
+emit(
+    "tracked_parent_unwritable_dirs",
+    len(parent_unwritable),
+)
+emit("tracked_foreign_sample", sample(foreign))
+emit(
+    "tracked_unwritable_sample",
+    sample(unwritable),
+)
+emit(
+    "tracked_parent_foreign_sample",
+    sample(parent_foreign),
+)
+emit(
+    "tracked_parent_unwritable_sample",
+    sample(parent_unwritable),
+)
+"""
+
 
 def _bounded_env_int(name: str, default: int, minimum: int, maximum: int) -> int:
     raw = os.getenv(name)
@@ -113,6 +235,7 @@ def production_transport() -> tuple[dict[str, str], str | None]:
         "sshcmd=$(git config --local --get core.sshCommand 2>/dev/null || true)",
         "protocol=$(git config --local --get protocol.version 2>/dev/null || true)",
         "executor=$(id -un)",
+        f"python3 -c {shlex.quote(TRACKED_WORKTREE_PROBE)}",
         "git_foreign_entries=$(find .git ! -user \"$executor\" -printf . 2>/dev/null | wc -c | tr -d ' ')",
         "git_unwritable_dirs=$(find .git -type d ! -writable -printf . 2>/dev/null | wc -c | tr -d ' ')",
         f"deploy_key={shlex.quote(EXPECTED_DEPLOY_KEY)}",
@@ -205,6 +328,69 @@ def gate_integrity(manifest: dict) -> tuple[Path, str]:
     return path, actual
 
 
+
+def tracked_worktree_transport_errors(
+    transport: dict[str, str],
+) -> list[str]:
+    errors: list[str] = []
+
+    checks = (
+        (
+            "tracked_foreign_entries",
+            "tracked_foreign_sample",
+            "production tracked source contains entries not owned "
+            "by the canonical deploy user",
+        ),
+        (
+            "tracked_unwritable_entries",
+            "tracked_unwritable_sample",
+            "production tracked source contains files not writable "
+            "by the canonical deploy user",
+        ),
+        (
+            "tracked_parent_foreign_dirs",
+            "tracked_parent_foreign_sample",
+            "production tracked source has parent directories not "
+            "owned by the canonical deploy user",
+        ),
+        (
+            "tracked_parent_unwritable_dirs",
+            "tracked_parent_unwritable_sample",
+            "production tracked source has parent directories not "
+            "writable by the canonical deploy user",
+        ),
+    )
+
+    for count_key, sample_key, message in checks:
+        raw = transport.get(count_key)
+
+        try:
+            count = int(raw or "-1")
+        except ValueError:
+            count = -1
+
+        if count == 0:
+            continue
+
+        sample = transport.get(sample_key) or "[]"
+
+        if count < 0:
+            errors.append(
+                f"{message}; worktree hygiene probe is missing "
+                f"or invalid ({count_key}={raw!r})"
+            )
+            continue
+
+        errors.append(
+            f"{message}: count={count} sample={sample}; "
+            "canonical ownership repair: sudo chown -R "
+            f"{EXPECTED_PROD_USER}:{EXPECTED_PROD_USER} "
+            f"{PROD_REPO}"
+        )
+
+    return errors
+
+
 def validation_errors(
     data: dict,
     manifest: dict,
@@ -294,6 +480,8 @@ def validation_errors(
         errors.append("production core.sshCommand does not use the canonical known_hosts file")
     if transport.get("remote_main") != release_sha:
         errors.append("production origin main does not resolve to manifest release SHA")
+
+    errors.extend(tracked_worktree_transport_errors(transport))
 
     return errors
 
@@ -670,6 +858,8 @@ def activation_validation_errors(
         errors.append("production core.sshCommand does not use the canonical known_hosts file")
     if transport.get("remote_main") != github.get("main_sha"):
         errors.append("production origin main does not equal current GitHub main")
+
+    errors.extend(tracked_worktree_transport_errors(transport))
 
     return errors
 
