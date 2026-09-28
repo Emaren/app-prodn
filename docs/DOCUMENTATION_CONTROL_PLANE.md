@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/release-gate-eof-whitespace-20260928` at `d02b96313194e8cb0a894001285d0b6059dd718f`
+Implementation baseline: `fix/release-recovery-disabled-snap-20260928` at `27295352a1cf073c75528f6352e87cad451dc682`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
