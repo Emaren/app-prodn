@@ -65,6 +65,10 @@ test("Chaos contender queue is Watcher-activity driven and excludes the holder",
 
 test("World contender queue alternates explicit RM and DM ladders", () => {
   assert.match(state, /function alternatingWorldContenders/);
+  assert.match(
+    state,
+    /entry: PublicPlayerDirectoryEntry \| null \| undefined[\s\S]*if \(!entry\) return null/,
+  );
   assert.match(state, /steamRmRating/);
   assert.match(state, /steamDmRating/);
   assert.match(state, /lane = lane === "rm" \? "dm" : "rm"/);
