@@ -732,20 +732,45 @@ export async function loadLiveGamesSnapshotFresh(
     ...scheduledCompletedSessions,
   ]);
 
-  const hydratedCompletedSessions = await hydrateCompletedSessionUploaders(
-    prisma,
-    displayedCompletedSessionsBase
-  );
-  // AOE2WAR_LIVE_WINNER_MARKET_PROJECTION
-  const activeMarketSummaries = await loadLiveBetMarketSummaryMap(
-    prisma,
-    streamedActiveSessions
-      .filter((session) => !session.finalProofPending)
-      .map((session) => ({ id: session.id, sessionKey: session.sessionKey }))
-  ).catch((error) => {
-    console.warn("Failed to load active live market summaries:", error);
-    return new Map();
-  });
+  /*
+   * Uploader proof, active-market projection and archive paging are independent
+   * once the public lifecycle lanes are known. Run them together so a fresh
+   * four-second live snapshot pays the slowest read instead of three serial
+   * database phases.
+   */
+  const [
+    hydratedCompletedSessions,
+    activeMarketSummaries,
+    archiveProjection,
+  ] = await Promise.all([
+    hydrateCompletedSessionUploaders(
+      prisma,
+      displayedCompletedSessionsBase
+    ),
+    // AOE2WAR_LIVE_WINNER_MARKET_PROJECTION
+    loadLiveBetMarketSummaryMap(
+      prisma,
+      streamedActiveSessions
+        .filter((session) => !session.finalProofPending)
+        .map((session) => ({ id: session.id, sessionKey: session.sessionKey }))
+    ).catch((error) => {
+      console.warn("Failed to load active live market summaries:", error);
+      return new Map();
+    }),
+    // A battle occupies exactly one public lifecycle lane. It enters the archive
+    // only after leaving the active/recent-outcome presentation windows; the
+    // 14-day final-proof corpus in loadLiveSessionSnapshot remains untouched.
+    projectArchiveLaneAcrossPages(
+      recentArchive,
+      occupiedLiveLaneIdentities,
+      LIVE_GAMES_RECENT_MATCH_LIMIT,
+      (offset) =>
+        loadRecentMatches(prisma, {
+          offset,
+          limit: LIVE_GAMES_ARCHIVE_CANDIDATE_DEPTH,
+        })
+    ),
+  ]);
 
   const activeSessionsWithMarkets = streamedActiveSessions.map((session) => ({
     ...session,
@@ -767,20 +792,6 @@ export async function loadLiveGamesSnapshotFresh(
     ...session,
     reviewMarket: reviewMarketSummaries.get(session.id) ?? null,
   }));
-
-  // A battle occupies exactly one public lifecycle lane. It enters the archive
-  // only after leaving the active/recent-outcome presentation windows; the
-  // 14-day final-proof corpus in loadLiveSessionSnapshot remains untouched.
-  const archiveProjection = await projectArchiveLaneAcrossPages(
-    recentArchive,
-    occupiedLiveLaneIdentities,
-    LIVE_GAMES_RECENT_MATCH_LIMIT,
-    (offset) =>
-      loadRecentMatches(prisma, {
-        offset,
-        limit: LIVE_GAMES_ARCHIVE_CANDIDATE_DEPTH,
-      })
-  );
   const displayedRecentMatches = archiveProjection.matches;
   const archiveTotal = archiveProjection.total;
   const archiveCursor = archiveProjection.rawConsumed;
