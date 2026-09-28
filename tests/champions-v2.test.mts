@@ -143,9 +143,12 @@ test("E2 restores the premium hero tile while stripping explanatory SaaS copy", 
   assert.match(experience, /\["Active", state\.summary\.active\]/);
   assert.match(experience, /\["Vacant", state\.summary\.vacant\]/);
   assert.match(experience, /\["Tribute",/);
-  assert.match(experience, /CHAMPIONSHIP/);
-  assert.match(experience, /BELTS/);
+  assert.match(experience, /AoE2WAR title economy/);
   for (const copy of [
+    "CHAMPIONSHIP",
+    "BELTS",
+    "Win the title. Hold the artifact. Make the room hunt you.",
+    "A living title economy for belts, national beacons, ELO ladders, and stealable records.",
     "Real custody, real contenders",
     "The three crowns everybody sees first",
     "Chaos is activity-driven",
