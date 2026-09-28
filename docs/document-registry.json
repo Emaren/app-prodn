@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c8a7a12cd936fc91845d613c285e73c5569d6e7ba71a01ca03a48f2b26d70f3e",
+      "sha256": "f112acb507a9de3db78d2fbbe84b10bf2c756c0b7c0ac039fd593292bf0a0a50",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/media-armory-batch-ingest-20260927",
-    "commit": "8de835b4580f5e2af4ed529c2f59ad0bb3390b8a"
+    "commit": "e2aeb09cfe5d90374e8b76051a43ea9239efedc6"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
