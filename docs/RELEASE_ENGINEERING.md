@@ -755,7 +755,16 @@ Before the runtime swap, activation re-verifies:
 - internal/public live version parity;
 - critical routes;
 - canonical Git transport;
+- canonical ownership of every existing tracked source entry plus
+  writable/executable parent directories for the deploy identity;
 - protected WOLO counts.
+
+A clean worktree is not sufficient proof that activation can advance source.
+The tracked-worktree ownership/writability census runs at ship preflight and
+again at receipt-driven activation. Any drift fails closed before the service
+is stopped or the runtime/dependency bundle moves. Production Git mutation
+continues to run only as the canonical unprivileged deploy user; root authority
+is not used to bypass this invariant.
 
 Dry-run activation performs zero production mutation. Remote activation assertions
 emit a bounded `ACTIVATION_ASSERTION_FAILED` line with the failing shell line,
