@@ -385,7 +385,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-09-27",
       "sensitivity": "internal",
-      "sha256": "e9855b1f8e157a60a7272e7c42040859701a5c8ec554e70d564485fe771d41c0",
+      "sha256": "712f5a549a737e40917a67d15894d1fd8881cb2d252997b7057733187dbad8e4",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a16b98419524e3826ecc1657ab667660b85b7ce9fe265ae289afd25fdff7672f",
+      "sha256": "ef3ec42f45bf4fbbd217989e55a5013493708707ef8e93a222d50c4cec4673ef",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-27",
       "sensitivity": "internal",
-      "sha256": "5d8b2a3ee47ea75cc2a6ba3dfb393a53aa11ec7bffea8947561cd6f870ff0a48",
+      "sha256": "4b5a945636f133e183bff56471bffbc8ac02e2910a2a00853e84a5b7aeb23d00",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/champions-e2-polish-20260928",
-    "commit": "3fda1044c3e961f7faea4041d300ebaeda5e9c2d"
+    "branch": "preview/champions-clean-hero-20260928",
+    "commit": "ed9ef4dc2eb6de2d49be3a6f4d951c7186162e3b"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
