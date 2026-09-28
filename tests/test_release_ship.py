@@ -62,6 +62,10 @@ def sample():
         "executor": MODULE.EXPECTED_PROD_USER,
         "git_foreign_entries": "0",
         "git_unwritable_dirs": "0",
+        "tracked_foreign_entries": "0",
+        "tracked_unwritable_parents": "0",
+        "tracked_foreign_sample": "",
+        "tracked_unwritable_sample": "",
         "deploy_key_readable": "1",
         "deploy_key_owner": (
             f"{MODULE.EXPECTED_PROD_USER}:{MODULE.EXPECTED_PROD_USER}"
@@ -838,6 +842,71 @@ class ShipTests(unittest.TestCase):
         self.assertIn(
             "production .git contains directories not writable by the deploy user",
             MODULE.validation_errors(data, manifest, transport),
+        )
+
+    def test_foreign_tracked_source_ownership_blocks_ship_and_activation(self):
+        data, manifest, transport = sample()
+        transport["tracked_foreign_entries"] = "1"
+        transport["tracked_foreign_sample"] = "app/api/players/generation/route.ts"
+        ship_errors = MODULE.validation_errors(data, manifest, transport)
+        self.assertTrue(
+            any(
+                "production tracked source contains entries not owned by the deploy user"
+                in error
+                and "app/api/players/generation/route.ts" in error
+                for error in ship_errors
+            )
+        )
+
+        activation_data, receipt, activation_transport = activation_sample()
+        activation_transport["tracked_foreign_entries"] = "1"
+        activation_transport["tracked_foreign_sample"] = (
+            "app/api/players/generation/route.ts"
+        )
+        activation_errors = MODULE.activation_validation_errors(
+            activation_data,
+            receipt,
+            activation_transport,
+        )
+        self.assertTrue(
+            any(
+                "production tracked source contains entries not owned by the deploy user"
+                in error
+                for error in activation_errors
+            )
+        )
+
+    def test_unwritable_tracked_parent_blocks_ship_and_activation(self):
+        data, manifest, transport = sample()
+        transport["tracked_unwritable_parents"] = "1"
+        transport["tracked_unwritable_sample"] = "app/api/players/generation"
+        self.assertTrue(
+            any(
+                "production tracked source has parent directories not writable by the deploy user"
+                in error
+                for error in MODULE.validation_errors(
+                    data,
+                    manifest,
+                    transport,
+                )
+            )
+        )
+
+        activation_data, receipt, activation_transport = activation_sample()
+        activation_transport["tracked_unwritable_parents"] = "1"
+        activation_transport["tracked_unwritable_sample"] = (
+            "app/api/players/generation"
+        )
+        self.assertTrue(
+            any(
+                "production tracked source has parent directories not writable by the deploy user"
+                in error
+                for error in MODULE.activation_validation_errors(
+                    activation_data,
+                    receipt,
+                    activation_transport,
+                )
+            )
         )
 
     def test_unreadable_or_wrong_deploy_key_blocks(self):
