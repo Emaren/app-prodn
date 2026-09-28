@@ -41,6 +41,23 @@ memory before closing the work.
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
 
+## 2026-09-28 — Clean Git state does not prove writable source authority
+
+A SpeedOS release passed the full gate, staged a sealed candidate, and passed
+activation preflight, then failed at the first source mutation with
+`unable to unlink old 'app/api/players/generation/route.ts': Permission denied`.
+The existing transport proof checked canonical Git metadata ownership under
+`.git`, but not ownership and parent-directory writability for tracked source
+paths. The activation rollback trap remained armed, so the incident stayed
+fail-closed instead of being treated as a successful deploy.
+
+Durable rule: production source authority has two independent filesystem
+preconditions. Git metadata must be canonical, and the tracked worktree must be
+owned/writable by the deploy identity. Release validation now inventories every
+existing tracked entry plus its parent directory and blocks both ship preflight
+and receipt-driven activation when either invariant drifts. Never rely on a
+clean worktree alone to infer that `git reset --hard` can replace source bytes.
+
 ## 2026-09-28 — Reclaim evidence, not advertised reclaimability
 
 A SpeedOS release was correctly stopped below the 5 GiB root release floor.
