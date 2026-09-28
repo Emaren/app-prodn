@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "performance-operating-contract"
-reviewed_at: "2026-09-27"
+reviewed_at: "2026-09-28"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -1049,6 +1049,65 @@ rows, replay deduplication, and the normal match-feed builder. It deliberately
 does not load WOLO history, staking, watcher aggregates, stream stats, community
 honor, normalized metrics, charts, or rivalry summaries that the card does not
 render.
+
+## Replay Projection Cache V2 — request-time stall control
+
+Whole-corpus replay projections are historical derived truth, not a 15-second
+polling primitive. The expensive public replay corpus, player-directory base,
+leaderboard corpus, rivalry corpus and battle-archive page projection are
+therefore retained by an **exact authoritative generation** instead of being
+discarded on an arbitrary short TTL.
+
+The contract is:
+
+- replay evidence remains complete; no history is truncated to make a page fast;
+- a generation change invalidates the derived projection without weakening
+  replay/result authority;
+- concurrent cold callers for the same generation coalesce onto one build;
+- rejected generation loads are never retained;
+- manual same-process invalidation participates in the cache key where a writer
+  already owns explicit invalidation;
+- once a valid historical snapshot exists, eligible routes may serve that last
+  good snapshot while one background refresh computes the new generation;
+- unknown generation authority fails conservatively to a fresh/bounded path
+  rather than retaining unversioned truth indefinitely.
+
+The public player directory has a wider generation than replay truth alone
+because accepted honors, gifts, managed avatar presentation and pending-claim
+presentation can change without a replay. That supplemental fingerprint is
+coalesced to the five-second directory refresh cadence. **Presence is excluded.**
+
+Live presence and current Watcher account state are observational overlays.
+They are applied after the stable historical projection and cannot invalidate
+the complete replay-derived directory/leaderboard. Current Watcher state itself
+uses last-good/stale-while-refresh behavior after its first successful process
+snapshot so the exact-Steam history query cannot create a navigation cliff when
+its short presentation TTL expires. Server-only consumers that do not render
+presence explicitly skip that overlay.
+
+Championship state captures one directory generation and shares it across the
+directory and leaderboard-dependent title economy while independent trophy and
+Watcher-activity reads overlap. This prevents `/champions` from entering
+multiple independent whole-corpus projection trees during one request.
+
+`/rivalries` keeps its complete historical contract, but a changed replay
+generation refreshes the complete matchup corpus off the request path after the
+first valid snapshot exists. `/battle-archive` retains exact page/census
+projections by replay generation and logical page coordinates.
+
+None of these changes authorize new Cloudflare shared-cache routes. SpeedOS edge
+authority remains fail-closed and separate from process-local computation reuse.
+
+### Server event-loop signal
+
+`/api/speed/check` exposes a bounded process-local server event-loop scheduling
+delay sample. The Speed Observatory renders its p95 signal alongside browser
+Ready data. This distinguishes route/network latency from a globally stalled
+Next.js process without adding a second daemon or writing telemetry to the
+application database.
+
+The sampler is unref'ed, bounded, observational only, and never changes release,
+database, replay, betting or Wolo authority.
 
 ## Verification instability contract
 
