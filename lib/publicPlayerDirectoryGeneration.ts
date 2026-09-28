@@ -6,6 +6,7 @@ import { loadPublicReplayGeneration } from "@/lib/publicReplayGeneration";
 const DIRECTORY_GENERATION_CACHE_MS = 1_000;
 
 type DirectorySupplementFingerprint = {
+  users: string | null;
   badges: string | null;
   gifts: string | null;
   managedAvatars: string | null;
@@ -25,6 +26,29 @@ async function loadDirectorySupplementFingerprint(
 ): Promise<DirectorySupplementFingerprint> {
   const rows = await prisma.$queryRaw<DirectorySupplementFingerprint[]>(Prisma.sql`
     SELECT
+      (
+        SELECT md5(
+          COALESCE(
+            jsonb_agg(
+              jsonb_build_array(
+                id,
+                uid,
+                in_game_name,
+                steam_persona_name,
+                steam_id,
+                represented_country,
+                verified,
+                verification_level,
+                verified_at,
+                created_at
+              )
+              ORDER BY id
+            )::text,
+            '[]'
+          )
+        )
+        FROM users
+      ) AS users,
       (
         SELECT md5(
           COALESCE(
@@ -99,6 +123,7 @@ async function loadDirectorySupplementFingerprint(
   `);
 
   return rows[0] ?? {
+    users: null,
     badges: null,
     gifts: null,
     managedAvatars: null,
