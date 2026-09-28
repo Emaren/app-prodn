@@ -30,7 +30,17 @@ test(
 
     assert.match(
       server,
-      /cached\.expiresAt <= now/,
+      /const cacheIsCurrent/,
+    );
+
+    assert.match(
+      server,
+      /cached\?\.generation ===[\s\S]*projectionGeneration/,
+    );
+
+    assert.match(
+      server,
+      /cached\?\.timeBucket ===[\s\S]*timeBucket/,
     );
 
     assert.match(
@@ -40,7 +50,7 @@ test(
 
     assert.match(
       server,
-      /return cached\.value;/,
+      /return options\.includePresence === false[\s\S]*cached\.value/,
     );
 
     assert.match(
