@@ -180,3 +180,92 @@ test("player profile overlaps optional claim and community rails", () => {
     /return empty/,
   );
 });
+
+
+test("lobby cold snapshot starts independent authorities before joining them", () => {
+  const lobby = readFileSync(
+    "lib/lobbySnapshot.ts",
+    "utf8",
+  );
+
+  const freshStart = lobby.indexOf(
+    "async function loadLobbySnapshotFresh",
+  );
+  const freshEnd = lobby.indexOf(
+    "type LobbySnapshotCacheEntry",
+    freshStart,
+  );
+  assert.ok(freshStart >= 0);
+  assert.ok(freshEnd > freshStart);
+
+  const fresh = lobby.slice(
+    freshStart,
+    freshEnd,
+  );
+
+  for (const promise of [
+    "woloPromise",
+    "woloMarketPromise",
+    "tournamentPromise",
+    "presencePromise",
+    "recentMatchesPromise",
+    "leaderboardPromise",
+    "woloEarnersPromise",
+    "aoe2hdPulsePromise",
+    "featuredWarriorHonorsPromise",
+    "tournamentMessagesPromise",
+  ]) {
+    assert.match(
+      fresh,
+      new RegExp(`const ${promise}`),
+    );
+  }
+
+  assert.match(
+    fresh,
+    /await Promise\.all\(\[[\s\S]*woloPromise[\s\S]*tournamentPromise[\s\S]*leaderboardPromise/,
+  );
+  assert.doesNotMatch(
+    fresh,
+    /const \[wolo, woloMarket\] = await Promise\.all[\s\S]*const tournament = await/,
+  );
+});
+
+test("live games batches completed uploader hydration into one query", () => {
+  const liveGames = readFileSync(
+    "lib/liveGames.ts",
+    "utf8",
+  );
+
+  const hydrateStart = liveGames.indexOf(
+    "async function hydrateCompletedSessionUploaders",
+  );
+  const hydrateEnd = liveGames.indexOf(
+    "export async function loadLiveGamesSnapshotFresh",
+    hydrateStart,
+  );
+  assert.ok(hydrateStart >= 0);
+  assert.ok(hydrateEnd > hydrateStart);
+
+  const hydrate = liveGames.slice(
+    hydrateStart,
+    hydrateEnd,
+  );
+
+  assert.match(
+    hydrate,
+    /const targets = sessions\.flatMap/,
+  );
+  assert.match(
+    hydrate,
+    /with candidates\(candidate_index, anchor_at, player_names\) as/,
+  );
+  assert.equal(
+    (hydrate.match(/\$queryRawUnsafe/g) ?? []).length,
+    1,
+  );
+  assert.doesNotMatch(
+    hydrate,
+    /for \(const session of sessions\)/,
+  );
+});
