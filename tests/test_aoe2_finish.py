@@ -1069,6 +1069,26 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
             script,
         )
         self.assertIn(
+            "snap list --all",
+            script,
+        )
+        self.assertIn(
+            "disabled",
+            script,
+        )
+        self.assertIn(
+            "snap remove",
+            script,
+        )
+        self.assertIn(
+            '--revision="$snap_revision"',
+            script,
+        )
+        self.assertLess(
+            script.index("snap list --all"),
+            script.index("journalctl"),
+        )
+        self.assertIn(
             "journalctl",
             script,
         )
@@ -1088,6 +1108,9 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
         # Recovery counters are shell arithmetic, never command substitutions.
         for variable in (
             "APT_RECLAIMED_KB",
+            "SNAP_RECLAIMED_KB",
+            "SNAP_REMOVED",
+            "SNAP_SKIPPED_UNSAFE",
             "JOURNAL_RECLAIMED_KB",
             "NGINX_OPEN_SKIPPED",
             "DELTA",
@@ -1176,6 +1199,57 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
             "rm -rf /tmp",
             script,
         )
+        self.assertNotIn(
+            "/var/lib/snapd/cache",
+            script,
+        )
+        self.assertNotIn(
+            "docker image prune",
+            script,
+        )
+        self.assertNotIn(
+            "pnpm store prune",
+            script,
+        )
+
+    def test_disabled_snap_recovery_is_revision_bounded_and_never_touches_active_snap(self):
+        script = MODULE.remote_root_headroom_recovery_script(
+            volume="/mnt/HC_Volume_105319120",
+            floor_kb=5 * 1024 * 1024,
+            target_kb=(5 * 1024 * 1024) + (128 * 1024),
+            journal_limit_mib=100,
+            expected_source_sha="a" * 40,
+            expected_active_build_id="active-build",
+        )
+
+        self.assertIn(
+            "NR > 1 && $NF ~ /(^|,)disabled(,|$)/",
+            script,
+        )
+        self.assertIn(
+            '[[ "$snap_name" =~ ^[a-z0-9][a-z0-9-]*$ ]]',
+            script,
+        )
+        self.assertIn(
+            '[[ "$snap_revision" =~ ^[0-9]+$ ]]',
+            script,
+        )
+        self.assertIn(
+            '--revision="$snap_revision"',
+            script,
+        )
+        self.assertNotIn(
+            "snap remove --purge",
+            script,
+        )
+        self.assertIn(
+            'if [ "$CURRENT_KB" -ge "$TARGET_KB" ]; then',
+            script,
+        )
+        self.assertIn(
+            "snap-disabled-removed.tsv",
+            script,
+        )
 
     def test_recovery_accepts_only_capacity_and_identity_proof(self):
         output = "\n".join(
@@ -1187,6 +1261,9 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
                 "after_kb\t6291456",
                 "reclaimed_kb\t2097152",
                 "apt_reclaimed_kb\t300000",
+                "snap_reclaimed_kb\t520000",
+                "snap_removed_count\t1",
+                "snap_skipped_unsafe_count\t0",
                 "journal_reclaimed_kb\t90000",
                 "nginx_reclaimed_kb\t1707152",
                 "nginx_archived_count\t2",
@@ -1276,6 +1353,64 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
                     snapshot=self.snapshot(),
                     production=production,
                 )
+
+    def test_pre_capacity_stage_recovery_skips_when_no_stage_exists(self):
+        result = MODULE.recover_superseded_stage_before_capacity(
+            local_head="a" * 40,
+            github_head="a" * 40,
+            production={},
+            plan=MODULE.SourcePlan(
+                mode="clean",
+                detail="exact",
+            ),
+        )
+
+        self.assertEqual(
+            result["status"],
+            "NOT_PRESENT",
+        )
+
+    def test_pre_capacity_stage_recovery_defers_until_source_authority_is_exact(self):
+        result = MODULE.recover_superseded_stage_before_capacity(
+            local_head="a" * 40,
+            github_head="b" * 40,
+            production={
+                "staged_build_id": "staged-build",
+            },
+            plan=MODULE.SourcePlan(
+                mode="history_reconcile",
+                detail="history differs",
+            ),
+        )
+
+        self.assertEqual(
+            result["status"],
+            "DEFERRED",
+        )
+
+    def test_finish_attempts_superseded_stage_retirement_before_generic_root_cleanup(self):
+        import inspect
+
+        source = inspect.getsource(
+            MODULE.execute_finish
+        )
+
+        self.assertIn(
+            "recover_superseded_stage_before_capacity",
+            source,
+        )
+        self.assertLess(
+            source.index(
+                "recover_superseded_stage_before_capacity"
+            ),
+            source.index(
+                "recover_root_headroom"
+            ),
+        )
+        self.assertIn(
+            "pre_capacity_stage_recovery",
+            source,
+        )
 
     def test_finish_wires_recovery_only_for_low_root(self):
         import inspect

@@ -26,6 +26,12 @@ public truth, recovery truth, and protected WOLO dependency state.
 defines the automated release model. If the implementation and either document
 disagree, stop and reconcile them before production mutation.
 
+When root headroom is below the release floor and a staged candidate already
+exists, Finish must evaluate the existing receipt-bound superseded-stage
+retirement contract before generic cache/log cleanup. A provably superseded
+stage is non-live release material and may itself be the dominant root-space
+consumer; current or ambiguous stages remain preserved.
+
 ## Core invariants
 
 1. Production advances only to an exact sealed Git commit.
@@ -637,8 +643,9 @@ whose safe resolution is already machine-provable. The canonical contract is
 Current automatic recovery classes are:
 
 - **low production-root headroom** — reclaim regenerable APT material first,
-  then bound the journal, then checksum-archive only closed rotated nginx
-  `.log.1` files until the configured floor is restored;
+  then exact Snap revisions already marked `disabled` by Snap itself, then
+  bound the journal, then checksum-archive only closed rotated nginx `.log.1`
+  files until the configured recovery target is restored;
 - **superseded staged candidates** — exact current-release resume remains first,
   then `.next-release` and `.node_modules-release` may be retired only when one
   durable receipt proves older provenance and staged trees have zero runtime

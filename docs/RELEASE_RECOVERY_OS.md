@@ -154,6 +154,34 @@ If any authority or health precondition is absent, or if no deployment is due,
 the P0 remains blocking. This preserves the ordering invariant without turning a
 recovery exception into a general provenance bypass.
 
+## Pre-capacity staged-artifact recovery
+
+A low-root condition may itself be caused by a superseded staged release:
+`.next-release` plus `.node_modules-release` can exceed one GiB while being
+neither the live runtime nor the current intended release.
+
+Before generic root cleanup, Finish therefore gives the existing
+superseded-stage retirement contract first right of recovery when all of these
+are true:
+
+1. a staged BUILD_ID is present;
+2. Mac and GitHub source authority are already exact and the source plan is
+   `clean`;
+3. the staged BUILD_ID binds to exactly one durable stage receipt;
+4. that receipt names a release SHA different from the current intended release;
+5. the receipt binds the current production source and active BUILD_ID;
+6. no process has a cwd/root/executable/file descriptor referencing the staged
+   trees;
+7. the web service is active and protected Wolo listeners 8092/8093 are exact.
+
+Only then may the staged `.next-release` and `.node_modules-release` trees be
+retired with a durable stale-stage-retirement receipt. Current-release,
+ambiguous, or live-referenced stages are preserved fail-closed and generic
+bounded root recovery may continue.
+
+This ordering prevents a superseded one-GiB stage from blocking Finish before
+the already-proven stage-retirement machinery can reach it.
+
 ## Bounded root-headroom recovery
 
 The configured release floor remains authoritative. When root capacity is below
@@ -182,9 +210,31 @@ The lane may remove only regenerable APT metadata/cache material:
 APT cleanup is refused while `apt`, `apt-get`, `dpkg`, or
 `unattended-upgrade` is active.
 
-### Tier 2 — bounded system journal
+### Tier 2 — disabled Snap revisions
 
-If the floor is still unmet, the journal may be vacuumed to the configured
+If the target is still unmet, Release Recovery OS may remove only Snap revisions
+that the host's own `snap list --all` authority marks `disabled`.
+
+The controller must:
+
+1. skip the tier entirely while any Snap change reports status `Doing`;
+2. accept only bounded lowercase Snap names and numeric revision identifiers;
+3. invoke `snap remove <name> --revision=<revision>` for that exact disabled
+   revision;
+4. remeasure root capacity after each removal;
+5. stop immediately once the configured recovery target is reached.
+
+The active/current revision is never selected, the whole Snap is never removed,
+and `--purge` is never used.
+
+This tier was learned on September 28, 2026 after a release-capacity incident:
+removing one disabled Visual Studio Code revision restored roughly 520 MiB while
+the AoE2WAR source SHA, active BUILD_ID, web service, and protected Wolo listener
+identity remained unchanged.
+
+### Tier 3 — bounded system journal
+
+If the target is still unmet, the journal may be vacuumed to the configured
 retention floor.
 
 Current policy:
@@ -195,7 +245,7 @@ Current policy:
 
 This is bounded retention, not wholesale log deletion.
 
-### Tier 3 — closed rotated nginx `.log.1`
+### Tier 4 — closed rotated nginx `.log.1`
 
 If more space is still required, only files matching:
 
@@ -226,13 +276,18 @@ Durable evidence lives beneath:
 ~~~
 
 The receipt records before/after free space and reclaimed amounts attributed to
-APT, journal, and nginx recovery.
+APT, disabled-Snap, journal, and nginx recovery, including the exact count of
+disabled revisions removed or rejected as unsafe.
 
 ### Never automatic
 
 Root-headroom recovery does not automatically remove:
 
 - `/tmp` broadly;
+- Snap download cache under `/var/lib/snapd/cache`;
+- active Snap revisions or whole Snap packages;
+- Docker images/containers/volumes;
+- PNPM store material;
 - active `.next`;
 - active `node_modules`;
 - `.next-rollback-*`;

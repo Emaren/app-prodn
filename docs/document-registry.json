@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0f8ae5ec8e7e42efb7d4160935cbd8b23f35956b4efc8a67101b6850b6bba1d4",
+      "sha256": "47e5beda0023a867ad966e405375bff19ee25fad40c163dd7d93047726f19286",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-27",
       "sensitivity": "internal",
-      "sha256": "0c60fd96f4dc7c083dbe82e56d5a1240639df40030698c2169e6916655f80f0d",
+      "sha256": "6fb360397de235cd0b50bf10089c1e257716bf9d41cdf311679672bca8dd8903",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1279,7 +1279,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-22",
       "sensitivity": "internal",
-      "sha256": "9b3102c91d1c7f849b60eb58b32a4775c04d5730a3bc12165edeeb1519398859",
+      "sha256": "4a9681aae0af09fb40498c01c6b747fc0977c01b7e483ffbfca3710941b53286",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1325,7 +1325,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-22",
       "sensitivity": "internal",
-      "sha256": "2f743e0cd5783a224a2d3672456c1b52cd8d61ce4ed7061a1f445c10bcc55eca",
+      "sha256": "0141b702f44170f1aa7111b3492af184b841caa6c936b550aedfa21349414b86",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/release-gate-eof-whitespace-20260928",
-    "commit": "d02b96313194e8cb0a894001285d0b6059dd718f"
+    "branch": "fix/release-recovery-disabled-snap-20260928",
+    "commit": "2accf6fb8029e7a0d334b12a2b0c4de4749ad598"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
