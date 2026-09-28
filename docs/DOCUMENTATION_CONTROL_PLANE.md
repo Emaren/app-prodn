@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/champions-e2-refinement-20260927` at `75f3e51dd6a4a50f80617c096f9cf80ba9c06ab9`
+Implementation baseline: `fix/speedos-route-representative-ownership-20260928` at `9d6f4a6da2ec6ad25354f37a21b235fef0d83e7d`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
