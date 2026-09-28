@@ -2133,6 +2133,31 @@ def diagnose() -> None:
     )
 
 
+def comparable_performance_cohorts(
+    payload: dict[str, Any],
+) -> dict[str, dict[str, float]]:
+    """Return only complete p50 cohort rails preserved by one benchmark receipt."""
+
+    rails: dict[str, dict[str, float]] = {}
+    for label, key in (
+        ("cold", "cohort"),
+        ("warm", "warm_cohort"),
+        ("origin", "origin_route_cohort"),
+    ):
+        cohort = payload.get(key)
+        if not isinstance(cohort, dict):
+            continue
+        ttfb = cohort.get("ttfb_p50_ms")
+        total = cohort.get("total_p50_ms")
+        if not isinstance(ttfb, (int, float)) or not isinstance(total, (int, float)):
+            continue
+        rails[label] = {
+            "ttfb_p50_ms": float(ttfb),
+            "total_p50_ms": float(total),
+        }
+    return rails
+
+
 def compare() -> None:
     receipts = all_performance_receipts()
     if not receipts:
@@ -2151,13 +2176,15 @@ def compare() -> None:
     )
 
     after_label = Path(str(after["_path"])).name
-    after_ttfb = float(after["cohort"]["ttfb_p50_ms"])
-    after_total = float(after["cohort"]["total_p50_ms"])
+    after_rails = comparable_performance_cohorts(after)
+    if "cold" not in after_rails:
+        raise SpeedError("latest benchmark is missing the cold cohort summary")
 
     if before is not None:
         before_label = Path(str(before["_path"])).name
-        before_ttfb = float(before["cohort"]["ttfb_p50_ms"])
-        before_total = float(before["cohort"]["total_p50_ms"])
+        before_rails = comparable_performance_cohorts(before)
+        if "cold" not in before_rails:
+            raise SpeedError("comparison benchmark is missing the cold cohort summary")
     elif (
         after.get("mode") == "full"
         and benchmark_load_contract(after) == LEGACY_BENCHMARK_LOAD_CONTRACT
@@ -2166,8 +2193,12 @@ def compare() -> None:
         if not baseline:
             raise SpeedError("full benchmark has no comparable baseline zero")
         before_label = "baseline-zero"
-        before_ttfb = float(baseline["median_ttfb_ms"])
-        before_total = float(baseline["median_total_ms"])
+        before_rails = {
+            "cold": {
+                "ttfb_p50_ms": float(baseline["median_ttfb_ms"]),
+                "total_p50_ms": float(baseline["median_total_ms"]),
+            }
+        }
     elif after.get("mode") == "full":
         raise SpeedError(
             "no previous benchmark exists for this exact route cohort and "
@@ -2183,18 +2214,62 @@ def compare() -> None:
     def pct(old: float, new: float) -> float:
         return ((new - old) / old * 100.0) if old else 0.0
 
+    def print_rail(label: str, title: str) -> None:
+        before_row = before_rails.get(label)
+        after_row = after_rails.get(label)
+        if before_row is None or after_row is None:
+            return
+        before_ttfb = before_row["ttfb_p50_ms"]
+        after_ttfb = after_row["ttfb_p50_ms"]
+        before_total = before_row["total_p50_ms"]
+        after_total = after_row["total_p50_ms"]
+        print(
+            f"{title} TTFB p50:  {before_ttfb:.1f} → {after_ttfb:.1f} ms "
+            f"({pct(before_ttfb, after_ttfb):+.1f}%)"
+        )
+        print(
+            f"{title} total p50: {before_total:.1f} → {after_total:.1f} ms "
+            f"({pct(before_total, after_total):+.1f}%)"
+        )
+
     print("⚔️  AOE2WAR PERFORMANCE COMPARISON")
     print()
     print(f"Before: {before_label}")
     print(f"After:  {after_label}")
     print()
+    print_rail("cold", "Cold isolated")
+    if "warm" in before_rails and "warm" in after_rails:
+        print()
+        print_rail("warm", "Warm public")
+    if "origin" in before_rails and "origin" in after_rails:
+        print()
+        print_rail("origin", "Warm origin")
+
+    if all(
+        key in before_rails and key in after_rails
+        for key in ("warm", "origin")
+    ):
+        before_gap = max(
+            0.0,
+            before_rails["warm"]["ttfb_p50_ms"]
+            - before_rails["origin"]["ttfb_p50_ms"],
+        )
+        after_gap = max(
+            0.0,
+            after_rails["warm"]["ttfb_p50_ms"]
+            - after_rails["origin"]["ttfb_p50_ms"],
+        )
+        print()
+        print(
+            f"Warm public-origin gap: {before_gap:.1f} → {after_gap:.1f} ms "
+            f"({pct(before_gap, after_gap):+.1f}%)"
+        )
+
+    print()
     print(
-        f"TTFB p50/median: {before_ttfb:.1f} → {after_ttfb:.1f} ms "
-        f"({pct(before_ttfb, after_ttfb):+.1f}%)"
-    )
-    print(
-        f"Total p50/median:{before_total:.1f} → {after_total:.1f} ms "
-        f"({pct(before_total, after_total):+.1f}%)"
+        "Context: cold isolated-process timings include connection setup and "
+        "public delivery; warm public reuses a connection; warm origin isolates "
+        "the local Next route-compute seam."
     )
 
 
