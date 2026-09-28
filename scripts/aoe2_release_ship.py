@@ -78,6 +78,9 @@ for relative in tracked:
         info = path.lstat()
     except FileNotFoundError:
         continue
+    except OSError:
+        unwritable.append(relative)
+        continue
 
     if info.st_uid != uid or info.st_gid != gid:
         foreign.append(relative)
@@ -503,7 +506,7 @@ def build_plan(
     steps = [
         {
             "phase": "preflight",
-            "action": "Re-read production source, service, build identity, disk, Git transport, public version, and protected WOLO listeners; abort on drift.",
+            "action": "Re-read production source, tracked-worktree ownership/writability, service, build identity, disk, Git transport, public version, and protected WOLO listeners; abort on drift before staging.",
         },
         {
             "phase": "receipt",
