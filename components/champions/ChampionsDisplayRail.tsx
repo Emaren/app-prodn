@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 
 export type ChampionsDisplayMode = "b" | "a" | "e1" | "e2";
@@ -17,14 +18,27 @@ const OPTIONS: Array<{
 ];
 
 export default function ChampionsDisplayRail({
-  active = "e2",
+  active,
 }: {
   active?: ChampionsDisplayMode;
 }) {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const requestedLegacy = searchParams.get("view");
+  const inferred: ChampionsDisplayMode =
+    pathname.includes("/champions/legacy")
+      ? requestedLegacy === "b"
+        ? "b"
+        : requestedLegacy === "a"
+          ? "a"
+          : "e1"
+      : "e2";
+  const selectedMode = active ?? inferred;
+
   useEffect(() => {
     document.documentElement.dataset.championsView =
-      active === "e1" || active === "e2" ? "e" : active;
-  }, [active]);
+      selectedMode === "e1" || selectedMode === "e2" ? "e" : selectedMode;
+  }, [selectedMode]);
 
   return (
     <section
@@ -37,7 +51,7 @@ export default function ChampionsDisplayRail({
 
       <div className="flex items-center gap-1 rounded-full border border-white/[0.07] bg-black/25 p-0.5">
         {OPTIONS.map((option) => {
-          const selected = option.mode === active;
+          const selected = option.mode === selectedMode;
           return (
             <Link
               key={option.mode}
