@@ -777,7 +777,7 @@ export default function ChampionsV2Experience({
       <section className="space-y-5">
         <SectionHeading kicker="National & regional standards" />
 
-        <div className="group/nations relative">
+        <div className="relative">
           <div
             ref={nationalRailRef}
             className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-4 [scrollbar-color:rgba(148,163,184,0.24)_transparent] [scrollbar-width:thin]"
@@ -791,13 +791,13 @@ export default function ChampionsV2Experience({
             type="button"
             aria-label="Previous national belts"
             onClick={() => scrollNation(-1)}
-            className="pointer-events-none absolute inset-y-3 left-0 z-40 w-12 rounded-r-[2rem] bg-[linear-gradient(90deg,rgba(125,211,252,0.16),rgba(59,130,246,0.05),transparent)] opacity-0 shadow-[inset_-10px_0_24px_rgba(59,130,246,0.08)] transition duration-200 group-hover/nations:pointer-events-auto group-hover/nations:opacity-100 hover:!bg-[linear-gradient(90deg,rgba(186,230,253,0.26),rgba(59,130,246,0.09),transparent)] sm:w-16"
+            className="absolute inset-y-3 left-0 z-40 w-12 rounded-r-[2rem] bg-[linear-gradient(90deg,rgba(125,211,252,0.18),rgba(59,130,246,0.06),transparent)] opacity-0 shadow-[inset_-10px_0_24px_rgba(59,130,246,0.10)] transition duration-200 hover:opacity-100 sm:w-16"
           />
           <button
             type="button"
             aria-label="Next national belts"
             onClick={() => scrollNation(1)}
-            className="pointer-events-none absolute inset-y-3 right-0 z-40 w-12 rounded-l-[2rem] bg-[linear-gradient(270deg,rgba(125,211,252,0.16),rgba(59,130,246,0.05),transparent)] opacity-0 shadow-[inset_10px_0_24px_rgba(59,130,246,0.08)] transition duration-200 group-hover/nations:pointer-events-auto group-hover/nations:opacity-100 hover:!bg-[linear-gradient(270deg,rgba(186,230,253,0.26),rgba(59,130,246,0.09),transparent)] sm:w-16"
+            className="absolute inset-y-3 right-0 z-40 w-12 rounded-l-[2rem] bg-[linear-gradient(270deg,rgba(125,211,252,0.18),rgba(59,130,246,0.06),transparent)] opacity-0 shadow-[inset_10px_0_24px_rgba(59,130,246,0.10)] transition duration-200 hover:opacity-100 sm:w-16"
           />
         </div>
       </section>
