@@ -433,25 +433,55 @@ function NationalBeltCard({
   const holderAvatarUrl = belt.holder
     ? avatarCardUrlForUser(belt.holder.uid, belt.holder.name)
     : MALE_SILHOUETTE;
+  const showcaseBackground =
+    belt.slug === "saudi-arabia" || belt.slug === "taiwan";
 
   return (
     <article className="relative w-[19rem] shrink-0 snap-start overflow-hidden rounded-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(12,20,34,0.97),rgba(3,7,17,0.99))] shadow-[0_22px_70px_rgba(0,0,0,0.28)] sm:w-[21rem]">
       <div className="relative h-[24rem] overflow-hidden">
-        <Image
-          src={holderAvatarUrl}
-          alt=""
-          fill
-          unoptimized
-          sizes="340px"
-          className={`object-contain object-bottom ${belt.active ? "opacity-92" : "opacity-50"}`}
+        {showcaseBackground ? (
+          <>
+            <Image
+              src={belt.beltUrl}
+              alt=""
+              fill
+              unoptimized
+              sizes="340px"
+              className="scale-110 object-cover object-center opacity-32 blur-xl"
+            />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(15,23,42,0.10),rgba(2,6,23,0.54)_74%)]" />
+            <Image
+              src={belt.beltUrl}
+              alt={`${belt.country} championship belt showcase`}
+              fill
+              unoptimized
+              sizes="340px"
+              className="object-contain object-center p-3 drop-shadow-[0_18px_28px_rgba(0,0,0,0.62)]"
+            />
+          </>
+        ) : (
+          <Image
+            src={holderAvatarUrl}
+            alt=""
+            fill
+            unoptimized
+            sizes="340px"
+            className={`object-contain object-bottom ${belt.active ? "opacity-92" : "opacity-50"}`}
+          />
+        )}
+        <div
+          className={
+            showcaseBackground
+              ? "absolute inset-0 bg-[linear-gradient(180deg,rgba(2,6,23,0.10),transparent_42%,#030711_100%)]"
+              : "absolute inset-0 bg-[linear-gradient(180deg,transparent_36%,rgba(3,7,17,0.16)_60%,#030711_100%)]"
+          }
         />
-        <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_36%,rgba(3,7,17,0.16)_60%,#030711_100%)]" />
 
         <div className="absolute left-4 right-4 top-4 flex items-start justify-between gap-3">
           <div>
             <div className="text-4xl">{belt.flag}</div>
             <div className="mt-2 text-[9px] font-black uppercase tracking-[0.24em] text-amber-100/55">
-              National crown
+              {belt.scope === "regional" ? "Regional crown" : "National crown"}
             </div>
             <h3 className="mt-1 font-serif text-2xl font-semibold text-white">
               {belt.country}
@@ -468,16 +498,18 @@ function NationalBeltCard({
           </span>
         </div>
 
-        <div className="absolute bottom-0 left-1/2 h-28 w-[90%] -translate-x-1/2">
-          <Image
-            src={belt.beltUrl}
-            alt={`${belt.country} championship belt`}
-            fill
-            unoptimized
-            sizes="320px"
-            className="object-contain drop-shadow-[0_14px_20px_rgba(0,0,0,0.76)]"
-          />
-        </div>
+        {!showcaseBackground ? (
+          <div className="absolute bottom-0 left-1/2 h-28 w-[90%] -translate-x-1/2">
+            <Image
+              src={belt.beltUrl}
+              alt={`${belt.country} championship belt`}
+              fill
+              unoptimized
+              sizes="320px"
+              className="object-contain drop-shadow-[0_14px_20px_rgba(0,0,0,0.76)]"
+            />
+          </div>
+        ) : null}
       </div>
 
       <div className="space-y-4 p-4">
@@ -493,13 +525,13 @@ function NationalBeltCard({
         {belt.contenders.length ? (
           <div>
             <div className="mb-2 text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
-              National contenders
+              {belt.scope === "regional" ? "Regional contenders" : "National contenders"}
             </div>
             <ContenderRows contenders={belt.contenders} max={3} />
           </div>
         ) : (
           <div className="rounded-xl border border-dashed border-white/8 px-3 py-4 text-center text-[11px] text-slate-600">
-            No known national contender yet.
+            No known {belt.scope === "regional" ? "regional" : "national"} contender yet.
           </div>
         )}
 
@@ -701,9 +733,9 @@ export default function ChampionsV2Experience({
 
       <section className="space-y-5">
         <SectionHeading
-          kicker="National standards"
+          kicker="National & regional standards"
           title="Every flag gets a road to the belt"
-          body="Canada, USA, and Mexico are lit. The remaining national crowns stay vacant until a verified challenger carries the flag into title custody."
+          body="Canada, USA, and Mexico are lit. National and regional crowns stay vacant until a verified challenger carries the banner into title custody."
           action={
             <div className="flex gap-2">
               <button

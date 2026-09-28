@@ -616,3 +616,5 @@ Recent Parsed Games distinguishes:
 
 Human-supplied screenshot evidence is provenance, not an assertion that a human adjudicated the battle.
 <!-- AOE2WAR:PUBLIC_PARSER_OBSERVATORY_20260722:END -->
+
+- `/admin/media-assets` includes a bounded manifest-driven ZIP batch lane for managed asset packs.

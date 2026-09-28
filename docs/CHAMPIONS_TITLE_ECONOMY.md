@@ -128,6 +128,8 @@ Current-season public policy lives in
 - Pending/future daily Tribute execution is bounded to the four explicit
   current-season trophy ids. This prevents an obsolete seeded title from
   silently creating new money obligations.
+- Champions belt artwork is managed through Media Armory targets. National crowns use `national-<slug>`; Norse and Southeast Asia use `regional-norse` / `regional-southeast-asia`; RM and DM crowns use `random-map-champion` / `deathmatch-champion`; team packs bind `2v2-rm` + `2v2-dm`, `3v3-rm` + `3v3-dm`, and `4v4-rm` + `4v4-dm`; DM ELO art uses `dm-rising`, `dm-contender`, `dm-veteran`, `dm-elite`, and `dm-legend`.
+- Saudi Arabia and Taiwan are intentionally allowed to retain cinematic full-frame artwork; Champions V2 blends those two as card backgrounds while ordinary belt assets render as transparent foreground art.
 - `lib/champions/championsV2.ts` owns the Champions V2 contender projection:
   World alternates explicit RM/DM leaders; RM and DM crowns use their own
   rating columns; Chaos ranks signed-up Kingdom users by linked Watcher
