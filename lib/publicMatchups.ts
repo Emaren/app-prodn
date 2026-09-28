@@ -481,6 +481,56 @@ async function loadRecentFinalMatchupRowsFresh(
   return sortedMatches;
 }
 
+function startPublicMatchupRowsRefresh(
+  prisma: PrismaClient,
+  generation: string,
+) {
+  if (
+    publicMatchupRowsPromise?.generation ===
+    generation
+  ) {
+    return publicMatchupRowsPromise.value;
+  }
+
+  latestRequestedPublicMatchupGeneration =
+    generation;
+
+  const run =
+    loadRecentFinalMatchupRowsFresh(
+      prisma,
+      null,
+    )
+      .then((rows) => {
+        if (
+          latestRequestedPublicMatchupGeneration ===
+          generation
+        ) {
+          publicMatchupRowsCache = {
+            generation,
+            rows,
+          };
+        }
+
+        return rows;
+      })
+      .finally(() => {
+        if (
+          publicMatchupRowsPromise?.value ===
+          run
+        ) {
+          publicMatchupRowsPromise =
+            null;
+        }
+      });
+
+  publicMatchupRowsPromise = {
+    generation,
+    value: run,
+  };
+
+  return run;
+}
+
 async function loadCompletePublicMatchupRows(
   prisma: PrismaClient
 ) {
@@ -496,45 +546,42 @@ async function loadCompletePublicMatchupRows(
     return loadRecentFinalMatchupRowsFresh(prisma, null);
   }
 
-  if (
-    publicMatchupRowsCache &&
-    publicMatchupRowsCache.generation === generation
-  ) {
-    return publicMatchupRowsCache.rows;
+  const cached =
+    publicMatchupRowsCache;
+
+  if (cached) {
+    if (
+      cached.generation !== generation &&
+      publicMatchupRowsPromise?.generation !==
+        generation
+    ) {
+      /*
+       * Rivalry truth is a historical projection. Once a good complete corpus
+       * exists, a newly-arrived replay refreshes it in the background rather
+       * than making the next rivalry navigation pay a whole-corpus scan.
+       */
+      void startPublicMatchupRowsRefresh(
+        prisma,
+        generation,
+      ).catch((error) => {
+        console.warn(
+          "Public matchup corpus background refresh failed:",
+          error,
+        );
+      });
+    }
+
+    return cached.rows;
   }
 
-  if (
-    publicMatchupRowsPromise &&
-    publicMatchupRowsPromise.generation === generation
-  ) {
-    return publicMatchupRowsPromise.value;
-  }
-
-  latestRequestedPublicMatchupGeneration = generation;
-
-  const run = loadRecentFinalMatchupRowsFresh(prisma, null)
-    .then((rows) => {
-      if (latestRequestedPublicMatchupGeneration === generation) {
-        publicMatchupRowsCache = {
-          generation,
-          rows,
-        };
-      }
-
-      return rows;
-    })
-    .finally(() => {
-      if (publicMatchupRowsPromise?.value === run) {
-        publicMatchupRowsPromise = null;
-      }
-    });
-
-  publicMatchupRowsPromise = {
+  /*
+   * Only the process-local cold start waits for the complete corpus. All
+   * concurrent cold callers for one generation coalesce onto the same load.
+   */
+  return startPublicMatchupRowsRefresh(
+    prisma,
     generation,
-    value: run,
-  };
-
-  return run;
+  );
 }
 
 export async function loadRecentFinalMatchupRows(
