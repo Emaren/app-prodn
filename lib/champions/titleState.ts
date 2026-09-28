@@ -365,6 +365,37 @@ export async function loadChampionTitleEconomyState(
   const liveDefinitionPromise =
     loadLiveChampionDefinitionMap(prisma);
 
+  const contenderProfilePromise =
+    prisma.user.findMany({
+      where: {
+        OR: [
+          {
+            representedCountry: {
+              not: null,
+            },
+          },
+          {
+            genderDivision: "Woman",
+          },
+        ],
+      },
+      select: {
+        uid: true,
+        inGameName: true,
+        steamPersonaName: true,
+        representedCountry: true,
+        genderDivision: true,
+      },
+      take: 1000,
+    })
+      .catch((error) => {
+        console.warn(
+          "Champion represented-country enrichment unavailable:",
+          error,
+        );
+        return [];
+      });
+
   try {
     const leaderboard = await loadLobbyLeaderboard(prisma, {
       limit: 120,
@@ -380,46 +411,67 @@ export async function loadChampionTitleEconomyState(
   }
 
   if (leaderboardEntries.length > 0) {
-    try {
-      const users = await prisma.user.findMany({
-        where: {
-          OR: [
-            { representedCountry: { not: null } },
-            { genderDivision: "Woman" },
-          ],
-        },
-        select: {
-          uid: true,
-          inGameName: true,
-          steamPersonaName: true,
-          representedCountry: true,
-          genderDivision: true,
-        },
-        take: 1000,
-      });
-      const profileByKey = new Map<string, { representedCountry: string | null; genderDivision: string | null }>();
+    const users =
+      await contenderProfilePromise;
+    const profileByKey =
+      new Map<
+        string,
+        {
+          representedCountry:
+            string | null;
+          genderDivision:
+            string | null;
+        }
+      >();
 
-      for (const user of users) {
-        const profile = {
-          representedCountry: user.representedCountry,
-          genderDivision: user.genderDivision || "Man",
-        };
-        putProfileKey(profileByKey, user.uid, profile);
-        putProfileKey(profileByKey, user.inGameName, profile);
-        putProfileKey(profileByKey, user.steamPersonaName, profile);
-      }
+    for (const user of users) {
+      const profile = {
+        representedCountry:
+          user.representedCountry,
+        genderDivision:
+          user.genderDivision ||
+          "Man",
+      };
 
-      leaderboardEntries = leaderboardEntries.map((entry) => {
-        const profile = profileForEntry(entry, profileByKey);
-        return {
-          ...entry,
-          representedCountry: profile?.representedCountry ?? null,
-          genderDivision: profile?.genderDivision ?? null,
-        };
-      });
-    } catch (error) {
-      console.warn("Champion represented-country enrichment unavailable:", error);
+      putProfileKey(
+        profileByKey,
+        user.uid,
+        profile,
+      );
+      putProfileKey(
+        profileByKey,
+        user.inGameName,
+        profile,
+      );
+      putProfileKey(
+        profileByKey,
+        user.steamPersonaName,
+        profile,
+      );
     }
+
+    leaderboardEntries =
+      leaderboardEntries.map(
+        (entry) => {
+          const profile =
+            profileForEntry(
+              entry,
+              profileByKey,
+            );
+
+          return {
+            ...entry,
+            representedCountry:
+              profile
+                ?.representedCountry ??
+              null,
+            genderDivision:
+              profile
+                ?.genderDivision ??
+              null,
+          };
+        },
+      );
   }
 
   const liveDefinitionMap =
