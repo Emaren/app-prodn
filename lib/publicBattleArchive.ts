@@ -2,6 +2,8 @@ import type { PrismaClient } from "@/lib/generated/prisma";
 import { isPublicBattleArchiveRow } from "@/lib/publicBattleArchiveEligibility";
 import { cleanPublicGameRows } from "@/lib/publicReplayTruth";
 import { EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION } from "@/lib/replayAdjudications";
+import { createGenerationKeyedLoader } from "@/lib/generationKeyedLoader";
+import { loadPublicReplayGeneration } from "@/lib/publicReplayGeneration";
 
 export const PUBLIC_BATTLE_ARCHIVE_PAGE_MAX = 500;
 
@@ -18,9 +20,9 @@ function boundedInteger(value: number, fallback: number, minimum: number, maximu
  * the public archive contract so offsets count visible logical battles rather
  * than raw parser rows. This replaces the former 5,000-row in-memory ceiling.
  */
-export async function loadPublicBattleArchivePage(
+async function loadPublicBattleArchivePageFresh(
   prisma: PrismaClient,
-  options: { offset?: number; limit?: number } = {}
+  options: { offset?: number; limit?: number } = {},
 ) {
   const offset = boundedInteger(
     options.offset ?? 0,
@@ -286,3 +288,67 @@ export async function loadPublicBattleArchivePage(
     nextOffset: offset + logicalPageIdentities.length,
   };
 }
+
+const loadGenerationCachedPublicBattleArchivePage =
+  createGenerationKeyedLoader<
+    PrismaClient,
+    Awaited<
+      ReturnType<
+        typeof loadPublicBattleArchivePageFresh
+      >
+    >
+  >(48);
+
+/**
+ * The logical archive page and census are deterministic for one public replay
+ * generation. Cache exact page coordinates by that generation so ordinary
+ * navigation does not repeatedly execute the whole archive identity/census CTE.
+ */
+export async function loadPublicBattleArchivePage(
+  prisma: PrismaClient,
+  options: {
+    offset?: number;
+    limit?: number;
+  } = {},
+) {
+  const offset = boundedInteger(
+    options.offset ?? 0,
+    0,
+    0,
+    Number.MAX_SAFE_INTEGER,
+  );
+  const limit = boundedInteger(
+    options.limit ?? 24,
+    24,
+    1,
+    PUBLIC_BATTLE_ARCHIVE_PAGE_MAX,
+  );
+
+  try {
+    const generation =
+      await loadPublicReplayGeneration(
+        prisma,
+      );
+
+    return loadGenerationCachedPublicBattleArchivePage(
+      prisma,
+      `${generation}:archive-page-v2:${offset}:${limit}`,
+      () =>
+        loadPublicBattleArchivePageFresh(
+          prisma,
+          { offset, limit },
+        ),
+    );
+  } catch (error) {
+    console.warn(
+      "Public battle archive generation unavailable; loading page fresh:",
+      error,
+    );
+
+    return loadPublicBattleArchivePageFresh(
+      prisma,
+      { offset, limit },
+    );
+  }
+}
+
