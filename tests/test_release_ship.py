@@ -62,6 +62,14 @@ def sample():
         "executor": MODULE.EXPECTED_PROD_USER,
         "git_foreign_entries": "0",
         "git_unwritable_dirs": "0",
+        "tracked_foreign_entries": "0",
+        "tracked_unwritable_entries": "0",
+        "tracked_parent_foreign_dirs": "0",
+        "tracked_parent_unwritable_dirs": "0",
+        "tracked_foreign_sample": "[]",
+        "tracked_unwritable_sample": "[]",
+        "tracked_parent_foreign_sample": "[]",
+        "tracked_parent_unwritable_sample": "[]",
         "deploy_key_readable": "1",
         "deploy_key_owner": (
             f"{MODULE.EXPECTED_PROD_USER}:{MODULE.EXPECTED_PROD_USER}"
@@ -831,6 +839,88 @@ class ShipTests(unittest.TestCase):
             "production .git contains entries not owned by the deploy user",
             MODULE.validation_errors(data, manifest, transport),
         )
+
+    def test_foreign_tracked_worktree_ownership_blocks_before_staging(self):
+        data, manifest, transport = sample()
+        transport["tracked_foreign_entries"] = "1"
+        transport["tracked_foreign_sample"] = (
+            '["app/api/players/generation/route.ts"]'
+        )
+
+        errors = MODULE.validation_errors(
+            data,
+            manifest,
+            transport,
+        )
+
+        self.assertTrue(
+            any(
+                "tracked source contains entries not owned"
+                in error
+                and "generation/route.ts" in error
+                and "sudo chown -R tony:tony" in error
+                for error in errors
+            )
+        )
+
+    def test_unwritable_tracked_parent_blocks_activation_preflight(self):
+        data, receipt, transport = activation_sample()
+        transport["tracked_parent_unwritable_dirs"] = "1"
+        transport["tracked_parent_unwritable_sample"] = (
+            '["app/api/players/generation"]'
+        )
+
+        errors = MODULE.activation_validation_errors(
+            data,
+            receipt,
+            transport,
+        )
+
+        self.assertTrue(
+            any(
+                "parent directories not writable"
+                in error
+                and "app/api/players/generation" in error
+                for error in errors
+            )
+        )
+
+    def test_worktree_probe_is_required_by_transport_and_final_mutation_seam(self):
+        import inspect
+
+        transport_source = inspect.getsource(
+            MODULE.production_transport,
+        )
+        self.assertIn(
+            "TRACKED_WORKTREE_PROBE",
+            transport_source,
+        )
+
+        script = render_activation_script()
+        probe = script.index(
+            "tracked_worktree_pre_mutation=",
+        )
+        stop = script.index(
+            "SERVICE_STOPPED=1",
+            probe,
+        )
+
+        self.assertLess(probe, stop)
+        self.assertIn(
+            "tracked-worktree-pre-mutation.tsv",
+            script[probe:stop],
+        )
+
+        for key in (
+            "tracked_foreign_entries",
+            "tracked_unwritable_entries",
+            "tracked_parent_foreign_dirs",
+            "tracked_parent_unwritable_dirs",
+        ):
+            self.assertIn(
+                f'tracked_probe_value {key}',
+                script[probe:stop],
+            )
 
     def test_unwritable_git_directory_blocks(self):
         data, manifest, transport = sample()
