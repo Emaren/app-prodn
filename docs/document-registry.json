@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "3af26ebe8a8d97af3ad52497bdc6db613154e09eb5746cb4d722ee238184f19c",
+      "sha256": "8ee1342fe554d6ad368a289e9cb38a71fc86baa6d9789ed2598290799793d899",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/release-recovery-disabled-snap-20260928",
-    "commit": "242338e6d6012435230546aa5e1ebed1d17e9435"
+    "commit": "7ce14f9d84b0af13bdaaf832d91428a338a2ae42"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
