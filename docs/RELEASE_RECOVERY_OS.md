@@ -182,9 +182,31 @@ The lane may remove only regenerable APT metadata/cache material:
 APT cleanup is refused while `apt`, `apt-get`, `dpkg`, or
 `unattended-upgrade` is active.
 
-### Tier 2 — bounded system journal
+### Tier 2 — disabled Snap revisions
 
-If the floor is still unmet, the journal may be vacuumed to the configured
+If the target is still unmet, Release Recovery OS may remove only Snap revisions
+that the host's own `snap list --all` authority marks `disabled`.
+
+The controller must:
+
+1. skip the tier entirely while any Snap change reports status `Doing`;
+2. accept only bounded lowercase Snap names and numeric revision identifiers;
+3. invoke `snap remove <name> --revision=<revision>` for that exact disabled
+   revision;
+4. remeasure root capacity after each removal;
+5. stop immediately once the configured recovery target is reached.
+
+The active/current revision is never selected, the whole Snap is never removed,
+and `--purge` is never used.
+
+This tier was learned on September 28, 2026 after a release-capacity incident:
+removing one disabled Visual Studio Code revision restored roughly 520 MiB while
+the AoE2WAR source SHA, active BUILD_ID, web service, and protected Wolo listener
+identity remained unchanged.
+
+### Tier 3 — bounded system journal
+
+If the target is still unmet, the journal may be vacuumed to the configured
 retention floor.
 
 Current policy:
@@ -195,7 +217,7 @@ Current policy:
 
 This is bounded retention, not wholesale log deletion.
 
-### Tier 3 — closed rotated nginx `.log.1`
+### Tier 4 — closed rotated nginx `.log.1`
 
 If more space is still required, only files matching:
 
@@ -226,13 +248,18 @@ Durable evidence lives beneath:
 ~~~
 
 The receipt records before/after free space and reclaimed amounts attributed to
-APT, journal, and nginx recovery.
+APT, disabled-Snap, journal, and nginx recovery, including the exact count of
+disabled revisions removed or rejected as unsafe.
 
 ### Never automatic
 
 Root-headroom recovery does not automatically remove:
 
 - `/tmp` broadly;
+- Snap download cache under `/var/lib/snapd/cache`;
+- active Snap revisions or whole Snap packages;
+- Docker images/containers/volumes;
+- PNPM store material;
 - active `.next`;
 - active `node_modules`;
 - `.next-rollback-*`;
