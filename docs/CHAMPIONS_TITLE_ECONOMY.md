@@ -24,10 +24,13 @@ operator intents until a future Warbound chain module exists.
 
 ## Public routes
 
-- `/champions` is the title-economy hub. Champions V2 separates RM and DM
-  rating authority, derives Chaos contenders from linked Watcher activity,
-  presents team crowns with one persisted RM/DM preference, and renders the
-  national catalog as a horizontal belt hall.
+- `/champions` is the default Champions E2 title-economy hall. E2 separates
+  RM and DM rating authority, derives Chaos contenders from linked Watcher
+  activity, presents each 2v2/3v3/4v4 crown on its own row with one persisted
+  RM/DM preference, and renders the national catalog as a horizontal belt hall.
+  The preserved pre-E2 Basic / Advanced / Extreme presentation remains reachable
+  through the thin B / A / E1 / E2 display rail at the bottom of the page; E2
+  remains the public default.
 - `/champions/[...slug]` renders detail pages for belts, national titles, ELO
   titles, tag titles, and designations.
 - `/national-champions` is the cinematic national-title projection. It must
@@ -128,14 +131,24 @@ Current-season public policy lives in
 - Pending/future daily Tribute execution is bounded to the four explicit
   current-season trophy ids. This prevents an obsolete seeded title from
   silently creating new money obligations.
-- Champions belt artwork is managed through Media Armory targets. National crowns use `national-<slug>`; Norse and Southeast Asia use `regional-norse` / `regional-southeast-asia`; RM and DM crowns use `random-map-champion` / `deathmatch-champion`; team packs bind `2v2-rm` + `2v2-dm`, `3v3-rm` + `3v3-dm`, and `4v4-rm` + `4v4-dm`; DM ELO art uses `dm-rising`, `dm-contender`, `dm-veteran`, `dm-elite`, and `dm-legend`.
-- Saudi Arabia and Taiwan are intentionally allowed to retain cinematic full-frame artwork; Champions V2 blends those two as card backgrounds while ordinary belt assets render as transparent foreground art.
-- `lib/champions/championsV2.ts` owns the Champions V2 contender projection:
+- Champions belt artwork is managed through Media Armory targets. National crowns use `national-<slug>`; Norse and Southeast Asia use `regional-norse` / `regional-southeast-asia`; the mode crowns use the imported `rm-champion` / `dm-champion` targets; shared team art uses `2v2`, `3v3`, and `4v4`; RM ELO art uses the canonical title ids `elo-rising`, `elo-challenger`, `elo-veteran`, `elo-elite`, and `elo-legend`; DM ELO art uses `dm-rising`, the retained import alias `dm-contender` for the displayed Challenger division, `dm-veteran`, `dm-elite`, and `dm-legend`.
+- Saudi Arabia and Taiwan intentionally retain cinematic full-frame source artwork, but E2 bounds that art inside a controlled focal window instead of allowing it to take over the whole crown card. Ordinary belt assets remain transparent foreground art.
+- `lib/champions/championsV2.ts` owns the Champions E2 contender projection:
   World alternates explicit RM/DM leaders; RM and DM crowns use their own
   rating columns; Chaos ranks signed-up Kingdom users by linked Watcher
   presence and replay-bearing activity; ELO divisions use lane-specific
-  ratings; national override entries preserve known challengers without
-  inventing site accounts.
+  ratings. National and regional contender rails now read the user's persisted
+  `representedCountry` through `lib/publicPlayerDirectory.ts`, with explicit
+  country aliases for USA / United States and UK / United Kingdom. Manual
+  contender overrides remain additive rather than exclusive. The Southeast
+  Asia regional crown explicitly treats Pakistan as eligible product policy,
+  so a Pakistan-representing warrior can surface there without inventing a
+  second national identity.
+- Team crowns deliberately do not fabricate RM/DM team rankings from solo ELO.
+  Until an authoritative lane-specific team-ranking source exists, each
+  2v2/3v3/4v4 row exposes five honest open contender seats. Exact replay-backed
+  team rivalry evidence remains available elsewhere but is not mislabeled as a
+  team leaderboard.
 - Women's Champion is vacant and currently presents Moose as the invited #1
   contender only; no AoE2WAR identity is fabricated for her.
 - `lib/champions/titleState.ts` builds the current app-side title view model.
