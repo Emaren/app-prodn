@@ -131,6 +131,11 @@ test(
       source,
       /entry\.ratingLastSeenAt\s*=\s*state\.ratingObservedAt/,
     );
+
+    assert.doesNotMatch(
+      source,
+      /updateLastPlayedAt\([\s\S]{0,120}state\.lastObservedAt/,
+    );
   },
 );
 
