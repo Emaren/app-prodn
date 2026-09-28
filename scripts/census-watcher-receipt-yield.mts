@@ -7,6 +7,7 @@ import { createHash } from "node:crypto";
 import { lstat, mkdir, open, realpath, readFile } from "node:fs/promises";
 import { isAbsolute, join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+import type { Prisma } from "../lib/generated/prisma/index.js";
 
 type ObjectRow = Record<string, any>;
 const MODERN_SCHEMA = "aoe2war-watcher-final-observation/v1";
@@ -95,90 +96,100 @@ async function persistReport(directory: string, report: ObjectRow) {
   return { path, sha256 };
 }
 
+async function readOnly(db: any) {
+  const [state] = await db.$queryRawUnsafe("SELECT current_setting('transaction_read_only') AS transaction_mode, current_setting('default_transaction_read_only') AS default_mode");
+  if (state?.transaction_mode !== "on" || state?.default_mode !== "on") throw new Error("database_not_read_only");
+  return state;
+}
+
+/** Reuse the exact Workshop logical grain inside a caller-owned read-only
+ * repeatable-read transaction. This helper performs no writes or promotion.
+ */
+export async function readWorkshopReceiptInventory(tx: Prisma.TransactionClient) {
+  const [adjudications, truth, roster, archive, identity, view] = await Promise.all([
+    import("../lib/replayAdjudications.ts"), import("../lib/publicReplayTruth.ts"),
+    import("../lib/publicReplayRosterV2.ts"), import("../lib/publicBattleArchiveEligibility.ts"),
+    import("../lib/leaderboardIdentity.ts"), import("../lib/gameStatsView.ts"),
+  ]);
+  const databaseReadOnly = await readOnly(tx);
+  // Same fields/order and public helpers as parserObservatory.loadCorpusRows.
+  // This metric deliberately excludes raw ingestion-row census counts.
+  const raw = await tx.gameStats.findMany({ where: { is_final: true },
+    orderBy: [{ played_on: "desc" }, { timestamp: "desc" }, { id: "desc" }],
+    select: { id: true, is_final: true, userUid: true, replay_file: true, original_filename: true,
+      replayHash: true, game_type: true, game_version: true, map: true, winner: true,
+      players: true, event_types: true, key_events: true, parse_source: true, parse_reason: true,
+      played_on: true, timestamp: true, createdAt: true,
+      replayResultAdjudications: adjudications.EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
+      user: { select: { inGameName: true, steamPersonaName: true } } } });
+  const users = await tx.user.findMany({ orderBy: { id: "asc" }, select: { id: true, uid: true, steamId: true, inGameName: true, steamPersonaName: true } });
+  const linked = new Map(users.filter((u) => /^765\d{14}$/.test(u.steamId || "")).map((u) => [u.steamId, u]));
+  const logical = truth.cleanPublicGameRows(adjudications.applyReplayAdjudicationsToGameStatsRows(raw)
+    .filter(archive.isPublicBattleArchiveRow), { includeReview: true, includeLive: false });
+  const modernAttempts = await tx.$queryRawUnsafe<ObjectRow[]>(`SELECT a.id, a.game_stats_id, a.evidence,
+    g.key_events->>'platform_match_id' AS actual_platform_match_id
+    FROM replay_parse_attempts a LEFT JOIN game_stats g ON g.id=a.game_stats_id
+    WHERE a.evidence->>'schema'='${MODERN_SCHEMA}' ORDER BY a.id`);
+  const corpus = { uniqueLogicalBattles: logical.length, logicalBattleTruthComplete: 0,
+    unresolvedLogicalBattles: 0, logicalResultResolved: 0, logicalRosterComplete: 0,
+    logicalNeedsResultOnly: 0, logicalNeedsRosterOnly: 0, logicalNeedsBoth: 0 };
+  const registeredPlayers = { identityRule: "exact replay Steam ID matched to current registered account; uploader/alias alone never qualifies",
+    accountCount: linked.size, logicalBattles: 0, fullTruth: 0, unresolved: 0, resultMissing: 0, rosterMissing: 0 };
+  const unresolved: ObjectRow[] = [];
+  for (const game of logical) {
+    const resultEligible = truth.publicReplayWinnerTruth(game).statsEligible;
+    const rosterComplete = roster.publicReplayRosterV2DisplayState(game.players).complete;
+    const full = resultEligible && rosterComplete;
+    corpus.logicalBattleTruthComplete += Number(full);
+    corpus.unresolvedLogicalBattles += Number(!full);
+    corpus.logicalResultResolved += Number(resultEligible);
+    corpus.logicalRosterComplete += Number(rosterComplete);
+    if (!full) {
+      if (rosterComplete) corpus.logicalNeedsResultOnly++;
+      else if (resultEligible) corpus.logicalNeedsRosterOnly++;
+      else corpus.logicalNeedsBoth++;
+    }
+    const registeredUsers = [...new Set(view.parsePlayers(game.players).map(identity.readLeaderboardSteamId))]
+      .flatMap((steam) => { const user = linked.get(steam); return user ? [{ id: user.id, uid: user.uid, name: user.inGameName || user.steamPersonaName }] : []; });
+    const registeredPlayerIds = registeredUsers.map((u) => u.id);
+    if (registeredPlayerIds.length) {
+      registeredPlayers.logicalBattles++; registeredPlayers.fullTruth += Number(full);
+      registeredPlayers.unresolved += Number(!full); registeredPlayers.resultMissing += Number(!resultEligible);
+      registeredPlayers.rosterMissing += Number(!rosterComplete);
+    }
+    if (full) continue;
+    const events = game.key_events as ObjectRow | null;
+    const platform = typeof events?.platform_match_id === "string" ? events.platform_match_id : null;
+    const attempts = modernAttempts.filter((a) => a.game_stats_id === game.id ||
+      Boolean(platform && (a.actual_platform_match_id === platform || a.evidence?.platform_match_id === platform)));
+    const caseSourceFingerprint = digest(JSON.stringify({
+      game,
+      attempts,
+      registeredUsers,
+    }));
+    unresolved.push({ gameStatsId: game.id, replayHash: game.replayHash, platformMatchId: platform,
+      resultEligible, rosterComplete, registeredPlayerIds, registeredUsers, modernAttemptIds: attempts.map((a) => a.id),
+      potentialQuorum: potentialModernQuorum(attempts.map((a) => a.evidence)),
+      caseSourceFingerprint,
+      family: !rosterComplete ? "roster_evidence_required" : attempts.length ? "modern_receipt_evidence" : "no_modern_receipt_evidence" });
+  }
+  return { generatedAt: new Date().toISOString(), databaseReadOnly, corpus,
+    sourceFingerprint: digest(JSON.stringify({ raw, users, modernAttempts })),
+    registeredPlayers, modernAttemptCount: modernAttempts.length, unresolved };
+}
+
 export async function runCensus(options: ReturnType<typeof parseCensusArguments>) {
   // Set before constructing the Prisma pool. Its PostgreSQL default is hard
   // read-only, including all later dry-run writer snapshot reads.
   process.env.AOE2WAR_PROD_DB_PREVIEW = "true";
-  const [{ getPrisma }, adjudications, truth, roster, archive, identity, view, promotion] = await Promise.all([
-    import("../lib/prisma.ts"), import("../lib/replayAdjudications.ts"),
-    import("../lib/publicReplayTruth.ts"), import("../lib/publicReplayRosterV2.ts"),
-    import("../lib/publicBattleArchiveEligibility.ts"), import("../lib/leaderboardIdentity.ts"),
-    import("../lib/gameStatsView.ts"), import("../lib/watcherReceiptPromotion.ts"),
+  const [{ getPrisma }, promotion] = await Promise.all([
+    import("../lib/prisma.ts"), import("../lib/watcherReceiptPromotion.ts"),
   ]);
   const prisma = getPrisma();
-  const readOnly = async (db: any) => {
-    const [state] = await db.$queryRawUnsafe("SELECT current_setting('transaction_read_only') AS transaction_mode, current_setting('default_transaction_read_only') AS default_mode");
-    if (state?.transaction_mode !== "on" || state?.default_mode !== "on") throw new Error("database_not_read_only");
-    return state;
-  };
   try {
     const loadInventory = () => prisma.$transaction(async (tx) => {
       await tx.$executeRawUnsafe("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY");
-      const databaseReadOnly = await readOnly(tx);
-      // Same fields/order and public helpers as parserObservatory.loadCorpusRows.
-      // This metric deliberately excludes raw ingestion-row census counts.
-      const raw = await tx.gameStats.findMany({ where: { is_final: true },
-        orderBy: [{ played_on: "desc" }, { timestamp: "desc" }, { id: "desc" }],
-        select: { id: true, is_final: true, userUid: true, replay_file: true, original_filename: true,
-          replayHash: true, game_type: true, game_version: true, map: true, winner: true,
-          players: true, event_types: true, key_events: true, parse_source: true, parse_reason: true,
-          played_on: true, timestamp: true, createdAt: true,
-          replayResultAdjudications: adjudications.EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
-          user: { select: { inGameName: true, steamPersonaName: true } } } });
-      const users = await tx.user.findMany({ orderBy: { id: "asc" }, select: { id: true, uid: true, steamId: true, inGameName: true, steamPersonaName: true } });
-      const linked = new Map(users.filter((u) => /^765\d{14}$/.test(u.steamId || "")).map((u) => [u.steamId, u]));
-      const logical = truth.cleanPublicGameRows(adjudications.applyReplayAdjudicationsToGameStatsRows(raw)
-        .filter(archive.isPublicBattleArchiveRow), { includeReview: true, includeLive: false });
-      const modernAttempts = await tx.$queryRawUnsafe<ObjectRow[]>(`SELECT a.id, a.game_stats_id, a.evidence,
-        g.key_events->>'platform_match_id' AS actual_platform_match_id
-        FROM replay_parse_attempts a LEFT JOIN game_stats g ON g.id=a.game_stats_id
-        WHERE a.evidence->>'schema'='${MODERN_SCHEMA}' ORDER BY a.id`);
-      const corpus = { uniqueLogicalBattles: logical.length, logicalBattleTruthComplete: 0,
-        unresolvedLogicalBattles: 0, logicalResultResolved: 0, logicalRosterComplete: 0,
-        logicalNeedsResultOnly: 0, logicalNeedsRosterOnly: 0, logicalNeedsBoth: 0 };
-      const registeredPlayers = { identityRule: "exact replay Steam ID matched to current registered account; uploader/alias alone never qualifies",
-        accountCount: linked.size, logicalBattles: 0, fullTruth: 0, unresolved: 0, resultMissing: 0, rosterMissing: 0 };
-      const unresolved: ObjectRow[] = [];
-      for (const game of logical) {
-        const resultEligible = truth.publicReplayWinnerTruth(game).statsEligible;
-        const rosterComplete = roster.publicReplayRosterV2DisplayState(game.players).complete;
-        const full = resultEligible && rosterComplete;
-        corpus.logicalBattleTruthComplete += Number(full);
-        corpus.unresolvedLogicalBattles += Number(!full);
-        corpus.logicalResultResolved += Number(resultEligible);
-        corpus.logicalRosterComplete += Number(rosterComplete);
-        if (!full) {
-          if (rosterComplete) corpus.logicalNeedsResultOnly++;
-          else if (resultEligible) corpus.logicalNeedsRosterOnly++;
-          else corpus.logicalNeedsBoth++;
-        }
-        const registeredUsers = [...new Set(view.parsePlayers(game.players).map(identity.readLeaderboardSteamId))]
-          .flatMap((steam) => { const user = linked.get(steam); return user ? [{ id: user.id, uid: user.uid, name: user.inGameName || user.steamPersonaName }] : []; });
-        const registeredPlayerIds = registeredUsers.map((u) => u.id);
-        if (registeredPlayerIds.length) {
-          registeredPlayers.logicalBattles++; registeredPlayers.fullTruth += Number(full);
-          registeredPlayers.unresolved += Number(!full); registeredPlayers.resultMissing += Number(!resultEligible);
-          registeredPlayers.rosterMissing += Number(!rosterComplete);
-        }
-        if (full) continue;
-        const events = game.key_events as ObjectRow | null;
-        const platform = typeof events?.platform_match_id === "string" ? events.platform_match_id : null;
-        const attempts = modernAttempts.filter((a) => a.game_stats_id === game.id ||
-          Boolean(platform && (a.actual_platform_match_id === platform || a.evidence?.platform_match_id === platform)));
-        const caseSourceFingerprint = digest(JSON.stringify({
-          game,
-          attempts,
-          registeredUsers,
-        }));
-        unresolved.push({ gameStatsId: game.id, replayHash: game.replayHash, platformMatchId: platform,
-          resultEligible, rosterComplete, registeredPlayerIds, registeredUsers, modernAttemptIds: attempts.map((a) => a.id),
-          potentialQuorum: potentialModernQuorum(attempts.map((a) => a.evidence)),
-          caseSourceFingerprint,
-          family: !rosterComplete ? "roster_evidence_required" : attempts.length ? "modern_receipt_evidence" : "no_modern_receipt_evidence" });
-      }
-      return { generatedAt: new Date().toISOString(), databaseReadOnly, corpus,
-        sourceFingerprint: digest(JSON.stringify({ raw, users, modernAttempts })),
-        registeredPlayers, modernAttemptCount: modernAttempts.length, unresolved };
+      return readWorkshopReceiptInventory(tx);
     }, { timeout: 120_000 });
     const inventory = await loadInventory();
     const candidates = inventory.unresolved.filter((r) => r.modernAttemptIds.length > 0).sort((a, b) =>
