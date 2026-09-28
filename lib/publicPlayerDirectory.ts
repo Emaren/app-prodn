@@ -1057,23 +1057,33 @@ export async function loadPublicPlayerDirectoryFresh(
 async function overlayPublicPlayerDirectoryLiveState(
   prisma: PrismaClient,
   directory: PublicPlayerDirectory,
+  options: {
+    includePresence: boolean;
+    includeCurrentWatcherState: boolean;
+  },
 ): Promise<PublicPlayerDirectory> {
   const [
     presence,
     currentWatcherAccountStates,
   ] = await Promise.all([
-    loadPublicPresenceSnapshot(prisma),
-    loadCurrentWatcherAccountStates(
-      prisma,
-    ),
+    options.includePresence
+      ? loadPublicPresenceSnapshot(prisma)
+      : Promise.resolve(null),
+    options.includeCurrentWatcherState
+      ? loadCurrentWatcherAccountStates(
+          prisma,
+        )
+      : Promise.resolve([]),
   ]);
 
   const onlineUids =
-    new Set(
-      presence.onlineUsers.map(
-        (user) => user.uid,
-      ),
-    );
+    presence
+      ? new Set(
+          presence.onlineUsers.map(
+            (user) => user.uid,
+          ),
+        )
+      : null;
   const watcherByKey =
     new Map(
       currentWatcherAccountStates.map(
@@ -1093,12 +1103,14 @@ async function overlayPublicPlayerDirectoryLiveState(
         ...source.aliases,
       ],
       isOnline:
-        Boolean(
-          source.uid &&
-          onlineUids.has(
-            source.uid,
-          ),
-        ),
+        onlineUids
+          ? Boolean(
+              source.uid &&
+              onlineUids.has(
+                source.uid,
+              ),
+            )
+          : source.isOnline,
     };
     const state =
       watcherByKey.get(
@@ -1210,6 +1222,7 @@ export async function loadPublicPlayerDirectory(
   replayGeneration: string | null = null,
   options: {
     includePresence?: boolean;
+    includeCurrentWatcherState?: boolean;
   } = {},
 ): Promise<PublicPlayerDirectory> {
   let resolvedGeneration =
@@ -1236,17 +1249,25 @@ export async function loadPublicPlayerDirectory(
     }
   }
 
-  const withPresence =
-    options.includePresence !== false;
+  const overlayOptions = {
+    includePresence:
+      options.includePresence !== false,
+    includeCurrentWatcherState:
+      options.includeCurrentWatcherState !== false,
+  };
+  const needsLiveOverlay =
+    overlayOptions.includePresence ||
+    overlayOptions.includeCurrentWatcherState;
 
   if (
     publicPlayerDirectoryCache?.generation ===
     resolvedGeneration
   ) {
-    return withPresence
+    return needsLiveOverlay
       ? overlayPublicPlayerDirectoryLiveState(
           prisma,
           publicPlayerDirectoryCache.value,
+          overlayOptions,
         )
       : publicPlayerDirectoryCache.value;
   }
@@ -1260,10 +1281,11 @@ export async function loadPublicPlayerDirectory(
 
   if (existing) {
     const value = await existing;
-    return withPresence
+    return needsLiveOverlay
       ? overlayPublicPlayerDirectoryLiveState(
           prisma,
           value,
+          overlayOptions,
         )
       : value;
   }
@@ -1305,10 +1327,11 @@ export async function loadPublicPlayerDirectory(
 
   const value = await run;
 
-  return withPresence
+  return needsLiveOverlay
     ? overlayPublicPlayerDirectoryLiveState(
         prisma,
         value,
+        overlayOptions,
       )
     : value;
 }
