@@ -100,6 +100,16 @@ export type LoadLobbyLeaderboardOptions = {
   query?: string | null;
   sortKey?: LeaderboardSortKey | null;
   sortDirection?: LeaderboardSortDirection | null;
+  /**
+   * Live presence is an observational response overlay, not projection
+   * authority. Server-only consumers that do not render presence can skip it.
+   */
+  includePresence?: boolean;
+  /**
+   * Internal generation hint for callers that already captured directory
+   * authority and need multiple competition reads to share one exact build.
+   */
+  projectionGeneration?: string | null;
 };
 
 type PreparedLeaderboardGame = Omit<
@@ -1890,6 +1900,7 @@ export async function loadLobbyLeaderboard(
       options,
     );
   const projectionGeneration =
+    options.projectionGeneration ??
     await loadLeaderboardProjectionGeneration(
       prisma,
     );
@@ -1929,10 +1940,12 @@ export async function loadLobbyLeaderboard(
       });
     }
 
-    return overlayLeaderboardPresence(
-      prisma,
-      cached.value,
-    );
+    return options.includePresence === false
+      ? cached.value
+      : overlayLeaderboardPresence(
+          prisma,
+          cached.value,
+        );
   }
 
   /*
@@ -1948,9 +1961,11 @@ export async function loadLobbyLeaderboard(
       timeBucket,
     );
 
-  return overlayLeaderboardPresence(
-    prisma,
-    value,
-  );
+  return options.includePresence === false
+    ? value
+    : overlayLeaderboardPresence(
+        prisma,
+        value,
+      );
 }
 
