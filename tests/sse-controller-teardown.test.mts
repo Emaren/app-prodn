@@ -53,3 +53,17 @@ test("all long-lived public SSE routes guard controller writes", () => {
     assert.match(route, /catch/);
   }
 });
+
+
+test("Radio Wolo range stream treats disconnects as normal teardown", () => {
+  const stream = source("lib/radioWoloFileStream.ts");
+
+  assert.match(stream, /function closeController/);
+  assert.match(stream, /function errorController/);
+  assert.match(stream, /try \{\s*controller\.close\(\)/);
+  assert.match(stream, /try \{\s*controller\.error\(error\)/);
+  assert.match(
+    stream,
+    /try \{\s*controller\.enqueue\([\s\S]*?\} catch \{\s*cancelled = true;/,
+  );
+});
