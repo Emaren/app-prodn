@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `perf/replay-projection-cache-v2-20260928` at `ac59d337082afa0699dabacd4686caf7d2839fea`
+Implementation baseline: `perf/replay-projection-cache-v2-20260928` at `9bd7e733ac325ae93559df556805924da7041858`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
