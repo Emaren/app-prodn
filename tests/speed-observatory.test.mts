@@ -7,6 +7,8 @@ const observatory = fs.readFileSync("components/speed/SpeedObservatory.tsx", "ut
 const checkRoute = fs.readFileSync("app/api/speed/check/route.ts", "utf8");
 const reportRoute = fs.readFileSync("app/api/speed/report/route.ts", "utf8");
 const proof = fs.readFileSync("components/speed/SpeedProof.tsx", "utf8");
+const e2 = fs.readFileSync("components/speed/SpeedObservatoryE2.tsx", "utf8");
+const serverRuntimeHealth = fs.readFileSync("lib/speed/serverRuntimeHealth.ts", "utf8");
 
 test("personal Speed Observatory reads only this browser tab's recent Speed samples", () => {
   assert.match(page, /SpeedObservatory/);
@@ -21,6 +23,12 @@ test("live check is uncached and measures a same-origin round trip", () => {
   assert.match(checkRoute, /Cache-Control/);
   assert.match(checkRoute, /no-store/);
   assert.match(checkRoute, /NEXT_PUBLIC_AOE2WAR_BUILD_VERSION/);
+  assert.match(checkRoute, /readServerEventLoopHealth/);
+  assert.match(checkRoute, /server_event_loop/);
+  assert.match(serverRuntimeHealth, /setInterval/);
+  assert.match(serverRuntimeHealth, /unref/);
+  assert.match(serverRuntimeHealth, /p95_ms/);
+  assert.match(e2, /SERVER LOOP p95/);
 });
 
 test("one-click Speed Report uses trusted server identity and private Traffic relay", () => {
