@@ -1363,6 +1363,23 @@ rollback_activation() {{
 }}
 trap rollback_activation EXIT
 
+tracked_worktree_pre_mutation="$(
+  python3 -c {q(TRACKED_WORKTREE_PROBE)}
+)"
+printf '%s\\n' "$tracked_worktree_pre_mutation" \
+  > "$ACT_RECEIPT/tracked-worktree-pre-mutation.tsv"
+
+tracked_probe_value() {{
+  probe_key="$1"
+  printf '%s\\n' "$tracked_worktree_pre_mutation" \
+    | awk -F '\\t' -v key="$probe_key" '$1 == key {{print $2; exit}}'
+}}
+
+test "$(tracked_probe_value tracked_foreign_entries)" = "0"
+test "$(tracked_probe_value tracked_unwritable_entries)" = "0"
+test "$(tracked_probe_value tracked_parent_foreign_dirs)" = "0"
+test "$(tracked_probe_value tracked_parent_unwritable_dirs)" = "0"
+
 SERVICE_STOPPED=1
 sudo -n /usr/bin/systemctl stop "$SERVICE"
 test "$(systemctl is-active "$SERVICE" 2>/dev/null || true)" != "active"
