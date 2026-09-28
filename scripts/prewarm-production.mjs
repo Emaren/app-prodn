@@ -2,6 +2,14 @@ const BASE_URL = process.env.AOE2WAR_PREWARM_BASE_URL || "http://127.0.0.1:3030"
 
 const urls = [
   "/",
+  /*
+   * Pay expensive process-local projection cold starts while rollback is armed,
+   * not on the first human navigation after a release.
+   */
+  "/players",
+  "/champions",
+  "/rivalries",
+  "/battle-archive",
   "/api/lobby",
   "/api/live-games",
   "/api/media-assets/logo/footer-wolo?fallback=%2Flegacy%2Fwolo-logo-transparent.webp",
