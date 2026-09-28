@@ -653,8 +653,8 @@ samples before claiming a route-level latency improvement.
 
 `aoe2war speed inventory` derives the performance estate from the current
 Next.js source tree instead of relying on a hand-maintained page count. At this
-revision the application contains 101 page entry points: 22 authenticated admin
-pages, 78 ordinary public page templates, and one sensitive dynamic public
+revision the application contains 110 page entry points: 23 authenticated admin
+pages, 86 ordinary public page templates, and one sensitive dynamic public
 invoice template.
 
 Every ordinary public page template must have a stable representative in
