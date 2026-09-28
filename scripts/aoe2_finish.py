@@ -1532,7 +1532,7 @@ if [ "$CURRENT_KB" -lt "$TARGET_KB" ] && command -v snap >/dev/null 2>&1; then
     SNAP_BUSY=0
 
     if snap changes 2>/dev/null |
-        awk 'NR > 1 && $2 == "Doing" {found=1} END {exit(found ? 0 : 1)}'
+        awk 'NR > 1 && $2 == "Doing" {{found=1}} END {{exit(found ? 0 : 1)}}'
     then
         SNAP_BUSY=1
     fi
@@ -1593,9 +1593,9 @@ if [ "$CURRENT_KB" -lt "$TARGET_KB" ] && command -v snap >/dev/null 2>&1; then
         done < <(
             snap list --all 2>/dev/null |
             awk '
-                NR > 1 && $NF ~ /(^|,)disabled(,|$)/ {
+                NR > 1 && $NF ~ /(^|,)disabled(,|$)/ {{
                     printf "%s\t%s\n", $1, $3
-                }
+                }}
             '
         )
     fi
