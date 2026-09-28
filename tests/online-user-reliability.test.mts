@@ -587,7 +587,7 @@ test("client and routes implement idle-safe heartbeat, unload, and logout contra
   assert.match(publicPresence, /userIsOnline/);
   assert.doesNotMatch(publicPlayerDirectory, /userIsOnline/);
   assert.match(publicPlayerDirectory, /loadPublicPresenceSnapshot/);
-  assert.match(publicPlayerDirectory, /overlayPublicPlayerDirectoryPresence/);
+  assert.match(publicPlayerDirectory, /overlayPublicPlayerDirectoryLiveState/);
   assert.match(playerProfile, /userIsOnline/);
   assert.match(challenges, /userIsOnline/);
 
