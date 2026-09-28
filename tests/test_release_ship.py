@@ -62,10 +62,12 @@ def sample():
         "executor": MODULE.EXPECTED_PROD_USER,
         "git_foreign_entries": "0",
         "git_unwritable_dirs": "0",
+        "tracked_missing_entries": "0",
         "tracked_foreign_entries": "0",
         "tracked_unwritable_entries": "0",
         "tracked_parent_foreign_dirs": "0",
         "tracked_parent_unwritable_dirs": "0",
+        "tracked_missing_sample": "[]",
         "tracked_foreign_sample": "[]",
         "tracked_unwritable_sample": "[]",
         "tracked_parent_foreign_sample": "[]",
@@ -840,6 +842,27 @@ class ShipTests(unittest.TestCase):
             MODULE.validation_errors(data, manifest, transport),
         )
 
+    def test_missing_tracked_path_blocks_before_staging(self):
+        data, manifest, transport = sample()
+        transport["tracked_missing_entries"] = "1"
+        transport["tracked_missing_sample"] = (
+            '["app/api/players/generation/route.ts"]'
+        )
+
+        errors = MODULE.validation_errors(
+            data,
+            manifest,
+            transport,
+        )
+
+        self.assertTrue(
+            any(
+                "missing Git-tracked entries" in error
+                and "generation/route.ts" in error
+                for error in errors
+            )
+        )
+
     def test_foreign_tracked_worktree_ownership_blocks_before_staging(self):
         data, manifest, transport = sample()
         transport["tracked_foreign_entries"] = "1"
@@ -912,6 +935,7 @@ class ShipTests(unittest.TestCase):
         )
 
         for key in (
+            "tracked_missing_entries",
             "tracked_foreign_entries",
             "tracked_unwritable_entries",
             "tracked_parent_foreign_dirs",
