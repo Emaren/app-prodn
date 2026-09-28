@@ -457,14 +457,9 @@ async function hydrateCompletedSessionUploaders<T extends CompletedUploaderHydra
 ): Promise<T[]> {
   if (!sessions.length) return sessions;
 
-  const hydrated: T[] = [];
-
-  for (const session of sessions) {
+  const targets = sessions.flatMap((session, index) => {
     const existingUploaders = session.uploaders ?? [];
-    if (existingUploaders.length >= 2) {
-      hydrated.push(session);
-      continue;
-    }
+    if (existingUploaders.length >= 2) return [];
 
     const playerNames = completedUploaderPlayerNames(session);
     const anchorDate =
@@ -472,88 +467,122 @@ async function hydrateCompletedSessionUploaders<T extends CompletedUploaderHydra
       completedUploaderDate(session.playedOn) ??
       completedUploaderDate(session.createdAt);
 
-    if (!anchorDate || playerNames.length < 2) {
-      hydrated.push(session);
-      continue;
-    }
+    if (!anchorDate || playerNames.length < 2) return [];
 
-    try {
-      const rows = await prisma.$queryRawUnsafe<CompletedUploaderHydrationRow[]>(
-        `
-          with replay_rows as (
-            select
-              coalesce(u.in_game_name, u.uid) as display_name,
-              count(*)::int as parse_rows
-            from replay_parse_attempts r
-            left join users u on u.uid = r.user_uid
-            where r.created_at >= $1::timestamptz - interval '120 minutes'
-              and r.created_at <= $1::timestamptz + interval '20 minutes'
-              and coalesce(u.in_game_name, u.uid) = any($2::text[])
-              and coalesce(r.parse_source, '') in ('watcher_live', 'watcher_final')
-              and coalesce(r.status, '') not ilike '%fail%'
-            group by coalesce(u.in_game_name, u.uid)
-          ),
-          event_rows as (
-            select
-              coalesce(u.in_game_name, u.uid) as display_name,
-              count(*)::int as parse_rows
-            from watcher_client_events e
-            left join users u on u.id = e.user_id
-            where e.created_at >= $1::timestamptz - interval '120 minutes'
-              and e.created_at <= $1::timestamptz + interval '20 minutes'
-              and coalesce(u.in_game_name, u.uid) = any($2::text[])
-              and (
-                coalesce(e.parse_source, '') in ('watcher_live', 'watcher_final')
-                or e.event_type in ('upload_succeeded', 'upload_success', 'parse_succeeded')
-              )
-            group by coalesce(u.in_game_name, u.uid)
-          ),
-          combined as (
-            select * from replay_rows
-            union all
-            select * from event_rows
-          )
+    return [{
+      index,
+      anchorAt: anchorDate.toISOString(),
+      playerNames,
+    }];
+  });
+
+  if (!targets.length) return sessions;
+
+  /*
+   * This used to run one replay/event history query per completed card,
+   * sequentially. Feed every bounded display candidate through one VALUES
+   * relation instead so a busy board still pays one database round trip.
+   */
+  const valuesSql = targets
+    .map((_, index) => {
+      const base = index * 3;
+      return `($${base + 1}::int, $${base + 2}::timestamptz, $${base + 3}::text[])`;
+    })
+    .join(", ");
+  const params = targets.flatMap((target) => [
+    target.index,
+    target.anchorAt,
+    target.playerNames,
+  ]);
+
+  try {
+    const rows = await prisma.$queryRawUnsafe<
+      Array<CompletedUploaderHydrationRow & { candidate_index: number | string | bigint }>
+    >(
+      `
+        with candidates(candidate_index, anchor_at, player_names) as (
+          values ${valuesSql}
+        ),
+        replay_rows as (
           select
-            display_name,
-            sum(parse_rows)::int as parse_rows
-          from combined
-          where display_name is not null
-          group by display_name
-          order by sum(parse_rows) desc, display_name asc
-        `,
-        anchorDate.toISOString(),
-        playerNames
-      );
+            c.candidate_index,
+            coalesce(u.in_game_name, u.uid) as display_name,
+            count(*)::int as parse_rows
+          from candidates c
+          join replay_parse_attempts r
+            on r.created_at >= c.anchor_at - interval '120 minutes'
+           and r.created_at <= c.anchor_at + interval '20 minutes'
+          left join users u on u.uid = r.user_uid
+          where coalesce(u.in_game_name, u.uid) = any(c.player_names)
+            and coalesce(r.parse_source, '') in ('watcher_live', 'watcher_final')
+            and coalesce(r.status, '') not ilike '%fail%'
+          group by c.candidate_index, coalesce(u.in_game_name, u.uid)
+        ),
+        event_rows as (
+          select
+            c.candidate_index,
+            coalesce(u.in_game_name, u.uid) as display_name,
+            count(*)::int as parse_rows
+          from candidates c
+          join watcher_client_events e
+            on e.created_at >= c.anchor_at - interval '120 minutes'
+           and e.created_at <= c.anchor_at + interval '20 minutes'
+          left join users u on u.id = e.user_id
+          where coalesce(u.in_game_name, u.uid) = any(c.player_names)
+            and (
+              coalesce(e.parse_source, '') in ('watcher_live', 'watcher_final')
+              or e.event_type in ('upload_succeeded', 'upload_success', 'parse_succeeded')
+            )
+          group by c.candidate_index, coalesce(u.in_game_name, u.uid)
+        ),
+        combined as (
+          select * from replay_rows
+          union all
+          select * from event_rows
+        )
+        select
+          candidate_index,
+          display_name,
+          sum(parse_rows)::int as parse_rows
+        from combined
+        where display_name is not null
+        group by candidate_index, display_name
+        order by candidate_index, sum(parse_rows) desc, display_name asc
+      `,
+      ...params
+    );
 
-      const proofUploaders = rows
-        .map((row) => ({
-          displayName: String(row.display_name ?? "").trim(),
-          parseRows: Number(row.parse_rows ?? 0),
-        }))
-        .filter((row) => row.displayName && row.parseRows > 0);
+    const proofByIndex = new Map<number, CompletedUploaderHydrationUploader[]>();
 
-      hydrated.push(
-        proofUploaders.length >= 2
-          ? {
-              ...session,
-              uploaders: proofUploaders,
-            }
-          : session
-      );
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      console.warn("completed uploader hydration skipped", {
-        sessionId: session.id,
-        sessionKey: session.sessionKey,
-        message,
-      });
-      hydrated.push(session);
+    for (const row of rows) {
+      const candidateIndex = Number(row.candidate_index);
+      const displayName = String(row.display_name ?? "").trim();
+      const parseRows = Number(row.parse_rows ?? 0);
+      if (!Number.isInteger(candidateIndex) || !displayName || parseRows <= 0) continue;
+
+      const bucket = proofByIndex.get(candidateIndex) ?? [];
+      bucket.push({ displayName, parseRows });
+      proofByIndex.set(candidateIndex, bucket);
     }
+
+    return sessions.map((session, index) => {
+      const proofUploaders = proofByIndex.get(index) ?? [];
+      return proofUploaders.length >= 2
+        ? {
+            ...session,
+            uploaders: proofUploaders,
+          }
+        : session;
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn("completed uploader batch hydration skipped", {
+      candidates: targets.length,
+      message,
+    });
+    return sessions;
   }
-
-  return hydrated;
 }
-
 
 export async function loadLiveGamesSnapshotFresh(
   prisma: PrismaClient
