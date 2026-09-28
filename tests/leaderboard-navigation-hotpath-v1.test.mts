@@ -28,12 +28,15 @@ test("home Leaderboard surfaces prime navigation on user intent", () => {
   }
 });
 
-test("Leaderboard client code is warmed through one cached dynamic import", () => {
+test("Leaderboard client warmup is cached, failure-contained, and retryable", () => {
   const helper = source("lib/leaderboardNavigationWarmup.ts");
   const shell = source("app/AppShell.tsx");
 
-  assert.match(helper, /leaderboardClientWarmPromise \?\?= import\(/);
+  assert.match(helper, /if \(!leaderboardClientWarmPromise\)/);
   assert.match(helper, /ModernLeaderboardPage/);
+  assert.match(helper, /\.catch\(\(\) => \{/);
+  assert.match(helper, /leaderboardClientWarmPromise = null/);
+  assert.match(helper, /return null/);
   const page = source("app/leaderboard/page.tsx");
   assert.match(page, /import \{ ModernLeaderboardPage \}/);
   assert.match(shell, /router\.prefetch\("\/leaderboard"\);[\s\S]*warmLeaderboardClient\(\);[\s\S]*setOpen\(true\);/);
