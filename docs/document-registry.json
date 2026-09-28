@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9f24752627a5e49b82d911f21b809ae92287200a04089e4af7635a0276ac3d60",
+      "sha256": "0f8ae5ec8e7e42efb7d4160935cbd8b23f35956b4efc8a67101b6850b6bba1d4",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/runtime-stream-crash-observability-20260928",
-    "commit": "65ddc5ca297abfdcaacafbfbb9db6b32e2bc46ad"
+    "branch": "fix/release-gate-eof-whitespace-20260928",
+    "commit": "d02b96313194e8cb0a894001285d0b6059dd718f"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
