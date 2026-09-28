@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "perf/replay-projection-cache-v2-20260928",
-    "commit": "9bd7e733ac325ae93559df556805924da7041858"
+    "branch": "fix/runtime-stream-crash-observability-20260928",
+    "commit": "348bff6dd1dd55ce6d6663ac70a25c4a6710c8cc"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
