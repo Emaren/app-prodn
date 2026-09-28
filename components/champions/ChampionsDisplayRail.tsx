@@ -6,16 +6,13 @@ import { useEffect } from "react";
 
 export type ChampionsDisplayMode = "b" | "a" | "e1" | "e2";
 
-const OPTIONS: Array<{
-  mode: ChampionsDisplayMode;
-  label: string;
-  href: string;
-}> = [
-  { mode: "b", label: "B", href: "/champions/legacy?view=b" },
-  { mode: "a", label: "A", href: "/champions/legacy?view=a" },
-  { mode: "e1", label: "E1", href: "/champions/legacy?view=e" },
-  { mode: "e2", label: "E2", href: "/champions" },
-];
+function itemClass(selected: boolean) {
+  return `min-w-8 rounded-full px-2.5 py-1 text-center text-[9px] font-black uppercase tracking-[0.16em] transition ${
+    selected
+      ? "bg-amber-100 text-slate-950 shadow-[0_0_0_1px_rgba(255,255,255,0.26)]"
+      : "text-slate-500 hover:bg-white/[0.06] hover:text-slate-200"
+  }`;
+}
 
 export default function ChampionsDisplayRail({
   active,
@@ -34,11 +31,12 @@ export default function ChampionsDisplayRail({
           : "e1"
       : "e2";
   const selectedMode = active ?? inferred;
+  const extremeSelected = selectedMode === "e1" || selectedMode === "e2";
 
   useEffect(() => {
     document.documentElement.dataset.championsView =
-      selectedMode === "e1" || selectedMode === "e2" ? "e" : selectedMode;
-  }, [selectedMode]);
+      extremeSelected ? "e" : selectedMode;
+  }, [extremeSelected, selectedMode]);
 
   return (
     <section
@@ -46,33 +44,63 @@ export default function ChampionsDisplayRail({
       aria-label="Championship display settings"
     >
       <span className="text-[8px] font-black uppercase tracking-[0.24em] text-slate-600">
-        Display
+        Layout
       </span>
 
-      <div className="flex items-center gap-1 rounded-full border border-white/[0.07] bg-black/25 p-0.5">
-        {OPTIONS.map((option) => {
-          const selected = option.mode === selectedMode;
-          return (
+      <nav
+        className="flex items-center gap-1 rounded-full border border-white/[0.07] bg-black/25 p-0.5"
+        aria-label="Championship view mode"
+      >
+        <Link
+          href="/champions/legacy?view=b"
+          aria-current={selectedMode === "b" ? "page" : undefined}
+          title="Basic"
+          className={itemClass(selectedMode === "b")}
+        >
+          B
+        </Link>
+        <Link
+          href="/champions/legacy?view=a"
+          aria-current={selectedMode === "a" ? "page" : undefined}
+          title="Advanced"
+          className={itemClass(selectedMode === "a")}
+        >
+          A
+        </Link>
+
+        <div className="group/extreme relative">
+          <Link
+            href="/champions"
+            aria-current={extremeSelected ? "page" : undefined}
+            title="Extreme"
+            className={`block ${itemClass(extremeSelected)}`}
+          >
+            E
+          </Link>
+
+          <div
+            className="pointer-events-none absolute bottom-full right-0 z-50 mb-1 flex translate-y-1 gap-1 rounded-full border border-white/[0.09] bg-slate-950/95 p-1 opacity-0 shadow-[0_14px_34px_rgba(0,0,0,0.44)] backdrop-blur transition duration-150 group-hover/extreme:pointer-events-auto group-hover/extreme:translate-y-0 group-hover/extreme:opacity-100 group-focus-within/extreme:pointer-events-auto group-focus-within/extreme:translate-y-0 group-focus-within/extreme:opacity-100"
+            aria-label="Extreme Champions versions"
+          >
             <Link
-              key={option.mode}
-              href={option.href}
-              aria-current={selected ? "page" : undefined}
-              title={
-                option.mode === "e2"
-                  ? "Current Champions E2"
-                  : `Preserved Champions ${option.label}`
-              }
-              className={`min-w-8 rounded-full px-2.5 py-1 text-center text-[9px] font-black uppercase tracking-[0.16em] transition ${
-                selected
-                  ? "bg-amber-100 text-slate-950 shadow-[0_0_0_1px_rgba(255,255,255,0.26)]"
-                  : "text-slate-500 hover:bg-white/[0.06] hover:text-slate-200"
-              }`}
+              href="/champions/legacy?view=e"
+              aria-current={selectedMode === "e1" ? "page" : undefined}
+              title="Extreme 1 · preserved"
+              className={itemClass(selectedMode === "e1")}
             >
-              {option.label}
+              E1
             </Link>
-          );
-        })}
-      </div>
+            <Link
+              href="/champions"
+              aria-current={selectedMode === "e2" ? "page" : undefined}
+              title="Extreme 2 · current"
+              className={itemClass(selectedMode === "e2")}
+            >
+              E2
+            </Link>
+          </div>
+        </div>
+      </nav>
     </section>
   );
 }
