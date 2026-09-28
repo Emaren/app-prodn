@@ -1,0 +1,82 @@
+{
+  "schema": "aoe2war-roster-opportunity-audit-summary/v1",
+  "observationTimestamp": "2026-09-28T20:01:27.647Z",
+  "sourceHead": "6f563bc193796d2337bdf13e0ef28763f86f6149",
+  "productionSourceHead": "58b11776de2bd25d75b45b1dfc4d2d2166bf5ee9",
+  "inventorySourceFingerprint": "83cea9e22f3304dfca485926438d7c4549ecdb633d51ce9fabe72bb0dd27362b",
+  "historicalSealedObservation": {
+    "timestamp": "2026-09-28T12:38:35.500Z",
+    "receiptSha256": "69cd8f66ac7b6206bcef09aeb0d655467c376aee0efebf7b0179a12adc49f524",
+    "rosterIncompleteCount": 235,
+    "playerFirstCount": 102
+  },
+  "fullBattleTruth": {
+    "resolved": 3584,
+    "logicalBattles": 5230,
+    "percent": 68.52772466539197,
+    "rosterIncomplete": 235,
+    "playerFirstRosterIncomplete": 102
+  },
+  "audit": {
+    "inspected": 235,
+    "playerFirstInspected": 102,
+    "completeRecoveryCandidates": 0,
+    "partialRosterEvidence": 0,
+    "identityAmbiguity": 0,
+    "sideTeamAmbiguity": 0,
+    "topologyAmbiguity": 0,
+    "sourceArchiveMissing": 23,
+    "parserEvidenceDisagreement": 112,
+    "disconnectedReviewDesync": 100,
+    "other": 0,
+    "corpusDrift": {
+      "addedIds": [],
+      "removedIds": [],
+      "changedSourceIds": []
+    }
+  },
+  "projectedYield": {
+    "actualAdditions": 0,
+    "projectedResolved": 3584,
+    "denominator": 5230,
+    "projectedPercent": 68.52772466539197,
+    "percentagePointGain": 0,
+    "playerFirstProjectedAdditions": 0
+  },
+  "playerFirst": {
+    "completeCandidateIds": [],
+    "uids": [],
+    "names": [],
+    "proposedRosters": []
+  },
+  "rawBlockers": {
+    "exactCountsArePreservedInPrivateReceipt": true,
+    "privateReceiptSha256": "a7a11950dbd27ee16d00d49bee34d772b230213da1b1574525baf3b8f13a0271",
+    "privateReceiptPath": "hel1:/mnt/HC_Volume_105319120/aoe2-parser-engine/reports/roster-audit-20260928T195934Z/receipts/roster-audit-a7a11950dbd27ee16d00d49bee34d772b230213da1b1574525baf3b8f13a0271.json",
+    "primaryReasons": {
+      "existing_roster_promotion": 38,
+      "adjudication_history_requires_review": 54,
+      "exact_current_parser_run_missing": 23,
+      "linked_markets:1": 5,
+      "linked_markets:2": 1,
+      "disconnect_detected": 1,
+      "accepted_result_adjudication": 1,
+      "result_authority_changed": 1,
+      "projection_missing_or_conflicting_player_name_reason_total": 111
+    }
+  },
+  "provenance": {
+    "databaseReadOnly": true,
+    "databaseWrites": 0,
+    "resultWrites": 0,
+    "rosterWrites": 0,
+    "bettingAuthority": false,
+    "settlementAuthority": false,
+    "woloAuthority": false,
+    "nativeRuns": 0,
+    "fullPrivateReceiptSha256": "a7a11950dbd27ee16d00d49bee34d772b230213da1b1574525baf3b8f13a0271",
+    "playerFirstReceiptSha256": "7060b549793f56fb0171901b69bba8e286e845c2991c9fc8d14e53a08b8cae6c",
+    "localPrivateReceiptDirectory": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/targeted-recovery-20260926/roster-audit-20260928T195934Z/receipts",
+    "parserContract": "Existing targetedReplayRosterRecovery planner; exact candidate-only parser-run/hash/identity/team evidence; no fuzzy identity or name-only promotion."
+  }
+}

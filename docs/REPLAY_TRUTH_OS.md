@@ -367,3 +367,27 @@ can meet the independent cross-side quorum. The nine ineligible cases contain
 11 receipts whose persisted provenance-signature verification and corroboration
 eligibility are both false. These are secondary evidence facts; the primary
 blocked-case counts above remain unchanged. No missing signatures were invented.
+
+### Sealed read-only roster opportunity audit — 2026-09-28 20:01:27.647 UTC
+
+The existing Workshop-grain inventory and `targetedReplayRosterRecovery` planner
+audited all **235** result-known, roster-incomplete logical battles, including all
+**102** cases involving registered players. There were **0** complete recovery
+candidates and therefore **0** actual projected Full Battle Truth additions.
+Full Battle Truth remains **3,584 / 5,230 = 68.52772466539197%**.
+
+Primary dispositions were: source/archive missing **23**, parser/evidence
+disagreement **112**, and disconnected/review/desync **100**. Identity, side/team,
+topology, partial-only, and other dispositions were zero. The private immutable
+receipt preserves the exact per-case blocker map, source evidence and player-first
+packet: SHA-256
+`a7a11950dbd27ee16d00d49bee34d772b230213da1b1574525baf3b8f13a0271`. The
+repository-governed summary is
+[`replay-receipts/roster-audit-2026-09-28.json`](replay-receipts/roster-audit-2026-09-28.json).
+
+The audit was read-only: no result, roster, adjudication, betting, settlement,
+Wolo, or native writes occurred. No player-first candidate IDs, UIDs, names, or
+proposed rosters exist. The highest-yield next lane is exact-source recovery of
+the **23** cases missing the required current parser run, after separately
+reviewing the **112** parser/evidence disagreements; the 100 review/desync cases
+remain fenced until their existing state is resolved.
