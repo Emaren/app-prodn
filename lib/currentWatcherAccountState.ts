@@ -319,20 +319,9 @@ async function loadCurrentWatcherAccountStatesFresh(
   return result;
 }
 
-export async function loadCurrentWatcherAccountStates(
+function startCurrentWatcherAccountStateRefresh(
   prisma: PrismaClient,
 ): Promise<CurrentWatcherAccountState[]> {
-  const now = Date.now();
-
-  if (
-    currentWatcherAccountStateCache &&
-    currentWatcherAccountStateCache
-      .expiresAt > now
-  ) {
-    return currentWatcherAccountStateCache
-      .value;
-  }
-
   if (currentWatcherAccountStatePromise) {
     return currentWatcherAccountStatePromise;
   }
@@ -340,31 +329,64 @@ export async function loadCurrentWatcherAccountStates(
   const run =
     loadCurrentWatcherAccountStatesFresh(
       prisma,
-    );
+    )
+      .then((value) => {
+        currentWatcherAccountStateCache = {
+          expiresAt:
+            Date.now() +
+            CURRENT_WATCHER_ACCOUNT_STATE_TTL_MS,
+          value,
+        };
+        return value;
+      })
+      .finally(() => {
+        if (
+          currentWatcherAccountStatePromise ===
+          run
+        ) {
+          currentWatcherAccountStatePromise =
+            null;
+        }
+      });
 
   currentWatcherAccountStatePromise =
     run;
+  return run;
+}
 
-  try {
-    const value = await run;
+export async function loadCurrentWatcherAccountStates(
+  prisma: PrismaClient,
+): Promise<CurrentWatcherAccountState[]> {
+  const cached =
+    currentWatcherAccountStateCache;
 
-    currentWatcherAccountStateCache = {
-      expiresAt:
-        Date.now() +
-        CURRENT_WATCHER_ACCOUNT_STATE_TTL_MS,
-      value,
-    };
-
-    return value;
-  } finally {
+  if (cached) {
     if (
-      currentWatcherAccountStatePromise ===
-      run
+      cached.expiresAt <= Date.now() &&
+      !currentWatcherAccountStatePromise
     ) {
-      currentWatcherAccountStatePromise =
-        null;
+      /*
+       * Current Watcher ratings are a presentation overlay. Once one good
+       * snapshot exists, an expensive exact-Steam history refresh must never
+       * turn an unrelated page navigation into a cold request cliff.
+       */
+      void startCurrentWatcherAccountStateRefresh(
+        prisma,
+      ).catch((error) => {
+        console.warn(
+          "Current Watcher account-state background refresh failed:",
+          error,
+        );
+      });
     }
+
+    return cached.value;
   }
+
+  // Only the first process-local population waits for the historical scan.
+  return startCurrentWatcherAccountStateRefresh(
+    prisma,
+  );
 }
 
 export function invalidateCurrentWatcherAccountStateCache() {
