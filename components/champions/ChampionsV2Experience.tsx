@@ -3,7 +3,6 @@
 import Image from "next/image";
 import Link from "next/link";
 import {
-  ArrowLeft,
   ArrowRight,
   Trophy,
 } from "lucide-react";
@@ -792,18 +791,14 @@ export default function ChampionsV2Experience({
             type="button"
             aria-label="Previous national belts"
             onClick={() => scrollNation(-1)}
-            className="pointer-events-none absolute inset-y-3 left-0 z-40 flex w-12 items-center justify-start rounded-r-[2rem] bg-[linear-gradient(90deg,rgba(125,211,252,0.16),rgba(59,130,246,0.05),transparent)] pl-2 text-sky-100 opacity-0 shadow-[inset_-10px_0_24px_rgba(59,130,246,0.08)] transition duration-200 group-hover/nations:pointer-events-auto group-hover/nations:opacity-100 hover:!bg-[linear-gradient(90deg,rgba(186,230,253,0.26),rgba(59,130,246,0.09),transparent)] sm:w-16"
-          >
-            <ArrowLeft className="h-4 w-4 opacity-50" />
-          </button>
+            className="pointer-events-none absolute inset-y-3 left-0 z-40 w-12 rounded-r-[2rem] bg-[linear-gradient(90deg,rgba(125,211,252,0.16),rgba(59,130,246,0.05),transparent)] opacity-0 shadow-[inset_-10px_0_24px_rgba(59,130,246,0.08)] transition duration-200 group-hover/nations:pointer-events-auto group-hover/nations:opacity-100 hover:!bg-[linear-gradient(90deg,rgba(186,230,253,0.26),rgba(59,130,246,0.09),transparent)] sm:w-16"
+          />
           <button
             type="button"
             aria-label="Next national belts"
             onClick={() => scrollNation(1)}
-            className="pointer-events-none absolute inset-y-3 right-0 z-40 flex w-12 items-center justify-end rounded-l-[2rem] bg-[linear-gradient(270deg,rgba(125,211,252,0.16),rgba(59,130,246,0.05),transparent)] pr-2 text-sky-100 opacity-0 shadow-[inset_10px_0_24px_rgba(59,130,246,0.08)] transition duration-200 group-hover/nations:pointer-events-auto group-hover/nations:opacity-100 hover:!bg-[linear-gradient(270deg,rgba(186,230,253,0.26),rgba(59,130,246,0.09),transparent)] sm:w-16"
-          >
-            <ArrowRight className="h-4 w-4 opacity-50" />
-          </button>
+            className="pointer-events-none absolute inset-y-3 right-0 z-40 w-12 rounded-l-[2rem] bg-[linear-gradient(270deg,rgba(125,211,252,0.16),rgba(59,130,246,0.05),transparent)] opacity-0 shadow-[inset_10px_0_24px_rgba(59,130,246,0.08)] transition duration-200 group-hover/nations:pointer-events-auto group-hover/nations:opacity-100 hover:!bg-[linear-gradient(270deg,rgba(186,230,253,0.26),rgba(59,130,246,0.09),transparent)] sm:w-16"
+          />
         </div>
       </section>
 
