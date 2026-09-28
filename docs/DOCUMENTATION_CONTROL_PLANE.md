@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/release-recovery-disabled-snap-20260928` at `7ce14f9d84b0af13bdaaf832d91428a338a2ae42`
+Implementation baseline: `fix/release-recovery-disabled-snap-20260928` at `2accf6fb8029e7a0d334b12a2b0c4de4749ad598`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
