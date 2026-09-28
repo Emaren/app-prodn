@@ -63,15 +63,22 @@ export function blockerCategory(reason: string) {
   if (/platform|logical_battle|outer_receipt_identity|outer_receipt_played_on|final_target|target_game/.test(reason)) return "logical_battle_identity";
   if (/archive_|source_hash|source_archive/.test(reason)) return "archive_missing_or_mismatch";
   if (/adjudication|desync|disconnected|alias_disconnect/.test(reason)) return "preexisting_adjudication_desync_review";
-  if (/expired|future_|source_snapshot_changed|inventory_changed|fresh_plan|freshness/.test(reason)) return "freshness_or_source_mutation";
+  if (/expired|future_|source_snapshot_changed|inventory_changed|battle_source_changed|fresh_plan|freshness/.test(reason)) return "freshness_or_source_mutation";
   if (/parser_|fresh_receipt_claim|malformed_or_ineligible|unsupported_receipt_schema|outer_attempt|receipt_file_role/.test(reason)) return "parser_contract_or_evidence_mismatch";
   return "other";
 }
 
-export function finalizeCensusCases(cases: ObjectRow[], inventoryChanged: boolean) {
-  return cases.map((row) => inventoryChanged && row.outcome === "eligible"
-    ? { ...row, outcome: "blocked", reason: "inventory_changed_after_evaluation", previousOutcome: "eligible" }
-    : row);
+export function finalizeCensusCases(cases: ObjectRow[], changedBattleIds: Set<number>) {
+  return cases.map((row) =>
+    row.outcome === "eligible" && changedBattleIds.has(row.gameStatsId)
+      ? {
+          ...row,
+          outcome: "blocked",
+          reason: "battle_source_changed_during_census",
+          previousOutcome: "eligible",
+        }
+      : row,
+  );
 }
 
 async function persistReport(directory: string, report: ObjectRow) {
@@ -127,8 +134,8 @@ export async function runCensus(options: ReturnType<typeof parseCensusArguments>
         FROM replay_parse_attempts a LEFT JOIN game_stats g ON g.id=a.game_stats_id
         WHERE a.evidence->>'schema'='${MODERN_SCHEMA}' ORDER BY a.id`);
       const corpus = { uniqueLogicalBattles: logical.length, logicalBattleTruthComplete: 0,
-        logicalResultResolved: 0, logicalRosterComplete: 0, logicalNeedsResultOnly: 0,
-        logicalNeedsRosterOnly: 0, logicalNeedsBoth: 0 };
+        unresolvedLogicalBattles: 0, logicalResultResolved: 0, logicalRosterComplete: 0,
+        logicalNeedsResultOnly: 0, logicalNeedsRosterOnly: 0, logicalNeedsBoth: 0 };
       const registeredPlayers = { identityRule: "exact replay Steam ID matched to current registered account; uploader/alias alone never qualifies",
         accountCount: linked.size, logicalBattles: 0, fullTruth: 0, unresolved: 0, resultMissing: 0, rosterMissing: 0 };
       const unresolved: ObjectRow[] = [];
@@ -137,6 +144,7 @@ export async function runCensus(options: ReturnType<typeof parseCensusArguments>
         const rosterComplete = roster.publicReplayRosterV2DisplayState(game.players).complete;
         const full = resultEligible && rosterComplete;
         corpus.logicalBattleTruthComplete += Number(full);
+        corpus.unresolvedLogicalBattles += Number(!full);
         corpus.logicalResultResolved += Number(resultEligible);
         corpus.logicalRosterComplete += Number(rosterComplete);
         if (!full) {
@@ -157,9 +165,15 @@ export async function runCensus(options: ReturnType<typeof parseCensusArguments>
         const platform = typeof events?.platform_match_id === "string" ? events.platform_match_id : null;
         const attempts = modernAttempts.filter((a) => a.game_stats_id === game.id ||
           Boolean(platform && (a.actual_platform_match_id === platform || a.evidence?.platform_match_id === platform)));
+        const caseSourceFingerprint = digest(JSON.stringify({
+          game,
+          attempts,
+          registeredUsers,
+        }));
         unresolved.push({ gameStatsId: game.id, replayHash: game.replayHash, platformMatchId: platform,
           resultEligible, rosterComplete, registeredPlayerIds, registeredUsers, modernAttemptIds: attempts.map((a) => a.id),
           potentialQuorum: potentialModernQuorum(attempts.map((a) => a.evidence)),
+          caseSourceFingerprint,
           family: !rosterComplete ? "roster_evidence_required" : attempts.length ? "modern_receipt_evidence" : "no_modern_receipt_evidence" });
       }
       return { generatedAt: new Date().toISOString(), databaseReadOnly, corpus,
@@ -197,7 +211,15 @@ export async function runCensus(options: ReturnType<typeof parseCensusArguments>
     await readOnly(prisma);
     const afterInventory = await loadInventory();
     const inventoryChanged = inventory.sourceFingerprint !== afterInventory.sourceFingerprint;
-    const finalCases = finalizeCensusCases(cases, inventoryChanged);
+    const afterByGame = new Map(
+      afterInventory.unresolved.map((row: ObjectRow) => [row.gameStatsId, row.caseSourceFingerprint]),
+    );
+    const changedBattleIds = new Set<number>(
+      inventory.unresolved
+        .filter((row: ObjectRow) => afterByGame.get(row.gameStatsId) !== row.caseSourceFingerprint)
+        .map((row: ObjectRow) => row.gameStatsId),
+    );
+    const finalCases = finalizeCensusCases(cases, changedBattleIds);
     const reasons: Record<string, number> = {};
     const blockers: Record<string, number> = {};
     for (const row of finalCases) {
@@ -216,15 +238,18 @@ export async function runCensus(options: ReturnType<typeof parseCensusArguments>
     const gitIdentity = (cwd: string) => { try { return execFileSync("git", ["rev-parse", "HEAD"], { cwd, encoding: "utf8" }).trim(); } catch { return null; } };
     const report = { schema: 1, kind: "aoe2war-watcher-receipt-yield-census", createdAt: new Date().toISOString(),
       countingGrain: "Workshop canonical public logical battles; winner authority and complete public roster",
-      inventory, inventoryAfter: afterInventory, inventoryChanged, sourceFingerprints,
+      observationTimestamp: inventory.generatedAt,
+      inventory, inventoryAfter: afterInventory, inventoryChanged,
+      changedBattleIds: [...changedBattleIds].sort((a, b) => a - b), sourceFingerprints,
       appSourceCommit: gitIdentity(new URL("..", import.meta.url).pathname) || process.env.AOE2WAR_CENSUS_APP_SOURCE || null, apiSourceCommit: gitIdentity(options.apiRoot) || process.env.AOE2WAR_CENSUS_API_SOURCE || null,
       serialPlannerLimit: options.maxPlans, potentialQuorumCases: candidates.filter((r) => r.potentialQuorum).length,
       modernBearingCases: candidates.length, inspectedUnresolvedBattles: finalCases.length,
       examinedCases: Math.min(candidates.length, options.maxPlans),
       unexaminedModernCaseIds: candidates.slice(options.maxPlans).map((r) => r.gameStatsId),
-      censusComplete: !inventoryChanged && options.maxPlans >= candidates.length,
+      censusCompleteAtObservation: options.maxPlans >= candidates.length,
+      globalInventoryChangedAfterObservation: inventoryChanged,
       reasons, blockers, cases: finalCases,
-      projectedYield: inventoryChanged ? null : projectedYield(inventory.corpus, finalCases),
+      projectedYield: projectedYield(inventory.corpus, finalCases),
       eligibleCurrentPlayers: finalCases.filter((r) => r.outcome === "eligible" && r.registeredPlayerIds.length)
         .map((r) => ({ gameStatsId: r.gameStatsId, users: r.registeredUsers })),
       candidateEvidenceOnly: true, databaseWrites: 0, nativeSimulationRuns: 0 };
