@@ -100,10 +100,7 @@ type SharedRivalryProjectionInput = {
   identityContext: Promise<PublicMatchupIdentityContext>;
 };
 
-const PUBLIC_MATCHUP_ROWS_CACHE_TTL_MS = 15_000;
-
 type PublicMatchupRowsCacheEntry = {
-  expiresAt: number;
   generation: string;
   rows: MatchupGameRow[];
 };
@@ -499,12 +496,9 @@ async function loadCompletePublicMatchupRows(
     return loadRecentFinalMatchupRowsFresh(prisma, null);
   }
 
-  const now = Date.now();
-
   if (
     publicMatchupRowsCache &&
-    publicMatchupRowsCache.generation === generation &&
-    publicMatchupRowsCache.expiresAt > now
+    publicMatchupRowsCache.generation === generation
   ) {
     return publicMatchupRowsCache.rows;
   }
@@ -522,7 +516,6 @@ async function loadCompletePublicMatchupRows(
     .then((rows) => {
       if (latestRequestedPublicMatchupGeneration === generation) {
         publicMatchupRowsCache = {
-          expiresAt: Date.now() + PUBLIC_MATCHUP_ROWS_CACHE_TTL_MS,
           generation,
           rows,
         };
