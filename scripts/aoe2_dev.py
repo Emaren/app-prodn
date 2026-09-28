@@ -532,12 +532,17 @@ def refresh(
 
 def serve(
     target: Path,
+    *,
+    route: str | None = None,
 ) -> int:
     prepare(target)
 
     print(
         "PASS: launching local shadow as Emaren"
     )
+
+    if route:
+        os.environ["AOE2WAR_DEV_OPEN_ROUTE"] = route
 
     os.chdir(target)
 
@@ -761,7 +766,14 @@ def main() -> int:
     sub.add_parser("status")
     sub.add_parser("prepare")
     sub.add_parser("refresh")
-    sub.add_parser("serve")
+    serve_parser = sub.add_parser("serve")
+    serve_parser.add_argument(
+        "--route",
+        help=(
+            "browser route to open after the local shadow is ready; "
+            "feature branches otherwise infer the closest app route"
+        ),
+    )
 
     create = sub.add_parser("new")
     create.add_argument("name")
@@ -796,7 +808,8 @@ def main() -> int:
 
         if args.command == "serve":
             return serve(
-                current_repo()
+                current_repo(),
+                route=args.route,
             )
 
         if args.command == "new":
