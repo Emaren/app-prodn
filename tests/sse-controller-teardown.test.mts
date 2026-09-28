@@ -64,6 +64,26 @@ test("request abort releases app state without manually closing response control
   }
 });
 
+test("request abort releases app state without manually closing response controllers", () => {
+  const routes = [
+    source("app/api/contact-emaren/events/route.ts"),
+    source("app/api/clans/[slug]/events/route.ts"),
+    source("app/api/kingdom-presence/events/route.ts"),
+  ];
+
+  for (const route of routes) {
+    assert.match(
+      route,
+      /request\.signal\.addEventListener\("abort", cleanup, \{ once: true \}\)/,
+    );
+    assert.match(
+      route,
+      /if \(request\.signal\.aborted\) cleanup\(\)/,
+    );
+    assert.doesNotMatch(route, /controllerRef/);
+  }
+});
+
 test("all long-lived public SSE routes guard controller writes", () => {
   const routes = [
     source("app/api/contact-emaren/events/route.ts"),
