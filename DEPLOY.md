@@ -1198,6 +1198,11 @@ ls -ld .next .next/cache .next/cache/images
 Expected:
 - app tree should normally be owned by `tony:tony`
 
+Release OS now proves tracked-source ownership and tracked parent-directory
+writability before staging and again before activation. If either check fails,
+the release stops before service or runtime mutation so ownership can be
+reconciled safely.
+
 Typical fix:
 
 ```bash
