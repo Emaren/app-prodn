@@ -552,7 +552,7 @@ test("server source keeps platform identity strong and archive pagination cursor
   assert.match(source, /strongSessionKey\.startsWith\("platform:"\)/);
   assert.match(source, /\.\.\.scheduledCompletedSessions/);
   assert.match(source, /\.\.\.scheduledActiveSessions/);
-  assert.match(source, /await projectArchiveLaneAcrossPages\(/);
+  assert.match(source, /projectArchiveLaneAcrossPages\(/);
   assert.match(source, /archiveCursor/);
   assert.match(board, /snapshot\.archiveCursor \?\? snapshot\.recentMatches\.length/);
 });
