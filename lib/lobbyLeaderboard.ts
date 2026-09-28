@@ -1727,92 +1727,200 @@ function buildLeaderboardCacheKey(
   });
 }
 
+async function overlayLeaderboardPresence(
+  prisma: PrismaClient,
+  snapshot: LobbyLeaderboardSummary,
+): Promise<LobbyLeaderboardSummary> {
+  try {
+    const presence =
+      await loadPublicPresenceSnapshot(
+        prisma,
+      );
+    const onlineUids =
+      new Set(
+        presence.onlineUsers.map(
+          (user) => user.uid,
+        ),
+      );
+
+    return {
+      ...snapshot,
+      activePlayers:
+        presence.activePlayers,
+      entries:
+        snapshot.entries.map(
+          (entry) => ({
+            ...entry,
+            isOnline:
+              Boolean(
+                entry.uid &&
+                onlineUids.has(
+                  entry.uid,
+                ),
+              ),
+          }),
+        ),
+    };
+  } catch (error) {
+    /*
+     * Presence is an observational overlay, never ranking authority.
+     * A degraded live-presence rail must not make the historical board fail.
+     */
+    console.warn(
+      "Leaderboard presence overlay unavailable:",
+      error,
+    );
+    return snapshot;
+  }
+}
+
 function startLeaderboardRefresh(
   prisma: PrismaClient,
   options: LoadLobbyLeaderboardOptions,
   cacheKey: string,
+  projectionGeneration: string,
+  timeBucket: number,
 ): Promise<LobbyLeaderboardSummary> {
+  const promiseKey =
+    `${cacheKey}|generation:${projectionGeneration}|time:${timeBucket}`;
   const existing =
-    leaderboardPromises.get(cacheKey);
+    leaderboardPromises.get(
+      promiseKey,
+    );
 
   if (existing) {
     return existing;
   }
 
-  const run = loadLobbyLeaderboardFresh(
-    prisma,
-    options,
-  )
-    .then((value) => {
-      leaderboardCache.set(cacheKey, {
-        expiresAt:
-          Date.now() +
-          LEADERBOARD_CACHE_TTL_MS,
-        value,
+  const run =
+    loadLobbyLeaderboardFresh(
+      prisma,
+      options,
+      projectionGeneration,
+    )
+      .then((value) => {
+        leaderboardCache.set(
+          cacheKey,
+          {
+            generation:
+              projectionGeneration,
+            timeBucket,
+            value,
+          },
+        );
+
+        /*
+         * The cache is bounded by option variants, not wall-clock expiry.
+         * Old option entries are cheapest to discard by insertion order.
+         */
+        while (
+          leaderboardCache.size >
+          LEADERBOARD_CACHE_MAX_ENTRIES
+        ) {
+          const oldestKey =
+            leaderboardCache
+              .keys()
+              .next()
+              .value;
+
+          if (
+            oldestKey === undefined
+          ) {
+            break;
+          }
+
+          leaderboardCache.delete(
+            oldestKey,
+          );
+        }
+
+        return value;
+      })
+      .finally(() => {
+        if (
+          leaderboardPromises.get(
+            promiseKey,
+          ) === run
+        ) {
+          leaderboardPromises.delete(
+            promiseKey,
+          );
+        }
       });
 
-      if (
-        leaderboardCache.size >
-        LEADERBOARD_CACHE_MAX_ENTRIES
-      ) {
-        for (
-          const [key, entry]
-          of leaderboardCache
-        ) {
-          if (
-            entry.expiresAt <=
-              Date.now() ||
-            leaderboardCache.size >
-              LEADERBOARD_CACHE_MAX_ENTRIES
-          ) {
-            leaderboardCache.delete(key);
-          }
-        }
-      }
-
-      return value;
-    })
-    .finally(() => {
-      if (
-        leaderboardPromises.get(
-          cacheKey,
-        ) === run
-      ) {
-        leaderboardPromises.delete(
-          cacheKey,
-        );
-      }
-    });
-
   leaderboardPromises.set(
-    cacheKey,
+    promiseKey,
     run,
   );
 
   return run;
 }
 
+async function loadLeaderboardProjectionGeneration(
+  prisma: PrismaClient,
+) {
+  try {
+    return await loadPublicPlayerDirectoryGeneration(
+      prisma,
+    );
+  } catch (error) {
+    /*
+     * Isolated tools/test doubles may not expose every directory-generation
+     * table. Keep their old bounded behavior rather than retaining unknown
+     * state indefinitely.
+     */
+    console.warn(
+      "Leaderboard projection generation unavailable; using bounded fallback:",
+      error,
+    );
+
+    return `fallback:${Math.floor(
+      Date.now() / 15_000,
+    )}`;
+  }
+}
+
 export async function loadLobbyLeaderboard(
   prisma: PrismaClient,
-  options: LoadLobbyLeaderboardOptions = {}
+  options: LoadLobbyLeaderboardOptions = {},
 ): Promise<LobbyLeaderboardSummary> {
   const now = Date.now();
   const cacheKey =
-    buildLeaderboardCacheKey(options);
+    buildLeaderboardCacheKey(
+      options,
+    );
+  const projectionGeneration =
+    await loadLeaderboardProjectionGeneration(
+      prisma,
+    );
+  const timeBucket =
+    Math.floor(
+      now /
+        LEADERBOARD_TIME_BUCKET_MS,
+    );
   const cached =
-    leaderboardCache.get(cacheKey);
+    leaderboardCache.get(
+      cacheKey,
+    );
+  const cacheIsCurrent =
+    cached?.generation ===
+      projectionGeneration &&
+    cached?.timeBucket ===
+      timeBucket;
 
   if (cached) {
-    if (
-      cached.expiresAt <= now &&
-      !leaderboardPromises.has(
-        cacheKey,
-      )
-    ) {
+    if (!cacheIsCurrent) {
+      /*
+       * Data-generation or bounded time-derived truth changed. Refresh in the
+       * background; a previously good board never turns the next navigation
+       * into a whole-corpus rebuild.
+       */
       void startLeaderboardRefresh(
         prisma,
         options,
         cacheKey,
+        projectionGeneration,
+        timeBucket,
       ).catch((error) => {
         console.warn(
           "Leaderboard background refresh failed:",
@@ -1821,17 +1929,28 @@ export async function loadLobbyLeaderboard(
       });
     }
 
-    // Once a good snapshot exists, expiry means
-    // "refresh in the background", never
-    // "make the next human wait".
-    return cached.value;
+    return overlayLeaderboardPresence(
+      prisma,
+      cached.value,
+    );
   }
 
-  // Only the genuinely cold first computation waits.
-  // Concurrent cold callers share one in-flight build.
-  return startLeaderboardRefresh(
+  /*
+   * Only the genuinely cold first computation waits. Concurrent cold callers
+   * for the exact same generation/time bucket share one in-flight build.
+   */
+  const value =
+    await startLeaderboardRefresh(
+      prisma,
+      options,
+      cacheKey,
+      projectionGeneration,
+      timeBucket,
+    );
+
+  return overlayLeaderboardPresence(
     prisma,
-    options,
-    cacheKey,
+    value,
   );
 }
+
