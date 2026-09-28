@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/speedos-remove-kingdom-20260928` at `2e6b3be81f17c3110e80e7fcb6c34a5b661c1898`
+Implementation baseline: `perf/replay-projection-cache-v2-20260928` at `ac59d337082afa0699dabacd4686caf7d2839fea`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
