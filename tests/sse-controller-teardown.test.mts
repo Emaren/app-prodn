@@ -13,7 +13,8 @@ test("direct-message SSE treats closed controllers as teardown", () => {
   assert.match(route, /closed \|\| request\.signal\.aborted/);
   assert.match(route, /try \{\s*controller\.enqueue\(payload\)/);
   assert.match(route, /catch \{[\s\S]*cleanup\(\)/);
-  assert.match(route, /request\.signal\.addEventListener\("abort", abortStream, \{ once: true \}\)/);
+  assert.match(route, /request\.signal\.addEventListener\("abort", cleanup, \{ once: true \}\)/);
+  assert.doesNotMatch(route, /controllerRef\?\.close\(\)/);
   assert.match(route, /heartbeat\.unref\?\.\(\)/);
   assert.doesNotMatch(
     route,
@@ -30,12 +31,57 @@ test("Clan Hall SSE uses the same fail-closed write contract", () => {
   assert.match(route, /closed \|\| request\.signal\.aborted/);
   assert.match(route, /try \{\s*controller\.enqueue\(payload\)/);
   assert.match(route, /catch \{\s*cleanup\(\)/);
-  assert.match(route, /request\.signal\.addEventListener\("abort", abortStream, \{ once: true \}\)/);
+  assert.match(route, /request\.signal\.addEventListener\("abort", cleanup, \{ once: true \}\)/);
+  assert.doesNotMatch(route, /controllerRef\?\.close\(\)/);
   assert.match(route, /heartbeat\.unref\?\.\(\)/);
   assert.doesNotMatch(
     route,
     /heartbeat = setInterval\(\(\) => \{\s*if \(closed\) return;\s*controller\.enqueue/,
   );
+});
+
+test("request abort releases app state without manually closing response controllers", () => {
+  const routes = [
+    source("app/api/contact-emaren/events/route.ts"),
+    source("app/api/clans/[slug]/events/route.ts"),
+    source("app/api/kingdom-presence/events/route.ts"),
+  ];
+
+  for (const route of routes) {
+    assert.match(
+      route,
+      /request\.signal\.addEventListener\("abort", cleanup, \{ once: true \}\)/,
+    );
+    assert.match(
+      route,
+      /if \(request\.signal\.aborted\) cleanup\(\)/,
+    );
+    assert.doesNotMatch(route, /controllerRef/);
+    assert.doesNotMatch(
+      route,
+      /request\.signal[\s\S]{0,500}controller\.close\(/,
+    );
+  }
+});
+
+test("request abort releases app state without manually closing response controllers", () => {
+  const routes = [
+    source("app/api/contact-emaren/events/route.ts"),
+    source("app/api/clans/[slug]/events/route.ts"),
+    source("app/api/kingdom-presence/events/route.ts"),
+  ];
+
+  for (const route of routes) {
+    assert.match(
+      route,
+      /request\.signal\.addEventListener\("abort", cleanup, \{ once: true \}\)/,
+    );
+    assert.match(
+      route,
+      /if \(request\.signal\.aborted\) cleanup\(\)/,
+    );
+    assert.doesNotMatch(route, /controllerRef/);
+  }
 });
 
 test("all long-lived public SSE routes guard controller writes", () => {

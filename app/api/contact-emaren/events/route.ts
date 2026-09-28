@@ -59,7 +59,6 @@ export async function GET(request: NextRequest) {
   let unsubscribe = () => {};
   let heartbeat: ReturnType<typeof setInterval> | null = null;
   let closed = false;
-  let controllerRef: ReadableStreamDefaultController<Uint8Array> | null = null;
 
   const cleanup = () => {
     if (closed) return;
@@ -74,8 +73,6 @@ export async function GET(request: NextRequest) {
 
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
-      controllerRef = controller;
-
       const safeEnqueue = (payload: Uint8Array) => {
         if (closed || request.signal.aborted) {
           cleanup();
@@ -130,16 +127,11 @@ export async function GET(request: NextRequest) {
     },
   });
 
-  const abortStream = () => {
-    cleanup();
-    try {
-      controllerRef?.close();
-    } catch {
-      // The network consumer may already have closed the stream.
-    }
-  };
-  request.signal.addEventListener("abort", abortStream, { once: true });
-  if (request.signal.aborted) abortStream();
+  // The framework owns response-body cancellation. On request abort we only
+  // release application subscriptions/timers; manually closing the controller
+  // here can race a later framework close.
+  request.signal.addEventListener("abort", cleanup, { once: true });
+  if (request.signal.aborted) cleanup();
 
   return new Response(stream, {
     headers: {
