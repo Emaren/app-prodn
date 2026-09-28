@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "2badf266c0689fb860db70d46bbbf8e958cd39aaa6e3af96af5a2429ff1beb30",
+      "sha256": "9f24752627a5e49b82d911f21b809ae92287200a04089e4af7635a0276ac3d60",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/runtime-stream-crash-observability-20260928",
-    "commit": "348bff6dd1dd55ce6d6663ac70a25c4a6710c8cc"
+    "commit": "65ddc5ca297abfdcaacafbfbb9db6b32e2bc46ad"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
