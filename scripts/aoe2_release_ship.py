@@ -65,6 +65,7 @@ tracked = [
     if item
 ]
 
+missing = []
 foreign = []
 unwritable = []
 parent_foreign = []
@@ -77,6 +78,7 @@ for relative in tracked:
     try:
         info = path.lstat()
     except FileNotFoundError:
+        missing.append(relative)
         continue
     except OSError:
         unwritable.append(relative)
@@ -143,6 +145,7 @@ def sample(values):
         separators=(",", ":"),
     )
 
+emit("tracked_missing_entries", len(missing))
 emit("tracked_foreign_entries", len(foreign))
 emit("tracked_unwritable_entries", len(unwritable))
 emit(
@@ -153,6 +156,7 @@ emit(
     "tracked_parent_unwritable_dirs",
     len(parent_unwritable),
 )
+emit("tracked_missing_sample", sample(missing))
 emit("tracked_foreign_sample", sample(foreign))
 emit(
     "tracked_unwritable_sample",
@@ -338,6 +342,11 @@ def tracked_worktree_transport_errors(
     errors: list[str] = []
 
     checks = (
+        (
+            "tracked_missing_entries",
+            "tracked_missing_sample",
+            "production tracked source is missing Git-tracked entries",
+        ),
         (
             "tracked_foreign_entries",
             "tracked_foreign_sample",
@@ -1378,6 +1387,7 @@ tracked_probe_value() {{
     | awk -F '\\t' -v key="$probe_key" '$1 == key {{print $2; exit}}'
 }}
 
+test "$(tracked_probe_value tracked_missing_entries)" = "0"
 test "$(tracked_probe_value tracked_foreign_entries)" = "0"
 test "$(tracked_probe_value tracked_unwritable_entries)" = "0"
 test "$(tracked_probe_value tracked_parent_foreign_dirs)" = "0"
