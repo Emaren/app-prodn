@@ -1069,6 +1069,10 @@ The contract is:
   already owns explicit invalidation;
 - once a valid historical snapshot exists, eligible routes may serve that last
   good snapshot while one background refresh computes the new generation;
+- that non-blocking generation transition applies to the complete player
+  directory, leaderboard, rivalry corpus and logical battle-archive pages, so a
+  newly-final replay cannot turn the next human navigation or four-second Live
+  Games refresh into a whole-history request cliff;
 - unknown generation authority fails conservatively to a fresh/bounded path
   rather than retaining unversioned truth indefinitely.
 
