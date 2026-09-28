@@ -154,6 +154,34 @@ If any authority or health precondition is absent, or if no deployment is due,
 the P0 remains blocking. This preserves the ordering invariant without turning a
 recovery exception into a general provenance bypass.
 
+## Pre-capacity staged-artifact recovery
+
+A low-root condition may itself be caused by a superseded staged release:
+`.next-release` plus `.node_modules-release` can exceed one GiB while being
+neither the live runtime nor the current intended release.
+
+Before generic root cleanup, Finish therefore gives the existing
+superseded-stage retirement contract first right of recovery when all of these
+are true:
+
+1. a staged BUILD_ID is present;
+2. Mac and GitHub source authority are already exact and the source plan is
+   `clean`;
+3. the staged BUILD_ID binds to exactly one durable stage receipt;
+4. that receipt names a release SHA different from the current intended release;
+5. the receipt binds the current production source and active BUILD_ID;
+6. no process has a cwd/root/executable/file descriptor referencing the staged
+   trees;
+7. the web service is active and protected Wolo listeners 8092/8093 are exact.
+
+Only then may the staged `.next-release` and `.node_modules-release` trees be
+retired with a durable stale-stage-retirement receipt. Current-release,
+ambiguous, or live-referenced stages are preserved fail-closed and generic
+bounded root recovery may continue.
+
+This ordering prevents a superseded one-GiB stage from blocking Finish before
+the already-proven stage-retirement machinery can reach it.
+
 ## Bounded root-headroom recovery
 
 The configured release floor remains authoritative. When root capacity is below
