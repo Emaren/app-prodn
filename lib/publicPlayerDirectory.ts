@@ -368,9 +368,9 @@ export async function loadPublicPlayerDirectoryFresh(
         verificationLevel: true,
       },
       orderBy: [
-        { lastSeen: "desc" },
         { verifiedAt: "desc" },
         { createdAt: "desc" },
+        { id: "desc" },
       ],
     }),
 
