@@ -31,7 +31,15 @@ test("expensive public replay projections are generation-owned, not 15-second TT
 
   assert.match(
     matchups,
-    /publicMatchupRowsCache\.generation === generation/,
+    /cached\.generation !== generation/,
+  );
+  assert.match(
+    matchups,
+    /void startPublicMatchupRowsRefresh/,
+  );
+  assert.match(
+    matchups,
+    /return cached\.rows/,
   );
   assert.doesNotMatch(
     matchups,
@@ -61,6 +69,9 @@ test("player history is cached separately from current Watcher and presence stat
   const session = source(
     "app/api/auth/session/route.ts",
   );
+  const watcherState = source(
+    "lib/currentWatcherAccountState.ts",
+  );
 
   assert.match(
     directory,
@@ -81,6 +92,18 @@ test("player history is cached separately from current Watcher and presence stat
   assert.doesNotMatch(
     session,
     /invalidatePublicPlayerDirectoryCache/,
+  );
+  assert.match(
+    watcherState,
+    /startCurrentWatcherAccountStateRefresh/,
+  );
+  assert.match(
+    watcherState,
+    /void startCurrentWatcherAccountStateRefresh/,
+  );
+  assert.match(
+    watcherState,
+    /return cached\.value/,
   );
 
   assert.match(
