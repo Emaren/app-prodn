@@ -65,6 +65,20 @@ Permanent rule: promote only the reclaim class whose real capacity delta and
 runtime safety were observed. Disabled Snap revisions therefore belong in
 Release Recovery OS. Snap cache, Docker pruning, and PNPM store pruning remain
 outside automatic recovery until separately proven.
+The same census exposed a larger structural cause: `app-prodn` held three
+roughly 1.077 GiB dependency trees at once — active `node_modules`, staged
+`.node_modules-release`, and the newest fast rollback dependency tree — plus
+parallel active/staged/rollback Next build trees. The rollback copy is governed
+rollback state and remains protected. The staged pair, however, may be safely
+retired when its exact durable stage receipt proves it belongs to superseded
+source authority and no process references it.
+
+Permanent ordering rule: under low root headroom, prove and retire a superseded
+staged release before spending effort on generic host cleanup. This reuses the
+existing receipt-driven stage retirement contract and avoids a release deadlock
+where capacity preflight blocks before that contract can run.
+
+
 
 ## 2026-09-27 — Promoted topology must be consumable without rewriting historical result evidence
 
