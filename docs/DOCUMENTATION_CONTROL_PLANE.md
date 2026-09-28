@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/root-headroom-recovery-hysteresis` at `7d4007839e5f93fdd0c7b8233bcd7623a4524362`
+Implementation baseline: `integration/replay-receipt-promotion-20260927` at `a1318172a22643325b58780054080e46b3f8af5f`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

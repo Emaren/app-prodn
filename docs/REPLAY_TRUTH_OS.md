@@ -358,3 +358,12 @@ clean on `integration/replay-open-gate-20260922` at
 `9f2b3d15df8bb3a32db76dd7cdccb446f63a086a`. No native run began in this tranche.
 A unified resume/apply/post-write/closure campaign wrapper is still outstanding;
 its tested census, planner, writer and projection pieces are already preserved.
+
+
+Independent receipt review rehashed the full receipt, all 11 source fingerprints,
+and all 17 plan/snapshot hashes. Each of the 17 modern-bearing battles has only
+**one distinct uploader**, including duplicate/refreshed receipt sets, so none
+can meet the independent cross-side quorum. The nine ineligible cases contain
+11 receipts whose persisted provenance-signature verification and corroboration
+eligibility are both false. These are secondary evidence facts; the primary
+blocked-case counts above remain unchanged. No missing signatures were invented.

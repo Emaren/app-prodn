@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "8b153fbedc60afb4ef580f3b147195e8e5c3c2552231176b1995b953eb65901f",
+      "sha256": "514fb48283b047387c0dbf7631410256cc549301a5565bc9f39bc02a73e38be9",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1393,9 +1393,9 @@
       "owner": "aoe2war-web",
       "path": "docs/REPLAY_TRUTH_OS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-27",
+      "reviewed_at": "2026-09-28",
       "sensitivity": "restricted",
-      "sha256": "933e6ec8cafa5b1f34aa5c8649e2972810043fc8953377b4b2389533b876b440",
+      "sha256": "b58819850efedb8e0ca554a48926b6f7013c6922a3a671cdb7588bd96b4e94e9",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/root-headroom-recovery-hysteresis",
-    "commit": "7d4007839e5f93fdd0c7b8233bcd7623a4524362"
+    "branch": "integration/replay-receipt-promotion-20260927",
+    "commit": "a1318172a22643325b58780054080e46b3f8af5f"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
