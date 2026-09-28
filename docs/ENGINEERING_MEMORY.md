@@ -1959,3 +1959,39 @@ directory, requires a root-owned mode-0400 regular file with the exact source
 digest, and creates result evidence with `O_EXCL`/`O_NOFOLLOW` at mode 0400
 from birth. General rule: hash verification does not replace ownership, mode,
 and race-safe path construction across a privilege boundary.
+
+
+## 2026-09-28 — Championship presentation must preserve authority and visual symmetry
+
+The Champions E2 polish pass exposed two classes of mistakes that should not
+recur. First, presentation cleanup can accidentally erase useful structural
+copy while leaving a decorative hero that carries less information. Second,
+cards from the same championship family can look inconsistent when action
+controls flow immediately after variable-length contender content.
+
+Durable rule: remove marketing copy at the intended scope, not by flattening the
+information hierarchy. Champions E2 therefore removes the oversized top title
+hero while preserving compact current-state counters and the section-level
+identity copy that explains each championship lane.
+
+Durable rule: repeated championship card families have one bottom action
+baseline. Podium and national cards use flex-column bodies with the action
+anchored to the bottom, so an empty or short contender queue cannot pull a call
+to action upward relative to its siblings. The Women's throne pads its queue to
+the same ten-slot depth as the other open thrones for the same reason.
+
+Durable rule: curated product queues must be labeled as curated instead of being
+presented as inferred ranking authority. The current 2v2/3v3/4v4 combinations
+are Commissioner-selected contender teams. They may be displayed and ordered as
+that queue, but they must not be described as a Watcher-backed team ELO until a
+real lane-specific team-rating authority exists.
+
+ELO title cards are custody surfaces, not decorative belt galleries. Both RM
+and DM presentation lanes therefore reserve an avatar/holder stage above the
+belt. Vacant titles use the neutral silhouette; any projected live holder comes
+from title-state custody rather than from contender rank.
+
+General rule: UI polish must not invent authority. Visual prominence, symmetry,
+default layout and curated ordering are product presentation decisions; holder,
+rating, result, betting, settlement and Wolo truth remain owned by their
+existing authority lanes.
