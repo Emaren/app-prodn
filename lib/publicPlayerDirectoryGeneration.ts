@@ -3,7 +3,12 @@ import { createHash } from "node:crypto";
 import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
 import { loadPublicReplayGeneration } from "@/lib/publicReplayGeneration";
 
-const DIRECTORY_GENERATION_CACHE_MS = 1_000;
+/*
+ * The browser generation probe runs every five seconds. Coalesce the mutable
+ * supplement fingerprint to the same cadence so ordinary navigation does not
+ * repeatedly hash small-but-growing presentation tables between probes.
+ */
+const DIRECTORY_GENERATION_CACHE_MS = 5_000;
 
 type DirectorySupplementFingerprint = {
   users: string | null;
