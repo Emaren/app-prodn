@@ -47,9 +47,9 @@ test("the player directory preserves its generation-before-corpus watermark", ()
   );
   assert.doesNotMatch(directoryPage, /loadPublicPresenceSnapshot/);
   assert.ok(
-    directoryPage.indexOf("loadPublicReplayGeneration(prisma)") <
+    directoryPage.indexOf("loadPublicPlayerDirectoryGeneration(prisma)") <
       directoryPage.indexOf("loadPublicPlayerDirectory("),
-    "the replay generation watermark must be captured before the generation-bound directory read starts",
+    "the full directory generation watermark must be captured before the generation-bound directory read starts",
   );
   assert.doesNotMatch(directoryPage, /loadPublicPlayerDirectoryFresh/);
 });
