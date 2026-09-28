@@ -47,9 +47,16 @@ try {
       if (report.outcome === "created" || report.outcome === "existing") {
         // Projection is append-safe and retryable after the adjudication commits.
         // It uses the shared stats-only public resolver; no financial writer runs.
-        const { ensureReplayIdentityProjections } = await import("../lib/replayIdentityProjection.ts");
-        projection = await ensureReplayIdentityProjections(prisma, [gameStatsId]);
-        if ((projection as { skippedCount: number }).skippedCount > 0) process.exitCode = 2;
+        try {
+          const { ensureReplayIdentityProjections } = await import("../lib/replayIdentityProjection.ts");
+          projection = await ensureReplayIdentityProjections(prisma, [gameStatsId]);
+          if ((projection as { skippedCount: number }).skippedCount > 0) process.exitCode = 2;
+        } catch (error) {
+          // An accepted row is already durable. Report projection failure
+          // separately instead of pretending the committed write rolled back.
+          projection = { status: "retry_required", reason: error instanceof Error ? error.message : "projection_failed" };
+          process.exitCode = 2;
+        }
       }
       console.log(JSON.stringify({ ...report, projection }));
     } catch (error) {

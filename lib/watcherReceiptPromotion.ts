@@ -230,7 +230,28 @@ function priorPromotion(snapshot: JsonObject, gameStatsId: number) {
   if (row.game_stats_id !== gameStatsId || row.decision_status !== "accepted" ||
       row.affects_stats !== true || row.affects_bets !== false ||
       typeof row.idempotency_key !== "string" || !row.idempotency_key.startsWith(PREFIX)) return null;
+  const evidence = row.evidence;
+  if (!evidence || typeof evidence !== "object" || Array.isArray(evidence)) return null;
+  const fields = evidence as JsonObject;
+  if (fields.schema !== "aoe2war-modern-receipt-promotion/v1" || fields.policy !== WATCHER_RECEIPT_POLICY ||
+      fields.statistics_only !== true || fields.affects_bets !== false ||
+      fields.settlement_authorized !== false || fields.wolo_authority !== false ||
+      !isHash(fields.plan_sha256) || !isHash(fields.snapshot_sha256) || !isHash(fields.receipt_file_sha256) ||
+      fields.receipt_storage_key !== `plan-${fields.plan_sha256}.json`) return null;
   return row;
+}
+
+async function validatePriorReceipt(directory: string, prior: JsonObject, snapshotJson: string) {
+  const evidence = object(prior.evidence);
+  const path = join(directory, String(evidence.receipt_storage_key));
+  const metadata = await lstat(path);
+  if (!metadata.isFile() || metadata.isSymbolicLink() || (metadata.mode & 0o277) !== 0 ||
+      metadata.size > MAX_PLAN_BYTES) throw new Error("existing_promotion_receipt_invalid");
+  const bytes = await readFile(path);
+  if (hash(bytes) !== evidence.receipt_file_sha256) throw new Error("existing_promotion_receipt_changed");
+  const plan = object(JSON.parse(bytes.toString("utf8")));
+  if (plan.plan_sha256 !== evidence.plan_sha256 || plan.source_snapshot_json !== snapshotJson ||
+      plan.snapshot_sha256 !== hash(snapshotJson)) throw new Error("existing_promotion_receipt_mismatch");
 }
 
 export type WatcherReceiptPromotionReport = {
@@ -287,10 +308,13 @@ export async function reconcileWatcherReceiptPromotion(
     const currentJson = await loadWatcherReceiptSnapshot(tx, gameStatsId);
     if (currentJson !== originalJson) throw new Error("source_snapshot_changed");
     validateWatcherReceiptPlanBinding(plan, snapshotJson, gameStatsId);
-    const verified = await runPlanner(options, { plan }, true);
-    if (verified.valid !== true || verified.plan_sha256 !== plan.plan_sha256) {
-      throw new Error("fresh_plan_verification_failed");
-    }
+    const verifyBeforeCommit = async () => {
+      validateWatcherReceiptPlanBinding(plan, snapshotJson, gameStatsId);
+      const verified = await runPlanner(options, { plan }, true);
+      if (verified.valid !== true || verified.plan_sha256 !== plan.plan_sha256) {
+        throw new Error("fresh_plan_verification_failed");
+      }
+    };
     const game = await tx.gameStats.findUnique({ where: { id: gameStatsId }, select: REVIEWABLE_GAME_SELECT });
     if (!game) throw new Error("target_disappeared");
     const evidence = {
@@ -320,6 +344,8 @@ export async function reconcileWatcherReceiptPromotion(
           JSON.stringify(prior.winning_player_keys) !== JSON.stringify(validated.winningPlayerKeys)) {
         throw new Error("existing_promotion_source_changed");
       }
+      await validatePriorReceipt(options.receiptDirectory, prior, snapshotJson);
+      await verifyBeforeCommit();
       return { outcome: "existing" as const, adjudicationId: positiveId(prior.id) };
     }
     const participants = rows(snapshot.attempts).filter((a) => a.evidence !== null && a.evidence !== undefined);
@@ -327,6 +353,9 @@ export async function reconcileWatcherReceiptPromotion(
     if (!actor || typeof actor.uid !== "string") throw new Error("receipt_actor_missing");
     const markets = await buildMarketSnapshot(tx as unknown as Parameters<typeof buildMarketSnapshot>[0],
       gameStatsId, [game.original_filename, game.replay_file]);
+    // Archive bytes and parser implementation are rehashed after all other
+    // reads, immediately before the sole authority-bearing insert.
+    await verifyBeforeCommit();
     const adjudication = await tx.replayResultAdjudication.create({ data: {
       gameStatsId, actorUserId: positiveId(actor.id), supersedesId: null,
       idempotencyKey: validated.idempotencyKey, inputHash: validated.inputHash,

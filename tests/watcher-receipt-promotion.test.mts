@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
-import { mkdtemp, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
+import { chmod, mkdtemp, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -62,7 +62,8 @@ if (process.argv.includes('--verify')) {
     created_at: new Date(Date.now() - (config.age || 0)).toISOString(),
     plan_sha256: 'c'.repeat(64), candidate_only: true, authority_granted: false,
     affects_stats: false, affects_bets: false, settlement_authorized: false, wolo_authority: false,
-    eligible: !config.blocked, reason: config.blocked ? 'no_eligible_observations' : 'fresh_receipts',
+    eligible: !config.blocked && snapshot.adjudications.length === 0,
+    reason: snapshot.adjudications.length ? 'adjudication_history_exists' : config.blocked ? 'no_eligible_observations' : 'fresh_receipts',
     parser_contract: {version:'test'}, replay_hash: game.replay_hash, parse_iteration: game.parse_iteration,
     attempt_ids: snapshot.attempts.map(a=>a.id), all_source_hashes: snapshot.attempts.map(a=>a.replay_hash),
     teams: [{teamKey:'side:winner',playerKeys:['steam:76561198166409520']},
@@ -79,6 +80,7 @@ if (process.argv.includes('--verify')) {
   if(config.extraPlayer) plan.teams[0].playerKeys.push('steam:76561198000000000');
   if(config.badReplay) plan.replay_hash='f'.repeat(64);
   if(config.badIteration) plan.parse_iteration++;
+  plan.plan_sha256=hash(JSON.stringify(plan));
   process.stdout.write(JSON.stringify(plan));
 }
 `;
@@ -244,4 +246,63 @@ test("snapshot loader binds both SQL parameters and rejects oversized responses"
   } };
   await assert.rejects(loadWatcherReceiptSnapshot(db as never, 41, 99), /oversized/);
   assert.deepEqual(calls[0].slice(1), [41, 99]);
+});
+
+function persistCreatedRow(f: Awaited<ReturnType<typeof fixture>>) {
+  const row = Object.fromEntries(Object.entries(f.writes[0]).map(([key, value]) => [
+    key.replace(/[A-Z]/g, (letter) => "_" + letter.toLowerCase()), value,
+  ]));
+  f.state.adjudications.push({ ...row, id: 99 });
+}
+
+test("idempotent retry recomputes evidence and checks the original immutable receipt", async () => {
+  const f = await fixture();
+  try {
+    await reconcileWatcherReceiptPromotion(f.db, { ...f.options, apply: true });
+    persistCreatedRow(f);
+    const retry = await reconcileWatcherReceiptPromotion(f.db, { ...f.options, apply: true });
+    assert.equal(retry.outcome, "existing");
+    assert.equal(retry.adjudicationId, 99);
+    assert.equal(f.writes.length, 1);
+    assert.equal(f.transactions, 2);
+  } finally { await f.close(); }
+});
+
+test("retry cannot exclude prior evidence with escalated authority", async () => {
+  const f = await fixture();
+  try {
+    await reconcileWatcherReceiptPromotion(f.db, { ...f.options, apply: true });
+    persistCreatedRow(f);
+    (f.state.adjudications[0].evidence as Record<string, unknown>).settlement_authorized = true;
+    const retry = await reconcileWatcherReceiptPromotion(f.db, { ...f.options, apply: true });
+    assert.equal(retry.outcome, "blocked");
+    assert.equal(retry.reason, "adjudication_history_exists");
+    assert.equal(f.writes.length, 1);
+    assert.equal(f.transactions, 1);
+  } finally { await f.close(); }
+});
+
+test("retry refuses changed original receipt bytes without a second write", async () => {
+  const f = await fixture();
+  try {
+    const first = await reconcileWatcherReceiptPromotion(f.db, { ...f.options, apply: true });
+    persistCreatedRow(f);
+    const path = join(f.options.receiptDirectory, first.receiptStorageKey);
+    await chmod(path, 0o600);
+    await writeFile(path, '{"altered":true}\n');
+    await chmod(path, 0o400);
+    await assert.rejects(reconcileWatcherReceiptPromotion(f.db, { ...f.options, apply: true }), /existing_promotion_receipt_changed/);
+    assert.equal(f.writes.length, 1);
+  } finally { await f.close(); }
+});
+
+test("retry with a new duplicate source does not reuse old accepted evidence", async () => {
+  const f = await fixture();
+  try {
+    await reconcileWatcherReceiptPromotion(f.db, { ...f.options, apply: true });
+    persistCreatedRow(f);
+    f.state.attempts.push({ ...f.state.attempts[0], id: 100 });
+    await assert.rejects(reconcileWatcherReceiptPromotion(f.db, { ...f.options, apply: true }), /existing_promotion_source_changed/);
+    assert.equal(f.writes.length, 1);
+  } finally { await f.close(); }
 });
