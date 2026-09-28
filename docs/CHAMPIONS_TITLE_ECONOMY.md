@@ -134,9 +134,14 @@ Current-season public policy lives in
   silently creating new money obligations.
 - Champions belt artwork is managed through Media Armory targets. National crowns use `national-<slug>`; Norse and Southeast Asia use `regional-norse` / `regional-southeast-asia`; the main RM/DM crowns retain `random-map-champion` / `deathmatch-champion`; shared team bytes bind independently to `2v2-rm` + `2v2-dm`, `3v3-rm` + `3v3-dm`, and `4v4-rm` + `4v4-dm`; RM ELO art uses the imported canonical title ids `elo-rising`, `elo-challenger`, `elo-veteran`, `elo-elite`, and `elo-legend`; DM ELO art uses `dm-rising`, the retained import alias `dm-contender` for the displayed Challenger division, `dm-veteran`, `dm-elite`, and `dm-legend`.
 - Saudi Arabia and Taiwan intentionally retain cinematic full-frame source artwork, but E2 bounds that art inside a controlled focal window instead of allowing it to take over the whole crown card. Ordinary belt assets remain transparent foreground art.
-- E2 removes the oversized top marketing/title hero while retaining a compact
-  Active / Vacant / Tribute status rail. Section identity copy remains in the
-  title-specific lanes rather than disappearing with the hero.
+- E2 retains the premium hero tile but strips it to identity plus live state:
+  the only hero copy is `AoE2WAR title economy`, alongside Active / Vacant /
+  Tribute. The large `CHAMPIONSHIP BELTS` headline, tagline, and explanatory
+  paragraph are intentionally absent.
+- E2 removes explanatory/marketing prose between championship sections. Only
+  compact structural labels remain: `AoE2WAR Champions`, `RM / DM`,
+  `War parties`, `National & regional standards`, `ELO Belts`, and
+  `Artifacts` when present.
 - RM / DM champion presentation defaults to the stacked avatar-above-contenders
   composition; the muted `RM / DM` kicker remains a hidden layout toggle for
   the preserved side-by-side alternative.
