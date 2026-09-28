@@ -48,5 +48,45 @@ test(
       node,
       /startWarGraphRuntime\(\)/,
     );
+    assert.match(
+      node,
+      /installRuntimeCrashDiagnostics\(\)/,
+    );
+
+    const diagnostics =
+      await readFile(
+        "lib/runtimeCrashDiagnostics.ts",
+        "utf8",
+      );
+
+    assert.match(
+      diagnostics,
+      /uncaughtExceptionMonitor/,
+    );
+
+    assert.match(
+      diagnostics,
+      /ERR_INVALID_STATE/,
+    );
+
+    assert.match(
+      diagnostics,
+      /Controller is already closed/,
+    );
+
+    assert.match(
+      diagnostics,
+      /process\.getActiveResourcesInfo/,
+    );
+
+    assert.match(
+      diagnostics,
+      /process\.memoryUsage\(\)/,
+    );
+
+    assert.doesNotMatch(
+      diagnostics,
+      /process\.on\(\s*"uncaughtException"/,
+    );
   },
 );
