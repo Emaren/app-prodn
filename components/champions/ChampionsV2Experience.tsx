@@ -100,14 +100,10 @@ function ModeSwitch({
 
 function SectionHeading({
   kicker,
-  title,
-  description,
   action,
   onKickerClick,
 }: {
   kicker: string;
-  title?: string;
-  description?: string;
   action?: ReactNode;
   onKickerClick?: () => void;
 }) {
@@ -115,31 +111,19 @@ function SectionHeading({
     "text-[9px] font-black uppercase tracking-[0.34em] text-amber-100/55";
 
   return (
-    <div className="flex items-end justify-between gap-5">
-      <div className="min-w-0">
-        {onKickerClick ? (
-          <button
-            type="button"
-            onClick={onKickerClick}
-            className={`${kickerClass} cursor-default text-left`}
-            aria-label={`Toggle ${kicker} championship layout`}
-          >
-            {kicker}
-          </button>
-        ) : (
-          <div className={kickerClass}>{kicker}</div>
-        )}
-        {title ? (
-          <h2 className="mt-2 font-serif text-3xl font-semibold tracking-[-0.035em] text-white sm:text-4xl">
-            {title}
-          </h2>
-        ) : null}
-        {description ? (
-          <p className="mt-2 max-w-4xl text-sm leading-6 text-slate-500">
-            {description}
-          </p>
-        ) : null}
-      </div>
+    <div className="flex min-h-8 items-center justify-between gap-4">
+      {onKickerClick ? (
+        <button
+          type="button"
+          onClick={onKickerClick}
+          className={`${kickerClass} cursor-default text-left`}
+          aria-label={`Toggle ${kicker} championship layout`}
+        >
+          {kicker}
+        </button>
+      ) : (
+        <div className={kickerClass}>{kicker}</div>
+      )}
       {action}
     </div>
   );
@@ -821,33 +805,31 @@ export default function ChampionsV2Experience({
   }
 
   return (
-    <main className="mx-auto w-full max-w-[108rem] space-y-12 overflow-x-hidden px-3 py-5 text-white sm:px-5 sm:py-7">
-      <div className="flex justify-end">
-        <div className="grid grid-cols-3 gap-2">
-          {[
-            ["Active", state.summary.active],
-            ["Vacant", state.summary.vacant],
-            ["Tribute", `${state.summary.tributePoolWolo} WOLO/day`],
-          ].map(([label, value]) => (
-            <div
-              key={String(label)}
-              className="min-w-[6.8rem] rounded-[0.95rem] border border-white/[0.07] bg-slate-950/45 px-3 py-2.5 shadow-[0_12px_38px_rgba(0,0,0,0.22)] backdrop-blur"
-            >
-              <div className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-600">
-                {label}
+    <main className="mx-auto w-full max-w-[108rem] space-y-10 overflow-x-hidden px-3 py-5 text-white sm:px-5 sm:py-7">
+      <section className="relative overflow-hidden rounded-[2.5rem] border border-amber-100/14 bg-[radial-gradient(circle_at_75%_15%,rgba(251,191,36,0.13),transparent_28%),radial-gradient(circle_at_12%_40%,rgba(59,130,246,0.11),transparent_26%),linear-gradient(145deg,#07101d,#070b14_56%,#140d08)] p-6 shadow-[0_44px_145px_rgba(0,0,0,0.48)] sm:p-8 lg:p-10">
+        <div className="relative z-10 flex justify-end">
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              ["Active", state.summary.active],
+              ["Vacant", state.summary.vacant],
+              ["Tribute", `${state.summary.tributePoolWolo} WOLO/day`],
+            ].map(([label, value]) => (
+              <div
+                key={String(label)}
+                className="min-w-[7.2rem] rounded-[1rem] border border-white/10 bg-black/25 px-3 py-3 backdrop-blur"
+              >
+                <div className="text-[8px] font-black uppercase tracking-[0.2em] text-slate-600">
+                  {label}
+                </div>
+                <div className="mt-1 text-lg font-semibold text-white">{value}</div>
               </div>
-              <div className="mt-1 text-sm font-semibold text-slate-200">{value}</div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      </section>
 
       <section className="space-y-5">
-        <SectionHeading
-          kicker="The open thrones"
-          title="The three crowns everybody sees first"
-          description="Chaos is activity-driven. World alternates the strongest DM and RM challengers. The Women's throne opens with Moose as the first invited contender."
-        />
+        <SectionHeading kicker="The open thrones" />
         <div className="grid items-stretch gap-5 xl:grid-cols-3">
           <ChampionshipCard title={state.chaos} />
           <ChampionshipCard title={state.world} emphasis />
@@ -858,8 +840,6 @@ export default function ChampionsV2Experience({
       <section className="space-y-5">
         <SectionHeading
           kicker="RM / DM"
-          title="RM Champion · DM Champion"
-          description="No mixed ladder math. Each crown reads its own official Watcher-backed rating lane and publishes the ten highest challengers."
           onKickerClick={() => setStackModeChampions((current) => !current)}
         />
         <div className="grid gap-5 xl:grid-cols-2">
@@ -871,8 +851,6 @@ export default function ChampionsV2Experience({
       <section className="space-y-5">
         <SectionHeading
           kicker="War parties"
-          title={`${lane.toUpperCase()} team championships`}
-          description={`One switch changes every team crown together. The choice persists, so ${lane.toUpperCase()} players can live in their side of the Kingdom without reselecting it.`}
           action={<ModeSwitch lane={lane} onChange={chooseLane} />}
         />
         <div className="space-y-6">
@@ -883,11 +861,7 @@ export default function ChampionsV2Experience({
       </section>
 
       <section className="space-y-5">
-        <SectionHeading
-          kicker="National & regional standards"
-          title="Every flag gets a road to the belt"
-          description="Canada, USA, and Mexico are lit. National and regional crowns stay vacant until a verified challenger carries the banner into title custody."
-        />
+        <SectionHeading kicker="National & regional standards" />
 
         <div className="relative">
           <div
@@ -917,8 +891,6 @@ export default function ChampionsV2Experience({
       <section className="space-y-5">
         <SectionHeading
           kicker="ELO crowns"
-          title={`${lane.toUpperCase()} rating divisions`}
-          description={`Five belts, five rating bands, and ten real ${lane.toUpperCase()} contenders in every band where the leaderboard has enough rated warriors.`}
           action={<ModeSwitch lane={lane} onChange={chooseLane} />}
         />
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
@@ -938,7 +910,6 @@ export default function ChampionsV2Experience({
           </div>
         </section>
       ) : null}
-
       <ChampionsDisplayRail active="e2" />
     </main>
   );
