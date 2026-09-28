@@ -41,7 +41,7 @@ test("public hot paths keep expensive work off request-critical rails", () => {
   assert.doesNotMatch(players, /loadPublicPlayerDirectoryFresh/);
   assert.match(directory, /replayGeneration: string \| null/);
   assert.match(directory, /publicPlayerDirectoryPromises/);
-  assert.match(directory, /overlayPublicPlayerDirectoryPresence/);
+  assert.match(directory, /overlayPublicPlayerDirectoryLiveState/);
   assert.match(directory, /includePresence\?: boolean/);
   assert.doesNotMatch(directory, /PLAYER_DIRECTORY_CACHE_TTL_MS/);
 
