@@ -79,6 +79,7 @@ export type PublicPlayerDirectoryEntry = {
   replayEvidence: PublicPlayerReplayEvidence[];
   steamPersonaName: string | null;
   inGameName: string | null;
+  representedCountry: string | null;
   pendingWoloClaimCount: number;
   pendingWoloClaimAmount: number;
   badges: CommunityBadge[];
@@ -375,6 +376,7 @@ export async function loadPublicPlayerDirectoryFresh(
         inGameName: true,
         steamPersonaName: true,
         steamId: true,
+        representedCountry: true,
         verified: true,
         verificationLevel: true,
         lastSeen: true,
@@ -697,6 +699,7 @@ export async function loadPublicPlayerDirectoryFresh(
       replayEvidence: [],
       steamPersonaName: user.steamPersonaName,
       inGameName: user.inGameName,
+      representedCountry: user.representedCountry,
       pendingWoloClaimCount: 0,
       pendingWoloClaimAmount: 0,
       badges: communityMap.get(user.id)?.badges ?? [],
@@ -794,6 +797,7 @@ export async function loadPublicPlayerDirectoryFresh(
         replayEvidence: [],
         steamPersonaName: null,
         inGameName: null,
+        representedCountry: null,
         pendingWoloClaimCount: 0,
         pendingWoloClaimAmount: 0,
         badges: [],
