@@ -98,7 +98,7 @@
     "@types/react": "19.0.10",
     "@types/react-dom": "^19",
     "autoprefixer": "^10.6.1",
-    "dotenv": "^16.5.0",
+    "dotenv": "^18.0.4",
     "eslint": "^9.39.5",
     "eslint-config-next": "15.5.25",
     "postcss": "^8.5.28",
