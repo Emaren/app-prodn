@@ -58,28 +58,88 @@ export async function GET(request: NextRequest) {
   const encoder = new TextEncoder();
   let unsubscribe = () => {};
   let heartbeat: ReturnType<typeof setInterval> | null = null;
+  let closed = false;
+  let controllerRef: ReadableStreamDefaultController<Uint8Array> | null = null;
+
+  const cleanup = () => {
+    if (closed) return;
+    closed = true;
+    unsubscribe();
+    unsubscribe = () => {};
+    if (heartbeat) {
+      clearInterval(heartbeat);
+      heartbeat = null;
+    }
+  };
 
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
-      const send = (event: unknown) => {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(event)}\n\n`));
+      controllerRef = controller;
+
+      const safeEnqueue = (payload: Uint8Array) => {
+        if (closed || request.signal.aborted) {
+          cleanup();
+          return false;
+        }
+
+        try {
+          controller.enqueue(payload);
+          return true;
+        } catch {
+          // The network consumer can disappear without a useful abort stack.
+          // Treat a closed controller as stream teardown, never a process error.
+          cleanup();
+          return false;
+        }
       };
-      send({ type: "connected", at: new Date().toISOString() });
-      unsubscribe = subscribeToDirectMessageEvents(viewer.uid, send);
+
+      const send = (event: unknown) => {
+        safeEnqueue(
+          encoder.encode(
+            `data: ${JSON.stringify(event)}\n\n`,
+          ),
+        );
+      };
+
+      if (!safeEnqueue(
+        encoder.encode(
+          `data: ${JSON.stringify({
+            type: "connected",
+            at: new Date().toISOString(),
+          })}\n\n`,
+        ),
+      )) {
+        return;
+      }
+
+      unsubscribe = subscribeToDirectMessageEvents(
+        viewer.uid,
+        send,
+      );
       heartbeat = setInterval(() => {
-        controller.enqueue(encoder.encode(`: heartbeat ${Date.now()}\n\n`));
+        safeEnqueue(
+          encoder.encode(
+            `: heartbeat ${Date.now()}\n\n`,
+          ),
+        );
       }, 20_000);
+      heartbeat.unref?.();
     },
     cancel() {
-      unsubscribe();
-      if (heartbeat) clearInterval(heartbeat);
+      cleanup();
     },
   });
 
-  request.signal.addEventListener("abort", () => {
-    unsubscribe();
-    if (heartbeat) clearInterval(heartbeat);
-  });
+  const abortStream = () => {
+    cleanup();
+    try {
+      controllerRef?.close();
+    } catch {
+      // The network consumer may already have closed the stream.
+    }
+  };
+  request.signal.addEventListener("abort", abortStream, { once: true });
+  if (request.signal.aborted) abortStream();
 
   return new Response(stream, {
     headers: {

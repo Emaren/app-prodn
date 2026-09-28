@@ -11,6 +11,10 @@ import {
   type PublicPlayerDirectoryEntry,
   type PublicPlayerReplayEvidence,
 } from "@/lib/publicPlayerDirectory";
+import { loadPublicPlayerDirectoryGeneration } from "@/lib/publicPlayerDirectoryGeneration";
+import { loadPublicPresenceSnapshot } from "@/lib/publicPresence";
+import { createGenerationKeyedLoader } from "@/lib/generationKeyedLoader";
+import { loadPublicReplayGeneration } from "@/lib/publicReplayGeneration";
 import { isPublicBattleArchiveRow } from "@/lib/publicBattleArchiveEligibility";
 import { normalizePublicPlayerName } from "@/lib/publicPlayers";
 import { cleanPublicGameRows } from "@/lib/publicReplayTruth";
@@ -58,11 +62,12 @@ import {
 
 const BASE_ARENA_ELO = 1500;
 const ARENA_ELO_K_FACTOR = 32;
-const LEADERBOARD_CACHE_TTL_MS = 15_000;
+const LEADERBOARD_TIME_BUCKET_MS = 5 * 60_000;
 const LEADERBOARD_CACHE_MAX_ENTRIES = 24;
 
 type LeaderboardCacheEntry = {
-  expiresAt: number;
+  generation: string;
+  timeBucket: number;
   value: LobbyLeaderboardSummary;
 };
 
@@ -77,17 +82,12 @@ type LeaderboardGameCorpus = {
   recentGames: PreparedLeaderboardGame[];
 };
 
-type LeaderboardGameCorpusCacheEntry = {
-  expiresAt: number;
-  value: LeaderboardGameCorpus;
-};
-
-let leaderboardGameCorpusCache:
-  LeaderboardGameCorpusCacheEntry | null =
-  null;
-let leaderboardGameCorpusPromise:
-  Promise<LeaderboardGameCorpus> | null =
-  null;
+const loadLeaderboardGameCorpusByGeneration =
+  createGenerationKeyedLoader<
+    PrismaClient,
+    LeaderboardGameCorpus
+  >(2);
+let leaderboardGameCorpusEpoch = 0;
 
 
 export type LoadLobbyLeaderboardOptions = {
@@ -100,6 +100,16 @@ export type LoadLobbyLeaderboardOptions = {
   query?: string | null;
   sortKey?: LeaderboardSortKey | null;
   sortDirection?: LeaderboardSortDirection | null;
+  /**
+   * Live presence is an observational response overlay, not projection
+   * authority. Server-only consumers that do not render presence can skip it.
+   */
+  includePresence?: boolean;
+  /**
+   * Internal generation hint for callers that already captured directory
+   * authority and need multiple competition reads to share one exact build.
+   */
+  projectionGeneration?: string | null;
 };
 
 type PreparedLeaderboardGame = Omit<
@@ -439,10 +449,9 @@ function buildLeaderboardSelection(
         entry.totalMatches === 0
     )
     .sort((left, right) => {
-      if (left.isOnline !== right.isOnline) {
-        return Number(right.isOnline) - Number(left.isOnline);
-      }
-
+      // Presence is a request-time overlay, not ranking authority. Keeping it
+      // out of the expensive projection lets heartbeat churn stay off the
+      // historical leaderboard critical path.
       if (left.verified !== right.verified) {
         return Number(right.verified) - Number(left.verified);
       }
@@ -1372,136 +1381,134 @@ function sortCandidateGamesByPlayedAtDesc(
 }
 
 
+async function buildLeaderboardGameCorpusFresh(
+  prisma: PrismaClient,
+  replayGeneration: string | null,
+): Promise<LeaderboardGameCorpus> {
+  const rawLeaderboardGames =
+    await loadPublicLeaderboardRawGames(
+      prisma,
+      replayGeneration,
+    );
+
+  const leaderboardGames =
+    rawLeaderboardGames
+      .map(
+        (game) =>
+          applyReplayAdjudicationToGameStats(
+            game,
+          ) as CandidateLeaderboardGame,
+      )
+      .sort(
+        sortCandidateGamesByPlayedAtDesc,
+      );
+
+  const publicBattleGames =
+    leaderboardGames.filter(
+      isPublicBattleArchiveRow,
+    );
+
+  const uniqueGames =
+    cleanPublicGameRows(
+      publicBattleGames,
+      {
+        includeReview: true,
+        includeLive: false,
+      },
+    ) as CandidateLeaderboardGame[];
+
+  const resolvedGames =
+    cleanPublicGameRows(
+      publicBattleGames,
+      {
+        includeReview: false,
+        includeLive: false,
+      },
+    ) as CandidateLeaderboardGame[];
+
+  const preparedGames:
+    PreparedLeaderboardGame[] =
+    resolvedGames.map(
+      (game) => {
+        const playedAt =
+          readPlayedAt(game);
+
+        return {
+          ...game,
+          players:
+            parsePlayers(
+              game.players,
+            ),
+          playedAtMs:
+            playedAt
+              ? new Date(
+                  playedAt,
+                ).getTime()
+              : 0,
+        };
+      },
+    );
+
+  const recentGames =
+    [...preparedGames].sort(
+      (left, right) =>
+        right.playedAtMs -
+        left.playedAtMs,
+    );
+
+  return {
+    uniqueGames,
+    resolvedGames,
+    preparedGames,
+    recentGames,
+  };
+}
+
 async function loadLeaderboardGameCorpus(
   prisma: PrismaClient,
 ): Promise<LeaderboardGameCorpus> {
-  const now = Date.now();
-
-  if (
-    leaderboardGameCorpusCache &&
-    leaderboardGameCorpusCache.expiresAt >
-      now
-  ) {
-    return leaderboardGameCorpusCache.value;
-  }
-
-  if (leaderboardGameCorpusPromise) {
-    return leaderboardGameCorpusPromise;
-  }
-
-  const run = (async () => {
-    const rawLeaderboardGames =
-      await loadPublicLeaderboardRawGames(
-        prisma,
-      );
-
-    const leaderboardGames =
-      rawLeaderboardGames
-        .map(
-          (game) =>
-            applyReplayAdjudicationToGameStats(
-              game,
-            ) as CandidateLeaderboardGame,
-        )
-        .sort(
-          sortCandidateGamesByPlayedAtDesc,
-        );
-
-    const publicBattleGames =
-      leaderboardGames.filter(
-        isPublicBattleArchiveRow,
-      );
-
-    const uniqueGames =
-      cleanPublicGameRows(
-        publicBattleGames,
-        {
-          includeReview: true,
-          includeLive: false,
-        },
-      ) as CandidateLeaderboardGame[];
-
-    const resolvedGames =
-      cleanPublicGameRows(
-        publicBattleGames,
-        {
-          includeReview: false,
-          includeLive: false,
-        },
-      ) as CandidateLeaderboardGame[];
-
-    const preparedGames:
-      PreparedLeaderboardGame[] =
-      resolvedGames.map(
-        (game) => {
-          const playedAt =
-            readPlayedAt(game);
-
-          return {
-            ...game,
-            players:
-              parsePlayers(
-                game.players,
-              ),
-            playedAtMs:
-              playedAt
-                ? new Date(
-                    playedAt,
-                  ).getTime()
-                : 0,
-          };
-        },
-      );
-
-    const recentGames =
-      [...preparedGames].sort(
-        (left, right) =>
-          right.playedAtMs -
-          left.playedAtMs,
-      );
-
-    return {
-      uniqueGames,
-      resolvedGames,
-      preparedGames,
-      recentGames,
-    };
-  })();
-
-  leaderboardGameCorpusPromise = run;
+  let replayGeneration: string;
 
   try {
-    const value = await run;
-
-    leaderboardGameCorpusCache = {
-      expiresAt:
-        Date.now() +
-        LEADERBOARD_CACHE_TTL_MS,
-      value,
-    };
-
-    return value;
-  } finally {
-    if (
-      leaderboardGameCorpusPromise ===
-      run
-    ) {
-      leaderboardGameCorpusPromise =
-        null;
-    }
+    replayGeneration =
+      await loadPublicReplayGeneration(
+        prisma,
+      );
+  } catch (error) {
+    console.warn(
+      "Leaderboard replay generation unavailable; building fresh corpus:",
+      error,
+    );
+    return buildLeaderboardGameCorpusFresh(
+      prisma,
+      null,
+    );
   }
+
+  const generationKey =
+    `${replayGeneration}:epoch:${leaderboardGameCorpusEpoch}`;
+
+  return loadLeaderboardGameCorpusByGeneration(
+    prisma,
+    generationKey,
+    () =>
+      buildLeaderboardGameCorpusFresh(
+        prisma,
+        replayGeneration,
+      ),
+  );
 }
 
 export function invalidateLobbyLeaderboardCache() {
   leaderboardCache.clear();
   leaderboardPromises.clear();
-  leaderboardGameCorpusCache = null;
-  leaderboardGameCorpusPromise = null;
+  leaderboardGameCorpusEpoch += 1;
 }
 
 async function loadLobbyLeaderboardFresh(
   prisma: PrismaClient,
-  options: LoadLobbyLeaderboardOptions = {}
+  options: LoadLobbyLeaderboardOptions = {},
+  projectionGeneration: string,
 ): Promise<LobbyLeaderboardSummary> {
   const lane = normalizeLeaderboardLane(options.lane);
   const scope = normalizeLeaderboardScope(
@@ -1515,7 +1522,11 @@ async function loadLobbyLeaderboardFresh(
 
     const [directory, gameCorpus] =
     await Promise.all([
-      loadPublicPlayerDirectory(prisma),
+      loadPublicPlayerDirectory(
+        prisma,
+        projectionGeneration,
+        { includePresence: false },
+      ),
       loadLeaderboardGameCorpus(prisma),
     ]);
 
@@ -1666,12 +1677,9 @@ async function loadLobbyLeaderboardFresh(
         ),
       )
     ),
-    activePlayers:
-      candidates.filter(
-        (entry) =>
-          entry.claimed &&
-          entry.isOnline,
-      ).length,
+    // Live presence is overlaid after cache lookup. The expensive projection
+    // is deliberately presence-neutral.
+    activePlayers: 0,
     matchesToday,
     resolvedGamesToday: matchesToday,
     uniqueReplaysToday,
@@ -1729,92 +1737,201 @@ function buildLeaderboardCacheKey(
   });
 }
 
+async function overlayLeaderboardPresence(
+  prisma: PrismaClient,
+  snapshot: LobbyLeaderboardSummary,
+): Promise<LobbyLeaderboardSummary> {
+  try {
+    const presence =
+      await loadPublicPresenceSnapshot(
+        prisma,
+      );
+    const onlineUids =
+      new Set(
+        presence.onlineUsers.map(
+          (user) => user.uid,
+        ),
+      );
+
+    return {
+      ...snapshot,
+      activePlayers:
+        presence.activePlayers,
+      entries:
+        snapshot.entries.map(
+          (entry) => ({
+            ...entry,
+            isOnline:
+              Boolean(
+                entry.uid &&
+                onlineUids.has(
+                  entry.uid,
+                ),
+              ),
+          }),
+        ),
+    };
+  } catch (error) {
+    /*
+     * Presence is an observational overlay, never ranking authority.
+     * A degraded live-presence rail must not make the historical board fail.
+     */
+    console.warn(
+      "Leaderboard presence overlay unavailable:",
+      error,
+    );
+    return snapshot;
+  }
+}
+
 function startLeaderboardRefresh(
   prisma: PrismaClient,
   options: LoadLobbyLeaderboardOptions,
   cacheKey: string,
+  projectionGeneration: string,
+  timeBucket: number,
 ): Promise<LobbyLeaderboardSummary> {
+  const promiseKey =
+    `${cacheKey}|generation:${projectionGeneration}|time:${timeBucket}`;
   const existing =
-    leaderboardPromises.get(cacheKey);
+    leaderboardPromises.get(
+      promiseKey,
+    );
 
   if (existing) {
     return existing;
   }
 
-  const run = loadLobbyLeaderboardFresh(
-    prisma,
-    options,
-  )
-    .then((value) => {
-      leaderboardCache.set(cacheKey, {
-        expiresAt:
-          Date.now() +
-          LEADERBOARD_CACHE_TTL_MS,
-        value,
+  const run =
+    loadLobbyLeaderboardFresh(
+      prisma,
+      options,
+      projectionGeneration,
+    )
+      .then((value) => {
+        leaderboardCache.set(
+          cacheKey,
+          {
+            generation:
+              projectionGeneration,
+            timeBucket,
+            value,
+          },
+        );
+
+        /*
+         * The cache is bounded by option variants, not wall-clock expiry.
+         * Old option entries are cheapest to discard by insertion order.
+         */
+        while (
+          leaderboardCache.size >
+          LEADERBOARD_CACHE_MAX_ENTRIES
+        ) {
+          const oldestKey =
+            leaderboardCache
+              .keys()
+              .next()
+              .value;
+
+          if (
+            oldestKey === undefined
+          ) {
+            break;
+          }
+
+          leaderboardCache.delete(
+            oldestKey,
+          );
+        }
+
+        return value;
+      })
+      .finally(() => {
+        if (
+          leaderboardPromises.get(
+            promiseKey,
+          ) === run
+        ) {
+          leaderboardPromises.delete(
+            promiseKey,
+          );
+        }
       });
 
-      if (
-        leaderboardCache.size >
-        LEADERBOARD_CACHE_MAX_ENTRIES
-      ) {
-        for (
-          const [key, entry]
-          of leaderboardCache
-        ) {
-          if (
-            entry.expiresAt <=
-              Date.now() ||
-            leaderboardCache.size >
-              LEADERBOARD_CACHE_MAX_ENTRIES
-          ) {
-            leaderboardCache.delete(key);
-          }
-        }
-      }
-
-      return value;
-    })
-    .finally(() => {
-      if (
-        leaderboardPromises.get(
-          cacheKey,
-        ) === run
-      ) {
-        leaderboardPromises.delete(
-          cacheKey,
-        );
-      }
-    });
-
   leaderboardPromises.set(
-    cacheKey,
+    promiseKey,
     run,
   );
 
   return run;
 }
 
+async function loadLeaderboardProjectionGeneration(
+  prisma: PrismaClient,
+) {
+  try {
+    return await loadPublicPlayerDirectoryGeneration(
+      prisma,
+    );
+  } catch (error) {
+    /*
+     * Isolated tools/test doubles may not expose every directory-generation
+     * table. Keep their old bounded behavior rather than retaining unknown
+     * state indefinitely.
+     */
+    console.warn(
+      "Leaderboard projection generation unavailable; using bounded fallback:",
+      error,
+    );
+
+    return `fallback:${Math.floor(
+      Date.now() / 15_000,
+    )}`;
+  }
+}
+
 export async function loadLobbyLeaderboard(
   prisma: PrismaClient,
-  options: LoadLobbyLeaderboardOptions = {}
+  options: LoadLobbyLeaderboardOptions = {},
 ): Promise<LobbyLeaderboardSummary> {
   const now = Date.now();
   const cacheKey =
-    buildLeaderboardCacheKey(options);
+    buildLeaderboardCacheKey(
+      options,
+    );
+  const projectionGeneration =
+    options.projectionGeneration ??
+    await loadLeaderboardProjectionGeneration(
+      prisma,
+    );
+  const timeBucket =
+    Math.floor(
+      now /
+        LEADERBOARD_TIME_BUCKET_MS,
+    );
   const cached =
-    leaderboardCache.get(cacheKey);
+    leaderboardCache.get(
+      cacheKey,
+    );
+  const cacheIsCurrent =
+    cached?.generation ===
+      projectionGeneration &&
+    cached?.timeBucket ===
+      timeBucket;
 
   if (cached) {
-    if (
-      cached.expiresAt <= now &&
-      !leaderboardPromises.has(
-        cacheKey,
-      )
-    ) {
+    if (!cacheIsCurrent) {
+      /*
+       * Data-generation or bounded time-derived truth changed. Refresh in the
+       * background; a previously good board never turns the next navigation
+       * into a whole-corpus rebuild.
+       */
       void startLeaderboardRefresh(
         prisma,
         options,
         cacheKey,
+        projectionGeneration,
+        timeBucket,
       ).catch((error) => {
         console.warn(
           "Leaderboard background refresh failed:",
@@ -1823,17 +1940,32 @@ export async function loadLobbyLeaderboard(
       });
     }
 
-    // Once a good snapshot exists, expiry means
-    // "refresh in the background", never
-    // "make the next human wait".
-    return cached.value;
+    return options.includePresence === false
+      ? cached.value
+      : overlayLeaderboardPresence(
+          prisma,
+          cached.value,
+        );
   }
 
-  // Only the genuinely cold first computation waits.
-  // Concurrent cold callers share one in-flight build.
-  return startLeaderboardRefresh(
-    prisma,
-    options,
-    cacheKey,
-  );
+  /*
+   * Only the genuinely cold first computation waits. Concurrent cold callers
+   * for the exact same generation/time bucket share one in-flight build.
+   */
+  const value =
+    await startLeaderboardRefresh(
+      prisma,
+      options,
+      cacheKey,
+      projectionGeneration,
+      timeBucket,
+    );
+
+  return options.includePresence === false
+    ? value
+    : overlayLeaderboardPresence(
+        prisma,
+        value,
+      );
 }
+

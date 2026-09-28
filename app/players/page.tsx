@@ -18,23 +18,27 @@ import {
   loadPublicPlayerDirectory,
   type PublicPlayerDirectoryEntry,
 } from "@/lib/publicPlayerDirectory";
-import { loadPublicReplayGeneration } from "@/lib/publicReplayGeneration";
+import { loadPublicPlayerDirectoryGeneration } from "@/lib/publicPlayerDirectoryGeneration";
 
 export const dynamic = "force-dynamic";
 
 export default async function PlayersDirectoryPage() {
   const prisma = getPrisma();
-  // Read the watermark before the directory query. If replay truth lands
-  // between these reads, the client observes a later generation and refreshes;
-  // reading both concurrently can stamp an older directory with a newer
-  // generation and suppress that corrective refresh.
-  const initialGeneration = await loadPublicReplayGeneration(prisma);
-  // Bind the directory cache to the same replay-generation watermark. This
-  // preserves corrective client refreshes while avoiding a full corpus rebuild
-  // on every request inside one unchanged replay generation.
+  // Capture the full directory generation before the projection read. Replay,
+  // public identity, community honors, gifts, avatar metadata, and pending
+  // claim presentation all participate; presence remains a separate live rail.
+  const initialGeneration = await loadPublicPlayerDirectoryGeneration(prisma);
+  // Bind the expensive directory projection to that exact generation. Live
+  // presence is overlaid afterward and never forces a historical rebuild.
   const directory = await loadPublicPlayerDirectory(
     prisma,
     initialGeneration,
+    {
+      // Presence is already owned by PublicPresenceProvider's five-second
+      // client rail. Keep server rendering on current Watcher rating/name
+      // state without paying a duplicate presence query.
+      includePresence: false,
+    },
   );
   const boardCount = directory.allEntries.length;
   const claimedUids = directory.claimedEntries.flatMap((entry) =>

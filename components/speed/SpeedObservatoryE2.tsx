@@ -32,6 +32,7 @@ export type SpeedE2Props = {
   sessionP75: number | null;
   checkMs: number | null;
   checkBuild: string;
+  serverLoopP95: number | null;
   checking: boolean;
   reporting: boolean;
   reportMessage: string;
@@ -334,7 +335,15 @@ function SessionTrace({ samples }: { samples: SpeedSample[] }) {
 }
 
 function BrowserPulse({ props }: { props: SpeedE2Props }) {
-  const { latest, sessionP50, sessionP75, checkMs, checkBuild, samples } = props;
+  const {
+    latest,
+    sessionP50,
+    sessionP75,
+    checkMs,
+    checkBuild,
+    serverLoopP95,
+    samples,
+  } = props;
   const valid = samples.filter((sample) => sample.valid_for_aggregation && !sample.visibility_tainted);
   const last = latest;
   const tiles = [
@@ -342,6 +351,18 @@ function BrowserPulse({ props }: { props: SpeedE2Props }) {
     { label: "SESSION p50", value: ms(sessionP50), accent: "cyan" as Accent },
     { label: "SESSION p75", value: ms(sessionP75), accent: "violet" as Accent },
     { label: "LIVE RTT", value: ms(checkMs), accent: "green" as Accent },
+    {
+      label: "SERVER LOOP p95",
+      value: ms(serverLoopP95),
+      accent:
+        serverLoopP95 != null &&
+        serverLoopP95 >= 100
+          ? "rose" as Accent
+          : serverLoopP95 != null &&
+              serverLoopP95 >= 25
+            ? "amber" as Accent
+            : "green" as Accent,
+    },
     { label: "LCP", value: ms(last?.lcp_ms), accent: "blue" as Accent },
     { label: "INP", value: ms(last?.inp_ms), accent: "green" as Accent },
     { label: "CLS", value: last?.cls == null ? "—" : last.cls.toFixed(3), accent: "amber" as Accent },

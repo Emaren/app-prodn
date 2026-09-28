@@ -28,6 +28,39 @@ export async function createRadioFileStream(
   let handleClosed =
     false;
 
+  function closeController(
+    controller: ReadableStreamDefaultController<Uint8Array>,
+  ) {
+    if (cancelled || finished) {
+      return;
+    }
+
+    finished = true;
+
+    try {
+      controller.close();
+    } catch {
+      // The response consumer or framework may already have closed the stream.
+    }
+  }
+
+  function errorController(
+    controller: ReadableStreamDefaultController<Uint8Array>,
+    error: unknown,
+  ) {
+    if (cancelled || finished) {
+      return;
+    }
+
+    finished = true;
+
+    try {
+      controller.error(error);
+    } catch {
+      // Teardown won the race; there is no remaining consumer to notify.
+    }
+  }
+
   async function closeHandle() {
     if (handleClosed) {
       return;
@@ -62,9 +95,9 @@ export async function createRadioFileStream(
         if (
           remaining <= 0
         ) {
-          finished = true;
-
-          controller.close();
+          closeController(
+            controller,
+          );
 
           await closeHandle();
 
@@ -100,9 +133,9 @@ export async function createRadioFileStream(
           if (
             bytesRead <= 0
           ) {
-            finished = true;
-
-            controller.close();
+            closeController(
+              controller,
+            );
 
             await closeHandle();
 
@@ -112,21 +145,27 @@ export async function createRadioFileStream(
           position +=
             bytesRead;
 
-          controller.enqueue(
-            buffer.subarray(
-              0,
-              bytesRead,
-            ),
-          );
+          try {
+            controller.enqueue(
+              buffer.subarray(
+                0,
+                bytesRead,
+              ),
+            );
+          } catch {
+            cancelled = true;
+            await closeHandle();
+            return;
+          }
 
           if (
             position > end &&
             !cancelled &&
             !finished
           ) {
-            finished = true;
-
-            controller.close();
+            closeController(
+              controller,
+            );
 
             await closeHandle();
           }
@@ -137,9 +176,8 @@ export async function createRadioFileStream(
             !cancelled &&
             !finished
           ) {
-            finished = true;
-
-            controller.error(
+            errorController(
+              controller,
               error,
             );
           }

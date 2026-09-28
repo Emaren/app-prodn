@@ -34,57 +34,68 @@ export async function GET(
   }
 
   const encoder = new TextEncoder();
-  let cleanup = () => {};
+  let unsubscribe = () => {};
+  let heartbeat: ReturnType<typeof setInterval> | null = null;
+  let closed = false;
+  let controllerRef: ReadableStreamDefaultController<Uint8Array> | null = null;
+
+  const cleanup = () => {
+    if (closed) return;
+    closed = true;
+    unsubscribe();
+    unsubscribe = () => {};
+    if (heartbeat) {
+      clearInterval(heartbeat);
+      heartbeat = null;
+    }
+  };
 
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
-      let closed = false;
+      controllerRef = controller;
+
+      const safeEnqueue = (payload: Uint8Array) => {
+        if (closed || request.signal.aborted) {
+          cleanup();
+          return false;
+        }
+
+        try {
+          controller.enqueue(payload);
+          return true;
+        } catch {
+          cleanup();
+          return false;
+        }
+      };
 
       const write = (
         eventName: string,
         payload: Record<string, unknown>,
-      ) => {
-        if (closed) return;
-        controller.enqueue(
+      ) =>
+        safeEnqueue(
           encoder.encode(
             `event: ${eventName}\n` +
               `data: ${JSON.stringify(payload)}\n\n`,
           ),
         );
-      };
 
-      const unsubscribe = subscribeToClanHallEvents(
+      if (!safeEnqueue(encoder.encode("retry: 2000\n"))) return;
+
+      unsubscribe = subscribeToClanHallEvents(
         slug,
         (event: ClanHallEvent) => {
           write("hall", event);
         },
       );
 
-      const heartbeat = setInterval(() => {
-        if (closed) return;
-        controller.enqueue(
+      heartbeat = setInterval(() => {
+        safeEnqueue(
           encoder.encode(`: hall-fire ${Date.now()}\n\n`),
         );
       }, 15_000);
+      heartbeat.unref?.();
 
-      const close = () => {
-        if (closed) return;
-        closed = true;
-        clearInterval(heartbeat);
-        unsubscribe();
-        try {
-          controller.close();
-        } catch {
-          // Browser may already have closed the stream.
-        }
-      };
-
-      cleanup = close;
-      request.signal.addEventListener("abort", close, {
-        once: true,
-      });
-
-      controller.enqueue(encoder.encode("retry: 2000\n"));
       write("ready", {
         slug,
         at: new Date().toISOString(),
@@ -94,6 +105,17 @@ export async function GET(
       cleanup();
     },
   });
+
+  const abortStream = () => {
+    cleanup();
+    try {
+      controllerRef?.close();
+    } catch {
+      // The browser or framework may already have closed the stream.
+    }
+  };
+  request.signal.addEventListener("abort", abortStream, { once: true });
+  if (request.signal.aborted) abortStream();
 
   return new Response(stream, {
     headers: {

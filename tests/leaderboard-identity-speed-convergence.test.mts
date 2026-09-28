@@ -111,7 +111,7 @@ test("player directory and leaderboard share the same raw replay corpus", () => 
 
   assert.match(
     directory,
-    /loadPublicLeaderboardRawGames\(prisma\)/,
+    /loadPublicLeaderboardRawGames/,
   );
   assert.match(
     leaderboard,
@@ -119,7 +119,11 @@ test("player directory and leaderboard share the same raw replay corpus", () => 
   );
   assert.match(
     corpus,
-    /rawCorpusCache/,
+    /createGenerationKeyedLoader/,
+  );
+  assert.match(
+    corpus,
+    /loadRawCorpusByGeneration/,
   );
   assert.match(
     corpus,
@@ -159,7 +163,7 @@ test("player directory and leaderboard share the same raw replay corpus", () => 
   );
   assert.match(
     corpus,
-    /generation\s*===\s*rawCorpusGeneration/,
+    /generation}:epoch:\$\{rawCorpusGeneration/,
   );
 });
 
@@ -176,7 +180,11 @@ test("leaderboard variants share one processed corpus", () => {
   );
   assert.match(
     source,
-    /leaderboardGameCorpusCache/,
+    /loadLeaderboardGameCorpusByGeneration/,
+  );
+  assert.match(
+    source,
+    /createGenerationKeyedLoader/,
   );
   assert.match(
     source,

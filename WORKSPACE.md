@@ -241,7 +241,7 @@ for the one-step certified recovery lane.
 
 Watcher artifacts are released from the owning versioned Watcher release branch
 and its artifact/signing workflow. Current production manifests advertise
-Watcher `1.5.7`.
+Watcher `1.6.1`.
 
 Important:
 

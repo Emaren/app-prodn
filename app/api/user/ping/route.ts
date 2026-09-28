@@ -17,7 +17,6 @@ import {
   userOnlineHeartbeatLimiter,
   userOnlineLastSeenPersister,
 } from "@/lib/userOnlinePresenceGuards";
-import { invalidatePublicPlayerDirectoryCache } from "@/lib/publicPlayerDirectory";
 import { isLiveProductionReadOnlyPreview } from "@/lib/previewDataSource";
 
 export const runtime = "nodejs";
@@ -291,9 +290,11 @@ export async function POST(request: NextRequest) {
       await wait(USER_ONLINE_LEAVE_GRACE_MS);
 
       if (userOnlineLeaseState(uid) === "offline") {
-        // Live departure truth is process-local and immediate. Keep the
-        // durable timestamp intact for "last seen" history and audit views.
-        invalidatePublicPlayerDirectoryCache();
+        /*
+         * Live departure truth is process-local and immediate. Presence has
+         * its own request/client overlay, so this transition deliberately does
+         * not invalidate the replay-derived public player directory.
+         */
       }
     }
 
@@ -322,10 +323,6 @@ export async function POST(request: NextRequest) {
   }
 
   const heartbeatAt = new Date();
-  const previousLeaseState = userOnlineLeaseState(
-    uid,
-    heartbeatAt.getTime(),
-  );
   const lease = presenceClientId
     ? touchUserOnlineLease(
         uid,
@@ -342,12 +339,10 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  if (
-    presenceClientId &&
-    previousLeaseState !== "online"
-  ) {
-    invalidatePublicPlayerDirectoryCache();
-  }
+  /*
+   * Arrival is authoritative in the presence lease itself. Do not couple
+   * heartbeat churn to historical player-directory reconstruction.
+   */
 
   const heartbeatUpdate = await userOnlineLastSeenPersister.persist(
     uid,
