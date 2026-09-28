@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/champions-e2-refinement-20260927` at `af5e934b4b228f80786ec545b5cbd591c043bf83`
+Implementation baseline: `feature/champions-e2-refinement-20260927` at `75f3e51dd6a4a50f80617c096f9cf80ba9c06ab9`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
