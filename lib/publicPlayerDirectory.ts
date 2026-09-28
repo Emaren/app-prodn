@@ -1217,6 +1217,58 @@ async function overlayPublicPlayerDirectoryLiveState(
   };
 }
 
+function startPublicPlayerDirectoryRefresh(
+  prisma: PrismaClient,
+  generation: string,
+) {
+  const promiseKey =
+    `generation:${generation}:epoch:${publicPlayerDirectoryCacheGeneration}`;
+  const existing =
+    publicPlayerDirectoryPromises.get(
+      promiseKey,
+    );
+
+  if (existing) {
+    return existing;
+  }
+
+  const cacheEpoch =
+    publicPlayerDirectoryCacheGeneration;
+  const run =
+    loadPublicPlayerDirectoryFresh(prisma)
+      .then((value) => {
+        if (
+          cacheEpoch ===
+          publicPlayerDirectoryCacheGeneration
+        ) {
+          publicPlayerDirectoryCache = {
+            generation,
+            value,
+          };
+        }
+
+        return value;
+      })
+      .finally(() => {
+        if (
+          publicPlayerDirectoryPromises.get(
+            promiseKey,
+          ) === run
+        ) {
+          publicPlayerDirectoryPromises.delete(
+            promiseKey,
+          );
+        }
+      });
+
+  publicPlayerDirectoryPromises.set(
+    promiseKey,
+    run,
+  );
+
+  return run;
+}
+
 export async function loadPublicPlayerDirectory(
   prisma: PrismaClient,
   replayGeneration: string | null = null,
@@ -1259,73 +1311,50 @@ export async function loadPublicPlayerDirectory(
     overlayOptions.includePresence ||
     overlayOptions.includeCurrentWatcherState;
 
-  if (
-    publicPlayerDirectoryCache?.generation ===
-    resolvedGeneration
-  ) {
-    return needsLiveOverlay
-      ? overlayPublicPlayerDirectoryLiveState(
-          prisma,
-          publicPlayerDirectoryCache.value,
-          overlayOptions,
-        )
-      : publicPlayerDirectoryCache.value;
-  }
+  const cached =
+    publicPlayerDirectoryCache;
 
-  const promiseKey =
-    `generation:${resolvedGeneration}:epoch:${publicPlayerDirectoryCacheGeneration}`;
-  const existing =
-    publicPlayerDirectoryPromises.get(
-      promiseKey
-    );
-
-  if (existing) {
-    const value = await existing;
-    return needsLiveOverlay
-      ? overlayPublicPlayerDirectoryLiveState(
-          prisma,
-          value,
-          overlayOptions,
-        )
-      : value;
-  }
-
-  const cacheEpoch =
-    publicPlayerDirectoryCacheGeneration;
-  const run =
-    loadPublicPlayerDirectoryFresh(prisma)
-      .then((value) => {
-        if (
-          cacheEpoch ===
-          publicPlayerDirectoryCacheGeneration
-        ) {
-          publicPlayerDirectoryCache = {
-            generation:
-              resolvedGeneration,
-            value,
-          };
-        }
-
-        return value;
-      })
-      .finally(() => {
-        if (
-          publicPlayerDirectoryPromises.get(
-            promiseKey,
-          ) === run
-        ) {
-          publicPlayerDirectoryPromises.delete(
-            promiseKey,
-          );
-        }
+  if (cached) {
+    if (
+      cached.generation !==
+      resolvedGeneration
+    ) {
+      /*
+       * Directory generation can advance because of a new replay, honor,
+       * avatar or claim presentation change. Once one complete historical
+       * directory exists, never make the next human navigation pay the entire
+       * replay/community rebuild. Refresh exactly once in the background and
+       * keep applying current Watcher/presence overlays to the last-good base.
+       */
+      void startPublicPlayerDirectoryRefresh(
+        prisma,
+        resolvedGeneration,
+      ).catch((error) => {
+        console.warn(
+          "Public player-directory background refresh failed:",
+          error,
+        );
       });
+    }
 
-  publicPlayerDirectoryPromises.set(
-    promiseKey,
-    run,
-  );
+    return needsLiveOverlay
+      ? overlayPublicPlayerDirectoryLiveState(
+          prisma,
+          cached.value,
+          overlayOptions,
+        )
+      : cached.value;
+  }
 
-  const value = await run;
+  /*
+   * Only the genuinely cold process-local population waits for the complete
+   * historical projection. Concurrent cold readers share one exact build.
+   */
+  const value =
+    await startPublicPlayerDirectoryRefresh(
+      prisma,
+      resolvedGeneration,
+    );
 
   return needsLiveOverlay
     ? overlayPublicPlayerDirectoryLiveState(
