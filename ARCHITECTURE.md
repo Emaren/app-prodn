@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "architecture-explanation"
-reviewed_at: "2026-09-06"
+reviewed_at: "2026-09-28"
 review_interval_days: 60
 sensitivity: "internal"
 ---
@@ -647,6 +647,32 @@ Do not assume every visible issue is a page bug.
 - watcher behavior now looks healthier end-to-end, but the app should still document the live/final replay contract truthfully as it evolves
 
 - Replay upload surface keeps the existing manual single-file flow and adds `/api/replay/upload-package` for browser ZIP packs. ZIP entries are unpacked server-side, filtered to supported AoE2 replay extensions, and forwarded through the canonical backend replay upload contract.
+
+## Public replay projection and live-overlay boundary
+
+The public player directory, leaderboard, championship surfaces, rivalry graph
+and battle archive reuse complete replay-derived projections by exact generation.
+This is computation reuse only: the full replay corpus and existing
+adjudication/statistics contracts remain authoritative.
+
+`lib/publicPlayerDirectoryGeneration.ts` extends replay generation with the
+mutable public directory supplements that can legitimately change without a new
+replay. Live presence is intentionally outside that key. Presence and current
+Watcher rating/name observations are request-time presentation overlays and may
+not create replay identity, W/L history, settlement authority or historical
+cache invalidation.
+
+`lib/lobbyLeaderboard.ts` keeps the expensive ranking base presence-neutral and
+overlays live presence only for callers that render it. Server-side consumers
+such as title-economy calculations request the neutral projection. When a
+previously valid leaderboard or complete rivalry corpus exists and its
+generation advances, the last good historical snapshot may be returned while a
+single coalesced background refresh computes the new generation. The initial
+process-local cold population still waits for authoritative truth.
+
+This boundary is deliberately independent from Cloudflare SpeedOS authority:
+process-local generation reuse never makes a route eligible for shared edge
+HTML caching.
 
 <!-- AOE2WAR:REPLAY_RIVALRY_ARCHITECTURE:START -->
 ## Replay history and rivalry graph
