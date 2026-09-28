@@ -79,6 +79,26 @@ existing receipt-driven stage retirement contract and avoids a release deadlock
 where capacity preflight blocks before that contract can run.
 
 
+## 2026-09-28 — Clean Git metadata does not prove a writable tracked worktree
+
+The SpeedOS release staged successfully and passed activation preflight, then
+failed before source advancement when `git reset --hard` could not unlink
+`app/api/players/generation/route.ts`: permission denied.
+
+The existing transport proof covered canonical `.git` ownership and
+writability only. That was insufficient because unlink/replace authority is
+controlled by the tracked file's parent directory. A clean checkout can
+therefore have healthy Git metadata while a root-owned or unwritable tracked
+parent makes source activation impossible.
+
+Permanent rule: release transport has two ownership surfaces — Git metadata and
+the tracked worktree. Both are proved before staging, and the tracked worktree
+is re-proved at the final pre-mutation seam before the service is stopped. That
+final proof also rejects a tracked path that disappeared after staging.
+Failures return bounded path samples plus the canonical explicit ownership
+repair. Activation does not silently escalate itself into recursive root
+mutation.
+
 
 ## 2026-09-27 — Promoted topology must be consumable without rewriting historical result evidence
 
