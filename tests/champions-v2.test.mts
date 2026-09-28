@@ -77,7 +77,7 @@ test("RM and DM crowns default to on-top presentation with the hidden RM / DM to
   assert.match(experience, /Top ten by/);
   assert.match(experience, /useState\(true\)/);
   assert.match(experience, /kicker="RM \/ DM"/);
-  assert.match(experience, /title="RM Champion · DM Champion"/);
+  assert.doesNotMatch(experience, /RM Champion · DM Champion/);
   assert.match(experience, /onKickerClick/);
 });
 
@@ -137,17 +137,36 @@ test("national belt hall reads represented-country truth for every crown", () =>
   assert.match(experience, /scrollBy/);
 });
 
-test("E2 removes only the oversized top intro while restoring useful section copy", () => {
-  assert.doesNotMatch(experience, /CHAMPIONSHIP/);
-  assert.doesNotMatch(experience, /Real custody, real contenders/);
+test("E2 restores the premium hero tile while stripping explanatory SaaS copy", () => {
+  assert.match(experience, /rounded-\[2\.5rem\]/);
+  assert.match(experience, /circle_at_75%_15%/);
+  assert.match(experience, /\["Active", state\.summary\.active\]/);
+  assert.match(experience, /\["Vacant", state\.summary\.vacant\]/);
+  assert.match(experience, /\["Tribute",/);
   for (const copy of [
+    "CHAMPIONSHIP",
+    "Real custody, real contenders",
     "The three crowns everybody sees first",
+    "Chaos is activity-driven",
+    "RM Champion · DM Champion",
     "No mixed ladder math",
+    "team championships",
     "One switch changes every team crown",
     "Every flag gets a road to the belt",
+    "Canada, USA, and Mexico are lit",
+    "rating divisions",
     "Five belts, five rating bands",
   ]) {
-    assert.ok(experience.includes(copy), `section copy should be present: ${copy}`);
+    assert.ok(!experience.includes(copy), `SaaS copy should stay removed: ${copy}`);
+  }
+  for (const kicker of [
+    'kicker="The open thrones"',
+    'kicker="RM / DM"',
+    'kicker="War parties"',
+    'kicker="National & regional standards"',
+    'kicker="ELO crowns"',
+  ]) {
+    assert.ok(experience.includes(kicker), `structural kicker should remain: ${kicker}`);
   }
   assert.match(experience, /\["Chaos", "Champion"\]/);
   assert.match(experience, /\["AoE2WAR", "World", "Champion"\]/);
