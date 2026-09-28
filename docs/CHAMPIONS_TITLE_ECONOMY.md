@@ -29,8 +29,9 @@ operator intents until a future Warbound chain module exists.
   activity, presents each 2v2/3v3/4v4 crown on its own row with one persisted
   RM/DM preference, and renders the national catalog as a horizontal belt hall.
   The preserved pre-E2 Basic / Advanced / Extreme presentation remains reachable
-  through the thin B / A / E1 / E2 display rail at the bottom of the page; E2
-  remains the public default.
+  through the thin B / A / E display rail at the bottom of the page; hovering
+  or focusing E reveals E1 (preserved) and E2 (current). E2 remains the public
+  default.
 - `/champions/[...slug]` renders detail pages for belts, national titles, ELO
   titles, tag titles, and designations.
 - `/national-champions` is the cinematic national-title projection. It must
