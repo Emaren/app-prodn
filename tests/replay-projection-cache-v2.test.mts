@@ -56,6 +56,41 @@ test("expensive public replay projections are generation-owned, not 15-second TT
   );
 });
 
+test("player directory serves last-good history while a new generation rebuilds", () => {
+  const directory = source(
+    "lib/publicPlayerDirectory.ts",
+  );
+
+  assert.match(
+    directory,
+    /function startPublicPlayerDirectoryRefresh/,
+  );
+  assert.match(
+    directory,
+    /cached\.generation !==[\s\S]*resolvedGeneration/,
+  );
+  assert.match(
+    directory,
+    /void startPublicPlayerDirectoryRefresh/,
+  );
+  assert.match(
+    directory,
+    /cached\.value/,
+  );
+  assert.match(
+    directory,
+    /publicPlayerDirectoryPromises\.get/,
+  );
+  assert.match(
+    directory,
+    /publicPlayerDirectoryPromises\.set/,
+  );
+  assert.match(
+    directory,
+    /publicPlayerDirectoryPromises\.delete/,
+  );
+});
+
 test("player history is cached separately from current Watcher and presence state", () => {
   const directory = source(
     "lib/publicPlayerDirectory.ts",
