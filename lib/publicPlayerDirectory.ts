@@ -39,7 +39,8 @@ import {
 import {
   loadCurrentWatcherAccountStates,
 } from "@/lib/currentWatcherAccountState";
-import { userIsOnline } from "@/lib/userOnlinePresence";
+import { loadPublicPresenceSnapshot } from "@/lib/publicPresence";
+import { loadPublicPlayerDirectoryGeneration } from "@/lib/publicPlayerDirectoryGeneration";
 
 export type PublicPlayerReplayEvidence = {
   gameStatsId: number;
@@ -121,11 +122,8 @@ type CanonicalPlayerSnapshot = {
   createdAt: Date;
 };
 
-const PLAYER_DIRECTORY_CACHE_TTL_MS = 15_000;
-
 type PublicPlayerDirectoryCacheEntry = {
-  expiresAt: number;
-  replayGeneration: string | null;
+  generation: string;
   value: PublicPlayerDirectory;
 };
 
@@ -353,8 +351,6 @@ function playerForCanonicalSnapshot(
 export async function loadPublicPlayerDirectoryFresh(
   prisma: PrismaClient
 ): Promise<PublicPlayerDirectory> {
-  const onlineSampleAt = Date.now();
-
   /*
    * Current Watcher state is independent from the historical final-game
    * corpus, so start it beside the larger history read.
@@ -379,7 +375,6 @@ export async function loadPublicPlayerDirectoryFresh(
         representedCountry: true,
         verified: true,
         verificationLevel: true,
-        lastSeen: true,
       },
       orderBy: [
         { lastSeen: "desc" },
@@ -681,7 +676,10 @@ export async function loadPublicPlayerDirectoryFresh(
       steamId,
       verified: user.verified,
       verificationLevel: user.verificationLevel,
-      isOnline: userIsOnline(user.uid, user.lastSeen, onlineSampleAt),
+      // Presence is intentionally overlaid after the expensive generation-
+      // cached directory projection is built. Live heartbeat churn must never
+      // invalidate historical replay/player computation.
+      isOnline: false,
       hasFeaturedAvatar:
         featuredAvatar.hasFeaturedAvatar,
       featuredAvatarRevision:
@@ -1134,7 +1132,7 @@ export async function loadPublicPlayerDirectoryFresh(
 
   const claimedEntries = allEntries.filter((entry) => entry.claimed).sort(sortClaimedEntries);
   const replayEntries = allEntries.filter((entry) => !entry.claimed).sort(sortReplayEntries);
-  const activeClaimed = claimedEntries.filter((entry) => entry.isOnline);
+  const activeClaimed: PublicPlayerDirectoryEntry[] = [];
 
   return {
     allEntries: [...claimedEntries, ...replayEntries],
@@ -1144,63 +1142,148 @@ export async function loadPublicPlayerDirectoryFresh(
   };
 }
 
+async function overlayPublicPlayerDirectoryPresence(
+  prisma: PrismaClient,
+  directory: PublicPlayerDirectory,
+): Promise<PublicPlayerDirectory> {
+  const presence =
+    await loadPublicPresenceSnapshot(prisma);
+  const onlineUids =
+    new Set(
+      presence.onlineUsers.map(
+        (user) => user.uid,
+      ),
+    );
+
+  const claimedEntries =
+    directory.claimedEntries.map(
+      (entry) => ({
+        ...entry,
+        isOnline:
+          Boolean(
+            entry.uid &&
+            onlineUids.has(entry.uid),
+          ),
+      }),
+    );
+  const claimedByKey =
+    new Map(
+      claimedEntries.map(
+        (entry) => [
+          entry.key,
+          entry,
+        ],
+      ),
+    );
+  const replayEntries =
+    directory.replayEntries.map(
+      (entry) =>
+        entry.isOnline
+          ? {
+              ...entry,
+              isOnline: false,
+            }
+          : entry,
+    );
+  const replayByKey =
+    new Map(
+      replayEntries.map(
+        (entry) => [
+          entry.key,
+          entry,
+        ],
+      ),
+    );
+  const allEntries =
+    directory.allEntries.map(
+      (entry) =>
+        claimedByKey.get(entry.key) ??
+        replayByKey.get(entry.key) ??
+        entry,
+    );
+
+  return {
+    allEntries,
+    activeClaimed:
+      claimedEntries.filter(
+        (entry) => entry.isOnline,
+      ),
+    claimedEntries,
+    replayEntries,
+  };
+}
+
 export async function loadPublicPlayerDirectory(
   prisma: PrismaClient,
   replayGeneration: string | null = null,
 ): Promise<PublicPlayerDirectory> {
-  const now = Date.now();
-  const cacheMatchesGeneration =
-    replayGeneration === null ||
-    publicPlayerDirectoryCache?.replayGeneration === replayGeneration;
+  const resolvedGeneration =
+    replayGeneration ??
+    await loadPublicPlayerDirectoryGeneration(
+      prisma,
+    );
 
   if (
-    publicPlayerDirectoryCache &&
-    publicPlayerDirectoryCache.expiresAt > now &&
-    cacheMatchesGeneration
+    publicPlayerDirectoryCache?.generation ===
+    resolvedGeneration
   ) {
-    return publicPlayerDirectoryCache.value;
+    return overlayPublicPlayerDirectoryPresence(
+      prisma,
+      publicPlayerDirectoryCache.value,
+    );
   }
 
   const promiseKey =
-    replayGeneration === null
-      ? "generic"
-      : `generation:${replayGeneration}`;
+    `generation:${resolvedGeneration}:epoch:${publicPlayerDirectoryCacheGeneration}`;
   const existing =
     publicPlayerDirectoryPromises.get(
       promiseKey
     );
+
   if (existing) {
-    return existing;
+    return overlayPublicPlayerDirectoryPresence(
+      prisma,
+      await existing,
+    );
   }
 
-  const generation = publicPlayerDirectoryCacheGeneration;
-  const run = loadPublicPlayerDirectoryFresh(prisma)
-    .then((value) => {
-      if (generation === publicPlayerDirectoryCacheGeneration) {
-        publicPlayerDirectoryCache = {
-          expiresAt: Date.now() + PLAYER_DIRECTORY_CACHE_TTL_MS,
-          replayGeneration,
-          value,
-        };
-      }
+  const cacheEpoch =
+    publicPlayerDirectoryCacheGeneration;
+  const run =
+    loadPublicPlayerDirectoryFresh(prisma)
+      .then((value) => {
+        if (
+          cacheEpoch ===
+          publicPlayerDirectoryCacheGeneration
+        ) {
+          publicPlayerDirectoryCache = {
+            generation:
+              resolvedGeneration,
+            value,
+          };
+        }
 
-      return value;
-    })
-    .finally(() => {
-      if (
-        publicPlayerDirectoryPromises.get(
-          promiseKey
-        ) === run
-      ) {
-        publicPlayerDirectoryPromises.delete(
-          promiseKey
-        );
-      }
-    });
+        return value;
+      })
+      .finally(() => {
+        if (
+          publicPlayerDirectoryPromises.get(
+            promiseKey,
+          ) === run
+        ) {
+          publicPlayerDirectoryPromises.delete(
+            promiseKey,
+          );
+        }
+      });
 
   publicPlayerDirectoryPromises.set(
     promiseKey,
-    run
+    run,
   );
-  return run;
+
+  return overlayPublicPlayerDirectoryPresence(
+    prisma,
+    await run,
+  );
 }
