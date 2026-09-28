@@ -212,13 +212,14 @@ edge caching requires deployment-integrated purge proof first.
 `anonymous_dynamic_candidate_review` is no longer a dead-end classification. A
 separate fail-closed lane can promote an explicitly governed subset without weakening
 the static cache rule. `config/speed-edge-dynamic-policy.json` is the source-controlled
-staleness authority. The current bounded cohort contains **21 exact routes**, all at
+staleness authority. The current bounded cohort contains **20 exact routes**, all at
 exactly 30 seconds and empty-query HTML only. It includes the public academy,
 AI, archive, champion, clan, leaderboard, national-title and Emaren-profile
 surfaces; the request-time public `/forum`, `/market` and
 `/market/shops/chat-effects` shells; five September 17 read-only additions: both governed matchup-history
-representatives, `/traffic`, `/radio`, and `/game-stats/16218/review`; and the
-September 18 `/kingdom` and `/wolo` anonymous public surfaces. The generic
+representatives, `/traffic`, `/radio`, and `/game-stats/16218/review`; the
+September 18 `/wolo` anonymous public surface; and the September 22 `/zodiac` and
+`/war-engine` read-only surfaces. The generic
 claimed-player profile `/players/u_626ea6497a984dabbc2338ef54c5d333` failed the
 certified 30-second proof because both public and origin HTML changed across the
 window, so it remains explicitly HOLD outside shared edge cache. Each addition
@@ -226,10 +227,15 @@ must still re-qualify on the exact merged-and-certified production SHA before th
 Cloudflare rule can expand; development-time byte proofs do not authorize mutation.
 On September 17 the certified `8d0f75ef4ae6` generation rejected `/kingdom` after its
 public body changed inside the proof window. On September 18 the certified
-`f070d7a30a14` generation re-qualified `/kingdom`: public and direct-origin HTML were
-byte-identical and stable across the full 30-second window, so it is now admitted.
-The same certified generation independently qualified the anonymous `/wolo` client
-shell. The follow-up `/players` recheck still failed because its public HTML changed
+`f070d7a30a14` generation re-qualified `/kingdom` during one quiet 30-second window.
+That admission is now superseded: on September 28 certified release `fa04c02f320f`
+produced two public body hashes across t=0/15/30 and public/origin byte-equality failed
+for two samples. `/kingdom` renders request-time Kingdom summary truth, including
+30-second core data and 60-second WOLO-wealth cache lanes, so this churn is consistent
+with legitimate live state rather than a transport anomaly. SpeedOS therefore revokes
+`/kingdom` from shared dynamic HTML caching instead of retrying for another quiet
+window. The September 18 generation independently qualified the anonymous `/wolo`
+client shell, which remains admitted. The follow-up `/players` recheck still failed because its public HTML changed
 across the 30-second window and diverged from origin, so `/players` remains explicitly
 HOLD outside shared edge cache. On September 22, `/bounties` was removed from the
 authorized cohort after the certified qualification observed both public and direct-origin
@@ -279,7 +285,7 @@ plan to the policy SHA, qualification SHA, exact release/source identity, cookie
 bypass census and the independent 30-second rule. `apply-dynamic` stages a separate
 root request and can mutate only the independent Cloudflare rule
 `AOE2WAR SpeedOS qualified dynamic HTML v1`. The root helper has its own hardcoded
-21-route allowlist, requires TTL exactly 30 seconds, reconstructs the expression,
+20-route allowlist, requires TTL exactly 30 seconds, reconstructs the expression,
 requires the existing certified static SpeedOS rule, and proves the request source SHA
 against the live production checkout before touching Cloudflare. The privileged
 allowlist contains the same 21 routes and cannot be broadened by the staged request.
