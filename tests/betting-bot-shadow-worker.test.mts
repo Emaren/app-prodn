@@ -333,6 +333,34 @@ test("worker remains structurally non-financial and uses the shared policy lock"
   assert.doesNotMatch(worker, /signAndBroadcast|offlineSigner|executeFounderWoloPayout/);
 });
 
+test("admin audit exposes preview evidence without claiming committed money", () => {
+  const route = readFileSync(
+    new URL("../app/api/admin/betting-bots/route.ts", import.meta.url),
+    "utf8"
+  );
+  const panel = readFileSync(
+    new URL("../components/admin/ai/BettingBotControlPanel.tsx", import.meta.url),
+    "utf8"
+  );
+
+  for (const field of [
+    "marketId: true",
+    "sourceWagerId: true",
+    "sourceSide: true",
+    "counterSide: true",
+    "marketExposureBeforeWolo: true",
+    "dailyExposureBeforeWolo: true",
+  ]) {
+    assert.match(route, new RegExp(field.replace(/[.*+?^$\{\}()|[\]\\]/g, "\\$&")));
+  }
+  assert.match(route, /shadowEvaluatorConnected: true/);
+  assert.match(panel, /Shadow proposal/);
+  assert.match(panel, /WOLO preview/);
+  assert.match(panel, /custody proof/);
+  assert.match(panel, /Preview amounts are proposals only/);
+  assert.doesNotMatch(panel, /counter-wager was placed|WOLO moved/);
+});
+
 test("counter shadow evaluation occurs only after human wager transactions commit", () => {
   const single = readFileSync(
     new URL("../lib/betWagering.ts", import.meta.url),
