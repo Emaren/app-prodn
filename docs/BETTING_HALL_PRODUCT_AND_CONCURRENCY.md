@@ -308,10 +308,12 @@ Watcher evidence has produced:
 - a stabilized Watcher `BattleIdentity.startedAt`;
 - verified proposition integrity.
 
-Opening Minute starts exactly at that Watcher battle-start fence and closes
-exactly 60 seconds later. Late opens at that +60-second boundary. A trusted
-terminal `settledAt` may close Late; a transient Watcher snapshot gap does not
-manufacture a terminal phase fence.
+Opening Minute starts exactly at that Watcher battle-start fence and has a
+maximum 60-second window. Trusted terminal truth may close it sooner. Late opens
+at the +60-second boundary only if the battle actually survives into Late; a
+battle that becomes terminal during Opening Minute gets no Late shadow row. A
+trusted terminal `settledAt` closes Late once it exists; a transient Watcher
+snapshot gap does not manufacture a terminal phase fence.
 
 The live phase key uses immutable `BattleIdentity.publicNumber`, not mutable
 database row id or transient fallback/platform session identity. Watcher
