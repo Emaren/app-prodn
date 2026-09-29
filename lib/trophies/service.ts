@@ -69,8 +69,7 @@ const SEEDS: TrophySeed[] = [
     definition: eloTitles.find((title) => title.id === "elo-elite")!,
     family: "elo",
     tier: "Elite",
-    guardianName: "Emaren",
-    status: "guardian_held",
+    status: "vacant",
   },
 ];
 
@@ -760,6 +759,10 @@ const publicTrophySeedEnsureByClient =
  * one successful reconciliation promise per production Prisma client.
  */
 function ensurePublicTrophySeedData(prisma: PrismaClient) {
+  if (process.env.AOE2WAR_PROD_DB_PREVIEW === "true") {
+    return Promise.resolve();
+  }
+
   const existing =
     publicTrophySeedEnsureByClient.get(prisma);
 
