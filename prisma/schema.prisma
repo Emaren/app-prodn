@@ -2552,8 +2552,9 @@ model BetAutoPreset {
   @@map("bet_auto_presets")
 }
 
-/// Durable automation audit/outbox row. This foundation is intentionally
-/// dormant until a market evaluator and Wolo custody reservation rail exist.
+/// Durable automation audit/outbox row. The shadow producer writes preview
+/// evidence here; funded reservation/ticket consumption remains disabled until
+/// the separately reviewed Wolo custody rail and live executor exist.
 model BetAutoExecution {
   id              Int       @id @default(autoincrement())
   presetId        Int       @map("preset_id")

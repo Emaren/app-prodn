@@ -243,9 +243,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BETTING_HALL_PRODUCT_AND_CONCURRENCY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-05",
+      "reviewed_at": "2026-09-29",
       "sensitivity": "internal",
-      "sha256": "44761394f98086a6c0348add182d3e398328fc210c5b5490d9097c9eeb4a1540",
+      "sha256": "334baa6c8eee0f8124e7f872495894bac1de69a362691ad8cca232e585c9d2e9",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -278,7 +278,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "Bet and Replay Reliability Release \u2014 2026-07-29",
+      "title": "Bet and Replay Reliability Release — 2026-07-29",
       "type": "historical"
     },
     {
@@ -292,9 +292,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BET_AUTOMATION_AND_CUSTODY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-09",
+      "reviewed_at": "2026-09-29",
       "sensitivity": "internal",
-      "sha256": "85b329a801bdbdb45d9e9cfefa6001f10fb3955be266b192a49714f950f96a22",
+      "sha256": "505cc0d5c14116743e977326937f7310fe7849e13a29d27ce85d15ff851427e8",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6c2c06782750a1e060285a6d7408bc2cde09700c5a011612cf5cb08cc9b6270c",
+      "sha256": "9a06f28efaaec240c9e1ce3a8717251bc3a72d0ca353886e392ff9b97ee75b11",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -563,9 +563,9 @@
       "owner": "aoe2war-web",
       "path": "docs/ENGINEERING_MEMORY.md",
       "review_interval_days": 14,
-      "reviewed_at": "2026-09-27",
+      "reviewed_at": "2026-09-29",
       "sensitivity": "internal",
-      "sha256": "9ce54dea927f866a99c3564ee799af8d4a28430dd1aee160510d4b8bff9b08b5",
+      "sha256": "c62f622399ae547c38bc9a7408400e440846a578b8fa2520f0dbbbe89b5492e1",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1103,7 +1103,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "AoE2WAR Production Performance Audit \u2014 2026-07-18",
+      "title": "AoE2WAR Production Performance Audit — 2026-07-18",
       "type": "historical"
     },
     {
@@ -1125,7 +1125,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "AoE2WAR Production Performance Audit \u2014 2026-08-13",
+      "title": "AoE2WAR Production Performance Audit — 2026-08-13",
       "type": "historical"
     },
     {
@@ -1170,7 +1170,7 @@
         "app-prodn",
         "api-prodn"
       ],
-      "title": "Player Identity Wave 2 \u2014 Deterministic Discovery V2",
+      "title": "Player Identity Wave 2 — Deterministic Discovery V2",
       "type": "reference"
     },
     {
@@ -1217,7 +1217,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "AoE2WAR Production Parity Seal \u2014 2026-07-26",
+      "title": "AoE2WAR Production Parity Seal — 2026-07-26",
       "type": "historical"
     },
     {
@@ -1309,7 +1309,7 @@
         "app-prodn",
         "wolochain"
       ],
-      "title": "AoE2WAR Certified Release Engineering Seal \u2014 2026-08-10",
+      "title": "AoE2WAR Certified Release Engineering Seal — 2026-08-10",
       "type": "historical"
     },
     {
@@ -1379,7 +1379,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "Replay Statistics and Operations Release \u2014 2026-07-25",
+      "title": "Replay Statistics and Operations Release — 2026-07-25",
       "type": "historical"
     },
     {
@@ -1834,7 +1834,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "War Room Forum \u2014 Saturday July 4, 2026 Edition",
+      "title": "War Room Forum — Saturday July 4, 2026 Edition",
       "type": "historical"
     },
     {
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/wallet-trophy-authority-20260929",
-    "commit": "4187a7c5edba05165c30a9940d4178be73afe878"
+    "branch": "feat/auto-bet-shadow-worker-20260929",
+    "commit": "a0ae1f859037050e9d3a53d499b9322ef748bd4b"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

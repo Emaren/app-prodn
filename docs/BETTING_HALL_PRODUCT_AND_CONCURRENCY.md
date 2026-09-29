@@ -8,7 +8,7 @@ systems: ["app-prodn", "aoe2-watcher", "wolochain"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "product-and-concurrency-contract"
-reviewed_at: "2026-09-05"
+reviewed_at: "2026-09-29"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -89,7 +89,12 @@ reservation proof, and an idempotent executor exist.
 
 The profile Auto Bet Reserve is Preview only. It stores self-only winner and
 optional Desync settings, finite games or Until Out, and a 10,000 WOLO plan
-envelope. It neither moves nor reserves funds. See
+envelope. The durable shadow worker now evaluates exact eligible live Watcher
+winner markets after canonical market reconciliation and records one
+`shadow_ready` evidence row per preset/canonical game. Admission requires exact
+Steam roster-side proof plus uploader UID proof; an optional Desync leg must
+match the exact live child proposition. It still neither moves nor reserves
+funds, creates no wager/ticket, and never decrements a finite plan. See
 `BET_AUTOMATION_AND_CUSTODY.md` for the Wolo settlement-service upgrade prompt.
 
 ## Deployment and rollback
@@ -209,11 +214,15 @@ decoration.
 
 ### Auto Bet direction
 
-The existing Auto Bet Reserve remains preview-only today.
+The existing Auto Bet Reserve remains preview-only today, but Preview now has a
+durable evaluator. After canonical live-market reconciliation, the shadow worker
+can record an exact self-match decision without reserving WOLO or creating a
+wager. Raw Watcher telemetry is never the authority boundary.
 
-Future automation may add independent phase presets, but execution must use the
-reviewed prefunded Wolo custody/reservation architecture. Watcher telemetry
-detects game state; it never becomes money authority by itself.
+Future automation may add independent phase presets, but funded execution must
+use the reviewed prefunded Wolo custody/reservation architecture and a separate
+durable consumer. Shadow evidence must not be treated as accepted financial
+work.
 
 ## Premium betting composer implementation — V2 branch
 
