@@ -1973,32 +1973,34 @@ export async function loadUserTrophyHoldings(
   return trophies
     .filter((trophy) => !trophyIsPubliclyForcedVacant(trophy.trophyId))
     .map((trophy) => {
-    const definition = trophyDefinitionForRow(trophy.trophyId);
-    const type = definition?.type || trophy.family;
-    const assetKind = trophy.kind === "artifact" ? "artifact" : "belt";
-    return {
-      id: trophy.trophyId,
-      type,
-      kind: trophy.kind,
-      family: trophy.family,
-      displayName: trophy.displayName,
-      shortName: definition?.shortName || trophy.displayName.replace(/ Champion( Belt)?$/i, ""),
-      dailyWolo: trophy.tributeAmountWolo,
-      bountyGrowthWolo: trophy.bountyGrowthWolo,
-      currentBountyWolo: projectedTrophyBounty(trophy),
-      routeHref: definition?.routeHref || "/champions",
-      assetUrl: managedMediaPublicUrl(
-        assetKind,
-        definition?.id || trophy.trophyId,
-        trophy.nftImageUri || definition?.assetUrl
-      ),
-      holderSince: trophy.holderSince?.toISOString() ?? null,
-      status: trophy.status,
-      chainStatus: trophy.chainStatus,
-      nftId: trophy.nftId,
-      eligibleNationality: trophy.eligibleNationality,
-    };
-  });
+      const definition = trophyDefinitionForRow(trophy.trophyId);
+      const type = definition?.type || trophy.family;
+      const assetKind = trophy.kind === "artifact" ? "artifact" : "belt";
+      return {
+        id: trophy.trophyId,
+        type,
+        kind: trophy.kind,
+        family: trophy.family,
+        displayName: trophy.displayName,
+        shortName:
+          definition?.shortName ||
+          trophy.displayName.replace(/ Champion( Belt)?$/i, ""),
+        dailyWolo: trophy.tributeAmountWolo,
+        bountyGrowthWolo: trophy.bountyGrowthWolo,
+        currentBountyWolo: projectedTrophyBounty(trophy),
+        routeHref: definition?.routeHref || "/champions",
+        assetUrl: managedMediaPublicUrl(
+          assetKind,
+          definition?.id || trophy.trophyId,
+          trophy.nftImageUri || definition?.assetUrl
+        ),
+        holderSince: trophy.holderSince?.toISOString() ?? null,
+        status: trophy.status,
+        chainStatus: trophy.chainStatus,
+        nftId: trophy.nftId,
+        eligibleNationality: trophy.eligibleNationality,
+      };
+    });
 }
 
 export async function recordNationalityChange(
