@@ -326,6 +326,21 @@ async function evaluateOne(
  * committed human wagers. This worker never creates BetWager/BetStake* rows,
  * never reserves WOLO, and never claims custody proof.
  */
+export async function runBetCounterShadowWorkerBestEffort(
+  prisma: PrismaClient,
+  sourceWagerIds: readonly number[]
+) {
+  try {
+    return await runBetCounterShadowWorker(prisma, { sourceWagerIds });
+  } catch (error) {
+    console.warn(
+      "Counter-bettor shadow evaluation failed after human wager commit:",
+      error
+    );
+    return null;
+  }
+}
+
 export async function runBetCounterShadowWorker(
   prisma: PrismaClient,
   options: {
