@@ -201,7 +201,7 @@ type BetBoardMarket = {
   right: BetBoardSide;
   founderBonuses: BetFounderChip[];
   warTape: BetWarTapeRow[];
-  previewLiquidity: BetPreviewLiquidityRow[];
+  previewLiquidity?: BetPreviewLiquidityRow[];
   broadcastFeeds: BroadcastFeeds;
   broadcastPreviewUrls: BroadcastPreviewUrls;
   viewerWager: {
