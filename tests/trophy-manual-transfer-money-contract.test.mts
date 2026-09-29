@@ -17,6 +17,11 @@ const ui = readFileSync(
 
 test("manual trophy custody change is serialized and money-aware", () => {
   assert.ok(actions.includes("pg_advisory_xact_lock"));
+  assert.ok(actions.includes("lockTrophyMoneyState"));
+  assert.ok(actions.includes("assertChallengeCustodyStillCurrent"));
+  assert.ok(actions.includes("Title custody changed after this challenge was created"));
+  assert.ok(actions.includes("Guardian custody changed after this challenge was created"));
+  assert.ok(actions.includes("projectedTrophyBounty(currentTrophy)"));
   assert.ok(actions.includes("prepareManualTrophyHolderTransferPayouts"));
   assert.ok(actions.includes("currentBountyWolo: 0"));
   assert.ok(actions.includes("holderSince: now"));
