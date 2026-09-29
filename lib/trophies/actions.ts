@@ -1,6 +1,7 @@
 import type { Prisma, PrismaClient, Trophy } from "@/lib/generated/prisma";
 import { countriesEligibilityMatch } from "@/lib/countryEligibility";
 import { eloTrophyIdentity } from "@/lib/champions/eloTrophy";
+import { TERMINAL_TITLE_CHALLENGE_STATUSES } from "@/lib/challengeTitlePolicy";
 import {
   acquireChallengeDesyncAdvisoryLock,
   assertTitleTransferAllowed,
@@ -958,6 +959,20 @@ async function createChallenge(
     ) {
       throw new TrophyActionError(
         "Requested Guardian does not match live Trophy custody.",
+        409
+      );
+    }
+
+    const competingChallenge = await tx.trophyChallenge.findFirst({
+      where: {
+        trophyId: currentTrophy.id,
+        status: { notIn: [...TERMINAL_TITLE_CHALLENGE_STATUSES] },
+      },
+      select: { id: true },
+    });
+    if (competingChallenge) {
+      throw new TrophyActionError(
+        `${currentTrophy.displayName} already has active title challenge #${competingChallenge.id}.`,
         409
       );
     }
