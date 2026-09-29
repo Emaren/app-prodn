@@ -562,7 +562,7 @@ function WalletChainPortfolio({
         </h2>
         <p className="mt-1 text-sm leading-6 text-slate-400">
           Current app custody and recorded chain-owner references are shown separately.
-          App custody remains title authority while chain-backed Trophy mode is disabled.
+          A recorded chain owner does not by itself mean this wallet currently holds the title.
         </p>
 
         {!connected ? (
