@@ -57,9 +57,12 @@ test("manual trophy custody change is serialized and money-aware", () => {
 
 test("daily tribute queue re-reads custody under the same money lock", () => {
   assert.ok(service.includes("const trophy = await lockTrophyMoneyState(tx, candidate.id)"));
-  assert.ok(service.includes("The outer candidate scan is only an optimization"));
+  assert.ok(service.includes("select: { id: true }"));
   assert.ok(service.includes("trophyHasActiveReignTribute(trophy.trophyId)"));
   assert.ok(service.includes('["held", "active"].includes(trophy.status)'));
+  assert.ok(service.includes("const recipientUserId = trophy.currentHolderUserId"));
+  assert.ok(service.includes("const recipientWoloAddress = trophy.currentHolderWoloAddress"));
+  assert.ok(service.includes("trophy.holderSince.getTime() >= dayEnd.getTime()"));
 });
 
 test("manual transfer preserves current tribute policy and immutable chain truth", () => {
