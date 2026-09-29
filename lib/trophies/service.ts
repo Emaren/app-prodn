@@ -1443,18 +1443,22 @@ export function projectTrophyChallengeAuthority(
     definition && titleIsPubliclyForcedVacant(definition.id)
   );
   const status = forcedVacant ? "vacant" : trophy.status;
-  const currentHolderUserId = forcedVacant ? null : trophy.currentHolderUserId;
-  const guardianHolderUserId = forcedVacant ? null : trophy.guardianHolderUserId;
+  const rawCurrentHolderUserId = forcedVacant ? null : trophy.currentHolderUserId;
+  const rawGuardianHolderUserId = forcedVacant ? null : trophy.guardianHolderUserId;
   const statusChallengeable = CHALLENGEABLE_TROPHY_STATUSES.has(status);
   const custodyConsistent = forcedVacant
     ? true
     : status === "held" || status === "active"
-      ? currentHolderUserId !== null
+      ? rawCurrentHolderUserId !== null
       : status === "guardian_held"
-        ? currentHolderUserId === null && guardianHolderUserId !== null
+        ? rawCurrentHolderUserId === null && rawGuardianHolderUserId !== null
         : status === "vacant"
-          ? currentHolderUserId === null
+          ? rawCurrentHolderUserId === null
           : true;
+  const holderIsAuthority = !forcedVacant && (status === "held" || status === "active");
+  const guardianIsAuthority =
+    !forcedVacant &&
+    (status === "guardian_held" || (status === "vacant" && rawGuardianHolderUserId !== null));
 
   return {
     challengeable: statusChallengeable && custodyConsistent,
@@ -1462,20 +1466,20 @@ export function projectTrophyChallengeAuthority(
     custodyConsistent,
     forcedVacant,
     status,
-    currentHolderUserId,
-    currentHolderDisplayName: forcedVacant
-      ? null
-      : trophy.currentHolderDisplayName,
-    currentHolderWoloAddress: forcedVacant
-      ? null
-      : trophy.currentHolderWoloAddress,
-    guardianHolderUserId,
-    guardianHolderDisplayName: forcedVacant
-      ? null
-      : trophy.guardianHolderDisplayName,
-    guardianHolderWoloAddress: forcedVacant
-      ? null
-      : trophy.guardianHolderWoloAddress,
+    currentHolderUserId: holderIsAuthority ? rawCurrentHolderUserId : null,
+    currentHolderDisplayName: holderIsAuthority
+      ? trophy.currentHolderDisplayName
+      : null,
+    currentHolderWoloAddress: holderIsAuthority
+      ? trophy.currentHolderWoloAddress
+      : null,
+    guardianHolderUserId: guardianIsAuthority ? rawGuardianHolderUserId : null,
+    guardianHolderDisplayName: guardianIsAuthority
+      ? trophy.guardianHolderDisplayName
+      : null,
+    guardianHolderWoloAddress: guardianIsAuthority
+      ? trophy.guardianHolderWoloAddress
+      : null,
   };
 }
 
