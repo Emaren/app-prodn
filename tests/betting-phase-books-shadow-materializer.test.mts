@@ -121,6 +121,31 @@ test("scheduled live Challenge owns Pre-Game plus battle-authority live phases",
   );
 });
 
+test("terminal truth inside Opening Minute caps Opening and suppresses Late", () => {
+  const earlyTerminal = new Date(START.getTime() + 35_000);
+  const plans = planBetPhaseBookShadowMaterialization([
+    source({
+      status: "settled",
+      settledAt: earlyTerminal,
+    }),
+  ]);
+
+  assert.deepEqual(
+    plans.map((plan) => ({
+      phase: plan.phase,
+      opensAt: plan.phaseOpensAt?.toISOString() ?? null,
+      closesAt: plan.phaseClosesAt?.toISOString() ?? null,
+    })),
+    [
+      {
+        phase: "opening_minute",
+        opensAt: START.toISOString(),
+        closesAt: earlyTerminal.toISOString(),
+      },
+    ]
+  );
+});
+
 test("settled battle closes the Late shadow book at trusted terminal time", () => {
   const plans = planBetPhaseBookShadowMaterialization([
     source({
