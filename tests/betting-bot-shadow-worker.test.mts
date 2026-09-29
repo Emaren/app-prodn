@@ -13,6 +13,8 @@ type ActionRow = {
   eventType: string;
   proposedCounterstakeWolo: number | null;
   committedCounterstakeWolo: number | null;
+  marketExposureBeforeWolo: number | null;
+  dailyExposureBeforeWolo: number | null;
   sourceSide: string | null;
   counterSide: string | null;
   availableBalanceWolo: number | null;
