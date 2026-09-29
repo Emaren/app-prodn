@@ -224,6 +224,7 @@ type ComparableSession = {
   gameType?: string | null;
   winner: string | null;
   durationSeconds: number | null;
+  watcherCount?: number;
   players: ChallengeReplayParticipant[];
   state: "live" | "completed";
 };
@@ -1751,7 +1752,8 @@ async function recordVerifiedScheduledMatchTitleResults(
       !staleCustody &&
       !isArtifact &&
       titleChallenge.trophy.chainStatus === "app_only" &&
-      projectedBounty === 0;
+      projectedBounty === 0 &&
+      (session.watcherCount ?? 0) >= 2;
 
     await prisma.$transaction(async (tx) => {
       const incidents = await loadLockedScheduledMatchDesyncIncidents(tx, {
@@ -1920,6 +1922,7 @@ async function recordVerifiedScheduledMatchTitleResults(
               gameType: session.gameType,
               replayLane: sessionLane,
               trophyLane: eloIdentity?.lane ?? null,
+              watcherCount: session.watcherCount ?? 0,
               winner: session.winner,
               custodyChanged: challengerWon,
               automatic: true,
@@ -1961,9 +1964,12 @@ async function recordVerifiedScheduledMatchTitleResults(
       const reviewReason =
         automaticHeldDefense && eloIdentity && !sessionLane
           ? "Replay game mode is not authoritative enough to choose the RM or DM title."
-          : automaticHeldDefense && projectedBounty > 0
-            ? `Title has ${projectedBounty} WOLO of projected bounty; financial disposition remains commissioner-reviewed.`
-            : staleCustody
+          : automaticHeldDefense &&
+              (session.watcherCount ?? 0) < 2
+            ? "Automatic title custody requires dual Watcher coverage from the linked battle."
+            : automaticHeldDefense && projectedBounty > 0
+              ? `Title has ${projectedBounty} WOLO of projected bounty; financial disposition remains commissioner-reviewed.`
+              : staleCustody
               ? "Title custody changed before this result was recorded."
               : "This title path remains commissioner-reviewed.";
       const settlementStatus = staleCustody
