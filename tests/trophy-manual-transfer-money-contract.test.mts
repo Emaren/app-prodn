@@ -24,6 +24,20 @@ test("manual trophy custody change is serialized and money-aware", () => {
   assert.ok(actions.includes("Title custody changed after this challenge was created"));
   assert.ok(actions.includes("Guardian custody changed after this challenge was created"));
   assert.ok(actions.includes("projectedTrophyBounty(currentTrophy)"));
+  const chainStart = actions.indexOf("if (chainBacked)");
+  const chainEnd = actions.indexOf('if (settingMap.get("app_only_fallback_enabled")', chainStart);
+  const chainSettlement = actions.slice(chainStart, chainEnd);
+  assert.ok(
+    chainSettlement.indexOf("assertTrophyChallengeDesyncAllowsTitleMutation") <
+      chainSettlement.indexOf("lockTrophyMoneyState")
+  );
+  const appStart = chainEnd;
+  const appEnd = actions.indexOf('if (operation === "retry")', appStart);
+  const appSettlement = actions.slice(appStart, appEnd);
+  assert.ok(
+    appSettlement.indexOf("assertTrophyChallengeDesyncAllowsTitleMutation") <
+      appSettlement.indexOf("lockTrophyMoneyState")
+  );
   assert.ok(actions.includes("prepareManualTrophyHolderTransferPayouts"));
   assert.ok(actions.includes("currentBountyWolo: 0"));
   assert.ok(actions.includes("holderSince: now"));
