@@ -2191,6 +2191,20 @@ An admin eligibility note belongs in Trophy Command, not in public model
 context. Historical event fields may be preserved when they are intentionally
 selected and public-safe; history is evidence, not current custody.
 
+Wallet lookup is another authority boundary. Do not infer current Trophy
+ownership from `chainOwnerAddress`, and do not query raw holder wallet fields
+as if they were already season-correct. Start from the canonical public Trophy
+projection, run current custody through Trophy authority, and model wallet
+association explicitly as holder, Guardian, chain-owner-only, or a combination.
+Only holder/Guardian roles may receive present-tense custody or reign language.
+
+A chain-owner-only Trophy row may still be useful evidence, especially while
+app custody remains the settlement authority, but the UI must label it as a
+recorded chain-owner relationship. Current wallet Trophy economics use projected
+bounty, current images use managed media resolution, and title links come from
+the title definition. Never hard-code one nation's Champions route into a
+multi-title wallet portfolio.
+
 Commissioner challenge creation has no separate defender-selection authority.
 The target Trophy and challenger may be selected, but defender/Guardian identity
 must come from the locked Trophy authority. Existing nonterminal title
