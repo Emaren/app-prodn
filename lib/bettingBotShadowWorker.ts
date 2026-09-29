@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient } from "@/lib/generated/prisma";
+import { lockBettingBotPolicy } from "@/lib/bettingBotPolicyLock";
 import {
   buildBetCounterIdempotencyKey,
   buildBetCounterProposal,
@@ -6,7 +7,6 @@ import {
   type BettingBotPolicyConfig,
 } from "@/lib/bettingBots";
 
-const BET_COUNTER_SHADOW_LOCK_NAMESPACE = 29417;
 const ELIGIBLE_SOURCE_MARKET_STATUSES = ["open", "live"] as const;
 
 export type BetCounterShadowWorkerResult = {
@@ -134,12 +134,7 @@ async function evaluateOne(
   }
 ): Promise<"proposed" | "skipped" | "duplicate"> {
   return prisma.$transaction(async (tx) => {
-    await tx.$executeRaw`
-      SELECT pg_advisory_xact_lock(
-        ${BET_COUNTER_SHADOW_LOCK_NAMESPACE},
-        ${input.botId}
-      )
-    `;
+    await lockBettingBotPolicy(tx, input.botId);
 
     const [storedBot, sourceWager] = await Promise.all([
       tx.bettingBotConfig.findUnique({
