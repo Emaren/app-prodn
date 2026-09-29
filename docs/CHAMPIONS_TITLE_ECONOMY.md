@@ -208,9 +208,10 @@ Current-season public policy lives in
   The public E2 projection reads live Trophy custody for each lane instead of
   sharing one generic holder across both rows.
 - A verified watcher/replay result can automatically settle a linked `app_only`
-  ELO belt only when the replay's authoritative game type matches the belt lane,
-  title custody is unchanged, desync authority permits title movement, and the
-  projected dethrone bounty is zero. The opposite RM/DM belt is closed as
+  ELO belt only when both players' Watchers provide dual coverage, the replay's
+  authoritative game type matches the belt lane, title custody is unchanged,
+  desync authority permits title movement, and the projected dethrone bounty is
+  zero. The opposite RM/DM belt is closed as
   `mode_not_contested` and does not move. Any non-zero bounty remains
   commissioner-reviewed so automatic custody never invents or executes a WOLO
   financial disposition. Chain-backed titles remain explicit chain intents.
