@@ -1391,41 +1391,38 @@ async function updatePayout(
 ) {
   const payoutId = nullableInt(payload.payoutId);
   if (!payoutId) throw new TrophyActionError("Payout id is required.");
-  const payout = await prisma.trophyPayout.findUnique({ where: { id: payoutId } });
-  if (!payout) throw new TrophyActionError("Payout not found.", 404);
   const operation = stringValue(payload.operation, 24);
+  const snapshot = await prisma.trophyPayout.findUnique({ where: { id: payoutId } });
+  if (!snapshot) throw new TrophyActionError("Payout not found.", 404);
 
-  if ((payout.status === "paid" || payout.txHash?.trim()) && operation !== "execute") {
-    throw new TrophyActionError("Paid or tx-backed trophy payouts cannot be changed from the admin rail.", 409);
-  }
-
-  if (
-    payout.payoutKind === "dethrone_bounty" &&
-    payout.status === "dry_run" &&
-    (operation === "execute" || operation === "retry")
-  ) {
+  if (snapshot.status === "executing") {
     throw new TrophyActionError(
-      "Championship bounty previews are not payable obligations. Settle the title result first.",
+      "This payout is executing. Resolve the in-flight settlement before changing it.",
       409
     );
   }
 
-  if (payout.payoutKind === "dethrone_bounty" && operation === "dry_run") {
-    throw new TrophyActionError(
-      "A real championship bounty obligation cannot be converted back into a preview.",
-      409
-    );
+  if (snapshot.payoutKind === "dethrone_bounty" && snapshot.status === "dry_run") {
+    if (operation === "execute" || operation === "retry") {
+      throw new TrophyActionError(
+        "Championship bounty previews are not payable obligations. Settle the title result first.",
+        409
+      );
+    }
   }
 
   if (operation === "execute") {
     const result = await executePendingTrophyPayouts(prisma, {
-      payoutId: payout.id,
+      payoutId: snapshot.id,
       limit: 1,
       includeBounties: true,
     });
 
     if (result.scanned < 1) {
-      throw new TrophyActionError("No executable trophy payout found. It may already be paid, cancelled, or not due yet.", 409);
+      throw new TrophyActionError(
+        "No executable trophy payout found. It may already be paid, cancelled, superseded, executing, or not due yet.",
+        409
+      );
     }
 
     const failed = result.results.find((row) => row.status === "failed");
@@ -1433,40 +1430,103 @@ async function updatePayout(
       throw new TrophyActionError(failed.detail || "Trophy payout execution failed.", 409);
     }
 
+    if (result.paid < 1) {
+      const skipped = result.results.find((row) => row.status === "skipped");
+      throw new TrophyActionError(
+        skipped?.detail || "Trophy payout was no longer executable.",
+        409
+      );
+    }
     return;
   }
 
-  const status =
-    operation === "retry"
-      ? "retrying"
-      : operation === "cancel"
-        ? "cancelled"
-        : operation === "dry_run"
-          ? "dry_run"
-          : null;
-  if (!status) throw new TrophyActionError("Unsupported payout operation.");
-  await prisma.$transaction([
-    prisma.trophyPayout.update({
-      where: { id: payout.id },
+  await prisma.$transaction(async (tx) => {
+    const currentTrophy = await lockTrophyMoneyState(tx, snapshot.trophyId);
+    if (!currentTrophy) {
+      throw new TrophyActionError("Trophy disappeared during payout update.", 409);
+    }
+
+    const payout = await tx.trophyPayout.findUnique({ where: { id: payoutId } });
+    if (!payout) throw new TrophyActionError("Payout not found.", 404);
+
+    if (payout.status === "executing") {
+      throw new TrophyActionError(
+        "This payout is executing. Resolve the in-flight settlement before changing it.",
+        409
+      );
+    }
+    if (payout.status === "paid" || payout.txHash?.trim()) {
+      throw new TrophyActionError(
+        "Paid or tx-backed trophy payouts cannot be changed from the admin rail.",
+        409
+      );
+    }
+    if (["cancelled", "superseded"].includes(payout.status)) {
+      throw new TrophyActionError(
+        "Cancelled or superseded trophy payouts are terminal and cannot be revived.",
+        409
+      );
+    }
+    if (
+      payout.payoutKind === "dethrone_bounty" &&
+      payout.status === "dry_run" &&
+      operation === "retry"
+    ) {
+      throw new TrophyActionError(
+        "Championship bounty previews are not payable obligations. Settle the title result first.",
+        409
+      );
+    }
+    if (payout.payoutKind === "dethrone_bounty" && operation === "dry_run") {
+      throw new TrophyActionError(
+        "A real championship bounty obligation cannot be converted back into a preview.",
+        409
+      );
+    }
+
+    const status =
+      operation === "retry"
+        ? "retrying"
+        : operation === "cancel"
+          ? "cancelled"
+          : operation === "dry_run"
+            ? "dry_run"
+            : null;
+    if (!status) throw new TrophyActionError("Unsupported payout operation.");
+
+    const changed = await tx.trophyPayout.updateMany({
+      where: {
+        id: payout.id,
+        status: payout.status,
+        txHash: null,
+      },
       data: {
         status,
         retryCount: operation === "retry" ? { increment: 1 } : undefined,
         errorState: operation === "retry" ? null : payout.errorState,
       },
-    }),
-    prisma.trophyEvent.create({
+    });
+    if (changed.count !== 1) {
+      throw new TrophyActionError(
+        "Payout state changed concurrently. Reload Trophy Command and try again.",
+        409
+      );
+    }
+
+    await tx.trophyEvent.create({
       data: {
         trophyId: payout.trophyId,
-        eventType: operation === "retry" ? "PAYOUT_RETRY_REQUESTED" : "PAYOUT_STATUS_CHANGED",
+        eventType:
+          operation === "retry" ? "PAYOUT_RETRY_REQUESTED" : "PAYOUT_STATUS_CHANGED",
         actorUserId: actor.id,
         actorRole: "admin",
         initiatedBy: "admin",
         amountWolo: payout.amountWolo,
         status: "recorded",
-        rawRequest: { payoutId, operation, nextStatus: status },
+        rawRequest: { payoutId, operation, previousStatus: payout.status, nextStatus: status },
       },
-    }),
-  ]);
+    });
+  });
 }
 
 async function updateSetting(
