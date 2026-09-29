@@ -6008,7 +6008,8 @@ function PreviewLiquidityRail({
   market: BetBoardMarket;
   compact?: boolean;
 }) {
-  if (market.previewLiquidity.length === 0) return null;
+  const rows = market.previewLiquidity ?? [];
+  if (rows.length === 0) return null;
 
   return (
     <div
@@ -6025,7 +6026,7 @@ function PreviewLiquidityRail({
       </div>
 
       <div className="mt-2 flex flex-wrap gap-2">
-        {market.previewLiquidity.map((row) => {
+        {rows.map((row) => {
           const sideLabel =
             row.side === "left" ? market.left.name : market.right.name;
           return (
