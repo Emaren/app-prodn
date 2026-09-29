@@ -2128,11 +2128,13 @@ tribute only for titles currently present in
 expand the live title-economics program.
 
 The lock contract must cover every custody-changing lane, not merely the admin
-form that exposed the bug. Verified challenge settlement therefore takes the
-same Trophy money lock, re-reads live custody, and rejects settlement when the
-challenge's captured defender or Guardian no longer matches current custody.
-Bounty calculation must use that locked Trophy row rather than an older relation
-snapshot loaded before the transaction.
+form that exposed the bug. Verified challenge dry-run and settlement therefore
+take replay/desync authority locks first and the Trophy money/custody lock
+second, matching the automatic scheduled-settlement lock order. After those
+locks, live custody is re-read and the action is rejected when the challenge's
+captured defender or Guardian no longer matches current custody. Preview and
+settlement bounty calculations must use that locked Trophy row rather than an
+older relation snapshot loaded before the transaction.
 
 The daily Tribute scheduler is part of the same money state machine. Candidate
 queries may be stale by the time a transaction begins, so recipient, status,
