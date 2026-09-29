@@ -542,9 +542,14 @@ export async function POST(request: NextRequest) {
             );
           }
           const liveAuthority = projectTrophyChallengeAuthority(liveTitle);
-          if (!liveAuthority.challengeable) {
+          if (!liveAuthority.statusChallengeable) {
             throw new TitleChallengeConflictError(
               `${liveTitle.displayName} is ${liveAuthority.status} and is not open for title challenges.`
+            );
+          }
+          if (!liveAuthority.custodyConsistent) {
+            throw new TitleChallengeConflictError(
+              `${liveTitle.displayName} custody became inconsistent before challenge creation. Reload after custody is repaired.`
             );
           }
           if (
