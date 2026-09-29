@@ -196,6 +196,10 @@ Current-season public policy lives in
   `ScheduledMatch` and a linked `TrophyChallenge`. The challenger must satisfy
   the configured national/ELO rule and must schedule against the current holder
   or Commissioner Guardian.
+  Public title challenge admission is lifecycle-gated: only `vacant`,
+  `guardian_held`, `held`, and `active` Trophy states are open. `draft`,
+  `paused`, `retired`, and unknown future states fail closed on both the
+  public route and Trophy Command's challenge creator.
 - Normal `/challenge` requests inspect both participants for currently held,
   app-only ELO belts that are not already committed to an active title defense.
   Those belts are attached as `TrophyChallenge` rows automatically. A held title
