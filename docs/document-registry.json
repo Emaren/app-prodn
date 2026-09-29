@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6eee6814d122de66182b2596817c3224c2fb59412e52065936e60764fea53e8f",
+      "sha256": "cf52a35f8aeba9279d51d6475e3fd21d35e99c67c84c5a74d37f5eb87b2c9b94",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/trophy-current-holder-surfaces-20260929",
-    "commit": "a5cfc849f497467991c2faa02f779e6524740e46"
+    "commit": "45129a7bfbeb0a6c9545bc4fc811ac506a1caa0f"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
