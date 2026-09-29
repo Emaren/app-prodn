@@ -85,6 +85,10 @@ test("verified watcher proof auto-settles zero-bounty held ELO titles by exact r
     new URL("../lib/challenges.ts", import.meta.url),
     "utf8"
   );
+  const liveSessionSource = readFileSync(
+    new URL("../lib/liveSessionSnapshot.ts", import.meta.url),
+    "utf8"
+  );
   const resultRecorder = challengeSource.slice(
     challengeSource.indexOf("async function recordVerifiedScheduledMatchTitleResults"),
     challengeSource.indexOf("async function attemptAutomaticScheduledMatchSettlement")
@@ -95,6 +99,8 @@ test("verified watcher proof auto-settles zero-bounty held ELO titles by exact r
   assert.match(routeSource, /chainStatus: "app_only"/);
   assert.match(routeSource, /currentHolderUserId: \{ in: participantIds \}/);
 
+  assert.match(liveSessionSource, /game_type: true/);
+  assert.match(liveSessionSource, /gameType/);
   assert.match(resultRecorder, /replayEloLane\(session\.gameType\)/);
   assert.match(resultRecorder, /eloTrophyIdentity/);
   assert.match(resultRecorder, /mode_not_contested/);
