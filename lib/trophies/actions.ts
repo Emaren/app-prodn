@@ -9,6 +9,7 @@ import {
 } from "@/lib/desyncChallenge";
 import {
   executePendingTrophyPayouts,
+  lockTrophyMoneyState,
   prepareManualTrophyHolderTransferPayouts,
   projectedTrophyBounty,
   recordNationalityChange,
@@ -30,8 +31,6 @@ type AdminActor = {
 };
 
 type ActionPayload = Record<string, unknown>;
-
-const TROPHY_MONEY_LOCK_NAMESPACE = 207706;
 
 function stringValue(value: unknown, max = 255) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
@@ -81,27 +80,6 @@ async function getTrophy(prisma: PrismaClient, payload: ActionPayload) {
       ? await prisma.trophy.findUnique({ where: { trophyId: trophyKey } })
       : null;
   if (!trophy) throw new TrophyActionError("Trophy not found.", 404);
-  return trophy;
-}
-
-async function lockTrophyMoneyState(
-  tx: Prisma.TransactionClient,
-  trophyId: number
-) {
-  await tx.$queryRaw<Array<{ lock_acquired: number }>>`
-    SELECT 1::int AS lock_acquired
-    FROM pg_advisory_xact_lock(${TROPHY_MONEY_LOCK_NAMESPACE}, ${trophyId})
-  `;
-  await tx.$queryRaw<Array<{ id: number }>>`
-    SELECT id
-    FROM trophies
-    WHERE id = ${trophyId}
-    FOR UPDATE
-  `;
-  const trophy = await tx.trophy.findUnique({ where: { id: trophyId } });
-  if (!trophy) {
-    throw new TrophyActionError("Trophy disappeared during title transition.", 409);
-  }
   return trophy;
 }
 
@@ -354,6 +332,9 @@ async function assignHolder(
 
   await prisma.$transaction(async (tx) => {
     const currentTrophy = await lockTrophyMoneyState(tx, trophy.id);
+    if (!currentTrophy) {
+      throw new TrophyActionError("Trophy disappeared during title transfer.", 409);
+    }
 
     const previousHolderId = currentTrophy.currentHolderUserId;
     const previousAddress = currentTrophy.currentHolderWoloAddress;
@@ -1041,6 +1022,9 @@ async function updateChallenge(
     if (chainBacked) {
       await prisma.$transaction(async (tx) => {
         const currentTrophy = await lockTrophyMoneyState(tx, challenge.trophyId);
+        if (!currentTrophy) {
+          throw new TrophyActionError("Trophy disappeared during title settlement.", 409);
+        }
         assertChallengeCustodyStillCurrent(currentTrophy, challenge);
         await assertTrophyChallengeDesyncAllowsTitleMutation(tx, challenge);
         await tx.trophyChallenge.update({
@@ -1083,6 +1067,9 @@ async function updateChallenge(
 
     await prisma.$transaction(async (tx) => {
       const currentTrophy = await lockTrophyMoneyState(tx, challenge.trophyId);
+      if (!currentTrophy) {
+        throw new TrophyActionError("Trophy disappeared during title settlement.", 409);
+      }
       assertChallengeCustodyStillCurrent(currentTrophy, challenge);
       await assertTrophyChallengeDesyncAllowsTitleMutation(tx, challenge);
       const bounty = challengerWon ? projectedTrophyBounty(currentTrophy) : 0;
