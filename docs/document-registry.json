@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "78df4045c26ce67afd9b765e0c7b3a5d44b9362425c92a64b9bd8dade26175ba",
+      "sha256": "75dd033fa0c482bc8dcef0d95942e1be6ef8c1c1cbd669b5c8bfd84f5908530d",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1393,9 +1393,9 @@
       "owner": "aoe2war-web",
       "path": "docs/REPLAY_TRUTH_OS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-27",
+      "reviewed_at": "2026-09-28",
       "sensitivity": "restricted",
-      "sha256": "933e6ec8cafa5b1f34aa5c8649e2972810043fc8953377b4b2389533b876b440",
+      "sha256": "a9ad658fc52596562d2bdec87343371d2443e5a7bec1590ae69a95f397aca8ea",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "main",
-    "commit": "d3e076a4727d1a33da7963f9cba5d1acaaf3b683"
+    "branch": "integration/replay-receipt-promotion-20260927",
+    "commit": "e2917e50b1300e4a37043a84a3bebfde1dc85364"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
