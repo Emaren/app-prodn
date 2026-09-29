@@ -45,6 +45,7 @@ import {
   loadReplayDesyncIncidentProvenance,
 } from "@/lib/replayDesyncIncidents";
 import { loadLiveSessionSnapshot, type LiveGameSession } from "@/lib/liveSessionSnapshot";
+import { runBetAutoShadowWorker } from "@/lib/betAutomationShadowWorker";
 import { resolveFinalGameStatsIdForSessionKey } from "@/lib/liveReplayDetail";
 import {
   isUnknownishReplayValue,
@@ -5621,6 +5622,7 @@ async function buildOpenMarketSeeds(prisma: PrismaClient) {
   return {
     seeds,
     reconciledSessionKeys,
+    activeSessions: sessionSnapshot.activeSessions,
   };
 }
 
@@ -7518,7 +7520,11 @@ async function reconcileAuthorizedReplayVerdictMarkets(
 async function runBetMarketEnsure(prisma: PrismaClient) {
   await archiveLowConfidenceZeroPotMarkets(prisma);
   const ticketMarketGuard = buildBetStakeTicketMarketGuardWhere();
-  const { seeds, reconciledSessionKeys } = await buildOpenMarketSeeds(prisma);
+  const {
+    seeds,
+    reconciledSessionKeys,
+    activeSessions,
+  } = await buildOpenMarketSeeds(prisma);
   const slugs = [...new Set(seeds.map((seed) => seed.slug))];
   const staleMarketCutoff = new Date(Date.now() - 2 * 60_000);
 
@@ -7746,6 +7752,12 @@ async function runBetMarketEnsure(prisma: PrismaClient) {
   await reconcilePendingCoreBetClaims(prisma);
   await settleMarketIntegrityCorrections(prisma);
   await settleFounderBonuses(prisma);
+
+  try {
+    await runBetAutoShadowWorker(prisma, { activeSessions });
+  } catch (error) {
+    console.warn("Auto Bet shadow evaluation failed after market reconciliation:", error);
+  }
 }
 
 // Several public/admin/replay routes can request the same reconciliation pass.
