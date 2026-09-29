@@ -22,6 +22,25 @@ import type {
   TrophyUserOption,
 } from "@/lib/trophies/types";
 
+const TROPHY_MONEY_LOCK_NAMESPACE = 207706;
+
+export async function lockTrophyMoneyState(
+  tx: Prisma.TransactionClient,
+  trophyId: number
+) {
+  await tx.$queryRaw<Array<{ lock_acquired: number }>>`
+    SELECT 1::int AS lock_acquired
+    FROM pg_advisory_xact_lock(${TROPHY_MONEY_LOCK_NAMESPACE}, ${trophyId})
+  `;
+  await tx.$queryRaw<Array<{ id: number }>>`
+    SELECT id
+    FROM trophies
+    WHERE id = ${trophyId}
+    FOR UPDATE
+  `;
+  return tx.trophy.findUnique({ where: { id: trophyId } });
+}
+
 type TrophySeed = {
   trophyId: string;
   definition: ChampionTitleDefinition;
