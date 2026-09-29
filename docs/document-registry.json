@@ -245,7 +245,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-29",
       "sensitivity": "internal",
-      "sha256": "25afdbe7363bcaf6e5f5977d9cea7ab280bbce801c09a548c4435d0807ea5cd7",
+      "sha256": "8233d5fa07cc7e20d32261384892ebbf422796dd9d93273a51b02a27c30687c1",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b2b2ba1cca0551f4feea8e784dbcb1bfc61c10c87c3d9d42276880ae97f86c34",
+      "sha256": "358f50130bd0087c7c24a16ed959cadeb1fca29e37891cf23d61edc8a80533d6",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-29",
       "sensitivity": "internal",
-      "sha256": "9a85e7f90a31bb4f51a2cb8bfa5b3e48d96c7aab9da72b807c00cb7229105065",
+      "sha256": "b2d069607b11e8ed20e7d8d7de5248951220755331839f4b0a797ef6c1863b2d",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feat/betting-phase-books-shadow-materializer-20260929",
-    "commit": "f0276eeb3184be429d7f562375445af73f58f8db"
+    "commit": "ac513b06a679d545fb6e5eaf86fbda25c091f2f9"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
