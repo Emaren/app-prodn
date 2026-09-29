@@ -351,10 +351,18 @@ export async function POST(request: NextRequest) {
       }
 
       const authority = projectTrophyChallengeAuthority(targetTrophy);
-      if (!authority.challengeable) {
+      if (!authority.statusChallengeable) {
         return NextResponse.json(
           {
             detail: `${targetTrophy.displayName} is ${authority.status} and is not open for title challenges.`,
+          },
+          { status: 409 }
+        );
+      }
+      if (!authority.custodyConsistent) {
+        return NextResponse.json(
+          {
+            detail: `${targetTrophy.displayName} custody is inconsistent with its ${authority.status} state. An admin must repair custody before scheduling its title fight.`,
           },
           { status: 409 }
         );
