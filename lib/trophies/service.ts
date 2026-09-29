@@ -1418,6 +1418,42 @@ function trophyDefinitionForRow(trophyId: string) {
   );
 }
 
+type PublicTrophyRecord = Trophy & {
+  currentHolder: {
+    uid: string;
+    inGameName: string | null;
+    steamPersonaName: string | null;
+  } | null;
+  guardianHolder: {
+    uid: string;
+    inGameName: string | null;
+    steamPersonaName: string | null;
+  } | null;
+};
+
+export function projectPublicTrophy(trophy: PublicTrophyRecord): PublicTrophyRecord {
+  const definition = trophyDefinitionForRow(trophy.trophyId);
+  if (!definition || !titleIsPubliclyForcedVacant(definition.id)) {
+    return trophy;
+  }
+
+  return {
+    ...trophy,
+    status: "vacant",
+    currentHolderUserId: null,
+    currentHolderDisplayName: null,
+    currentHolderWoloAddress: null,
+    currentHolder: null,
+    guardianHolderUserId: null,
+    guardianHolderDisplayName: null,
+    guardianHolderWoloAddress: null,
+    guardianHolder: null,
+    holderSince: null,
+    currentBountyWolo: 0,
+    forfeitureNeeded: false,
+  };
+}
+
 const CHALLENGEABLE_TROPHY_STATUSES = new Set([
   "held",
   "active",
