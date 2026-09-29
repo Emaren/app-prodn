@@ -527,6 +527,38 @@ export async function POST(request: NextRequest) {
             )
           `;
 
+          const liveTitle = await lockTrophyMoneyState(tx, title.id);
+          if (!liveTitle) {
+            throw new TitleChallengeConflictError(
+              `${title.displayName} disappeared before the title challenge was created.`
+            );
+          }
+          const liveAuthority = projectTrophyChallengeAuthority(liveTitle);
+          if (!liveAuthority.challengeable) {
+            throw new TitleChallengeConflictError(
+              `${liveTitle.displayName} is ${liveAuthority.status} and is not open for title challenges.`
+            );
+          }
+          if (
+            liveAuthority.status !== title.status ||
+            liveAuthority.currentHolderUserId !== title.currentHolderUserId ||
+            liveAuthority.guardianHolderUserId !== title.guardianHolderUserId
+          ) {
+            throw new TitleChallengeConflictError(
+              `${liveTitle.displayName} custody or status changed while the challenge was being created. Reload and try again.`
+            );
+          }
+
+          Object.assign(title, {
+            status: liveAuthority.status,
+            currentHolderUserId: liveAuthority.currentHolderUserId,
+            currentHolderDisplayName: liveAuthority.currentHolderDisplayName,
+            currentHolderWoloAddress: liveAuthority.currentHolderWoloAddress,
+            guardianHolderUserId: liveAuthority.guardianHolderUserId,
+            guardianHolderDisplayName: liveAuthority.guardianHolderDisplayName,
+            guardianHolderWoloAddress: liveAuthority.guardianHolderWoloAddress,
+          });
+
           const competingTitleChallenge = await tx.trophyChallenge.findFirst({
             where: {
               trophyId: title.id,
