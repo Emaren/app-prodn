@@ -495,7 +495,7 @@ export async function prepareManualTrophyHolderTransferPayouts(
         recipientWoloAddress: input.nextHolderWoloAddress,
         amountWolo: accruedBountyWolo,
         payoutKind: "dethrone_bounty",
-        status: "dry_run",
+        status: "pending",
         scheduledFor: now,
         rawRequest: {
           memo,
@@ -715,25 +715,30 @@ export async function executePendingTrophyPayouts(
 
   const payouts = await prisma.trophyPayout.findMany({
     where: {
-      ...(options.includeBounties === true
-        ? {
-            OR: [
+      OR:
+        options.includeBounties === true
+          ? [
               {
                 payoutKind: "daily_tribute",
+                status: { in: ["dry_run", "pending", "retrying", "failed"] },
                 trophy: {
                   trophyId: { in: [...ACTIVE_REIGN_TRIBUTE_TROPHY_IDS] },
                 },
               },
-              { payoutKind: "dethrone_bounty" },
+              {
+                payoutKind: "dethrone_bounty",
+                status: { in: ["pending", "retrying", "failed"] },
+              },
+            ]
+          : [
+              {
+                payoutKind: "daily_tribute",
+                status: { in: ["dry_run", "pending", "retrying", "failed"] },
+                trophy: {
+                  trophyId: { in: [...ACTIVE_REIGN_TRIBUTE_TROPHY_IDS] },
+                },
+              },
             ],
-          }
-        : {
-            payoutKind: "daily_tribute",
-            trophy: {
-              trophyId: { in: [...ACTIVE_REIGN_TRIBUTE_TROPHY_IDS] },
-            },
-          }),
-      status: { in: ["dry_run", "pending", "retrying", "failed"] },
       txHash: null,
       recipientWoloAddress: { not: null },
       amountWolo: { gt: 0 },
