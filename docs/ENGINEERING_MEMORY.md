@@ -649,9 +649,24 @@ The current premium interaction is a large vertical composer with tactile 10,
 large betting action. Future Phase Books V2 adds true phase identity/countdown
 once those independent financial books exist.
 
-Future Auto Bet Reserve evolves toward phase-specific presets backed by the
-separately reviewed prefunded Wolo custody architecture. Watcher telemetry alone
-never becomes financial authority.
+Auto Bet Reserve now has a durable **shadow** producer, but no funded consumer.
+After the canonical market reconciler commits an unscheduled live Watcher winner
+market, the worker reuses that reconciler's active-session snapshot and may
+materialize one `shadow_ready` `BetAutoExecution` row for a preset/canonical
+game. Admission requires resolved/high team truth, verified integrity, frozen
+proposition identity, exact owner Steam ID on exactly one roster side, and the
+same user's UID among exact-session uploaders. Configured Desync preview requires
+the exact live child with the same proposition hash.
+
+That row is evidence only: no WOLO reservation, wager, stake intent, ticket,
+`acceptedAt`, or finite-count decrement occurs. The database uniqueness
+`(presetId, gameIdentityKey)` is the one-shot guard, and later Watcher identity
+promotion canonicalizes the stored game/session identity. A future funded
+consumer remains a separately reviewed prefunded Wolo custody project.
+Watcher telemetry alone never becomes financial authority.
+
+Future Auto Bet Reserve may evolve toward phase-specific presets backed by that
+separately reviewed prefunded Wolo custody architecture.
 
 ## Current highest-value product queue
 
