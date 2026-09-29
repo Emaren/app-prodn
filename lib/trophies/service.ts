@@ -345,6 +345,130 @@ export function projectedTrophyBounty(
   return trophy.currentBountyWolo + elapsedTrophyDays(trophy.holderSince) * trophy.bountyGrowthWolo;
 }
 
+const EXECUTABLE_DAILY_TRIBUTE_STATUSES = ["dry_run", "pending", "retrying", "failed"] as const;
+const EXECUTABLE_DETHRONE_BOUNTY_STATUSES = ["pending", "retrying", "failed"] as const;
+
+function trophyPayoutStatusIsExecutable(payoutKind: string, status: string) {
+  if (payoutKind === "daily_tribute") {
+    return (EXECUTABLE_DAILY_TRIBUTE_STATUSES as readonly string[]).includes(status);
+  }
+  if (payoutKind === "dethrone_bounty") {
+    return (EXECUTABLE_DETHRONE_BOUNTY_STATUSES as readonly string[]).includes(status);
+  }
+  return false;
+}
+
+function sameTrophyPayoutRecipient(
+  payout: {
+    recipientUserId: number | null;
+    recipientWoloAddress: string | null;
+  },
+  trophy: {
+    currentHolderUserId: number | null;
+    currentHolderWoloAddress: string | null;
+  }
+) {
+  if (payout.recipientUserId !== null && trophy.currentHolderUserId !== null) {
+    return payout.recipientUserId === trophy.currentHolderUserId;
+  }
+  const payoutAddress = payout.recipientWoloAddress?.trim().toLowerCase() || "";
+  const holderAddress = trophy.currentHolderWoloAddress?.trim().toLowerCase() || "";
+  return Boolean(payoutAddress && holderAddress && payoutAddress === holderAddress);
+}
+
+export async function prepareTrophyCustodyExit(
+  prisma: Prisma.TransactionClient,
+  input: {
+    trophy: Trophy;
+    now?: Date;
+    reason: string;
+    createdBy: string;
+  }
+) {
+  const now = input.now ?? new Date();
+  const dayStart = utcDayStart(now);
+  const dayEnd = new Date(dayStart.getTime() + TROPHY_DAY_MS);
+  const dayKey = utcDayKey(now);
+  const frozenBountyWolo = projectedTrophyBounty(input.trophy);
+
+  const existing = await prisma.trophyPayout.findMany({
+    where: {
+      trophyId: input.trophy.id,
+      payoutKind: "daily_tribute",
+      scheduledFor: { gte: dayStart, lt: dayEnd },
+    },
+    select: {
+      id: true,
+      recipientUserId: true,
+      recipientWoloAddress: true,
+      amountWolo: true,
+      status: true,
+      txHash: true,
+    },
+    orderBy: { id: "asc" },
+  });
+
+  const inFlight = existing.find((row) => row.status === "executing" && !row.txHash);
+  if (inFlight) {
+    return {
+      frozenBountyWolo,
+      inFlightPayoutId: inFlight.id,
+      supersededTributePayoutIds: [] as number[],
+      chainBackedTributePayoutIds: existing
+        .filter((row) => row.status === "paid" || Boolean(row.txHash))
+        .map((row) => row.id),
+    };
+  }
+
+  const stale = existing.filter(
+    (row) =>
+      !row.txHash &&
+      (EXECUTABLE_DAILY_TRIBUTE_STATUSES as readonly string[]).includes(row.status)
+  );
+  const supersededTributePayoutIds = stale.map((row) => row.id);
+
+  if (supersededTributePayoutIds.length > 0) {
+    await prisma.trophyPayout.updateMany({
+      where: {
+        id: { in: supersededTributePayoutIds },
+        status: { in: [...EXECUTABLE_DAILY_TRIBUTE_STATUSES] },
+        txHash: null,
+      },
+      data: { status: "superseded" },
+    });
+
+    for (const payout of stale) {
+      await prisma.trophyEvent.create({
+        data: {
+          trophyId: input.trophy.id,
+          eventType: "DAILY_TRIBUTE_PAYOUT_SUPERSEDED",
+          actorRole: "system",
+          initiatedBy: "system",
+          fromHolderUserId: payout.recipientUserId,
+          fromWoloAddress: payout.recipientWoloAddress,
+          amountWolo: payout.amountWolo,
+          status: "recorded",
+          rawRequest: {
+            payoutId: payout.id,
+            dayKey,
+            reason: input.reason,
+            createdBy: input.createdBy,
+          },
+        },
+      });
+    }
+  }
+
+  return {
+    frozenBountyWolo,
+    inFlightPayoutId: null,
+    supersededTributePayoutIds,
+    chainBackedTributePayoutIds: existing
+      .filter((row) => row.status === "paid" || Boolean(row.txHash))
+      .map((row) => row.id),
+  };
+}
+
 
 export async function prepareManualTrophyHolderTransferPayouts(
   prisma: Prisma.TransactionClient,
