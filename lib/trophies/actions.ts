@@ -552,10 +552,49 @@ async function changeTrophyStatus(
     "guardian_held",
   ]);
   if (!allowed.has(nextStatus)) throw new TrophyActionError("Invalid trophy status.");
-  const clearing = nextStatus === "vacant" || nextStatus === "retired";
-  await prisma.$transaction([
-    prisma.trophy.update({
-      where: { id: trophy.id },
+
+  const now = new Date();
+  await prisma.$transaction(async (tx) => {
+    const currentTrophy = await lockTrophyMoneyState(tx, trophy.id);
+    if (!currentTrophy) {
+      throw new TrophyActionError("Trophy disappeared during status change.", 409);
+    }
+
+    if (nextStatus === "held" && !currentTrophy.currentHolderUserId) {
+      throw new TrophyActionError("A Trophy cannot be marked held without a current holder.", 409);
+    }
+    if (nextStatus === "guardian_held" && !currentTrophy.guardianHolderUserId) {
+      throw new TrophyActionError("A Trophy cannot be marked Guardian-held without a Guardian.", 409);
+    }
+
+    const clearing = nextStatus === "vacant" || nextStatus === "retired";
+    let frozenBountyWolo = currentTrophy.currentBountyWolo;
+    let supersededTributePayoutIds: number[] = [];
+    let chainBackedTributePayoutIds: number[] = [];
+
+    if (clearing) {
+      const custodyExit = await prepareTrophyCustodyExit(tx, {
+        trophy: currentTrophy,
+        now,
+        reason:
+          nextStatus === "retired"
+            ? "title_retired_before_chain_execution"
+            : "title_vacated_before_chain_execution",
+        createdBy: "change_trophy_status",
+      });
+      if (custodyExit.inFlightPayoutId) {
+        throw new TrophyActionError(
+          `Daily Tribute payout #${custodyExit.inFlightPayoutId} is executing. Retry the status change after payout resolution.`,
+          409
+        );
+      }
+      frozenBountyWolo = custodyExit.frozenBountyWolo;
+      supersededTributePayoutIds = custodyExit.supersededTributePayoutIds;
+      chainBackedTributePayoutIds = custodyExit.chainBackedTributePayoutIds;
+    }
+
+    await tx.trophy.update({
+      where: { id: currentTrophy.id },
       data: {
         status: nextStatus,
         ...(clearing
@@ -563,14 +602,16 @@ async function changeTrophyStatus(
               currentHolderUserId: null,
               currentHolderDisplayName: null,
               currentHolderWoloAddress: null,
+              currentBountyWolo: frozenBountyWolo,
               holderSince: null,
             }
           : {}),
       },
-    }),
-    prisma.trophyEvent.create({
+    });
+
+    await tx.trophyEvent.create({
       data: {
-        trophyId: trophy.id,
+        trophyId: currentTrophy.id,
         eventType:
           nextStatus === "vacant"
             ? "TROPHY_VACATED"
@@ -580,13 +621,20 @@ async function changeTrophyStatus(
         actorUserId: actor.id,
         actorRole: "admin",
         initiatedBy: "admin",
-        fromHolderUserId: trophy.currentHolderUserId,
-        fromWoloAddress: trophy.currentHolderWoloAddress,
+        fromHolderUserId: currentTrophy.currentHolderUserId,
+        fromWoloAddress: currentTrophy.currentHolderWoloAddress,
+        amountWolo: clearing ? frozenBountyWolo || null : null,
         status: "recorded",
-        rawRequest: { previousStatus: trophy.status, nextStatus },
+        rawRequest: {
+          previousStatus: currentTrophy.status,
+          nextStatus,
+          frozenBountyWolo: clearing ? frozenBountyWolo : null,
+          supersededTributePayoutIds,
+          chainBackedTributePayoutIds,
+        },
       },
-    }),
-  ]);
+    });
+  });
 }
 
 async function updateEconomics(
