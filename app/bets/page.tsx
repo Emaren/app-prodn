@@ -163,6 +163,15 @@ type BetBoardSide = {
   seededWolo: number;
 };
 
+type BetPreviewLiquidityRow = {
+  id: number;
+  botLabel: string;
+  side: BetSide;
+  amountWolo: number;
+  recordedAt: string;
+  financiallyCommitted: false;
+};
+
 type BetBoardMarket = {
   id: number;
   parentMarketId?: number | null;
@@ -192,6 +201,7 @@ type BetBoardMarket = {
   right: BetBoardSide;
   founderBonuses: BetFounderChip[];
   warTape: BetWarTapeRow[];
+  previewLiquidity: BetPreviewLiquidityRow[];
   broadcastFeeds: BroadcastFeeds;
   broadcastPreviewUrls: BroadcastPreviewUrls;
   viewerWager: {
@@ -541,6 +551,18 @@ function buildBetsDesignFixture(
           createdAt: now,
         },
       ],
+      previewLiquidity: input.featured
+        ? [
+            {
+              id: 880001,
+              botLabel: "Tony",
+              side: "right",
+              amountWolo: 10,
+              recordedAt: now,
+              financiallyCommitted: false,
+            },
+          ]
+        : [],
       broadcastFeeds:
         feeds,
       broadcastPreviewUrls:
@@ -571,6 +593,16 @@ function buildBetsDesignFixture(
 
   desyncMarket.parentMarketId =
     990001;
+  desyncMarket.previewLiquidity = [
+    {
+      id: 880002,
+      botLabel: "Paulie",
+      side: "right",
+      amountWolo: 10,
+      recordedAt: now,
+      financiallyCommitted: false,
+    },
+  ];
 
   const featured =
     makeMarket({
@@ -5969,6 +6001,53 @@ function StakeAmountRail({
   );
 }
 
+function PreviewLiquidityRail({
+  market,
+  compact = false,
+}: {
+  market: BetBoardMarket;
+  compact?: boolean;
+}) {
+  if (market.previewLiquidity.length === 0) return null;
+
+  return (
+    <div
+      data-testid={`bets-preview-liquidity-${market.id}`}
+      className={`${compact ? "mt-4" : "mt-5"} rounded-[1.15rem] border border-amber-200/[0.10] bg-amber-300/[0.045] px-4 py-3`}
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="text-[10px] font-black uppercase tracking-[0.26em] text-amber-100/80">
+          Preview Liquidity
+        </div>
+        <div className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
+          Shadow only · not in pot or odds
+        </div>
+      </div>
+
+      <div className="mt-2 flex flex-wrap gap-2">
+        {market.previewLiquidity.map((row) => {
+          const sideLabel =
+            row.side === "left" ? market.left.name : market.right.name;
+          return (
+            <div
+              key={row.id}
+              className="rounded-full border border-white/[0.07] bg-slate-950/30 px-3 py-1.5 text-[11px] text-slate-300"
+            >
+              <span className="font-semibold text-white">{row.botLabel}</span>
+              {" would counter "}
+              <span className="font-semibold text-amber-100">
+                {formatExactWolo(row.amountWolo)} WOLO
+              </span>
+              {" on "}
+              <span className="font-semibold text-white">{sideLabel}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function DesyncTicketLeg({
   market,
   activeSelection,
@@ -6065,6 +6144,8 @@ function DesyncTicketLeg({
           </button>
         </div>
       </div>
+
+      <PreviewLiquidityRail market={market} compact />
 
       <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(12rem,16rem)] lg:items-end">
         <div className="grid grid-cols-2 gap-2">
@@ -8033,6 +8114,7 @@ function MarketFeature({
         </div>
 
         <div className="mt-7 border-t border-white/[0.055] pt-6">
+          <PreviewLiquidityRail market={market} />
           <BetSlipComposer
             market={market}
             desyncMarket={desyncMarket}
@@ -8218,7 +8300,8 @@ function MarketFeature({
           />
         </div>
 
-        <BetSlipComposer
+        <PreviewLiquidityRail market={market} />
+          <BetSlipComposer
           market={market}
           desyncMarket={desyncMarket}
           activeSelection={activeSelection}
@@ -8356,7 +8439,8 @@ function MarketFeature({
         />
       </div>
 
-      <BetSlipComposer
+      <PreviewLiquidityRail market={market} />
+          <BetSlipComposer
         market={market}
         desyncMarket={desyncMarket}
         activeSelection={activeSelection}
@@ -8693,7 +8777,8 @@ function MarketCard({
         </div>
       )}
 
-      <BetSlipComposer
+      <PreviewLiquidityRail market={market} />
+          <BetSlipComposer
         market={market}
         desyncMarket={desyncMarket}
         activeSelection={activeSelection}
