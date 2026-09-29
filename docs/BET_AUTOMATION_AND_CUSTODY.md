@@ -291,6 +291,21 @@ No LLM has money authority. Commentary remains optional flavour after the
 deterministic decision and cannot choose market, side, amount, exposure,
 custody, transaction or wager.
 
+### Betting Hall Preview Liquidity
+
+A counter-bettor shadow proposal may be visible on its current Betting Hall
+market as **Preview Liquidity**. The visible row is deliberately not a wager,
+standing offer, reserve, pool contribution or quoted executable balance. It
+records that deterministic policy would have countered the already-committed
+human action in that historical decision context.
+
+The public board reads only zero-custody `shadow_proposal` evidence and exposes
+a small display DTO: bot label, counter side, proposed WOLO, recorded time and
+`financiallyCommitted=false`. Rows carrying any committed counterstake,
+available-balance value, verified custody, reservation or stake transaction are
+excluded from this Preview surface. Real pot/odds/return math continues to read
+only canonical seeds and countable committed human wagers.
+
 ## Required Wolo architecture
 
 One signed 10,000 WOLO deposit funding future games is chain-backed custodial
