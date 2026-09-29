@@ -71,6 +71,22 @@ function trophyPayoutIsTerminal(payout: { status: string; txHash: string | null 
 }
 
 
+function trophyPayoutIsExecutable(payout: {
+  payoutKind: string;
+  status: string;
+  txHash: string | null;
+}) {
+  if (trophyPayoutIsTerminal(payout)) return false;
+  if (payout.payoutKind === "dethrone_bounty") {
+    return ["pending", "retrying", "failed"].includes(payout.status);
+  }
+  if (payout.payoutKind === "daily_tribute") {
+    return ["dry_run", "pending", "retrying", "failed"].includes(payout.status);
+  }
+  return false;
+}
+
+
 const CHAMPION_BELT_PRESETS = [
   {
     trophyKey: "world_champion",
@@ -1385,7 +1401,7 @@ function Payouts({
                   <div className="flex flex-wrap gap-2">
                     <Button
                       tone="gold"
-                      disabled={busy || trophyPayoutIsTerminal(payout) || !payout.recipientWoloAddress}
+                      disabled={busy || !trophyPayoutIsExecutable(payout) || !payout.recipientWoloAddress}
                       onClick={() => void onAction({ action: "payout_action", payoutId: payout.id, operation: "execute" }, "Payout executed through Founder Rewards.")}
                     >
                       Execute
