@@ -311,6 +311,12 @@ A manual holder reassignment is a title-money transition, not a display edit.
 The action serializes on the Trophy row, re-reads current custody inside the
 transaction, and derives payout obligations from that locked state.
 
+Verified challenge settlement uses the same Trophy money lock. Immediately
+before app-side custody mutation or chain-transfer intent, it re-reads live
+Trophy custody and requires the defender/Guardian captured by the challenge to
+still own that custody. A stale challenge fails closed instead of transferring a
+new holder's title or pricing a bounty from an obsolete Trophy snapshot.
+
 For a real holder change:
 
 - freeze the outgoing reign's projected championship bounty at the transfer
