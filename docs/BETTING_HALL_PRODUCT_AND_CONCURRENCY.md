@@ -137,6 +137,21 @@ This viewer rail is independent from public house **Preview Liquidity** and from
 total pot, crowd percentages, return math, War Tape financial proof, settlement,
 or War Chest accounting.
 
+The viewer may explicitly copy a still-valid private Preview into the ordinary
+manual Bet Slip. The copy action is local state only. Before loading, a pure
+planner requires the winner book to remain open with no existing real viewer
+wager, preserves the exact recorded winner side/amount, requires any recorded
+Desync leg to point at the same currently attached open child with no existing
+viewer wager, and rejects any leg or combined total outside the current
+wallet/app stake cap. A stale preview is rejected rather than clamped or
+silently adapted.
+
+Loading the Preview is not a wager and is not financial acceptance. It performs
+no fetch, wallet connection, ticket preparation, stake intent, escrow
+reservation, signature, transaction, or Auto Bet outbox mutation. The user must
+still review the populated slip and explicitly use the existing Lock WOLO flow.
+That manual rail remains the sole authority that can enter financial state.
+
 Live execution remains impossible until dedicated operator custody,
 reservation proof, and an idempotent executor exist. The existing database
 constraint additionally requires real custody verification, reservation, and
