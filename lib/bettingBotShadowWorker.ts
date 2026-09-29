@@ -1,4 +1,5 @@
 import type { Prisma, PrismaClient } from "@/lib/generated/prisma";
+import { isInternalSystemUid } from "@/lib/internalSystemAccounts";
 import { lockBettingBotPolicy } from "@/lib/bettingBotPolicyLock";
 import {
   buildBetCounterIdempotencyKey,
@@ -168,6 +169,7 @@ async function evaluateOne(
 
     if (
       !sourceUid ||
+      isInternalSystemUid(sourceUid) ||
       input.reservedUids.has(sourceUid) ||
       sourceWager.status !== "active" ||
       !sourceSide ||
