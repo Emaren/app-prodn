@@ -229,6 +229,10 @@ test("Betting Hall viewer preview is private, preset-scoped, and parent-market o
   assert.match(page, /Your Auto Bet Preview/);
   assert.match(page, /Shadow only · no wager placed/);
   assert.match(page, /financially committed: no/);
+  assert.match(
+    page,
+    /market\.marketType === DESYNC_SIDE_MARKET_TYPE\) return null/
+  );
 
   const desyncStart = page.indexOf("function DesyncTicketLeg(");
   const desyncEnd = page.indexOf("function ", desyncStart + 20);
