@@ -2101,3 +2101,33 @@ Durable rule: speculative navigation warmups are optimization only. A transient
 dynamic-import failure must be caught, must never crash the page the user is
 currently viewing, and must clear its cached failed promise so later user intent
 can retry against fresh chunks.
+
+
+## 2026-09-29 — Manual title custody changes must carry the title-money state
+
+The Trophy Command audit found that commissioner-driven holder reassignment and
+verified challenge settlement did not share the same economic transition.
+Challenge settlement reset the old reign and could create the dethrone bounty,
+while the manual `assign_holder` path could replace custody and restart
+`holderSince` without freezing the accrued bounty. That made a visually correct
+admin action capable of silently discarding a real title obligation.
+
+Durable rule: a holder change is not a metadata update. Serialize manual
+custody mutation with a trophy-scoped transaction lock, re-read the Trophy row
+inside that lock, freeze the outgoing reign's projected championship bounty,
+create the incoming holder's payout obligation, reset the new reign's bounty
+base, and record the transfer evidence together. Re-selecting the already-current
+holder is metadata refresh only and must not restart the reign or duplicate a
+bounty.
+
+Daily Champion Tribute follows its existing authority. A manual transfer must
+reuse `reconcileDailyTrophyTribute()`, preserve paid or tx-backed same-day
+money truth, supersede only unexecuted former-holder rows, and queue replacement
+tribute only for titles currently present in
+`ACTIVE_REIGN_TRIBUTE_TROPHY_IDS`. Do not let a generic holder-edit surface
+expand the live title-economics program.
+
+Championship bounty execution uses the existing Founder Rewards settlement rail.
+It remains separate from Bet Escrow and from the numbered public Bounty Pool.
+A ledger row without an executable, idempotent settlement path is not a finished
+financial feature.
