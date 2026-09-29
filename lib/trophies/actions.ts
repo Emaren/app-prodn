@@ -1136,6 +1136,24 @@ async function updatePayout(
     throw new TrophyActionError("Paid or tx-backed trophy payouts cannot be changed from the admin rail.", 409);
   }
 
+  if (
+    payout.payoutKind === "dethrone_bounty" &&
+    payout.status === "dry_run" &&
+    (operation === "execute" || operation === "retry")
+  ) {
+    throw new TrophyActionError(
+      "Championship bounty previews are not payable obligations. Settle the title result first.",
+      409
+    );
+  }
+
+  if (payout.payoutKind === "dethrone_bounty" && operation === "dry_run") {
+    throw new TrophyActionError(
+      "A real championship bounty obligation cannot be converted back into a preview.",
+      409
+    );
+  }
+
   if (operation === "execute") {
     const result = await executePendingTrophyPayouts(prisma, {
       payoutId: payout.id,
