@@ -194,6 +194,29 @@ funded executor.
 A `shadow_ready` row is historical preview evidence, not a funded queue item.
 Editing a preset later does not rewrite that already-observed game decision.
 
+The signed-in Betting Hall may project exactly one pristine `shadow_ready`
+row for the viewer's own preset and winner market as **Your Auto Bet Preview**.
+That projection is private/no-store viewer state, not public liquidity and not a
+recalculation from the current preset. It displays the frozen
+`presetVersion`, winner side/stake, optional Desync side/stake, and decision
+timestamp recorded when the worker observed the game.
+
+The viewer projector independently revalidates the frozen shadow evidence before
+display. It requires the original exact Steam-roster match, exact uploader-UID
+match, verified market integrity, resolved/high team authority, matching frozen
+proposition hash, and non-empty canonical session/user identity evidence. It
+also requires every future-funded marker to remain untouched: no ticket,
+reservation, attempt, retry time, lease, lease expiry, or `acceptedAt`.
+Malformed winner/Desync amounts or relationships fail closed.
+
+If more than one shadow execution for the viewer's preset references the same
+winner market, the Hall displays neither rather than choosing a newest row.
+The private preview is attached to the parent winner market only; an optional
+Desync leg remains nested inside that frozen plan instead of becoming a second
+private card. The DTO carries `financiallyCommitted=false` and never affects
+pools, pot, crowd split, odds, projected return, settlement, War Chest, or the
+public house **Preview Liquidity** rail.
+
 Watcher identity promotion also fails closed around preview evidence. If two
 `BetAutoExecution` rows for the same preset would collapse onto one canonical
 game identity, promotion is blocked with `auto_execution_preset_collision`

@@ -2302,3 +2302,23 @@ A rolling client may receive a warmed pre-feature market payload, so public UI
 must treat an absent Preview Liquidity array as empty. The server still emits
 the field on current snapshots.
 
+Private Auto Bet preview presentation follows the same additive rule but a
+different authority source. `/api/bets` is already private/no-store and
+viewer-aware, so it may attach one viewer-owned `shadow_ready`
+`BetAutoExecution` to its winner market as `viewerAutoBetPreview`. Scope the
+query by the signed-in user's unique preset ID; never expose another user's
+execution evidence.
+
+Do not trust `shadow_ready` status alone. Revalidate the frozen
+`sourceEvidence` identity/proposition contract and require ticket, reservation,
+attempt, retry, lease, and acceptance fields to remain pristine. Group rows by
+winner market before validation; more than one row is ambiguity and must yield
+no preview. Present the stored preset version/stakes/timestamp instead of
+recomputing an old game from the user's current preset.
+
+Keep this private DTO separate from `viewerWager` and public
+`previewLiquidity`. Attach it after real market economics have been calculated,
+never include it in pools/odds/returns/settlement, and render an optional Desync
+leg only within the parent winner preview. If a future funded consumer claims or
+advances the row, the shadow-only presentation must disappear.
+

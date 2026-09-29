@@ -183,6 +183,19 @@ export type BetPreviewLiquidityRow = {
   financiallyCommitted: false;
 };
 
+export type BetViewerAutoBetPreview = {
+  id: number;
+  presetVersion: number;
+  selectedSide: BetSide;
+  winnerStakeWolo: number;
+  desyncSide: "none" | "yes" | "no";
+  desyncStakeWolo: number;
+  desyncMarketId: number | null;
+  propositionHash: string;
+  recordedAt: string;
+  financiallyCommitted: false;
+};
+
 export type BetBroadcastFeeds = {
   left: WatchStreamPayload | null;
   god: WatchStreamPayload | null;
@@ -225,6 +238,7 @@ export type BetBoardMarket = {
   founderBonuses: BetFounderChip[];
   warTape: BetWarTapeRow[];
   previewLiquidity: BetPreviewLiquidityRow[];
+  viewerAutoBetPreview: BetViewerAutoBetPreview | null;
   broadcastFeeds: BetBroadcastFeeds;
   broadcastPreviewUrls: BetBroadcastPreviewUrls;
   viewerWager: {
@@ -587,6 +601,154 @@ export function attachBetPreviewLiquidity<
   return {
     ...market,
     previewLiquidity: [...(byMarketId.get(market.id) ?? [])],
+  };
+}
+
+type BetViewerAutoBetPreviewEvidenceRow = {
+  id: number;
+  presetVersion: number;
+  winnerMarketId: number;
+  desyncMarketId: number | null;
+  propositionHash: string;
+  selectedSide: string | null;
+  winnerStakeWolo: number;
+  desyncSide: string;
+  desyncStakeWolo: number;
+  status: string;
+  reason: string | null;
+  ticketId: number | null;
+  reservationId: string | null;
+  attemptCount: number;
+  nextAttemptAt: Date | null;
+  leaseOwner: string | null;
+  leaseExpiresAt: Date | null;
+  acceptedAt: Date | null;
+  sourceEvidence: unknown;
+  createdAt: Date;
+};
+
+function exactViewerAutoBetPreview(
+  row: BetViewerAutoBetPreviewEvidenceRow
+): BetViewerAutoBetPreview | null {
+  const sourceEvidence =
+    row.sourceEvidence &&
+    typeof row.sourceEvidence === "object" &&
+    !Array.isArray(row.sourceEvidence)
+      ? (row.sourceEvidence as Record<string, unknown>)
+      : null;
+  const propositionHash = row.propositionHash.trim();
+  const sourcePropositionHash =
+    typeof sourceEvidence?.propositionHash === "string"
+      ? sourceEvidence.propositionHash.trim()
+      : "";
+
+  if (
+    row.status !== "shadow_ready" ||
+    row.reason !== "shadow_preview_eligible" ||
+    !Number.isSafeInteger(row.winnerMarketId) ||
+    row.winnerMarketId <= 0 ||
+    !Number.isSafeInteger(row.presetVersion) ||
+    row.presetVersion <= 0 ||
+    (row.selectedSide !== "left" && row.selectedSide !== "right") ||
+    !Number.isSafeInteger(row.winnerStakeWolo) ||
+    row.winnerStakeWolo <= 0 ||
+    !/^[a-f0-9]{64}$/i.test(propositionHash) ||
+    !sourceEvidence ||
+    sourceEvidence.mode !== "shadow" ||
+    sourceEvidence.exactSteamRosterMatch !== true ||
+    sourceEvidence.exactUploaderUidMatch !== true ||
+    sourceEvidence.marketIntegrityStatus !== "verified" ||
+    sourceEvidence.teamResolutionStatus !== "resolved" ||
+    sourceEvidence.teamConfidence !== "high" ||
+    sourcePropositionHash !== propositionHash ||
+    typeof sourceEvidence.canonicalSessionKey !== "string" ||
+    !sourceEvidence.canonicalSessionKey.trim() ||
+    typeof sourceEvidence.ownerUid !== "string" ||
+    !sourceEvidence.ownerUid.trim() ||
+    typeof sourceEvidence.ownerSteamId !== "string" ||
+    !sourceEvidence.ownerSteamId.trim() ||
+    row.ticketId !== null ||
+    row.reservationId !== null ||
+    row.attemptCount !== 0 ||
+    row.nextAttemptAt !== null ||
+    row.leaseOwner !== null ||
+    row.leaseExpiresAt !== null ||
+    row.acceptedAt !== null
+  ) {
+    return null;
+  }
+
+  const desyncSide =
+    row.desyncSide === "yes" || row.desyncSide === "no"
+      ? row.desyncSide
+      : row.desyncSide === "none"
+        ? "none"
+        : null;
+  if (!desyncSide) return null;
+
+  if (
+    desyncSide === "none"
+      ? row.desyncMarketId !== null || row.desyncStakeWolo !== 0
+      : !Number.isSafeInteger(row.desyncMarketId) ||
+        (row.desyncMarketId ?? 0) <= 0 ||
+        !Number.isSafeInteger(row.desyncStakeWolo) ||
+        row.desyncStakeWolo <= 0
+  ) {
+    return null;
+  }
+
+  return {
+    id: row.id,
+    presetVersion: row.presetVersion,
+    selectedSide: row.selectedSide,
+    winnerStakeWolo: row.winnerStakeWolo,
+    desyncSide,
+    desyncStakeWolo: row.desyncStakeWolo,
+    desyncMarketId: row.desyncMarketId,
+    propositionHash,
+    recordedAt: row.createdAt.toISOString(),
+    financiallyCommitted: false,
+  };
+}
+
+/**
+ * Private viewer projection of immutable Auto Bet shadow evidence.
+ *
+ * Duplicate shadow rows for one winner market are treated as ambiguous and
+ * suppressed instead of choosing a "latest" decision.
+ */
+export function buildViewerAutoBetPreviewMap(
+  rows: readonly BetViewerAutoBetPreviewEvidenceRow[]
+) {
+  const rowsByWinnerMarket = new Map<
+    number,
+    BetViewerAutoBetPreviewEvidenceRow[]
+  >();
+
+  for (const row of rows) {
+    const bucket = rowsByWinnerMarket.get(row.winnerMarketId) ?? [];
+    bucket.push(row);
+    rowsByWinnerMarket.set(row.winnerMarketId, bucket);
+  }
+
+  const byMarketId = new Map<number, BetViewerAutoBetPreview>();
+  for (const [marketId, bucket] of rowsByWinnerMarket) {
+    if (bucket.length !== 1) continue;
+    const preview = exactViewerAutoBetPreview(bucket[0]);
+    if (preview) byMarketId.set(marketId, preview);
+  }
+  return byMarketId;
+}
+
+export function attachViewerAutoBetPreview<
+  T extends { id: number; viewerAutoBetPreview: BetViewerAutoBetPreview | null },
+>(
+  market: T,
+  byMarketId: ReadonlyMap<number, BetViewerAutoBetPreview>
+): T {
+  return {
+    ...market,
+    viewerAutoBetPreview: byMarketId.get(market.id) ?? null,
   };
 }
 
@@ -8006,6 +8168,7 @@ function buildMarketCard(
     founderBonuses,
     warTape,
     previewLiquidity: [],
+    viewerAutoBetPreview: null,
     broadcastFeeds: EMPTY_BROADCAST_FEEDS,
     broadcastPreviewUrls: { ...EMPTY_BET_BROADCAST_PREVIEW_URLS },
     viewerWager: latestViewerWager
@@ -9126,6 +9289,9 @@ export async function loadBetBoardSnapshot(
           id: true,
           inGameName: true,
           steamPersonaName: true,
+          betAutoPreset: {
+            select: { id: true },
+          },
         },
       })
     : null;
@@ -9147,7 +9313,7 @@ export async function loadBetBoardSnapshot(
   ]);
 
   const openMarketIds = [...openMarketsRaw, ...awaitingProofRaw].map((market) => market.id);
-  const [claimRows, previewActionRows] = await Promise.all([
+  const [claimRows, previewActionRows, viewerAutoBetRows] = await Promise.all([
     prisma.pendingWoloClaim.findMany({
       where: {
         sourceMarketId: { in: openMarketIds },
@@ -9202,9 +9368,44 @@ export async function loadBetBoardSnapshot(
         createdAt: true,
       },
     }),
+    viewer?.betAutoPreset?.id && openMarketIds.length > 0
+      ? prisma.betAutoExecution.findMany({
+          where: {
+            presetId: viewer.betAutoPreset.id,
+            winnerMarketId: { in: openMarketIds },
+            status: "shadow_ready",
+          },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          select: {
+            id: true,
+            presetVersion: true,
+            winnerMarketId: true,
+            desyncMarketId: true,
+            propositionHash: true,
+            selectedSide: true,
+            winnerStakeWolo: true,
+            desyncSide: true,
+            desyncStakeWolo: true,
+            status: true,
+            reason: true,
+            ticketId: true,
+            reservationId: true,
+            attemptCount: true,
+            nextAttemptAt: true,
+            leaseOwner: true,
+            leaseExpiresAt: true,
+            acceptedAt: true,
+            sourceEvidence: true,
+            createdAt: true,
+          },
+        })
+      : Promise.resolve([]),
   ]);
   const previewLiquidityByMarketId =
     buildBetPreviewLiquidityMap(previewActionRows);
+
+  const viewerAutoBetPreviewByMarketId =
+    buildViewerAutoBetPreviewMap(viewerAutoBetRows);
 
   const claimsByMarketId = new Map<number, typeof claimRows>();
   for (const claim of claimRows) {
@@ -9217,15 +9418,21 @@ export async function loadBetBoardSnapshot(
   }
 
   const openMarketsWithoutFeeds = openMarketsRaw.map((market) =>
-    attachBetPreviewLiquidity(
-      buildMarketCard(market, viewer?.id ?? null, claimsByMarketId),
-      previewLiquidityByMarketId
+    attachViewerAutoBetPreview(
+      attachBetPreviewLiquidity(
+        buildMarketCard(market, viewer?.id ?? null, claimsByMarketId),
+        previewLiquidityByMarketId
+      ),
+      viewerAutoBetPreviewByMarketId
     )
   );
   const awaitingProofMarketsWithoutFeeds = awaitingProofRaw.map((market) =>
-    attachBetPreviewLiquidity(
-      buildMarketCard(market, viewer?.id ?? null, claimsByMarketId),
-      previewLiquidityByMarketId
+    attachViewerAutoBetPreview(
+      attachBetPreviewLiquidity(
+        buildMarketCard(market, viewer?.id ?? null, claimsByMarketId),
+        previewLiquidityByMarketId
+      ),
+      viewerAutoBetPreviewByMarketId
     )
   );
   const broadcastSessionKeys = [

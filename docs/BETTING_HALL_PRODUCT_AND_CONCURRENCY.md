@@ -118,6 +118,25 @@ Each displayed row is explicitly marked `financiallyCommitted=false`, and the
 Hall labels the rail “Shadow only · not in pot or odds.” Winner and Desync
 markets each retain their own Preview Liquidity evidence.
 
+A separate **Your Auto Bet Preview** rail is private to the signed-in viewer.
+It reads only that user's own preset-linked `BetAutoExecution` evidence through
+the private/no-store Betting Hall snapshot. The Hall never derives this row by
+re-running today's preset against an old market; it presents the immutable
+decision version and timestamp recorded by the shadow worker.
+
+Only one exact pristine `shadow_ready` row may project for a winner market.
+The presenter rechecks the frozen identity evidence and requires all financial
+consumer fields to remain untouched. Ambiguous duplicate rows, missing identity
+proof, proposition mismatch, malformed Desync linkage, or any ticket,
+reservation, attempt, lease, retry time or acceptance marker suppress the
+preview. The optional Desync leg is shown inside the parent winner preview and
+is not repeated on the Desync child card.
+
+This viewer rail is independent from public house **Preview Liquidity** and from
+`viewerWager`. It is presentation-only and must not enter seed/wager pools,
+total pot, crowd percentages, return math, War Tape financial proof, settlement,
+or War Chest accounting.
+
 Live execution remains impossible until dedicated operator custody,
 reservation proof, and an idempotent executor exist. The existing database
 constraint additionally requires real custody verification, reservation, and
