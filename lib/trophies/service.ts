@@ -578,33 +578,47 @@ export async function ensureDailyTrophyTributePayouts(prisma: PrismaClient, now 
       tributeAmountWolo: { gt: 0 },
       holderSince: { not: null },
     },
+    select: { id: true },
   });
 
-  for (const trophy of trophies) {
-    // Queue the first daily tribute for the UTC day once the belt is actually held.
-    // Only skip dates that end before the holder's reign begins.
-    const holderSince = trophy.holderSince;
-    if (!holderSince || holderSince.getTime() >= dayEnd.getTime()) {
-      continue;
-    }
-
-    const recipientUserId = trophy.currentHolderUserId;
-    const recipientDisplayName = trophy.currentHolderDisplayName;
-    const recipientWoloAddress = trophy.currentHolderWoloAddress;
-
-    if (!recipientUserId && !recipientDisplayName && !recipientWoloAddress) continue;
-    if (!recipientWoloAddress) continue;
-
-    const holderName = recipientDisplayName || recipientWoloAddress;
-    const memo = trophyTributeMemo(trophy, holderName, dayKey);
-    const lockKey = `trophy-daily-tribute:${trophy.id}:${dayKey}`;
+  for (const candidate of trophies) {
+    const lockKey = `trophy-daily-tribute:${candidate.id}:${dayKey}`;
 
     await prisma.$transaction(async (tx) => {
+      // Serialize against every custody-changing title lane first. The row lock
+      // also protects us from writers that do not know the advisory namespace.
+      const trophy = await lockTrophyMoneyState(tx, candidate.id);
+      if (!trophy) return;
+
       // The command center and the timer can both run the queue. Serialize one
-      // trophy/day so concurrent reads cannot create duplicate obligations.
+      // trophy/day after custody is locked so concurrent queue attempts cannot
+      // create duplicate obligations.
       await tx.$executeRaw`
         SELECT pg_advisory_xact_lock(hashtextextended(${lockKey}, 0))
       `;
+
+      // Re-check all money authority from the locked Trophy row. The outer
+      // candidate scan is only an optimization and may be stale by the time the
+      // transaction acquires custody.
+      if (
+        !trophyHasActiveReignTribute(trophy.trophyId) ||
+        !["held", "active"].includes(trophy.status) ||
+        trophy.payoutFrequency !== "daily" ||
+        trophy.tributeAmountWolo <= 0 ||
+        !trophy.holderSince ||
+        trophy.holderSince.getTime() >= dayEnd.getTime()
+      ) {
+        return;
+      }
+
+      const recipientUserId = trophy.currentHolderUserId;
+      const recipientDisplayName = trophy.currentHolderDisplayName;
+      const recipientWoloAddress = trophy.currentHolderWoloAddress;
+      if (!recipientUserId && !recipientDisplayName && !recipientWoloAddress) return;
+      if (!recipientWoloAddress) return;
+
+      const holderName = recipientDisplayName || recipientWoloAddress;
+      const memo = trophyTributeMemo(trophy, holderName, dayKey);
 
       const existing = await tx.trophyPayout.findMany({
         where: {
@@ -696,7 +710,7 @@ export async function ensureDailyTrophyTributePayouts(prisma: PrismaClient, now 
             trophyId: trophy.trophyId,
             trophyName: trophy.displayName,
             chainStatus: trophy.chainStatus,
-            holderSince: holderSince.toISOString(),
+            holderSince: trophy.holderSince.toISOString(),
             executionMode: "dry_run_until_trophy_settlement_enabled",
             supersededPayoutIds: reconciliation.stalePayoutIds,
           },
