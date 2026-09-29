@@ -217,6 +217,23 @@ private card. The DTO carries `financiallyCommitted=false` and never affects
 pools, pot, crowd split, odds, projected return, settlement, War Chest, or the
 public house **Preview Liquidity** rail.
 
+The Betting Hall may offer an explicit **Load Preview into Bet Slip** action for
+that private frozen preview. This is a manual convenience bridge, not Auto Bet
+acceptance. A pure client planner re-checks the current winner book, absence of
+an existing real viewer wager, exact current Desync child identity/open state,
+absence of an existing Desync wager, whole-WOLO amounts, and the current
+verified wallet/app cap including the combined Winner + Desync total. It never
+clamps or rewrites the frozen preview. If any current condition has drifted, the
+button fails closed with a concrete blocker.
+
+A successful load copies the frozen winner/optional Desync side and amounts only
+into the existing local manual Bet Slip `SelectionState`. It does not call a
+ticket/stake-intent API, connect Keplr, reserve WOLO, sign, broadcast, mutate the
+`BetAutoExecution`, set `acceptedAt`, or decrement a finite Auto Bet count.
+Financial authority still begins only when the user separately chooses the
+existing manual Lock/Wallet action, whose server/chain rail revalidates current
+market and stake authority again.
+
 Watcher identity promotion also fails closed around preview evidence. If two
 `BetAutoExecution` rows for the same preset would collapse onto one canonical
 game identity, promotion is blocked with `auto_execution_preset_collision`
