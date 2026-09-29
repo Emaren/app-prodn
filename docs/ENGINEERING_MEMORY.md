@@ -2166,3 +2166,10 @@ Championship bounty execution uses the existing Founder Rewards settlement rail.
 It remains separate from Bet Escrow and from the numbered public Bounty Pool.
 A ledger row without an executable, idempotent settlement path is not a finished
 financial feature.
+
+Title challenge creation must also respect Trophy lifecycle state. The shared
+admission policy is fail-closed: only `vacant`, `guardian_held`, `held`, and
+`active` may create a new title challenge. `draft`, `paused`, `retired`, or
+an unknown future state must not be treated as equivalent to a vacant/open
+throne merely because a caller knows the Trophy key. Enforce the same helper on
+the public challenge route and the admin Trophy action rail.
