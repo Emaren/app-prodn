@@ -128,8 +128,12 @@ test("E2 belt stages favor premium slightly-oversized waist coverage", () => {
   assert.match(experience, /bottom-1 left-1\/2 h-28 w-\[94%\]/);
 });
 
-test("ELO crowns use exact managed-media targets and avatar-backed holder stages", () => {
+test("ELO crowns use exact managed-media targets and lane-specific Trophy custody", () => {
   assert.match(state, /lane === "dm" \? entry\.steamDmRating : entry\.steamRmRating/);
+  assert.match(state, /loadEloCustody/);
+  assert.match(state, /family: "elo"/);
+  assert.match(state, /canonicalEloTrophyId\(lane, division\)/);
+  assert.match(state, /eloTrophyIdentity\(trophy\)/);
   assert.match(state, /if \(lane === "rm"\)[\s\S]*return definition\.id/);
   assert.match(state, /division === "challenger" \? "dm-contender"/);
   assert.match(state, /rm \? "random-map-champion" : "deathmatch-champion"/);
