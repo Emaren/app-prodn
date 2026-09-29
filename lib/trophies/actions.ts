@@ -132,7 +132,7 @@ function assertChallengeCustodyStillCurrent(
   }
 }
 
-async function getUser(prisma: PrismaClient, userId: number | null) {
+async function getUser(prisma: PrismaClient | Prisma.TransactionClient, userId: number | null) {
   if (!userId) return null;
   const user = await prisma.user.findUnique({
     where: { id: userId },
