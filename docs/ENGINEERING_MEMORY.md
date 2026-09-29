@@ -2178,6 +2178,19 @@ Do not run the fully re-runnable operator seed reconciler merely to paint a
 profile. Static fallback holders must also pass forced-vacancy policy so a
 future definition edit cannot resurrect obsolete public custody.
 
+The Kingdom Knowledge Router is a public evidence plane and must not become a
+second Trophy authority. Production honors should begin with the canonical
+public Trophy loader/projection, then enrich that projected current state with
+bounded historical events if the AI needs chronology. Do not query raw Trophy
+custody and call it current truth merely because production has direct Prisma
+access. Live bounty evidence must use the same projected bounty calculation as
+the public registry.
+
+Public KKR serialization must also exclude operator-only mutable Trophy notes.
+An admin eligibility note belongs in Trophy Command, not in public model
+context. Historical event fields may be preserved when they are intentionally
+selected and public-safe; history is evidence, not current custody.
+
 Commissioner challenge creation has no separate defender-selection authority.
 The target Trophy and challenger may be selected, but defender/Guardian identity
 must come from the locked Trophy authority. Existing nonterminal title
