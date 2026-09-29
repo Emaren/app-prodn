@@ -41,6 +41,19 @@ export type BetPreviewLiquidityRow = {
   financiallyCommitted: false;
 };
 
+export type BetViewerAutoBetPreview = {
+  id: number;
+  presetVersion: number;
+  selectedSide: BetSide;
+  winnerStakeWolo: number;
+  desyncSide: "none" | "yes" | "no";
+  desyncStakeWolo: number;
+  desyncMarketId: number | null;
+  propositionHash: string;
+  recordedAt: string;
+  financiallyCommitted: false;
+};
+
 export type BetBroadcastFeed = {
   id: number;
   sessionKey: string;
@@ -118,6 +131,7 @@ export type BetBoardMarket = {
   founderBonuses: BetFounderChip[];
   warTape: BetWarTapeRow[];
   previewLiquidity?: BetPreviewLiquidityRow[];
+  viewerAutoBetPreview?: BetViewerAutoBetPreview | null;
   broadcastFeeds: BetBroadcastFeeds;
   broadcastPreviewUrls: BetBroadcastPreviewUrls;
   viewerWager: {
