@@ -9,6 +9,10 @@ import {
   type BetAutoShadowPresetInput,
   type BetAutoShadowSessionInput,
 } from "../lib/betAutomation.ts";
+import {
+  BET_AUTO_SHADOW_READY_STATUS,
+  runBetAutoShadowWorker,
+} from "../lib/betAutomationShadowWorker.ts";
 
 const OWNER_STEAM = "76561198000000001";
 const OTHER_STEAM = "76561198000000002";
@@ -335,4 +339,148 @@ test("market reconciliation reuses its canonical active-session snapshot for sha
     /runBetAutoShadowWorker\(prisma, \{ activeSessions \}\)/
   );
   assert.doesNotMatch(worker, /loadLiveSessionSnapshot/);
+});
+
+
+test("shadow worker materializes one immutable preview row per preset and canonical game", async () => {
+  const rows: Array<Record<string, unknown>> = [];
+  const unique = new Set<string>();
+
+  const prisma = {
+    betAutoPreset: {
+      findMany: async () => [
+        {
+          id: 7,
+          version: 3,
+          enabled: true,
+          winnerStakeWolo: 25,
+          desyncSide: "no",
+          desyncStakeWolo: 5,
+          untilOut: false,
+          gamesRemaining: 3,
+          selfOnly: true,
+          user: {
+            uid: "emaren",
+            steamId: OWNER_STEAM,
+          },
+        },
+      ],
+    },
+    betMarket: {
+      findMany: async () => [
+        {
+          ...market(),
+          teamResolutionProvenance: "parser_team_ids",
+          sourceParseIteration: 4,
+          sourceRosterHash: "b".repeat(64),
+          rosterLockedAt: new Date("2026-09-29T16:00:00.000Z"),
+          childMarkets: [desync()],
+        },
+      ],
+    },
+    betAutoExecution: {
+      createMany: async (input: {
+        data: Array<Record<string, unknown>>;
+        skipDuplicates: boolean;
+      }) => {
+        assert.equal(input.skipDuplicates, true);
+        let count = 0;
+        for (const row of input.data) {
+          const key = `${row.presetId}:${row.gameIdentityKey}`;
+          if (unique.has(key)) continue;
+          unique.add(key);
+          rows.push(row);
+          count += 1;
+        }
+        return { count };
+      },
+    },
+  };
+
+  const activeSessions = [
+    {
+      sessionKey: "platform:exact-match",
+      identityAliases: ["legacy-exact-match"],
+      uploaders: [
+        {
+          uid: "emaren",
+          displayName: "Emaren",
+          parseRows: 4,
+          lastSeenAt: "2026-09-29T16:01:00.000Z",
+        },
+      ],
+    },
+  ];
+
+  const first = await runBetAutoShadowWorker(
+    prisma as never,
+    {
+      activeSessions: activeSessions as never,
+      env: { BET_AUTOMATION_MODE: "shadow" },
+    }
+  );
+  assert.deepEqual(first, {
+    mode: "shadow",
+    evaluatedCount: 1,
+    eligibleCount: 1,
+    createdCount: 1,
+    existingCount: 0,
+    skippedCount: 0,
+  });
+
+  assert.equal(rows.length, 1);
+  assert.equal(rows[0].presetId, 7);
+  assert.equal(rows[0].presetVersion, 3);
+  assert.equal(rows[0].gameIdentityKey, "platform:exact-match");
+  assert.equal(rows[0].sessionKey, "platform:exact-match");
+  assert.equal(rows[0].winnerMarketId, 41);
+  assert.equal(rows[0].desyncMarketId, 42);
+  assert.equal(rows[0].selectedSide, "left");
+  assert.equal(rows[0].winnerStakeWolo, 25);
+  assert.equal(rows[0].desyncSide, "no");
+  assert.equal(rows[0].desyncStakeWolo, 5);
+  assert.equal(rows[0].status, BET_AUTO_SHADOW_READY_STATUS);
+  assert.equal(rows[0].reason, "shadow_preview_eligible");
+  assert.equal(rows[0].reservationId, null);
+  assert.equal(rows[0].ticketId, null);
+  assert.equal(rows[0].acceptedAt, null);
+  assert.equal(rows[0].attemptCount, 0);
+
+  const second = await runBetAutoShadowWorker(
+    prisma as never,
+    {
+      activeSessions: activeSessions as never,
+      env: { BET_AUTOMATION_MODE: "shadow" },
+    }
+  );
+  assert.equal(second.createdCount, 0);
+  assert.equal(second.existingCount, 1);
+  assert.equal(rows.length, 1);
+});
+
+test("disabled automation mode performs no shadow database work", async () => {
+  const prisma = {
+    betAutoPreset: {
+      findMany: async () => {
+        throw new Error("disabled mode must not query presets");
+      },
+    },
+  };
+
+  const result = await runBetAutoShadowWorker(
+    prisma as never,
+    {
+      activeSessions: [] as never,
+      env: { BET_AUTOMATION_MODE: "disabled" },
+    }
+  );
+
+  assert.deepEqual(result, {
+    mode: "disabled",
+    evaluatedCount: 0,
+    eligibleCount: 0,
+    createdCount: 0,
+    existingCount: 0,
+    skippedCount: 0,
+  });
 });
