@@ -623,12 +623,25 @@ type BetViewerAutoBetPreviewEvidenceRow = {
   leaseOwner: string | null;
   leaseExpiresAt: Date | null;
   acceptedAt: Date | null;
+  sourceEvidence: unknown;
   createdAt: Date;
 };
 
 function exactViewerAutoBetPreview(
   row: BetViewerAutoBetPreviewEvidenceRow
 ): BetViewerAutoBetPreview | null {
+  const sourceEvidence =
+    row.sourceEvidence &&
+    typeof row.sourceEvidence === "object" &&
+    !Array.isArray(row.sourceEvidence)
+      ? (row.sourceEvidence as Record<string, unknown>)
+      : null;
+  const propositionHash = row.propositionHash.trim();
+  const sourcePropositionHash =
+    typeof sourceEvidence?.propositionHash === "string"
+      ? sourceEvidence.propositionHash.trim()
+      : "";
+
   if (
     row.status !== "shadow_ready" ||
     row.reason !== "shadow_preview_eligible" ||
@@ -639,7 +652,21 @@ function exactViewerAutoBetPreview(
     (row.selectedSide !== "left" && row.selectedSide !== "right") ||
     !Number.isSafeInteger(row.winnerStakeWolo) ||
     row.winnerStakeWolo <= 0 ||
-    !row.propositionHash.trim() ||
+    !/^[a-f0-9]{64}$/i.test(propositionHash) ||
+    !sourceEvidence ||
+    sourceEvidence.mode !== "shadow" ||
+    sourceEvidence.exactSteamRosterMatch !== true ||
+    sourceEvidence.exactUploaderUidMatch !== true ||
+    sourceEvidence.marketIntegrityStatus !== "verified" ||
+    sourceEvidence.teamResolutionStatus !== "resolved" ||
+    sourceEvidence.teamConfidence !== "high" ||
+    sourcePropositionHash !== propositionHash ||
+    typeof sourceEvidence.canonicalSessionKey !== "string" ||
+    !sourceEvidence.canonicalSessionKey.trim() ||
+    typeof sourceEvidence.ownerUid !== "string" ||
+    !sourceEvidence.ownerUid.trim() ||
+    typeof sourceEvidence.ownerSteamId !== "string" ||
+    !sourceEvidence.ownerSteamId.trim() ||
     row.ticketId !== null ||
     row.reservationId !== null ||
     row.attemptCount !== 0 ||
@@ -678,7 +705,7 @@ function exactViewerAutoBetPreview(
     desyncSide,
     desyncStakeWolo: row.desyncStakeWolo,
     desyncMarketId: row.desyncMarketId,
-    propositionHash: row.propositionHash.trim(),
+    propositionHash,
     recordedAt: row.createdAt.toISOString(),
     financiallyCommitted: false,
   };
@@ -9368,6 +9395,7 @@ export async function loadBetBoardSnapshot(
             leaseOwner: true,
             leaseExpiresAt: true,
             acceptedAt: true,
+            sourceEvidence: true,
             createdAt: true,
           },
         })
