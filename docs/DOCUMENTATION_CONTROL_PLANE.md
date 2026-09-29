@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/counter-bettor-shadow-worker-20260929` at `3801bfe64ba42e05a471d7b88529be2727ed24ff`
+Implementation baseline: `test/auto-bet-promotion-collision-20260929` at `f29d6a021381cde2a3da02bd20be541ba0d85130`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
