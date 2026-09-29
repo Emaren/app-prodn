@@ -43,7 +43,7 @@ export function readBetPhaseBooksV2Runtime(
       mode: "shadow",
       activationReady: false,
       detail:
-        "Phase Books V2 shadow planning is available. Production wager admission remains on the legacy compatibility bridge.",
+        "Phase Books V2 shadow materialization is available. Durable phase rows remain non-financial and production wager admission stays on the legacy compatibility bridge.",
     };
   }
 
