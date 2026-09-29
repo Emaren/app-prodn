@@ -195,11 +195,13 @@ function isHTTPURL(value: string | undefined) {
 }
 
 /**
- * Live execution intentionally remains unavailable in this app revision.
+ * Live funded execution intentionally remains unavailable in this app revision.
  *
- * A future revision may flip this only after it owns a durable worker that
- * consumes BetAutoExecution rows and a versioned Wolo custody contract. Merely
- * setting an environment variable must never turn preview rows into wagers.
+ * The durable shadow producer now materializes preview-only BetAutoExecution
+ * evidence rows. A future revision may flip live execution only after a
+ * separate durable consumer owns versioned Wolo custody, reservation, ticket
+ * acceptance and retry semantics. Merely setting an environment variable must
+ * never turn shadow evidence into wagers.
  */
 const LIVE_EXECUTOR_IMPLEMENTED = false;
 
@@ -248,7 +250,7 @@ export function readBetAutomationRuntime(
       custodyCapabilityPresent,
       code: "LIVE_EXECUTOR_UNAVAILABLE",
       detail:
-        "Wolo custody is advertised, but the durable app executor is not installed. The plan remains preview-only and no wager can be placed.",
+        "Wolo custody is advertised, but the funded executor is not installed. Eligible games may still be shadow-evaluated, but no WOLO moves and no wager can be placed.",
     };
   }
 
@@ -260,7 +262,7 @@ export function readBetAutomationRuntime(
     custodyCapabilityPresent,
     code: "PREVIEW_READY",
     detail:
-      "Preview mode stores your self-bet rules only. No WOLO moves and no wager is placed.",
+      "Preview mode evaluates eligible self-bet rules and records shadow evidence only. No WOLO moves and no wager is placed.",
   };
 }
 
