@@ -28,6 +28,7 @@ test("wallet Trophy association separates app custody from chain-owner evidence"
   assert.match(route, /if \(!appCustodyRole && !isChainOwner\)/);
   assert.match(route, /guardianHolderDisplayName/);
   assert.match(route, /guardianHolderWoloAddress/);
+  assert.match(route, /custodyConsistent: authority\.custodyConsistent/);
 });
 
 test("wallet Trophy presentation uses projected economics and canonical media/routes", () => {
@@ -45,6 +46,7 @@ test("wallet UI never equates recorded chain ownership with current title custod
   assert.match(client, /Recorded chain owner/);
   assert.match(client, /Current holder/);
   assert.match(client, /Guardian custody/);
+  assert.match(client, /return "Unresolved"/);
   assert.match(
     client,
     /A recorded chain owner does not by itself mean this wallet currently holds the title\./,
