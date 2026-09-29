@@ -193,8 +193,13 @@ test("admin payout rail treats cancelled and superseded rows as terminal", () =>
     source,
     /\["paid", "cancelled", "superseded"\]\.includes\(payout\.status\)/
   );
+  assert.match(source, /function trophyPayoutIsExecutable/);
   assert.match(
     source,
-    /disabled=\{busy \|\| trophyPayoutIsTerminal\(payout\) \|\| !payout\.recipientWoloAddress\}/
+    /disabled=\{busy \|\| !trophyPayoutIsExecutable\(payout\) \|\| !payout\.recipientWoloAddress\}/
+  );
+  assert.match(
+    source,
+    /payout\.payoutKind === "dethrone_bounty"[\s\S]*\["pending", "retrying", "failed"\]\.includes\(payout\.status\)/
   );
 });

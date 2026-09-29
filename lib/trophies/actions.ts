@@ -8,7 +8,9 @@ import {
   loadDesyncIncidentsForSettlement,
 } from "@/lib/desyncChallenge";
 import {
-  executePendingTrophyTributePayouts,
+  executePendingTrophyPayouts,
+  lockTrophyMoneyState,
+  prepareManualTrophyHolderTransferPayouts,
   projectedTrophyBounty,
   recordNationalityChange,
 } from "@/lib/trophies/service";
@@ -79,6 +81,45 @@ async function getTrophy(prisma: PrismaClient, payload: ActionPayload) {
       : null;
   if (!trophy) throw new TrophyActionError("Trophy not found.", 404);
   return trophy;
+}
+
+function assertChallengeCustodyStillCurrent(
+  trophy: {
+    currentHolderUserId: number | null;
+    guardianHolderUserId: number | null;
+  },
+  challenge: {
+    defenderUserId: number | null;
+    guardianUserId: number | null;
+  }
+) {
+  if (challenge.defenderUserId !== null) {
+    if (trophy.currentHolderUserId !== challenge.defenderUserId) {
+      throw new TrophyActionError(
+        "Title custody changed after this challenge was created. Re-open the challenge against the current holder.",
+        409
+      );
+    }
+    return;
+  }
+  if (challenge.guardianUserId !== null) {
+    if (
+      trophy.currentHolderUserId !== null ||
+      trophy.guardianHolderUserId !== challenge.guardianUserId
+    ) {
+      throw new TrophyActionError(
+        "Guardian custody changed after this challenge was created. Re-open the challenge against current custody.",
+        409
+      );
+    }
+    return;
+  }
+  if (trophy.currentHolderUserId !== null || trophy.guardianHolderUserId !== null) {
+    throw new TrophyActionError(
+      "This challenge was created for a vacant title, but custody is no longer vacant.",
+      409
+    );
+  }
 }
 
 async function getUser(prisma: PrismaClient, userId: number | null) {
@@ -191,7 +232,7 @@ function eligibilityForUser(
 }
 
 async function recordEvent(
-  prisma: PrismaClient,
+  prisma: PrismaClient | Prisma.TransactionClient,
   input: {
     trophyId: number;
     eventType: string;
@@ -286,35 +327,98 @@ async function assignHolder(
     throw new TrophyActionError(`Holder is not eligible. ${eligibility.detail}`);
   }
 
-  const previousHolderId = trophy.currentHolderUserId;
-  const previousAddress = trophy.currentHolderWoloAddress;
   const nextName = displayName(user);
+  const now = new Date();
+
   await prisma.$transaction(async (tx) => {
+    const currentTrophy = await lockTrophyMoneyState(tx, trophy.id);
+    if (!currentTrophy) {
+      throw new TrophyActionError("Trophy disappeared during title transfer.", 409);
+    }
+
+    const previousHolderId = currentTrophy.currentHolderUserId;
+    const previousAddress = currentTrophy.currentHolderWoloAddress;
+    const sameHolder = previousHolderId === user.id;
+
+    if (sameHolder) {
+      await tx.trophy.update({
+        where: { id: currentTrophy.id },
+        data: {
+          currentHolderDisplayName: nextName,
+          currentHolderWoloAddress: user.walletAddress,
+          forfeitureNeeded: false,
+          eligibilityNote: eligibility.eligible
+            ? eligibility.detail
+            : `Admin eligibility override: ${eligibility.detail}`,
+        },
+      });
+      await recordEvent(tx, {
+        trophyId: currentTrophy.id,
+        eventType: "HOLDER_DETAILS_REFRESHED",
+        actor,
+        fromHolderUserId: previousHolderId,
+        toHolderUserId: user.id,
+        fromWoloAddress: previousAddress,
+        toWoloAddress: user.walletAddress,
+        rawRequest: jsonValue({
+          eligibility,
+          eligibilityOverride: override,
+          custodyChanged: false,
+          bountyReset: false,
+        }),
+      });
+      return;
+    }
+
+    const transferPayouts = await prepareManualTrophyHolderTransferPayouts(tx, {
+      trophy: currentTrophy,
+      previousHolderUserId: previousHolderId,
+      previousHolderDisplayName: currentTrophy.currentHolderDisplayName,
+      nextHolderUserId: user.id,
+      nextHolderDisplayName: nextName,
+      nextHolderWoloAddress: user.walletAddress,
+      now,
+    });
+
     await tx.trophy.update({
-      where: { id: trophy.id },
+      where: { id: currentTrophy.id },
       data: {
         currentHolderUserId: user.id,
         currentHolderDisplayName: nextName,
         currentHolderWoloAddress: user.walletAddress,
         status: "held",
-        holderSince: new Date(),
+        currentBountyWolo: 0,
+        holderSince: now,
         forfeitureNeeded: false,
         eligibilityNote: eligibility.eligible
           ? eligibility.detail
           : `Admin eligibility override: ${eligibility.detail}`,
       },
     });
-    await recordEvent(tx as PrismaClient, {
-      trophyId: trophy.id,
+
+    await recordEvent(tx, {
+      trophyId: currentTrophy.id,
       eventType: previousHolderId ? "HOLDER_REASSIGNED" : "HOLDER_ASSIGNED",
       actor,
       fromHolderUserId: previousHolderId,
       toHolderUserId: user.id,
       fromWoloAddress: previousAddress,
       toWoloAddress: user.walletAddress,
+      amountWolo:
+        transferPayouts.accruedBountyWolo > 0
+          ? transferPayouts.accruedBountyWolo
+          : null,
       rawRequest: jsonValue({
         eligibility,
         eligibilityOverride: override,
+        custodyChanged: true,
+        transferAt: now.toISOString(),
+        bountyResetToWolo: 0,
+        accruedBountyPayoutWolo: transferPayouts.accruedBountyWolo,
+        bountyPayoutId: transferPayouts.bountyPayoutId,
+        tributePayoutId: transferPayouts.tributePayoutId,
+        supersededTributePayoutIds: transferPayouts.supersededTributePayoutIds,
+        tributeBlockedByChainTruth: transferPayouts.tributeBlockedByChainTruth,
       }),
     });
   });
@@ -846,10 +950,15 @@ async function updateChallenge(
   if (operation === "dry_run") {
     if (!challenge.winnerUserId) throw new TrophyActionError("Verify a winner first.");
     const challengerWon = challenge.winnerUserId === challenge.challengerUserId;
-    const bounty = challengerWon ? projectedTrophyBounty(challenge.trophy) : 0;
     const winner = await getUser(prisma, challenge.winnerUserId);
     await prisma.$transaction(async (tx) => {
       await assertTrophyChallengeDesyncAllowsTitleMutation(tx, challenge);
+      const currentTrophy = await lockTrophyMoneyState(tx, challenge.trophyId);
+      if (!currentTrophy) {
+        throw new TrophyActionError("Trophy disappeared during title settlement preview.", 409);
+      }
+      assertChallengeCustodyStillCurrent(currentTrophy, challenge);
+      const bounty = challengerWon ? projectedTrophyBounty(currentTrophy) : 0;
       await tx.trophyChallenge.update({
         where: { id: challenge.id, status: { not: "commissioner_vetoed" } },
         data: { status: "settlement_dry_run", settlementStatus: "dry_run_ready" },
@@ -883,7 +992,7 @@ async function updateChallenge(
           challengerWon,
           wouldTransferHolder: challengerWon,
           wouldPayBountyWolo: bounty,
-          mode: challenge.trophy.chainStatus === "app_only" ? "app_only" : "chain_intent",
+          mode: currentTrophy.chainStatus === "app_only" ? "app_only" : "chain_intent",
         }),
       });
       await recordScheduledTitleActivity(tx, challenge, actor, {
@@ -918,6 +1027,11 @@ async function updateChallenge(
     if (chainBacked) {
       await prisma.$transaction(async (tx) => {
         await assertTrophyChallengeDesyncAllowsTitleMutation(tx, challenge);
+        const currentTrophy = await lockTrophyMoneyState(tx, challenge.trophyId);
+        if (!currentTrophy) {
+          throw new TrophyActionError("Trophy disappeared during title settlement.", 409);
+        }
+        assertChallengeCustodyStillCurrent(currentTrophy, challenge);
         await tx.trophyChallenge.update({
           where: { id: challenge.id, status: { not: "commissioner_vetoed" } },
           data: { status: "settling", settlementStatus: "chain_intent_recorded" },
@@ -956,9 +1070,14 @@ async function updateChallenge(
       throw new TrophyActionError("App-only fallback is disabled and chain-backed settlement is unavailable.");
     }
 
-    const bounty = challengerWon ? projectedTrophyBounty(challenge.trophy) : 0;
     await prisma.$transaction(async (tx) => {
       await assertTrophyChallengeDesyncAllowsTitleMutation(tx, challenge);
+      const currentTrophy = await lockTrophyMoneyState(tx, challenge.trophyId);
+      if (!currentTrophy) {
+        throw new TrophyActionError("Trophy disappeared during title settlement.", 409);
+      }
+      assertChallengeCustodyStillCurrent(currentTrophy, challenge);
+      const bounty = challengerWon ? projectedTrophyBounty(currentTrophy) : 0;
       if (challengerWon) {
         await tx.trophy.update({
           where: { id: challenge.trophyId },
@@ -1007,8 +1126,8 @@ async function updateChallenge(
         challengeId: challenge.id,
         replayId: challenge.replayId,
         fromHolderUserId:
-          challenge.trophy.currentHolderUserId || challenge.trophy.guardianHolderUserId,
-        toHolderUserId: challengerWon ? winner.id : challenge.trophy.currentHolderUserId,
+          currentTrophy.currentHolderUserId || currentTrophy.guardianHolderUserId,
+        toHolderUserId: challengerWon ? winner.id : currentTrophy.currentHolderUserId,
         amountWolo: bounty,
         rawResponse: jsonValue({
           mode: "app_only",
@@ -1062,10 +1181,29 @@ async function updatePayout(
     throw new TrophyActionError("Paid or tx-backed trophy payouts cannot be changed from the admin rail.", 409);
   }
 
+  if (
+    payout.payoutKind === "dethrone_bounty" &&
+    payout.status === "dry_run" &&
+    (operation === "execute" || operation === "retry")
+  ) {
+    throw new TrophyActionError(
+      "Championship bounty previews are not payable obligations. Settle the title result first.",
+      409
+    );
+  }
+
+  if (payout.payoutKind === "dethrone_bounty" && operation === "dry_run") {
+    throw new TrophyActionError(
+      "A real championship bounty obligation cannot be converted back into a preview.",
+      409
+    );
+  }
+
   if (operation === "execute") {
-    const result = await executePendingTrophyTributePayouts(prisma, {
+    const result = await executePendingTrophyPayouts(prisma, {
       payoutId: payout.id,
       limit: 1,
+      includeBounties: true,
     });
 
     if (result.scanned < 1) {
