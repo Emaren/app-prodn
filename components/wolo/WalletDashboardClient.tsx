@@ -319,6 +319,7 @@ type WalletTrophyRow = {
   guardianHolderWoloAddress: string | null;
   appCustodyRole: "holder" | "guardian" | null;
   isChainOwner: boolean;
+  custodyConsistent: boolean;
   tributeAmountWolo: number;
   currentBountyWolo: number;
   bountyGrowthWolo: number;
@@ -384,6 +385,10 @@ function walletTrophyAssociationLabel(trophy: WalletTrophyRow) {
 }
 
 function currentAppCustodyLabel(trophy: WalletTrophyRow) {
+  if (!trophy.custodyConsistent) {
+    return "Unresolved";
+  }
+
   if (trophy.currentHolderDisplayName) {
     return `Holder · ${trophy.currentHolderDisplayName}`;
   }
@@ -392,7 +397,7 @@ function currentAppCustodyLabel(trophy: WalletTrophyRow) {
     return `Guardian · ${trophy.guardianHolderDisplayName}`;
   }
 
-  return "Vacant";
+  return trophy.status === "vacant" ? "Vacant" : "No active custodian";
 }
 
 function WalletChainPortfolio({
