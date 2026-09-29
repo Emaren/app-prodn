@@ -8,7 +8,8 @@ import {
   loadDesyncIncidentsForSettlement,
 } from "@/lib/desyncChallenge";
 import {
-  executePendingTrophyTributePayouts,
+  executePendingTrophyPayouts,
+  prepareManualTrophyHolderTransferPayouts,
   projectedTrophyBounty,
   recordNationalityChange,
 } from "@/lib/trophies/service";
@@ -191,7 +192,7 @@ function eligibilityForUser(
 }
 
 async function recordEvent(
-  prisma: PrismaClient,
+  prisma: PrismaClient | Prisma.TransactionClient,
   input: {
     trophyId: number;
     eventType: string;
@@ -286,35 +287,107 @@ async function assignHolder(
     throw new TrophyActionError(`Holder is not eligible. ${eligibility.detail}`);
   }
 
-  const previousHolderId = trophy.currentHolderUserId;
-  const previousAddress = trophy.currentHolderWoloAddress;
   const nextName = displayName(user);
+  const now = new Date();
+
   await prisma.$transaction(async (tx) => {
-    await tx.trophy.update({
+    await tx.$queryRaw<Array<{ lock_acquired: number }>>`
+      SELECT 1::int AS lock_acquired
+      FROM pg_advisory_xact_lock(${trophy.id})
+    `;
+
+    const currentTrophy = await tx.trophy.findUnique({
       where: { id: trophy.id },
+    });
+    if (!currentTrophy) {
+      throw new TrophyActionError("Trophy disappeared during title transfer.", 409);
+    }
+
+    const previousHolderId = currentTrophy.currentHolderUserId;
+    const previousAddress = currentTrophy.currentHolderWoloAddress;
+    const sameHolder =
+      previousHolderId === user.id &&
+      currentTrophy.status === "held";
+
+    if (sameHolder) {
+      await tx.trophy.update({
+        where: { id: currentTrophy.id },
+        data: {
+          currentHolderDisplayName: nextName,
+          currentHolderWoloAddress: user.walletAddress,
+          forfeitureNeeded: false,
+          eligibilityNote: eligibility.eligible
+            ? eligibility.detail
+            : `Admin eligibility override: ${eligibility.detail}`,
+        },
+      });
+      await recordEvent(tx, {
+        trophyId: currentTrophy.id,
+        eventType: "HOLDER_DETAILS_REFRESHED",
+        actor,
+        fromHolderUserId: previousHolderId,
+        toHolderUserId: user.id,
+        fromWoloAddress: previousAddress,
+        toWoloAddress: user.walletAddress,
+        rawRequest: jsonValue({
+          eligibility,
+          eligibilityOverride: override,
+          custodyChanged: false,
+          bountyReset: false,
+        }),
+      });
+      return;
+    }
+
+    const transferPayouts = await prepareManualTrophyHolderTransferPayouts(tx, {
+      trophy: currentTrophy,
+      previousHolderUserId: previousHolderId,
+      previousHolderDisplayName: currentTrophy.currentHolderDisplayName,
+      nextHolderUserId: user.id,
+      nextHolderDisplayName: nextName,
+      nextHolderWoloAddress: user.walletAddress,
+      now,
+    });
+
+    await tx.trophy.update({
+      where: { id: currentTrophy.id },
       data: {
         currentHolderUserId: user.id,
         currentHolderDisplayName: nextName,
         currentHolderWoloAddress: user.walletAddress,
         status: "held",
-        holderSince: new Date(),
+        currentBountyWolo: 0,
+        holderSince: now,
         forfeitureNeeded: false,
         eligibilityNote: eligibility.eligible
           ? eligibility.detail
           : `Admin eligibility override: ${eligibility.detail}`,
       },
     });
-    await recordEvent(tx as PrismaClient, {
-      trophyId: trophy.id,
+
+    await recordEvent(tx, {
+      trophyId: currentTrophy.id,
       eventType: previousHolderId ? "HOLDER_REASSIGNED" : "HOLDER_ASSIGNED",
       actor,
       fromHolderUserId: previousHolderId,
       toHolderUserId: user.id,
       fromWoloAddress: previousAddress,
       toWoloAddress: user.walletAddress,
+      amountWolo:
+        transferPayouts.accruedBountyWolo > 0
+          ? transferPayouts.accruedBountyWolo
+          : null,
       rawRequest: jsonValue({
         eligibility,
         eligibilityOverride: override,
+        custodyChanged: true,
+        transferAt: now.toISOString(),
+        bountyResetToWolo: 0,
+        accruedBountyPayoutWolo: transferPayouts.accruedBountyWolo,
+        bountyPayoutId: transferPayouts.bountyPayoutId,
+        tributePayoutId: transferPayouts.tributePayoutId,
+        supersededTributePayoutIds: transferPayouts.supersededTributePayoutIds,
+        tributeBlockedByChainTruth: transferPayouts.tributeBlockedByChainTruth,
       }),
     });
   });
@@ -1063,9 +1136,10 @@ async function updatePayout(
   }
 
   if (operation === "execute") {
-    const result = await executePendingTrophyTributePayouts(prisma, {
+    const result = await executePendingTrophyPayouts(prisma, {
       payoutId: payout.id,
       limit: 1,
+      includeBounties: true,
     });
 
     if (result.scanned < 1) {
