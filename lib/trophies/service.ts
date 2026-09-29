@@ -1443,19 +1443,33 @@ export function projectTrophyChallengeAuthority(
     definition && titleIsPubliclyForcedVacant(definition.id)
   );
   const status = forcedVacant ? "vacant" : trophy.status;
+  const currentHolderUserId = forcedVacant ? null : trophy.currentHolderUserId;
+  const guardianHolderUserId = forcedVacant ? null : trophy.guardianHolderUserId;
+  const statusChallengeable = CHALLENGEABLE_TROPHY_STATUSES.has(status);
+  const custodyConsistent = forcedVacant
+    ? true
+    : status === "held" || status === "active"
+      ? currentHolderUserId !== null
+      : status === "guardian_held"
+        ? currentHolderUserId === null && guardianHolderUserId !== null
+        : status === "vacant"
+          ? currentHolderUserId === null
+          : true;
 
   return {
-    challengeable: CHALLENGEABLE_TROPHY_STATUSES.has(status),
+    challengeable: statusChallengeable && custodyConsistent,
+    statusChallengeable,
+    custodyConsistent,
     forcedVacant,
     status,
-    currentHolderUserId: forcedVacant ? null : trophy.currentHolderUserId,
+    currentHolderUserId,
     currentHolderDisplayName: forcedVacant
       ? null
       : trophy.currentHolderDisplayName,
     currentHolderWoloAddress: forcedVacant
       ? null
       : trophy.currentHolderWoloAddress,
-    guardianHolderUserId: forcedVacant ? null : trophy.guardianHolderUserId,
+    guardianHolderUserId,
     guardianHolderDisplayName: forcedVacant
       ? null
       : trophy.guardianHolderDisplayName,
