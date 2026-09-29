@@ -527,7 +527,7 @@ export async function prepareManualTrophyHolderTransferPayouts(
         toHolderUserId: input.nextHolderUserId,
         toWoloAddress: input.nextHolderWoloAddress,
         amountWolo: accruedBountyWolo,
-        status: "dry_run",
+        status: "pending",
         rawRequest: {
           payoutId: payout.id,
           memo,
