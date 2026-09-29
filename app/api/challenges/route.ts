@@ -439,6 +439,7 @@ export async function POST(request: NextRequest) {
       challenger: typeof viewer | typeof challenged;
       opponent: typeof viewer | typeof challenged;
       challengerRating: number | null;
+      automaticHeldDefense: boolean;
     }> = [];
 
     if (targetTrophy) {
@@ -447,7 +448,44 @@ export async function POST(request: NextRequest) {
         challenger: titleContender,
         opponent: titleOpponent,
         challengerRating,
+        automaticHeldDefense: false,
       });
+    } else {
+      const participantIds = [viewer.id, challenged.id];
+      const heldEloTitles = await prisma.trophy.findMany({
+        where: {
+          family: "elo",
+          kind: "belt",
+          chainStatus: "app_only",
+          status: { in: ["held", "active"] },
+          currentHolderUserId: { in: participantIds },
+          challenges: {
+            none: {
+              scheduledMatchId: { not: null },
+              status: {
+                notIn: [...TERMINAL_TITLE_CHALLENGE_STATUSES],
+              },
+            },
+          },
+        },
+        orderBy: [{ id: "asc" }],
+      });
+
+      for (const title of heldEloTitles) {
+        const holderIsViewer =
+          title.currentHolderUserId === viewer.id;
+        const holderIsChallenged =
+          title.currentHolderUserId === challenged.id;
+        if (!holderIsViewer && !holderIsChallenged) continue;
+
+        titleStakePlans.push({
+          trophy: title,
+          challenger: holderIsViewer ? challenged : viewer,
+          opponent: holderIsViewer ? viewer : challenged,
+          challengerRating: null,
+          automaticHeldDefense: true,
+        });
+      }
     }
 
     let createdChallengeId: number | null = null;
@@ -457,17 +495,18 @@ export async function POST(request: NextRequest) {
 
     try {
       await prisma.$transaction(async (tx) => {
-        if (targetTrophy) {
+        for (const titleStake of titleStakePlans) {
+          const title = titleStake.trophy;
           await tx.$executeRaw`
             SELECT pg_advisory_xact_lock(
               ${TITLE_CHALLENGE_LOCK_NAMESPACE},
-              ${targetTrophy.id}
+              ${title.id}
             )
           `;
 
           const competingTitleChallenge = await tx.trophyChallenge.findFirst({
             where: {
-              trophyId: targetTrophy.id,
+              trophyId: title.id,
               scheduledMatchId: { not: null },
               status: {
                 notIn: [...TERMINAL_TITLE_CHALLENGE_STATUSES],
@@ -488,7 +527,7 @@ export async function POST(request: NextRequest) {
             competingTitleChallenge.scheduledMatch.challengerUserId === viewer.id;
           if (competingTitleChallenge && !isSameIdempotentRequest) {
             throw new TitleChallengeConflictError(
-              `${targetTrophy.displayName} is already attached to active challenge #${competingTitleChallenge.scheduledMatchId}.`
+              `${title.displayName} is already attached to active challenge #${competingTitleChallenge.scheduledMatchId}.`
             );
           }
         }
@@ -546,7 +585,10 @@ export async function POST(request: NextRequest) {
               challengerCountry: titleStake.challenger.representedCountry,
               challengerRating: titleStake.challengerRating,
               capturedAt: new Date().toISOString(),
-              source: "public_challenge_flow",
+              source: titleStake.automaticHeldDefense
+                ? "automatic_held_elo_title_defense"
+                : "public_challenge_flow",
+              automaticHeldDefense: titleStake.automaticHeldDefense,
             },
             status: "proposed",
             scheduledMatchId: createdMatch.id,
@@ -577,7 +619,7 @@ export async function POST(request: NextRequest) {
               scheduledMatchId: createdMatch.id,
               trophyTitleId: payload.trophyTitleId || null,
               trophyCountry: payload.trophyCountry || null,
-              automatic: false,
+              automatic: titleStake.automaticHeldDefense,
             },
           },
         });
