@@ -1,4 +1,4 @@
-import type { Prisma, PrismaClient } from "@/lib/generated/prisma";
+import type { Prisma, PrismaClient, Trophy } from "@/lib/generated/prisma";
 import { countriesEligibilityMatch } from "@/lib/countryEligibility";
 import { eloTrophyIdentity } from "@/lib/champions/eloTrophy";
 import {
@@ -86,17 +86,22 @@ async function getTrophy(prisma: PrismaClient, payload: ActionPayload) {
 }
 
 function assertChallengeCustodyStillCurrent(
-  trophy: {
-    currentHolderUserId: number | null;
-    guardianHolderUserId: number | null;
-  },
+  trophy: Trophy,
   challenge: {
     defenderUserId: number | null;
     guardianUserId: number | null;
   }
 ) {
+  const authority = projectTrophyChallengeAuthority(trophy);
+  if (!authority.challengeable) {
+    throw new TrophyActionError(
+      `${trophy.displayName} is ${authority.status} and is not open for title settlement.`,
+      409
+    );
+  }
+
   if (challenge.defenderUserId !== null) {
-    if (trophy.currentHolderUserId !== challenge.defenderUserId) {
+    if (authority.currentHolderUserId !== challenge.defenderUserId) {
       throw new TrophyActionError(
         "Title custody changed after this challenge was created. Re-open the challenge against the current holder.",
         409
@@ -106,8 +111,8 @@ function assertChallengeCustodyStillCurrent(
   }
   if (challenge.guardianUserId !== null) {
     if (
-      trophy.currentHolderUserId !== null ||
-      trophy.guardianHolderUserId !== challenge.guardianUserId
+      authority.currentHolderUserId !== null ||
+      authority.guardianHolderUserId !== challenge.guardianUserId
     ) {
       throw new TrophyActionError(
         "Guardian custody changed after this challenge was created. Re-open the challenge against current custody.",
@@ -116,7 +121,10 @@ function assertChallengeCustodyStillCurrent(
     }
     return;
   }
-  if (trophy.currentHolderUserId !== null || trophy.guardianHolderUserId !== null) {
+  if (
+    authority.currentHolderUserId !== null ||
+    authority.guardianHolderUserId !== null
+  ) {
     throw new TrophyActionError(
       "This challenge was created for a vacant title, but custody is no longer vacant.",
       409
