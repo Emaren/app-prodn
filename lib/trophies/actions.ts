@@ -307,7 +307,7 @@ async function assignHolder(
     const previousAddress = currentTrophy.currentHolderWoloAddress;
     const sameHolder =
       previousHolderId === user.id &&
-      currentTrophy.status === "held";
+      ["held", "active"].includes(currentTrophy.status);
 
     if (sameHolder) {
       await tx.trophy.update({
