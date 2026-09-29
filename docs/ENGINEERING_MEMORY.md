@@ -2127,6 +2127,13 @@ tribute only for titles currently present in
 `ACTIVE_REIGN_TRIBUTE_TROPHY_IDS`. Do not let a generic holder-edit surface
 expand the live title-economics program.
 
+The lock contract must cover every custody-changing lane, not merely the admin
+form that exposed the bug. Verified challenge settlement therefore takes the
+same Trophy money lock, re-reads live custody, and rejects settlement when the
+challenge's captured defender or Guardian no longer matches current custody.
+Bounty calculation must use that locked Trophy row rather than an older relation
+snapshot loaded before the transaction.
+
 Championship bounty execution uses the existing Founder Rewards settlement rail.
 It remains separate from Bet Escrow and from the numbered public Bounty Pool.
 A ledger row without an executable, idempotent settlement path is not a finished
