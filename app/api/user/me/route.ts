@@ -16,6 +16,7 @@ import {
 import {
   loadUserTrophyHoldings,
   recordNationalityChange,
+  trophyIsPubliclyForcedVacant,
 } from "@/lib/trophies/service";
 import {
   GENDER_DIVISIONS,
@@ -199,7 +200,11 @@ async function buildProfilePresentation(
         .filter(Boolean)
     );
     holdings = allChampionTitles
-      .filter((title) => titleHeldByUser(title, userNames))
+      .filter(
+        (title) =>
+          !trophyIsPubliclyForcedVacant(title.id) &&
+          titleHeldByUser(title, userNames)
+      )
       .map((title) => ({
         ...titleHoldingPayload(title),
         kind: title.type === "designation" ? "artifact" : "belt",

@@ -286,6 +286,14 @@ registry is also the lookup source for Challenge Hall title prefill and the live
 Champions economy map. Omitting the row can make the challenge handoff lose its
 target and can force Champions to fall back to stale static definition state.
 
+Current-holder attribution surfaces obey the same season authority. Signed-in
+profile holdings, public player title honors, and Lobby Featured Warrior honors
+must not display a forced-vacant historical holder or Guardian as a current
+champion. Profile reads use the retained public seed-bootstrap boundary rather
+than the fully re-runnable operator reconciler. Static profile fallback also
+rejects forced-vacant title definitions so an old holder cannot be resurrected
+by definition drift.
+
 Projected bounty is display math: stored bounty plus whole elapsed days times
 the configured bounty growth. It is not a chain balance and must not be called
 paid or escrowed.
@@ -411,6 +419,10 @@ a direct admin API call.
 Changing a national belt holder's Representing Country does not silently move
 or vacate the belt. It raises `forfeiture_needed` and records
 `NATIONAL_ELIGIBILITY_FORFEITURE_NEEDED` for explicit operator resolution.
+A title that is forced vacant by current-season championship policy is not a
+current holding for this audit. Historical holder rows remain intact, but they
+must not create a new nationality-forfeiture conflict for a player who no longer
+holds that public title.
 
 ## Ownership boundary
 

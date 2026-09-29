@@ -1418,6 +1418,16 @@ function trophyDefinitionForRow(trophyId: string) {
   );
 }
 
+export function trophyIsPubliclyForcedVacant(
+  trophyId: string | null | undefined
+) {
+  if (!trophyId) return false;
+  const definition = trophyDefinitionForRow(trophyId);
+  return Boolean(
+    definition && titleIsPubliclyForcedVacant(definition.id)
+  );
+}
+
 type PublicTrophyRecord = Trophy & {
   currentHolder: {
     uid: string;
@@ -1432,8 +1442,7 @@ type PublicTrophyRecord = Trophy & {
 };
 
 export function projectPublicTrophy(trophy: PublicTrophyRecord): PublicTrophyRecord {
-  const definition = trophyDefinitionForRow(trophy.trophyId);
-  if (!definition || !titleIsPubliclyForcedVacant(definition.id)) {
+  if (!trophyIsPubliclyForcedVacant(trophy.trophyId)) {
     return trophy;
   }
 
@@ -1474,10 +1483,7 @@ export function projectTrophyChallengeAuthority(
     | "guardianHolderWoloAddress"
   >
 ) {
-  const definition = trophyDefinitionForRow(trophy.trophyId);
-  const forcedVacant = Boolean(
-    definition && titleIsPubliclyForcedVacant(definition.id)
-  );
+  const forcedVacant = trophyIsPubliclyForcedVacant(trophy.trophyId);
   const status = forcedVacant ? "vacant" : trophy.status;
   const rawCurrentHolderUserId = forcedVacant ? null : trophy.currentHolderUserId;
   const rawGuardianHolderUserId = forcedVacant ? null : trophy.guardianHolderUserId;
@@ -1959,38 +1965,42 @@ export async function loadUserTrophyHoldings(
   prisma: PrismaClient,
   userId: number
 ): Promise<TrophyHolding[]> {
-  await ensureTrophySeedData(prisma);
+  await ensurePublicTrophySeedData(prisma);
   const trophies = await prisma.trophy.findMany({
     where: { currentHolderUserId: userId, status: { in: ["held", "active"] } },
     orderBy: [{ kind: "asc" }, { displayName: "asc" }],
   });
-  return trophies.map((trophy) => {
-    const definition = trophyDefinitionForRow(trophy.trophyId);
-    const type = definition?.type || trophy.family;
-    const assetKind = trophy.kind === "artifact" ? "artifact" : "belt";
-    return {
-      id: trophy.trophyId,
-      type,
-      kind: trophy.kind,
-      family: trophy.family,
-      displayName: trophy.displayName,
-      shortName: definition?.shortName || trophy.displayName.replace(/ Champion( Belt)?$/i, ""),
-      dailyWolo: trophy.tributeAmountWolo,
-      bountyGrowthWolo: trophy.bountyGrowthWolo,
-      currentBountyWolo: projectedTrophyBounty(trophy),
-      routeHref: definition?.routeHref || "/champions",
-      assetUrl: managedMediaPublicUrl(
-        assetKind,
-        definition?.id || trophy.trophyId,
-        trophy.nftImageUri || definition?.assetUrl
-      ),
-      holderSince: trophy.holderSince?.toISOString() ?? null,
-      status: trophy.status,
-      chainStatus: trophy.chainStatus,
-      nftId: trophy.nftId,
-      eligibleNationality: trophy.eligibleNationality,
-    };
-  });
+  return trophies
+    .filter((trophy) => !trophyIsPubliclyForcedVacant(trophy.trophyId))
+    .map((trophy) => {
+      const definition = trophyDefinitionForRow(trophy.trophyId);
+      const type = definition?.type || trophy.family;
+      const assetKind = trophy.kind === "artifact" ? "artifact" : "belt";
+      return {
+        id: trophy.trophyId,
+        type,
+        kind: trophy.kind,
+        family: trophy.family,
+        displayName: trophy.displayName,
+        shortName:
+          definition?.shortName ||
+          trophy.displayName.replace(/ Champion( Belt)?$/i, ""),
+        dailyWolo: trophy.tributeAmountWolo,
+        bountyGrowthWolo: trophy.bountyGrowthWolo,
+        currentBountyWolo: projectedTrophyBounty(trophy),
+        routeHref: definition?.routeHref || "/champions",
+        assetUrl: managedMediaPublicUrl(
+          assetKind,
+          definition?.id || trophy.trophyId,
+          trophy.nftImageUri || definition?.assetUrl
+        ),
+        holderSince: trophy.holderSince?.toISOString() ?? null,
+        status: trophy.status,
+        chainStatus: trophy.chainStatus,
+        nftId: trophy.nftId,
+        eligibleNationality: trophy.eligibleNationality,
+      };
+    });
 }
 
 export async function recordNationalityChange(
@@ -2006,13 +2016,15 @@ export async function recordNationalityChange(
 ) {
   try {
     await ensureTrophySeedData(prisma);
-    const heldNationalTrophies = await prisma.trophy.findMany({
-      where: {
-        family: "national",
-        currentHolderUserId: input.userId,
-        status: { in: ["held", "active"] },
-      },
-    });
+    const heldNationalTrophies = (
+      await prisma.trophy.findMany({
+        where: {
+          family: "national",
+          currentHolderUserId: input.userId,
+          status: { in: ["held", "active"] },
+        },
+      })
+    ).filter((trophy) => !trophyIsPubliclyForcedVacant(trophy.trophyId));
 
     for (const trophy of heldNationalTrophies) {
       const eligible = countriesEligibilityMatch(trophy.eligibleNationality, input.nextCountry);

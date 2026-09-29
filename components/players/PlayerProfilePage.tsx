@@ -12,6 +12,7 @@ import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import { formatDurationLabel } from "@/lib/gameStatsView";
 import { buildMatchupHref } from "@/lib/publicMatchups";
 import { getPrisma } from "@/lib/prisma";
+import { trophyIsPubliclyForcedVacant } from "@/lib/trophies/service";
 import type {
   PlayerBreakdownRow,
   PlayerBestGame,
@@ -93,6 +94,7 @@ async function loadPlayerTitleHonors(profile: PlayerProfile): Promise<PlayerTitl
 
     return trophies
       .filter((trophy) => {
+        if (trophyIsPubliclyForcedVacant(trophy.trophyId)) return false;
         const currentHolder = normalizedTitleHolder(trophy.currentHolderDisplayName);
         const guardianHolder = normalizedTitleHolder(trophy.guardianHolderDisplayName);
         return currentHolder === holderName || guardianHolder === holderName;

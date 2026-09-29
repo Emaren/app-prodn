@@ -19,6 +19,7 @@ import { reconcileTournamentMatchProofs } from "@/lib/tournamentProofReconciler"
 import { loadWoloDevSnapshot } from "@/lib/woloDevSnapshot";
 import { loadWoloMarketSnapshot } from "@/lib/woloMarket";
 import { featuredWarriorHonorLabel } from "@/lib/featuredWarriorPresentation";
+import { trophyIsPubliclyForcedVacant } from "@/lib/trophies/service";
 
 const LOBBY_RECENT_MATCH_INITIAL_LIMIT = 8;
 const LOBBY_MAINTENANCE_INTERVAL_MS = 15_000;
@@ -59,6 +60,10 @@ async function loadFeaturedWarriorHonors(
 
     return trophies.flatMap(
       (trophy) => {
+        if (trophyIsPubliclyForcedVacant(trophy.trophyId)) {
+          return [];
+        }
+
         const name =
           trophy.currentHolderDisplayName ||
           trophy.currentHolder?.inGameName ||

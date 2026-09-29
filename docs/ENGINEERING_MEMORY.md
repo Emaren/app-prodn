@@ -2165,6 +2165,19 @@ untouched. Public metadata reads must use the retained public bootstrap wrapper;
 do not invoke the fully re-runnable operator seed reconciler on every metadata
 GET.
 
+Present-tense holder attribution must follow that same forced-vacancy policy even
+when a surface does not need the full Trophy object projection. Centralize the
+Trophy-id-to-title-policy lookup and use it for signed-in profile holdings,
+public player title honors, Lobby Featured Warrior honors, and any mutation
+audit that asks whether a user currently holds a title. A forced-vacant
+historical row is evidence, not current ownership, and must not create a profile
+badge or a fresh nationality-forfeiture side effect.
+
+Read-only profile holdings should use the retained public bootstrap boundary.
+Do not run the fully re-runnable operator seed reconciler merely to paint a
+profile. Static fallback holders must also pass forced-vacancy policy so a
+future definition edit cannot resurrect obsolete public custody.
+
 Commissioner challenge creation has no separate defender-selection authority.
 The target Trophy and challenger may be selected, but defender/Guardian identity
 must come from the locked Trophy authority. Existing nonterminal title
