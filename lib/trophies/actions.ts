@@ -92,6 +92,12 @@ async function lockTrophyMoneyState(
     SELECT 1::int AS lock_acquired
     FROM pg_advisory_xact_lock(${TROPHY_MONEY_LOCK_NAMESPACE}, ${trophyId})
   `;
+  await tx.$queryRaw<Array<{ id: number }>>`
+    SELECT id
+    FROM trophies
+    WHERE id = ${trophyId}
+    FOR UPDATE
+  `;
   const trophy = await tx.trophy.findUnique({ where: { id: trophyId } });
   if (!trophy) {
     throw new TrophyActionError("Trophy disappeared during title transition.", 409);
