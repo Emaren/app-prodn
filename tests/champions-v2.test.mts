@@ -115,6 +115,19 @@ test("team crowns preserve commissioner-curated contender teams and tapered hold
   assert.match(experience, /Open team contender/);
 });
 
+test("E2 belt stages favor premium slightly-oversized waist coverage", () => {
+  assert.match(experience, /title\.type === "world"[\s\S]*h-\[10\.5rem\] w-full/);
+  assert.match(experience, /title\.type === "chaos"[\s\S]*h-40 w-\[98%\]/);
+  assert.match(experience, /title\.type === "womens"[\s\S]*h-36 w-\[94%\]/);
+  assert.match(experience, /title\.size === 2[\s\S]*h-\[10rem\]/);
+  assert.match(experience, /title\.size === 3[\s\S]*h-\[9\.5rem\]/);
+  assert.match(experience, /: "h-36";/);
+  assert.match(experience, /\$\{beltHeight\} w-full/);
+  assert.match(experience, /h-32 w-\[96%\]/);
+  assert.match(experience, /top-\[7rem\][\s\S]*h-\[10\.5rem\] w-\[96%\]/);
+  assert.match(experience, /bottom-1 left-1\/2 h-28 w-\[94%\]/);
+});
+
 test("ELO crowns use exact managed-media targets and avatar-backed holder stages", () => {
   assert.match(state, /lane === "dm" \? entry\.steamDmRating : entry\.steamRmRating/);
   assert.match(state, /if \(lane === "rm"\)[\s\S]*return definition\.id/);
@@ -196,8 +209,8 @@ test("RM DM switches use muted graphite styling instead of pale yellow", () => {
 
 test("Saudi Arabia and Taiwan use bounded cinematic art instead of full-card takeover", () => {
   assert.match(experience, /belt\.slug === "saudi-arabia" \|\| belt\.slug === "taiwan"/);
-  assert.match(experience, /top-\[7\.2rem\]/);
-  assert.match(experience, /h-\[9\.5rem\]/);
+  assert.match(experience, /top-\[7rem\]/);
+  assert.match(experience, /h-\[10\.5rem\]/);
 });
 
 test("Tournament navigation says where all the warriors go", () => {
