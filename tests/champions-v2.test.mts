@@ -136,7 +136,9 @@ test("ELO crowns use exact managed-media targets and avatar-backed holder stages
   assert.match(state, /const holder = titleState\.holders\[0\] \?\? null/);
   assert.match(experience, /holderAvatarUrl/);
   assert.match(experience, /division\.holder\?\.name \|\| "Vacant"/);
-  assert.match(experience, /state\.elo\[lane\]/);
+  assert.match(experience, /state\.elo\[eloLane\]/);
+  assert.match(experience, /eloLaneOrder/);
+  assert.match(experience, /eloFirstLane === "rm" \? \["rm", "dm"\] : \["dm", "rm"\]/);
 });
 
 test("national belt hall reads represented-country truth for every crown", () => {
@@ -205,6 +207,18 @@ test("RM DM switches use muted graphite styling instead of pale yellow", () => {
   assert.match(experience, /rgba\(71,85,105,0\.78\)/);
   assert.match(experience, /text-stone-200/);
   assert.doesNotMatch(experience, /bg-amber-200 text-slate-950/);
+});
+
+test("ELO belts show both lanes and hide only their vertical order behind the kicker", () => {
+  assert.match(experience, /const \[eloFirstLane, setEloFirstLane\] = useState<ChampionsLane>\("rm"\)/);
+  assert.match(experience, /eloLaneOrder\.map/);
+  assert.match(experience, /setEloFirstLane/);
+  assert.match(experience, /eloLane\.toUpperCase\(\)\} ELO/);
+  assert.doesNotMatch(
+    experience.slice(experience.indexOf('kicker="ELO Belts"'), experience.indexOf('kicker="Artifacts"')),
+    /ModeSwitch/,
+  );
+  assert.match(experience, /cursor-pointer text-left transition hover:text-amber-100\/80/);
 });
 
 test("Saudi Arabia and Taiwan use bounded cinematic art instead of full-card takeover", () => {
