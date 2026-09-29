@@ -668,33 +668,79 @@ Watcher telemetry alone never becomes financial authority.
 Future Auto Bet Reserve may evolve toward phase-specific presets backed by that
 separately reviewed prefunded Wolo custody architecture.
 
-Phase Books V2 now has a dormant additive schema/planner foundation. Preserve the
-activation boundary: existing `BetMarket` rows default to `legacy`; a nullable
-unique `phaseBookKey` gives future independent books durable identity; nullable
-phase open/close timestamps are server-owned fences; and the pure planner defines
-Pre-Game, exactly 60 seconds of Opening Minute, then Late while battle truth is
-active. The phase key must derive from authoritative game identity, market type
-and phase rather than display labels or browser state.
+Phase Books V2 now has an additive schema/planner foundation **and a durable
+shadow materializer**. Existing financial `BetMarket` rows remain
+`bookPhase = legacy`. A nullable unique `phaseBookKey` gives future
+independent books durable identity, nullable phase timestamps are server-owned
+fences, and the pure planner defines Pre-Game, exactly 60 seconds of Opening
+Minute, then Late while battle truth is active.
 
-Do not make production betting read these fields piecemeal. Phase activation is
-one coordinated financial change: market materialization, public projection,
-transactional write fence, stake-ticket validation, recovery, settlement,
-history, and UI must agree before `live` can exist. The runtime gate therefore
-fails a requested live mode closed while the current V1.2 compatibility bridge
-continues untouched.
+The materializer is an evidence rail, not financial activation. Under
+`BET_PHASE_BOOKS_V2_MODE=shadow`, canonical market reconciliation may create
+or refresh isolated rows with:
 
-Phase timing also has one server authority now. Build an exact Watcher
-start-evidence index from canonical live-session identity plus proven aliases;
-ambiguity fails closed. Carry the resolved timestamp only as internal market-seed
-evidence and persist it on `BattleIdentity.startedAt`. Do not store separate
-phase clocks on legacy winner/Desync rows.
+- `status = phase_shadow`;
+- `marketType = phase_shadow_winner`;
+- zero seeded WOLO;
+- no scheduled-match unique claim;
+- no wager, stake-intent, stake-ticket, wallet-lock, escrow, payout or settlement
+  side effect.
 
-Scheduled challenge time is not live-start authority. Once a challenge is linked
-to an exact Watcher session, read that session's stabilized start from the same
-snapshot used by market reconciliation. An existing BattleIdentity start is
-latched against later heartbeats. If fallback/canonical BattleIdentity rows are
-merged, the survivor takes the earliest non-null start already proven in that
-exact identity family so promotion can never reopen the Opening Minute window.
+Keep both the shadow status **and** shadow market type isolation. Existing
+Watcher promotion, winner/Desync reconciliation, Auto Bet, board loaders,
+stale-market cleanup, recovery and settlement all key off current financial
+status/market-type vocabularies. Reusing `winner` or a live financial status
+for a shadow row can silently drag that row into money authority.
+
+Each shadow phase key gets a transaction-scoped advisory lock. Refresh is
+allowed only while the row is still an untouched shadow with no
+`firstStakeAcceptedAt`, wagers or stake-ticket legs. If any future activation
+or operator action turns it into a financial object, shadow reconciliation must
+stop mutating it. Do not create an environment-only promotion path.
+
+Pre-Game and live-phase clocks have different evidence. An accepted scheduled
+Challenge proves a scheduled cutoff, so the Pre-Game shadow may use that as
+`phaseClosesAt`. The current source model does not prove the exact historical
+book-open instant, so keep `phaseOpensAt = null`; never convert “up to seven
+days” into a fabricated timestamp.
+
+Opening Minute and Late require canonical Watcher battle-start authority,
+verified proposition integrity, a BattleIdentity row, and its immutable public
+Battle number. Opening Minute begins at `BattleIdentity.startedAt` and may run for at most
+60 seconds. Trusted terminal truth preempts that ceiling. Late begins at +60s
+only if the battle survives past that boundary; if terminal truth arrives during
+Opening Minute, cap Opening at terminal and do not materialize Late. Once Late
+exists, only trusted terminal `settledAt` evidence may close it. A transient
+Watcher snapshot gap is not terminal battle truth.
+
+The live phase-book identity must use immutable
+`BattleIdentity.publicNumber`, not mutable `battleId` or transient session
+identity. Fallback-to-platform Watcher promotion can repoint the BattleIdentity
+row and market foreign keys while preserving the public number. Hashing the
+mutable row id or fallback session key would create duplicate phase books after
+promotion.
+
+Do not make production betting read the phase fields piecemeal for financial
+admission. Phase activation is still one coordinated financial change: public
+projection, transactional phase write fence, stake-ticket/escrow validation,
+recovery, settlement, history, and UI must all agree before any phase row may
+accept WOLO. The runtime gate continues to fail a requested
+`BET_PHASE_BOOKS_V2_MODE=live` closed while Betting Fairness V1.2 remains the
+production compatibility bridge.
+
+Phase timing still has one server authority. Build exact Watcher start evidence
+from canonical live-session identity plus proven aliases; ambiguity fails
+closed. Carry the resolved timestamp as market-seed evidence and persist it on
+`BattleIdentity.startedAt`. Do not store separate live clocks on legacy
+winner/Desync markets.
+
+Scheduled Challenge time is not live-start authority. Once a challenge is
+linked to an exact Watcher session, Opening/Late timing comes from that
+session's stabilized Watcher start. An existing BattleIdentity start is latched
+against later heartbeats. If fallback/canonical BattleIdentity rows merge, the
+survivor keeps the earliest non-null proven start and immutable public number so
+promotion cannot reopen or duplicate the Opening Minute window.
+
 
 ## Current highest-value product queue
 

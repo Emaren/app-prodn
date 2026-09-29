@@ -245,7 +245,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-29",
       "sensitivity": "internal",
-      "sha256": "e7074dce8ad3b07f81daf991fb4d80f036f6be78ccc3d7f2d966dcf08060f3a6",
+      "sha256": "8233d5fa07cc7e20d32261384892ebbf422796dd9d93273a51b02a27c30687c1",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e19385feb75e35b27b7b16094e47d6763406a077afa991e540247f78cbcd57ca",
+      "sha256": "67aafc0da510ecfbb35cf70b631274687a46d316a2ff599dc9a48aee1f76e912",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-29",
       "sensitivity": "internal",
-      "sha256": "f4843bc9eceb635a0acec65b7cafb86bc3b2bcbb5ae6d35d3d3685792d82bb3c",
+      "sha256": "b2d069607b11e8ed20e7d8d7de5248951220755331839f4b0a797ef6c1863b2d",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/betting-phase-books-start-authority-20260929",
-    "commit": "7be38af8f8af050cc04ff8a12cc4ac5cb0929ea5"
+    "branch": "feat/betting-phase-books-shadow-materializer-20260929",
+    "commit": "88aecbfe7fd9e4c5d7af43255455aba23ead995a"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

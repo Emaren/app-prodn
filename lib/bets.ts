@@ -51,6 +51,7 @@ import {
 } from "@/lib/replayDesyncIncidents";
 import { loadLiveSessionSnapshot, type LiveGameSession } from "@/lib/liveSessionSnapshot";
 import { runBetAutoShadowWorker } from "@/lib/betAutomationShadowWorker";
+import { materializeBetPhaseBookShadows } from "@/lib/betPhaseBookShadowMaterializer";
 import { resolveFinalGameStatsIdForSessionKey } from "@/lib/liveReplayDetail";
 import {
   isUnknownishReplayValue,
@@ -874,6 +875,8 @@ export function expiredWatcherMarketResolutionReason(input: {
 
 export type MarketSeed = {
   battleId?: number | null;
+  /** Immutable public Battle number used by future phase-book identity. */
+  battlePublicNumber?: number | null;
   scheduledMatchId: number | null;
   linkedSessionKey: string | null;
   /** Exact pre-platform identities proven by the live-session grouper. */
@@ -5884,7 +5887,9 @@ async function buildOpenMarketSeeds(prisma: PrismaClient) {
 
   for (const seed of seeds) {
     const identityKey = canonicalBattleIdentityKey(normalizeName(seed.linkedSessionKey));
-    seed.battleId = identityKey ? battleIdentities.get(identityKey)?.id ?? null : null;
+    const battleIdentity = identityKey ? battleIdentities.get(identityKey) ?? null : null;
+    seed.battleId = battleIdentity?.id ?? null;
+    seed.battlePublicNumber = battleIdentity?.publicNumber ?? null;
   }
 
   /*
@@ -7878,6 +7883,15 @@ async function runBetMarketEnsure(prisma: PrismaClient) {
       });
     })
   );
+
+  try {
+    await materializeBetPhaseBookShadows(prisma, seeds);
+  } catch (error) {
+    console.warn(
+      "Phase Books V2 shadow materialization failed after canonical market seed reconciliation:",
+      error
+    );
+  }
 
   const desyncParentPairs = seeds
     .filter(

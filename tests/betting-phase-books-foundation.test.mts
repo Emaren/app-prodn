@@ -220,9 +220,24 @@ test("schema foundation is additive and existing markets remain legacy", () => {
   assert.doesNotMatch(migration, /DELETE\s+FROM\s+"bet_markets"/i);
 });
 
-test("production betting remains on the legacy compatibility bridge", () => {
+test("production betting keeps shadow phase books outside financial BetStatus rails", () => {
   const bets = readFileSync(new URL("../lib/bets.ts", import.meta.url), "utf8");
+  const materializer = readFileSync(
+    new URL("../lib/betPhaseBookShadowMaterializer.ts", import.meta.url),
+    "utf8"
+  );
 
-  assert.doesNotMatch(bets, /from "@\/lib\/betPhaseBooks"/);
-  assert.doesNotMatch(bets, /bookPhase|phaseBookKey|phaseOpensAt|phaseClosesAt/);
+  assert.match(bets, /materializeBetPhaseBookShadows/);
+  assert.match(materializer, /phase_shadow/);
+  assert.match(materializer, /phase_shadow_winner/);
+
+  const statusStart = bets.indexOf("export type BetStatus =");
+  const statusEnd = bets.indexOf("export type BetFounderBonusType", statusStart);
+  const betStatus = bets.slice(statusStart, statusEnd);
+  assert.doesNotMatch(betStatus, /phase_shadow/);
+
+  const openStart = bets.indexOf("const OPEN_STATUSES");
+  const openEnd = bets.indexOf("const BETTOR_SETTLEMENT_CLAIM_KINDS", openStart);
+  const openStatuses = bets.slice(openStart, openEnd);
+  assert.doesNotMatch(openStatuses, /phase_shadow/);
 });

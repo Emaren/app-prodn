@@ -263,36 +263,71 @@ Locked earlier books remain visible while later books operate.
 
 ### Foundation implementation status — 2026-09-29
 
-The dormant Phase Books V2 data/authority foundation now exists:
+Phase Books V2 now has both its additive data/authority foundation and a
+durable **shadow materializer**:
 
-- `BetMarket.bookPhase` defaults every existing market to `legacy`;
-- nullable unique `phaseBookKey` provides a future one-book identity without
-  backfilling or reinterpreting historical rows;
+- `BetMarket.bookPhase` defaults every existing financial market to `legacy`;
+- nullable unique `phaseBookKey` gives each future independent book durable
+  identity without backfilling or reinterpreting historical rows;
 - nullable `phaseOpensAt` / `phaseClosesAt` store server-owned phase fences;
 - the pure planner defines Pre-Game, exact 60-second Opening Minute, and Late
   windows from authoritative server time;
-- phase-book identity hashes authoritative game identity + market type + phase;
-- `BET_PHASE_BOOKS_V2_MODE=live` fails closed because financial activation is
-  intentionally not installed.
+- `BET_PHASE_BOOKS_V2_MODE=shadow` may materialize isolated phase evidence
+  rows after canonical market reconciliation;
+- `BET_PHASE_BOOKS_V2_MODE=live` still fails closed because financial
+  activation is intentionally not installed.
 
-This foundation does **not** create phase markets, split pools, admit wagers,
-change settlement, migrate historical wagers, or alter the current V1.2
-compatibility bridge. Production `lib/bets.ts` intentionally does not consume
-the new fields yet. Activation requires a separately reviewed market-materializer
-and aligned transactional write/settlement/recovery paths.
+Shadow phase rows are intentionally quarantined from current financial rails.
+They use:
 
-The server-side battle clock is now also prepared for Phase Books. Betting
-market reconciliation resolves one stabilized Watcher start timestamp from the
-same canonical live-session snapshot used for market identity. Exact promoted
-aliases resolve to the same timestamp; an alias claimed by two canonical
-sessions loses start authority. That start is written to
-`BattleIdentity.startedAt`, not to individual BetMarket rows.
+- `status = phase_shadow`, which is not a production `BetStatus`;
+- `marketType = phase_shadow_winner`, so winner/Desync reconciliation,
+  settlement, Auto Bet, stale-market cleanup, and public board queries do not
+  accidentally consume them;
+- zero seeded WOLO;
+- no wager, stake intent, stake ticket, wallet-lock, escrow, payout, or
+  settlement mutation;
+- one transaction-scoped advisory lock per deterministic `phaseBookKey`.
 
-A scheduled Challenge's appointment time remains only the Pre-Game cutoff. Once
-the Challenge is linked to a live Watcher session, Opening/Late timing comes from
-that exact session's stabilized Watcher start. Heartbeats cannot move an
-existing BattleIdentity start later, and exact identity-family promotion keeps
-the earliest already-proven start on the surviving public Battle row.
+If a row with that `phaseBookKey` ever stops being an untouched shadow row,
+the materializer leaves it alone. A future financial activation must therefore
+be an explicit reviewed promotion path, not an environment-variable side
+effect.
+
+Pre-Game shadow identity is derived from the accepted scheduled Challenge. The
+current source model proves the authoritative scheduled cutoff, so the shadow
+book stores that as `phaseClosesAt`. It does **not** fabricate a
+`phaseOpensAt` merely from the “up to seven days” product ceiling; an actual
+opening/acceptance timestamp belongs to a later financial activation contract.
+
+Opening Minute and Late are stricter. They materialize only after canonical
+Watcher evidence has produced:
+
+- a real public Battle identity;
+- the immutable public Battle number;
+- a stabilized Watcher `BattleIdentity.startedAt`;
+- verified proposition integrity.
+
+Opening Minute starts exactly at that Watcher battle-start fence and has a
+maximum 60-second window. Trusted terminal truth may close it sooner. Late opens
+at the +60-second boundary only if the battle actually survives into Late; a
+battle that becomes terminal during Opening Minute gets no Late shadow row. A
+trusted terminal `settledAt` closes Late once it exists; a transient Watcher
+snapshot gap does not manufacture a terminal phase fence.
+
+The live phase key uses immutable `BattleIdentity.publicNumber`, not mutable
+database row id or transient fallback/platform session identity. Watcher
+identity promotion may repoint `BetMarket.battleId`, but it preserves the
+public Battle number, so promotion cannot create a duplicate Opening Minute or
+Late shadow book.
+
+This shadow materialization does **not** split any live money pool, admit phase
+wagers, alter stake tickets, change recovery/settlement, migrate historical
+wagers, or change the current Betting Fairness V1.2 compatibility bridge.
+Public phase projection, transactional phase write fences, ticket/escrow
+validation, recovery, settlement, history, and UI activation remain separately
+reviewed work.
+
 
 ### Presentation direction
 
