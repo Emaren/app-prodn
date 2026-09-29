@@ -108,26 +108,57 @@ function livePhasePlans(
   });
   const authorityIdentityKey = `battle-number:${source.battlePublicNumber}`;
 
-  return windows
-    .filter(
-      (window): window is typeof window & {
-        phase: "opening_minute" | "late";
-      } =>
-        window.phase === "opening_minute" ||
-        window.phase === "late"
-    )
-    .map((window) => ({
+  const opening = windows.find(
+    (window) => window.phase === "opening_minute"
+  );
+  const late = windows.find(
+    (window) => window.phase === "late"
+  );
+  if (!opening || !late) return [];
+
+  const openingClosesAt =
+    terminalAt &&
+    opening.closesAt &&
+    terminalAt.getTime() < opening.closesAt.getTime()
+      ? terminalAt
+      : opening.closesAt;
+
+  const plans: BetPhaseBookShadowPlan[] = [
+    {
       authorityIdentityKey,
       phaseBookKey: buildBetPhaseBookKey({
         authorityIdentityKey,
         marketType: source.marketType,
-        phase: window.phase,
+        phase: "opening_minute",
       }),
-      phase: window.phase,
-      phaseOpensAt: window.opensAt,
-      phaseClosesAt: window.closesAt,
+      phase: "opening_minute",
+      phaseOpensAt: opening.opensAt,
+      phaseClosesAt: openingClosesAt,
       source,
-    }));
+    },
+  ];
+
+  const battleReachedLate =
+    !terminalAt ||
+    !late.opensAt ||
+    terminalAt.getTime() > late.opensAt.getTime();
+
+  if (battleReachedLate) {
+    plans.push({
+      authorityIdentityKey,
+      phaseBookKey: buildBetPhaseBookKey({
+        authorityIdentityKey,
+        marketType: source.marketType,
+        phase: "late",
+      }),
+      phase: "late",
+      phaseOpensAt: late.opensAt,
+      phaseClosesAt: late.closesAt,
+      source,
+    });
+  }
+
+  return plans;
 }
 
 export function planBetPhaseBookShadowMaterialization(
