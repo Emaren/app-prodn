@@ -350,6 +350,27 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ detail: "That trophy target is unavailable." }, { status: 404 });
       }
 
+      const authority = projectTrophyChallengeAuthority(targetTrophy);
+      if (!authority.challengeable) {
+        return NextResponse.json(
+          {
+            detail: `${targetTrophy.displayName} is ${authority.status} and is not open for title challenges.`,
+          },
+          { status: 409 }
+        );
+      }
+
+      targetTrophy = {
+        ...targetTrophy,
+        status: authority.status,
+        currentHolderUserId: authority.currentHolderUserId,
+        currentHolderDisplayName: authority.currentHolderDisplayName,
+        currentHolderWoloAddress: authority.currentHolderWoloAddress,
+        guardianHolderUserId: authority.guardianHolderUserId,
+        guardianHolderDisplayName: authority.guardianHolderDisplayName,
+        guardianHolderWoloAddress: authority.guardianHolderWoloAddress,
+      };
+
       const expectedDefenderId =
         targetTrophy.currentHolderUserId ?? targetTrophy.guardianHolderUserId;
       if (
