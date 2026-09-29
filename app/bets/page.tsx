@@ -6116,7 +6116,7 @@ function ViewerAutoBetPreviewRail({
       </div>
 
       <div className="mt-2 text-[10px] uppercase tracking-[0.18em] text-slate-500">
-        Preset v{preview.presetVersion} · exact Watcher identity evidence · financially committed: no
+        Preset v{preview.presetVersion} · recorded {formatSettledTime(preview.recordedAt)} · exact Watcher identity evidence · financially committed: no
       </div>
     </div>
   );
