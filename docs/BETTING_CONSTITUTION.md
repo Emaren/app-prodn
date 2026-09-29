@@ -64,6 +64,20 @@ A later phase can never dilute, reprice, or subsidize an earlier phase.
 The server owns all timing fences. Browser clocks and stale UI state never
 create financial admission authority.
 
+### Activation boundary
+
+The application now contains an additive **dormant** Phase Books V2 foundation.
+Existing `BetMarket` rows remain `book_phase = legacy`; no historical row is
+rewritten. Future phase markets may carry a unique `phase_book_key` plus
+server-owned open/close timestamps, and the pure planner fixes Opening Minute at
+exactly 60 seconds from authoritative battle start.
+
+Those fields are not financial authority by themselves. Until a separately
+reviewed activation connects phase identity to market materialization,
+transactional wager admission, settlement, recovery, and presentation, the
+production Betting Fairness V1.2 compatibility bridge remains authoritative.
+A configuration value alone may not activate Phase Books V2.
+
 ## Current #JimsRule matching authority
 
 For each market, current settlement first computes:
