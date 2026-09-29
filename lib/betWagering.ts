@@ -1,5 +1,7 @@
 import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
 
+import { runBetCounterShadowWorkerBestEffort } from "@/lib/bettingBotShadowWorker";
+
 import {
   isPostBroadcastStakeRecovery,
   POST_BROADCAST_RECOVERY_MARKET_STATUSES,
@@ -855,6 +857,8 @@ export async function placePooledBetWager(
     }
   );
 
+  let createdWagerId: number | null = null;
+
   try {
     await prisma.$transaction(async (tx) => {
       const lockedAt = new Date();
@@ -981,7 +985,7 @@ export async function placePooledBetWager(
         await markBetStakeIntentVerified(tx as PrismaClient, { intentId: input.stakeIntentId });
       }
 
-      await tx.betWager.create({
+      const createdWager = await tx.betWager.create({
         data: {
           marketId: input.marketId,
           userId: input.viewer.id,
@@ -996,6 +1000,7 @@ export async function placePooledBetWager(
           stakeLockedAt: shouldUseOnchainStake ? new Date() : null,
         },
       });
+      createdWagerId = createdWager.id;
 
       if (firstStakeLock.count === 1) {
         await recordUserActivity(tx as PrismaClient, {
@@ -1051,6 +1056,10 @@ export async function placePooledBetWager(
       return { kind: "duplicate_existing" };
     }
     throw error;
+  }
+
+  if (createdWagerId !== null) {
+    await runBetCounterShadowWorkerBestEffort(prisma, [createdWagerId]);
   }
 
   return { kind: "created" };
