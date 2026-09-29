@@ -7,6 +7,7 @@ import {
 } from "@/lib/betPhaseBooks";
 
 export const BET_PHASE_BOOKS_V2_SHADOW_STATUS = "phase_shadow";
+export const BET_PHASE_BOOKS_V2_SHADOW_MARKET_TYPE = "phase_shadow_winner";
 
 export type BetPhaseBookShadowSource = {
   battleId?: number | null;
@@ -241,7 +242,7 @@ export async function materializeBetPhaseBookShadows(
         slug: phaseSlug(plan),
         title: phaseTitle(plan),
         eventLabel: phaseEventLabel(plan),
-        marketType: "winner",
+        marketType: BET_PHASE_BOOKS_V2_SHADOW_MARKET_TYPE,
         bookPhase: plan.phase,
         phaseBookKey: plan.phaseBookKey,
         phaseOpensAt: plan.phaseOpensAt,
