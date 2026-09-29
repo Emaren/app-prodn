@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "12bebc0ae58d2a3e16133f27bbc4802c8bbcd64c2aca9a827d4d8f9f33d94036",
+      "sha256": "9bf7b47a065d0a6b0600754bdec54abc92ec7143af8daf15ddbf07e768cd3326",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feat/betting-hall-auto-bet-preview-20260929",
-    "commit": "0229aba38f2116006b47dad7db5c8c6a3e9540f1"
+    "commit": "a604d49c4a93847cb9abf1da08ce0fc4945eb9df"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
