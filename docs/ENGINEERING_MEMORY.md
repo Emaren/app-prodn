@@ -2134,6 +2134,13 @@ challenge's captured defender or Guardian no longer matches current custody.
 Bounty calculation must use that locked Trophy row rather than an older relation
 snapshot loaded before the transaction.
 
+The daily Tribute scheduler is part of the same money state machine. Candidate
+queries may be stale by the time a transaction begins, so recipient, status,
+reign start, and tribute amount must be re-read from the Trophy row after
+acquiring the shared custody lock. A timer that relies on a pre-transaction
+holder snapshot can recreate an old-holder obligation immediately after a title
+transfer.
+
 Championship bounty execution uses the existing Founder Rewards settlement rail.
 It remains separate from Bet Escrow and from the numbered public Bounty Pool.
 A ledger row without an executable, idempotent settlement path is not a finished
