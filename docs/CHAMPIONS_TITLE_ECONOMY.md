@@ -317,6 +317,12 @@ Trophy custody and requires the defender/Guardian captured by the challenge to
 still own that custody. A stale challenge fails closed instead of transferring a
 new holder's title or pricing a bounty from an obsolete Trophy snapshot.
 
+The daily Tribute queue uses that same custody lock and PostgreSQL row lock
+before reading recipient, reign start, status, or tribute amount. Its outer
+candidate scan is only an optimization. If custody changes while the timer is
+waiting, the queue observes the new locked Trophy row and reconciles against the
+new holder instead of recreating an old-holder obligation.
+
 For a real holder change:
 
 - freeze the outgoing reign's projected championship bounty at the transfer
