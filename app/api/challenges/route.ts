@@ -39,6 +39,8 @@ import { getSessionUid } from "@/lib/session";
 import {
   ensureTrophySeedData,
   loadTrophyUsers,
+  lockTrophyMoneyState,
+  projectTrophyChallengeAuthority,
   seededTrophyKeyForChallenge,
 } from "@/lib/trophies/service";
 import { recordUserActivity } from "@/lib/userExperience";
