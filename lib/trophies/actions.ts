@@ -950,10 +950,15 @@ async function updateChallenge(
   if (operation === "dry_run") {
     if (!challenge.winnerUserId) throw new TrophyActionError("Verify a winner first.");
     const challengerWon = challenge.winnerUserId === challenge.challengerUserId;
-    const bounty = challengerWon ? projectedTrophyBounty(challenge.trophy) : 0;
     const winner = await getUser(prisma, challenge.winnerUserId);
     await prisma.$transaction(async (tx) => {
       await assertTrophyChallengeDesyncAllowsTitleMutation(tx, challenge);
+      const currentTrophy = await lockTrophyMoneyState(tx, challenge.trophyId);
+      if (!currentTrophy) {
+        throw new TrophyActionError("Trophy disappeared during title settlement preview.", 409);
+      }
+      assertChallengeCustodyStillCurrent(currentTrophy, challenge);
+      const bounty = challengerWon ? projectedTrophyBounty(currentTrophy) : 0;
       await tx.trophyChallenge.update({
         where: { id: challenge.id, status: { not: "commissioner_vetoed" } },
         data: { status: "settlement_dry_run", settlementStatus: "dry_run_ready" },
@@ -987,7 +992,7 @@ async function updateChallenge(
           challengerWon,
           wouldTransferHolder: challengerWon,
           wouldPayBountyWolo: bounty,
-          mode: challenge.trophy.chainStatus === "app_only" ? "app_only" : "chain_intent",
+          mode: currentTrophy.chainStatus === "app_only" ? "app_only" : "chain_intent",
         }),
       });
       await recordScheduledTitleActivity(tx, challenge, actor, {
