@@ -643,21 +643,34 @@ async function updateEconomics(
   payload: ActionPayload
 ) {
   const trophy = await getTrophy(prisma, payload);
-  const tributeAmountWolo = Math.max(0, intValue(payload.tributeAmountWolo, trophy.tributeAmountWolo));
-  const bountyGrowthWolo = Math.max(0, intValue(payload.bountyGrowthWolo, trophy.bountyGrowthWolo));
-  const payoutFrequency = stringValue(payload.payoutFrequency, 24) || trophy.payoutFrequency;
-  const bountyAccrualFrequency =
-    stringValue(payload.bountyAccrualFrequency, 24) || trophy.bountyAccrualFrequency;
   const reason = nullableString(payload.reason, 255) || "Admin economics update.";
   const now = new Date();
-  await prisma.$transaction([
-    prisma.trophyEconomicsVersion.updateMany({
-      where: { trophyId: trophy.id, effectiveTo: null },
+
+  await prisma.$transaction(async (tx) => {
+    const currentTrophy = await lockTrophyMoneyState(tx, trophy.id);
+    if (!currentTrophy) {
+      throw new TrophyActionError("Trophy disappeared during economics update.", 409);
+    }
+
+    const tributeAmountWolo = Object.prototype.hasOwnProperty.call(payload, "tributeAmountWolo")
+      ? Math.max(0, intValue(payload.tributeAmountWolo, currentTrophy.tributeAmountWolo))
+      : currentTrophy.tributeAmountWolo;
+    const bountyGrowthWolo = Object.prototype.hasOwnProperty.call(payload, "bountyGrowthWolo")
+      ? Math.max(0, intValue(payload.bountyGrowthWolo, currentTrophy.bountyGrowthWolo))
+      : currentTrophy.bountyGrowthWolo;
+    const payoutFrequency =
+      stringValue(payload.payoutFrequency, 24) || currentTrophy.payoutFrequency;
+    const bountyAccrualFrequency =
+      stringValue(payload.bountyAccrualFrequency, 24) || currentTrophy.bountyAccrualFrequency;
+    const frozenBountyWolo = projectedTrophyBounty(currentTrophy);
+
+    await tx.trophyEconomicsVersion.updateMany({
+      where: { trophyId: currentTrophy.id, effectiveTo: null },
       data: { effectiveTo: now },
-    }),
-    prisma.trophyEconomicsVersion.create({
+    });
+    await tx.trophyEconomicsVersion.create({
       data: {
-        trophyId: trophy.id,
+        trophyId: currentTrophy.id,
         tributeAmountWolo,
         bountyGrowthWolo,
         payoutFrequency,
@@ -666,32 +679,33 @@ async function updateEconomics(
         changedByUserId: actor.id,
         reason,
       },
-    }),
-    prisma.trophy.update({
-      where: { id: trophy.id },
+    });
+    await tx.trophy.update({
+      where: { id: currentTrophy.id },
       data: {
-        currentBountyWolo: projectedTrophyBounty(trophy),
-        holderSince: trophy.holderSince ? now : null,
+        currentBountyWolo: frozenBountyWolo,
+        holderSince: currentTrophy.holderSince ? now : null,
         tributeAmountWolo,
         bountyGrowthWolo,
         payoutFrequency,
         bountyAccrualFrequency,
       },
-    }),
-    prisma.trophyEvent.create({
+    });
+    await tx.trophyEvent.create({
       data: {
-        trophyId: trophy.id,
+        trophyId: currentTrophy.id,
         eventType: "ECONOMICS_CHANGED",
         actorUserId: actor.id,
         actorRole: "admin",
         initiatedBy: "admin",
+        amountWolo: frozenBountyWolo || null,
         status: "recorded",
         rawRequest: {
           previous: {
-            tributeAmountWolo: trophy.tributeAmountWolo,
-            bountyGrowthWolo: trophy.bountyGrowthWolo,
-            payoutFrequency: trophy.payoutFrequency,
-            bountyAccrualFrequency: trophy.bountyAccrualFrequency,
+            tributeAmountWolo: currentTrophy.tributeAmountWolo,
+            bountyGrowthWolo: currentTrophy.bountyGrowthWolo,
+            payoutFrequency: currentTrophy.payoutFrequency,
+            bountyAccrualFrequency: currentTrophy.bountyAccrualFrequency,
           },
           next: {
             tributeAmountWolo,
@@ -699,11 +713,12 @@ async function updateEconomics(
             payoutFrequency,
             bountyAccrualFrequency,
           },
+          frozenBountyWolo,
           reason,
         },
       },
-    }),
-  ]);
+    });
+  });
 }
 
 async function createTrophy(
