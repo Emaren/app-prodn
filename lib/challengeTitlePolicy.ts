@@ -13,6 +13,17 @@ export const TERMINAL_TITLE_CHALLENGE_STATUSES = [
   "commissioner_vetoed",
 ] as const;
 
+export const TITLE_CHALLENGE_OPEN_TROPHY_STATUSES = [
+  "vacant",
+  "guardian_held",
+  "held",
+  "active",
+] as const;
+
+export function trophyStatusAllowsChallenge(status: string) {
+  return (TITLE_CHALLENGE_OPEN_TROPHY_STATUSES as readonly string[]).includes(status);
+}
+
 export function buildTitleChallengeAcceptBy(
   createdAt = new Date(),
   exactMatchTime?: Date | null
