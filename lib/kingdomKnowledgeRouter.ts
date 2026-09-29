@@ -55,6 +55,10 @@ import {
 } from "@/lib/woloChain";
 import { loadPublicLiveGamesSnapshot } from "@/lib/liveGamesPublicSnapshot";
 import {
+  loadPublicTrophies,
+  projectedTrophyBounty,
+} from "@/lib/trophies/service";
+import {
   loadPlayerProfileMatchPage,
   loadPlayerProfileMatchPagesForPlayersAndGameIds,
 } from "@/lib/playerProfile";
@@ -116,6 +120,7 @@ const SENSITIVE_KEYS = new Set([
   "contactEmail",
   "contactDiscord",
   "adminNote",
+  "eligibilityNote",
   "rawRequest",
   "rawResponse",
   "audioStorageKey",
@@ -1701,46 +1706,62 @@ async function loadHonors(args: RepositoryArgs) {
     return publicJson("/api/trophies");
   }
 
-  return args.prisma.trophy.findMany({
-    orderBy: [
-      { status: "asc" },
-      { family: "asc" },
-      { displayName: "asc" },
-    ],
-    take: 100,
-    select: {
-      trophyId: true,
-      displayName: true,
-      kind: true,
-      family: true,
-      tier: true,
-      status: true,
-      currentHolderDisplayName: true,
-      guardianHolderDisplayName: true,
-      eligibleNationality: true,
-      eloBandMin: true,
-      eloBandMax: true,
-      currentBountyWolo: true,
-      tributeAmountWolo: true,
-      chainStatus: true,
-      holderSince: true,
-      eligibilityNote: true,
-      events: {
-        orderBy: { createdAt: "desc" },
-        take: 8,
-        select: {
-          eventType: true,
-          actorRole: true,
-          amountWolo: true,
-          gameId: true,
-          replayId: true,
-          challengeId: true,
-          status: true,
-          createdAt: true,
-        },
-      },
-    },
-  });
+  const trophies = (await loadPublicTrophies(args.prisma)).slice(0, 100);
+  const trophyIds = trophies.map((trophy) => trophy.id);
+  const eventRows =
+    trophyIds.length > 0
+      ? await args.prisma.trophy.findMany({
+          where: { id: { in: trophyIds } },
+          select: {
+            id: true,
+            events: {
+              orderBy: { createdAt: "desc" },
+              take: 8,
+              select: {
+                eventType: true,
+                actorRole: true,
+                amountWolo: true,
+                gameId: true,
+                replayId: true,
+                challengeId: true,
+                status: true,
+                createdAt: true,
+              },
+            },
+          },
+        })
+      : [];
+
+  const eventsByTrophyId = new Map(
+    eventRows.map((row) => [row.id, row.events] as const),
+  );
+
+  return trophies.map((trophy) => ({
+    trophyId: trophy.trophyId,
+    displayName: trophy.displayName,
+    kind: trophy.kind,
+    family: trophy.family,
+    tier: trophy.tier,
+    status: trophy.status,
+    currentHolderDisplayName:
+      trophy.currentHolderDisplayName ||
+      trophy.currentHolder?.inGameName ||
+      trophy.currentHolder?.steamPersonaName ||
+      null,
+    guardianHolderDisplayName:
+      trophy.guardianHolderDisplayName ||
+      trophy.guardianHolder?.inGameName ||
+      trophy.guardianHolder?.steamPersonaName ||
+      null,
+    eligibleNationality: trophy.eligibleNationality,
+    eloBandMin: trophy.eloBandMin,
+    eloBandMax: trophy.eloBandMax,
+    currentBountyWolo: projectedTrophyBounty(trophy),
+    tributeAmountWolo: trophy.tributeAmountWolo,
+    chainStatus: trophy.chainStatus,
+    holderSince: trophy.holderSince,
+    events: eventsByTrophyId.get(trophy.id) ?? [],
+  }));
 }
 
 async function loadClans(args: RepositoryArgs) {
