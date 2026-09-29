@@ -665,6 +665,7 @@ export async function placePooledBetWager(
     context.market;
 
   if (existingIntentWager) {
+    await runBetCounterShadowWorkerBestEffort(prisma, [existingIntentWager.id]);
     return {
       kind:
         "duplicate_existing",
@@ -704,6 +705,7 @@ export async function placePooledBetWager(
       duplicateStake.userId ===
         input.viewer.id
     ) {
+      await runBetCounterShadowWorkerBestEffort(prisma, [duplicateStake.id]);
       return {
         kind:
           "duplicate_existing",
