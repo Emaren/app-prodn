@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-29",
       "sensitivity": "internal",
-      "sha256": "4726b55e843bc58ece168521d4f56eed5807731603f322498d98ef8e1610691e",
+      "sha256": "f74e49ce62ae55bb1048a9fbd30eaf4b7db1023d3ec9e4f0535619a0bc0dcc4c",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "7c9eba96c9492dd2b3cd907c53b0932267310bf6c98ec808b2047fa2f8affa73",
+      "sha256": "74a034f17eefefcab4f40051b74add6448ab4746ac15a5a0f96978342cf8ee0c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/counter-bettor-shadow-worker-20260929",
-    "commit": "3801bfe64ba42e05a471d7b88529be2727ed24ff"
+    "branch": "test/auto-bet-promotion-collision-20260929",
+    "commit": "f29d6a021381cde2a3da02bd20be541ba0d85130"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

@@ -194,6 +194,12 @@ funded executor.
 A `shadow_ready` row is historical preview evidence, not a funded queue item.
 Editing a preset later does not rewrite that already-observed game decision.
 
+Watcher identity promotion also fails closed around preview evidence. If two
+`BetAutoExecution` rows for the same preset would collapse onto one canonical
+game identity, promotion is blocked with `auto_execution_preset_collision`
+and the exact market family is moved to operator review. The reconciler never
+silently merges those preview rows or guesses which one should survive.
+
 ## Runtime gate
 
 `BET_AUTOMATION_MODE` is server-owned:
