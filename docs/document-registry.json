@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "2a891c043e47ee8d1d8ebdda4c309dbeaf8bf64ad7d80660f057d4b67ac66ad8",
+      "sha256": "9a06f28efaaec240c9e1ce3a8717251bc3a72d0ca353886e392ff9b97ee75b11",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feat/auto-bet-shadow-worker-20260929",
-    "commit": "98835c063966ee2e1d0538dbdfbacc000ad5f347"
+    "commit": "a0ae1f859037050e9d3a53d499b9322ef748bd4b"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
