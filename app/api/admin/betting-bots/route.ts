@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/adminSession";
+import { lockBettingBotPolicy } from "@/lib/bettingBotPolicyLock";
 import type { PrismaClient } from "@/lib/generated/prisma";
 import {
   BETTING_BOT_COUNTERSTAKE_HARD_CAP_WOLO,
@@ -228,6 +229,8 @@ export async function PATCH(request: NextRequest) {
     recovery = { id, idempotencyKey };
 
     const result = await gate.prisma.$transaction(async (tx) => {
+      await lockBettingBotPolicy(tx, id);
+
       const duplicate = await tx.betCounterAction.findUnique({
         where: { idempotencyKey },
         select: { id: true, botConfigId: true },
