@@ -385,7 +385,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-09-27",
       "sensitivity": "internal",
-      "sha256": "0437382bc4a7ecd4fc6dcb01490e9ffcab58a131225ce2477ebe00ddbe6677ef",
+      "sha256": "4255670117b1a6a83fd62c1d239d70f0eedccc6571190048fa43be79985a2053",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "47249759c58e2dc15b49e06c414fea640d73125643a8d2676f1c257065ed8ad9",
+      "sha256": "f55b34e4b1d3195640211307a9b841bbd0aaca456ac8bca94fb051844e598015",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-27",
       "sensitivity": "internal",
-      "sha256": "c3551fa6208ed3e0360cc0ca09fb3c3a6dc745284f97e909ad5c117aabd72a02",
+      "sha256": "e4f07772a37690e21ef587fabf626cb52bbc2d4215af6d803559485642d37f31",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/trophy-custody-exit-execution-20260929",
-    "commit": "95af5f3019372b5c57b8a869b66a3e90f0a91518"
+    "branch": "fix/trophy-challenge-status-admission-20260929",
+    "commit": "7f62bc6383617631100870d7fb50994de7cf1e78"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
