@@ -111,8 +111,8 @@ test("scheduled live Challenge owns Pre-Game plus battle-authority live phases",
     plans.map((plan) => [plan.phase, plan.authorityIdentityKey]),
     [
       ["pre_game", "scheduled-match:42"],
-      ["opening_minute", "battle:91"],
-      ["late", "battle:91"],
+      ["opening_minute", "battle-number:2820"],
+      ["late", "battle-number:2820"],
     ]
   );
   assert.equal(
