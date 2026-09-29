@@ -94,9 +94,15 @@ function assertChallengeCustodyStillCurrent(
   }
 ) {
   const authority = projectTrophyChallengeAuthority(trophy);
-  if (!authority.challengeable) {
+  if (!authority.statusChallengeable) {
     throw new TrophyActionError(
       `${trophy.displayName} is ${authority.status} and is not open for title settlement.`,
+      409
+    );
+  }
+  if (!authority.custodyConsistent) {
+    throw new TrophyActionError(
+      `${trophy.displayName} custody is inconsistent with its ${authority.status} state. Repair custody before settlement.`,
       409
     );
   }
