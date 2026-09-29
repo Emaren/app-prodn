@@ -82,6 +82,60 @@ async function getTrophy(prisma: PrismaClient, payload: ActionPayload) {
   return trophy;
 }
 
+async function lockTrophyMoneyState(
+  tx: Prisma.TransactionClient,
+  trophyId: number
+) {
+  await tx.$queryRaw<Array<{ lock_acquired: number }>>`
+    SELECT 1::int AS lock_acquired
+    FROM pg_advisory_xact_lock(${trophyId})
+  `;
+  const trophy = await tx.trophy.findUnique({ where: { id: trophyId } });
+  if (!trophy) {
+    throw new TrophyActionError("Trophy disappeared during title transition.", 409);
+  }
+  return trophy;
+}
+
+function assertChallengeCustodyStillCurrent(
+  trophy: {
+    currentHolderUserId: number | null;
+    guardianHolderUserId: number | null;
+  },
+  challenge: {
+    defenderUserId: number | null;
+    guardianUserId: number | null;
+  }
+) {
+  if (challenge.defenderUserId !== null) {
+    if (trophy.currentHolderUserId !== challenge.defenderUserId) {
+      throw new TrophyActionError(
+        "Title custody changed after this challenge was created. Re-open the challenge against the current holder.",
+        409
+      );
+    }
+    return;
+  }
+  if (challenge.guardianUserId !== null) {
+    if (
+      trophy.currentHolderUserId !== null ||
+      trophy.guardianHolderUserId !== challenge.guardianUserId
+    ) {
+      throw new TrophyActionError(
+        "Guardian custody changed after this challenge was created. Re-open the challenge against current custody.",
+        409
+      );
+    }
+    return;
+  }
+  if (trophy.currentHolderUserId !== null || trophy.guardianHolderUserId !== null) {
+    throw new TrophyActionError(
+      "This challenge was created for a vacant title, but custody is no longer vacant.",
+      409
+    );
+  }
+}
+
 async function getUser(prisma: PrismaClient, userId: number | null) {
   if (!userId) return null;
   const user = await prisma.user.findUnique({
@@ -291,17 +345,7 @@ async function assignHolder(
   const now = new Date();
 
   await prisma.$transaction(async (tx) => {
-    await tx.$queryRaw<Array<{ lock_acquired: number }>>`
-      SELECT 1::int AS lock_acquired
-      FROM pg_advisory_xact_lock(${trophy.id})
-    `;
-
-    const currentTrophy = await tx.trophy.findUnique({
-      where: { id: trophy.id },
-    });
-    if (!currentTrophy) {
-      throw new TrophyActionError("Trophy disappeared during title transfer.", 409);
-    }
+    const currentTrophy = await lockTrophyMoneyState(tx, trophy.id);
 
     const previousHolderId = currentTrophy.currentHolderUserId;
     const previousAddress = currentTrophy.currentHolderWoloAddress;
@@ -988,6 +1032,8 @@ async function updateChallenge(
 
     if (chainBacked) {
       await prisma.$transaction(async (tx) => {
+        const currentTrophy = await lockTrophyMoneyState(tx, challenge.trophyId);
+        assertChallengeCustodyStillCurrent(currentTrophy, challenge);
         await assertTrophyChallengeDesyncAllowsTitleMutation(tx, challenge);
         await tx.trophyChallenge.update({
           where: { id: challenge.id, status: { not: "commissioner_vetoed" } },
@@ -1027,9 +1073,11 @@ async function updateChallenge(
       throw new TrophyActionError("App-only fallback is disabled and chain-backed settlement is unavailable.");
     }
 
-    const bounty = challengerWon ? projectedTrophyBounty(challenge.trophy) : 0;
     await prisma.$transaction(async (tx) => {
+      const currentTrophy = await lockTrophyMoneyState(tx, challenge.trophyId);
+      assertChallengeCustodyStillCurrent(currentTrophy, challenge);
       await assertTrophyChallengeDesyncAllowsTitleMutation(tx, challenge);
+      const bounty = challengerWon ? projectedTrophyBounty(currentTrophy) : 0;
       if (challengerWon) {
         await tx.trophy.update({
           where: { id: challenge.trophyId },
@@ -1078,8 +1126,8 @@ async function updateChallenge(
         challengeId: challenge.id,
         replayId: challenge.replayId,
         fromHolderUserId:
-          challenge.trophy.currentHolderUserId || challenge.trophy.guardianHolderUserId,
-        toHolderUserId: challengerWon ? winner.id : challenge.trophy.currentHolderUserId,
+          currentTrophy.currentHolderUserId || currentTrophy.guardianHolderUserId,
+        toHolderUserId: challengerWon ? winner.id : currentTrophy.currentHolderUserId,
         amountWolo: bounty,
         rawResponse: jsonValue({
           mode: "app_only",
