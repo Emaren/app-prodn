@@ -105,6 +105,8 @@ test("verified watcher proof auto-settles zero-bounty held ELO titles by exact r
   assert.match(resultRecorder, /eloTrophyIdentity/);
   assert.match(resultRecorder, /mode_not_contested/);
   assert.match(resultRecorder, /projectedBounty === 0/);
+  assert.match(resultRecorder, /\(session\.watcherCount \?\? 0\) >= 2/);
+  assert.match(resultRecorder, /dual Watcher coverage/);
   assert.match(resultRecorder, /automatic_custody_transferred/);
   assert.match(resultRecorder, /tx\.trophy\.updateMany/);
   assert.match(resultRecorder, /woloMutation: false/);
