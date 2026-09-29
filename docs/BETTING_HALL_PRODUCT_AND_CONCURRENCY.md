@@ -82,10 +82,33 @@ when to switch. Every open winner book remains reachable.
 read-only provider metadata. Public lobby AI never reads or mirrors private DM
 history, and a disabled persona never falls through to another model.
 
-Tony and Paulie are dormant operator-configurable counter-bettor foundations.
-Policy, not an LLM, chooses the opposite side and enforces the 10 WOLO action
-cap. Live execution remains impossible until dedicated operator custody,
-reservation proof, and an idempotent executor exist.
+Tony and Paulie are operator-configurable deterministic counter-bettors. Both
+identities still ship disabled. When an operator explicitly enables a bot in
+`shadow`, an already-committed human `BetWager` can trigger one append-only
+counter-decision for that bot/policy/market/wager/proposition identity. Policy,
+not an LLM, chooses the opposite side and enforces the 10 WOLO action cap plus
+configured per-market and daily shadow exposure.
+
+The shadow evaluator runs only after the human wager transaction commits. Its
+failure is best-effort and can never roll back or invalidate the bettor's wager.
+Duplicate/recovery paths may replay the evaluator because the decision key is
+idempotent. All reserved internal-system UIDs are excluded as source bettors, so
+Tony, Paulie, AI personas, protocol accounts, Moose, and clan scribes cannot
+recursively manufacture counter-actions.
+
+Shadow exposure is simulated policy evidence, not custody. The worker does not
+query or claim a spendable bot balance: `availableBalanceWolo` remains null,
+`custodyVerified=false`, committed amount/reservation/transaction fields stay
+null, and a labeled internal planning envelope only exercises the deterministic
+balance-floor math. Bot-policy edits and decisions share one per-bot PostgreSQL
+advisory lock so an action snapshot is cleanly before or after a config update.
+The append-only admin audit shows source wager/market, side flip, proposed WOLO,
+and exposure-before without claiming a counter-wager was placed.
+
+Live execution remains impossible until dedicated operator custody,
+reservation proof, and an idempotent executor exist. The existing database
+constraint additionally requires real custody verification, reservation, and
+stake transaction proof before a committed counterstake can exist.
 
 The profile Auto Bet Reserve is Preview only. It stores self-only winner and
 optional Desync settings, finite games or Until Out, and a 10,000 WOLO plan
