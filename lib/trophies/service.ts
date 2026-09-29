@@ -1928,29 +1928,31 @@ export async function loadPublicTrophies(prisma: PrismaClient) {
     orderBy: [{ family: "asc" }, { displayName: "asc" }],
   });
 
-  return trophies
-    .filter((trophy) => {
-      const definition = trophyDefinitionForRow(trophy.trophyId);
-      return !definition || !titleIsPubliclyForcedVacant(definition.id);
-    })
-    .map((trophy) => {
-    const definition = trophyDefinitionForRow(trophy.trophyId);
-    if (!definition || !titleIsPubliclyForcedVacant(definition.id)) {
-      return trophy;
-    }
+  return trophies.map(projectPublicTrophy);
+}
 
-    return {
-      ...trophy,
-      status: "vacant",
-      currentHolderUserId: null,
-      currentHolderDisplayName: null,
-      currentHolderWoloAddress: null,
-      currentHolder: null,
-      holderSince: null,
-      currentBountyWolo: 0,
-      forfeitureNeeded: false,
-    };
+export async function loadPublicTrophy(
+  prisma: PrismaClient,
+  trophyId: string
+) {
+  await ensurePublicTrophySeedData(prisma);
+  const trophy = await prisma.trophy.findUnique({
+    where: { trophyId },
+    include: {
+      currentHolder: {
+        select: {
+          uid: true,
+          inGameName: true,
+          steamPersonaName: true,
+        },
+      },
+      guardianHolder: {
+        select: { uid: true, inGameName: true, steamPersonaName: true },
+      },
+    },
   });
+
+  return trophy ? projectPublicTrophy(trophy) : null;
 }
 
 export async function loadUserTrophyHoldings(
