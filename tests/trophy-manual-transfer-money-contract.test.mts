@@ -47,8 +47,12 @@ test("dethrone bounty is a real Founder Rewards obligation but previews cannot e
   assert.ok(service.includes("DETHRONE_BOUNTY_PAYOUT_FAILED"));
   assert.ok(service.includes('status: { in: ["pending", "retrying", "failed"] }'));
   assert.ok(actions.includes("includeBounties: true"));
+  assert.ok(actions.includes("Championship bounty previews are not payable obligations"));
+  assert.ok(actions.includes("cannot be converted back into a preview"));
   assert.ok(ui.includes("function trophyPayoutIsExecutable"));
   assert.ok(ui.includes('payout.payoutKind === "dethrone_bounty"'));
   assert.ok(ui.includes('["pending", "retrying", "failed"].includes(payout.status)'));
   assert.ok(ui.includes("!trophyPayoutIsExecutable(payout)"));
+  assert.ok(ui.includes('payout.payoutKind === "dethrone_bounty" && payout.status === "dry_run"'));
+  assert.ok(ui.includes('payout.payoutKind === "dethrone_bounty"'));
 });
