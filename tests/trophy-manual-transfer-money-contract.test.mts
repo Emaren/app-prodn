@@ -10,38 +10,44 @@ const service = readFileSync(
   new URL("../lib/trophies/service.ts", import.meta.url),
   "utf8"
 );
+const ui = readFileSync(
+  new URL("../components/admin/trophies/TrophyCommandCenter.tsx", import.meta.url),
+  "utf8"
+);
 
 test("manual trophy custody change is serialized and money-aware", () => {
-  assert.match(actions, /pg_advisory_xact_lock/);
-  assert.match(actions, /prepareManualTrophyHolderTransferPayouts/);
-  assert.match(actions, /currentBountyWolo: 0/);
-  assert.match(actions, /holderSince: now/);
-  assert.match(actions, /HOLDER_DETAILS_REFRESHED/);
-  assert.match(actions, /custodyChanged: false/);
-  assert.match(actions, /bountyReset: false/);
+  assert.ok(actions.includes("pg_advisory_xact_lock"));
+  assert.ok(actions.includes("prepareManualTrophyHolderTransferPayouts"));
+  assert.ok(actions.includes("currentBountyWolo: 0"));
+  assert.ok(actions.includes("holderSince: now"));
+  assert.ok(actions.includes("HOLDER_DETAILS_REFRESHED"));
+  assert.ok(actions.includes('["held", "active"].includes(currentTrophy.status)'));
+  assert.ok(actions.includes("custodyChanged: false"));
+  assert.ok(actions.includes("bountyReset: false"));
 });
 
 test("manual transfer preserves current tribute policy and immutable chain truth", () => {
-  assert.match(service, /trophyHasActiveReignTribute\(input\.trophy\.trophyId\)/);
-  assert.match(service, /reconcileDailyTrophyTribute\(existing/);
-  assert.match(service, /blocked_by_chain_truth/);
-  assert.match(service, /DAILY_TRIBUTE_PAYOUT_SUPERSEDED/);
-  assert.match(service, /status: "superseded"/);
-  assert.match(service, /createdBy: "manual_holder_transfer"/);
+  assert.ok(service.includes("trophyHasActiveReignTribute(input.trophy.trophyId)"));
+  assert.ok(service.includes("reconcileDailyTrophyTribute(existing"));
+  assert.ok(service.includes("blocked_by_chain_truth"));
+  assert.ok(service.includes("DAILY_TRIBUTE_PAYOUT_SUPERSEDED"));
+  assert.ok(service.includes('status: "superseded"'));
+  assert.ok(service.includes('createdBy: "manual_holder_transfer"'));
 });
 
-test("dethrone bounty is a real Founder Rewards payout obligation", () => {
-  assert.match(service, /payoutKind: "dethrone_bounty"/);
-  assert.match(service, /status: "pending"/);
-  assert.match(service, /Championship Bounty/);
-  assert.match(service, /fundingAuthority: "Founder Rewards settlement"/);
-  assert.match(
-    service,
-    /it is not Bet Escrow and is not the public Bounty Pool/
-  );
-  assert.match(service, /export async function executePendingTrophyPayouts/);
-  assert.match(service, /DETHRONE_BOUNTY_PAYOUT_PAID/);
-  assert.match(service, /DETHRONE_BOUNTY_PAYOUT_FAILED/);
-  assert.match(service, /status: \{ in: \["pending", "retrying", "failed"\] \}/);
-  assert.match(actions, /includeBounties: true/);
+test("dethrone bounty is a real Founder Rewards obligation but previews cannot execute", () => {
+  assert.ok(service.includes('payoutKind: "dethrone_bounty"'));
+  assert.ok(service.includes('status: "pending"'));
+  assert.ok(service.includes("Championship Bounty"));
+  assert.ok(service.includes('fundingAuthority: "Founder Rewards settlement"'));
+  assert.ok(service.includes("it is not Bet Escrow and is not the public Bounty Pool"));
+  assert.ok(service.includes("export async function executePendingTrophyPayouts"));
+  assert.ok(service.includes("DETHRONE_BOUNTY_PAYOUT_PAID"));
+  assert.ok(service.includes("DETHRONE_BOUNTY_PAYOUT_FAILED"));
+  assert.ok(service.includes('status: { in: ["pending", "retrying", "failed"] }'));
+  assert.ok(actions.includes("includeBounties: true"));
+  assert.ok(ui.includes("function trophyPayoutIsExecutable"));
+  assert.ok(ui.includes('payout.payoutKind === "dethrone_bounty"'));
+  assert.ok(ui.includes('["pending", "retrying", "failed"].includes(payout.status)'));
+  assert.ok(ui.includes("!trophyPayoutIsExecutable(payout)"));
 });
