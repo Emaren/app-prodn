@@ -1021,12 +1021,12 @@ async function updateChallenge(
 
     if (chainBacked) {
       await prisma.$transaction(async (tx) => {
+        await assertTrophyChallengeDesyncAllowsTitleMutation(tx, challenge);
         const currentTrophy = await lockTrophyMoneyState(tx, challenge.trophyId);
         if (!currentTrophy) {
           throw new TrophyActionError("Trophy disappeared during title settlement.", 409);
         }
         assertChallengeCustodyStillCurrent(currentTrophy, challenge);
-        await assertTrophyChallengeDesyncAllowsTitleMutation(tx, challenge);
         await tx.trophyChallenge.update({
           where: { id: challenge.id, status: { not: "commissioner_vetoed" } },
           data: { status: "settling", settlementStatus: "chain_intent_recorded" },
@@ -1066,12 +1066,12 @@ async function updateChallenge(
     }
 
     await prisma.$transaction(async (tx) => {
+      await assertTrophyChallengeDesyncAllowsTitleMutation(tx, challenge);
       const currentTrophy = await lockTrophyMoneyState(tx, challenge.trophyId);
       if (!currentTrophy) {
         throw new TrophyActionError("Trophy disappeared during title settlement.", 409);
       }
       assertChallengeCustodyStillCurrent(currentTrophy, challenge);
-      await assertTrophyChallengeDesyncAllowsTitleMutation(tx, challenge);
       const bounty = challengerWon ? projectedTrophyBounty(currentTrophy) : 0;
       if (challengerWon) {
         await tx.trophy.update({
