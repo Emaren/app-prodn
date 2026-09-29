@@ -32,6 +32,7 @@ test("manual transfer preserves current tribute policy and immutable chain truth
 
 test("dethrone bounty is a real Founder Rewards payout obligation", () => {
   assert.match(service, /payoutKind: "dethrone_bounty"/);
+  assert.match(service, /status: "pending"/);
   assert.match(service, /Championship Bounty/);
   assert.match(service, /fundingAuthority: "Founder Rewards settlement"/);
   assert.match(
@@ -41,5 +42,6 @@ test("dethrone bounty is a real Founder Rewards payout obligation", () => {
   assert.match(service, /export async function executePendingTrophyPayouts/);
   assert.match(service, /DETHRONE_BOUNTY_PAYOUT_PAID/);
   assert.match(service, /DETHRONE_BOUNTY_PAYOUT_FAILED/);
+  assert.match(service, /status: \{ in: \["pending", "retrying", "failed"\] \}/);
   assert.match(actions, /includeBounties: true/);
 });
