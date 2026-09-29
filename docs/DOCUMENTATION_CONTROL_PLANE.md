@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/betting-phase-books-shadow-materializer-20260929` at `f0276eeb3184be429d7f562375445af73f58f8db`
+Implementation baseline: `feat/betting-phase-books-shadow-materializer-20260929` at `ac513b06a679d545fb6e5eaf86fbda25c091f2f9`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
