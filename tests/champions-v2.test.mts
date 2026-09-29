@@ -137,7 +137,7 @@ test("ELO crowns use exact managed-media targets and lane-specific Trophy custod
   assert.match(state, /if \(lane === "rm"\)[\s\S]*return definition\.id/);
   assert.match(state, /division === "challenger" \? "dm-contender"/);
   assert.match(state, /rm \? "random-map-champion" : "deathmatch-champion"/);
-  assert.match(state, /const holder = titleState\.holders\[0\] \?\? null/);
+  assert.match(state, /custody\.get\(canonicalEloTrophyId\(lane, division\)\) \?\? null/);
   assert.match(experience, /holderAvatarUrl/);
   assert.match(experience, /division\.holder\?\.name \|\| "Vacant"/);
   assert.match(experience, /state\.elo\[eloLane\]/);
