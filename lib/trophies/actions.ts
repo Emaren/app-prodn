@@ -31,6 +31,8 @@ type AdminActor = {
 
 type ActionPayload = Record<string, unknown>;
 
+const TROPHY_MONEY_LOCK_NAMESPACE = 207706;
+
 function stringValue(value: unknown, max = 255) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
 }
@@ -88,7 +90,7 @@ async function lockTrophyMoneyState(
 ) {
   await tx.$queryRaw<Array<{ lock_acquired: number }>>`
     SELECT 1::int AS lock_acquired
-    FROM pg_advisory_xact_lock(${trophyId})
+    FROM pg_advisory_xact_lock(${TROPHY_MONEY_LOCK_NAMESPACE}, ${trophyId})
   `;
   const trophy = await tx.trophy.findUnique({ where: { id: trophyId } });
   if (!trophy) {
