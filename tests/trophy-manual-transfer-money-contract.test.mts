@@ -16,9 +16,9 @@ const ui = readFileSync(
 );
 
 test("manual trophy custody change is serialized and money-aware", () => {
-  assert.ok(actions.includes("pg_advisory_xact_lock"));
-  assert.ok(actions.includes("FOR UPDATE"));
-  assert.ok(actions.includes("TROPHY_MONEY_LOCK_NAMESPACE"));
+  assert.ok(service.includes("pg_advisory_xact_lock"));
+  assert.ok(service.includes("FOR UPDATE"));
+  assert.ok(service.includes("TROPHY_MONEY_LOCK_NAMESPACE"));
   assert.ok(actions.includes("lockTrophyMoneyState"));
   assert.ok(actions.includes("assertChallengeCustodyStillCurrent"));
   assert.ok(actions.includes("Title custody changed after this challenge was created"));
@@ -31,6 +31,13 @@ test("manual trophy custody change is serialized and money-aware", () => {
   assert.ok(actions.includes("const sameHolder = previousHolderId === user.id"));
   assert.ok(actions.includes("custodyChanged: false"));
   assert.ok(actions.includes("bountyReset: false"));
+});
+
+test("daily tribute queue re-reads custody under the same money lock", () => {
+  assert.ok(service.includes("const trophy = await lockTrophyMoneyState(tx, candidate.id)"));
+  assert.ok(service.includes("The outer candidate scan is only an optimization"));
+  assert.ok(service.includes("trophyHasActiveReignTribute(trophy.trophyId)"));
+  assert.ok(service.includes('["held", "active"].includes(trophy.status)'));
 });
 
 test("manual transfer preserves current tribute policy and immutable chain truth", () => {
