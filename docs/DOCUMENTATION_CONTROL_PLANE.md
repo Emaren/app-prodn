@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/trophy-manual-transfer-money-20260929` at `900d3a2c6393f17d7159d824a26ccbfdfb11b67e`
+Implementation baseline: `fix/trophy-manual-transfer-money-20260929` at `672e4ad41b4d59b3f76bc80db361db0aec46133c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
