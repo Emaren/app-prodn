@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/kkr-trophy-honors-authority-20260929` at `fa119cebaabac4923d754619d822fc6fede53d03`
+Implementation baseline: `fix/wallet-trophy-authority-20260929` at `36719b614ef2de3efc058c90852a716d36957aab`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
