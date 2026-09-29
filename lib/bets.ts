@@ -174,6 +174,15 @@ export type BetWarTapeRow = {
   createdAt: string;
 };
 
+export type BetPreviewLiquidityRow = {
+  id: number;
+  botLabel: string;
+  side: BetSide;
+  amountWolo: number;
+  recordedAt: string;
+  financiallyCommitted: false;
+};
+
 export type BetBroadcastFeeds = {
   left: WatchStreamPayload | null;
   god: WatchStreamPayload | null;
@@ -215,6 +224,7 @@ export type BetBoardMarket = {
   right: BetBoardSide;
   founderBonuses: BetFounderChip[];
   warTape: BetWarTapeRow[];
+  previewLiquidity: BetPreviewLiquidityRow[];
   broadcastFeeds: BetBroadcastFeeds;
   broadcastPreviewUrls: BetBroadcastPreviewUrls;
   viewerWager: {
@@ -500,6 +510,84 @@ function projectReturnWolo(stakeWolo: number, selectedPoolWolo: number, opposite
 function computeSharePercent(sidePoolWolo: number, totalPotWolo: number) {
   if (totalPotWolo <= 0) return 50;
   return Math.round((sidePoolWolo / totalPotWolo) * 100);
+}
+
+type BetPreviewLiquidityEvidenceRow = {
+  id: number;
+  marketId: number | null;
+  botSlugSnapshot: string;
+  eventType: string;
+  effectiveModeSnapshot: string;
+  counterSide: string | null;
+  proposedCounterstakeWolo: number | null;
+  committedCounterstakeWolo: number | null;
+  availableBalanceWolo: number | null;
+  custodyVerified: boolean;
+  custodyVerificationId: string | null;
+  custodyReservationId: string | null;
+  stakeTxHash: string | null;
+  createdAt: Date;
+};
+
+function publicCounterBotLabel(slug: string) {
+  const normalized = slug.trim().toLowerCase();
+  if (normalized === "tony") return "Tony";
+  if (normalized === "paulie") return "Paulie";
+  return "House preview";
+}
+
+export function buildBetPreviewLiquidityMap(
+  rows: readonly BetPreviewLiquidityEvidenceRow[]
+) {
+  const byMarketId = new Map<number, BetPreviewLiquidityRow[]>();
+
+  for (const row of rows) {
+    if (
+      !Number.isSafeInteger(row.marketId) ||
+      (row.marketId ?? 0) <= 0 ||
+      row.eventType !== "shadow_proposal" ||
+      row.effectiveModeSnapshot !== "shadow" ||
+      (row.counterSide !== "left" && row.counterSide !== "right") ||
+      !Number.isSafeInteger(row.proposedCounterstakeWolo) ||
+      (row.proposedCounterstakeWolo ?? 0) <= 0 ||
+      row.committedCounterstakeWolo !== null ||
+      row.availableBalanceWolo !== null ||
+      row.custodyVerified ||
+      Boolean(row.custodyVerificationId?.trim()) ||
+      Boolean(row.custodyReservationId?.trim()) ||
+      Boolean(row.stakeTxHash?.trim())
+    ) {
+      continue;
+    }
+
+    const marketId = row.marketId as number;
+    const bucket = byMarketId.get(marketId) ?? [];
+    if (bucket.length >= 4) continue;
+
+    bucket.push({
+      id: row.id,
+      botLabel: publicCounterBotLabel(row.botSlugSnapshot),
+      side: row.counterSide,
+      amountWolo: row.proposedCounterstakeWolo as number,
+      recordedAt: row.createdAt.toISOString(),
+      financiallyCommitted: false,
+    });
+    byMarketId.set(marketId, bucket);
+  }
+
+  return byMarketId;
+}
+
+export function attachBetPreviewLiquidity<
+  T extends { id: number; previewLiquidity: BetPreviewLiquidityRow[] },
+>(
+  market: T,
+  byMarketId: ReadonlyMap<number, readonly BetPreviewLiquidityRow[]>
+): T {
+  return {
+    ...market,
+    previewLiquidity: [...(byMarketId.get(market.id) ?? [])],
+  };
 }
 
 function formatCloseLabel(status: BetStatus, closeAt: Date | null) {
@@ -7917,6 +8005,7 @@ function buildMarketCard(
     },
     founderBonuses,
     warTape,
+    previewLiquidity: [],
     broadcastFeeds: EMPTY_BROADCAST_FEEDS,
     broadcastPreviewUrls: { ...EMPTY_BET_BROADCAST_PREVIEW_URLS },
     viewerWager: latestViewerWager
@@ -9058,29 +9147,64 @@ export async function loadBetBoardSnapshot(
   ]);
 
   const openMarketIds = [...openMarketsRaw, ...awaitingProofRaw].map((market) => market.id);
-  const claimRows = openMarketIds.length
-    ? await prisma.pendingWoloClaim.findMany({
-        where: {
-          sourceMarketId: { in: openMarketIds },
-        },
-        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-        select: {
-          id: true,
-          sourceMarketId: true,
-          displayPlayerName: true,
-          amountWolo: true,
-          claimKind: true,
-          status: true,
-          note: true,
-          payoutTxHash: true,
-          payoutProofUrl: true,
-          errorState: true,
-          createdAt: true,
-          claimedAt: true,
-          rescindedAt: true,
-        },
-      })
-    : [];
+  const [claimRows, previewActionRows] = await Promise.all([
+    prisma.pendingWoloClaim.findMany({
+      where: {
+        sourceMarketId: { in: openMarketIds },
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      select: {
+        id: true,
+        sourceMarketId: true,
+        displayPlayerName: true,
+        amountWolo: true,
+        claimKind: true,
+        status: true,
+        note: true,
+        payoutTxHash: true,
+        payoutProofUrl: true,
+        errorState: true,
+        createdAt: true,
+        claimedAt: true,
+        rescindedAt: true,
+      },
+    }),
+    prisma.betCounterAction.findMany({
+      where: {
+        marketId: { in: openMarketIds },
+        eventType: "shadow_proposal",
+        effectiveModeSnapshot: "shadow",
+        proposedCounterstakeWolo: { gt: 0 },
+        committedCounterstakeWolo: null,
+        availableBalanceWolo: null,
+        custodyVerified: false,
+        custodyVerificationId: null,
+        custodyReservationId: null,
+        stakeTxHash: null,
+        counterSide: { in: ["left", "right"] },
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: 500,
+      select: {
+        id: true,
+        marketId: true,
+        botSlugSnapshot: true,
+        eventType: true,
+        effectiveModeSnapshot: true,
+        counterSide: true,
+        proposedCounterstakeWolo: true,
+        committedCounterstakeWolo: true,
+        availableBalanceWolo: true,
+        custodyVerified: true,
+        custodyVerificationId: true,
+        custodyReservationId: true,
+        stakeTxHash: true,
+        createdAt: true,
+      },
+    }),
+  ]);
+  const previewLiquidityByMarketId =
+    buildBetPreviewLiquidityMap(previewActionRows);
 
   const claimsByMarketId = new Map<number, typeof claimRows>();
   for (const claim of claimRows) {
@@ -9093,10 +9217,16 @@ export async function loadBetBoardSnapshot(
   }
 
   const openMarketsWithoutFeeds = openMarketsRaw.map((market) =>
-    buildMarketCard(market, viewer?.id ?? null, claimsByMarketId)
+    attachBetPreviewLiquidity(
+      buildMarketCard(market, viewer?.id ?? null, claimsByMarketId),
+      previewLiquidityByMarketId
+    )
   );
   const awaitingProofMarketsWithoutFeeds = awaitingProofRaw.map((market) =>
-    buildMarketCard(market, viewer?.id ?? null, claimsByMarketId)
+    attachBetPreviewLiquidity(
+      buildMarketCard(market, viewer?.id ?? null, claimsByMarketId),
+      previewLiquidityByMarketId
+    )
   );
   const broadcastSessionKeys = [
     ...openMarketsWithoutFeeds.map((market) => market.linkedSessionKey),
