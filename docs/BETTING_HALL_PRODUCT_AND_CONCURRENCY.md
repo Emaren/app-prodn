@@ -281,6 +281,19 @@ compatibility bridge. Production `lib/bets.ts` intentionally does not consume
 the new fields yet. Activation requires a separately reviewed market-materializer
 and aligned transactional write/settlement/recovery paths.
 
+The server-side battle clock is now also prepared for Phase Books. Betting
+market reconciliation resolves one stabilized Watcher start timestamp from the
+same canonical live-session snapshot used for market identity. Exact promoted
+aliases resolve to the same timestamp; an alias claimed by two canonical
+sessions loses start authority. That start is written to
+`BattleIdentity.startedAt`, not to individual BetMarket rows.
+
+A scheduled Challenge's appointment time remains only the Pre-Game cutoff. Once
+the Challenge is linked to a live Watcher session, Opening/Late timing comes from
+that exact session's stabilized Watcher start. Heartbeats cannot move an
+existing BattleIdentity start later, and exact identity-family promotion keeps
+the earliest already-proven start on the surviving public Battle row.
+
 ### Presentation direction
 
 The horizontal `InstrumentStakeRail` has been retired.
