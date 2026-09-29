@@ -1418,6 +1418,71 @@ function trophyDefinitionForRow(trophyId: string) {
   );
 }
 
+const CHALLENGEABLE_TROPHY_STATUSES = new Set([
+  "held",
+  "active",
+  "guardian_held",
+  "vacant",
+]);
+
+export function projectTrophyChallengeAuthority(
+  trophy: Pick<
+    Trophy,
+    | "trophyId"
+    | "status"
+    | "currentHolderUserId"
+    | "currentHolderDisplayName"
+    | "currentHolderWoloAddress"
+    | "guardianHolderUserId"
+    | "guardianHolderDisplayName"
+    | "guardianHolderWoloAddress"
+  >
+) {
+  const definition = trophyDefinitionForRow(trophy.trophyId);
+  const forcedVacant = Boolean(
+    definition && titleIsPubliclyForcedVacant(definition.id)
+  );
+  const status = forcedVacant ? "vacant" : trophy.status;
+  const rawCurrentHolderUserId = forcedVacant ? null : trophy.currentHolderUserId;
+  const rawGuardianHolderUserId = forcedVacant ? null : trophy.guardianHolderUserId;
+  const statusChallengeable = CHALLENGEABLE_TROPHY_STATUSES.has(status);
+  const custodyConsistent = forcedVacant
+    ? true
+    : status === "held" || status === "active"
+      ? rawCurrentHolderUserId !== null
+      : status === "guardian_held"
+        ? rawCurrentHolderUserId === null && rawGuardianHolderUserId !== null
+        : status === "vacant"
+          ? rawCurrentHolderUserId === null
+          : true;
+  const holderIsAuthority = !forcedVacant && (status === "held" || status === "active");
+  const guardianIsAuthority =
+    !forcedVacant &&
+    (status === "guardian_held" || (status === "vacant" && rawGuardianHolderUserId !== null));
+
+  return {
+    challengeable: statusChallengeable && custodyConsistent,
+    statusChallengeable,
+    custodyConsistent,
+    forcedVacant,
+    status,
+    currentHolderUserId: holderIsAuthority ? rawCurrentHolderUserId : null,
+    currentHolderDisplayName: holderIsAuthority
+      ? trophy.currentHolderDisplayName
+      : null,
+    currentHolderWoloAddress: holderIsAuthority
+      ? trophy.currentHolderWoloAddress
+      : null,
+    guardianHolderUserId: guardianIsAuthority ? rawGuardianHolderUserId : null,
+    guardianHolderDisplayName: guardianIsAuthority
+      ? trophy.guardianHolderDisplayName
+      : null,
+    guardianHolderWoloAddress: guardianIsAuthority
+      ? trophy.guardianHolderWoloAddress
+      : null,
+  };
+}
+
 export async function loadTrophyUsers(prisma: PrismaClient): Promise<TrophyUserOption[]> {
   const [users, ratings] = await Promise.all([
     prisma.user.findMany({

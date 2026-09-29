@@ -196,6 +196,24 @@ Current-season public policy lives in
   `ScheduledMatch` and a linked `TrophyChallenge`. The challenger must satisfy
   the configured national/ELO rule and must schedule against the current holder
   or Commissioner Guardian.
+- Title challenge admission is status-aware and shared by public creation,
+  Trophy Command creation, and settlement. `held`, `active`,
+  `guardian_held`, and genuine `vacant` titles are challengeable;
+  `draft`, `paused`, and `retired` are unavailable. A vacant title may
+  retain Commissioner Guardian custody for an activation fight.
+- Current-season forced vacancy overrides stale historical holder/Guardian
+  fields for challenge authority. Those titles are treated as genuinely vacant
+  without rewriting the underlying historical row on read.
+- Public challenge creation takes the title-challenge lock, then the Trophy
+  money/custody row lock, re-reads status and custody, and rejects the request if
+  either changed after preflight. Commissioner-created challenges derive
+  defender/Guardian from that same locked authority rather than from caller
+  payload.
+- Settlement rechecks the same authority after replay/desync locks and the
+  Trophy lock. A challenge created while a title was live cannot later move a
+  title that has become paused, retired, draft, or otherwise inconsistent.
+- Public title presentation maps `draft`, `paused`, and `retired` to
+  `coming_soon` rather than advertising them as vacant/open thrones.
 - Normal `/challenge` requests inspect both participants for currently held,
   app-only ELO belts that are not already committed to an active title defense.
   Those belts are attached as `TrophyChallenge` rows automatically. A held title

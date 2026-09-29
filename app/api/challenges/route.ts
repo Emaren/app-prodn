@@ -39,6 +39,8 @@ import { getSessionUid } from "@/lib/session";
 import {
   ensureTrophySeedData,
   loadTrophyUsers,
+  lockTrophyMoneyState,
+  projectTrophyChallengeAuthority,
   seededTrophyKeyForChallenge,
 } from "@/lib/trophies/service";
 import { recordUserActivity } from "@/lib/userExperience";
@@ -348,6 +350,35 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ detail: "That trophy target is unavailable." }, { status: 404 });
       }
 
+      const authority = projectTrophyChallengeAuthority(targetTrophy);
+      if (!authority.statusChallengeable) {
+        return NextResponse.json(
+          {
+            detail: `${targetTrophy.displayName} is ${authority.status} and is not open for title challenges.`,
+          },
+          { status: 409 }
+        );
+      }
+      if (!authority.custodyConsistent) {
+        return NextResponse.json(
+          {
+            detail: `${targetTrophy.displayName} custody is inconsistent with its ${authority.status} state. An admin must repair custody before scheduling its title fight.`,
+          },
+          { status: 409 }
+        );
+      }
+
+      targetTrophy = {
+        ...targetTrophy,
+        status: authority.status,
+        currentHolderUserId: authority.currentHolderUserId,
+        currentHolderDisplayName: authority.currentHolderDisplayName,
+        currentHolderWoloAddress: authority.currentHolderWoloAddress,
+        guardianHolderUserId: authority.guardianHolderUserId,
+        guardianHolderDisplayName: authority.guardianHolderDisplayName,
+        guardianHolderWoloAddress: authority.guardianHolderWoloAddress,
+      };
+
       const expectedDefenderId =
         targetTrophy.currentHolderUserId ?? targetTrophy.guardianHolderUserId;
       if (
@@ -503,6 +534,43 @@ export async function POST(request: NextRequest) {
               ${title.id}
             )
           `;
+
+          const liveTitle = await lockTrophyMoneyState(tx, title.id);
+          if (!liveTitle) {
+            throw new TitleChallengeConflictError(
+              `${title.displayName} disappeared before the title challenge was created.`
+            );
+          }
+          const liveAuthority = projectTrophyChallengeAuthority(liveTitle);
+          if (!liveAuthority.statusChallengeable) {
+            throw new TitleChallengeConflictError(
+              `${liveTitle.displayName} is ${liveAuthority.status} and is not open for title challenges.`
+            );
+          }
+          if (!liveAuthority.custodyConsistent) {
+            throw new TitleChallengeConflictError(
+              `${liveTitle.displayName} custody became inconsistent before challenge creation. Reload after custody is repaired.`
+            );
+          }
+          if (
+            liveAuthority.status !== title.status ||
+            liveAuthority.currentHolderUserId !== title.currentHolderUserId ||
+            liveAuthority.guardianHolderUserId !== title.guardianHolderUserId
+          ) {
+            throw new TitleChallengeConflictError(
+              `${liveTitle.displayName} custody or status changed while the challenge was being created. Reload and try again.`
+            );
+          }
+
+          Object.assign(title, {
+            status: liveAuthority.status,
+            currentHolderUserId: liveAuthority.currentHolderUserId,
+            currentHolderDisplayName: liveAuthority.currentHolderDisplayName,
+            currentHolderWoloAddress: liveAuthority.currentHolderWoloAddress,
+            guardianHolderUserId: liveAuthority.guardianHolderUserId,
+            guardianHolderDisplayName: liveAuthority.guardianHolderDisplayName,
+            guardianHolderWoloAddress: liveAuthority.guardianHolderWoloAddress,
+          });
 
           const competingTitleChallenge = await tx.trophyChallenge.findFirst({
             where: {

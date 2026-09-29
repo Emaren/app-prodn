@@ -1,6 +1,7 @@
-import type { Prisma, PrismaClient } from "@/lib/generated/prisma";
+import type { Prisma, PrismaClient, Trophy } from "@/lib/generated/prisma";
 import { countriesEligibilityMatch } from "@/lib/countryEligibility";
 import { eloTrophyIdentity } from "@/lib/champions/eloTrophy";
+import { TERMINAL_TITLE_CHALLENGE_STATUSES } from "@/lib/challengeTitlePolicy";
 import {
   acquireChallengeDesyncAdvisoryLock,
   assertTitleTransferAllowed,
@@ -12,6 +13,7 @@ import {
   lockTrophyMoneyState,
   prepareManualTrophyHolderTransferPayouts,
   prepareTrophyCustodyExit,
+  projectTrophyChallengeAuthority,
   projectedTrophyBounty,
   recordNationalityChange,
 } from "@/lib/trophies/service";
@@ -85,17 +87,28 @@ async function getTrophy(prisma: PrismaClient, payload: ActionPayload) {
 }
 
 function assertChallengeCustodyStillCurrent(
-  trophy: {
-    currentHolderUserId: number | null;
-    guardianHolderUserId: number | null;
-  },
+  trophy: Trophy,
   challenge: {
     defenderUserId: number | null;
     guardianUserId: number | null;
   }
 ) {
+  const authority = projectTrophyChallengeAuthority(trophy);
+  if (!authority.statusChallengeable) {
+    throw new TrophyActionError(
+      `${trophy.displayName} is ${authority.status} and is not open for title settlement.`,
+      409
+    );
+  }
+  if (!authority.custodyConsistent) {
+    throw new TrophyActionError(
+      `${trophy.displayName} custody is inconsistent with its ${authority.status} state. Repair custody before settlement.`,
+      409
+    );
+  }
+
   if (challenge.defenderUserId !== null) {
-    if (trophy.currentHolderUserId !== challenge.defenderUserId) {
+    if (authority.currentHolderUserId !== challenge.defenderUserId) {
       throw new TrophyActionError(
         "Title custody changed after this challenge was created. Re-open the challenge against the current holder.",
         409
@@ -105,8 +118,8 @@ function assertChallengeCustodyStillCurrent(
   }
   if (challenge.guardianUserId !== null) {
     if (
-      trophy.currentHolderUserId !== null ||
-      trophy.guardianHolderUserId !== challenge.guardianUserId
+      authority.currentHolderUserId !== null ||
+      authority.guardianHolderUserId !== challenge.guardianUserId
     ) {
       throw new TrophyActionError(
         "Guardian custody changed after this challenge was created. Re-open the challenge against current custody.",
@@ -115,7 +128,10 @@ function assertChallengeCustodyStillCurrent(
     }
     return;
   }
-  if (trophy.currentHolderUserId !== null || trophy.guardianHolderUserId !== null) {
+  if (
+    authority.currentHolderUserId !== null ||
+    authority.guardianHolderUserId !== null
+  ) {
     throw new TrophyActionError(
       "This challenge was created for a vacant title, but custody is no longer vacant.",
       409
@@ -123,7 +139,7 @@ function assertChallengeCustodyStillCurrent(
   }
 }
 
-async function getUser(prisma: PrismaClient, userId: number | null) {
+async function getUser(prisma: PrismaClient | Prisma.TransactionClient, userId: number | null) {
   if (!userId) return null;
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -909,62 +925,128 @@ async function createChallenge(
   const trophy = await getTrophy(prisma, payload);
   const challenger = await getUser(prisma, nullableInt(payload.challengerUserId));
   if (!challenger) throw new TrophyActionError("Choose a challenger.");
-  const defender = await getUser(
-    prisma,
-    nullableInt(payload.defenderUserId) ?? trophy.currentHolderUserId
-  );
-  const guardian = await getUser(
-    prisma,
-    nullableInt(payload.guardianUserId) ?? trophy.guardianHolderUserId
-  );
   const rating = nullableInt(payload.challengerRating);
-  const eligibility = eligibilityForUser(trophy, challenger, rating);
   const override = boolValue(payload.eligibilityOverride);
-  if (!eligibility.eligible && !override) {
-    throw new TrophyActionError(`Challenger is not eligible. ${eligibility.detail}`);
-  }
-  const challengeKind =
-    trophy.status === "guardian_held" || (!defender && guardian)
-      ? "guardian_activation"
-      : trophy.family;
-  const challenge = await prisma.trophyChallenge.create({
-    data: {
-      trophyId: trophy.id,
-      challengeKind,
-      challengerUserId: challenger.id,
-      defenderUserId: defender?.id ?? null,
-      guardianUserId: guardian?.id ?? null,
-      challengerWoloAddress: challenger.walletAddress,
-      defenderWoloAddress: defender?.walletAddress ?? guardian?.walletAddress ?? null,
-      expectedPlayerNames: [
-        displayName(challenger),
-        defender ? displayName(defender) : guardian ? displayName(guardian) : null,
-      ].filter(Boolean),
-      requiredNationality: trophy.eligibleNationality,
-      requiredEloMin: trophy.eloBandMin,
-      requiredEloMax: trophy.eloBandMax,
-      eligibilitySnapshot: {
-        eligible: eligibility.eligible,
-        detail: eligibility.detail,
-        challengerCountry: challenger.representedCountry,
-        challengerRating: rating,
-        capturedAt: new Date().toISOString(),
+  const requestedDefenderUserId = nullableInt(payload.defenderUserId);
+  const requestedGuardianUserId = nullableInt(payload.guardianUserId);
+
+  await prisma.$transaction(async (tx) => {
+    const currentTrophy = await lockTrophyMoneyState(tx, trophy.id);
+    if (!currentTrophy) {
+      throw new TrophyActionError("Trophy disappeared during challenge creation.", 409);
+    }
+
+    const authority = projectTrophyChallengeAuthority(currentTrophy);
+    if (!authority.statusChallengeable) {
+      throw new TrophyActionError(
+        `${currentTrophy.displayName} is ${authority.status} and is not open for title challenges.`,
+        409
+      );
+    }
+    if (!authority.custodyConsistent) {
+      throw new TrophyActionError(
+        `${currentTrophy.displayName} custody is inconsistent with its ${authority.status} state. Repair custody before creating a challenge.`,
+        409
+      );
+    }
+
+    if (
+      requestedDefenderUserId !== null &&
+      requestedDefenderUserId !== authority.currentHolderUserId
+    ) {
+      throw new TrophyActionError(
+        "Requested defender does not match live Trophy custody.",
+        409
+      );
+    }
+    if (
+      requestedGuardianUserId !== null &&
+      requestedGuardianUserId !== authority.guardianHolderUserId
+    ) {
+      throw new TrophyActionError(
+        "Requested Guardian does not match live Trophy custody.",
+        409
+      );
+    }
+
+    const competingChallenge = await tx.trophyChallenge.findFirst({
+      where: {
+        trophyId: currentTrophy.id,
+        status: { notIn: [...TERMINAL_TITLE_CHALLENGE_STATUSES] },
       },
-      eligibilityOverride: override,
-      status: "proposed",
-      watcherSessionId: nullableString(payload.watcherSessionId, 255),
-      watcherPairingId: nullableString(payload.watcherPairingId, 255),
-      scheduledMatchId: nullableInt(payload.scheduledMatchId),
-      settlementStatus: "not_started",
-    },
-  });
-  await recordEvent(prisma, {
-    trophyId: trophy.id,
-    eventType: "CHALLENGE_CREATED",
-    actor,
-    challengeId: challenge.id,
-    toHolderUserId: challenger.id,
-    rawRequest: jsonValue({ eligibility, eligibilityOverride: override, challengeKind }),
+      select: { id: true },
+    });
+    if (competingChallenge) {
+      throw new TrophyActionError(
+        `${currentTrophy.displayName} already has active title challenge #${competingChallenge.id}.`,
+        409
+      );
+    }
+
+    const defender = await getUser(tx, authority.currentHolderUserId);
+    const guardian = await getUser(tx, authority.guardianHolderUserId);
+    const eligibility = eligibilityForUser(currentTrophy, challenger, rating);
+    if (!eligibility.eligible && !override) {
+      throw new TrophyActionError(`Challenger is not eligible. ${eligibility.detail}`);
+    }
+
+    const challengeKind =
+      authority.status === "guardian_held" || (!defender && guardian)
+        ? "guardian_activation"
+        : currentTrophy.family;
+
+    const challenge = await tx.trophyChallenge.create({
+      data: {
+        trophyId: currentTrophy.id,
+        challengeKind,
+        challengerUserId: challenger.id,
+        defenderUserId: defender?.id ?? null,
+        guardianUserId: guardian?.id ?? null,
+        challengerWoloAddress: challenger.walletAddress,
+        defenderWoloAddress:
+          defender?.walletAddress ?? guardian?.walletAddress ?? null,
+        expectedPlayerNames: [
+          displayName(challenger),
+          defender ? displayName(defender) : guardian ? displayName(guardian) : null,
+        ].filter(Boolean),
+        requiredNationality: currentTrophy.eligibleNationality,
+        requiredEloMin: currentTrophy.eloBandMin,
+        requiredEloMax: currentTrophy.eloBandMax,
+        eligibilitySnapshot: {
+          eligible: eligibility.eligible,
+          detail: eligibility.detail,
+          challengerCountry: challenger.representedCountry,
+          challengerRating: rating,
+          capturedAt: new Date().toISOString(),
+          trophyStatus: authority.status,
+          forcedVacant: authority.forcedVacant,
+        },
+        eligibilityOverride: override,
+        status: "proposed",
+        watcherSessionId: nullableString(payload.watcherSessionId, 255),
+        watcherPairingId: nullableString(payload.watcherPairingId, 255),
+        scheduledMatchId: nullableInt(payload.scheduledMatchId),
+        settlementStatus: "not_started",
+      },
+    });
+
+    await recordEvent(tx, {
+      trophyId: currentTrophy.id,
+      eventType: "CHALLENGE_CREATED",
+      actor,
+      challengeId: challenge.id,
+      toHolderUserId:
+        authority.currentHolderUserId ??
+        authority.guardianHolderUserId ??
+        challenger.id,
+      rawRequest: jsonValue({
+        eligibility,
+        eligibilityOverride: override,
+        challengeKind,
+        trophyStatus: authority.status,
+        forcedVacant: authority.forcedVacant,
+      }),
+    });
   });
 }
 

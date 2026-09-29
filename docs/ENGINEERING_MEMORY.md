@@ -2136,6 +2136,31 @@ captured defender or Guardian no longer matches current custody. Preview and
 settlement bounty calculations must use that locked Trophy row rather than an
 older relation snapshot loaded before the transaction.
 
+Challengeability is part of the same locked authority, not merely UI state.
+The admitted Trophy statuses are `held`, `active`, `guardian_held`, and
+`vacant`; `draft`, `paused`, and `retired` fail closed. Public challenge
+creation must take its title-challenge advisory lock, then the Trophy money row
+lock, re-read status/custody, and require the locked authority to match the
+preflight snapshot before creating the linked title challenge.
+
+Forced-season vacancy is an authority override. When the public championship
+policy marks a title forced vacant, challenge creation and settlement must ignore
+stale historical holder/Guardian fields and treat the title as genuinely vacant
+without mutating history merely to make reads agree. Conversely, ordinary
+malformed custody (for example `vacant` with a real current holder or
+`guardian_held` with a real current holder) must fail closed rather than being
+silently normalized.
+
+Commissioner challenge creation has no separate defender-selection authority.
+The target Trophy and challenger may be selected, but defender/Guardian identity
+must come from the locked Trophy authority. Existing nonterminal title
+challenges must be checked under the same serialized Trophy lock so the admin
+rail cannot create a duplicate while public creation is in flight.
+
+Presentation must not call unavailable title states vacant. Map `draft`,
+`paused`, and `retired` to the existing `coming_soon` public vocabulary;
+reserve `vacant` for an actually claimable open throne.
+
 The daily Tribute scheduler is part of the same money state machine. Candidate
 queries may be stale by the time a transaction begins, so recipient, status,
 reign start, and tribute amount must be re-read from the Trophy row after

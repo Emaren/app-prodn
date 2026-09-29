@@ -1169,6 +1169,11 @@ function Challenges({
   const [trophyId, setTrophyId] = useState(String(snapshot.trophies[0]?.id || ""));
   const [challengerUserId, setChallengerUserId] = useState("");
   const challenger = snapshot.users.find((user) => user.id === Number(challengerUserId));
+  const selectedTrophy = snapshot.trophies.find((trophy) => trophy.id === Number(trophyId));
+  const selectedTrophyStatusAllowsChallenge = Boolean(
+    selectedTrophy &&
+      ["held", "active", "guardian_held", "vacant"].includes(selectedTrophy.status)
+  );
   return (
     <section className="space-y-4">
       <div className="rounded-[1.7rem] border border-white/10 bg-black/22 p-5">
@@ -1192,7 +1197,12 @@ function Challenges({
           <div className="flex items-end">
             <Button
               tone="gold"
-              disabled={busy || !trophyId || !challengerUserId}
+              disabled={
+                busy ||
+                !trophyId ||
+                !challengerUserId ||
+                !selectedTrophyStatusAllowsChallenge
+              }
               onClick={() =>
                 void onAction(
                   {

@@ -317,16 +317,22 @@ async function loadLiveChampionDefinitionMap(
         : [];
       const lastTribute = lastTributeByTrophyId.get(trophy.id) ?? null;
       const forceVacant = titleIsPubliclyForcedVacant(definition.id);
+      const publicStatus =
+        forceVacant
+          ? "vacant"
+          : trophy.status === "held" ||
+              trophy.status === "active" ||
+              trophy.status === "guardian_held"
+            ? "held"
+            : trophy.status === "vacant"
+              ? "vacant"
+              : "coming_soon";
       liveDefinitionMap.set(definition.id, {
         ...definition,
         assetUrl: trophy.nftImageUri?.trim() || definition.assetUrl,
         dailyWolo: trophy.tributeAmountWolo,
-        status:
-          !forceVacant &&
-          (trophy.status === "held" || trophy.status === "active" || trophy.status === "guardian_held")
-            ? "held"
-            : "vacant",
-        holders: forceVacant ? [] : holders,
+        status: publicStatus,
+        holders: forceVacant || publicStatus === "coming_soon" ? [] : holders,
         trophyId: trophy.trophyId,
         trophyStatus: trophy.status,
         currentBountyWolo: forceVacant ? 0 : projectedTrophyBounty(trophy),
