@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/wallet-trophy-authority-20260929` at `4187a7c5edba05165c30a9940d4178be73afe878`
+Implementation baseline: `feat/auto-bet-shadow-worker-20260929` at `98835c063966ee2e1d0538dbdfbacc000ad5f347`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
