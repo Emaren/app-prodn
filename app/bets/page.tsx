@@ -6069,6 +6069,7 @@ function ViewerAutoBetPreviewRail({
 }: {
   market: BetBoardMarket;
 }) {
+  if (market.marketType === DESYNC_SIDE_MARKET_TYPE) return null;
   const preview = market.viewerAutoBetPreview ?? null;
   if (!preview) return null;
 
