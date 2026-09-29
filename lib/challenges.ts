@@ -221,7 +221,7 @@ type ComparableSession = {
   updatedAt: string;
   completedAt: string | null;
   mapName: string | null;
-  gameType: string | null;
+  gameType?: string | null;
   winner: string | null;
   durationSeconds: number | null;
   players: ChallengeReplayParticipant[];
