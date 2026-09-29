@@ -50,6 +50,28 @@ test("missing local managed media falls through to public production", () => {
   assert.match(route, /cache: "no-store"/);
 });
 
+test("managed-media resolver returns preview bytes instead of redirecting Next Image", () => {
+  const route = source(
+    "app/api/media-assets/[kind]/[target]/route.ts",
+  );
+
+  assert.match(route, /getPreviewDataOrigin/);
+  assert.match(route, /servePreviewMediaDirect/);
+  assert.match(route, /\/uploads\/managed-assets\//);
+  assert.match(route, /\/api\/media-assets\//);
+  assert.match(route, /redirect: "follow"/);
+  assert.match(route, /preview-production-media/);
+});
+
+test("Development OS can launch local code with governed production data", () => {
+  const dev = source("scripts/aoe2_dev.py");
+
+  assert.match(dev, /--prod-data/);
+  assert.match(dev, /dev:prod" if prod_data else "dev:shadow"/);
+  assert.match(dev, /AOE2WAR_PREVIEW_PATH/);
+  assert.match(dev, /live production data[\s\S]*read-only/);
+});
+
 test("dev:prod is the read-only production parity launcher", () => {
   const pkg = JSON.parse(source("package.json")) as {
     scripts?: Record<string, string>;

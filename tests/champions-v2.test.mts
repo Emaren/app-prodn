@@ -65,6 +65,10 @@ test("Chaos contender queue is Watcher-activity driven and excludes the holder",
 
 test("World contender queue alternates explicit RM and DM ladders", () => {
   assert.match(state, /function alternatingWorldContenders/);
+  assert.match(
+    state,
+    /entry: PublicPlayerDirectoryEntry \| null \| undefined[\s\S]*if \(!entry\) return null/,
+  );
   assert.match(state, /steamRmRating/);
   assert.match(state, /steamDmRating/);
   assert.match(state, /lane = lane === "rm" \? "dm" : "rm"/);
@@ -111,15 +115,34 @@ test("team crowns preserve commissioner-curated contender teams and tapered hold
   assert.match(experience, /Open team contender/);
 });
 
-test("ELO crowns use exact managed-media targets and avatar-backed holder stages", () => {
+test("E2 belt stages favor premium slightly-oversized waist coverage", () => {
+  assert.match(experience, /title\.type === "world"[\s\S]*h-\[10\.5rem\] w-full/);
+  assert.match(experience, /title\.type === "chaos"[\s\S]*h-40 w-\[98%\]/);
+  assert.match(experience, /title\.type === "womens"[\s\S]*h-36 w-\[94%\]/);
+  assert.match(experience, /title\.size === 2[\s\S]*h-\[10rem\]/);
+  assert.match(experience, /title\.size === 3[\s\S]*h-\[9\.5rem\]/);
+  assert.match(experience, /: "h-36";/);
+  assert.match(experience, /\$\{beltHeight\} w-full/);
+  assert.match(experience, /h-32 w-\[96%\]/);
+  assert.match(experience, /top-\[7rem\][\s\S]*h-\[10\.5rem\] w-\[96%\]/);
+  assert.match(experience, /bottom-1 left-1\/2 h-28 w-\[94%\]/);
+});
+
+test("ELO crowns use exact managed-media targets and lane-specific Trophy custody", () => {
   assert.match(state, /lane === "dm" \? entry\.steamDmRating : entry\.steamRmRating/);
+  assert.match(state, /loadEloCustody/);
+  assert.match(state, /family: "elo"/);
+  assert.match(state, /canonicalEloTrophyId\(lane, division\)/);
+  assert.match(state, /eloTrophyIdentity\(trophy\)/);
   assert.match(state, /if \(lane === "rm"\)[\s\S]*return definition\.id/);
   assert.match(state, /division === "challenger" \? "dm-contender"/);
   assert.match(state, /rm \? "random-map-champion" : "deathmatch-champion"/);
-  assert.match(state, /const holder = titleState\.holders\[0\] \?\? null/);
+  assert.match(state, /custody\.get\(canonicalEloTrophyId\(lane, division\)\) \?\? null/);
   assert.match(experience, /holderAvatarUrl/);
   assert.match(experience, /division\.holder\?\.name \|\| "Vacant"/);
-  assert.match(experience, /state\.elo\[lane\]/);
+  assert.match(experience, /state\.elo\[eloLane\]/);
+  assert.match(experience, /eloLaneOrder/);
+  assert.match(experience, /eloFirstLane === "rm" \? \["rm", "dm"\] : \["dm", "rm"\]/);
 });
 
 test("national belt hall reads represented-country truth for every crown", () => {
@@ -190,10 +213,22 @@ test("RM DM switches use muted graphite styling instead of pale yellow", () => {
   assert.doesNotMatch(experience, /bg-amber-200 text-slate-950/);
 });
 
+test("ELO belts show both lanes and hide only their vertical order behind the kicker", () => {
+  assert.match(experience, /const \[eloFirstLane, setEloFirstLane\] = useState<ChampionsLane>\("rm"\)/);
+  assert.match(experience, /eloLaneOrder\.map/);
+  assert.match(experience, /setEloFirstLane/);
+  assert.match(experience, /eloLane\.toUpperCase\(\)\} ELO/);
+  assert.doesNotMatch(
+    experience.slice(experience.indexOf('kicker="ELO Belts"'), experience.indexOf('kicker="Artifacts"')),
+    /ModeSwitch/,
+  );
+  assert.match(experience, /cursor-pointer text-left transition hover:text-amber-100\/80/);
+});
+
 test("Saudi Arabia and Taiwan use bounded cinematic art instead of full-card takeover", () => {
   assert.match(experience, /belt\.slug === "saudi-arabia" \|\| belt\.slug === "taiwan"/);
-  assert.match(experience, /top-\[7\.2rem\]/);
-  assert.match(experience, /h-\[9\.5rem\]/);
+  assert.match(experience, /top-\[7rem\]/);
+  assert.match(experience, /h-\[10\.5rem\]/);
 });
 
 test("Tournament navigation says where all the warriors go", () => {

@@ -196,13 +196,25 @@ Current-season public policy lives in
   `ScheduledMatch` and a linked `TrophyChallenge`. The challenger must satisfy
   the configured national/ELO rule and must schedule against the current holder
   or Commissioner Guardian.
-- Normal `/challenge` requests now inspect both participants automatically. Any
-  eligible, currently held belt or artifact that is not already committed to an
-  active title defense is attached as a `TrophyChallenge`; users do not manually
-  pick registry ids in the scheduling form.
-- A verified watcher/replay result automatically settles `app_only` belts in the
-  app custody ledger. Stale challenges are blocked if title custody changed before
-  their result settled. Chain-backed titles remain explicit chain intents.
+- Normal `/challenge` requests inspect both participants for currently held,
+  app-only ELO belts that are not already committed to an active title defense.
+  Those belts are attached as `TrophyChallenge` rows automatically. A held title
+  defense does not re-run vacant-belt ELO admission rules: once the Commissioner
+  places a belt on a holder, a direct opponent may take that belt by beating the
+  holder in the matching game mode.
+- RM and DM ELO custody are distinct. Historical generic ELO definitions default
+  to RM for backward compatibility; new Trophy Command definitions record an
+  explicit RM/DM lane and are canonicalized to lane-specific custody identities.
+  The public E2 projection reads live Trophy custody for each lane instead of
+  sharing one generic holder across both rows.
+- A verified watcher/replay result can automatically settle a linked `app_only`
+  ELO belt only when both players' Watchers provide dual coverage, the replay's
+  authoritative game type matches the belt lane, title custody is unchanged,
+  desync authority permits title movement, and the projected dethrone bounty is
+  zero. The opposite RM/DM belt is closed as
+  `mode_not_contested` and does not move. Any non-zero bounty remains
+  commissioner-reviewed so automatic custody never invents or executes a WOLO
+  financial disposition. Chain-backed titles remain explicit chain intents.
 - Artifacts remain metric-bound. Replay proof is attached automatically, but the
   artifact does not move until its record/metric rule is verified.
 - Watcher/replay evidence remains the verification boundary. A linked challenge
@@ -229,11 +241,13 @@ Initial app-side custody seeds currently retained by source:
 - USA Champion: Jim
 - Mexico Champion: Julio Alvarez
 - UK Champion: vacant
-- Elite Championship: Commissioner Guardian custody with Emaren
+- Elite Championship: vacant
 
-Older databases may still retain historical UK/Sniper seed evidence. Public
-title projection and the live Tribute rail explicitly treat that obsolete seed
-as non-current rather than rewriting historical custody evidence on read.
+Older databases may still retain historical UK/Sniper or Elite/Emaren seed
+evidence. Public title projection and the live Tribute rail treat obsolete seed
+evidence as non-current rather than rewriting historical custody evidence on
+read. Read-only production preview skips seed reconciliation entirely, so local
+parity sessions can never manufacture custody while reading production truth.
 
 Seed names remain visible even when a matching app user does not exist. In that
 case the display custody is retained while the user relation and wallet address

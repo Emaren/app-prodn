@@ -29,6 +29,48 @@ test("public trophy seed reconciliation is retained per Prisma client", () => {
   );
 });
 
+test("read-only production preview skips trophy seed writes", () => {
+  const publicEnsureBlock = service.slice(
+    service.indexOf(
+      "function ensurePublicTrophySeedData",
+    ),
+    service.indexOf(
+      "async function loadRatings",
+    ),
+  );
+
+  assert.match(
+    publicEnsureBlock,
+    /AOE2WAR_PROD_DB_PREVIEW === "true"/,
+  );
+  assert.match(
+    publicEnsureBlock,
+    /return Promise\.resolve\(\)/,
+  );
+});
+
+test("Elite bootstrap seed is vacant with no inherited Guardian", () => {
+  const eliteStart = service.indexOf(
+    'trophyId: "elite_champion_belt"',
+  );
+  const eliteEnd = service.indexOf(
+    "},",
+    eliteStart,
+  );
+
+  assert.ok(eliteStart >= 0);
+  assert.ok(eliteEnd > eliteStart);
+
+  const eliteSeed = service.slice(
+    eliteStart,
+    eliteEnd,
+  );
+
+  assert.match(eliteSeed, /status: "vacant"/);
+  assert.doesNotMatch(eliteSeed, /guardianName/);
+  assert.doesNotMatch(eliteSeed, /guardian_held/);
+});
+
 test("failed public seed reconciliation is evicted and remains retryable", () => {
   const publicEnsureBlock = service.slice(
     service.indexOf(

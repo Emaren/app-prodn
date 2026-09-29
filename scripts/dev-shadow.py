@@ -292,6 +292,55 @@ def wait_for_https(process: subprocess.Popen) -> bool:
     return False
 
 
+def normalize_dev_open_route(value: str) -> str:
+    route = value.strip()
+
+    if not route:
+        return "/"
+
+    if "://" in route or route.startswith("//"):
+        stop(f"invalid local dev browser route: {value!r}")
+
+    return "/" + route.strip("/")
+
+
+def app_route_exists(route: str) -> bool:
+    if route == "/":
+        route_dir = ROOT / "app"
+    else:
+        route_dir = ROOT / "app" / route.lstrip("/")
+
+    return any(
+        (route_dir / filename).is_file()
+        for filename in ("page.tsx", "page.ts", "page.jsx", "page.js")
+    )
+
+
+def infer_feature_open_route() -> str:
+    explicit = os.environ.get("AOE2WAR_DEV_OPEN_ROUTE", "").strip()
+    if explicit:
+        return normalize_dev_open_route(explicit)
+
+    probe = subprocess.run(
+        ["git", "branch", "--show-current"],
+        cwd=ROOT,
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+    branch = probe.stdout.strip() if probe.returncode == 0 else ""
+    slug = branch.split("/", 1)[-1] if "/" in branch else branch
+
+    if slug:
+        parts = [part for part in slug.split("-") if part]
+        for end in range(len(parts), 0, -1):
+            candidate = "/" + "-".join(parts[:end])
+            if app_route_exists(candidate):
+                return candidate
+
+    return "/"
+
+
 def serve_shadow() -> int:
     base_url = local_base_database_url()
     shadow_url = database_url_with_name(base_url, SHADOW_DB)
@@ -373,7 +422,10 @@ def serve_shadow() -> int:
         )
     print("PASS: production media/public read surfaces remain available")
     print()
+    open_route = infer_feature_open_route()
+
     print("> Local code + hot reload: https://localhost:3000")
+    print(f"> Browser opens: https://localhost:3000{open_route}")
     print("> Clan/AI control plane: LOCAL WRITABLE PRODUCTION-SHAPED CLONE")
     print("> Heavy game/replay corpus: NOT CLONED")
     print("> Production DB write path: NONE")
@@ -388,7 +440,7 @@ def serve_shadow() -> int:
     try:
         if wait_for_https(node):
             subprocess.Popen(
-                ["open", "https://localhost:3000/clans/aoe2war"],
+                ["open", f"https://localhost:3000{open_route}"],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )

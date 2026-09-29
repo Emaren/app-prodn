@@ -15,6 +15,10 @@ import {
 } from "@/lib/champions/titles";
 import { managedMediaPublicUrl } from "@/lib/managedMediaAssets";
 import {
+  canonicalEloTrophyId,
+  eloTrophyIdentity,
+} from "@/lib/champions/eloTrophy";
+import {
   loadPublicPlayerDirectory,
   type PublicPlayerDirectoryEntry,
 } from "@/lib/publicPlayerDirectory";
@@ -37,6 +41,14 @@ export type ChampionsV2ModeChampion = {
   beltUrl: string;
   contenders: TitleContender[];
 };
+
+type EloCustodyHolder = {
+  name: string;
+  uid: string | null;
+  href: string | null;
+};
+
+type EloCustodyMap = Map<string, EloCustodyHolder>;
 
 export type ChampionsV2EloDivision = {
   id: string;
@@ -197,7 +209,12 @@ function entryIdentity(entry: PublicPlayerDirectoryEntry) {
   return entry.uid || entry.steamId || entry.key;
 }
 
-function laneRating(entry: PublicPlayerDirectoryEntry, lane: ChampionsLane) {
+function laneRating(
+  entry: PublicPlayerDirectoryEntry | null | undefined,
+  lane: ChampionsLane,
+) {
+  if (!entry) return null;
+
   const rating = lane === "dm" ? entry.steamDmRating : entry.steamRmRating;
   return typeof rating === "number" && Number.isFinite(rating) ? Math.round(rating) : null;
 }
@@ -317,11 +334,17 @@ function eloManagedTarget(
 function buildEloDivisions(
   entries: PublicPlayerDirectoryEntry[],
   lane: ChampionsLane,
-  titleEconomy: Awaited<ReturnType<typeof loadChampionTitleEconomyState>>,
+  custody: EloCustodyMap,
 ): ChampionsV2EloDivision[] {
   return eloTitles.map((definition) => {
-    const titleState = getTitleState(titleEconomy, definition);
-    const holder = titleState.holders[0] ?? null;
+    const division = definition.id.replace(/^elo-/, "") as
+      | "rising"
+      | "challenger"
+      | "veteran"
+      | "elite"
+      | "legend";
+    const holder =
+      custody.get(canonicalEloTrophyId(lane, division)) ?? null;
     const contenders = sortedLaneEntries(
       entries.filter((entry) =>
         inEloBand(
@@ -346,13 +369,7 @@ function buildEloDivisions(
         eloManagedTarget(definition, lane),
         definition.assetUrl,
       ),
-      holder: holder
-        ? {
-            name: holder.name,
-            uid: holder.uid ?? null,
-            href: holder.href ?? null,
-          }
-        : null,
+      holder,
       contenders,
     };
   });
@@ -819,6 +836,64 @@ function buildNationalBelts(
   });
 }
 
+async function loadEloCustody(
+  prisma: PrismaClient,
+): Promise<EloCustodyMap> {
+  const rows = await prisma.trophy.findMany({
+    where: {
+      family: "elo",
+      status: { in: ["held", "active", "guardian_held"] },
+    },
+    include: {
+      currentHolder: {
+        select: {
+          uid: true,
+          inGameName: true,
+          steamPersonaName: true,
+        },
+      },
+      guardianHolder: {
+        select: {
+          uid: true,
+          inGameName: true,
+          steamPersonaName: true,
+        },
+      },
+    },
+    orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
+  });
+
+  const custody: EloCustodyMap = new Map();
+
+  for (const trophy of rows) {
+    const identity = eloTrophyIdentity(trophy);
+    if (!identity || custody.has(identity.canonicalId)) continue;
+
+    const user =
+      trophy.currentHolder ??
+      (trophy.status === "guardian_held" ? trophy.guardianHolder : null);
+    const name =
+      trophy.currentHolderDisplayName ||
+      user?.inGameName ||
+      user?.steamPersonaName ||
+      (trophy.status === "guardian_held"
+        ? trophy.guardianHolderDisplayName
+        : null);
+
+    if (!name) continue;
+
+    custody.set(identity.canonicalId, {
+      name,
+      uid: user?.uid ?? null,
+      href: user?.uid
+        ? `/players/${encodeURIComponent(user.uid)}`
+        : null,
+    });
+  }
+
+  return custody;
+}
+
 function modeChampion(
   lane: ChampionsLane,
   contenders: TitleContender[],
@@ -898,6 +973,7 @@ export async function loadChampionsV2State(
     titleEconomy,
     directory,
     chaosActivityRows,
+    eloCustody,
   ] = await Promise.all([
     loadChampionTitleEconomyState(
       prisma,
@@ -909,6 +985,9 @@ export async function loadChampionsV2State(
       { includePresence: false },
     ),
     loadChaosActivityRows(
+      prisma,
+    ),
+    loadEloCustody(
       prisma,
     ),
   ]);
@@ -980,8 +1059,8 @@ export async function loadChampionsV2State(
       dm: teamTitles("dm", directoryEntries),
     },
     elo: {
-      rm: buildEloDivisions(directoryEntries, "rm", titleEconomy),
-      dm: buildEloDivisions(directoryEntries, "dm", titleEconomy),
+      rm: buildEloDivisions(directoryEntries, "rm", eloCustody),
+      dm: buildEloDivisions(directoryEntries, "dm", eloCustody),
     },
     nationals: buildNationalBelts(titleEconomy, directoryEntries),
     designationTitles,
