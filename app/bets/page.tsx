@@ -172,6 +172,19 @@ type BetPreviewLiquidityRow = {
   financiallyCommitted: false;
 };
 
+type BetViewerAutoBetPreview = {
+  id: number;
+  presetVersion: number;
+  selectedSide: BetSide;
+  winnerStakeWolo: number;
+  desyncSide: "none" | "yes" | "no";
+  desyncStakeWolo: number;
+  desyncMarketId: number | null;
+  propositionHash: string;
+  recordedAt: string;
+  financiallyCommitted: false;
+};
+
 type BetBoardMarket = {
   id: number;
   parentMarketId?: number | null;
@@ -202,6 +215,7 @@ type BetBoardMarket = {
   founderBonuses: BetFounderChip[];
   warTape: BetWarTapeRow[];
   previewLiquidity?: BetPreviewLiquidityRow[];
+  viewerAutoBetPreview?: BetViewerAutoBetPreview | null;
   broadcastFeeds: BroadcastFeeds;
   broadcastPreviewUrls: BroadcastPreviewUrls;
   viewerWager: {
@@ -563,6 +577,7 @@ function buildBetsDesignFixture(
             },
           ]
         : [],
+      viewerAutoBetPreview: null,
       broadcastFeeds:
         feeds,
       broadcastPreviewUrls:
@@ -6049,6 +6064,64 @@ function PreviewLiquidityRail({
   );
 }
 
+function ViewerAutoBetPreviewRail({
+  market,
+}: {
+  market: BetBoardMarket;
+}) {
+  const preview = market.viewerAutoBetPreview ?? null;
+  if (!preview) return null;
+
+  const winnerLabel =
+    preview.selectedSide === "left" ? market.left.name : market.right.name;
+  const desyncLabel =
+    preview.desyncSide === "yes"
+      ? "YES"
+      : preview.desyncSide === "no"
+        ? "NO"
+        : null;
+
+  return (
+    <div
+      data-testid={`bets-viewer-auto-bet-preview-${market.id}`}
+      className="mt-4 rounded-[1.15rem] border border-cyan-200/[0.12] bg-cyan-300/[0.045] px-4 py-3"
+    >
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="text-[10px] font-black uppercase tracking-[0.26em] text-cyan-100/85">
+          Your Auto Bet Preview
+        </div>
+        <div className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
+          Shadow only · no wager placed
+        </div>
+      </div>
+
+      <div className="mt-2 text-sm leading-6 text-slate-300">
+        Would take{" "}
+        <span className="font-semibold text-cyan-100">
+          {formatExactWolo(preview.winnerStakeWolo)} WOLO
+        </span>{" "}
+        on <span className="font-semibold text-white">{winnerLabel}</span>.
+        {desyncLabel ? (
+          <>
+            {" "}
+            Desync{" "}
+            <span className="font-semibold text-cyan-100">{desyncLabel}</span>
+            {" · "}
+            <span className="font-semibold text-cyan-100">
+              {formatExactWolo(preview.desyncStakeWolo)} WOLO
+            </span>
+            .
+          </>
+        ) : null}
+      </div>
+
+      <div className="mt-2 text-[10px] uppercase tracking-[0.18em] text-slate-500">
+        Preset v{preview.presetVersion} · exact Watcher identity evidence · financially committed: no
+      </div>
+    </div>
+  );
+}
+
 function DesyncTicketLeg({
   market,
   activeSelection,
@@ -8116,6 +8189,7 @@ function MarketFeature({
 
         <div className="mt-7 border-t border-white/[0.055] pt-6">
           <PreviewLiquidityRail market={market} />
+      <ViewerAutoBetPreviewRail market={market} />
           <BetSlipComposer
             market={market}
             desyncMarket={desyncMarket}
@@ -8302,6 +8376,7 @@ function MarketFeature({
         </div>
 
         <PreviewLiquidityRail market={market} />
+      <ViewerAutoBetPreviewRail market={market} />
           <BetSlipComposer
           market={market}
           desyncMarket={desyncMarket}
@@ -8441,6 +8516,7 @@ function MarketFeature({
       </div>
 
       <PreviewLiquidityRail market={market} />
+      <ViewerAutoBetPreviewRail market={market} />
           <BetSlipComposer
         market={market}
         desyncMarket={desyncMarket}
@@ -8779,6 +8855,7 @@ function MarketCard({
       )}
 
       <PreviewLiquidityRail market={market} />
+      <ViewerAutoBetPreviewRail market={market} />
           <BetSlipComposer
         market={market}
         desyncMarket={desyncMarket}
