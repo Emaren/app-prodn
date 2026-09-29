@@ -77,12 +77,18 @@ Archive bytes are never promoted into the public Kingdom knowledge plane.
 Shared Hall and public-lobby surfaces never gain private viewer context merely
 because KKR exists.
 
+Operator-only Trophy metadata is not public Kingdom knowledge. In particular,
+mutable admin eligibility notes remain outside KKR even when production honors
+are enriched with recent public-safe Trophy event fields.
+
 ## Truth model
 
 Each repository carries its own interpretation rules. Examples:
 
 - battle repositories preserve unresolved results;
-- honors use current-holder fields for current custody;
+- honors use the canonical public Trophy projection for current status, custody,
+  reign state and live projected bounty, then preserve bounded Trophy events as
+  historical evidence;
 - betting distinguishes market state from payment proof;
 - WoloChain uses indexed/mainnet-visible transfer truth;
 - staking is app-side WOLO staking, never validator staking;
@@ -146,7 +152,8 @@ classes:
 
 Current examples:
 
-- honors: shadow `/api/trophies`; production Prisma trophy estate;
+- honors: shadow `/api/trophies`; production starts from the same canonical
+  public Trophy loader and adds only bounded recent Trophy event history;
 - clans: shadow current public `/clans`; production canonical Clan directory;
 - lobby chat: public `/api/lobby/chat` in both environments;
 - site pages: current public rendered page text;
