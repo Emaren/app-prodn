@@ -388,6 +388,42 @@ repository-governed summary is
 The audit was read-only: no result, roster, adjudication, betting, settlement,
 Wolo, or native writes occurred. No player-first candidate IDs, UIDs, names, or
 proposed rosters exist. The highest-yield next lane is exact-source recovery of
-the **23** cases missing the required current parser run, after separately
-reviewing the **112** parser/evidence disagreements; the 100 review/desync cases
+the **23** cases missing the required current parser run. The bounded follow-up
+below records that tranche's result. The separate **112** parser/evidence
+disagreements were not part of that recovery, and the 100 review/desync cases
 remain fenced until their existing state is resolved.
+
+### Exact-source current-parser follow-up — 2026-09-28 23:55:27 UTC
+
+The 23 `exact_current_parser_run_missing` cases were rechecked against their
+content-addressed archive sources. All **23** source hashes and byte sizes match
+their recorded replay hashes, and all candidate output hashes match the saved
+parser outputs. A repeatable, read-only production snapshot at 23:55:27 UTC
+confirmed all 23 current rows still have the same replay hash and Workshop
+logical identity; none has a current pass-10 parser-run row. The older pass-2/
+pass-8 rows remain below the current parser contract.
+
+The exact `aoe2war.mgz_hd` 1.8.51, schema `2026-07-25.1`,
+`hd_deterministic_evidence` pass 10 generated **23** successful candidate-only
+outputs. They were not persisted as parser-run rows. Re-evaluation with the
+existing roster planner found **0** authority-compatible complete rosters:
+**2** cases have the exact blocker `result_authority_changed` and are classified
+as parser/evidence disagreement; **21** have name-keyed participants without
+contractual Steam identity and remain roster/participant ambiguous. Actual and
+projected Full Battle Truth additions are **0**.
+
+The most recent whole-corpus measurement is still the sealed 20:01:27.647 UTC
+observation: **3,584 / 5,230 = 68.52772466539197%**, with **235** roster-incomplete
+logical battles and **102** involving registered players. The 23 target rows
+were refreshed through 23:55 UTC; the rest of the corpus was not recounted in
+this bounded tranche. The immutable per-case report and exact blocker maps are
+[`replay-receipts/parser-recovery-23-2026-09-28.json`](replay-receipts/parser-recovery-23-2026-09-28.json),
+SHA-256 `8026047365fa4ffaf7e247664926ec4e96d7eeead9ddc55e060c888b4602aa4d`.
+The same read-only evidence packet is sealed under
+`hel1:/mnt/HC_Volume_105319120/aoe2-parser-engine/reports/parser-recovery-23-sealed-20260928T235527Z/`.
+
+No database, parser-run, roster, result, adjudication, betting, settlement,
+Wolo, or native mutation occurred. There are no eligible player-first IDs,
+names, or UIDs. The separate **112-case parser/evidence-disagreement tranche
+was not started**. The next action is to audit that 112-case family from a fresh
+governed inventory with the existing roster planner.
