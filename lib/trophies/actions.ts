@@ -12,6 +12,7 @@ import {
   lockTrophyMoneyState,
   prepareManualTrophyHolderTransferPayouts,
   prepareTrophyCustodyExit,
+  projectTrophyChallengeAuthority,
   projectedTrophyBounty,
   recordNationalityChange,
 } from "@/lib/trophies/service";
