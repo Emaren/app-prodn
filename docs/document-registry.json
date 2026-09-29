@@ -245,7 +245,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-29",
       "sensitivity": "internal",
-      "sha256": "ba5d65c632721628e9c4744b7a0112011dc53b5c738d18a2b06900d053fc5538",
+      "sha256": "fcc09f96386c0a7e8a36b7673825f9711324e3afdd0040b857f1a25a4100b004",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-29",
       "sensitivity": "internal",
-      "sha256": "f74e49ce62ae55bb1048a9fbd30eaf4b7db1023d3ec9e4f0535619a0bc0dcc4c",
+      "sha256": "9ec45958f9578c01f2f288bdd1e170b4272531dac9956a8e45b4f5e86005e6bb",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "74a034f17eefefcab4f40051b74add6448ab4746ac15a5a0f96978342cf8ee0c",
+      "sha256": "11c26424fdaa87a5c4b9d1b4bb49c907a4c0c06e7edb43145c2ff183551c178f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-29",
       "sensitivity": "internal",
-      "sha256": "7932312971c386aecb7b6f96c35b95af96dc402680b77413958f1b2cca533a35",
+      "sha256": "827f09f45e56beeefbf02e61440d9d71a8ffadbdfaa2487e264b1fa6ff17b310",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "test/auto-bet-promotion-collision-20260929",
-    "commit": "f29d6a021381cde2a3da02bd20be541ba0d85130"
+    "branch": "feat/betting-hall-preview-liquidity-20260929",
+    "commit": "7e13c66df2c75b4efb2120967fc165d6f92fe018"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

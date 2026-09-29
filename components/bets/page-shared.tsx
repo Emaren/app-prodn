@@ -32,6 +32,15 @@ export type BetWarTapeRow = {
   createdAt: string;
 };
 
+export type BetPreviewLiquidityRow = {
+  id: number;
+  botLabel: string;
+  side: BetSide;
+  amountWolo: number;
+  recordedAt: string;
+  financiallyCommitted: false;
+};
+
 export type BetBroadcastFeed = {
   id: number;
   sessionKey: string;
@@ -108,6 +117,7 @@ export type BetBoardMarket = {
   right: BetBoardSide;
   founderBonuses: BetFounderChip[];
   warTape: BetWarTapeRow[];
+  previewLiquidity?: BetPreviewLiquidityRow[];
   broadcastFeeds: BetBroadcastFeeds;
   broadcastPreviewUrls: BetBroadcastPreviewUrls;
   viewerWager: {

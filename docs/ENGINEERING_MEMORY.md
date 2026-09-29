@@ -2290,3 +2290,15 @@ An exposure-blocked source wager receives one decision in its original context;
 do not resurrect yesterday's human action after a daily limit resets. Historical
 shadow actions are evidence, not queued financial work.
 
+If shadow counter-actions are surfaced publicly, attach them only after the real
+market card has completed financial aggregation. Keep them in a distinct
+`previewLiquidity` DTO and never feed proposed amounts into seed pools, wager
+pools, total pot, crowd percentages, slip counts, projected return, settlement,
+or War Tape financial proof. The public projector must independently reject any
+row carrying committed stake, balance/custody proof, reservation or transaction
+hash even if its query was already intended to select shadow rows.
+
+A rolling client may receive a warmed pre-feature market payload, so public UI
+must treat an absent Preview Liquidity array as empty. The server still emits
+the field on current snapshots.
+

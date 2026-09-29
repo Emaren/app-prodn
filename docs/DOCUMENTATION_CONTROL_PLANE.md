@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `test/auto-bet-promotion-collision-20260929` at `f29d6a021381cde2a3da02bd20be541ba0d85130`
+Implementation baseline: `feat/betting-hall-preview-liquidity-20260929` at `7e13c66df2c75b4efb2120967fc165d6f92fe018`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
