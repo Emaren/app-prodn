@@ -305,9 +305,7 @@ async function assignHolder(
 
     const previousHolderId = currentTrophy.currentHolderUserId;
     const previousAddress = currentTrophy.currentHolderWoloAddress;
-    const sameHolder =
-      previousHolderId === user.id &&
-      ["held", "active"].includes(currentTrophy.status);
+    const sameHolder = previousHolderId === user.id;
 
     if (sameHolder) {
       await tx.trophy.update({
@@ -315,6 +313,9 @@ async function assignHolder(
         data: {
           currentHolderDisplayName: nextName,
           currentHolderWoloAddress: user.walletAddress,
+          status: ["held", "active"].includes(currentTrophy.status)
+            ? currentTrophy.status
+            : "held",
           forfeitureNeeded: false,
           eligibilityNote: eligibility.eligible
             ? eligibility.detail
