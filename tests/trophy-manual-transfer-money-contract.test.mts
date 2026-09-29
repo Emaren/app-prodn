@@ -21,7 +21,8 @@ test("manual trophy custody change is serialized and money-aware", () => {
   assert.ok(actions.includes("currentBountyWolo: 0"));
   assert.ok(actions.includes("holderSince: now"));
   assert.ok(actions.includes("HOLDER_DETAILS_REFRESHED"));
-  assert.ok(actions.includes('["held", "active"].includes(currentTrophy.status)'));
+  assert.ok(actions.includes("const sameHolder = previousHolderId === user.id"));
+  assert.ok(actions.includes('status: ["held", "active"].includes(currentTrophy.status)'));
   assert.ok(actions.includes("custodyChanged: false"));
   assert.ok(actions.includes("bountyReset: false"));
 });
