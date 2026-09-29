@@ -305,6 +305,31 @@ replays, select verified winners, dry-run settlement, inspect/retry payout
 failures, edit Representing Country with a forfeiture audit, and log NFT
 mint/reassign/retire/burn intents.
 
+### Manual Commissioner holder transfers
+
+A manual holder reassignment is a title-money transition, not a display edit.
+The action serializes on the Trophy row, re-reads current custody inside the
+transaction, and derives payout obligations from that locked state.
+
+For a real holder change:
+
+- freeze the outgoing reign's projected championship bounty at the transfer
+  instant and queue one `dethrone_bounty` obligation for the incoming holder;
+- reset the stored bounty base to zero and begin the incoming reign at the
+  transfer instant;
+- reconcile same-UTC-day Champion Tribute rows through the same
+  `reconcileDailyTrophyTribute()` policy used by the daily queue;
+- never replace a paid or tx-backed same-day tribute;
+- supersede only unexecuted former-holder tribute rows;
+- create a new same-day tribute only for titles currently admitted by
+  `ACTIVE_REIGN_TRIBUTE_TROPHY_IDS`;
+- treat reassignment to the already-current holder as a metadata refresh, not
+  a new reign or a second bounty obligation.
+
+Both `daily_tribute` and `dethrone_bounty` rows execute through the existing
+Founder Rewards settlement authority. Championship bounty money is separate
+from Bet Escrow and from the public numbered Bounty Pool.
+
 `dry_run_only` defaults to `true`, `app_only_fallback_enabled` defaults to
 `true`, and `chain_backed_trophies_enabled` defaults to `false`.
 
