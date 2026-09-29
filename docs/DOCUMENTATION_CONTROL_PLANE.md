@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/trophy-current-holder-surfaces-20260929` at `a5cfc849f497467991c2faa02f779e6524740e46`
+Implementation baseline: `fix/trophy-current-holder-surfaces-20260929` at `45129a7bfbeb0a6c9545bc4fc811ac506a1caa0f`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
