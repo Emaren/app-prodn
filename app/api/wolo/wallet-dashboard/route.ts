@@ -126,6 +126,7 @@ export async function GET(request: NextRequest) {
           guardianHolderWoloAddress,
           appCustodyRole,
           isChainOwner,
+          custodyConsistent: authority.custodyConsistent,
           tributeAmountWolo: trophy.tributeAmountWolo,
           currentBountyWolo: projectedTrophyBounty(trophy),
           bountyGrowthWolo: trophy.bountyGrowthWolo,
