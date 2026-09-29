@@ -3642,7 +3642,7 @@ export default function BetsPage() {
                     loadingAuth={loading}
                     maxStakeWolo={maxStakeWolo}
                     onSelect={handleSelect}
-              onLoadAutoBetPreview={(next) => setSelection(next)}
+                    onLoadAutoBetPreview={(next) => setSelection(next)}
                     onStakeChange={(stake) =>
                       setSelection((current) =>
                         current && current.marketId === spotlightMarket.id
@@ -3895,7 +3895,7 @@ export default function BetsPage() {
                 loadingAuth={loading}
                 maxStakeWolo={maxStakeWolo}
                 onSelect={handleSelect}
-              onLoadAutoBetPreview={(next) => setSelection(next)}
+                onLoadAutoBetPreview={(next) => setSelection(next)}
                 onStakeChange={(stake) =>
                   setSelection((current) =>
                     current && current.marketId === spotlightMarket.id
@@ -3944,7 +3944,7 @@ export default function BetsPage() {
             isAdmin={isAdmin}
             maxStakeWolo={maxStakeWolo}
             onSelect={handleSelect}
-              onLoadAutoBetPreview={(next) => setSelection(next)}
+            onLoadAutoBetPreview={(next) => setSelection(next)}
             onDesyncSelect={handleDesyncSelection}
             onDesyncStakeChange={handleDesyncStakeChange}
             onStakeChange={(marketId, stake) =>
@@ -4159,7 +4159,7 @@ export default function BetsPage() {
                   loadingAuth={loading}
                   maxStakeWolo={maxStakeWolo}
                   onSelect={handleSelect}
-              onLoadAutoBetPreview={(next) => setSelection(next)}
+                  onLoadAutoBetPreview={(next) => setSelection(next)}
                   onStakeChange={(stake) =>
                     setSelection((current) =>
                       current && current.marketId === spotlightMarket.id
@@ -8266,13 +8266,13 @@ function MarketFeature({
 
         <div className="mt-7 border-t border-white/[0.055] pt-6">
           <PreviewLiquidityRail market={market} />
-      <ViewerAutoBetPreviewRail
+          <ViewerAutoBetPreviewRail
         market={market}
         desyncMarket={desyncMarket}
         maxStakeWolo={maxStakeWolo}
         onLoadSelection={onLoadAutoBetPreview}
       />
-          <BetSlipComposer
+      <BetSlipComposer
             market={market}
             desyncMarket={desyncMarket}
             activeSelection={
@@ -8464,7 +8464,7 @@ function MarketFeature({
         maxStakeWolo={maxStakeWolo}
         onLoadSelection={onLoadAutoBetPreview}
       />
-          <BetSlipComposer
+      <BetSlipComposer
           market={market}
           desyncMarket={desyncMarket}
           activeSelection={activeSelection}
@@ -8609,7 +8609,7 @@ function MarketFeature({
         maxStakeWolo={maxStakeWolo}
         onLoadSelection={onLoadAutoBetPreview}
       />
-          <BetSlipComposer
+      <BetSlipComposer
         market={market}
         desyncMarket={desyncMarket}
         activeSelection={activeSelection}
@@ -8955,7 +8955,7 @@ function MarketCard({
         maxStakeWolo={maxStakeWolo}
         onLoadSelection={onLoadAutoBetPreview}
       />
-          <BetSlipComposer
+      <BetSlipComposer
         market={market}
         desyncMarket={desyncMarket}
         activeSelection={activeSelection}
