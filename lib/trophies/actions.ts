@@ -440,9 +440,66 @@ async function assignGuardian(
   const trophy = await getTrophy(prisma, payload);
   const guardian = await getUser(prisma, nullableInt(payload.userId));
   if (!guardian) throw new TrophyActionError("Choose a Guardian.");
+  const now = new Date();
+
   await prisma.$transaction(async (tx) => {
+    const currentTrophy = await lockTrophyMoneyState(tx, trophy.id);
+    if (!currentTrophy) {
+      throw new TrophyActionError("Trophy disappeared during Guardian assignment.", 409);
+    }
+
+    const sameGuardian =
+      currentTrophy.currentHolderUserId === null &&
+      currentTrophy.guardianHolderUserId === guardian.id &&
+      currentTrophy.status === "guardian_held";
+
+    if (sameGuardian) {
+      await tx.trophy.update({
+        where: { id: currentTrophy.id },
+        data: {
+          guardianHolderDisplayName: displayName(guardian),
+          guardianHolderWoloAddress: guardian.walletAddress,
+          forfeitureNeeded: false,
+          eligibilityNote:
+            "Commissioner Guardian custody; Guardian nationality does not define title eligibility.",
+        },
+      });
+      await recordEvent(tx, {
+        trophyId: currentTrophy.id,
+        eventType: "GUARDIAN_DETAILS_REFRESHED",
+        actor,
+        fromHolderUserId: guardian.id,
+        toHolderUserId: guardian.id,
+        fromWoloAddress: currentTrophy.guardianHolderWoloAddress,
+        toWoloAddress: guardian.walletAddress,
+        rawRequest: jsonValue({
+          custodyChanged: false,
+          bountyReset: false,
+        }),
+      });
+      return;
+    }
+
+    const custodyExit = await prepareTrophyCustodyExit(tx, {
+      trophy: currentTrophy,
+      now,
+      reason: "title_moved_to_guardian_custody",
+      createdBy: "assign_guardian",
+    });
+    if (custodyExit.inFlightPayoutId) {
+      throw new TrophyActionError(
+        `Daily Tribute payout #${custodyExit.inFlightPayoutId} is executing. Retry Guardian assignment after payout resolution.`,
+        409
+      );
+    }
+
+    const previousCustodianId =
+      currentTrophy.currentHolderUserId ?? currentTrophy.guardianHolderUserId;
+    const previousCustodianAddress =
+      currentTrophy.currentHolderWoloAddress ?? currentTrophy.guardianHolderWoloAddress;
+
     await tx.trophy.update({
-      where: { id: trophy.id },
+      where: { id: currentTrophy.id },
       data: {
         guardianHolderUserId: guardian.id,
         guardianHolderDisplayName: displayName(guardian),
@@ -451,19 +508,29 @@ async function assignGuardian(
         currentHolderDisplayName: null,
         currentHolderWoloAddress: null,
         status: "guardian_held",
-        holderSince: new Date(),
+        currentBountyWolo: custodyExit.frozenBountyWolo,
+        holderSince: now,
         forfeitureNeeded: false,
-        eligibilityNote: "Commissioner Guardian custody; Guardian nationality does not define title eligibility.",
+        eligibilityNote:
+          "Commissioner Guardian custody; Guardian nationality does not define title eligibility.",
       },
     });
-    await recordEvent(tx as PrismaClient, {
-      trophyId: trophy.id,
+
+    await recordEvent(tx, {
+      trophyId: currentTrophy.id,
       eventType: "GUARDIAN_ASSIGNED",
       actor,
-      fromHolderUserId: trophy.currentHolderUserId,
+      fromHolderUserId: previousCustodianId,
       toHolderUserId: guardian.id,
-      fromWoloAddress: trophy.currentHolderWoloAddress,
+      fromWoloAddress: previousCustodianAddress,
       toWoloAddress: guardian.walletAddress,
+      amountWolo: custodyExit.frozenBountyWolo || null,
+      rawRequest: jsonValue({
+        custodyChanged: true,
+        frozenBountyWolo: custodyExit.frozenBountyWolo,
+        supersededTributePayoutIds: custodyExit.supersededTributePayoutIds,
+        chainBackedTributePayoutIds: custodyExit.chainBackedTributePayoutIds,
+      }),
     });
   });
 }
