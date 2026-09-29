@@ -385,7 +385,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-09-27",
       "sensitivity": "internal",
-      "sha256": "fef13003877825e9aa8f50b9044f03b3b5f1ede7cec23a8cc496cbf45c7747d9",
+      "sha256": "09cad1d650a6eef333e847a4268e656ebb6fd56c68f3ba359f2d9dacf6fea587",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "80c37c994555b0f5fe2bb1c789bced79a798daa9751dce4e3b472003e0084bda",
+      "sha256": "6c2c06782750a1e060285a6d7408bc2cde09700c5a011612cf5cb08cc9b6270c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-27",
       "sensitivity": "internal",
-      "sha256": "0337594ffb3d33e63e175b2ada8d49d9bd7d2e682147783e497cf04589b96a13",
+      "sha256": "9ce54dea927f866a99c3564ee799af8d4a28430dd1aee160510d4b8bff9b08b5",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/kkr-trophy-honors-authority-20260929",
-    "commit": "fa119cebaabac4923d754619d822fc6fede53d03"
+    "branch": "fix/wallet-trophy-authority-20260929",
+    "commit": "4187a7c5edba05165c30a9940d4178be73afe878"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

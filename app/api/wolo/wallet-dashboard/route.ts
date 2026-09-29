@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getPrisma } from "@/lib/prisma";
+import { managedMediaPublicUrl } from "@/lib/managedMediaAssets";
+import {
+  loadPublicTrophies,
+  projectedTrophyBounty,
+  projectTrophyChallengeAuthority,
+  seededTrophyDefinition,
+} from "@/lib/trophies/service";
 import { WOLO_MAINNET_WALLET_ALIAS_BY_ADDRESS } from "@/lib/woloMainnetWallets";
 
 export const runtime = "nodejs";
@@ -31,6 +38,13 @@ function amountNumber(value: unknown) {
   return Number.isFinite(numeric) ? numeric : 0;
 }
 
+function addressesMatch(
+  value: string | null | undefined,
+  address: string
+) {
+  return (value || "").trim().toLowerCase() === address;
+}
+
 export async function GET(request: NextRequest) {
   const address = normalizeWoloAddress(request.nextUrl.searchParams.get("address"));
   const limit = clampLimit(request.nextUrl.searchParams.get("limit"));
@@ -45,7 +59,7 @@ export async function GET(request: NextRequest) {
   try {
     const prisma = getPrisma();
 
-    const [transfers, trophies] = await Promise.all([
+    const [transfers, publicTrophies] = await Promise.all([
       prisma.woloIndexedTransfer.findMany({
         where: {
           OR: [
@@ -56,17 +70,93 @@ export async function GET(request: NextRequest) {
         orderBy: [{ timestamp: "desc" }, { id: "desc" }],
         take: limit,
       }),
-      prisma.trophy.findMany({
-        where: {
-          OR: [
-            { currentHolderWoloAddress: address },
-            { chainOwnerAddress: address },
-          ],
-        },
-        orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
-        take: 50,
-      }),
+      loadPublicTrophies(prisma),
     ]);
+
+    const trophies = publicTrophies
+      .flatMap((trophy) => {
+        const authority = projectTrophyChallengeAuthority(trophy);
+        const currentHolderWoloAddress = authority.custodyConsistent
+          ? authority.currentHolderWoloAddress
+          : null;
+        const guardianHolderWoloAddress = authority.custodyConsistent
+          ? authority.guardianHolderWoloAddress
+          : null;
+        const appCustodyRole =
+          addressesMatch(currentHolderWoloAddress, address)
+            ? ("holder" as const)
+            : addressesMatch(guardianHolderWoloAddress, address)
+              ? ("guardian" as const)
+              : null;
+        const isChainOwner = addressesMatch(trophy.chainOwnerAddress, address);
+
+        if (!appCustodyRole && !isChainOwner) {
+          return [];
+        }
+
+        const seed = seededTrophyDefinition(trophy.trophyId);
+        const definition = seed?.definition ?? null;
+        const assetKind = trophy.kind === "artifact" ? "artifact" : "belt";
+        const currentHolderDisplayName =
+          authority.custodyConsistent && authority.currentHolderUserId !== null
+            ? authority.currentHolderDisplayName ||
+              trophy.currentHolder?.inGameName ||
+              trophy.currentHolder?.steamPersonaName ||
+              null
+            : null;
+        const guardianHolderDisplayName =
+          authority.custodyConsistent && authority.guardianHolderUserId !== null
+            ? authority.guardianHolderDisplayName ||
+              trophy.guardianHolder?.inGameName ||
+              trophy.guardianHolder?.steamPersonaName ||
+              null
+            : null;
+
+        return [{
+          id: trophy.id,
+          trophyId: trophy.trophyId,
+          displayName: trophy.displayName,
+          kind: trophy.kind,
+          family: trophy.family,
+          tier: trophy.tier,
+          status: authority.status,
+          currentHolderDisplayName,
+          currentHolderWoloAddress,
+          guardianHolderDisplayName,
+          guardianHolderWoloAddress,
+          appCustodyRole,
+          isChainOwner,
+          custodyConsistent: authority.custodyConsistent,
+          tributeAmountWolo: trophy.tributeAmountWolo,
+          currentBountyWolo: projectedTrophyBounty(trophy),
+          bountyGrowthWolo: trophy.bountyGrowthWolo,
+          nftClassId: trophy.nftClassId,
+          nftId: trophy.nftId,
+          metadataUri: trophy.nftMetadataUri,
+          imageUri: managedMediaPublicUrl(
+            assetKind,
+            definition?.id || trophy.trophyId,
+            trophy.nftImageUri || definition?.assetUrl
+          ),
+          routeHref: definition?.routeHref || "/champions",
+          chainStatus: trophy.chainStatus,
+          chainOwnerAddress: trophy.chainOwnerAddress,
+          holderSince: trophy.holderSince?.toISOString() ?? null,
+          updatedAt: trophy.updatedAt.toISOString(),
+        }];
+      })
+      .sort((left, right) => {
+        const custodyOrder =
+          Number(Boolean(right.appCustodyRole)) -
+          Number(Boolean(left.appCustodyRole));
+
+        if (custodyOrder !== 0) {
+          return custodyOrder;
+        }
+
+        return right.updatedAt.localeCompare(left.updatedAt);
+      })
+      .slice(0, 50);
 
     return NextResponse.json(
       {
@@ -94,28 +184,7 @@ export async function GET(request: NextRequest) {
             source: row.source,
           };
         }),
-        trophies: trophies.map((trophy) => ({
-          id: trophy.id,
-          trophyId: trophy.trophyId,
-          displayName: trophy.displayName,
-          kind: trophy.kind,
-          family: trophy.family,
-          tier: trophy.tier,
-          status: trophy.status,
-          currentHolderDisplayName: trophy.currentHolderDisplayName,
-          currentHolderWoloAddress: trophy.currentHolderWoloAddress,
-          tributeAmountWolo: trophy.tributeAmountWolo,
-          currentBountyWolo: trophy.currentBountyWolo,
-          bountyGrowthWolo: trophy.bountyGrowthWolo,
-          nftClassId: trophy.nftClassId,
-          nftId: trophy.nftId,
-          metadataUri: trophy.nftMetadataUri,
-          imageUri: trophy.nftImageUri,
-          chainStatus: trophy.chainStatus,
-          chainOwnerAddress: trophy.chainOwnerAddress,
-          holderSince: trophy.holderSince?.toISOString() ?? null,
-          updatedAt: trophy.updatedAt.toISOString(),
-        })),
+        trophies,
       },
       { headers: NO_STORE_HEADERS }
     );

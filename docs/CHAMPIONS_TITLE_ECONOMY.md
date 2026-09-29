@@ -298,6 +298,20 @@ Projected bounty is display math: stored bounty plus whole elapsed days times
 the configured bounty growth. It is not a chain balance and must not be called
 paid or escrowed.
 
+The connected-wallet Championship Assets surface must keep app custody and
+recorded chain ownership separate. A wallet is a current app custodian only when
+the canonical public Trophy projection plus live custody authority names it as
+the current holder or Guardian. A matching `chain_owner_address` is chain/NFT
+record evidence only; by itself it must never be presented as "this wallet holds
+the title." Chain-owner-only rows may remain visible when useful, but they must
+be labeled separately and must not receive holder/Guardian reign language.
+
+Wallet Trophy reads use the same forced-vacancy projection and custody-shape
+checks as other public current-state surfaces. Guardian custody is a first-class
+role, projected bounty uses `projectedTrophyBounty()`, artwork follows managed
+Trophy media, and title navigation comes from the title definition rather than a
+hard-coded national route.
+
 Daily Tribute obligations follow current-holder truth until money moves. If a
 belt changes hands during a UTC payout day and that day's prior-holder payout
 has no transaction hash and has not been paid, the old row is marked
@@ -437,6 +451,8 @@ AoE2HDBets must not redefine:
 - Bet-time escrow or chain custody.
 - Any settlement state that conflicts with WoloChain or the settlement rail.
 - NFT ownership merely because an app-side mint/reassignment intent exists.
+- Current championship custody merely because the same wallet appears in a
+  recorded chain-owner field.
 
 If a future title claim spends, locks, or settles real WOLO, that path must use
 the existing signed wallet and settlement verification rules before copy calls
