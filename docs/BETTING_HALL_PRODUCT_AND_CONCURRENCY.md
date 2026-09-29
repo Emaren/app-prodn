@@ -261,6 +261,26 @@ phase.
 
 Locked earlier books remain visible while later books operate.
 
+### Foundation implementation status — 2026-09-29
+
+The dormant Phase Books V2 data/authority foundation now exists:
+
+- `BetMarket.bookPhase` defaults every existing market to `legacy`;
+- nullable unique `phaseBookKey` provides a future one-book identity without
+  backfilling or reinterpreting historical rows;
+- nullable `phaseOpensAt` / `phaseClosesAt` store server-owned phase fences;
+- the pure planner defines Pre-Game, exact 60-second Opening Minute, and Late
+  windows from authoritative server time;
+- phase-book identity hashes authoritative game identity + market type + phase;
+- `BET_PHASE_BOOKS_V2_MODE=live` fails closed because financial activation is
+  intentionally not installed.
+
+This foundation does **not** create phase markets, split pools, admit wagers,
+change settlement, migrate historical wagers, or alter the current V1.2
+compatibility bridge. Production `lib/bets.ts` intentionally does not consume
+the new fields yet. Activation requires a separately reviewed market-materializer
+and aligned transactional write/settlement/recovery paths.
+
 ### Presentation direction
 
 The horizontal `InstrumentStakeRail` has been retired.
