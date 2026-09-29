@@ -46,7 +46,7 @@ export type LiveGameSession = {
   completedAt: string | null;
   playedOn: string | null;
   mapName: string | null;
-  gameType: string | null;
+  gameType?: string | null;
   durationSeconds: number | null;
   originalFilename: string | null;
   disconnectDetected: boolean;
