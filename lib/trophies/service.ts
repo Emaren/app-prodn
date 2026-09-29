@@ -870,27 +870,27 @@ export async function executePendingTrophyPayouts(
   const now = new Date();
   const take = Math.max(1, Math.min(options.limit ?? 10, 25));
 
-  const payouts = await prisma.trophyPayout.findMany({
+  const candidates = await prisma.trophyPayout.findMany({
     where: {
       OR:
         options.includeBounties === true
           ? [
               {
                 payoutKind: "daily_tribute",
-                status: { in: ["dry_run", "pending", "retrying", "failed"] },
+                status: { in: [...EXECUTABLE_DAILY_TRIBUTE_STATUSES] },
                 trophy: {
                   trophyId: { in: [...ACTIVE_REIGN_TRIBUTE_TROPHY_IDS] },
                 },
               },
               {
                 payoutKind: "dethrone_bounty",
-                status: { in: ["pending", "retrying", "failed"] },
+                status: { in: [...EXECUTABLE_DETHRONE_BOUNTY_STATUSES] },
               },
             ]
           : [
               {
                 payoutKind: "daily_tribute",
-                status: { in: ["dry_run", "pending", "retrying", "failed"] },
+                status: { in: [...EXECUTABLE_DAILY_TRIBUTE_STATUSES] },
                 trophy: {
                   trophyId: { in: [...ACTIVE_REIGN_TRIBUTE_TROPHY_IDS] },
                 },
@@ -902,7 +902,12 @@ export async function executePendingTrophyPayouts(
       scheduledFor: { lte: now },
       ...(options.payoutId ? { id: options.payoutId } : {}),
     },
-    include: { trophy: true },
+    select: {
+      id: true,
+      amountWolo: true,
+      recipientDisplayName: true,
+      trophy: { select: { trophyId: true } },
+    },
     orderBy: [{ scheduledFor: "asc" }, { id: "asc" }],
     take,
   });
@@ -917,21 +922,148 @@ export async function executePendingTrophyPayouts(
     detail: string | null;
   }> = [];
 
-  for (const payout of payouts) {
-    const toAddress = payout.recipientWoloAddress?.trim();
-    if (!toAddress) {
+  for (const candidate of candidates) {
+    const claim = await prisma.$transaction(async (tx) => {
+      const identity = await tx.trophyPayout.findUnique({
+        where: { id: candidate.id },
+        select: { id: true, trophyId: true },
+      });
+      if (!identity) {
+        return {
+          payout: null,
+          detail: "Payout disappeared before execution claim.",
+        };
+      }
+
+      const trophy = await lockTrophyMoneyState(tx, identity.trophyId);
+      if (!trophy) {
+        return {
+          payout: null,
+          detail: "Trophy disappeared before payout execution claim.",
+        };
+      }
+
+      const payout = await tx.trophyPayout.findUnique({
+        where: { id: candidate.id },
+        include: { trophy: true },
+      });
+      if (!payout) {
+        return {
+          payout: null,
+          detail: "Payout disappeared before execution claim.",
+        };
+      }
+
+      const due =
+        payout.scheduledFor !== null &&
+        payout.scheduledFor.getTime() <= now.getTime();
+      if (
+        !trophyPayoutStatusIsExecutable(payout.payoutKind, payout.status) ||
+        Boolean(payout.txHash) ||
+        payout.amountWolo <= 0 ||
+        !payout.recipientWoloAddress?.trim() ||
+        !due
+      ) {
+        return {
+          payout: null,
+          detail: "Payout is no longer executable.",
+        };
+      }
+
+      if (payout.payoutKind === "daily_tribute") {
+        const liveRecipient =
+          trophyHasActiveReignTribute(trophy.trophyId) &&
+          ["held", "active"].includes(trophy.status) &&
+          sameTrophyPayoutRecipient(payout, trophy);
+
+        if (!liveRecipient) {
+          const superseded = await tx.trophyPayout.updateMany({
+            where: {
+              id: payout.id,
+              status: payout.status,
+              txHash: null,
+            },
+            data: { status: "superseded" },
+          });
+          if (superseded.count > 0) {
+            await tx.trophyEvent.create({
+              data: {
+                trophyId: trophy.id,
+                eventType: "DAILY_TRIBUTE_PAYOUT_SUPERSEDED",
+                actorRole: "system",
+                initiatedBy: "system",
+                fromHolderUserId: payout.recipientUserId,
+                fromWoloAddress: payout.recipientWoloAddress,
+                amountWolo: payout.amountWolo,
+                status: "recorded",
+                rawRequest: {
+                  payoutId: payout.id,
+                  reason: "custody_changed_before_execution_claim",
+                  createdBy: "trophy_payout_executor",
+                },
+              },
+            });
+          }
+          return {
+            payout: null,
+            detail: "Daily Tribute no longer matches live Trophy custody.",
+          };
+        }
+      }
+
+      const claimed = await tx.trophyPayout.updateMany({
+        where: {
+          id: payout.id,
+          status: payout.status,
+          txHash: null,
+        },
+        data: {
+          status: "executing",
+          errorState: null,
+        },
+      });
+      if (claimed.count !== 1) {
+        return {
+          payout: null,
+          detail: "Payout execution claim lost to a concurrent state change.",
+        };
+      }
+
+      await tx.trophyEvent.create({
+        data: {
+          trophyId: payout.trophyId,
+          eventType: "PAYOUT_EXECUTION_CLAIMED",
+          actorRole: "system",
+          initiatedBy: "system",
+          toHolderUserId: payout.recipientUserId,
+          toWoloAddress: payout.recipientWoloAddress,
+          amountWolo: payout.amountWolo,
+          status: "executing",
+          rawRequest: {
+            payoutId: payout.id,
+            payoutKind: payout.payoutKind,
+          },
+        },
+      });
+
+      return { payout, detail: null };
+    });
+
+    if (!claim.payout) {
       results.push({
-        payoutId: payout.id,
-        trophyId: payout.trophy.trophyId,
-        recipient: payout.recipientDisplayName,
-        amountWolo: payout.amountWolo,
+        payoutId: candidate.id,
+        trophyId: candidate.trophy.trophyId,
+        recipient: candidate.recipientDisplayName,
+        amountWolo: candidate.amountWolo,
         status: "skipped",
         txHash: null,
-        detail: "Missing recipient WOLO address.",
+        detail: claim.detail,
       });
       continue;
     }
 
+    const payout = claim.payout;
+    const toAddress = payout.recipientWoloAddress!.trim();
     const rawRequest =
       payout.rawRequest && typeof payout.rawRequest === "object" && !Array.isArray(payout.rawRequest)
         ? (payout.rawRequest as Record<string, unknown>)
@@ -1029,8 +1161,12 @@ export async function executePendingTrophyPayouts(
       const detail =
         error instanceof Error ? error.message : "Trophy payout execution failed.";
 
-      await prisma.trophyPayout.update({
-        where: { id: payout.id },
+      await prisma.trophyPayout.updateMany({
+        where: {
+          id: payout.id,
+          status: "executing",
+          txHash: null,
+        },
         data: {
           status: "failed",
           errorState: detail.slice(0, 500),
@@ -1077,14 +1213,13 @@ export async function executePendingTrophyPayouts(
 
   return {
     ok: results.every((row) => row.status !== "failed"),
-    scanned: payouts.length,
+    scanned: candidates.length,
     paid: results.filter((row) => row.status === "paid").length,
     failed: results.filter((row) => row.status === "failed").length,
     skipped: results.filter((row) => row.status === "skipped").length,
     results,
   };
 }
-
 
 export async function executePendingTrophyTributePayouts(
   prisma: PrismaClient,
