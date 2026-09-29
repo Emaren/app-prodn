@@ -11,6 +11,7 @@ export const BET_PHASE_BOOKS_V2_SHADOW_MARKET_TYPE = "phase_shadow_winner";
 
 export type BetPhaseBookShadowSource = {
   battleId?: number | null;
+  battlePublicNumber?: number | null;
   scheduledMatchId: number | null;
   linkedSessionKey: string | null;
   linkedGameStatsId?: number | null;
@@ -87,6 +88,8 @@ function livePhasePlans(
   if (
     source.marketType !== "winner" ||
     !source.battleId ||
+    !Number.isSafeInteger(source.battlePublicNumber) ||
+    (source.battlePublicNumber ?? 0) <= 0 ||
     !validDate(source.battleStartedAt) ||
     !source.propositionHash ||
     source.integrityStatus !== "verified"
@@ -103,7 +106,7 @@ function livePhasePlans(
     battleStartAt: source.battleStartedAt,
     battleTerminalAt: terminalAt,
   });
-  const authorityIdentityKey = `battle:${source.battleId}`;
+  const authorityIdentityKey = `battle-number:${source.battlePublicNumber}`;
 
   return windows
     .filter(
