@@ -1204,10 +1204,22 @@ Typical fix:
 sudo chown -R tony:tony /var/www/AoE2HDBets/app-prodn
 ```
 
+Release Ship now proves tracked-worktree hygiene in addition to `.git` hygiene.
+Before staging it enumerates Git-tracked entries and every parent directory
+needed to replace them, requiring canonical deploy-user ownership plus write/
+traverse access. The same proof runs again at the final activation seam before
+the web service is stopped. A failure reports bounded path samples and the
+canonical ownership-repair command.
+
+This specifically prevents a clean-looking checkout with a root-owned tracked
+parent directory from surviving preflight and then failing later inside
+`git reset --hard` with `unable to unlink old ... Permission denied`.
+
 Why this is cleaner now:
 - the app prepares `.next/cache/images` during build and again before start
-- ownership drift is surfaced before the service begins handling requests
-- the failure path now prints the exact `chown` command instead of leaving Next to throw a murky runtime mkdir error
+- tracked source ownership drift fails before an expensive candidate build
+- a race that appears after staging fails again before service stop/runtime mutation
+- the failure path prints the canonical `chown` command instead of leaving Git or Next to surface a late, murky permission error
 
 ### Watcher download analytics truth
 

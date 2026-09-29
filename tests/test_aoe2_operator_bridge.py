@@ -283,6 +283,58 @@ class OperatorBridgeTests(unittest.TestCase):
         self.assertEqual(MODULE.try_parse_json('{"p0":0}'), {"p0": 0})
         self.assertIsNone(MODULE.try_parse_json("not json"))
 
+    def test_startup_snapshots_keep_bridge_heartbeat_thread_live(self):
+        events = []
+
+        class FakeThread:
+            def __init__(self, *, target, kwargs, daemon):
+                self.target = target
+                self.kwargs = kwargs
+                self.daemon = daemon
+
+            def start(self):
+                events.append(("start", self.target.__name__))
+
+            def join(self, timeout=None):
+                events.append(("join", self.target.__name__, timeout))
+
+        def post_bridge(payload, *, token, base_url):
+            events.append(("post", payload["op"]))
+            return {"run": None} if payload["op"] == "claim" else {}
+
+        def audit_snapshot(**_kwargs):
+            events.append(("work", "audit"))
+            return {"p0": 0, "p1": 0}
+
+        def intelligence_snapshot(**_kwargs):
+            events.append(("work", "intelligence"))
+            return {"war_date": "2026-09-28", "operating_state": "HEALTHY"}
+
+        with patch.object(MODULE.threading, "Thread", FakeThread), \
+             patch.object(MODULE, "post_bridge", side_effect=post_bridge), \
+             patch.object(MODULE, "run_audit_snapshot", side_effect=audit_snapshot), \
+             patch.object(
+                 MODULE,
+                 "run_kingdom_intelligence_snapshot",
+                 side_effect=intelligence_snapshot,
+             ):
+            result = MODULE.run_bridge(
+                token="token",
+                base_url="https://example.invalid",
+                once=True,
+                interval=3.0,
+                initial_audit=True,
+            )
+
+        self.assertEqual(result, 0)
+        heartbeat_start = events.index(("start", "heartbeat_loop"))
+        audit_work = events.index(("work", "audit"))
+        intelligence_work = events.index(("work", "intelligence"))
+        heartbeat_join = events.index(("join", "heartbeat_loop", 2))
+        self.assertLess(heartbeat_start, audit_work)
+        self.assertLess(audit_work, intelligence_work)
+        self.assertLess(intelligence_work, heartbeat_join)
+
     def test_idle_heartbeat_cadence_is_real_and_bounded(self):
         with patch.object(MODULE, "post_bridge") as post:
             last = MODULE.maybe_idle_heartbeat(

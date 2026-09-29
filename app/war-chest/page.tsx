@@ -7,6 +7,7 @@ import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 
 import { getPrisma } from "@/lib/prisma";
 import { loadWarChestSnapshot, normalizeWarChestMode, type WarChestMode } from "@/lib/warChest";
+import { getWarChestPeriodMetrics } from "@/lib/warChestPeriodTruth";
 import { SESSION_COOKIE_NAME, verifySession } from "@/lib/session";
 
 export const runtime = "nodejs";
@@ -111,6 +112,9 @@ export default async function WarChestPage({ searchParams }: WarChestPageProps) 
   const trackedEntries = snapshot.earners.entries;
   const reserve = snapshot.wolo?.accounts.ecosystembounties?.wolo ?? null;
   const leaderModeTake = leader ? entryModeTake(leader, mode) : 0;
+  const leaderPeriodMetrics = leader
+    ? getWarChestPeriodMetrics(leader, mode)
+    : { settledWolo: 0, earnedWolo: 0, wageredWolo: 0 };
   const oppositeModeLabel = mode === "weekly" ? "All Time" : "This Week";
   const oppositeModeTake = leader
     ? mode === "weekly"
@@ -221,8 +225,10 @@ export default async function WarChestPage({ searchParams }: WarChestPageProps) 
                   value={`${formatNumber(oppositeModeTake)} WOLO`}
                 />
                 <MetricTile
-                  label="Earned"
-                  value={leader ? `${formatNumber(leader.settledWolo)} WOLO` : "0 WOLO"}
+                  label="Settled"
+                  value={`${formatNumber(leaderPeriodMetrics.settledWolo)} WOLO`}
+                  hoverLabel="Earned"
+                  hoverValue={`${formatNumber(leaderPeriodMetrics.earnedWolo)} WOLO`}
                 />
               </div>
 
@@ -623,14 +629,35 @@ function HeroStat({
 function MetricTile({
   label,
   value,
+  hoverLabel,
+  hoverValue,
 }: {
   label: string;
   value: string;
+  hoverLabel?: string;
+  hoverValue?: string;
 }) {
+  const hasHoverMetric = Boolean(hoverLabel && hoverValue);
+
   return (
-    <div className="rounded-[1.25rem] border border-white/8 bg-white/5 p-4">
-      <div className="text-[11px] uppercase tracking-[0.25em] text-slate-400">{label}</div>
-      <div className="mt-2 text-lg font-semibold text-white">{value}</div>
+    <div
+      className="group rounded-[1.25rem] border border-white/8 bg-white/5 p-4"
+      aria-label={
+        hasHoverMetric
+          ? `${label} ${value}; ${hoverLabel} ${hoverValue}`
+          : `${label} ${value}`
+      }
+    >
+      <div className={hasHoverMetric ? "group-hover:hidden group-focus-within:hidden" : undefined}>
+        <div className="text-[11px] uppercase tracking-[0.25em] text-slate-400">{label}</div>
+        <div className="mt-2 text-lg font-semibold text-white">{value}</div>
+      </div>
+      {hasHoverMetric ? (
+        <div className="hidden group-hover:block group-focus-within:block" aria-hidden="true">
+          <div className="text-[11px] uppercase tracking-[0.25em] text-slate-400">{hoverLabel}</div>
+          <div className="mt-2 text-lg font-semibold text-white">{hoverValue}</div>
+        </div>
+      ) : null}
     </div>
   );
 }

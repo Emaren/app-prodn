@@ -5,8 +5,6 @@ import test from "node:test";
 import {
   TITLE_FORFEIT_REVIEW_SETTLEMENT_STATUS,
   TITLE_FORFEIT_REVIEW_STATUS,
-  TITLE_RESULT_REVIEW_SETTLEMENT_STATUS,
-  TITLE_RESULT_REVIEW_STATUS,
   TERMINAL_TITLE_CHALLENGE_STATUSES,
   buildTitleChallengeAcceptBy,
   unacceptedTitleExpiryNeedsCommissionerReview,
@@ -76,7 +74,7 @@ test("only an unaccepted linked title expiry enters commissioner forfeit review"
   );
 });
 
-test("watcher proof records title results for commissioner review without automatic custody or bounty writes", () => {
+test("verified watcher proof auto-settles zero-bounty held ELO titles by exact replay lane", () => {
   const routeSource = readFileSync(
     new URL("../app/api/challenges/route.ts", import.meta.url),
     "utf8"
@@ -85,31 +83,35 @@ test("watcher proof records title results for commissioner review without automa
     new URL("../lib/challenges.ts", import.meta.url),
     "utf8"
   );
-  const trophyActionSource = readFileSync(
-    new URL("../lib/trophies/actions.ts", import.meta.url),
+  const liveSessionSource = readFileSync(
+    new URL("../lib/liveSessionSnapshot.ts", import.meta.url),
     "utf8"
   );
   const resultRecorder = challengeSource.slice(
     challengeSource.indexOf("async function recordVerifiedScheduledMatchTitleResults"),
-    challengeSource.indexOf("async function persistScheduledMatchResults")
+    challengeSource.indexOf("async function attemptAutomaticScheduledMatchSettlement")
   );
 
-  assert.doesNotMatch(routeSource, /scheduled_match_auto_stakes|const heldTitles/);
-  assert.match(routeSource, /buildTitleChallengeAcceptBy\(now, matchTime\)/);
+  assert.match(routeSource, /heldEloTitles/);
+  assert.match(routeSource, /automatic_held_elo_title_defense/);
+  assert.match(routeSource, /chainStatus: "app_only"/);
+  assert.match(routeSource, /currentHolderUserId: \{ in: participantIds \}/);
+
+  assert.match(liveSessionSource, /game_type: true/);
+  assert.match(liveSessionSource, /gameType/);
+  assert.match(resultRecorder, /replayEloLane\(session\.gameType\)/);
+  assert.match(resultRecorder, /eloTrophyIdentity/);
+  assert.match(resultRecorder, /mode_not_contested/);
+  assert.match(resultRecorder, /projectedBounty === 0/);
+  assert.match(resultRecorder, /\(session\.watcherCount \?\? 0\) >= 2/);
+  assert.match(resultRecorder, /dual Watcher coverage/);
+  assert.match(resultRecorder, /automatic_custody_transferred/);
+  assert.match(resultRecorder, /tx\.trophy\.updateMany/);
+  assert.match(resultRecorder, /woloMutation: false/);
+  assert.doesNotMatch(resultRecorder, /trophyPayout\.create/);
   assert.match(resultRecorder, /TITLE_RESULT_REVIEW_STATUS/);
-  assert.match(resultRecorder, /commissionerReviewRequired: true/);
-  assert.doesNotMatch(resultRecorder, /tx\.trophy\.update|tx\.trophyPayout\.create/);
-  assert.match(trophyActionSource, /COMMISSIONER_TITLE_VETOED/);
-  assert.match(trophyActionSource, /status: \{ not: "commissioner_vetoed" \}/);
-  assert.match(trophyActionSource, /winnerPreserved: Boolean\(challenge\.winnerUserId\)/);
-  assert.match(challengeSource, /title_result_pending_review/);
+  assert.match(resultRecorder, /projected bounty; financial disposition remains commissioner-reviewed/);
+
   assert.match(challengeSource, /attemptAutomaticScheduledMatchSettlement/);
-  assert.match(routeSource, /pg_advisory_xact_lock/);
-  assert.match(routeSource, /titleContender = viewerIsCurrentCustodian \? challenged : viewer/);
   assert.ok(TERMINAL_TITLE_CHALLENGE_STATUSES.includes("commissioner_vetoed"));
-  assert.equal(TITLE_RESULT_REVIEW_STATUS, "commissioner_review");
-  assert.equal(
-    TITLE_RESULT_REVIEW_SETTLEMENT_STATUS,
-    "commissioner_review_required"
-  );
 });

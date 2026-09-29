@@ -120,6 +120,48 @@ class PerformanceOSTests(unittest.TestCase):
         self.assertEqual(summary["ttfb_p50_ms"], 300.0)
         self.assertEqual(summary["total_p50_ms"], 400.0)
 
+    def test_comparable_performance_cohorts_preserve_available_seams(self):
+        payload = {
+            "cohort": {
+                "ttfb_p50_ms": 600.0,
+                "total_p50_ms": 800.0,
+            },
+            "warm_cohort": {
+                "ttfb_p50_ms": 280.0,
+                "total_p50_ms": 470.0,
+            },
+            "origin_route_cohort": {
+                "ttfb_p50_ms": 3.0,
+                "total_p50_ms": 6.0,
+            },
+        }
+
+        rails = SPEED_MODULE.comparable_performance_cohorts(payload)
+
+        self.assertEqual(
+            rails,
+            {
+                "cold": {
+                    "ttfb_p50_ms": 600.0,
+                    "total_p50_ms": 800.0,
+                },
+                "warm": {
+                    "ttfb_p50_ms": 280.0,
+                    "total_p50_ms": 470.0,
+                },
+                "origin": {
+                    "ttfb_p50_ms": 3.0,
+                    "total_p50_ms": 6.0,
+                },
+            },
+        )
+
+        payload["warm_cohort"] = {"ttfb_p50_ms": 280.0}
+        rails = SPEED_MODULE.comparable_performance_cohorts(payload)
+        self.assertNotIn("warm", rails)
+        self.assertIn("cold", rails)
+        self.assertIn("origin", rails)
+
     def test_cohort_identity_requires_same_mode_and_routes(self):
         full_a = {
             "mode": "full",
@@ -992,11 +1034,16 @@ class PerformanceOSTests(unittest.TestCase):
 
     def test_full_speed_cohort_v2_covers_current_world_surfaces(self):
         routes = SPEED_MODULE.route_list(True)
-        self.assertEqual(len(routes), 81)
+        self.assertEqual(len(routes), 86)
         self.assertEqual(len(routes), len(set(routes)))
         for route in (
             "/wargraph",
+            "/champions/legacy",
             "/national-champions",
+            "/chaosium",
+            "/olympia",
+            "/leagues",
+            "/leagues/founding-charter-preview",
             "/kingdom-forge",
             "/kingdom-intelligence",
             "/general-inspections",

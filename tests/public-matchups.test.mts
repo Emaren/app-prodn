@@ -318,7 +318,7 @@ test("the shared matchup scan preserves the full Emaren-Sechma series beyond the
 
   await new Promise((resolve) => setTimeout(resolve, 1_050));
 
-  const [refreshedRows, concurrentRows] =
+  const [staleRows, concurrentStaleRows] =
     await Promise.all([
       loadRecentFinalMatchupRows(
         prisma,
@@ -329,11 +329,35 @@ test("the shared matchup scan preserves the full Emaren-Sechma series beyond the
         PUBLIC_MATCHUP_SCAN_LIMIT
       ),
     ]);
+
   assert.equal(
-    concurrentRows.length,
-    refreshedRows.length,
-    "same-generation concurrent readers should share the in-flight projection"
+    concurrentStaleRows.length,
+    staleRows.length,
+    "same-generation readers that trigger refresh should share one last-good projection"
   );
+  assert.equal(
+    buildPlayerPairRivalryContext(
+      staleRows,
+      emaren,
+      sechma
+    ).totalMatches,
+    13,
+    "a previously good rivalry projection may serve stale while the new generation rebuilds"
+  );
+  assert.equal(
+    matchupQueryCount,
+    2,
+    "a new public replay generation must start exactly one complete-corpus refresh"
+  );
+
+  // Let the single background refresh publish its new-generation cache.
+  await new Promise((resolve) => setTimeout(resolve, 0));
+
+  const refreshedRows =
+    await loadRecentFinalMatchupRows(
+      prisma,
+      PUBLIC_MATCHUP_SCAN_LIMIT
+    );
   const refreshedSummary =
     buildPlayerPairRivalryContext(
       refreshedRows,
@@ -344,7 +368,7 @@ test("the shared matchup scan preserves the full Emaren-Sechma series beyond the
   assert.equal(
     matchupQueryCount,
     2,
-    "a new public replay generation must invalidate the shared projection"
+    "converged readers must reuse the refreshed complete-corpus projection"
   );
   assert.equal(
     refreshedSummary.totalMatches,

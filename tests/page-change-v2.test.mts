@@ -13,15 +13,15 @@ const adminUsers = fs.readFileSync("app/api/admin/users/route.ts", "utf8");
 const packageJson = fs.readFileSync("package.json", "utf8");
 
 const hrefs = [
-  "/kingdom", "/oracle", "/leaderboard", "/champions", "/national-champions",
+  "/kingdom", "/oracle", "/leaderboard", "/champions", "/chaosium", "/olympia", "/leagues", "/national-champions",
   "/clans", "/academy", "/market", "/ai", "/bounties", "/forum", "/radio",
   "/workshop", "/game-stats", "/traffic", "/kingdom-forge", "/round-chamber",
   "/statistics", "/speed", "/kingdom-intelligence",
 ];
 
-test("all 20 Kingdom-menu pages have generated source editions", () => {
+test("all 23 Kingdom-menu pages have generated source editions", () => {
   for (const href of hrefs) assert.ok(manifest.includes(`href: "${href}"`));
-  assert.equal((manifest.match(/href: "\//g) ?? []).length, 20);
+  assert.equal((manifest.match(/href: "\//g) ?? []).length, 23);
   assert.match(manifest, /version: "src-[a-f0-9]{20}"/);
   assert.match(notices, /PAGE_CHANGE_MANIFEST/);
 });

@@ -23,6 +23,7 @@ import type { HeroPlaylistView } from "@/lib/hero/types";
 import {
   getFallbackLeaderboard,
   getFallbackTournament,
+  type LobbyFeaturedWarriorHonor,
   type LobbyLeaderboardEntry,
   type LobbyLeaderboardSummary,
   type LobbyMessage,
@@ -199,8 +200,12 @@ function featuredWarriorRecordSubtitle(warrior: FeaturedWarrior) {
 }
 
 function featuredWarriorRankSubtitle(warrior: FeaturedWarrior) {
-  if (isFiniteFeaturedNumber(warrior.rank) && warrior.rank > 0) {
-    return `Rank #${warrior.rank}`;
+  const rank =
+    warrior.featuredRank ??
+    warrior.rank;
+
+  if (isFiniteFeaturedNumber(rank) && rank > 0) {
+    return `Rank #${rank}`;
   }
 
   if (/^rank\s*#/i.test(warrior.role)) {
@@ -235,10 +240,14 @@ type FeaturedWarrior = {
   role: string;
   premiumSubtitle?: string;
   href: string;
+  uid?: string | null;
   imageUrl?: string;
   isPlaceholder?: boolean;
   hasFeaturedAvatar?: boolean;
+  featuredAvatarRevision?: string | null;
+  honors?: string[];
   rank?: number | null;
+  featuredRank?: number | null;
   elo?: number | null;
   arenaElo?: number | null;
   steamRmRating?: number | null;
@@ -258,6 +267,7 @@ const FEATURED_WARRIOR_FALLBACKS: FeaturedWarrior[] = [
     name: "Dil_Pascana",
     key: "dil-pascana",
     lookupName: "Dil_Pascana",
+    uid: DIL_PASCANA_UID,
     role: "The Specialist",
     href: "/players/by-name/Dil_Pascana",
     imageUrl: avatarCardUrlForUser(DIL_PASCANA_UID, "Dil_Pascana"),
@@ -266,6 +276,7 @@ const FEATURED_WARRIOR_FALLBACKS: FeaturedWarrior[] = [
     key: "premium:sniper",
     name: "Sniper",
     lookupName: "Sniper",
+    uid: SNIPER_UID,
     role: "The Sharpshooter",
     href: "/players/by-name/Sniper",
     imageUrl: avatarCardUrlForUser(SNIPER_UID, "Sniper"),
@@ -274,6 +285,7 @@ const FEATURED_WARRIOR_FALLBACKS: FeaturedWarrior[] = [
     key: "premium:julio-alvarez",
     name: "Julio",
     lookupName: "Julio Alvarez",
+    uid: JULIO_ALVAREZ_UID,
     role: "The Conquistador",
     premiumSubtitle: "ELO ᛫ RECORD ᛫ STREAK",
     href: "/players/by-name/Julio%20Alvarez",
@@ -283,7 +295,8 @@ const FEATURED_WARRIOR_FALLBACKS: FeaturedWarrior[] = [
     key: "premium:jim",
     name: "Jim",
     lookupName: "Jim",
-    role: "American Champion",
+    uid: JIM_UID,
+    role: "Featured Warrior",
     href: "/players/by-name/Jim",
     imageUrl: avatarCardUrlForUser(JIM_UID, "Jim"),
   },
@@ -291,6 +304,7 @@ const FEATURED_WARRIOR_FALLBACKS: FeaturedWarrior[] = [
     key: "premium:emaren",
     name: "Emaren",
     lookupName: "Emaren",
+    uid: "u_626ea6497a984dabbc2338ef54c5d333",
     role: "The Tactician",
     href: "/players/by-name/Emaren",
     imageUrl: avatarCardUrlForUser("u_626ea6497a984dabbc2338ef54c5d333", "Emaren"),
@@ -303,7 +317,8 @@ const FEATURED_WARRIOR_PREMIUM_POOL: FeaturedWarrior[] = [
     key: "premium:zodiac",
     name: "Zodiac",
     lookupName: "Zodiac",
-    role: "Chaos Champion",
+    uid: ZODIAC_UID,
+    role: "Featured Warrior",
     href: `/players/${encodeURIComponent(ZODIAC_UID)}`,
     imageUrl: avatarCardUrlForUser(ZODIAC_UID, "Zodiac"),
   },
@@ -376,35 +391,67 @@ function normalizeFeaturedWarriorKey(value: string) {
 
 
 
-function featuredWarriorHonorSubtitle(
-  warrior: Pick<FeaturedWarrior, "key" | "name" | "lookupName">
+function featuredWarriorHonorTitles(
+  warrior: Pick<
+    FeaturedWarrior,
+    "uid" | "name" | "lookupName"
+  >,
+  honors: LobbyFeaturedWarriorHonor[]
 ) {
-  const identityKeys = [warrior.key, warrior.name, warrior.lookupName]
-    .map((value) => normalizeFeaturedWarriorKey(value))
-    .filter(Boolean);
+  const uid =
+    warrior.uid?.trim() ||
+    null;
+  const identityKeys =
+    new Set(
+      [warrior.name, warrior.lookupName]
+        .map((value) =>
+          normalizeFeaturedWarriorKey(value)
+        )
+        .filter(Boolean)
+    );
+  const seen = new Set<string>();
+  const titles: string[] = [];
 
-  // Champion honors stay pinned regardless of RM/DM rating source or live leaderboard rank.
-  const jimKeys = new Set(["jim", "premium-jim", normalizeFeaturedWarriorKey(JIM_UID)]);
-  const zodiacKeys = new Set([
-    "zodiac",
-    "mystikal-zodiac",
-    "premium-zodiac",
-    normalizeFeaturedWarriorKey(ZODIAC_UID),
-  ]);
+  for (const honor of honors) {
+    const uidMatches =
+      Boolean(uid) &&
+      honor.uid === uid;
+    const nameMatches =
+      identityKeys.has(
+        normalizeFeaturedWarriorKey(
+          honor.name
+        )
+      );
 
-  if (identityKeys.some((key) => jimKeys.has(key))) {
-    return "American Champion";
+    if (
+      !uidMatches &&
+      !nameMatches
+    ) {
+      continue;
+    }
+
+    const title =
+      honor.title.trim();
+
+    if (
+      !title ||
+      seen.has(title)
+    ) {
+      continue;
+    }
+
+    seen.add(title);
+    titles.push(title);
   }
 
-  if (identityKeys.some((key) => zodiacKeys.has(key))) {
-    return "Chaos Champion";
-  }
-
-  return null;
+  return titles;
 }
 
 function featuredRoleForLeaderboardEntry(entry: LobbyLeaderboardEntry) {
-  if (entry.rank > 0) return `Rank #${entry.rank}`;
+  const rank =
+    entry.featuredRank ??
+    entry.rank;
+  if (rank > 0) return `Rank #${rank}`;
   if (entry.isOnline) return "In the Arena";
   if (entry.claimed) return "Claimed Warrior";
   return "Rising Warrior";
@@ -416,7 +463,12 @@ function featuredWarriorStatsFromEntry(entry?: LobbyLeaderboardEntry | null): Pa
   if (!entry) return {};
 
   return {
+    uid: entry.uid,
     rank: entry.rank > 0 ? entry.rank : null,
+    featuredRank:
+      entry.featuredRank ?? null,
+    featuredAvatarRevision:
+      entry.featuredAvatarRevision ?? null,
     elo: entry.elo,
     arenaElo: entry.arenaElo,
     steamRmRating: entry.steamRmRating,
@@ -432,10 +484,20 @@ function featuredWarriorStatsFromEntry(entry?: LobbyLeaderboardEntry | null): Pa
   };
 }
 
-function buildFeaturedWarriorPool(entries: LobbyLeaderboardEntry[]) {
+function buildFeaturedWarriorPool(
+  entries: LobbyLeaderboardEntry[],
+  honors: LobbyFeaturedWarriorHonor[]
+) {
   const entryByName = new Map(
-    entries.map((entry) => [normalizeFeaturedWarriorKey(entry.name), entry])
+    entries.map((entry) => [
+      normalizeFeaturedWarriorKey(entry.name),
+      entry,
+    ])
   );
+  const canonicalEntries =
+    Array.from(
+      entryByName.values()
+    );
 
   const seen = new Set<string>();
   const warriors: FeaturedWarrior[] = [];
@@ -444,12 +506,11 @@ function buildFeaturedWarriorPool(entries: LobbyLeaderboardEntry[]) {
     const dedupeKey = normalizeFeaturedWarriorKey(warrior.lookupName || warrior.name);
     if (!dedupeKey || seen.has(dedupeKey)) return;
 
-    const leaderboardEntry = entryByName.get(dedupeKey);
+    const leaderboardEntry =
+      entryByName.get(dedupeKey);
     seen.add(dedupeKey);
 
-    const honorSubtitle = featuredWarriorHonorSubtitle(warrior);
-
-    warriors.push({
+    const nextWarrior: FeaturedWarrior = {
       ...warrior,
 
       href:
@@ -461,7 +522,8 @@ function buildFeaturedWarriorPool(entries: LobbyLeaderboardEntry[]) {
         leaderboardEntry.uid
           ? featuredAvatarCardUrlForUser(
               leaderboardEntry.uid,
-              leaderboardEntry.name
+              leaderboardEntry.name,
+              leaderboardEntry.featuredAvatarRevision
             )
           : warrior.imageUrl,
 
@@ -471,16 +533,28 @@ function buildFeaturedWarriorPool(entries: LobbyLeaderboardEntry[]) {
         ) ||
         Boolean(warrior.hasFeaturedAvatar),
 
-      role: honorSubtitle || (leaderboardEntry
-        ? featuredRoleForLeaderboardEntry(leaderboardEntry)
-        : warrior.role),
-      ...featuredWarriorStatsFromEntry(leaderboardEntry),
-    });
+      role: leaderboardEntry
+        ? featuredRoleForLeaderboardEntry(
+            leaderboardEntry
+          )
+        : warrior.role,
+      ...featuredWarriorStatsFromEntry(
+        leaderboardEntry
+      ),
+    };
+
+    nextWarrior.honors =
+      featuredWarriorHonorTitles(
+        nextWarrior,
+        honors
+      );
+
+    warriors.push(nextWarrior);
   };
 
   FEATURED_WARRIOR_PREMIUM_POOL.forEach(pushWarrior);
 
-  entries.forEach((entry) => {
+  canonicalEntries.forEach((entry) => {
     const key = normalizeFeaturedWarriorKey(entry.name);
     if (!key || seen.has(key)) return;
 
@@ -517,7 +591,8 @@ function buildFeaturedWarriorPool(entries: LobbyLeaderboardEntry[]) {
       imageUrl: qualifiedUid
         ? featuredAvatarCardUrlForUser(
             qualifiedUid,
-            entry.name
+            entry.name,
+            entry.featuredAvatarRevision
           )
         : undefined,
 
@@ -641,7 +716,13 @@ function asUnknownFeaturedWarrior(candidate?: FeaturedWarrior | null): FeaturedW
     name: displayName,
     lookupName,
     role: candidate?.role || "Rank Pending",
+    uid: candidate?.uid ?? null,
     rank: candidate?.rank ?? null,
+    featuredRank:
+      candidate?.featuredRank ?? null,
+    featuredAvatarRevision:
+      candidate?.featuredAvatarRevision ?? null,
+    honors: candidate?.honors ?? [],
     elo: candidate?.elo ?? null,
     arenaElo: candidate?.arenaElo ?? null,
     steamRmRating: candidate?.steamRmRating ?? null,
@@ -751,11 +832,19 @@ function featuredWarriorImageSrc(warrior: FeaturedWarrior) {
   }
 
   if (identity === "zodiac") {
-    return featuredAvatarCardUrlForUser(ZODIAC_UID, "Zodiac");
+    return warrior.imageUrl ??
+      featuredAvatarCardUrlForUser(
+        ZODIAC_UID,
+        "Zodiac"
+      );
   }
 
   if (identity === "julio" || identity === "julio-alvarez") {
-    return featuredAvatarCardUrlForUser(JULIO_ALVAREZ_UID, "Julio Alvarez");
+    return warrior.imageUrl ??
+      featuredAvatarCardUrlForUser(
+        JULIO_ALVAREZ_UID,
+        "Julio Alvarez"
+      );
   }
 
   return warrior.imageUrl ?? avatarUrlForName(warrior.lookupName);
@@ -1095,22 +1184,35 @@ function FeaturedWarriorSubtitle({ warrior }: { warrior: FeaturedWarrior }) {
     setJulioLineIndex(Math.floor(Math.random() * JULIO_FEATURED_SUBTITLE_LINES.length));
   }, [isJulio]);
 
+  const honorTitles =
+    warrior.honors ?? [];
+
+  if (honorTitles.length > 0) {
+    const visibleHonors =
+      honorTitles.slice(0, 4);
+
+    return (
+      <div className="mt-0.5 space-y-0.5 text-[9px] font-bold uppercase leading-[1.08] tracking-[0.15em] text-amber-100 [text-shadow:0_0_16px_rgba(251,191,36,0.30)]">
+        {visibleHonors.map((title) => (
+          <div key={title}>
+            {h(title)}
+          </div>
+        ))}
+        {honorTitles.length > visibleHonors.length ? (
+          <div>
+            +{honorTitles.length - visibleHonors.length} titles
+          </div>
+        ) : null}
+      </div>
+    );
+  }
+
   const julioLine = isJulio ? julioFeaturedSubtitleLine(warrior, julioLineIndex) : null;
 
   if (isJulio && julioLine) {
     return (
       <div className={`mt-1 text-[9px] font-semibold uppercase tracking-[0.18em] ${julioLine.className}`}>
         {h(julioLine.text)}
-      </div>
-    );
-  }
-
-  const honorSubtitle = featuredWarriorHonorSubtitle(warrior);
-
-  if (honorSubtitle) {
-    return (
-      <div className="mt-0.5 text-[10px] font-bold uppercase tracking-[0.18em] text-amber-100 [text-shadow:0_0_16px_rgba(251,191,36,0.30)]">
-        {h(honorSubtitle)}
       </div>
     );
   }
@@ -1568,11 +1670,18 @@ const { uid, isAdmin, isAuthenticated, loading, loginWithSteam, playerName, user
     );
   const featuredWarriors = useMemo(
     () =>
-      buildFeaturedWarriorPool([
-        ...leaderboard.entries,
-        ...(lobby?.featuredWarriorEntries ?? []),
-      ]),
-    [leaderboard.entries, lobby?.featuredWarriorEntries]
+      buildFeaturedWarriorPool(
+        [
+          ...leaderboard.entries,
+          ...(lobby?.featuredWarriorEntries ?? []),
+        ],
+        lobby?.featuredWarriorHonors ?? []
+      ),
+    [
+      leaderboard.entries,
+      lobby?.featuredWarriorEntries,
+      lobby?.featuredWarriorHonors,
+    ]
   );
   const onlineUsers = presence.onlineUsers;
   const recentMatches = lobby?.recentMatches ?? [];

@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "architecture-explanation"
-reviewed_at: "2026-09-06"
+reviewed_at: "2026-09-28"
 review_interval_days: 60
 sensitivity: "internal"
 ---
@@ -536,6 +536,28 @@ amount through WoloChain REST, plus the structured
 `academy_lesson_payment` receipt to `UserActivityEvent`. Do not label a
 reservation paid until that verification succeeds.
 
+### Community leagues / signed charters
+
+`/leagues` is the public competition hall for 1v1, 2v2, 3v3, and 4v4
+formats. Each format exposes separate RM and DM lanes. The `League` model is
+the durable charter ledger; standings, schedules, roster registration, and
+future league trophies attach to that identity rather than inventing a second
+league namespace.
+
+Founding a league costs exactly 100 WOLO. The browser first requests a
+user-bound quote from `GET /api/leagues/quote`, then signs one direct
+`wolo-1` transfer to the current primary Commissioner/admin wallet. The memo
+binds the creation request id, creator uid, and exact price. `POST /api/leagues`
+verifies sender, recipient, exact amount, successful WoloChain transaction, and
+exact memo before persisting the League. The creation transaction hash and memo
+are unique and become permanent founding proof.
+
+A signed charter must never be charged twice because the recording request
+failed. The client retains the already-signed request locally for retry, and
+the server treats a matching transaction already recorded for the same creator
+as a successful recovery. A transaction already attached to another creator is
+rejected. App state never substitutes for the signed chain movement.
+
 ### Marketplace / player-built commerce
 
 `/market` is the app-owned Agora for player services and ecosystem businesses.
@@ -625,6 +647,35 @@ Do not assume every visible issue is a page bug.
 - watcher behavior now looks healthier end-to-end, but the app should still document the live/final replay contract truthfully as it evolves
 
 - Replay upload surface keeps the existing manual single-file flow and adds `/api/replay/upload-package` for browser ZIP packs. ZIP entries are unpacked server-side, filtered to supported AoE2 replay extensions, and forwarded through the canonical backend replay upload contract.
+
+## Public replay projection and live-overlay boundary
+
+The public player directory, leaderboard, championship surfaces, rivalry graph
+and battle archive reuse complete replay-derived projections by exact generation.
+This is computation reuse only: the full replay corpus and existing
+adjudication/statistics contracts remain authoritative.
+
+`lib/publicPlayerDirectoryGeneration.ts` extends replay generation with the
+mutable public directory supplements that can legitimately change without a new
+replay. Live presence is intentionally outside that key. Presence and current
+Watcher rating/name observations are request-time presentation overlays and may
+not create replay identity, W/L history, settlement authority or historical
+cache invalidation.
+
+`lib/lobbyLeaderboard.ts` keeps the expensive ranking base presence-neutral and
+overlays live presence only for callers that render it. Server-side consumers
+such as title-economy calculations request the neutral projection. When a
+previously valid player directory, leaderboard, complete rivalry corpus or
+logical battle-archive page exists and its generation advances, the last good
+historical snapshot may be returned while a single coalesced background refresh
+computes the new generation. This also keeps the four-second Live Games archive
+lane from synchronously paying the complete archive identity/census CTE after a
+new final replay. The initial process-local cold population still waits for
+authoritative truth.
+
+This boundary is deliberately independent from Cloudflare SpeedOS authority:
+process-local generation reuse never makes a route eligible for shared edge
+HTML caching.
 
 <!-- AOE2WAR:REPLAY_RIVALRY_ARCHITECTURE:START -->
 ## Replay history and rivalry graph

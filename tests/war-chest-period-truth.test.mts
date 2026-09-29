@@ -90,8 +90,10 @@ test("weekly mode selects weekly settled and wagered truth", () => {
   const metrics = getWarChestPeriodMetrics(
     {
       settledWolo: 738_311,
+      earnedWolo: 412_777,
       wageredWolo: 1_255_500,
       weeklySettledWolo: 41_250,
+      weeklyEarnedWolo: 19_875,
       weeklyWageredWolo: 93_000,
     },
     "weekly",
@@ -99,6 +101,7 @@ test("weekly mode selects weekly settled and wagered truth", () => {
 
   assert.deepEqual(metrics, {
     settledWolo: 41_250,
+    earnedWolo: 19_875,
     wageredWolo: 93_000,
   });
 });
@@ -107,8 +110,10 @@ test("all-time mode selects lifetime settled and wagered truth", () => {
   const metrics = getWarChestPeriodMetrics(
     {
       settledWolo: 738_311,
+      earnedWolo: 412_777,
       wageredWolo: 1_255_500,
       weeklySettledWolo: 41_250,
+      weeklyEarnedWolo: 19_875,
       weeklyWageredWolo: 93_000,
     },
     "all_time",
@@ -116,6 +121,7 @@ test("all-time mode selects lifetime settled and wagered truth", () => {
 
   assert.deepEqual(metrics, {
     settledWolo: 738_311,
+    earnedWolo: 412_777,
     wageredWolo: 1_255_500,
   });
 });
@@ -159,7 +165,15 @@ test("server accumulator keeps independent weekly settled and matched-wagered co
   assert.match(source, /actor\.weeklySettledWolo\s*\+=\s*claim\.amountWolo/);
   assert.match(
     source,
+    /actor\.weeklyTakeWolo \+=\s*wagerTakeWolo/,
+  );
+  assert.match(
+    source,
     /actor\.weeklySettledWolo \+=\s*wagerTakeWolo/,
+  );
+  assert.match(
+    source,
+    /actor\.weeklyEarnedWolo \+=\s*wagerEarnedWolo/,
   );
 });
 
@@ -176,14 +190,38 @@ test("lobby snapshot prefetches both War Chest rankings before interaction", () 
   assert.match(source, /prefetchedEntriesByMode/);
 });
 
-test("home War Chest renders earned and matched-wagered truth from the active period", () => {
+test("full War Chest captain uses active-period settled and earned truth", () => {
+  const source = fs.readFileSync(
+    path.join(root, "app/war-chest/page.tsx"),
+    "utf8",
+  );
+
+  assert.match(
+    source,
+    /getWarChestPeriodMetrics\(leader, mode\)/,
+  );
+  assert.match(
+    source,
+    /leaderPeriodMetrics\.settledWolo/,
+  );
+  assert.match(
+    source,
+    /leaderPeriodMetrics\.earnedWolo/,
+  );
+});
+
+test("home War Chest defaults to settled gross Take and reveals net Earned on hover", () => {
   const source = fs.readFileSync(
     path.join(root, "components/lobby/TopWoloEarnersTile.tsx"),
     "utf8",
   );
 
   assert.match(source, /getWarChestPeriodMetrics\(entry, mode\)/);
+  assert.match(source, /h\("Settled"\)/);
   assert.match(source, /h\("Earned"\)/);
+  assert.match(source, /group-hover:hidden/);
+  assert.match(source, /group-hover:inline/);
   assert.match(source, /formatWolo\(periodMetrics\.settledWolo\)/);
+  assert.match(source, /formatWolo\(periodMetrics\.earnedWolo\)/);
   assert.match(source, /formatWolo\(periodMetrics\.wageredWolo\)/);
 });

@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "performance-operating-contract"
-reviewed_at: "2026-09-22"
+reviewed_at: "2026-09-28"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -54,7 +54,7 @@ aoe2war speed campaign verify
 ```
 
 `benchmark` defaults to a small critical public cohort. New `--full`
-benchmarks use the current 79-route V2 public cohort in
+benchmarks use the current 86-route V2 public cohort in
 `docs/audits/performance-route-cohort-v2.txt`: current static public surfaces
 plus stable representatives of dynamic route families. The frozen August 13
 66-route cohort remains historical comparison evidence only; it is not silently
@@ -212,13 +212,14 @@ edge caching requires deployment-integrated purge proof first.
 `anonymous_dynamic_candidate_review` is no longer a dead-end classification. A
 separate fail-closed lane can promote an explicitly governed subset without weakening
 the static cache rule. `config/speed-edge-dynamic-policy.json` is the source-controlled
-staleness authority. The current bounded cohort contains **21 exact routes**, all at
+staleness authority. The current bounded cohort contains **20 exact routes**, all at
 exactly 30 seconds and empty-query HTML only. It includes the public academy,
 AI, archive, champion, clan, leaderboard, national-title and Emaren-profile
 surfaces; the request-time public `/forum`, `/market` and
 `/market/shops/chat-effects` shells; five September 17 read-only additions: both governed matchup-history
-representatives, `/traffic`, `/radio`, and `/game-stats/16218/review`; and the
-September 18 `/kingdom` and `/wolo` anonymous public surfaces. The generic
+representatives, `/traffic`, `/radio`, and `/game-stats/16218/review`; the
+September 18 `/wolo` anonymous public surface; and the September 22 `/zodiac` and
+`/war-engine` read-only surfaces. The generic
 claimed-player profile `/players/u_626ea6497a984dabbc2338ef54c5d333` failed the
 certified 30-second proof because both public and origin HTML changed across the
 window, so it remains explicitly HOLD outside shared edge cache. Each addition
@@ -226,10 +227,15 @@ must still re-qualify on the exact merged-and-certified production SHA before th
 Cloudflare rule can expand; development-time byte proofs do not authorize mutation.
 On September 17 the certified `8d0f75ef4ae6` generation rejected `/kingdom` after its
 public body changed inside the proof window. On September 18 the certified
-`f070d7a30a14` generation re-qualified `/kingdom`: public and direct-origin HTML were
-byte-identical and stable across the full 30-second window, so it is now admitted.
-The same certified generation independently qualified the anonymous `/wolo` client
-shell. The follow-up `/players` recheck still failed because its public HTML changed
+`f070d7a30a14` generation re-qualified `/kingdom` during one quiet 30-second window.
+That admission is now superseded: on September 28 certified release `fa04c02f320f`
+produced two public body hashes across t=0/15/30 and public/origin byte-equality failed
+for two samples. `/kingdom` renders request-time Kingdom summary truth, including
+30-second core data and 60-second WOLO-wealth cache lanes, so this churn is consistent
+with legitimate live state rather than a transport anomaly. SpeedOS therefore revokes
+`/kingdom` from shared dynamic HTML caching instead of retrying for another quiet
+window. The September 18 generation independently qualified the anonymous `/wolo`
+client shell, which remains admitted. The follow-up `/players` recheck still failed because its public HTML changed
 across the 30-second window and diverged from origin, so `/players` remains explicitly
 HOLD outside shared edge cache. On September 22, `/bounties` was removed from the
 authorized cohort after the certified qualification observed both public and direct-origin
@@ -279,7 +285,7 @@ plan to the policy SHA, qualification SHA, exact release/source identity, cookie
 bypass census and the independent 30-second rule. `apply-dynamic` stages a separate
 root request and can mutate only the independent Cloudflare rule
 `AOE2WAR SpeedOS qualified dynamic HTML v1`. The root helper has its own hardcoded
-21-route allowlist, requires TTL exactly 30 seconds, reconstructs the expression,
+20-route allowlist, requires TTL exactly 30 seconds, reconstructs the expression,
 requires the existing certified static SpeedOS rule, and proves the request source SHA
 against the live production checkout before touching Cloudflare. The privileged
 allowlist contains the same 21 routes and cannot be broadened by the staged request.
@@ -301,7 +307,7 @@ proofs do not authorize mutation.
 
 The homepage LCP image has its own fail-closed edge lane. It is deliberately
 independent of both HTML cache rules: no `/_next/image` request is admitted by the
-28-route static rule or the 22-route dynamic rule.
+28-route static rule or the 21-route dynamic rule.
 
 `aoe2war speed edge plan-asset` first requires exact certified production identity:
 production SHA, GitHub `main`, and the clean operator `main` worktree must agree. It
@@ -331,7 +337,7 @@ variants must each preserve one stable body hash across the MISS-to-HIT boundary
 remain image content, retain `Vary: Accept`, and converge to `CF-Cache-Status: HIT`.
 Both 1080px and 1920px q95 variants must HIT. The same hero at q90 must remain
 outside the rule. Every route in the authoritative 28-route static cohort and
-22-route dynamic cohort must still converge to HIT, while
+21-route dynamic cohort must still converge to HIT, while
 `/api/deployment-version` must remain outside shared cache.
 
 A hero change invalidates the source-bound plan. The operator must build a fresh
@@ -653,16 +659,21 @@ samples before claiming a route-level latency improvement.
 
 `aoe2war speed inventory` derives the performance estate from the current
 Next.js source tree instead of relying on a hand-maintained page count. At this
-revision the application contains 100 page entry points: 22 authenticated admin
-pages, 77 ordinary public page templates, and one sensitive dynamic public
+revision the application contains 110 page entry points: 23 authenticated admin
+pages, 86 ordinary public page templates, and one sensitive dynamic public
 invoice template.
 
 Every ordinary public page template must have a stable representative in
 `docs/audits/performance-route-cohort-v2.txt`. The inventory command maps
 dynamic templates such as player, battle, clan, marketplace-shop, matchup and
-watch routes onto stable real representatives. CI fails when a new ordinary
-public page is added without a benchmark representative, so the Speed OS route
-universe grows with the product instead of silently falling behind.
+watch routes onto stable real representatives. Representative ownership is
+one-to-one: when an exact page and a broader dynamic/catch-all template both
+match the same cohort route, the most-specific source template owns that route
+and the broader family must use a different representative. Equally specific
+overlaps fail closed instead of silently depending on cohort ordering. CI fails
+when a new ordinary public page is added without a benchmark representative, so
+the Speed OS route universe grows with the product instead of silently falling
+behind.
 
 `/market/invoices/[publicId]` is intentionally classified separately. An
 invoice is user-specific state; a made-up UUID would measure an error path, not
@@ -856,8 +867,8 @@ for complete route-level Ready authority.
 Performance observability is not allowed to become meaningful production load
 without declaring that load in the evidence contract. A full route campaign is
 more than its visible `route_count × rounds` cold pass: Speed OS also runs a
-bounded warm public keepalive pass and a direct-origin route-compute pass. On a
-79-route, five-round campaign that can approach roughly 870 measured route
+bounded warm public keepalive pass and a direct-origin route-compute pass. On an
+85-route, five-round campaign that can approach roughly 935 measured route
 transfers before any bounded retry or stability probe is added.
 
 The `operator-safe-paced-v1` contract therefore governs new full benchmarks:
@@ -1038,6 +1049,69 @@ rows, replay deduplication, and the normal match-feed builder. It deliberately
 does not load WOLO history, staking, watcher aggregates, stream stats, community
 honor, normalized metrics, charts, or rivalry summaries that the card does not
 render.
+
+## Replay Projection Cache V2 — request-time stall control
+
+Whole-corpus replay projections are historical derived truth, not a 15-second
+polling primitive. The expensive public replay corpus, player-directory base,
+leaderboard corpus, rivalry corpus and battle-archive page projection are
+therefore retained by an **exact authoritative generation** instead of being
+discarded on an arbitrary short TTL.
+
+The contract is:
+
+- replay evidence remains complete; no history is truncated to make a page fast;
+- a generation change invalidates the derived projection without weakening
+  replay/result authority;
+- concurrent cold callers for the same generation coalesce onto one build;
+- rejected generation loads are never retained;
+- manual same-process invalidation participates in the cache key where a writer
+  already owns explicit invalidation;
+- once a valid historical snapshot exists, eligible routes may serve that last
+  good snapshot while one background refresh computes the new generation;
+- that non-blocking generation transition applies to the complete player
+  directory, leaderboard, rivalry corpus and logical battle-archive pages, so a
+  newly-final replay cannot turn the next human navigation or four-second Live
+  Games refresh into a whole-history request cliff;
+- unknown generation authority fails conservatively to a fresh/bounded path
+  rather than retaining unversioned truth indefinitely.
+
+The public player directory has a wider generation than replay truth alone
+because accepted honors, gifts, managed avatar presentation and pending-claim
+presentation can change without a replay. That supplemental fingerprint is
+coalesced to the five-second directory refresh cadence. **Presence is excluded.**
+
+Live presence and current Watcher account state are observational overlays.
+They are applied after the stable historical projection and cannot invalidate
+the complete replay-derived directory/leaderboard. Current Watcher state itself
+uses last-good/stale-while-refresh behavior after its first successful process
+snapshot so the exact-Steam history query cannot create a navigation cliff when
+its short presentation TTL expires. Server-only consumers that do not render
+presence explicitly skip that overlay.
+
+Championship state captures one directory generation and shares it across the
+directory and leaderboard-dependent title economy while independent trophy and
+Watcher-activity reads overlap. This prevents `/champions` from entering
+multiple independent whole-corpus projection trees during one request.
+
+`/rivalries` keeps its complete historical contract, but a changed replay
+generation refreshes the complete matchup corpus off the request path after the
+first valid snapshot exists. `/battle-archive` retains exact page/census
+projections by replay generation and logical page coordinates.
+
+None of these changes authorize new Cloudflare shared-cache routes. SpeedOS edge
+authority remains fail-closed and separate from process-local computation reuse.
+
+### Server event-loop signal
+
+`/api/speed/check` exposes a bounded process-local server event-loop scheduling
+delay sample. The Speed Observatory renders its p95 signal alongside browser
+Ready data. This distinguishes route/network latency from a globally stalled
+Next.js process without adding a second daemon or writing telemetry to the
+application database.
+
+The sampler is unref'ed, bounded, observational only, and never changes release,
+database, replay, betting or Wolo authority.
 
 ## Verification instability contract
 

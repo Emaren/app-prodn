@@ -9,11 +9,14 @@ test("the public sitemap is canonical, unique, and excludes private surfaces", (
   const entries = sitemap();
   const urls = entries.map((entry) => entry.url);
 
-  assert.equal(entries.length, 35);
+  assert.equal(entries.length, 38);
   assert.equal(new Set(urls).size, entries.length);
   assert.ok(urls.every((url) => url.startsWith("https://aoe2war.com")));
   assert.ok(urls.includes("https://aoe2war.com"));
   assert.ok(urls.includes("https://aoe2war.com/rivalries"));
+  assert.ok(urls.includes("https://aoe2war.com/chaosium"));
+  assert.ok(urls.includes("https://aoe2war.com/olympia"));
+  assert.ok(urls.includes("https://aoe2war.com/leagues"));
   assert.ok(!urls.some((url) => /\/(?:admin|api|profile|settings|wallet)(?:\/|$)/.test(url)));
 });
 

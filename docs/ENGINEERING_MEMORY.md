@@ -41,6 +41,65 @@ memory before closing the work.
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
 
+## 2026-09-28 — Reclaim evidence, not advertised reclaimability
+
+A SpeedOS release was correctly stopped below the 5 GiB root release floor.
+The established APT/journal/closed-nginx recovery ladder reclaimed only about
+22 MiB. A read-only storage census then identified several apparently
+regenerable pools.
+
+The live experiment proved that advertised size is not the same as reclaimed
+root headroom:
+
+- removing one Snap revision explicitly marked `disabled` reclaimed roughly
+  520 MiB and preserved production source, BUILD_ID, web-service state, and Wolo
+  8092/8093 listener identity;
+- deleting a roughly 510 MiB Snap download-cache pathname produced no measurable
+  `df` improvement during the experiment;
+- Docker reported roughly 356 MiB reclaimable but pruning unused images released
+  only about 8.45 MiB;
+- PNPM pruning was not executed because the first wrapper incorrectly attempted
+  `runuser` from the already-unprivileged `tony` session.
+
+Permanent rule: promote only the reclaim class whose real capacity delta and
+runtime safety were observed. Disabled Snap revisions therefore belong in
+Release Recovery OS. Snap cache, Docker pruning, and PNPM store pruning remain
+outside automatic recovery until separately proven.
+The same census exposed a larger structural cause: `app-prodn` held three
+roughly 1.077 GiB dependency trees at once — active `node_modules`, staged
+`.node_modules-release`, and the newest fast rollback dependency tree — plus
+parallel active/staged/rollback Next build trees. The rollback copy is governed
+rollback state and remains protected. The staged pair, however, may be safely
+retired when its exact durable stage receipt proves it belongs to superseded
+source authority and no process references it.
+
+Permanent ordering rule: under low root headroom, prove and retire a superseded
+staged release before spending effort on generic host cleanup. This reuses the
+existing receipt-driven stage retirement contract and avoids a release deadlock
+where capacity preflight blocks before that contract can run.
+
+
+## 2026-09-28 — Clean Git metadata does not prove a writable tracked worktree
+
+The SpeedOS release staged successfully and passed activation preflight, then
+failed before source advancement when `git reset --hard` could not unlink
+`app/api/players/generation/route.ts`: permission denied.
+
+The existing transport proof covered canonical `.git` ownership and
+writability only. That was insufficient because unlink/replace authority is
+controlled by the tracked file's parent directory. A clean checkout can
+therefore have healthy Git metadata while a root-owned or unwritable tracked
+parent makes source activation impossible.
+
+Permanent rule: release transport has two ownership surfaces — Git metadata and
+the tracked worktree. Both are proved before staging, and the tracked worktree
+is re-proved at the final pre-mutation seam before the service is stopped. That
+final proof also rejects a tracked path that disappeared after staging.
+Failures return bounded path samples plus the canonical explicit ownership
+repair. Activation does not silently escalate itself into recursive root
+mutation.
+
+
 ## 2026-09-27 — Promoted topology must be consumable without rewriting historical result evidence
 
 Production game 44862 proved a second authority-layer seam after the V3 roster repair itself
@@ -103,6 +162,29 @@ Unit mocks can prove application policy while still missing live-schema rejectio
 alignment must ship through the proof-bound migration rail; never bypass an atomic production
 rejection with manual SQL.
 
+## 2026-09-28 — A re-qualified dynamic route can still lose cache authority later
+
+The certified Champions E2 release `fa04c02f320f` completed cleanly, but its governed
+dynamic-edge qualification returned 20/21 because `/kingdom` produced two public
+HTML body hashes across t=0/15/30 and failed public/origin byte equality on two
+samples. This was not treated as a flaky transport result. The Kingdom page renders
+request-time public truth from `loadKingdomSummary()`: core citizen/watcher/chronicle/
+bounty state is cached for 30 seconds and Kingdom WOLO wealth for 60 seconds. A page
+whose authoritative inputs can legitimately advance inside the proposed 30-second
+shared-cache window cannot rely on a single quiet historical proof as permanent
+authority.
+
+The earlier September 18 quiet-window PASS is preserved as historical admission
+evidence, but the September 28 certified churn supersedes it for current policy.
+SpeedOS removes `/kingdom` from both the source-controlled dynamic policy and the
+privileged Cloudflare allowlist. The page remains force-dynamic and fully live; only
+shared edge HTML caching is revoked. The governed cohort is now 20 exact routes.
+
+Durable rule: cache admission is continuously revocable evidence. When a certified
+release later proves legitimate body churn inside the TTL, shrink the shared-cache
+boundary even if the same route passed previously. Never rerun until a quiet interval
+manufactures a green receipt.
+
 ## 2026-09-22 — A quiet edge-review window cannot overrule later certified churn
 
 The read-only dynamic-edge review initially observed `/rivalries` as byte-stable for one
@@ -114,8 +196,9 @@ generation changes, so the certified churn is consistent with real live corpus u
 than a transport anomaly.
 
 SpeedOS therefore removed `/rivalries` from the shared dynamic-edge allowlist instead of
-retrying until a quiet interval happened to pass. The remaining dynamic cohort is 21 exact
-routes and still requires all-policy qualification before mutation.
+retrying until a quiet interval happened to pass. The remaining dynamic cohort at that September 22 checkpoint was 21 exact
+routes; the September 28 Kingdom revocation reduces current authority to 20 and still
+requires all-policy qualification before mutation.
 
 Durable rule: an earlier technical PASS is admission evidence, not permanent cache authority.
 When the exact certified generation later proves body churn inside the proposed TTL window,
@@ -835,9 +918,11 @@ Replay history and current operational truth are different products.
 For current Steam rating, exact Watcher observation outranks generic replay
 availability, and actual replay `played_on` outranks upload/parse recency.
 
-For War Chest accounting, economic gain outranks gross money movement, and
-period-specific displays must carry period-specific counters all the way from
-the server accumulator to the rendered row.
+For War Chest accounting, the public `Take` metric is intentional gross
+winning payout cashflow while `Earned` remains net economic gain. Keep those
+two meanings separate, exclude void/refund rails from both, and carry
+period-specific counters all the way from the server accumulator to the
+rendered row.
 
 General rule: preserve broad historical evidence, but require the strongest
 available provenance before that evidence can redefine a current-state number.
@@ -1957,3 +2042,62 @@ directory, requires a root-owned mode-0400 regular file with the exact source
 digest, and creates result evidence with `O_EXCL`/`O_NOFOLLOW` at mode 0400
 from birth. General rule: hash verification does not replace ownership, mode,
 and race-safe path construction across a privilege boundary.
+
+
+## 2026-09-28 — Championship presentation must preserve authority and visual symmetry
+
+The Champions E2 polish pass exposed two classes of mistakes that should not
+recur. First, presentation cleanup can accidentally erase useful structural
+copy while leaving a decorative hero that carries less information. Second,
+cards from the same championship family can look inconsistent when action
+controls flow immediately after variable-length contender content.
+
+Durable rule: remove marketing copy at the intended scope, not by flattening the
+visual hierarchy. Champions E2 keeps the premium hero frame, reduces its text
+to the small `AoE2WAR title economy` identity plus live Active / Vacant /
+Tribute counters, and removes the large headline/tagline/explainer copy.
+Between championship families E2 keeps only compact structural labels rather
+than explanatory SaaS-style prose.
+
+Durable rule: repeated championship card families have one bottom action
+baseline. Podium and national cards use flex-column bodies with the action
+anchored to the bottom, so an empty or short contender queue cannot pull a call
+to action upward relative to its siblings. The Women's throne pads its queue to
+the same ten-slot depth as the other open thrones for the same reason.
+
+Durable rule: curated product queues must be labeled as curated instead of being
+presented as inferred ranking authority. The current 2v2/3v3/4v4 combinations
+are Commissioner-selected contender teams. They may be displayed and ordered as
+that queue, but they must not be described as a Watcher-backed team ELO until a
+real lane-specific team-rating authority exists.
+
+ELO title cards are custody surfaces, not decorative belt galleries. Both RM
+and DM presentation lanes therefore reserve an avatar/holder stage above the
+belt. Vacant titles use the neutral silhouette; any projected live holder comes
+from title-state custody rather than from contender rank.
+
+General rule: UI polish must not invent authority. Visual prominence, symmetry,
+default layout and curated ordering are product presentation decisions; holder,
+rating, result, betting, settlement and Wolo truth remain owned by their
+existing authority lanes.
+
+
+## 2026-09-28 — Local live-data previews must prove browser readiness
+
+A Champions E2 visual review exposed a preview-harness race rather than a page
+implementation failure. The local read-only production-data launcher treated an
+open HTTPS port as browser readiness, then opened Chrome while Next.js was still
+performing the first heavy App Router render. The browser could request
+`app/layout.js` or a speculative navigation chunk before that chunk was ready
+and surface a `ChunkLoadError`.
+
+Durable rule: `npm run dev:prod` preserves its production PostgreSQL read-only
+fence, but browser auto-open now waits for the requested preview route to render
+successfully and then independently proves every emitted Next.js JavaScript
+chunk referenced by that HTML. Failed prewarm/chunk proof suppresses auto-open
+instead of handing the browser a half-ready surface.
+
+Durable rule: speculative navigation warmups are optimization only. A transient
+dynamic-import failure must be caught, must never crash the page the user is
+currently viewing, and must clear its cached failed promise so later user intent
+can retry against fresh chunks.

@@ -2,8 +2,10 @@ export type WarChestPeriodMode = "weekly" | "all_time";
 
 export type WarChestPeriodMetricSource = {
   settledWolo: number;
+  earnedWolo: number;
   wageredWolo: number;
   weeklySettledWolo: number;
+  weeklyEarnedWolo: number;
   weeklyWageredWolo: number;
 };
 
@@ -14,10 +16,12 @@ export function getWarChestPeriodMetrics(
   return mode === "weekly"
     ? {
         settledWolo: entry.weeklySettledWolo,
+        earnedWolo: entry.weeklyEarnedWolo,
         wageredWolo: entry.weeklyWageredWolo,
       }
     : {
         settledWolo: entry.settledWolo,
+        earnedWolo: entry.earnedWolo,
         wageredWolo: entry.wageredWolo,
       };
 }

@@ -2,6 +2,8 @@ import type { PrismaClient } from "@/lib/generated/prisma";
 import {
   EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
 } from "@/lib/replayAdjudications";
+import { createGenerationKeyedLoader } from "@/lib/generationKeyedLoader";
+import { loadPublicReplayGeneration } from "@/lib/publicReplayGeneration";
 
 export type PublicLeaderboardRawGame = {
   createdAt: Date;
@@ -21,34 +23,23 @@ export type PublicLeaderboardRawGame = {
   replayResultAdjudications: unknown;
 };
 
-type RawCorpusCacheEntry = {
-  expiresAt: number;
-  value: PublicLeaderboardRawGame[];
-};
-
-const RAW_CORPUS_TTL_MS = 15_000;
-
 /*
- * Historical public leaderboard truth must remain complete.
- *
- * The old implementation fetched the complete wide final-game corpus in one
- * PostgreSQL result stream. That preserved truth but could push multi-megabyte
- * result sets through PostgreSQL -> Next.js in one burst.
- *
- * Keep lifetime truth. Bound transport.
+ * Historical public leaderboard truth must remain complete. Transport stays
+ * bounded at 1,000 rows per PostgreSQL result stream; generation-keyed reuse
+ * removes repeated whole-corpus transport and JS rebuilding without truncation.
  */
 const RAW_CORPUS_PAGE_SIZE = 1_000;
 
-let rawCorpusCache: RawCorpusCacheEntry | null = null;
-
-let rawCorpusPromise:
-  Promise<PublicLeaderboardRawGame[]> | null =
-  null;
+const loadRawCorpusByGeneration =
+  createGenerationKeyedLoader<
+    PrismaClient,
+    PublicLeaderboardRawGame[]
+  >(2);
 
 /*
- * Identity mutation may invalidate this corpus while a refresh is still
- * running. The generation fence prevents that stale refresh from restoring
- * itself into cache after invalidation.
+ * Manual mutation invalidation participates in the key as a local epoch.
+ * This preserves immediate same-process invalidation even inside the replay
+ * generation's one-second read-coalescing window.
  */
 let rawCorpusGeneration = 0;
 
@@ -215,55 +206,43 @@ async function loadPublicLeaderboardRawGamesFresh(
 
 export async function loadPublicLeaderboardRawGames(
   prisma: PrismaClient,
+  replayGeneration: string | null = null,
 ): Promise<PublicLeaderboardRawGame[]> {
-  const now = Date.now();
+  let generation =
+    replayGeneration;
 
-  if (
-    rawCorpusCache &&
-    rawCorpusCache.expiresAt > now
-  ) {
-    return rawCorpusCache.value;
-  }
-
-  if (rawCorpusPromise) {
-    return rawCorpusPromise;
-  }
-
-  const generation =
-    rawCorpusGeneration;
-
-  const run =
-    loadPublicLeaderboardRawGamesFresh(
-      prisma,
-    );
-
-  rawCorpusPromise = run;
-
-  try {
-    const value = await run;
-
-    if (
-      generation ===
-      rawCorpusGeneration
-    ) {
-      rawCorpusCache = {
-        expiresAt:
-          Date.now() +
-          RAW_CORPUS_TTL_MS,
-        value,
-      };
-    }
-
-    return value;
-  } finally {
-    if (rawCorpusPromise === run) {
-      rawCorpusPromise = null;
+  if (!generation) {
+    try {
+      generation =
+        await loadPublicReplayGeneration(
+          prisma,
+        );
+    } catch (error) {
+      // Correctness wins over reuse when generation authority is unavailable.
+      // Do not retain an unversioned lifetime corpus.
+      console.warn(
+        "Public leaderboard replay generation unavailable; loading fresh corpus:",
+        error,
+      );
+      return loadPublicLeaderboardRawGamesFresh(
+        prisma,
+      );
     }
   }
+
+  const cacheKey =
+    `${generation}:epoch:${rawCorpusGeneration}`;
+
+  return loadRawCorpusByGeneration(
+    prisma,
+    cacheKey,
+    () =>
+      loadPublicLeaderboardRawGamesFresh(
+        prisma,
+      ),
+  );
 }
 
 export function invalidatePublicLeaderboardRawGameCache() {
   rawCorpusGeneration += 1;
-  rawCorpusCache = null;
-  rawCorpusPromise = null;
 }

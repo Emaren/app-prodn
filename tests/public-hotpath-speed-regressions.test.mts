@@ -36,11 +36,14 @@ test("public hot paths keep expensive work off request-critical rails", () => {
   assert.doesNotMatch(warChest, /const \[\s*weeklyWagers,/);
   assert.doesNotMatch(warChest, /weeklyWagers\.reduce/);
 
+  assert.match(players, /loadPublicPlayerDirectoryGeneration\(prisma\)/);
   assert.match(players, /loadPublicPlayerDirectory\(\s*prisma,\s*initialGeneration/);
   assert.doesNotMatch(players, /loadPublicPlayerDirectoryFresh/);
   assert.match(directory, /replayGeneration: string \| null/);
   assert.match(directory, /publicPlayerDirectoryPromises/);
-  assert.match(directory, /cacheMatchesGeneration/);
+  assert.match(directory, /overlayPublicPlayerDirectoryLiveState/);
+  assert.match(directory, /includePresence\?: boolean/);
+  assert.doesNotMatch(directory, /PLAYER_DIRECTORY_CACHE_TTL_MS/);
 
   assert.match(academy, /prisma\.replayPlayerSnapshot\.count/);
   assert.match(academy, /ZODIAC_TRAINING_CONFIG\.userId/);
@@ -176,4 +179,140 @@ test("player profile overlaps optional claim and community rails", () => {
     safeCommunity,
     /return empty/,
   );
+});
+
+
+test("lobby cold snapshot starts independent authorities before joining them", () => {
+  const lobby = readFileSync(
+    "lib/lobbySnapshot.ts",
+    "utf8",
+  );
+
+  const freshStart = lobby.indexOf(
+    "async function loadLobbySnapshotFresh",
+  );
+  const freshEnd = lobby.indexOf(
+    "type LobbySnapshotCacheEntry",
+    freshStart,
+  );
+  assert.ok(freshStart >= 0);
+  assert.ok(freshEnd > freshStart);
+
+  const fresh = lobby.slice(
+    freshStart,
+    freshEnd,
+  );
+
+  for (const promise of [
+    "woloPromise",
+    "woloMarketPromise",
+    "tournamentPromise",
+    "presencePromise",
+    "recentMatchesPromise",
+    "leaderboardPromise",
+    "woloEarnersPromise",
+    "aoe2hdPulsePromise",
+    "featuredWarriorHonorsPromise",
+    "tournamentMessagesPromise",
+  ]) {
+    assert.match(
+      fresh,
+      new RegExp(`const ${promise}`),
+    );
+  }
+
+  assert.match(
+    fresh,
+    /await Promise\.all\(\[[\s\S]*woloPromise[\s\S]*tournamentPromise[\s\S]*leaderboardPromise/,
+  );
+  assert.doesNotMatch(
+    fresh,
+    /const \[wolo, woloMarket\] = await Promise\.all[\s\S]*const tournament = await/,
+  );
+});
+
+test("live games batches completed uploader hydration into one query", () => {
+  const liveGames = readFileSync(
+    "lib/liveGames.ts",
+    "utf8",
+  );
+
+  const hydrateStart = liveGames.indexOf(
+    "async function hydrateCompletedSessionUploaders",
+  );
+  const hydrateEnd = liveGames.indexOf(
+    "export async function loadLiveGamesSnapshotFresh",
+    hydrateStart,
+  );
+  assert.ok(hydrateStart >= 0);
+  assert.ok(hydrateEnd > hydrateStart);
+
+  const hydrate = liveGames.slice(
+    hydrateStart,
+    hydrateEnd,
+  );
+
+  assert.match(
+    hydrate,
+    /const targets = sessions\.flatMap/,
+  );
+  assert.match(
+    hydrate,
+    /with candidates\(candidate_index, anchor_at, player_names\) as/,
+  );
+  assert.equal(
+    (hydrate.match(/\$queryRawUnsafe/g) ?? []).length,
+    1,
+  );
+  assert.doesNotMatch(
+    hydrate,
+    /for \(const session of sessions\)/,
+  );
+
+  const freshStart = liveGames.indexOf(
+    "export async function loadLiveGamesSnapshotFresh",
+  );
+  const freshEnd = liveGames.indexOf(
+    "async function loadStreamsBySession",
+    freshStart,
+  );
+  const fresh = liveGames.slice(
+    freshStart,
+    freshEnd,
+  );
+
+  assert.match(
+    fresh,
+    /\[\s*hydratedCompletedSessions,\s*activeMarketSummaries,\s*reviewMarketSummaries,\s*archiveProjection,\s*\] = await Promise\.all/,
+  );
+  assert.match(
+    fresh,
+    /hydrateCompletedSessionUploaders[\s\S]*loadLiveBetMarketSummaryMap[\s\S]*loadReplayReviewMarketSummaryMap[\s\S]*projectArchiveLaneAcrossPages/,
+  );
+  assert.doesNotMatch(
+    fresh,
+    /const reviewMarketSummaries = await/,
+  );
+});
+
+
+test("release prewarm pays heavyweight projection cold starts before users", () => {
+  const prewarm = readFileSync(
+    "scripts/prewarm-production.mjs",
+    "utf8",
+  );
+
+  for (const route of [
+    '"/players"',
+    '"/champions"',
+    '"/rivalries"',
+    '"/battle-archive"',
+    '"/api/lobby"',
+    '"/api/live-games"',
+  ]) {
+    assert.match(prewarm, new RegExp(route.replaceAll("/", "\\/")));
+  }
+
+  assert.match(prewarm, /for \(let round = 1; round <= 2; round \+= 1\)/);
+  assert.match(prewarm, /AOE2WAR_PREWARM_BASE_URL \|\| "http:\/\/127\.0\.0\.1:3030"/);
 });

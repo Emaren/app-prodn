@@ -168,7 +168,7 @@ Current strengths:
 - public navigation now has enough surface area to feel like an ecosystem
 - the Kingdom dropdown gives the top nav a broader world layer: The Kingdom, Champions, Nations, and Forum
 - `/kingdom` tells the app-side chronicle/wealth story without pretending to own WoloChain truth
-- `/champions` is the championship-belt surface for world, chaos, tag, women, ELO, and designation titles
+- `/champions` is the Champions V2 hall: current season 4 active / 18 vacant / 45 WOLO/day, activity-ranked Chaos contenders, alternating RM/DM World contenders, separate RM and DM thrones, RM/DM team crowns, a horizontal national-belt catalog, lane-specific ELO boards, and designation artifacts
 - `/national-champions` is the national-beacon surface with claimed and vacant country titles
 - `/forum` is a real War Room led by twelve hand-written AoE2 field dispatches and Wolo Chronicles; every thread opens into a direct-link reader with replies, reactions, read state, and bookmarks instead of dead `#` links
 - Forum Basic preserves the original focused composition, Advanced is the persistent default with the Chronicle lead, room signals, excerpts, and field manual at `75rem`, and Extreme currently widens the Advanced kit to `96rem` pending its dedicated product pass

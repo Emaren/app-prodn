@@ -11,9 +11,9 @@
       "owner": "aoe2war-web",
       "path": "ARCHITECTURE.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-09-06",
+      "reviewed_at": "2026-09-28",
       "sensitivity": "internal",
-      "sha256": "6a47740fef3f6224ce567358b4458a1735410fb9f20bf9ceb67b471619a06629",
+      "sha256": "c6cb85f1955529e4c065280df168053cb1d06e4276c15391aa168a8d8bcc7b07",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -37,7 +37,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-21",
       "sensitivity": "internal",
-      "sha256": "215eeeac15c1a06764a6c4944b12fa6b7c5b4277892936accc9d02377cb1c88c",
+      "sha256": "8944550f617b74783342c0c2137bfee36b67b9b1bb03345ad3e21ceac37c01a6",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -60,7 +60,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a6b2b4fa6c4551c8a6ef6fd44a6d9e3185a75a4cef2509e053e4ed64ff2cfeac",
+      "sha256": "8eed92de6c97016827a6c658f94fdb934380d2ac2c73810ba1e357909ac51592",
       "source_of_truth": "historical-evidence",
       "status": "historical",
       "systems": [
@@ -85,7 +85,7 @@
       "review_interval_days": 60,
       "reviewed_at": "2026-09-21",
       "sensitivity": "internal",
-      "sha256": "52e2dd4de32683dad103b3d9a04d535f0a75125dfec1908a1216652b796162ef",
+      "sha256": "54adf86cc98aa94568f658898c2c25752d053977bbdbbdb23c1c01f44735c46f",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -110,7 +110,7 @@
       "review_interval_days": 60,
       "reviewed_at": "2026-08-22",
       "sensitivity": "internal",
-      "sha256": "5f1f1d5b4e10b8ba3ba0ae024495ad494ce59c3aa43455906eadaf60b0e3081a",
+      "sha256": "c3d8a1982216f60c523766cde8b3058cc4c0feb3eabdeb2829329edcfe8caa0a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -245,7 +245,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-05",
       "sensitivity": "internal",
-      "sha256": "e60cc20d259219195cec7940f0bfd79e5499423d935ba57e262290f20a8aac6c",
+      "sha256": "44761394f98086a6c0348add182d3e398328fc210c5b5490d9097c9eeb4a1540",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -383,9 +383,9 @@
       "owner": "aoe2war-web",
       "path": "docs/CHAMPIONS_TITLE_ECONOMY.md",
       "review_interval_days": 90,
-      "reviewed_at": "2026-09-05",
+      "reviewed_at": "2026-09-27",
       "sensitivity": "internal",
-      "sha256": "fa7b87bbc17560f343730a15b405b81e8ac9e1dc66556b78191b1b74348b2d90",
+      "sha256": "3f75a23cbcf3950eebe1a12a8b15f5893095281bfa373263e8466c2a1ead62ca",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "cf883190b4b9face4e77c3dd42a7a07f7386479ec7f1725be753e368bd9b65ef",
+      "sha256": "78df4045c26ce67afd9b765e0c7b3a5d44b9362425c92a64b9bd8dade26175ba",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-27",
       "sensitivity": "internal",
-      "sha256": "0c559b8a959148321f5d35bff3f17d81b61c5ef802d5a7689cbab46a6b082226",
+      "sha256": "ef44d7b48a2266620ac9928a97a437f0f718d18bf8a9516e67dd036da6a8b467",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -707,7 +707,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6c8c96c2815446cc685790013b5b27a02b197314585f617c7213bfd24003bd74",
+      "sha256": "06305a467a4ddeb8ca7fdd27cf061298d73d23dc41f40c9e408e0fc1c5d339d2",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1006,9 +1006,9 @@
       "owner": "aoe2war-web",
       "path": "docs/PAGE_CHANGE_NOTICES.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-08-18",
+      "reviewed_at": "2026-09-27",
       "sensitivity": "internal",
-      "sha256": "4a53a4dec3b684b3a5663cfe69b6662d52ed94a79441decbe8ac839bcc4e7c59",
+      "sha256": "300f45b733468ebfbac87b125d5f81479e4b77b3a5c6c15f01322daaf279273a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1139,9 +1139,9 @@
       "owner": "aoe2war-web",
       "path": "docs/PERFORMANCE_OS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-22",
+      "reviewed_at": "2026-09-28",
       "sensitivity": "internal",
-      "sha256": "95904126e47591112886bbcbbf0751430f912966022afabfb1b3dbb2002f8ae9",
+      "sha256": "b47c1efaf7104da636b19b4c02448a9983c33817d76085b517530e3d6d3c1a55",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1279,7 +1279,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-22",
       "sensitivity": "internal",
-      "sha256": "9b3102c91d1c7f849b60eb58b32a4775c04d5730a3bc12165edeeb1519398859",
+      "sha256": "0e72f843c6db1780114bb26770999733f055b6f2c7066f1c5fce893fb2d05857",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1325,7 +1325,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-22",
       "sensitivity": "internal",
-      "sha256": "2f743e0cd5783a224a2d3672456c1b52cd8d61ce4ed7061a1f445c10bcc55eca",
+      "sha256": "0141b702f44170f1aa7111b3492af184b841caa6c936b550aedfa21349414b86",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1393,9 +1393,9 @@
       "owner": "aoe2war-web",
       "path": "docs/REPLAY_TRUTH_OS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-28",
+      "reviewed_at": "2026-09-27",
       "sensitivity": "restricted",
-      "sha256": "c4f0edd69e25f24699eaea7d4b37808c49faeed4e7d5056235ec32d08a26ca63",
+      "sha256": "933e6ec8cafa5b1f34aa5c8649e2972810043fc8953377b4b2389533b876b440",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "integration/replay-receipt-promotion-20260927",
-    "commit": "57cb51f894144d2391abb3a04d073fd0025345c1"
+    "branch": "main",
+    "commit": "d3e076a4727d1a33da7963f9cba5d1acaaf3b683"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

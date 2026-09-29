@@ -56,6 +56,23 @@ class SpeedInventoryTests(unittest.TestCase):
         ):
             self.assertIn(route, routes)
 
+    def test_overlapping_exact_and_catchall_routes_have_unique_owners(self):
+        payload = MODULE.snapshot()
+        by_template = {
+            page["template"]: page["benchmark_representative"]
+            for page in payload["pages"]
+        }
+
+        self.assertEqual(by_template["/champions/legacy"], "/champions/legacy")
+        self.assertEqual(by_template["/champions/[...slug]"], "/champions/world")
+
+        representatives = [
+            page["benchmark_representative"]
+            for page in payload["pages"]
+            if page["benchmark_representative"] is not None
+        ]
+        self.assertEqual(len(representatives), len(set(representatives)))
+
     def test_asset_inventory_is_typed_and_size_accounted(self):
         assets = MODULE.asset_inventory()
 

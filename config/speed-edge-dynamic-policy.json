@@ -59,13 +59,6 @@
       "admission": "anonymous_dynamic"
     },
     {
-      "route": "/kingdom",
-      "ttl_seconds": 30,
-      "empty_query_only": true,
-      "rationale": "Anonymous public Kingdom summary/chronicles surface; no server personalization and exact public/origin HTML bytes remained identical across the certified f070d7a3 30-second qualification window.",
-      "admission": "anonymous_dynamic"
-    },
-    {
       "route": "/leaderboard/og",
       "ttl_seconds": 30,
       "empty_query_only": true,

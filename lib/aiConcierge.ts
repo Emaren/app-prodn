@@ -547,7 +547,7 @@ function formatMoneyContext(context: AiMoneyContext | null) {
     .slice(0, 8)
     .map(
       (entry) =>
-        `${entry.rank}. ${entry.name}: weekly ${entry.weeklyTakeWolo} WOLO, settled ${entry.settledWolo} WOLO, wagered ${entry.wageredWolo} WOLO, claimable ${entry.claimableWolo} WOLO, ${entry.claimed ? "linked" : "unlinked"}`,
+        `${entry.rank}. ${entry.name}: weekly Take ${entry.weeklyTakeWolo} WOLO, settled ${entry.settledWolo} WOLO, earned ${entry.earnedWolo} WOLO, wagered ${entry.wageredWolo} WOLO, claimable ${entry.claimableWolo} WOLO, ${entry.claimed ? "linked" : "unlinked"}`,
     );
 
   const claims = context.recentClaims.slice(0, 10).map((claim) => {

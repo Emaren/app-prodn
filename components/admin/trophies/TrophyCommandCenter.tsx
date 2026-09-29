@@ -588,6 +588,7 @@ function TrophyDefinitions({
   const [eligibleNationality, setEligibleNationality] = useState("Canada");
   const [eloBandMin, setEloBandMin] = useState("");
   const [eloBandMax, setEloBandMax] = useState("");
+  const [eloLane, setEloLane] = useState<"rm" | "dm">("rm");
   const [dailyWolo, setDailyWolo] = useState("1");
 
 
@@ -670,7 +671,7 @@ function TrophyDefinitions({
 
       <div className="rounded-[1.5rem] border border-amber-200/12 bg-amber-300/[0.035] p-5">
         <div className="text-xs uppercase tracking-[0.3em] text-amber-100/65">Definition foundry</div>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-7">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-8">
           <Field label="Belt id">
             <input className={inputClass} value={trophyKey} onChange={(event) => setTrophyKey(event.target.value)} placeholder="legend_champion_belt" />
           </Field>
@@ -692,6 +693,18 @@ function TrophyDefinitions({
             </Field>
           ) : family === "elo" ? (
             <>
+              <Field label="ELO lane">
+                <select
+                  className={inputClass}
+                  value={eloLane}
+                  onChange={(event) =>
+                    setEloLane(event.target.value as "rm" | "dm")
+                  }
+                >
+                  <option value="rm">RM · Random Map</option>
+                  <option value="dm">DM · Death Match</option>
+                </select>
+              </Field>
               <Field label="ELO minimum">
                 <input className={inputClass} inputMode="numeric" value={eloBandMin} onChange={(event) => setEloBandMin(event.target.value)} />
               </Field>
@@ -719,7 +732,12 @@ function TrophyDefinitions({
                     displayName,
                     kind: "belt",
                     family,
-                    tier: family === "national" ? "National" : family === "elo" ? "ELO" : "Champion",
+                    tier:
+                      family === "national"
+                        ? "National"
+                        : family === "elo"
+                          ? `${eloLane.toUpperCase()} ELO`
+                          : "Champion",
                     eligibleNationality: family === "national" ? eligibleNationality : null,
                     eloBandMin: family === "elo" ? eloBandMin : null,
                     eloBandMax: family === "elo" ? eloBandMax : null,

@@ -1462,6 +1462,9 @@ wolo8093_before=$W8093_BEFORE
 EOF
 
 APT_RECLAIMED_KB=0
+SNAP_RECLAIMED_KB=0
+SNAP_REMOVED=0
+SNAP_SKIPPED_UNSAFE=0
 JOURNAL_RECLAIMED_KB=0
 NGINX_RECLAIMED_KB=0
 NGINX_ARCHIVED=0
@@ -1520,7 +1523,87 @@ fi
 
 
 # ------------------------------------------------------------
-# TIER 2 — BOUNDED JOURNAL RETENTION
+# TIER 2 — DISABLED SNAP REVISIONS ONLY
+# ------------------------------------------------------------
+
+CURRENT_KB="$(free_kb)"
+
+if [ "$CURRENT_KB" -lt "$TARGET_KB" ] && command -v snap >/dev/null 2>&1; then
+    SNAP_BUSY=0
+
+    if snap changes 2>/dev/null |
+        awk 'NR > 1 && $2 == "Doing" {{found=1}} END {{exit(found ? 0 : 1)}}'
+    then
+        SNAP_BUSY=1
+    fi
+
+    if [ "$SNAP_BUSY" = 0 ]; then
+        while IFS=$'\t' read -r snap_name snap_revision; do
+            CURRENT_KB="$(free_kb)"
+
+            if [ "$CURRENT_KB" -ge "$TARGET_KB" ]; then
+                break
+            fi
+
+            [ -n "$snap_name" ] || continue
+            [ -n "$snap_revision" ] || continue
+
+            if ! [[ "$snap_name" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+                SNAP_SKIPPED_UNSAFE=$((
+                    SNAP_SKIPPED_UNSAFE + 1
+                ))
+                continue
+            fi
+
+            if ! [[ "$snap_revision" =~ ^[0-9]+$ ]]; then
+                SNAP_SKIPPED_UNSAFE=$((
+                    SNAP_SKIPPED_UNSAFE + 1
+                ))
+                continue
+            fi
+
+            TIER_BEFORE="$(free_kb)"
+
+            snap remove \
+                "$snap_name" \
+                --revision="$snap_revision" \
+                >>"$RECEIPT_DIR/snap-disabled-removals.txt" \
+                2>&1
+
+            sync
+
+            TIER_AFTER="$(free_kb)"
+            DELTA=$((
+                TIER_AFTER - TIER_BEFORE
+            ))
+
+            SNAP_RECLAIMED_KB=$((
+                SNAP_RECLAIMED_KB + DELTA
+            ))
+
+            SNAP_REMOVED=$((
+                SNAP_REMOVED + 1
+            ))
+
+            printf '%s\t%s\t%s\n' \
+                "$snap_name" \
+                "$snap_revision" \
+                "$DELTA" \
+                >>"$RECEIPT_DIR/snap-disabled-removed.tsv"
+        done < <(
+            snap list --all 2>/dev/null |
+            awk '
+                NR > 1 && $NF ~ /(^|,)disabled(,|$)/ {{
+                    printf "%s\t%s\n", $1, $3
+                }}
+            '
+        )
+    fi
+fi
+
+
+# ------------------------------------------------------------
+# TIER 3 — BOUNDED JOURNAL RETENTION
 # ------------------------------------------------------------
 
 CURRENT_KB="$(free_kb)"
@@ -1543,7 +1626,7 @@ fi
 
 
 # ------------------------------------------------------------
-# TIER 3 — CLOSED ROTATED NGINX *.log.1 FILES
+# TIER 4 — CLOSED ROTATED NGINX *.log.1 FILES
 # ARCHIVE + SHA-256 BEFORE ROOT REMOVAL
 # ------------------------------------------------------------
 
@@ -1669,6 +1752,9 @@ test "$AFTER_KB" -ge "$TARGET_KB" || {{
 root_free_after_kb=$AFTER_KB
 root_reclaimed_kb=$RECLAIMED_KB
 apt_reclaimed_kb=$APT_RECLAIMED_KB
+snap_reclaimed_kb=$SNAP_RECLAIMED_KB
+snap_removed_count=$SNAP_REMOVED
+snap_skipped_unsafe_count=$SNAP_SKIPPED_UNSAFE
 journal_reclaimed_kb=$JOURNAL_RECLAIMED_KB
 nginx_reclaimed_kb=$NGINX_RECLAIMED_KB
 nginx_archived_count=$NGINX_ARCHIVED
@@ -1723,6 +1809,9 @@ cat >> "$RECEIPT_DIR/recovery.txt" <<EOF
 root_free_after_kb=$AFTER_KB
 root_reclaimed_kb=$RECLAIMED_KB
 apt_reclaimed_kb=$APT_RECLAIMED_KB
+snap_reclaimed_kb=$SNAP_RECLAIMED_KB
+snap_removed_count=$SNAP_REMOVED
+snap_skipped_unsafe_count=$SNAP_SKIPPED_UNSAFE
 journal_reclaimed_kb=$JOURNAL_RECLAIMED_KB
 nginx_reclaimed_kb=$NGINX_RECLAIMED_KB
 nginx_archived_count=$NGINX_ARCHIVED
@@ -1745,6 +1834,9 @@ printf 'before_kb\\t%s\\n' "$BEFORE_KB"
 printf 'after_kb\\t%s\\n' "$AFTER_KB"
 printf 'reclaimed_kb\\t%s\\n' "$RECLAIMED_KB"
 printf 'apt_reclaimed_kb\\t%s\\n' "$APT_RECLAIMED_KB"
+printf 'snap_reclaimed_kb\\t%s\\n' "$SNAP_RECLAIMED_KB"
+printf 'snap_removed_count\\t%s\\n' "$SNAP_REMOVED"
+printf 'snap_skipped_unsafe_count\\t%s\\n' "$SNAP_SKIPPED_UNSAFE"
 printf 'journal_reclaimed_kb\\t%s\\n' "$JOURNAL_RECLAIMED_KB"
 printf 'nginx_reclaimed_kb\\t%s\\n' "$NGINX_RECLAIMED_KB"
 printf 'nginx_archived_count\\t%s\\n' "$NGINX_ARCHIVED"
@@ -1942,6 +2034,73 @@ def recover_root_headroom(
         "status": "RECOVERED",
     }
 
+
+
+def recover_superseded_stage_before_capacity(
+    *,
+    local_head: str,
+    github_head: str,
+    production: dict[str, Any],
+    plan: SourcePlan,
+) -> dict[str, Any]:
+    staged_build_id = str(
+        production.get("staged_build_id")
+        or ""
+    )
+
+    if not staged_build_id:
+        return {
+            "status": "NOT_PRESENT",
+        }
+
+    if (
+        plan.mode != "clean"
+        or not local_head
+        or local_head != github_head
+    ):
+        return {
+            "status": "DEFERRED",
+            "staged_build_id": staged_build_id,
+            "reason": (
+                "source authority is not yet exact; "
+                "stage retirement remains fail-closed"
+            ),
+        }
+
+    from aoe2_release_auto import (
+        AutoShipError,
+        retire_superseded_stage,
+    )
+
+    try:
+        retired = retire_superseded_stage(
+            current_release_sha=local_head,
+            staged_build_id=staged_build_id,
+            production=production,
+        )
+    except AutoShipError as exc:
+        detail = str(exc)
+
+        if (
+            "staged candidate belongs to the current release"
+            in detail
+        ):
+            return {
+                "status": "CURRENT_STAGE_PRESERVED",
+                "staged_build_id": staged_build_id,
+                "reason": detail,
+            }
+
+        return {
+            "status": "UNAVAILABLE",
+            "staged_build_id": staged_build_id,
+            "reason": detail,
+        }
+
+    return {
+        **retired,
+        "status": "RETIRED",
+    }
 
 def capacity_human(snapshot: dict[str, Any]) -> str:
     root_gib = int(snapshot["root"]["available_bytes"]) / (1024 ** 3)
@@ -3523,14 +3682,65 @@ def execute_finish(
     preflight_capacity = production_capacity_snapshot()
     receipt["preflight_capacity_before_recovery"] = preflight_capacity
 
-    if root_below_release_floor(preflight_capacity):
+    receipt["pre_capacity_stage_recovery"] = {
+        "status": "NOT_REQUIRED",
+    }
+
+    if (
+        root_below_release_floor(preflight_capacity)
+        and production.get("staged_build_id")
+    ):
         progress.done(
             "Root is below the release floor; "
-            "entering bounded learned recovery"
+            "evaluating staged artifacts before generic cleanup"
         )
+
+        stage_recovery = (
+            recover_superseded_stage_before_capacity(
+                local_head=str(local.get("head") or ""),
+                github_head=str(github_head or ""),
+                production=production,
+                plan=plan,
+            )
+        )
+
+        receipt["pre_capacity_stage_recovery"] = (
+            stage_recovery
+        )
+        checkpoint()
+
+        if stage_recovery.get("status") == "RETIRED":
+            progress.done(
+                "Superseded staged release retired safely — "
+                f"reclaimed={stage_recovery.get('root_reclaimed_kb', '0')} KiB"
+            )
+
+            refreshed = aoe2_release.collect()
+            production = refreshed["production"]
+            preflight_capacity = (
+                production_capacity_snapshot()
+            )
+
+        elif (
+            stage_recovery.get("status")
+            == "CURRENT_STAGE_PRESERVED"
+        ):
+            progress.done(
+                "Current staged release preserved; "
+                "continuing bounded root recovery"
+            )
+
+        else:
+            progress.done(
+                "Staged artifacts were not safely retireable; "
+                "continuing bounded root recovery"
+            )
+
+    if root_below_release_floor(preflight_capacity):
         progress.start(
             "Recovering approved root headroom "
-            "(APT → journal → archived closed nginx logs)..."
+            "(APT → disabled Snap revisions → journal → "
+            "archived closed nginx logs)..."
         )
 
         recovery = recover_root_headroom(

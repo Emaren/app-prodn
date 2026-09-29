@@ -18,12 +18,83 @@ import { loadPublicPresenceSnapshot } from "@/lib/publicPresence";
 import { reconcileTournamentMatchProofs } from "@/lib/tournamentProofReconciler";
 import { loadWoloDevSnapshot } from "@/lib/woloDevSnapshot";
 import { loadWoloMarketSnapshot } from "@/lib/woloMarket";
+import { featuredWarriorHonorLabel } from "@/lib/featuredWarriorPresentation";
 
 const LOBBY_RECENT_MATCH_INITIAL_LIMIT = 8;
 const LOBBY_MAINTENANCE_INTERVAL_MS = 15_000;
 
 let lastLobbyMaintenanceAt = 0;
 let lobbyMaintenancePromise: Promise<void> | null = null;
+
+async function loadFeaturedWarriorHonors(
+  prisma: PrismaClient
+) {
+  try {
+    const trophies =
+      await prisma.trophy.findMany({
+        where: {
+          status: {
+            in: ["held", "active"],
+          },
+        },
+        select: {
+          id: true,
+          trophyId: true,
+          displayName: true,
+          holderSince: true,
+          currentHolderDisplayName: true,
+          currentHolder: {
+            select: {
+              uid: true,
+              inGameName: true,
+              steamPersonaName: true,
+            },
+          },
+        },
+        orderBy: [
+          { holderSince: "desc" },
+          { id: "desc" },
+        ],
+      });
+
+    return trophies.flatMap(
+      (trophy) => {
+        const name =
+          trophy.currentHolderDisplayName ||
+          trophy.currentHolder?.inGameName ||
+          trophy.currentHolder?.steamPersonaName ||
+          trophy.currentHolder?.uid ||
+          "";
+
+        if (!name) {
+          return [];
+        }
+
+        return [{
+          uid:
+            trophy.currentHolder?.uid ??
+            null,
+          name,
+          title:
+            featuredWarriorHonorLabel(
+              trophy.trophyId,
+              trophy.displayName
+            ),
+          holderSince:
+            trophy.holderSince
+              ?.toISOString() ??
+            null,
+        }];
+      }
+    );
+  } catch (error) {
+    console.warn(
+      "Featured Warrior title honors unavailable:",
+      error
+    );
+    return [];
+  }
+}
 
 function queueLobbyMaintenance(prisma: PrismaClient) {
   const now = Date.now();
@@ -57,45 +128,65 @@ async function loadLobbySnapshotFresh(
   viewerUid?: string | null,
   guestReactionSessionId?: string | null
 ): Promise<LobbySnapshot> {
-  const [wolo, woloMarket] = await Promise.all([
-    loadWoloDevSnapshot(),
-    loadWoloMarketSnapshot(),
-  ]);
+  /*
+   * Cold lobby work has several independent authorities. Start them together
+   * so the first request pays the slowest lane rather than the sum of WOLO,
+   * tournament, replay, leaderboard and presence latency.
+   */
+  const woloPromise = loadWoloDevSnapshot();
+  const woloMarketPromise = loadWoloMarketSnapshot();
+  const tournamentPromise = getFeaturedTournament(prisma, viewerUid);
+  const presencePromise = loadPublicPresenceSnapshot(prisma);
+  const recentMatchesPromise = loadLobbyRecentMatches({
+    offset: 0,
+    limit: LOBBY_RECENT_MATCH_INITIAL_LIMIT,
+  });
+  const leaderboardPromise = loadLobbyLeaderboard(prisma, {
+    limit: 32,
+    includePendingClaimed: false,
+    includeFeaturedClaimed: true,
+    scope: "all",
+  });
+  const woloEarnersPromise = loadLobbyWoloEarnersBoard(prisma, {
+    mode: "weekly",
+    prefetchAlternate: true,
+  });
+  const aoe2hdPulsePromise = loadAoe2HdPulseSnapshot();
+  const featuredWarriorHonorsPromise = loadFeaturedWarriorHonors(prisma);
+  const tournamentMessagesPromise = tournamentPromise.then((tournament) =>
+    getLobbyMessages(prisma, tournament.roomSlug, 24, {
+      uid: viewerUid,
+      guestSessionId: guestReactionSessionId,
+    }),
+  );
 
   queueLobbyMaintenance(prisma);
 
   try {
-    const tournament = await getFeaturedTournament(prisma, viewerUid);
-
     const [
+      wolo,
+      woloMarket,
+      tournament,
       tournamentMessages,
       presence,
       recentMatches,
       leaderboard,
       woloEarners,
       aoe2hdPulse,
+      featuredWarriorHonors,
     ] = await Promise.all([
-      getLobbyMessages(prisma, tournament.roomSlug, 24, {
-        uid: viewerUid,
-        guestSessionId: guestReactionSessionId,
-      }),
-      loadPublicPresenceSnapshot(prisma),
-      loadLobbyRecentMatches({
-        offset: 0,
-        limit: LOBBY_RECENT_MATCH_INITIAL_LIMIT,
-      }),
-      loadLobbyLeaderboard(prisma, {
-        limit: 32,
-        includePendingClaimed: false,
-        includeFeaturedClaimed: true,
-        scope: "all",
-      }),
-      loadLobbyWoloEarnersBoard(prisma, {
-        mode: "weekly",
-        prefetchAlternate: true,
-      }),
-      loadAoe2HdPulseSnapshot(),
+      woloPromise,
+      woloMarketPromise,
+      tournamentPromise,
+      tournamentMessagesPromise,
+      presencePromise,
+      recentMatchesPromise,
+      leaderboardPromise,
+      woloEarnersPromise,
+      aoe2hdPulsePromise,
+      featuredWarriorHonorsPromise,
     ]);
+
     const visibleLeaderboard = {
       ...leaderboard,
       // The hero count and visible roster must be one presence sample.
@@ -150,6 +241,7 @@ async function loadLobbySnapshotFresh(
       recentMatches: recentMatches.map(projectLobbyMatchRow),
       leaderboard: visibleLeaderboard,
       featuredWarriorEntries,
+      featuredWarriorHonors,
       wolo,
       woloEarners: visibleWoloEarners,
       aoe2hdPulse,
@@ -158,6 +250,15 @@ async function loadLobbySnapshotFresh(
     };
   } catch (error) {
     console.warn("Falling back to lobby snapshot defaults:", error);
+
+    /*
+     * Preserve the existing Wolo failure semantics: if either critical Wolo
+     * snapshot failed, this await rethrows instead of fabricating chain truth.
+     */
+    const [wolo, woloMarket] = await Promise.all([
+      woloPromise,
+      woloMarketPromise,
+    ]);
 
     return {
       tournament: getFallbackTournament(false),
@@ -169,6 +270,7 @@ async function loadLobbySnapshotFresh(
       })).map(projectLobbyMatchRow),
       leaderboard: getFallbackLeaderboard(),
       featuredWarriorEntries: [],
+      featuredWarriorHonors: [],
       wolo,
       woloEarners: getFallbackWoloEarnersBoard(),
       aoe2hdPulse: getEmptyAoe2HdPulseSnapshot(),
@@ -187,6 +289,10 @@ type LobbySnapshotCacheEntry = {
 const LOBBY_SNAPSHOT_CACHE_TTL_MS = 15000;
 const LOBBY_SNAPSHOT_STALE_TTL_MS = 10 * 60 * 1000;
 const lobbySnapshotCache = new Map<string, LobbySnapshotCacheEntry>();
+
+export function invalidateLobbySnapshotCache() {
+  lobbySnapshotCache.clear();
+}
 
 export async function loadLobbySnapshot(
   prisma: Parameters<typeof loadLobbySnapshotFresh>[0],

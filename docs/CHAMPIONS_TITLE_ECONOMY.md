@@ -8,14 +8,14 @@ systems: ["app-prodn","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-09-05"
+reviewed_at: "2026-09-27"
 review_interval_days: 90
 sensitivity: "internal"
 ---
 
 # Championship Title Economy
 
-Last updated: 2026-09-05
+Last updated: 2026-09-27
 
 AoE2HDBets owns the app-side championship presentation, eligibility settings,
 challenge entry points, Trophy Command workflow, and app-side custody ledger.
@@ -24,7 +24,14 @@ operator intents until a future Warbound chain module exists.
 
 ## Public routes
 
-- `/champions` is the title-economy hub.
+- `/champions` is the default Champions E2 title-economy hall. E2 separates
+  RM and DM rating authority, derives Chaos contenders from linked Watcher
+  activity, presents each 2v2/3v3/4v4 crown on its own row with one persisted
+  RM/DM preference, and renders the national catalog as a horizontal belt hall.
+  The preserved pre-E2 Basic / Advanced / Extreme presentation remains reachable
+  through the thin B / A / E display rail at the bottom of the page; hovering
+  or focusing E reveals E1 (preserved) and E2 (current). E2 remains the public
+  default.
 - `/champions/[...slug]` renders detail pages for belts, national titles, ELO
   titles, tag titles, and designations.
 - `/national-champions` is the cinematic national-title projection. It must
@@ -32,6 +39,16 @@ operator intents until a future Warbound chain module exists.
   same `loadChampionTitleEconomyState()` / persistent Trophy authority as the
   main Champions surface; it must not maintain a second handwritten holder
   table.
+- `/olympia` is the between-Games national presentation hall. Its opening
+  delegation is Canada, United States, and Mexico only; Chaos is excluded
+  because it is not a national title. Holder identity and live player stats
+  remain projections of the same title/player authorities, never a second
+  handwritten custody table.
+- `/chaosium` is the belt-lineage projection for Chaos, Canada, United States,
+  and Mexico. Current custody comes from Champion/Trophy authority. Historical
+  reigns come from holder-changing `TrophyEvent` rows, preserving repeated
+  reigns when a warrior later regains the same title. The belt's persisted
+  `createdAt` is the origin marker.
 - The world map may also show explicit planned-country placeholders before a
   Trophy definition or belt asset exists. Those placeholders are roadmap
   visualization only: they have no holder, Tribute, bounty, challenge right, or
@@ -44,9 +61,15 @@ operator intents until a future Warbound chain module exists.
 The title config lives in `lib/champions/titles.ts`.
 
 - Podium belts: AoE2WAR World Champion, Chaos Champion, Women's Champion.
-- Tag titles: Tag Team Champions.
-- National titles: Canada, United States, Mexico, United Kingdom.
-- ELO titles: Rising, Challenger, Veteran, Elite, Legend.
+- Mode crowns: Random Map Champion and Death Match Champion, each with its own
+  top-ten rating lane.
+- Team crowns: 2v2, 3v3, and 4v4, each with RM and DM presentations. Their
+  public holder seats remain vacant until custody is explicitly created.
+- National titles: Canada, United States, Mexico, United Kingdom, plus the
+  managed-media national roadmap catalog represented by the public horizontal
+  belt hall.
+- ELO titles: Rising, Challenger, Veteran, Elite, Legend, each rendered against
+  either the RM or DM rating lane without mixed-primary-rating fallbacks.
 - Special designations: Giant Killer, Comeback King, Siege Lord, Silent Killer,
   Untouchable, Raid Demon, Boom Lord, Slayer King, Relic Baron, Blitz Lord,
   Wololo Lord, Iron Wall.
@@ -98,6 +121,64 @@ media armory.
 
 ## Data and state
 
+Current-season public policy lives in
+`lib/champions/championshipPolicy.ts`.
+
+- The live public summary is **4 active / 18 vacant / 45 WOLO per day**.
+- The four current paying reigns are Chaos, Canada, USA, and Mexico.
+- World and United Kingdom are explicitly vacant public titles. Historical
+  Trophy rows may remain auditable, but they do not grant current public
+  custody or future daily Tribute.
+- Pending/future daily Tribute execution is bounded to the four explicit
+  current-season trophy ids. This prevents an obsolete seeded title from
+  silently creating new money obligations.
+- Champions belt artwork is managed through Media Armory targets. National crowns use `national-<slug>`; Norse and Southeast Asia use `regional-norse` / `regional-southeast-asia`; the main RM/DM crowns retain `random-map-champion` / `deathmatch-champion`; shared team bytes bind independently to `2v2-rm` + `2v2-dm`, `3v3-rm` + `3v3-dm`, and `4v4-rm` + `4v4-dm`; RM ELO art uses the imported canonical title ids `elo-rising`, `elo-challenger`, `elo-veteran`, `elo-elite`, and `elo-legend`; DM ELO art uses `dm-rising`, the retained import alias `dm-contender` for the displayed Challenger division, `dm-veteran`, `dm-elite`, and `dm-legend`.
+- Saudi Arabia and Taiwan intentionally retain cinematic full-frame source artwork, but E2 bounds that art inside a controlled focal window instead of allowing it to take over the whole crown card. Ordinary belt assets remain transparent foreground art.
+- E2 retains the premium hero tile but strips it to identity plus live state:
+  the only hero copy is `AoE2WAR title economy`, alongside Active / Vacant /
+  Tribute. The large `CHAMPIONSHIP BELTS` headline, tagline, and explanatory
+  paragraph are intentionally absent.
+- E2 removes explanatory/marketing prose between championship sections. Only
+  compact structural labels remain: `AoE2WAR Champions`, `RM / DM`,
+  `War parties`, `National & regional standards`, `ELO Belts`, and
+  `Artifacts` when present.
+- RM / DM champion presentation defaults to the stacked avatar-above-contenders
+  composition; the muted `RM / DM` kicker remains a hidden layout toggle for
+  the preserved side-by-side alternative.
+- RM/DM lane switches use a muted graphite/steel active treatment rather than a
+  pale-gold control state.
+- Podium and national-card actions are bottom-anchored within their card family
+  so cards with fewer contenders remain visually symmetrical with fuller cards.
+- Team holder stages deliberately taper in vertical scale from 2v2 to 3v3 to
+  4v4 while remaining materially taller than the earlier compressed layout.
+- RM and DM ELO crown cards include an avatar/holder stage above the belt.
+  Vacant crowns use the neutral male silhouette; when title custody is present,
+  the current title holder avatar/name is projected into that stage.
+- `lib/champions/championsV2.ts` owns the Champions E2 contender projection:
+  World alternates explicit RM/DM leaders; RM and DM crowns use their own
+  rating columns; Chaos ranks signed-up Kingdom users by linked Watcher
+  presence and replay-bearing activity; ELO divisions use lane-specific
+  ratings. National and regional contender rails now read the user's persisted
+  `representedCountry` through `lib/publicPlayerDirectory.ts`, with explicit
+  country aliases for USA / United States and UK / United Kingdom. Manual
+  contender overrides remain additive rather than exclusive. The Southeast
+  Asia regional crown explicitly treats Pakistan as eligible product policy,
+  so a Pakistan-representing warrior can surface there without inventing a
+  second national identity.
+- Team crowns deliberately do not fabricate RM/DM team rankings from solo ELO.
+  Until an authoritative lane-specific team-rating source exists, E2 presents
+  the Commissioner's explicit contender combinations as a curated queue and
+  labels that lane accordingly. The current queue is:
+  - 2v2: Jim + Scavanger_Ab; Emaren + Tekki; Zodiac + MouldyBoars39381;
+    Julio Alvarez + Sniper.
+  - 3v3: Jim + Scavanger_Ab + Tekki; Emaren + Zodiac + MouldyBoars39381.
+  - 4v4: Jim + Scavanger_Ab + Tekki + Zodiac; Emaren + Julio Alvarez +
+    MouldyBoars39381 + Sniper.
+  Remaining positions stay visibly open. Exact replay-backed team rivalry
+  evidence remains available elsewhere but is not mislabeled as a rated team
+  leaderboard.
+- Women's Champion is vacant and currently presents Moose as the invited #1
+  contender only; no AoE2WAR identity is fabricated for her.
 - `lib/champions/titleState.ts` builds the current app-side title view model.
 - `lib/trophies/service.ts` owns seeded trophy definitions, projected bounty
   display, holder eligibility, profile holdings, and nationality-change audit.
@@ -115,13 +196,25 @@ media armory.
   `ScheduledMatch` and a linked `TrophyChallenge`. The challenger must satisfy
   the configured national/ELO rule and must schedule against the current holder
   or Commissioner Guardian.
-- Normal `/challenge` requests now inspect both participants automatically. Any
-  eligible, currently held belt or artifact that is not already committed to an
-  active title defense is attached as a `TrophyChallenge`; users do not manually
-  pick registry ids in the scheduling form.
-- A verified watcher/replay result automatically settles `app_only` belts in the
-  app custody ledger. Stale challenges are blocked if title custody changed before
-  their result settled. Chain-backed titles remain explicit chain intents.
+- Normal `/challenge` requests inspect both participants for currently held,
+  app-only ELO belts that are not already committed to an active title defense.
+  Those belts are attached as `TrophyChallenge` rows automatically. A held title
+  defense does not re-run vacant-belt ELO admission rules: once the Commissioner
+  places a belt on a holder, a direct opponent may take that belt by beating the
+  holder in the matching game mode.
+- RM and DM ELO custody are distinct. Historical generic ELO definitions default
+  to RM for backward compatibility; new Trophy Command definitions record an
+  explicit RM/DM lane and are canonicalized to lane-specific custody identities.
+  The public E2 projection reads live Trophy custody for each lane instead of
+  sharing one generic holder across both rows.
+- A verified watcher/replay result can automatically settle a linked `app_only`
+  ELO belt only when both players' Watchers provide dual coverage, the replay's
+  authoritative game type matches the belt lane, title custody is unchanged,
+  desync authority permits title movement, and the projected dethrone bounty is
+  zero. The opposite RM/DM belt is closed as
+  `mode_not_contested` and does not move. Any non-zero bounty remains
+  commissioner-reviewed so automatic custody never invents or executes a WOLO
+  financial disposition. Chain-backed titles remain explicit chain intents.
 - Artifacts remain metric-bound. Replay proof is attached automatically, but the
   artifact does not move until its record/metric rule is verified.
 - Watcher/replay evidence remains the verification boundary. A linked challenge
@@ -142,13 +235,19 @@ It creates:
 - `trophy_payouts`
 - `trophy_settings`
 
-Initial app-side custody seeds:
+Initial app-side custody seeds currently retained by source:
 
 - Canada Champion: Emaren
 - USA Champion: Jim
 - Mexico Champion: Julio Alvarez
-- UK Champion: Sniper
-- Elite Championship: Commissioner Guardian custody with Emaren
+- UK Champion: vacant
+- Elite Championship: vacant
+
+Older databases may still retain historical UK/Sniper or Elite/Emaren seed
+evidence. Public title projection and the live Tribute rail treat obsolete seed
+evidence as non-current rather than rewriting historical custody evidence on
+read. Read-only production preview skips seed reconciliation entirely, so local
+parity sessions can never manufacture custody while reading production truth.
 
 Seed names remain visible even when a matching app user does not exist. In that
 case the display custody is retained while the user relation and wallet address

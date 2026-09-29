@@ -95,6 +95,25 @@ test("shadow serve lane strips production mutation credentials", () => {
   assert.match(launcher, /Production DB write path: NONE/);
 });
 
+test("shadow browser opens the feature route instead of hard-coded Clan Hall", () => {
+  const launcher = read("scripts/dev-shadow.py");
+  const dev = read("scripts/aoe2_dev.py");
+
+  assert.doesNotMatch(
+    launcher,
+    /https:\/\/localhost:3000\/clans\/aoe2war/,
+  );
+  assert.match(launcher, /AOE2WAR_DEV_OPEN_ROUTE/);
+  assert.match(launcher, /infer_feature_open_route/);
+  assert.match(launcher, /app_route_exists/);
+  assert.match(
+    launcher,
+    /f"https:\/\/localhost:3000\{open_route\}"/,
+  );
+  assert.match(dev, /serve_parser\.add_argument\([\s\S]*"--route"/);
+  assert.match(dev, /route=args\.route/);
+});
+
 test("package exposes explicit shadow commands", () => {
   const pkg = JSON.parse(read("package.json")) as {
     scripts?: Record<string, string>;

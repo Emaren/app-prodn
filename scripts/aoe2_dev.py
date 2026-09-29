@@ -532,12 +532,25 @@ def refresh(
 
 def serve(
     target: Path,
+    *,
+    route: str | None = None,
+    prod_data: bool = False,
 ) -> int:
     prepare(target)
 
-    print(
-        "PASS: launching local shadow as Emaren"
-    )
+    if prod_data:
+        print(
+            "PASS: launching local code against live production data "
+            "(read-only)"
+        )
+        if route:
+            os.environ["AOE2WAR_PREVIEW_PATH"] = route
+    else:
+        print(
+            "PASS: launching local shadow as Emaren"
+        )
+        if route:
+            os.environ["AOE2WAR_DEV_OPEN_ROUTE"] = route
 
     os.chdir(target)
 
@@ -546,7 +559,7 @@ def serve(
         [
             "npm",
             "run",
-            "dev:shadow",
+            "dev:prod" if prod_data else "dev:shadow",
         ],
     )
 
@@ -761,7 +774,22 @@ def main() -> int:
     sub.add_parser("status")
     sub.add_parser("prepare")
     sub.add_parser("refresh")
-    sub.add_parser("serve")
+    serve_parser = sub.add_parser("serve")
+    serve_parser.add_argument(
+        "--route",
+        help=(
+            "browser route to open after the local development server is ready; "
+            "feature branches otherwise infer the closest app route"
+        ),
+    )
+    serve_parser.add_argument(
+        "--prod-data",
+        action="store_true",
+        help=(
+            "run local code against live production data through the governed "
+            "read-only preview lane instead of the writable local shadow"
+        ),
+    )
 
     create = sub.add_parser("new")
     create.add_argument("name")
@@ -796,7 +824,9 @@ def main() -> int:
 
         if args.command == "serve":
             return serve(
-                current_repo()
+                current_repo(),
+                route=args.route,
+                prod_data=args.prod_data,
             )
 
         if args.command == "new":

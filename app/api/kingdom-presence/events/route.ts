@@ -133,7 +133,6 @@ export async function GET(request: NextRequest) {
   let needsSnapshot = false;
   let visibleActors = new Map<string, LivingKingdomPublicActor>();
   let visibleOverflowCount = 0;
-  let controllerRef: ReadableStreamDefaultController<Uint8Array> | null = null;
 
   const cleanup = () => {
     if (closed) return;
@@ -147,8 +146,6 @@ export async function GET(request: NextRequest) {
 
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
-      controllerRef = controller;
-
       const enqueueSnapshot = (event?: LivingKingdomRoomEvent) => {
         if (closed) return false;
         if (controller.desiredSize !== null && controller.desiredSize <= 0) return false;
@@ -256,18 +253,11 @@ export async function GET(request: NextRequest) {
     },
   });
 
-  const abortStream = () => {
-    cleanup();
-    try {
-      controllerRef?.close();
-    } catch {
-      // The network consumer may already have closed the stream.
-    }
-  };
-  request.signal.addEventListener("abort", abortStream, { once: true });
   // AbortSignal does not replay an abort to a listener installed after an
-  // awaited session lookup. Close synchronously if that race already happened.
-  if (request.signal.aborted) abortStream();
+  // awaited session lookup. The framework owns response-body cancellation, so
+  // this handler only releases application subscriptions/timers.
+  request.signal.addEventListener("abort", cleanup, { once: true });
+  if (request.signal.aborted) cleanup();
 
   return new Response(stream, {
     headers: {

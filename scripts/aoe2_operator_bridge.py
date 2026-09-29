@@ -681,48 +681,67 @@ def run_bridge(
         base_url=base_url,
     )
 
-    if initial_audit:
-        print("publishing initial estate audit snapshot...", flush=True)
-        snapshot = run_audit_snapshot(
-            token=token,
-            base_url=base_url,
-            run_id=None,
-            source_action="bridge_startup",
-        )
-        print(
-            "initial snapshot: "
-            + (
-                f"P0={snapshot.get('p0')} P1={snapshot.get('p1')}"
-                if snapshot
-                else "unavailable"
-            ),
-            flush=True,
-        )
-
-    print("publishing initial Kingdom Intelligence snapshot...", flush=True)
+    # Startup audit/intelligence can outlive the Doctor online threshold. Keep
+    # liveness independently fresh while those synchronous snapshots run rather
+    # than relying on the one heartbeat emitted before startup work begins.
+    startup_heartbeat_stop = threading.Event()
+    startup_heartbeat = threading.Thread(
+        target=heartbeat_loop,
+        kwargs={
+            "stop": startup_heartbeat_stop,
+            "token": token,
+            "base_url": base_url,
+            "run_id": None,
+        },
+        daemon=True,
+    )
+    startup_heartbeat.start()
     try:
-        intelligence = run_kingdom_intelligence_snapshot(
-            token=token,
-            base_url=base_url,
-            run_id=None,
-            source_action="bridge_startup",
-        )
-        print(
-            "Kingdom Intelligence: "
-            + (
-                f"{intelligence.get('war_date')} · "
-                f"{intelligence.get('operating_state')}"
-                if intelligence
-                else "unavailable"
-            ),
-            flush=True,
-        )
-    except Exception as exc:
-        print(
-            f"[kingdom intelligence warning] {exc}",
-            file=sys.stderr,
-            flush=True,
-        )
+        if initial_audit:
+            print("publishing initial estate audit snapshot...", flush=True)
+            snapshot = run_audit_snapshot(
+                token=token,
+                base_url=base_url,
+                run_id=None,
+                source_action="bridge_startup",
+            )
+            print(
+                "initial snapshot: "
+                + (
+                    f"P0={snapshot.get('p0')} P1={snapshot.get('p1')}"
+                    if snapshot
+                    else "unavailable"
+                ),
+                flush=True,
+            )
+
+        print("publishing initial Kingdom Intelligence snapshot...", flush=True)
+        try:
+            intelligence = run_kingdom_intelligence_snapshot(
+                token=token,
+                base_url=base_url,
+                run_id=None,
+                source_action="bridge_startup",
+            )
+            print(
+                "Kingdom Intelligence: "
+                + (
+                    f"{intelligence.get('war_date')} · "
+                    f"{intelligence.get('operating_state')}"
+                    if intelligence
+                    else "unavailable"
+                ),
+                flush=True,
+            )
+        except Exception as exc:
+            print(
+                f"[kingdom intelligence warning] {exc}",
+                file=sys.stderr,
+                flush=True,
+            )
+    finally:
+        startup_heartbeat_stop.set()
+        startup_heartbeat.join(timeout=2)
 
     intelligence_stop = threading.Event()
     intelligence_thread = threading.Thread(

@@ -171,11 +171,7 @@ export async function loadWarChestSnapshot(
     prisma.betWager.aggregate({
       where: visibleMainnetWagerWhere(),
       _sum: {
-        amountWolo: true,
         payoutWolo: true,
-      },
-      _count: {
-        _all: true,
       },
     }),
     prisma.betWager.groupBy({
@@ -262,7 +258,6 @@ export async function loadWarChestSnapshot(
     prisma.betWager.aggregate({
       where: weeklyWagerWhere,
       _sum: {
-        amountWolo: true,
         payoutWolo: true,
       },
       _count: {

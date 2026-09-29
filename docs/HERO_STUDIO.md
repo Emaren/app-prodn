@@ -29,6 +29,22 @@ The operator surface is:
   Commissioner, timing, artwork, and CTA
 - `/admin/media-assets` for reusable still and motion assets
 
+## Media Armory batch packs
+
+`/admin/media-assets` accepts a bounded ZIP pack through the **Batch asset pack** lane. A pack may include `asset-manifest.json` schema 1 to bind exact managed-media kinds and targets. Manifest-driven imports are preferred for production title/art packs because one uploaded byte object can be bound to multiple targets without duplicating the file (for example one 2v2 belt can feed both RM and DM presentation targets until separate art exists).
+
+Safety and operator rules:
+
+- admin authentication is required;
+- ZIP payloads are capped at 64 MB compressed;
+- a manifest is validated completely before writes begin;
+- archive paths are normalized and parent traversal is rejected;
+- supported entries are bounded to 120 assets / 300 target bindings;
+- existing active target bindings are replaced only when the manifest permits it;
+- ZIPs without a manifest fall back to deterministic filename slugs under the selected Armory category;
+- imports report per-asset failures instead of hiding partial results.
+
+
 ## Data model
 
 `HeroPlaylist` stores the draft carousel-wide behavior:

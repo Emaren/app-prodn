@@ -1,5 +1,6 @@
 import type { Prisma, PrismaClient } from "@/lib/generated/prisma";
 import { countriesEligibilityMatch } from "@/lib/countryEligibility";
+import { eloTrophyIdentity } from "@/lib/champions/eloTrophy";
 import {
   acquireChallengeDesyncAdvisoryLock,
   assertTitleTransferAllowed,
@@ -483,29 +484,69 @@ async function createTrophy(
   actor: AdminActor,
   payload: ActionPayload
 ) {
-  const trophyKey = stringValue(payload.trophyKey, 100)
+  const requestedTrophyKey = stringValue(payload.trophyKey, 100)
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "_")
     .replace(/^_+|_+$/g, "");
   const displayNameValue = stringValue(payload.displayName, 160);
   const kind = stringValue(payload.kind, 24) || "artifact";
   const family = stringValue(payload.family, 32) || "artifact";
+  const tier = nullableString(payload.tier, 40);
+  const eloBandMin = nullableInt(payload.eloBandMin);
+  const eloBandMax = nullableInt(payload.eloBandMax);
+  const eloIdentity =
+    family === "elo"
+      ? eloTrophyIdentity({
+          trophyId: requestedTrophyKey,
+          displayName: displayNameValue,
+          tier,
+          eloBandMin,
+          eloBandMax,
+        })
+      : null;
+  const trophyKey =
+    eloIdentity?.canonicalId ?? requestedTrophyKey;
+
   if (!trophyKey || !displayNameValue) {
     throw new TrophyActionError("Trophy id and display name are required.");
   }
+
+  if (eloIdentity) {
+    const existingEloTrophies = await prisma.trophy.findMany({
+      where: { family: "elo" },
+      select: {
+        trophyId: true,
+        displayName: true,
+        tier: true,
+        eloBandMin: true,
+        eloBandMax: true,
+      },
+    });
+    const duplicate = existingEloTrophies.find((trophy) => {
+      const identity = eloTrophyIdentity(trophy);
+      return identity?.canonicalId === eloIdentity.canonicalId;
+    });
+    if (duplicate) {
+      throw new TrophyActionError(
+        `${eloIdentity.lane.toUpperCase()} ${eloIdentity.division} belt already exists as ${duplicate.displayName} (${duplicate.trophyId}).`,
+        409,
+      );
+    }
+  }
+
   const created = await prisma.trophy.create({
     data: {
       trophyId: trophyKey,
       displayName: displayNameValue,
       kind,
       family,
-      tier: nullableString(payload.tier, 40),
+      tier,
       status: "draft",
       tributeAmountWolo: Math.max(0, intValue(payload.tributeAmountWolo, kind === "artifact" ? 1 : 0)),
       bountyGrowthWolo: Math.max(0, intValue(payload.bountyGrowthWolo, kind === "artifact" ? 1 : 0)),
       eligibleNationality: nullableString(payload.eligibleNationality, 40),
-      eloBandMin: nullableInt(payload.eloBandMin),
-      eloBandMax: nullableInt(payload.eloBandMax),
+      eloBandMin,
+      eloBandMax,
       nftClassId: `aoe2war.wartrophy.${family}`,
       nftId: trophyKey,
       nftMetadataUri: `/api/trophies/${trophyKey}/metadata`,

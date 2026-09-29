@@ -40,6 +40,10 @@ import {
   loadDesyncIncidentsForSettlement,
 } from "@/lib/desyncChallenge";
 import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
+import {
+  eloTrophyIdentity,
+  replayEloLane,
+} from "@/lib/champions/eloTrophy";
 import { loadLiveSessionSnapshot } from "@/lib/liveSessionSnapshot";
 import { buildClaimedPlayerHref } from "@/lib/publicPlayers";
 import {
@@ -217,8 +221,10 @@ type ComparableSession = {
   updatedAt: string;
   completedAt: string | null;
   mapName: string | null;
+  gameType?: string | null;
   winner: string | null;
   durationSeconds: number | null;
+  watcherCount?: number;
   players: ChallengeReplayParticipant[];
   state: "live" | "completed";
 };
@@ -1634,6 +1640,51 @@ async function loadLockedScheduledMatchDesyncIncidents(
   });
 }
 
+function trophyProjectedBountyAt(
+  trophy: {
+    currentBountyWolo: number;
+    bountyGrowthWolo: number;
+    holderSince: Date | null;
+  },
+  now: Date,
+) {
+  if (!trophy.holderSince) {
+    return Math.max(0, trophy.currentBountyWolo);
+  }
+
+  const utcDay = (value: Date) =>
+    Date.UTC(
+      value.getUTCFullYear(),
+      value.getUTCMonth(),
+      value.getUTCDate(),
+    );
+  const elapsedDays = Math.max(
+    0,
+    Math.floor(
+      (utcDay(now) - utcDay(trophy.holderSince)) /
+        86_400_000,
+    ),
+  );
+
+  return Math.max(
+    0,
+    trophy.currentBountyWolo +
+      elapsedDays * trophy.bountyGrowthWolo,
+  );
+}
+
+function isAutomaticHeldEloDefense(
+  value: Prisma.JsonValue | null,
+) {
+  return Boolean(
+    value &&
+      typeof value === "object" &&
+      !Array.isArray(value) &&
+      (value as Record<string, unknown>)
+        .automaticHeldDefense === true,
+  );
+}
+
 async function recordVerifiedScheduledMatchTitleResults(
   prisma: PrismaClient,
   row: ScheduledMatchRow,
@@ -1647,6 +1698,8 @@ async function recordVerifiedScheduledMatchTitleResults(
       ? row.challenged
       : null;
   if (!winner) return;
+
+  const sessionLane = replayEloLane(session.gameType);
 
   const titleChallenges = await prisma.trophyChallenge.findMany({
     where: {
@@ -1665,24 +1718,42 @@ async function recordVerifiedScheduledMatchTitleResults(
     const currentCustodianId =
       titleChallenge.trophy.currentHolderUserId ??
       titleChallenge.trophy.guardianHolderUserId;
-    const expectedCustodianIds = new Set(
-      [titleChallenge.defenderUserId, titleChallenge.guardianUserId].filter(
-        (value): value is number => typeof value === "number"
-      )
-    );
-    const challengerWon = titleChallenge.challengerUserId === winner.id;
-    const isArtifact = titleChallenge.trophy.kind === "artifact";
-    const staleCustody = Boolean(
-      currentCustodianId && !expectedCustodianIds.has(currentCustodianId)
-    );
-    const proposedDisposition = isArtifact
-      ? "artifact_metric_review"
-      : challengerWon
-        ? "transfer_to_challenger"
-        : "retain_current_holder";
-    const settlementStatus = staleCustody
-      ? "stale_custody_commissioner_review"
-      : TITLE_RESULT_REVIEW_SETTLEMENT_STATUS;
+    const expectedCustodianId =
+      titleChallenge.defenderUserId ??
+      titleChallenge.guardianUserId;
+    const staleCustody =
+      expectedCustodianId !== null &&
+      currentCustodianId !== expectedCustodianId;
+    const challengerWon =
+      titleChallenge.challengerUserId === winner.id;
+    const isArtifact =
+      titleChallenge.trophy.kind === "artifact";
+    const eloIdentity =
+      titleChallenge.trophy.family === "elo"
+        ? eloTrophyIdentity(titleChallenge.trophy)
+        : null;
+    const automaticHeldDefense =
+      eloIdentity !== null &&
+      isAutomaticHeldEloDefense(
+        titleChallenge.eligibilitySnapshot,
+      );
+    const modeMatches =
+      eloIdentity === null ||
+      (sessionLane !== null &&
+        eloIdentity.lane === sessionLane);
+    const projectedBounty =
+      trophyProjectedBountyAt(
+        titleChallenge.trophy,
+        completedAt,
+      );
+    const canAutoSettleCustody =
+      automaticHeldDefense &&
+      modeMatches &&
+      !staleCustody &&
+      !isArtifact &&
+      titleChallenge.trophy.chainStatus === "app_only" &&
+      projectedBounty === 0 &&
+      (session.watcherCount ?? 0) >= 2;
 
     await prisma.$transaction(async (tx) => {
       const incidents = await loadLockedScheduledMatchDesyncIncidents(tx, {
@@ -1696,6 +1767,214 @@ async function recordVerifiedScheduledMatchTitleResults(
           observedAt: completedAt,
         },
       });
+
+      if (
+        automaticHeldDefense &&
+        eloIdentity &&
+        sessionLane &&
+        eloIdentity.lane !== sessionLane
+      ) {
+        const closed = await tx.trophyChallenge.updateMany({
+          where: {
+            id: titleChallenge.id,
+            winnerUserId: null,
+            status: {
+              notIn: [...TERMINAL_TITLE_CHALLENGE_STATUSES],
+            },
+          },
+          data: {
+            winnerUserId: winner.id,
+            replayId: session.id,
+            gameId: session.id,
+            watcherSessionId: session.sessionKey,
+            status: "settled",
+            settlementStatus: "mode_not_contested",
+            verificationSummary:
+              `Scheduled match #${row.id} was ${session.gameType || "an unmatched mode"}; ${titleChallenge.trophy.displayName} is a ${eloIdentity.lane.toUpperCase()} title and was not contested.`,
+            errorState: null,
+          },
+        });
+        if (closed.count === 0) return;
+
+        await tx.trophyEvent.create({
+          data: {
+            trophyId: titleChallenge.trophyId,
+            eventType: "TITLE_NOT_CONTESTED_MODE",
+            actorRole: "system",
+            initiatedBy: "system",
+            fromHolderUserId: currentCustodianId,
+            toHolderUserId: currentCustodianId,
+            gameId: session.id,
+            replayId: session.id,
+            challengeId: titleChallenge.id,
+            status: "recorded",
+            rawResponse: {
+              scheduledMatchId: row.id,
+              watcherSessionId: session.sessionKey,
+              gameType: session.gameType,
+              replayLane: sessionLane,
+              trophyLane: eloIdentity.lane,
+              custodyChanged: false,
+            },
+          },
+        });
+        return;
+      }
+
+      if (canAutoSettleCustody) {
+        if (challengerWon) {
+          const transfer = await tx.trophy.updateMany({
+            where: {
+              id: titleChallenge.trophyId,
+              currentHolderUserId:
+                titleChallenge.defenderUserId,
+              status: { in: ["held", "active"] },
+              chainStatus: "app_only",
+            },
+            data: {
+              status: "held",
+              currentHolderUserId: winner.id,
+              currentHolderDisplayName:
+                challengePlayerName(winner),
+              currentHolderWoloAddress:
+                winner.walletAddress,
+              guardianHolderUserId: null,
+              guardianHolderDisplayName: null,
+              guardianHolderWoloAddress: null,
+              holderSince: completedAt,
+              forfeitureNeeded: false,
+              eligibilityNote: null,
+            },
+          });
+
+          if (transfer.count === 0) {
+            const review = await tx.trophyChallenge.updateMany({
+              where: {
+                id: titleChallenge.id,
+                winnerUserId: null,
+                status: {
+                  notIn: [...TERMINAL_TITLE_CHALLENGE_STATUSES],
+                },
+              },
+              data: {
+                winnerUserId: winner.id,
+                replayId: session.id,
+                gameId: session.id,
+                watcherSessionId: session.sessionKey,
+                status: TITLE_RESULT_REVIEW_STATUS,
+                settlementStatus:
+                  "stale_custody_commissioner_review",
+                verificationSummary:
+                  "Verified title result could not acquire exact current custody; commissioner review required.",
+                errorState:
+                  "Title custody changed before automatic transfer.",
+              },
+            });
+            if (review.count === 0) return;
+            return;
+          }
+        }
+
+        const settled = await tx.trophyChallenge.updateMany({
+          where: {
+            id: titleChallenge.id,
+            winnerUserId: null,
+            status: {
+              notIn: [...TERMINAL_TITLE_CHALLENGE_STATUSES],
+            },
+          },
+          data: {
+            winnerUserId: winner.id,
+            replayId: session.id,
+            gameId: session.id,
+            watcherSessionId: session.sessionKey,
+            status: "settled",
+            settlementStatus: challengerWon
+              ? "automatic_custody_transferred"
+              : "automatic_title_defended",
+            verificationSummary: challengerWon
+              ? `Watcher/replay authority verified ${challengePlayerName(winner)} as winner; app-only ${eloIdentity!.lane.toUpperCase()} title custody transferred automatically.`
+              : `Watcher/replay authority verified ${challengePlayerName(winner)} as winner; current holder retained the ${eloIdentity!.lane.toUpperCase()} title.`,
+            errorState: null,
+          },
+        });
+        if (settled.count === 0) return;
+
+        await tx.trophyEvent.create({
+          data: {
+            trophyId: titleChallenge.trophyId,
+            eventType: challengerWon
+              ? "CHALLENGE_SETTLED_HOLDER_CHANGED"
+              : "CHALLENGE_SETTLED_DEFENSE",
+            actorRole: "system",
+            initiatedBy: "system",
+            fromHolderUserId: currentCustodianId,
+            toHolderUserId: challengerWon
+              ? winner.id
+              : currentCustodianId,
+            gameId: session.id,
+            replayId: session.id,
+            challengeId: titleChallenge.id,
+            status: "recorded",
+            rawResponse: {
+              scheduledMatchId: row.id,
+              watcherSessionId: session.sessionKey,
+              gameType: session.gameType,
+              replayLane: sessionLane,
+              trophyLane: eloIdentity?.lane ?? null,
+              watcherCount: session.watcherCount ?? 0,
+              winner: session.winner,
+              custodyChanged: challengerWon,
+              automatic: true,
+              projectedBountyWolo: 0,
+              woloMutation: false,
+            },
+          },
+        });
+        await tx.scheduledMatchActivity.create({
+          data: {
+            scheduledMatchId: row.id,
+            eventType: challengerWon
+              ? "title_transferred"
+              : "title_defended",
+            detail: challengerWon
+              ? `${titleChallenge.trophy.displayName}: verified ${eloIdentity!.lane.toUpperCase()} result transferred title to ${challengePlayerName(winner)}.`
+              : `${titleChallenge.trophy.displayName}: verified ${eloIdentity!.lane.toUpperCase()} result retained by ${challengePlayerName(winner)}.`,
+            metadata: {
+              trophyChallengeId: titleChallenge.id,
+              trophyId: titleChallenge.trophyId,
+              winnerUserId: winner.id,
+              watcherSessionId: session.sessionKey,
+              replayLane: sessionLane,
+              custodyChanged: challengerWon,
+              automatic: true,
+              woloMutation: false,
+            },
+            createdAt: completedAt,
+          },
+        });
+        return;
+      }
+
+      const proposedDisposition = isArtifact
+        ? "artifact_metric_review"
+        : challengerWon
+          ? "transfer_to_challenger"
+          : "retain_current_holder";
+      const reviewReason =
+        automaticHeldDefense && eloIdentity && !sessionLane
+          ? "Replay game mode is not authoritative enough to choose the RM or DM title."
+          : automaticHeldDefense &&
+              (session.watcherCount ?? 0) < 2
+            ? "Automatic title custody requires dual Watcher coverage from the linked battle."
+            : automaticHeldDefense && projectedBounty > 0
+              ? `Title has ${projectedBounty} WOLO of projected bounty; financial disposition remains commissioner-reviewed.`
+              : staleCustody
+              ? "Title custody changed before this result was recorded."
+              : "This title path remains commissioner-reviewed.";
+      const settlementStatus = staleCustody
+        ? "stale_custody_commissioner_review"
+        : TITLE_RESULT_REVIEW_SETTLEMENT_STATUS;
 
       const claimedSettlement = await tx.trophyChallenge.updateMany({
         where: {
@@ -1714,13 +1993,10 @@ async function recordVerifiedScheduledMatchTitleResults(
           settlementStatus,
           verificationSummary: [
             `Scheduled match #${row.id} matched replay #${session.id}; ${challengePlayerName(winner)} verified as winner.`,
-            isArtifact
-              ? "Artifact metric proof and custody require commissioner review."
-              : `Proposed title disposition: ${proposedDisposition.replaceAll("_", " ")}. Commissioner approval is required before custody or bounty changes.`,
+            `Proposed title disposition: ${proposedDisposition.replaceAll("_", " ")}.`,
+            reviewReason,
           ].join(" "),
-          errorState: staleCustody
-            ? "Title custody changed before this result was recorded. Commissioner review is required."
-            : null,
+          errorState: reviewReason,
         },
       });
       if (claimedSettlement.count === 0) return;
@@ -1731,9 +2007,7 @@ async function recordVerifiedScheduledMatchTitleResults(
           eventType: "REPLAY_VERIFIED",
           actorRole: "system",
           initiatedBy: "system",
-          fromHolderUserId:
-            titleChallenge.trophy.currentHolderUserId ??
-            titleChallenge.trophy.guardianHolderUserId,
+          fromHolderUserId: currentCustodianId,
           toHolderUserId: winner.id,
           gameId: session.id,
           replayId: session.id,
@@ -1742,12 +2016,16 @@ async function recordVerifiedScheduledMatchTitleResults(
           rawResponse: {
             scheduledMatchId: row.id,
             watcherSessionId: session.sessionKey,
+            gameType: session.gameType,
+            replayLane: sessionLane,
+            trophyLane: eloIdentity?.lane ?? null,
             winner: session.winner,
             challengerWon,
             completedAt: completedAt.toISOString(),
             commissionerReviewRequired: true,
             proposedDisposition,
             staleCustody,
+            projectedBountyWolo: projectedBounty,
             settlementStatus,
           },
         },

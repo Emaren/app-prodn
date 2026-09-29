@@ -516,6 +516,8 @@ export default function SpeedObservatory() {
   const [samples, setSamples] = useState<SpeedSample[]>([]);
   const [checkMs, setCheckMs] = useState<number | null>(null);
   const [checkBuild, setCheckBuild] = useState("");
+  const [serverLoopP95, setServerLoopP95] =
+    useState<number | null>(null);
   const [checking, setChecking] = useState(false);
   const [reporting, setReporting] = useState(false);
   const [reportMessage, setReportMessage] = useState("");
@@ -545,13 +547,28 @@ export default function SpeedObservatory() {
     const started = performance.now();
     try {
       const response = await fetch(`/api/speed/check?nonce=${Date.now()}`, { cache: "no-store" });
-      const payload = (await response.json()) as { build_version?: string };
+      const payload =
+        (await response.json()) as {
+          build_version?: string;
+          server_event_loop?: {
+            p95_ms?: number;
+          };
+        };
       if (!response.ok) throw new Error("Speed check failed");
       setCheckMs(performance.now() - started);
       setCheckBuild(payload.build_version || "");
+      const loopP95 = Number(
+        payload.server_event_loop?.p95_ms,
+      );
+      setServerLoopP95(
+        Number.isFinite(loopP95)
+          ? loopP95
+          : null,
+      );
     } catch {
       setCheckMs(null);
       setCheckBuild("");
+      setServerLoopP95(null);
     } finally {
       setChecking(false);
     }
@@ -715,6 +732,7 @@ export default function SpeedObservatory() {
       sessionP75={p75}
       checkMs={checkMs}
       checkBuild={checkBuild}
+      serverLoopP95={serverLoopP95}
       checking={checking}
       reporting={reporting}
       reportMessage={reportMessage}

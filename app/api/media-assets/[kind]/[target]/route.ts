@@ -10,6 +10,7 @@ import {
   resolveLivingKingdomAvatar,
 } from "@/lib/livingKingdom/avatarRegistry";
 import { getPrisma } from "@/lib/prisma";
+import { getPreviewDataOrigin } from "@/lib/previewDataSource";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -559,11 +560,89 @@ async function servePublicAssetDirect(request: NextRequest, url: string) {
   return null;
 }
 
+async function servePreviewMediaDirect(
+  request: NextRequest,
+  url: string,
+) {
+  const previewOrigin = getPreviewDataOrigin();
+
+  if (
+    !previewOrigin ||
+    !url.startsWith("/") ||
+    url.startsWith("//") ||
+    !(
+      url.startsWith("/uploads/managed-assets/") ||
+      url.startsWith("/api/media-assets/")
+    )
+  ) {
+    return null;
+  }
+
+  const upstream = new URL(url, previewOrigin);
+  const headers = new Headers();
+  const accept = request.headers.get("accept");
+  const range = request.headers.get("range");
+
+  if (accept) headers.set("Accept", accept);
+  if (range) headers.set("Range", range);
+
+  try {
+    const response = await fetch(upstream, {
+      method: "GET",
+      headers,
+      cache: "no-store",
+      redirect: "follow",
+    });
+
+    if (!(response.ok || response.status === 206)) {
+      return null;
+    }
+
+    const resolvedOrigin = new URL(response.url).origin;
+    if (resolvedOrigin !== previewOrigin) {
+      return null;
+    }
+
+    const responseHeaders = new Headers();
+    for (const name of [
+      "accept-ranges",
+      "cache-control",
+      "content-length",
+      "content-range",
+      "content-type",
+      "etag",
+      "last-modified",
+    ]) {
+      const value = response.headers.get(name);
+      if (value) responseHeaders.set(name, value);
+    }
+
+    responseHeaders.set(
+      "X-AoE2WAR-Media-Proxy",
+      "preview-production-media",
+    );
+
+    return new NextResponse(response.body, {
+      status: response.status,
+      headers: responseHeaders,
+    });
+  } catch (error) {
+    console.warn("Preview managed media proxy failed:", error);
+    return null;
+  }
+}
+
 async function serveDirectAsset(request: NextRequest, url: string) {
   const managed = await serveManagedUploadDirect(request, url);
 
   if (managed) {
     return managed;
+  }
+
+  const preview = await servePreviewMediaDirect(request, url);
+
+  if (preview) {
+    return preview;
   }
 
   return servePublicAssetDirect(request, url);

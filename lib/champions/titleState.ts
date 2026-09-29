@@ -1,9 +1,11 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
+import { titleIsPubliclyForcedVacant } from "@/lib/champions/championshipPolicy";
 import type { LobbyLeaderboardEntry } from "@/lib/lobby";
 import { loadLobbyLeaderboard } from "@/lib/lobbyLeaderboard";
 import { countriesEligibilityMatch } from "@/lib/countryEligibility";
 import {
   allChampionTitles,
+  REPRESENTED_COUNTRIES,
   type ChampionHolder,
   type ChampionTitleDefinition,
   type TitleContender,
@@ -307,29 +309,31 @@ async function loadLiveChampionDefinitionMap(
                   : trophy.eligibleNationality || "Current title holder",
               representedCountry:
                 trophy.eligibleNationality &&
-                ["Canada", "USA", "Mexico", "UK"].includes(trophy.eligibleNationality)
+                (REPRESENTED_COUNTRIES as readonly string[]).includes(trophy.eligibleNationality)
                   ? (trophy.eligibleNationality as ChampionHolder["representedCountry"])
                   : undefined,
             },
           ]
         : [];
       const lastTribute = lastTributeByTrophyId.get(trophy.id) ?? null;
+      const forceVacant = titleIsPubliclyForcedVacant(definition.id);
       liveDefinitionMap.set(definition.id, {
         ...definition,
         assetUrl: trophy.nftImageUri?.trim() || definition.assetUrl,
         dailyWolo: trophy.tributeAmountWolo,
         status:
-          trophy.status === "held" || trophy.status === "active" || trophy.status === "guardian_held"
+          !forceVacant &&
+          (trophy.status === "held" || trophy.status === "active" || trophy.status === "guardian_held")
             ? "held"
             : "vacant",
-        holders,
+        holders: forceVacant ? [] : holders,
         trophyId: trophy.trophyId,
         trophyStatus: trophy.status,
-        currentBountyWolo: projectedTrophyBounty(trophy),
+        currentBountyWolo: forceVacant ? 0 : projectedTrophyBounty(trophy),
         bountyGrowthWolo: trophy.bountyGrowthWolo,
         chainStatus: trophy.chainStatus,
-        guardianHeld: trophy.status === "guardian_held",
-        holderSince: trophy.holderSince?.toISOString() ?? null,
+        guardianHeld: !forceVacant && trophy.status === "guardian_held",
+        holderSince: forceVacant ? null : trophy.holderSince?.toISOString() ?? null,
         lastTributeTxHash: lastTribute?.txHash ?? null,
         lastTributePaidAt: lastTribute?.paidAt?.toISOString() ?? null,
         lastTributeAmountWolo: lastTribute?.amountWolo ?? null,
@@ -347,7 +351,10 @@ async function loadLiveChampionDefinitionMap(
 }
 
 export async function loadChampionTitleEconomyState(
-  prisma: PrismaClient
+  prisma: PrismaClient,
+  options: {
+    projectionGeneration?: string | null;
+  } = {},
 ): Promise<ChampionTitleEconomyState> {
   let leaderboardEntries: CountryAwareLeaderboardEntry[] = [];
   let leaderboardAvailable = false;
@@ -358,10 +365,44 @@ export async function loadChampionTitleEconomyState(
   const liveDefinitionPromise =
     loadLiveChampionDefinitionMap(prisma);
 
+  const contenderProfilePromise =
+    prisma.user.findMany({
+      where: {
+        OR: [
+          {
+            representedCountry: {
+              not: null,
+            },
+          },
+          {
+            genderDivision: "Woman",
+          },
+        ],
+      },
+      select: {
+        uid: true,
+        inGameName: true,
+        steamPersonaName: true,
+        representedCountry: true,
+        genderDivision: true,
+      },
+      take: 1000,
+    })
+      .catch((error) => {
+        console.warn(
+          "Champion represented-country enrichment unavailable:",
+          error,
+        );
+        return [];
+      });
+
   try {
     const leaderboard = await loadLobbyLeaderboard(prisma, {
       limit: 120,
       includePendingClaimed: false,
+      includePresence: false,
+      projectionGeneration:
+        options.projectionGeneration,
     });
     leaderboardEntries = leaderboard.entries;
     leaderboardAvailable = true;
@@ -370,46 +411,67 @@ export async function loadChampionTitleEconomyState(
   }
 
   if (leaderboardEntries.length > 0) {
-    try {
-      const users = await prisma.user.findMany({
-        where: {
-          OR: [
-            { representedCountry: { not: null } },
-            { genderDivision: "Woman" },
-          ],
-        },
-        select: {
-          uid: true,
-          inGameName: true,
-          steamPersonaName: true,
-          representedCountry: true,
-          genderDivision: true,
-        },
-        take: 1000,
-      });
-      const profileByKey = new Map<string, { representedCountry: string | null; genderDivision: string | null }>();
+    const users =
+      await contenderProfilePromise;
+    const profileByKey =
+      new Map<
+        string,
+        {
+          representedCountry:
+            string | null;
+          genderDivision:
+            string | null;
+        }
+      >();
 
-      for (const user of users) {
-        const profile = {
-          representedCountry: user.representedCountry,
-          genderDivision: user.genderDivision || "Man",
-        };
-        putProfileKey(profileByKey, user.uid, profile);
-        putProfileKey(profileByKey, user.inGameName, profile);
-        putProfileKey(profileByKey, user.steamPersonaName, profile);
-      }
+    for (const user of users) {
+      const profile = {
+        representedCountry:
+          user.representedCountry,
+        genderDivision:
+          user.genderDivision ||
+          "Man",
+      };
 
-      leaderboardEntries = leaderboardEntries.map((entry) => {
-        const profile = profileForEntry(entry, profileByKey);
-        return {
-          ...entry,
-          representedCountry: profile?.representedCountry ?? null,
-          genderDivision: profile?.genderDivision ?? null,
-        };
-      });
-    } catch (error) {
-      console.warn("Champion represented-country enrichment unavailable:", error);
+      putProfileKey(
+        profileByKey,
+        user.uid,
+        profile,
+      );
+      putProfileKey(
+        profileByKey,
+        user.inGameName,
+        profile,
+      );
+      putProfileKey(
+        profileByKey,
+        user.steamPersonaName,
+        profile,
+      );
     }
+
+    leaderboardEntries =
+      leaderboardEntries.map(
+        (entry) => {
+          const profile =
+            profileForEntry(
+              entry,
+              profileByKey,
+            );
+
+          return {
+            ...entry,
+            representedCountry:
+              profile
+                ?.representedCountry ??
+              null,
+            genderDivision:
+              profile
+                ?.genderDivision ??
+              null,
+          };
+        },
+      );
   }
 
   const liveDefinitionMap =

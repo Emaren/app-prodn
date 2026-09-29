@@ -20,7 +20,6 @@ import {
   userOnlineSessionIsForcedOffline,
 } from "@/lib/userOnlinePresence";
 import { livingKingdomHub } from "@/lib/livingKingdom/hub";
-import { invalidatePublicPlayerDirectoryCache } from "@/lib/publicPlayerDirectory";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -208,7 +207,8 @@ export async function DELETE(request: NextRequest) {
   if (uid) {
     forceUserOnlineOffline(uid);
     livingKingdomHub.removeUser(uid);
-    invalidatePublicPlayerDirectoryCache();
+    // Presence is an independent live rail; logout no longer invalidates the
+    // expensive replay-derived public player directory.
     // Preserve the durable last-seen timestamp. The explicit offline fence is
     // the authoritative immediate logout signal for this server process.
     presenceCleared = true;

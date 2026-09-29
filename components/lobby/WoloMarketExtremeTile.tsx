@@ -57,8 +57,8 @@ function formatUsd(value: unknown, opts?: Intl.NumberFormatOptions) {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency: "USD",
-    maximumFractionDigits: next < 1 ? 7 : 2,
-    minimumFractionDigits: next < 1 ? 7 : 2,
+    maximumFractionDigits: next < 1 ? 6 : 2,
+    minimumFractionDigits: next < 1 ? 6 : 2,
     ...opts,
   }).format(next);
 }

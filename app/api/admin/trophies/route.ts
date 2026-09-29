@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/adminSession";
+import { invalidateFeaturedWarriorProjectionCaches } from "@/lib/featuredWarriorCache";
 import {
   executeTrophyAdminAction,
   TrophyActionError,
@@ -73,10 +74,12 @@ export async function POST(request: NextRequest) {
         });
       }
 
+      invalidateFeaturedWarriorProjectionCaches();
       return NextResponse.json(await loadTrophyCommandSnapshot(gate.prisma));
     }
 
     await executeTrophyAdminAction(gate.prisma, gate.user, payload);
+    invalidateFeaturedWarriorProjectionCaches();
     return NextResponse.json(await loadTrophyCommandSnapshot(gate.prisma));
   } catch (error) {
     if (error instanceof TrophyActionError) {
