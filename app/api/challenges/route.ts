@@ -32,6 +32,7 @@ import {
 import {
   buildTitleChallengeAcceptBy,
   TERMINAL_TITLE_CHALLENGE_STATUSES,
+  trophyStatusAllowsChallenge,
 } from "@/lib/challengeTitlePolicy";
 import { postChallengeCommissionerNotice, postChallengeInboxNotice } from "@/lib/contactInbox";
 import { getPrisma } from "@/lib/prisma";
@@ -346,6 +347,15 @@ export async function POST(request: NextRequest) {
       targetTrophy = await prisma.trophy.findUnique({ where: { trophyId: trophyKey } });
       if (!targetTrophy) {
         return NextResponse.json({ detail: "That trophy target is unavailable." }, { status: 404 });
+      }
+
+      if (!trophyStatusAllowsChallenge(targetTrophy.status)) {
+        return NextResponse.json(
+          {
+            detail: `${targetTrophy.displayName} is ${targetTrophy.status.replace(/_/g, " ")} and is not open for title challenges.`,
+          },
+          { status: 409 }
+        );
       }
 
       const expectedDefenderId =
