@@ -51,6 +51,7 @@ import {
 } from "@/lib/replayDesyncIncidents";
 import { loadLiveSessionSnapshot, type LiveGameSession } from "@/lib/liveSessionSnapshot";
 import { runBetAutoShadowWorker } from "@/lib/betAutomationShadowWorker";
+import { materializeBetPhaseBookShadows } from "@/lib/betPhaseBookShadowMaterializer";
 import { resolveFinalGameStatsIdForSessionKey } from "@/lib/liveReplayDetail";
 import {
   isUnknownishReplayValue,
@@ -7878,6 +7879,15 @@ async function runBetMarketEnsure(prisma: PrismaClient) {
       });
     })
   );
+
+  try {
+    await materializeBetPhaseBookShadows(prisma, seeds);
+  } catch (error) {
+    console.warn(
+      "Phase Books V2 shadow materialization failed after canonical market seed reconciliation:",
+      error
+    );
+  }
 
   const desyncParentPairs = seeds
     .filter(
