@@ -5,8 +5,6 @@ import test from "node:test";
 import {
   TITLE_FORFEIT_REVIEW_SETTLEMENT_STATUS,
   TITLE_FORFEIT_REVIEW_STATUS,
-  TITLE_RESULT_REVIEW_SETTLEMENT_STATUS,
-  TITLE_RESULT_REVIEW_STATUS,
   TERMINAL_TITLE_CHALLENGE_STATUSES,
   buildTitleChallengeAcceptBy,
   unacceptedTitleExpiryNeedsCommissionerReview,
