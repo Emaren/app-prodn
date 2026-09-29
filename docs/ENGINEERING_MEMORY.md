@@ -683,6 +683,19 @@ history, and UI must agree before `live` can exist. The runtime gate therefore
 fails a requested live mode closed while the current V1.2 compatibility bridge
 continues untouched.
 
+Phase timing also has one server authority now. Build an exact Watcher
+start-evidence index from canonical live-session identity plus proven aliases;
+ambiguity fails closed. Carry the resolved timestamp only as internal market-seed
+evidence and persist it on `BattleIdentity.startedAt`. Do not store separate
+phase clocks on legacy winner/Desync rows.
+
+Scheduled challenge time is not live-start authority. Once a challenge is linked
+to an exact Watcher session, read that session's stabilized start from the same
+snapshot used by market reconciliation. An existing BattleIdentity start is
+latched against later heartbeats. If fallback/canonical BattleIdentity rows are
+merged, the survivor takes the earliest non-null start already proven in that
+exact identity family so promotion can never reopen the Opening Minute window.
+
 ## Current highest-value product queue
 
 1. Betting Phase Books V2 + premium vertical betting composer.
