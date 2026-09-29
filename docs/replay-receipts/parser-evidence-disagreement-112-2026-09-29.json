@@ -1,0 +1,3117 @@
+{
+  "payload": {
+    "authority": {
+      "bettingSettlementWoloWrites": false,
+      "candidateEvidenceOnly": true,
+      "databaseWrites": false,
+      "nativeRuns": false,
+      "parserRunPersistence": false,
+      "resultOrAdjudicationWrites": false,
+      "rosterWrites": false
+    },
+    "blockerPareto": [
+      {
+        "affectedCases": 111,
+        "blockerCode": "projection:missing_or_conflicting_player_name",
+        "occurrences": 629
+      },
+      {
+        "affectedCases": 111,
+        "blockerCode": "projection:missing_or_conflicting_player_number",
+        "occurrences": 629
+      },
+      {
+        "affectedCases": 111,
+        "blockerCode": "projection:missing_or_conflicting_steam_id",
+        "occurrences": 629
+      },
+      {
+        "affectedCases": 111,
+        "blockerCode": "projection:non_steam_player_key",
+        "occurrences": 629
+      },
+      {
+        "affectedCases": 111,
+        "blockerCode": "player_number_sequence",
+        "occurrences": 111
+      },
+      {
+        "affectedCases": 111,
+        "blockerCode": "projected_player_count",
+        "occurrences": 111
+      },
+      {
+        "affectedCases": 15,
+        "blockerCode": "unsupported_format",
+        "occurrences": 15
+      },
+      {
+        "affectedCases": 15,
+        "blockerCode": "unsupported_provenance",
+        "occurrences": 15
+      },
+      {
+        "affectedCases": 1,
+        "blockerCode": "result_authority_changed",
+        "occurrences": 1
+      }
+    ],
+    "caseSummaries": [
+      {
+        "archiveByteSize": 854498,
+        "archiveSha256": "eee264c28d4a6cccc487580c0721d38c6661151e564b40adff144ad75a73b437",
+        "candidateArtifactSha256": "f61e6443d97b464659b44cf3a3b50f4c1708a1adee2965317d48c83819f93efb",
+        "candidateSemanticSha256": "c608e1ef0c6cf31d47eb753df004d3f9656f4c7358ed36c715c39f2442ee59bc",
+        "currentReplaySha256": "eee264c28d4a6cccc487580c0721d38c6661151e564b40adff144ad75a73b437",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 29063,
+        "logicalBattleIdentitySha256": "d75b27282de0f9c12ca0698504b39d102158aba1760344f342ae953a68c8ab68",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": true,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "c608e1ef0c6cf31d47eb753df004d3f9656f4c7358ed36c715c39f2442ee59bc"
+      },
+      {
+        "archiveByteSize": 1724627,
+        "archiveSha256": "23c4b34a3197402ee3c89d65fb2b3248c1a7ae76233abba15b451f6f22ed6593",
+        "candidateArtifactSha256": "b3953a7d499e86aab021a24187176f57cbc9e756d890be2297270833d53bdc38",
+        "candidateSemanticSha256": "9dfbc09cf6d08ab6f7a20c742c29bacefa473ad7470948580010714823448bfc",
+        "currentReplaySha256": "23c4b34a3197402ee3c89d65fb2b3248c1a7ae76233abba15b451f6f22ed6593",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 34381,
+        "logicalBattleIdentitySha256": "dbef3099ddce5868733dea10b8666e38693fb520d57e503cb2ae1fefbc426953",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key",
+          "unsupported_format",
+          "unsupported_provenance"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "9dfbc09cf6d08ab6f7a20c742c29bacefa473ad7470948580010714823448bfc"
+      },
+      {
+        "archiveByteSize": 1724600,
+        "archiveSha256": "f160b26cc1032d20fc520a775a4cadbca323dae849c9527abc3623e43c0875df",
+        "candidateArtifactSha256": "a0f22b0b231b0148ea093cbe864204df129da557e7020f301ded864040ed1e8f",
+        "candidateSemanticSha256": "618f556cba106201db44b0544c53c4aeeecccc66e789ac61af1241495d69f034",
+        "currentReplaySha256": "f160b26cc1032d20fc520a775a4cadbca323dae849c9527abc3623e43c0875df",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 34387,
+        "logicalBattleIdentitySha256": "01f045a6ab74a59b1e9533f40f5754076597550b2679f906b73e0c5ed1ae7718",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key",
+          "unsupported_format",
+          "unsupported_provenance"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "618f556cba106201db44b0544c53c4aeeecccc66e789ac61af1241495d69f034"
+      },
+      {
+        "archiveByteSize": 1675355,
+        "archiveSha256": "68a7ac1fac2f25b74f8f86162ebf68a8c411af5dce0e99975902c6e972d39995",
+        "candidateArtifactSha256": "9d5091288394b6c7aec53f0d81c8f123e2ad0601458f022a4a8e978e75bc9ba5",
+        "candidateSemanticSha256": "cfde7024dcb370917b44722000cb5633afa361311e3b9558817f997d5571f3fa",
+        "currentReplaySha256": "68a7ac1fac2f25b74f8f86162ebf68a8c411af5dce0e99975902c6e972d39995",
+        "fullObjectDifferentPaths": [
+          "projection.played_on",
+          "candidate.semantic_sha256",
+          "evidence.terminal.framing.metadata_only",
+          "evidence.terminal.framing.metadata_only_evidence",
+          "evidence.terminal.framing.metadata_only_reason",
+          "observations.[].value.metadata_only",
+          "observations.[].value.metadata_only_evidence",
+          "observations.[].value.metadata_only_reason",
+          "projection.key_events.parser_engine.candidate_semantic_sha256"
+        ],
+        "gameStatsId": 34726,
+        "logicalBattleIdentitySha256": "6ebe2cbc9c94d57f826127c8b85c4b6ca2729763fac5e0f97ded1d42e4ad4ec4",
+        "plannerBlockerCodes": [
+          "result_authority_changed"
+        ],
+        "primaryDisposition": "stale_parser_contract_evidence",
+        "projectedMetricComplete": false,
+        "registeredPlayer": true,
+        "semanticHashEqual": false,
+        "storedSemanticSha256": "2e275a8c2d9575aeab0da87f12e817532261a833f4a8e30c735307ef679e6730"
+      },
+      {
+        "archiveByteSize": 913295,
+        "archiveSha256": "116eee276a71ea6c4b6d148f9bda14918ceb5eff7cefaf8f781f7dc9e43eeca3",
+        "candidateArtifactSha256": "ca5f3dfd3026dcc5077325e6e196cbb3ad199e7654532c3221d2a4cfa56ec6d0",
+        "candidateSemanticSha256": "ef339630c722045bd1bcc98764d04d8d280bb20afefb64981d5e933760f41e80",
+        "currentReplaySha256": "116eee276a71ea6c4b6d148f9bda14918ceb5eff7cefaf8f781f7dc9e43eeca3",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42506,
+        "logicalBattleIdentitySha256": "a9004236a31ce85ff02c6eadb46b4c1259e52e8f2ae12827516fb987f3d6cc01",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "ef339630c722045bd1bcc98764d04d8d280bb20afefb64981d5e933760f41e80"
+      },
+      {
+        "archiveByteSize": 817199,
+        "archiveSha256": "0b3034087465629bb967e36899e0051da700fda7481bef2acc9c887ba2b250ac",
+        "candidateArtifactSha256": "ffe67db42b091b1c6a9c8badcc4daa5768f5a24a848c6baffc603dd4e729e223",
+        "candidateSemanticSha256": "cfbdb965d352dfe09117df08880cf64a84e58fa7e62399ca5e13a829ef39ab96",
+        "currentReplaySha256": "0b3034087465629bb967e36899e0051da700fda7481bef2acc9c887ba2b250ac",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42507,
+        "logicalBattleIdentitySha256": "b95c5bf3061bafa640cb53bc189f182216aa714b525c20a196d939308b46c98b",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "cfbdb965d352dfe09117df08880cf64a84e58fa7e62399ca5e13a829ef39ab96"
+      },
+      {
+        "archiveByteSize": 741555,
+        "archiveSha256": "b92f9757d5ed0dd520a8d306f4eeec67bebb41420d177bfc2bc0bd5d20fabea9",
+        "candidateArtifactSha256": "400116d8f2aed7415c0d00935c1f264cdfd132860d4810a4f2fa745cd61207cd",
+        "candidateSemanticSha256": "f6cc458cb7c57aa99c6b035220d94abd715da5e51a1908c54c93f0cb684d7465",
+        "currentReplaySha256": "b92f9757d5ed0dd520a8d306f4eeec67bebb41420d177bfc2bc0bd5d20fabea9",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42508,
+        "logicalBattleIdentitySha256": "f351ac647d0449223d752d5a3c91aab598e4198aed187f54b7500ea40989bcdb",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "f6cc458cb7c57aa99c6b035220d94abd715da5e51a1908c54c93f0cb684d7465"
+      },
+      {
+        "archiveByteSize": 842028,
+        "archiveSha256": "456b77789e262d2ba422b605fe5209b2026e7105881dfeb533ca59bcbe80f7f1",
+        "candidateArtifactSha256": "4cf33485adf43c740b7be6abb2bdeb28f110f1f1a4eba2958155629e113f7813",
+        "candidateSemanticSha256": "35eaac167e25d4b49abdc9b77f40f1ebb96d2eec0de96dfcdd5e01b31ab917e0",
+        "currentReplaySha256": "456b77789e262d2ba422b605fe5209b2026e7105881dfeb533ca59bcbe80f7f1",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42509,
+        "logicalBattleIdentitySha256": "67691623412e16515dcd542fd108aa721f942ec5f1c0a63d9566e42265824723",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "35eaac167e25d4b49abdc9b77f40f1ebb96d2eec0de96dfcdd5e01b31ab917e0"
+      },
+      {
+        "archiveByteSize": 1337606,
+        "archiveSha256": "ebd1fb2016338f86bdac1a5590a78690af4db49c60fbfa31637eca7c8096de62",
+        "candidateArtifactSha256": "c4c6675597193562de907c6eeab8c21c0d914ccc902524479f4cdedf6dfd8f09",
+        "candidateSemanticSha256": "f91964401745118fa697ed6cc7978742029503581015598a918e8dd3d35f7401",
+        "currentReplaySha256": "ebd1fb2016338f86bdac1a5590a78690af4db49c60fbfa31637eca7c8096de62",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42510,
+        "logicalBattleIdentitySha256": "fd91fca57a9b282d91442480ea2e6eb022cf9e24ffb4a45a07ea843344a5a4f7",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key",
+          "unsupported_format",
+          "unsupported_provenance"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "f91964401745118fa697ed6cc7978742029503581015598a918e8dd3d35f7401"
+      },
+      {
+        "archiveByteSize": 783760,
+        "archiveSha256": "b44369a53b687f3fee77f3520e015d540ba17a022a4b778f7a8bd78c018b60fa",
+        "candidateArtifactSha256": "dbd5a409f6da743604d3fd22cd8f672b741307033df922250813fc81709f1095",
+        "candidateSemanticSha256": "2329b80e125badc5180f62940e8d12449d3d8ce4f65d1dddafa7116215b103b5",
+        "currentReplaySha256": "b44369a53b687f3fee77f3520e015d540ba17a022a4b778f7a8bd78c018b60fa",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42512,
+        "logicalBattleIdentitySha256": "76c604354c6c4044991ac16f72e5a268ee74fa646b6cf92ce369f9847d0c1aa7",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "2329b80e125badc5180f62940e8d12449d3d8ce4f65d1dddafa7116215b103b5"
+      },
+      {
+        "archiveByteSize": 1014135,
+        "archiveSha256": "3fe41a4da887ab4316ad2f5aee578475c5eba770347465ca8e681f5a945c35a3",
+        "candidateArtifactSha256": "5fcaccc95a57366f90ed72d4db2972a0199c175368fdd08e46ceffe5ecea0442",
+        "candidateSemanticSha256": "16867e44db549ac344ace9af204d54aabf990c1661ae35b61953c1e87d917de6",
+        "currentReplaySha256": "3fe41a4da887ab4316ad2f5aee578475c5eba770347465ca8e681f5a945c35a3",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42514,
+        "logicalBattleIdentitySha256": "97fb4e2220c0546f1baf04234d9587632ce48c436b263911fb87150888220b3f",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "16867e44db549ac344ace9af204d54aabf990c1661ae35b61953c1e87d917de6"
+      },
+      {
+        "archiveByteSize": 1982760,
+        "archiveSha256": "f2b1a7e87691e585f450ecd529d0028036ec9e0d3b2470fcf808fdc9ab2c22c3",
+        "candidateArtifactSha256": "f20b23d1a53495670ece00d0d7f7303637349b63318faae2f9c40164f7dbf815",
+        "candidateSemanticSha256": "041914d575856b3804b9323d90b6d0150cb58b4fa80b116095e528e9644b6fba",
+        "currentReplaySha256": "f2b1a7e87691e585f450ecd529d0028036ec9e0d3b2470fcf808fdc9ab2c22c3",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42519,
+        "logicalBattleIdentitySha256": "ff7095e58265687be5e1ce077ea89ffa5ebc70fa4f70c62568c74f40b176f661",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "041914d575856b3804b9323d90b6d0150cb58b4fa80b116095e528e9644b6fba"
+      },
+      {
+        "archiveByteSize": 1027295,
+        "archiveSha256": "afe68966c330bb75870682c85dee267af520937d7ddd5b33ee39acc62ac87742",
+        "candidateArtifactSha256": "9ec77e12f199f092391c6a702af8010a7544c730349cc83b13b0dddc259a6539",
+        "candidateSemanticSha256": "a765507ee8b502cd34385ba74b117ae2b9cdb3d737b83d8fe6999e72b91c5421",
+        "currentReplaySha256": "afe68966c330bb75870682c85dee267af520937d7ddd5b33ee39acc62ac87742",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42521,
+        "logicalBattleIdentitySha256": "100d29fed15a33f7a2beeb94d750b35f2e760d1fd1470182c341fdb3e8a69aef",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "a765507ee8b502cd34385ba74b117ae2b9cdb3d737b83d8fe6999e72b91c5421"
+      },
+      {
+        "archiveByteSize": 1231574,
+        "archiveSha256": "bb4044060f82100c0b3595ea5a9fa2cf29fbfd95477c615e774fa32204107bd5",
+        "candidateArtifactSha256": "463dd0aca3df3a6721d5e39e5a22c4e2ff06c6ecaf31f949b41f6c4acc70925a",
+        "candidateSemanticSha256": "34dabf87357960beb8274f8bfecabf69a8484169609a0be9eda49a71630a9358",
+        "currentReplaySha256": "bb4044060f82100c0b3595ea5a9fa2cf29fbfd95477c615e774fa32204107bd5",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42522,
+        "logicalBattleIdentitySha256": "9f3736bfaace716be6da93ac40b3226616319f2e1fa2190623a118fcbe59f57f",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "34dabf87357960beb8274f8bfecabf69a8484169609a0be9eda49a71630a9358"
+      },
+      {
+        "archiveByteSize": 1166763,
+        "archiveSha256": "1787a6d85fee1ac0f89f48bc4caa1c320f7911c676c99084deeb180e500e2ec6",
+        "candidateArtifactSha256": "58bd8924eeecdc32eb174a8e13211e543e6d7b7c6b5f8f5c1a9457dbde040aad",
+        "candidateSemanticSha256": "009054d7b56f2451c5ee0aa07b0c273ccc745fbc0cf5391912a5007687669a87",
+        "currentReplaySha256": "1787a6d85fee1ac0f89f48bc4caa1c320f7911c676c99084deeb180e500e2ec6",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42526,
+        "logicalBattleIdentitySha256": "82a5919c47620608ef2135ce8cadcea94c26f197af4377fbb13785f855aa1c2d",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "009054d7b56f2451c5ee0aa07b0c273ccc745fbc0cf5391912a5007687669a87"
+      },
+      {
+        "archiveByteSize": 1327534,
+        "archiveSha256": "65c47d469c5b278c14b365f7cfa130436f5225c923e950d72beb8ba61ae77cab",
+        "candidateArtifactSha256": "3e25c8cdc9d3b2c8c5adac86f8fe0457a3b7c80c346e73716cd587969862d3b6",
+        "candidateSemanticSha256": "6909d8a57cf34884d50ec10e45d8da376d2d3edb511fcb3d41731e92fe5e12ad",
+        "currentReplaySha256": "65c47d469c5b278c14b365f7cfa130436f5225c923e950d72beb8ba61ae77cab",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42528,
+        "logicalBattleIdentitySha256": "46e4d1a48b5137d7fe2d30c05010601c416098a4c0ec16d736d530bb0ae1f7b3",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "6909d8a57cf34884d50ec10e45d8da376d2d3edb511fcb3d41731e92fe5e12ad"
+      },
+      {
+        "archiveByteSize": 224196,
+        "archiveSha256": "ac6c6308b5f5abad8473227288aa892a1ba082c42cff065f5f5c8546dfa2e326",
+        "candidateArtifactSha256": "b2b7e11a9506f62ec0c61ea30aa39c2daf662ec03823428800b6a70c7256e66b",
+        "candidateSemanticSha256": "518cdbed5b5190926f43c79fab04552ab2638337b7891890c9d7a4da354b23af",
+        "currentReplaySha256": "ac6c6308b5f5abad8473227288aa892a1ba082c42cff065f5f5c8546dfa2e326",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42541,
+        "logicalBattleIdentitySha256": "0dd6c5965b41c1f41cc60c1b3b658e8a542457c1309696cc7b7ac52ceadaf77b",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "518cdbed5b5190926f43c79fab04552ab2638337b7891890c9d7a4da354b23af"
+      },
+      {
+        "archiveByteSize": 1530517,
+        "archiveSha256": "c99b9c016fce8abe6e398acbdceb222b7c1844b19dd7bd82b59543d6872293fd",
+        "candidateArtifactSha256": "bbbd3527aa84a6d3deeb402fc6eb04760bd33cd50d142aa1dd4a92a6a887cfea",
+        "candidateSemanticSha256": "b28e45da4df37eb5f5c5c5e023432baa6f9b3d4f58edb44d394c03d3c311cc2c",
+        "currentReplaySha256": "c99b9c016fce8abe6e398acbdceb222b7c1844b19dd7bd82b59543d6872293fd",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42542,
+        "logicalBattleIdentitySha256": "652f333b30c8326f1e5bfcfd0fc51d600b8ca7cd32793e73779e40fedf00468f",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "b28e45da4df37eb5f5c5c5e023432baa6f9b3d4f58edb44d394c03d3c311cc2c"
+      },
+      {
+        "archiveByteSize": 978091,
+        "archiveSha256": "db00b2457bd0216097649bb03d828f1108121253571b3b1f05130632a285438b",
+        "candidateArtifactSha256": "2c009486c3ac6f802a9739faeb616d0e1e50ab41a39a8524c40c2ec4b8137167",
+        "candidateSemanticSha256": "54c068c7db8a5149d25847b7a9d9d67c9579112f8d8ab7304312bffa3c0c77f4",
+        "currentReplaySha256": "db00b2457bd0216097649bb03d828f1108121253571b3b1f05130632a285438b",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42544,
+        "logicalBattleIdentitySha256": "330b9f5492c5aa6f7db26188cb2f2a76c3fd0dc71496285de6cfca6d8c008838",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "54c068c7db8a5149d25847b7a9d9d67c9579112f8d8ab7304312bffa3c0c77f4"
+      },
+      {
+        "archiveByteSize": 884158,
+        "archiveSha256": "dc05cd0b363ad07d1e1d2906fc017902b77a51842a379e4c6e540d91fe629fef",
+        "candidateArtifactSha256": "cb42067c4c47dc00e0021c4c4c58d6799ead17633d384135ced04528ba14185c",
+        "candidateSemanticSha256": "34ebb0e8116805a557671c9cf0d2c5b5cc1ab941172e4d1b34b474d2d8d1aea4",
+        "currentReplaySha256": "dc05cd0b363ad07d1e1d2906fc017902b77a51842a379e4c6e540d91fe629fef",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42548,
+        "logicalBattleIdentitySha256": "c87329f0a04334bd7e254016997a8cdb1bc2f076ca0fb167ca492d3407e05f95",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "34ebb0e8116805a557671c9cf0d2c5b5cc1ab941172e4d1b34b474d2d8d1aea4"
+      },
+      {
+        "archiveByteSize": 1251553,
+        "archiveSha256": "4cd288f524581308d417ab48590dbfab26955080d4b5d4525ebe182a1b904599",
+        "candidateArtifactSha256": "c556f8406a005c3ee2e91379a1bee420f910b1424e95293524de04f472c41503",
+        "candidateSemanticSha256": "b5689b1b48537b2f05fe51109e53b59dfeba225f8b97bc108e9186ec65b23079",
+        "currentReplaySha256": "4cd288f524581308d417ab48590dbfab26955080d4b5d4525ebe182a1b904599",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42553,
+        "logicalBattleIdentitySha256": "daf676357cb5a50c60bd4ceda837a3bcfc6b4ed51824f40327bad9c318b8e635",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "b5689b1b48537b2f05fe51109e53b59dfeba225f8b97bc108e9186ec65b23079"
+      },
+      {
+        "archiveByteSize": 1632562,
+        "archiveSha256": "770cd08402ed3c00dd4521f12e599c3fcf91dae3754a3b50606313b28d01427a",
+        "candidateArtifactSha256": "8e9de68094bdddeafde272ffdccfdeacdf3fffc83d57d5abd859393921d78684",
+        "candidateSemanticSha256": "8017e62e237d79aede78cbd6e4718d9fceb27f2f38fbe7429f6fe47b0173ef00",
+        "currentReplaySha256": "770cd08402ed3c00dd4521f12e599c3fcf91dae3754a3b50606313b28d01427a",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42554,
+        "logicalBattleIdentitySha256": "3269def5bff57aee1f65379d17200a93bacb79e2afaef0493ef809bc8cd2d79d",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "8017e62e237d79aede78cbd6e4718d9fceb27f2f38fbe7429f6fe47b0173ef00"
+      },
+      {
+        "archiveByteSize": 1088886,
+        "archiveSha256": "c197da4f40f5836b25082343077c065ac5165051f0410d3750e5c3e38cf10661",
+        "candidateArtifactSha256": "714e31049f6f9b65fa515529b7f2c400907e38a97f3a8b03278c608d4d02ba0c",
+        "candidateSemanticSha256": "93bcb011220d69e09fb7425b766b2a54b89ead0e0d19f70019e29e77593ca0f9",
+        "currentReplaySha256": "c197da4f40f5836b25082343077c065ac5165051f0410d3750e5c3e38cf10661",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42557,
+        "logicalBattleIdentitySha256": "ff1cb1f1c83d4e4f541531ab019402442eb99052b8042d5a56b54daf0b49ab44",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "93bcb011220d69e09fb7425b766b2a54b89ead0e0d19f70019e29e77593ca0f9"
+      },
+      {
+        "archiveByteSize": 1207827,
+        "archiveSha256": "58a5be19d2a5486fd5f34cb0ea320750612e46469edeab768587d482dd4bd1f1",
+        "candidateArtifactSha256": "92b3615c96c79a60f20b099eb80943fadc60bfe2193f2fcbb75057eb3db5eaaa",
+        "candidateSemanticSha256": "7a20f706e9add7bbe2ad84e9eeb098f7a194c3339088369b4ced884ba918119f",
+        "currentReplaySha256": "58a5be19d2a5486fd5f34cb0ea320750612e46469edeab768587d482dd4bd1f1",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42558,
+        "logicalBattleIdentitySha256": "a1aab919b3f604fa1f7f1999f15a3b43387d24ce5842ed1ce0ad26e2174405c8",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "7a20f706e9add7bbe2ad84e9eeb098f7a194c3339088369b4ced884ba918119f"
+      },
+      {
+        "archiveByteSize": 1375669,
+        "archiveSha256": "d226ad3a4ca0aa2db8b0f48334c15fe5313293e9fb5ffaf28918d87470776f7d",
+        "candidateArtifactSha256": "37cd766b3f32e288870651815150014d92a9594c55bbac142e110b4b7a53f801",
+        "candidateSemanticSha256": "9323e621ca537c04d7caef50853ec05ec00b5ef95eeeabcc29da33659a0a2c16",
+        "currentReplaySha256": "d226ad3a4ca0aa2db8b0f48334c15fe5313293e9fb5ffaf28918d87470776f7d",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42559,
+        "logicalBattleIdentitySha256": "d49dcddb82cce494c293ac88f6181872fa5d9ce5b9ddcffa80ea8d7fa6b18232",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "9323e621ca537c04d7caef50853ec05ec00b5ef95eeeabcc29da33659a0a2c16"
+      },
+      {
+        "archiveByteSize": 2385260,
+        "archiveSha256": "ddf89a739eb73116d0e9c626b2e8a2c8976b2e9fa99dcf175c1ba27720533fad",
+        "candidateArtifactSha256": "3492b7286bc48f3550787983ae42a06badeab22b8307e9bf48eb57187f44c276",
+        "candidateSemanticSha256": "34e6d2b501e2ab2f26d2aa53f6a63957ec7c26b42339dd13e07304833f7c6e57",
+        "currentReplaySha256": "ddf89a739eb73116d0e9c626b2e8a2c8976b2e9fa99dcf175c1ba27720533fad",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42560,
+        "logicalBattleIdentitySha256": "9406813b053694e835732a399bb98272a4ee0c58d2adac5cec06f8d26f87173c",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "34e6d2b501e2ab2f26d2aa53f6a63957ec7c26b42339dd13e07304833f7c6e57"
+      },
+      {
+        "archiveByteSize": 2376780,
+        "archiveSha256": "13a8814deb44dcd6ebf2b2e5dbbf5e5830bc78b17f4a348652702f09af563bfe",
+        "candidateArtifactSha256": "7e6a0c36c1e7550f499ec85683d7d973d1968deed99ab215fe8e1354615ffab9",
+        "candidateSemanticSha256": "f7e8816d1e192a204a5bf2fd7037af63a5549e4739072ab2d41dc0434465ac0e",
+        "currentReplaySha256": "13a8814deb44dcd6ebf2b2e5dbbf5e5830bc78b17f4a348652702f09af563bfe",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42568,
+        "logicalBattleIdentitySha256": "8c114f1130a3a7d0f829b18269a589271bc5232e70afce5ef72978c89684efb3",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "f7e8816d1e192a204a5bf2fd7037af63a5549e4739072ab2d41dc0434465ac0e"
+      },
+      {
+        "archiveByteSize": 1902164,
+        "archiveSha256": "fa8fad3f968d5af9590f94ecb8bd48f667c5622752fb49e9f298752c0c60c6ae",
+        "candidateArtifactSha256": "780f6ddf9fa74c2243417cd49b3ce2d42c84cd3e182babbe04a4e11c490d32e2",
+        "candidateSemanticSha256": "e9b7908add975402e57cbc96c499f9749242fa37ab5aef11d9a272d6d2e9d877",
+        "currentReplaySha256": "fa8fad3f968d5af9590f94ecb8bd48f667c5622752fb49e9f298752c0c60c6ae",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42569,
+        "logicalBattleIdentitySha256": "10cc9abaef2a44b2ee718189a099d90c8ba9d03d99af2526cf576c09e4651d5c",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "e9b7908add975402e57cbc96c499f9749242fa37ab5aef11d9a272d6d2e9d877"
+      },
+      {
+        "archiveByteSize": 640537,
+        "archiveSha256": "5560e61657ebe82dcfab15217f2805f64a941332f0e455830f5fc9f862c64500",
+        "candidateArtifactSha256": "c7f43b1e9f2ca2984ec6ad5713c094ef4585fa4b105dd347b535ae276614c8de",
+        "candidateSemanticSha256": "fd45a0dba6db5be045225e3ff7b8b83bb0b8f30b9d23e62e31c0c77e797448d7",
+        "currentReplaySha256": "5560e61657ebe82dcfab15217f2805f64a941332f0e455830f5fc9f862c64500",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42570,
+        "logicalBattleIdentitySha256": "aab12aab4d306d4c839fc936af71a8fef072e9862841a9c74d2fe1bffa1faa94",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "fd45a0dba6db5be045225e3ff7b8b83bb0b8f30b9d23e62e31c0c77e797448d7"
+      },
+      {
+        "archiveByteSize": 1043163,
+        "archiveSha256": "d5bcbf0499898d967355aa86d66875f5a826599e9c64eb0589815c466b4a1c63",
+        "candidateArtifactSha256": "11b47725f59f8b5441755042e8aecf2519b91d27a72b26e4a5afc4fbc0526e5a",
+        "candidateSemanticSha256": "9eaa920adf92ff1e6fb7f5381c0182f1c26cf0f44e7247603bdb49fe9ca0c3cf",
+        "currentReplaySha256": "d5bcbf0499898d967355aa86d66875f5a826599e9c64eb0589815c466b4a1c63",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42572,
+        "logicalBattleIdentitySha256": "a09b35caf23d8f9481f196cdfe73428668bbb3841550b026644f076d74daee98",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "9eaa920adf92ff1e6fb7f5381c0182f1c26cf0f44e7247603bdb49fe9ca0c3cf"
+      },
+      {
+        "archiveByteSize": 2312383,
+        "archiveSha256": "ee7312a345a2a31eca7fac9f9ec7d74e4632f95d2d655a78b4b86ddc4709ccdb",
+        "candidateArtifactSha256": "721c6e5713093eb089756ade77018c47c0bc7fc5ddcdd55aa09bc91712d4d122",
+        "candidateSemanticSha256": "c1c070e4dd2bfa7800510a68a0d7c1b479a0580dcc2006aee9fdcf8573a2dc00",
+        "currentReplaySha256": "ee7312a345a2a31eca7fac9f9ec7d74e4632f95d2d655a78b4b86ddc4709ccdb",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42573,
+        "logicalBattleIdentitySha256": "c1458ca7542329cec228b82ca601003d3ffb2912e630dacc3344c8a877f9d06c",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "c1c070e4dd2bfa7800510a68a0d7c1b479a0580dcc2006aee9fdcf8573a2dc00"
+      },
+      {
+        "archiveByteSize": 1237155,
+        "archiveSha256": "4578ceecfe1e9c8c71653be740c0a33b4af5641d725b0db120cba6bb6366bad1",
+        "candidateArtifactSha256": "b7ae4ebcd532007f3ee100b5ccb709ca76d79f07abadaebad33ec1df6170a533",
+        "candidateSemanticSha256": "725ffc9549fab6dfe69c1fc2b343b478badb9022633b8b5d320e34fff16b9118",
+        "currentReplaySha256": "4578ceecfe1e9c8c71653be740c0a33b4af5641d725b0db120cba6bb6366bad1",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42574,
+        "logicalBattleIdentitySha256": "180ea86021521710671d425dbf808dd52b4d7d4c2deb6b0b7b0c3a8f32e695de",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "725ffc9549fab6dfe69c1fc2b343b478badb9022633b8b5d320e34fff16b9118"
+      },
+      {
+        "archiveByteSize": 4451437,
+        "archiveSha256": "8403d959c1bed06f1c3409ee6a7a749c7c5a2303f7a7cd10a7487dd512e79cbd",
+        "candidateArtifactSha256": "21c2d325c63f2d068596feabc22cc78ef92bb74461bf0d6b3c993ec2fff7a6d8",
+        "candidateSemanticSha256": "721de1cc8518db124c41f4c7da7fe1a54115b1b2aaf9caf7817029284d1202ed",
+        "currentReplaySha256": "8403d959c1bed06f1c3409ee6a7a749c7c5a2303f7a7cd10a7487dd512e79cbd",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42577,
+        "logicalBattleIdentitySha256": "4304868959b74bf7b460519ff8fbc452fa721122e8096e2d9bc7a3e5c74548cf",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "721de1cc8518db124c41f4c7da7fe1a54115b1b2aaf9caf7817029284d1202ed"
+      },
+      {
+        "archiveByteSize": 567827,
+        "archiveSha256": "abdca30163c435b4308adf49c637028ff5976c2da541f9cca12e8c5add5f49e1",
+        "candidateArtifactSha256": "a2741a27ee0d68626c161afc844a2184ed3ed19b688af6bcf6e7938af42b8f99",
+        "candidateSemanticSha256": "6f5270f171552f993e1fcf27c9960a67cf99be1a8f99cfcdbcf9fc1e3a26d338",
+        "currentReplaySha256": "abdca30163c435b4308adf49c637028ff5976c2da541f9cca12e8c5add5f49e1",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42581,
+        "logicalBattleIdentitySha256": "706a8a4954b0a7c9c5e861aa92ffde539aaf91755145c930f14fc99cf977592f",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "6f5270f171552f993e1fcf27c9960a67cf99be1a8f99cfcdbcf9fc1e3a26d338"
+      },
+      {
+        "archiveByteSize": 1043178,
+        "archiveSha256": "3c777faf719b1462235f0696f83ac3e5e19aff3462bd5c44e11b2f27abb1094b",
+        "candidateArtifactSha256": "e4374faec63e5f33157e1a7c20fd0378a69e430c1ca359317f393d2f043fed87",
+        "candidateSemanticSha256": "4c3da0866779b305ba7cc61aac1deb18a69d1e5d7a6fccdb89f0bfaaa557e1dd",
+        "currentReplaySha256": "3c777faf719b1462235f0696f83ac3e5e19aff3462bd5c44e11b2f27abb1094b",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42582,
+        "logicalBattleIdentitySha256": "2e658ea11cf24cd75a89176648c9c82ecc7664a70f58f36280ab1b3c1a8bb7d4",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "4c3da0866779b305ba7cc61aac1deb18a69d1e5d7a6fccdb89f0bfaaa557e1dd"
+      },
+      {
+        "archiveByteSize": 1839690,
+        "archiveSha256": "f889a9d91c3566623c7bb640a27f88cfcbf63646b4ae74e2b2d9d58d760a40b3",
+        "candidateArtifactSha256": "19a98b9da6708d7cd306897c8f9226a8ecd4eecaa6fdb6b8dd4e22473eee9268",
+        "candidateSemanticSha256": "2eb8be89bced432f88f331203521dac7b07016764c889ab746b4c128894a93c0",
+        "currentReplaySha256": "f889a9d91c3566623c7bb640a27f88cfcbf63646b4ae74e2b2d9d58d760a40b3",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42589,
+        "logicalBattleIdentitySha256": "43b7a864f91a4792fa3caf0999fb3c243ff47aa99781175f94a9d456c4292dce",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "2eb8be89bced432f88f331203521dac7b07016764c889ab746b4c128894a93c0"
+      },
+      {
+        "archiveByteSize": 1504062,
+        "archiveSha256": "8bc6b0bbff891ac7e474c0ceb322babd376b102a8942685c752936c53fa5c2a9",
+        "candidateArtifactSha256": "6adb1d9571032ab335c6e8fcd0cdd62060589ac8814d5149e7e749de4b66f023",
+        "candidateSemanticSha256": "14c81ab2d315a878886ef240957d657e98c151f57ce05a6cf23190f2bed622e7",
+        "currentReplaySha256": "8bc6b0bbff891ac7e474c0ceb322babd376b102a8942685c752936c53fa5c2a9",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42590,
+        "logicalBattleIdentitySha256": "d261f5bbeb2d12d3608b8f02834a19e4fb528741de72e1deb4ea8a90cb017559",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "14c81ab2d315a878886ef240957d657e98c151f57ce05a6cf23190f2bed622e7"
+      },
+      {
+        "archiveByteSize": 1960492,
+        "archiveSha256": "b77110ce8adfcf00a404e7ab658f57d8a796e9330b03c4ed04a751514fcea667",
+        "candidateArtifactSha256": "ee0c352d93fc415989f9d388f06e4f90ecfa708e29eabb499d4b74ffd4e591c3",
+        "candidateSemanticSha256": "7300314446a6afb1675b3c62fa68997dc1ff636c6e34c76d38a2f2d56380a708",
+        "currentReplaySha256": "b77110ce8adfcf00a404e7ab658f57d8a796e9330b03c4ed04a751514fcea667",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42594,
+        "logicalBattleIdentitySha256": "594b472ff4b9375eea22f3f691c431cc58200f93b8b215fbbf388d666061bddc",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "7300314446a6afb1675b3c62fa68997dc1ff636c6e34c76d38a2f2d56380a708"
+      },
+      {
+        "archiveByteSize": 1597804,
+        "archiveSha256": "3b58823b346649948e43a97a4b8b812e669b55f063034b468cc1dbb77c76dd26",
+        "candidateArtifactSha256": "434baa0db3c995859e7a80794d8bd014d300babb187fe352448dd2a179ba5561",
+        "candidateSemanticSha256": "68e4322fdf527305a0ad786a159e414ed2b67ed18785fe9f99ac971229f10c20",
+        "currentReplaySha256": "3b58823b346649948e43a97a4b8b812e669b55f063034b468cc1dbb77c76dd26",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42595,
+        "logicalBattleIdentitySha256": "422c5e9465b142834b3edbfa74c963b1d02987d10179cb7441576d9d08a2fb38",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "68e4322fdf527305a0ad786a159e414ed2b67ed18785fe9f99ac971229f10c20"
+      },
+      {
+        "archiveByteSize": 1227747,
+        "archiveSha256": "aaf2bc44e22475cfadd063a78d71918af6a8dc29d082511d156cad947f49a5a8",
+        "candidateArtifactSha256": "1bd25523a82ea9313ab41f993d15d4f760c2bdd1896ffafd12314e4805be1499",
+        "candidateSemanticSha256": "9d2e932894c41e5b6363c91683f6cc466482dba4ec683f01aade608d4e038678",
+        "currentReplaySha256": "aaf2bc44e22475cfadd063a78d71918af6a8dc29d082511d156cad947f49a5a8",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42596,
+        "logicalBattleIdentitySha256": "053992ccebfa580dfdbe23c85ec7326199ee285c20610ab2266ec854aa6f8398",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "9d2e932894c41e5b6363c91683f6cc466482dba4ec683f01aade608d4e038678"
+      },
+      {
+        "archiveByteSize": 2513553,
+        "archiveSha256": "db76e0f90923c918ec9162e9480822b44e1f2f769fb2cf5499c33b943a282726",
+        "candidateArtifactSha256": "de8f005404de35d23bf416f6251f17602d23dbb8cdbd805034e581eac7fda059",
+        "candidateSemanticSha256": "732850c1be42dadb43f32e5eb4988feeef787e56618b19ed2ba37fa2e1282678",
+        "currentReplaySha256": "db76e0f90923c918ec9162e9480822b44e1f2f769fb2cf5499c33b943a282726",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42597,
+        "logicalBattleIdentitySha256": "25aa4d960b8fba6d4106fb26a542d6d2f87ab909328ed4880a5d845aeb91496c",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "732850c1be42dadb43f32e5eb4988feeef787e56618b19ed2ba37fa2e1282678"
+      },
+      {
+        "archiveByteSize": 1207252,
+        "archiveSha256": "8ecf273338a8af3c8cb1a5a68e486fb2106bcf3496170c46e43d55e0158dea38",
+        "candidateArtifactSha256": "70b15491aa8a2a17fce22ad502c1d3723c7c86a371321333b8e8654df45fdd5b",
+        "candidateSemanticSha256": "f4c28f33cecff7e6ababdbf07d21d817dbd6563e85a96acea7846f0f0df969e8",
+        "currentReplaySha256": "8ecf273338a8af3c8cb1a5a68e486fb2106bcf3496170c46e43d55e0158dea38",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42600,
+        "logicalBattleIdentitySha256": "2d86f00019bc41c2967d96d304a44f7c0d9271b3dc85e0789919e161eaef379a",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "f4c28f33cecff7e6ababdbf07d21d817dbd6563e85a96acea7846f0f0df969e8"
+      },
+      {
+        "archiveByteSize": 665684,
+        "archiveSha256": "d79dff9ab126302381899a6f1f11ad14d885ddca5df8a8463a970e5578b31a0a",
+        "candidateArtifactSha256": "50e1a4efe828e6062559693e70bf7080a6dab81a024fb6889cd5badf12f5ddc3",
+        "candidateSemanticSha256": "080604939e9fd2cae6ae920eb10b85f85869883c0c312e6b95ea50cabe151d6e",
+        "currentReplaySha256": "d79dff9ab126302381899a6f1f11ad14d885ddca5df8a8463a970e5578b31a0a",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42604,
+        "logicalBattleIdentitySha256": "e088fc03298bf39848f1538a5df532b413a94b6e551dd90acde793ec7604adf7",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "080604939e9fd2cae6ae920eb10b85f85869883c0c312e6b95ea50cabe151d6e"
+      },
+      {
+        "archiveByteSize": 1205408,
+        "archiveSha256": "7ce7494e810bceadf2b10e15d4603182216f4c27d428638f26d9988a4d4acf75",
+        "candidateArtifactSha256": "74e40aa0283b14da5ccfd287701f7261b357abf3488ce137fc8a1c8ebfc6c08a",
+        "candidateSemanticSha256": "60775f8834084860885700c6b6a53153a94a9c22f91da910de22701ba0464cd6",
+        "currentReplaySha256": "7ce7494e810bceadf2b10e15d4603182216f4c27d428638f26d9988a4d4acf75",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42605,
+        "logicalBattleIdentitySha256": "f6954cbb5647c475676e4acc44eaf547146490ec3a26409a9ea2d8270077f12b",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "60775f8834084860885700c6b6a53153a94a9c22f91da910de22701ba0464cd6"
+      },
+      {
+        "archiveByteSize": 856802,
+        "archiveSha256": "821425ad1e1ede3f49d970e4467d703018b050c67f236f7ff14bc3fecc5936ec",
+        "candidateArtifactSha256": "cceb7fc2f9054c1feeda2e4a351b7d171e4e90515589c59f1e83e267affd812c",
+        "candidateSemanticSha256": "c8475d166c2123faa7f9d304e8ae321284d4f47c6286d6c9c1815294b64f9b40",
+        "currentReplaySha256": "821425ad1e1ede3f49d970e4467d703018b050c67f236f7ff14bc3fecc5936ec",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42607,
+        "logicalBattleIdentitySha256": "8190b2a7c6b54a7eae6d0bb514be8f1c4066927350731e00756b488b010f338c",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "c8475d166c2123faa7f9d304e8ae321284d4f47c6286d6c9c1815294b64f9b40"
+      },
+      {
+        "archiveByteSize": 1021289,
+        "archiveSha256": "3c30804c2f6551d0b79dd59cb8ad3808dae84ac642047d81f524e077a883c909",
+        "candidateArtifactSha256": "79b4e21eec1535a53b3c0ca47d02f158fde26123431d5a66ed4b3126634a3ff3",
+        "candidateSemanticSha256": "668d64ed25fecca4f4b1a1aa55f2c1a60863bb01a89125fe3a12611f4aae9971",
+        "currentReplaySha256": "3c30804c2f6551d0b79dd59cb8ad3808dae84ac642047d81f524e077a883c909",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42608,
+        "logicalBattleIdentitySha256": "dc955312186af02ff08430ed9133e4cc44aa03972ac2325f93320363e571b36c",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "668d64ed25fecca4f4b1a1aa55f2c1a60863bb01a89125fe3a12611f4aae9971"
+      },
+      {
+        "archiveByteSize": 1264284,
+        "archiveSha256": "3206aee968bdd01b3007b3a634f5688c834c17fe0f87e900ccdaf2d942b93c52",
+        "candidateArtifactSha256": "d0bb4f06e97cd093e201f40e0ddada1f5a3861cf98290a35191db70eac4981a3",
+        "candidateSemanticSha256": "3673e4d10d0e3bda9d2057938e798b4a4b4034fdc28521e30e4f5a4b13d40ac9",
+        "currentReplaySha256": "3206aee968bdd01b3007b3a634f5688c834c17fe0f87e900ccdaf2d942b93c52",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42609,
+        "logicalBattleIdentitySha256": "96df424542a61188194837b04443c288d3b1ba6728ed921f6f7fdb0fb2483b63",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "3673e4d10d0e3bda9d2057938e798b4a4b4034fdc28521e30e4f5a4b13d40ac9"
+      },
+      {
+        "archiveByteSize": 1297960,
+        "archiveSha256": "b5280e65c4d8a63c2ee0e50d903010c164d1e24373d27ecc3e48fe05dd7c08ee",
+        "candidateArtifactSha256": "e151f79c8558be3879119031ab1b74e15817705a766b56e843b17bbb3be6d1ec",
+        "candidateSemanticSha256": "cc9b4278bb9424315a7931338905b94472355cf7e49f35f88f95147341b59fd6",
+        "currentReplaySha256": "b5280e65c4d8a63c2ee0e50d903010c164d1e24373d27ecc3e48fe05dd7c08ee",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42610,
+        "logicalBattleIdentitySha256": "c3c0e4be6981e9f06357b20fe4716736fe7c3f2bc6a2c273e6a4c129e93e375f",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "cc9b4278bb9424315a7931338905b94472355cf7e49f35f88f95147341b59fd6"
+      },
+      {
+        "archiveByteSize": 1096640,
+        "archiveSha256": "c66a5b68b887c2f16b0b3a15b42e3c2d9b89f01169d286f83d60197d55cbb97e",
+        "candidateArtifactSha256": "3f4199067d1f159b51c945de533660e18c9f7d3cdae7662151f412c1a08fa5a4",
+        "candidateSemanticSha256": "bfd34e98c30cc30c0c089dd19642ca6049235a99026ce7c3928ad04cb011cb9e",
+        "currentReplaySha256": "c66a5b68b887c2f16b0b3a15b42e3c2d9b89f01169d286f83d60197d55cbb97e",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42613,
+        "logicalBattleIdentitySha256": "1992ee69a7a29e0b82881722cb407d42b94cea7dabb027242b0fc73f2dffa1d0",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "bfd34e98c30cc30c0c089dd19642ca6049235a99026ce7c3928ad04cb011cb9e"
+      },
+      {
+        "archiveByteSize": 1917906,
+        "archiveSha256": "4877a5e188989bbc219bdbcf5fa331d2d76abedf55730c5030bb0072f1ce2838",
+        "candidateArtifactSha256": "7a8fd18e4dab2477b2c0a6b4067b6c6f317169063780ae364cf98096b3194ad8",
+        "candidateSemanticSha256": "a6ff9eb1a46838336ab52ad614b7868ce2727c1b11a7a06e7534c5b8f01dec71",
+        "currentReplaySha256": "4877a5e188989bbc219bdbcf5fa331d2d76abedf55730c5030bb0072f1ce2838",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42615,
+        "logicalBattleIdentitySha256": "dc939b57aec89756ede6b8b053a02106961aa1e85c2a3c2597fb7589b12b0da3",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "a6ff9eb1a46838336ab52ad614b7868ce2727c1b11a7a06e7534c5b8f01dec71"
+      },
+      {
+        "archiveByteSize": 1153390,
+        "archiveSha256": "61dab249d803a507cfbe09511ed3ec09b79ffc0e2ba29235c0d5fbe251d75cc9",
+        "candidateArtifactSha256": "d540af3c5b0ba6ba733c09c8a6f5b0a4119e9ec6200740aad63e3495f2e20832",
+        "candidateSemanticSha256": "a75f1c6df52d3a3fd2de9c1d5745be7e2cf6e3b486eed3612ff4b9e61b930302",
+        "currentReplaySha256": "61dab249d803a507cfbe09511ed3ec09b79ffc0e2ba29235c0d5fbe251d75cc9",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42616,
+        "logicalBattleIdentitySha256": "aaee0c71e32a4fba5170815bdd42488a64cdd247bc34a4ddd89244b5866c81fd",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "a75f1c6df52d3a3fd2de9c1d5745be7e2cf6e3b486eed3612ff4b9e61b930302"
+      },
+      {
+        "archiveByteSize": 1240003,
+        "archiveSha256": "01aa88893662bbaba95cfa0c312c1998e18683dd5d7fd796f856ea1cadab02e9",
+        "candidateArtifactSha256": "7875852295666a09da8b0024f9f5661f9bd0fd4f2ce237f2f126d04b376876ee",
+        "candidateSemanticSha256": "29756aba82b5c8e9e6a7c96b9645a5b21fcad67f11fe1a57332760d861973907",
+        "currentReplaySha256": "01aa88893662bbaba95cfa0c312c1998e18683dd5d7fd796f856ea1cadab02e9",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42617,
+        "logicalBattleIdentitySha256": "979de85484854b67cd729b729e89cbf09f0f7d2d47ba0c23b74f843be1bd0405",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "29756aba82b5c8e9e6a7c96b9645a5b21fcad67f11fe1a57332760d861973907"
+      },
+      {
+        "archiveByteSize": 1495246,
+        "archiveSha256": "ccfc75e9015d3bae4ae74b600464e314d4c9bd8c7876cb8d68bdf5bdf8246da7",
+        "candidateArtifactSha256": "2a23481cef281365798fc182448a00442c608758a93c888251ee0b3156a6e412",
+        "candidateSemanticSha256": "2aa3dcf55597b2c701636f23de057136bb0d9732563bc68bfcfbc8ab2c53e17c",
+        "currentReplaySha256": "ccfc75e9015d3bae4ae74b600464e314d4c9bd8c7876cb8d68bdf5bdf8246da7",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42618,
+        "logicalBattleIdentitySha256": "cefd1e490cb452644dcc5b0379a9e28979462ec92c7066705182b3914c22c3e1",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "2aa3dcf55597b2c701636f23de057136bb0d9732563bc68bfcfbc8ab2c53e17c"
+      },
+      {
+        "archiveByteSize": 2003815,
+        "archiveSha256": "69df7b1d0cfaaccccef75e6cb1aa80ae0729d2ffaf1421b06d415d885c544c3f",
+        "candidateArtifactSha256": "90a9f1606d8f67e924eae331742a3a1deedb0ae5e8fb0ed1989ec6dc15d4ecb4",
+        "candidateSemanticSha256": "23f7a1d54989354aaa58d98458a1fcb5974dff5f0532729d2e92a9a3fc316857",
+        "currentReplaySha256": "69df7b1d0cfaaccccef75e6cb1aa80ae0729d2ffaf1421b06d415d885c544c3f",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42620,
+        "logicalBattleIdentitySha256": "d6c5e50f4ba7eb0608a86cf534a2c9e029620b5a2782132599dfb68b845438ee",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key",
+          "unsupported_format",
+          "unsupported_provenance"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "23f7a1d54989354aaa58d98458a1fcb5974dff5f0532729d2e92a9a3fc316857"
+      },
+      {
+        "archiveByteSize": 2032240,
+        "archiveSha256": "03b790954f09597e45f99d90e61d1a91b98483ba115d2e79f8fe05b8eddbb95e",
+        "candidateArtifactSha256": "823212af4992fb9d5f59e772aa12ea4a24306bc71eac92ef2823313957248664",
+        "candidateSemanticSha256": "ec61bd4b39371162b9b0a1f44d1017f7d50fe402722842677288b05f6346fa4b",
+        "currentReplaySha256": "03b790954f09597e45f99d90e61d1a91b98483ba115d2e79f8fe05b8eddbb95e",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42621,
+        "logicalBattleIdentitySha256": "c7c71a1c5b2f27d03ee099aa836208519429e2f7268f63c1a5138a7865287d9e",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "ec61bd4b39371162b9b0a1f44d1017f7d50fe402722842677288b05f6346fa4b"
+      },
+      {
+        "archiveByteSize": 1170824,
+        "archiveSha256": "56679afd89082ecd2b1332004e502a9000703ff7558d4c09528d12203d2b9607",
+        "candidateArtifactSha256": "6a9d3542d2cda040330fc0490e752fe3ff3fe9354a40317034fe77059fbde304",
+        "candidateSemanticSha256": "6cc36b41868be221ec82d2f0910690461af88b7e115b61e1e99a1dad2f0e7b32",
+        "currentReplaySha256": "56679afd89082ecd2b1332004e502a9000703ff7558d4c09528d12203d2b9607",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42623,
+        "logicalBattleIdentitySha256": "5fc7ba552ae07b5657811398ee7ba7cc2468ffad353e7f3f931a19fec678a03c",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "6cc36b41868be221ec82d2f0910690461af88b7e115b61e1e99a1dad2f0e7b32"
+      },
+      {
+        "archiveByteSize": 1629038,
+        "archiveSha256": "825efb8672c0f40bcd34c95562c64ee75870df510e9dff1cc6a3ee82883d1c61",
+        "candidateArtifactSha256": "ba353dc0e5dd4ee64023a76c1b4f1320c5a0e90e357fc1aa7afd609da23df5cc",
+        "candidateSemanticSha256": "7054a0418b03ca82cb6a7d28d6546bab1fbf4b64b22812f63b67701595faf398",
+        "currentReplaySha256": "825efb8672c0f40bcd34c95562c64ee75870df510e9dff1cc6a3ee82883d1c61",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42624,
+        "logicalBattleIdentitySha256": "186057b047e30bc2797326781d2c419ad5665d180cd9a4645f00f2dc676aa3df",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "7054a0418b03ca82cb6a7d28d6546bab1fbf4b64b22812f63b67701595faf398"
+      },
+      {
+        "archiveByteSize": 534390,
+        "archiveSha256": "2a9e366c1fdc36afc6616f939b40e53fd0fe4a0758acddec79a7ef3339093042",
+        "candidateArtifactSha256": "591398341c5798b9647adfd575a6ef63bcbf3a83b0f8d760b530e579fdd67a24",
+        "candidateSemanticSha256": "82a040f2f7b102973f39ca5e151933aa275585ecb749114cf819025584328595",
+        "currentReplaySha256": "2a9e366c1fdc36afc6616f939b40e53fd0fe4a0758acddec79a7ef3339093042",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42627,
+        "logicalBattleIdentitySha256": "34b6dd8dd8c0352730035fe1a9e35d1dd51264760b98e5117d30a22991faf34f",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "82a040f2f7b102973f39ca5e151933aa275585ecb749114cf819025584328595"
+      },
+      {
+        "archiveByteSize": 286526,
+        "archiveSha256": "6d96633acaf99f8785e11d1dd83c83a59d648014238c59431969972d5e45fc20",
+        "candidateArtifactSha256": "302a22624f9a9b02d5aed2afd7609e5cadde97a0f20e44d53c5272494d6fb583",
+        "candidateSemanticSha256": "032a0d5eed14836733a8125e3c947abca26731f2e41a801cc73750a7796363bb",
+        "currentReplaySha256": "6d96633acaf99f8785e11d1dd83c83a59d648014238c59431969972d5e45fc20",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42628,
+        "logicalBattleIdentitySha256": "c88622223da975a1acccfb5523d5ac28828bc3fec91b79327d38acee32899425",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "032a0d5eed14836733a8125e3c947abca26731f2e41a801cc73750a7796363bb"
+      },
+      {
+        "archiveByteSize": 809460,
+        "archiveSha256": "0c0f414b651bec6c5cb9066ce79665c7a31edf216cae2905eae6c756f8cbea88",
+        "candidateArtifactSha256": "b4ce089cdcd1d13e038510b40811b44f3a766a4d1faf53a98719fd87fddf9745",
+        "candidateSemanticSha256": "ba1ebf3d6b80f35614a5dbcbee5b01eaf06514db025b75600ac1436fb950ba82",
+        "currentReplaySha256": "0c0f414b651bec6c5cb9066ce79665c7a31edf216cae2905eae6c756f8cbea88",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42629,
+        "logicalBattleIdentitySha256": "86b11ec00640a4dca9c5acf8bb8e515273bb2ee0c57a7cf975cf57eb99816a12",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "ba1ebf3d6b80f35614a5dbcbee5b01eaf06514db025b75600ac1436fb950ba82"
+      },
+      {
+        "archiveByteSize": 1073702,
+        "archiveSha256": "0a1b62d555b8e88b5f3d663eefebaab506f23b2eeb22d41e88813301987b8dce",
+        "candidateArtifactSha256": "3b792d55cdf7519ad7bb2d2a2c6f7cd387398184fa6ff0239f3c27563dd2bfc5",
+        "candidateSemanticSha256": "6d69003950dd2ca863e455fac860eaf80283015812c98da24925e9183fece437",
+        "currentReplaySha256": "0a1b62d555b8e88b5f3d663eefebaab506f23b2eeb22d41e88813301987b8dce",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42633,
+        "logicalBattleIdentitySha256": "671fde2b6959a17a232ec8a109ad8e95623cea78980b6a8ee9ebfb04b81bc3b0",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "6d69003950dd2ca863e455fac860eaf80283015812c98da24925e9183fece437"
+      },
+      {
+        "archiveByteSize": 1303770,
+        "archiveSha256": "700ed1c5abf5bfa65ed62ad77086913dbbc30d997faa7d5484e0fc71123d476e",
+        "candidateArtifactSha256": "492328501c748861ac5064daec3b68c84816d8fe8f14146d4e776116ee1603c1",
+        "candidateSemanticSha256": "46306b0bbcb3b4e2a1dea42612d5a8f867b05fa5abd87dc24733b0cd5a541fe6",
+        "currentReplaySha256": "700ed1c5abf5bfa65ed62ad77086913dbbc30d997faa7d5484e0fc71123d476e",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42634,
+        "logicalBattleIdentitySha256": "4b710f6f56a90f16e9bb5fc069d52dff6571321ba6a399b38fc7441585e2a30a",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "46306b0bbcb3b4e2a1dea42612d5a8f867b05fa5abd87dc24733b0cd5a541fe6"
+      },
+      {
+        "archiveByteSize": 124015,
+        "archiveSha256": "889464f024204e915ced1c7cab4b3428f782a66ea0fa48f60e4723f52af44e73",
+        "candidateArtifactSha256": "99348fe23324b666b69e4be3a1fecb05e8df15758fea500fcf89538399fd6b31",
+        "candidateSemanticSha256": "7314012446abf0fe6b37b56a3f92bdc28614e77882f7ac63ca842fd441e24da3",
+        "currentReplaySha256": "889464f024204e915ced1c7cab4b3428f782a66ea0fa48f60e4723f52af44e73",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42636,
+        "logicalBattleIdentitySha256": "209abc5ef3524814e4369a824affcca22dc4ad16e105835726511401625bf996",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key",
+          "unsupported_format",
+          "unsupported_provenance"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "7314012446abf0fe6b37b56a3f92bdc28614e77882f7ac63ca842fd441e24da3"
+      },
+      {
+        "archiveByteSize": 123516,
+        "archiveSha256": "8159509a6cbea9d14ef3748a60ccabfa1ecb53f9e157ac00d39a771de6e9eca5",
+        "candidateArtifactSha256": "61c87eef0852733dd21fe23ca93ed957f634f9754c00c27dffc3e4f251a23d7e",
+        "candidateSemanticSha256": "dbcc4968f79e2dbfefc3040efd4ef6e047821af1cac6067972dadeb70d594131",
+        "currentReplaySha256": "8159509a6cbea9d14ef3748a60ccabfa1ecb53f9e157ac00d39a771de6e9eca5",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42637,
+        "logicalBattleIdentitySha256": "eb862be82b0ebbc61586e5ce35eb3c38db7c52dbe2e4e84ae5c066c5698dd2c4",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key",
+          "unsupported_format",
+          "unsupported_provenance"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "dbcc4968f79e2dbfefc3040efd4ef6e047821af1cac6067972dadeb70d594131"
+      },
+      {
+        "archiveByteSize": 765042,
+        "archiveSha256": "7e4fc9dddb1c2ed1a59ed057b6d4f47a103201bb103757b87d5c299a1aaa1ef7",
+        "candidateArtifactSha256": "c23a9b1b3ca6629bcf0d65ab17b55fef07a38ba1f245707a137349607b22eb51",
+        "candidateSemanticSha256": "c7b09a5767f14f49c738bbfed1fe0d638abdd122d7231e14f84a8688ce2d7030",
+        "currentReplaySha256": "7e4fc9dddb1c2ed1a59ed057b6d4f47a103201bb103757b87d5c299a1aaa1ef7",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42638,
+        "logicalBattleIdentitySha256": "a6996efa4e213d04d34d2945b2cc5eddde25426db1656e3cc51fc56eb20e3961",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "c7b09a5767f14f49c738bbfed1fe0d638abdd122d7231e14f84a8688ce2d7030"
+      },
+      {
+        "archiveByteSize": 473286,
+        "archiveSha256": "575b0c71fbd38506ef2c445ff05ade5f8196fa5a46401e2975af1f7edad54c3b",
+        "candidateArtifactSha256": "d19f6a429439ac413d65488d0015ee6f76f964c953153a65156ea7dac1668d0b",
+        "candidateSemanticSha256": "6672e8f86bb5c03358ac299686e64770bfd09804203fa44aeca8f987fd31f0b6",
+        "currentReplaySha256": "575b0c71fbd38506ef2c445ff05ade5f8196fa5a46401e2975af1f7edad54c3b",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42640,
+        "logicalBattleIdentitySha256": "cf7e49b592e058fd914fa6b6d514e63eedc1e09850fa43b930c0738576b144ab",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key",
+          "unsupported_format",
+          "unsupported_provenance"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "6672e8f86bb5c03358ac299686e64770bfd09804203fa44aeca8f987fd31f0b6"
+      },
+      {
+        "archiveByteSize": 1356114,
+        "archiveSha256": "ce29aa114892a62a74313a5468c2bf702e055dce4ce1749758dff22201e34e75",
+        "candidateArtifactSha256": "9525af3f98ba3a39aa2a6c4c90f82f19c0820f4b346bef7c239eb2903d3f5586",
+        "candidateSemanticSha256": "027ef88f5620cf02c7f47138db666f5ca23ee151b2a0694a8e7afc8749006af1",
+        "currentReplaySha256": "ce29aa114892a62a74313a5468c2bf702e055dce4ce1749758dff22201e34e75",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42642,
+        "logicalBattleIdentitySha256": "c0f4c3d1988e91c6c84d4ce5bdbade714bf38fe50451ba0839e855d5b97ac3fb",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "027ef88f5620cf02c7f47138db666f5ca23ee151b2a0694a8e7afc8749006af1"
+      },
+      {
+        "archiveByteSize": 1463931,
+        "archiveSha256": "e1c1caa0aa6669892c121439656212fd63905923fafb25eb082cfe4eb0252665",
+        "candidateArtifactSha256": "2bfb5bf5f12dd2cac1bd10391f8a37496f43d84e1a0340c0d167d8edf9d275a1",
+        "candidateSemanticSha256": "8d048ee26fc94353c201af2e4c536005164676ad02eeb81cbbf43809a3e09ae3",
+        "currentReplaySha256": "e1c1caa0aa6669892c121439656212fd63905923fafb25eb082cfe4eb0252665",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42643,
+        "logicalBattleIdentitySha256": "4840737e0a66a8aa1f92df769d6e4c6b5019bb753683a0c96cf58b602b2dc3f4",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "8d048ee26fc94353c201af2e4c536005164676ad02eeb81cbbf43809a3e09ae3"
+      },
+      {
+        "archiveByteSize": 388009,
+        "archiveSha256": "442e7c9b10b58d8560c83a174bb182cd33b7c21b4ed07a3bd3987c9f08fcd946",
+        "candidateArtifactSha256": "7adf5410ddd91cc1eeda531c2d6f5c3aeb7da356d3ebce6ae514b87eca15066c",
+        "candidateSemanticSha256": "e9c80ee5aae8ec3577fbad06a4f1bbd4335ce0bafc95eac15504ba61fc910506",
+        "currentReplaySha256": "442e7c9b10b58d8560c83a174bb182cd33b7c21b4ed07a3bd3987c9f08fcd946",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42648,
+        "logicalBattleIdentitySha256": "56ec226e556dcd59c621a4dfacc1f019c8b1613242f7b226457498f4f5afcb4b",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key",
+          "unsupported_format",
+          "unsupported_provenance"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "e9c80ee5aae8ec3577fbad06a4f1bbd4335ce0bafc95eac15504ba61fc910506"
+      },
+      {
+        "archiveByteSize": 699649,
+        "archiveSha256": "38cdcc4a1f1b6c72eec487e7af31a290424d2308d73495268329e694cdd891f2",
+        "candidateArtifactSha256": "2fbffc3318df57bc75c496de9276800f14c3a0066bb4f2fb5266becbc8772f0d",
+        "candidateSemanticSha256": "9dd77735bdb282e82828825a4e71277cddcdddb174a6bedd472018683313a534",
+        "currentReplaySha256": "38cdcc4a1f1b6c72eec487e7af31a290424d2308d73495268329e694cdd891f2",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42650,
+        "logicalBattleIdentitySha256": "26fc703cda6191e48376007ca68f1c570781b05e0df4433eaac91275434633bc",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "9dd77735bdb282e82828825a4e71277cddcdddb174a6bedd472018683313a534"
+      },
+      {
+        "archiveByteSize": 936863,
+        "archiveSha256": "e50702a6cb0bb3561aa574a6f66fd81ff96f7aa2cff62ed6fdfde0189215d8b4",
+        "candidateArtifactSha256": "f44a936476d7ae576aa7f4965db5aac3e57fba53891ed182809ede07d4a26531",
+        "candidateSemanticSha256": "e6a5ab033f31fcfcd0d3230ab0a2fa67b49e908f5eac5b2dc70d569c43529c66",
+        "currentReplaySha256": "e50702a6cb0bb3561aa574a6f66fd81ff96f7aa2cff62ed6fdfde0189215d8b4",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42651,
+        "logicalBattleIdentitySha256": "4ffaea4c0b1a2454eca7a1de6f50fddf266e9e6688dd576be0632db8bb4f90e5",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "e6a5ab033f31fcfcd0d3230ab0a2fa67b49e908f5eac5b2dc70d569c43529c66"
+      },
+      {
+        "archiveByteSize": 1158749,
+        "archiveSha256": "850a04fbbc99bff38eb32a4df85fa30d122f5493a2cd99bc5ea9cb6390487772",
+        "candidateArtifactSha256": "0bb6ee4238a7db2bb2f854e70f5f45046a1b21bba0be9424e119cac0302cb50b",
+        "candidateSemanticSha256": "d7cb3c90f0840e1261e1993566a1cff6faf19d9fb54ee5c4d4d5c4077140c98e",
+        "currentReplaySha256": "850a04fbbc99bff38eb32a4df85fa30d122f5493a2cd99bc5ea9cb6390487772",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42652,
+        "logicalBattleIdentitySha256": "48241a87e4ec760ea2ed5346714ddfc2f1017b45ea15b03bff2f25e0cc1db103",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "d7cb3c90f0840e1261e1993566a1cff6faf19d9fb54ee5c4d4d5c4077140c98e"
+      },
+      {
+        "archiveByteSize": 476647,
+        "archiveSha256": "93669aa2644caaed153696b0dc47d940a68f066007913a66b1c1bc75bd8a7b17",
+        "candidateArtifactSha256": "f827df12dcc6286481b5de67216dbea0b5b0f1580083eca63698a8525f5d5784",
+        "candidateSemanticSha256": "badfeb5fdbadd05f42017fba80b69f80a5f775d79d0682d655d96826e4c765b4",
+        "currentReplaySha256": "93669aa2644caaed153696b0dc47d940a68f066007913a66b1c1bc75bd8a7b17",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42655,
+        "logicalBattleIdentitySha256": "b511693c5c069cb36ea9a1a1cd3cf5e713c7fe830a2a3b4fb98f593080b69088",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key",
+          "unsupported_format",
+          "unsupported_provenance"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "badfeb5fdbadd05f42017fba80b69f80a5f775d79d0682d655d96826e4c765b4"
+      },
+      {
+        "archiveByteSize": 475622,
+        "archiveSha256": "215e19751a3f761dd8a48908ec41d057c922a4c9ed5ed265e85f739d702648d1",
+        "candidateArtifactSha256": "b8074918a0f20b047e1e23307000fbe8eff6b9aeba92ba4e058dca323d9ab040",
+        "candidateSemanticSha256": "da0794a866494cbc0aacb5436b7ef92a0c02a518fe5e6c834a59b989ff8347bd",
+        "currentReplaySha256": "215e19751a3f761dd8a48908ec41d057c922a4c9ed5ed265e85f739d702648d1",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42656,
+        "logicalBattleIdentitySha256": "1fedf81a07dd50f4634eaf222462630d7fc46988371637a3847f09cddfd2693d",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key",
+          "unsupported_format",
+          "unsupported_provenance"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "da0794a866494cbc0aacb5436b7ef92a0c02a518fe5e6c834a59b989ff8347bd"
+      },
+      {
+        "archiveByteSize": 455497,
+        "archiveSha256": "97ec33fbe12ffdafe5817bd633cb945acdcb8a01908bdf7f1807ca31a1d3fdb5",
+        "candidateArtifactSha256": "3cbd9bec7deb0bc2b2c7a425fa9d6b1b7f6d25244622d2e87243c6a86ad932d4",
+        "candidateSemanticSha256": "b81f94d8e96f84c5ca5da6e283d3cee85688d502ca21fdaf919d60ec3ebfcb2a",
+        "currentReplaySha256": "97ec33fbe12ffdafe5817bd633cb945acdcb8a01908bdf7f1807ca31a1d3fdb5",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42657,
+        "logicalBattleIdentitySha256": "e194f6c160de3fd903f9b2ed8fc882ec2c848a4553b66a3bf8aec82e461767af",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key",
+          "unsupported_format",
+          "unsupported_provenance"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "b81f94d8e96f84c5ca5da6e283d3cee85688d502ca21fdaf919d60ec3ebfcb2a"
+      },
+      {
+        "archiveByteSize": 475718,
+        "archiveSha256": "6faf83eb423055af359107915bd126bbeef6306cbdd204549adef960879eac5e",
+        "candidateArtifactSha256": "cd81986056680c14dee302cc105997ab9f92beacf7c563b21431c19404b6e5fc",
+        "candidateSemanticSha256": "8d72a16674b446bdec7c8e7c7435a82d42a127da1f902b4068351c356db3e68d",
+        "currentReplaySha256": "6faf83eb423055af359107915bd126bbeef6306cbdd204549adef960879eac5e",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42658,
+        "logicalBattleIdentitySha256": "9d0ad1ee911ad00b7a58faaf29521643495277ff56290b370510447fcb487740",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key",
+          "unsupported_format",
+          "unsupported_provenance"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "8d72a16674b446bdec7c8e7c7435a82d42a127da1f902b4068351c356db3e68d"
+      },
+      {
+        "archiveByteSize": 706408,
+        "archiveSha256": "ffada29f647096f46c824aacfd7560a10b7b8f8ab756b3e5191bf8da4176cb61",
+        "candidateArtifactSha256": "4a7c30a21eed03dfc51e5b1d6bc89819e8830c4b1e7ea439e5fe73593a66f4f5",
+        "candidateSemanticSha256": "efc3f61e29e8fba472d14b963c35d345ea136b01168c811f4c3600320e1867c6",
+        "currentReplaySha256": "ffada29f647096f46c824aacfd7560a10b7b8f8ab756b3e5191bf8da4176cb61",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42660,
+        "logicalBattleIdentitySha256": "b658717b7107fb06e95df2ce7f4743f256fb8bbae2abdf6a3ccc9e07b32d296e",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key",
+          "unsupported_format",
+          "unsupported_provenance"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "efc3f61e29e8fba472d14b963c35d345ea136b01168c811f4c3600320e1867c6"
+      },
+      {
+        "archiveByteSize": 1569175,
+        "archiveSha256": "c3150a5e8db889dbb3a84fcf0dfb27407e02880607b224453593cb6b84654b3f",
+        "candidateArtifactSha256": "5f700b236f562f3565be83103a3f9e7292b5a35bd07986cd84b880a108ded52e",
+        "candidateSemanticSha256": "83bcd371f349ac29e195bbe9ecc51e52603999ea5cd73159d53de7181c9f5c01",
+        "currentReplaySha256": "c3150a5e8db889dbb3a84fcf0dfb27407e02880607b224453593cb6b84654b3f",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42662,
+        "logicalBattleIdentitySha256": "fb20aae2bdcab0befd30a51589174cc4b96abb47f37f32d51b6910732d3b42ca",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "83bcd371f349ac29e195bbe9ecc51e52603999ea5cd73159d53de7181c9f5c01"
+      },
+      {
+        "archiveByteSize": 693644,
+        "archiveSha256": "80b071e071c9dbab245fbcc3262d6beef9ef06f1d7a78c3da2ad907af8479301",
+        "candidateArtifactSha256": "65e777d03b8be2016bb0a9e5e7c49b7639ad9e9091b1d715dbfc0dfbf4c5b612",
+        "candidateSemanticSha256": "ce43a5698c5818be9fe5c5ba944ab7d8bca1f622430abaf56bf03fe0c92132ba",
+        "currentReplaySha256": "80b071e071c9dbab245fbcc3262d6beef9ef06f1d7a78c3da2ad907af8479301",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42663,
+        "logicalBattleIdentitySha256": "61fea4b0e17f7311e866a0b84ade9ffc0f854466b5a5caaefac5fd10455871ed",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "ce43a5698c5818be9fe5c5ba944ab7d8bca1f622430abaf56bf03fe0c92132ba"
+      },
+      {
+        "archiveByteSize": 936571,
+        "archiveSha256": "5507ee29b5b8e8fdfdb1793ede52baa9ed96112f7bb859da590004350e3f6373",
+        "candidateArtifactSha256": "1a23fb0b28617e1fbbb1f087b1fb4377da722df8d15c288d3447a492d6df1158",
+        "candidateSemanticSha256": "6ab68f4c2dbb2670ba07213a0f36b0c6a2edfcd40a2554d27ef9f88de946c951",
+        "currentReplaySha256": "5507ee29b5b8e8fdfdb1793ede52baa9ed96112f7bb859da590004350e3f6373",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42664,
+        "logicalBattleIdentitySha256": "c61571fcbce2df65825460f4c3c97feac7d972048a1236d7050ceae6a75d4f07",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "6ab68f4c2dbb2670ba07213a0f36b0c6a2edfcd40a2554d27ef9f88de946c951"
+      },
+      {
+        "archiveByteSize": 1574261,
+        "archiveSha256": "8904a34ea531afd8663918300abb3ab0ce485bbaeb38cb97cfdd52c069fa9639",
+        "candidateArtifactSha256": "d77b8f2940991ad2444f665d438fd6bc2faa9018f38ebaa4ad2db1a720cafe2d",
+        "candidateSemanticSha256": "c77d297b8c7c62ea1fc5d03c40eb7b5f6999346b88e8272162ce1c15a8dac5d8",
+        "currentReplaySha256": "8904a34ea531afd8663918300abb3ab0ce485bbaeb38cb97cfdd52c069fa9639",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42665,
+        "logicalBattleIdentitySha256": "175c1f717f541d6a4009368226f601d002d24db64263700e4d45e1739fddbbb4",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "c77d297b8c7c62ea1fc5d03c40eb7b5f6999346b88e8272162ce1c15a8dac5d8"
+      },
+      {
+        "archiveByteSize": 697478,
+        "archiveSha256": "1a0ca7f0e7286d9bf2c44a67e7d282cb4f0b742ce5cadf71af946c531b647961",
+        "candidateArtifactSha256": "2e32c3b946eec60a33bdacd59945f6a2eabe016d65fb736ab748a835e1a8eb18",
+        "candidateSemanticSha256": "e13116aa5bebe2a67978ed4f3a28360ae269f757f980332e2939fa1679a81172",
+        "currentReplaySha256": "1a0ca7f0e7286d9bf2c44a67e7d282cb4f0b742ce5cadf71af946c531b647961",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42666,
+        "logicalBattleIdentitySha256": "f4d3c5f27e73f3e0ff942b67d3b42f0705507bcd40d885faec1eaec7a9012ee6",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key",
+          "unsupported_format",
+          "unsupported_provenance"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "e13116aa5bebe2a67978ed4f3a28360ae269f757f980332e2939fa1679a81172"
+      },
+      {
+        "archiveByteSize": 1337861,
+        "archiveSha256": "40923d5bc772d5baa5b197f858a989b4bb8cec6744766f5ca617e4d8fed993be",
+        "candidateArtifactSha256": "8e6419e6af99216828f31ace7ee27d3d17aaae4034c5c50f683304100222425f",
+        "candidateSemanticSha256": "aeaeee82e04e18e601d403a0e1421940f6c7baa7c9519e9ac2c5d02495cbb94e",
+        "currentReplaySha256": "40923d5bc772d5baa5b197f858a989b4bb8cec6744766f5ca617e4d8fed993be",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42668,
+        "logicalBattleIdentitySha256": "b626f7adef1fd5157b7461e0dfde9f034310a8e5330f89583c58d66398b6c0ff",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "aeaeee82e04e18e601d403a0e1421940f6c7baa7c9519e9ac2c5d02495cbb94e"
+      },
+      {
+        "archiveByteSize": 295350,
+        "archiveSha256": "d74ccc6be9b684b6bd6097bd5c1a8d0c99ebc60e0cc75a3ed68f3bc0fe426dfc",
+        "candidateArtifactSha256": "2daafd700d835639220393cfd49018cd76c32a0cf9291ff39f5b93ff55d50340",
+        "candidateSemanticSha256": "d985cc2cf04660e31a877681a6b851c4699de828c10deabb0f195738352f14fb",
+        "currentReplaySha256": "d74ccc6be9b684b6bd6097bd5c1a8d0c99ebc60e0cc75a3ed68f3bc0fe426dfc",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42673,
+        "logicalBattleIdentitySha256": "b949552effb8f3f8da2f4b2284c293e5534a19c5537fb34896b406922a911b2f",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "d985cc2cf04660e31a877681a6b851c4699de828c10deabb0f195738352f14fb"
+      },
+      {
+        "archiveByteSize": 276418,
+        "archiveSha256": "bbb81592660bb34f5be0d6c81dc2769fc99eeae2107490651e1ada19e3414ad1",
+        "candidateArtifactSha256": "47d75b45b19b56904207fe46738733518de550adf748333dd8aed1d37e514db7",
+        "candidateSemanticSha256": "cae04322fa375fdc86309c4bfd8637ced00aee489b9f96532152fdfc62985a39",
+        "currentReplaySha256": "bbb81592660bb34f5be0d6c81dc2769fc99eeae2107490651e1ada19e3414ad1",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42674,
+        "logicalBattleIdentitySha256": "89192fce07d5a4cb7e403ea0e67776b21c48d579d687f8de98ab2f2ef3e33f68",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "cae04322fa375fdc86309c4bfd8637ced00aee489b9f96532152fdfc62985a39"
+      },
+      {
+        "archiveByteSize": 687138,
+        "archiveSha256": "f2d94e57324d583969f83082719906217324bf9d0f170d0cc997f602ee60a556",
+        "candidateArtifactSha256": "31942e9b4da75ee74ed34167c2dc6983781b8f22ae7a1d0177596408db487e25",
+        "candidateSemanticSha256": "a66ea305391d75bc02debc25275118c359553f49ddbc6c1368f6a29ad6ad622f",
+        "currentReplaySha256": "f2d94e57324d583969f83082719906217324bf9d0f170d0cc997f602ee60a556",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42675,
+        "logicalBattleIdentitySha256": "296e596c20e083efedcfa57b623c8f567257a5f568563826566c392df1f789aa",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "a66ea305391d75bc02debc25275118c359553f49ddbc6c1368f6a29ad6ad622f"
+      },
+      {
+        "archiveByteSize": 1327755,
+        "archiveSha256": "6fa5aa65aab53e24ff20c440bab305a33732272e9a94b2bf556041744ccf6ddb",
+        "candidateArtifactSha256": "2adc36eb35f2bb7050512b71661eb1cf616972eacfa1eee476c5dad0b1011746",
+        "candidateSemanticSha256": "6acc303c17ca67706308eb7f805829380104eedca1f633c1e111434ca348ccc7",
+        "currentReplaySha256": "6fa5aa65aab53e24ff20c440bab305a33732272e9a94b2bf556041744ccf6ddb",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42676,
+        "logicalBattleIdentitySha256": "dafcb7ab66e1a5b5c6073c981e1d4030698a34406ee2391a66d4bc0c5cb44ba4",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "6acc303c17ca67706308eb7f805829380104eedca1f633c1e111434ca348ccc7"
+      },
+      {
+        "archiveByteSize": 1681502,
+        "archiveSha256": "75b339b0107b470f9d1be2cd42a5bcfba219230e950e375b521aa9e9da2944f8",
+        "candidateArtifactSha256": "9110533997b0cc399aef6f3895b08c69776acc6e765122641e135ceb60a618d1",
+        "candidateSemanticSha256": "769caa049e1bd98e9e3effedf0e33559d2386dfad0369cbc7a6b9b269ead2599",
+        "currentReplaySha256": "75b339b0107b470f9d1be2cd42a5bcfba219230e950e375b521aa9e9da2944f8",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42677,
+        "logicalBattleIdentitySha256": "3b5705c1ad824987ee3c6bcf38f6ebf30f4c8605c98fcb02ad9957adc14a3fe4",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "769caa049e1bd98e9e3effedf0e33559d2386dfad0369cbc7a6b9b269ead2599"
+      },
+      {
+        "archiveByteSize": 1419414,
+        "archiveSha256": "cfd2315ec81e053852313dfc6e6fe2124f95eff6920ac54aee4b803eeb3ce4fe",
+        "candidateArtifactSha256": "ebbe7a1bbe14e3d46eea52d6c930a9a72f80189b957c1c591f32f8887bd407a2",
+        "candidateSemanticSha256": "95e9729c0347115d9b967b24724e6847fb6e7eaa2e86a4ff1e8ae39e4d4a4a99",
+        "currentReplaySha256": "cfd2315ec81e053852313dfc6e6fe2124f95eff6920ac54aee4b803eeb3ce4fe",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42678,
+        "logicalBattleIdentitySha256": "8be18168f7313e319906da7e7fd201509e1d4cc2ff12e21b2f7b7c169f2ec990",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "95e9729c0347115d9b967b24724e6847fb6e7eaa2e86a4ff1e8ae39e4d4a4a99"
+      },
+      {
+        "archiveByteSize": 678543,
+        "archiveSha256": "f8401f88b4da75f8ebeb53836c53f7c95b6154c2ff528634b9b5fcf1d0f5cc7e",
+        "candidateArtifactSha256": "0f5d9b63c6f044b5f57f638964450f628f20850ec1f54a094fbf39cd6d1b6e24",
+        "candidateSemanticSha256": "9d02826931b371fd4d616e7f4096c84bced6f0e42ab4b4f04d02397f281ff667",
+        "currentReplaySha256": "f8401f88b4da75f8ebeb53836c53f7c95b6154c2ff528634b9b5fcf1d0f5cc7e",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42679,
+        "logicalBattleIdentitySha256": "a5c8073411ea36317a957cb2812780b1c3369a893761fcbbc72a7c90e581bd43",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "9d02826931b371fd4d616e7f4096c84bced6f0e42ab4b4f04d02397f281ff667"
+      },
+      {
+        "archiveByteSize": 751560,
+        "archiveSha256": "ea26ae717917f14b7477b44004fc13895e888dbf03352ee8bd2fdf043b324a72",
+        "candidateArtifactSha256": "c81fdf45fa7de8e73a4713f6b878a531e716044256a8a21f8f6163b1f41a8da2",
+        "candidateSemanticSha256": "c59267d20039161de35fb163fdd5fa09499513c68b7be1a7a87e8d358d18fe60",
+        "currentReplaySha256": "ea26ae717917f14b7477b44004fc13895e888dbf03352ee8bd2fdf043b324a72",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42680,
+        "logicalBattleIdentitySha256": "5d867958028675f80512b9749d0e0b512584fc01df6709318f58678b55ba369d",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "c59267d20039161de35fb163fdd5fa09499513c68b7be1a7a87e8d358d18fe60"
+      },
+      {
+        "archiveByteSize": 1030042,
+        "archiveSha256": "2aa82de07f1b3d81115886a04f1c47007b3a740ed06c0a10b318f5cfc1d39f93",
+        "candidateArtifactSha256": "6231b413097e7ea2282851ff37a52c45bcec357b18eebad975b9e9aa8253b330",
+        "candidateSemanticSha256": "7e20622332e8dc19883f83b5c8fb42638084d57e6a01e61933cb08b6d52f70b1",
+        "currentReplaySha256": "2aa82de07f1b3d81115886a04f1c47007b3a740ed06c0a10b318f5cfc1d39f93",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42682,
+        "logicalBattleIdentitySha256": "2d7cff16ab6d5ad45eac0bba53a977568059e7313fba2be8c0784003595ce0c9",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "7e20622332e8dc19883f83b5c8fb42638084d57e6a01e61933cb08b6d52f70b1"
+      },
+      {
+        "archiveByteSize": 1760695,
+        "archiveSha256": "3ed6b6e9c28abd297c6c795f4ae3e5bfe701ac96d1a793372cf9a2d1940c8d43",
+        "candidateArtifactSha256": "5002f86be5ad127ec661cd8dfde52049de644d56a2e004cc9390e134f0190602",
+        "candidateSemanticSha256": "1701e64cabc2f2cb2a23313a57035cf6742880bbea85ec5421ebe7a68df55bb5",
+        "currentReplaySha256": "3ed6b6e9c28abd297c6c795f4ae3e5bfe701ac96d1a793372cf9a2d1940c8d43",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42686,
+        "logicalBattleIdentitySha256": "71d505b3470a9701a8f61ff95cd730c3fb2e6d6b0213ab5098c76d9b978c05fd",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "1701e64cabc2f2cb2a23313a57035cf6742880bbea85ec5421ebe7a68df55bb5"
+      },
+      {
+        "archiveByteSize": 686468,
+        "archiveSha256": "e881f50a760bfcff1fdb51ffc1bb34fd8a1fd79634c9aa590a13b6c1766bca00",
+        "candidateArtifactSha256": "a08b5b7b13b6807a66425dba941a458cb95eaa67ff3ecbdd8a292e623a14139e",
+        "candidateSemanticSha256": "0f11d05e1523d25c6281ceeddba678430ffb7f23bb74a2391b0703f56d831cb7",
+        "currentReplaySha256": "e881f50a760bfcff1fdb51ffc1bb34fd8a1fd79634c9aa590a13b6c1766bca00",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42689,
+        "logicalBattleIdentitySha256": "ddc9879142bfd870b0421b02d9a699b460d8cf6e01c1470832d3e1d0b6b7c88c",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "0f11d05e1523d25c6281ceeddba678430ffb7f23bb74a2391b0703f56d831cb7"
+      },
+      {
+        "archiveByteSize": 913472,
+        "archiveSha256": "d105baf55de8cf6b18307ca9dad8ea712b3b6235b1219546f13edcddb049338d",
+        "candidateArtifactSha256": "bd81268fe6263230b436a1ea20f47c9a6b714f801c7274539d3f85d37a175316",
+        "candidateSemanticSha256": "6bb4b79bece8ec20277779a59799561c4c9793a8b3c1a0a039ec0321088568d1",
+        "currentReplaySha256": "d105baf55de8cf6b18307ca9dad8ea712b3b6235b1219546f13edcddb049338d",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42690,
+        "logicalBattleIdentitySha256": "e24b8a7ce03e8399e0573fcaa361080439119a0792b6879786910e979342765b",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "6bb4b79bece8ec20277779a59799561c4c9793a8b3c1a0a039ec0321088568d1"
+      },
+      {
+        "archiveByteSize": 2460014,
+        "archiveSha256": "53e7bc78a3ab557fd323be39b9c39b0bcb24bc2c9b589353ed6b7a0d352a5bdc",
+        "candidateArtifactSha256": "eaf425fdb2d11a90ad0ac1af740e333cc92861835787501cad0a71cb05f035b5",
+        "candidateSemanticSha256": "eefe2a1c8490fb272c6445505ae7122d58fd9a30203477f6e5f3f0bde788f729",
+        "currentReplaySha256": "53e7bc78a3ab557fd323be39b9c39b0bcb24bc2c9b589353ed6b7a0d352a5bdc",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42691,
+        "logicalBattleIdentitySha256": "038ea5ea7aa7f3c06dd328d13dfdd08fa362bc7d9a782c5300b4fc5e932a8b85",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "eefe2a1c8490fb272c6445505ae7122d58fd9a30203477f6e5f3f0bde788f729"
+      },
+      {
+        "archiveByteSize": 1148131,
+        "archiveSha256": "de67475e8a0605014284d4ea4b34764d939f5ec20e8141d655321dbe0c1d36f0",
+        "candidateArtifactSha256": "d8260c513bf3f6dc7bc7fe6d46e9ffe5ccf44383ce3b5e4915f78f25eec21098",
+        "candidateSemanticSha256": "00ab960fe1cfb15c0e8aeee3962b615f72163126e495acd7f359dac6a221ccb4",
+        "currentReplaySha256": "de67475e8a0605014284d4ea4b34764d939f5ec20e8141d655321dbe0c1d36f0",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42692,
+        "logicalBattleIdentitySha256": "2113774a204fd6f1d943b78bc6c025b71d3efd43075198890681cdc6dc2036b2",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "00ab960fe1cfb15c0e8aeee3962b615f72163126e495acd7f359dac6a221ccb4"
+      },
+      {
+        "archiveByteSize": 1189246,
+        "archiveSha256": "f46213d1f4c75e968e96fd9de63fa7036448441254a217fbaa4b8a5e8164f653",
+        "candidateArtifactSha256": "95bc52c5e6423b2a6c5cc0dd78e66da193bcd89200794d0f415c27d9b580ccdf",
+        "candidateSemanticSha256": "c62b6ad68c35f62a135083b7680614224d26b6a1acc2d1404c65d8223ccf4315",
+        "currentReplaySha256": "f46213d1f4c75e968e96fd9de63fa7036448441254a217fbaa4b8a5e8164f653",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42694,
+        "logicalBattleIdentitySha256": "ada5cbc8b8af09b42acd904ef46099a1fb1d0f27502e81f672ac68bee9f54826",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "c62b6ad68c35f62a135083b7680614224d26b6a1acc2d1404c65d8223ccf4315"
+      },
+      {
+        "archiveByteSize": 1188333,
+        "archiveSha256": "d5a2abfb23f17b3521cb62ffb1362242a68bcef07467807c2029f24baf194b5c",
+        "candidateArtifactSha256": "7276654811552d8a2e3160851940f93fbf333367dc8f281f185322df960da60b",
+        "candidateSemanticSha256": "ab1e2782e7082ff122c4edb9a9501e265f92b199760a7d8201d40eeb5e36f93f",
+        "currentReplaySha256": "d5a2abfb23f17b3521cb62ffb1362242a68bcef07467807c2029f24baf194b5c",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42696,
+        "logicalBattleIdentitySha256": "befd0e3a42f884fa82c8070ca27181247ec1bc2ee0e457cfabe3e818e954188a",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "ab1e2782e7082ff122c4edb9a9501e265f92b199760a7d8201d40eeb5e36f93f"
+      },
+      {
+        "archiveByteSize": 1061526,
+        "archiveSha256": "cd5d679fe1fed0eacf0a3a82f950241ea18abfe25b763bce14104adce94a266a",
+        "candidateArtifactSha256": "aed56fdbe3c9d5cbb7f88d221612d3598f98ae846f6f098879ad8cacb466147a",
+        "candidateSemanticSha256": "5a0c2b2f2fb16e6cda7187fff7d8cc667259b765b1a4fe6b276b7b1ef7c6531c",
+        "currentReplaySha256": "cd5d679fe1fed0eacf0a3a82f950241ea18abfe25b763bce14104adce94a266a",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42698,
+        "logicalBattleIdentitySha256": "cf8fbf26c06cfcef3f0b3bc6c4564704ed3e576639d069bcb812f94aaf7b22c1",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "5a0c2b2f2fb16e6cda7187fff7d8cc667259b765b1a4fe6b276b7b1ef7c6531c"
+      },
+      {
+        "archiveByteSize": 1232677,
+        "archiveSha256": "b2ebbad3e5d115e7fd7e9dd8becb674028deaa9ce152c43d4347c34810da3c75",
+        "candidateArtifactSha256": "dce19b15f1f282c5712d966aa30428c20e95103cc8f641d06f23c01db386ef10",
+        "candidateSemanticSha256": "93e64a2248772c50a3001bebf2017780d1111b6b02dbcf9c4ad5a585b5cd600d",
+        "currentReplaySha256": "b2ebbad3e5d115e7fd7e9dd8becb674028deaa9ce152c43d4347c34810da3c75",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42699,
+        "logicalBattleIdentitySha256": "3c9f83987f99ee2de576399b20ad78aea8fcb9ae628f5b154574755484be4b13",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "93e64a2248772c50a3001bebf2017780d1111b6b02dbcf9c4ad5a585b5cd600d"
+      },
+      {
+        "archiveByteSize": 651342,
+        "archiveSha256": "3f0ff1a65167164717ddb297a39f626b933a0f32f6782a16ec31d2c8d825164c",
+        "candidateArtifactSha256": "2c83f064a40a6d49831f0180e79e5eecf53d1edfbaa84fc5e503e7f3911a675f",
+        "candidateSemanticSha256": "a5de33bb64209e7d7efdd690590e2fc860188e4d7239e28248cdc5028653fb28",
+        "currentReplaySha256": "3f0ff1a65167164717ddb297a39f626b933a0f32f6782a16ec31d2c8d825164c",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42700,
+        "logicalBattleIdentitySha256": "78b9493fd5e3c764b3eae6fc5135e6d41debc15a43fa9c805bdf33ebb057af26",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key",
+          "unsupported_format",
+          "unsupported_provenance"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "a5de33bb64209e7d7efdd690590e2fc860188e4d7239e28248cdc5028653fb28"
+      },
+      {
+        "archiveByteSize": 975676,
+        "archiveSha256": "377389208d07e6db54ad3432cd0d2243be9e18f70ae94bc54df461befeb58552",
+        "candidateArtifactSha256": "2a3783c0197d3797cfdd828cef87e632a7f1fa1616d0bed0abb0bd5d3d1ed640",
+        "candidateSemanticSha256": "a7216eb376e3d5152355c213497916e0e55a5cc6fdc2ee9217a0cc955a8bc7e3",
+        "currentReplaySha256": "377389208d07e6db54ad3432cd0d2243be9e18f70ae94bc54df461befeb58552",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42709,
+        "logicalBattleIdentitySha256": "b59c068e7439181f5fc5c9009d24f6bbef36fd96d6df180b0331626ed9d7c295",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "a7216eb376e3d5152355c213497916e0e55a5cc6fdc2ee9217a0cc955a8bc7e3"
+      },
+      {
+        "archiveByteSize": 1562459,
+        "archiveSha256": "2b7ed7c193e49f12d17508e3504cd2da1021e818e019824acbae8dc0b8977630",
+        "candidateArtifactSha256": "a3003e8d620205ab9c9c3e4483e0a40f24a7aaeab4a3defcd5dee0bfa33aaaa7",
+        "candidateSemanticSha256": "4cb0db74f2ac2fdaac042de694f11cb5277bcf933200cd7b458f7431ee9cea15",
+        "currentReplaySha256": "2b7ed7c193e49f12d17508e3504cd2da1021e818e019824acbae8dc0b8977630",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42710,
+        "logicalBattleIdentitySha256": "a0d5f99cf97587e744d94e2252eced9ae959592670ecbce5bb324e43a1512680",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "4cb0db74f2ac2fdaac042de694f11cb5277bcf933200cd7b458f7431ee9cea15"
+      },
+      {
+        "archiveByteSize": 365810,
+        "archiveSha256": "bc50e97aa81661560ff2b1d2310c828aa45ad3d586e1ae394176371502cd9a04",
+        "candidateArtifactSha256": "81d0ad58b2a89d839366b3e3c90f073f928b5356023731cd1bf268ed543ddd26",
+        "candidateSemanticSha256": "02a34cb12f0e644e9241fff66101b52245d408d81e94b40edaddb619e58a5c46",
+        "currentReplaySha256": "bc50e97aa81661560ff2b1d2310c828aa45ad3d586e1ae394176371502cd9a04",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42711,
+        "logicalBattleIdentitySha256": "76668c6c5c1dc57d2eb682eba815a07fc2a9fa957828afd2f6bd2eeda1c4a31d",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "02a34cb12f0e644e9241fff66101b52245d408d81e94b40edaddb619e58a5c46"
+      },
+      {
+        "archiveByteSize": 822393,
+        "archiveSha256": "32774aff5f1eae0366060e7fe91bbe0e5ba3832c7269018aa834a3806a8848a6",
+        "candidateArtifactSha256": "ca85dd2e5296e1a62cb523d861ed783ee6d90dc62216402b5950229f3ab5cf44",
+        "candidateSemanticSha256": "05ab06471a114850bdece51f3cd80ec8f64d65e65d2920af5dead1a16520b7d1",
+        "currentReplaySha256": "32774aff5f1eae0366060e7fe91bbe0e5ba3832c7269018aa834a3806a8848a6",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42713,
+        "logicalBattleIdentitySha256": "27d775bd09a2abf8213ccdfc1f6092dfd7a7baac190438e1e4e91918fe98d31b",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "05ab06471a114850bdece51f3cd80ec8f64d65e65d2920af5dead1a16520b7d1"
+      },
+      {
+        "archiveByteSize": 1039031,
+        "archiveSha256": "8a68a94c6b9102ff884c93dd9d54a333d7d826d700661d1187f8a2009e9ae023",
+        "candidateArtifactSha256": "da699f5f2e936e2625bd7f423243a0b652a78148b4a9afcfffd864752b9d5600",
+        "candidateSemanticSha256": "21b91c95107392712f4450ec4f0200c5e1986d97a06f2a164324d49bf0d4140a",
+        "currentReplaySha256": "8a68a94c6b9102ff884c93dd9d54a333d7d826d700661d1187f8a2009e9ae023",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42714,
+        "logicalBattleIdentitySha256": "8705ced58f1a8eec2090d2b8604bf5893b2b6b42fa4f159e5ea0e39ef9134095",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "21b91c95107392712f4450ec4f0200c5e1986d97a06f2a164324d49bf0d4140a"
+      },
+      {
+        "archiveByteSize": 1645672,
+        "archiveSha256": "65f54b2fd297ca7c103df7226a1991d6346c34912d9fad85fe1b18ad76d86ec8",
+        "candidateArtifactSha256": "0169c2ef8b622dcec3d475cd44f60b136b09f201811c0bef5f6f7f852780b76c",
+        "candidateSemanticSha256": "c2e96814c919519b28049432001b946ce1b1db3291aea322ec4426421548a0c8",
+        "currentReplaySha256": "65f54b2fd297ca7c103df7226a1991d6346c34912d9fad85fe1b18ad76d86ec8",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42715,
+        "logicalBattleIdentitySha256": "cc42d1ec0acf261cd1421f7fb110d11f30a1d7a911836dfcf414a5cf920eb439",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "c2e96814c919519b28049432001b946ce1b1db3291aea322ec4426421548a0c8"
+      },
+      {
+        "archiveByteSize": 1161413,
+        "archiveSha256": "f56396a1f2d211e403486cb1834dbe80e940a63892560af8d776f6f2961b1d4d",
+        "candidateArtifactSha256": "f165dd3d9be3efc15d422271f611a816bf1cd51e3e32798d5b127bc8d9d2cffb",
+        "candidateSemanticSha256": "1d2552746885001425539bb22ddf69c537a1152a627fcfdee36653ffd901c2ae",
+        "currentReplaySha256": "f56396a1f2d211e403486cb1834dbe80e940a63892560af8d776f6f2961b1d4d",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42717,
+        "logicalBattleIdentitySha256": "850d16d3a995af16026677e0cb2e954d27dfae4f71c9ede1ae67f0188bfd0a30",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "1d2552746885001425539bb22ddf69c537a1152a627fcfdee36653ffd901c2ae"
+      },
+      {
+        "archiveByteSize": 869585,
+        "archiveSha256": "e40a1cb81db253e9e6784424c76a151a0bc8bdf5f4f3058475530e346948f82b",
+        "candidateArtifactSha256": "d54f34afe0f2438e42f6d7b5178f728a5262e2624208cf9f40225858b36bbb76",
+        "candidateSemanticSha256": "9ce15893e9f5a13877a480d212cb212ae9eddc68d59a67c3106f16bea67b8e1f",
+        "currentReplaySha256": "e40a1cb81db253e9e6784424c76a151a0bc8bdf5f4f3058475530e346948f82b",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42718,
+        "logicalBattleIdentitySha256": "244cfa9ea5e2eea3776359a9b08f14fdda568efe2540038b2ba85908c658e55f",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "9ce15893e9f5a13877a480d212cb212ae9eddc68d59a67c3106f16bea67b8e1f"
+      },
+      {
+        "archiveByteSize": 1542047,
+        "archiveSha256": "59509025271cee6d60e3aa876e2408c371c4092e0789c6b47884818afbd9b096",
+        "candidateArtifactSha256": "8f476c377d5a762b0ce5f9397ba7f6d1247514d0b8cf3fe9d29ce3327c4408a2",
+        "candidateSemanticSha256": "d76d454914249b876d3221a6668630f27a5c43669458a261898ec098bc470663",
+        "currentReplaySha256": "59509025271cee6d60e3aa876e2408c371c4092e0789c6b47884818afbd9b096",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42720,
+        "logicalBattleIdentitySha256": "8b93af9a0081ab7a40e6b07e72bf9951d020a026112c90c74104ad257491442c",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "d76d454914249b876d3221a6668630f27a5c43669458a261898ec098bc470663"
+      },
+      {
+        "archiveByteSize": 1289443,
+        "archiveSha256": "f90a2ff9a1b0dea4d26aca6a6e29685d05b5a69df5580123c5bf0799679f5107",
+        "candidateArtifactSha256": "897054c5ba586272af33514bb682ca1921e518639cd3409e3eaefd138be66547",
+        "candidateSemanticSha256": "8bcf290d779b22be5b74b7170ebb84be918884dd9e2a5a2c337b24261219afe2",
+        "currentReplaySha256": "f90a2ff9a1b0dea4d26aca6a6e29685d05b5a69df5580123c5bf0799679f5107",
+        "fullObjectDifferentPaths": [
+          "projection.played_on"
+        ],
+        "gameStatsId": 42721,
+        "logicalBattleIdentitySha256": "922aa5e058088a8d9c95fb33c3efb682caff3a10fe2fafffa7e9bdfeda3a7414",
+        "plannerBlockerCodes": [
+          "player_number_sequence",
+          "projected_player_count",
+          "projection:missing_or_conflicting_player_name",
+          "projection:missing_or_conflicting_player_number",
+          "projection:missing_or_conflicting_steam_id",
+          "projection:non_steam_player_key"
+        ],
+        "primaryDisposition": "canonical_steam_identity_missing",
+        "projectedMetricComplete": false,
+        "registeredPlayer": false,
+        "semanticHashEqual": true,
+        "storedSemanticSha256": "8bcf290d779b22be5b74b7170ebb84be918884dd9e2a5a2c337b24261219afe2"
+      }
+    ],
+    "currentTruth": {
+      "denominator": 5233,
+      "freshRosterIncompleteCohort": 237,
+      "numerator": 3585,
+      "percentage": 68.50754825148098,
+      "registeredPlayerSubsetOfFreshCohort": 104,
+      "resultKnownRosterIncomplete": 237,
+      "unresolved": 1648
+    },
+    "findings": {
+      "generalCorrectionApplied": false,
+      "generalParserDefectFound": false,
+      "projectionMetadataDifference": "All 112 candidate objects differ at projection.played_on because archive/hash-derived source names replace original replay filenames; this is projection-only metadata.",
+      "staleCandidateCase": {
+        "gameStatsId": 34726,
+        "reason": "same parser identity but stored semantic snapshot omits explicit false metadata_only fields; complete framing, packet digest and operation count match, and planner blocks roster projection with result_authority_changed"
+      }
+    },
+    "inventoryObservationTimestamp": "2026-09-29T13:53:36.433Z",
+    "nextAction": "Do not promote this family. Acquire independent authoritative canonical Steam identities for the 111 identity-blocked cases; keep case 34726 behind the result-authority fence. If no identity source exists, continue with the bounded deterministic native terminal canary.",
+    "observationTimestamp": "2026-09-29T14:21:57.269863+00:00",
+    "parser": {
+      "candidateOnlyCount": 112,
+      "contract": {
+        "candidate_only": true,
+        "name": "aoe2war.mgz_hd",
+        "pass_name": "hd_deterministic_evidence",
+        "pass_version": "10",
+        "schema": "2026-07-25.1",
+        "version": "1.8.51"
+      },
+      "exactCurrentContractCount": 112,
+      "expectedShaGuardPassCount": 112,
+      "runtime": {
+        "mgz": "1.8.51",
+        "python": "3.12.3"
+      },
+      "sourceSha256": {
+        "scripts/parse_replay_candidate.py": "1954453c3d17199e28509063ea9bb0a43d6e99a273827f81bb5faac47455cf95",
+        "utils/replay_engine.py": "b87c636080c2f2d41f0dd3a7637fb426603da6eafcff8f70ed50e7bf2dc5ccaf",
+        "utils/replay_parser.py": "ee4ad8dc223610e087d0d54015ea806c5cf0cb0de940f5e10800089b146a1a00"
+      },
+      "successfulParseCount": 112
+    },
+    "primaryDispositionCounts": {
+      "canonical_steam_identity_missing": 111,
+      "stale_parser_contract_evidence": 1
+    },
+    "priorCohort": {
+      "count": 235,
+      "previousReceiptSha256": "69cd8f66ac7b6206bcef09aeb0d655467c376aee0efebf7b0179a12adc49f524",
+      "registeredPlayerCount": 102
+    },
+    "privateEvidence": {
+      "caseCount": 112,
+      "mode": "0400",
+      "path": "/mnt/HC_Volume_105319120/aoe2-parser-engine/reports/roster-disagreement-audit-20260929T134801Z/receipts/parser-evidence-disagreement-case-evidence-20260929T142157Z.json",
+      "sha256": "0ddd583736f9a1ca6428c4c8238a9d980e778358c7a24802f7ba5149127f7e5c"
+    },
+    "scope": {
+      "allCaseIds": [
+        29063,
+        34381,
+        34387,
+        34726,
+        42506,
+        42507,
+        42508,
+        42509,
+        42510,
+        42512,
+        42514,
+        42519,
+        42521,
+        42522,
+        42526,
+        42528,
+        42541,
+        42542,
+        42544,
+        42548,
+        42553,
+        42554,
+        42557,
+        42558,
+        42559,
+        42560,
+        42568,
+        42569,
+        42570,
+        42572,
+        42573,
+        42574,
+        42577,
+        42581,
+        42582,
+        42589,
+        42590,
+        42594,
+        42595,
+        42596,
+        42597,
+        42600,
+        42604,
+        42605,
+        42607,
+        42608,
+        42609,
+        42610,
+        42613,
+        42615,
+        42616,
+        42617,
+        42618,
+        42620,
+        42621,
+        42623,
+        42624,
+        42627,
+        42628,
+        42629,
+        42633,
+        42634,
+        42636,
+        42637,
+        42638,
+        42640,
+        42642,
+        42643,
+        42648,
+        42650,
+        42651,
+        42652,
+        42655,
+        42656,
+        42657,
+        42658,
+        42660,
+        42662,
+        42663,
+        42664,
+        42665,
+        42666,
+        42668,
+        42673,
+        42674,
+        42675,
+        42676,
+        42677,
+        42678,
+        42679,
+        42680,
+        42682,
+        42686,
+        42689,
+        42690,
+        42691,
+        42692,
+        42694,
+        42696,
+        42698,
+        42699,
+        42700,
+        42709,
+        42710,
+        42711,
+        42713,
+        42714,
+        42715,
+        42717,
+        42718,
+        42720,
+        42721
+      ],
+      "completed23CaseExcludedIds": [
+        42504
+      ],
+      "freshParserEvidenceDisagreements": 112,
+      "registeredPlayerCaseIds": [
+        29063,
+        34726
+      ]
+    },
+    "source": {
+      "apiExecutionCheckoutHead": "dc9230322f6a0a1ad6bfc38a5e08c8cb58742345",
+      "apiIntegrationSourceHead": "9f2b3d15df8bb3a32db76dd7cdccb446f63a086a",
+      "apiProductionAppHead": "9ee2c3426b42c40cbf0bb0e0b7444c11dbae73dd",
+      "appSourceHead": "4577a23353bbaab7def340ef5a1829b121a07c1d",
+      "inventorySourceFingerprint": "479627b4805ef92fb5b0a8e4dfaf4fe41af6aeec23d1a8766f2ed900737bec5d",
+      "productionAppHead": "9ee2c3426b42c40cbf0bb0e0b7444c11dbae73dd"
+    },
+    "verification": {
+      "archiveBytesAndShaVerified": 112,
+      "candidateOutputByteEqualityCount": 0,
+      "candidateSemanticHashEqualityCount": 111,
+      "candidateSemanticHashMismatchCount": 1,
+      "freshCandidateBytesAndShaVerified": 112,
+      "fullObjectDifferentPathCounts": {
+        "candidate.semantic_sha256": 1,
+        "evidence.terminal.framing.metadata_only": 1,
+        "evidence.terminal.framing.metadata_only_evidence": 1,
+        "evidence.terminal.framing.metadata_only_reason": 1,
+        "observations.[].value.metadata_only": 1,
+        "observations.[].value.metadata_only_evidence": 1,
+        "observations.[].value.metadata_only_reason": 1,
+        "projection.key_events.parser_engine.candidate_semantic_sha256": 1,
+        "projection.played_on": 112
+      },
+      "storedCandidateBytesAndShaVerified": 112
+    },
+    "yield": {
+      "actualProjectedAdditions": 0,
+      "casesRecoverableAfterGeneralCorrection": [],
+      "completeRecoveryCandidates": 0,
+      "percentagePointGain": 0,
+      "projectedDenominator": 5233,
+      "projectedNumerator": 3585,
+      "projectedPercentage": 68.50754825148098,
+      "registeredPlayerAdditions": 0
+    }
+  },
+  "payloadSha256": "c7683eb35c77b41ffca7c8e71b001fc237d6363001b1d864b1eb13d8f8d15b22",
+  "schema": "aoe2war.parser-evidence-disagreement-audit/v1"
+}
