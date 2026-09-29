@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "513cd8ca32741e68453ea72f791176ed3738bd718967830f7e0af36d0dc884b0",
+      "sha256": "20f84150bd68d914f873705df8d6c37c4d6ed129c3304e827c07ba943bcbef8d",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/trophy-manual-transfer-money-20260929",
-    "commit": "ea0899f4220e8dd2c3d308524ab47d42b933222f"
+    "commit": "1c800f64e0f33953df6d669ecc5f1174ab5f338c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
