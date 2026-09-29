@@ -100,7 +100,13 @@ test("manual holder change preserves tribute chain truth and freezes accrued bou
   assert.equal(bounty?.amountWolo, 9);
   assert.equal(bounty?.recipientUserId, 20);
   assert.ok(createdEvents.some((row) => row.eventType === "DAILY_TRIBUTE_PAYOUT_SUPERSEDED"));
-  assert.ok(createdEvents.some((row) => row.eventType === "DETHRONE_BOUNTY_PAYOUT_QUEUED"));
+  assert.ok(
+    createdEvents.some(
+      (row) =>
+        row.eventType === "DETHRONE_BOUNTY_PAYOUT_QUEUED" &&
+        row.status === "pending"
+    )
+  );
 });
 
 test("paid same-day tribute blocks replacement but not the real dethrone obligation", async () => {
