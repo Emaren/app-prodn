@@ -1418,6 +1418,53 @@ function trophyDefinitionForRow(trophyId: string) {
   );
 }
 
+const CHALLENGEABLE_TROPHY_STATUSES = new Set([
+  "held",
+  "active",
+  "guardian_held",
+  "vacant",
+]);
+
+export function projectTrophyChallengeAuthority(
+  trophy: Pick<
+    Trophy,
+    | "trophyId"
+    | "status"
+    | "currentHolderUserId"
+    | "currentHolderDisplayName"
+    | "currentHolderWoloAddress"
+    | "guardianHolderUserId"
+    | "guardianHolderDisplayName"
+    | "guardianHolderWoloAddress"
+  >
+) {
+  const definition = trophyDefinitionForRow(trophy.trophyId);
+  const forcedVacant = Boolean(
+    definition && titleIsPubliclyForcedVacant(definition.id)
+  );
+  const status = forcedVacant ? "vacant" : trophy.status;
+
+  return {
+    challengeable: CHALLENGEABLE_TROPHY_STATUSES.has(status),
+    forcedVacant,
+    status,
+    currentHolderUserId: forcedVacant ? null : trophy.currentHolderUserId,
+    currentHolderDisplayName: forcedVacant
+      ? null
+      : trophy.currentHolderDisplayName,
+    currentHolderWoloAddress: forcedVacant
+      ? null
+      : trophy.currentHolderWoloAddress,
+    guardianHolderUserId: forcedVacant ? null : trophy.guardianHolderUserId,
+    guardianHolderDisplayName: forcedVacant
+      ? null
+      : trophy.guardianHolderDisplayName,
+    guardianHolderWoloAddress: forcedVacant
+      ? null
+      : trophy.guardianHolderWoloAddress,
+  };
+}
+
 export async function loadTrophyUsers(prisma: PrismaClient): Promise<TrophyUserOption[]> {
   const [users, ratings] = await Promise.all([
     prisma.user.findMany({
