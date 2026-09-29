@@ -658,6 +658,52 @@ test("stateful promotion moves the complete financial family, preserves number, 
   assert.equal(harness.markets.length, 4);
 });
 
+test("Auto Bet preset identity collision blocks Watcher promotion before unique-key rewrite", async () => {
+  const harness = createPromotionHarness();
+  harness.executions.push({
+    id: 802,
+    presetId: 44,
+    winnerMarketId: 10,
+    desyncMarketId: 11,
+    sessionKey: PLATFORM_SESSION,
+    gameIdentityKey: PLATFORM_SESSION,
+    propositionHash: HASH,
+  });
+
+  const before = harness.executions.map((execution) => ({
+    id: execution.id,
+    winnerMarketId: execution.winnerMarketId,
+    desyncMarketId: execution.desyncMarketId,
+    sessionKey: execution.sessionKey,
+    gameIdentityKey: execution.gameIdentityKey,
+  }));
+
+  const blocked = await reconcileWatcherMarketIdentityPromotions(
+    harness.prisma as never,
+    [seed()]
+  );
+
+  assert.deepEqual([...blocked], [PLATFORM_SESSION]);
+  assert.deepEqual(
+    harness.executions.map((execution) => ({
+      id: execution.id,
+      winnerMarketId: execution.winnerMarketId,
+      desyncMarketId: execution.desyncMarketId,
+      sessionKey: execution.sessionKey,
+      gameIdentityKey: execution.gameIdentityKey,
+    })),
+    before
+  );
+  assert.ok(harness.markets.every((row) => row.status === "under_review"));
+  assert.ok(
+    [...harness.incidents.values()].every(
+      (incident) =>
+        (incident.evidence as Record<string, unknown>).reason ===
+        "auto_execution_preset_collision"
+    )
+  );
+});
+
 test("stateful ambiguity pauses the exact family and writes idempotent incidents without moving money", async () => {
   const harness = createPromotionHarness({ oppositeWinnerSides: true });
   const originalWagerMarkets = harness.wagers.map((wager) => wager.marketId);
