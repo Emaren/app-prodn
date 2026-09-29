@@ -706,10 +706,12 @@ days” into a fabricated timestamp.
 
 Opening Minute and Late require canonical Watcher battle-start authority,
 verified proposition integrity, a BattleIdentity row, and its immutable public
-Battle number. Opening Minute is exactly
-`BattleIdentity.startedAt .. startedAt + 60s`; Late begins at +60s. Only trusted
-terminal `settledAt` evidence may close the Late shadow. A transient Watcher
-snapshot gap is not terminal battle truth.
+Battle number. Opening Minute begins at `BattleIdentity.startedAt` and may run for at most
+60 seconds. Trusted terminal truth preempts that ceiling. Late begins at +60s
+only if the battle survives past that boundary; if terminal truth arrives during
+Opening Minute, cap Opening at terminal and do not materialize Late. Once Late
+exists, only trusted terminal `settledAt` evidence may close it. A transient
+Watcher snapshot gap is not terminal battle truth.
 
 The live phase-book identity must use immutable
 `BattleIdentity.publicNumber`, not mutable `battleId` or transient session
