@@ -32,6 +32,7 @@ function seed(): MarketSeed {
     scheduledMatchId: null,
     linkedSessionKey: PLATFORM_SESSION,
     identityAliases: [LEGACY_SESSION],
+    battleStartedAt: new Date("2026-08-26T11:59:55.000Z"),
     linkedGameStatsId: null,
     slug: CANONICAL_WINNER_SLUG,
     title: "Jim vs Zodiac",
@@ -249,6 +250,7 @@ function createPromotionHarness(input?: { oppositeWinnerSides?: boolean }) {
       publicNumber: 2820,
       platformMatchId: null as string | null,
       state: "live",
+      startedAt: new Date("2026-08-26T11:59:50.000Z"),
       completedAt: null as Date | null,
       lastSeenAt: new Date("2026-08-26T12:00:00.000Z"),
     },
@@ -258,6 +260,7 @@ function createPromotionHarness(input?: { oppositeWinnerSides?: boolean }) {
       publicNumber: 2821,
       platformMatchId: null as string | null,
       state: "live",
+      startedAt: new Date("2026-08-26T12:00:05.000Z"),
       completedAt: null as Date | null,
       lastSeenAt: new Date("2026-08-26T12:00:01.000Z"),
     },
@@ -642,6 +645,10 @@ test("stateful promotion moves the complete financial family, preserves number, 
   const retired = harness.identities.find((identity) => identity.id === 101)!;
   assert.equal(survivor.publicNumber, 2820);
   assert.equal(survivor.platformMatchId, "battle-42");
+  assert.equal(
+    survivor.startedAt.toISOString(),
+    "2026-08-26T11:59:50.000Z"
+  );
   assert.equal(retired.platformMatchId, null);
   assert.equal(retired.state, "completed");
   assert.ok(harness.markets.every((row) => row.battleId === survivor.id));

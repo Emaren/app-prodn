@@ -12,6 +12,11 @@ import {
   platformMatchIdFromBattleSession,
 } from "@/lib/battleIdentity";
 import {
+  buildWatcherBattleStartIndex,
+  earliestBattleStartedAt,
+  resolveWatcherBattleStartedAt,
+} from "@/lib/betBattleStartAuthority";
+import {
   loadScheduledMatchTilesForLiveBoard,
   type ScheduledMatchTile,
 } from "@/lib/challenges";
@@ -873,6 +878,11 @@ export type MarketSeed = {
   linkedSessionKey: string | null;
   /** Exact pre-platform identities proven by the live-session grouper. */
   identityAliases?: string[];
+  /**
+   * Server-stabilized Watcher battle start. Internal identity evidence only;
+   * BetMarket persistence does not consume this field.
+   */
+  battleStartedAt?: Date | null;
   linkedGameStatsId?: number | null;
   slug: string;
   title: string;
@@ -5670,6 +5680,10 @@ export async function reconcileWatcherMarketIdentityPromotions(
 
       if (battleIdentities.length > 0) {
         const survivor = battleIdentities[0];
+        const mergedBattleStartedAt = earliestBattleStartedAt([
+          family.winnerSeed.battleStartedAt ?? null,
+          ...battleIdentities.map((identity) => identity.startedAt),
+        ]);
         for (const loser of battleIdentities.slice(1)) {
           await tx.battleIdentity.update({
             where: { id: loser.id },
@@ -5685,6 +5699,7 @@ export async function reconcileWatcherMarketIdentityPromotions(
           where: { id: survivor.id },
           data: {
             platformMatchId,
+            startedAt: mergedBattleStartedAt ?? survivor.startedAt ?? null,
             state:
               family.winnerSeed.status === "settled"
                 ? "completed"
@@ -5753,7 +5768,20 @@ async function buildOpenMarketSeeds(prisma: PrismaClient) {
   );
   let seeds: MarketSeed[] = [];
   const seenSlugs = new Set<string>();
-  const challengeSeeds = buildChallengeMarketSeeds(scheduledMatchTiles);
+  const battleStartBySessionIdentity = buildWatcherBattleStartIndex([
+    ...sessionSnapshot.activeSessions,
+    ...sessionSnapshot.recentlyCompletedSessions,
+  ]);
+  const attachBattleStart = (seed: MarketSeed): MarketSeed => ({
+    ...seed,
+    battleStartedAt: resolveWatcherBattleStartedAt(
+      battleStartBySessionIdentity,
+      seed.linkedSessionKey
+    ),
+  });
+  const challengeSeeds = buildChallengeMarketSeeds(scheduledMatchTiles).map(
+    attachBattleStart
+  );
   const hasFeaturedChallenge = challengeSeeds.some((seed) => seed.featured);
 
   challengeSeeds.forEach((seed) => {
@@ -5775,7 +5803,7 @@ async function buildOpenMarketSeeds(prisma: PrismaClient) {
 
     if (!seed || seenSlugs.has(seed.slug)) return;
     seenSlugs.add(seed.slug);
-    seeds.push(seed);
+    seeds.push(attachBattleStart(seed));
   });
 
   sessionSnapshot.recentlyCompletedSessions.forEach((session, index) => {
@@ -5783,7 +5811,7 @@ async function buildOpenMarketSeeds(prisma: PrismaClient) {
     const seed = buildSessionMarketSeed(session, 100 + index, false);
     if (!seed || seenSlugs.has(seed.slug)) return;
     seenSlugs.add(seed.slug);
-    seeds.push(seed);
+    seeds.push(attachBattleStart(seed));
   });
 
   /*
@@ -5843,6 +5871,7 @@ async function buildOpenMarketSeeds(prisma: PrismaClient) {
               : seed.status === "awaiting_final_proof"
                 ? "awaiting_final_proof" as const
                 : "live" as const,
+        startedAt: seed.battleStartedAt ?? null,
         completedAt: seed.settledAt,
         // A public number is born only while a battle is genuinely live. This
         // keeps historical proof/review rows that predate the numbering rail

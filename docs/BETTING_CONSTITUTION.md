@@ -78,6 +78,23 @@ transactional wager admission, settlement, recovery, and presentation, the
 production Betting Fairness V1.2 compatibility bridge remains authoritative.
 A configuration value alone may not activate Phase Books V2.
 
+### Battle-start authority
+
+Opening Minute and Late timing must use one server-proven battle clock. The
+source is the stabilized `LiveGameSession.createdAt` produced from exact
+Watcher session evidence, including duration-derived start and earliest
+observation across promoted rows. It is persisted on
+`BattleIdentity.startedAt`.
+
+A Challenge's `scheduledAt` is a Pre-Game appointment/cutoff, not proof that
+the game started at that instant. If a scheduled match binds to a Watcher
+session, its live phase clock comes from that exact session identity.
+
+Once a BattleIdentity start exists, ordinary later observations may not move it
+later. When exact fallback/canonical identities are merged, the survivor keeps
+the earliest non-null start already proven inside that exact family. Ambiguous
+session aliases have no start authority.
+
 ## Current #JimsRule matching authority
 
 For each market, current settlement first computes:
