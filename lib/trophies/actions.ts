@@ -11,6 +11,7 @@ import {
   executePendingTrophyPayouts,
   lockTrophyMoneyState,
   prepareManualTrophyHolderTransferPayouts,
+  prepareTrophyCustodyExit,
   projectedTrophyBounty,
   recordNationalityChange,
 } from "@/lib/trophies/service";
@@ -379,6 +380,13 @@ async function assignHolder(
       nextHolderWoloAddress: user.walletAddress,
       now,
     });
+
+    if (transferPayouts.tributeInFlightPayoutId) {
+      throw new TrophyActionError(
+        `Daily Tribute payout #${transferPayouts.tributeInFlightPayoutId} is executing. Retry the title transfer after payout resolution.`,
+        409
+      );
+    }
 
     await tx.trophy.update({
       where: { id: currentTrophy.id },
