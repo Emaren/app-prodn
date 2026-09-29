@@ -242,6 +242,49 @@ corresponding stake ticket. Finite counts decrement only after that financial
 acceptance. Shadow evaluation never decrements them. Display order on `/bets`
 never determines financial processing order.
 
+## Counter-bettor shadow decisions
+
+Tony and Paulie use the same Preview-first safety philosophy but a different
+trigger. Auto Bet begins from canonical Watcher/player identity; counter-bettor
+Preview begins only from an already-committed human `BetWager`.
+
+When a counter-bettor is explicitly enabled in effective `shadow` mode:
+
+1. the human wager commits first on the existing financial rail;
+2. a best-effort post-commit hook passes that exact wager ID to the shadow
+   evaluator;
+3. the evaluator acquires a transaction-scoped per-bot advisory lock and
+   re-reads the current bot policy plus source wager;
+4. reserved internal-system identities are rejected;
+5. only active wagers on an `open` or `live`, integrity-verified market with
+   a frozen proposition are admitted;
+6. the deterministic `opposite-counter` policy chooses the opposite side and
+   caps the proposal by source amount, configured default/max, the immutable
+   10-WOLO hard cap, and remaining per-market/daily shadow exposure;
+7. one append-only `BetCounterAction` is written under a policy/bot/market/
+   source-wager/proposition idempotency key.
+
+The action is evidence only. `committedCounterstakeWolo`,
+`availableBalanceWolo`, custody verification/reservation fields, and
+`stakeTxHash` remain null/false. Shadow mode uses a labeled policy-planning
+balance envelope only to exercise the pure balance-floor guard; it is not a
+wallet lookup or a custody claim. Database constraints independently prevent a
+committed counterstake from existing without verified custody, reservation and
+transaction proof.
+
+A shadow decision happens once at the source wager's commit context. If daily or
+market exposure blocks that action, the skip is not retried the next day as a
+late counter to an old human wager. Duplicate client recovery may rerun the same
+decision safely because the append-only idempotency key deduplicates it.
+
+Bot configuration updates take the same advisory lock as shadow decisions. A
+decision therefore snapshots either the policy before the save or the policy
+after it, never a race between both.
+
+No LLM has money authority. Commentary remains optional flavour after the
+deterministic decision and cannot choose market, side, amount, exposure,
+custody, transaction or wager.
+
 ## Required Wolo architecture
 
 One signed 10,000 WOLO deposit funding future games is chain-backed custodial
