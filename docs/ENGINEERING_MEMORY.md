@@ -2143,6 +2143,25 @@ acquiring the shared custody lock. A timer that relies on a pre-transaction
 holder snapshot can recreate an old-holder obligation immediately after a title
 transfer.
 
+The same rule applies to Guardian assignment/clear, vacate, retire, forced
+forfeiture, and economics versioning. Those paths must lock and re-read the
+Trophy before deriving bounty or custody state. A custody exit freezes
+`projectedTrophyBounty()` into the stored bounty base and supersedes only
+unexecuted/no-tx same-day Tribute rows. Never discard accrued display bounty by
+resetting `holderSince` from a stale snapshot.
+
+Trophy payout selection is also only a candidate scan. Before an external WOLO
+call, execution must acquire the Trophy money lock, re-read the payout and live
+custody, reject/supersede a stale daily recipient, then atomically claim the
+obligation as `executing`. Every custody-changing lane and payout-admin mutation
+must treat `executing` as an in-flight blocker.
+
+Do not automatically retry an `executing` Trophy payout after a process crash
+or ambiguous settlement interruption. The external side effect may already have
+occurred. Preserve the row for chain/settlement investigation rather than
+turning uncertainty into a duplicate payment. `cancelled` and `superseded`
+Trophy payouts are terminal and must not be revived by backend admin calls.
+
 Championship bounty execution uses the existing Founder Rewards settlement rail.
 It remains separate from Bet Escrow and from the numbered public Bounty Pool.
 A ledger row without an executable, idempotent settlement path is not a finished

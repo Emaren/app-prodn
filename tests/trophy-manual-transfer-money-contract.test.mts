@@ -14,6 +14,10 @@ const ui = readFileSync(
   new URL("../components/admin/trophies/TrophyCommandCenter.tsx", import.meta.url),
   "utf8"
 );
+const adminRoute = readFileSync(
+  new URL("../app/api/admin/trophies/route.ts", import.meta.url),
+  "utf8"
+);
 
 test("manual trophy custody change is serialized and money-aware", () => {
   assert.ok(service.includes("pg_advisory_xact_lock"));
@@ -83,7 +87,8 @@ test("dethrone bounty is a real Founder Rewards obligation but previews cannot e
   assert.ok(service.includes("export async function executePendingTrophyPayouts"));
   assert.ok(service.includes("DETHRONE_BOUNTY_PAYOUT_PAID"));
   assert.ok(service.includes("DETHRONE_BOUNTY_PAYOUT_FAILED"));
-  assert.ok(service.includes('status: { in: ["pending", "retrying", "failed"] }'));
+  assert.ok(service.includes("EXECUTABLE_DETHRONE_BOUNTY_STATUSES"));
+  assert.ok(service.includes("status: { in: [...EXECUTABLE_DETHRONE_BOUNTY_STATUSES] }"));
   assert.ok(actions.includes("includeBounties: true"));
   assert.ok(actions.includes("Championship bounty previews are not payable obligations"));
   assert.ok(actions.includes("cannot be converted back into a preview"));
@@ -94,3 +99,32 @@ test("dethrone bounty is a real Founder Rewards obligation but previews cannot e
   assert.ok(ui.includes('payout.payoutKind === "dethrone_bounty" && payout.status === "dry_run"'));
   assert.ok(ui.includes('payout.payoutKind === "dethrone_bounty"'));
 });
+
+test("Guardian, vacancy, forfeiture, and economics use locked Trophy money state", () => {
+  assert.ok(actions.includes("prepareTrophyCustodyExit"));
+  assert.ok(actions.includes("GUARDIAN_DETAILS_REFRESHED"));
+  assert.ok(actions.includes('case "clear_guardian"'));
+  assert.ok(actions.includes("guardian_custody_cleared_before_chain_execution"));
+  assert.ok(actions.includes("title_vacated_before_chain_execution"));
+  assert.ok(actions.includes("title_retired_before_chain_execution"));
+  assert.ok(actions.includes("national_eligibility_forfeiture_before_chain_execution"));
+  assert.ok(actions.includes("Trophy cannot be marked held without a current holder"));
+  assert.ok(actions.includes("Trophy cannot be marked Guardian-held without a Guardian"));
+  assert.ok(actions.includes("const frozenBountyWolo = projectedTrophyBounty(currentTrophy)"));
+  assert.ok(!adminRoute.includes('if (payload.action === "clear_guardian")'));
+});
+
+test("Trophy payout execution claims money authority before external settlement", () => {
+  assert.ok(service.includes('status: "executing"'));
+  assert.ok(service.includes("PAYOUT_EXECUTION_CLAIMED"));
+  assert.ok(service.includes("trophyPayoutStatusIsExecutable"));
+  assert.ok(service.includes("sameTrophyPayoutRecipient"));
+  assert.ok(service.includes("custody_changed_before_execution_claim"));
+  assert.ok(service.includes('row.status === "executing"'));
+  assert.ok(actions.includes("Resolve the in-flight settlement before changing it"));
+  assert.ok(actions.includes("Cancelled or superseded trophy payouts are terminal"));
+  assert.ok(ui.includes("function trophyPayoutIsMutable"));
+  assert.ok(ui.includes('payout.status !== "executing"'));
+  assert.ok(ui.includes("!trophyPayoutIsMutable(payout)"));
+});
+

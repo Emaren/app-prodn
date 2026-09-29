@@ -76,6 +76,27 @@ test("a cancelled former-holder row does not strand the new champion", () => {
   );
 });
 
+test("an in-flight payout blocks custody reconciliation", () => {
+  assert.deepEqual(
+    reconcileDailyTrophyTribute(
+      [
+        payout({
+          id: 98,
+          recipientUserId: 10,
+          recipientWoloAddress: "wolo1oldholder",
+          status: "executing",
+        }),
+      ],
+      jim
+    ),
+    {
+      action: "blocked_by_execution",
+      stalePayoutIds: [],
+      blockingPayoutId: 98,
+    }
+  );
+});
+
 test("operator cancellation for the current holder is preserved", () => {
   assert.deepEqual(
     reconcileDailyTrophyTribute(

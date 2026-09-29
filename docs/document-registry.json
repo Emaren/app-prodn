@@ -385,7 +385,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-09-27",
       "sensitivity": "internal",
-      "sha256": "3d1212176650f9f02c90779e9f6a0e51bbfac5f5a76ab33280bc17326d282459",
+      "sha256": "0437382bc4a7ecd4fc6dcb01490e9ffcab58a131225ce2477ebe00ddbe6677ef",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d9a2f306df4831a708f7b574686b63126458cec24966ad92b343ac800d298ea8",
+      "sha256": "47249759c58e2dc15b49e06c414fea640d73125643a8d2676f1c257065ed8ad9",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-27",
       "sensitivity": "internal",
-      "sha256": "be169da1e8dbe1d580da63ecb1ff387b7d8a87f3d5d31ad7b29fb0911b229ab3",
+      "sha256": "c3551fa6208ed3e0360cc0ca09fb3c3a6dc745284f97e909ad5c117aabd72a02",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/trophy-manual-transfer-money-20260929",
-    "commit": "15dd9bf094e70d42218865e44ba59544dc4420ec"
+    "branch": "fix/trophy-custody-exit-execution-20260929",
+    "commit": "95af5f3019372b5c57b8a869b66a3e90f0a91518"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

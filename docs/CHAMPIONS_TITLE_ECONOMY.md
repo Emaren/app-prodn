@@ -325,6 +325,20 @@ candidate scan is only an optimization. If custody changes while the timer is
 waiting, the queue observes the new locked Trophy row and reconciles against the
 new holder instead of recreating an old-holder obligation.
 
+Guardian assignment, Guardian clear, explicit vacate/retire, forced forfeiture,
+and versioned economics edits also use the Trophy money/custody lock. A custody
+exit freezes the live projected bounty into the persisted bounty base before
+stopping or changing the reign clock. It supersedes only same-day Tribute rows
+that remain executable and have no chain transaction. Paid or tx-backed rows
+remain immutable money truth.
+
+A same-day Tribute in `executing` state is neither stale nor safely mutable.
+Custody-changing actions fail closed while that payout is in flight. Re-selecting
+the same Guardian is metadata refresh only and does not restart the Guardian
+clock. Clearing the actual Guardian custodian moves `guardian_held` to
+`vacant`; clearing Guardian metadata from a title that still has a real holder
+does not change that holder's custody.
+
 For a real holder change:
 
 - freeze the outgoing reign's projected championship bounty at the transfer
@@ -346,6 +360,20 @@ row is preview evidence only: it cannot execute, retry into an executable
 status, or receive a payable state merely through the generic payout controls.
 Championship bounty money is separate from Bet Escrow and from the public
 numbered Bounty Pool.
+
+The payout candidate query is not execution authority. Immediately before any
+external WOLO call, the executor locks the Trophy, re-reads the payout, re-checks
+that a daily Tribute still belongs to the live current holder, and atomically
+claims the row as `executing`. A stale Tribute is superseded before any chain
+call. Once claimed, admin payout mutations and custody changes refuse to step
+over the in-flight obligation. Settlement success moves `executing -> paid`;
+an ordinary settlement failure moves `executing -> failed`.
+
+An `executing` row left behind by a process interruption is deliberately not
+auto-retried. Its chain/settlement outcome is ambiguous until investigated, so
+automatic resend would create duplicate-payment risk. Likewise, `cancelled`
+and `superseded` rows are terminal at the backend and cannot be revived through
+a direct admin API call.
 
 `dry_run_only` defaults to `true`, `app_only_fallback_enabled` defaults to
 `true`, and `chain_backed_trophies_enabled` defaults to `false`.
