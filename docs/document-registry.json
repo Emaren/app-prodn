@@ -222,7 +222,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-22",
       "sensitivity": "internal",
-      "sha256": "f732918e37709e8aaf791ac88eec1f095ebb8230568bd303c535fe04b3b67a1d",
+      "sha256": "963429cc3401419c27404c6f0033f31ab4d282cfc84a4a9c6106721fde221e56",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -245,7 +245,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-29",
       "sensitivity": "internal",
-      "sha256": "8b2ba323c5a0d990ebd00b8f57cd361af4119d38d3a7d799342af83097b1ccaf",
+      "sha256": "5cc61c5f1781aaf877803dca3c10dd0b937b72bacfa2ac57ab91a2c5be66a559",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "f4ba3df0b76ae16cd2849b7d961294660677924784871c946158ff953d1110ce",
+      "sha256": "5526a1765f8dcee1f9c00dd5c4343a5f20552e4075f1212dbce4ec615e2c6eee",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-29",
       "sensitivity": "internal",
-      "sha256": "439dea17fd9195e2f0d7557f61a3b2c517d9b1e38cce6dabfa48be1560d7c60b",
+      "sha256": "7145987698ff389bd585e1f01fb1908a2e3b2469f82454958a8e0c4ad8e4a6ba",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/betting-hall-load-auto-bet-preview-20260929",
-    "commit": "8c66a5b628683e300e2a5cc24bb30437393d9686"
+    "branch": "feat/betting-phase-books-foundation-20260929",
+    "commit": "c0b5fab730c50c15aa7e998d3af2404e1e041654"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
