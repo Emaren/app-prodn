@@ -20,6 +20,7 @@ function source(
 ): BetPhaseBookShadowSource {
   return {
     battleId: 91,
+    battlePublicNumber: 2820,
     scheduledMatchId: null,
     linkedSessionKey: "platform:abc123",
     linkedGameStatsId: null,
@@ -84,13 +85,13 @@ test("Watcher battle start materializes exact Opening Minute and Late windows", 
     [
       {
         phase: "opening_minute",
-        authorityIdentityKey: "battle:91",
+        authorityIdentityKey: "battle-number:2820",
         opensAt: START.toISOString(),
         closesAt: OPENING_CLOSE.toISOString(),
       },
       {
         phase: "late",
-        authorityIdentityKey: "battle:91",
+        authorityIdentityKey: "battle-number:2820",
         opensAt: OPENING_CLOSE.toISOString(),
         closesAt: null,
       },
@@ -135,7 +136,7 @@ test("settled battle closes the Late shadow book at trusted terminal time", () =
 test("live phases fail closed without verified proposition and battle authority", () => {
   assert.deepEqual(
     planBetPhaseBookShadowMaterialization([
-      source({ battleId: null }),
+      source({ battleId: null, battlePublicNumber: null }),
     ]),
     []
   );
@@ -153,6 +154,25 @@ test("live phases fail closed without verified proposition and battle authority"
     ]),
     []
   );
+});
+
+test("live phase identity survives mutable Battle row promotion", () => {
+  const before = planBetPhaseBookShadowMaterialization([
+    source({ battleId: 91, battlePublicNumber: 2820 }),
+  ]);
+  const after = planBetPhaseBookShadowMaterialization([
+    source({
+      battleId: 144,
+      battlePublicNumber: 2820,
+      linkedSessionKey: "platform:promoted",
+    }),
+  ]);
+
+  assert.deepEqual(
+    before.map((plan) => plan.phaseBookKey),
+    after.map((plan) => plan.phaseBookKey)
+  );
+  assert.notEqual(before[0]?.source.battleId, after[0]?.source.battleId);
 });
 
 test("shadow planner deduplicates the same durable phase identity", () => {
