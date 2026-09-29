@@ -2151,6 +2151,20 @@ malformed custody (for example `vacant` with a real current holder or
 `guardian_held` with a real current holder) must fail closed rather than being
 silently normalized.
 
+Public read projection must preserve the title row while applying that override.
+Never implement forced vacancy by filtering the Trophy out of the public
+registry: `/api/trophies` feeds Challenge Hall target resolution and the live
+Champions title map. A filtered row can therefore disappear from challenge
+prefill and cause Champions to fall back to stale static definition state.
+
+Use one public Trophy projection for collection and single-metadata reads. A
+forced-vacant projection clears both current-holder and Guardian IDs, display
+names, wallet addresses, loaded relations, reign clock, forfeiture presentation,
+and displayed current bounty while leaving the persisted historical row
+untouched. Public metadata reads must use the retained public bootstrap wrapper;
+do not invoke the fully re-runnable operator seed reconciler on every metadata
+GET.
+
 Commissioner challenge creation has no separate defender-selection authority.
 The target Trophy and challenger may be selected, but defender/Guardian identity
 must come from the locked Trophy authority. Existing nonterminal title

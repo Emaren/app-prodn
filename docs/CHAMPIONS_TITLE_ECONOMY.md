@@ -274,6 +274,18 @@ remain null.
 The public registry is `GET /api/trophies`. NFT-shaped metadata is available at
 `GET /api/trophies/[trophyId]/metadata`.
 
+Both public surfaces consume the same non-mutating Trophy projection after the
+retained public seed-bootstrap boundary. A title marked forced vacant by current
+championship policy remains present in the public registry; it is projected as
+`vacant` with current holder and Guardian custody removed, reign clock cleared,
+and displayed current bounty reset to zero. Historical database custody is not
+rewritten merely to make the public season view agree.
+
+Do not filter forced-vacant Trophy rows out of `loadPublicTrophies()`. The
+registry is also the lookup source for Challenge Hall title prefill and the live
+Champions economy map. Omitting the row can make the challenge handoff lose its
+target and can force Champions to fall back to stale static definition state.
+
 Projected bounty is display math: stored bounty plus whole elapsed days times
 the configured bounty growth. It is not a chain balance and must not be called
 paid or escrowed.

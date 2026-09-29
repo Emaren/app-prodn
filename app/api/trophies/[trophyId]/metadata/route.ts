@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { getPrisma } from "@/lib/prisma";
 import {
-  ensureTrophySeedData,
+  loadPublicTrophy,
   projectedTrophyBounty,
   seededTrophyDefinition,
 } from "@/lib/trophies/service";
@@ -15,16 +15,7 @@ export async function GET(
   context: { params: Promise<{ trophyId: string }> }
 ) {
   const { trophyId } = await context.params;
-  const prisma = getPrisma();
-  await ensureTrophySeedData(prisma);
-  const trophy = await prisma.trophy.findUnique({
-    where: { trophyId },
-    include: {
-      currentHolder: {
-        select: { uid: true, inGameName: true, steamPersonaName: true },
-      },
-    },
-  });
+  const trophy = await loadPublicTrophy(getPrisma(), trophyId);
   if (!trophy) {
     return NextResponse.json({ detail: "Trophy not found." }, { status: 404 });
   }
