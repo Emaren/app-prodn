@@ -46,6 +46,7 @@ export type LiveGameSession = {
   completedAt: string | null;
   playedOn: string | null;
   mapName: string | null;
+  gameType: string | null;
   durationSeconds: number | null;
   originalFilename: string | null;
   disconnectDetected: boolean;
@@ -119,6 +120,7 @@ type SessionRow = {
   timestamp: Date | null;
   played_on: Date | null;
   map: unknown;
+  game_type?: string | null;
   game_duration: number | null;
   winner: string | null;
   players: unknown;
@@ -261,6 +263,14 @@ function bestKnownMapName(rows: SessionRow[], fallback: SessionRow) {
   for (const row of [fallback, ...rows]) {
     const mapName = parseMapName(row.map);
     if (mapName) return mapName;
+  }
+  return null;
+}
+
+function bestKnownGameType(rows: SessionRow[], fallback: SessionRow) {
+  for (const row of [fallback, ...rows]) {
+    const gameType = normalizePublicReplayText(row.game_type);
+    if (gameType) return gameType;
   }
   return null;
 }
@@ -831,6 +841,7 @@ function buildSessionFromRow(
     conflictReasonCodes: mergedPlayers.conflictReasonCodes,
   });
   const mapName = bestKnownMapName(sourceRows, row);
+  const gameType = bestKnownGameType(sourceRows, row);
   const winnerTruth = resolveReplayWinnerTruth({
     winner: row.winner,
     players: parsedPlayers,
@@ -889,6 +900,7 @@ function buildSessionFromRow(
     completedAt: finalEvidence ? activityTime.toISOString() : null,
     playedOn: playedOnMs > 0 ? new Date(playedOnMs).toISOString() : null,
     mapName,
+    gameType,
     durationSeconds,
     originalFilename: row.original_filename ?? null,
     disconnectDetected: row.disconnect_detected,
@@ -969,6 +981,7 @@ export async function loadLiveSessionSnapshot(prisma: PrismaClient): Promise<{
         timestamp: true,
         played_on: true,
         map: true,
+        game_type: true,
         game_duration: true,
         winner: true,
         players: true,
@@ -1023,6 +1036,7 @@ export async function loadLiveSessionSnapshot(prisma: PrismaClient): Promise<{
         timestamp: true,
         played_on: true,
         map: true,
+        game_type: true,
         game_duration: true,
         winner: true,
         players: true,
@@ -1128,6 +1142,7 @@ export async function loadLiveSessionSnapshot(prisma: PrismaClient): Promise<{
         timestamp: true,
         played_on: true,
         map: true,
+        game_type: true,
         game_duration: true,
         winner: true,
         players: true,
@@ -1184,6 +1199,7 @@ export async function loadLiveSessionSnapshot(prisma: PrismaClient): Promise<{
         original_filename: true,
         parse_iteration: true,
         createdAt: true,
+        game_type: true,
         winner: true,
         parse_reason: true,
         parse_source: true,
