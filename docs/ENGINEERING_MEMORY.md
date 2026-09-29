@@ -668,6 +668,21 @@ Watcher telemetry alone never becomes financial authority.
 Future Auto Bet Reserve may evolve toward phase-specific presets backed by that
 separately reviewed prefunded Wolo custody architecture.
 
+Phase Books V2 now has a dormant additive schema/planner foundation. Preserve the
+activation boundary: existing `BetMarket` rows default to `legacy`; a nullable
+unique `phaseBookKey` gives future independent books durable identity; nullable
+phase open/close timestamps are server-owned fences; and the pure planner defines
+Pre-Game, exactly 60 seconds of Opening Minute, then Late while battle truth is
+active. The phase key must derive from authoritative game identity, market type
+and phase rather than display labels or browser state.
+
+Do not make production betting read these fields piecemeal. Phase activation is
+one coordinated financial change: market materialization, public projection,
+transactional write fence, stake-ticket validation, recovery, settlement,
+history, and UI must agree before `live` can exist. The runtime gate therefore
+fails a requested live mode closed while the current V1.2 compatibility bridge
+continues untouched.
+
 ## Current highest-value product queue
 
 1. Betting Phase Books V2 + premium vertical betting composer.
