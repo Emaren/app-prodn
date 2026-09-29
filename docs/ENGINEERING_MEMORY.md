@@ -2322,3 +2322,17 @@ never include it in pools/odds/returns/settlement, and render an optional Desync
 leg only within the parent winner preview. If a future funded consumer claims or
 advances the row, the shadow-only presentation must disappear.
 
+A Preview-to-slip convenience must remain a pure manual bridge. Re-plan the frozen
+preview against current board state before copying it into local
+`SelectionState`: winner book still open, no existing real winner wager,
+recorded whole-WOLO stake still within the current cap, and—when present—the
+exact recorded Desync child still attached/open with no existing viewer wager.
+The combined Winner + Desync total must also fit the current cap. Do not clamp,
+recompute, or “helpfully” adapt a stale preview.
+
+The Preview rail itself must not call APIs or wallet/signing code. Loading may
+only invoke the page-owned local selection setter. Ticket preparation, stake
+intent creation, Keplr connection, escrow broadcast, and wager recording remain
+behind the user's later explicit manual Lock action. Never repurpose this UI
+bridge as the claim operation for a future funded Auto Bet consumer.
+

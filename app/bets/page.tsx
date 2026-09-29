@@ -23,6 +23,10 @@ import ResultCard from "@/components/bets/ResultCard";
 import YourBookSection from "@/components/bets/YourBookSection";
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import { consumeWarmBetsBoard } from "@/lib/betsNavigationWarmup";
+import {
+  autoBetPreviewSlipBlockerLabel,
+  planAutoBetPreviewSlip,
+} from "@/lib/betAutoPreviewSlip";
 
 import FounderBonusChips from "@/components/bets/FounderBonusChips";
 import FounderBonusModal from "@/components/bets/FounderBonusModal";
@@ -3638,6 +3642,7 @@ export default function BetsPage() {
                     loadingAuth={loading}
                     maxStakeWolo={maxStakeWolo}
                     onSelect={handleSelect}
+                    onLoadAutoBetPreview={(next) => setSelection(next)}
                     onStakeChange={(stake) =>
                       setSelection((current) =>
                         current && current.marketId === spotlightMarket.id
@@ -3710,6 +3715,7 @@ export default function BetsPage() {
               isAdmin={isAdmin}
               maxStakeWolo={maxStakeWolo}
               onSelect={handleSelect}
+              onLoadAutoBetPreview={(next) => setSelection(next)}
               onDesyncSelect={handleDesyncSelection}
               onDesyncStakeChange={handleDesyncStakeChange}
               onStakeChange={(marketId, stake) =>
@@ -3889,6 +3895,7 @@ export default function BetsPage() {
                 loadingAuth={loading}
                 maxStakeWolo={maxStakeWolo}
                 onSelect={handleSelect}
+                onLoadAutoBetPreview={(next) => setSelection(next)}
                 onStakeChange={(stake) =>
                   setSelection((current) =>
                     current && current.marketId === spotlightMarket.id
@@ -3937,6 +3944,7 @@ export default function BetsPage() {
             isAdmin={isAdmin}
             maxStakeWolo={maxStakeWolo}
             onSelect={handleSelect}
+            onLoadAutoBetPreview={(next) => setSelection(next)}
             onDesyncSelect={handleDesyncSelection}
             onDesyncStakeChange={handleDesyncStakeChange}
             onStakeChange={(marketId, stake) =>
@@ -4151,6 +4159,7 @@ export default function BetsPage() {
                   loadingAuth={loading}
                   maxStakeWolo={maxStakeWolo}
                   onSelect={handleSelect}
+                  onLoadAutoBetPreview={(next) => setSelection(next)}
                   onStakeChange={(stake) =>
                     setSelection((current) =>
                       current && current.marketId === spotlightMarket.id
@@ -4201,6 +4210,7 @@ export default function BetsPage() {
               isAdmin={isAdmin}
               maxStakeWolo={maxStakeWolo}
               onSelect={handleSelect}
+              onLoadAutoBetPreview={(next) => setSelection(next)}
               onDesyncSelect={handleDesyncSelection}
               onDesyncStakeChange={handleDesyncStakeChange}
               onStakeChange={(marketId, stake) =>
@@ -4332,6 +4342,9 @@ export default function BetsPage() {
                   }
                   onSelect={
                     handleSelect
+                  }
+                  onLoadAutoBetPreview={(next) =>
+                    setSelection(next)
                   }
                   onStakeChange={(stake) =>
                     setSelection(
@@ -4808,6 +4821,7 @@ function OpenBooksSection({
   isAdmin,
   maxStakeWolo,
   onSelect,
+  onLoadAutoBetPreview,
   onDesyncSelect,
   onDesyncStakeChange,
   onStakeChange,
@@ -4831,6 +4845,7 @@ function OpenBooksSection({
   isAdmin: boolean;
   maxStakeWolo: number;
   onSelect: (market: BetBoardMarket, side: BetSide) => void;
+  onLoadAutoBetPreview: (selection: SelectionState) => void;
   onDesyncSelect: (
     winnerMarket: BetBoardMarket,
     desyncMarket: BetBoardMarket,
@@ -4901,6 +4916,7 @@ function OpenBooksSection({
               isAdmin={isAdmin}
               maxStakeWolo={maxStakeWolo}
               onSelect={onSelect}
+              onLoadAutoBetPreview={onLoadAutoBetPreview}
               desyncMarket={market.desyncMarket}
               onDesyncSideChange={
                 market.desyncMarket
@@ -6066,12 +6082,33 @@ function PreviewLiquidityRail({
 
 function ViewerAutoBetPreviewRail({
   market,
+  desyncMarket,
+  maxStakeWolo,
+  onLoadSelection,
 }: {
   market: BetBoardMarket;
+  desyncMarket: BetBoardMarket | null;
+  maxStakeWolo: number;
+  onLoadSelection: (selection: SelectionState) => void;
 }) {
   if (market.marketType === DESYNC_SIDE_MARKET_TYPE) return null;
   const preview = market.viewerAutoBetPreview ?? null;
   if (!preview) return null;
+
+  const loadPlan = planAutoBetPreviewSlip({
+    marketId: market.id,
+    bettingOpen: market.bettingOpen,
+    viewerWager: market.viewerWager,
+    desyncMarket: desyncMarket
+      ? {
+          id: desyncMarket.id,
+          bettingOpen: desyncMarket.bettingOpen,
+          viewerWager: desyncMarket.viewerWager,
+        }
+      : null,
+    preview,
+    maxStakeWolo,
+  });
 
   const winnerLabel =
     preview.selectedSide === "left" ? market.left.name : market.right.name;
@@ -6081,6 +6118,18 @@ function ViewerAutoBetPreviewRail({
       : preview.desyncSide === "no"
         ? "NO"
         : null;
+
+  function loadPreviewIntoSlip() {
+    if (!loadPlan.ok) {
+      toast.message(autoBetPreviewSlipBlockerLabel(loadPlan.blocker));
+      return;
+    }
+
+    onLoadSelection(loadPlan.selection);
+    toast.success(
+      "Auto Bet Preview loaded into the manual Bet Slip. Review it, then lock WOLO yourself.",
+    );
+  }
 
   return (
     <div
@@ -6114,6 +6163,31 @@ function ViewerAutoBetPreviewRail({
             .
           </>
         ) : null}
+      </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={loadPreviewIntoSlip}
+          disabled={!loadPlan.ok}
+          data-testid={`bets-load-auto-bet-preview-${market.id}`}
+          className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+            loadPlan.ok
+              ? "border-cyan-200/20 bg-cyan-300/[0.10] text-cyan-100 hover:border-cyan-200/35 hover:bg-cyan-300/[0.16]"
+              : "cursor-not-allowed border-white/[0.06] bg-white/[0.025] text-slate-600"
+          }`}
+        >
+          Load Preview into Bet Slip
+        </button>
+        {!loadPlan.ok ? (
+          <span className="text-[11px] leading-5 text-slate-500">
+            {autoBetPreviewSlipBlockerLabel(loadPlan.blocker)}
+          </span>
+        ) : (
+          <span className="text-[11px] leading-5 text-slate-500">
+            Copies the frozen preview only. Nothing is signed or submitted.
+          </span>
+        )}
       </div>
 
       <div className="mt-2 text-[10px] uppercase tracking-[0.18em] text-slate-500">
@@ -7819,6 +7893,7 @@ function MarketFeature({
   maxStakeWolo,
   previewInteraction = false,
   onSelect,
+  onLoadAutoBetPreview,
   onStakeChange,
   onDesyncSideChange,
   onDesyncStakeChange,
@@ -7848,6 +7923,7 @@ function MarketFeature({
   maxStakeWolo: number;
   previewInteraction?: boolean;
   onSelect: (market: BetBoardMarket, side: BetSide) => void;
+  onLoadAutoBetPreview: (selection: SelectionState) => void;
   onStakeChange: (stake: number) => void;
   onDesyncSideChange?: (side: BetSide | null) => void;
   onDesyncStakeChange?: (stake: number) => void;
@@ -8190,8 +8266,13 @@ function MarketFeature({
 
         <div className="mt-7 border-t border-white/[0.055] pt-6">
           <PreviewLiquidityRail market={market} />
-      <ViewerAutoBetPreviewRail market={market} />
-          <BetSlipComposer
+          <ViewerAutoBetPreviewRail
+        market={market}
+        desyncMarket={desyncMarket}
+        maxStakeWolo={maxStakeWolo}
+        onLoadSelection={onLoadAutoBetPreview}
+      />
+      <BetSlipComposer
             market={market}
             desyncMarket={desyncMarket}
             activeSelection={
@@ -8377,8 +8458,13 @@ function MarketFeature({
         </div>
 
         <PreviewLiquidityRail market={market} />
-      <ViewerAutoBetPreviewRail market={market} />
-          <BetSlipComposer
+      <ViewerAutoBetPreviewRail
+        market={market}
+        desyncMarket={desyncMarket}
+        maxStakeWolo={maxStakeWolo}
+        onLoadSelection={onLoadAutoBetPreview}
+      />
+      <BetSlipComposer
           market={market}
           desyncMarket={desyncMarket}
           activeSelection={activeSelection}
@@ -8517,8 +8603,13 @@ function MarketFeature({
       </div>
 
       <PreviewLiquidityRail market={market} />
-      <ViewerAutoBetPreviewRail market={market} />
-          <BetSlipComposer
+      <ViewerAutoBetPreviewRail
+        market={market}
+        desyncMarket={desyncMarket}
+        maxStakeWolo={maxStakeWolo}
+        onLoadSelection={onLoadAutoBetPreview}
+      />
+      <BetSlipComposer
         market={market}
         desyncMarket={desyncMarket}
         activeSelection={activeSelection}
@@ -8561,6 +8652,7 @@ function MarketCard({
   isAdmin,
   maxStakeWolo,
   onSelect,
+  onLoadAutoBetPreview,
   onDesyncSideChange,
   onDesyncStakeChange,
   onStakeChange,
@@ -8579,6 +8671,7 @@ function MarketCard({
   isAdmin: boolean;
   maxStakeWolo: number;
   onSelect: (market: BetBoardMarket, side: BetSide) => void;
+  onLoadAutoBetPreview: (selection: SelectionState) => void;
   onDesyncSideChange?: (side: BetSide | null) => void;
   onDesyncStakeChange?: (stake: number) => void;
   onStakeChange: (stake: number) => void;
@@ -8856,8 +8949,13 @@ function MarketCard({
       )}
 
       <PreviewLiquidityRail market={market} />
-      <ViewerAutoBetPreviewRail market={market} />
-          <BetSlipComposer
+      <ViewerAutoBetPreviewRail
+        market={market}
+        desyncMarket={desyncMarket}
+        maxStakeWolo={maxStakeWolo}
+        onLoadSelection={onLoadAutoBetPreview}
+      />
+      <BetSlipComposer
         market={market}
         desyncMarket={desyncMarket}
         activeSelection={activeSelection}
