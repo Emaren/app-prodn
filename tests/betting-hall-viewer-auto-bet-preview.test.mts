@@ -28,6 +28,18 @@ function previewRow(overrides: Record<string, unknown> = {}) {
     leaseOwner: null,
     leaseExpiresAt: null,
     acceptedAt: null,
+    sourceEvidence: {
+      mode: "shadow",
+      exactSteamRosterMatch: true,
+      exactUploaderUidMatch: true,
+      marketIntegrityStatus: "verified",
+      teamResolutionStatus: "resolved",
+      teamConfidence: "high",
+      propositionHash: "a".repeat(64),
+      canonicalSessionKey: "platform_match:12345",
+      ownerUid: "viewer-uid",
+      ownerSteamId: "76561198000000001",
+    },
     createdAt: new Date("2026-09-29T20:00:00.000Z"),
     ...overrides,
   };
@@ -61,6 +73,37 @@ test("viewer Auto Bet preview rejects every execution or custody marker", () => 
     previewRow({ id: 8, acceptedAt: new Date("2026-09-29T20:03:00.000Z") }),
     previewRow({ id: 9, status: "queued" }),
     previewRow({ id: 10, reason: "funded_execution" }),
+    previewRow({ id: 11, sourceEvidence: null }),
+    previewRow({
+      id: 12,
+      sourceEvidence: {
+        mode: "shadow",
+        exactSteamRosterMatch: true,
+        exactUploaderUidMatch: false,
+        marketIntegrityStatus: "verified",
+        teamResolutionStatus: "resolved",
+        teamConfidence: "high",
+        propositionHash: "a".repeat(64),
+        canonicalSessionKey: "platform_match:12345",
+        ownerUid: "viewer-uid",
+        ownerSteamId: "76561198000000001",
+      },
+    }),
+    previewRow({
+      id: 13,
+      sourceEvidence: {
+        mode: "shadow",
+        exactSteamRosterMatch: true,
+        exactUploaderUidMatch: true,
+        marketIntegrityStatus: "verified",
+        teamResolutionStatus: "resolved",
+        teamConfidence: "high",
+        propositionHash: "b".repeat(64),
+        canonicalSessionKey: "platform_match:12345",
+        ownerUid: "viewer-uid",
+        ownerSteamId: "76561198000000001",
+      },
+    }),
   ];
 
   for (const row of blockedRows) {
@@ -174,6 +217,10 @@ test("Betting Hall viewer preview is private, preset-scoped, and parent-market o
   assert.match(bets, /presetId: viewer\.betAutoPreset\.id/);
   assert.match(bets, /status: "shadow_ready"/);
   assert.match(bets, /winnerMarketId: \{ in: openMarketIds \}/);
+  assert.match(bets, /sourceEvidence: true/);
+  assert.match(bets, /exactSteamRosterMatch !== true/);
+  assert.match(bets, /exactUploaderUidMatch !== true/);
+  assert.match(bets, /sourcePropositionHash !== propositionHash/);
   assert.match(bets, /buildViewerAutoBetPreviewMap\(viewerAutoBetRows\)/);
 
   assert.match(route, /"Cache-Control": "private, no-store/);
