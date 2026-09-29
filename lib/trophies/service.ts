@@ -496,6 +496,7 @@ export async function prepareManualTrophyHolderTransferPayouts(
   let tributePayoutId: number | null = null;
   let supersededTributePayoutIds: number[] = [];
   let tributeBlockedByChainTruth = false;
+  let tributeInFlightPayoutId: number | null = null;
 
   if (
     trophyHasActiveReignTribute(input.trophy.trophyId) &&
@@ -527,6 +528,8 @@ export async function prepareManualTrophyHolderTransferPayouts(
 
     if (reconciliation.action === "blocked_by_chain_truth") {
       tributeBlockedByChainTruth = true;
+    } else if (reconciliation.action === "blocked_by_execution") {
+      tributeInFlightPayoutId = reconciliation.blockingPayoutId;
     } else if (reconciliation.action === "keep_current") {
       tributePayoutId = reconciliation.currentPayoutId;
     } else {
@@ -686,6 +689,7 @@ export async function prepareManualTrophyHolderTransferPayouts(
     tributePayoutId,
     supersededTributePayoutIds,
     tributeBlockedByChainTruth,
+    tributeInFlightPayoutId,
   };
 }
 
@@ -771,7 +775,10 @@ export async function ensureDailyTrophyTributePayouts(prisma: PrismaClient, now 
 
       // Any paid/tx-backed row is immutable money truth. Never create a second
       // daily payment for the same trophy/day after chain execution.
-      if (reconciliation.action === "blocked_by_chain_truth") {
+      if (
+        reconciliation.action === "blocked_by_chain_truth" ||
+        reconciliation.action === "blocked_by_execution"
+      ) {
         return;
       }
 
