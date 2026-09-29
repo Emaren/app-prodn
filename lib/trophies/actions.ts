@@ -313,9 +313,6 @@ async function assignHolder(
         data: {
           currentHolderDisplayName: nextName,
           currentHolderWoloAddress: user.walletAddress,
-          status: ["held", "active"].includes(currentTrophy.status)
-            ? currentTrophy.status
-            : "held",
           forfeitureNeeded: false,
           eligibilityNote: eligibility.eligible
             ? eligibility.detail
