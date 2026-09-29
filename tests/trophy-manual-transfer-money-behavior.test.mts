@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   executePendingTrophyPayouts,
   prepareManualTrophyHolderTransferPayouts,
+  prepareTrophyCustodyExit,
 } from "../lib/trophies/service.ts";
 
 function trophy(overrides: Record<string, unknown> = {}) {
@@ -147,6 +148,179 @@ test("paid same-day tribute blocks replacement but not the real dethrone obligat
   assert.equal(result.tributeBlockedByChainTruth, true);
   assert.equal(createdPayouts.filter((row) => row.payoutKind === "daily_tribute").length, 0);
   assert.equal(createdPayouts.filter((row) => row.payoutKind === "dethrone_bounty").length, 1);
+});
+
+test("custody exit freezes bounty and supersedes only executable Tribute", async () => {
+  const updated: Array<Record<string, unknown>> = [];
+  const events: Array<Record<string, unknown>> = [];
+  const tx = {
+    trophyPayout: {
+      findMany: async () => [
+        {
+          id: 101,
+          recipientUserId: 10,
+          recipientWoloAddress: "wolo1old",
+          amountWolo: 10,
+          status: "dry_run",
+          txHash: null,
+        },
+        {
+          id: 102,
+          recipientUserId: 10,
+          recipientWoloAddress: "wolo1old",
+          amountWolo: 10,
+          status: "cancelled",
+          txHash: null,
+        },
+      ],
+      updateMany: async (input: Record<string, unknown>) => {
+        updated.push(input);
+        return { count: 1 };
+      },
+    },
+    trophyEvent: {
+      create: async ({ data }: { data: Record<string, unknown> }) => {
+        events.push(data);
+        return { id: 500 + events.length, ...data };
+      },
+    },
+  };
+
+  const result = await prepareTrophyCustodyExit(tx as never, {
+    trophy: trophy() as never,
+    now: new Date("2026-09-29T12:00:00.000Z"),
+    reason: "test_custody_exit",
+    createdBy: "test",
+  });
+
+  assert.equal(result.frozenBountyWolo, 9);
+  assert.equal(result.inFlightPayoutId, null);
+  assert.deepEqual(result.supersededTributePayoutIds, [101]);
+  assert.equal(updated.length, 1);
+  assert.ok(
+    events.some(
+      (row) =>
+        row.eventType === "DAILY_TRIBUTE_PAYOUT_SUPERSEDED" &&
+        (row.rawRequest as Record<string, unknown>).reason === "test_custody_exit"
+    )
+  );
+});
+
+test("custody exit fails closed around an executing Tribute", async () => {
+  let updates = 0;
+  const tx = {
+    trophyPayout: {
+      findMany: async () => [
+        {
+          id: 103,
+          recipientUserId: 10,
+          recipientWoloAddress: "wolo1old",
+          amountWolo: 10,
+          status: "executing",
+          txHash: null,
+        },
+      ],
+      updateMany: async () => {
+        updates += 1;
+        return { count: 1 };
+      },
+    },
+    trophyEvent: {
+      create: async () => {
+        throw new Error("no event should be written while execution is in flight");
+      },
+    },
+  };
+
+  const result = await prepareTrophyCustodyExit(tx as never, {
+    trophy: trophy() as never,
+    now: new Date("2026-09-29T12:00:00.000Z"),
+    reason: "test_custody_exit",
+    createdBy: "test",
+  });
+
+  assert.equal(result.inFlightPayoutId, 103);
+  assert.deepEqual(result.supersededTributePayoutIds, []);
+  assert.equal(updates, 0);
+});
+
+test("executor supersedes a stale daily Tribute before any payout call", async () => {
+  const payoutRow = {
+    id: 104,
+    trophyId: 7,
+    recipientUserId: 10,
+    recipientDisplayName: "Old Holder",
+    recipientWoloAddress: "wolo1old",
+    amountWolo: 10,
+    payoutKind: "daily_tribute",
+    status: "dry_run",
+    scheduledFor: new Date("2026-09-29T00:00:00.000Z"),
+    paidAt: null,
+    txHash: null,
+    errorState: null,
+    rawRequest: null,
+    rawResponse: null,
+    retryCount: 0,
+    createdAt: new Date("2026-09-29T00:00:00.000Z"),
+    updatedAt: new Date("2026-09-29T00:00:00.000Z"),
+    trophy: trophy({
+      currentHolderUserId: 20,
+      currentHolderDisplayName: "New Holder",
+      currentHolderWoloAddress: "wolo1new",
+    }),
+  };
+  const mutations: Array<Record<string, unknown>> = [];
+  const events: Array<Record<string, unknown>> = [];
+
+  const tx = {
+    $queryRaw: async () => [],
+    trophy: {
+      findUnique: async () => payoutRow.trophy,
+    },
+    trophyPayout: {
+      findUnique: async (input: Record<string, unknown>) =>
+        "include" in input ? payoutRow : { id: 104, trophyId: 7 },
+      updateMany: async (input: Record<string, unknown>) => {
+        mutations.push(input);
+        return { count: 1 };
+      },
+    },
+    trophyEvent: {
+      create: async ({ data }: { data: Record<string, unknown> }) => {
+        events.push(data);
+        return { id: 700 + events.length, ...data };
+      },
+    },
+  };
+  const prisma = {
+    trophyPayout: {
+      findMany: async () => [
+        {
+          id: 104,
+          amountWolo: 10,
+          recipientDisplayName: "Old Holder",
+          trophy: { trophyId: "usa_champion_belt" },
+        },
+      ],
+    },
+    $transaction: async (callback: (client: unknown) => unknown) => callback(tx),
+  };
+
+  const result = await executePendingTrophyPayouts(prisma as never, { limit: 1 });
+
+  assert.equal(result.scanned, 1);
+  assert.equal(result.paid, 0);
+  assert.equal(result.skipped, 1);
+  assert.match(result.results[0]?.detail || "", /no longer matches live Trophy custody/);
+  assert.ok(
+    mutations.some(
+      (input) =>
+        (input.data as Record<string, unknown>).status === "superseded"
+    )
+  );
+  assert.ok(
+    events.some((row) => row.eventType === "DAILY_TRIBUTE_PAYOUT_SUPERSEDED")
+  );
 });
 
 test("generic payout executor never admits dry-run bounty previews", async () => {
