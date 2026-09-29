@@ -2191,6 +2191,15 @@ An admin eligibility note belongs in Trophy Command, not in public model
 context. Historical event fields may be preserved when they are intentionally
 selected and public-safe; history is evidence, not current custody.
 
+The connected-wallet Trophy panel is another current-state projection surface.
+Build its rows from `loadPublicTrophies()`, not a raw wallet-address Trophy
+query. Determine current app custody only from the projected holder or Guardian
+wallet address; retain `chainOwnerAddress` as a distinct recorded association.
+A chain-only match must never be presented as “this wallet holds the belt”
+while app custody remains authoritative. Use `projectedTrophyBounty()` and the
+seeded Champion definition's `routeHref` so wallet cards agree with Champions,
+metadata, and the public registry.
+
 Commissioner challenge creation has no separate defender-selection authority.
 The target Trophy and challenger may be selected, but defender/Guardian identity
 must come from the locked Trophy authority. Existing nonterminal title
