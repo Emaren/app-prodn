@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/betting-hall-load-auto-bet-preview-20260929` at `8c66a5b628683e300e2a5cc24bb30437393d9686`
+Implementation baseline: `feat/betting-phase-books-foundation-20260929` at `c0b5fab730c50c15aa7e998d3af2404e1e041654`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
