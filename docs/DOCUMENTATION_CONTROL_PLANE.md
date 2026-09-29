@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/betting-phase-books-foundation-20260929` at `c0b5fab730c50c15aa7e998d3af2404e1e041654`
+Implementation baseline: `feat/betting-phase-books-start-authority-20260929` at `7be38af8f8af050cc04ff8a12cc4ac5cb0929ea5`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
