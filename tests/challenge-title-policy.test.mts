@@ -6,7 +6,9 @@ import {
   TITLE_FORFEIT_REVIEW_SETTLEMENT_STATUS,
   TITLE_FORFEIT_REVIEW_STATUS,
   TERMINAL_TITLE_CHALLENGE_STATUSES,
+  TITLE_CHALLENGE_OPEN_TROPHY_STATUSES,
   buildTitleChallengeAcceptBy,
+  trophyStatusAllowsChallenge,
   unacceptedTitleExpiryNeedsCommissionerReview,
 } from "../lib/challengeTitlePolicy.ts";
 
@@ -72,6 +74,37 @@ test("only an unaccepted linked title expiry enters commissioner forfeit review"
     TITLE_FORFEIT_REVIEW_SETTLEMENT_STATUS,
     "commissioner_forfeit_review_required"
   );
+});
+
+test("title challenges fail closed outside public Trophy lifecycle states", () => {
+  assert.deepEqual(TITLE_CHALLENGE_OPEN_TROPHY_STATUSES, [
+    "vacant",
+    "guardian_held",
+    "held",
+    "active",
+  ]);
+
+  for (const status of TITLE_CHALLENGE_OPEN_TROPHY_STATUSES) {
+    assert.equal(trophyStatusAllowsChallenge(status), true);
+  }
+
+  for (const status of ["draft", "paused", "retired", "unknown_future_status"]) {
+    assert.equal(trophyStatusAllowsChallenge(status), false);
+  }
+
+  const publicRoute = readFileSync(
+    new URL("../app/api/challenges/route.ts", import.meta.url),
+    "utf8"
+  );
+  const adminActions = readFileSync(
+    new URL("../lib/trophies/actions.ts", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(publicRoute, /!trophyStatusAllowsChallenge\(targetTrophy\.status\)/);
+  assert.match(adminActions, /!trophyStatusAllowsChallenge\(trophy\.status\)/);
+  assert.match(publicRoute, /not open for title challenges/);
+  assert.match(adminActions, /not open for title challenges/);
 });
 
 test("verified watcher proof auto-settles zero-bounty held ELO titles by exact replay lane", () => {
