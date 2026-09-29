@@ -297,6 +297,14 @@ function ChampionshipCard({
   const holder = title.holders[0] ?? null;
   const vacant = title.status !== "held" || !holder;
   const beltUrl = managedMediaPublicUrl("belt", title.id, title.assetUrl);
+  const beltStageClass =
+    title.type === "world"
+      ? "h-[10.5rem] w-full"
+      : title.type === "chaos"
+        ? "h-40 w-[98%]"
+        : title.type === "womens"
+          ? "h-36 w-[94%]"
+          : "h-32 w-[82%]";
 
   return (
     <article
@@ -340,7 +348,7 @@ function ChampionshipCard({
           </span>
         </div>
 
-        <div className="absolute bottom-0 left-1/2 z-10 h-32 w-[82%] -translate-x-1/2">
+        <div className={`absolute bottom-0 left-1/2 z-10 -translate-x-1/2 ${beltStageClass}`}>
           <Image
             src={beltUrl}
             alt={title.displayName}
@@ -479,10 +487,10 @@ function TeamTitleCard({
         : "min-h-[23rem]";
   const beltHeight =
     title.size === 2
-      ? "h-32"
+      ? "h-[10rem]"
       : title.size === 3
-        ? "h-28"
-        : "h-24";
+        ? "h-[9.5rem]"
+        : "h-36";
   const avatarScale =
     title.size === 2
       ? "scale-[1.10]"
@@ -524,7 +532,7 @@ function TeamTitleCard({
               className={`object-contain object-bottom opacity-52 ${avatarScale}`}
             />
             <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_40%,rgba(3,7,17,0.10)_60%,#030711_100%)]" />
-            <div className={`absolute bottom-3 left-1/2 ${beltHeight} w-[96%] -translate-x-1/2`}>
+            <div className={`absolute bottom-0 left-1/2 ${beltHeight} w-full -translate-x-1/2`}>
               <Image
                 src={title.beltUrl}
                 alt={`${title.name} belt ${index + 1}`}
@@ -578,7 +586,7 @@ function NationalBeltCard({
               className="scale-105 object-cover object-center opacity-20 blur-2xl"
             />
             <div className="absolute inset-0 z-[2] bg-[radial-gradient(circle_at_50%_40%,rgba(15,23,42,0.08),rgba(2,6,23,0.64)_72%)]" />
-            <div className="absolute left-1/2 top-[7.2rem] z-10 h-[9.5rem] w-[91%] -translate-x-1/2">
+            <div className="absolute left-1/2 top-[7rem] z-10 h-[10.5rem] w-[96%] -translate-x-1/2">
               <Image
                 src={belt.beltUrl}
                 alt={`${belt.country} championship belt showcase`}
@@ -631,7 +639,7 @@ function NationalBeltCard({
         </span>
 
         {!showcaseBackground ? (
-          <div className="absolute bottom-0 left-1/2 z-20 h-28 w-[90%] -translate-x-1/2">
+          <div className="absolute bottom-0 left-1/2 z-20 h-32 w-[96%] -translate-x-1/2">
             <Image
               src={belt.beltUrl}
               alt={`${belt.country} championship belt`}
