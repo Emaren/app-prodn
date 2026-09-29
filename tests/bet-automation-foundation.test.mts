@@ -173,6 +173,8 @@ test("schema foundation is an outbox, not an implicit financial trigger", () => 
 
   assert.match(schema, /model BetAutoPreset/);
   assert.match(schema, /model BetAutoExecution/);
+  assert.match(schema, /shadow producer writes preview/);
+  assert.match(schema, /funded reservation\/ticket consumption remains disabled/);
   assert.match(schema, /ticketId\s+Int\?\s+@unique/);
   assert.match(migration, /ck_bet_auto_presets_self_only/);
   assert.match(migration, /ck_bet_auto_presets_game_plan/);
