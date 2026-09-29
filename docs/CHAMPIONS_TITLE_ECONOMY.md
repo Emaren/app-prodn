@@ -326,9 +326,12 @@ For a real holder change:
 - treat reassignment to the already-current holder as a metadata refresh, not
   a new reign or a second bounty obligation.
 
-Both `daily_tribute` and `dethrone_bounty` rows execute through the existing
-Founder Rewards settlement authority. Championship bounty money is separate
-from Bet Escrow and from the public numbered Bounty Pool.
+Both `daily_tribute` and real `dethrone_bounty` obligations execute through
+the existing Founder Rewards settlement authority. A challenge dry-run bounty
+row is preview evidence only: it cannot execute, retry into an executable
+status, or receive a payable state merely through the generic payout controls.
+Championship bounty money is separate from Bet Escrow and from the public
+numbered Bounty Pool.
 
 `dry_run_only` defaults to `true`, `app_only_fallback_enabled` defaults to
 `true`, and `chain_backed_trophies_enabled` defaults to `false`.
