@@ -116,7 +116,7 @@ function SectionHeading({
         <button
           type="button"
           onClick={onKickerClick}
-          className={`${kickerClass} cursor-default text-left`}
+          className={`${kickerClass} cursor-pointer text-left transition hover:text-amber-100/80`}
           aria-label={`Toggle ${kicker} championship layout`}
         >
           {kicker}
@@ -794,7 +794,10 @@ export default function ChampionsV2Experience({
 }) {
   const [lane, setLane] = useState<ChampionsLane>("rm");
   const [stackModeChampions, setStackModeChampions] = useState(true);
+  const [eloFirstLane, setEloFirstLane] = useState<ChampionsLane>("rm");
   const nationalRailRef = useRef<HTMLDivElement>(null);
+  const eloLaneOrder: ChampionsLane[] =
+    eloFirstLane === "rm" ? ["rm", "dm"] : ["dm", "rm"];
 
   useEffect(() => {
     setLane(readStoredLeaderboardLane());
@@ -903,11 +906,26 @@ export default function ChampionsV2Experience({
       <section className="space-y-5">
         <SectionHeading
           kicker="ELO Belts"
-          action={<ModeSwitch lane={lane} onChange={chooseLane} />}
+          onKickerClick={() =>
+            setEloFirstLane((current) => (current === "rm" ? "dm" : "rm"))
+          }
         />
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-          {state.elo[lane].map((division) => (
-            <EloCard key={division.id} division={division} lane={lane} />
+        <div className="space-y-7">
+          {eloLaneOrder.map((eloLane) => (
+            <div key={eloLane} className="space-y-3">
+              <div className="text-[8px] font-black uppercase tracking-[0.24em] text-slate-600">
+                {eloLane.toUpperCase()} ELO
+              </div>
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+                {state.elo[eloLane].map((division) => (
+                  <EloCard
+                    key={division.id}
+                    division={division}
+                    lane={eloLane}
+                  />
+                ))}
+              </div>
+            </div>
           ))}
         </div>
       </section>
