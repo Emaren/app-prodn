@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { managedMediaPublicUrl } from "@/lib/managedMediaAssets";
 import { getPrisma } from "@/lib/prisma";
+import {
+  loadPublicTrophies,
+  projectedTrophyBounty,
+  seededTrophyDefinition,
+} from "@/lib/trophies/service";
 import { WOLO_MAINNET_WALLET_ALIAS_BY_ADDRESS } from "@/lib/woloMainnetWallets";
 
 export const runtime = "nodejs";
@@ -45,7 +51,7 @@ export async function GET(request: NextRequest) {
   try {
     const prisma = getPrisma();
 
-    const [transfers, trophies] = await Promise.all([
+    const [transfers, publicTrophies] = await Promise.all([
       prisma.woloIndexedTransfer.findMany({
         where: {
           OR: [
@@ -56,17 +62,53 @@ export async function GET(request: NextRequest) {
         orderBy: [{ timestamp: "desc" }, { id: "desc" }],
         take: limit,
       }),
-      prisma.trophy.findMany({
-        where: {
-          OR: [
-            { currentHolderWoloAddress: address },
-            { chainOwnerAddress: address },
-          ],
-        },
-        orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
-        take: 50,
-      }),
+      loadPublicTrophies(prisma),
     ]);
+
+    const trophies = publicTrophies
+      .map((trophy) => {
+        const currentHolderWoloAddress =
+          trophy.currentHolderWoloAddress?.trim().toLowerCase() || null;
+        const guardianHolderWoloAddress =
+          trophy.guardianHolderWoloAddress?.trim().toLowerCase() || null;
+        const chainOwnerAddress =
+          trophy.chainOwnerAddress?.trim().toLowerCase() || null;
+
+        const appCustodyRole =
+          currentHolderWoloAddress === address
+            ? "holder"
+            : guardianHolderWoloAddress === address
+              ? "guardian"
+              : null;
+        const hasRecordedChainAssociation = chainOwnerAddress === address;
+
+        if (!appCustodyRole && !hasRecordedChainAssociation) {
+          return null;
+        }
+
+        const definition = seededTrophyDefinition(trophy.trophyId)?.definition ?? null;
+        const assetKind = trophy.kind === "artifact" ? "artifact" : "belt";
+
+        return {
+          trophy,
+          definition,
+          appCustodyRole,
+          hasRecordedChainAssociation,
+          association:
+            appCustodyRole && hasRecordedChainAssociation
+              ? "both"
+              : appCustodyRole
+                ? "app_custody"
+                : "chain_record",
+          imageUri: managedMediaPublicUrl(
+            assetKind,
+            definition?.id || trophy.trophyId,
+            trophy.nftImageUri || definition?.assetUrl
+          ),
+        };
+      })
+      .filter((row): row is NonNullable<typeof row> => row !== null)
+      .slice(0, 50);
 
     return NextResponse.json(
       {
@@ -94,28 +136,52 @@ export async function GET(request: NextRequest) {
             source: row.source,
           };
         }),
-        trophies: trophies.map((trophy) => ({
-          id: trophy.id,
-          trophyId: trophy.trophyId,
-          displayName: trophy.displayName,
-          kind: trophy.kind,
-          family: trophy.family,
-          tier: trophy.tier,
-          status: trophy.status,
-          currentHolderDisplayName: trophy.currentHolderDisplayName,
-          currentHolderWoloAddress: trophy.currentHolderWoloAddress,
-          tributeAmountWolo: trophy.tributeAmountWolo,
-          currentBountyWolo: trophy.currentBountyWolo,
-          bountyGrowthWolo: trophy.bountyGrowthWolo,
-          nftClassId: trophy.nftClassId,
-          nftId: trophy.nftId,
-          metadataUri: trophy.nftMetadataUri,
-          imageUri: trophy.nftImageUri,
-          chainStatus: trophy.chainStatus,
-          chainOwnerAddress: trophy.chainOwnerAddress,
-          holderSince: trophy.holderSince?.toISOString() ?? null,
-          updatedAt: trophy.updatedAt.toISOString(),
-        })),
+        trophies: trophies.map(
+          ({
+            trophy,
+            definition,
+            appCustodyRole,
+            hasRecordedChainAssociation,
+            association,
+            imageUri,
+          }) => ({
+            id: trophy.id,
+            trophyId: trophy.trophyId,
+            championTitleId: definition?.id ?? null,
+            displayName: trophy.displayName,
+            kind: trophy.kind,
+            family: trophy.family,
+            tier: trophy.tier,
+            status: trophy.status,
+            currentHolderDisplayName:
+              trophy.currentHolderDisplayName ||
+              trophy.currentHolder?.inGameName ||
+              trophy.currentHolder?.steamPersonaName ||
+              null,
+            guardianHolderDisplayName:
+              trophy.guardianHolderDisplayName ||
+              trophy.guardianHolder?.inGameName ||
+              trophy.guardianHolder?.steamPersonaName ||
+              null,
+            currentHolderWoloAddress: trophy.currentHolderWoloAddress,
+            guardianHolderWoloAddress: trophy.guardianHolderWoloAddress,
+            appCustodyRole,
+            hasRecordedChainAssociation,
+            association,
+            tributeAmountWolo: trophy.tributeAmountWolo,
+            currentBountyWolo: projectedTrophyBounty(trophy),
+            bountyGrowthWolo: trophy.bountyGrowthWolo,
+            nftClassId: trophy.nftClassId,
+            nftId: trophy.nftId,
+            metadataUri: trophy.nftMetadataUri,
+            imageUri,
+            routeHref: definition?.routeHref || "/champions",
+            chainStatus: trophy.chainStatus,
+            chainOwnerAddress: trophy.chainOwnerAddress,
+            holderSince: trophy.holderSince?.toISOString() ?? null,
+            updatedAt: trophy.updatedAt.toISOString(),
+          })
+        ),
       },
       { headers: NO_STORE_HEADERS }
     );
