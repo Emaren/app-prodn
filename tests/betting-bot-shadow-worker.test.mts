@@ -255,6 +255,21 @@ test("reserved counter-bettor identities never recursively counter themselves", 
   assert.equal(state.actions.length, 0);
 });
 
+test("other reserved system identities cannot trigger house previews", async () => {
+  const state = harness({
+    wager: wager({ user: { uid: "aoe2hd_ai_concierge" } }),
+  });
+
+  const result = await runBetCounterShadowWorker(state.prisma, {
+    sourceWagerIds: [99],
+    env: SHADOW_ENV,
+  });
+
+  assert.equal(result.proposedCount, 0);
+  assert.equal(result.skippedCount, 1);
+  assert.equal(state.actions.length, 0);
+});
+
 test("one source wager produces at most one append-only action per bot policy", async () => {
   const state = harness();
 
@@ -345,4 +360,13 @@ test("counter shadow evaluation occurs only after human wager transactions commi
   );
   assert.ok(ticketTx >= 0);
   assert.ok(ticketWorker > ticketTx);
+
+  assert.match(
+    single,
+    /existingIntentWager[\s\S]*runBetCounterShadowWorkerBestEffort\(prisma, \[existingIntentWager\.id\]\)/
+  );
+  assert.match(
+    single,
+    /duplicateStake[\s\S]*runBetCounterShadowWorkerBestEffort\(prisma, \[duplicateStake\.id\]\)/
+  );
 });
