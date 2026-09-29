@@ -351,7 +351,7 @@ test("admin audit exposes preview evidence without claiming committed money", ()
     "marketExposureBeforeWolo: true",
     "dailyExposureBeforeWolo: true",
   ]) {
-    assert.match(route, new RegExp(field.replace(/[.*+?^$\{\}()|[\]\\]/g, "\\$&")));
+    assert.ok(route.includes(field), field);
   }
   assert.match(route, /shadowEvaluatorConnected: true/);
   assert.match(panel, /Shadow proposal/);
