@@ -1,6 +1,7 @@
 import type { Prisma, PrismaClient } from "@/lib/generated/prisma";
 import { countriesEligibilityMatch } from "@/lib/countryEligibility";
 import { eloTrophyIdentity } from "@/lib/champions/eloTrophy";
+import { trophyStatusAllowsChallenge } from "@/lib/challengeTitlePolicy";
 import {
   acquireChallengeDesyncAdvisoryLock,
   assertTitleTransferAllowed,
@@ -907,6 +908,12 @@ async function createChallenge(
   payload: ActionPayload
 ) {
   const trophy = await getTrophy(prisma, payload);
+  if (!trophyStatusAllowsChallenge(trophy.status)) {
+    throw new TrophyActionError(
+      `${trophy.displayName} is ${trophy.status.replace(/_/g, " ")} and is not open for title challenges.`,
+      409
+    );
+  }
   const challenger = await getUser(prisma, nullableInt(payload.challengerUserId));
   if (!challenger) throw new TrophyActionError("Choose a challenger.");
   const defender = await getUser(
