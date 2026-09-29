@@ -7,7 +7,6 @@ import {
 } from "@/lib/betPhaseBooks";
 
 export const BET_PHASE_BOOKS_V2_SHADOW_STATUS = "phase_shadow";
-export const BET_PHASE_BOOKS_V2_PRE_GAME_MAX_LEAD_MS = 7 * 24 * 60 * 60 * 1000;
 
 export type BetPhaseBookShadowSource = {
   battleId?: number | null;
@@ -66,9 +65,6 @@ function preGamePlan(
   const authorityIdentityKey = `scheduled-match:${source.scheduledMatchId}`;
   const phase: ActiveBetBookPhase = "pre_game";
   const closesAt = new Date(source.closeAt);
-  const opensAt = new Date(
-    closesAt.getTime() - BET_PHASE_BOOKS_V2_PRE_GAME_MAX_LEAD_MS
-  );
 
   return {
     authorityIdentityKey,
@@ -78,7 +74,7 @@ function preGamePlan(
       phase,
     }),
     phase,
-    phaseOpensAt: opensAt,
+    phaseOpensAt: null,
     phaseClosesAt: closesAt,
     source,
   };
