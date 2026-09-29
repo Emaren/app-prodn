@@ -294,6 +294,19 @@ than the fully re-runnable operator reconciler. Static profile fallback also
 rejects forced-vacant title definitions so an old holder cannot be resurrected
 by definition drift.
 
+The wallet dashboard must not collapse wallet association into title custody.
+Its championship asset view starts from the canonical public Trophy projection,
+so forced-vacant historical holder and Guardian addresses are not treated as
+current app custody. A wallet may match current app holder custody, current
+Guardian custody, a recorded `chainOwnerAddress`, or both. Those relationships
+must be labeled separately. While `chain_backed_trophies_enabled` remains
+false, a chain-address record alone does not make that wallet the current
+champion or Guardian.
+
+Wallet Trophy cards use the projected live bounty and the title definition's
+real `routeHref`. Do not hard-code a national belt destination or expose a
+stored bounty as though it were the current projected dethrone amount.
+
 Projected bounty is display math: stored bounty plus whole elapsed days times
 the configured bounty growth. It is not a chain balance and must not be called
 paid or escrowed.
