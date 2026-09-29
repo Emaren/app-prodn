@@ -1406,8 +1406,22 @@ function Payouts({
                     >
                       Execute
                     </Button>
-                    <Button disabled={busy || trophyPayoutIsTerminal(payout)} onClick={() => void onAction({ action: "payout_action", payoutId: payout.id, operation: "dry_run" }, "Payout returned to dry-run.")}>Dry-run</Button>
-                    <Button disabled={busy || trophyPayoutIsTerminal(payout)} onClick={() => void onAction({ action: "payout_action", payoutId: payout.id, operation: "retry" }, "Payout retry requested.")}>Retry</Button>
+                    <Button
+                      disabled={busy || trophyPayoutIsTerminal(payout) || payout.payoutKind === "dethrone_bounty"}
+                      onClick={() => void onAction({ action: "payout_action", payoutId: payout.id, operation: "dry_run" }, "Payout returned to dry-run.")}
+                    >
+                      Dry-run
+                    </Button>
+                    <Button
+                      disabled={
+                        busy ||
+                        trophyPayoutIsTerminal(payout) ||
+                        (payout.payoutKind === "dethrone_bounty" && payout.status === "dry_run")
+                      }
+                      onClick={() => void onAction({ action: "payout_action", payoutId: payout.id, operation: "retry" }, "Payout retry requested.")}
+                    >
+                      Retry
+                    </Button>
                     <Button tone="danger" disabled={busy || trophyPayoutIsTerminal(payout)} onClick={() => void onAction({ action: "payout_action", payoutId: payout.id, operation: "cancel" }, "Payout cancelled.")}>Cancel</Button>
                   </div>
                 </td>
