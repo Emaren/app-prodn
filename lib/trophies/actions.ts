@@ -1505,35 +1505,63 @@ async function forceForfeiture(
   payload: ActionPayload
 ) {
   const trophy = await getTrophy(prisma, payload);
-  await prisma.$transaction([
-    prisma.trophy.update({
-      where: { id: trophy.id },
+  const reason =
+    nullableString(payload.reason, 255) || "Admin-resolved eligibility conflict.";
+  const now = new Date();
+
+  await prisma.$transaction(async (tx) => {
+    const currentTrophy = await lockTrophyMoneyState(tx, trophy.id);
+    if (!currentTrophy) {
+      throw new TrophyActionError("Trophy disappeared during forfeiture.", 409);
+    }
+
+    const custodyExit = await prepareTrophyCustodyExit(tx, {
+      trophy: currentTrophy,
+      now,
+      reason: "national_eligibility_forfeiture_before_chain_execution",
+      createdBy: "force_forfeiture",
+    });
+    if (custodyExit.inFlightPayoutId) {
+      throw new TrophyActionError(
+        `Daily Tribute payout #${custodyExit.inFlightPayoutId} is executing. Retry forfeiture after payout resolution.`,
+        409
+      );
+    }
+
+    await tx.trophy.update({
+      where: { id: currentTrophy.id },
       data: {
         status: "vacant",
         currentHolderUserId: null,
         currentHolderDisplayName: null,
         currentHolderWoloAddress: null,
+        currentBountyWolo: custodyExit.frozenBountyWolo,
         holderSince: null,
         forfeitureNeeded: false,
-        eligibilityNote: nullableString(payload.reason, 255) || "Forfeiture resolved by admin.",
+        eligibilityNote: reason,
       },
-    }),
-    prisma.trophyEvent.create({
+    });
+
+    await tx.trophyEvent.create({
       data: {
-        trophyId: trophy.id,
+        trophyId: currentTrophy.id,
         eventType: "NATIONAL_ELIGIBILITY_FORFEITURE",
         actorUserId: actor.id,
         actorRole: "admin",
         initiatedBy: "admin",
-        fromHolderUserId: trophy.currentHolderUserId,
-        fromWoloAddress: trophy.currentHolderWoloAddress,
+        fromHolderUserId: currentTrophy.currentHolderUserId,
+        fromWoloAddress: currentTrophy.currentHolderWoloAddress,
+        amountWolo: custodyExit.frozenBountyWolo || null,
         status: "recorded",
         rawRequest: {
-          reason: nullableString(payload.reason, 255) || "Admin-resolved eligibility conflict.",
+          reason,
+          frozenBountyWolo: custodyExit.frozenBountyWolo,
+          supersededTributePayoutIds: custodyExit.supersededTributePayoutIds,
+          chainBackedTributePayoutIds: custodyExit.chainBackedTributePayoutIds,
         },
       },
-    }),
-  ]);
+    });
+  });
 }
 
 async function requestNftOperation(
