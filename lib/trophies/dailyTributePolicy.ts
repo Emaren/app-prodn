@@ -18,6 +18,11 @@ export type DailyTributeReconciliation =
       blockingPayoutId: number;
     }
   | {
+      action: "blocked_by_execution";
+      stalePayoutIds: [];
+      blockingPayoutId: number;
+    }
+  | {
       action: "keep_current";
       stalePayoutIds: [];
       currentPayoutId: number;
@@ -48,6 +53,10 @@ function hasImmutableChainTruth(payout: DailyTributePayoutCandidate) {
   return payout.status === "paid" || Boolean(payout.txHash?.trim());
 }
 
+function hasInFlightExecution(payout: DailyTributePayoutCandidate) {
+  return payout.status === "executing" && !payout.txHash?.trim();
+}
+
 /**
  * Decide whether today's daily trophy tribute should be queued for the current holder.
  *
@@ -67,6 +76,15 @@ export function reconcileDailyTrophyTribute(
       action: "blocked_by_chain_truth",
       stalePayoutIds: [],
       blockingPayoutId: chainBacked.id,
+    };
+  }
+
+  const inFlight = existing.find(hasInFlightExecution);
+  if (inFlight) {
+    return {
+      action: "blocked_by_execution",
+      stalePayoutIds: [],
+      blockingPayoutId: inFlight.id,
     };
   }
 
