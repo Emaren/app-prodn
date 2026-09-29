@@ -105,6 +105,19 @@ advisory lock so an action snapshot is cleanly before or after a config update.
 The append-only admin audit shows source wager/market, side flip, proposed WOLO,
 and exposure-before without claiming a counter-wager was placed.
 
+The public Betting Hall may project those zero-custody `shadow_proposal`
+actions as **Preview Liquidity**. This is presentation evidence only. It lives on
+a separate `previewLiquidity` field after the real market card has calculated
+user pools, total pot, slip counts, crowd split and projected return. Preview
+amounts must never be added to those financial fields.
+
+The public projection fails closed. It accepts only effective `shadow` actions
+with a positive proposed amount and no committed counterstake, available-balance
+claim, custody verification, custody reservation or stake transaction hash.
+Each displayed row is explicitly marked `financiallyCommitted=false`, and the
+Hall labels the rail “Shadow only · not in pot or odds.” Winner and Desync
+markets each retain their own Preview Liquidity evidence.
+
 Live execution remains impossible until dedicated operator custody,
 reservation proof, and an idempotent executor exist. The existing database
 constraint additionally requires real custody verification, reservation, and
