@@ -308,13 +308,19 @@ type WalletTransferRow = {
 type WalletTrophyRow = {
   id: number;
   trophyId: string;
+  championTitleId: string | null;
   displayName: string;
   kind: string;
   family: string;
   tier: string | null;
   status: string;
   currentHolderDisplayName: string | null;
+  guardianHolderDisplayName: string | null;
   currentHolderWoloAddress: string | null;
+  guardianHolderWoloAddress: string | null;
+  appCustodyRole: "holder" | "guardian" | null;
+  hasRecordedChainAssociation: boolean;
+  association: "app_custody" | "chain_record" | "both";
   tributeAmountWolo: number;
   currentBountyWolo: number;
   bountyGrowthWolo: number;
@@ -322,6 +328,7 @@ type WalletTrophyRow = {
   nftId: string | null;
   metadataUri: string | null;
   imageUri: string | null;
+  routeHref: string;
   chainStatus: string;
   chainOwnerAddress: string | null;
   holderSince: string | null;
@@ -525,9 +532,12 @@ function WalletChainPortfolio({
         <p className="text-xs uppercase tracking-[0.28em] text-amber-100/65">
           Championship Assets
         </p>
-        <h2 className="mt-2 text-xl font-semibold text-white">Belts held by this wallet</h2>
+        <h2 className="mt-2 text-xl font-semibold text-white">
+          Championship assets linked to this wallet
+        </h2>
         <p className="mt-1 text-sm leading-6 text-slate-400">
-          App custody is authoritative until WoloChain trophy ownership is enabled.
+          App custody is current title authority. Chain records are shown separately
+          and do not by themselves make this wallet the current champion.
         </p>
 
         {!connected ? (
@@ -536,7 +546,7 @@ function WalletChainPortfolio({
           </div>
         ) : trophies.length === 0 && !loading ? (
           <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-4 text-sm text-slate-400">
-            No belts or artifacts are assigned to this wallet yet.
+            No current app custody or recorded chain association was found for this wallet.
           </div>
         ) : (
           <div className="mt-4 space-y-3">
@@ -564,11 +574,43 @@ function WalletChainPortfolio({
                       </div>
                     </div>
                     <span className="rounded-full border border-amber-200/20 bg-amber-300/10 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-amber-100">
-                      {trophy.chainStatus === "app_only" ? "App custody" : trophy.chainStatus}
+                      {trophy.appCustodyRole === "holder"
+                        ? trophy.hasRecordedChainAssociation
+                          ? "App holder + chain record"
+                          : "Current app holder"
+                        : trophy.appCustodyRole === "guardian"
+                          ? trophy.hasRecordedChainAssociation
+                            ? "Guardian + chain record"
+                            : "Guardian custody"
+                          : "Chain record only"}
                     </span>
                   </div>
 
                   <div className="mt-3 grid gap-2 text-sm text-slate-300">
+                    <div>
+                      Title status:{" "}
+                      <strong className="text-white">{trophy.status}</strong>
+                    </div>
+                    {trophy.appCustodyRole === "holder" ? (
+                      <div>
+                        Current holder:{" "}
+                        <strong className="text-white">
+                          {trophy.currentHolderDisplayName || "Linked wallet"}
+                        </strong>
+                      </div>
+                    ) : trophy.appCustodyRole === "guardian" ? (
+                      <div>
+                        Guardian custodian:{" "}
+                        <strong className="text-white">
+                          {trophy.guardianHolderDisplayName || "Linked wallet"}
+                        </strong>
+                      </div>
+                    ) : (
+                      <div>
+                        This wallet has a recorded chain association, but it is not the
+                        current app custodian.
+                      </div>
+                    )}
                     <div>
                       <strong className="text-white">{trophy.tributeAmountWolo} WOLO/day</strong>{" "}
                       title tribute
@@ -579,9 +621,18 @@ function WalletChainPortfolio({
                       </strong>{" "}
                       estimated dethrone reward
                     </div>
-                    {trophy.holderSince ? (
-                      <div>Held since {formatWalletDate(trophy.holderSince)}</div>
+                    {trophy.appCustodyRole && trophy.holderSince ? (
+                      <div>
+                        {trophy.appCustodyRole === "guardian" ? "Custody since" : "Held since"}{" "}
+                        {formatWalletDate(trophy.holderSince)}
+                      </div>
                     ) : null}
+                    <div>
+                      Chain state:{" "}
+                      <strong className="text-white">
+                        {trophy.chainStatus === "app_only" ? "App only" : trophy.chainStatus}
+                      </strong>
+                    </div>
                   </div>
 
                   <div className="mt-4 flex flex-wrap gap-2">
@@ -596,10 +647,10 @@ function WalletChainPortfolio({
                       </Link>
                     ) : null}
                     <Link
-                      href="/champions/nations/canada"
+                      href={trophy.routeHref}
                       className="rounded-full border border-amber-200/18 bg-amber-300/10 px-3 py-2 text-xs font-semibold text-amber-100 transition hover:border-amber-200/40 hover:bg-amber-300/15"
                     >
-                      View belt
+                      View {trophy.kind === "artifact" ? "artifact" : "belt"}
                     </Link>
                   </div>
                 </div>
