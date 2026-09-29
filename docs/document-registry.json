@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "71340406a525a07e8017bd9994fa5fbbae2242bc825d5c6d6743b087af0887ce",
+      "sha256": "6c2c06782750a1e060285a6d7408bc2cde09700c5a011612cf5cb08cc9b6270c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/wallet-trophy-authority-20260929",
-    "commit": "36719b614ef2de3efc058c90852a716d36957aab"
+    "commit": "4187a7c5edba05165c30a9940d4178be73afe878"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
