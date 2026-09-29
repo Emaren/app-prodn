@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/trophy-custody-exit-execution-20260929` at `95af5f3019372b5c57b8a869b66a3e90f0a91518`
+Implementation baseline: `fix/trophy-challenge-status-admission-20260929` at `7f62bc6383617631100870d7fb50994de7cf1e78`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
