@@ -2260,3 +2260,33 @@ Championship bounty execution uses the existing Founder Rewards settlement rail.
 It remains separate from Bet Escrow and from the numbered public Bounty Pool.
 A ledger row without an executable, idempotent settlement path is not a finished
 financial feature.
+
+## 2026-09-29 — Shadow automation must react after authoritative human commit, never inside it
+
+Counter-bettor Preview is a projection of an already-authoritative human wager,
+not part of wager admission. Run Tony/Paulie shadow evaluation only after the
+human `BetWager` transaction commits. Its best-effort failure must never roll
+back, reject, or mutate the human wager. Duplicate/recovery requests may replay
+the projection because the counter-action idempotency key is policy/bot/market/
+source-wager/proposition bound.
+
+Serialize bot policy edits and shadow decisions with the same per-bot advisory
+lock. Re-read both policy and source wager under that lock before deriving the
+decision. Count prior append-only `shadow_proposal` rows under the same lock for
+per-market and UTC-day exposure; never use a stale pre-lock exposure snapshot.
+
+Shadow balance is simulation, not custody. If pure policy requires a balance
+input, a clearly labeled policy envelope may exercise balance-floor arithmetic,
+but persisted `availableBalanceWolo` must stay null and `custodyVerified`
+false. `committedCounterstakeWolo`, reservation IDs and transaction hashes stay
+null until a separately reviewed custody executor proves them. The database
+custody-proof constraint is an independent final fence.
+
+Use the canonical internal-system UID predicate plus current bot reserved UIDs
+to reject non-human source wagers. This prevents recursive house/AI/protocol
+activity even if a future internal account gains a wager path.
+
+An exposure-blocked source wager receives one decision in its original context;
+do not resurrect yesterday's human action after a daily limit resets. Historical
+shadow actions are evidence, not queued financial work.
+
