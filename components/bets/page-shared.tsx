@@ -117,7 +117,7 @@ export type BetBoardMarket = {
   right: BetBoardSide;
   founderBonuses: BetFounderChip[];
   warTape: BetWarTapeRow[];
-  previewLiquidity: BetPreviewLiquidityRow[];
+  previewLiquidity?: BetPreviewLiquidityRow[];
   broadcastFeeds: BetBroadcastFeeds;
   broadcastPreviewUrls: BetBroadcastPreviewUrls;
   viewerWager: {
