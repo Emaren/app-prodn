@@ -5,7 +5,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/kingdom",
     label: "Kingdom",
-    version: "src-315cad348f8bd0244ea9",
+    version: "src-e1475a39cedebdb70634",
   },
   {
     href: "/oracle",
@@ -20,22 +20,22 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/champions",
     label: "Champions",
-    version: "src-0ef9404ca18698b3b9ea",
+    version: "src-0638ad702787b0f34bab",
   },
   {
     href: "/chaosium",
     label: "Chaosium",
-    version: "src-f842f36967b2e81f61ac",
+    version: "src-ef580d73f9c9eb47d0b7",
   },
   {
     href: "/olympia",
     label: "Olympia",
-    version: "src-4db71361f1062be1e4b9",
+    version: "src-3d42dc8473a3bb8da486",
   },
   {
     href: "/leagues",
     label: "Leagues",
-    version: "src-00d9aea68083ee2a9aab",
+    version: "src-2c6e4bfe4512b5809255",
   },
   {
     href: "/national-champions",
@@ -45,7 +45,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/clans",
     label: "Clans",
-    version: "src-6ba9ccf343fb55c6afb0",
+    version: "src-8c7fc5296e31e43f7bb5",
   },
   {
     href: "/academy",
@@ -65,7 +65,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/bounties",
     label: "Bounties",
-    version: "src-9d8bf73102c746c92fa9",
+    version: "src-bfc43ba099d945b2049d",
   },
   {
     href: "/forum",
@@ -75,12 +75,12 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/radio",
     label: "Radio WOLO",
-    version: "src-70bff92716d0d92b7f3b",
+    version: "src-6a58574bcf23a6541015",
   },
   {
     href: "/workshop",
     label: "The Workshop",
-    version: "src-9818e7549ad59368454c",
+    version: "src-a8400e0d5808be3e1018",
   },
   {
     href: "/kingdom-intelligence",
@@ -90,7 +90,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/game-stats",
     label: "Parser Observatory",
-    version: "src-1ac51bba50e0446d5576",
+    version: "src-9f9fac96dab226d8a3a0",
   },
   {
     href: "/traffic",
@@ -100,7 +100,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/kingdom-forge",
     label: "Kingdom Forge",
-    version: "src-1f81de96a9d8751a0718",
+    version: "src-f8a9c0109baff44699c7",
   },
   {
     href: "/round-chamber",
@@ -115,6 +115,6 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/speed",
     label: "Speed",
-    version: "src-8d7fc535fffe86294cdf",
+    version: "src-75f0d3084c8236e92b55",
   },
 ] as const;
