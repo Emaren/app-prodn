@@ -428,6 +428,35 @@ SET DEFAULT 'nobody@example.invalid';""",
             ["20260911170000_challenge_protocol_v1"],
         )
 
+    def test_current_phase_books_v2_migration_fits_additive_contract(self):
+        path = (
+            "prisma/migrations/"
+            "20260929211500_add_betting_phase_books_v2_foundation/"
+            "migration.sql"
+        )
+        manifest = {
+            "release_sha": "f" * 40,
+            "risk_class": "FINANCIAL",
+            "migration_paths": [path],
+        }
+
+        with mock.patch.object(
+            MODULE,
+            "release_manifest",
+            return_value=manifest,
+        ):
+            resolved, names = MODULE.migration_contract(
+                "f" * 40
+            )
+
+        self.assertEqual(resolved["risk_class"], "FINANCIAL")
+        self.assertEqual(
+            names,
+            [
+                "20260929211500_add_betting_phase_books_v2_foundation",
+            ],
+        )
+
     def test_insert_into_preexisting_table_is_rejected(self):
         temp, root, manifests, release = self.with_release(
             [
