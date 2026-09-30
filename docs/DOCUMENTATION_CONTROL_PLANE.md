@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/finish-plan-root-recovery-truth-20260930` at `c54f7e4ccc470de41e90ace35ef970bc69eec1b9`
+Implementation baseline: `fix/finish-plan-database-mutation-truth-20260930` at `4e9937ffcafc0c554aef74c69e26f33baa45c65c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
