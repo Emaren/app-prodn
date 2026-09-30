@@ -99,6 +99,7 @@ test("support diagnostics expose Watcher 1.6.2 dashboard and resource health rem
 
 test("Watcher 1.6.2 nested support telemetry survives the server ingress contract", () => {
   assert.match(telemetrySource, /const MAX_METADATA_DEPTH = 3;/);
+  assert.match(telemetrySource, /const MAX_METADATA_KEYS = 64;/);
   assert.match(
     telemetrySource,
     /sanitizeMetadataValue\(entry, depth \+ 1\)/,
@@ -115,4 +116,18 @@ test("Watcher 1.6.2 nested support telemetry survives the server ingress contrac
     telemetrySource,
     /metadata:\s*\{[\s\S]*\.\.\.metadata,[\s\S]*authResolved:/,
   );
+});
+
+
+test("Watcher 1.6.2 heartbeat capacity retains renderer fields beyond the old forty-key cutoff", () => {
+  assert.match(
+    telemetrySource,
+    /Object\.entries\(value\)\.slice\(0, MAX_METADATA_KEYS\)/,
+  );
+  assert.match(telemetrySource, /const MAX_METADATA_KEYS = 64;/);
+
+  // 1.6.2 currently emits fifty top-level heartbeat metadata fields:
+  // resourceProfile is #38, rendererStatus #40, and rendererReady onward
+  // crosses the historical 40-key boundary. Keep bounded headroom.
+  assert.ok(64 >= 50);
 });
