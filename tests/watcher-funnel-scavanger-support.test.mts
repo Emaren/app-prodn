@@ -7,6 +7,16 @@ const source = fs.readFileSync(
   "utf8",
 );
 
+const telemetrySource = fs.readFileSync(
+  new URL("../lib/watcherTelemetry.ts", import.meta.url),
+  "utf8",
+);
+
+const telemetryIngressSource = fs.readFileSync(
+  new URL("../app/api/watcher/events/route.ts", import.meta.url),
+  "utf8",
+);
+
 test("Scavanger_Ab has a permanent Watcher support target", () => {
   assert.match(
     source,
@@ -81,4 +91,25 @@ test("support diagnostics expose Watcher 1.6.2 dashboard and resource health rem
   );
   assert.match(source, /no user DevTools are required/);
   assert.match(source, /nestedMetadataPowerSignal/);
+});
+
+
+test("Watcher 1.6.2 nested support telemetry survives the server ingress contract", () => {
+  assert.match(telemetrySource, /const MAX_METADATA_DEPTH = 3;/);
+  assert.match(
+    telemetrySource,
+    /sanitizeMetadataValue\(entry, depth \+ 1\)/,
+  );
+  assert.match(
+    telemetrySource,
+    /SECRET_METADATA_KEY_RE/,
+  );
+  assert.match(
+    telemetryIngressSource,
+    /metadata:\s*sanitizeWatcherMetadata\(raw\.metadata\)/,
+  );
+  assert.match(
+    telemetrySource,
+    /metadata:\s*\{[\s\S]*\.\.\.metadata,[\s\S]*authResolved:/,
+  );
 });
