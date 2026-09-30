@@ -290,7 +290,18 @@ test("Watcher release sync rolls vault back if metadata commit fails", async (t)
   );
 });
 
-test("Watcher release sync preserves reliability and 1.5.11 media shedding", () => {
+test("Watcher release sync preserves reliability, media shedding, and 1.6.2 support truth", () => {
+  for (const feature of [
+    "Adaptive Watcher resource profiling",
+    "Heartbeat-scoped resource telemetry",
+    "Renderer bootstrap health telemetry",
+    "One-shot dashboard self-recovery",
+    "Buffered runtime diagnostics",
+    "Bounded historical Watcher state",
+  ]) {
+    assert.match(sync, new RegExp(feature));
+  }
+
   assert.match(sync, /Active replay-folder recovery/);
   assert.match(sync, /Fresh replay adoption after restart/);
   assert.match(sync, /Localized out-of-sync MP save support/);
