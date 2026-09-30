@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/phase-books-additive-migration-contract-20260930` at `64b0264f71bf612468a64c133878c3ae20f5ddb3`
+Implementation baseline: `fix/finish-plan-root-recovery-truth-20260930` at `c54f7e4ccc470de41e90ace35ef970bc69eec1b9`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

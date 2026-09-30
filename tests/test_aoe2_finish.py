@@ -1002,6 +1002,66 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
             },
         }
 
+    def test_plan_recovery_predicate_accepts_safe_low_root(self):
+        with mock.patch.object(
+            MODULE.aoe2_doctor,
+            "load_contract",
+            return_value=self.contract(),
+        ):
+            self.assertTrue(
+                MODULE.root_headroom_plan_recovery_available(
+                    self.snapshot(),
+                    self.production(),
+                )
+            )
+
+    def test_plan_recovery_predicate_rejects_unsafe_wolo(self):
+        production = self.production()
+        production["wolo_8093_count"] = 0
+        with mock.patch.object(
+            MODULE.aoe2_doctor,
+            "load_contract",
+            return_value=self.contract(),
+        ):
+            self.assertFalse(
+                MODULE.root_headroom_plan_recovery_available(
+                    self.snapshot(),
+                    production,
+                )
+            )
+
+    def test_plan_recovery_predicate_rejects_critical_volume(self):
+        snapshot = self.snapshot()
+        snapshot["volume"]["used_percent"] = 92.0
+        with mock.patch.object(
+            MODULE.aoe2_doctor,
+            "load_contract",
+            return_value=self.contract(),
+        ):
+            self.assertFalse(
+                MODULE.root_headroom_plan_recovery_available(
+                    snapshot,
+                    self.production(),
+                )
+            )
+
+    def test_finish_plan_marks_safe_root_recovery_as_automatic(self):
+        import inspect
+
+        source = inspect.getsource(MODULE.plan_payload)
+        self.assertIn(
+            "root_headroom_plan_recovery_available",
+            source,
+        )
+        self.assertIn(
+            '"root_headroom_recovery": root_recovery_remediable',
+            source,
+        )
+        self.assertIn(
+            "bounded root-headroom recovery will reclaim only approved",
+            source,
+        )
+
     def test_recovery_target_adds_bounded_hysteresis_below_preferred(self):
         with mock.patch.object(
             MODULE.aoe2_doctor,

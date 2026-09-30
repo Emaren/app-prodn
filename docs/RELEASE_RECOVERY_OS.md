@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "release-recovery-contract"
-reviewed_at: "2026-09-22"
+reviewed_at: "2026-09-29"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -64,6 +64,7 @@ human diagnosis only for failure classes that have a tested recovery contract.
 13. The release gate establishes deterministic Prisma generated state before
     TypeScript or Prisma validation.
 14. Recovery never substitutes for the canonical release checks that follow it.
+15. Dry-run planning may classify low-root capacity as automatically remediable only when the apply path's bounded recovery preconditions are already provable; preview itself remains read-only.
 
 ## Recovery matrix
 
@@ -71,6 +72,7 @@ human diagnosis only for failure classes that have a tested recovery contract.
 | --- | --- | --- | --- |
 | Root meets release floor | None | Filesystem capacity | Continue |
 | Root below release floor | Bounded reclaim ladder | Source/build/service/Wolo identity and mounted-volume capacity | Re-prove capacity, continue |
+| Dry-run sees root below floor and the bounded recovery preconditions are provable | Report automatic remediation only; do not reclaim bytes in preview | Recovery enabled, non-critical evidence volume, exact source/BUILD_ID, Wolo 8092=1 and 8093=1, valid recovery bounds | Plan is `READY_WITH_AUTOMATIC_REMEDIATION`; apply still re-proves every invariant before mutation |
 | Approved reclaim exhausted below floor | None beyond approved classes | Recovery receipt + remaining capacity | Stop |
 | Exact current staged candidate | Resume exact artifact | Release SHA, BUILD_ID, artifact and receipt bindings | Continue at activation |
 | Current staged candidate but exact resume evidence invalid | None | Current-release classification | Stop |
