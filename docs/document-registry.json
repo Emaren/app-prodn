@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "af34fcfc41c9e5a1fe1a1f9b0bd57adc8bc3d067b9df913907128bf6f3d6eb2f",
+      "sha256": "fa64e23e8dae65cb8f85a2e14a720f39327fd7a2d676ad8ee7b1e17533880c7f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1323,9 +1323,9 @@
       "owner": "aoe2war-web",
       "path": "docs/RELEASE_RECOVERY_OS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-22",
+      "reviewed_at": "2026-09-29",
       "sensitivity": "internal",
-      "sha256": "0141b702f44170f1aa7111b3492af184b841caa6c936b550aedfa21349414b86",
+      "sha256": "ff258a9fc6345113c770ad494d41833c638a300920224267c414520863666c45",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/phase-books-additive-migration-contract-20260930",
-    "commit": "64b0264f71bf612468a64c133878c3ae20f5ddb3"
+    "branch": "fix/finish-plan-root-recovery-truth-20260930",
+    "commit": "c54f7e4ccc470de41e90ace35ef970bc69eec1b9"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
