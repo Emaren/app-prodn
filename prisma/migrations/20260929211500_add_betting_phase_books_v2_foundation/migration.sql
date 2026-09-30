@@ -9,9 +9,15 @@
 -- - future activated phase books receive their own immutable identity/window
 
 ALTER TABLE "bet_markets"
-  ADD COLUMN "book_phase" VARCHAR(24) DEFAULT 'legacy',
-  ADD COLUMN "phase_book_key" VARCHAR(255),
-  ADD COLUMN "phase_opens_at" TIMESTAMP(6),
+  ADD COLUMN "book_phase" VARCHAR(24) DEFAULT 'legacy';
+
+ALTER TABLE "bet_markets"
+  ADD COLUMN "phase_book_key" VARCHAR(255);
+
+ALTER TABLE "bet_markets"
+  ADD COLUMN "phase_opens_at" TIMESTAMP(6);
+
+ALTER TABLE "bet_markets"
   ADD COLUMN "phase_closes_at" TIMESTAMP(6);
 
 ALTER TABLE "bet_markets"
