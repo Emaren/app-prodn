@@ -1308,6 +1308,61 @@ def root_below_release_floor(
     )
 
 
+def root_headroom_plan_recovery_available(
+    snapshot: dict[str, Any],
+    production: dict[str, Any],
+) -> bool:
+    """Return whether Finish can safely repair low root capacity on apply.
+
+    This is intentionally a planning predicate only. It never reclaims bytes;
+    the real mutation remains owned by recover_root_headroom(), which re-proves
+    the same source/build/Wolo invariants and writes a durable receipt.
+    """
+    contract = aoe2_doctor.load_contract()
+    finish = contract.get("finish", {})
+    capacity = contract.get("capacity", {})
+
+    if not bool(finish.get("auto_root_headroom_recovery", False)):
+        return False
+
+    if not root_below_release_floor(snapshot):
+        return False
+
+    volume_critical = float(
+        capacity.get("volume_used_critical_percent")
+        or 92.0
+    )
+    if float(snapshot["volume"]["used_percent"]) >= volume_critical:
+        return False
+
+    source_sha = str(production.get("source_sha") or "")
+    active_build_id = str(production.get("active_build_id") or "")
+    if len(source_sha) != 40 or not active_build_id:
+        return False
+
+    try:
+        wolo_8092 = int(production.get("wolo_8092_count") or 0)
+        wolo_8093 = int(production.get("wolo_8093_count") or 0)
+    except (TypeError, ValueError):
+        return False
+    if wolo_8092 != 1 or wolo_8093 != 1:
+        return False
+
+    journal_limit_mib = int(
+        finish.get("root_headroom_journal_limit_mib")
+        or 100
+    )
+    if not 50 <= journal_limit_mib <= 512:
+        return False
+
+    try:
+        root_headroom_recovery_target_bytes()
+    except FinishError:
+        return False
+
+    return True
+
+
 def root_headroom_recovery_target_bytes() -> int:
     contract = aoe2_doctor.load_contract()
     capacity = contract.get("capacity", {})
@@ -3479,10 +3534,26 @@ def plan_payload(*, preserve_context_history: bool = False) -> dict[str, Any]:
     if storage_rc != 0 or storage_preview.get("status") not in {"READY", "NOOP"}:
         blockers.append("storage-retention preview did not pass")
     blockers.extend(external_sources["blockers"])
+
+    root_recovery_remediable = root_headroom_plan_recovery_available(
+        capacity_snapshot,
+        production,
+    )
     try:
         assert_capacity_headroom(capacity_snapshot)
     except FinishError as exc:
-        blockers.append(str(exc))
+        if (
+            root_recovery_remediable
+            and str(exc).startswith(
+                "production root headroom is below the release floor:"
+            )
+        ):
+            remediated_blockers.append(
+                "bounded root-headroom recovery will reclaim only approved "
+                "regenerable/archived classes before staging"
+            )
+        else:
+            blockers.append(str(exc))
 
     if documentation_summary["blocked"]:
         blockers.append(
@@ -3577,6 +3648,7 @@ def plan_payload(*, preserve_context_history: bool = False) -> dict[str, Any]:
             "host_reboot": False,
             "package_upgrade": False,
             "maintenance_runner_reconcile": True,
+            "root_headroom_recovery": root_recovery_remediable,
             "context_archive_pruning": bool(
                 documentation_summary["context_projects"]
                 and not preserve_context_history
