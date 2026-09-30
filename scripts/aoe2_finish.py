@@ -25,6 +25,7 @@ from typing import Any, Callable
 import aoe2_audit
 import aoe2_doctor
 import aoe2_release
+import aoe2_release_gate
 import aoe2_update
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -3442,6 +3443,22 @@ def assert_no_competing_operator_process() -> None:
         )
 
 
+def planned_database_migration_paths(
+    data: dict[str, Any],
+) -> list[str]:
+    """Return the exact Prisma migration paths in the current release scope.
+
+    The planner reuses Release Gate's source-scope authority rather than
+    inventing a second diff model. This function is read-only.
+    """
+    scope = aoe2_release_gate.release_scope(data)
+    return sorted(
+        path
+        for path in (scope.get("changed_files") or [])
+        if str(path).startswith("prisma/migrations/")
+    )
+
+
 def plan_payload(*, preserve_context_history: bool = False) -> dict[str, Any]:
     data = aoe2_release.collect()
     local = data["local"]
@@ -3465,6 +3482,11 @@ def plan_payload(*, preserve_context_history: bool = False) -> dict[str, Any]:
     external_sources = external_source_authority_snapshot()
     capacity_snapshot = production_capacity_snapshot()
     deploy_expected = plan.mode != "clean" or needs_deploy(data)
+    database_migration_paths = (
+        planned_database_migration_paths(data)
+        if deploy_expected
+        else []
+    )
     documentation_plan = aoe2_update.collect_plan(
         preserve_context_history=preserve_context_history,
         defer_runtime_provenance=deploy_expected,
@@ -3616,6 +3638,22 @@ def plan_payload(*, preserve_context_history: bool = False) -> dict[str, Any]:
         "doctor": doctor,
         "storage_retention": storage_preview,
         "capacity": capacity_snapshot,
+        "database_plan": {
+            "mutation_expected": bool(database_migration_paths),
+            "migration_paths": database_migration_paths,
+            "lane": (
+                "protected-additive"
+                if database_migration_paths
+                else "none"
+            ),
+            "proof": (
+                "stage first; exact pending frontier; durable pre-migration "
+                "pg_dump + SHA-256; manifest-only migrate deploy; "
+                "_prisma_migrations receipt proof before activation"
+                if database_migration_paths
+                else "no Prisma migration in current release scope"
+            ),
+        },
         "documentation_plan": documentation_summary,
         "evidence_retention": {
             "preserve_context_history": preserve_context_history,
@@ -3631,6 +3669,8 @@ def plan_payload(*, preserve_context_history: bool = False) -> dict[str, Any]:
         "validation_plan": [
             "safe storage retention preview/apply when policy permits",
             "explicit root + mounted-volume release headroom proof",
+            "protected additive database backup/migration/receipt proof when "
+            "the release scope contains Prisma migrations",
             "transaction-seam maintenance runner reconciliation",
             "pre-mutation operational Doctor",
             "source authority reconciliation and release gate",
@@ -3643,7 +3683,7 @@ def plan_payload(*, preserve_context_history: bool = False) -> dict[str, Any]:
             "independent estate audit and final Doctor",
         ],
         "automatic_mutation_boundaries": {
-            "database": False,
+            "database": bool(database_migration_paths),
             "wolo": False,
             "host_reboot": False,
             "package_upgrade": False,

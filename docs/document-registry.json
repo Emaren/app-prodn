@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "fa64e23e8dae65cb8f85a2e14a720f39327fd7a2d676ad8ee7b1e17533880c7f",
+      "sha256": "31019743992662b60a00f15baeafd3cc6ba199d12d995379121011eff28150c5",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1277,9 +1277,9 @@
       "owner": "aoe2war-web",
       "path": "docs/RELEASE_ENGINEERING.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-22",
+      "reviewed_at": "2026-09-29",
       "sensitivity": "internal",
-      "sha256": "0e72f843c6db1780114bb26770999733f055b6f2c7066f1c5fce893fb2d05857",
+      "sha256": "19f1e2a4d6e9ba014ea523414daa9aaefa5b2768b26ef54a52291fb9d98865c7",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/finish-plan-root-recovery-truth-20260930",
-    "commit": "c54f7e4ccc470de41e90ace35ef970bc69eec1b9"
+    "branch": "fix/finish-plan-database-mutation-truth-20260930",
+    "commit": "4e9937ffcafc0c554aef74c69e26f33baa45c65c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
