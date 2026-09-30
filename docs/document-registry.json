@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "56d6e8ea2501ae47147a3475e6149e38595efc9680b43de74dcd817e979b3a8f",
+      "sha256": "4412336b2eea7474fbd7c766d67c7477c01f142245ffa6eda0ec00dc9bea0105",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "release/watcher-1.6.2-production-promotion-20260929",
-    "commit": "f2b9b1b5475df9980462163eb1b3f247b70929fe"
+    "commit": "3af36646eb0a59079f75d776522351c852e7bcba"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
