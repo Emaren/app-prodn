@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/watcher-1.6.2-support-diagnostics-20260929` at `623c74d672256f841c85f112ce4cc044f02e0405`
+Implementation baseline: `feature/watcher-1.6.2-support-diagnostics-20260929` at `c3c91ff712e171c68841052f7081740cc6d56bfa`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

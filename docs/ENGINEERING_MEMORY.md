@@ -2225,6 +2225,14 @@ captured defender or Guardian no longer matches current custody. Preview and
 settlement bounty calculations must use that locked Trophy row rather than an
 older relation snapshot loaded before the transaction.
 
+Time is part of Trophy money authority too. Any custody/economics operation that
+captures an explicit transaction `now` must pass that same instant into
+`projectedTrophyBounty()`; never let the projection silently consult a later
+wall clock. Otherwise an identical transaction can cross UTC midnight between
+preflight and execution and accrue an extra bounty day. Display-only reads may
+continue to use the helper's default current time, but mutation math must be
+anchored to the operation timestamp.
+
 Challengeability is part of the same locked authority, not merely UI state.
 The admitted Trophy statuses are `held`, `active`, `guardian_held`, and
 `vacant`; `draft`, `paused`, and `retired` fail closed. Public challenge

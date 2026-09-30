@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "80bc7a0029687e90499758b10eb8c743b8090797d71f39a671c6ffbb4bf0626d",
+      "sha256": "dbf8dc560d5d5aefc1eb387a5a964813b0fcfab2fa3c93ccf080061bfbb0c394",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-29",
       "sensitivity": "internal",
-      "sha256": "b2d069607b11e8ed20e7d8d7de5248951220755331839f4b0a797ef6c1863b2d",
+      "sha256": "009a87f862b2b46c3de13f1d0a4aaffef223b92012801287ba01f00f9d43029f",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/watcher-1.6.2-support-diagnostics-20260929",
-    "commit": "623c74d672256f841c85f112ce4cc044f02e0405"
+    "commit": "c3c91ff712e171c68841052f7081740cc6d56bfa"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
