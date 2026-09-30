@@ -14,6 +14,10 @@ ALTER TABLE "bet_markets"
   ADD COLUMN "phase_opens_at" TIMESTAMP(6),
   ADD COLUMN "phase_closes_at" TIMESTAMP(6);
 
+ALTER TABLE "bet_markets"
+  ADD CONSTRAINT "ck_bet_markets_book_phase_not_null"
+  CHECK ("book_phase" IS NOT NULL);
+
 CREATE UNIQUE INDEX "uq_bet_markets_phase_book_key"
   ON "bet_markets"("phase_book_key");
 
