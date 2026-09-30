@@ -337,12 +337,13 @@ function trophyBountyMemo(
 }
 
 export function projectedTrophyBounty(
-  trophy: Pick<Trophy, "currentBountyWolo" | "bountyGrowthWolo" | "holderSince" | "status">
+  trophy: Pick<Trophy, "currentBountyWolo" | "bountyGrowthWolo" | "holderSince" | "status">,
+  now = new Date()
 ) {
   if (!trophy.holderSince || !["held", "active", "guardian_held"].includes(trophy.status)) {
     return trophy.currentBountyWolo;
   }
-  return trophy.currentBountyWolo + elapsedTrophyDays(trophy.holderSince) * trophy.bountyGrowthWolo;
+  return trophy.currentBountyWolo + elapsedTrophyDays(trophy.holderSince, now) * trophy.bountyGrowthWolo;
 }
 
 const EXECUTABLE_DAILY_TRIBUTE_STATUSES = ["dry_run", "pending", "retrying", "failed"] as const;
@@ -389,7 +390,7 @@ export async function prepareTrophyCustodyExit(
   const dayStart = utcDayStart(now);
   const dayEnd = new Date(dayStart.getTime() + TROPHY_DAY_MS);
   const dayKey = utcDayKey(now);
-  const frozenBountyWolo = projectedTrophyBounty(input.trophy);
+  const frozenBountyWolo = projectedTrophyBounty(input.trophy, now);
 
   const existing = await prisma.trophyPayout.findMany({
     where: {
@@ -490,7 +491,7 @@ export async function prepareManualTrophyHolderTransferPayouts(
     Boolean(input.previousHolderUserId) &&
     input.previousHolderUserId !== input.nextHolderUserId;
   const accruedBountyWolo = isReassignment
-    ? projectedTrophyBounty(input.trophy)
+    ? projectedTrophyBounty(input.trophy, now)
     : 0;
 
   let tributePayoutId: number | null = null;
