@@ -56,3 +56,29 @@ test("Tekki has a permanent Watcher support target while folder recovery is obse
   assert.match(supportBlock, /label: "Tekki"[\s\S]*?userUid: TEKKI_UID/);
   assert.match(supportBlock, /nameMatches: \["Tekki"\]/);
 });
+
+
+test("support diagnostics expose Watcher 1.6.2 dashboard and resource health remotely", () => {
+  for (const field of [
+    "rendererStatus",
+    "rendererReady",
+    "rendererFailureReason",
+    "rendererReloadAttempts",
+    "rendererFailureCount",
+    "resourceCpuPercent",
+    "resourceWorkingSetMb",
+    "resourceIdleWakeupsPerSecond",
+    "resourceNetworkMbps",
+    "resourcePowerSignal",
+    "resourceProcessCount",
+  ]) {
+    assert.match(source, new RegExp(field));
+  }
+
+  assert.match(
+    source,
+    /Watcher engine is connected but the dashboard is not ready/,
+  );
+  assert.match(source, /no user DevTools are required/);
+  assert.match(source, /nestedMetadataPowerSignal/);
+});
