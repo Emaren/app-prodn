@@ -417,6 +417,51 @@ class FinishTests(unittest.TestCase):
             [],
         )
 
+    def test_finish_plan_uses_release_gate_scope_for_database_mutation_truth(self):
+        data = {
+            "local": {"head": "b" * 40},
+            "github": {"main_sha": "b" * 40},
+            "production": {
+                "reachable": True,
+                "source_sha": "a" * 40,
+            },
+        }
+        with mock.patch.object(
+            MODULE.aoe2_release_gate,
+            "release_scope",
+            return_value={
+                "changed_files": [
+                    "app/page.tsx",
+                    "prisma/migrations/20260929_x/migration.sql",
+                ],
+            },
+        ):
+            self.assertEqual(
+                MODULE.planned_database_migration_paths(data),
+                ["prisma/migrations/20260929_x/migration.sql"],
+            )
+
+    def test_finish_plan_declares_database_mutation_from_planned_migrations(self):
+        import inspect
+
+        source = inspect.getsource(MODULE.plan_payload)
+        self.assertIn(
+            "planned_database_migration_paths",
+            source,
+        )
+        self.assertIn(
+            '"database": bool(database_migration_paths)',
+            source,
+        )
+        self.assertIn(
+            '"mutation_expected": bool(database_migration_paths)',
+            source,
+        )
+        self.assertIn(
+            "durable pre-migration",
+            source,
+        )
+
     def test_finish_planning_and_execution_share_provenance_doctor_helper(self):
         import inspect
 
