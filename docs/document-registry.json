@@ -108,9 +108,9 @@
       "owner": "aoe2war-web",
       "path": "WORKSPACE.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-08-22",
+      "reviewed_at": "2026-09-29",
       "sensitivity": "internal",
-      "sha256": "c3d8a1982216f60c523766cde8b3058cc4c0feb3eabdeb2829329edcfe8caa0a",
+      "sha256": "6052e116d936e7d45b3b6e3e527e2110db517a162631cb56bf6ba7839d64995e",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
