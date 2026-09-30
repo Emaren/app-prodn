@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "workspace-reference"
-reviewed_at: "2026-08-22"
+reviewed_at: "2026-09-29"
 review_interval_days: 60
 sensitivity: "internal"
 ---
@@ -241,7 +241,7 @@ for the one-step certified recovery lane.
 
 Watcher artifacts are released from the owning versioned Watcher release branch
 and its artifact/signing workflow. Current production manifests advertise
-Watcher `1.6.1`.
+Watcher `1.6.2`.
 
 Important:
 
