@@ -203,10 +203,13 @@ export type WatcherFocusUserDiagnostics = {
   monitorState: "active" | "stopped" | "unknown";
   rendererStatus: string | null;
   rendererReady: boolean | null;
+  rendererReadyAt: string | null;
+  rendererBootstrapMs: number | null;
   rendererLastFailureAt: string | null;
   rendererFailureReason: string | null;
   rendererReloadAttempts: number | null;
   rendererFailureCount: number | null;
+  rendererConsecutiveFailures: number | null;
   resourceCpuPercent: number | null;
   resourceAverageCpuPercent: number | null;
   resourceWorkingSetMb: number | null;
@@ -527,6 +530,12 @@ function deriveIndependentWatcherState(events: FocusWatcherEventRow[], appVersio
   const rendererReady = heartbeat
     ? metadataBoolean(heartbeat.metadata, "rendererReady")
     : null;
+  const rendererReadyAt = heartbeat
+    ? metadataString(heartbeat.metadata, "rendererReadyAt")
+    : null;
+  const rendererBootstrapMs = heartbeat
+    ? metadataNumber(heartbeat.metadata, "rendererBootstrapMs")
+    : null;
   const rendererLastFailureAt = heartbeat
     ? metadataString(heartbeat.metadata, "rendererLastFailureAt")
     : null;
@@ -538,6 +547,9 @@ function deriveIndependentWatcherState(events: FocusWatcherEventRow[], appVersio
     : null;
   const rendererFailureCount = heartbeat
     ? metadataNumber(heartbeat.metadata, "rendererFailureCount")
+    : null;
+  const rendererConsecutiveFailures = heartbeat
+    ? metadataNumber(heartbeat.metadata, "rendererConsecutiveFailures")
     : null;
   const resourceCpuPercent = heartbeat
     ? nestedMetadataNumber(heartbeat.metadata, "resourceProfile", "cpuPercent")
@@ -638,10 +650,13 @@ function deriveIndependentWatcherState(events: FocusWatcherEventRow[], appVersio
     monitorState,
     rendererStatus,
     rendererReady,
+    rendererReadyAt,
+    rendererBootstrapMs,
     rendererLastFailureAt,
     rendererFailureReason,
     rendererReloadAttempts,
     rendererFailureCount,
+    rendererConsecutiveFailures,
     resourceCpuPercent,
     resourceAverageCpuPercent,
     resourceWorkingSetMb,
@@ -1121,10 +1136,13 @@ async function loadFocusUserDiagnostics(
     monitorState: independentState.monitorState,
     rendererStatus: independentState.rendererStatus,
     rendererReady: independentState.rendererReady,
+    rendererReadyAt: independentState.rendererReadyAt,
+    rendererBootstrapMs: independentState.rendererBootstrapMs,
     rendererLastFailureAt: independentState.rendererLastFailureAt,
     rendererFailureReason: independentState.rendererFailureReason,
     rendererReloadAttempts: independentState.rendererReloadAttempts,
     rendererFailureCount: independentState.rendererFailureCount,
+    rendererConsecutiveFailures: independentState.rendererConsecutiveFailures,
     resourceCpuPercent: independentState.resourceCpuPercent,
     resourceAverageCpuPercent: independentState.resourceAverageCpuPercent,
     resourceWorkingSetMb: independentState.resourceWorkingSetMb,

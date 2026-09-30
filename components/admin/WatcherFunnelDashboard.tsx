@@ -247,7 +247,11 @@ function SupportUserDiagnostics({ focusUser }: { focusUser: WatcherFocusUserDiag
           label="Dashboard"
           value={
             focusUser.rendererStatus
-              ? `${focusUser.rendererStatus.replace(/_/g, " ")}${focusUser.rendererReady === true ? " · ready" : focusUser.rendererReady === false ? " · not ready" : ""}`
+              ? [
+                  focusUser.rendererStatus.replace(/_/g, " "),
+                  focusUser.rendererReady === true ? "ready" : focusUser.rendererReady === false ? "not ready" : null,
+                  focusUser.rendererBootstrapMs === null ? null : `${Math.round(focusUser.rendererBootstrapMs)} ms boot`,
+                ].filter(Boolean).join(" · ")
               : null
           }
         />
@@ -255,7 +259,13 @@ function SupportUserDiagnostics({ focusUser }: { focusUser: WatcherFocusUserDiag
           label="Dashboard recovery"
           value={
             focusUser.rendererFailureReason
-              ? `${focusUser.rendererFailureReason.replace(/_/g, " ")} · reloads ${focusUser.rendererReloadAttempts ?? 0} · failures ${focusUser.rendererFailureCount ?? 0}`
+              ? [
+                  focusUser.rendererFailureReason.replace(/_/g, " "),
+                  focusUser.rendererLastFailureAt ? `last ${formatMaybeDate(focusUser.rendererLastFailureAt)}` : null,
+                  `reloads ${focusUser.rendererReloadAttempts ?? 0}`,
+                  `failures ${focusUser.rendererFailureCount ?? 0}`,
+                  `consecutive ${focusUser.rendererConsecutiveFailures ?? 0}`,
+                ].filter(Boolean).join(" · ")
               : focusUser.rendererReloadAttempts
                 ? `reloads ${focusUser.rendererReloadAttempts}`
                 : "no issue reported"

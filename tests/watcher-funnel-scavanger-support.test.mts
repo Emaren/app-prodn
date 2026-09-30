@@ -72,9 +72,12 @@ test("support diagnostics expose Watcher 1.6.2 dashboard and resource health rem
   for (const field of [
     "rendererStatus",
     "rendererReady",
+    "rendererReadyAt",
+    "rendererBootstrapMs",
     "rendererFailureReason",
     "rendererReloadAttempts",
     "rendererFailureCount",
+    "rendererConsecutiveFailures",
     "resourceCpuPercent",
     "resourceWorkingSetMb",
     "resourceIdleWakeupsPerSecond",
