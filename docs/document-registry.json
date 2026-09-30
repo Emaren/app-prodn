@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "dbf8dc560d5d5aefc1eb387a5a964813b0fcfab2fa3c93ccf080061bfbb0c394",
+      "sha256": "9bb69c94943ad80cbac7d2db43cfcf3b6108818bf8ab5958ecd9ba25d2c5f924",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1863,7 +1863,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/watcher-1.6.2-support-diagnostics-20260929",
-    "commit": "c3c91ff712e171c68841052f7081740cc6d56bfa"
+    "commit": "34a5862b2ba5ac319249d24ce81dd251331dc6f8"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
