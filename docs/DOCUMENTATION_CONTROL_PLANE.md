@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/finish-plan-database-mutation-truth-20260930` at `4e9937ffcafc0c554aef74c69e26f33baa45c65c`
+Implementation baseline: `fix/restore-finish-executable-mode-20260930` at `9e7a6e34828783cbd8c669b3fd0c8b584de633a6`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
