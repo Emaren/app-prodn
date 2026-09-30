@@ -213,9 +213,37 @@ test("schema foundation is additive and existing markets remain legacy", () => {
 
   assert.match(
     migration,
-    /"book_phase" VARCHAR\(24\) NOT NULL DEFAULT 'legacy'/
+    /"book_phase" VARCHAR\(24\) DEFAULT 'legacy'/
   );
-  assert.match(migration, /CREATE UNIQUE INDEX "uq_bet_markets_phase_book_key"/);
+  assert.doesNotMatch(
+    migration,
+    /ADD COLUMN "book_phase"[^;]*NOT NULL/i
+  );
+  assert.match(
+    migration,
+    /ADD CONSTRAINT "ck_bet_markets_book_phase_not_null"[\s\S]*CHECK \("book_phase" IS NOT NULL\)/
+  );
+  assert.match(
+    migration,
+    /CREATE UNIQUE INDEX "uq_bet_markets_phase_book_key"[\s\S]*ON "bet_markets"\("phase_book_key"\)/
+  );
+  assert.match(
+    migration,
+    /CREATE INDEX "ix_bet_markets_book_phase"[\s\S]*ON "bet_markets"\("book_phase"\)/
+  );
+  assert.match(
+    migration,
+    /CREATE INDEX "ix_bet_markets_phase_window"[\s\S]*ON "bet_markets"\("phase_opens_at", "phase_closes_at"\)/
+  );
+  assert.doesNotMatch(migration, /ix_bet_markets_phase_status/);
+  assert.match(
+    schema,
+    /@@index\(\[bookPhase\], map: "ix_bet_markets_book_phase"\)/
+  );
+  assert.doesNotMatch(
+    schema,
+    /@@index\(\[bookPhase, status\], map: "ix_bet_markets_phase_status"\)/
+  );
   assert.doesNotMatch(migration, /UPDATE\s+"bet_markets"/i);
   assert.doesNotMatch(migration, /DELETE\s+FROM\s+"bet_markets"/i);
 });

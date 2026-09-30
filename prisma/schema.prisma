@@ -2221,7 +2221,7 @@ model BetMarket {
   integrityIncidents      BetMarketIntegrityIncident[]
 
   @@index([status, featured, sortOrder], map: "ix_bet_markets_status_featured_sort_order")
-  @@index([bookPhase, status], map: "ix_bet_markets_phase_status")
+  @@index([bookPhase], map: "ix_bet_markets_book_phase")
   @@index([phaseOpensAt, phaseClosesAt], map: "ix_bet_markets_phase_window")
   @@index([closeAt], map: "ix_bet_markets_close_at")
   @@index([linkedSessionKey], map: "ix_bet_markets_linked_session_key")
