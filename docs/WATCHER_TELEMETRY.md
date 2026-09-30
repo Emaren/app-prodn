@@ -8,14 +8,43 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "telemetry-contract"
-reviewed_at: "2026-09-22"
+reviewed_at: "2026-09-29"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
 
 # Watcher Telemetry
 
-## Production release identity — 2026-09-22
+## Production release identity — 2026-09-29
+
+Watcher 1.6.2 is the smaller-footprint / stronger-support release. It reduces passive replay-folder, journal, retry, and historical-state work while adding bounded process resource profiling, heartbeat-scoped support telemetry, explicit renderer bootstrap/readiness state, sanitized renderer failure evidence, and one bounded dashboard self-recovery reload. Replay monitoring remains owned by the separate Watcher engine and does not depend on dashboard lifetime.
+
+The canonical live download root remains `/mnt/HC_Volume_105319120/aoe2-downloads`, exposed through the app's `public/downloads` symlink at runtime. The Watcher 1.6.2 release contract requires the Windows, macOS, and Linux updater manifests plus all versioned payloads and both inventory receipts to agree byte-for-byte before web metadata may advertise `version: 1.6.2`.
+
+Release evidence:
+
+- Watcher runtime source: `1d1e9b3ca9f95a89cf47ab582219e4c85b725603`;
+- certified five-platform build source and annotated `v1.6.2` tag target: `b1e3b1353aa48840bdaa7d8afc353e1afc5bf22d`;
+- successful Windows Azure Artifact Signing run: `36649412730`;
+- successful macOS/Linux release build run: `36649412594`;
+- successful certified publication-bundle workflow: `36649765669`;
+- public GitHub release ID: `399642320`;
+- public GitHub release: `v1.6.2`, published 2026-09-30 01:25:23 UTC;
+- owner-side publication proof: 11/11 public assets matched the certified bundle by SHA-256 digest multiset.
+
+Verified release binary SHA-256 values:
+
+- Windows installer: `80c04168949c791cfdc0c67432c2ac4868459219923d8b7c96efc40f24d8d0c3`;
+- Windows portable EXE: `4b7d0709dae6e9a80ea400bbb88a87a3880b0d5bf99dac11bcdb5e8b6ff129f7`;
+- Apple Silicon DMG: `89860bc8d3a95283cb49d9d86f8a8b8b07e0423b3c7f53ddd5ddd003b1c8df95`;
+- macOS direct ZIP: `d2bfb053cf78418fa90d1dca20d223f8488c3baa82071d5db515dbbaceb38a78`;
+- Linux AppImage: `a73367344321e0e9399192dd47e588adab68770aa1632636ab4f3f3e1743237a`.
+
+Secondary release evidence is pinned: macOS DMG blockmap `c14e65579e54b2417766c5ab816798fb2f87221798b3fee5fd4c788fa3beaf63`, Windows `latest.yml` `ed9b4ef11bd3a3a998b12da11febb755f64427d43bb33ea32e7bcb45acd324dc`, `latest-mac.yml` `fc75da5949b3fcf12e3b1ac45feb714f1b983094c62a1c6c8b20bf18d25d1b3c`, and `latest-linux.yml` `2138060fbedb23f3d7a090238634fd0cbd8388db674f80de5cd016093bd47b6f`. The authoritative inventory receipts are `SHA256SUMS-1.6.2.txt` (`f45e6fa64c37d8fd67447f6b611bdf225e35d916d782ce6e19ff6968ee87fc77`) and `watcher-release-manifest-1.6.2.json` (`1385987fb35677245fa19c00c49da6cbc550b43a0a204f175d6169fe6f01b3f9`).
+
+Support metadata remains privacy-bounded and non-authoritative to replay, betting, settlement, database, or Wolo truth. The 1.6.2 heartbeat emits fifty top-level metadata fields; the server retains a bounded 64-key object envelope so renderer readiness/recovery fields after the historical 40-key boundary are not silently dropped.
+
+## Previous production release identity — 2026-09-22
 
 Watcher 1.6.1 is the memory/retry hotfix for the 1.6.0 low-footprint release. Historical batch imports now use one disk-backed immutable replay snapshot at a time rather than retaining replay bodies in Node Buffers. Stable historical HTTP 422 parser/validation failures no longer enter live replay-growth retry semantics, and Windows disk-backed upload streams are explicitly closed before temporary snapshot cleanup. Cleanup failure is non-authoritative to a successful replay receipt.
 

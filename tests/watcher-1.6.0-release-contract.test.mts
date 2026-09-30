@@ -141,10 +141,10 @@ function makeFakeWatcher(root: string, version: string, options = {}) {
   return { watcherDir, dist };
 }
 
-test("Watcher 1.6.1 public release identity is exact", () => {
-  assert.match(release, /version: "1\.6\.1"/);
-  assert.match(release, /previousVersion: "1\.6\.0"/);
-  assert.match(release, /releasedOn: "Sep 22, 2026"/);
+test("Watcher 1.6.2 public release identity is exact", () => {
+  assert.match(release, /version: "1\.6\.2"/);
+  assert.match(release, /previousVersion: "1\.6\.1"/);
+  assert.match(release, /releasedOn: "Sep 29, 2026"/);
   assert.match(release, /Active replay-folder recovery/);
   assert.match(release, /Fresh replay adoption after restart/);
   assert.match(release, /Localized out-of-sync MP save support/);
@@ -156,6 +156,12 @@ test("Watcher 1.6.1 public release identity is exact", () => {
   assert.match(release, /Bounded historical parser retries/);
   assert.match(release, /Windows-safe replay snapshot cleanup/);
   assert.match(release, /Sandboxed dashboard renderer/);
+  assert.match(release, /Adaptive Watcher resource profiling/);
+  assert.match(release, /Heartbeat-scoped resource telemetry/);
+  assert.match(release, /Renderer bootstrap health telemetry/);
+  assert.match(release, /One-shot dashboard self-recovery/);
+  assert.match(release, /Buffered runtime diagnostics/);
+  assert.match(release, /Bounded historical Watcher state/);
   assert.doesNotMatch(release, /version: "1\.5\.13"/);
   assert.doesNotMatch(release, /version: "1\.5\.9"/);
 });
@@ -321,20 +327,20 @@ test("Watcher reliability telemetry remains admitted server-side", () => {
   }
 });
 
-test("Watcher 1.6.1 docs bind public metadata to certified artifacts", () => {
-  assert.match(docs, /version: 1\.6\.1/);
-  assert.match(docs, /3f8982d0f9c3f28540ec49adacad5418de065adc/);
-  assert.match(docs, /eb8c7478575b472273b4400f01c4d401df03e2c5/);
-  assert.match(docs, /35808959038/);
-  assert.match(docs, /35808958815/);
+test("Watcher 1.6.2 docs bind public metadata to certified artifacts", () => {
+  assert.match(docs, /version: 1\.6\.2/);
+  assert.match(docs, /1d1e9b3ca9f95a89cf47ab582219e4c85b725603/);
+  assert.match(docs, /b1e3b1353aa48840bdaa7d8afc353e1afc5bf22d/);
+  assert.match(docs, /36649412730/);
+  assert.match(docs, /36649412594/);
 
   for (const hash of [
-    "755f04816cb0c965c1c716f0a904521b6c470448b4096d07668ab02ff20a32fa",
-    "775356c6f901ab688537a00d96bfb1887bf0d44799103df2a1b17fecefbfec44",
-    "e00be9ce8ff1e3fb4794345c5f72147c6d71b947c7581f626e6e8ebb89f551d8",
-    "c22084525aebf7634581e3abeb6c794ff5206579630a00e6f94df7fe226b60cc",
-    "56df79354885859826833c848591b69605aae5cd2964d69f6d6ed40f14b98924",
-    "87564583a61e95e3576bd2385e4239ca18d1fca572328defe6791a3e783571df",
+    "80c04168949c791cfdc0c67432c2ac4868459219923d8b7c96efc40f24d8d0c3",
+    "4b7d0709dae6e9a80ea400bbb88a87a3880b0d5bf99dac11bcdb5e8b6ff129f7",
+    "89860bc8d3a95283cb49d9d86f8a8b8b07e0423b3c7f53ddd5ddd003b1c8df95",
+    "d2bfb053cf78418fa90d1dca20d223f8488c3baa82071d5db515dbbaceb38a78",
+    "a73367344321e0e9399192dd47e588adab68770aa1632636ab4f3f3e1743237a",
+    "c14e65579e54b2417766c5ab816798fb2f87221798b3fee5fd4c788fa3beaf63",
   ]) {
     assert.match(docs, new RegExp(hash));
   }

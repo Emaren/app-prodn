@@ -12,10 +12,10 @@ const release = fs.readFileSync(
   "utf8",
 );
 
-test("Watcher 1.6.1 keeps the existing 1.5.10 Extreme hero artwork", () => {
+test("Watcher 1.6.2 keeps the existing 1.5.10 Extreme hero artwork", () => {
   assert.match(
     release,
-    /version: "1\.6\.1"/,
+    /version: "1\.6\.2"/,
   );
 
   assert.match(page, /watcher-v1510-desktop\.png/);
@@ -38,7 +38,7 @@ test("Watcher 1.6.1 keeps the existing 1.5.10 Extreme hero artwork", () => {
   }
 });
 
-test("Watcher 1.6.1 release advertises recovery, low-footprint lifecycle and media shedding", () => {
+test("Watcher 1.6.2 release advertises recovery, low-footprint lifecycle and media shedding", () => {
   assert.match(
     release,
     /Active replay-folder recovery/,
@@ -76,6 +76,21 @@ test("Watcher 1.6.1 release advertises recovery, low-footprint lifecycle and med
 
   assert.match(
     release,
+    /Adaptive Watcher resource profiling/,
+  );
+
+  assert.match(
+    release,
+    /Renderer bootstrap health telemetry/,
+  );
+
+  assert.match(
+    release,
+    /One-shot dashboard self-recovery/,
+  );
+
+  assert.match(
+    release,
     /Disk-backed historical replay imports/,
   );
 
@@ -91,11 +106,11 @@ test("Watcher 1.6.1 release advertises recovery, low-footprint lifecycle and med
 
   assert.match(
     release,
-    /AoE2HDBets Watcher Setup 1\.6\.1\.exe/,
+    /AoE2HDBets Watcher Setup 1\.6\.2\.exe/,
   );
 
   assert.match(
     release,
-    /AoE2HDBets Watcher 1\.6\.1\.exe/,
+    /AoE2HDBets Watcher 1\.6\.2\.exe/,
   );
 });
