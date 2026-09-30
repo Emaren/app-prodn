@@ -17,8 +17,8 @@ ALTER TABLE "bet_markets"
 CREATE UNIQUE INDEX "uq_bet_markets_phase_book_key"
   ON "bet_markets"("phase_book_key");
 
-CREATE INDEX "ix_bet_markets_phase_status"
-  ON "bet_markets"("book_phase", "status");
+CREATE INDEX "ix_bet_markets_book_phase"
+  ON "bet_markets"("book_phase");
 
 CREATE INDEX "ix_bet_markets_phase_window"
   ON "bet_markets"("phase_opens_at", "phase_closes_at");
