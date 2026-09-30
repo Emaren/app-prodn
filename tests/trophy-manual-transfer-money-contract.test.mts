@@ -127,4 +127,3 @@ test("Trophy payout execution claims money authority before external settlement"
   assert.ok(ui.includes('payout.status !== "executing"'));
   assert.ok(ui.includes("!trophyPayoutIsMutable(payout)"));
 });
-
