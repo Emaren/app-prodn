@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "67aafc0da510ecfbb35cf70b631274687a46d316a2ff599dc9a48aee1f76e912",
+      "sha256": "ad1e9fb5ac7ba67be410be82b3fe329523fc5dd9dc4d9c8db34e3f2a1faaf4ff",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-29",
       "sensitivity": "internal",
-      "sha256": "b2d069607b11e8ed20e7d8d7de5248951220755331839f4b0a797ef6c1863b2d",
+      "sha256": "54cc2d10caac6372f3dfd20b049d2a316e90b4c0f20324639810dedd9273e56a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/betting-phase-books-shadow-materializer-20260929",
-    "commit": "88aecbfe7fd9e4c5d7af43255455aba23ead995a"
+    "branch": "feature/watcher-1.6.2-support-diagnostics-20260929",
+    "commit": "a74f41cbb204a9b535cce405fb1b6e5616321dd0"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

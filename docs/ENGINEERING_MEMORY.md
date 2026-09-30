@@ -2225,6 +2225,22 @@ captured defender or Guardian no longer matches current custody. Preview and
 settlement bounty calculations must use that locked Trophy row rather than an
 older relation snapshot loaded before the transaction.
 
+Time is part of Trophy money authority too. Any custody/economics operation that
+captures an explicit transaction `now` must pass that same instant into
+`projectedTrophyBounty()`; never let the projection silently consult a later
+wall clock. Otherwise an identical transaction can cross UTC midnight between
+preflight and execution and accrue an extra bounty day. Display-only reads may
+continue to use the helper's default current time, but mutation math must be
+anchored to the operation timestamp.
+
+Watcher support metadata has a bounded-capacity contract across client and server.
+Watcher 1.6.2 emits fifty top-level heartbeat metadata fields: the compact resource
+profile is field 38, renderer status field 40, and renderer readiness/recovery fields
+follow it. The server sanitizer must retain enough bounded top-level keys for that
+contract. A 40-key cap silently discarded renderer readiness and failure evidence, so
+the ingress bound is 64 keys while the existing 64 KiB request limit, depth limit,
+array limit, string limit, and secret-key filtering remain authoritative.
+
 Challengeability is part of the same locked authority, not merely UI state.
 The admitted Trophy statuses are `held`, `active`, `guardian_held`, and
 `vacant`; `draft`, `paused`, and `retired` fail closed. Public challenge

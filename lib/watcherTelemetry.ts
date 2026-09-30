@@ -125,7 +125,7 @@ const SECRET_METADATA_KEY_RE = /(token|secret|password|api[-_]?key|auth|authoriz
 const MAX_STRING_LENGTH = 500;
 const MAX_METADATA_DEPTH = 3;
 const MAX_METADATA_ARRAY_LENGTH = 20;
-const MAX_METADATA_KEYS = 40;
+const MAX_METADATA_KEYS = 64;
 
 export function isWatcherClientEventType(value: unknown): value is WatcherClientEventType {
   return (

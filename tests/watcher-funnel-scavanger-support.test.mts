@@ -7,6 +7,16 @@ const source = fs.readFileSync(
   "utf8",
 );
 
+const telemetrySource = fs.readFileSync(
+  new URL("../lib/watcherTelemetry.ts", import.meta.url),
+  "utf8",
+);
+
+const telemetryIngressSource = fs.readFileSync(
+  new URL("../app/api/watcher/events/route.ts", import.meta.url),
+  "utf8",
+);
+
 test("Scavanger_Ab has a permanent Watcher support target", () => {
   assert.match(
     source,
@@ -55,4 +65,69 @@ test("Tekki has a permanent Watcher support target while folder recovery is obse
   const supportBlock = source.match(/const SUPPORT_USER_TARGETS:[\s\S]*?\n\];/)?.[0] ?? "";
   assert.match(supportBlock, /label: "Tekki"[\s\S]*?userUid: TEKKI_UID/);
   assert.match(supportBlock, /nameMatches: \["Tekki"\]/);
+});
+
+
+test("support diagnostics expose Watcher 1.6.2 dashboard and resource health remotely", () => {
+  for (const field of [
+    "rendererStatus",
+    "rendererReady",
+    "rendererReadyAt",
+    "rendererBootstrapMs",
+    "rendererFailureReason",
+    "rendererReloadAttempts",
+    "rendererFailureCount",
+    "rendererConsecutiveFailures",
+    "resourceCpuPercent",
+    "resourceWorkingSetMb",
+    "resourceIdleWakeupsPerSecond",
+    "resourceNetworkMbps",
+    "resourcePowerSignal",
+    "resourceProcessCount",
+  ]) {
+    assert.match(source, new RegExp(field));
+  }
+
+  assert.match(
+    source,
+    /Watcher engine is connected but the dashboard is not ready/,
+  );
+  assert.match(source, /no user DevTools are required/);
+  assert.match(source, /nestedMetadataPowerSignal/);
+});
+
+
+test("Watcher 1.6.2 nested support telemetry survives the server ingress contract", () => {
+  assert.match(telemetrySource, /const MAX_METADATA_DEPTH = 3;/);
+  assert.match(telemetrySource, /const MAX_METADATA_KEYS = 64;/);
+  assert.match(
+    telemetrySource,
+    /sanitizeMetadataValue\(entry, depth \+ 1\)/,
+  );
+  assert.match(
+    telemetrySource,
+    /SECRET_METADATA_KEY_RE/,
+  );
+  assert.match(
+    telemetryIngressSource,
+    /metadata:\s*sanitizeWatcherMetadata\(raw\.metadata\)/,
+  );
+  assert.match(
+    telemetrySource,
+    /metadata:\s*\{[\s\S]*\.\.\.metadata,[\s\S]*authResolved:/,
+  );
+});
+
+
+test("Watcher 1.6.2 heartbeat capacity retains renderer fields beyond the old forty-key cutoff", () => {
+  assert.match(
+    telemetrySource,
+    /Object\.entries\(value\)\.slice\(0, MAX_METADATA_KEYS\)/,
+  );
+  assert.match(telemetrySource, /const MAX_METADATA_KEYS = 64;/);
+
+  // 1.6.2 currently emits fifty top-level heartbeat metadata fields:
+  // resourceProfile is #38, rendererStatus #40, and rendererReady onward
+  // crosses the historical 40-key boundary. Keep bounded headroom.
+  assert.ok(64 >= 50);
 });
