@@ -2425,4 +2425,3 @@ only invoke the page-owned local selection setter. Ticket preparation, stake
 intent creation, Keplr connection, escrow broadcast, and wager recording remain
 behind the user's later explicit manual Lock action. Never repurpose this UI
 bridge as the claim operation for a future funded Auto Bet consumer.
-

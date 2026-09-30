@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/restore-finish-executable-mode-20260930` at `9e7a6e34828783cbd8c669b3fd0c8b584de633a6`
+Implementation baseline: `fix/release-diff-eof-whitespace-20260930` at `20a4c4c43d55bf7dfc2507b24c3611a9027279bd`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

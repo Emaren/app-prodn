@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d8582ae9cd22e1116c3cc8b693da9c70f2386458da0195ea1c3a71b83676c076",
+      "sha256": "76dcc22c680721fc5ba9bc5932444cefa08f8a2284cbe26ed7a38f276b723419",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -565,7 +565,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-29",
       "sensitivity": "internal",
-      "sha256": "54cc2d10caac6372f3dfd20b049d2a316e90b4c0f20324639810dedd9273e56a",
+      "sha256": "535817f0015fab5cc20ddf897f568466ffb918f3edaae27deb189c8be52caabb",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/restore-finish-executable-mode-20260930",
-    "commit": "9e7a6e34828783cbd8c669b3fd0c8b584de633a6"
+    "branch": "fix/release-diff-eof-whitespace-20260930",
+    "commit": "20a4c4c43d55bf7dfc2507b24c3611a9027279bd"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
