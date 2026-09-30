@@ -521,7 +521,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "4412336b2eea7474fbd7c766d67c7477c01f142245ffa6eda0ec00dc9bea0105",
+      "sha256": "763c022e357e9dac53c404094db364a201bf7b1794fac4b8ce68970bb2fc3716",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1862,8 +1862,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "release/watcher-1.6.2-production-promotion-20260929",
-    "commit": "3af36646eb0a59079f75d776522351c852e7bcba"
+    "branch": "fix/phase-books-additive-migration-contract-20260930",
+    "commit": "3f6d2b1af9572487e773bbe8db1aad72a8098836"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
