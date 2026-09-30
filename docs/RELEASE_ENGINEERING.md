@@ -85,8 +85,8 @@ consumer; current or ambiguous stages remain preserved.
     paths, and states the protected additive proof sequence. Preview remains
     read-only; this declaration is planning truth, not permission to bypass
     backup/frontier/receipt checks.
-15. Mutating release commands are serialized by a deployment lock.
-14. Machine-readable receipts must let a fresh operator or AI reconstruct the
+14. Mutating release commands are serialized by a deployment lock.
+15. Machine-readable receipts must let a fresh operator or AI reconstruct the
     release state without conversational memory.
 16. Dependency-contract changes are supported only by the candidate-owned
     dependency lane: frozen-lockfile network fetch with third-party lifecycle
