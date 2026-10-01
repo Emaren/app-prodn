@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/dev-environment` at `8e195811a89ae489fca73d745c7fac6f9f611a7b`
+Implementation baseline: `feature/dev-environment` at `97561ca2fec934aba84c680414ad5de4dc00ff72`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
