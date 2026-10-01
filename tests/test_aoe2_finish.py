@@ -1209,6 +1209,42 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
             "-name '*.log.1'",
             script,
         )
+        self.assertIn(
+            "/var/log/syslog.1",
+            script,
+        )
+        self.assertIn(
+            "/var/log/auth.log.1",
+            script,
+        )
+        self.assertIn(
+            "-name 'syslog.[2-9].gz'",
+            script,
+        )
+        self.assertIn(
+            "/var/log/btmp.1",
+            script,
+        )
+        self.assertIn(
+            "/var/log/postgresql",
+            script,
+        )
+        self.assertIn(
+            "-name 'postgresql-*.log.1'",
+            script,
+        )
+        self.assertIn(
+            "/var/log/audit",
+            script,
+        )
+        self.assertIn(
+            "-name 'audit.log.[1-9]'",
+            script,
+        )
+        self.assertGreater(
+            script.index("SYSTEM_LOG_CANDIDATES"),
+            script.index("/var/log/nginx"),
+        )
 
         # Recovery counters are shell arithmetic, never command substitutions.
         for variable in (
@@ -1221,6 +1257,10 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
             "DELTA",
             "NGINX_RECLAIMED_KB",
             "NGINX_ARCHIVED",
+            "SYSTEM_LOG_RECLAIMED_KB",
+            "SYSTEM_LOG_ARCHIVED",
+            "SYSTEM_LOG_OPEN_SKIPPED",
+            "SYSTEM_LOG_UNSAFE_SKIPPED",
             "RECLAIMED_KB",
         ):
             self.assertIn(
@@ -1242,6 +1282,14 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
             script,
         )
         self.assertIn(
+            "SYSTEM_LOG_SHA256SUMS",
+            script,
+        )
+        self.assertIn(
+            '"$RECEIPT_DIR/system-logs"',
+            script,
+        )
+        self.assertIn(
             "cp -a",
             script,
         )
@@ -1255,7 +1303,7 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
             script.index('rm -- "$logfile"'),
         )
 
-        # Open rotated logs are never removed.
+        # Open or symlinked rotated logs are never removed.
         self.assertIn(
             "/proc/[0-9]*/fd/*",
             script,
@@ -1263,6 +1311,27 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
         self.assertIn(
             "NGINX_OPEN_SKIPPED",
             script,
+        )
+        self.assertIn(
+            "SYSTEM_LOG_OPEN_SKIPPED",
+            script,
+        )
+        self.assertIn(
+            "SYSTEM_LOG_UNSAFE_SKIPPED",
+            script,
+        )
+        self.assertIn(
+            'if [ -L "$logfile" ]; then',
+            script,
+        )
+        system_tier = script[script.index("SYSTEM_LOG_CANDIDATES") :]
+        self.assertLess(
+            system_tier.index("cp -a"),
+            system_tier.index('rm -- "$logfile"'),
+        )
+        self.assertLess(
+            system_tier.index("sha256sum"),
+            system_tier.index('rm -- "$logfile"'),
         )
 
         # Runtime + Wolo are proof-only.
