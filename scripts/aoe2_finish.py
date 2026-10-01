@@ -1401,7 +1401,7 @@ def root_headroom_recovery_target_bytes() -> int:
 def verified_fast_rollback_headroom_tier_script() -> str:
     return r"""
 # ------------------------------------------------------------
-# TIER 5 — VERIFIED FAST-ROLLBACK CACHE
+# TIER 6 — VERIFIED FAST-ROLLBACK CACHE
 #
 # Fast rollback is a root-filesystem acceleration cache, not the
 # durable recovery authority. Before staging a new release, an
@@ -1797,6 +1797,7 @@ test "$BEFORE_KB" -lt "$TARGET_KB" || {{
 
 install -d -m 0750 "$RECEIPT_DIR"
 install -d -m 0750 "$RECEIPT_DIR/nginx"
+install -d -m 0750 "$RECEIPT_DIR/system-logs"
 
 cat > "$RECEIPT_DIR/recovery.txt" <<EOF
 schema=1
@@ -1821,6 +1822,10 @@ JOURNAL_RECLAIMED_KB=0
 NGINX_RECLAIMED_KB=0
 NGINX_ARCHIVED=0
 NGINX_OPEN_SKIPPED=0
+SYSTEM_LOG_RECLAIMED_KB=0
+SYSTEM_LOG_ARCHIVED=0
+SYSTEM_LOG_OPEN_SKIPPED=0
+SYSTEM_LOG_UNSAFE_SKIPPED=0
 FAST_ROLLBACK_RECLAIMED_KB=0
 FAST_ROLLBACK_PRUNED=0
 FAST_ROLLBACK_UNMATCHED=0
@@ -2091,6 +2096,170 @@ if [ "$CURRENT_KB" -lt "$TARGET_KB" ]; then
     done
 fi
 
+# ------------------------------------------------------------
+# TIER 5 — STRICTLY ALLOWLISTED CLOSED ROTATED SYSTEM LOGS
+# ARCHIVE + SHA-256 BEFORE ROOT REMOVAL
+# ------------------------------------------------------------
+
+CURRENT_KB="$(free_kb)"
+
+if [ "$CURRENT_KB" -lt "$TARGET_KB" ]; then
+    mapfile -t SYSTEM_LOG_CANDIDATES < <(
+        {{
+            find /var/log \
+                -maxdepth 1 \
+                -type f \
+                -name 'syslog.1' \
+                -printf '%s\\t%p\\n'
+            find /var/log \
+                -maxdepth 1 \
+                -type f \
+                -name 'auth.log.1' \
+                -printf '%s\\t%p\\n'
+            find /var/log \
+                -maxdepth 1 \
+                -type f \
+                -name 'syslog.[2-9].gz' \
+                -printf '%s\\t%p\\n'
+            find /var/log \
+                -maxdepth 1 \
+                -type f \
+                -name 'btmp.1' \
+                -printf '%s\\t%p\\n'
+            find /var/log/postgresql \
+                -maxdepth 1 \
+                -type f \
+                -name 'postgresql-*.log.1' \
+                -printf '%s\\t%p\\n'
+            find /var/log/audit \
+                -maxdepth 1 \
+                -type f \
+                -name 'audit.log.[1-9]' \
+                -printf '%s\\t%p\\n'
+        }} 2>/dev/null |
+        sort -nr
+    )
+
+    for row in "${{SYSTEM_LOG_CANDIDATES[@]}}"; do
+        CURRENT_KB="$(free_kb)"
+
+        if [ "$CURRENT_KB" -ge "$TARGET_KB" ]; then
+            break
+        fi
+
+        bytes="${{row%%$'\\t'*}}"
+        logfile="${{row#*$'\\t'}}"
+
+        [ -f "$logfile" ] || continue
+
+        case "$logfile" in
+            /var/log/syslog.1|/var/log/auth.log.1|/var/log/btmp.1)
+                ;;
+            /var/log/syslog.[2-9].gz)
+                ;;
+            /var/log/postgresql/postgresql-*.log.1)
+                ;;
+            /var/log/audit/audit.log.[1-9])
+                ;;
+            *)
+                SYSTEM_LOG_UNSAFE_SKIPPED=$((
+                    SYSTEM_LOG_UNSAFE_SKIPPED + 1
+                ))
+                printf '%s\\n' "$logfile" \
+                    >>"$RECEIPT_DIR/system-log-unsafe-skipped.txt"
+                continue
+                ;;
+        esac
+
+        if [ -L "$logfile" ]; then
+            SYSTEM_LOG_UNSAFE_SKIPPED=$((
+                SYSTEM_LOG_UNSAFE_SKIPPED + 1
+            ))
+            printf '%s\\n' "$logfile" \
+                >>"$RECEIPT_DIR/system-log-unsafe-skipped.txt"
+            continue
+        fi
+
+        OPEN=0
+
+        for fd in /proc/[0-9]*/fd/*; do
+            target="$(
+                readlink "$fd" 2>/dev/null ||
+                true
+            )"
+
+            if [ "$target" = "$logfile" ]; then
+                OPEN=1
+                break
+            fi
+        done
+
+        if [ "$OPEN" = 1 ]; then
+            SYSTEM_LOG_OPEN_SKIPPED=$((
+                SYSTEM_LOG_OPEN_SKIPPED + 1
+            ))
+            printf '%s\\n' "$logfile" \
+                >>"$RECEIPT_DIR/system-log-open-skipped.txt"
+            continue
+        fi
+
+        relative="${{logfile#/var/log/}}"
+        destination="$RECEIPT_DIR/system-logs/$relative"
+        install -d -m 0750 "$(dirname "$destination")"
+
+        TIER_BEFORE="$(free_kb)"
+
+        cp -a \
+            "$logfile" \
+            "$destination"
+
+        SOURCE_SHA="$(
+            sha256sum "$logfile" |
+            awk '{{print $1}}'
+        )"
+
+        DEST_SHA="$(
+            sha256sum "$destination" |
+            awk '{{print $1}}'
+        )"
+
+        test "$SOURCE_SHA" = "$DEST_SHA"
+        test "$(stat -c '%s' "$destination")" = "$bytes"
+
+        printf '%s  %s\\n' \
+            "$SOURCE_SHA" \
+            "$relative" \
+            >>"$RECEIPT_DIR/SYSTEM_LOG_SHA256SUMS"
+
+        sync
+
+        rm -- "$logfile"
+
+        test ! -e "$logfile"
+
+        sync
+
+        TIER_AFTER="$(free_kb)"
+        DELTA=$((
+            TIER_AFTER - TIER_BEFORE
+        ))
+
+        SYSTEM_LOG_RECLAIMED_KB=$((
+            SYSTEM_LOG_RECLAIMED_KB + DELTA
+        ))
+
+        SYSTEM_LOG_ARCHIVED=$((
+            SYSTEM_LOG_ARCHIVED + 1
+        ))
+
+        printf '%s\\t%s\\t%s\\n' \
+            "$bytes" \
+            "$SOURCE_SHA" \
+            "$logfile" \
+            >>"$RECEIPT_DIR/system-log-archived.tsv"
+    done
+fi
+
 {verified_fast_rollback_headroom_tier_script()}
 
 if [ "$FAST_ROLLBACK_PRUNE_FAILED" -gt 0 ]; then
@@ -2110,6 +2279,10 @@ journal_reclaimed_kb=$JOURNAL_RECLAIMED_KB
 nginx_reclaimed_kb=$NGINX_RECLAIMED_KB
 nginx_archived_count=$NGINX_ARCHIVED
 nginx_open_skipped_count=$NGINX_OPEN_SKIPPED
+system_log_reclaimed_kb=$SYSTEM_LOG_RECLAIMED_KB
+system_log_archived_count=$SYSTEM_LOG_ARCHIVED
+system_log_open_skipped_count=$SYSTEM_LOG_OPEN_SKIPPED
+system_log_unsafe_skipped_count=$SYSTEM_LOG_UNSAFE_SKIPPED
 fast_rollback_reclaimed_kb=$FAST_ROLLBACK_RECLAIMED_KB
 fast_rollback_pruned_count=$FAST_ROLLBACK_PRUNED
 fast_rollback_unmatched_count=$FAST_ROLLBACK_UNMATCHED
@@ -2159,6 +2332,10 @@ journal_reclaimed_kb=$JOURNAL_RECLAIMED_KB
 nginx_reclaimed_kb=$NGINX_RECLAIMED_KB
 nginx_archived_count=$NGINX_ARCHIVED
 nginx_open_skipped_count=$NGINX_OPEN_SKIPPED
+system_log_reclaimed_kb=$SYSTEM_LOG_RECLAIMED_KB
+system_log_archived_count=$SYSTEM_LOG_ARCHIVED
+system_log_open_skipped_count=$SYSTEM_LOG_OPEN_SKIPPED
+system_log_unsafe_skipped_count=$SYSTEM_LOG_UNSAFE_SKIPPED
 fast_rollback_reclaimed_kb=$FAST_ROLLBACK_RECLAIMED_KB
 fast_rollback_pruned_count=$FAST_ROLLBACK_PRUNED
 fast_rollback_unmatched_count=$FAST_ROLLBACK_UNMATCHED
@@ -2221,6 +2398,10 @@ journal_reclaimed_kb=$JOURNAL_RECLAIMED_KB
 nginx_reclaimed_kb=$NGINX_RECLAIMED_KB
 nginx_archived_count=$NGINX_ARCHIVED
 nginx_open_skipped_count=$NGINX_OPEN_SKIPPED
+system_log_reclaimed_kb=$SYSTEM_LOG_RECLAIMED_KB
+system_log_archived_count=$SYSTEM_LOG_ARCHIVED
+system_log_open_skipped_count=$SYSTEM_LOG_OPEN_SKIPPED
+system_log_unsafe_skipped_count=$SYSTEM_LOG_UNSAFE_SKIPPED
 fast_rollback_reclaimed_kb=$FAST_ROLLBACK_RECLAIMED_KB
 fast_rollback_pruned_count=$FAST_ROLLBACK_PRUNED
 fast_rollback_unmatched_count=$FAST_ROLLBACK_UNMATCHED
@@ -2251,6 +2432,10 @@ printf 'journal_reclaimed_kb\\t%s\\n' "$JOURNAL_RECLAIMED_KB"
 printf 'nginx_reclaimed_kb\\t%s\\n' "$NGINX_RECLAIMED_KB"
 printf 'nginx_archived_count\\t%s\\n' "$NGINX_ARCHIVED"
 printf 'nginx_open_skipped_count\\t%s\\n' "$NGINX_OPEN_SKIPPED"
+printf 'system_log_reclaimed_kb\\t%s\\n' "$SYSTEM_LOG_RECLAIMED_KB"
+printf 'system_log_archived_count\\t%s\\n' "$SYSTEM_LOG_ARCHIVED"
+printf 'system_log_open_skipped_count\\t%s\\n' "$SYSTEM_LOG_OPEN_SKIPPED"
+printf 'system_log_unsafe_skipped_count\\t%s\\n' "$SYSTEM_LOG_UNSAFE_SKIPPED"
 printf 'fast_rollback_reclaimed_kb\\t%s\\n' "$FAST_ROLLBACK_RECLAIMED_KB"
 printf 'fast_rollback_pruned_count\\t%s\\n' "$FAST_ROLLBACK_PRUNED"
 printf 'fast_rollback_unmatched_count\\t%s\\n' "$FAST_ROLLBACK_UNMATCHED"
@@ -4264,7 +4449,7 @@ def execute_finish(
         progress.start(
             "Recovering approved root headroom "
             "(APT → disabled Snap revisions → journal → "
-            "archived closed nginx logs → verified fast rollback cache)..."
+            "archived closed nginx/system logs → verified fast rollback cache)..."
         )
 
         recovery = recover_root_headroom(

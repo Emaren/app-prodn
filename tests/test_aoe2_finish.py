@@ -1212,13 +1212,26 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
             script,
         )
 
-        # Durable-proven fast rollback is the final bounded tier.
+        # Allowlisted closed system logs precede durable-proven fast rollback.
+        for expected in (
+            "/var/log/syslog.1",
+            "/var/log/auth.log.1",
+            "-name 'syslog.[2-9].gz'",
+            "/var/log/btmp.1",
+            "/var/log/postgresql",
+            "-name 'postgresql-*.log.1'",
+            "/var/log/audit",
+            "-name 'audit.log.[1-9]'",
+        ):
+            self.assertIn(expected, script)
+
+        # Durable-proven fast rollback remains the final bounded tier.
         self.assertIn(
             "ALLOW_VERIFIED_FAST_ROLLBACK_PRUNE=1",
             script,
         )
         self.assertIn(
-            "TIER 5 — VERIFIED FAST-ROLLBACK CACHE",
+            "TIER 6 — VERIFIED FAST-ROLLBACK CACHE",
             script,
         )
         self.assertIn(
@@ -1263,7 +1276,7 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
         )
         self.assertLess(
             script.index("nginx-archived.tsv"),
-            script.index("TIER 5 — VERIFIED FAST-ROLLBACK CACHE"),
+            script.index("TIER 6 — VERIFIED FAST-ROLLBACK CACHE"),
         )
 
         # Recovery counters are shell arithmetic, never command substitutions.
@@ -1277,6 +1290,10 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
             "DELTA",
             "NGINX_RECLAIMED_KB",
             "NGINX_ARCHIVED",
+            "SYSTEM_LOG_RECLAIMED_KB",
+            "SYSTEM_LOG_ARCHIVED",
+            "SYSTEM_LOG_OPEN_SKIPPED",
+            "SYSTEM_LOG_UNSAFE_SKIPPED",
             "FAST_ROLLBACK_RECLAIMED_KB",
             "FAST_ROLLBACK_PRUNED",
             "FAST_ROLLBACK_UNMATCHED",
@@ -1302,6 +1319,14 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
             script,
         )
         self.assertIn(
+            "SYSTEM_LOG_SHA256SUMS",
+            script,
+        )
+        self.assertIn(
+            '"$RECEIPT_DIR/system-logs"',
+            script,
+        )
+        self.assertIn(
             "cp -a",
             script,
         )
@@ -1315,7 +1340,7 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
             script.index('rm -- "$logfile"'),
         )
 
-        # Open rotated logs are never removed.
+        # Open or symlinked rotated logs are never removed.
         self.assertIn(
             "/proc/[0-9]*/fd/*",
             script,
@@ -1323,6 +1348,22 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
         self.assertIn(
             "NGINX_OPEN_SKIPPED",
             script,
+        )
+        self.assertIn(
+            "SYSTEM_LOG_OPEN_SKIPPED",
+            script,
+        )
+        self.assertIn(
+            "SYSTEM_LOG_UNSAFE_SKIPPED",
+            script,
+        )
+        self.assertIn(
+            'if [ -L "$logfile" ]; then',
+            script,
+        )
+        self.assertLess(
+            script.index("SYSTEM_LOG_CANDIDATES"),
+            script.index("TIER 6 — VERIFIED FAST-ROLLBACK CACHE"),
         )
 
         # Runtime + Wolo are proof-only.

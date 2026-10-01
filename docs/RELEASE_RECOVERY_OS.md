@@ -271,7 +271,48 @@ For each candidate the controller must:
 
 Selection stops immediately when the configured recovery target is met.
 
-### Tier 5 — durable-proven fast rollback cache
+### Tier 5 — strictly allowlisted closed rotated system logs
+
+If the target is still unmet after nginx recovery, Release Recovery OS may
+archive and retire only these already-rotated system-log namespaces:
+
+~~~text
+/var/log/syslog.1
+/var/log/auth.log.1
+/var/log/syslog.[2-9].gz
+/var/log/btmp.1
+/var/log/postgresql/postgresql-*.log.1
+/var/log/audit/audit.log.[1-9]
+~~~
+
+This is an allowlist, not a generic `/var/log` cleanup. Current log bodies,
+compressed generations outside the list, arbitrary application logs, database
+data, and unknown files remain out of bounds.
+
+For every candidate the controller must:
+
+1. re-check that the source is a regular file from the exact allowlist;
+2. reject symlinks;
+3. prove the rotated source is not held open by any process file descriptor;
+4. preserve its `/var/log`-relative path beneath the durable receipt directory;
+5. copy with metadata preserved;
+6. compute source and destination SHA-256 and require equality;
+7. require the durable copy's byte size to equal the enumerated source size;
+8. sync the durable evidence before removing the root copy;
+9. remove only that verified rotated source;
+10. remeasure root capacity and stop immediately once the target is met.
+
+The tier was added on October 1, 2026 after the October Blackout release reached
+the protected 5.125 GiB staging target with roughly 176 MiB still required while
+the existing APT/Snap/journal/nginx classes had no further safe reclaim. A
+read-only census found about 211 MiB of immediately useful allowlisted rotated
+system logs after including older compressed syslog rotations and the rotated
+binary login-history file btmp.1; all candidates were closed and
+non-symlinked. Every removed root copy remains byte-for-byte preserved beneath
+the durable recovery receipt. The retained fast rollback generation remained
+protected.
+
+### Tier 6 — durable-proven fast rollback cache
 
 If the recovery target is still unmet, Release Recovery OS may retire a
 canonical **fast rollback pair** only when the pair has already become redundant
@@ -320,9 +361,11 @@ Durable evidence lives beneath:
 ~~~
 
 The receipt records before/after free space and reclaimed amounts attributed to
-APT, disabled-Snap, journal, nginx, and verified fast-rollback recovery. A fast
-rollback prune additionally records matched/unmatched/failure counts plus the
-SHA-256 of the exact per-pair prune manifest.
+APT, disabled-Snap, journal, nginx, allowlisted system-log, and verified
+fast-rollback recovery. Archived nginx and system-log bodies remain on the
+mounted evidence volume with SHA-256 manifests. A fast rollback prune
+additionally records matched/unmatched/failure counts plus the SHA-256 of the
+exact per-pair prune manifest.
 
 ### Never automatic
 
