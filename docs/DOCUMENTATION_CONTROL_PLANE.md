@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/championship-reconcile-bundled-empty-sql` at `4d301007b6e88d58349177c738d5a118231311f5`
+Implementation baseline: `feature/television-wolo-v1` at `ea68e63020476fa2904bbc00be6c7c5b26bb0664`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **85**
+- Authoritative repository documents: **86**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,13 +36,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 52
+- `reference`: 53
 - `runbook`: 14
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 69
+- `active`: 70
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -120,6 +120,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Security Incident Notes](SECURITY_INCIDENT_NOTES.md) | `historical` | `historical` | `incident-evidence` |
 | [Staking Treasury Payouts](STAKING_TREASURY_PAYOUTS.md) | `runbook` | `active` | `operational-procedure` |
 | [AoE2WAR Storage OS](STORAGE_OS.md) | `reference` | `active` | `storage-operating-contract` |
+| [Television WOLO](TELEVISION_WOLO.md) | `reference` | `active` | `product-contract` |
 | [Universal Translator](UNIVERSAL_TRANSLATOR.md) | `reference` | `active` | `product-contract` |
 | [AoE2WAR WarGraph V1](WARGRAPH_V1.md) | `reference` | `active` | `architecture-contract` |
 | [The War Engine](WAR_ENGINE.md) | `reference` | `active` | `replay-evidence-escalation-contract` |
