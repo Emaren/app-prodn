@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "f80ce80d2810af52d809a71ac3e6c8933a5372ea7ca2b020b6f0f65cba345747",
+      "sha256": "6962c10464fc30241fe4f23bd0a3795b20aebb4ffa0492b129c943393e0a755c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1982,7 +1982,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/television-wolo-v1",
-    "commit": "91fe03230f705df9edaec93d53d3b81a966951d2"
+    "commit": "0a5c8ea0c200caf9800d6221c1839c6bf454118b"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
