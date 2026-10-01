@@ -133,7 +133,10 @@ test("payment selection skips proven history and retains outstanding funded prin
  await prisma!.championshipChallenge.updateMany({where:{scheduledMatchId:{in:[paid,pending]}},data:{state:"cancelled"}});
  await prisma!.scheduledMatchSettlement.create({data:{scheduledMatchId:paid,status:"executed",action:"left_full_refund",recipientAddress:a.walletAddress!,amountWolo:5,requestId:`${prefix}:modeled-paid`,txHash:`QA_MODELLED_SETTLEMENT_${paid}`,lastAttemptAt:new Date()}});
  const ids=(await loadActionableChampionshipPayments(prisma!,500)).map(row=>row.scheduledMatchId);
+ const filteredIds=(await loadActionableChampionshipPayments(prisma!,500,new Date(),[paid,pending])).map(row=>row.scheduledMatchId);
  assert.equal(ids.includes(paid),false);assert.equal(ids.includes(pending),true);
+ assert.equal(filteredIds.includes(paid),false);assert.equal(filteredIds.includes(pending),true);
+ assert.deepEqual(await loadActionableChampionshipPayments(prisma!,500,new Date(),[paid]),[]);
  assert.equal((await loadChampionshipProjection(prisma!,paid))!.paymentStatus,"proven");assert.equal((await loadChampionshipProjection(prisma!,pending))!.paymentStatus,"pending");
 });
 test("team cancellation queues exact original-stake refunds for every financial leg without declaring chain payment",{skip:!enabled},async()=>{

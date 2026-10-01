@@ -483,12 +483,17 @@ export async function reconcileChampionshipChallenges(prisma: PrismaClient,optio
 export async function loadActionableChampionshipPayments(prisma:PrismaClient,take=100,now=new Date(),challengeIds?:number[]) {
   if(challengeIds?.length===0)return [];
   const retryCutoff=new Date(now.getTime()-15*60*1000);
+  const challengeIdCsv=challengeIds?.join(",")??"";
+  const limit=Math.max(1,Math.min(500,Math.floor(take)));
   const ids=await prisma.$queryRaw<Array<{id:number}>>`
-    WITH legs AS (
+    WITH challenge_filter AS (
+      SELECT ${challengeIdCsv}::text AS ids
+    ), legs AS (
       SELECT id AS protocol_id,scheduled_match_id FROM championship_challenges
       UNION ALL SELECT protocol_id,scheduled_match_id FROM championship_challenge_legs
     )
     SELECT c.id FROM championship_challenges c
+    CROSS JOIN challenge_filter cf
     CROSS JOIN LATERAL (
       SELECT COALESCE(SUM(p.amount_wolo),0) AS funded FROM scheduled_match_funding_proofs p
       JOIN legs l ON l.scheduled_match_id=p.scheduled_match_id WHERE l.protocol_id=c.id
@@ -502,8 +507,8 @@ export async function loadActionableChampionshipPayments(prisma:PrismaClient,tak
     ) payment
     WHERE c.state IN ('completed','defaulted','disputed','cancelled','declined','expired') AND funding.funded>payment.paid
       AND (payment.outstanding_rows=0 OR payment.retry_due=true)
-      ${challengeIds?Prisma.sql`AND c.scheduled_match_id IN (${Prisma.join(challengeIds)})`:Prisma.empty}
-    ORDER BY payment.last_attempt ASC NULLS FIRST,c.created_at ASC,c.id ASC LIMIT ${Math.max(1,Math.min(500,Math.floor(take)))}
+      AND (cf.ids='' OR c.scheduled_match_id = ANY(string_to_array(cf.ids, ',')::int[]))
+    ORDER BY payment.last_attempt ASC NULLS FIRST,c.created_at ASC,c.id ASC LIMIT ${limit}
   `;
   const rows=await prisma.championshipChallenge.findMany({where:{id:{in:ids.map(row=>row.id)}},include:CHAMPIONSHIP_INCLUDE});
   return ids.map(id=>rows.find(row=>row.id===id.id)!);

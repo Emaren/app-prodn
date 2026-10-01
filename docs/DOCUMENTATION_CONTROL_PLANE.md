@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/championship-release-gate-prefer-const` at `7b1a9dc6bebeee9840b80200d170c21e41b1284e`
+Implementation baseline: `fix/championship-reconcile-bundled-empty-sql` at `4d301007b6e88d58349177c738d5a118231311f5`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
