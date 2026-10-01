@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { championshipBeltPolicy, championshipEligibility, soloDefenseLadder, splitTitleUwolo, championshipNftAggregate, retryableChampionshipNftSeats } from "../lib/champions/beltPolicy.ts";
 const belt = (trophyId:string,overrides:Record<string,unknown>={})=>({trophyId,kind:"belt",family:"champion",tier:null,eligibleNationality:null,eloBandMin:null,eloBandMax:null,...overrides});
@@ -31,4 +32,14 @@ test("a partial NFT transfer never reports complete; retry excludes confirmed or
   assert.equal(championshipNftAggregate(seats,3),"partial"); assert.equal(championshipNftAggregate(seats,4),"blocked");
   assert.deepEqual(retryableChampionshipNftSeats(seats),[seats[1]]);
   assert.equal(championshipNftAggregate([{status:"confirmed",txHash:"A"},{status:"confirmed",txHash:"B"}],2),"confirmed");
+});
+test("actionable Championship payment SQL stays bundle-safe and fragment-free",()=>{
+  const source=readFileSync(new URL("../lib/championshipChallenges.ts",import.meta.url),"utf8");
+  const start=source.indexOf("export async function loadActionableChampionshipPayments");
+  const end=source.indexOf("export async function commissionerChampionshipAction",start);
+  assert.ok(start>=0&&end>start);
+  const selector=source.slice(start,end);
+  assert.doesNotMatch(selector,/Prisma\.(?:empty|sql|join)/);
+  assert.match(selector,/WITH challenge_filter AS/);
+  assert.match(selector,/string_to_array\(cf\.ids, ','\)::int\[\]/);
 });
