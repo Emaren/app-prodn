@@ -27,7 +27,8 @@ test("exact three-seat uwolo remainder reaches protected request and committed e
   const previousUrl=process.env.WOLO_FOUNDER_SETTLEMENT_URL,previousToken=process.env.WOLO_FOUNDER_SETTLEMENT_AUTH_TOKEN;
   process.env.WOLO_FOUNDER_SETTLEMENT_URL="http://127.0.0.1:8093";process.env.WOLO_FOUNDER_SETTLEMENT_AUTH_TOKEN="qa-token";
   t.after(()=>{if(previousUrl === undefined)delete process.env.WOLO_FOUNDER_SETTLEMENT_URL;else process.env.WOLO_FOUNDER_SETTLEMENT_URL=previousUrl;if(previousToken === undefined)delete process.env.WOLO_FOUNDER_SETTLEMENT_AUTH_TOKEN;else process.env.WOLO_FOUNDER_SETTLEMENT_AUTH_TOKEN=previousToken;});
-  let current=input,posts:string[]=[];
+  let current=input;
+  const posts:string[]=[];
   t.mock.method(globalThis,"fetch",async(url:string|URL|Request,init?:RequestInit)=>{
     assert.equal((init?.headers as Record<string,string>).authorization,"Bearer qa-token");
     const href=String(url);
