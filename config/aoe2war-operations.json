@@ -164,6 +164,7 @@
     },
     "auto_root_headroom_recovery": true,
     "root_headroom_journal_limit_mib": 100,
+    "root_headroom_prune_verified_fast_rollback": true,
     "auto_maintenance_runner_reconcile": true,
     "auto_root_control_asset_reconcile": true,
     "root_control_assets": [

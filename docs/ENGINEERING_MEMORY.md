@@ -139,6 +139,38 @@ staged release before spending effort on generic host cleanup. This reuses the
 existing receipt-driven stage retirement contract and avoids a release deadlock
 where capacity preflight blocks before that contract can run.
 
+## 2026-10-01 — A durable-proven fast rollback is pre-stage cache
+
+The October Blackout release exposed a second root-capacity deadlock. Production
+was still on the previously certified runtime and had one canonical fast rollback
+pair on root: roughly 95 MiB of Next runtime plus 1.10 GiB of dependencies.
+Normal post-certification retention correctly kept that newest fast pair, but the
+next release needed only about 166 MiB more root headroom to stage and the
+ordinary APT/Snap/journal/nginx recovery ladder had exhausted its safe classes.
+
+Read-only proof found an exact complete durable twin for the fast pair beneath
+the mounted rollback volume: the same BUILD_ID, a durable `next` tree, and the
+paired durable `node_modules` tree. At that point the root pair was no longer
+the recovery authority; it was an acceleration cache for an older generation.
+The currently active `.next` and `node_modules` were still untouched, and any
+future activation would create a fresh fast pair from that live runtime before
+swapping candidates.
+
+Permanent rule: under pre-stage root pressure, a canonical fast rollback pair
+may be retired only after exact BUILD_ID proof of both durable runtime halves.
+The lane must reject malformed names, symlinks, incomplete pairs, missing or
+drifting BUILD_ID values, and absent durable proof. It must rename both root
+halves out of the canonical namespace before deletion, seal the per-pair prune
+manifest with SHA-256, and re-prove source, active BUILD_ID, web health, root
+capacity, and Wolo 8092/8093 afterward. Unverified rollback material remains
+keep-only.
+
+This is deliberately different from ordinary post-certification fast-retention:
+post-certification keeps the newest verified fast generation for rapid rollback;
+pre-stage headroom recovery may temporarily reach zero fast generations because
+the certified live runtime itself is still active and durable rollback evidence
+already exists.
+
 
 ## 2026-09-28 — Clean Git metadata does not prove a writable tracked worktree
 

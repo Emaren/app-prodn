@@ -271,6 +271,48 @@ For each candidate the controller must:
 
 Selection stops immediately when the configured recovery target is met.
 
+### Tier 5 — durable-proven fast rollback cache
+
+If the recovery target is still unmet, Release Recovery OS may retire a
+canonical **fast rollback pair** only when the pair has already become redundant
+cache because a complete BUILD_ID-matched durable twin exists on the mounted
+volume.
+
+Eligible root namespaces are limited to:
+
+~~~text
+.next-rollback-activate-<UTC>
+.node_modules-rollback-activate-<UTC>
+.next-rollback-manual-<UTC>
+.node_modules-rollback-manual-<UTC>
+~~~
+
+The controller must:
+
+1. require the explicit
+   `finish.root_headroom_prune_verified_fast_rollback=true` policy switch;
+2. consider only exact timestamp-shaped top-level pairs and reject symlinks,
+   incomplete pairs, missing BUILD_ID values, or namespace drift;
+3. prove the same BUILD_ID in either a complete durable rollback pair
+   (`rollbacks/*/next` + `node_modules`) or complete durable rescue pair
+   (`deploy-receipts/*/current-next` + `current-node_modules`);
+4. re-read both the fast and durable BUILD_ID immediately before pruning;
+5. rename both root halves out of the canonical fast namespace before deletion,
+   restoring the first half if the second rename fails;
+6. delete only those renamed temporary halves;
+7. record path, paired path, BUILD_ID, measured size, actual root-space delta,
+   durable proof kind, and durable proof path in
+   `fast-rollback-pruned.tsv`;
+8. SHA-256 seal that manifest into the recovery receipt;
+9. stop immediately once the configured recovery target is reached.
+
+This tier is safe specifically **before staging a new release**. The currently
+active `.next` and `node_modules` remain untouched and continue serving
+production. If activation later begins, the activation transaction creates a
+fresh fast rollback pair from that still-current runtime before the candidate
+swap. The older fast pair is therefore acceleration cache once its durable twin
+has been proven, not the sole recovery authority.
+
 Durable evidence lives beneath:
 
 ~~~text
@@ -278,8 +320,9 @@ Durable evidence lives beneath:
 ~~~
 
 The receipt records before/after free space and reclaimed amounts attributed to
-APT, disabled-Snap, journal, and nginx recovery, including the exact count of
-disabled revisions removed or rejected as unsafe.
+APT, disabled-Snap, journal, nginx, and verified fast-rollback recovery. A fast
+rollback prune additionally records matched/unmatched/failure counts plus the
+SHA-256 of the exact per-pair prune manifest.
 
 ### Never automatic
 
@@ -292,8 +335,8 @@ Root-headroom recovery does not automatically remove:
 - PNPM store material;
 - active `.next`;
 - active `node_modules`;
-- `.next-rollback-*`;
-- `.node_modules-rollback-*`;
+- legacy, unpaired, symlinked, malformed, or durable-unproven
+  `.next-rollback-*` / `.node_modules-rollback-*` material;
 - PostgreSQL data;
 - WoloChain binaries, state, services, or data;
 - arbitrary application/runtime data;
@@ -513,6 +556,7 @@ config/aoe2war-operations.json
   finish.auto_root_headroom_recovery
   finish.root_headroom_journal_limit_mib
   finish.root_headroom_recovery_margin_mib
+  finish.root_headroom_prune_verified_fast_rollback
   capacity.root_free_warn_gib
   capacity.root_free_preferred_gib
 ~~~

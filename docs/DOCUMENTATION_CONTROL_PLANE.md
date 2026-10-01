@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/october-black-theme` at `7059e5ca48371ca3e36708c6f6a7db75fa0446cb`
+Implementation baseline: `feature/prestage-fast-rollback-headroom` at `bbac7b2d48d053b668264802ef3ab9bf60d991cf`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
