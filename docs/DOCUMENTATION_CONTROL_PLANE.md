@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/prestage-fast-rollback-headroom` at `bbac7b2d48d053b668264802ef3ab9bf60d991cf`
+Implementation baseline: `fix/championship-protocol-db-constraint` at `2f53cd9c7453fb354d8450784b8338a54f4de66e`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

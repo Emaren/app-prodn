@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "repository-entrypoint"
-reviewed_at: "2026-09-30"
+reviewed_at: "2026-10-01"
 review_interval_days: 14
 sensitivity: "internal"
 ---
@@ -47,6 +47,14 @@ The active contract is [Championship Belt Constitution V1](./CHAMPIONSHIP_BELT_C
 New `championship_v2` records have a separate creation boundary. Renderer V1/V2
 and B/A/E never reclassify an existing financial record or enroll legacy rows
 into new default behavior.
+
+Database invariant learned 2026-10-01: Championship V2 financial legs reuse
+`scheduled_matches`, so the PostgreSQL `protocol_version` check is part of the
+protocol API. When a new non-null ScheduledMatch protocol constant is added,
+the same release must extend `ck_scheduled_matches_protocol_version` and retain
+valid distinct Steam ID64 snapshot enforcement. Code-only protocol additions
+can compile and render correctly while every production insert fails at the DB
+boundary.
 
 Durable lessons:
 
