@@ -18,7 +18,6 @@ export type SiteThemeCampaignControl = {
   label: string;
   enabled: boolean;
   themeKey: LobbyThemeKey;
-  appliesToThemeKey: LobbyThemeKey;
   startsAt: string;
   endsAt: string;
   active: boolean;
@@ -35,7 +34,6 @@ type CampaignRow = {
   label: string;
   enabled: boolean;
   themeKey: string;
-  appliesToThemeKey: string;
   startsAt: Date;
   endsAt: Date;
 };
@@ -96,7 +94,6 @@ export function toSiteThemeCampaignControl(
     label: row.label,
     enabled: row.enabled,
     themeKey: normalizeCampaignThemeKey(row.themeKey),
-    appliesToThemeKey: normalizeCampaignThemeKey(row.appliesToThemeKey),
     startsAt: row.startsAt.toISOString(),
     endsAt: row.endsAt.toISOString(),
     active: siteThemeCampaignIsActive(row, now),
@@ -115,7 +112,6 @@ export async function loadSiteThemeCampaign(
       label: true,
       enabled: true,
       themeKey: true,
-      appliesToThemeKey: true,
       startsAt: true,
       endsAt: true,
     },
@@ -188,7 +184,6 @@ export async function loadSiteThemeCampaignAdminState(
       label: true,
       enabled: true,
       themeKey: true,
-      appliesToThemeKey: true,
       startsAt: true,
       endsAt: true,
       updatedAt: true,
@@ -246,7 +241,7 @@ export async function loadSiteThemeCampaignAdminState(
   const effectiveBreakdown = new Map<LobbyThemeKey, number>();
   let campaignDefaultCount = 0;
   let effectiveCampaignThemeCount = 0;
-  let existingCustomThemeCount = 0;
+  let savedNonCampaignThemeCount = 0;
 
   for (const user of users) {
     const preferred = normalizeCampaignThemeKey(
@@ -271,11 +266,8 @@ export async function loadSiteThemeCampaignAdminState(
     if (effective === campaign.themeKey) {
       effectiveCampaignThemeCount += 1;
     }
-    if (
-      preferred !== campaign.appliesToThemeKey &&
-      !override
-    ) {
-      existingCustomThemeCount += 1;
+    if (preferred !== campaign.themeKey) {
+      savedNonCampaignThemeCount += 1;
     }
   }
 
@@ -293,7 +285,7 @@ export async function loadSiteThemeCampaignAdminState(
       explicitMidnightOverrideCount: overrides.filter(
         (row) => normalizeCampaignThemeKey(row.themeKey) === "midnight",
       ).length,
-      existingCustomThemeCount,
+      savedNonCampaignThemeCount,
       effectiveBreakdown: [
         "black",
         "grey",

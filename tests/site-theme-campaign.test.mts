@@ -14,7 +14,6 @@ const activeCampaign: SiteThemeCampaignControl = {
   label: "October Blackout 2026",
   enabled: true,
   themeKey: "black",
-  appliesToThemeKey: "midnight",
   startsAt: "2026-10-01T06:00:00.000Z",
   endsAt: "2026-11-01T06:00:00.000Z",
   active: true,

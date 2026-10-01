@@ -1975,7 +1975,6 @@ model SiteThemeCampaign {
   label             String   @db.VarChar(120)
   enabled           Boolean  @default(false)
   themeKey          String   @default("black") @map("theme_key") @db.VarChar(20)
-  appliesToThemeKey String   @default("midnight") @map("applies_to_theme_key") @db.VarChar(20)
   startsAt          DateTime @map("starts_at") @db.Timestamp(6)
   endsAt            DateTime @map("ends_at") @db.Timestamp(6)
   updatedByUserId   Int?     @map("updated_by_user_id")

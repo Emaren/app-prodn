@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/october-black-theme` at `97f88d07dd23307670c6089ec88a8c3e5f730cab`
+Implementation baseline: `feature/october-black-theme` at `7059e5ca48371ca3e36708c6f6a7db75fa0446cb`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

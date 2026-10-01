@@ -46,7 +46,6 @@ export async function POST(request: NextRequest) {
     enabled?: boolean;
     label?: string;
     themeKey?: string;
-    appliesToThemeKey?: string;
     startsAt?: string;
     endsAt?: string;
   };
@@ -55,11 +54,6 @@ export async function POST(request: NextRequest) {
     typeof body.themeKey === "string" && isLobbyThemeKey(body.themeKey)
       ? body.themeKey
       : current.themeKey;
-  const appliesToThemeKey =
-    typeof body.appliesToThemeKey === "string" &&
-    isLobbyThemeKey(body.appliesToThemeKey)
-      ? body.appliesToThemeKey
-      : current.appliesToThemeKey;
   const startsAt = parseDate(body.startsAt, current.startsAt);
   const endsAt = parseDate(body.endsAt, current.endsAt);
 
@@ -82,7 +76,6 @@ export async function POST(request: NextRequest) {
         typeof body.enabled === "boolean" ? body.enabled : current.enabled,
       label,
       themeKey,
-      appliesToThemeKey,
       startsAt,
       endsAt,
       updatedByUserId: gate.user.id,
