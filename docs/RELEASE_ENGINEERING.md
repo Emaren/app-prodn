@@ -652,7 +652,9 @@ Current automatic recovery classes are:
 - **low production-root headroom** — reclaim regenerable APT material first,
   then exact Snap revisions already marked `disabled` by Snap itself, then
   bound the journal, then checksum-archive only closed rotated nginx `.log.1`
-  files until the configured recovery target is restored;
+  files. If the target is still unmet, a canonical fast rollback pair may be
+  retired only after both runtime halves are proven by exact BUILD_ID against a
+  complete durable rollback/rescue twin on the mounted volume;
 - **superseded staged candidates** — exact current-release resume remains first,
   then `.next-release` and `.node_modules-release` may be retired only when one
   durable receipt proves older provenance and staged trees have zero runtime
@@ -665,8 +667,10 @@ state, live staged references, insufficient approved reclaim, abnormal Wolo
 listeners, database uncertainty, or runtime identity drift remain fail-closed.
 
 Root recovery never broadly removes `/tmp`, active runtime/dependencies,
-rollback material, PostgreSQL data, or Wolo state. Superseded-stage recovery
-never touches active runtime or restarts Wolo.
+durable-unproven or malformed rollback material, PostgreSQL data, or Wolo
+state. A verified fast pair is treated as reclaimable cache only before staging,
+only under explicit policy, and only while the live runtime remains untouched.
+Superseded-stage recovery never touches active runtime or restarts Wolo.
 
 Every mutating recovery path leaves durable evidence, and ordinary release
 checks re-prove capacity, runtime identity, service health, and protected Wolo

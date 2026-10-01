@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e47b9b8a12d3ff1ea2cb42a498855418c840a5e40c1280a4416c6989e592d3de",
+      "sha256": "fdafa6b8814416ee399b8ee37cacfbeac96633d3ab9fa9ccc8646f5ea1bb206b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -661,7 +661,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-30",
       "sensitivity": "internal",
-      "sha256": "735bfba23a82165e276ffb1b05bda0fea8bd3f581dac6a5105f9d65f69f3cc00",
+      "sha256": "87e135d826bc0bdd98d46311391b9ce78bb510a3d407800a36d5d277ca89650b",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1375,7 +1375,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-29",
       "sensitivity": "internal",
-      "sha256": "19f1e2a4d6e9ba014ea523414daa9aaefa5b2768b26ef54a52291fb9d98865c7",
+      "sha256": "33c3332b954c28cbf1e2e837f1bf57695fbadb334e2bc30300cb7eea4ea98159",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1421,7 +1421,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-29",
       "sensitivity": "internal",
-      "sha256": "ff258a9fc6345113c770ad494d41833c638a300920224267c414520863666c45",
+      "sha256": "3d4958a33f866811935ed3a5575492c70c04d9ca31df4c65620c7f5af2101047",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2003,8 +2003,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/october-black-theme",
-    "commit": "7059e5ca48371ca3e36708c6f6a7db75fa0446cb"
+    "branch": "feature/prestage-fast-rollback-headroom",
+    "commit": "bbac7b2d48d053b668264802ef3ab9bf60d991cf"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
