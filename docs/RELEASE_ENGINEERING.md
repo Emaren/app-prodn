@@ -725,11 +725,29 @@ dump, applies the exact Prisma frontier, and proves every live AFTER hash before
 the migration is accepted and its durable receipt is written. That receipt
 records each exact before/after CHECK proof.
 
-For an already-applied release, the engine requires the durable release-bound
-receipt to contain those exact CHECK proof lines and independently re-proves the
-live AFTER definitions. Missing, changed, partial, mixed, duplicated, or
-unrelated SQL fails closed. This mode provides no authority over Wolo or
-settlement state.
+For an already-applied release, the engine first proves each expected Prisma row
+is finished exactly once, its recorded checksum matches the immutable migration
+SQL bytes, no unfinished rows exist, and every live AFTER definition matches the
+release proof. The preferred evidence remains an exact release-bound receipt.
+
+If an interrupted migration transaction applied the SQL but failed while sealing
+post-apply evidence, a descendant release may adopt one older canonical receipt
+only in this CHECK-replacement lane. Adoption requires the older release to be a
+Git ancestor, identical migration blobs in both releases, an intact receipt
+SHA-256 sidecar, the exact migration/check proof set, and a verified
+pre-migration.dump whose SHA matches the source receipt. Multiple qualifying
+receipts fail closed. The descendant receipt records its source lineage and
+database_mutation=NONE; the SQL is never replayed merely to manufacture a new
+receipt.
+
+Applied migrations are immutable. If an embedded AFTER proof was derived from
+non-canonical CHECK text, the release engine may use
+config/migration-check-proof-corrections.json only when the correction is bound
+to the exact migration SQL SHA-256 and exact marker-declared proof set. Any
+migration-byte, identity, or declared-hash drift fails closed.
+
+Missing, changed, partial, mixed, duplicated, ambiguous, or unrelated evidence
+fails closed. This mode provides no authority over Wolo or settlement state.
 
 ### Activation transport timeout recovery
 

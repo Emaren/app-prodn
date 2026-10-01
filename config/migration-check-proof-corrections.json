@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "kind": "aoe2war-migration-check-proof-corrections",
+  "corrections": [
+    {
+      "migration": "20261001181500_championship_protocol_version_constraint",
+      "migration_sql_sha256": "44b9247c658b5cc1de35e07c65194a44c3753c1716428aabc38825ffce114fcd",
+      "reason": "Immutable applied migration has correct SQL/checksum but its embedded after hashes were computed from non-canonical CHECK text.",
+      "checks": [
+        {
+          "table": "scheduled_matches",
+          "constraint": "ck_scheduled_matches_protocol_version",
+          "declared_after_sha256": "5360090c2838853d83c710893bdf25bf607732e6565a6df47da0878b5c0908e8",
+          "corrected_after_sha256": "e46ed6a18ec488a2f23b9cab743b1013512c04575c4c4af37c82416b51f5a67f"
+        },
+        {
+          "table": "scheduled_matches",
+          "constraint": "ck_scheduled_matches_steam_wolo_identity",
+          "declared_after_sha256": "fea8defdbfaaaa3e33a66399043f8932249b4e2326ccee23ffae587d560ffa59",
+          "corrected_after_sha256": "a26469c69cb1e98d4e70ce9e0b293ea074a9166ec79191988359a8564254e950"
+        }
+      ]
+    }
+  ]
+}

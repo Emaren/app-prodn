@@ -1209,7 +1209,7 @@ COMMIT;
             rendered,
         )
 
-    def test_already_applied_replay_requires_exact_receipt_and_live_after(
+    def test_already_applied_replay_requires_exact_or_adopted_receipt_and_live_after(
         self,
     ):
         proof = {
@@ -1255,26 +1255,52 @@ COMMIT;
             receipt_loop,
         )
 
-        applied_start = receipt_end
-
-        applied_end = rendered.index(
-            "  exit 0",
-            applied_start,
+        self.assertIn(
+            "already-applied migration is not exactly-once",
+            rendered,
         )
 
-        applied = rendered[
-            applied_start:applied_end
-        ]
+        self.assertIn(
+            "already-applied migration checksum differs from release SQL",
+            rendered,
+        )
 
         self.assertIn(
-            "durable migration receipt is missing",
-            applied,
+            "git merge-base --is-ancestor",
+            rendered,
+        )
+
+        self.assertIn(
+            "source_blob=",
+            rendered,
+        )
+        self.assertIn(
+            "current_blob=",
+            rendered,
+        )
+
+        self.assertIn(
+            "adopted_from_release_sha",
+            rendered,
+        )
+        self.assertIn(
+            "database_mutation=NONE",
+            rendered,
+        )
+        self.assertIn(
+            "adopted-already-applied",
+            rendered,
+        )
+
+        self.assertIn(
+            "no exact or safely adoptable durable migration receipt exists",
+            rendered,
         )
 
         self.assertIn(
             "production CHECK "
             "after-proof mismatch",
-            applied,
+            rendered,
         )
 
     def test_additive_renderer_does_not_receive_check_proofs(
