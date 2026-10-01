@@ -78,6 +78,28 @@ the implementation gate. Tests use the explicit isolated local database
 `aoe2_championship_v1_qa_20260930`; fixture funding/transaction proof is
 synthetic test evidence and is never represented as live-chain success.
 
+### 2026-10-01 production reconciliation hotfix
+
+The first Championship V1 production activation exposed a bundle-only Prisma
+raw-SQL seam in `loadActionableChampionshipPayments`. The periodic Challenge
+worker failed with PostgreSQL `42601` near `$2` while the equivalent source
+query, isolated PostgreSQL integration tests, and direct PostgreSQL 16
+`PREPARE/EXPLAIN` all passed. Inspection of the compiled Next server chunk
+showed an interpolated `Prisma.empty` object inside the tagged
+`$queryRaw` timer path. The production-safe contract is therefore:
+
+- the periodic no-filter payment selector must be one static tagged SQL shape;
+- optional Challenge IDs are represented as a bound scalar filter value, never
+  as an interpolated `Prisma.empty`, `Prisma.sql`, or `Prisma.join` fragment;
+- filtered and unfiltered PostgreSQL behavior are both integration-tested; and
+- the source contract explicitly rejects nested Prisma SQL fragments in this
+  selector so a later refactor cannot silently restore the bundle-only fault.
+
+The failed worker did not prove or send a chain payment. The repair must be
+production-build gated and the actual
+`aoe2hdbets-challenge-reconcile.service` timer must complete successfully
+after activation before the Championship release is considered pristine.
+
 ## Chain dependency and limits
 
 The supplied September 24 Wolo reference is a source snapshot, not a current

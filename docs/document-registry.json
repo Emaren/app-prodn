@@ -456,7 +456,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-30",
       "sensitivity": "internal",
-      "sha256": "f5c73b0e026f86b08fbcbb856e877bfd10eca96892465d6ab76f678bf5b61d20",
+      "sha256": "e75dd54e8cc94934ac13be0bde8b88efc3fb3c169acd3245837cb4e2edb02ce1",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "873c3e6c570565937ab3236f4649c5081700376822982626e1c537725ba35de5",
+      "sha256": "d56f2a9f572dd3e587575ea93bed51a0c8973308e38174ba5b05656c9d7b9816",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1958,8 +1958,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/championship-release-gate-prefer-const",
-    "commit": "7b1a9dc6bebeee9840b80200d170c21e41b1284e"
+    "branch": "fix/championship-reconcile-bundled-empty-sql",
+    "commit": "4d301007b6e88d58349177c738d5a118231311f5"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
