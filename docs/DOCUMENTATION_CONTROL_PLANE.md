@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/television-wolo-v1` at `ea68e63020476fa2904bbc00be6c7c5b26bb0664`
+Implementation baseline: `feature/television-wolo-v1` at `91fe03230f705df9edaec93d53d3b81a966951d2`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
