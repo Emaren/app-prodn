@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "3c42d5ee3bb1077a08579bf319d67450b2d8a67208c07a8ca36128e7e3e3ab98",
+      "sha256": "873c3e6c570565937ab3236f4649c5081700376822982626e1c537725ba35de5",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1958,8 +1958,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/championship-challenge-v1",
-    "commit": "60e48eeeba2b4f325998a17b8a0ce5fbc8f4b0f6"
+    "branch": "fix/championship-release-gate-prefer-const",
+    "commit": "7b1a9dc6bebeee9840b80200d170c21e41b1284e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
