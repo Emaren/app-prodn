@@ -27,6 +27,18 @@ test("builds the WoloChain challenge funding memo with exact bucket amounts", ()
   );
 });
 
+test("builds championship funding memos with a canonical zero guarantee", () => {
+  assert.equal(
+    buildChallengeFundingMemo({
+      challengeId: 88,
+      wagerAmountWolo: 25,
+      guaranteeAmountWolo: 0,
+      participantSide: "right",
+    }),
+    "wolo.challenge.funding.v1:app=aoe2hdbets&sid=aoe2hdbets:challenge-88:v1&cid=88&side=right&w=25000000&g=0&t=25000000"
+  );
+});
+
 test("parses title stakes into the rich challenge invitation contract", () => {
   const summary = summarizeChallengeInboxMessage(
     [
