@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 
 import AdminUserCard from "@/components/admin/command-tower/AdminUserCard";
+import SiteThemeCampaignPanel from "@/components/admin/command-tower/SiteThemeCampaignPanel";
 import type { AdminUserRow, DraftState } from "@/components/admin/command-tower/types";
 import WoloChainEntryTile from "@/components/admin/command-tower/WoloChainEntryTile";
 import {
@@ -580,6 +581,8 @@ export default function AdminCommandTowerPage() {
           </div>
         </section>
       ) : null}
+
+      <SiteThemeCampaignPanel />
 
       {data?.overview ? (
         <section className="grid gap-4 xl:grid-cols-2">
