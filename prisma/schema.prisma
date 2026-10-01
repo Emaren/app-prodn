@@ -57,6 +57,8 @@ model User {
   grantedGifts                   UserGift[]                      @relation("UserGiftCreator")
   appearancePreference           UserAppearancePreference?
   presencePreference             UserPresencePreference?
+  themeCampaignOverrides         UserThemeCampaignOverride[] @relation("UserThemeCampaignOverrideUser")
+  themeCampaignsUpdated          SiteThemeCampaign[]          @relation("SiteThemeCampaignUpdatedBy")
   activityEvents                 UserActivityEvent[]
   watcherDownloadEvents          WatcherDownloadEvent[]
   watcherClientEvents            WatcherClientEvent[]
@@ -1965,6 +1967,41 @@ model UserAppearancePreference {
   leaderboardLane     String  @default("rm") @map("leaderboard_lane") @db.VarChar(8)
 
   @@map("user_appearance_preferences")
+}
+
+model SiteThemeCampaign {
+  slot              Int      @id @default(1) @db.SmallInt
+  campaignKey       String   @unique(map: "uq_site_theme_campaign_key") @map("campaign_key") @db.VarChar(64)
+  label             String   @db.VarChar(120)
+  enabled           Boolean  @default(false)
+  themeKey          String   @default("black") @map("theme_key") @db.VarChar(20)
+  appliesToThemeKey String   @default("midnight") @map("applies_to_theme_key") @db.VarChar(20)
+  startsAt          DateTime @map("starts_at") @db.Timestamp(6)
+  endsAt            DateTime @map("ends_at") @db.Timestamp(6)
+  updatedByUserId   Int?     @map("updated_by_user_id")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  updatedBy User? @relation("SiteThemeCampaignUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([enabled, startsAt, endsAt], map: "ix_site_theme_campaign_active_window")
+  @@map("site_theme_campaign")
+}
+
+model UserThemeCampaignOverride {
+  id          Int      @id @default(autoincrement())
+  campaignKey String   @map("campaign_key") @db.VarChar(64)
+  userId      Int      @map("user_id")
+  themeKey    String   @map("theme_key") @db.VarChar(20)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  user User @relation("UserThemeCampaignOverrideUser", fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([campaignKey, userId], map: "uq_user_theme_campaign_override")
+  @@index([campaignKey, themeKey], map: "ix_user_theme_campaign_override_theme")
+  @@index([userId, updatedAt], map: "ix_user_theme_campaign_override_user_updated")
+  @@map("user_theme_campaign_overrides")
 }
 
 model UserPresencePreference {
