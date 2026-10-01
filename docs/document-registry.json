@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "fdafa6b8814416ee399b8ee37cacfbeac96633d3ab9fa9ccc8646f5ea1bb206b",
+      "sha256": "5705a3e427e1d78be5c2d34d5b7c6b831318ff69b598363ecc667477c4f8ed85",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2003,8 +2003,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/prestage-fast-rollback-headroom",
-    "commit": "bbac7b2d48d053b668264802ef3ab9bf60d991cf"
+    "branch": "fix/championship-protocol-db-constraint",
+    "commit": "2f53cd9c7453fb354d8450784b8338a54f4de66e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
