@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5705a3e427e1d78be5c2d34d5b7c6b831318ff69b598363ecc667477c4f8ed85",
+      "sha256": "dc5909b226311cafe8c6e0088efd25c06cf38bba4991d7b7dcc9a64b17a853be",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1375,7 +1375,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-29",
       "sensitivity": "internal",
-      "sha256": "33c3332b954c28cbf1e2e837f1bf57695fbadb334e2bc30300cb7eea4ea98159",
+      "sha256": "dfba95b620cab711a520434a24900c03bb729ec9bded9cc484703ac183a20181",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2003,8 +2003,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/championship-protocol-db-constraint",
-    "commit": "2f53cd9c7453fb354d8450784b8338a54f4de66e"
+    "branch": "main",
+    "commit": "c6add58b37fc7d7551f31872e0ea84ec266e7334"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

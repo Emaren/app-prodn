@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/championship-protocol-db-constraint` at `2f53cd9c7453fb354d8450784b8338a54f4de66e`
+Implementation baseline: `main` at `c6add58b37fc7d7551f31872e0ea84ec266e7334`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
