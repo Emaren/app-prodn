@@ -8,7 +8,7 @@ systems: ["app-prodn","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-09-30"
+reviewed_at: "2026-10-01"
 review_interval_days: 60
 sensitivity: "internal"
 ---
@@ -48,6 +48,12 @@ signs their own leg, and aggregate proof settles the winning side's paired
 seat purses. Child legs cannot appear as independent public Challenges or
 settle independently through the old lifecycle. This is one title defense,
 one clock, one parent card, and the existing financial ledger.
+
+Persistence contract: `scheduled_matches.protocol_version` admits the live
+`steam_wolo_v1` and `championship_v2` protocols. Every non-null protocol row
+must carry two distinct valid Steam ID64 snapshots. A new ScheduledMatch
+protocol version must update the database allow-list and its regression test in
+the same release; application constants alone are not schema authority.
 
 The implementation and production handoff are recorded in
 [Championship implementation handoff](./CHAMPIONSHIP_IMPLEMENTATION_HANDOFF.md).

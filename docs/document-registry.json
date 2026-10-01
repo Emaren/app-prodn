@@ -360,9 +360,9 @@
       "owner": "aoe2war-web",
       "path": "docs/CHALLENGE_SYSTEM.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-09-30",
+      "reviewed_at": "2026-10-01",
       "sensitivity": "internal",
-      "sha256": "1e9641af18331aa935aded50c149d23ea7d48d134ae7e0262ce0e772931954dd",
+      "sha256": "1db2e78a36c9d94e12d24d03e5ba84ccbc7db8ff429cde5db178c55227e6aeaa",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -659,9 +659,9 @@
       "owner": "aoe2war-web",
       "path": "docs/ENGINEERING_MEMORY.md",
       "review_interval_days": 14,
-      "reviewed_at": "2026-09-30",
+      "reviewed_at": "2026-10-01",
       "sensitivity": "internal",
-      "sha256": "87e135d826bc0bdd98d46311391b9ce78bb510a3d407800a36d5d277ca89650b",
+      "sha256": "c8cb652361d3a4c94b7472bbbd02929cdbf9351f8c982782129565f94d82317c",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
