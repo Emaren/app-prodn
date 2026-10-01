@@ -324,9 +324,34 @@ Late shadow book.
 This shadow materialization does **not** split any live money pool, admit phase
 wagers, alter stake tickets, change recovery/settlement, migrate historical
 wagers, or change the current Betting Fairness V1.2 compatibility bridge.
-Public phase projection, transactional phase write fences, ticket/escrow
-validation, recovery, settlement, history, and UI activation remain separately
-reviewed work.
+Transactional phase write fences, ticket/escrow validation, recovery,
+settlement, and financial UI activation remain separately reviewed work.
+
+### Accepted-slip phase provenance — presentation only
+
+`Your Book` may now label an already-accepted slip by timing provenance without
+claiming the underlying V1 pool was economically phase-isolated.
+
+Classification uses server evidence only:
+
+- an explicit non-legacy `BetMarket.bookPhase` is authoritative for that future
+  phase row;
+- otherwise a scheduled Challenge market is **Pre-Game** because current
+  production admits that book before play only;
+- otherwise the accepted timestamp is compared with canonical
+  `BattleIdentity.startedAt`;
+- `stakeLockedAt` outranks the later wager-row `createdAt` when chain-backed
+  stake proof exists;
+- before start is **Pre-Game**;
+- start through `< start + 60s` is **Opening Minute**;
+- `>= start + 60s` is **Late**;
+- missing authoritative start evidence remains **Legacy timing** rather than
+  being guessed from browser time, market status, or a schedule.
+
+When one current V1 market contains several viewer slips, the presentation may
+show a phase breakdown across those slips. That breakdown describes information
+age only. The slips still share the existing V1 economic pool until Phase Books
+V2 financial activation is separately certified.
 
 
 ### Presentation direction

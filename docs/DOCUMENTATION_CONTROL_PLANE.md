@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/television-wolo-v1` at `1534c0ebed577c7b2f91ec65e06771bf9a2ce4b3`
+Implementation baseline: `feature/betting-phase-projection-v1` at `3d88bef7ab2a6d73fc2a14d896385ba908ce8f00`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

@@ -222,7 +222,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-22",
       "sensitivity": "internal",
-      "sha256": "75e366c98d98abd7c1fc5d5845f2efae9c63879457b397b941936f2312df96e6",
+      "sha256": "61ecf03d7e7a2632c8237b1538f24faeceeb82f789b511b9c6e2d80840e424be",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -245,7 +245,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-29",
       "sensitivity": "internal",
-      "sha256": "8233d5fa07cc7e20d32261384892ebbf422796dd9d93273a51b02a27c30687c1",
+      "sha256": "3a314aa841840f4a9f6d65f813a8771e875d83e8d3955856a60680a23ef65a19",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ac21a295ad0a29860ffc723e938f9dba3469607fd78e644063901f4dba37bee8",
+      "sha256": "1fd85fc9d977eee2ac36bf9a46360d4aa1581cdad75a73357a643b41e08115c1",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -661,7 +661,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-30",
       "sensitivity": "internal",
-      "sha256": "87d63e7d01c1e69394dc3260d930cbfae2bd6397e1df051e479da505afa17edb",
+      "sha256": "735bfba23a82165e276ffb1b05bda0fea8bd3f581dac6a5105f9d65f69f3cc00",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1981,8 +1981,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/television-wolo-v1",
-    "commit": "1534c0ebed577c7b2f91ec65e06771bf9a2ce4b3"
+    "branch": "feature/betting-phase-projection-v1",
+    "commit": "3d88bef7ab2a6d73fc2a14d896385ba908ce8f00"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

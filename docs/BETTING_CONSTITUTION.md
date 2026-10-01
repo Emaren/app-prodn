@@ -72,11 +72,19 @@ rewritten. Future phase markets may carry a unique `phase_book_key` plus
 server-owned open/close timestamps, and the pure planner fixes Opening Minute at
 exactly 60 seconds from authoritative battle start.
 
-Those fields are not financial authority by themselves. Until a separately
+Those fields are not financial authority by themselves. Presentation may
+classify an already-accepted slip by server-proven timing without changing this
+boundary: chain-backed slips use `stakeLockedAt` when available, otherwise the
+wager row's `createdAt`; unscheduled live slips require canonical
+`BattleIdentity.startedAt`, while scheduled Challenge books are Pre-Game by
+their current admission contract. Unknown start truth remains Legacy rather
+than guessed.
+
+That timing label does not split or reprice a legacy pool. Until a separately
 reviewed activation connects phase identity to market materialization,
-transactional wager admission, settlement, recovery, and presentation, the
-production Betting Fairness V1.2 compatibility bridge remains authoritative.
-A configuration value alone may not activate Phase Books V2.
+transactional wager admission, settlement, recovery, and financial
+presentation, the production Betting Fairness V1.2 compatibility bridge remains
+authoritative. A configuration value alone may not activate Phase Books V2.
 
 ### Battle-start authority
 
