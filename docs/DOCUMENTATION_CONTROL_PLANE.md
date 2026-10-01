@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/betting-phase-projection-v1` at `3d88bef7ab2a6d73fc2a14d896385ba908ce8f00`
+Implementation baseline: `feature/october-black-theme` at `97f88d07dd23307670c6089ec88a8c3e5f730cab`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **86**
+- Authoritative repository documents: **87**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,13 +36,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 53
+- `reference`: 54
 - `runbook`: 14
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 70
+- `active`: 71
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -118,6 +118,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Rivalries and the War Vault](RIVALRIES_AND_WAR_VAULT.md) | `reference` | `active` | `product-contract` |
 | [Scheduled Match Escrow Settlements](SCHEDULED_MATCH_SETTLEMENTS.md) | `runbook` | `active` | `operational-procedure` |
 | [Security Incident Notes](SECURITY_INCIDENT_NOTES.md) | `historical` | `historical` | `incident-evidence` |
+| [Site Theme Campaign](SITE_THEME_CAMPAIGN.md) | `reference` | `active` | `presentation-policy` |
 | [Staking Treasury Payouts](STAKING_TREASURY_PAYOUTS.md) | `runbook` | `active` | `operational-procedure` |
 | [AoE2WAR Storage OS](STORAGE_OS.md) | `reference` | `active` | `storage-operating-contract` |
 | [Television WOLO](TELEVISION_WOLO.md) | `reference` | `active` | `product-contract` |

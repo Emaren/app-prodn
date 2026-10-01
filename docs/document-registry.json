@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "1fd85fc9d977eee2ac36bf9a46360d4aa1581cdad75a73357a643b41e08115c1",
+      "sha256": "d6d6c08ca7f7e07c0a619fbe9b33fc54e9fcf7ccde66c5a14be9aea4a597bdac",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1572,6 +1572,28 @@
     },
     {
       "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "presentation-policy",
+      "id": "aoe2war.app-prodn.docs-site-theme-campaign",
+      "owner": "aoe2war-web",
+      "path": "docs/SITE_THEME_CAMPAIGN.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-10-01",
+      "sensitivity": "internal",
+      "sha256": "76d4c17477764175e4055afb272dc419797f030f7572753cee32ece06b389374",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Site Theme Campaign",
+      "type": "reference"
+    },
+    {
+      "audience": [
         "operators",
         "ai-agents"
       ],
@@ -1981,8 +2003,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/betting-phase-projection-v1",
-    "commit": "3d88bef7ab2a6d73fc2a14d896385ba908ce8f00"
+    "branch": "feature/october-black-theme",
+    "commit": "97f88d07dd23307670c6089ec88a8c3e5f730cab"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
