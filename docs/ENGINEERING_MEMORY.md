@@ -781,11 +781,23 @@ row and market foreign keys while preserving the public number. Hashing the
 mutable row id or fallback session key would create duplicate phase books after
 promotion.
 
+Production may project **accepted-slip phase provenance** before financial
+activation, but only as presentation/history truth. For an existing wager,
+prefer `stakeLockedAt` when present, otherwise `createdAt`. Scheduled
+Challenge markets classify as Pre-Game under today's pre-game-only contract.
+Unscheduled Watcher wagers require canonical `BattleIdentity.startedAt`; before
+start is Pre-Game, start through `< +60s` is Opening Minute, and `>= +60s` is
+Late. Missing start authority stays Legacy rather than being inferred.
+
+This projection does not split the V1 pool. If several viewer slips on one
+legacy market span timing phases, show a breakdown rather than assigning one
+economic phase to the entire market.
+
 Do not make production betting read the phase fields piecemeal for financial
-admission. Phase activation is still one coordinated financial change: public
-projection, transactional phase write fence, stake-ticket/escrow validation,
-recovery, settlement, history, and UI must all agree before any phase row may
-accept WOLO. The runtime gate continues to fail a requested
+admission. Phase activation is still one coordinated financial change:
+transactional phase write fence, stake-ticket/escrow validation, recovery,
+settlement, and financial UI must all agree before any phase row may accept
+WOLO. The runtime gate continues to fail a requested
 `BET_PHASE_BOOKS_V2_MODE=live` closed while Betting Fairness V1.2 remains the
 production compatibility bridge.
 

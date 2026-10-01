@@ -176,6 +176,34 @@ export function authoritativeBetBookPhase(input: {
   return "late";
 }
 
+/**
+ * Classify the timing provenance of an already-accepted wager.
+ *
+ * This is presentation/history truth only. It does not activate Phase Books
+ * V2 economics or imply that a legacy live pool was financially isolated.
+ *
+ * Scheduled Challenge winner books are contractually pre-game-only today.
+ * Unscheduled Watcher markets require canonical BattleIdentity.startedAt
+ * before we classify Opening Minute or Late.
+ */
+export function classifyAcceptedBetPhase(input: {
+  acceptedAt: Date;
+  battleStartAt?: Date | null;
+  scheduledPreGameOnly?: boolean;
+}): BetBookPhase {
+  if (!validDate(input.acceptedAt)) return "legacy";
+  if (input.scheduledPreGameOnly) return "pre_game";
+  if (!input.battleStartAt || !validDate(input.battleStartAt)) return "legacy";
+
+  const acceptedMs = input.acceptedAt.getTime();
+  const startMs = input.battleStartAt.getTime();
+  if (acceptedMs < startMs) return "pre_game";
+  if (acceptedMs < startMs + BET_PHASE_BOOKS_V2_OPENING_WINDOW_MS) {
+    return "opening_minute";
+  }
+  return "late";
+}
+
 export function phaseBookWindowContains(
   window: BetPhaseBookWindow,
   now: Date
