@@ -22,6 +22,8 @@ import {
   Zap,
 } from "lucide-react";
 
+import ChallengeDisplayRail, { useChallengeDisplay } from "@/components/challenge/ChallengeDisplayRail";
+import ChallengeHeldTitles, { type HeldChallengeTitle } from "@/components/challenge/ChallengeHeldTitles";
 import ScheduledMatchCard, {
   type ScheduledMatchCardActionKind,
   type ScheduledMatchCardActionState,
@@ -161,10 +163,6 @@ type PublicTrophyTarget = {
 
 type ScheduleMode = "basic" | "advanced" | "extreme";
 type ChallengeHallView = "basic" | "advanced" | "extreme";
-
-function parseChallengeHallView(value: string | null): ChallengeHallView {
-  return value === "basic" || value === "advanced" || value === "extreme" ? value : "extreme";
-}
 
 function challengeHallViewHref(search: string, view: ChallengeHallView) {
   const params = new URLSearchParams(search);
@@ -464,7 +462,7 @@ type ChallengeWorkspaceProps = {
 };
 
 export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeWorkspaceProps) {
-  const { loading: authLoading, isAuthenticated, uid } = useUserAuth();
+  const { loading: authLoading, isAuthenticated, isAdmin, uid } = useUserAuth();
   const searchParams = useSearchParams();
   const router = useRouter();
   const { status: walletStatus, address: connectedWalletAddress, connect: connectKeplr } = useKeplr();
@@ -512,7 +510,19 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
   const requestedCountry = searchParams.get("country");
   const requestedOpponentUid = searchParams.get("opponent")?.trim() || "";
   const requestedFocusId = Number.parseInt(searchParams.get("focus") || "", 10);
-  const challengeHallView = parseChallengeHallView(searchParams.get("view"));
+  const display = useChallengeDisplay(searchParams.get("view"), searchParams.get("version"));
+  const challengeHallView = display.layout;
+  const version2 = display.version === 2;
+  const [heldTitles, setHeldTitles] = useState<HeldChallengeTitle[]>([]);
+  const [heldTitlesLoading, setHeldTitlesLoading] = useState(false);
+  const [selectedTeamTitle, setSelectedTeamTitle] = useState<HeldChallengeTitle | null>(null);
+  const [teammateUids, setTeammateUids] = useState<string[]>([]);
+  const [commissionerTitleId, setCommissionerTitleId] = useState<number | null>(null);
+  const [eligibilityOverride, setEligibilityOverride] = useState(false);
+  const [commissionerReason, setCommissionerReason] = useState("");
+  const handleTitlesLoaded = useCallback((titles: HeldChallengeTitle[], busy: boolean) => { setHeldTitles(titles); setHeldTitlesLoading(busy); }, []);
+  useEffect(() => { setSelectedTeamTitle(null); setTeammateUids([]); setCommissionerTitleId(null); setEligibilityOverride(false); setCommissionerReason(""); }, [challengedUid]);
+  useEffect(() => { if (version2) setScheduleMode(display.layout); }, [display.layout, version2]);
   const challengeHallExtreme = challengeHallView === "extreme";
   const routeFocusId =
     typeof initialFocusId === "number" && Number.isFinite(initialFocusId) && initialFocusId > 0
@@ -554,6 +564,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
     let cancelled = false;
     setTrophyTargetLoading(Boolean(requestedTitle));
     const loadTarget = async () => {
+      if (!requestedTitle) { setTrophyTarget(null); setTrophyTargetLoading(false); return; }
       try {
         const response = await fetch("/api/trophies", { cache: "no-store" });
         const payload = (await response.json().catch(() => ({}))) as {
@@ -664,7 +675,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
       : isNationalChallengeFlow
         ? buildNationalChallengeNote(initialNationalCountry)
         : "";
-    if (note) {
+    if (note && !version2) {
       setChallengeNote((current) => current || note.slice(0, CHALLENGE_NOTE_MAX_CHARS));
     }
     setChallengedUid((current) => {
@@ -698,6 +709,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
     trophyTarget,
     trophyTargetLoading,
     uid,
+    version2,
   ]);
 
   const pendingIncomingCount = useMemo(
@@ -790,7 +802,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
       .sort((left, right) => right.challengeId - left.challengeId);
   }, [recentActivities]);
 
-  const effectiveAcceptanceWindowHours = trophyTarget ? 168 : acceptanceWindowHours;
+  const effectiveAcceptanceWindowHours = version2 ? 24 : trophyTarget ? 168 : acceptanceWindowHours;
   const acceptanceDeadlinePreview = useMemo(
     () => new Date(Date.now() + effectiveAcceptanceWindowHours * 60 * 60 * 1000),
     [effectiveAcceptanceWindowHours]
@@ -860,8 +872,8 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
   );
   const totalFundingPreview = useMemo(
     () =>
-      (Number.parseInt(wagerAmountWolo, 10) || 0) + (Number.parseInt(guaranteeAmountWolo, 10) || 0),
-    [guaranteeAmountWolo, wagerAmountWolo]
+      (Number.parseInt(wagerAmountWolo, 10) || 0) + (version2 ? 0 : Number.parseInt(guaranteeAmountWolo, 10) || 0),
+    [guaranteeAmountWolo, wagerAmountWolo, version2]
   );
   const challengeEscrowReady = snapshot.fundingRail.configured;
   const selectedOpponent = useMemo(
@@ -943,7 +955,8 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
     extra?: { scheduledAt?: string }
   ) {
     if (!match) return false;
-    if (action === "accept") return Boolean(match.acceptedAt);
+    const participant = match.championship?.participants.find((member) => member.uid === uid);
+    if (action === "accept") return participant ? participant.accepted : Boolean(match.acceptedAt);
     if (action === "decline") return match.displayState === "declined";
     if (action === "cancel") {
       return ["cancelled", "canceled", "expired", "funding_expired", "refunded"].includes(
@@ -952,6 +965,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
     }
     if (action === "confirm_time") return Boolean(match.matchTimeConfirmedAt);
     if (action === "fund") {
+      if (participant) return participant.funded;
       return uid === match.challenger.uid
         ? Boolean(match.economy.creatorFundedAt)
         : uid === match.challenged.uid
@@ -1240,15 +1254,23 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
       return;
     }
 
-    const parsedScheduledAt = exactScheduling ? parseLocalDateTimeInputValue(scheduledAt) : null;
-    if (exactScheduling && !parsedScheduledAt) {
+    if (version2 && isAdmin && (commissionerTitleId || eligibilityOverride) && commissionerReason.trim().length < 5) {
+      setError("Record the Commissioner reason for manual title selection or eligibility bypass."); setSaving(false); setSavingPhase("idle"); return;
+    }
+
+    if (version2 && (heldTitlesLoading || (selectedTeamTitle && (teammateUids.some((value) => !value) || new Set(teammateUids).size !== teammateUids.length)))) {
+      setError("Wait for current custody and choose a complete team."); setSaving(false); setSavingPhase("idle"); return;
+    }
+
+    const parsedScheduledAt = !version2 && exactScheduling ? parseLocalDateTimeInputValue(scheduledAt) : null;
+    if (!version2 && exactScheduling && !parsedScheduledAt) {
       setError("Choose a valid exact match time.");
       setSaving(false);
       setSavingPhase("idle");
       return;
     }
 
-    if (isNationalChallengeFlow && !selectedNationalCountry) {
+    if (!version2 && isNationalChallengeFlow && !selectedNationalCountry) {
       setError("Choose your representing country for this national belt challenge.");
       setSaving(false);
       setSavingPhase("idle");
@@ -1257,18 +1279,23 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
 
     try {
       const parsedWagerAmountWolo = Number.parseInt(wagerAmountWolo, 10);
-      const parsedGuaranteeAmountWolo = Number.parseInt(guaranteeAmountWolo, 10);
+      const parsedGuaranteeAmountWolo = version2 ? 0 : Number.parseInt(guaranteeAmountWolo, 10);
       const draftFingerprint = JSON.stringify({
         viewerUid: uid || "viewer",
         challengedUid,
-        timingMode: exactScheduling ? "scheduled" : "open",
-        acceptanceWindowHours,
+        timingMode: !version2 && exactScheduling ? "scheduled" : "open",
+        acceptanceWindowHours: effectiveAcceptanceWindowHours,
+        championshipVersion: version2 ? 2 : undefined,
+        trophyId: version2 ? selectedTeamTitle?.trophyId ?? (isAdmin ? commissionerTitleId : undefined) : undefined,
+        eligibilityOverride: version2 && isAdmin && eligibilityOverride,
+        commissionerReason: version2 && isAdmin ? commissionerReason.trim() : undefined,
+        challengerTeamUids: version2 && selectedTeamTitle ? teammateUids : undefined,
         matchTime: parsedScheduledAt?.toISOString() ?? null,
         challengeNote: challengeNote.trim(),
         wagerAmountWolo: parsedWagerAmountWolo,
         guaranteeAmountWolo: parsedGuaranteeAmountWolo,
-        trophyTitleId: requestedTitle || null,
-        trophyCountry: selectedNationalCountry || requestedCountry || null,
+        trophyTitleId: !version2 ? requestedTitle || null : null,
+        trophyCountry: !version2 ? selectedNationalCountry || requestedCountry || null : null,
       });
       const storedDraft = readLocalJson<PendingChallengeDraft>(PENDING_CHALLENGE_DRAFT_KEY);
       const storedDraftSavedAt = storedDraft?.savedAt ? new Date(storedDraft.savedAt).getTime() : 0;
@@ -1297,15 +1324,20 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
         },
         body: JSON.stringify({
           challengedUid,
-          timingMode: exactScheduling ? "scheduled" : "open",
-          acceptanceWindowHours,
+          timingMode: !version2 && exactScheduling ? "scheduled" : "open",
+          acceptanceWindowHours: effectiveAcceptanceWindowHours,
+          championshipVersion: version2 ? 2 : undefined,
+          trophyId: version2 ? selectedTeamTitle?.trophyId ?? (isAdmin ? commissionerTitleId : undefined) : undefined,
+          eligibilityOverride: version2 && isAdmin && eligibilityOverride,
+          commissionerReason: version2 && isAdmin ? commissionerReason.trim() : undefined,
+          challengerTeamUids: version2 && selectedTeamTitle ? teammateUids : undefined,
           matchTime: parsedScheduledAt?.toISOString() ?? null,
           creationRequestId: creationRequestIdRef.current,
           challengeNote,
           wagerAmountWolo: parsedWagerAmountWolo,
           guaranteeAmountWolo: parsedGuaranteeAmountWolo,
-          trophyTitleId: requestedTitle || null,
-          trophyCountry: selectedNationalCountry || requestedCountry || null,
+          trophyTitleId: !version2 ? requestedTitle || null : null,
+          trophyCountry: !version2 ? selectedNationalCountry || requestedCountry || null : null,
         }),
       });
 
@@ -1326,19 +1358,23 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
 
       let fundedPayload: ChallengeHubSnapshot | null = null;
       const createdTile = challengeTileById(payload, createdChallengeId);
+      if (!createdTile) throw new Error("The created Challenge funding terms are unavailable.");
+      const fundingLegId = createdTile.championship?.participants.find((participant) => participant.uid === uid)?.fundingChallengeId ?? createdChallengeId;
+      const fundingWager = createdTile.terms.wagerAmountWolo;
+      const fundingGuarantee = createdTile.terms.guaranteeAmountWolo;
       if (createdTile?.economy.creatorFundedAt) {
         // A previous record-funding response may have been lost after the server
         // committed it. Never broadcast a second deposit when canonical state is
         // already funded.
         fundedPayload = payload;
-        clearPendingChallengeFundingProof(createdChallengeId);
+        clearPendingChallengeFundingProof(fundingLegId);
       } else {
         setSavingPhase("funding");
         const storedFunding = loadPendingChallengeFundingProof({
-          challengeId: createdChallengeId,
+          challengeId: fundingLegId,
           participantSide: "left",
-          wagerAmountWolo: parsedWagerAmountWolo,
-          guaranteeAmountWolo: parsedGuaranteeAmountWolo,
+          wagerAmountWolo: fundingWager,
+          guaranteeAmountWolo: fundingGuarantee,
         });
         const fundingResult =
           storedFunding
@@ -1347,9 +1383,9 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                 walletAddress: storedFunding.walletAddress,
               }
             : await fundChallengeEscrow({
-                challengeId: createdChallengeId,
-                wagerAmountWolo: parsedWagerAmountWolo,
-                guaranteeAmountWolo: parsedGuaranteeAmountWolo,
+                challengeId: fundingLegId,
+                wagerAmountWolo: fundingWager,
+                guaranteeAmountWolo: fundingGuarantee,
                 participantSide: "left",
                 escrowAddress: snapshot.fundingRail.escrowAddress,
                 fallbackWalletAddress: connectedWalletAddress,
@@ -1359,10 +1395,10 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
         // tab reload, or lost HTTP response can then replay the same proof instead
         // of broadcasting a second WOLO transfer.
         storePendingChallengeFundingProof({
-          challengeId: createdChallengeId,
+          challengeId: fundingLegId,
           participantSide: "left",
-          wagerAmountWolo: parsedWagerAmountWolo,
-          guaranteeAmountWolo: parsedGuaranteeAmountWolo,
+          wagerAmountWolo: fundingWager,
+          guaranteeAmountWolo: fundingGuarantee,
           fundingTxHash: fundingResult.fundingTxHash,
           walletAddress: fundingResult.walletAddress,
         });
@@ -1386,7 +1422,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
 
         if (fundResponse.ok && fundBody) {
           fundedPayload = fundBody;
-          clearPendingChallengeFundingProof(createdChallengeId);
+          clearPendingChallengeFundingProof(fundingLegId);
         } else if (fundResponse.status === 409) {
           // A concurrent/retried request may have committed the exact proof while
           // this response raced or was retried. Re-read canonical state before
@@ -1401,7 +1437,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
             challengeTileById(recoveryPayload, createdChallengeId)?.economy.creatorFundedAt
           ) {
             fundedPayload = recoveryPayload;
-            clearPendingChallengeFundingProof(createdChallengeId);
+            clearPendingChallengeFundingProof(fundingLegId);
           } else {
             throw new Error(fundBody?.detail || "Challenge was created, but funding could not be recorded.");
           }
@@ -1416,7 +1452,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
 
       replaceSnapshot(fundedPayload);
       setFocusedMatchId(createdChallengeId);
-      router.push(`/challenge/${createdChallengeId}`);
+      router.push(`/challenge/${createdChallengeId}?version=${display.version}`);
       setNotice(
         duplicateWarning
           ? `${duplicateWarning} Challenge funded. Opponent can accept + fund.`
@@ -1460,7 +1496,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                   : "max-w-3xl text-4xl font-semibold leading-[1.02] text-white sm:text-5xl"
               }`}
             >
-              Schedule Matches
+              {version2 ? "Championship Challenges" : "Schedule Matches"}
             </h1>
             {challengeHallExtreme ? (
               <p className="max-w-3xl font-serif text-base italic tracking-[0.08em] text-amber-100/56 sm:text-lg">
@@ -1474,7 +1510,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
               <HeroPill live>{readyCount} match-ready</HeroPill>
             </div>
 
-            <ChallengeHallBaEToggle view={challengeHallView} search={searchParams.toString()} />
+            {!version2 ? <ChallengeHallBaEToggle view={challengeHallView} search={searchParams.toString()} /> : null}
 
             <div className="flex flex-wrap gap-3">
               <Link
@@ -1487,7 +1523,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                 <span className="text-left">
                   <span className="block text-sm font-semibold text-white">+ Game</span>
                   <span className="block text-[11px] uppercase tracking-[0.2em] text-amber-100/70">
-                    Start a scheduled duel
+                    {version2 ? "Issue a Challenge" : "Start a scheduled duel"}
                   </span>
                 </span>
                 <ArrowUpRight className="h-4 w-4 text-amber-50/80 transition group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
@@ -1555,7 +1591,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                 </div>
               </div>
 
-              <div className="mt-6 grid grid-cols-3 gap-1 rounded-[1.2rem] border border-white/10 bg-black/25 p-1.5">
+              {!version2 ? <div className="mt-6 grid grid-cols-3 gap-1 rounded-[1.2rem] border border-white/10 bg-black/25 p-1.5">
                 {([
                   ["basic", "Basic", "Fast"],
                   ["advanced", "Advanced", "Control"],
@@ -1580,7 +1616,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                     </button>
                   );
                 })}
-              </div>
+              </div> : null}
 
               {authLoading || loading ? (
                 <div className="mt-5 rounded-2xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-slate-300">
@@ -1668,7 +1704,35 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                       </div>
                     ) : null}
 
-                    {isNationalChallengeFlow ? (
+                    {version2 ? <ChallengeHeldTitles holderUid={challengedUid} holderName={selectedOpponent?.name || "Warrior"} selectedTeamId={selectedTeamTitle?.trophyId ?? null} eligibilityOverride={isAdmin && eligibilityOverride} onTitlesLoaded={handleTitlesLoaded} onTeamChange={(title) => { setCommissionerTitleId(null); setSelectedTeamTitle(title); setTeammateUids(title ? Array(title.teamSize - 1).fill("") : []); }} /> : null}
+                    {version2 && isAdmin ? <details className="mt-3 rounded-2xl border border-amber-200/15 bg-amber-950/15 p-3">
+                      <summary className="cursor-pointer text-xs font-bold text-amber-100">Commissioner title controls</summary>
+                      <label className="mt-3 block text-xs text-slate-400">Solo title disposition
+                        <select value={commissionerTitleId ?? ""} onChange={(event) => { setCommissionerTitleId(event.target.value ? Number(event.target.value) : null); setSelectedTeamTitle(null); setTeammateUids([]); }} className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-white">
+                          <option value="">Automatic first eligible solo title</option>
+                          {heldTitles.filter((title) => title.teamSize === 1).map((title) => <option key={title.trophyId} value={title.trophyId}>{title.displayName}{title.eligible ? "" : " · Challenger ineligible"}</option>)}
+                        </select>
+                      </label>
+                      <label className="mt-3 flex items-start gap-2 text-xs leading-5 text-slate-300"><input type="checkbox" checked={eligibilityOverride} onChange={(event) => setEligibilityOverride(event.target.checked)} className="mt-1" /><span>Explicitly bypass challenger eligibility for this Challenge</span></label>
+                      <label className="mt-3 block text-xs text-slate-400">Audited Commissioner reason
+                        <AutoGrowTextarea value={commissionerReason} onChange={(event) => setCommissionerReason(event.target.value.slice(0,1000))} maxLength={1000} maxRows={3} className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-sm text-white" placeholder="Explain the deliberate title selection or eligibility bypass." />
+                      </label>
+                      <p className="mt-2 text-[11px] leading-5 text-slate-400">This applies to this challenger roster only. Assigning an ineligible champion does not bypass ordinary challenger eligibility.</p>
+                    </details> : null}
+                    {version2 && selectedTeamTitle ? (
+                      <div className="mt-3 grid gap-3 rounded-2xl border border-emerald-200/20 bg-emerald-950/30 p-4">
+                        <div className="text-xs font-bold text-emerald-100">Form your {selectedTeamTitle.teamSize}v{selectedTeamTitle.teamSize} {selectedTeamTitle.mode?.toUpperCase()} team</div>
+                        {teammateUids.map((memberUid, index) => <label key={index} className="block text-xs text-slate-400">Teammate {index + 1}
+                          <select value={memberUid} onChange={(event) => setTeammateUids((current) => current.map((value, seat) => seat === index ? event.target.value : value))} className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-white">
+                            <option value="">Choose a teammate</option>
+                            {snapshot.candidates.filter((candidate) => candidate.uid !== uid && !selectedTeamTitle.roster.some((member) => member.uid === candidate.uid)).map((candidate) => <option key={candidate.uid} value={candidate.uid} disabled={!candidate.steamId || (candidate.uid !== memberUid && teammateUids.includes(candidate.uid))}>{candidate.name}{!candidate.steamId ? " · Steam needed" : ""}</option>)}
+                          </select>
+                        </label>)}
+                        <p className="text-xs leading-5 text-slate-400">Each teammate receives the Challenge and signs their own share. Every member must accept and fund before the qualifying game starts.</p>
+                      </div>
+                    ) : null}
+
+                    {!version2 && isNationalChallengeFlow ? (
                       <label className="mt-4 block rounded-[1.1rem] border border-amber-300/16 bg-amber-400/[0.06] p-3">
                         <span className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-100/70">Your nation</span>
                         <select
@@ -1694,6 +1758,12 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                     ) : null}
                   </section>
 
+                  {version2 ? (
+                    <section className="rounded-[1.4rem] border border-emerald-200/15 bg-emerald-950/25 p-4 sm:p-5">
+                      <div className="text-xs font-black uppercase tracking-[0.18em] text-emerald-100">ALL CHALLENGES REMAIN OPEN FOR 24 HOURS</div>
+                      <p className="mt-2 text-sm leading-6 text-slate-300">Accept, fund, and start the qualifying battle within the same server-owned window. A verified start stops the title-default clock.</p>
+                    </section>
+                  ) : (
                   <section className="rounded-[1.4rem] border border-white/10 bg-black/20 p-4 sm:p-5">
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
@@ -1797,16 +1867,17 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                       </div>
                     )}
                   </section>
+                  )}
 
                   <section className="rounded-[1.4rem] border border-white/10 bg-black/20 p-4 sm:p-5">
                     <div className="flex items-center justify-between gap-3">
                       <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">
-                        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-300 text-[11px] font-black text-slate-950">3</span>
+                        <span className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-amber-300 text-[11px] font-black text-slate-950">{version2 ? "2" : "3"}</span>
                         Set the stakes
                       </div>
                       <div className="text-sm font-black text-amber-100">{totalFundingPreview.toLocaleString()} WOLO each</div>
                     </div>
-                    {scheduleMode !== "basic" ? (
+                    {version2 || scheduleMode !== "basic" ? (
                       <>
                         <div className="mt-3 grid grid-cols-3 gap-2">
                           {[
@@ -1814,7 +1885,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                             ["Ranked", 25, 10],
                             ["Grudge", 100, 25],
                           ].map(([label, wager, guarantee]) => {
-                            const active = wagerAmountWolo === String(wager) && guaranteeAmountWolo === String(guarantee);
+                            const active = wagerAmountWolo === String(wager) && (version2 || guaranteeAmountWolo === String(guarantee));
                             return (
                               <button
                                 key={String(label)}
@@ -1839,10 +1910,10 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                             <span className="text-xs text-slate-400">Winner&apos;s wager</span>
                             <input type="number" min={1} step={1} value={wagerAmountWolo} onChange={(event) => setWagerAmountWolo(event.target.value)} className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-white outline-none focus:border-amber-300/50" />
                           </label>
-                          <label>
+                          {!version2 ? <label>
                             <span className="text-xs text-slate-400">Show-up guarantee</span>
                             <input type="number" min={1} step={1} value={guaranteeAmountWolo} onChange={(event) => setGuaranteeAmountWolo(event.target.value)} className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-white outline-none focus:border-amber-300/50" />
-                          </label>
+                          </label> : <p className="self-end pb-2 text-xs leading-5 text-slate-400">Your signed WOLO funds the Challenge purse. Every warrior funds their own share.</p>}
                         </div>
                       </>
                     ) : (
@@ -1852,7 +1923,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                     )}
                   </section>
 
-                  {scheduleMode === "extreme" ? (
+                  {!version2 && scheduleMode === "extreme" ? (
                     <section className="overflow-hidden rounded-[1.4rem] border border-amber-200/18 bg-[linear-gradient(135deg,rgba(120,53,15,0.18),rgba(15,23,42,0.48))] p-4 sm:p-5">
                       <div className="flex items-center justify-between gap-3">
                         <div>
@@ -1894,13 +1965,13 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                     </section>
                   ) : null}
 
-                  {scheduleMode !== "basic" ? (
+                  {version2 || scheduleMode !== "basic" ? (
                     <section className="rounded-[1.4rem] border border-white/10 bg-black/20 p-4 sm:p-5">
                       <div className="flex items-center justify-between gap-3">
                         <div className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-400">Make the callout</div>
                         <MessageSquareMore className="h-4 w-4 text-cyan-200/70" />
                       </div>
-                      {scheduleMode === "extreme" ? (
+                      {!version2 && scheduleMode === "extreme" ? (
                         <div className="mt-3 flex flex-wrap gap-2">
                           {[
                             "You. Me. One clean set. Winner owns the room.",
@@ -1919,7 +1990,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                         maxRows={4}
                         maxLength={CHALLENGE_NOTE_MAX_CHARS}
                         className="mt-3 w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm leading-6 text-white outline-none focus:border-amber-300/50"
-                        placeholder="Name the battlefield. Set the hour. Let war decide."
+                        placeholder={version2 ? "Call out your rival. Let war decide." : "Name the battlefield. Set the hour. Let war decide."}
                       />
                       <div className="mt-1.5 text-right text-[10px] uppercase tracking-[0.16em] text-slate-500">{challengeNote.length}/{CHALLENGE_NOTE_MAX_CHARS}</div>
                     </section>
@@ -1938,8 +2009,8 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                           <div className="flex h-12 w-12 items-center justify-center rounded-full border border-amber-200/20 bg-amber-300/10 text-lg font-black text-amber-50">
                             YOU
                           </div>
-                          <div className="mt-3 w-full truncate text-xl font-black leading-none text-white">
-                            You
+                          <div className={`mt-3 w-full font-black text-white ${selectedTeamTitle && version2 ? "break-words text-sm leading-5" : "truncate text-xl leading-none"}`}>
+                            {selectedTeamTitle && version2 ? ["You", ...teammateUids.map((memberUid) => snapshot.candidates.find((candidate) => candidate.uid === memberUid)?.name || "Choose teammate")].join(" + ") : "You"}
                           </div>
                         </div>
 
@@ -1957,16 +2028,16 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                           <div className="flex h-12 w-12 items-center justify-center rounded-full border border-cyan-200/20 bg-cyan-300/10 text-lg font-black text-cyan-50">
                             {(selectedOpponent?.name || "?").slice(0, 2).toUpperCase()}
                           </div>
-                          <div className="mt-3 w-full truncate text-xl font-black leading-none text-white">
-                            {selectedOpponent?.name || "Choose a rival"}
+                          <div className={`mt-3 w-full font-black text-white ${selectedTeamTitle && version2 ? "break-words text-sm leading-5" : "truncate text-xl leading-none"}`}>
+                            {selectedTeamTitle && version2 ? selectedTeamTitle.roster.map((member) => member.displayName).join(" + ") : selectedOpponent?.name || "Choose a rival"}
                           </div>
                         </div>
                       </div>
 
                       <div className="mt-3 flex flex-wrap justify-center gap-2 text-[11px] text-slate-300">
-                        <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1">{schedulePreviewLocal}</span>
+                        <span className="rounded-full border border-white/10 bg-white/[0.05] px-3 py-1">{version2 ? "24-hour Challenge" : schedulePreviewLocal}</span>
                         <span className="rounded-full border border-amber-200/15 bg-amber-300/10 px-3 py-1 text-amber-50">{totalFundingPreview.toLocaleString()} WOLO each</span>
-                        {selectedTitleStakes.length > 0 ? <span className="rounded-full border border-violet-200/15 bg-violet-300/10 px-3 py-1 text-violet-50">{selectedTitleStakes.length} title stake</span> : null}
+                        {(version2 ? Boolean(selectedTeamTitle || commissionerTitleId || heldTitles.some((title) => title.attackable)) : selectedTitleStakes.length > 0) ? <span className="rounded-full border border-violet-200/15 bg-violet-300/10 px-3 py-1 text-violet-50">{version2 ? selectedTeamTitle?.displayName || heldTitles.find((title) => title.trophyId === commissionerTitleId)?.displayName || heldTitles.find((title) => title.attackable)?.displayName : `${selectedTitleStakes.length} title stake`}</span> : null}
                       </div>
                     </section>
                   ) : null}
@@ -1984,7 +2055,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                     </div>
                     <button
                       type="submit"
-                      disabled={saving || !challengeEscrowReady || !challengedUid || !steamIdentityReady}
+                      disabled={saving || !challengeEscrowReady || !challengedUid || !steamIdentityReady || (version2 && heldTitlesLoading) || (version2 && isAdmin && Boolean(commissionerTitleId || eligibilityOverride) && commissionerReason.trim().length < 5) || (version2 && Boolean(selectedTeamTitle) && (teammateUids.filter(Boolean).length !== (selectedTeamTitle?.teamSize ?? 1) - 1 || new Set(teammateUids).size !== teammateUids.length))}
                       className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[linear-gradient(135deg,#fde68a,#fbbf24)] px-5 py-3 text-sm font-black text-slate-950 shadow-[0_14px_34px_rgba(251,191,36,0.22)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50 sm:mt-0 sm:w-auto"
                     >
                       {walletStatus !== "connected" ? <Wallet className="h-4 w-4" /> : saving ? <Sparkles className="h-4 w-4" /> : <Swords className="h-4 w-4" />}
@@ -2003,7 +2074,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                 <div className="text-xs uppercase tracking-[0.35em] text-cyan-200/70">
                   Coordination Rail
                 </div>
-                <h2 className="mt-2 text-xl font-semibold text-white">Scheduling Line</h2>
+                <h2 className="mt-2 text-xl font-semibold text-white">{version2 ? "Challenge Room" : "Scheduling Line"}</h2>
               </div>
               <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300">
                 Match #{focusedMatch.id}
@@ -2300,6 +2371,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
           </section>
         </section>
       </section>
+      <ChallengeDisplayRail layout={display.layout} version={display.version} onChange={display.change} />
     </main>
   );
 }

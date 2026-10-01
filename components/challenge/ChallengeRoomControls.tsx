@@ -155,6 +155,12 @@ export default function ChallengeRoomControls({ challengeId }: { challengeId: nu
     [challengeId, load]
   );
 
+  useEffect(() => {
+    if (authLoading || !isAuthenticated) return;
+    const timer = window.setInterval(() => { if (!document.hidden && !actionState.kind) void load(true); }, 15_000);
+    return () => window.clearInterval(timer);
+  }, [authLoading, isAuthenticated, load, actionState.kind]);
+
   const activeDesyncIncident =
     match?.displayState === "desync_review" &&
     match.desyncIncident?.desyncOccurred &&
@@ -240,7 +246,7 @@ export default function ChallengeRoomControls({ challengeId }: { challengeId: nu
           <p className="mt-1 text-sm text-slate-300">
             {isAdmin
               ? "Commissioner view: monitor the exact match state here; title disposition stays on the audited Trophy rail."
-              : "Accept, fund, negotiate exact terms, and check in from this room."}
+              : match.championship ? "Accept, fund your side, and start the qualifying defense before the same Challenge deadline." : "Accept, fund, negotiate exact terms, and check in from this room."}
           </p>
         </div>
         <button

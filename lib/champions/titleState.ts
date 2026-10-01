@@ -297,7 +297,7 @@ async function loadLiveChampionDefinitionMap(
         guardianHolder?.steamPersonaName ||
         null;
       const holderUid = activeHolder?.uid || guardianHolder?.uid || null;
-      const holders: ChampionHolder[] = holderName
+      const holders: ChampionHolder[] = trophy.championshipRoster?.length ? trophy.championshipRoster.map(member=>({name:member.displayName,uid:member.uid,href:`/players/${encodeURIComponent(member.uid)}`,meta:"Current championship member"})) : holderName
         ? [
             {
               name: holderName,
@@ -316,7 +316,7 @@ async function loadLiveChampionDefinitionMap(
           ]
         : [];
       const lastTribute = lastTributeByTrophyId.get(trophy.id) ?? null;
-      const forceVacant = titleIsPubliclyForcedVacant(definition.id);
+      const forceVacant = !trophy.hasExplicitChampionshipCustody && titleIsPubliclyForcedVacant(definition.id);
       const publicStatus =
         forceVacant
           ? "vacant"

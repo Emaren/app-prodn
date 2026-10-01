@@ -1,3 +1,6 @@
+import { randomUUID } from "node:crypto";
+import { championshipBeltPolicy } from "@/lib/champions/beltPolicy";
+import { acquireChampionshipTitleLock, getChampionshipCustody, transitionChampionshipCustody, loadChampionshipCandidateAuthority } from "@/lib/trophies/championship";
 import type { Prisma, PrismaClient, Trophy } from "@/lib/generated/prisma";
 import { countriesEligibilityMatch } from "@/lib/countryEligibility";
 import { eloTrophyIdentity } from "@/lib/champions/eloTrophy";
@@ -84,6 +87,15 @@ async function getTrophy(prisma: PrismaClient, payload: ActionPayload) {
       : null;
   if (!trophy) throw new TrophyActionError("Trophy not found.", 404);
   return trophy;
+}
+
+async function assertLegacyTitleCustody(tx: Prisma.TransactionClient, trophyId: number) {
+  const reign = await tx.championshipCustodyReign.findFirst({where:{trophyId,endedAt:null},select:{id:true}});
+  if (reign) throw new TrophyActionError("This title now uses championship roster custody. Resolve it through the championship Commissioner cockpit.",409);
+}
+
+async function endExplicitChampionshipReign(tx: Prisma.TransactionClient, trophyId: number, now: Date, frozenBountyWolo: number) {
+  await tx.championshipCustodyReign.updateMany({where:{trophyId,endedAt:null},data:{endedAt:now,frozenBountyWolo}});
 }
 
 function assertChallengeCustodyStillCurrent(
@@ -346,13 +358,31 @@ async function assignHolder(
 
   const nextName = displayName(user);
   const now = new Date();
+  if (trophy.kind !== "artifact" && championshipBeltPolicy(trophy).transferPolicy !== "COMMISSIONER_ONLY") {
+    if (championshipBeltPolicy(trophy).teamSize !== 1) throw new TrophyActionError("Assign the complete championship roster through Team custody.");
+    const candidate = await loadChampionshipCandidateAuthority(prisma,user.id);
+    if (rating !== null) {
+      if (championshipBeltPolicy(trophy).mode === "dm") candidate.dmRating = rating;
+      else candidate.rmRating = rating;
+    }
+    await prisma.$transaction(async tx=> {
+      await acquireChampionshipTitleLock(tx,trophy.id);
+      const current = await lockTrophyMoneyState(tx,trophy.id);
+      if (!current) throw new TrophyActionError("Title not found.",404);
+      const custody = await getChampionshipCustody(tx,current);
+      await transitionChampionshipCustody(tx,{trophyId:trophy.id,requestKey:`commissioner:${trophy.id}:${randomUUID()}`,expectedEpoch:custody.epoch,expectedRosterUserIds:custody.roster.map(member=>member.userId),nextRosterUserIds:[user.id],reason:"commissioner",actorUserId:actor.id,eligibilityOverride:override,eligibilityCandidates:[{userId:user.id,...candidate}],now,note:nullableString(payload.reason,255) ?? "Commissioner holder assignment"});
+    });
+    return;
+  }
 
   await prisma.$transaction(async (tx) => {
+    await acquireChampionshipTitleLock(tx,trophy.id);
     const currentTrophy = await lockTrophyMoneyState(tx, trophy.id);
     if (!currentTrophy) {
       throw new TrophyActionError("Trophy disappeared during title transfer.", 409);
     }
 
+    await assertLegacyTitleCustody(tx,currentTrophy.id);
     const previousHolderId = currentTrophy.currentHolderUserId;
     const previousAddress = currentTrophy.currentHolderWoloAddress;
     const sameHolder = previousHolderId === user.id;
@@ -454,11 +484,13 @@ async function assignGuardian(
   payload: ActionPayload
 ) {
   const trophy = await getTrophy(prisma, payload);
+  if (championshipBeltPolicy(trophy).teamSize > 1) throw new TrophyActionError("A team championship requires complete roster custody; a scalar Guardian cannot hold it.",409);
   const guardian = await getUser(prisma, nullableInt(payload.userId));
   if (!guardian) throw new TrophyActionError("Choose a Guardian.");
   const now = new Date();
 
   await prisma.$transaction(async (tx) => {
+    await acquireChampionshipTitleLock(tx,trophy.id);
     const currentTrophy = await lockTrophyMoneyState(tx, trophy.id);
     if (!currentTrophy) {
       throw new TrophyActionError("Trophy disappeared during Guardian assignment.", 409);
@@ -514,6 +546,7 @@ async function assignGuardian(
     const previousCustodianAddress =
       currentTrophy.currentHolderWoloAddress ?? currentTrophy.guardianHolderWoloAddress;
 
+    await endExplicitChampionshipReign(tx,currentTrophy.id,now,custodyExit.frozenBountyWolo);
     await tx.trophy.update({
       where: { id: currentTrophy.id },
       data: {
@@ -560,6 +593,7 @@ async function clearGuardian(
   const now = new Date();
 
   await prisma.$transaction(async (tx) => {
+    await acquireChampionshipTitleLock(tx,trophy.id);
     const currentTrophy = await lockTrophyMoneyState(tx, trophy.id);
     if (!currentTrophy) {
       throw new TrophyActionError("Trophy disappeared during Guardian clear.", 409);
@@ -595,6 +629,7 @@ async function clearGuardian(
       frozenBountyWolo = custodyExit.frozenBountyWolo;
       supersededTributePayoutIds = custodyExit.supersededTributePayoutIds;
       chainBackedTributePayoutIds = custodyExit.chainBackedTributePayoutIds;
+      await endExplicitChampionshipReign(tx,currentTrophy.id,now,frozenBountyWolo);
     }
 
     await tx.trophy.update({
@@ -651,24 +686,28 @@ async function changeTrophyStatus(
 
   const now = new Date();
   await prisma.$transaction(async (tx) => {
+    await acquireChampionshipTitleLock(tx,trophy.id);
     const currentTrophy = await lockTrophyMoneyState(tx, trophy.id);
     if (!currentTrophy) {
       throw new TrophyActionError("Trophy disappeared during status change.", 409);
     }
 
-    if (nextStatus === "held" && !currentTrophy.currentHolderUserId) {
-      throw new TrophyActionError("A Trophy cannot be marked held without a current holder.", 409);
+    const custody = await getChampionshipCustody(tx,currentTrophy);
+    const hasCompleteReign = Boolean(custody.reignId && custody.roster.length === custody.teamSize);
+    if (["held","active"].includes(nextStatus) && !hasCompleteReign && !currentTrophy.currentHolderUserId) {
+      throw new TrophyActionError("A Trophy cannot be marked held without a current holder or complete championship roster.", 409);
     }
-    if (nextStatus === "guardian_held" && !currentTrophy.guardianHolderUserId) {
-      throw new TrophyActionError("A Trophy cannot be marked Guardian-held without a Guardian.", 409);
+    if (nextStatus === "guardian_held" && (!currentTrophy.guardianHolderUserId || custody.reignId || custody.teamSize > 1)) {
+      throw new TrophyActionError("A Trophy cannot be marked Guardian-held without a Guardian and resolved championship custody.", 409);
     }
 
     const clearing = nextStatus === "vacant" || nextStatus === "retired";
+    const suspending = ["paused","draft"].includes(nextStatus) && ["held","active","guardian_held"].includes(currentTrophy.status);
     let frozenBountyWolo = currentTrophy.currentBountyWolo;
     let supersededTributePayoutIds: number[] = [];
     let chainBackedTributePayoutIds: number[] = [];
 
-    if (clearing) {
+    if (clearing || suspending) {
       const custodyExit = await prepareTrophyCustodyExit(tx, {
         trophy: currentTrophy,
         now,
@@ -687,17 +726,23 @@ async function changeTrophyStatus(
       frozenBountyWolo = custodyExit.frozenBountyWolo;
       supersededTributePayoutIds = custodyExit.supersededTributePayoutIds;
       chainBackedTributePayoutIds = custodyExit.chainBackedTributePayoutIds;
+      if (clearing) await endExplicitChampionshipReign(tx,currentTrophy.id,now,frozenBountyWolo);
     }
 
     await tx.trophy.update({
       where: { id: currentTrophy.id },
       data: {
         status: nextStatus,
+        ...(suspending ? {currentBountyWolo:frozenBountyWolo} : {}),
+        ...(["held","active","guardian_held"].includes(nextStatus) && ["paused","draft"].includes(currentTrophy.status) ? {holderSince:now} : {}),
         ...(clearing
           ? {
               currentHolderUserId: null,
               currentHolderDisplayName: null,
               currentHolderWoloAddress: null,
+              guardianHolderUserId: null,
+              guardianHolderDisplayName: null,
+              guardianHolderWoloAddress: null,
               currentBountyWolo: frozenBountyWolo,
               holderSince: null,
             }
@@ -743,6 +788,7 @@ async function updateEconomics(
   const now = new Date();
 
   await prisma.$transaction(async (tx) => {
+    await acquireChampionshipTitleLock(tx,trophy.id);
     const currentTrophy = await lockTrophyMoneyState(tx, trophy.id);
     if (!currentTrophy) {
       throw new TrophyActionError("Trophy disappeared during economics update.", 409);
@@ -931,11 +977,13 @@ async function createChallenge(
   const requestedGuardianUserId = nullableInt(payload.guardianUserId);
 
   await prisma.$transaction(async (tx) => {
+    await acquireChampionshipTitleLock(tx,trophy.id);
     const currentTrophy = await lockTrophyMoneyState(tx, trophy.id);
     if (!currentTrophy) {
       throw new TrophyActionError("Trophy disappeared during challenge creation.", 409);
     }
 
+    await assertLegacyTitleCustody(tx,currentTrophy.id);
     const authority = projectTrophyChallengeAuthority(currentTrophy);
     if (!authority.statusChallengeable) {
       throw new TrophyActionError(
@@ -1253,10 +1301,12 @@ async function updateChallenge(
     const winner = await getUser(prisma, challenge.winnerUserId);
     await prisma.$transaction(async (tx) => {
       await assertTrophyChallengeDesyncAllowsTitleMutation(tx, challenge);
+      await acquireChampionshipTitleLock(tx,challenge.trophyId);
       const currentTrophy = await lockTrophyMoneyState(tx, challenge.trophyId);
       if (!currentTrophy) {
         throw new TrophyActionError("Trophy disappeared during title settlement preview.", 409);
       }
+      await assertLegacyTitleCustody(tx,currentTrophy.id);
       assertChallengeCustodyStillCurrent(currentTrophy, challenge);
       const bounty = challengerWon ? projectedTrophyBounty(currentTrophy) : 0;
       await tx.trophyChallenge.update({
@@ -1309,6 +1359,10 @@ async function updateChallenge(
   }
 
   if (operation === "settle") {
+    const explicitProtocol = await prisma.championshipChallenge.findFirst({where:{trophyChallengeId:challenge.id},select:{id:true}});
+    if (explicitProtocol) throw new TrophyActionError("Use the championship Commissioner cockpit for this fixed-clock title Challenge.",409);
+    const explicitReign = await prisma.championshipCustodyReign.findFirst({where:{trophyId:challenge.trophyId,endedAt:null},select:{id:true}});
+    if (explicitReign) throw new TrophyActionError("This title now uses championship roster custody. Resolve it through the championship Commissioner cockpit.",409);
     if (!challenge.winnerUserId) throw new TrophyActionError("Verify a winner first.");
     const settings = await prisma.trophySetting.findMany({
       where: { key: { in: ["dry_run_only", "chain_backed_trophies_enabled", "app_only_fallback_enabled"] } },
@@ -1327,11 +1381,13 @@ async function updateChallenge(
     if (chainBacked) {
       await prisma.$transaction(async (tx) => {
         await assertTrophyChallengeDesyncAllowsTitleMutation(tx, challenge);
+        await acquireChampionshipTitleLock(tx,challenge.trophyId);
         const currentTrophy = await lockTrophyMoneyState(tx, challenge.trophyId);
         if (!currentTrophy) {
           throw new TrophyActionError("Trophy disappeared during title settlement.", 409);
         }
-        assertChallengeCustodyStillCurrent(currentTrophy, challenge);
+        await assertLegacyTitleCustody(tx,currentTrophy.id);
+      assertChallengeCustodyStillCurrent(currentTrophy, challenge);
         await tx.trophyChallenge.update({
           where: { id: challenge.id, status: { not: "commissioner_vetoed" } },
           data: { status: "settling", settlementStatus: "chain_intent_recorded" },
@@ -1372,10 +1428,12 @@ async function updateChallenge(
 
     await prisma.$transaction(async (tx) => {
       await assertTrophyChallengeDesyncAllowsTitleMutation(tx, challenge);
+      await acquireChampionshipTitleLock(tx,challenge.trophyId);
       const currentTrophy = await lockTrophyMoneyState(tx, challenge.trophyId);
       if (!currentTrophy) {
         throw new TrophyActionError("Trophy disappeared during title settlement.", 409);
       }
+      await assertLegacyTitleCustody(tx,currentTrophy.id);
       assertChallengeCustodyStillCurrent(currentTrophy, challenge);
       const bounty = challengerWon ? projectedTrophyBounty(currentTrophy) : 0;
       if (challengerWon) {
@@ -1477,6 +1535,16 @@ async function updatePayout(
   const snapshot = await prisma.trophyPayout.findUnique({ where: { id: payoutId } });
   if (!snapshot) throw new TrophyActionError("Payout not found.", 404);
 
+  if (operation === "reconcile") {
+    const allocationCount = await prisma.trophyPayoutAllocation.count({where:{payoutId}});
+    if (!allocationCount) throw new TrophyActionError("Read-only allocation reconciliation requires a championship payout group.",409);
+    const {executeAllocatedTrophyPayout} = await import("@/lib/trophies/championship");
+    const result = await executeAllocatedTrophyPayout(prisma,payoutId,{reconcileOnly:true});
+    if (!result.paid && result.detail) throw new TrophyActionError(result.detail,409);
+    return;
+  }
+  const allocatedProof = await prisma.trophyPayoutAllocation.findFirst({where:{payoutId,txHash:{not:null}}});
+  if (allocatedProof && operation !== "execute" && operation !== "retry") throw new TrophyActionError("This group has proven member transfers; confirmed allocations are immutable.",409);
   if (snapshot.status === "executing") {
     throw new TrophyActionError(
       "This payout is executing. Resolve the in-flight settlement before changing it.",
@@ -1523,12 +1591,13 @@ async function updatePayout(
   }
 
   await prisma.$transaction(async (tx) => {
+    await acquireChampionshipTitleLock(tx,snapshot.trophyId);
     const currentTrophy = await lockTrophyMoneyState(tx, snapshot.trophyId);
     if (!currentTrophy) {
       throw new TrophyActionError("Trophy disappeared during payout update.", 409);
     }
 
-    const payout = await tx.trophyPayout.findUnique({ where: { id: payoutId } });
+    const payout = await tx.trophyPayout.findUnique({ where: { id: payoutId },include:{allocations:true} });
     if (!payout) throw new TrophyActionError("Payout not found.", 404);
 
     if (payout.status === "executing") {
@@ -1542,6 +1611,12 @@ async function updatePayout(
         "Paid or tx-backed trophy payouts cannot be changed from the admin rail.",
         409
       );
+    }
+    if (payout.allocations.some(allocation=>["broadcasting","uncertain"].includes(allocation.status)) && operation !== "retry") {
+      throw new TrophyActionError("A title allocation has an uncertain broadcast. Inspect its stored request and chain evidence; it cannot be cancelled or rewritten.",409);
+    }
+    if (payout.allocations.some(allocation=>allocation.txHash) && operation !== "retry") {
+      throw new TrophyActionError("A partially paid title total retains its original seats. Retry unpaid allocations; paid chain proof cannot be cancelled or rewritten.",409);
     }
     if (["cancelled", "superseded"].includes(payout.status)) {
       throw new TrophyActionError(
@@ -1732,6 +1807,7 @@ async function forceForfeiture(
   const now = new Date();
 
   await prisma.$transaction(async (tx) => {
+    await acquireChampionshipTitleLock(tx,trophy.id);
     const currentTrophy = await lockTrophyMoneyState(tx, trophy.id);
     if (!currentTrophy) {
       throw new TrophyActionError("Trophy disappeared during forfeiture.", 409);
@@ -1750,10 +1826,14 @@ async function forceForfeiture(
       );
     }
 
+    await endExplicitChampionshipReign(tx,currentTrophy.id,now,custodyExit.frozenBountyWolo);
     await tx.trophy.update({
       where: { id: currentTrophy.id },
       data: {
         status: "vacant",
+        guardianHolderUserId: null,
+        guardianHolderDisplayName: null,
+        guardianHolderWoloAddress: null,
         currentHolderUserId: null,
         currentHolderDisplayName: null,
         currentHolderWoloAddress: null,
@@ -1816,6 +1896,24 @@ async function requestNftOperation(
   });
 }
 
+
+async function assignChampionshipRoster(prisma: PrismaClient,actor: AdminActor,payload: ActionPayload,resolveDispute = false) {
+  const trophy = await getTrophy(prisma,payload);
+  const ids = Array.isArray(payload.userIds) ? payload.userIds.map(nullableInt).filter((id):id is number=>id !== null) : [];
+  const reason = nullableString(payload.reason,255);
+  if (!reason) throw new TrophyActionError("A Commissioner reason is required.");
+  const candidates = await Promise.all(ids.map(async userId=>({userId,...await loadChampionshipCandidateAuthority(prisma,userId)})));
+  await prisma.$transaction(async tx=> {
+    await acquireChampionshipTitleLock(tx,trophy.id);
+    const current = await lockTrophyMoneyState(tx,trophy.id);
+    if (!current) throw new TrophyActionError("Title not found.",404);
+    if (resolveDispute && current.status !== "disputed") throw new TrophyActionError("This title is not in dispute.",409);
+    const custody = await getChampionshipCustody(tx,current);
+    await transitionChampionshipCustody(tx,{trophyId:trophy.id,requestKey:`commissioner:${trophy.id}:${randomUUID()}`,expectedEpoch:custody.epoch,expectedRosterUserIds:custody.roster.map(member=>member.userId),nextRosterUserIds:ids,reason:"commissioner",actorUserId:actor.id,eligibilityOverride:boolValue(payload.eligibilityOverride),eligibilityCandidates:candidates,note:reason});
+    if (resolveDispute) await tx.championshipTitleDispute.updateMany({where:{trophyId:trophy.id,status:"open"},data:{status:"resolved",resolvedAt:new Date(),resolvedByUserId:actor.id}});
+  });
+}
+
 export async function executeTrophyAdminAction(
   prisma: PrismaClient,
   actor: AdminActor,
@@ -1827,6 +1925,10 @@ export async function executeTrophyAdminAction(
       return createTrophy(prisma, actor, payload);
     case "update_trophy":
       return updateTrophyDefinition(prisma, actor, payload);
+    case "assign_team_holders":
+      return assignChampionshipRoster(prisma,actor,payload);
+    case "resolve_title_dispute":
+      return assignChampionshipRoster(prisma,actor,payload,true);
     case "assign_holder":
       return assignHolder(prisma, actor, payload);
     case "assign_guardian":

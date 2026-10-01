@@ -1,3 +1,4 @@
+import { reconcileChampionshipChallenges } from "@/lib/championshipChallenges";
 import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
 import {
   TERMINAL_TITLE_CHALLENGE_STATUSES,
@@ -91,6 +92,7 @@ function dueExpiryKind(
 }
 
 export type ChallengeReconciliationResult = {
+  championship: Awaited<ReturnType<typeof reconcileChampionshipChallenges>>;
   checkedAt: string;
   examined: number;
   expired: number[];
@@ -286,8 +288,11 @@ export async function reconcileChallengeLifecycle(
   const now = options?.now ?? new Date();
   const take = Math.max(1, Math.min(options?.take ?? 100, 500));
 
+  const championship=await reconcileChampionshipChallenges(prisma, options);
   const candidates = await prisma.scheduledMatch.findMany({
     where: {
+      championshipProtocol: null,
+      championshipLeg: null,
       creationRequestId: { not: null },
       status: { notIn: Array.from(TERMINAL_STATUSES) },
       OR: [
@@ -302,6 +307,7 @@ export async function reconcileChallengeLifecycle(
   });
 
   const result: ChallengeReconciliationResult = {
+    championship,
     checkedAt: now.toISOString(),
     examined: candidates.length,
     expired: [],

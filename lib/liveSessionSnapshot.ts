@@ -67,6 +67,11 @@ export type LiveGameSession = {
   }>;
   watcherCount: number;
   watcherIds: string[];
+  /** Authenticated live-monitor replay provenance; manual imports never count. */
+  authenticatedWatcherParticipantUids?: string[];
+  authenticatedLiveWatcherParticipantUids?: string[];
+  authenticatedLiveObservations?: Array<{ uid: string; observedAt: string; gameType: string; players: CanonicalReplayPlayer[] }>;
+  authenticatedLiveObservedAt?: string | null;
   watcherSessionIds: string[];
   replayFingerprints: string[];
   watcherVersions: string[];
@@ -352,6 +357,8 @@ export function readWatcherUploadMetadata(keyEventsValue: unknown) {
     watcherSessionId: read(upload.watcher_session_id),
     replayFingerprint: read(upload.replay_fingerprint),
     watcherVersion: read(upload.watcher_version),
+    provenanceVerified: upload.provenance_signature_verified === true,
+    liveMonitor: upload.ingestion_provenance === "live_monitor",
   };
 }
 
@@ -774,6 +781,10 @@ function publicSessionKeyForGroup(
 
 function collectWatcherCoverage(rows: SessionRow[]) {
   const watcherIds = new Set<string>();
+  const authenticatedWatcherParticipantUids = new Set<string>();
+  const authenticatedLiveWatcherParticipantUids = new Set<string>();
+  const authenticatedLiveObservations: NonNullable<LiveGameSession["authenticatedLiveObservations"]> = [];
+  let earliestAuthenticatedLive = Number.POSITIVE_INFINITY;
   const watcherSessionIds = new Set<string>();
   const replayFingerprints = new Set<string>();
   const watcherVersions = new Set<string>();
@@ -781,6 +792,14 @@ function collectWatcherCoverage(rows: SessionRow[]) {
   for (const row of rows) {
     const upload = readWatcherUploadMetadata(row.key_events);
     if (!upload) continue;
+    if(upload.provenanceVerified && upload.liveMonitor && row.user?.uid) {
+      authenticatedWatcherParticipantUids.add(row.user.uid);
+      if(row.parse_source === "watcher_live" && Array.isArray(row.players) && row.players.length >= 2 && row.game_type) {
+        authenticatedLiveWatcherParticipantUids.add(row.user.uid);
+        earliestAuthenticatedLive = Math.min(earliestAuthenticatedLive,row.createdAt.getTime());
+        authenticatedLiveObservations.push({uid:row.user.uid,observedAt:row.createdAt.toISOString(),gameType:row.game_type,players:mergeReplayPlayerIterations([row.players]).players});
+      }
+    }
     const add = (target: Set<string>, value: unknown) => {
       const normalized = typeof value === "string" ? value.trim() : "";
       if (normalized) target.add(normalized);
@@ -793,6 +812,10 @@ function collectWatcherCoverage(rows: SessionRow[]) {
   }
 
   return {
+    authenticatedWatcherParticipantUids:[...authenticatedWatcherParticipantUids].sort(),
+    authenticatedLiveWatcherParticipantUids:[...authenticatedLiveWatcherParticipantUids].sort(),
+    authenticatedLiveObservations:authenticatedLiveObservations.sort((a,b)=>Date.parse(a.observedAt)-Date.parse(b.observedAt)),
+    authenticatedLiveObservedAt:Number.isFinite(earliestAuthenticatedLive) ? new Date(earliestAuthenticatedLive).toISOString() : null,
     watcherIds: [...watcherIds].sort(),
     watcherSessionIds: [...watcherSessionIds].sort(),
     replayFingerprints: [...replayFingerprints].sort(),
@@ -916,6 +939,8 @@ function buildSessionFromRow(
     uploaders,
     watcherCount,
     watcherIds: watcherCoverage.watcherIds,
+    authenticatedWatcherParticipantUids:watcherCoverage.authenticatedWatcherParticipantUids,
+    authenticatedLiveObservedAt:watcherCoverage.authenticatedLiveObservedAt,
     watcherSessionIds: watcherCoverage.watcherSessionIds,
     replayFingerprints: watcherCoverage.replayFingerprints,
     watcherVersions: watcherCoverage.watcherVersions,

@@ -29,9 +29,11 @@ test("profile holdings use public bootstrap and exclude forced-vacant historical
   const holdings = service.slice(start, end);
   assert.match(holdings, /await ensurePublicTrophySeedData\(prisma\)/);
   assert.doesNotMatch(holdings, /await ensureTrophySeedData\(prisma\)/);
+  assert.match(holdings,/await loadPublicTrophies\(prisma\)/);
+  assert.match(holdings,/championshipRoster\?\.some\(member=>member\.userId === userId\)/);
   assert.match(
     holdings,
-    /\.filter\(\(trophy\) => !trophyIsPubliclyForcedVacant\(trophy\.trophyId\)\)/
+    /\.filter\(\(trophy\) => trophy\.hasExplicitChampionshipCustody \|\| !trophyIsPubliclyForcedVacant\(trophy\.trophyId\)\)/
   );
 });
 
@@ -74,6 +76,12 @@ test("human-facing Trophy honor surfaces consume forced-vacancy authority", () =
   assert.match(playerProfile, /trophyIsPubliclyForcedVacant\(trophy\.trophyId\)/);
   assert.match(lobby, /trophyIsPubliclyForcedVacant\(trophy\.trophyId\)/);
 
+  assert.match(playerProfile,/loadPublicTrophies\(getPrisma\(\)\)/);
+  assert.match(playerProfile,/championshipRoster\?\.some/);
+  assert.match(playerProfile,/!trophy\.hasExplicitChampionshipCustody && trophyIsPubliclyForcedVacant/);
+  assert.match(lobby,/loadPublicTrophies\(prisma\)/);
+  assert.match(lobby,/championshipRoster\.map/);
+  assert.match(lobby,/!trophy\.hasExplicitChampionshipCustody && trophyIsPubliclyForcedVacant/);
   assert.match(playerProfile, /currentHolderDisplayName/);
   assert.match(playerProfile, /guardianHolderDisplayName/);
   assert.match(lobby, /featuredWarriorHonorLabel/);

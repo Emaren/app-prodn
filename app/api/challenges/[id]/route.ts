@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { mutateChampionshipParticipant, loadChampionshipProjection } from "@/lib/championshipChallenges";
 
 import {
   loadChallengeHubSnapshot,
@@ -237,15 +238,16 @@ export async function GET(
 
     const access = await prisma.scheduledMatch.findUnique({
       where: { id: challengeId },
-      select: { challengerUserId: true, challengedUserId: true },
+      select: { challengerUserId: true, challengedUserId: true, championshipLeg: {select:{protocolId:true}}, championshipProtocol:{select:{participants:{select:{userId:true}}}} },
     });
-    if (!access) {
+    if (!access || access.championshipLeg) {
       return NextResponse.json({ detail: "Scheduled match not found." }, { status: 404 });
     }
     if (
       !viewer.isAdmin &&
       viewer.id !== access.challengerUserId &&
-      viewer.id !== access.challengedUserId
+      viewer.id !== access.challengedUserId &&
+      !access.championshipProtocol?.participants.some(p => p.userId === viewer.id)
     ) {
       return NextResponse.json({ detail: "You are not part of this scheduled match." }, { status: 403 });
     }
@@ -269,7 +271,7 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({ match, serverNow: new Date().toISOString() });
+    return NextResponse.json({ match: {...match, championship:await loadChampionshipProjection(prisma,challengeId,viewer.id)}, serverNow: new Date().toISOString() });
   } catch (error) {
     console.error("Failed to load scheduled match room:", error);
     return NextResponse.json({ detail: "Challenge room unavailable." }, { status: 500 });
@@ -303,6 +305,26 @@ export async function PATCH(
           )
       ) as ChallengeMutationPayload;
 
+    const action = parseChallengeAction(payload.action);
+    if (!action) return NextResponse.json({detail:"Unknown challenge action."},{status:400});
+
+    const protocolAccess = await prisma.scheduledMatch.findUnique({where:{id:challengeId},select:{championshipLeg:true,championshipProtocol:{include:{participants:true}}}});
+    if (protocolAccess?.championshipLeg) return NextResponse.json({detail:"Financial legs are controlled through their parent Challenge."},{status:404});
+    if (protocolAccess?.championshipProtocol) {
+      const participant = protocolAccess.championshipProtocol.participants.find(p => p.userId === viewer.id);
+      if (!participant && !viewer.isAdmin) return NextResponse.json({detail:"You are not part of this championship roster."},{status:403});
+      if (action === "accept" || action === "fund" || action === "decline" || action === "cancel") {
+        await mutateChampionshipParticipant(prisma,challengeId,viewer.id,action,payload);
+        return NextResponse.json(await loadChallengeHubSnapshot(prisma,viewer.uid));
+      }
+      if (action === "room_message" && (participant || viewer.isAdmin)) {
+        const participants=protocolAccess.championshipProtocol.participants;
+        await postChallengeRoomMessage({prisma,challengeId,actor:{id:viewer.id,isAdmin:viewer.isAdmin},match:{challengerUserId:participants.find(p=>p.side==="challenger"&&p.seat===0)!.userId,challengedUserId:participants.find(p=>p.side==="defender"&&p.seat===0)!.userId,participantUserIds:participants.map(p=>p.userId)},request:{message:payload.message}});
+        return NextResponse.json({ok:true});
+      }
+      return NextResponse.json({detail:"Championship actions use the fixed-clock participant or Commissioner authority."},{status:409});
+    }
+
     const scheduledMatch = await prisma.scheduledMatch.findUnique({
       where: { id: challengeId },
       select: SCHEDULED_MATCH_SELECT,
@@ -331,24 +353,6 @@ export async function PATCH(
           : viewerIsChallenged
           ? "challenged"
           : "admin";
-
-    const action =
-      parseChallengeAction(
-        payload.action,
-      );
-
-    if (!action) {
-      return NextResponse.json(
-        {
-          detail:
-            "Unknown challenge action.",
-        },
-        {
-          status:
-            400,
-        },
-      );
-    }
 
     if (action === "room_message") {
       await postChallengeRoomMessage(

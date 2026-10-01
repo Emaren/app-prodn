@@ -10,6 +10,9 @@ import {
   allChampionTitles,
   eloTitles,
   nationalTitles,
+  teamChampionshipTitles,
+  modeChampionshipTitles,
+  dmEloChampionshipTitles,
   type ChampionTitleDefinition,
 } from "@/lib/champions/titles";
 import { managedMediaPublicUrl } from "@/lib/managedMediaAssets";
@@ -83,6 +86,7 @@ const SEEDS: TrophySeed[] = [
     tier: "National",
     status: "vacant",
   },
+  ...[...teamChampionshipTitles,...modeChampionshipTitles,...dmEloChampionshipTitles].map(definition=>({trophyId:definition.id,definition,family:definition.type === "elo" ? "elo" as const : "champion" as const,tier:definition.type === "elo" ? definition.shortName : "Champion",status:"vacant" as const})),
   {
     trophyId: "elite_champion_belt",
     definition: eloTitles.find((title) => title.id === "elo-elite")!,
@@ -116,7 +120,10 @@ function syntheticChampionSeed(trophyId: string): TrophySeed | null {
     Boolean(CHAMPION_TROPHY_ID_ALIASES[normalized]) ||
     definition.type === "world" ||
     definition.type === "chaos" ||
-    definition.type === "womens";
+    definition.type === "womens" ||
+    teamChampionshipTitles.some(title=>title.id === definition.id) ||
+    modeChampionshipTitles.some(title=>title.id === definition.id) ||
+    dmEloChampionshipTitles.some(title=>title.id === definition.id);
 
   if (!isKnownChampionAlias) return null;
 
@@ -405,25 +412,26 @@ export async function prepareTrophyCustodyExit(
       amountWolo: true,
       status: true,
       txHash: true,
+      allocations: {select:{txHash:true,status:true}},
     },
     orderBy: { id: "asc" },
   });
 
-  const inFlight = existing.find((row) => row.status === "executing" && !row.txHash);
+  const inFlight = existing.find((row) => (row.status === "executing" && !row.txHash) || row.allocations?.some(allocation=>["broadcasting","uncertain"].includes(allocation.status)));
   if (inFlight) {
     return {
       frozenBountyWolo,
       inFlightPayoutId: inFlight.id,
       supersededTributePayoutIds: [] as number[],
       chainBackedTributePayoutIds: existing
-        .filter((row) => row.status === "paid" || Boolean(row.txHash))
+        .filter((row) => row.status === "paid" || Boolean(row.txHash) || row.allocations?.some(allocation=>Boolean(allocation.txHash)))
         .map((row) => row.id),
     };
   }
 
   const stale = existing.filter(
     (row) =>
-      !row.txHash &&
+      !row.txHash && !row.allocations?.some(allocation=>Boolean(allocation.txHash)) &&
       (EXECUTABLE_DAILY_TRIBUTE_STATUSES as readonly string[]).includes(row.status)
   );
   const supersededTributePayoutIds = stale.map((row) => row.id);
@@ -465,7 +473,7 @@ export async function prepareTrophyCustodyExit(
     inFlightPayoutId: null,
     supersededTributePayoutIds,
     chainBackedTributePayoutIds: existing
-      .filter((row) => row.status === "paid" || Boolean(row.txHash))
+      .filter((row) => row.status === "paid" || Boolean(row.txHash) || row.allocations?.some(allocation=>Boolean(allocation.txHash)))
       .map((row) => row.id),
   };
 }
@@ -517,12 +525,15 @@ export async function prepareManualTrophyHolderTransferPayouts(
         recipientWoloAddress: true,
         status: true,
         txHash: true,
+        allocations: {select:{txHash:true,status:true}},
         amountWolo: true,
       },
       orderBy: { id: "asc" },
     });
 
-    const reconciliation = reconcileDailyTrophyTribute(existing, {
+    const uncertain = existing.find(row=>row.allocations?.some(allocation=>["broadcasting","uncertain"].includes(allocation.status)));
+    if (uncertain) return {accruedBountyWolo,tributePayoutId:null,bountyPayoutId:null,supersededTributePayoutIds:[],tributeBlockedByChainTruth:false,tributeInFlightPayoutId:uncertain.id};
+    const reconciliation = reconcileDailyTrophyTribute(existing.map(row=>({...row,txHash:row.txHash ?? row.allocations?.find(allocation=>allocation.txHash)?.txHash ?? null})), {
       userId: input.nextHolderUserId,
       woloAddress: input.nextHolderWoloAddress,
     });
@@ -695,6 +706,10 @@ export async function prepareManualTrophyHolderTransferPayouts(
 }
 
 export async function ensureDailyTrophyTributePayouts(prisma: PrismaClient, now = new Date()) {
+  if (prisma.championshipCustodyReign) {
+    const {ensureChampionshipTeamTributePayouts} = await import("@/lib/trophies/championship");
+    await ensureChampionshipTeamTributePayouts(prisma,now);
+  }
   const dayStart = utcDayStart(now);
   const dayEnd = new Date(dayStart.getTime() + TROPHY_DAY_MS);
   const dayKey = utcDayKey(now);
@@ -878,6 +893,14 @@ export async function executePendingTrophyPayouts(
   const now = new Date();
   const take = Math.max(1, Math.min(options.limit ?? 10, 25));
 
+  if (prisma.trophyPayoutAllocation && options.payoutId) {
+    const allocations = await prisma.trophyPayoutAllocation.count({where:{payoutId:options.payoutId}});
+    if (allocations > 0) {
+      const {executeAllocatedTrophyPayout} = await import("@/lib/trophies/championship");
+      const result = await executeAllocatedTrophyPayout(prisma,options.payoutId);
+      return {ok:result.paid || result.skipped,generatedAt:new Date().toISOString(),scanned:1,paid:result.paid ? 1 : 0,skipped:result.skipped ? 1 : 0,failed:!result.paid && !result.skipped ? 1 : 0,results:[{payoutId:options.payoutId,trophyId:"championship",recipient:null,amountWolo:0,status:result.paid ? "paid" as const : result.skipped ? "skipped" as const : "failed" as const,txHash:null,detail:result.detail}]};
+    }
+  }
   const candidates = await prisma.trophyPayout.findMany({
     where: {
       OR:
@@ -1219,9 +1242,19 @@ export async function executePendingTrophyPayouts(
     }
   }
 
+  let allocatedScanned = 0;
+  if (prisma.trophyPayoutAllocation && !options.payoutId) {
+    const allocatedCandidates = await prisma.trophyPayout.findMany({where:{allocations:{some:{}},status:{in:["dry_run","pending","retrying","failed","partial_paid"]},payoutKind:{in:options.includeBounties ? ["daily_tribute","dethrone_bounty"] : ["daily_tribute"]},scheduledFor:{lte:now}},select:{id:true,trophyId:true,amountWolo:true,recipientDisplayName:true},orderBy:{scheduledFor:"asc"},take:Math.max(0,take-candidates.length)});
+    allocatedScanned = allocatedCandidates.length;
+    const {executeAllocatedTrophyPayout} = await import("@/lib/trophies/championship");
+    for (const candidate of allocatedCandidates) {
+      const result = await executeAllocatedTrophyPayout(prisma,candidate.id);
+      results.push({payoutId:candidate.id,trophyId:String(candidate.trophyId),recipient:candidate.recipientDisplayName,amountWolo:candidate.amountWolo,status:result.paid ? "paid" : result.skipped ? "skipped" : "failed",txHash:null,detail:result.detail});
+    }
+  }
   return {
     ok: results.every((row) => row.status !== "failed"),
-    scanned: candidates.length,
+    scanned: candidates.length + allocatedScanned,
     paid: results.filter((row) => row.status === "paid").length,
     failed: results.filter((row) => row.status === "failed").length,
     skipped: results.filter((row) => row.status === "skipped").length,
@@ -1430,6 +1463,8 @@ export function trophyIsPubliclyForcedVacant(
 }
 
 type PublicTrophyRecord = Trophy & {
+  hasExplicitChampionshipCustody?: boolean;
+  championshipRoster?: Array<{userId:number; uid:string; displayName:string; seat:number; walletAddress:string|null}>;
   currentHolder: {
     uid: string;
     inGameName: string | null;
@@ -1443,7 +1478,7 @@ type PublicTrophyRecord = Trophy & {
 };
 
 export function projectPublicTrophy(trophy: PublicTrophyRecord): PublicTrophyRecord {
-  if (!trophyIsPubliclyForcedVacant(trophy.trophyId)) {
+  if (trophy.hasExplicitChampionshipCustody || !trophyIsPubliclyForcedVacant(trophy.trophyId)) {
     return trophy;
   }
 
@@ -1613,6 +1648,7 @@ export async function loadTrophyCommandSnapshot(
       include: {
         trophy: true,
         recipient: { select: { uid: true, inGameName: true, steamPersonaName: true } },
+        allocations: {select:{txHash:true,status:true}},
       },
       orderBy: { createdAt: "desc" },
       take: 300,
@@ -1853,6 +1889,8 @@ export async function loadTrophyCommandSnapshot(
       recipientWoloAddress: payout.recipientWoloAddress,
       amountWolo: payout.amountWolo,
       payoutKind: payout.payoutKind,
+      allocationCount: payout.allocations.length,
+      confirmedAllocationCount: payout.allocations.filter(row=>row.txHash).length,
       status: payout.status,
       scheduledFor: payout.scheduledFor?.toISOString() ?? null,
       paidAt: payout.paidAt?.toISOString() ?? null,
@@ -1935,7 +1973,11 @@ export async function loadPublicTrophies(prisma: PrismaClient) {
     orderBy: [{ family: "asc" }, { displayName: "asc" }],
   });
 
-  return trophies.map(projectPublicTrophy);
+  const reigns = await prisma.championshipCustodyReign.findMany({where:{trophyId:{in:trophies.map(row=>row.id)},endedAt:null},include:{seats:{orderBy:{seat:"asc"}}}});
+  return trophies.map(trophy=>{
+    const reign = reigns.find(row=>row.trophyId === trophy.id);
+    return projectPublicTrophy({...trophy, hasExplicitChampionshipCustody: Boolean(reign), championshipRoster: reign?.seats ?? []});
+  });
 }
 
 export async function loadPublicTrophy(
@@ -1959,7 +2001,9 @@ export async function loadPublicTrophy(
     },
   });
 
-  return trophy ? projectPublicTrophy(trophy) : null;
+  if (!trophy) return null;
+  const reign = await prisma.championshipCustodyReign.findFirst({where:{trophyId:trophy.id,endedAt:null},include:{seats:{orderBy:{seat:"asc"}}}});
+  return projectPublicTrophy({...trophy,hasExplicitChampionshipCustody:Boolean(reign),championshipRoster:reign?.seats ?? []});
 }
 
 export async function loadUserTrophyHoldings(
@@ -1967,12 +2011,9 @@ export async function loadUserTrophyHoldings(
   userId: number
 ): Promise<TrophyHolding[]> {
   await ensurePublicTrophySeedData(prisma);
-  const trophies = await prisma.trophy.findMany({
-    where: { currentHolderUserId: userId, status: { in: ["held", "active"] } },
-    orderBy: [{ kind: "asc" }, { displayName: "asc" }],
-  });
+  const trophies = (await loadPublicTrophies(prisma)).filter(trophy=>["held","active"].includes(trophy.status) && (trophy.hasExplicitChampionshipCustody ? trophy.championshipRoster?.some(member=>member.userId === userId) : trophy.currentHolderUserId === userId));
   return trophies
-    .filter((trophy) => !trophyIsPubliclyForcedVacant(trophy.trophyId))
+    .filter((trophy) => trophy.hasExplicitChampionshipCustody || !trophyIsPubliclyForcedVacant(trophy.trophyId))
     .map((trophy) => {
       const definition = trophyDefinitionForRow(trophy.trophyId);
       const type = definition?.type || trophy.family;

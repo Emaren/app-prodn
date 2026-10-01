@@ -1,3 +1,4 @@
+import { reconcileChampionshipEvidence } from "@/lib/championshipChallenges";
 import { NextRequest, NextResponse } from "next/server";
 
 import { getPrisma } from "@/lib/prisma";
@@ -68,6 +69,7 @@ export async function POST(request: NextRequest) {
     reconcileMarketsForReadyResult: true,
   });
 
+    await reconcileChampionshipEvidence(prisma,{executeSettlements:true}).catch(error=>console.error("Championship evidence remains queued:",error));
   // Live and final replay commits are the event that should make market
   // discovery run; public GET traffic is only a fallback trigger.
   if (
