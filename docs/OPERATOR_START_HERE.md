@@ -170,7 +170,14 @@ cd "$HOME/projects/AoE2HDBets/app-prodn-feature-name"
 aoe2war dev prepare
 aoe2war dev refresh
 aoe2war dev serve
+
+# Optional reusable parked environment:
+aoe2war dev new dev-environment --persistent
 ```
+
+A persistent Development OS worktree is registered with Workspace OS and is not
+treated as disposable merely because its branch is still identical to, or later
+merged into, canonical `main`. It remains explicitly retireable.
 
 `aoe2war dev prepare` owns worktree dependency compatibility, the localhost-only
 development environment, the runtime dependency contract, Prisma validation and

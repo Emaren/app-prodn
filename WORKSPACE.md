@@ -154,6 +154,9 @@ aoe2war dev new feature-name
 aoe2war dev prepare
 aoe2war dev refresh
 aoe2war dev serve
+
+# For a deliberately parked reusable development surface:
+aoe2war dev new dev-environment --persistent
 ```
 
 The Development OS owns:
@@ -170,7 +173,10 @@ The Development OS owns:
 - Direct/Nav Chat history for realistic interaction testing;
 - bounded high-volume activity history;
 - Emaren local preview identity;
-- zero production application/database/chain mutation credentials.
+- zero production application/database/chain mutation credentials;
+- explicit persistent-worktree registration when `dev new --persistent` is used,
+  so Workspace OS preserves that clean merged dev surface until an operator
+  explicitly retires it.
 
 `aoe2war facts` is the machine-facing topology authority. Prefer it over
 retyping mutable paths, ports or storage locations from memory.
