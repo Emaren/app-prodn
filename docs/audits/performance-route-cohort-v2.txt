@@ -58,6 +58,7 @@
 /staking
 /statistics
 /submit
+/television-wolo
 /tournaments
 /traffic
 /upload
