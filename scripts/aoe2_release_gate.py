@@ -1755,13 +1755,66 @@ def manifest_release(data: dict, *, json_output: bool = False) -> int:
     }
 
     manifest_path = MANIFEST_DIR / f"{release_sha}.json"
-    write_json(manifest_path, manifest)
     digest_path = manifest_path.with_suffix(".json.sha256")
+    reused_manifest = False
+
+    if manifest_path.is_file():
+        try:
+            existing_manifest = json.loads(
+                manifest_path.read_text(encoding="utf-8")
+            )
+        except Exception:
+            message = (
+                "Existing sealed release manifest is unreadable; "
+                "refusing to overwrite release evidence."
+            )
+            if json_output:
+                print(json.dumps({"status": "ERROR", "error": message}, indent=2))
+            else:
+                print(f"STOP: {message}")
+            return 2
+
+        comparable_manifest = {
+            key: value
+            for key, value in manifest.items()
+            if key != "generated_at"
+        }
+        comparable_existing = {
+            key: value
+            for key, value in existing_manifest.items()
+            if key != "generated_at"
+        }
+        if comparable_existing != comparable_manifest:
+            message = (
+                "Existing sealed release manifest conflicts with current "
+                "release identity; refusing to overwrite immutable evidence."
+            )
+            if json_output:
+                print(json.dumps({"status": "ERROR", "error": message}, indent=2))
+            else:
+                print(f"STOP: {message}")
+            return 2
+
+        manifest = existing_manifest
+        reused_manifest = True
+    else:
+        write_json(manifest_path, manifest)
+
     manifest_sha = sha256_file(manifest_path)
-    digest_path.write_text(
-        f"{manifest_sha}  {manifest_path.name}\n",
-        encoding="utf-8",
-    )
+    expected_sidecar = f"{manifest_sha}  {manifest_path.name}\n"
+    if digest_path.is_file():
+        if digest_path.read_text(encoding="utf-8") != expected_sidecar:
+            message = (
+                "Existing release-manifest SHA-256 sidecar does not match "
+                "the sealed manifest; refusing to rewrite evidence."
+            )
+            if json_output:
+                print(json.dumps({"status": "ERROR", "error": message}, indent=2))
+            else:
+                print(f"STOP: {message}")
+            return 2
+    else:
+        digest_path.write_text(expected_sidecar, encoding="utf-8")
 
     payload = {
         **manifest,
@@ -1783,6 +1836,9 @@ def manifest_release(data: dict, *, json_output: bool = False) -> int:
         print(f"Gate receipt:   {gate_path.relative_to(ROOT)}")
         print(f"Manifest:       {manifest_path.relative_to(ROOT)}")
         print(f"Manifest SHA:   {manifest_sha}")
-        print("PASS: RELEASE MANIFEST SEALED")
+        if reused_manifest:
+            print("PASS: RELEASE MANIFEST REUSED — IMMUTABLE EVIDENCE PRESERVED")
+        else:
+            print("PASS: RELEASE MANIFEST SEALED")
 
     return 0

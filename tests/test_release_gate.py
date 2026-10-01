@@ -567,6 +567,76 @@ class SameSourceManifestPreconditionTests(unittest.TestCase):
                 data["local"]["head"],
             )
 
+    def test_manifest_reuse_preserves_exact_sealed_bytes_and_digest(self):
+        data = self.actual_sample()
+        scope = MODULE.release_scope(data)
+        context = MODULE.validation_context(
+            scope,
+            same_source_recertification=True,
+        )
+        digest = MODULE.scope_digest(
+            scope,
+            same_source_recertification=True,
+        )
+
+        with tempfile.TemporaryDirectory(dir=MODULE.ROOT) as tmp:
+            base = pathlib.Path(tmp)
+            gate_dir = base / "gates"
+            manifest_dir = base / "manifests"
+            gate_dir.mkdir()
+            manifest_dir.mkdir()
+
+            gate_path = gate_dir / "recert.json"
+            gate_payload = {
+                "schema": 2,
+                "status": "PASS",
+                "base_sha": scope["base_sha"],
+                "target_sha": scope["target_sha"],
+                "scope_sha256": digest,
+                "risk_class": "INFRASTRUCTURE",
+                "same_source_recertification": True,
+                "changed_files": [],
+                "validation_mode": "FULL",
+                **context,
+            }
+            gate_path.write_text(
+                json.dumps(gate_payload, sort_keys=True),
+                encoding="utf-8",
+            )
+
+            old_gate_dir = MODULE.GATE_DIR
+            old_manifest_dir = MODULE.MANIFEST_DIR
+            old_utc_now = MODULE.utc_now
+            try:
+                MODULE.GATE_DIR = gate_dir
+                MODULE.MANIFEST_DIR = manifest_dir
+                MODULE.utc_now = lambda: "2026-10-01T18:39:36Z"
+                first_rc = MODULE.manifest_release(data, json_output=True)
+
+                manifest_path = manifest_dir / f"{data['local']['head']}.json"
+                digest_path = manifest_path.with_suffix(".json.sha256")
+                first_manifest = manifest_path.read_bytes()
+                first_digest = digest_path.read_bytes()
+
+                MODULE.utc_now = lambda: "2026-10-01T19:12:07Z"
+                second_rc = MODULE.manifest_release(data, json_output=True)
+
+                second_manifest = manifest_path.read_bytes()
+                second_digest = digest_path.read_bytes()
+            finally:
+                MODULE.GATE_DIR = old_gate_dir
+                MODULE.MANIFEST_DIR = old_manifest_dir
+                MODULE.utc_now = old_utc_now
+
+            self.assertEqual(first_rc, 0)
+            self.assertEqual(second_rc, 0)
+            self.assertEqual(first_manifest, second_manifest)
+            self.assertEqual(first_digest, second_digest)
+            self.assertEqual(
+                json.loads(second_manifest)["generated_at"],
+                "2026-10-01T18:39:36Z",
+            )
+
     def test_manifest_rejects_standard_clean_gate_for_same_source_recertification(self):
         data = self.actual_sample()
         scope = MODULE.release_scope(data)

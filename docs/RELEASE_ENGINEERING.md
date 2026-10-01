@@ -544,6 +544,13 @@ The manifest binds:
 The manifest and companion SHA-256 live beneath
 `.aoe2war-release/manifests/`.
 
+A manifest is immutable once sealed for one exact release identity. Re-running
+the manifest command for the same release/gate/scope reuses the original bytes
+and timestamp; it must not regenerate `generated_at`, because the stage receipt
+binds the manifest SHA-256. If an existing manifest or sidecar conflicts with
+the current release identity, the engine fails closed instead of overwriting
+evidence.
+
 ### 6. Isolated stage beside live
 
 For `WATCHER` risk, staging begins with a distribution preflight against
