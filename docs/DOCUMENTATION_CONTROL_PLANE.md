@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/release-diff-eof-whitespace-20260930` at `20a4c4c43d55bf7dfc2507b24c3611a9027279bd`
+Implementation baseline: `feature/championship-challenge-v1` at `f98b1e67a19b7d271d83a01133057f591d00dd09`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **81**
+- Authoritative repository documents: **85**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,13 +36,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 49
-- `runbook`: 13
+- `reference`: 52
+- `runbook`: 14
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 65
+- `active`: 69
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -66,7 +66,11 @@ This page is generated from the validated front matter in this repository. Cross
 | [Bet Automation and Wolo Custody Boundary](BET_AUTOMATION_AND_CUSTODY.md) | `reference` | `active` | `financial-domain-contract` |
 | [Manual Bet Stake Tickets](BET_STAKE_TICKETS.md) | `reference` | `active` | `financial-domain-contract` |
 | [AoE2WAR Bounty Board](BOUNTY_BOARD.md) | `reference` | `active` | `product-contract` |
-| [AoE2WAR Challenge System v2](CHALLENGE_SYSTEM.md) | `reference` | `active` | `product-contract` |
+| [AoE2WAR Challenge Protocols and Presentation](CHALLENGE_SYSTEM.md) | `reference` | `active` | `product-contract` |
+| [Championship Belt Constitution V1](CHAMPIONSHIP_BELT_CONSTITUTION.md) | `reference` | `active` | `product-contract` |
+| [Championship Belt Chain Capability Handoff](CHAMPIONSHIP_CHAIN_HANDOFF.md) | `reference` | `active` | `integration-contract` |
+| [Championship Commissioner V1 Runbook](CHAMPIONSHIP_COMMISSIONER_RUNBOOK.md) | `runbook` | `active` | `operational-procedure` |
+| [Championship Challenge V1 Implementation and Release Handoff](CHAMPIONSHIP_IMPLEMENTATION_HANDOFF.md) | `reference` | `active` | `engineering-handoff` |
 | [Championship Title Economy](CHAMPIONS_TITLE_ECONOMY.md) | `reference` | `active` | `product-contract` |
 | [Clan Halls](CLAN_HALLS.md) | `reference` | `active` | `product-contract` |
 | [AoE2WAR Campaign III Final Handoff](CODEX_CAMPAIGN_III_HANDOFF.md) | `historical` | `historical` | `historical-evidence` |

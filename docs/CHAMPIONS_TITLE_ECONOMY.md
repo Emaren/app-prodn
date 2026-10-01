@@ -8,14 +8,30 @@ systems: ["app-prodn","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-09-27"
+reviewed_at: "2026-09-30"
 review_interval_days: 90
 sensitivity: "internal"
 ---
 
 # Championship Title Economy
 
-Last updated: 2026-09-27
+Last updated: 2026-09-30
+
+The [Championship Belt Constitution V1](./CHAMPIONSHIP_BELT_CONSTITUTION.md)
+is the active product contract for `championship_v2` Challenges. It adds exact
+team rosters, centralized solo priority/eligibility, 24h start plus 1h default
+grace, automatic capture under full proof, durable dispute, and grouped NFT
+intents. Legacy title Challenges keep the policies explicitly described below.
+Commissioner, final-proof and default transfers share the custody/money
+transition. A receipt does not waive the locked live-custody recheck.
+
+Team Reward Tribute and dethrone bounty are title-level obligations split
+equally in integer `uwolo`, with deterministic stable-seat remainder. Physical
+belt count never multiplies the configured title amount. Allocations reference
+the existing TrophyPayout, preserve per-recipient proof, and cannot overwrite
+paid/transaction-backed prior obligations. NFT seat intents form one transfer
+group; partial chain success remains partial. The missing chain capability is
+specified in [chain handoff](./CHAMPIONSHIP_CHAIN_HANDOFF.md).
 
 AoE2HDBets owns the app-side championship presentation, eligibility settings,
 challenge entry points, Trophy Command workflow, and app-side custody ledger.
@@ -116,15 +132,15 @@ The managed media table migration is:
 
 `prisma/migrations/20260615_103000_add_managed_media_assets/migration.sql`
 
-Run `npx prisma migrate deploy` before restarting production when shipping the
-media armory.
+Ship migrations through the protected additive lane of `aoe2war finish`.
 
 ## Data and state
 
 Current-season public policy lives in
 `lib/champions/championshipPolicy.ts`.
 
-- The live public summary is **4 active / 18 vacant / 45 WOLO per day**.
+- Public counts and daily amounts project current custody and explicitly active
+  economics; a dated season summary is not live authority.
 - The four current paying reigns are Chaos, Canada, USA, and Mexico.
 - World and United Kingdom are explicitly vacant public titles. Historical
   Trophy rows may remain auditable, but they do not grant current public
@@ -214,18 +230,20 @@ Current-season public policy lives in
   title that has become paused, retired, draft, or otherwise inconsistent.
 - Public title presentation maps `draft`, `paused`, and `retired` to
   `coming_soon` rather than advertising them as vacant/open thrones.
-- Normal `/challenge` requests inspect both participants for currently held,
+- Legacy `/challenge` protocol requests inspect both participants for currently held,
   app-only ELO belts that are not already committed to an active title defense.
-  Those belts are attached as `TrophyChallenge` rows automatically. A held title
+  Those belts are attached as `TrophyChallenge` rows automatically. A legacy held title
   defense does not re-run vacant-belt ELO admission rules: once the Commissioner
   places a belt on a holder, a direct opponent may take that belt by beating the
-  holder in the matching game mode.
+  holder in the matching game mode. This is historical protocol behavior only;
+  new championship V2 challengers must pass ordinary eligibility even when the
+  holder was deliberately Commissioner-assigned outside their own eligibility.
 - RM and DM ELO custody are distinct. Historical generic ELO definitions default
   to RM for backward compatibility; new Trophy Command definitions record an
   explicit RM/DM lane and are canonicalized to lane-specific custody identities.
   The public E2 projection reads live Trophy custody for each lane instead of
   sharing one generic holder across both rows.
-- A verified watcher/replay result can automatically settle a linked `app_only`
+- A legacy verified watcher/replay result can automatically settle a linked `app_only`
   ELO belt only when both players' Watchers provide dual coverage, the replay's
   authoritative game type matches the belt lane, title custody is unchanged,
   desync authority permits title movement, and the projected dethrone bounty is
@@ -333,7 +351,7 @@ The migration is:
 
 `prisma/migrations/20260615_090000_add_title_identity_settings/migration.sql`
 
-Run `npx prisma migrate deploy` before restarting production for this feature.
+Ship this feature through the protected additive lane of `aoe2war finish`.
 The `/profile` Title Identity panel saves these settings through
 `/api/user/me`.
 
