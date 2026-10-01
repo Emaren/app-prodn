@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/championship-challenge-v1` at `f98b1e67a19b7d271d83a01133057f591d00dd09`
+Implementation baseline: `feature/championship-challenge-v1` at `60e48eeeba2b4f325998a17b8a0ce5fbc8f4b0f6`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
