@@ -257,6 +257,12 @@ type BetWarTapeRow = {
   createdAt: string;
 };
 
+type BetBookPhaseSummary = {
+  phase: "legacy" | "pre_game" | "opening_minute" | "late";
+  amountWolo: number;
+  slipCount: number;
+};
+
 type BetBookEntry = {
   marketId: number;
   marketSlug: string;
@@ -273,6 +279,7 @@ type BetBookEntry = {
   executionMode: "app_only" | "onchain_escrow";
   stakeTxHash: string | null;
   stakeProofUrl: string | null;
+  phaseBreakdown?: BetBookPhaseSummary[];
 };
 
 type BetSettledResult = {

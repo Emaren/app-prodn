@@ -6,6 +6,7 @@ import {
   BET_PHASE_BOOKS_V2_OPENING_WINDOW_MS,
   authoritativeBetBookPhase,
   buildBetPhaseBookKey,
+  classifyAcceptedBetPhase,
   phaseBookWindowContains,
   planBetPhaseBookWindows,
   readBetPhaseBooksV2Runtime,
@@ -143,6 +144,56 @@ test("authoritative phase classifier uses server time and battle activity", () =
   );
 });
 
+test("accepted wager phase provenance uses the authoritative start boundary", () => {
+  assert.equal(
+    classifyAcceptedBetPhase({
+      acceptedAt: new Date(START.getTime() - 1),
+      battleStartAt: START,
+    }),
+    "pre_game"
+  );
+  assert.equal(
+    classifyAcceptedBetPhase({
+      acceptedAt: START,
+      battleStartAt: START,
+    }),
+    "opening_minute"
+  );
+  assert.equal(
+    classifyAcceptedBetPhase({
+      acceptedAt: new Date(
+        START.getTime() + BET_PHASE_BOOKS_V2_OPENING_WINDOW_MS - 1
+      ),
+      battleStartAt: START,
+    }),
+    "opening_minute"
+  );
+  assert.equal(
+    classifyAcceptedBetPhase({
+      acceptedAt: new Date(
+        START.getTime() + BET_PHASE_BOOKS_V2_OPENING_WINDOW_MS
+      ),
+      battleStartAt: START,
+    }),
+    "late"
+  );
+  assert.equal(
+    classifyAcceptedBetPhase({
+      acceptedAt: new Date(START.getTime() + 10_000),
+      battleStartAt: null,
+    }),
+    "legacy"
+  );
+  assert.equal(
+    classifyAcceptedBetPhase({
+      acceptedAt: new Date(START.getTime() + 10_000),
+      battleStartAt: null,
+      scheduledPreGameOnly: true,
+    }),
+    "pre_game"
+  );
+});
+
 test("phase planner rejects impossible server windows", () => {
   assert.throws(
     () =>
@@ -254,8 +305,24 @@ test("production betting keeps shadow phase books outside financial BetStatus ra
     new URL("../lib/betPhaseBookShadowMaterializer.ts", import.meta.url),
     "utf8"
   );
+  const yourBook = readFileSync(
+    new URL("../components/bets/YourBookSection.tsx", import.meta.url),
+    "utf8"
+  );
 
   assert.match(bets, /materializeBetPhaseBookShadows/);
+  assert.match(bets, /classifyAcceptedBetPhase/);
+  assert.match(bets, /battle:\s*\{[\s\S]*startedAt:\s*true/);
+  assert.match(
+    bets,
+    /acceptedAt:\s*wager\.stakeLockedAt\s*\?\?\s*wager\.createdAt/
+  );
+  assert.match(yourBook, /Pre-Game/);
+  assert.match(yourBook, /Opening Minute/);
+  assert.match(yourBook, /Late/);
+  assert.match(yourBook, /Legacy timing/);
+  assert.match(yourBook, /Legacy V1 live slips can still share one economic pool/);
+  assert.match(yourBook, /independent phase-book money stays off/);
   assert.match(materializer, /phase_shadow/);
   assert.match(materializer, /phase_shadow_winner/);
 

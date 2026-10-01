@@ -147,6 +147,14 @@ export type BetBoardMarket = {
   desyncMarket: BetBoardMarket | null;
 };
 
+export type BetBookPhase = "legacy" | "pre_game" | "opening_minute" | "late";
+
+export type BetBookPhaseSummary = {
+  phase: BetBookPhase;
+  amountWolo: number;
+  slipCount: number;
+};
+
 export type BetBookEntry = {
   marketId: number;
   marketSlug: string;
@@ -163,6 +171,7 @@ export type BetBookEntry = {
   executionMode: "app_only" | "onchain_escrow";
   stakeTxHash: string | null;
   stakeProofUrl: string | null;
+  phaseBreakdown?: BetBookPhaseSummary[];
 };
 
 export type BetSettledResult = {

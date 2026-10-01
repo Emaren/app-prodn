@@ -52,6 +52,10 @@ import {
 import { loadLiveSessionSnapshot, type LiveGameSession } from "@/lib/liveSessionSnapshot";
 import { runBetAutoShadowWorker } from "@/lib/betAutomationShadowWorker";
 import { materializeBetPhaseBookShadows } from "@/lib/betPhaseBookShadowMaterializer";
+import {
+  classifyAcceptedBetPhase,
+  type BetBookPhase,
+} from "@/lib/betPhaseBooks";
 import { resolveFinalGameStatsIdForSessionKey } from "@/lib/liveReplayDetail";
 import {
   isUnknownishReplayValue,
@@ -255,9 +259,16 @@ export type BetBoardMarket = {
     stakeTxHash: string | null;
     stakeWalletAddress: string | null;
     stakeLockedAt: string | null;
+    phaseBreakdown: BetBookPhaseSummary[];
   } | null;
   winnerSide: BetSide | null;
   desyncMarket: BetBoardMarket | null;
+};
+
+export type BetBookPhaseSummary = {
+  phase: BetBookPhase;
+  amountWolo: number;
+  slipCount: number;
 };
 
 export type BetBookEntry = {
@@ -276,6 +287,7 @@ export type BetBookEntry = {
   executionMode: "app_only" | "onchain_escrow";
   stakeTxHash: string | null;
   stakeProofUrl: string | null;
+  phaseBreakdown: BetBookPhaseSummary[];
 };
 
 export type BetSettledResult = {
@@ -8139,6 +8151,11 @@ function buildMarketCard(
     { ...market, wagers: activeWagers },
     claimsByMarketId.get(market.id) ?? []
   );
+  const viewerPhaseBreakdown = summarizeAcceptedBetPhases(viewerWagers, {
+    marketBookPhase: market.bookPhase,
+    battleStartAt: market.battle?.startedAt ?? null,
+    scheduledPreGameOnly: Boolean(market.scheduledMatchId),
+  });
 
   const bettingCloseReason =
     freshBettingCloseReason({
@@ -8229,6 +8246,7 @@ function buildMarketCard(
             ),
           stakeWalletAddress: latestViewerWager.stakeWalletAddress ?? null,
           stakeLockedAt: latestViewerWager.stakeLockedAt?.toISOString() ?? null,
+          phaseBreakdown: viewerPhaseBreakdown,
         }
       : null,
     winnerSide:
@@ -8239,6 +8257,60 @@ function buildMarketCard(
   };
 }
 
+function normalizeFinancialBookPhase(value: string | null | undefined): BetBookPhase {
+  return value === "pre_game" ||
+    value === "opening_minute" ||
+    value === "late"
+    ? value
+    : "legacy";
+}
+
+function summarizeAcceptedBetPhases(
+  wagers: Array<{
+    createdAt: Date;
+    stakeLockedAt?: Date | null;
+    amountWolo: number;
+  }>,
+  options: {
+    marketBookPhase?: string | null;
+    battleStartAt?: Date | null;
+    scheduledPreGameOnly?: boolean;
+  }
+): BetBookPhaseSummary[] {
+  const declaredPhase = normalizeFinancialBookPhase(options.marketBookPhase);
+  const totals = new Map<BetBookPhase, BetBookPhaseSummary>();
+  const phaseOrder: BetBookPhase[] = [
+    "pre_game",
+    "opening_minute",
+    "late",
+    "legacy",
+  ];
+
+  for (const wager of wagers) {
+    const phase =
+      declaredPhase !== "legacy"
+        ? declaredPhase
+        : classifyAcceptedBetPhase({
+            acceptedAt: wager.stakeLockedAt ?? wager.createdAt,
+            battleStartAt: options.battleStartAt,
+            scheduledPreGameOnly: options.scheduledPreGameOnly,
+          });
+    const current = totals.get(phase) ?? {
+      phase,
+      amountWolo: 0,
+      slipCount: 0,
+    };
+    current.amountWolo += wager.amountWolo;
+    current.slipCount += 1;
+    totals.set(phase, current);
+  }
+
+  return phaseOrder.flatMap((phase) => {
+    const row = totals.get(phase);
+    return row ? [row] : [];
+  });
+}
+
 async function loadMarketsByStatus(prisma: PrismaClient, statuses: BetStatus[]) {
   const markets = await prisma.betMarket.findMany({
     where: { status: { in: statuses } },
@@ -8247,6 +8319,7 @@ async function loadMarketsByStatus(prisma: PrismaClient, statuses: BetStatus[]) 
       battle: {
         select: {
           publicNumber: true,
+          startedAt: true,
         },
       },
       parentMarket: {
@@ -9165,6 +9238,7 @@ async function loadViewerRecentClosedBookEntries(
       payoutWolo: true,
       executionMode: true,
       stakeTxHash: true,
+      stakeLockedAt: true,
       stakeLeg: {
         select: {
           ticket: {
@@ -9184,10 +9258,17 @@ async function loadViewerRecentClosedBookEntries(
           slug: true,
           title: true,
           eventLabel: true,
+          bookPhase: true,
+          scheduledMatchId: true,
           status: true,
           leftLabel: true,
           rightLabel: true,
           settledAt: true,
+          battle: {
+            select: {
+              startedAt: true,
+            },
+          },
         },
       },
     },
@@ -9234,6 +9315,11 @@ async function loadViewerRecentClosedBookEntries(
       stakeProofUrl: effectiveBetWagerStakeTxHash(row)
         ? buildWoloRestTxLookupUrl(effectiveBetWagerStakeTxHash(row) as string)
         : null,
+      phaseBreakdown: summarizeAcceptedBetPhases([row], {
+        marketBookPhase: row.market.bookPhase,
+        battleStartAt: row.market.battle?.startedAt ?? null,
+        scheduledPreGameOnly: Boolean(row.market.scheduledMatchId),
+      }),
     };
   });
 }
@@ -9592,6 +9678,7 @@ export async function loadBetBoardSnapshot(
         stakeProofUrl: market.viewerWager?.stakeTxHash
           ? buildWoloRestTxLookupUrl(market.viewerWager.stakeTxHash)
           : null,
+        phaseBreakdown: market.viewerWager?.phaseBreakdown ?? [],
       } satisfies BetBookEntry;
     })
     .sort((left, right) => right.amountWolo - left.amountWolo);

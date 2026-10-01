@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   BetBoardSnapshot,
   BetBookEntry,
+  BetBookPhase,
   PendingStakeRecovery,
   CoinMark,
   MiniMetric,
@@ -32,6 +33,35 @@ function formatRecoveryIntentStatus(status: string) {
 }
 
 type BookLifecycle = "current" | "awaiting" | "proof";
+
+function phasePresentation(phase: BetBookPhase) {
+  switch (phase) {
+    case "pre_game":
+      return {
+        label: "Pre-Game",
+        className:
+          "border-amber-200/15 bg-amber-300/[0.08] text-amber-100",
+      };
+    case "opening_minute":
+      return {
+        label: "Opening Minute",
+        className:
+          "border-cyan-200/15 bg-cyan-300/[0.08] text-cyan-100",
+      };
+    case "late":
+      return {
+        label: "Late",
+        className:
+          "border-fuchsia-200/15 bg-fuchsia-300/[0.08] text-fuchsia-100",
+      };
+    default:
+      return {
+        label: "Legacy timing",
+        className:
+          "border-white/[0.08] bg-white/[0.04] text-slate-400",
+      };
+  }
+}
 
 function bookLifecycle(wager: BetBookEntry): BookLifecycle {
   if (["Won", "Lost", "Refund recorded", "Voided"].includes(wager.closeLabel)) {
@@ -80,6 +110,7 @@ function BookWagerRow({
       : lifecycle === "awaiting"
         ? `${formatCompact(wager.amountWolo)} WOLO committed`
         : `${formatCompact(wager.projectedReturnWolo)} WOLO if right`;
+  const phaseBreakdown = wager.phaseBreakdown ?? [];
 
   return (
     <article
@@ -105,6 +136,25 @@ function BookWagerRow({
         <div className="mt-1 text-xs text-slate-500">
           Pick · <span className="font-semibold text-slate-300">{wager.pickedLabel}</span>
         </div>
+        {phaseBreakdown.length ? (
+          <div
+            data-testid={`bet-book-phase-breakdown-${rowKey}`}
+            className="mt-2 flex flex-wrap gap-1.5"
+          >
+            {phaseBreakdown.map((entry) => {
+              const presentation = phasePresentation(entry.phase);
+              return (
+                <span
+                  key={entry.phase}
+                  className={`rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] ${presentation.className}`}
+                >
+                  {presentation.label} · {formatCompact(entry.amountWolo)} WOLO
+                  {entry.slipCount > 1 ? ` · ${entry.slipCount} slips` : ""}
+                </span>
+              );
+            })}
+          </div>
+        ) : null}
         <div
           className={`mt-2 text-sm ${
             lifecycle === "awaiting"
@@ -197,6 +247,9 @@ export default function YourBookSection({
         <div>
           <div className="text-[11px] uppercase tracking-[0.35em] text-slate-500">Your Book</div>
           <h2 className="mt-2 text-2xl font-semibold text-white">Slip lifecycle</h2>
+          <p className="mt-2 max-w-2xl text-xs leading-5 text-slate-500">
+            Timing badges show when accepted slips entered the battle. Legacy V1 live slips can still share one economic pool; independent phase-book money stays off until the financial activation is separately certified.
+          </p>
         </div>
         {isAuthenticated ? (
           <div className="rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1 text-xs text-slate-300">
