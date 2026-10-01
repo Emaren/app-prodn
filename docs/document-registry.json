@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d56f2a9f572dd3e587575ea93bed51a0c8973308e38174ba5b05656c9d7b9816",
+      "sha256": "ac21a295ad0a29860ffc723e938f9dba3469607fd78e644063901f4dba37bee8",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1237,7 +1237,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-28",
       "sensitivity": "internal",
-      "sha256": "b47c1efaf7104da636b19b4c02448a9983c33817d76085b517530e3d6d3c1a55",
+      "sha256": "2b27102821c587d729c0866701f00d19cda36b5bb4e8bba0a89ef008d36339b0",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1620,6 +1620,29 @@
     {
       "audience": [
         "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "product-contract",
+      "id": "aoe2war.app-prodn.docs-television-wolo",
+      "owner": "aoe2war-web",
+      "path": "docs/TELEVISION_WOLO.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-09-30",
+      "sensitivity": "internal",
+      "sha256": "b1c89689d688d2889ae90119f6608beaf77e0e963f12c5d7f416253fd53964f1",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "aoe2-watcher"
+      ],
+      "title": "Television WOLO",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
         "ai-agents"
       ],
       "authority": "product-contract",
@@ -1958,8 +1981,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/championship-reconcile-bundled-empty-sql",
-    "commit": "4d301007b6e88d58349177c738d5a118231311f5"
+    "branch": "feature/television-wolo-v1",
+    "commit": "1534c0ebed577c7b2f91ec65e06771bf9a2ce4b3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

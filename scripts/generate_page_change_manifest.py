@@ -31,6 +31,7 @@ PAGES = [
     ("/kingdom-forge", "Kingdom Forge"),
     ("/round-chamber", "The Chamber"),
     ("/statistics", "Kingdom Statistics"),
+    ("/television-wolo", "Television WOLO"),
     ("/speed", "Speed"),
 ]
 
