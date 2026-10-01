@@ -4,7 +4,6 @@ CREATE TABLE "site_theme_campaign" (
   "label" VARCHAR(120) NOT NULL,
   "enabled" BOOLEAN NOT NULL DEFAULT false,
   "theme_key" VARCHAR(20) NOT NULL DEFAULT 'black',
-  "applies_to_theme_key" VARCHAR(20) NOT NULL DEFAULT 'midnight',
   "starts_at" TIMESTAMP(6) NOT NULL,
   "ends_at" TIMESTAMP(6) NOT NULL,
   "updated_by_user_id" INTEGER,
@@ -15,7 +14,6 @@ CREATE TABLE "site_theme_campaign" (
   CONSTRAINT "site_theme_campaign_window_check" CHECK ("starts_at" < "ends_at"),
   CONSTRAINT "site_theme_campaign_theme_check" CHECK (
     "theme_key" IN ('black','grey','white','sepia','walnut','crimson','midnight')
-    AND "applies_to_theme_key" IN ('black','grey','white','sepia','walnut','crimson','midnight')
   ),
   CONSTRAINT "site_theme_campaign_updated_by_user_id_fkey"
     FOREIGN KEY ("updated_by_user_id")
@@ -63,7 +61,6 @@ INSERT INTO "site_theme_campaign" (
   "label",
   "enabled",
   "theme_key",
-  "applies_to_theme_key",
   "starts_at",
   "ends_at"
 )
@@ -73,7 +70,6 @@ VALUES (
   'October Blackout 2026',
   true,
   'black',
-  'midnight',
   TIMESTAMP '2026-10-01 06:00:00',
   TIMESTAMP '2026-11-01 06:00:00'
 );

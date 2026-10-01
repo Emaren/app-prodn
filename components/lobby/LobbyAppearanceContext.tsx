@@ -261,7 +261,9 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
       void fetchSiteThemeCampaignState()
         .then((state) => {
           setSiteThemeCampaign(state.campaign);
-          setCampaignOverrideThemeKey(state.overrideThemeKey);
+          if (user?.uid) {
+            setCampaignOverrideThemeKey(state.overrideThemeKey);
+          }
         })
         .catch((error) => {
           console.warn("Failed to refresh site theme campaign:", error);

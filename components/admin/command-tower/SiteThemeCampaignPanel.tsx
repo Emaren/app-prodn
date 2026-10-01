@@ -9,7 +9,6 @@ type ThemeCampaignPayload = {
     label: string;
     enabled: boolean;
     themeKey: string;
-    appliesToThemeKey: string;
     startsAt: string;
     endsAt: string;
     active: boolean;
@@ -22,7 +21,7 @@ type ThemeCampaignPayload = {
     effectiveCampaignThemeCount: number;
     explicitOverrideCount: number;
     explicitMidnightOverrideCount: number;
-    existingCustomThemeCount: number;
+    savedNonCampaignThemeCount: number;
     effectiveBreakdown: Array<{ themeKey: string; count: number }>;
   } | null;
   overrides: Array<{
