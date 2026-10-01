@@ -1,3 +1,4 @@
+import hashlib
 import importlib.util
 import json
 import pathlib
@@ -1006,6 +1007,115 @@ COMMIT;
                 ),
             },
         )
+
+    def test_hash_bound_check_correction_overrides_after_proof(
+        self,
+    ):
+        name = "20260101000000_replace_checks"
+        sql = self.migration_sql()
+        temp, root, manifests, release = self.with_release(
+            [(name, sql)]
+        )
+        correction = root / "config" / "migration-check-proof-corrections.json"
+        correction.parent.mkdir(parents=True)
+        correction.write_text(
+            json.dumps(
+                {
+                    "schema": 1,
+                    "kind": "aoe2war-migration-check-proof-corrections",
+                    "corrections": [
+                        {
+                            "migration": name,
+                            "migration_sql_sha256": hashlib.sha256(
+                                sql.encode("utf-8")
+                            ).hexdigest(),
+                            "checks": [
+                                {
+                                    "table": "widget",
+                                    "constraint": "ck_widget_type",
+                                    "declared_after_sha256": "2" * 64,
+                                    "corrected_after_sha256": "5" * 64,
+                                },
+                                {
+                                    "table": "widget",
+                                    "constraint": "ck_widget_geometry",
+                                    "declared_after_sha256": "4" * 64,
+                                    "corrected_after_sha256": "6" * 64,
+                                },
+                            ],
+                        }
+                    ],
+                }
+            )
+        )
+
+        with temp:
+            with mock.patch.object(MODULE, "ROOT", root), mock.patch.object(
+                MODULE, "MANIFEST_DIR", manifests
+            ), mock.patch.object(
+                MODULE, "MIGRATION_CHECK_PROOF_CORRECTIONS", correction
+            ):
+                manifest, _ = MODULE.migration_contract(release)
+
+        checks = {
+            item["constraint"]: item
+            for item in manifest["_production_proven_checks"]
+        }
+        self.assertEqual(checks["ck_widget_type"]["before_sha256"], "1" * 64)
+        self.assertEqual(checks["ck_widget_type"]["after_sha256"], "5" * 64)
+        self.assertEqual(checks["ck_widget_geometry"]["before_sha256"], "3" * 64)
+        self.assertEqual(checks["ck_widget_geometry"]["after_sha256"], "6" * 64)
+
+    def test_hash_bound_check_correction_rejects_sql_drift(
+        self,
+    ):
+        name = "20260101000000_replace_checks"
+        sql = self.migration_sql()
+        temp, root, manifests, release = self.with_release(
+            [(name, sql)]
+        )
+        correction = root / "config" / "migration-check-proof-corrections.json"
+        correction.parent.mkdir(parents=True)
+        correction.write_text(
+            json.dumps(
+                {
+                    "schema": 1,
+                    "kind": "aoe2war-migration-check-proof-corrections",
+                    "corrections": [
+                        {
+                            "migration": name,
+                            "migration_sql_sha256": "0" * 64,
+                            "checks": [
+                                {
+                                    "table": "widget",
+                                    "constraint": "ck_widget_type",
+                                    "declared_after_sha256": "2" * 64,
+                                    "corrected_after_sha256": "5" * 64,
+                                },
+                                {
+                                    "table": "widget",
+                                    "constraint": "ck_widget_geometry",
+                                    "declared_after_sha256": "4" * 64,
+                                    "corrected_after_sha256": "6" * 64,
+                                },
+                            ],
+                        }
+                    ],
+                }
+            )
+        )
+
+        with temp:
+            with mock.patch.object(MODULE, "ROOT", root), mock.patch.object(
+                MODULE, "MANIFEST_DIR", manifests
+            ), mock.patch.object(
+                MODULE, "MIGRATION_CHECK_PROOF_CORRECTIONS", correction
+            ):
+                with self.assertRaisesRegex(
+                    MODULE.AutoShipError,
+                    "SQL hash mismatch",
+                ):
+                    MODULE.migration_contract(release)
 
     def test_unrelated_sql_is_rejected(
         self,
