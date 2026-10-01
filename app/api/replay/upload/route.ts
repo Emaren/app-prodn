@@ -1,3 +1,4 @@
+import { reconcileChampionshipEvidence } from "@/lib/championshipChallenges";
 import { NextRequest, NextResponse } from "next/server";
 import { getBackendUpstreamBase } from "@/lib/backendUpstream";
 import { getSessionUid } from "@/lib/session";
@@ -211,6 +212,7 @@ export async function POST(request: NextRequest) {
       reconcileTournamentForAcceptedUpload: !isFinalUpload,
       reconcileMarketsForReadyResult: isFinalUpload,
     });
+    await reconcileChampionshipEvidence(prisma,{executeSettlements:true}).catch(error=>console.error("Championship evidence remains queued:",error));
     if (!postIngest.financial.markets.requested) {
       queueBetMarketEnsure(prisma, 0);
     }

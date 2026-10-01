@@ -101,6 +101,8 @@ export type TrophyPayoutRow = {
   recipientWoloAddress: string | null;
   amountWolo: number;
   payoutKind: string;
+  allocationCount: number;
+  confirmedAllocationCount: number;
   status: string;
   scheduledFor: string | null;
   paidAt: string | null;

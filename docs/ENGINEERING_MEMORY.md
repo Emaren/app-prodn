@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "repository-entrypoint"
-reviewed_at: "2026-09-29"
+reviewed_at: "2026-09-30"
 review_interval_days: 14
 sensitivity: "internal"
 ---
@@ -40,6 +40,67 @@ memory before closing the work.
 4. `aoe2war finish` remains the canonical end-of-work transaction and owns
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
+
+## 2026-09-30 — Championship custody, proof clocks, and paired team funding
+
+The active contract is [Championship Belt Constitution V1](./CHAMPIONSHIP_BELT_CONSTITUTION.md).
+New `championship_v2` records have a separate creation boundary. Renderer V1/V2
+and B/A/E never reclassify an existing financial record or enroll legacy rows
+into new default behavior.
+
+Durable lessons:
+
+- The generic Founder payout adapter can fall back to local signing and its
+  response wrapper is not sufficient allocation proof. Team title allocations
+  require the protected port-8093 service, exact integer uwolo/request/recipient
+  binding and committed successful bank events. Lost responses retain uncertain
+  liability; known hashes reconcile with GET only. Unknown hashes require the
+  chain-owned request receipt (`wolochaind settlement inspect`), because current
+  source has no request-ID HTTP lookup. Never change an ID to rebroadcast.
+- Team financial legs must use the parent verified result and parent desync
+  lock/incidents. A child ScheduledMatch has no independent competitive replay
+  claim and cannot infer its own winner. Worker selection must exclude durable
+  holds/started defenses from default processing and skip already-paid principal
+  so bounded batches cannot starve newer obligations.
+
+- Trophy owns title identity/economics. Team custody needs a complete reign and
+  stable seats; a single scalar holder cannot truthfully represent a 4v4 title.
+  Public Champions/Profile/Challenge projections must read that custody and
+  permit explicit new reigns to supersede historical season-vacancy masks.
+- Solo priority and eligibility belong in one policy. Commissioner placement
+  outside holder eligibility does not waive ordinary challenger eligibility.
+  World remains open; Chaos retains popular-vote transfer authority.
+- Start proof and winner proof are different facts. Authenticated parsed live
+  roster/lane evidence can stop a default clock; heartbeat/uploader presence
+  cannot. Final custody requires stronger full-roster Watcher/replay truth and
+  existing human-confirmed desync guards. Late final cannot reopen disposition.
+- New challenges have creation plus 24h, followed by exactly 1h Commissioner
+  grace. Deadline is server state. Acceptance/funding never reset it. Several
+  valid claimant sides cause durable dispute, not first-click champion.
+- The current chain memo/proof interface has exactly left/right funding sides.
+  Team funding therefore uses stable paired ScheduledMatch financial legs
+  beneath one parent; each warrior signs their own transaction. No new wallet
+  or pooled ledger exists. Hidden legs cannot independently enter public
+  discovery, old expiry, legacy result correlation, or participant actions.
+- Trophy row/money locks, title advisory locks and deterministic request IDs
+  protect one custody transition and outgoing bounty. Team allocations belong
+  to the existing TrophyPayout. Any tx-backed allocation makes its parent
+  immutable economic evidence; partial payment must prevent a second same-day
+  obligation even when the parent's scalar tx hash is null.
+- Explicitly new reigns must never be mutated through legacy scalar-only
+  automatic title assignment; that would leave the roster authoritative ledger
+  stale. Use the shared transition or preserve Commissioner review.
+- A grouped belt intent is not NFT ownership. Missing restricted Warbound
+  executor stays blocked. Full required seat proof is necessary; confirmed or
+  uncertain tx-backed seats cannot be blindly resent. The exact follow-up
+  boundary lives in [chain handoff](./CHAMPIONSHIP_CHAIN_HANDOFF.md).
+
+Validation uses the explicit disposable local QA database, never production
+funding/state. The migration classifier and transactional PostgreSQL DDL check
+are read-only with respect to production. Local `prisma db push` encounters the
+repo's explicit `battle_public_number_seq` outside Prisma-managed schema;
+do not drop that sequence or use CASCADE as a generic fix. Production remains
+the protected exact-frontier `aoe2war finish` migration lane, separately run.
 
 ## 2026-09-28 — Reclaim evidence, not advertised reclaimability
 

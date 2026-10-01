@@ -3348,6 +3348,7 @@ export async function postChallengeRoomMessage(
     };
 
     match: {
+      participantUserIds?: number[];
       challengerUserId:
         number;
 

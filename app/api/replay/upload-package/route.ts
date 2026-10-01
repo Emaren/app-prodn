@@ -1,3 +1,4 @@
+import { reconcileChampionshipEvidence } from "@/lib/championshipChallenges";
 import { execFile } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -371,6 +372,7 @@ export async function POST(request: NextRequest) {
       source: "package_upload",
     });
 
+    await reconcileChampionshipEvidence(prisma,{executeSettlements:true}).catch(error=>console.error("Championship evidence remains queued:",error));
     if (postIngest.financial.tournament.error) {
       console.warn(
         "Replay pack upload succeeded but tournament proof reconciliation failed:",

@@ -1,6 +1,6 @@
 ---
 id: "aoe2war.app-prodn.docs-challenge-system"
-title: "AoE2WAR Challenge System v2"
+title: "AoE2WAR Challenge Protocols and Presentation"
 type: "reference"
 status: "active"
 owner: "aoe2war-web"
@@ -8,14 +8,51 @@ systems: ["app-prodn","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-09-22"
+reviewed_at: "2026-09-30"
 review_interval_days: 60
 sensitivity: "internal"
 ---
 
-# AoE2WAR Challenge System v2
+# AoE2WAR Challenge Protocols and Presentation
 
-## Product contract
+## Championship Challenge V2
+
+The [Championship Belt Constitution V1](./CHAMPIONSHIP_BELT_CONSTITUTION.md)
+governs newly issued `championship_v2` Challenges. UI presentation V2 is the
+new default; V1 remains selectable, independently of B/A/E. The historical
+invitation lifecycle below is retained for older records and V1 issuance;
+its use of the name "v2" predates this renderer and is not the new belt protocol.
+
+New presentation V2 has one server-owned deadline, creation plus 24 hours.
+There are no duration or appointment controls. Acceptance and each warrior's
+verified signed funding never extend the deadline. The selected rival's full
+held title stack appears immediately; centralized policy chooses one weakest
+eligible solo title. Team-title actions appear only for that rival's held
+rosters and require exact registered teams and participant-scoped funding.
+Chaos uses separate popular-vote authority.
+
+Reliable exact-roster/lane start proof before the deadline durably stops
+defaulting. Final proof may arrive later and requires stronger full-roster
+Watcher/replay, desync, and current-custody gates. Countdown, readiness, and
+next action come from one shared projection used on detail and chat cards.
+
+No qualifying start at hour 24 enters Commissioner grace; hour 25 considers
+all valid funded claimant sides under the title lock. One defensible claimant
+may default; multiple claimants create dispute/Guardian custody; two ready
+sides with ambiguous fault remain review. Default does not fabricate a purse
+winner. Financial refund is complete only after chain transaction proof.
+
+Team Challenges use paired existing ScheduledMatch financial legs because the
+current chain funding contract has exactly left/right sides. Each warrior
+signs their own leg, and aggregate proof settles the winning side's paired
+seat purses. Child legs cannot appear as independent public Challenges or
+settle independently through the old lifecycle. This is one title defense,
+one clock, one parent card, and the existing financial ledger.
+
+The implementation and production handoff are recorded in
+[Championship implementation handoff](./CHAMPIONSHIP_IMPLEMENTATION_HANDOFF.md).
+
+## Legacy invitation product contract
 
 A Challenge is an invitation to fight, not an appointment request.
 
@@ -223,20 +260,16 @@ Never replace this with an ad-hoc wallet send.
 
 ## Deployment order
 
-Challenge v2 contains a schema migration and settlement-sensitive code. Production order:
-
-1. Confirm `origin/main`, VPS HEAD and intended release commit.
-2. Take restricted database backup and exact Match #24 evidence export.
-3. Run `npx prisma migrate deploy`.
-4. Run `npx prisma generate` and validation gates.
-5. Build to isolated `.next-release` using `NEXT_DIST_DIR=.next-release` while `.next` remains live.
-6. Stop/swap release directories atomically and restart `aoe2hdbets-web.service`.
-7. Smoke `/challenge`, a Challenge detail page, history API, reconciliation auth, and hashed Next assets.
-8. Inspect service journal.
-9. Perform Match #24 dry run and only then execute the proven outstanding refund.
-10. Install/enable the reconciliation timer after the one-time historical review.
-
-Do not build directly over the live `.next` asset tree.
+Challenge changes are schema- and settlement-sensitive. The canonical release
+is `aoe2war finish`, preceded by `aoe2war finish --dry-run`. Its protected
+additive migration lane requires the exact frontier, a durable database dump
+and digest, an exactly-once migration receipt, and isolated validation before
+activation. Never substitute ad hoc migration, live-tree build, pull, or
+restart commands. If the pending frontier includes historical duplicate or
+unsupported migrations, release must fail closed for a separately reviewed
+repair. Verify new tables, hub/detail/chat state, timer authentication, and
+affected financial proofs after certification. Legacy repairs remain explicit
+read-only/idempotent operator procedures; release is not authorization to pay.
 
 ## Performance contract
 

@@ -1,3 +1,4 @@
+import { ChampionshipCustodyError } from "@/lib/trophies/championship";
 import { NextRequest, NextResponse } from "next/server";
 
 import { requireAdmin } from "@/lib/adminSession";
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
     invalidateFeaturedWarriorProjectionCaches();
     return NextResponse.json(await loadTrophyCommandSnapshot(gate.prisma));
   } catch (error) {
-    if (error instanceof TrophyActionError) {
+    if (error instanceof TrophyActionError || error instanceof ChampionshipCustodyError) {
       return NextResponse.json({ detail: error.message }, { status: error.status });
     }
     console.error("Trophy Command action failed:", error);

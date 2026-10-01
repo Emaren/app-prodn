@@ -26,6 +26,7 @@ import {
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 
 import { useUserAuth } from "@/context/UserAuthContext";
+import ChampionshipCommissionerCockpit from "@/components/admin/trophies/ChampionshipCommissionerCockpit";
 import { countriesEligibilityMatch } from "@/lib/countryEligibility";
 import type {
   TrophyChallengeRow,
@@ -71,8 +72,8 @@ function trophyPayoutIsTerminal(payout: { status: string; txHash: string | null 
 }
 
 
-function trophyPayoutIsMutable(payout: { status: string; txHash: string | null }) {
-  return !trophyPayoutIsTerminal(payout) && payout.status !== "executing";
+function trophyPayoutIsMutable(payout: { status: string; txHash: string | null; confirmedAllocationCount?: number }) {
+  return !trophyPayoutIsTerminal(payout) && payout.status !== "executing" && !payout.confirmedAllocationCount;
 }
 
 
@@ -83,10 +84,10 @@ function trophyPayoutIsExecutable(payout: {
 }) {
   if (trophyPayoutIsTerminal(payout)) return false;
   if (payout.payoutKind === "dethrone_bounty") {
-    return ["pending", "retrying", "failed"].includes(payout.status);
+    return ["pending", "retrying", "failed", "partial_paid"].includes(payout.status);
   }
   if (payout.payoutKind === "daily_tribute") {
-    return ["dry_run", "pending", "retrying", "failed"].includes(payout.status);
+    return ["dry_run", "pending", "retrying", "failed", "partial_paid"].includes(payout.status);
   }
   return false;
 }
@@ -430,6 +431,8 @@ export default function TrophyCommandCenter() {
           {notice}
         </div>
       ) : null}
+
+      {snapshot ? <ChampionshipCommissionerCockpit trophies={snapshot.trophies} users={snapshot.users} onCustodyChanged={load} /> : null}
 
       <div className="flex gap-2 overflow-x-auto rounded-2xl border border-white/8 bg-black/20 p-2">
         {TABS.map(({ key, label, Icon }) => (
@@ -1402,6 +1405,7 @@ function Payouts({
                 <td className="px-4 py-3 text-slate-300">
                   {payout.recipientName || "Unlinked"}
                   <div className="mt-1 text-slate-600">{shortAddress(payout.recipientWoloAddress)}</div>
+                  {payout.allocationCount > 0 ? <div className="mt-1 text-emerald-200">{payout.confirmedAllocationCount}/{payout.allocationCount} seat transfers proven</div> : null}
                 </td>
                 <td className="px-4 py-3 text-slate-300">{payout.payoutKind.replace(/_/g, " ")}</td>
                 <td className="px-4 py-3 font-semibold text-amber-100">{payout.amountWolo.toLocaleString()} WOLO</td>
@@ -1417,11 +1421,15 @@ function Payouts({
                   <div className="flex flex-wrap gap-2">
                     <Button
                       tone="gold"
-                      disabled={busy || !trophyPayoutIsExecutable(payout) || !payout.recipientWoloAddress}
-                      onClick={() => void onAction({ action: "payout_action", payoutId: payout.id, operation: "execute" }, "Payout executed through Founder Rewards.")}
+                      disabled={busy || !trophyPayoutIsExecutable(payout) || (!payout.recipientWoloAddress && !payout.allocationCount)}
+                      onClick={() => void onAction({ action: "payout_action", payoutId: payout.id, operation: "execute" }, "Payout execution checked. Inspect each recorded transfer proof.")}
                     >
-                      Execute
+                      {payout.status === "partial_paid" ? "Retry remaining seats" : "Execute"}
                     </Button>
+                    {payout.allocationCount > 0 ? <Button
+                      disabled={busy || ["paid", "cancelled", "superseded"].includes(payout.status)}
+                      onClick={() => void onAction({ action: "payout_action", payoutId: payout.id, operation: "reconcile" }, "Stored allocation proof checked. Unproven broadcasts remain blocked.")}
+                    >Reconcile proofs</Button> : null}
                     <Button
                       disabled={busy || !trophyPayoutIsMutable(payout) || payout.payoutKind === "dethrone_bounty"}
                       onClick={() => void onAction({ action: "payout_action", payoutId: payout.id, operation: "dry_run" }, "Payout returned to dry-run.")}

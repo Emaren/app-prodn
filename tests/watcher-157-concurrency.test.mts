@@ -23,6 +23,8 @@ test("Watcher 1.5.7 identity metadata is read from the persisted watcher_upload 
       watcherSessionId: "session-a",
       replayFingerprint: "fingerprint-a",
       watcherVersion: "1.5.7",
+      provenanceVerified: false,
+      liveMonitor: false,
     }
   );
 });

@@ -76,8 +76,8 @@ test("World contender queue alternates explicit RM and DM ladders", () => {
 });
 
 test("RM and DM crowns default to on-top presentation with the hidden RM / DM toggle", () => {
-  assert.match(state, /rmChampion: modeChampion\("rm", rmContenders\)/);
-  assert.match(state, /dmChampion: modeChampion\("dm", dmContenders\)/);
+  assert.match(state, /rmChampion: modeChampion\("rm", rmContenders,\s*titleEconomy\)/);
+  assert.match(state, /dmChampion: modeChampion\("dm", dmContenders,\s*titleEconomy\)/);
   assert.match(experience, /Top ten by/);
   assert.match(experience, /useState\(true\)/);
   assert.match(experience, /kicker="RM \/ DM"/);
@@ -93,8 +93,8 @@ test("Women\'s championship starts with Moose and pads the throne to ten honest 
 });
 
 test("team crowns preserve commissioner-curated contender teams and tapered holder stages", () => {
-  assert.match(state, /teamTitles\("rm", directoryEntries\)/);
-  assert.match(state, /teamTitles\("dm", directoryEntries\)/);
+  assert.match(state, /teamTitles\("rm", directoryEntries,\s*titleEconomy\)/);
+  assert.match(state, /teamTitles\("dm", directoryEntries,\s*titleEconomy\)/);
   assert.match(state, /holderSlots: size/);
   assert.match(state, /`\$\{size\}v\$\{size\}-\$\{lane\}`/);
   for (const pair of [
@@ -233,4 +233,10 @@ test("Saudi Arabia and Taiwan use bounded cinematic art instead of full-card tak
 
 test("Tournament navigation says where all the warriors go", () => {
   assert.ok(shell.includes('body: "Where all the warriors go"'));
+});
+
+
+test("RM/DM and team crowns present live title-economy custody holders",()=>{
+  assert.match(state,/holders: economy\?\.titles\.find\(title=>title\.id === \(rm \? "random-map-champion" : "deathmatch-champion"\)\)\?\.holders/);
+  assert.match(state,/holders: economy\?\.titles\.find\(title=>title\.id === `\$\{size\}v\$\{size\}-\$\{lane\}`\)\?\.holders/);
 });

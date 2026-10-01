@@ -110,7 +110,7 @@ test("public collection and metadata use the same retained projection path", () 
   const publicEnd = service.indexOf("export async function loadUserTrophyHoldings", publicStart);
   const publicLoaders = service.slice(publicStart, publicEnd);
 
-  assert.match(publicLoaders, /return trophies\.map\(projectPublicTrophy\)/);
+  assert.match(publicLoaders, /return projectPublicTrophy\(\{\.\.\.trophy, hasExplicitChampionshipCustody/);
   assert.doesNotMatch(publicLoaders, /\.filter\(\(trophy\)/);
   assert.match(publicLoaders, /export async function loadPublicTrophy/);
   assert.match(publicLoaders, /await ensurePublicTrophySeedData\(prisma\)/);
@@ -118,4 +118,13 @@ test("public collection and metadata use the same retained projection path", () 
   assert.match(metadata, /loadPublicTrophy\(getPrisma\(\), trophyId\)/);
   assert.doesNotMatch(metadata, /ensureTrophySeedData/);
   assert.doesNotMatch(metadata, /prisma\.trophy\.findUnique/);
+});
+
+
+test("explicit current championship reign replaces historical forced-vacancy masking", () => {
+  const current = trophy({hasExplicitChampionshipCustody:true,championshipRoster:[{userId:10,uid:"holder-uid",displayName:"New Champion",seat:0,walletAddress:"wolo1new"}]});
+  const projected = projectPublicTrophy(current as never);
+  assert.equal(projected.status,"held");
+  assert.equal(projected.currentHolderUserId,10);
+  assert.equal(projected.championshipRoster?.[0]?.displayName,"New Champion");
 });

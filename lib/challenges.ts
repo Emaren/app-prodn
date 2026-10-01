@@ -1,4 +1,8 @@
 
+import { loadChampionshipProjectionMap, reconcileChampionshipEvidence, type ChampionshipChallengeProjection } from "@/lib/championshipChallenges";
+import { CHAMPIONSHIP_PROTOCOL_VERSION } from "@/lib/challengeChampionshipProtocol";
+import { acquireChampionshipTitleLock } from "@/lib/trophies/championship";
+import { lockTrophyMoneyState } from "@/lib/trophies/service";
 import { CHALLENGE_NOTE_MAX_CHARS } from "@/lib/challengeConfig";
 import {
   deriveChallengeFinancialConservation,
@@ -315,6 +319,7 @@ export type ScheduledMatchTile = {
     createdAt: string;
   } | null;
   fundingRail: ChallengeFundingRailSurface;
+  championship?: ChampionshipChallengeProjection | null;
   titleStakes: Array<{
     challengeId: number;
     trophyId: string;
@@ -1821,7 +1826,10 @@ async function recordVerifiedScheduledMatchTitleResults(
         return;
       }
 
-      if (canAutoSettleCustody) {
+      await acquireChampionshipTitleLock(tx,titleChallenge.trophyId);
+      await lockTrophyMoneyState(tx,titleChallenge.trophyId);
+      const explicitChampionshipReign = await tx.championshipCustodyReign.findFirst({where:{trophyId:titleChallenge.trophyId,endedAt:null},select:{id:true}});
+      if (canAutoSettleCustody && !explicitChampionshipReign) {
         if (challengerWon) {
           const transfer = await tx.trophy.updateMany({
             where: {
@@ -2087,6 +2095,7 @@ async function persistScheduledMatchResults(
   now = new Date()
 ) {
   const updatedRows: ScheduledMatchRow[] = [];
+  if(rows.some(row=>row.protocolVersion===CHAMPIONSHIP_PROTOCOL_VERSION)) await reconcileChampionshipEvidence(prisma);
   const matchedActiveSessionKeys = new Set<string>();
   const matchedCompletedSessionKeys = new Set<string>();
   const unlinkedFundedOpenPairCounts = new Map<string, number>();
@@ -2103,6 +2112,8 @@ async function persistScheduledMatchResults(
   if (needsOpenCorrelationGuard) {
     const allUnlinkedFundedOpenChallenges = await prisma.scheduledMatch.findMany({
       where: {
+        championshipProtocol: null,
+        championshipLeg: null,
         timingMode: "open",
         matchTime: null,
         linkedSessionKey: null,
@@ -2122,6 +2133,11 @@ async function persistScheduledMatchResults(
   }
 
   for (const row of rows) {
+    if(row.protocolVersion===CHAMPIONSHIP_PROTOCOL_VERSION) {
+      const refreshed=await prisma.scheduledMatch.findUnique({where:{id:row.id},select:SCHEDULED_MATCH_SELECT});
+      updatedRows.push(refreshed ?? row);
+      continue;
+    }
     // A late watcher result must never reopen a challenge that already reached
     // a refund/no-show/expiry verdict. Completed rows stay eligible below so a
     // previously failed title-review write can still be retried idempotently.
@@ -3260,6 +3276,7 @@ async function loadScheduledMatchRows(
                 challengerUserId: options.counterpartUserId,
                 challengedUserId: options.viewerUserId,
               },
+              { championshipProtocol: {AND:[{participants:{some:{userId:options.viewerUserId}}},{participants:{some:{userId:options.counterpartUserId}}}]} },
             ],
           },
         ]
@@ -3269,6 +3286,7 @@ async function loadScheduledMatchRows(
               OR: [
                 { challengerUserId: options.viewerUserId },
                 { challengedUserId: options.viewerUserId },
+                { championshipProtocol:{participants:{some:{userId:options.viewerUserId}}} },
               ],
             },
           ]
@@ -3277,10 +3295,10 @@ async function loadScheduledMatchRows(
   return prisma.scheduledMatch.findMany({
     where: options?.challengeId
       ? {
-          AND: [{ id: options.challengeId }, ...participantFilters],
+          AND: [{championshipLeg:null}, { id: options.challengeId }, ...participantFilters],
         }
       : {
-          AND: [{ OR: statusFilters }, ...participantFilters],
+          AND: [{championshipLeg:null}, { OR: statusFilters }, ...participantFilters],
         },
     orderBy: [{ scheduledAt: "asc" }, { createdAt: "desc" }],
     select: SCHEDULED_MATCH_SELECT,
@@ -3298,6 +3316,7 @@ async function loadChallengeHistoryRows(
         OR: [
           { challengerUserId: viewerUserId },
           { challengedUserId: viewerUserId },
+          { championshipProtocol:{participants:{some:{userId:viewerUserId}}} },
         ],
       };
 
@@ -3308,6 +3327,7 @@ async function loadChallengeHistoryRows(
     prisma.scheduledMatch.findMany({
       where: {
         ...visibilityFilter,
+        championshipLeg:null,
         status: { in: [...ACTIVE_SCHEDULED_STATUSES] },
       },
       orderBy: [{ updatedAt: "desc" }, { id: "desc" }],
@@ -3317,6 +3337,7 @@ async function loadChallengeHistoryRows(
     prisma.scheduledMatch.findMany({
       where: {
         ...visibilityFilter,
+        championshipLeg:null,
         status: { in: [...RESOLVED_SCHEDULED_STATUSES] },
       },
       orderBy: [{ id: "desc" }],
@@ -3355,11 +3376,13 @@ export async function loadChallengeHistoryPage(
         OR: [
           { challengerUserId: viewerUserId },
           { challengedUserId: viewerUserId },
+          { championshipProtocol:{participants:{some:{userId:viewerUserId}}} },
         ],
       };
   const rows = await prisma.scheduledMatch.findMany({
     where: {
       ...visibilityFilter,
+      championshipLeg:null,
       status: {
         in: [...RESOLVED_SCHEDULED_STATUSES],
       },
@@ -3371,7 +3394,8 @@ export async function loadChallengeHistoryPage(
   });
   const hasMore = rows.length > limit;
   const pageRows = rows.slice(0, limit);
-  const tiles = buildComparableChallengeTiles(pageRows).sort(compareHistoryTileOrder);
+  const projections=await loadChampionshipProjectionMap(prisma,pageRows.map(row=>row.id),viewerUserId);
+  const tiles = buildComparableChallengeTiles(pageRows).map(tile=>({...tile,championship:projections.get(tile.id)??null})).sort(compareHistoryTileOrder);
   const activities = await loadChallengeActivityRows(prisma, pageRows);
   return {
     tiles,
@@ -3551,7 +3575,8 @@ export async function loadChallengeThreadTile(
   // matches. Do not let the active-runway filter silently substitute another
   // challenge from the same pair or hide a resolved one.
   if (challengeId) {
-    return buildComparableChallengeTiles(reconciledRows).find(
+    const projections=await loadChampionshipProjectionMap(prisma,[challengeId],viewerUserId);
+    return buildComparableChallengeTiles(reconciledRows).map(tile=>({...tile,championship:projections.get(tile.id)??null})).find(
       (tile) => tile.id === challengeId
     ) ?? null;
   }
@@ -3562,7 +3587,8 @@ export async function loadChallengeThreadTile(
     sessionSnapshot.recentlyCompletedSessions
   );
 
-  return tiles[0] ?? null;
+  const projections=await loadChampionshipProjectionMap(prisma,tiles.map(tile=>tile.id),viewerUserId);
+  return tiles[0] ? {...tiles[0],championship:projections.get(tiles[0].id)??null} : null;
 }
 
 /** Load one exact ledger tile after the caller has enforced participant/admin access. */
@@ -3583,7 +3609,8 @@ export async function loadChallengeTileById(
     sessionSnapshot.activeSessions,
     sessionSnapshot.recentlyCompletedSessions
   );
-  return buildComparableChallengeTiles(reconciledRows).find(
+  const projections=await loadChampionshipProjectionMap(prisma,[challengeId]);
+  return buildComparableChallengeTiles(reconciledRows).map(tile=>({...tile,championship:projections.get(tile.id)??null})).find(
     (tile) => tile.id === challengeId
   ) ?? null;
 }
@@ -3699,8 +3726,10 @@ export async function loadChallengeHubSnapshot(
       normalizeScheduledMatchViewerPreference(row),
     ])
   );
+  const championshipProjections=await loadChampionshipProjectionMap(prisma,reconciledRows.map(row=>row.id),viewer.id);
   const attachPreference = (tile: ScheduledMatchTile): ScheduledMatchTile => ({
     ...tile,
+    championship:championshipProjections.get(tile.id)??null,
     challenger: {
       ...tile.challenger,
       watcher: watcherReadinessByUid.get(tile.challenger.uid) ?? ABSENT_CHALLENGE_WATCHER_READINESS,

@@ -8,14 +8,23 @@ systems: ["app-prodn","wolochain"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-09-22"
+reviewed_at: "2026-09-30"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
 
 # Scheduled Match Escrow Settlements
 
-Implementation review: 2026-09-22
+Implementation review: 2026-09-30
+
+New `championship_v2` Challenges follow the
+[Belt Constitution](./CHAMPIONSHIP_BELT_CONSTITUTION.md). Team funding uses
+stable paired ScheduledMatch financial legs beneath one parent title defense,
+with each participant signing their own original left/right CID/SID contract.
+Each winning roster seat receives its paired two-warrior wager purse. A title
+default is not a played result and uses refunds, not fabricated winner payouts.
+Every leg stays on this existing proof/settlement ledger; public cards show one
+aggregate Challenge and never call payments/refunds complete before tx proof.
 
 AoE2HDBets owns the app-side Challenge escrow settlement decision. WoloChain remains the chain rail for sending WOLO and proving tx hashes.
 
@@ -68,7 +77,7 @@ The scheduled-match executor only handles funded Challenge escrow rows from `sch
 - `no_show_right`: refund both wagers, return the left/challenger guarantee, and award the right/challenged missed guarantee to the left/challenger player who checked in.
 - `completed`: return both guarantees and award both wagers to the verified winner.
 
-Title custody is separate from WOLO settlement. Only an explicitly selected title
+Title custody is separate from WOLO settlement. In the legacy protocol only an explicitly selected title
 is attached to a scheduled challenge. Verified watcher/replay proof records the
 winner and proposes a title disposition, but custody and dethrone bounty state do
 not move until the commissioner settles or vetoes the review. Chain-backed title

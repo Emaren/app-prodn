@@ -39,6 +39,7 @@ export type ChampionsV2ModeChampion = {
   name: string;
   shortName: string;
   beltUrl: string;
+  holders?: Array<{name:string;uid?:string;href?:string}>;
   contenders: TitleContender[];
 };
 
@@ -77,6 +78,7 @@ export type ChampionsV2TeamTitle = {
   name: string;
   beltUrl: string;
   holderSlots: number;
+  holders?: Array<{name:string;uid?:string;href?:string}>;
   contenders: ChampionsV2TeamContender[];
 };
 
@@ -897,12 +899,14 @@ async function loadEloCustody(
 function modeChampion(
   lane: ChampionsLane,
   contenders: TitleContender[],
+  economy?: Awaited<ReturnType<typeof loadChampionTitleEconomyState>>,
 ): ChampionsV2ModeChampion {
   const rm = lane === "rm";
   return {
     lane,
     name: rm ? "Random Map Champion" : "Death Match Champion",
     shortName: rm ? "RM Champion" : "DM Champion",
+    holders: economy?.titles.find(title=>title.id === (rm ? "random-map-champion" : "deathmatch-champion"))?.holders ?? [],
     beltUrl: managedMediaPublicUrl(
       "belt",
       rm ? "random-map-champion" : "deathmatch-champion",
@@ -948,6 +952,7 @@ function curatedTeamContenders(
 function teamTitles(
   lane: ChampionsLane,
   entries: PublicPlayerDirectoryEntry[],
+  economy?: Awaited<ReturnType<typeof loadChampionTitleEconomyState>>,
 ): ChampionsV2TeamTitle[] {
   return ([2, 3, 4] as const).map((size) => ({
     size,
@@ -958,6 +963,7 @@ function teamTitles(
       "/champions/belts/tag-team.webp",
     ),
     holderSlots: size,
+    holders: economy?.titles.find(title=>title.id === `${size}v${size}-${lane}`)?.holders ?? [],
     contenders: curatedTeamContenders(entries, size),
   }));
 }
@@ -1015,10 +1021,10 @@ export async function loadChampionsV2State(
 
   const world: ChampionTitleState = {
     ...worldBase,
-    status: "vacant",
-    holders: [],
-    currentBountyWolo: undefined,
-    holderSince: null,
+    status: worldBase.status,
+    holders: worldBase.holders,
+    currentBountyWolo: worldBase.currentBountyWolo,
+    holderSince: worldBase.holderSince,
     contenders: alternatingWorldContenders(directoryEntries),
     contenderStatus: "live",
   };
@@ -1031,8 +1037,8 @@ export async function loadChampionsV2State(
 
   const womens: ChampionTitleState = {
     ...womensBase,
-    status: "vacant",
-    holders: [],
+    status: womensBase.status,
+    holders: womensBase.holders,
     contenders: [
       {
         rank: 1,
@@ -1052,11 +1058,11 @@ export async function loadChampionsV2State(
     world,
     chaos,
     womens,
-    rmChampion: modeChampion("rm", rmContenders),
-    dmChampion: modeChampion("dm", dmContenders),
+    rmChampion: modeChampion("rm", rmContenders,titleEconomy),
+    dmChampion: modeChampion("dm", dmContenders,titleEconomy),
     teams: {
-      rm: teamTitles("rm", directoryEntries),
-      dm: teamTitles("dm", directoryEntries),
+      rm: teamTitles("rm", directoryEntries,titleEconomy),
+      dm: teamTitles("dm", directoryEntries,titleEconomy),
     },
     elo: {
       rm: buildEloDivisions(directoryEntries, "rm", eloCustody),

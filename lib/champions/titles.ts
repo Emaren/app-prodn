@@ -700,6 +700,27 @@ export const designationTitles: ChampionTitleDefinition[] = [
   },
 ];
 
+// Canonical identities match the established Champions V2/Media Armory targets.
+// Team economics are title totals and remain inactive until explicitly configured.
+export const teamChampionshipTitles: ChampionTitleDefinition[] = ([2,3,4] as const).flatMap(size => (["rm","dm"] as const).map(lane=>({
+  ...tagTeamTitle, id:`${size}v${size}-${lane}`, slug:`${size}v${size}-${lane}`,
+  displayName:`${size}v${size} ${lane.toUpperCase()} Champions`, shortName:`${size}v${size} ${lane.toUpperCase()}`,
+  routeHref:`/champions/teams/${size}v${size}-${lane}`, dailyWolo:0, holders:[], status:"vacant" as const,
+  eligibility:`Exactly ${size} warriors per side in ${lane.toUpperCase()}.`,
+  rule:"A verified complete-roster defense replaces this championship roster atomically.",
+  challengeCopy:`Challenge for ${size}v${size} ${lane.toUpperCase()}`,
+})));
+export const modeChampionshipTitles: ChampionTitleDefinition[] = (["rm","dm"] as const).map(lane=>({
+  ...podiumTitles[0], id:lane === "rm" ? "random-map-champion" : "deathmatch-champion", slug:lane,
+  displayName:lane === "rm" ? "Random Map Champion" : "Death Match Champion", shortName:`${lane.toUpperCase()} Champion`,
+  routeHref:`/champions/modes/${lane}`, dailyWolo:0, holders:[], status:"vacant" as const,
+  eligibility:`A canonical ${lane.toUpperCase()} defense is required.`, rule:"Win the verified championship Challenge in the correct game mode.",
+}));
+export const dmEloChampionshipTitles: ChampionTitleDefinition[] = eloTitles.map(title=>({
+  ...title,id:title.id === "elo-challenger" ? "dm-contender" : title.id.replace("elo-","dm-"),slug:`dm-${title.slug}`,
+  displayName:`DM ${title.displayName}`,routeHref:`/champions/elo/dm-${title.slug}`,dailyWolo:0,
+}));
+
 export const championTitleSections: Record<TitleEconomySection, ChampionTitleDefinition[]> = {
   podium: podiumTitles,
   tagTeam: [tagTeamTitle],
@@ -714,6 +735,9 @@ export const allChampionTitles: ChampionTitleDefinition[] = [
   ...nationalTitles,
   ...eloTitles,
   ...designationTitles,
+  ...teamChampionshipTitles,
+  ...modeChampionshipTitles,
+  ...dmEloChampionshipTitles,
 ];
 
 export function findChampionTitleByHref(pathname: string) {

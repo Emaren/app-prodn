@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { createChampionshipChallenge } from "@/lib/championshipChallenges";
 
 import { NextRequest, NextResponse } from "next/server";
 
@@ -219,6 +220,12 @@ export async function POST(request: NextRequest) {
 
     const { prisma, viewer } = viewerState;
     const payload = (await request.json().catch(() => ({}))) as {
+      championshipVersion?: number;
+      mode?: string;
+      trophyId?: string | number | null;
+      challengerTeamUids?: string[];
+      eligibilityOverride?: boolean;
+      commissionerReason?: string;
       challengedUid?: string;
       timingMode?: string;
       acceptanceWindowHours?: number | string;
@@ -231,6 +238,11 @@ export async function POST(request: NextRequest) {
       trophyTitleId?: string | null;
       trophyCountry?: string | null;
     };
+
+    if (payload.championshipVersion === 2) {
+      const createdChallengeId = await createChampionshipChallenge(prisma, viewer.id, payload);
+      return NextResponse.json({ ...await loadChallengeHubSnapshot(prisma, viewer.uid), createdChallengeId });
+    }
 
     const challengedUid =
       typeof payload.challengedUid === "string" ? payload.challengedUid.trim() : "";
@@ -825,6 +837,7 @@ export async function POST(request: NextRequest) {
       duplicateWarning,
     });
   } catch (error) {
+    if (error instanceof Error && "status" in error && typeof error.status === "number") return NextResponse.json({detail:error.message}, {status:error.status});
     if (error instanceof ChallengeProtocolError) {
       return NextResponse.json(
         { detail: error.message, code: error.code },

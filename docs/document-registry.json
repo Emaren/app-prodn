@@ -278,7 +278,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "Bet and Replay Reliability Release — 2026-07-29",
+      "title": "Bet and Replay Reliability Release \u2014 2026-07-29",
       "type": "historical"
     },
     {
@@ -360,16 +360,112 @@
       "owner": "aoe2war-web",
       "path": "docs/CHALLENGE_SYSTEM.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-09-22",
+      "reviewed_at": "2026-09-30",
       "sensitivity": "internal",
-      "sha256": "93388e2c4ec7f5da202f524adf385cd203f1ee786bcc6e383362d70232763a02",
+      "sha256": "1e9641af18331aa935aded50c149d23ea7d48d134ae7e0262ce0e772931954dd",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
         "app-prodn",
         "wolochain"
       ],
-      "title": "AoE2WAR Challenge System v2",
+      "title": "AoE2WAR Challenge Protocols and Presentation",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "product-contract",
+      "id": "aoe2war.app-prodn.docs-championship-belt-constitution",
+      "owner": "aoe2war-web",
+      "path": "docs/CHAMPIONSHIP_BELT_CONSTITUTION.md",
+      "review_interval_days": 60,
+      "reviewed_at": "2026-09-30",
+      "sensitivity": "internal",
+      "sha256": "f995826f8361636c37c054fe9ea1e0f41f7c8f0863d5a15e22253079f3a7c12f",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "api-prodn",
+        "aoe2-watcher",
+        "wolochain"
+      ],
+      "title": "Championship Belt Constitution V1",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "integration-contract",
+      "id": "aoe2war.app-prodn.docs-championship-chain-handoff",
+      "owner": "aoe2war-web",
+      "path": "docs/CHAMPIONSHIP_CHAIN_HANDOFF.md",
+      "review_interval_days": 60,
+      "reviewed_at": "2026-09-30",
+      "sensitivity": "internal",
+      "sha256": "2f795b0195ece931ba2be341a24c5d3e05cc34ef6584bdd821455474f05b1bd4",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "wolochain"
+      ],
+      "title": "Championship Belt Chain Capability Handoff",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "operators",
+        "developers",
+        "ai-agents"
+      ],
+      "authority": "operational-procedure",
+      "id": "aoe2war.app-prodn.docs-championship-commissioner-runbook",
+      "owner": "aoe2war-web",
+      "path": "docs/CHAMPIONSHIP_COMMISSIONER_RUNBOOK.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-09-30",
+      "sensitivity": "internal",
+      "sha256": "8e7e73a17d60ffdd3ba31e93635e5983ead9b8f71e8650c32eae98233131c48c",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "wolochain"
+      ],
+      "title": "Championship Commissioner V1 Runbook",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "engineering-handoff",
+      "id": "aoe2war.app-prodn.docs-championship-implementation-handoff",
+      "owner": "aoe2war-web",
+      "path": "docs/CHAMPIONSHIP_IMPLEMENTATION_HANDOFF.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-09-30",
+      "sensitivity": "internal",
+      "sha256": "f5c73b0e026f86b08fbcbb856e877bfd10eca96892465d6ab76f678bf5b61d20",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "api-prodn",
+        "aoe2-watcher",
+        "wolochain"
+      ],
+      "title": "Championship Challenge V1 Implementation and Release Handoff",
       "type": "reference"
     },
     {
@@ -383,9 +479,9 @@
       "owner": "aoe2war-web",
       "path": "docs/CHAMPIONS_TITLE_ECONOMY.md",
       "review_interval_days": 90,
-      "reviewed_at": "2026-09-27",
+      "reviewed_at": "2026-09-30",
       "sensitivity": "internal",
-      "sha256": "09cad1d650a6eef333e847a4268e656ebb6fd56c68f3ba359f2d9dacf6fea587",
+      "sha256": "74b366225f6c1738b2bcfd501c5538cddd71ce147c0f0b1ca4c1e20da5e2e841",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -521,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "76dcc22c680721fc5ba9bc5932444cefa08f8a2284cbe26ed7a38f276b723419",
+      "sha256": "3c42d5ee3bb1077a08579bf319d67450b2d8a67208c07a8ca36128e7e3e3ab98",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -563,9 +659,9 @@
       "owner": "aoe2war-web",
       "path": "docs/ENGINEERING_MEMORY.md",
       "review_interval_days": 14,
-      "reviewed_at": "2026-09-29",
+      "reviewed_at": "2026-09-30",
       "sensitivity": "internal",
-      "sha256": "535817f0015fab5cc20ddf897f568466ffb918f3edaae27deb189c8be52caabb",
+      "sha256": "87d63e7d01c1e69394dc3260d930cbfae2bd6397e1df051e479da505afa17edb",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1103,7 +1199,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "AoE2WAR Production Performance Audit — 2026-07-18",
+      "title": "AoE2WAR Production Performance Audit \u2014 2026-07-18",
       "type": "historical"
     },
     {
@@ -1125,7 +1221,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "AoE2WAR Production Performance Audit — 2026-08-13",
+      "title": "AoE2WAR Production Performance Audit \u2014 2026-08-13",
       "type": "historical"
     },
     {
@@ -1170,7 +1266,7 @@
         "app-prodn",
         "api-prodn"
       ],
-      "title": "Player Identity Wave 2 — Deterministic Discovery V2",
+      "title": "Player Identity Wave 2 \u2014 Deterministic Discovery V2",
       "type": "reference"
     },
     {
@@ -1217,7 +1313,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "AoE2WAR Production Parity Seal — 2026-07-26",
+      "title": "AoE2WAR Production Parity Seal \u2014 2026-07-26",
       "type": "historical"
     },
     {
@@ -1309,7 +1405,7 @@
         "app-prodn",
         "wolochain"
       ],
-      "title": "AoE2WAR Certified Release Engineering Seal — 2026-08-10",
+      "title": "AoE2WAR Certified Release Engineering Seal \u2014 2026-08-10",
       "type": "historical"
     },
     {
@@ -1379,7 +1475,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "Replay Statistics and Operations Release — 2026-07-25",
+      "title": "Replay Statistics and Operations Release \u2014 2026-07-25",
       "type": "historical"
     },
     {
@@ -1438,9 +1534,9 @@
       "owner": "aoe2war-web",
       "path": "docs/SCHEDULED_MATCH_SETTLEMENTS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-22",
+      "reviewed_at": "2026-09-30",
       "sensitivity": "restricted",
-      "sha256": "921e8df3441f9423c9ceac90517189930b1234936f7a4f6b9c0b3c12d99953c6",
+      "sha256": "58a36ec555e63af97b1bab873ef3415198f564feebd414ee22fcc47c001fffa1",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1834,7 +1930,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "War Room Forum — Saturday July 4, 2026 Edition",
+      "title": "War Room Forum \u2014 Saturday July 4, 2026 Edition",
       "type": "historical"
     },
     {
@@ -1862,8 +1958,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/release-diff-eof-whitespace-20260930",
-    "commit": "20a4c4c43d55bf7dfc2507b24c3611a9027279bd"
+    "branch": "feature/championship-challenge-v1",
+    "commit": "60e48eeeba2b4f325998a17b8a0ce5fbc8f4b0f6"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

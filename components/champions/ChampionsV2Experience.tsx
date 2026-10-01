@@ -427,7 +427,7 @@ function ModeChampionCard({
           {champion.shortName}
         </h3>
         <div className="mt-2 inline-flex rounded-full border border-slate-400/14 bg-slate-600/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
-          Vacant
+          {champion.holders?.length ? `Champion: ${champion.holders[0].name}` : "Vacant"}
         </div>
       </div>
       <div className="absolute bottom-2 left-1/2 h-36 w-[85%] -translate-x-1/2">
@@ -532,6 +532,12 @@ function TeamTitleCard({
               className={`object-contain object-bottom opacity-52 ${avatarScale}`}
             />
             <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_40%,rgba(3,7,17,0.10)_60%,#030711_100%)]" />
+            {title.holders?.[index] && (
+              <a href={title.holders[index].href ?? "/champions"} className="absolute left-2 right-2 top-3 z-10 rounded-lg border border-amber-300/20 bg-slate-950/85 px-2 py-2 text-center text-sm font-black text-amber-100">
+                {title.holders[index].name}
+                <span className="block text-[9px] uppercase tracking-widest text-amber-200/70">Current Champion</span>
+              </a>
+            )}
             <div className={`absolute bottom-0 left-1/2 ${beltHeight} w-full -translate-x-1/2`}>
               <Image
                 src={title.beltUrl}
