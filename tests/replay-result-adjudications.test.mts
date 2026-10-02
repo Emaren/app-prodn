@@ -5,6 +5,7 @@ import {
   applyReplayResultAdjudication,
   decideReplayResultReviewAccess,
   replayResultDecisionStatus,
+  replayResultAdjudicationAuthorizesChampionship,
   ReplayResultReviewError,
   validateReplayResultAdjudication,
 } from "../lib/replayResultAdjudications.ts";
@@ -78,6 +79,45 @@ test("market-linked submitter verdicts wait for admin without touching betting s
   );
   assert.equal(replayResultDecisionStatus("verified_submitter", false), "accepted");
   assert.equal(replayResultDecisionStatus("site_admin", true), "accepted");
+});
+
+test("championship result authority admits Commissioner/title verdicts but rejects ordinary stats-only evidence", () => {
+  assert.equal(
+    replayResultAdjudicationAuthorizesChampionship({
+      decisionStatus: "accepted",
+      affectsStats: true,
+      actorRole: "site_admin",
+      idempotencyKey: "commissioner:game-42:v1",
+    }),
+    true
+  );
+  assert.equal(
+    replayResultAdjudicationAuthorizesChampionship({
+      decisionStatus: "accepted",
+      affectsStats: true,
+      actorRole: "watcher_terminal_auto",
+      idempotencyKey: "title-authority:rating-delta-v1:42",
+    }),
+    true
+  );
+  assert.equal(
+    replayResultAdjudicationAuthorizesChampionship({
+      decisionStatus: "accepted",
+      affectsStats: true,
+      actorRole: "watcher_terminal_auto",
+      idempotencyKey: "evidence:auto:replay-terminal-action-tail-v3:42",
+    }),
+    false
+  );
+  assert.equal(
+    replayResultAdjudicationAuthorizesChampionship({
+      decisionStatus: "accepted",
+      affectsStats: false,
+      actorRole: "site_admin",
+      idempotencyKey: "commissioner:game-42:v2",
+    }),
+    false
+  );
 });
 
 test("a verdict must assign the exact canonical roster and derives the full winning team", () => {

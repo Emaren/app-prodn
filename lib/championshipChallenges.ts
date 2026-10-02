@@ -16,6 +16,11 @@ import { replayEloLane } from "@/lib/champions/eloTrophy";
 import { acquireChallengeDesyncAdvisoryLock, loadDesyncIncidentsForSettlement, assertTitleTransferAllowed, assertWinnerSettlementAllowed } from "@/lib/desyncChallenge";
 import { ChallengeConflictError } from "@/lib/challenge/domain/errors";
 import { championshipClock, championshipDefaultDecision, projectChampionshipChallenge, validateChampionshipBattleStart, validateChampionshipBattleFinal, CHAMPIONSHIP_PROTOCOL_VERSION, type ChampionshipParticipantProof, type ChampionshipProjection, type ChampionshipBattleProof } from "@/lib/challengeChampionshipProtocol";
+import {
+  applyReplayResultAdjudication,
+  replayResultAdjudicationAuthorizesChampionship,
+  type EffectiveReplayResultAdjudication,
+} from "@/lib/replayResultAdjudications";
 
 export type ChampionshipChallengeProjection = ChampionshipProjection;
 const LOCK_NAMESPACE = 752_017;
@@ -242,6 +247,73 @@ function battleProof(session: LiveGameSession,row:ProtocolRow,participants:Champ
   }
   return base;
 }
+async function championshipResultSession(
+  tx: Pick<Prisma.TransactionClient, "replayResultAdjudication">,
+  session: LiveGameSession
+): Promise<LiveGameSession> {
+  if (session.state !== "completed") return session;
+
+  const adjudication = await tx.replayResultAdjudication.findFirst({
+    where: {
+      gameStatsId: session.id,
+      decisionStatus: "accepted",
+      sourceReplayHash: session.replayHash,
+      sourceParseIteration: session.parseIteration,
+    },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    select: {
+      id: true,
+      idempotencyKey: true,
+      decisionStatus: true,
+      affectsStats: true,
+      affectsBets: true,
+      actorDisplayNameSnapshot: true,
+      actorRole: true,
+      teamAssignments: true,
+      winningTeamKey: true,
+      winningPlayerKeys: true,
+      reason: true,
+      evidence: true,
+      sourceReplayHash: true,
+      sourceParseIteration: true,
+      sourceRosterHash: true,
+      sourcePropositionHash: true,
+      createdAt: true,
+    },
+  });
+
+  if (!replayResultAdjudicationAuthorizesChampionship(adjudication)) {
+    return session;
+  }
+
+  const projected = applyReplayResultAdjudication(
+    session,
+    adjudication as EffectiveReplayResultAdjudication
+  ) as LiveGameSession;
+
+  if (projected === session || !projected.winner) {
+    return session;
+  }
+
+  const winnerBySteamId = new Map(
+    projected.players
+      .filter((player) => Boolean(player.steamId))
+      .map((player) => [player.steamId as string, player.winner === true])
+  );
+
+  return {
+    ...session,
+    winner: projected.winner,
+    players: session.players.map((player) => ({
+      ...player,
+      winner:
+        player.steamId && winnerBySteamId.has(player.steamId)
+          ? winnerBySteamId.get(player.steamId) === true
+          : player.winner,
+    })),
+  };
+}
+
 async function readinessPrecedesStart(tx:Pick<PrismaClient,"scheduledMatchFundingProof">,row:ProtocolRow,startedAt:Date) {
   if(row.participants.some(p=>!p.acceptedAt||p.acceptedAt>startedAt))return false;
   const deposits=await tx.scheduledMatchFundingProof.findMany({where:{scheduledMatchId:{in:legIds(row)}}});
@@ -304,7 +376,8 @@ export async function reconcileChampionshipEvidence(prisma: PrismaClient, option
         const current = await tx.championshipChallenge.findUniqueOrThrow({where:{id:row.id},include:CHAMPIONSHIP_INCLUDE});
         if(!ACTIVE.includes(current.state) || current.commissionerActionAt || current.state === "commissioner_review") return;
         const currentParticipants=await participantProofs(tx,current);
-        const currentProof=battleProof(session,current,currentParticipants);
+        const resultSession=await championshipResultSession(tx,session);
+        const currentProof=battleProof(resultSession,current,currentParticipants);
         const currentInput={...current,participants:currentParticipants,battle:currentProof};
         const lockedStart=validateChampionshipBattleStart(currentInput);
         if(!lockedStart.ok||!await readinessPrecedesStart(tx,current,lockedStart.startedAt))return;
@@ -345,7 +418,7 @@ export async function reconcileChampionshipEvidence(prisma: PrismaClient, option
         }
         await tx.championshipChallenge.update({where:{id:row.id},data:{state:"completed",winnerSide,resultReplayId:session.id,reasonCode:null}});
         if(current.trophyChallengeId) await tx.trophyChallenge.update({where:{id:current.trophyChallengeId},data:{status:"settled",settlementStatus:winnerSide === "challenger" ? "app_custody_transferred":"holder_retained",winnerUserId:current.participants.find(p=>p.side===winnerSide&&p.seat===0)!.userId,replayId:session.id,verificationSummary:"Complete sealed roster, participant Watcher coverage and final replay winner verified."}});
-        await tx.scheduledMatch.updateMany({where:{id:{in:legIds(current)}},data:{status:"completed",resultWinnerSide:winnerSide === "challenger"?"challenger":"challenged",linkedSessionKey:session.sessionKey,linkedMapName:session.mapName,linkedWinner:session.winner,linkedDurationSeconds:session.durationSeconds,resultAt:now,settlementReadyAt:now,liveConfirmedAt:lockedStart.startedAt}});
+        await tx.scheduledMatch.updateMany({where:{id:{in:legIds(current)}},data:{status:"completed",resultWinnerSide:winnerSide === "challenger"?"challenger":"challenged",linkedSessionKey:session.sessionKey,linkedMapName:session.mapName,linkedWinner:resultSession.winner,linkedDurationSeconds:session.durationSeconds,resultAt:now,settlementReadyAt:now,liveConfirmedAt:lockedStart.startedAt}});
         await tx.scheduledMatch.update({where:{id:row.scheduledMatchId},data:{currentReplayClaimId:replayClaim.id}});
         await audit(tx,current,"title_result_verified",null,null,{replayId:session.id,winnerSide},now);
         resolved.push(row.scheduledMatchId);
