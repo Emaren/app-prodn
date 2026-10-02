@@ -15,7 +15,7 @@ import { loadLiveSessionSnapshot, type LiveGameSession } from "@/lib/liveSession
 import { replayEloLane } from "@/lib/champions/eloTrophy";
 import { acquireChallengeDesyncAdvisoryLock, loadDesyncIncidentsForSettlement, assertTitleTransferAllowed, assertWinnerSettlementAllowed } from "@/lib/desyncChallenge";
 import { ChallengeConflictError } from "@/lib/challenge/domain/errors";
-import { championshipClock, championshipDefaultDecision, projectChampionshipChallenge, validateChampionshipBattleStart, validateChampionshipBattleFinal, CHAMPIONSHIP_PROTOCOL_VERSION, type ChampionshipParticipantProof, type ChampionshipProjection, type ChampionshipBattleProof } from "@/lib/challengeChampionshipProtocol";
+import { championshipClock, championshipDefaultDecision, projectChampionshipChallenge, validateChampionshipBattleStart, validateChampionshipBattleFinal, CHAMPIONSHIP_CHALLENGE_WINDOW_MS, CHAMPIONSHIP_COMMISSIONER_GRACE_MS, CHAMPIONSHIP_PROTOCOL_VERSION, type ChampionshipParticipantProof, type ChampionshipProjection, type ChampionshipBattleProof } from "@/lib/challengeChampionshipProtocol";
 import {
   applyReplayResultAdjudication,
   replayResultAdjudicationAuthorizesChampionship,
@@ -321,11 +321,20 @@ async function readinessPrecedesStart(tx:Pick<PrismaClient,"scheduledMatchFundin
 }
 export async function reconcileChampionshipEvidence(prisma: PrismaClient, options:{now?:Date;take?:number;executeSettlements?:boolean;challengeIds?:number[]}={},dependencies:{loadSnapshot?:typeof loadLiveSessionSnapshot}={}) {
   const now = options.now ?? new Date();
-  const snapshot = await (dependencies.loadSnapshot ?? loadLiveSessionSnapshot)(prisma);
   const resolved:number[] = [];
-  const sessionSteamIds=[...new Set([...snapshot.recentlyCompletedSessions,...snapshot.activeSessions].flatMap(session=>session.players.map(p=>p.steamId).filter((id):id is string=>Boolean(id))))];
-  if(!sessionSteamIds.length)return resolved;
-  const rows = await prisma.championshipChallenge.findMany({where:{scheduledMatchId:options.challengeIds?{in:options.challengeIds}:undefined,state:{in:AUTOMATIC_EVIDENCE},commissionerActionAt:null,participants:{some:{steamIdSnapshot:{in:sessionSteamIds}}}},include:CHAMPIONSHIP_INCLUDE,take:options.take ?? 100,orderBy:{createdAt:"asc"}});
+  const rows = await prisma.championshipChallenge.findMany({where:{scheduledMatchId:options.challengeIds?{in:options.challengeIds}:undefined,state:{in:AUTOMATIC_EVIDENCE},commissionerActionAt:null},include:CHAMPIONSHIP_INCLUDE,take:options.take ?? 100,orderBy:{createdAt:"asc"}});
+  if(!rows.length)return resolved;
+  const evidenceParticipantUids=[...new Set(rows.flatMap(row=>row.participants.map(participant=>participant.uidSnapshot)))];
+  const snapshot = await (dependencies.loadSnapshot ?? loadLiveSessionSnapshot)(
+    prisma,
+    {
+      evidenceLookbackMs:
+        CHAMPIONSHIP_CHALLENGE_WINDOW_MS +
+        CHAMPIONSHIP_COMMISSIONER_GRACE_MS,
+      evidenceParticipantUids,
+    }
+  );
+  if(!snapshot.recentlyCompletedSessions.length&&!snapshot.activeSessions.length)return resolved;
   for(const row of rows) {
     if(row.commissionerActionAt || row.state === "commissioner_review") continue;
     const participants = await participantProofs(prisma,row);
