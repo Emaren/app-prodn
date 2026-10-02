@@ -220,7 +220,9 @@ export default function ChallengeRoomControls({ challengeId }: { challengeId: nu
           Participant controls
         </div>
         <p className="mt-3 text-sm leading-6 text-slate-300">
-          Sign in to accept, fund, negotiate, or check in. The public proof trail remains visible without signing in.
+          {match?.championship
+            ? "Sign in to manage optional WOLO terms. The Watchers handle match start and result proof automatically."
+            : "Sign in to accept, fund, negotiate, or check in. The public proof trail remains visible without signing in."}
         </p>
         <div className="mt-4"><SteamLoginButton /></div>
       </div>
@@ -246,7 +248,7 @@ export default function ChallengeRoomControls({ challengeId }: { challengeId: nu
           <p className="mt-1 text-sm text-slate-300">
             {isAdmin
               ? "Commissioner view: monitor the exact match state here; title disposition stays on the audited Trophy rail."
-              : match.championship ? "Accept, fund your side, and start the qualifying defense before the same Challenge deadline." : "Accept, fund, negotiate exact terms, and check in from this room."}
+              : match.championship ? "Coordinate and play before the deadline. Watchers start the match automatically; accept and fund only if you want the WOLO stake matched." : "Accept, fund, negotiate exact terms, and check in from this room."}
           </p>
         </div>
         <button

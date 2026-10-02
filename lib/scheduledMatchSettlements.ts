@@ -55,6 +55,7 @@ const SCHEDULED_MATCH_SETTLEMENT_SELECT = {
   cancelledAt: true,
   resultAt: true,
   settlementReadyAt: true,
+  liveConfirmedAt: true,
   linkedSessionKey: true,
   challengerFundingTxHash: true,
   challengerFundingWalletAddress: true,
@@ -567,6 +568,23 @@ function addTransfer(
   transfers.push(transfer);
 }
 
+function championshipWagerMatchedAtStart(
+  row: ScheduledMatchSettlementRow,
+  left: ParticipantPlan,
+  right: ParticipantPlan,
+) {
+  if (row.protocolVersion !== CHAMPIONSHIP_PROTOCOL_VERSION) {
+    return left.funded && right.funded;
+  }
+  const startedAtMs = row.liveConfirmedAt?.getTime() ?? NaN;
+  if (!Number.isFinite(startedAtMs)) return false;
+  return [left, right].every((participant) => {
+    if (!participant.funded || !participant.fundedAt) return false;
+    const fundedAtMs = Date.parse(participant.fundedAt);
+    return Number.isFinite(fundedAtMs) && fundedAtMs <= startedAtMs;
+  });
+}
+
 function buildRawTransfers(input: {
   row: ScheduledMatchSettlementRow;
   left: ParticipantPlan;
@@ -681,7 +699,23 @@ function buildRawTransfers(input: {
     const winnerSide = resolvedWinnerParticipantSide(input.row);
     const winner = winnerSide === "left" ? input.left : winnerSide === "right" ? input.right : null;
 
-    if (!winner || !input.left.funded || !input.right.funded) {
+    if (!winner) {
+      return transfers;
+    }
+
+    // Sporting truth and money truth are intentionally separate. A
+    // Championship game may be valid even when its WOLO stake never matched.
+    // For championship_v2, both tx-backed deposits must already exist at or
+    // before the authenticated Watcher start. A deposit that lands after play
+    // begins is still real escrow liability, but it cannot retroactively make
+    // the wager matched.
+    if (!championshipWagerMatchedAtStart(input.row, input.left, input.right)) {
+      if (input.left.funded) {
+        refundParticipant(input.left, total, "left_full_refund", "left unmatched full refund", "combined");
+      }
+      if (input.right.funded) {
+        refundParticipant(input.right, total, "right_full_refund", "right unmatched full refund", "combined");
+      }
       return transfers;
     }
 
@@ -1055,9 +1089,6 @@ export function buildScheduledMatchSettlementPlan(
   if (normalizeStatus(row.status) === "completed") {
     if (!resolvedWinnerParticipantSide(row)) {
       blockers.push("Completed match winner does not resolve uniquely to one challenge participant.");
-    }
-    if (!left.funded || !right.funded) {
-      blockers.push("Completed wager settlement requires both participants to have verified funding.");
     }
   }
   const pendingPlanWolo = transfers

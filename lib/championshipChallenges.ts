@@ -48,17 +48,24 @@ async function participantProofs(prisma: Pick<PrismaClient, "scheduledMatchFundi
   const [proofs,legs] = await Promise.all([
     prisma.scheduledMatchFundingProof.findMany({ where: { scheduledMatchId: { in: legIds(row) } } }),
     prisma.scheduledMatch.findMany({where:{id:{in:legIds(row)}},select:{id:true,wagerAmountWolo:true,guaranteeAmountWolo:true}})]);
-  return row.participants.map(p => ({ userId:p.userId, uid:p.uidSnapshot, name:p.displayNameSnapshot, side:p.side as "challenger" | "defender", seat:p.seat, steamId:p.steamIdSnapshot, accepted:Boolean(p.acceptedAt), notified:Boolean(p.notifiedAt), funded:proofs.some(proof => {const leg=legs.find(leg=>leg.id===p.fundingScheduledMatchId);return leg && proof.scheduledMatchId === leg.id && proof.participantSide === p.fundingSide && proof.walletAddress === p.walletAddressSnapshot && proof.amountWolo===leg.wagerAmountWolo+leg.guaranteeAmountWolo && Boolean(proof.txHash);}), fundingChallengeId:p.fundingScheduledMatchId, fundingSide:p.fundingSide as "left" | "right" }));
+  return row.participants.map(p => {
+    const leg=legs.find(leg=>leg.id===p.fundingScheduledMatchId);
+    const requiredWolo=leg ? leg.wagerAmountWolo+leg.guaranteeAmountWolo : null;
+    const funded=requiredWolo===0 || proofs.some(proof => leg && proof.scheduledMatchId === leg.id && proof.participantSide === p.fundingSide && proof.walletAddress === p.walletAddressSnapshot && proof.amountWolo===requiredWolo && Boolean(proof.txHash));
+    return { userId:p.userId, uid:p.uidSnapshot, name:p.displayNameSnapshot, side:p.side as "challenger" | "defender", seat:p.seat, steamId:p.steamIdSnapshot, accepted:Boolean(p.acceptedAt), notified:Boolean(p.notifiedAt), funded, fundingChallengeId:p.fundingScheduledMatchId, fundingSide:p.fundingSide as "left" | "right" };
+  });
 }
 async function championshipSettlementProjection(prisma:PrismaClient,row:ProtocolRow) {
-  const [group,settlements,proofs,trophy]=await Promise.all([
+  const [group,settlements,proofs,financialLegs,trophy]=await Promise.all([
     row.trophyChallengeId ? prisma.championshipTransferGroup.findFirst({where:{challengeId:row.trophyChallengeId},orderBy:{id:"desc"}}) : null,
     prisma.scheduledMatchSettlement.findMany({where:{scheduledMatchId:{in:legIds(row)},status:{not:"superseded"}}}),
     prisma.scheduledMatchFundingProof.findMany({where:{scheduledMatchId:{in:legIds(row)}}}),
+    prisma.scheduledMatch.findMany({where:{id:{in:legIds(row)}},select:{wagerAmountWolo:true,guaranteeAmountWolo:true}}),
     row.trophyId ? prisma.trophy.findUnique({where:{id:row.trophyId}}) : null]);
   const executed=settlements.filter(s=>s.status==="executed"&&Boolean(s.txHash));
   const purseFundedWolo=proofs.reduce((sum,p)=>sum+p.amountWolo,0),pursePaidWolo=executed.reduce((sum,p)=>sum+p.amountWolo,0);
-  const paymentStatus=proofs.length===0?"unfunded":executed.length===settlements.length&&pursePaidWolo===purseFundedWolo?"proven":executed.length>0?"partial":settlements.some(s=>s.status==="failed")?"failed":"pending";
+  const requiredFinancialWolo=financialLegs.reduce((sum,leg)=>sum+leg.wagerAmountWolo+leg.guaranteeAmountWolo,0);
+  const paymentStatus=requiredFinancialWolo===0?"none":proofs.length===0?"unfunded":executed.length===settlements.length&&pursePaidWolo===purseFundedWolo?"proven":executed.length>0?"partial":settlements.some(s=>s.status==="failed")?"failed":"pending";
   const bounty=group?.bountyPayoutId ? await prisma.trophyPayout.findUnique({where:{id:group.bountyPayoutId},include:{allocations:true}}) : null;
   const paidBountySeats=bounty?.allocations.filter(p=>p.status==="paid"&&Boolean(p.txHash))??[];
   const bountyStatus=!group||group.frozenBountyWolo===0?"none":!bounty?"pending":bounty.status==="paid"&&Boolean(bounty.txHash)?"paid":bounty.allocations.length>0&&paidBountySeats.length===bounty.allocations.length?"paid":paidBountySeats.length>0?"partial":bounty.status==="failed"?"failed":"pending";
@@ -317,11 +324,241 @@ async function championshipResultSession(
   };
 }
 
-async function readinessPrecedesStart(tx:Pick<PrismaClient,"scheduledMatchFundingProof">,row:ProtocolRow,startedAt:Date) {
-  if(row.participants.some(p=>!p.acceptedAt||p.acceptedAt>startedAt))return false;
-  const deposits=await tx.scheduledMatchFundingProof.findMany({where:{scheduledMatchId:{in:legIds(row)}}});
-  return deposits.every(deposit=>deposit.createdAt<=startedAt);
+async function readinessPrecedesStart(_tx:Pick<PrismaClient,"scheduledMatchFundingProof">,row:ProtocolRow,startedAt:Date) {
+  // Competitive readiness is now the durable challenge/notification boundary.
+  // A Watcher-observed game is valid even when one or both players skipped the
+  // old acceptance/funding ceremony. Funding is frozen separately once the
+  // defense starts and only controls financial settlement/default rights.
+  if(row.createdAt>startedAt)return false;
+  return row.participants.every(participant=>Boolean(participant.notifiedAt&&participant.notifiedAt<=startedAt));
 }
+
+const SPONTANEOUS_LOCK_NAMESPACE = 752_018;
+const SPONTANEOUS_TITLE_ORIGIN = "watcher_encounter_v1";
+
+function exactSteamRoster(players: LiveGameSession["players"]) {
+  const ids=players.map(player=>player.steamId?.trim()||"");
+  return ids.length===2&&ids.every(Boolean)&&new Set(ids).size===2 ? ids.sort() : null;
+}
+function sameStringSet(left:string[],right:string[]) {
+  return left.length===right.length&&left.every((value,index)=>value===right[index]);
+}
+function spontaneousObservedStart(session:LiveGameSession,participantUids:string[],steamIds:string[],lane:"rm"|"dm") {
+  const firstByUid=new Map<string,number>();
+  for(const observation of session.authenticatedLiveObservations??[]) {
+    if(!participantUids.includes(observation.uid)||replayEloLane(observation.gameType)!==lane)continue;
+    const observationRoster=exactSteamRoster(observation.players);
+    if(!observationRoster||!sameStringSet(observationRoster,steamIds))continue;
+    const observedMs=Date.parse(observation.observedAt);
+    if(!Number.isFinite(observedMs))continue;
+    const prior=firstByUid.get(observation.uid);
+    if(prior===undefined||observedMs<prior)firstByUid.set(observation.uid,observedMs);
+  }
+  if(participantUids.some(uid=>!firstByUid.has(uid)))return null;
+  return new Date(Math.max(...participantUids.map(uid=>firstByUid.get(uid)!)));
+}
+async function explicitChampionshipClaimsSession(prisma:PrismaClient,session:LiveGameSession,steamIds:string[]) {
+  const rows=await prisma.championshipChallenge.findMany({where:{state:{in:AUTOMATIC_EVIDENCE},commissionerActionAt:null},include:CHAMPIONSHIP_INCLUDE,take:100});
+  for(const row of rows) {
+    const roster=row.participants.map(participant=>participant.steamIdSnapshot).sort();
+    if(!sameStringSet(roster,steamIds))continue;
+    const participants=await participantProofs(prisma,row);
+    const start=validateChampionshipBattleStart({...row,participants,battle:battleProof(session,row,participants)});
+    if(start.ok&&await readinessPrecedesStart(prisma,row,start.startedAt))return true;
+  }
+  return false;
+}
+function platformSessionKeyFromEvents(value:Prisma.JsonValue|null) {
+  if(!value||typeof value!=="object"||Array.isArray(value))return null;
+  const matchId=(value as Record<string,unknown>).platform_match_id;
+  return typeof matchId==="string"&&matchId.trim()?"platform:"+matchId.trim():null;
+}
+
+export async function materializeSpontaneousChampionshipEncounters(
+  prisma:PrismaClient,
+  options:{gameStatsIds?:number[];take?:number;now?:Date}={}
+) {
+  const gameStatsIds=[...new Set((options.gameStatsIds??[]).filter(id=>Number.isSafeInteger(id)&&id>0))];
+  if(!gameStatsIds.length)return [] as number[];
+  const targetRows=await prisma.gameStats.findMany({where:{id:{in:gameStatsIds}},select:{id:true,key_events:true}});
+  const targetSessionKeys=new Set(targetRows.map(row=>platformSessionKeyFromEvents(row.key_events)).filter((key):key is string=>Boolean(key)));
+  const targetIds=new Set(targetRows.map(row=>row.id));
+  const snapshot=await loadLiveSessionSnapshot(prisma);
+  const sessions=[...snapshot.activeSessions,...snapshot.recentlyCompletedSessions]
+    .filter(session=>targetIds.has(session.id)||targetSessionKeys.has(session.sessionKey))
+    .sort((left,right)=>Date.parse(left.createdAt)-Date.parse(right.createdAt))
+    .slice(0,Math.max(1,Math.min(options.take??8,24)));
+  if(!sessions.length)return [] as number[];
+  await ensureTrophySeedData(prisma);
+  const materialized:number[]=[];
+
+  for(const session of sessions) {
+    const lane=replayEloLane(session.gameType);
+    const steamIds=exactSteamRoster(session.players);
+    if(!lane||!steamIds)continue;
+    const users=await prisma.user.findMany({where:{steamId:{in:steamIds}},select:USER_SELECT});
+    if(users.length!==2||new Set(users.map(user=>user.steamId)).size!==2)continue;
+    const watcherUids=session.authenticatedLiveWatcherParticipantUids??[];
+    if(!users.every(user=>watcherUids.includes(user.uid)))continue;
+    const startAt=spontaneousObservedStart(session,users.map(user=>user.uid),steamIds,lane);
+    if(!startAt)continue;
+    if(await prisma.championshipChallenge.findFirst({where:{defenseSessionKey:session.sessionKey},select:{id:true}}))continue;
+    if(await explicitChampionshipClaimsSession(prisma,session,steamIds))continue;
+
+    const directions=[];
+    for(const holder of users) {
+      const challenger=users.find(user=>user.id!==holder.id)!;
+      const stack=await loadHeldChampionshipStack(prisma,holder.id,challenger.id);
+      // The ordinary stack exposes one globally attackable solo title, but a
+      // watcher encounter has an authoritative RM/DM lane. Select the first
+      // eligible title compatible with that actual game so an RM belt cannot
+      // accidentally shield a DM belt (or vice versa).
+      const summary=stack.titles.find(title=>title.teamSize===1&&title.eligible&&(title.mode===lane||title.mode===null));
+      if(summary)directions.push({holder,challenger,summary});
+    }
+    if(!directions.length)continue;
+    const trophies=await prisma.trophy.findMany({where:{id:{in:directions.map(direction=>direction.summary.trophyId)}}});
+    directions.sort((left,right)=>{
+      const leftTrophy=trophies.find(trophy=>trophy.id===left.summary.trophyId);
+      const rightTrophy=trophies.find(trophy=>trophy.id===right.summary.trophyId);
+      if(!leftTrophy||!rightTrophy)return left.summary.trophyId-right.summary.trophyId;
+      return championshipBeltPolicy(leftTrophy).priority-championshipBeltPolicy(rightTrophy).priority||leftTrophy.trophyId.localeCompare(rightTrophy.trophyId);
+    });
+    const selected=directions[0]!;
+    const trophy=trophies.find(row=>row.id===selected.summary.trophyId);
+    if(!trophy)continue;
+    const candidate=await loadChampionshipCandidate(prisma,selected.challenger.id);
+    if(!championshipEligibility(trophy,candidate).eligible)continue;
+    const requestId="championship-watch:"+session.id+":"+trophy.id;
+    const clock=championshipClock(startAt);
+    const proof:ChampionshipBattleProof={
+      id:session.id,
+      sessionKey:session.sessionKey,
+      startedAt:startAt.toISOString(),
+      mode:lane,
+      state:session.state,
+      finalProofPending:session.finalProofPending,
+      desync:false,
+      watcherParticipantUids:watcherUids,
+      players:session.players,
+      startProvenance:"authenticated_live_observation",
+      startWatcherParticipantUids:users.map(user=>user.uid),
+    };
+
+    const challengeId=await prisma.$transaction(async tx=>{
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(${SPONTANEOUS_LOCK_NAMESPACE}, ${session.id})`;
+      const replay=await tx.scheduledMatch.findUnique({where:{creationRequestId:requestId},select:{id:true}});
+      if(replay)return replay.id;
+      const alreadyBound=await tx.championshipChallenge.findFirst({where:{defenseSessionKey:session.sessionKey},select:{scheduledMatchId:true}});
+      if(alreadyBound)return alreadyBound.scheduledMatchId;
+      await acquireChampionshipTitleLock(tx,trophy.id);
+      const currentTrophy=await lockTrophyMoneyState(tx,trophy.id);
+      if(!currentTrophy)return null;
+      const policy=championshipBeltPolicy(currentTrophy);
+      const custody=await getChampionshipCustody(tx,currentTrophy);
+      if(policy.teamSize!==1||(policy.mode!==null&&policy.mode!==lane)||custody.epoch!==selected.summary.custodyEpoch||custody.roster.length!==1||custody.roster[0]?.userId!==selected.holder.id)return null;
+      const challenger=await tx.user.findUnique({where:{id:selected.challenger.id},select:USER_SELECT});
+      const defender=await tx.user.findUnique({where:{id:selected.holder.id},select:USER_SELECT});
+      if(!challenger||!defender||challenger.steamId!==selected.challenger.steamId||defender.steamId!==selected.holder.steamId)return null;
+      if(!championshipEligibility(currentTrophy,{...candidate,representedCountry:challenger.representedCountry,genderDivision:challenger.genderDivision}).eligible)return null;
+
+      const parent=await tx.scheduledMatch.create({data:{
+        challengerUserId:challenger.id,
+        challengedUserId:defender.id,
+        status:"live_confirmed",
+        scheduledAt:startAt,
+        timingMode:"open",
+        acceptBy:clock.challengeDeadline,
+        fundBy:clock.challengeDeadline,
+        playBy:clock.challengeDeadline,
+        creationRequestId:requestId,
+        protocolVersion:CHAMPIONSHIP_PROTOCOL_VERSION,
+        challengerSteamIdSnapshot:challenger.steamId,
+        challengedSteamIdSnapshot:defender.steamId,
+        resultWinnerSide:null,
+        challengeNote:"Watcher-detected spontaneous title bout",
+        wagerAmountWolo:0,
+        guaranteeAmountWolo:0,
+        acceptedAt:startAt,
+        liveConfirmedAt:startAt,
+        linkedSessionKey:session.sessionKey,
+        linkedMapName:session.mapName,
+        createdAt:startAt,
+      }});
+      const titleChallenge=await tx.trophyChallenge.create({data:{
+        trophyId:currentTrophy.id,
+        challengeKind:"watcher_encounter",
+        challengerUserId:challenger.id,
+        defenderUserId:defender.id,
+        challengerWoloAddress:challenger.walletAddress,
+        defenderWoloAddress:defender.walletAddress,
+        expectedPlayerNames:[name(challenger),name(defender)],
+        requiredNationality:currentTrophy.eligibleNationality,
+        requiredEloMin:currentTrophy.eloBandMin,
+        requiredEloMax:currentTrophy.eloBandMax,
+        eligibilitySnapshot:{origin:SPONTANEOUS_TITLE_ORIGIN,candidate,custodyEpoch:custody.epoch,sessionKey:session.sessionKey,observedAt:startAt.toISOString(),lane},
+        status:"accepted",
+        scheduledMatchId:parent.id,
+        watcherSessionId:session.sessionKey,
+        settlementStatus:"not_started",
+        createdAt:startAt,
+      }});
+      const protocol=await tx.championshipChallenge.create({data:{
+        scheduledMatchId:parent.id,
+        trophyChallengeId:titleChallenge.id,
+        trophyId:currentTrophy.id,
+        titleName:currentTrophy.displayName,
+        mode:lane,
+        teamSize:1,
+        state:"defense_in_progress",
+        ...clock,
+        expectedCustodyEpoch:custody.epoch,
+        expectedDefenderRoster:[defender.id],
+        eligibilitySnapshot:{
+          origin:SPONTANEOUS_TITLE_ORIGIN,
+          policy,
+          candidates:[{userId:challenger.id,...candidate}],
+          overrideReceipt:null,
+          originalClock:{createdAt:startAt.toISOString(),challengeDeadline:clock.challengeDeadline.toISOString(),commissionerGraceDeadline:clock.commissionerGraceDeadline.toISOString()},
+          watcherEncounter:{sessionKey:session.sessionKey,replayId:session.id,startWatcherParticipantUids:users.map(user=>user.uid)},
+        },
+        eligibilityOverride:false,
+        defenseStartedAt:startAt,
+        defenseSessionKey:session.sessionKey,
+        defenseProof:proof as unknown as Prisma.InputJsonValue,
+        createdAt:startAt,
+      }});
+      for(const [side,user] of [["challenger",challenger],["defender",defender]] as const)await tx.championshipChallengeParticipant.create({data:{
+        protocolId:protocol.id,
+        userId:user.id,
+        uidSnapshot:user.uid,
+        displayNameSnapshot:name(user),
+        side,
+        seat:0,
+        steamIdSnapshot:user.steamId!,
+        walletAddressSnapshot:user.walletAddress,
+        fundingScheduledMatchId:parent.id,
+        fundingSide:side==="challenger"?"left":"right",
+        acceptedAt:startAt,
+        notifiedAt:startAt,
+      }});
+      await audit(tx,protocol,"watcher_title_bout_started",null,null,{origin:SPONTANEOUS_TITLE_ORIGIN,sessionKey:session.sessionKey,replayId:session.id,lane,challengerUserId:challenger.id,defenderUserId:defender.id},startAt);
+      const body=[
+        "Challenge game underway",
+        name(challenger)+" vs "+name(defender),
+        "Title Stakes: "+currentTrophy.displayName,
+        "Status: Watchers confirmed both warriors in "+lane.toUpperCase()+" play. No check-in required.",
+        "The verified final replay will defend or transfer the title automatically.",
+      ].join("\n");
+      await postChallengeInboxNotice(tx,{senderUserId:defender.id,targetUserId:challenger.id,challengeId:parent.id,body,now:startAt});
+      await postChallengeInboxNotice(tx,{senderUserId:challenger.id,targetUserId:defender.id,challengeId:parent.id,body,now:startAt});
+      return parent.id;
+    },{timeout:30_000});
+    if(challengeId)materialized.push(challengeId);
+  }
+  return [...new Set(materialized)];
+}
+
 export async function reconcileChampionshipEvidence(prisma: PrismaClient, options:{now?:Date;take?:number;executeSettlements?:boolean;challengeIds?:number[]}={},dependencies:{loadSnapshot?:typeof loadLiveSessionSnapshot}={}) {
   const now = options.now ?? new Date();
   const resolved:number[] = [];
@@ -433,6 +670,19 @@ export async function reconcileChampionshipEvidence(prisma: PrismaClient, option
         await tx.scheduledMatch.updateMany({where:{id:{in:legIds(current)}},data:{status:"completed",resultWinnerSide:winnerSide === "challenger"?"challenger":"challenged",linkedSessionKey:session.sessionKey,linkedMapName:session.mapName,linkedWinner:resultSession.winner,linkedDurationSeconds:session.durationSeconds,resultAt:now,settlementReadyAt:now,liveConfirmedAt:lockedStart.startedAt}});
         await tx.scheduledMatch.update({where:{id:row.scheduledMatchId},data:{currentReplayClaimId:replayClaim.id}});
         await audit(tx,current,"title_result_verified",null,null,{replayId:session.id,winnerSide},now);
+        if(current.trophyId) {
+          const challengerNames=current.participants.filter(p=>p.side==="challenger").sort((a,b)=>a.seat-b.seat).map(p=>p.displayNameSnapshot);
+          const defenderNames=current.participants.filter(p=>p.side==="defender").sort((a,b)=>a.seat-b.seat).map(p=>p.displayNameSnapshot);
+          const headline=winnerSide==="challenger"?"Championship transferred":"Championship defended";
+          const resultLine=winnerSide==="challenger"
+            ? challengerNames.join(" / ")+" won. App title custody transferred; artifact status remains visible in Challenge history."
+            : defenderNames.join(" / ")+" successfully defended the championship. No title custody transfer required.";
+          const body=[headline,challengerNames.join(" / ")+" vs "+defenderNames.join(" / "),"Title Stakes: "+(current.titleName||"Championship"),"Status: "+resultLine].join("\n");
+          for(const target of current.participants) {
+            const sender=current.participants.find(p=>p.side!==target.side);
+            if(sender) await postChallengeInboxNotice(tx,{senderUserId:sender.userId,targetUserId:target.userId,challengeId:row.scheduledMatchId,body,now});
+          }
+        }
         resolved.push(row.scheduledMatchId);
         return true;
       },{timeout:30_000});

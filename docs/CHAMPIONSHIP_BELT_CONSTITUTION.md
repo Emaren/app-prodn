@@ -66,10 +66,11 @@ Team actions appear only for titles held by the selected rival's current
 roster. That title fixes mode and exact size. The creator invites size-minus-one
 registered warriors; champion members derive from locked current custody.
 Both sides are sealed, disjoint, complete rosters with current AoE2WAR/Steam
-identity. Every participant receives the parent Challenge and confirms their
-own participation. Funding binds each person to their own wallet. Ordinary
-substitution after issuance is forbidden; exceptional correction requires
-Commissioner disposition and immutable history.
+identity. Every participant receives the parent Challenge. A participant may
+explicitly accept/fund, but actually joining the exact Watcher-observed battle
+is sufficient competitive consent. Funding binds each person to their own
+wallet. Ordinary substitution after issuance is forbidden; exceptional
+correction requires Commissioner disposition and immutable history.
 
 ## VI. Challenge clock
 
@@ -77,7 +78,12 @@ The server creates one deadline: creation plus 24 hours. Acceptance, funding,
 refresh, reconnect, renderer choice, and device changes never reset it. There
 is no V2 duration or appointment selector. Every surface renders the same
 projection, using a live seconds countdown and accessible final-hour urgency.
-Acceptance and funding remain distinct states with a clear next action.
+
+Championship V2 has no player check-in ceremony. Acceptance and funding remain
+optional financial/default evidence, but authenticated Watcher-observed play by
+the exact sealed roster is competitive consent. Once that qualifying battle
+starts, the sporting clock stops even when one or both warriors skipped the
+accept/fund buttons.
 
 At hour 24, a title with no qualifying start enters Commissioner grace. Grace
 ends at the original deadline plus one hour, even if a delayed worker observes
@@ -112,10 +118,22 @@ uses stable paired ScheduledMatch financial legs under one parent title
 Challenge. Each warrior signs their own leg and side. Legs are financial
 implementation records, excluded from ordinary public Challenge/betting and
 legacy lifecycle handling. They share aggregate title proof and deadline.
-Each winning seat receives its paired wager purse; proven refunds return each
-original deposit. No app-created pooled balance or new escrow wallet exists.
-V2 uses positive per-warrior wager for title challenges and zero Match Guarantee;
-historical guarantees retain their original meaning.
+Each winning seat receives its paired wager purse only when both required
+deposits were already proven at or before the authenticated Watcher start.
+Sporting truth never waits for money: a played battle still counts when its
+WOLO stake never matched. Any unilateral or late deposit remains real escrow
+liability and returns whole to its original funding wallet; it cannot
+retroactively create winner-take-pool authority. No app-created pooled balance
+or new escrow wallet exists. V2 uses positive per-warrior wager for explicit
+title challenges and zero Match Guarantee; historical guarantees retain their
+original meaning.
+
+An exact dual-Watcher 1v1 encounter may also materialize a zero-wager solo title
+bout without a prior Challenge when one warrior holds an eligible RM/DM-compatible
+title and the other satisfies its policy. Existing explicit Challenges take
+precedence. The ambient bout is idempotent by session/title locks and remains
+subject to exact roster, lane, custody epoch, eligibility, result, and desync
+proof before custody can move.
 
 ## IX. Championship Reward Tribute
 

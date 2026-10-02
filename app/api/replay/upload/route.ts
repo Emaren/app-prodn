@@ -1,4 +1,4 @@
-import { reconcileChampionshipEvidence } from "@/lib/championshipChallenges";
+import { materializeSpontaneousChampionshipEncounters, reconcileChampionshipEvidence } from "@/lib/championshipChallenges";
 import { NextRequest, NextResponse } from "next/server";
 import { getBackendUpstreamBase } from "@/lib/backendUpstream";
 import { getSessionUid } from "@/lib/session";
@@ -212,6 +212,14 @@ export async function POST(request: NextRequest) {
       reconcileTournamentForAcceptedUpload: !isFinalUpload,
       reconcileMarketsForReadyResult: isFinalUpload,
     });
+    const championshipGameId=typeof ingestReceipt.gameId==="number"
+      ? ingestReceipt.gameId
+      : typeof ingestReceipt.gameId==="string"&&/^\d+$/.test(ingestReceipt.gameId)
+        ? Number(ingestReceipt.gameId)
+        : null;
+    if (championshipGameId&&Number.isSafeInteger(championshipGameId)) {
+      await materializeSpontaneousChampionshipEncounters(prisma,{gameStatsIds:[championshipGameId]}).catch(error=>console.error("Spontaneous championship encounter remains queued:",error));
+    }
     await reconcileChampionshipEvidence(prisma,{executeSettlements:true}).catch(error=>console.error("Championship evidence remains queued:",error));
     if (!postIngest.financial.markets.requested) {
       queueBetMarketEnsure(prisma, 0);

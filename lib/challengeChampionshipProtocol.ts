@@ -43,9 +43,9 @@ export function projectChampionshipChallenge(input: {
     : phase === "commissioner_review" ? "COMMISSIONER REVIEW"
     : phase === "disputed" ? "TITLE IN DISPUTE — Commissioner playoff required"
     : TERMINAL.has(phase) ? phase === "completed" ? "Result verified — inspect custody and chain payment proof" : phase === "defaulted" ? "Title default recorded — refunds require chain proof" : `Challenge ${phase}`
-    : !allAccepted ? "Accept the Challenge — every warrior must confirm"
-    : !allFunded ? "Challenge accepted — fund your side"
-    : "Ready — start the qualifying defense before the deadline";
+    : !allAccepted ? "Coordinate and play before the deadline — Watchers start the match automatically. Accept only to confirm and fund WOLO terms."
+    : !allFunded ? "Play whenever ready — Watchers start the match automatically. Fund before play only if you want the WOLO stake matched."
+    : "Ready — play before the deadline; Watchers will detect the battle automatically.";
   return { version: 2, serverNow: now.toISOString(), challengeDeadline: input.challengeDeadline.toISOString(), commissionerGraceDeadline: input.commissionerGraceDeadline.toISOString(), phase, titleName: input.titleName, nextInstruction, defenseStartedAt: input.defenseStartedAt?.toISOString() ?? null, reasonCode: input.reasonCode,
     participants: input.participants.map(p => ({ ...p, canAccept: open && p.userId === viewerUserId && !p.accepted, canFund: open && p.userId === viewerUserId && p.accepted && !p.funded })) };
 }
@@ -77,7 +77,9 @@ export function validateChampionshipBattleStart(input: {
   }
   const defenders = participants.filter(p => p.side === "defender");
   if (!defenders.some(p => battle.startWatcherParticipantUids?.includes(p.uid))) return { ok: false, code: "WATCHER_PROOF_MISSING" } as const;
-  if (!participants.every(p => p.accepted && p.funded)) return { ok: false, code: "CHALLENGE_NOT_FUNDED" } as const;
+  // Watcher-observed play is the competitive consent boundary. Acceptance and
+  // funding remain financial/default evidence, but never veto a game the
+  // sealed roster actually played inside the challenge window.
   return { ok: true, startedAt: new Date(startedMs) } as const;
 }
 export function validateChampionshipBattleFinal(input: Parameters<typeof validateChampionshipBattleStart>[0]) {

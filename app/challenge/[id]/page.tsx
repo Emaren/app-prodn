@@ -201,6 +201,7 @@ function buildMoneyRows(input: {
   guarantee: number;
   leftFunded: boolean;
   rightFunded: boolean;
+  completedWagerMatched: boolean;
 }) {
   const rows: MoneyRow[] = [];
 
@@ -234,6 +235,15 @@ function buildMoneyRows(input: {
     }
     if (input.rightFunded) {
       refund(`${input.rightName} challenge funding return`, input.wager + input.guarantee, "right");
+    }
+  }
+
+  if (input.status === "completed" && !input.completedWagerMatched) {
+    if (input.leftFunded) {
+      refund(`${input.leftName} unmatched challenge funding return`, input.wager + input.guarantee, "left");
+    }
+    if (input.rightFunded) {
+      refund(`${input.rightName} unmatched challenge funding return`, input.wager + input.guarantee, "right");
     }
   }
 
@@ -371,6 +381,19 @@ export default async function ChallengeDetailPage({
   const leftRosterName = championship?.participants.filter((member) => member.side === "challenger").map((member) => member.name).join(" + ") || leftName;
   const rightRosterName = championship?.participants.filter((member) => member.side === "defender").map((member) => member.name).join(" + ") || rightName;
   const totalEach = match.wagerAmountWolo + match.guaranteeAmountWolo;
+  const leftFunded = Boolean(match.challengerFundingTxHash);
+  const rightFunded = Boolean(match.challengedFundingTxHash);
+  const fundedSides = Number(leftFunded) + Number(rightFunded);
+  const watcherStartMs = match.liveConfirmedAt?.getTime() ?? NaN;
+  const championshipWagerMatchedAtStart = championship
+    ? Number.isFinite(watcherStartMs) &&
+      leftFunded &&
+      rightFunded &&
+      Boolean(match.challengerFundedAt) &&
+      Boolean(match.challengedFundedAt) &&
+      match.challengerFundedAt!.getTime() <= watcherStartMs &&
+      match.challengedFundedAt!.getTime() <= watcherStartMs
+    : leftFunded && rightFunded;
   const latestDesyncIncident = match.replayDesyncIncidents[0] ?? null;
   const activeDesync = Boolean(
     match.status === "desync_review" &&
@@ -384,8 +407,9 @@ export default async function ChallengeDetailPage({
     rightName,
     wager: match.wagerAmountWolo,
     guarantee: match.guaranteeAmountWolo,
-    leftFunded: Boolean(match.challengerFundedAt),
-    rightFunded: Boolean(match.challengedFundedAt),
+    leftFunded,
+    rightFunded,
+    completedWagerMatched: championshipWagerMatchedAtStart,
   });
   const executedSettlements = match.settlements.filter(
     (settlement) => settlement.status === "executed" && settlement.txHash
@@ -396,14 +420,21 @@ export default async function ChallengeDetailPage({
   );
   const financialConservation = deriveChallengeFinancialConservation({
     fundingEachWolo: totalEach,
-    leftFunded: Boolean(match.challengerFundedAt),
-    rightFunded: Boolean(match.challengedFundedAt),
+    leftFunded,
+    rightFunded,
     settlements: match.settlements,
   });
   const conservationBreach = financialConservation.overSettledWolo > 0;
   const refundTerminal = ["canceled", "cancelled", "expired", "funding_expired", "refunded"].includes(match.status);
-  const fundedSides = Number(Boolean(match.challengerFundedAt)) + Number(Boolean(match.challengedFundedAt));
-  const expectedRefundWolo = refundTerminal ? fundedSides * totalEach : 0;
+  const completedUnmatched =
+    match.status === "completed" &&
+    fundedSides > 0 &&
+    !championshipWagerMatchedAtStart;
+  const expectedRefundWolo = refundTerminal
+    ? fundedSides * totalEach
+    : completedUnmatched
+      ? fundedSides * totalEach
+      : 0;
   const refundConfirmed = expectedRefundWolo > 0 && executedSettlementWolo >= expectedRefundWolo;
   const noShowResult = ["no_show_left", "no_show_right", "double_no_show"].includes(match.status);
   const totalIsPositive = totalEach > 0;
@@ -412,7 +443,11 @@ export default async function ChallengeDetailPage({
       ? fundedSides
       : 0
     : match.status === "completed"
-      ? (match.guaranteeAmountWolo > 0 ? 2 : 0) + (match.wagerAmountWolo > 0 ? 1 : 0)
+      ? completedUnmatched
+        ? totalIsPositive
+          ? fundedSides
+          : 0
+        : (match.guaranteeAmountWolo > 0 ? 2 : 0) + (match.wagerAmountWolo > 0 ? 1 : 0)
       : match.status === "double_no_show"
         ? (match.wagerAmountWolo > 0 ? fundedSides : 0) + (match.guaranteeAmountWolo > 0 && fundedSides > 0 ? 1 : 0)
         : ["no_show_left", "no_show_right"].includes(match.status)
@@ -437,7 +472,7 @@ export default async function ChallengeDetailPage({
           ? "Settlement needs attention"
           : match.settlements.length > 0
             ? "Settlement in progress"
-            : refundTerminal && expectedRefundWolo > 0
+            : expectedRefundWolo > 0
               ? `${fmtWolo(expectedRefundWolo)} WOLO refund due`
               : "No settlement consequence recorded yet";
   const terminalTitleStates = new Set([
@@ -457,54 +492,81 @@ export default async function ChallengeDetailPage({
     "expired",
     "funding_expired",
   ].includes(match.status);
-  const protocolSteps = activeDesync
-    ? [
-        { label: "Challenge issued", done: true },
-        { label: "Terms accepted", done: Boolean(match.acceptedAt) },
-        {
-          label: "Both rails funded",
-          done: Boolean(match.challengerFundedAt && match.challengedFundedAt),
-        },
-        {
-          label: "10-minute check-in",
-          done: Boolean(match.challengerCheckedInAt && match.challengedCheckedInAt),
-        },
-        { label: "DESYNC incident confirmed", done: true },
-        { label: "Commissioner disposition", done: false },
-        { label: "WOLO / title settlement", done: false },
-      ]
-    : [
-        { label: "Challenge issued", done: true },
-        { label: "Terms accepted", done: Boolean(match.acceptedAt) },
-        {
-          label: "Both rails funded",
-          done: Boolean(match.challengerFundedAt && match.challengedFundedAt),
-        },
-        {
-          label: "10-minute check-in",
-          done:
-            noShowResult ||
-            Boolean(match.challengerCheckedInAt && match.challengedCheckedInAt),
-        },
-        {
-          label: noShowResult ? "Check-in verdict" : "Watcher result proof",
-          done:
-            noShowResult ||
-            Boolean(
-              match.status === "completed" &&
-              match.resultAt &&
-              match.linkedSessionKey &&
-              match.linkedWinner
-            ),
-        },
-        {
-          label: "WOLO settlement",
-          done: settlementComplete,
-        },
-        ...(match.trophyChallenges.length > 0
-          ? [{ label: "Commissioner title decision", done: titleDecisionComplete }]
-          : []),
-      ];
+  const watcherMatchDetected = Boolean(
+    championship?.defenseStartedAt ||
+      match.liveConfirmedAt ||
+      ["live_confirmed", "result_pending", "completed"].includes(match.status)
+  );
+  const watcherResultVerified = Boolean(
+    match.status === "completed" &&
+      match.resultAt &&
+      match.linkedSessionKey &&
+      match.linkedWinner
+  );
+  const championshipMoneySettled =
+    totalEach <= 0 ||
+    fundedSides === 0 ||
+    settlementComplete ||
+    refundConfirmed;
+  const protocolSteps = championship
+    ? activeDesync
+      ? [
+          { label: "Challenge issued", done: true },
+          { label: "Watcher match detected", done: watcherMatchDetected },
+          { label: "DESYNC incident confirmed", done: true },
+          { label: "Commissioner disposition", done: false },
+          { label: "WOLO / title settlement", done: false },
+        ]
+      : [
+          { label: "Challenge issued", done: true },
+          { label: "Watcher match detected", done: watcherMatchDetected },
+          { label: "Watcher result proof", done: watcherResultVerified },
+          { label: "WOLO settlement", done: championshipMoneySettled },
+          ...(match.trophyChallenges.length > 0
+            ? [{ label: "Championship custody", done: titleDecisionComplete }]
+            : []),
+        ]
+    : activeDesync
+      ? [
+          { label: "Challenge issued", done: true },
+          { label: "Terms accepted", done: Boolean(match.acceptedAt) },
+          {
+            label: "Both rails funded",
+            done: Boolean(match.challengerFundedAt && match.challengedFundedAt),
+          },
+          {
+            label: "10-minute check-in",
+            done: Boolean(match.challengerCheckedInAt && match.challengedCheckedInAt),
+          },
+          { label: "DESYNC incident confirmed", done: true },
+          { label: "Commissioner disposition", done: false },
+          { label: "WOLO / title settlement", done: false },
+        ]
+      : [
+          { label: "Challenge issued", done: true },
+          { label: "Terms accepted", done: Boolean(match.acceptedAt) },
+          {
+            label: "Both rails funded",
+            done: Boolean(match.challengerFundedAt && match.challengedFundedAt),
+          },
+          {
+            label: "10-minute check-in",
+            done:
+              noShowResult ||
+              Boolean(match.challengerCheckedInAt && match.challengedCheckedInAt),
+          },
+          {
+            label: noShowResult ? "Check-in verdict" : "Watcher result proof",
+            done: noShowResult || watcherResultVerified,
+          },
+          {
+            label: "WOLO settlement",
+            done: settlementComplete,
+          },
+          ...(match.trophyChallenges.length > 0
+            ? [{ label: "Commissioner title decision", done: titleDecisionComplete }]
+            : []),
+        ];
   const currentProtocolStep = protocolStopped
     ? -1
     : protocolSteps.findIndex((step) => !step.done);

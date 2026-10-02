@@ -2,6 +2,8 @@ import type { Prisma, PrismaClient, Trophy } from "@/lib/generated/prisma";
 import { championshipBeltPolicy, championshipEligibility, soloDefenseLadder, splitTitleUwolo, type BeltCandidate } from "@/lib/champions/beltPolicy";
 import { lockTrophyMoneyState, prepareManualTrophyHolderTransferPayouts, prepareTrophyCustodyExit, projectedTrophyBounty, loadPublicTrophies, seededTrophyDefinition, trophyIsPubliclyForcedVacant } from "@/lib/trophies/service";
 import { loadLobbyLeaderboard } from "@/lib/lobbyLeaderboard";
+import { parsePlayers, readPlayerSteamDmRating, readPlayerSteamRmRating } from "@/lib/gameStatsView";
+import { readLeaderboardSteamId } from "@/lib/leaderboardIdentity";
 import { managedMediaPublicUrl } from "@/lib/managedMediaAssets";
 
 export class ChampionshipCustodyError extends Error {
@@ -57,19 +59,86 @@ export async function getChampionshipCustody(tx: Db, trophy: Trophy) {
   return { epoch: `legacy:${trophy.id}:${trophy.status}:${userId ?? "vacant"}:${trophy.holderSince?.toISOString() ?? "none"}`, roster: user ? [{ userId: user.id, uid: user.uid, displayName: name(user), walletAddress: user.walletAddress, steamId: user.steamId, seat: 0, nftId: trophy.nftId ?? trophy.trophyId, nftClassId: trophy.nftClassId }] : [] as ChampionshipRosterMember[], mode: policy.mode, teamSize: policy.teamSize, reignId: null };
 }
 
+async function loadAcceptedReplayRatings(
+  prisma: Db,
+  userId: number,
+  steamId: string | null,
+) {
+  if (!steamId) return { rmRating: null as number | null, dmRating: null as number | null };
+
+  const snapshots = await prisma.replayPlayerSnapshot.findMany({
+    where: {
+      userId,
+      steamId,
+      projection: {
+        projectionStatus: "accepted",
+        affectsPublicAggregates: true,
+        supersededBy: null,
+      },
+    },
+    orderBy: [
+      { gameStats: { played_on: "desc" } },
+      { gameStatsId: "desc" },
+      { id: "desc" },
+    ],
+    take: 100,
+    select: {
+      steamId: true,
+      gameStats: {
+        select: {
+          players: true,
+        },
+      },
+    },
+  });
+
+  let rmRating: number | null = null;
+  let dmRating: number | null = null;
+
+  for (const snapshot of snapshots) {
+    const exactSteamId = snapshot.steamId || steamId;
+    const player = parsePlayers(snapshot.gameStats.players).find(
+      candidate => readLeaderboardSteamId(candidate) === exactSteamId,
+    );
+    if (!player) continue;
+
+    if (rmRating === null) {
+      const observed = readPlayerSteamRmRating(player);
+      if (typeof observed === "number" && Number.isFinite(observed)) {
+        rmRating = observed;
+      }
+    }
+    if (dmRating === null) {
+      const observed = readPlayerSteamDmRating(player);
+      if (typeof observed === "number" && Number.isFinite(observed)) {
+        dmRating = observed;
+      }
+    }
+    if (rmRating !== null && dmRating !== null) break;
+  }
+
+  return { rmRating, dmRating };
+}
+
 export async function loadChampionshipCandidateAuthority(prisma: Db, userId: number): Promise<BeltCandidate> {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) throw new ChampionshipCustodyError("WINNER_NOT_ELIGIBLE", "Championship participant no longer exists.");
-  let rmRating: number | null = null, dmRating: number | null = null;
+
+  let { rmRating, dmRating } = await loadAcceptedReplayRatings(prisma,user.id,user.steamId);
+
   try {
-    const board = await loadLobbyLeaderboard(prisma as PrismaClient, { limit: 500, includePendingClaimed: true, includePresence: false });
-    const keys = [user.uid, user.inGameName, user.steamPersonaName].filter(Boolean).map(value=>value!.trim().toLowerCase());
-    const entry = board.entries.find(entry => keys.includes(entry.name.trim().toLowerCase()) || entry.href?.endsWith(`/${user.uid}`));
-    rmRating = entry?.steamRmRating ?? null; dmRating = entry?.steamDmRating ?? null;
-    // Primary ratings never cross RM/DM lanes.
-    if (entry?.primaryRating != null && /\brm\b|random map/i.test(entry.primaryRatingLabel)) rmRating ??= entry.primaryRating;
-    if (entry?.primaryRating != null && /\bdm\b|death ?match/i.test(entry.primaryRatingLabel)) dmRating ??= entry.primaryRating;
-  } catch { /* Missing rating authority fails closed for ELO, without hiding other titles. */ }
+    if (rmRating === null || dmRating === null) {
+      const board = await loadLobbyLeaderboard(prisma as PrismaClient, { limit: 500, includePendingClaimed: true, includePresence: false });
+      const keys = [user.uid, user.inGameName, user.steamPersonaName].filter(Boolean).map(value=>value!.trim().toLowerCase());
+      const entry = board.entries.find(entry => keys.includes(entry.name.trim().toLowerCase()) || entry.href?.endsWith(`/${user.uid}`));
+      rmRating ??= entry?.steamRmRating ?? null;
+      dmRating ??= entry?.steamDmRating ?? null;
+      // Primary ratings never cross RM/DM lanes.
+      if (entry?.primaryRating != null && /\brm\b|random map/i.test(entry.primaryRatingLabel)) rmRating ??= entry.primaryRating;
+      if (entry?.primaryRating != null && /\bdm\b|death ?match/i.test(entry.primaryRatingLabel)) dmRating ??= entry.primaryRating;
+    }
+  } catch { /* Missing fallback authority fails closed for ELO, without hiding other titles. */ }
+
   return { representedCountry: user.representedCountry, genderDivision: user.genderDivision, rmRating, dmRating };
 }
 

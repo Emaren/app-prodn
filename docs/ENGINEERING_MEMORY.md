@@ -2559,3 +2559,36 @@ Rating-delta authority may affect stats and championship custody, but never
 betting or WOLO settlement. Recorder-exit and terminal action ordering remain
 non-authoritative for 1v1 results. Unrated or ambiguous games still require
 stronger replay truth or an authorized Commissioner adjudication.
+
+## 2026-10-02 — Championship V2 is Watcher-first; funding is a separate rail
+
+Championship V2 has no player check-in contract. Exact authenticated
+Watcher-observed play by the sealed roster is competitive consent and may start
+and finish an explicit Challenge even when a participant never clicked Accept
+or Fund. Notification and challenge creation must precede the observed start;
+exact Steam roster, lane, team size, custody epoch, result authority and desync
+guards still fail closed. Acceptance/funding remain relevant to default and
+money rights, not to whether a played battle happened.
+
+WOLO matchability freezes at the authenticated Watcher start timestamp. A
+completed championship wager is winner-take-pool only when both tx-backed
+deposits existed at or before that start. A unilateral deposit or any deposit
+that arrived after battle start remains real escrow liability but is unmatched
+principal: return every such funded side whole. Never let ingest/worker latency
+turn a late transfer into retroactive wager authority.
+
+Exact dual-Watcher solo 1v1 encounters may materialize a zero-wager title bout
+without a prior Challenge when the observed RM/DM lane, current custody and
+challenger eligibility identify a valid title. Explicit Championship Challenges
+for that roster/session take precedence. Materialization is idempotent under
+session and title locks, creates no check-in or funding obligation, and uses the
+same final replay/result/desync/custody transition rails as an explicit defense.
+Team spontaneous bouts are not implied by this rule.
+
+Championship ELO custody decisions read accepted, current, exact-user
+ReplayPlayerSnapshot evidence by Steam ID first, with RM and DM kept separate.
+Leaderboard/presentation state is fallback only; a stale aggregate must not
+hide a newly proven Rising/Veteran/Elite/Legend eligibility boundary. Public
+Championship V2 progress is Challenge issued → Watcher match detected → Watcher
+result proof → WOLO settlement → championship custody. Legacy scheduled-match
+check-in semantics remain legacy-only.

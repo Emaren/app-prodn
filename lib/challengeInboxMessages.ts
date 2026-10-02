@@ -80,6 +80,10 @@ export const CHALLENGE_NOTICE_HEADLINES: Record<
     state: "ready",
     compactHeadline: "Match ready",
   },
+  "Challenge game underway": {
+    state: "ready",
+    compactHeadline: "Game underway",
+  },
   "Challenge no-show resolved": {
     state: "no_show",
     compactHeadline: "No-show resolved",
@@ -95,6 +99,14 @@ export const CHALLENGE_NOTICE_HEADLINES: Record<
   "Challenge settled": {
     state: "settled",
     compactHeadline: "WOLO settled",
+  },
+  "Championship defended": {
+    state: "settled",
+    compactHeadline: "Title defended",
+  },
+  "Championship transferred": {
+    state: "settled",
+    compactHeadline: "Title transferred",
   },
   "Challenge desync confirmed": {
     state: "desync",
