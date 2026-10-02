@@ -433,7 +433,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-30",
       "sensitivity": "internal",
-      "sha256": "8e7e73a17d60ffdd3ba31e93635e5983ead9b8f71e8650c32eae98233131c48c",
+      "sha256": "358d990355e1050a36699ac3c9fe6b8f819b9fb480f1434878f913be01775897",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -550,7 +550,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-04",
       "sensitivity": "internal",
-      "sha256": "338c1c628c51bd8189fe94414442a0708cbc8d92fb3190c9718496c1cf36ef70",
+      "sha256": "977a33bf3f127a922449babbd8fbdddafa15d5b81367f55bc007aeeff2a68682",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "638333649a6cd3ab8544d7090e54d8331c2306f6608626cedeb6e03f7f2dfcc7",
+      "sha256": "568c1f2b3d1e050d610d41b742a1bba545b76294c06da0b976f0435f933a6279",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -661,7 +661,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-01",
       "sensitivity": "internal",
-      "sha256": "c8cb652361d3a4c94b7472bbbd02929cdbf9351f8c982782129565f94d82317c",
+      "sha256": "3b0083fab714926f55ee99d50a43157e3bf8f0f7ba6ba82e01ad76e7e06729c6",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -779,7 +779,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-20",
       "sensitivity": "restricted",
-      "sha256": "30423154d417cf8a21063d287b12fd488cb577db191c99fe3ae84f5687c073f4",
+      "sha256": "9f7b4c55d84b06b545153eeb13132b454848b06172dbfb7b28cf509c08f3acc4",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2004,7 +2004,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "main",
-    "commit": "f0914483d6eac75f7504ae310b640e3693d6a6f2"
+    "commit": "a7bdadbee159816daaba2108c6ef833de2e850f0"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
