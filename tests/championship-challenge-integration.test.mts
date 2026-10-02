@@ -30,11 +30,11 @@ async function modeledFunding(id:number,sides:string[]=["challenger","defender"]
  if(sides.length===2)await prisma!.championshipChallenge.update({where:{id:row.id},data:{state:"ready"}});
  return protocol(id);
 }
-async function battle(id:number,state:"live"|"completed",at?:Date,coverage?:string[]) {
+async function battle(id:number,state:"live"|"completed",at?:Date,coverage?:string[],gameType="rm") {
  const row=await protocol(id),startedAt=at??new Date(row.createdAt.getTime()+1000);
  const players=row.participants.map(p=>({steamId:p.steamIdSnapshot,teamId:p.side==="challenger"?"0":"1",winner:p.side==="challenger",name:p.displayNameSnapshot}));
- const game=await prisma!.gameStats.create({data:{replay_file:`qa/${prefix}/${id}`,replayHash:`${prefix}-${id}-${state}-${Date.now()}`,is_final:state==="completed",game_type:"rm",players,played_on:startedAt,createdAt:startedAt,parse_source:state==="live"?"watcher_live":"watcher_final",parse_reason:"qa_modelled_evidence"}});
- return {id:game.id,sessionKey:`platform:qa-${prefix}-${id}`,state,playedOn:startedAt.toISOString(),gameType:"rm",players,authenticatedWatcherParticipantUids:coverage??row.participants.map(p=>p.uidSnapshot),authenticatedLiveObservations:[{uid:row.participants.find(p=>p.side==="defender")!.uidSnapshot,observedAt:startedAt.toISOString(),gameType:"rm",players}],finalProofPending:false,disconnectDetected:false,mapName:"QA Arabia",winner:row.participants.find(p=>p.side==="challenger")!.displayNameSnapshot,durationSeconds:state==="completed"?18000:null} as unknown as LiveGameSession;
+ const game=await prisma!.gameStats.create({data:{replay_file:`qa/${prefix}/${id}`,replayHash:`${prefix}-${id}-${state}-${Date.now()}`,is_final:state==="completed",game_type:gameType,players,played_on:startedAt,createdAt:startedAt,parse_source:state==="live"?"watcher_live":"watcher_final",parse_reason:"qa_modelled_evidence"}});
+ return {id:game.id,sessionKey:`platform:qa-${prefix}-${id}`,state,playedOn:startedAt.toISOString(),gameType,players,authenticatedWatcherParticipantUids:coverage??row.participants.map(p=>p.uidSnapshot),authenticatedLiveObservations:[{uid:row.participants.find(p=>p.side==="defender")!.uidSnapshot,observedAt:startedAt.toISOString(),gameType,players}],finalProofPending:false,disconnectDetected:false,mapName:"QA Arabia",winner:row.participants.find(p=>p.side==="challenger")!.displayNameSnapshot,durationSeconds:state==="completed"?18000:null} as unknown as LiveGameSession;
 }
 const snapshot=(session:LiveGameSession)=>({loadSnapshot:async()=>({activeSessions:session.state==="live"?[session]:[],recentlyCompletedSessions:session.state==="completed"?[session]:[]})});
 test("real protocol creation is idempotent, seals one clock, and per-participant acceptance never renews it",{skip:!enabled},async()=>{
@@ -80,6 +80,24 @@ test("multiple funded claimant rosters enter one durable dispute without awardin
  assert.equal(await prisma!.championshipTransferGroup.count({where:{trophyId:title.id}}),1);
  assert.equal((await prisma!.trophy.findUniqueOrThrow({where:{id:title.id}})).status,"disputed");
  assert.equal(await prisma!.trophyPayout.count({where:{trophyId:title.id,payoutKind:"dethrone_bounty"}}),0);
+});
+test("TurboRandom HD watcher encounter starts RM championship without any check-in ceremony",{skip:!enabled},async()=>{
+ const a=await warrior("turbo-rm-a"),b=await warrior("turbo-rm-b");
+ const id=await createChampionshipChallenge(prisma!,a.id,{challengedUid:b.uid,wagerAmountWolo:5,mode:"rm"}),row=await modeledFunding(id);
+ const scheduledBefore=await prisma!.scheduledMatch.findUniqueOrThrow({where:{id}});
+ assert.equal(scheduledBefore.challengerCheckedInAt,null);
+ assert.equal(scheduledBefore.challengedCheckedInAt,null);
+ const live=await battle(id,"live",new Date(row.createdAt.getTime()+60_000),[b.uid],"TurboRandom9");
+ await reconcileChampionshipEvidence(prisma!,{challengeIds:[id],now:new Date(row.createdAt.getTime()+61_000)},snapshot(live));
+ const protocolAfter=await protocol(id);
+ const scheduledAfter=await prisma!.scheduledMatch.findUniqueOrThrow({where:{id}});
+ assert.equal(protocolAfter.state,"defense_in_progress");
+ assert.equal(protocolAfter.defenseSessionKey,live.sessionKey);
+ assert.ok(protocolAfter.defenseStartedAt);
+ assert.equal(scheduledAfter.status,"live_confirmed");
+ assert.ok(scheduledAfter.liveConfirmedAt);
+ assert.equal(scheduledAfter.challengerCheckedInAt,null);
+ assert.equal(scheduledAfter.challengedCheckedInAt,null);
 });
 test("authenticated exact defending start freezes default and a full final after five hours transfers once",{skip:!enabled},async()=>{
  const a=await warrior("proof-a"),b=await warrior("proof-b"),title=await soloTitle("proof",b);

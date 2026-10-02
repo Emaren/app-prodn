@@ -111,6 +111,19 @@ export function replayEloLane(
   const value = normalized(gameType);
   if (!value) return null;
   if (/\b(death match|deathmatch|dm)\b/.test(value)) return "dm";
-  if (/\b(random map|rm)\b/.test(value)) return "rm";
+
+  /*
+   * AoE2 HD serializes some ordinary Random Map lobbies with the
+   * legacy parser token `TurboRandom<N>` (for example `TurboRandom9`).
+   * The Watcher must preserve that raw parser value for evidence, but
+   * championship/ELO lane policy should classify the verified game as RM.
+   */
+  if (
+    /\b(random map|rm)\b/.test(value) ||
+    /^turbo[\s_-]*random[\s_-]*\d*$/.test(value)
+  ) {
+    return "rm";
+  }
+
   return null;
 }
