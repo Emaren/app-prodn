@@ -351,14 +351,29 @@ export function readWatcherUploadMetadata(keyEventsValue: unknown) {
 
   const upload = rawUpload as Record<string, unknown>;
   const read = (value: unknown) => (typeof value === "string" ? value.trim() : "");
+  const watcherId = read(upload.watcher_id);
+  const watcherSessionId = read(upload.watcher_session_id);
+  const replayFingerprint = read(upload.replay_fingerprint);
+  const liveMonitor = upload.ingestion_provenance === "live_monitor";
+  const signatureSupplied = upload.provenance_signature_supplied === true;
+  const provenanceVerified = upload.provenance_signature_verified === true;
+  const clientSha256Verified = upload.client_sha256_verified === true;
+  const legacyTransportVerified =
+    !signatureSupplied &&
+    clientSha256Verified &&
+    Boolean(watcherId && watcherSessionId && replayFingerprint);
 
   return {
-    watcherId: read(upload.watcher_id),
-    watcherSessionId: read(upload.watcher_session_id),
-    replayFingerprint: read(upload.replay_fingerprint),
+    watcherId,
+    watcherSessionId,
+    replayFingerprint,
     watcherVersion: read(upload.watcher_version),
-    provenanceVerified: upload.provenance_signature_verified === true,
-    liveMonitor: upload.ingestion_provenance === "live_monitor",
+    signatureSupplied,
+    provenanceVerified,
+    clientSha256Verified,
+    liveMonitor,
+    championshipPresenceVerified:
+      liveMonitor && (provenanceVerified || legacyTransportVerified),
   };
 }
 
@@ -792,7 +807,7 @@ function collectWatcherCoverage(rows: SessionRow[]) {
   for (const row of rows) {
     const upload = readWatcherUploadMetadata(row.key_events);
     if (!upload) continue;
-    if(upload.provenanceVerified && upload.liveMonitor && row.user?.uid) {
+    if(upload.championshipPresenceVerified && row.user?.uid) {
       authenticatedWatcherParticipantUids.add(row.user.uid);
       if(row.parse_source === "watcher_live" && Array.isArray(row.players) && row.players.length >= 2 && row.game_type) {
         authenticatedLiveWatcherParticipantUids.add(row.user.uid);
