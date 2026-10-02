@@ -52,7 +52,7 @@ test(
     );
 
     assert.doesNotMatch(
-      schema,
+      schema.match(/model ScheduledMatchReplayClaim \{[\s\S]*?\n\}/)?.[0] ?? "",
       /scheduledMatchId\s+Int\s+@unique/,
     );
 

@@ -1,3 +1,4 @@
+import { materializeSpontaneousChampionshipEncounters, reconcileChampionshipEvidence } from "@/lib/championshipChallenges";
 import { execFile } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -371,6 +372,14 @@ export async function POST(request: NextRequest) {
       source: "package_upload",
     });
 
+    const championshipGameIds=results
+      .map(result=>result.stages.gameId)
+      .map(id=>typeof id==="number"?id:typeof id==="string"&&/^\d+$/.test(id)?Number(id):null)
+      .filter((id):id is number=>typeof id==="number"&&Number.isSafeInteger(id)&&id>0);
+    if(championshipGameIds.length) {
+      await materializeSpontaneousChampionshipEncounters(prisma,{gameStatsIds:championshipGameIds}).catch(error=>console.error("Spontaneous championship encounters remain queued:",error));
+    }
+    await reconcileChampionshipEvidence(prisma,{executeSettlements:true}).catch(error=>console.error("Championship evidence remains queued:",error));
     if (postIngest.financial.tournament.error) {
       console.warn(
         "Replay pack upload succeeded but tournament proof reconciliation failed:",

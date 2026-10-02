@@ -158,7 +158,15 @@ test("featured warrior cards bind live titles, rank and avatar revisions", () =>
 
   assert.match(
     snapshot,
-    /status:\s*\{[\s\S]*in:\s*\["held", "active"\]/
+    /loadPublicTrophies\(prisma\)/
+  );
+  assert.match(
+    snapshot,
+    /\["held","active"\]\.includes\(trophy\.status\)/
+  );
+  assert.match(
+    snapshot,
+    /trophy\.championshipRoster\?\.length/
   );
   assert.match(
     snapshot,

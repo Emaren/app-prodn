@@ -37,7 +37,11 @@ test("production migrations are exact-frontier, backup-first, and receipt-bound"
   assert.match(auto, /prisma migrate deploy/);
   assert.match(auto, /_prisma_migrations/);
   assert.match(auto, /migration-status\.txt/);
-  assert.match(auto, /durable migration receipt is missing/);
+  assert.match(auto, /no exact or safely adoptable durable migration receipt exists/);
+  assert.match(auto, /already-applied migration is not exactly-once/);
+  assert.match(auto, /already-applied migration checksum differs from release SQL/);
+  assert.match(auto, /git merge-base --is-ancestor/);
+  assert.match(auto, /database_mutation=NONE/);
 });
 
 test("migration phase runs after staging and before activation", () => {

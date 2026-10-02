@@ -85,6 +85,42 @@ class FinishTests(unittest.TestCase):
             }
         )
 
+    def test_workshop_chronicler_uses_certified_runtime_sha_for_docs_only_descendant(self):
+        runtime_sha = "b" * 40
+        docs_head = "c" * 40
+        release = self.workshop_release()
+        release["local"]["head"] = docs_head
+        release["production"]["source_sha"] = runtime_sha
+        release["certification"] = {
+            "status": "CERTIFIED",
+            "release_sha": runtime_sha,
+        }
+        passed = MODULE.subprocess.CompletedProcess(
+            args=["ssh"], returncode=0, stdout=self.workshop_pass_output()
+        )
+
+        with (
+            patch.object(
+                MODULE.aoe2_doctor,
+                "load_contract",
+                return_value=self.workshop_contract(),
+            ),
+            patch.object(
+                MODULE.subprocess,
+                "run",
+                return_value=passed,
+            ) as run,
+        ):
+            result = MODULE.run_workshop_chronicler(
+                certified_release=release,
+                progress=MODULE.Progress(enabled=False),
+            )
+
+        self.assertEqual(result["status"], "PASS")
+        remote_script = run.call_args.kwargs["input"]
+        self.assertIn(runtime_sha, remote_script)
+        self.assertNotIn(docs_head, remote_script)
+
     def test_workshop_chronicler_retries_ssh_255_then_passes(self):
         failed = MODULE.subprocess.CompletedProcess(
             args=["ssh"], returncode=255, stdout=""
@@ -415,6 +451,51 @@ class FinishTests(unittest.TestCase):
                 release,
             ),
             [],
+        )
+
+    def test_finish_plan_uses_release_gate_scope_for_database_mutation_truth(self):
+        data = {
+            "local": {"head": "b" * 40},
+            "github": {"main_sha": "b" * 40},
+            "production": {
+                "reachable": True,
+                "source_sha": "a" * 40,
+            },
+        }
+        with mock.patch.object(
+            MODULE.aoe2_release_gate,
+            "release_scope",
+            return_value={
+                "changed_files": [
+                    "app/page.tsx",
+                    "prisma/migrations/20260929_x/migration.sql",
+                ],
+            },
+        ):
+            self.assertEqual(
+                MODULE.planned_database_migration_paths(data),
+                ["prisma/migrations/20260929_x/migration.sql"],
+            )
+
+    def test_finish_plan_declares_database_mutation_from_planned_migrations(self):
+        import inspect
+
+        source = inspect.getsource(MODULE.plan_payload)
+        self.assertIn(
+            "planned_database_migration_paths",
+            source,
+        )
+        self.assertIn(
+            '"database": bool(database_migration_paths)',
+            source,
+        )
+        self.assertIn(
+            '"mutation_expected": bool(database_migration_paths)',
+            source,
+        )
+        self.assertIn(
+            "durable pre-migration",
+            source,
         )
 
     def test_finish_planning_and_execution_share_provenance_doctor_helper(self):
@@ -981,6 +1062,7 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
                 "auto_root_headroom_recovery": True,
                 "root_headroom_journal_limit_mib": 100,
                 "root_headroom_recovery_margin_mib": 128,
+                "root_headroom_prune_verified_fast_rollback": True,
             },
         }
 
@@ -1001,6 +1083,66 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
                 "used_percent": 60.0,
             },
         }
+
+    def test_plan_recovery_predicate_accepts_safe_low_root(self):
+        with mock.patch.object(
+            MODULE.aoe2_doctor,
+            "load_contract",
+            return_value=self.contract(),
+        ):
+            self.assertTrue(
+                MODULE.root_headroom_plan_recovery_available(
+                    self.snapshot(),
+                    self.production(),
+                )
+            )
+
+    def test_plan_recovery_predicate_rejects_unsafe_wolo(self):
+        production = self.production()
+        production["wolo_8093_count"] = 0
+        with mock.patch.object(
+            MODULE.aoe2_doctor,
+            "load_contract",
+            return_value=self.contract(),
+        ):
+            self.assertFalse(
+                MODULE.root_headroom_plan_recovery_available(
+                    self.snapshot(),
+                    production,
+                )
+            )
+
+    def test_plan_recovery_predicate_rejects_critical_volume(self):
+        snapshot = self.snapshot()
+        snapshot["volume"]["used_percent"] = 92.0
+        with mock.patch.object(
+            MODULE.aoe2_doctor,
+            "load_contract",
+            return_value=self.contract(),
+        ):
+            self.assertFalse(
+                MODULE.root_headroom_plan_recovery_available(
+                    snapshot,
+                    self.production(),
+                )
+            )
+
+    def test_finish_plan_marks_safe_root_recovery_as_automatic(self):
+        import inspect
+
+        source = inspect.getsource(MODULE.plan_payload)
+        self.assertIn(
+            "root_headroom_plan_recovery_available",
+            source,
+        )
+        self.assertIn(
+            '"root_headroom_recovery": root_recovery_remediable',
+            source,
+        )
+        self.assertIn(
+            "bounded root-headroom recovery will reclaim only approved",
+            source,
+        )
 
     def test_recovery_target_adds_bounded_hysteresis_below_preferred(self):
         with mock.patch.object(
@@ -1040,6 +1182,7 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
             journal_limit_mib=100,
             expected_source_sha="a" * 40,
             expected_active_build_id="active-build",
+            allow_verified_fast_rollback_prune=True,
         )
 
         self.assertIn(
@@ -1105,6 +1248,73 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
             script,
         )
 
+        # Allowlisted closed system logs precede durable-proven fast rollback.
+        for expected in (
+            "/var/log/syslog.1",
+            "/var/log/auth.log.1",
+            "-name 'syslog.[2-9].gz'",
+            "/var/log/btmp.1",
+            "/var/log/postgresql",
+            "-name 'postgresql-*.log.1'",
+            "/var/log/audit",
+            "-name 'audit.log.[1-9]'",
+        ):
+            self.assertIn(expected, script)
+
+        # Durable-proven fast rollback remains the final bounded tier.
+        self.assertIn(
+            "ALLOW_VERIFIED_FAST_ROLLBACK_PRUNE=1",
+            script,
+        )
+        self.assertIn(
+            "TIER 6 — VERIFIED FAST-ROLLBACK CACHE",
+            script,
+        )
+        self.assertIn(
+            '"$VOL"/aoe2war/rollbacks/*/next/BUILD_ID',
+            script,
+        )
+        self.assertIn(
+            '"$VOL"/aoe2war/deploy-receipts/*/current-next/BUILD_ID',
+            script,
+        )
+        self.assertIn(
+            "NO_PAIRED_DURABLE_PROOF",
+            script,
+        )
+        self.assertIn(
+            '[ "$build" = "$EXPECTED_ACTIVE" ]',
+            script,
+        )
+        self.assertIn(
+            "ACTIVE_BUILD_ID",
+            script,
+        )
+        self.assertIn(
+            'mv "$d" "$prune_next_tmp"',
+            script,
+        )
+        self.assertIn(
+            'mv "$modules" "$prune_modules_tmp"',
+            script,
+        )
+        self.assertIn(
+            'rm -rf -- "$prune_next_tmp" "$prune_modules_tmp"',
+            script,
+        )
+        self.assertIn(
+            "fast-rollback-pruned.tsv",
+            script,
+        )
+        self.assertIn(
+            "FAST_ROLLBACK_PRUNED_SHA256",
+            script,
+        )
+        self.assertLess(
+            script.index("nginx-archived.tsv"),
+            script.index("TIER 6 — VERIFIED FAST-ROLLBACK CACHE"),
+        )
+
         # Recovery counters are shell arithmetic, never command substitutions.
         for variable in (
             "APT_RECLAIMED_KB",
@@ -1116,6 +1326,14 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
             "DELTA",
             "NGINX_RECLAIMED_KB",
             "NGINX_ARCHIVED",
+            "SYSTEM_LOG_RECLAIMED_KB",
+            "SYSTEM_LOG_ARCHIVED",
+            "SYSTEM_LOG_OPEN_SKIPPED",
+            "SYSTEM_LOG_UNSAFE_SKIPPED",
+            "FAST_ROLLBACK_RECLAIMED_KB",
+            "FAST_ROLLBACK_PRUNED",
+            "FAST_ROLLBACK_UNMATCHED",
+            "FAST_ROLLBACK_PRUNE_FAILED",
             "RECLAIMED_KB",
         ):
             self.assertIn(
@@ -1137,6 +1355,14 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
             script,
         )
         self.assertIn(
+            "SYSTEM_LOG_SHA256SUMS",
+            script,
+        )
+        self.assertIn(
+            '"$RECEIPT_DIR/system-logs"',
+            script,
+        )
+        self.assertIn(
             "cp -a",
             script,
         )
@@ -1150,7 +1376,7 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
             script.index('rm -- "$logfile"'),
         )
 
-        # Open rotated logs are never removed.
+        # Open or symlinked rotated logs are never removed.
         self.assertIn(
             "/proc/[0-9]*/fd/*",
             script,
@@ -1158,6 +1384,22 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
         self.assertIn(
             "NGINX_OPEN_SKIPPED",
             script,
+        )
+        self.assertIn(
+            "SYSTEM_LOG_OPEN_SKIPPED",
+            script,
+        )
+        self.assertIn(
+            "SYSTEM_LOG_UNSAFE_SKIPPED",
+            script,
+        )
+        self.assertIn(
+            'if [ -L "$logfile" ]; then',
+            script,
+        )
+        self.assertLess(
+            script.index("SYSTEM_LOG_CANDIDATES"),
+            script.index("TIER 6 — VERIFIED FAST-ROLLBACK CACHE"),
         )
 
         # Runtime + Wolo are proof-only.
@@ -1268,6 +1510,11 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
                 "nginx_reclaimed_kb\t1707152",
                 "nginx_archived_count\t2",
                 "nginx_open_skipped_count\t0",
+                "fast_rollback_reclaimed_kb\t1100000",
+                "fast_rollback_pruned_count\t1",
+                "fast_rollback_unmatched_count\t0",
+                "fast_rollback_prune_failed_count\t0",
+                "fast_rollback_pruned_manifest_sha256\t" + ("b" * 64),
                 "source_sha\t" + ("a" * 40),
                 "active_build_id\tactive-build",
                 "service\tactive",
@@ -1302,6 +1549,134 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
             result["active_build_id"],
             "active-build",
         )
+        self.assertEqual(
+            result["fast_rollback_pruned_count"],
+            "1",
+        )
+
+    def test_recovery_rejects_unsealed_fast_rollback_prune(self):
+        output = "\n".join(
+            [
+                "status\tRECOVERED",
+                "receipt_dir\t/mnt/HC_Volume_105319120/"
+                "aoe2war/root-headroom-recoveries/test",
+                "before_kb\t4194304",
+                "after_kb\t6291456",
+                "reclaimed_kb\t2097152",
+                "fast_rollback_reclaimed_kb\t1100000",
+                "fast_rollback_pruned_count\t1",
+                "fast_rollback_unmatched_count\t0",
+                "fast_rollback_prune_failed_count\t0",
+                "source_sha\t" + ("a" * 40),
+                "active_build_id\tactive-build",
+                "service\tactive",
+                "wolo_8092_count\t1",
+                "wolo_8093_count\t1",
+            ]
+        )
+
+        with (
+            mock.patch.object(
+                MODULE.aoe2_doctor,
+                "load_contract",
+                return_value=self.contract(),
+            ),
+            mock.patch.object(
+                MODULE,
+                "ssh_text",
+                return_value=(0, output),
+            ),
+        ):
+            with self.assertRaisesRegex(
+                MODULE.FinishError,
+                "no sealed fast-rollback prune manifest",
+            ):
+                MODULE.recover_root_headroom(
+                    snapshot=self.snapshot(),
+                    production=self.production(),
+                )
+
+    def test_recovery_rejects_fast_rollback_prune_when_policy_disabled(self):
+        contract = self.contract()
+        contract["finish"][
+            "root_headroom_prune_verified_fast_rollback"
+        ] = False
+        output = "\n".join(
+            [
+                "status\tRECOVERED",
+                "receipt_dir\t/mnt/HC_Volume_105319120/"
+                "aoe2war/root-headroom-recoveries/test",
+                "before_kb\t4194304",
+                "after_kb\t6291456",
+                "reclaimed_kb\t2097152",
+                "fast_rollback_reclaimed_kb\t1100000",
+                "fast_rollback_pruned_count\t1",
+                "fast_rollback_unmatched_count\t0",
+                "fast_rollback_prune_failed_count\t0",
+                "fast_rollback_pruned_manifest_sha256\t" + ("b" * 64),
+                "source_sha\t" + ("a" * 40),
+                "active_build_id\tactive-build",
+                "service\tactive",
+                "wolo_8092_count\t1",
+                "wolo_8093_count\t1",
+            ]
+        )
+
+        with (
+            mock.patch.object(
+                MODULE.aoe2_doctor,
+                "load_contract",
+                return_value=contract,
+            ),
+            mock.patch.object(
+                MODULE,
+                "ssh_text",
+                return_value=(0, output),
+            ),
+        ):
+            with self.assertRaisesRegex(
+                MODULE.FinishError,
+                "verified-prune policy was disabled",
+            ):
+                MODULE.recover_root_headroom(
+                    snapshot=self.snapshot(),
+                    production=self.production(),
+                )
+
+    def test_recovery_maps_fast_rollback_prune_failure_to_specific_stop(self):
+        output = "\n".join(
+            [
+                "status\tFAST_ROLLBACK_PRUNE_FAILED",
+                "receipt_dir\t/mnt/HC_Volume_105319120/"
+                "aoe2war/root-headroom-recoveries/test",
+                "before_kb\t5000000",
+                "after_kb\t5200000",
+                "reclaimed_kb\t200000",
+                "fast_rollback_pruned_count\t0",
+                "fast_rollback_prune_failed_count\t1",
+            ]
+        )
+
+        with (
+            mock.patch.object(
+                MODULE.aoe2_doctor,
+                "load_contract",
+                return_value=self.contract(),
+            ),
+            mock.patch.object(
+                MODULE,
+                "ssh_text",
+                return_value=(46, output),
+            ),
+        ):
+            with self.assertRaisesRegex(
+                MODULE.FinishError,
+                "verified fast-rollback headroom pruning failed",
+            ):
+                MODULE.recover_root_headroom(
+                    snapshot=self.snapshot(),
+                    production=self.production(),
+                )
 
     def test_recovery_fails_closed_when_approved_classes_are_insufficient(self):
         output = "\n".join(

@@ -86,6 +86,19 @@ function formatBytes(value: number | null) {
   return `${(value / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function formatPercent(value: number | null) {
+  return value === null ? null : `${value.toFixed(1)}%`;
+}
+
+function formatMegabytes(value: number | null) {
+  return value === null ? null : `${Math.round(value)} MB`;
+}
+
+function formatMbps(value: number | null) {
+  if (value === null) return null;
+  return `${value < 0.01 ? "<0.01" : value.toFixed(2)} Mbps`;
+}
+
 function focusStatusLabel(status: WatcherFocusUserDiagnostics["latestStatus"]) {
   if (status === "online") return "online";
   if (status === "watching") return "watching, heartbeat stale";
@@ -230,6 +243,69 @@ function SupportUserDiagnostics({ focusUser }: { focusUser: WatcherFocusUserDiag
         <FocusMetric label="Last heartbeat" value={formatMaybeDate(focusUser.lastHeartbeatAt)} />
         <FocusMetric label="App connection" value={focusUser.connected ? "Connected" : "Not connected"} />
         <FocusMetric label="Replay monitor" value={focusUser.monitorState} />
+        <FocusMetric
+          label="Dashboard"
+          value={
+            focusUser.rendererStatus
+              ? [
+                  focusUser.rendererStatus.replace(/_/g, " "),
+                  focusUser.rendererReady === true ? "ready" : focusUser.rendererReady === false ? "not ready" : null,
+                  focusUser.rendererBootstrapMs === null ? null : `${Math.round(focusUser.rendererBootstrapMs)} ms boot`,
+                ].filter(Boolean).join(" · ")
+              : null
+          }
+        />
+        <FocusMetric
+          label="Dashboard recovery"
+          value={
+            focusUser.rendererFailureReason
+              ? [
+                  focusUser.rendererFailureReason.replace(/_/g, " "),
+                  focusUser.rendererLastFailureAt ? `last ${formatMaybeDate(focusUser.rendererLastFailureAt)}` : null,
+                  `reloads ${focusUser.rendererReloadAttempts ?? 0}`,
+                  `failures ${focusUser.rendererFailureCount ?? 0}`,
+                  `consecutive ${focusUser.rendererConsecutiveFailures ?? 0}`,
+                ].filter(Boolean).join(" · ")
+              : focusUser.rendererReloadAttempts
+                ? `reloads ${focusUser.rendererReloadAttempts}`
+                : "no issue reported"
+          }
+        />
+        <FocusMetric
+          label="CPU / RAM"
+          value={
+            focusUser.resourceCpuPercent !== null || focusUser.resourceWorkingSetMb !== null
+              ? [
+                  focusUser.resourceCpuPercent === null ? null : `${formatPercent(focusUser.resourceCpuPercent)} CPU`,
+                  focusUser.resourceAverageCpuPercent === null ? null : `avg ${formatPercent(focusUser.resourceAverageCpuPercent)}`,
+                  focusUser.resourceWorkingSetMb === null ? null : `${formatMegabytes(focusUser.resourceWorkingSetMb)} RAM`,
+                  focusUser.resourcePeakWorkingSetMb === null ? null : `peak ${formatMegabytes(focusUser.resourcePeakWorkingSetMb)}`,
+                ].filter(Boolean).join(" · ")
+              : null
+          }
+        />
+        <FocusMetric
+          label="Processes / wakeups"
+          value={
+            focusUser.resourceProcessCount !== null || focusUser.resourceIdleWakeupsPerSecond !== null
+              ? [
+                  focusUser.resourceProcessCount === null ? null : `${focusUser.resourceProcessCount} processes`,
+                  focusUser.resourceIdleWakeupsPerSecond === null ? null : `${focusUser.resourceIdleWakeupsPerSecond.toFixed(1)} wakeups/s`,
+                ].filter(Boolean).join(" · ")
+              : null
+          }
+        />
+        <FocusMetric
+          label="Power / payload"
+          value={
+            focusUser.resourcePowerSignal || focusUser.resourceNetworkMbps !== null
+              ? [
+                  focusUser.resourcePowerSignal ? `${focusUser.resourcePowerSignal} signal` : null,
+                  focusUser.resourceNetworkMbps === null ? null : `${formatMbps(focusUser.resourceNetworkMbps)} attempted`,
+                ].filter(Boolean).join(" · ")
+              : null
+          }
+        />
         <FocusMetric label="Folder" value={focusUser.folderState.replace(/_/g, " ")} />
         <FocusMetric
           label="Replay files in folder"

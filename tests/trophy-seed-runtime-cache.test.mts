@@ -49,26 +49,14 @@ test("read-only production preview skips trophy seed writes", () => {
   );
 });
 
-test("Elite bootstrap seed is vacant with no inherited Guardian", () => {
-  const eliteStart = service.indexOf(
-    'trophyId: "elite_champion_belt"',
-  );
-  const eliteEnd = service.indexOf(
-    "},",
-    eliteStart,
-  );
+test("RM ELO bootstrap uses all five canonical custody ids", () => {
+  assert.match(service, /\.\.\.eloTitles\.map/);
+  assert.match(service, /trophyId: definition\.id/);
+  assert.match(service, /displayName: `RM \$\{definition\.displayName\}`/);
+  assert.match(service, /status: "vacant"/);
 
-  assert.ok(eliteStart >= 0);
-  assert.ok(eliteEnd > eliteStart);
-
-  const eliteSeed = service.slice(
-    eliteStart,
-    eliteEnd,
-  );
-
-  assert.match(eliteSeed, /status: "vacant"/);
-  assert.doesNotMatch(eliteSeed, /guardianName/);
-  assert.doesNotMatch(eliteSeed, /guardian_held/);
+  assert.doesNotMatch(service, /trophyId: "elite_champion_belt"/);
+  assert.doesNotMatch(service, /trophyId: "veteran_champion_rm"/);
 });
 
 test("failed public seed reconciliation is evicted and remains retryable", () => {

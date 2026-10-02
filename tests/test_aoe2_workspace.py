@@ -56,6 +56,36 @@ class WorkspaceTests(unittest.TestCase):
             "ACTIVE_UNMERGED",
         )
 
+    def test_registered_persistent_workspace_is_preserved_after_merge(self):
+        self.assertEqual(
+            workspace.classify_registered_workspace(
+                dirty=False,
+                merged=True,
+                preserve_when_merged=True,
+            ),
+            "AGENT_PRESERVED",
+        )
+
+    def test_registered_normal_workspace_remains_retireable_after_merge(self):
+        self.assertEqual(
+            workspace.classify_registered_workspace(
+                dirty=False,
+                merged=True,
+                preserve_when_merged=False,
+            ),
+            "AGENT_RETIREABLE",
+        )
+
+    def test_registered_persistent_workspace_with_unique_commits_stays_active(self):
+        self.assertEqual(
+            workspace.classify_registered_workspace(
+                dirty=False,
+                merged=False,
+                preserve_when_merged=True,
+            ),
+            "AGENT_ACTIVE_UNMERGED",
+        )
+
     def test_workspace_id_is_stable_and_path_safe(self):
         self.assertEqual(
             workspace.workspace_id(

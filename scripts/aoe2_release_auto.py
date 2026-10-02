@@ -1029,6 +1029,155 @@ def _additive_migration_contract(
 
 
 
+
+MIGRATION_CHECK_PROOF_CORRECTIONS = (
+    ROOT / "config/migration-check-proof-corrections.json"
+)
+
+
+def _migration_check_proof_corrections() -> dict[str, dict]:
+    path = MIGRATION_CHECK_PROOF_CORRECTIONS
+
+    if not path.is_file():
+        return {}
+
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise AutoShipError(
+            f"migration CHECK proof corrections are unreadable: {exc}"
+        ) from exc
+
+    if (
+        payload.get("schema") != 1
+        or payload.get("kind")
+        != "aoe2war-migration-check-proof-corrections"
+        or not isinstance(payload.get("corrections"), list)
+    ):
+        raise AutoShipError(
+            "migration CHECK proof corrections have invalid schema"
+        )
+
+    digest_re = re.compile(r"^[0-9a-f]{64}$")
+    name_re = re.compile(r"^[A-Za-z0-9_.-]+$")
+    ident_re = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+    resolved: dict[str, dict] = {}
+
+    for item in payload["corrections"]:
+        if not isinstance(item, dict):
+            raise AutoShipError(
+                "migration CHECK proof correction is not an object"
+            )
+
+        migration = str(item.get("migration") or "")
+        migration_sha = str(item.get("migration_sql_sha256") or "")
+        checks = item.get("checks")
+
+        if (
+            not name_re.fullmatch(migration)
+            or not digest_re.fullmatch(migration_sha)
+            or not isinstance(checks, list)
+            or not checks
+            or migration in resolved
+        ):
+            raise AutoShipError(
+                "migration CHECK proof correction identity is invalid"
+            )
+
+        corrected: dict[tuple[str, str], dict[str, str]] = {}
+
+        for check in checks:
+            if not isinstance(check, dict):
+                raise AutoShipError(
+                    "migration CHECK proof correction check is invalid"
+                )
+
+            table = str(check.get("table") or "")
+            constraint = str(check.get("constraint") or "")
+            declared = str(
+                check.get("declared_after_sha256") or ""
+            )
+            actual = str(
+                check.get("corrected_after_sha256") or ""
+            )
+            key = (table, constraint)
+
+            if (
+                not ident_re.fullmatch(table)
+                or not ident_re.fullmatch(constraint)
+                or not digest_re.fullmatch(declared)
+                or not digest_re.fullmatch(actual)
+                or declared == actual
+                or key in corrected
+            ):
+                raise AutoShipError(
+                    "migration CHECK proof correction check identity is invalid"
+                )
+
+            corrected[key] = {
+                "declared_after_sha256": declared,
+                "corrected_after_sha256": actual,
+            }
+
+        resolved[migration] = {
+            "migration_sql_sha256": migration_sha,
+            "checks": corrected,
+        }
+
+    return resolved
+
+
+def _apply_migration_check_proof_correction(
+    *,
+    rel: str,
+    sql: str,
+    local: dict[tuple[str, str], dict[str, str]],
+) -> None:
+    migration = Path(rel).parent.name
+    correction = _migration_check_proof_corrections().get(migration)
+
+    if correction is None:
+        return
+
+    observed_sql_sha = hashlib.sha256(
+        sql.encode("utf-8")
+    ).hexdigest()
+
+    if observed_sql_sha != correction["migration_sql_sha256"]:
+        raise AutoShipError(
+            "migration CHECK proof correction SQL hash mismatch: "
+            f"{migration}"
+        )
+
+    corrected = correction["checks"]
+
+    if set(corrected) != set(local):
+        raise AutoShipError(
+            "migration CHECK proof correction set differs from "
+            f"immutable migration markers: {migration}"
+        )
+
+    for key, proof in local.items():
+        item = corrected[key]
+
+        if proof["after_sha256"] != item["declared_after_sha256"]:
+            raise AutoShipError(
+                "migration CHECK proof correction no longer matches "
+                f"declared marker: {key[0]}.{key[1]}"
+            )
+
+        actual = item["corrected_after_sha256"]
+
+        if actual == proof["before_sha256"]:
+            raise AutoShipError(
+                "migration CHECK proof correction collapses before/after "
+                f"identity: {key[0]}.{key[1]}"
+            )
+
+        proof["after_sha256"] = actual
+
+
+
 def _production_proven_check_contract(
     manifest: dict,
     paths: list[str],
@@ -1132,6 +1281,12 @@ def _production_proven_check_contract(
                 "replacement has no proof "
                 f"markers: {rel}"
             )
+
+        _apply_migration_check_proof_correction(
+            rel=rel,
+            sql=sql,
+            local=local,
+        )
 
         dropped: set[
             tuple[str, str]
@@ -1982,9 +2137,142 @@ done < <(
 )
 
 if [ "$pending_count" = "0" ]; then
-  [ -n "$receipt_match" ] \
-    || {{ echo "STOP: release migrations are applied but durable migration receipt is missing" >&2; exit 75; }}
+  # An already-applied frontier is trusted only after the database proves
+  # exactly one finished row per release migration, exact migration bytes,
+  # no unfinished Prisma rows, and the exact live post-migration CHECK state.
+  while IFS= read -r migration; do
+    [ -n "$migration" ] || continue
+    count="$(psql -X -v ON_ERROR_STOP=1 -Atqc \
+      "select count(*) from \\"_prisma_migrations\\" where migration_name='$migration' and finished_at is not null and rolled_back_at is null;")"
+    [ "$count" = "1" ] \
+      || {{ echo "STOP: already-applied migration is not exactly-once: $migration" >&2; exit 78; }}
+
+    db_checksum="$(psql -X -v ON_ERROR_STOP=1 -Atqc \
+      "select checksum from \\"_prisma_migrations\\" where migration_name='$migration' and finished_at is not null and rolled_back_at is null;")"
+    migration_sha="$(sha256sum "$tmp/prisma/migrations/$migration/migration.sql" | awk '{{print $1}}')"
+    [ "$db_checksum" = "$migration_sha" ] \
+      || {{ echo "STOP: already-applied migration checksum differs from release SQL: $migration" >&2; exit 78; }}
+  done < "$expected_file"
+
+  failed="$(psql -X -v ON_ERROR_STOP=1 -Atqc \
+    'select count(*) from "_prisma_migrations" where finished_at is null and rolled_back_at is null;')"
+  [ "$failed" = "0" ] \
+    || {{ echo "STOP: Prisma reports unfinished migration rows" >&2; exit 79; }}
+
 {check_after_script}
+
+  if [ -z "$receipt_match" ] \
+    && [ "$MIGRATION_MODE" = "production-proven-check-replacement" ]; then
+    adoption_source=""
+    adoption_source_release=""
+    adoption_source_dump_sha=""
+
+    while IFS= read -r candidate; do
+      status="$candidate/migration-status.txt"
+      sidecar="$status.sha256"
+      [ -f "$status" ] || continue
+      [ ! -L "$status" ] || continue
+      [ -f "$sidecar" ] || continue
+      [ ! -L "$sidecar" ] || continue
+      sha256sum -c "$sidecar" >/dev/null 2>&1 || continue
+
+      [ "$(grep -c '^release_sha=' "$status" || true)" = "1" ] || continue
+      source_release="$(awk -F= '$1=="release_sha" {{print $2}}' "$status")"
+      [[ "$source_release" =~ ^[0-9a-f]{{40}}$ ]] || continue
+      [ "$source_release" != "$RELEASE" ] || continue
+      source_short="$(printf '%s' "$source_release" | cut -c1-12)"
+      case "$(basename "$candidate")" in
+        migration-????????T??????Z-"$source_short") ;;
+        *) continue ;;
+      esac
+
+      grep -Fqx "status=APPLIED" "$status" || continue
+      grep -Fqx "database=$PGDATABASE" "$status" || continue
+      grep -Fqx "mode=$MIGRATION_MODE" "$status" || continue
+      [ "$(grep -c '^migration=' "$status" || true)" = "$expected_count" ] || continue
+
+      ok=1
+      while IFS= read -r migration; do
+        [ -n "$migration" ] || continue
+        grep -Fqx "migration=$migration" "$status" || ok=0
+
+        source_blob="$(git rev-parse "$source_release:prisma/migrations/$migration/migration.sql" 2>/dev/null || true)"
+        current_blob="$(git rev-parse "$RELEASE:prisma/migrations/$migration/migration.sql" 2>/dev/null || true)"
+        [ -n "$source_blob" ] && [ "$source_blob" = "$current_blob" ] || ok=0
+      done < "$expected_file"
+{check_receipt_verify_script}
+      [ "$ok" = "1" ] || continue
+
+      git cat-file -e "$source_release^{{commit}}" 2>/dev/null || continue
+      git merge-base --is-ancestor "$source_release" "$RELEASE" || continue
+
+      [ "$(grep -c '^dump=' "$status" || true)" = "1" ] || continue
+      [ "$(grep -c '^dump_sha256=' "$status" || true)" = "1" ] || continue
+      dump_name="$(awk -F= '$1=="dump" {{print $2}}' "$status")"
+      source_dump_sha="$(awk -F= '$1=="dump_sha256" {{print $2}}' "$status")"
+      [ "$dump_name" = "pre-migration.dump" ] || continue
+      [[ "$source_dump_sha" =~ ^[0-9a-f]{{64}}$ ]] || continue
+      source_dump="$candidate/$dump_name"
+      [ -f "$source_dump" ] || continue
+      [ ! -L "$source_dump" ] || continue
+      [ "$(sha256sum "$source_dump" | awk '{{print $1}}')" = "$source_dump_sha" ] || continue
+
+      if [ -n "$adoption_source" ]; then
+        echo "STOP: multiple ancestor migration receipts qualify for adoption" >&2
+        exit 75
+      fi
+
+      adoption_source="$candidate"
+      adoption_source_release="$source_release"
+      adoption_source_dump_sha="$source_dump_sha"
+    done < <(
+      find "$RECEIPT_ROOT" -mindepth 1 -maxdepth 1 -type d \
+        -name 'migration-????????T??????Z-????????????' -print 2>/dev/null | sort
+    )
+
+    if [ -n "$adoption_source" ]; then
+      stamp="$(date -u +%Y%m%dT%H%M%SZ)"
+      receipt="$RECEIPT_ROOT/migration-${{stamp}}-${{RELEASE_SHORT}}"
+      test ! -e "$receipt"
+      sudo -n /usr/bin/install -d -o tony -g tony -m 0750 "$receipt"
+
+      source_dump="$adoption_source/pre-migration.dump"
+      dump="$receipt/pre-migration.dump"
+      cp -a --reflink=auto "$source_dump" "$dump"
+      dump_sha="$(sha256sum "$dump" | awk '{{print $1}}')"
+      [ "$dump_sha" = "$adoption_source_dump_sha" ] \
+        || {{ echo "STOP: adopted pre-migration dump hash drifted during copy" >&2; exit 75; }}
+
+      source_status="$adoption_source/migration-status.txt"
+      source_status_sha="$(sha256sum "$source_status" | awk '{{print $1}}')"
+      status="$receipt/migration-status.txt"
+      {{
+        printf 'status=APPLIED\\n'
+        printf 'release_sha=%s\\n' "$RELEASE"
+        printf 'database=%s\\n' "$PGDATABASE"
+        printf 'dump=pre-migration.dump\\n'
+        printf 'dump_sha256=%s\\n' "$dump_sha"
+        while IFS= read -r migration; do
+          [ -n "$migration" ] && printf 'migration=%s\\n' "$migration"
+        done < "$expected_file"
+      }} > "$status"
+      printf 'mode=%s\n' "$MIGRATION_MODE" >> "$status"
+{check_receipt_script}
+      printf 'adopted_from_release_sha=%s\n' "$adoption_source_release" >> "$status"
+      printf 'adopted_from_receipt=%s\n' "$adoption_source" >> "$status"
+      printf 'adopted_from_status_sha256=%s\n' "$source_status_sha" >> "$status"
+      printf 'database_mutation=NONE\n' >> "$status"
+      sha256sum "$status" > "$status.sha256"
+
+      printf 'mode\\tadopted-already-applied\\n'
+      printf 'receipt_dir\\t%s\\n' "$receipt"
+      printf 'dump_sha256\\t%s\\n' "$dump_sha"
+      exit 0
+    fi
+  fi
+
+  [ -n "$receipt_match" ] \
+    || {{ echo "STOP: release migrations are applied but no exact or safely adoptable durable migration receipt exists" >&2; exit 75; }}
   printf 'mode\\talready-applied\\n'
   printf 'receipt_dir\\t%s\\n' "$receipt_match"
   exit 0

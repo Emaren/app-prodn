@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "repository-entrypoint"
-reviewed_at: "2026-09-27"
+reviewed_at: "2026-10-01"
 review_interval_days: 14
 sensitivity: "internal"
 ---
@@ -40,6 +40,75 @@ memory before closing the work.
 4. `aoe2war finish` remains the canonical end-of-work transaction and owns
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
+
+## 2026-09-30 — Championship custody, proof clocks, and paired team funding
+
+The active contract is [Championship Belt Constitution V1](./CHAMPIONSHIP_BELT_CONSTITUTION.md).
+New `championship_v2` records have a separate creation boundary. Renderer V1/V2
+and B/A/E never reclassify an existing financial record or enroll legacy rows
+into new default behavior.
+
+Database invariant learned 2026-10-01: Championship V2 financial legs reuse
+`scheduled_matches`, so the PostgreSQL `protocol_version` check is part of the
+protocol API. When a new non-null ScheduledMatch protocol constant is added,
+the same release must extend `ck_scheduled_matches_protocol_version` and retain
+valid distinct Steam ID64 snapshot enforcement. Code-only protocol additions
+can compile and render correctly while every production insert fails at the DB
+boundary.
+
+Durable lessons:
+
+- The generic Founder payout adapter can fall back to local signing and its
+  response wrapper is not sufficient allocation proof. Team title allocations
+  require the protected port-8093 service, exact integer uwolo/request/recipient
+  binding and committed successful bank events. Lost responses retain uncertain
+  liability; known hashes reconcile with GET only. Unknown hashes require the
+  chain-owned request receipt (`wolochaind settlement inspect`), because current
+  source has no request-ID HTTP lookup. Never change an ID to rebroadcast.
+- Team financial legs must use the parent verified result and parent desync
+  lock/incidents. A child ScheduledMatch has no independent competitive replay
+  claim and cannot infer its own winner. Worker selection must exclude durable
+  holds/started defenses from default processing and skip already-paid principal
+  so bounded batches cannot starve newer obligations.
+
+- Trophy owns title identity/economics. Team custody needs a complete reign and
+  stable seats; a single scalar holder cannot truthfully represent a 4v4 title.
+  Public Champions/Profile/Challenge projections must read that custody and
+  permit explicit new reigns to supersede historical season-vacancy masks.
+- Solo priority and eligibility belong in one policy. Commissioner placement
+  outside holder eligibility does not waive ordinary challenger eligibility.
+  World remains open; Chaos retains popular-vote transfer authority.
+- Start proof and winner proof are different facts. Authenticated parsed live
+  roster/lane evidence can stop a default clock; heartbeat/uploader presence
+  cannot. Final custody requires stronger full-roster Watcher/replay truth and
+  existing human-confirmed desync guards. Late final cannot reopen disposition.
+- New challenges have creation plus 24h, followed by exactly 1h Commissioner
+  grace. Deadline is server state. Acceptance/funding never reset it. Several
+  valid claimant sides cause durable dispute, not first-click champion.
+- The current chain memo/proof interface has exactly left/right funding sides.
+  Team funding therefore uses stable paired ScheduledMatch financial legs
+  beneath one parent; each warrior signs their own transaction. No new wallet
+  or pooled ledger exists. Hidden legs cannot independently enter public
+  discovery, old expiry, legacy result correlation, or participant actions.
+- Trophy row/money locks, title advisory locks and deterministic request IDs
+  protect one custody transition and outgoing bounty. Team allocations belong
+  to the existing TrophyPayout. Any tx-backed allocation makes its parent
+  immutable economic evidence; partial payment must prevent a second same-day
+  obligation even when the parent's scalar tx hash is null.
+- Explicitly new reigns must never be mutated through legacy scalar-only
+  automatic title assignment; that would leave the roster authoritative ledger
+  stale. Use the shared transition or preserve Commissioner review.
+- A grouped belt intent is not NFT ownership. Missing restricted Warbound
+  executor stays blocked. Full required seat proof is necessary; confirmed or
+  uncertain tx-backed seats cannot be blindly resent. The exact follow-up
+  boundary lives in [chain handoff](./CHAMPIONSHIP_CHAIN_HANDOFF.md).
+
+Validation uses the explicit disposable local QA database, never production
+funding/state. The migration classifier and transactional PostgreSQL DDL check
+are read-only with respect to production. Local `prisma db push` encounters the
+repo's explicit `battle_public_number_seq` outside Prisma-managed schema;
+do not drop that sequence or use CASCADE as a generic fix. Production remains
+the protected exact-frontier `aoe2war finish` migration lane, separately run.
 
 ## 2026-09-28 — Reclaim evidence, not advertised reclaimability
 
@@ -77,6 +146,38 @@ Permanent ordering rule: under low root headroom, prove and retire a superseded
 staged release before spending effort on generic host cleanup. This reuses the
 existing receipt-driven stage retirement contract and avoids a release deadlock
 where capacity preflight blocks before that contract can run.
+
+## 2026-10-01 — A durable-proven fast rollback is pre-stage cache
+
+The October Blackout release exposed a second root-capacity deadlock. Production
+was still on the previously certified runtime and had one canonical fast rollback
+pair on root: roughly 95 MiB of Next runtime plus 1.10 GiB of dependencies.
+Normal post-certification retention correctly kept that newest fast pair, but the
+next release needed only about 166 MiB more root headroom to stage and the
+ordinary APT/Snap/journal/nginx recovery ladder had exhausted its safe classes.
+
+Read-only proof found an exact complete durable twin for the fast pair beneath
+the mounted rollback volume: the same BUILD_ID, a durable `next` tree, and the
+paired durable `node_modules` tree. At that point the root pair was no longer
+the recovery authority; it was an acceleration cache for an older generation.
+The currently active `.next` and `node_modules` were still untouched, and any
+future activation would create a fresh fast pair from that live runtime before
+swapping candidates.
+
+Permanent rule: under pre-stage root pressure, a canonical fast rollback pair
+may be retired only after exact BUILD_ID proof of both durable runtime halves.
+The lane must reject malformed names, symlinks, incomplete pairs, missing or
+drifting BUILD_ID values, and absent durable proof. It must rename both root
+halves out of the canonical namespace before deletion, seal the per-pair prune
+manifest with SHA-256, and re-prove source, active BUILD_ID, web health, root
+capacity, and Wolo 8092/8093 afterward. Unverified rollback material remains
+keep-only.
+
+This is deliberately different from ordinary post-certification fast-retention:
+post-certification keeps the newest verified fast generation for rapid rollback;
+pre-stage headroom recovery may temporarily reach zero fast generations because
+the certified live runtime itself is still active and durable rollback evidence
+already exists.
 
 
 ## 2026-09-28 — Clean Git metadata does not prove a writable tracked worktree
@@ -649,9 +750,110 @@ The current premium interaction is a large vertical composer with tactile 10,
 large betting action. Future Phase Books V2 adds true phase identity/countdown
 once those independent financial books exist.
 
-Future Auto Bet Reserve evolves toward phase-specific presets backed by the
-separately reviewed prefunded Wolo custody architecture. Watcher telemetry alone
-never becomes financial authority.
+Auto Bet Reserve now has a durable **shadow** producer, but no funded consumer.
+After the canonical market reconciler commits an unscheduled live Watcher winner
+market, the worker reuses that reconciler's active-session snapshot and may
+materialize one `shadow_ready` `BetAutoExecution` row for a preset/canonical
+game. Admission requires resolved/high team truth, verified integrity, frozen
+proposition identity, exact owner Steam ID on exactly one roster side, and the
+same user's UID among exact-session uploaders. Configured Desync preview requires
+the exact live child with the same proposition hash.
+
+That row is evidence only: no WOLO reservation, wager, stake intent, ticket,
+`acceptedAt`, or finite-count decrement occurs. The database uniqueness
+`(presetId, gameIdentityKey)` is the one-shot guard, and later Watcher identity
+promotion canonicalizes the stored game/session identity. A future funded
+consumer remains a separately reviewed prefunded Wolo custody project.
+Watcher telemetry alone never becomes financial authority.
+
+Future Auto Bet Reserve may evolve toward phase-specific presets backed by that
+separately reviewed prefunded Wolo custody architecture.
+
+Phase Books V2 now has an additive schema/planner foundation **and a durable
+shadow materializer**. Existing financial `BetMarket` rows remain
+`bookPhase = legacy`. A nullable unique `phaseBookKey` gives future
+independent books durable identity, nullable phase timestamps are server-owned
+fences, and the pure planner defines Pre-Game, exactly 60 seconds of Opening
+Minute, then Late while battle truth is active.
+
+The materializer is an evidence rail, not financial activation. Under
+`BET_PHASE_BOOKS_V2_MODE=shadow`, canonical market reconciliation may create
+or refresh isolated rows with:
+
+- `status = phase_shadow`;
+- `marketType = phase_shadow_winner`;
+- zero seeded WOLO;
+- no scheduled-match unique claim;
+- no wager, stake-intent, stake-ticket, wallet-lock, escrow, payout or settlement
+  side effect.
+
+Keep both the shadow status **and** shadow market type isolation. Existing
+Watcher promotion, winner/Desync reconciliation, Auto Bet, board loaders,
+stale-market cleanup, recovery and settlement all key off current financial
+status/market-type vocabularies. Reusing `winner` or a live financial status
+for a shadow row can silently drag that row into money authority.
+
+Each shadow phase key gets a transaction-scoped advisory lock. Refresh is
+allowed only while the row is still an untouched shadow with no
+`firstStakeAcceptedAt`, wagers or stake-ticket legs. If any future activation
+or operator action turns it into a financial object, shadow reconciliation must
+stop mutating it. Do not create an environment-only promotion path.
+
+Pre-Game and live-phase clocks have different evidence. An accepted scheduled
+Challenge proves a scheduled cutoff, so the Pre-Game shadow may use that as
+`phaseClosesAt`. The current source model does not prove the exact historical
+book-open instant, so keep `phaseOpensAt = null`; never convert “up to seven
+days” into a fabricated timestamp.
+
+Opening Minute and Late require canonical Watcher battle-start authority,
+verified proposition integrity, a BattleIdentity row, and its immutable public
+Battle number. Opening Minute begins at `BattleIdentity.startedAt` and may run for at most
+60 seconds. Trusted terminal truth preempts that ceiling. Late begins at +60s
+only if the battle survives past that boundary; if terminal truth arrives during
+Opening Minute, cap Opening at terminal and do not materialize Late. Once Late
+exists, only trusted terminal `settledAt` evidence may close it. A transient
+Watcher snapshot gap is not terminal battle truth.
+
+The live phase-book identity must use immutable
+`BattleIdentity.publicNumber`, not mutable `battleId` or transient session
+identity. Fallback-to-platform Watcher promotion can repoint the BattleIdentity
+row and market foreign keys while preserving the public number. Hashing the
+mutable row id or fallback session key would create duplicate phase books after
+promotion.
+
+Production may project **accepted-slip phase provenance** before financial
+activation, but only as presentation/history truth. For an existing wager,
+prefer `stakeLockedAt` when present, otherwise `createdAt`. Scheduled
+Challenge markets classify as Pre-Game under today's pre-game-only contract.
+Unscheduled Watcher wagers require canonical `BattleIdentity.startedAt`; before
+start is Pre-Game, start through `< +60s` is Opening Minute, and `>= +60s` is
+Late. Missing start authority stays Legacy rather than being inferred.
+
+This projection does not split the V1 pool. If several viewer slips on one
+legacy market span timing phases, show a breakdown rather than assigning one
+economic phase to the entire market.
+
+Do not make production betting read the phase fields piecemeal for financial
+admission. Phase activation is still one coordinated financial change:
+transactional phase write fence, stake-ticket/escrow validation, recovery,
+settlement, and financial UI must all agree before any phase row may accept
+WOLO. The runtime gate continues to fail a requested
+`BET_PHASE_BOOKS_V2_MODE=live` closed while Betting Fairness V1.2 remains the
+production compatibility bridge.
+
+Phase timing still has one server authority. Build exact Watcher start evidence
+from canonical live-session identity plus proven aliases; ambiguity fails
+closed. Carry the resolved timestamp as market-seed evidence and persist it on
+`BattleIdentity.startedAt`. Do not store separate live clocks on legacy
+winner/Desync markets.
+
+Scheduled Challenge time is not live-start authority. Once a challenge is
+linked to an exact Watcher session, Opening/Late timing comes from that
+session's stabilized Watcher start. An existing BattleIdentity start is latched
+against later heartbeats. If fallback/canonical BattleIdentity rows merge, the
+survivor keeps the earliest non-null proven start and immutable public number so
+promotion cannot reopen or duplicate the Opening Minute window.
+
 
 ## Current highest-value product queue
 
@@ -2101,3 +2303,314 @@ Durable rule: speculative navigation warmups are optimization only. A transient
 dynamic-import failure must be caught, must never crash the page the user is
 currently viewing, and must clear its cached failed promise so later user intent
 can retry against fresh chunks.
+
+
+## 2026-09-29 — Manual title custody changes must carry the title-money state
+
+The Trophy Command audit found that commissioner-driven holder reassignment and
+verified challenge settlement did not share the same economic transition.
+Challenge settlement reset the old reign and could create the dethrone bounty,
+while the manual `assign_holder` path could replace custody and restart
+`holderSince` without freezing the accrued bounty. That made a visually correct
+admin action capable of silently discarding a real title obligation.
+
+Durable rule: a holder change is not a metadata update. Serialize manual
+custody mutation with a trophy-scoped transaction lock, re-read the Trophy row
+inside that lock, freeze the outgoing reign's projected championship bounty,
+create the incoming holder's payout obligation, reset the new reign's bounty
+base, and record the transfer evidence together. Re-selecting the already-current
+holder is metadata refresh only and must not restart the reign or duplicate a
+bounty.
+
+Daily Champion Tribute follows its existing authority. A manual transfer must
+reuse `reconcileDailyTrophyTribute()`, preserve paid or tx-backed same-day
+money truth, supersede only unexecuted former-holder rows, and queue replacement
+tribute only for titles currently present in
+`ACTIVE_REIGN_TRIBUTE_TROPHY_IDS`. Do not let a generic holder-edit surface
+expand the live title-economics program.
+
+The lock contract must cover every custody-changing lane, not merely the admin
+form that exposed the bug. Verified challenge dry-run and settlement therefore
+take replay/desync authority locks first and the Trophy money/custody lock
+second, matching the automatic scheduled-settlement lock order. After those
+locks, live custody is re-read and the action is rejected when the challenge's
+captured defender or Guardian no longer matches current custody. Preview and
+settlement bounty calculations must use that locked Trophy row rather than an
+older relation snapshot loaded before the transaction.
+
+Time is part of Trophy money authority too. Any custody/economics operation that
+captures an explicit transaction `now` must pass that same instant into
+`projectedTrophyBounty()`; never let the projection silently consult a later
+wall clock. Otherwise an identical transaction can cross UTC midnight between
+preflight and execution and accrue an extra bounty day. Display-only reads may
+continue to use the helper's default current time, but mutation math must be
+anchored to the operation timestamp.
+
+Watcher support metadata has a bounded-capacity contract across client and server.
+Watcher 1.6.2 emits fifty top-level heartbeat metadata fields: the compact resource
+profile is field 38, renderer status field 40, and renderer readiness/recovery fields
+follow it. The server sanitizer must retain enough bounded top-level keys for that
+contract. A 40-key cap silently discarded renderer readiness and failure evidence, so
+the ingress bound is 64 keys while the existing 64 KiB request limit, depth limit,
+array limit, string limit, and secret-key filtering remain authoritative.
+
+Challengeability is part of the same locked authority, not merely UI state.
+The admitted Trophy statuses are `held`, `active`, `guardian_held`, and
+`vacant`; `draft`, `paused`, and `retired` fail closed. Public challenge
+creation must take its title-challenge advisory lock, then the Trophy money row
+lock, re-read status/custody, and require the locked authority to match the
+preflight snapshot before creating the linked title challenge.
+
+Forced-season vacancy is an authority override. When the public championship
+policy marks a title forced vacant, challenge creation and settlement must ignore
+stale historical holder/Guardian fields and treat the title as genuinely vacant
+without mutating history merely to make reads agree. Conversely, ordinary
+malformed custody (for example `vacant` with a real current holder or
+`guardian_held` with a real current holder) must fail closed rather than being
+silently normalized.
+
+Public read projection must preserve the title row while applying that override.
+Never implement forced vacancy by filtering the Trophy out of the public
+registry: `/api/trophies` feeds Challenge Hall target resolution and the live
+Champions title map. A filtered row can therefore disappear from challenge
+prefill and cause Champions to fall back to stale static definition state.
+
+Use one public Trophy projection for collection and single-metadata reads. A
+forced-vacant projection clears both current-holder and Guardian IDs, display
+names, wallet addresses, loaded relations, reign clock, forfeiture presentation,
+and displayed current bounty while leaving the persisted historical row
+untouched. Public metadata reads must use the retained public bootstrap wrapper;
+do not invoke the fully re-runnable operator seed reconciler on every metadata
+GET.
+
+Present-tense holder attribution must follow that same forced-vacancy policy even
+when a surface does not need the full Trophy object projection. Centralize the
+Trophy-id-to-title-policy lookup and use it for signed-in profile holdings,
+public player title honors, Lobby Featured Warrior honors, and any mutation
+audit that asks whether a user currently holds a title. A forced-vacant
+historical row is evidence, not current ownership, and must not create a profile
+badge or a fresh nationality-forfeiture side effect.
+
+Read-only profile holdings should use the retained public bootstrap boundary.
+Do not run the fully re-runnable operator seed reconciler merely to paint a
+profile. Static fallback holders must also pass forced-vacancy policy so a
+future definition edit cannot resurrect obsolete public custody.
+
+The Kingdom Knowledge Router is a public evidence plane and must not become a
+second Trophy authority. Production honors should begin with the canonical
+public Trophy loader/projection, then enrich that projected current state with
+bounded historical events if the AI needs chronology. Do not query raw Trophy
+custody and call it current truth merely because production has direct Prisma
+access. Live bounty evidence must use the same projected bounty calculation as
+the public registry.
+
+Public KKR serialization must also exclude operator-only mutable Trophy notes.
+An admin eligibility note belongs in Trophy Command, not in public model
+context. Historical event fields may be preserved when they are intentionally
+selected and public-safe; history is evidence, not current custody.
+
+Wallet lookup is another authority boundary. Do not infer current Trophy
+ownership from `chainOwnerAddress`, and do not query raw holder wallet fields
+as if they were already season-correct. Start from the canonical public Trophy
+projection, run current custody through Trophy authority, and model wallet
+association explicitly as holder, Guardian, chain-owner-only, or a combination.
+Only holder/Guardian roles may receive present-tense custody or reign language.
+
+A chain-owner-only Trophy row may still be useful evidence, especially while
+app custody remains the settlement authority, but the UI must label it as a
+recorded chain-owner relationship. Current wallet Trophy economics use projected
+bounty, current images use managed media resolution, and title links come from
+the title definition. Never hard-code one nation's Champions route into a
+multi-title wallet portfolio.
+
+Commissioner challenge creation has no separate defender-selection authority.
+The target Trophy and challenger may be selected, but defender/Guardian identity
+must come from the locked Trophy authority. Existing nonterminal title
+challenges must be checked under the same serialized Trophy lock so the admin
+rail cannot create a duplicate while public creation is in flight.
+
+Presentation must not call unavailable title states vacant. Map `draft`,
+`paused`, and `retired` to the existing `coming_soon` public vocabulary;
+reserve `vacant` for an actually claimable open throne.
+
+The daily Tribute scheduler is part of the same money state machine. Candidate
+queries may be stale by the time a transaction begins, so recipient, status,
+reign start, and tribute amount must be re-read from the Trophy row after
+acquiring the shared custody lock. A timer that relies on a pre-transaction
+holder snapshot can recreate an old-holder obligation immediately after a title
+transfer.
+
+The same rule applies to Guardian assignment/clear, vacate, retire, forced
+forfeiture, and economics versioning. Those paths must lock and re-read the
+Trophy before deriving bounty or custody state. A custody exit freezes
+`projectedTrophyBounty()` into the stored bounty base and supersedes only
+unexecuted/no-tx same-day Tribute rows. Never discard accrued display bounty by
+resetting `holderSince` from a stale snapshot.
+
+Trophy payout selection is also only a candidate scan. Before an external WOLO
+call, execution must acquire the Trophy money lock, re-read the payout and live
+custody, reject/supersede a stale daily recipient, then atomically claim the
+obligation as `executing`. Every custody-changing lane and payout-admin mutation
+must treat `executing` as an in-flight blocker.
+
+Do not automatically retry an `executing` Trophy payout after a process crash
+or ambiguous settlement interruption. The external side effect may already have
+occurred. Preserve the row for chain/settlement investigation rather than
+turning uncertainty into a duplicate payment. `cancelled` and `superseded`
+Trophy payouts are terminal and must not be revived by backend admin calls.
+
+Championship bounty execution uses the existing Founder Rewards settlement rail.
+It remains separate from Bet Escrow and from the numbered public Bounty Pool.
+A ledger row without an executable, idempotent settlement path is not a finished
+financial feature.
+
+## 2026-09-29 — Shadow automation must react after authoritative human commit, never inside it
+
+Counter-bettor Preview is a projection of an already-authoritative human wager,
+not part of wager admission. Run Tony/Paulie shadow evaluation only after the
+human `BetWager` transaction commits. Its best-effort failure must never roll
+back, reject, or mutate the human wager. Duplicate/recovery requests may replay
+the projection because the counter-action idempotency key is policy/bot/market/
+source-wager/proposition bound.
+
+Serialize bot policy edits and shadow decisions with the same per-bot advisory
+lock. Re-read both policy and source wager under that lock before deriving the
+decision. Count prior append-only `shadow_proposal` rows under the same lock for
+per-market and UTC-day exposure; never use a stale pre-lock exposure snapshot.
+
+Shadow balance is simulation, not custody. If pure policy requires a balance
+input, a clearly labeled policy envelope may exercise balance-floor arithmetic,
+but persisted `availableBalanceWolo` must stay null and `custodyVerified`
+false. `committedCounterstakeWolo`, reservation IDs and transaction hashes stay
+null until a separately reviewed custody executor proves them. The database
+custody-proof constraint is an independent final fence.
+
+Use the canonical internal-system UID predicate plus current bot reserved UIDs
+to reject non-human source wagers. This prevents recursive house/AI/protocol
+activity even if a future internal account gains a wager path.
+
+An exposure-blocked source wager receives one decision in its original context;
+do not resurrect yesterday's human action after a daily limit resets. Historical
+shadow actions are evidence, not queued financial work.
+
+If shadow counter-actions are surfaced publicly, attach them only after the real
+market card has completed financial aggregation. Keep them in a distinct
+`previewLiquidity` DTO and never feed proposed amounts into seed pools, wager
+pools, total pot, crowd percentages, slip counts, projected return, settlement,
+or War Tape financial proof. The public projector must independently reject any
+row carrying committed stake, balance/custody proof, reservation or transaction
+hash even if its query was already intended to select shadow rows.
+
+A rolling client may receive a warmed pre-feature market payload, so public UI
+must treat an absent Preview Liquidity array as empty. The server still emits
+the field on current snapshots.
+
+Private Auto Bet preview presentation follows the same additive rule but a
+different authority source. `/api/bets` is already private/no-store and
+viewer-aware, so it may attach one viewer-owned `shadow_ready`
+`BetAutoExecution` to its winner market as `viewerAutoBetPreview`. Scope the
+query by the signed-in user's unique preset ID; never expose another user's
+execution evidence.
+
+Do not trust `shadow_ready` status alone. Revalidate the frozen
+`sourceEvidence` identity/proposition contract and require ticket, reservation,
+attempt, retry, lease, and acceptance fields to remain pristine. Group rows by
+winner market before validation; more than one row is ambiguity and must yield
+no preview. Present the stored preset version/stakes/timestamp instead of
+recomputing an old game from the user's current preset.
+
+Keep this private DTO separate from `viewerWager` and public
+`previewLiquidity`. Attach it after real market economics have been calculated,
+never include it in pools/odds/returns/settlement, and render an optional Desync
+leg only within the parent winner preview. If a future funded consumer claims or
+advances the row, the shadow-only presentation must disappear.
+
+A Preview-to-slip convenience must remain a pure manual bridge. Re-plan the frozen
+preview against current board state before copying it into local
+`SelectionState`: winner book still open, no existing real winner wager,
+recorded whole-WOLO stake still within the current cap, and—when present—the
+exact recorded Desync child still attached/open with no existing viewer wager.
+The combined Winner + Desync total must also fit the current cap. Do not clamp,
+recompute, or “helpfully” adapt a stale preview.
+
+The Preview rail itself must not call APIs or wallet/signing code. Loading may
+only invoke the page-owned local selection setter. Ticket preparation, stake
+intent creation, Keplr connection, escrow broadcast, and wager recording remain
+behind the user's later explicit manual Lock action. Never repurpose this UI
+bridge as the claim operation for a future funded Auto Bet consumer.
+
+
+## 2026-10-02 — Championship result recovery separates start proof, result proof, and money authority
+
+Championship V2 does not depend on legacy player check-in timestamps. Acceptance
+and funding make the challenge ready; an authenticated defending-participant
+Watcher live observation proves the qualifying match started. Preserve that
+start evidence for the complete 24-hour challenge plus one-hour Commissioner
+grace, independently of the short public Live Games linger window, and scope
+historical evidence reads to participants in active title protocols.
+
+HD parser token `TurboRandom<N>` belongs to the RM championship lane. When an
+otherwise unresolved final rated 1v1 has an exact two-Steam-ID roster, a later
+Watcher snapshot may establish result authority only if the same source-lane
+ratings move equal-and-opposite by a non-zero bounded amount. Persist that proof
+append-only under `title-authority:rating-delta-v1`.
+
+Rating-delta authority may affect stats and championship custody, but never
+betting or WOLO settlement. Recorder-exit and terminal action ordering remain
+non-authoritative for 1v1 results. Unrated or ambiguous games still require
+stronger replay truth or an authorized Commissioner adjudication.
+
+## 2026-10-02 — Championship V2 is Watcher-first; funding is a separate rail
+
+Championship V2 has no player check-in contract. Exact authenticated
+Watcher-observed play by the sealed roster is competitive consent and may start
+and finish an explicit Challenge even when a participant never clicked Accept
+or Fund. Notification and challenge creation must precede the observed start;
+exact Steam roster, lane, team size, custody epoch, result authority and desync
+guards still fail closed. Acceptance/funding remain relevant to default and
+money rights, not to whether a played battle happened.
+
+WOLO matchability freezes at the authenticated Watcher start timestamp. A
+completed championship wager is winner-take-pool only when both tx-backed
+deposits existed at or before that start. A unilateral deposit or any deposit
+that arrived after battle start remains real escrow liability but is unmatched
+principal: return every such funded side whole. Never let ingest/worker latency
+turn a late transfer into retroactive wager authority.
+
+Exact dual-Watcher solo 1v1 encounters may materialize a zero-wager title bout
+without a prior Challenge when the observed RM/DM lane, current custody and
+challenger eligibility identify a valid title. Explicit Championship Challenges
+for that roster/session take precedence. Materialization is idempotent under
+session and title locks, creates no check-in or funding obligation, and uses the
+same final replay/result/desync/custody transition rails as an explicit defense.
+Team spontaneous bouts are not implied by this rule.
+
+Championship ELO custody decisions read accepted, current, exact-user
+ReplayPlayerSnapshot evidence by Steam ID first, with RM and DM kept separate.
+Leaderboard/presentation state is fallback only; a stale aggregate must not
+hide a newly proven Rising/Veteran/Elite/Legend eligibility boundary. Public
+Championship V2 progress is Challenge issued → Watcher match detected → Watcher
+result proof → WOLO settlement → championship custody. Legacy scheduled-match
+check-in semantics remain legacy-only.
+
+## 2026-10-02 — Existing generic Challenges inherit eligible ambient title stakes
+
+A generic Championship V2 Challenge must not create a belt-free zone. If the
+same exact dual-Watcher 1v1 encounter would qualify as a spontaneous solo title
+bout, promote the single matching generic Challenge in place at authenticated
+Watcher start instead of suppressing the title or creating a second public
+Challenge/replay claim.
+
+Championship role and financial side are deliberately independent. The current
+title holder becomes championship defender and the eligible opponent becomes
+championship challenger even when the holder was the original Challenge creator.
+Never rewrite fundingSide, funding proofs, or scheduled-match left/right
+identity. On settlement, derive each financial leg's persisted winner side from
+the winning championship participants' immutable fundingSide; title-role
+reversal must never reverse WOLO ownership.
+
+Promotion revalidates exact roster, observed RM/DM lane, current custody epoch,
+MATCH_WINNER policy and live challenger eligibility under the normal lock order.
+More than one matching explicit Challenge remains ambiguous and must fail
+closed. A matching explicit title Challenge already owns the session and is not
+re-promoted.

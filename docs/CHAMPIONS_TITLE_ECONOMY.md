@@ -8,14 +8,30 @@ systems: ["app-prodn","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-09-27"
+reviewed_at: "2026-09-30"
 review_interval_days: 90
 sensitivity: "internal"
 ---
 
 # Championship Title Economy
 
-Last updated: 2026-09-27
+Last updated: 2026-09-30
+
+The [Championship Belt Constitution V1](./CHAMPIONSHIP_BELT_CONSTITUTION.md)
+is the active product contract for `championship_v2` Challenges. It adds exact
+team rosters, centralized solo priority/eligibility, 24h start plus 1h default
+grace, automatic capture under full proof, durable dispute, and grouped NFT
+intents. Legacy title Challenges keep the policies explicitly described below.
+Commissioner, final-proof and default transfers share the custody/money
+transition. A receipt does not waive the locked live-custody recheck.
+
+Team Reward Tribute and dethrone bounty are title-level obligations split
+equally in integer `uwolo`, with deterministic stable-seat remainder. Physical
+belt count never multiplies the configured title amount. Allocations reference
+the existing TrophyPayout, preserve per-recipient proof, and cannot overwrite
+paid/transaction-backed prior obligations. NFT seat intents form one transfer
+group; partial chain success remains partial. The missing chain capability is
+specified in [chain handoff](./CHAMPIONSHIP_CHAIN_HANDOFF.md).
 
 AoE2HDBets owns the app-side championship presentation, eligibility settings,
 challenge entry points, Trophy Command workflow, and app-side custody ledger.
@@ -116,15 +132,15 @@ The managed media table migration is:
 
 `prisma/migrations/20260615_103000_add_managed_media_assets/migration.sql`
 
-Run `npx prisma migrate deploy` before restarting production when shipping the
-media armory.
+Ship migrations through the protected additive lane of `aoe2war finish`.
 
 ## Data and state
 
 Current-season public policy lives in
 `lib/champions/championshipPolicy.ts`.
 
-- The live public summary is **4 active / 18 vacant / 45 WOLO per day**.
+- Public counts and daily amounts project current custody and explicitly active
+  economics; a dated season summary is not live authority.
 - The four current paying reigns are Chaos, Canada, USA, and Mexico.
 - World and United Kingdom are explicitly vacant public titles. Historical
   Trophy rows may remain auditable, but they do not grant current public
@@ -133,6 +149,7 @@ Current-season public policy lives in
   current-season trophy ids. This prevents an obsolete seeded title from
   silently creating new money obligations.
 - Champions belt artwork is managed through Media Armory targets. National crowns use `national-<slug>`; Norse and Southeast Asia use `regional-norse` / `regional-southeast-asia`; the main RM/DM crowns retain `random-map-champion` / `deathmatch-champion`; shared team bytes bind independently to `2v2-rm` + `2v2-dm`, `3v3-rm` + `3v3-dm`, and `4v4-rm` + `4v4-dm`; RM ELO art uses the imported canonical title ids `elo-rising`, `elo-challenger`, `elo-veteran`, `elo-elite`, and `elo-legend`; DM ELO art uses `dm-rising`, the retained import alias `dm-contender` for the displayed Challenger division, `dm-veteran`, `dm-elite`, and `dm-legend`.
+- RM ELO custody uses those same five `elo-*` identities. The October 2, 2026 registry repair renames the historical `elite_champion_belt` and `veteran_champion_rm` rows in place, preserving their numeric foreign-key history, and materializes Rising, Challenger, and Legend as the three previously missing RM custody rows. A draft legacy Veteran normalizes to vacant; existing held custody is never cleared by the repair.
 - Saudi Arabia and Taiwan intentionally retain cinematic full-frame source artwork, but E2 bounds that art inside a controlled focal window instead of allowing it to take over the whole crown card. Ordinary belt assets remain transparent foreground art.
 - E2 retains the premium hero tile but strips it to identity plus live state:
   the only hero copy is `AoE2WAR title economy`, alongside Active / Vacant /
@@ -196,18 +213,38 @@ Current-season public policy lives in
   `ScheduledMatch` and a linked `TrophyChallenge`. The challenger must satisfy
   the configured national/ELO rule and must schedule against the current holder
   or Commissioner Guardian.
-- Normal `/challenge` requests inspect both participants for currently held,
+- Title challenge admission is status-aware and shared by public creation,
+  Trophy Command creation, and settlement. `held`, `active`,
+  `guardian_held`, and genuine `vacant` titles are challengeable;
+  `draft`, `paused`, and `retired` are unavailable. A vacant title may
+  retain Commissioner Guardian custody for an activation fight.
+- Current-season forced vacancy overrides stale historical holder/Guardian
+  fields for challenge authority. Those titles are treated as genuinely vacant
+  without rewriting the underlying historical row on read.
+- Public challenge creation takes the title-challenge lock, then the Trophy
+  money/custody row lock, re-reads status and custody, and rejects the request if
+  either changed after preflight. Commissioner-created challenges derive
+  defender/Guardian from that same locked authority rather than from caller
+  payload.
+- Settlement rechecks the same authority after replay/desync locks and the
+  Trophy lock. A challenge created while a title was live cannot later move a
+  title that has become paused, retired, draft, or otherwise inconsistent.
+- Public title presentation maps `draft`, `paused`, and `retired` to
+  `coming_soon` rather than advertising them as vacant/open thrones.
+- Legacy `/challenge` protocol requests inspect both participants for currently held,
   app-only ELO belts that are not already committed to an active title defense.
-  Those belts are attached as `TrophyChallenge` rows automatically. A held title
+  Those belts are attached as `TrophyChallenge` rows automatically. A legacy held title
   defense does not re-run vacant-belt ELO admission rules: once the Commissioner
   places a belt on a holder, a direct opponent may take that belt by beating the
-  holder in the matching game mode.
+  holder in the matching game mode. This is historical protocol behavior only;
+  new championship V2 challengers must pass ordinary eligibility even when the
+  holder was deliberately Commissioner-assigned outside their own eligibility.
 - RM and DM ELO custody are distinct. Historical generic ELO definitions default
   to RM for backward compatibility; new Trophy Command definitions record an
   explicit RM/DM lane and are canonicalized to lane-specific custody identities.
   The public E2 projection reads live Trophy custody for each lane instead of
   sharing one generic holder across both rows.
-- A verified watcher/replay result can automatically settle a linked `app_only`
+- A legacy verified watcher/replay result can automatically settle a linked `app_only`
   ELO belt only when both players' Watchers provide dual coverage, the replay's
   authoritative game type matches the belt lane, title custody is unchanged,
   desync authority permits title movement, and the projected dethrone bounty is
@@ -256,9 +293,43 @@ remain null.
 The public registry is `GET /api/trophies`. NFT-shaped metadata is available at
 `GET /api/trophies/[trophyId]/metadata`.
 
+Both public surfaces consume the same non-mutating Trophy projection after the
+retained public seed-bootstrap boundary. A title marked forced vacant by current
+championship policy remains present in the public registry; it is projected as
+`vacant` with current holder and Guardian custody removed, reign clock cleared,
+and displayed current bounty reset to zero. Historical database custody is not
+rewritten merely to make the public season view agree.
+
+Do not filter forced-vacant Trophy rows out of `loadPublicTrophies()`. The
+registry is also the lookup source for Challenge Hall title prefill and the live
+Champions economy map. Omitting the row can make the challenge handoff lose its
+target and can force Champions to fall back to stale static definition state.
+
+Current-holder attribution surfaces obey the same season authority. Signed-in
+profile holdings, public player title honors, and Lobby Featured Warrior honors
+must not display a forced-vacant historical holder or Guardian as a current
+champion. Profile reads use the retained public seed-bootstrap boundary rather
+than the fully re-runnable operator reconciler. Static profile fallback also
+rejects forced-vacant title definitions so an old holder cannot be resurrected
+by definition drift.
+
 Projected bounty is display math: stored bounty plus whole elapsed days times
 the configured bounty growth. It is not a chain balance and must not be called
 paid or escrowed.
+
+The connected-wallet Championship Assets surface must keep app custody and
+recorded chain ownership separate. A wallet is a current app custodian only when
+the canonical public Trophy projection plus live custody authority names it as
+the current holder or Guardian. A matching `chain_owner_address` is chain/NFT
+record evidence only; by itself it must never be presented as "this wallet holds
+the title." Chain-owner-only rows may remain visible when useful, but they must
+be labeled separately and must not receive holder/Guardian reign language.
+
+Wallet Trophy reads use the same forced-vacancy projection and custody-shape
+checks as other public current-state surfaces. Guardian custody is a first-class
+role, projected bounty uses `projectedTrophyBounty()`, artwork follows managed
+Trophy media, and title navigation comes from the title definition rather than a
+hard-coded national route.
 
 Daily Tribute obligations follow current-holder truth until money moves. If a
 belt changes hands during a UTC payout day and that day's prior-holder payout
@@ -281,7 +352,7 @@ The migration is:
 
 `prisma/migrations/20260615_090000_add_title_identity_settings/migration.sql`
 
-Run `npx prisma migrate deploy` before restarting production for this feature.
+Ship this feature through the protected additive lane of `aoe2war finish`.
 The `/profile` Title Identity panel saves these settings through
 `/api/user/me`.
 
@@ -305,12 +376,86 @@ replays, select verified winners, dry-run settlement, inspect/retry payout
 failures, edit Representing Country with a forfeiture audit, and log NFT
 mint/reassign/retire/burn intents.
 
+### Manual Commissioner holder transfers
+
+A manual holder reassignment is a title-money transition, not a display edit.
+The action serializes on the Trophy row, re-reads current custody inside the
+transaction, and derives payout obligations from that locked state.
+
+Verified challenge dry-run and settlement use the same Trophy money lock.
+Challenge desync/replay locks are acquired first, then Trophy custody is locked,
+matching the automatic scheduled-settlement lock order. The path re-reads live
+custody before pricing a preview, mutating app-side custody, or recording a
+chain-transfer intent. The defender/Guardian captured by the challenge must
+still own that custody. A stale challenge fails closed instead of transferring a
+new holder's title or pricing a bounty from an obsolete Trophy snapshot.
+
+The daily Tribute queue uses that same custody lock and PostgreSQL row lock
+before reading recipient, reign start, status, or tribute amount. Its outer
+candidate scan is only an optimization. If custody changes while the timer is
+waiting, the queue observes the new locked Trophy row and reconciles against the
+new holder instead of recreating an old-holder obligation.
+
+Guardian assignment, Guardian clear, explicit vacate/retire, forced forfeiture,
+and versioned economics edits also use the Trophy money/custody lock. A custody
+exit freezes the live projected bounty into the persisted bounty base before
+stopping or changing the reign clock. It supersedes only same-day Tribute rows
+that remain executable and have no chain transaction. Paid or tx-backed rows
+remain immutable money truth.
+
+A same-day Tribute in `executing` state is neither stale nor safely mutable.
+Custody-changing actions fail closed while that payout is in flight. Re-selecting
+the same Guardian is metadata refresh only and does not restart the Guardian
+clock. Clearing the actual Guardian custodian moves `guardian_held` to
+`vacant`; clearing Guardian metadata from a title that still has a real holder
+does not change that holder's custody.
+
+For a real holder change:
+
+- freeze the outgoing reign's projected championship bounty at the transfer
+  instant and queue one `dethrone_bounty` obligation for the incoming holder;
+- reset the stored bounty base to zero and begin the incoming reign at the
+  transfer instant;
+- reconcile same-UTC-day Champion Tribute rows through the same
+  `reconcileDailyTrophyTribute()` policy used by the daily queue;
+- never replace a paid or tx-backed same-day tribute;
+- supersede only unexecuted former-holder tribute rows;
+- create a new same-day tribute only for titles currently admitted by
+  `ACTIVE_REIGN_TRIBUTE_TROPHY_IDS`;
+- treat reassignment to the already-current holder as a metadata refresh, not
+  a new reign or a second bounty obligation.
+
+Both `daily_tribute` and real `dethrone_bounty` obligations execute through
+the existing Founder Rewards settlement authority. A challenge dry-run bounty
+row is preview evidence only: it cannot execute, retry into an executable
+status, or receive a payable state merely through the generic payout controls.
+Championship bounty money is separate from Bet Escrow and from the public
+numbered Bounty Pool.
+
+The payout candidate query is not execution authority. Immediately before any
+external WOLO call, the executor locks the Trophy, re-reads the payout, re-checks
+that a daily Tribute still belongs to the live current holder, and atomically
+claims the row as `executing`. A stale Tribute is superseded before any chain
+call. Once claimed, admin payout mutations and custody changes refuse to step
+over the in-flight obligation. Settlement success moves `executing -> paid`;
+an ordinary settlement failure moves `executing -> failed`.
+
+An `executing` row left behind by a process interruption is deliberately not
+auto-retried. Its chain/settlement outcome is ambiguous until investigated, so
+automatic resend would create duplicate-payment risk. Likewise, `cancelled`
+and `superseded` rows are terminal at the backend and cannot be revived through
+a direct admin API call.
+
 `dry_run_only` defaults to `true`, `app_only_fallback_enabled` defaults to
 `true`, and `chain_backed_trophies_enabled` defaults to `false`.
 
 Changing a national belt holder's Representing Country does not silently move
 or vacate the belt. It raises `forfeiture_needed` and records
 `NATIONAL_ELIGIBILITY_FORFEITURE_NEEDED` for explicit operator resolution.
+A title that is forced vacant by current-season championship policy is not a
+current holding for this audit. Historical holder rows remain intact, but they
+must not create a new nationality-forfeiture conflict for a player who no longer
+holds that public title.
 
 ## Ownership boundary
 
@@ -325,6 +470,8 @@ AoE2HDBets must not redefine:
 - Bet-time escrow or chain custody.
 - Any settlement state that conflicts with WoloChain or the settlement rail.
 - NFT ownership merely because an app-side mint/reassignment intent exists.
+- Current championship custody merely because the same wallet appears in a
+  recorded chain-owner field.
 
 If a future title claim spends, locks, or settles real WOLO, that path must use
 the existing signed wallet and settlement verification rules before copy calls

@@ -12,6 +12,7 @@ import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import { formatDurationLabel } from "@/lib/gameStatsView";
 import { buildMatchupHref } from "@/lib/publicMatchups";
 import { getPrisma } from "@/lib/prisma";
+import { loadPublicTrophies, trophyIsPubliclyForcedVacant } from "@/lib/trophies/service";
 import type {
   PlayerBreakdownRow,
   PlayerBestGame,
@@ -67,32 +68,16 @@ async function loadPlayerTitleHonors(profile: PlayerProfile): Promise<PlayerTitl
   if (!holderName) return [];
 
   try {
-    const trophies = await getPrisma().trophy.findMany({
-      where: {
-        status: { in: ["held", "active", "guardian_held"] },
-      },
-      select: {
-        id: true,
-        trophyId: true,
-        displayName: true,
-        kind: true,
-        family: true,
-        tier: true,
-        status: true,
-        currentHolderDisplayName: true,
-        guardianHolderDisplayName: true,
-        nftImageUri: true,
-        holderSince: true,
-      },
-      orderBy: [
-        { family: "asc" },
-        { tier: "asc" },
-        { displayName: "asc" },
-      ],
-    });
+    const trophies = (await loadPublicTrophies(getPrisma()))
+      .filter(trophy=>["held","active","guardian_held"].includes(trophy.status))
+      .sort((left,right)=>left.family.localeCompare(right.family) || (left.tier ?? "").localeCompare(right.tier ?? "") || left.displayName.localeCompare(right.displayName));
+    const holderUid = profile.identity.kind === "claimed" ? profile.identity.uid : null;
 
     return trophies
       .filter((trophy) => {
+        if (!trophy.hasExplicitChampionshipCustody && trophyIsPubliclyForcedVacant(trophy.trophyId)) return false;
+        if (trophy.hasExplicitChampionshipCustody) return trophy.championshipRoster?.some(member=>holderUid ? member.uid === holderUid : normalizedTitleHolder(member.displayName) === holderName) ?? false;
+        if (holderUid && (trophy.currentHolder?.uid === holderUid || trophy.guardianHolder?.uid === holderUid)) return true;
         const currentHolder = normalizedTitleHolder(trophy.currentHolderDisplayName);
         const guardianHolder = normalizedTitleHolder(trophy.guardianHolderDisplayName);
         return currentHolder === holderName || guardianHolder === holderName;

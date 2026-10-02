@@ -57,6 +57,8 @@ model User {
   grantedGifts                   UserGift[]                      @relation("UserGiftCreator")
   appearancePreference           UserAppearancePreference?
   presencePreference             UserPresencePreference?
+  themeCampaignOverrides         UserThemeCampaignOverride[] @relation("UserThemeCampaignOverrideUser")
+  themeCampaignsUpdated          SiteThemeCampaign[]          @relation("SiteThemeCampaignUpdatedBy")
   activityEvents                 UserActivityEvent[]
   watcherDownloadEvents          WatcherDownloadEvent[]
   watcherClientEvents            WatcherClientEvent[]
@@ -1021,6 +1023,8 @@ model ScheduledMatch {
   linkedDurationSeconds          Int?                           @map("linked_duration_seconds")
   createdAt                      DateTime                       @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt                      DateTime                       @updatedAt @map("updated_at") @db.Timestamp(6)
+  championshipProtocol           ChampionshipChallenge?
+  championshipLeg                ChampionshipChallengeLeg?
   activities                     ScheduledMatchActivity[]
   userPreferences                ScheduledMatchUserPreference[]
   settlements                    ScheduledMatchSettlement[]
@@ -1297,6 +1301,7 @@ model TrophyPayout {
 
   trophy    Trophy @relation(fields: [trophyId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   recipient User?  @relation("TrophyPayoutRecipient", fields: [recipientUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  allocations TrophyPayoutAllocation[]
 
   @@index([trophyId, status, createdAt], map: "ix_trophy_payouts_trophy_status_created")
   @@index([recipientUserId, status], map: "ix_trophy_payouts_recipient_status")
@@ -1964,6 +1969,40 @@ model UserAppearancePreference {
   @@map("user_appearance_preferences")
 }
 
+model SiteThemeCampaign {
+  slot              Int      @id @default(1) @db.SmallInt
+  campaignKey       String   @unique(map: "uq_site_theme_campaign_key") @map("campaign_key") @db.VarChar(64)
+  label             String   @db.VarChar(120)
+  enabled           Boolean  @default(false)
+  themeKey          String   @default("black") @map("theme_key") @db.VarChar(20)
+  startsAt          DateTime @map("starts_at") @db.Timestamp(6)
+  endsAt            DateTime @map("ends_at") @db.Timestamp(6)
+  updatedByUserId   Int?     @map("updated_by_user_id")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  updatedBy User? @relation("SiteThemeCampaignUpdatedBy", fields: [updatedByUserId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+
+  @@index([enabled, startsAt, endsAt], map: "ix_site_theme_campaign_active_window")
+  @@map("site_theme_campaign")
+}
+
+model UserThemeCampaignOverride {
+  id          Int      @id @default(autoincrement())
+  campaignKey String   @map("campaign_key") @db.VarChar(64)
+  userId      Int      @map("user_id")
+  themeKey    String   @map("theme_key") @db.VarChar(20)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  user User @relation("UserThemeCampaignOverrideUser", fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([campaignKey, userId], map: "uq_user_theme_campaign_override")
+  @@index([campaignKey, themeKey], map: "ix_user_theme_campaign_override_theme")
+  @@index([userId, updatedAt], map: "ix_user_theme_campaign_override_user_updated")
+  @@map("user_theme_campaign_overrides")
+}
+
 model UserPresencePreference {
   userId    Int       @id @map("user_id")
   mode      String    @default("off") @db.VarChar(24)
@@ -2160,6 +2199,10 @@ model BetMarket {
   title                    String    @db.VarChar(255)
   eventLabel               String    @map("event_label") @db.VarChar(180)
   marketType               String    @default("winner") @map("market_type") @db.VarChar(32)
+  bookPhase                String    @default("legacy") @map("book_phase") @db.VarChar(24)
+  phaseBookKey             String?   @unique(map: "uq_bet_markets_phase_book_key") @map("phase_book_key") @db.VarChar(255)
+  phaseOpensAt             DateTime? @map("phase_opens_at") @db.Timestamp(6)
+  phaseClosesAt            DateTime? @map("phase_closes_at") @db.Timestamp(6)
   teamFormat               String?   @map("team_format") @db.VarChar(16)
   teamResolutionStatus     String?   @map("team_resolution_status") @db.VarChar(24)
   teamResolutionProvenance String?   @map("team_resolution_provenance") @db.VarChar(48)
@@ -2217,6 +2260,8 @@ model BetMarket {
   integrityIncidents      BetMarketIntegrityIncident[]
 
   @@index([status, featured, sortOrder], map: "ix_bet_markets_status_featured_sort_order")
+  @@index([bookPhase], map: "ix_bet_markets_book_phase")
+  @@index([phaseOpensAt, phaseClosesAt], map: "ix_bet_markets_phase_window")
   @@index([closeAt], map: "ix_bet_markets_close_at")
   @@index([linkedSessionKey], map: "ix_bet_markets_linked_session_key")
   @@index([linkedGameStatsId], map: "ix_bet_markets_linked_game_stats_id")
@@ -2552,8 +2597,9 @@ model BetAutoPreset {
   @@map("bet_auto_presets")
 }
 
-/// Durable automation audit/outbox row. This foundation is intentionally
-/// dormant until a market evaluator and Wolo custody reservation rail exist.
+/// Durable automation audit/outbox row. The shadow producer writes preview
+/// evidence here; funded reservation/ticket consumption remains disabled until
+/// the separately reviewed Wolo custody rail and live executor exist.
 model BetAutoExecution {
   id              Int       @id @default(autoincrement())
   presetId        Int       @map("preset_id")
@@ -5018,4 +5064,180 @@ model WarGraphJob {
   @@index([graphId, jobType, status], map: "ix_war_graph_jobs_graph_type")
   @@index([leaseExpiresAt], map: "ix_war_graph_jobs_lease")
   @@map("war_graph_jobs")
+}
+
+// Championship V2 extends Trophy custody without rewriting historical solo rows.
+model ChampionshipCustodyReign {
+  id Int @id @default(autoincrement())
+  trophyId Int @map("trophy_id")
+  mode String? @db.VarChar(8)
+  teamSize Int @map("team_size")
+  startedAt DateTime @map("started_at") @db.Timestamp(6)
+  endedAt DateTime? @map("ended_at") @db.Timestamp(6)
+  reason String @db.VarChar(64)
+  requestKey String @unique @map("request_key") @db.VarChar(180)
+  frozenBountyWolo Int? @map("frozen_bounty_wolo")
+  seats ChampionshipCustodySeat[]
+  @@index([trophyId, endedAt])
+  @@map("championship_custody_reigns")
+}
+model ChampionshipCustodySeat {
+  id Int @id @default(autoincrement())
+  reignId Int @map("reign_id")
+  seat Int
+  userId Int @map("user_id")
+  uid String @db.VarChar(100)
+  displayName String @map("display_name") @db.VarChar(255)
+  walletAddress String? @map("wallet_address") @db.VarChar(100)
+  steamId String? @map("steam_id") @db.VarChar(32)
+  nftClassId String? @map("nft_class_id") @db.VarChar(120)
+  nftId String @map("nft_id") @db.VarChar(160)
+  reign ChampionshipCustodyReign @relation(fields: [reignId], references: [id], onDelete: Restrict)
+  @@unique([reignId, seat])
+  @@unique([reignId, userId])
+  @@index([userId])
+  @@map("championship_custody_seats")
+}
+model ChampionshipTransferGroup {
+  id Int @id @default(autoincrement())
+  trophyId Int @map("trophy_id")
+  requestKey String @unique @map("request_key") @db.VarChar(180)
+  fromEpoch String @map("from_epoch") @db.VarChar(255)
+  toReignId Int? @map("to_reign_id")
+  reason String @db.VarChar(64)
+  actorUserId Int? @map("actor_user_id")
+  challengeId Int? @map("challenge_id")
+  replayId Int? @map("replay_id")
+  eligibilityOverride Boolean @default(false) @map("eligibility_override")
+  appStatus String @default("changed") @map("app_status") @db.VarChar(32)
+  nftStatus String @default("blocked") @map("nft_status") @db.VarChar(32)
+  reasonCode String @default("NFT_EXECUTOR_UNAVAILABLE") @map("reason_code") @db.VarChar(100)
+  frozenBountyWolo Int @map("frozen_bounty_wolo")
+  bountyPayoutId Int? @map("bounty_payout_id")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  seats ChampionshipTransferSeat[]
+  @@index([trophyId, createdAt])
+  @@map("championship_transfer_groups")
+}
+model ChampionshipTransferSeat {
+  id Int @id @default(autoincrement())
+  groupId Int @map("group_id")
+  seat Int
+  nftClassId String? @map("nft_class_id") @db.VarChar(120)
+  nftId String @map("nft_id") @db.VarChar(160)
+  expectedOwnerAddress String? @map("expected_owner_address") @db.VarChar(100)
+  recipientUserId Int @map("recipient_user_id")
+  recipientAddress String? @map("recipient_address") @db.VarChar(100)
+  status String @default("blocked") @db.VarChar(32)
+  txHash String? @map("tx_hash") @db.VarChar(128)
+  proof Json?
+  errorCode String? @map("error_code") @db.VarChar(100)
+  confirmedAt DateTime? @map("confirmed_at") @db.Timestamp(6)
+  group ChampionshipTransferGroup @relation(fields: [groupId], references: [id], onDelete: Restrict)
+  @@unique([groupId, seat])
+  @@index([status])
+  @@map("championship_transfer_seats")
+}
+// Allocation children belong to the existing TrophyPayout obligation, not a new ledger.
+model TrophyPayoutAllocation {
+  id Int @id @default(autoincrement())
+  payoutId Int @map("payout_id")
+  seat Int
+  recipientUserId Int @map("recipient_user_id")
+  recipientAddress String? @map("recipient_address") @db.VarChar(100)
+  amountUwolo BigInt @map("amount_uwolo")
+  requestKey String @unique @map("request_key") @db.VarChar(180)
+  status String @default("pending") @db.VarChar(32)
+  txHash String? @map("tx_hash") @db.VarChar(128)
+  errorCode String? @map("error_code") @db.VarChar(255)
+  proof Json?
+  paidAt DateTime? @map("paid_at") @db.Timestamp(6)
+  payout TrophyPayout @relation(fields: [payoutId], references: [id], onDelete: Restrict)
+  @@unique([payoutId, seat])
+  @@index([payoutId, status])
+  @@map("trophy_payout_allocations")
+}
+
+/// Explicit creation boundary for the fixed-clock championship protocol.
+/// All financial proof remains in ScheduledMatchFundingProof/Settlement.
+model ChampionshipChallenge {
+  id                         Int @id @default(autoincrement())
+  scheduledMatchId           Int @unique @map("scheduled_match_id")
+  trophyChallengeId          Int? @unique @map("trophy_challenge_id")
+  trophyId                   Int? @map("trophy_id")
+  titleName                  String? @map("title_name") @db.VarChar(120)
+  mode                       String? @db.VarChar(8)
+  teamSize                   Int @default(1) @map("team_size")
+  state                      String @default("open") @db.VarChar(40)
+  challengeDeadline          DateTime @map("challenge_deadline") @db.Timestamp(6)
+  commissionerGraceDeadline  DateTime @map("commissioner_grace_deadline") @db.Timestamp(6)
+  expectedCustodyEpoch        String? @map("expected_custody_epoch") @db.VarChar(160)
+  expectedDefenderRoster      Json @map("expected_defender_roster")
+  eligibilitySnapshot        Json? @map("eligibility_snapshot")
+  eligibilityOverride        Boolean @default(false) @map("eligibility_override")
+  defenseStartedAt           DateTime? @map("defense_started_at") @db.Timestamp(6)
+  defenseSessionKey          String? @unique(map:"uq_championship_defense_session") @map("defense_session_key") @db.VarChar(255)
+  defenseProof               Json? @map("defense_proof")
+  resultReplayId             Int? @map("result_replay_id")
+  winnerSide                 String? @map("winner_side") @db.VarChar(16)
+  reasonCode                 String? @map("reason_code") @db.VarChar(80)
+  commissionerActionAt       DateTime? @map("commissioner_action_at") @db.Timestamp(6)
+  commissionerUserId         Int? @map("commissioner_user_id")
+  commissionerReason         String? @map("commissioner_reason") @db.Text
+  graceNotifiedAt            DateTime? @map("grace_notified_at") @db.Timestamp(6)
+  createdAt                  DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt                  DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+  scheduledMatch ScheduledMatch @relation(fields:[scheduledMatchId],references:[id],onDelete:Restrict,onUpdate:NoAction)
+  participants ChampionshipChallengeParticipant[]
+  legs ChampionshipChallengeLeg[]
+  @@index([state,challengeDeadline])
+  @@index([trophyId,state,expectedCustodyEpoch])
+  @@map("championship_challenges")
+}
+
+model ChampionshipChallengeParticipant {
+  id                       Int @id @default(autoincrement())
+  protocolId               Int @map("protocol_id")
+  userId                   Int @map("user_id")
+  uidSnapshot              String @map("uid_snapshot") @db.VarChar(100)
+  displayNameSnapshot      String @map("display_name_snapshot") @db.VarChar(120)
+  side                     String @db.VarChar(16)
+  seat                     Int
+  steamIdSnapshot          String @map("steam_id_snapshot") @db.VarChar(32)
+  walletAddressSnapshot    String? @map("wallet_address_snapshot") @db.VarChar(100)
+  fundingScheduledMatchId  Int @map("funding_scheduled_match_id")
+  fundingSide              String @map("funding_side") @db.VarChar(8)
+  acceptedAt               DateTime? @map("accepted_at") @db.Timestamp(6)
+  notifiedAt               DateTime? @map("notified_at") @db.Timestamp(6)
+  protocol ChampionshipChallenge @relation(fields:[protocolId],references:[id],onDelete:Restrict,onUpdate:NoAction)
+  @@unique([protocolId,userId])
+  @@unique([protocolId,side,seat])
+  @@index([userId,protocolId])
+  @@map("championship_challenge_participants")
+}
+
+/// Hidden per-seat financial legs reuse the existing signed left/right rail.
+model ChampionshipChallengeLeg {
+  id               Int @id @default(autoincrement())
+  protocolId       Int @map("protocol_id")
+  scheduledMatchId Int @unique @map("scheduled_match_id")
+  seat             Int
+  protocol ChampionshipChallenge @relation(fields:[protocolId],references:[id],onDelete:Restrict,onUpdate:NoAction)
+  scheduledMatch ScheduledMatch @relation(fields:[scheduledMatchId],references:[id],onDelete:Restrict,onUpdate:NoAction)
+  @@unique([protocolId,seat])
+  @@map("championship_challenge_legs")
+}
+
+model ChampionshipTitleDispute {
+  id                  Int @id @default(autoincrement())
+  trophyId            Int @map("trophy_id")
+  custodyEpoch        String @map("custody_epoch") @db.VarChar(160)
+  contenderSnapshot   Json @map("contender_snapshot")
+  status              String @default("open") @db.VarChar(24)
+  resolvedAt          DateTime? @map("resolved_at") @db.Timestamp(6)
+  resolvedByUserId     Int? @map("resolved_by_user_id")
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  @@unique([trophyId,custodyEpoch])
+  @@index([status,createdAt])
+  @@map("championship_title_disputes")
 }

@@ -88,6 +88,19 @@ function statusTone(ready: boolean) {
     : "border-white/10 bg-white/[0.045] text-slate-400";
 }
 
+function executionStatusLabel(status: string) {
+  if (status === "shadow_ready") return "Preview matched";
+  return status.replaceAll("_", " ");
+}
+
+function executionReasonLabel(reason: string | null) {
+  if (!reason) return null;
+  if (reason === "shadow_preview_eligible") {
+    return "Exact Watcher uploader + Steam roster proof matched. No wager placed.";
+  }
+  return reason.replaceAll("_", " ");
+}
+
 export default function AutoBetReserveCard() {
   const [payload, setPayload] = useState<AutomationPayload | null>(null);
   const [executions, setExecutions] = useState<AutomationExecution[]>([]);
@@ -282,8 +295,9 @@ export default function AutoBetReserveCard() {
 
       <div className="mt-6 rounded-2xl border border-amber-200/18 bg-amber-300/[0.065] px-4 py-3 text-sm leading-6 text-amber-50">
         <strong>No WOLO moves and no wager is placed in Preview mode.</strong>{" "}
-        This card saves rules only. Deposit and signing controls stay hidden until the Wolo
-        custody service and durable app worker are verified together.
+        This card saves rules and the server records shadow decisions for exact eligible
+        Watcher games. Deposit and signing controls stay hidden until the Wolo custody service
+        and funded executor are verified together.
       </div>
 
       {loading ? (
@@ -470,6 +484,10 @@ export default function AutoBetReserveCard() {
                   <Eye className="mr-2 inline h-3.5 w-3.5" />
                   Watcher key {payload?.readiness.watcherKeyReady ? "ready" : "needed"}
                 </div>
+                <div className={`rounded-xl border px-3 py-2 text-xs ${statusTone(Boolean(payload?.readiness.durableMarketEvaluatorReady))}`}>
+                  <CircleGauge className="mr-2 inline h-3.5 w-3.5" />
+                  Shadow worker {payload?.readiness.durableMarketEvaluatorReady ? "ready" : "offline"}
+                </div>
               </div>
 
               <div className="mt-4 rounded-2xl border border-white/8 bg-black/22 p-4">
@@ -477,8 +495,9 @@ export default function AutoBetReserveCard() {
                   Server rail
                 </div>
                 <p className="mt-2 text-xs leading-5 text-slate-400">
-                  {payload?.runtime.detail ||
-                    "Preview mode stores your self-bet rules only. No WOLO moves and no wager is placed."}
+                  {payload?.readiness.detail ||
+                    payload?.runtime.detail ||
+                    "Preview mode evaluates exact self-match evidence only. No WOLO moves and no wager is placed."}
                 </p>
               </div>
 
@@ -511,8 +530,8 @@ export default function AutoBetReserveCard() {
               <div className="mt-4 space-y-2">
                 {executions.length === 0 ? (
                   <div className="rounded-2xl border border-dashed border-white/12 bg-white/[0.025] px-4 py-4 text-xs leading-5 text-slate-400">
-                    No market previews have been evaluated. Your rules are saved, but the durable
-                    market worker is intentionally not connected yet.
+                    No exact eligible live game has matched this preview yet. The shadow worker
+                    is connected and waiting for canonical Watcher uploader + Steam roster proof.
                   </div>
                 ) : (
                   executions.slice(0, 5).map((row) => (
@@ -523,15 +542,17 @@ export default function AutoBetReserveCard() {
                             {row.winnerMarket.title}
                           </div>
                           <div className="mt-1 text-[11px] text-slate-500">
-                            {row.winnerStakeWolo} WOLO · {row.status}
+                            {row.winnerStakeWolo} WOLO · {executionStatusLabel(row.status)}
                           </div>
                         </div>
                         <span className="rounded-full border border-white/10 px-2 py-1 text-[9px] uppercase tracking-[0.12em] text-slate-400">
                           {row.selectedSide || "none"}
                         </span>
                       </div>
-                      {row.reason ? (
-                        <div className="mt-2 text-[11px] leading-5 text-slate-400">{row.reason}</div>
+                      {executionReasonLabel(row.reason) ? (
+                        <div className="mt-2 text-[11px] leading-5 text-slate-400">
+                          {executionReasonLabel(row.reason)}
+                        </div>
                       ) : null}
                     </div>
                   ))

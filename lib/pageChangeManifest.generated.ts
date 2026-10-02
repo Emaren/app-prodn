@@ -20,7 +20,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/champions",
     label: "Champions",
-    version: "src-0638ad702787b0f34bab",
+    version: "src-abe95679443f8539be56",
   },
   {
     href: "/chaosium",
@@ -111,6 +111,11 @@ export const PAGE_CHANGE_MANIFEST = [
     href: "/statistics",
     label: "Kingdom Statistics",
     version: "src-c2058abd4b0543a475a9",
+  },
+  {
+    href: "/television-wolo",
+    label: "Television WOLO",
+    version: "src-e3c39611a6a3beb11b09",
   },
   {
     href: "/speed",

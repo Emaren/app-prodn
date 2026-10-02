@@ -1,4 +1,5 @@
 import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
+import { CHAMPIONSHIP_PROTOCOL_VERSION } from "@/lib/challengeChampionshipProtocol";
 import { CHALLENGE_PROTOCOL_VERSION } from "@/lib/challengeProtocol";
 import {
   deriveChallengeFinancialConservation,
@@ -54,6 +55,7 @@ const SCHEDULED_MATCH_SETTLEMENT_SELECT = {
   cancelledAt: true,
   resultAt: true,
   settlementReadyAt: true,
+  liveConfirmedAt: true,
   linkedSessionKey: true,
   challengerFundingTxHash: true,
   challengerFundingWalletAddress: true,
@@ -339,7 +341,7 @@ function resolvedWinnerParticipantSide(
   }
 
   // New protocol rows never let mutable display text regain economic authority.
-  if (row.protocolVersion === CHALLENGE_PROTOCOL_VERSION) return null;
+  if ([CHALLENGE_PROTOCOL_VERSION,CHAMPIONSHIP_PROTOCOL_VERSION].includes(row.protocolVersion ?? "")) return null;
 
   const winnerKey = normalizeIdentity(row.linkedWinner);
   const leftMatches = Boolean(winnerKey) && participantAliases(row.challenger).has(winnerKey);
@@ -566,6 +568,23 @@ function addTransfer(
   transfers.push(transfer);
 }
 
+function championshipWagerMatchedAtStart(
+  row: ScheduledMatchSettlementRow,
+  left: ParticipantPlan,
+  right: ParticipantPlan,
+) {
+  if (row.protocolVersion !== CHAMPIONSHIP_PROTOCOL_VERSION) {
+    return left.funded && right.funded;
+  }
+  const startedAtMs = row.liveConfirmedAt?.getTime() ?? NaN;
+  if (!Number.isFinite(startedAtMs)) return false;
+  return [left, right].every((participant) => {
+    if (!participant.funded || !participant.fundedAt) return false;
+    const fundedAtMs = Date.parse(participant.fundedAt);
+    return Number.isFinite(fundedAtMs) && fundedAtMs <= startedAtMs;
+  });
+}
+
 function buildRawTransfers(input: {
   row: ScheduledMatchSettlementRow;
   left: ParticipantPlan;
@@ -680,7 +699,23 @@ function buildRawTransfers(input: {
     const winnerSide = resolvedWinnerParticipantSide(input.row);
     const winner = winnerSide === "left" ? input.left : winnerSide === "right" ? input.right : null;
 
-    if (!winner || !input.left.funded || !input.right.funded) {
+    if (!winner) {
+      return transfers;
+    }
+
+    // Sporting truth and money truth are intentionally separate. A
+    // Championship game may be valid even when its WOLO stake never matched.
+    // For championship_v2, both tx-backed deposits must already exist at or
+    // before the authenticated Watcher start. A deposit that lands after play
+    // begins is still real escrow liability, but it cannot retroactively make
+    // the wager matched.
+    if (!championshipWagerMatchedAtStart(input.row, input.left, input.right)) {
+      if (input.left.funded) {
+        refundParticipant(input.left, total, "left_full_refund", "left unmatched full refund", "combined");
+      }
+      if (input.right.funded) {
+        refundParticipant(input.right, total, "right_full_refund", "right unmatched full refund", "combined");
+      }
       return transfers;
     }
 
@@ -1054,9 +1089,6 @@ export function buildScheduledMatchSettlementPlan(
   if (normalizeStatus(row.status) === "completed") {
     if (!resolvedWinnerParticipantSide(row)) {
       blockers.push("Completed match winner does not resolve uniquely to one challenge participant.");
-    }
-    if (!left.funded || !right.funded) {
-      blockers.push("Completed wager settlement requires both participants to have verified funding.");
     }
   }
   const pendingPlanWolo = transfers
@@ -1447,7 +1479,9 @@ async function assertLockedWinnerSettlementAllowed(
   tx: Prisma.TransactionClient,
   matchId: number
 ) {
-  await acquireChallengeDesyncAdvisoryLock(tx, matchId);
+  const identity=await tx.scheduledMatch.findUnique({where:{id:matchId},select:{championshipLeg:{select:{protocol:{select:{scheduledMatchId:true}}}}}});
+  const primaryMatchId=identity?.championshipLeg?.protocol.scheduledMatchId??matchId;
+  for(const id of [...new Set([matchId,primaryMatchId])].sort((a,b)=>a-b))await acquireChallengeDesyncAdvisoryLock(tx,id);
   const match = await tx.scheduledMatch.findUnique({
     where: { id: matchId },
     select: {
@@ -1457,9 +1491,15 @@ async function assertLockedWinnerSettlementAllowed(
           gameStatsId: true,
         },
       },
+      championshipProtocol:{select:{state:true,resultReplayId:true}},
+      championshipLeg:{select:{protocol:{select:{state:true,resultReplayId:true,scheduledMatchId:true,scheduledMatch:{select:{currentReplayClaim:{select:{gameStatsId:true}}}}}}}},
     },
   });
   if (!match || !scheduledMatchSettlementRequiresWinnerDesyncGuard(match.status)) return;
+  const championship=match.championshipProtocol??match.championshipLeg?.protocol;
+  const parentReplayId=match.championshipLeg?.protocol.scheduledMatch.currentReplayClaim?.gameStatsId;
+  const championshipReplayId=match.currentReplayClaim?.gameStatsId??parentReplayId;
+  if(championship&&(championship.state!=="completed"||!championshipReplayId||championship.resultReplayId!==championshipReplayId))throw new ScheduledMatchSettlementError("Championship winner payment requires the parent Challenge's verified canonical result.",{code:"CHAMPIONSHIP_RESULT_NOT_VERIFIED"});
 
   /*
    * Settlement consumes durable canonical replay identity.
@@ -1473,10 +1513,11 @@ async function assertLockedWinnerSettlementAllowed(
   const gameStatsId =
     match.currentReplayClaim
       ?.gameStatsId ??
+    parentReplayId ??
     null;
   const preliminaryIncidents = await loadDesyncIncidentsForSettlement(tx, {
     gameStatsId,
-    scheduledMatchId: matchId,
+    scheduledMatchId: primaryMatchId,
   });
   const replayLockIds = Array.from(
     new Set(
@@ -1495,7 +1536,7 @@ async function assertLockedWinnerSettlementAllowed(
   const [incidents, candidate] = await Promise.all([
     loadDesyncIncidentsForSettlement(tx, {
       gameStatsId,
-      scheduledMatchId: matchId,
+      scheduledMatchId: primaryMatchId,
     }),
     gameStatsId
       ? tx.gameStats.findUnique({

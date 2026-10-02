@@ -1500,6 +1500,9 @@ test(
     };
 
     const prisma = {
+      gameStats: {
+        findMany: async () => [],
+      },
       $transaction:
         async (
           callback: (
@@ -2104,6 +2107,9 @@ test(
     };
 
     const prisma = {
+      gameStats: {
+        findMany: async () => [],
+      },
       $transaction:
         async (
           callback: (

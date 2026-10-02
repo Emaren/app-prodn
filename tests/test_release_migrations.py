@@ -1,3 +1,4 @@
+import hashlib
 import importlib.util
 import json
 import pathlib
@@ -426,6 +427,35 @@ SET DEFAULT 'nobody@example.invalid';""",
         self.assertEqual(
             names,
             ["20260911170000_challenge_protocol_v1"],
+        )
+
+    def test_current_phase_books_v2_migration_fits_additive_contract(self):
+        path = (
+            "prisma/migrations/"
+            "20260929211500_add_betting_phase_books_v2_foundation/"
+            "migration.sql"
+        )
+        manifest = {
+            "release_sha": "f" * 40,
+            "risk_class": "FINANCIAL",
+            "migration_paths": [path],
+        }
+
+        with mock.patch.object(
+            MODULE,
+            "release_manifest",
+            return_value=manifest,
+        ):
+            resolved, names = MODULE.migration_contract(
+                "f" * 40
+            )
+
+        self.assertEqual(resolved["risk_class"], "FINANCIAL")
+        self.assertEqual(
+            names,
+            [
+                "20260929211500_add_betting_phase_books_v2_foundation",
+            ],
         )
 
     def test_insert_into_preexisting_table_is_rejected(self):
@@ -978,6 +1008,115 @@ COMMIT;
             },
         )
 
+    def test_hash_bound_check_correction_overrides_after_proof(
+        self,
+    ):
+        name = "20260101000000_replace_checks"
+        sql = self.migration_sql()
+        temp, root, manifests, release = self.with_release(
+            [(name, sql)]
+        )
+        correction = root / "config" / "migration-check-proof-corrections.json"
+        correction.parent.mkdir(parents=True)
+        correction.write_text(
+            json.dumps(
+                {
+                    "schema": 1,
+                    "kind": "aoe2war-migration-check-proof-corrections",
+                    "corrections": [
+                        {
+                            "migration": name,
+                            "migration_sql_sha256": hashlib.sha256(
+                                sql.encode("utf-8")
+                            ).hexdigest(),
+                            "checks": [
+                                {
+                                    "table": "widget",
+                                    "constraint": "ck_widget_type",
+                                    "declared_after_sha256": "2" * 64,
+                                    "corrected_after_sha256": "5" * 64,
+                                },
+                                {
+                                    "table": "widget",
+                                    "constraint": "ck_widget_geometry",
+                                    "declared_after_sha256": "4" * 64,
+                                    "corrected_after_sha256": "6" * 64,
+                                },
+                            ],
+                        }
+                    ],
+                }
+            )
+        )
+
+        with temp:
+            with mock.patch.object(MODULE, "ROOT", root), mock.patch.object(
+                MODULE, "MANIFEST_DIR", manifests
+            ), mock.patch.object(
+                MODULE, "MIGRATION_CHECK_PROOF_CORRECTIONS", correction
+            ):
+                manifest, _ = MODULE.migration_contract(release)
+
+        checks = {
+            item["constraint"]: item
+            for item in manifest["_production_proven_checks"]
+        }
+        self.assertEqual(checks["ck_widget_type"]["before_sha256"], "1" * 64)
+        self.assertEqual(checks["ck_widget_type"]["after_sha256"], "5" * 64)
+        self.assertEqual(checks["ck_widget_geometry"]["before_sha256"], "3" * 64)
+        self.assertEqual(checks["ck_widget_geometry"]["after_sha256"], "6" * 64)
+
+    def test_hash_bound_check_correction_rejects_sql_drift(
+        self,
+    ):
+        name = "20260101000000_replace_checks"
+        sql = self.migration_sql()
+        temp, root, manifests, release = self.with_release(
+            [(name, sql)]
+        )
+        correction = root / "config" / "migration-check-proof-corrections.json"
+        correction.parent.mkdir(parents=True)
+        correction.write_text(
+            json.dumps(
+                {
+                    "schema": 1,
+                    "kind": "aoe2war-migration-check-proof-corrections",
+                    "corrections": [
+                        {
+                            "migration": name,
+                            "migration_sql_sha256": "0" * 64,
+                            "checks": [
+                                {
+                                    "table": "widget",
+                                    "constraint": "ck_widget_type",
+                                    "declared_after_sha256": "2" * 64,
+                                    "corrected_after_sha256": "5" * 64,
+                                },
+                                {
+                                    "table": "widget",
+                                    "constraint": "ck_widget_geometry",
+                                    "declared_after_sha256": "4" * 64,
+                                    "corrected_after_sha256": "6" * 64,
+                                },
+                            ],
+                        }
+                    ],
+                }
+            )
+        )
+
+        with temp:
+            with mock.patch.object(MODULE, "ROOT", root), mock.patch.object(
+                MODULE, "MANIFEST_DIR", manifests
+            ), mock.patch.object(
+                MODULE, "MIGRATION_CHECK_PROOF_CORRECTIONS", correction
+            ):
+                with self.assertRaisesRegex(
+                    MODULE.AutoShipError,
+                    "SQL hash mismatch",
+                ):
+                    MODULE.migration_contract(release)
+
     def test_unrelated_sql_is_rejected(
         self,
     ):
@@ -1180,7 +1319,7 @@ COMMIT;
             rendered,
         )
 
-    def test_already_applied_replay_requires_exact_receipt_and_live_after(
+    def test_already_applied_replay_requires_exact_or_adopted_receipt_and_live_after(
         self,
     ):
         proof = {
@@ -1226,26 +1365,52 @@ COMMIT;
             receipt_loop,
         )
 
-        applied_start = receipt_end
-
-        applied_end = rendered.index(
-            "  exit 0",
-            applied_start,
+        self.assertIn(
+            "already-applied migration is not exactly-once",
+            rendered,
         )
 
-        applied = rendered[
-            applied_start:applied_end
-        ]
+        self.assertIn(
+            "already-applied migration checksum differs from release SQL",
+            rendered,
+        )
 
         self.assertIn(
-            "durable migration receipt is missing",
-            applied,
+            "git merge-base --is-ancestor",
+            rendered,
+        )
+
+        self.assertIn(
+            "source_blob=",
+            rendered,
+        )
+        self.assertIn(
+            "current_blob=",
+            rendered,
+        )
+
+        self.assertIn(
+            "adopted_from_release_sha",
+            rendered,
+        )
+        self.assertIn(
+            "database_mutation=NONE",
+            rendered,
+        )
+        self.assertIn(
+            "adopted-already-applied",
+            rendered,
+        )
+
+        self.assertIn(
+            "no exact or safely adoptable durable migration receipt exists",
+            rendered,
         )
 
         self.assertIn(
             "production CHECK "
             "after-proof mismatch",
-            applied,
+            rendered,
         )
 
     def test_additive_renderer_does_not_receive_check_proofs(

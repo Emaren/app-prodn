@@ -92,10 +92,10 @@ function responsePayload(input: {
       presetStored: Boolean(input.preset),
       identityReady: Boolean(input.steamId),
       watcherKeyReady: input.watcherKeyReady,
-      durableMarketEvaluatorReady: false,
+      durableMarketEvaluatorReady: true,
       executionReady: automationRuntime.executionReady,
       detail:
-        "The app currently stores and validates this plan only. Durable watcher-market evaluation and Wolo custody execution are not connected.",
+        "The durable Watcher-market shadow evaluator is connected. It records exact self-match preview evidence only; Wolo custody and funded wager execution remain disconnected.",
     },
     preset: serializePreset(input.preset),
     effectiveEnabled:

@@ -25,6 +25,7 @@ from typing import Any, Callable
 import aoe2_audit
 import aoe2_doctor
 import aoe2_release
+import aoe2_release_gate
 import aoe2_update
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -1308,6 +1309,61 @@ def root_below_release_floor(
     )
 
 
+def root_headroom_plan_recovery_available(
+    snapshot: dict[str, Any],
+    production: dict[str, Any],
+) -> bool:
+    """Return whether Finish can safely repair low root capacity on apply.
+
+    This is intentionally a planning predicate only. It never reclaims bytes;
+    the real mutation remains owned by recover_root_headroom(), which re-proves
+    the same source/build/Wolo invariants and writes a durable receipt.
+    """
+    contract = aoe2_doctor.load_contract()
+    finish = contract.get("finish", {})
+    capacity = contract.get("capacity", {})
+
+    if not bool(finish.get("auto_root_headroom_recovery", False)):
+        return False
+
+    if not root_below_release_floor(snapshot):
+        return False
+
+    volume_critical = float(
+        capacity.get("volume_used_critical_percent")
+        or 92.0
+    )
+    if float(snapshot["volume"]["used_percent"]) >= volume_critical:
+        return False
+
+    source_sha = str(production.get("source_sha") or "")
+    active_build_id = str(production.get("active_build_id") or "")
+    if len(source_sha) != 40 or not active_build_id:
+        return False
+
+    try:
+        wolo_8092 = int(production.get("wolo_8092_count") or 0)
+        wolo_8093 = int(production.get("wolo_8093_count") or 0)
+    except (TypeError, ValueError):
+        return False
+    if wolo_8092 != 1 or wolo_8093 != 1:
+        return False
+
+    journal_limit_mib = int(
+        finish.get("root_headroom_journal_limit_mib")
+        or 100
+    )
+    if not 50 <= journal_limit_mib <= 512:
+        return False
+
+    try:
+        root_headroom_recovery_target_bytes()
+    except FinishError:
+        return False
+
+    return True
+
+
 def root_headroom_recovery_target_bytes() -> int:
     contract = aoe2_doctor.load_contract()
     capacity = contract.get("capacity", {})
@@ -1342,6 +1398,299 @@ def root_headroom_recovery_target_bytes() -> int:
     return target
 
 
+def verified_fast_rollback_headroom_tier_script() -> str:
+    return r"""
+# ------------------------------------------------------------
+# TIER 6 — VERIFIED FAST-ROLLBACK CACHE
+#
+# Fast rollback is a root-filesystem acceleration cache, not the
+# durable recovery authority. Before staging a new release, an
+# older canonical fast pair may be retired only when BOTH runtime
+# halves have an exact BUILD_ID-matched twin on the mounted volume.
+# The active .next and node_modules directories are never candidates.
+# ------------------------------------------------------------
+
+CURRENT_KB="$(free_kb)"
+
+if [ "$CURRENT_KB" -lt "$TARGET_KB" ] \
+    && [ "$ALLOW_VERIFIED_FAST_ROLLBACK_PRUNE" = 1 ]; then
+    shopt -s nullglob
+
+    find_durable_build_proof() {
+        wanted_build="$1"
+
+        for candidate_build_id in \
+            "$VOL"/aoe2war/rollbacks/*/next/BUILD_ID
+        do
+            [ -f "$candidate_build_id" ] || continue
+            [ ! -L "$candidate_build_id" ] || continue
+
+            if [ "$(cat "$candidate_build_id" 2>/dev/null || true)" = "$wanted_build" ]; then
+                printf '%s\n' "$candidate_build_id"
+                return 0
+            fi
+        done
+
+        return 1
+    }
+
+    find_rescue_build_proof() {
+        wanted_build="$1"
+
+        for candidate_build_id in \
+            "$VOL"/aoe2war/deploy-receipts/*/current-next/BUILD_ID
+        do
+            [ -f "$candidate_build_id" ] || continue
+            [ ! -L "$candidate_build_id" ] || continue
+
+            if [ "$(cat "$candidate_build_id" 2>/dev/null || true)" = "$wanted_build" ]; then
+                printf '%s\n' "$candidate_build_id"
+                return 0
+            fi
+        done
+
+        return 1
+    }
+
+    candidate_file="$RECEIPT_DIR/fast-rollback-candidates.tsv"
+    : > "$candidate_file"
+
+    for d in .next-rollback-activate-* .next-rollback-manual-*; do
+        [ -d "$d" ] || continue
+
+        case "$d" in
+            .next-rollback-activate-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]T[0-9][0-9][0-9][0-9][0-9][0-9]Z|\
+            .next-rollback-manual-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]T[0-9][0-9][0-9][0-9][0-9][0-9]Z)
+                ;;
+            *)
+                FAST_ROLLBACK_UNMATCHED=$((FAST_ROLLBACK_UNMATCHED + 1))
+                printf 'UNMATCHED_KEEP\t%s\tUNSAFE_NAMESPACE\n' "$d" \
+                    >>"$RECEIPT_DIR/fast-rollback-kept.tsv"
+                continue
+                ;;
+        esac
+
+        if [ -L "$d" ]; then
+            FAST_ROLLBACK_UNMATCHED=$((FAST_ROLLBACK_UNMATCHED + 1))
+            printf 'UNMATCHED_KEEP\t%s\tSYMLINK_NEXT\n' "$d" \
+                >>"$RECEIPT_DIR/fast-rollback-kept.tsv"
+            continue
+        fi
+
+        mtime="$(stat -c '%Y' "$d" 2>/dev/null || true)"
+        if ! [[ "$mtime" =~ ^[0-9]+$ ]]; then
+            FAST_ROLLBACK_UNMATCHED=$((FAST_ROLLBACK_UNMATCHED + 1))
+            printf 'UNMATCHED_KEEP\t%s\tNO_MTIME\n' "$d" \
+                >>"$RECEIPT_DIR/fast-rollback-kept.tsv"
+            continue
+        fi
+
+        printf '%s\t%s\n' "$mtime" "$d" >>"$candidate_file"
+    done
+
+    mapfile -t FAST_CANDIDATES < <(
+        sort -n -k1,1 "$candidate_file"
+    )
+
+    for row in "${FAST_CANDIDATES[@]}"; do
+        CURRENT_KB="$(free_kb)"
+
+        if [ "$CURRENT_KB" -ge "$TARGET_KB" ]; then
+            break
+        fi
+
+        d="${row#*$'\t'}"
+        modules="${d/.next-/.node_modules-}"
+
+        case "$modules" in
+            .node_modules-rollback-activate-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]T[0-9][0-9][0-9][0-9][0-9][0-9]Z|\
+            .node_modules-rollback-manual-[0-9][0-9][0-9][0-9][0-9][0-9][0-9][0-9]T[0-9][0-9][0-9][0-9][0-9][0-9]Z)
+                ;;
+            *)
+                FAST_ROLLBACK_UNMATCHED=$((FAST_ROLLBACK_UNMATCHED + 1))
+                printf 'UNMATCHED_KEEP\t%s\tUNSAFE_MODULE_NAMESPACE\n' "$d" \
+                    >>"$RECEIPT_DIR/fast-rollback-kept.tsv"
+                continue
+                ;;
+        esac
+
+        if [ ! -d "$modules" ] || [ -L "$modules" ]; then
+            FAST_ROLLBACK_UNMATCHED=$((FAST_ROLLBACK_UNMATCHED + 1))
+            printf 'UNMATCHED_KEEP\t%s\tMISSING_OR_SYMLINK_MODULE_PAIR\n' "$d" \
+                >>"$RECEIPT_DIR/fast-rollback-kept.tsv"
+            continue
+        fi
+
+        build="$(cat "$d/BUILD_ID" 2>/dev/null || true)"
+        if [ -z "$build" ]; then
+            FAST_ROLLBACK_UNMATCHED=$((FAST_ROLLBACK_UNMATCHED + 1))
+            printf 'UNMATCHED_KEEP\t%s\tNO_BUILD_ID\n' "$d" \
+                >>"$RECEIPT_DIR/fast-rollback-kept.tsv"
+            continue
+        fi
+
+        if [ "$build" = "$EXPECTED_ACTIVE" ]; then
+            FAST_ROLLBACK_UNMATCHED=$((FAST_ROLLBACK_UNMATCHED + 1))
+            printf 'UNMATCHED_KEEP\t%s\t%s\tACTIVE_BUILD_ID\n' \
+                "$d" "$build" \
+                >>"$RECEIPT_DIR/fast-rollback-kept.tsv"
+            continue
+        fi
+
+        proof_kind=""
+        proof_path=""
+        proof_modules=""
+
+        match="$(find_durable_build_proof "$build" || true)"
+        if [ -n "$match" ]; then
+            proof_next="${match%/BUILD_ID}"
+            candidate_proof_modules="${proof_next%/next}/node_modules"
+
+            if [ -d "$proof_next" ] \
+                && [ ! -L "$proof_next" ] \
+                && [ -d "$candidate_proof_modules" ] \
+                && [ ! -L "$candidate_proof_modules" ]; then
+                proof_kind="DURABLE_ROLLBACK"
+                proof_path="$proof_next"
+                proof_modules="$candidate_proof_modules"
+            fi
+        fi
+
+        if [ -z "$proof_kind" ]; then
+            match="$(find_rescue_build_proof "$build" || true)"
+
+            if [ -n "$match" ]; then
+                proof_next="${match%/BUILD_ID}"
+                candidate_proof_modules="${proof_next%/current-next}/current-node_modules"
+
+                if [ -d "$proof_next" ] \
+                    && [ ! -L "$proof_next" ] \
+                    && [ -d "$candidate_proof_modules" ] \
+                    && [ ! -L "$candidate_proof_modules" ]; then
+                    proof_kind="DURABLE_RESCUE"
+                    proof_path="$proof_next"
+                    proof_modules="$candidate_proof_modules"
+                fi
+            fi
+        fi
+
+        if [ -z "$proof_kind" ] || [ ! -d "$proof_modules" ]; then
+            FAST_ROLLBACK_UNMATCHED=$((FAST_ROLLBACK_UNMATCHED + 1))
+            printf 'UNMATCHED_KEEP\t%s\t%s\tNO_PAIRED_DURABLE_PROOF\n' \
+                "$d" "$build" \
+                >>"$RECEIPT_DIR/fast-rollback-kept.tsv"
+            continue
+        fi
+
+        if [ "$(cat "$proof_path/BUILD_ID" 2>/dev/null || true)" != "$build" ]; then
+            FAST_ROLLBACK_UNMATCHED=$((FAST_ROLLBACK_UNMATCHED + 1))
+            printf 'UNMATCHED_KEEP\t%s\t%s\tDURABLE_BUILD_DRIFT\n' \
+                "$d" "$build" \
+                >>"$RECEIPT_DIR/fast-rollback-kept.tsv"
+            continue
+        fi
+
+        if [ "$(cat "$d/BUILD_ID" 2>/dev/null || true)" != "$build" ]; then
+            FAST_ROLLBACK_UNMATCHED=$((FAST_ROLLBACK_UNMATCHED + 1))
+            printf 'UNMATCHED_KEEP\t%s\t%s\tFAST_BUILD_DRIFT\n' \
+                "$d" "$build" \
+                >>"$RECEIPT_DIR/fast-rollback-kept.tsv"
+            continue
+        fi
+
+        next_kb="$(du -sk "$d" 2>/dev/null | awk '{print $1}')"
+        modules_kb="$(du -sk "$modules" 2>/dev/null | awk '{print $1}')"
+
+        if ! [[ "$next_kb" =~ ^[0-9]+$ ]] \
+            || ! [[ "$modules_kb" =~ ^[0-9]+$ ]]; then
+            FAST_ROLLBACK_UNMATCHED=$((FAST_ROLLBACK_UNMATCHED + 1))
+            printf 'UNMATCHED_KEEP\t%s\t%s\tSIZE_PROBE_FAILED\n' \
+                "$d" "$build" \
+                >>"$RECEIPT_DIR/fast-rollback-kept.tsv"
+            continue
+        fi
+
+        size_kb=$((next_kb + modules_kb))
+        prune_next_tmp="${d}.headroom-prune-$$"
+        prune_modules_tmp="${modules}.headroom-prune-$$"
+
+        if [ -e "$prune_next_tmp" ] || [ -e "$prune_modules_tmp" ]; then
+            FAST_ROLLBACK_PRUNE_FAILED=$((FAST_ROLLBACK_PRUNE_FAILED + 1))
+            printf 'KEEP_PRUNE_TMP_COLLISION\t%s\t%s\n' "$d" "$build" \
+                >>"$RECEIPT_DIR/fast-rollback-kept.tsv"
+            continue
+        fi
+
+        TIER_BEFORE="$(free_kb)"
+
+        if ! mv "$d" "$prune_next_tmp"; then
+            FAST_ROLLBACK_PRUNE_FAILED=$((FAST_ROLLBACK_PRUNE_FAILED + 1))
+            printf 'KEEP_PAIR_MOVE_FAILED\t%s\t%s\n' "$d" "$build" \
+                >>"$RECEIPT_DIR/fast-rollback-kept.tsv"
+            continue
+        fi
+
+        if ! mv "$modules" "$prune_modules_tmp"; then
+            mv "$prune_next_tmp" "$d" >/dev/null 2>&1 || true
+            FAST_ROLLBACK_PRUNE_FAILED=$((FAST_ROLLBACK_PRUNE_FAILED + 1))
+            printf 'KEEP_PAIR_MOVE_FAILED\t%s\t%s\n' "$d" "$build" \
+                >>"$RECEIPT_DIR/fast-rollback-kept.tsv"
+            continue
+        fi
+
+        if rm -rf -- "$prune_next_tmp" "$prune_modules_tmp" \
+            && [ ! -e "$prune_next_tmp" ] \
+            && [ ! -e "$prune_modules_tmp" ]; then
+            sync
+
+            TIER_AFTER="$(free_kb)"
+            DELTA=$((TIER_AFTER - TIER_BEFORE))
+
+            FAST_ROLLBACK_RECLAIMED_KB=$((FAST_ROLLBACK_RECLAIMED_KB + DELTA))
+            FAST_ROLLBACK_PRUNED=$((FAST_ROLLBACK_PRUNED + 1))
+
+            printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
+                "$d" \
+                "$modules" \
+                "$build" \
+                "$size_kb" \
+                "$DELTA" \
+                "$proof_kind" \
+                "$proof_path" \
+                >>"$RECEIPT_DIR/fast-rollback-pruned.tsv"
+        else
+            if [ -d "$prune_next_tmp" ] && [ ! -e "$d" ]; then
+                mv "$prune_next_tmp" "$d" >/dev/null 2>&1 || true
+            fi
+
+            if [ -d "$prune_modules_tmp" ] && [ ! -e "$modules" ]; then
+                mv "$prune_modules_tmp" "$modules" >/dev/null 2>&1 || true
+            fi
+
+            FAST_ROLLBACK_PRUNE_FAILED=$((FAST_ROLLBACK_PRUNE_FAILED + 1))
+            printf 'KEEP_DELETE_FAILED\t%s\t%s\n' "$d" "$build" \
+                >>"$RECEIPT_DIR/fast-rollback-kept.tsv"
+        fi
+    done
+
+    rm -f "$candidate_file"
+fi
+
+FAST_ROLLBACK_PRUNED_MANIFEST_SHA256="-"
+
+if [ -f "$RECEIPT_DIR/fast-rollback-pruned.tsv" ]; then
+    FAST_ROLLBACK_PRUNED_MANIFEST_SHA256="$(
+        sha256sum "$RECEIPT_DIR/fast-rollback-pruned.tsv" |
+        awk '{print $1}'
+    )"
+
+    printf '%s  %s\n' \
+        "$FAST_ROLLBACK_PRUNED_MANIFEST_SHA256" \
+        "fast-rollback-pruned.tsv" \
+        >"$RECEIPT_DIR/FAST_ROLLBACK_PRUNED_SHA256"
+fi
+"""
+
 def remote_root_headroom_recovery_script(
     *,
     volume: str,
@@ -1350,6 +1699,7 @@ def remote_root_headroom_recovery_script(
     journal_limit_mib: int,
     expected_source_sha: str,
     expected_active_build_id: str,
+    allow_verified_fast_rollback_prune: bool = False,
 ) -> str:
     if not volume.startswith("/"):
         raise FinishError(
@@ -1390,6 +1740,7 @@ VOL={q(volume)}
 FLOOR_KB={int(floor_kb)}
 TARGET_KB={int(target_kb)}
 JOURNAL_LIMIT_MIB={int(journal_limit_mib)}
+ALLOW_VERIFIED_FAST_ROLLBACK_PRUNE={1 if allow_verified_fast_rollback_prune else 0}
 EXPECTED_SOURCE={q(expected_source_sha)}
 EXPECTED_ACTIVE={q(expected_active_build_id)}
 
@@ -1446,6 +1797,7 @@ test "$BEFORE_KB" -lt "$TARGET_KB" || {{
 
 install -d -m 0750 "$RECEIPT_DIR"
 install -d -m 0750 "$RECEIPT_DIR/nginx"
+install -d -m 0750 "$RECEIPT_DIR/system-logs"
 
 cat > "$RECEIPT_DIR/recovery.txt" <<EOF
 schema=1
@@ -1457,6 +1809,7 @@ root_floor_kb=$FLOOR_KB
 root_target_kb=$TARGET_KB
 root_free_before_kb=$BEFORE_KB
 journal_limit_mib=$JOURNAL_LIMIT_MIB
+verified_fast_rollback_prune_enabled=$ALLOW_VERIFIED_FAST_ROLLBACK_PRUNE
 wolo8092_before=$W8092_BEFORE
 wolo8093_before=$W8093_BEFORE
 EOF
@@ -1469,6 +1822,14 @@ JOURNAL_RECLAIMED_KB=0
 NGINX_RECLAIMED_KB=0
 NGINX_ARCHIVED=0
 NGINX_OPEN_SKIPPED=0
+SYSTEM_LOG_RECLAIMED_KB=0
+SYSTEM_LOG_ARCHIVED=0
+SYSTEM_LOG_OPEN_SKIPPED=0
+SYSTEM_LOG_UNSAFE_SKIPPED=0
+FAST_ROLLBACK_RECLAIMED_KB=0
+FAST_ROLLBACK_PRUNED=0
+FAST_ROLLBACK_UNMATCHED=0
+FAST_ROLLBACK_PRUNE_FAILED=0
 
 
 # ------------------------------------------------------------
@@ -1735,6 +2096,218 @@ if [ "$CURRENT_KB" -lt "$TARGET_KB" ]; then
     done
 fi
 
+# ------------------------------------------------------------
+# TIER 5 — STRICTLY ALLOWLISTED CLOSED ROTATED SYSTEM LOGS
+# ARCHIVE + SHA-256 BEFORE ROOT REMOVAL
+# ------------------------------------------------------------
+
+CURRENT_KB="$(free_kb)"
+
+if [ "$CURRENT_KB" -lt "$TARGET_KB" ]; then
+    mapfile -t SYSTEM_LOG_CANDIDATES < <(
+        {{
+            find /var/log \
+                -maxdepth 1 \
+                -type f \
+                -name 'syslog.1' \
+                -printf '%s\\t%p\\n'
+            find /var/log \
+                -maxdepth 1 \
+                -type f \
+                -name 'auth.log.1' \
+                -printf '%s\\t%p\\n'
+            find /var/log \
+                -maxdepth 1 \
+                -type f \
+                -name 'syslog.[2-9].gz' \
+                -printf '%s\\t%p\\n'
+            find /var/log \
+                -maxdepth 1 \
+                -type f \
+                -name 'btmp.1' \
+                -printf '%s\\t%p\\n'
+            find /var/log/postgresql \
+                -maxdepth 1 \
+                -type f \
+                -name 'postgresql-*.log.1' \
+                -printf '%s\\t%p\\n'
+            find /var/log/audit \
+                -maxdepth 1 \
+                -type f \
+                -name 'audit.log.[1-9]' \
+                -printf '%s\\t%p\\n'
+        }} 2>/dev/null |
+        sort -nr
+    )
+
+    for row in "${{SYSTEM_LOG_CANDIDATES[@]}}"; do
+        CURRENT_KB="$(free_kb)"
+
+        if [ "$CURRENT_KB" -ge "$TARGET_KB" ]; then
+            break
+        fi
+
+        bytes="${{row%%$'\\t'*}}"
+        logfile="${{row#*$'\\t'}}"
+
+        [ -f "$logfile" ] || continue
+
+        case "$logfile" in
+            /var/log/syslog.1|/var/log/auth.log.1|/var/log/btmp.1)
+                ;;
+            /var/log/syslog.[2-9].gz)
+                ;;
+            /var/log/postgresql/postgresql-*.log.1)
+                ;;
+            /var/log/audit/audit.log.[1-9])
+                ;;
+            *)
+                SYSTEM_LOG_UNSAFE_SKIPPED=$((
+                    SYSTEM_LOG_UNSAFE_SKIPPED + 1
+                ))
+                printf '%s\\n' "$logfile" \
+                    >>"$RECEIPT_DIR/system-log-unsafe-skipped.txt"
+                continue
+                ;;
+        esac
+
+        if [ -L "$logfile" ]; then
+            SYSTEM_LOG_UNSAFE_SKIPPED=$((
+                SYSTEM_LOG_UNSAFE_SKIPPED + 1
+            ))
+            printf '%s\\n' "$logfile" \
+                >>"$RECEIPT_DIR/system-log-unsafe-skipped.txt"
+            continue
+        fi
+
+        OPEN=0
+
+        for fd in /proc/[0-9]*/fd/*; do
+            target="$(
+                readlink "$fd" 2>/dev/null ||
+                true
+            )"
+
+            if [ "$target" = "$logfile" ]; then
+                OPEN=1
+                break
+            fi
+        done
+
+        if [ "$OPEN" = 1 ]; then
+            SYSTEM_LOG_OPEN_SKIPPED=$((
+                SYSTEM_LOG_OPEN_SKIPPED + 1
+            ))
+            printf '%s\\n' "$logfile" \
+                >>"$RECEIPT_DIR/system-log-open-skipped.txt"
+            continue
+        fi
+
+        relative="${{logfile#/var/log/}}"
+        destination="$RECEIPT_DIR/system-logs/$relative"
+        install -d -m 0750 "$(dirname "$destination")"
+
+        TIER_BEFORE="$(free_kb)"
+
+        cp -a \
+            "$logfile" \
+            "$destination"
+
+        SOURCE_SHA="$(
+            sha256sum "$logfile" |
+            awk '{{print $1}}'
+        )"
+
+        DEST_SHA="$(
+            sha256sum "$destination" |
+            awk '{{print $1}}'
+        )"
+
+        test "$SOURCE_SHA" = "$DEST_SHA"
+        test "$(stat -c '%s' "$destination")" = "$bytes"
+
+        printf '%s  %s\\n' \
+            "$SOURCE_SHA" \
+            "$relative" \
+            >>"$RECEIPT_DIR/SYSTEM_LOG_SHA256SUMS"
+
+        sync
+
+        rm -- "$logfile"
+
+        test ! -e "$logfile"
+
+        sync
+
+        TIER_AFTER="$(free_kb)"
+        DELTA=$((
+            TIER_AFTER - TIER_BEFORE
+        ))
+
+        SYSTEM_LOG_RECLAIMED_KB=$((
+            SYSTEM_LOG_RECLAIMED_KB + DELTA
+        ))
+
+        SYSTEM_LOG_ARCHIVED=$((
+            SYSTEM_LOG_ARCHIVED + 1
+        ))
+
+        printf '%s\\t%s\\t%s\\n' \
+            "$bytes" \
+            "$SOURCE_SHA" \
+            "$logfile" \
+            >>"$RECEIPT_DIR/system-log-archived.tsv"
+    done
+fi
+
+{verified_fast_rollback_headroom_tier_script()}
+
+if [ "$FAST_ROLLBACK_PRUNE_FAILED" -gt 0 ]; then
+    sync
+
+    AFTER_KB="$(free_kb)"
+    RECLAIMED_KB=$((AFTER_KB - BEFORE_KB))
+
+    cat >> "$RECEIPT_DIR/recovery.txt" <<EOF
+root_free_after_kb=$AFTER_KB
+root_reclaimed_kb=$RECLAIMED_KB
+apt_reclaimed_kb=$APT_RECLAIMED_KB
+snap_reclaimed_kb=$SNAP_RECLAIMED_KB
+snap_removed_count=$SNAP_REMOVED
+snap_skipped_unsafe_count=$SNAP_SKIPPED_UNSAFE
+journal_reclaimed_kb=$JOURNAL_RECLAIMED_KB
+nginx_reclaimed_kb=$NGINX_RECLAIMED_KB
+nginx_archived_count=$NGINX_ARCHIVED
+nginx_open_skipped_count=$NGINX_OPEN_SKIPPED
+system_log_reclaimed_kb=$SYSTEM_LOG_RECLAIMED_KB
+system_log_archived_count=$SYSTEM_LOG_ARCHIVED
+system_log_open_skipped_count=$SYSTEM_LOG_OPEN_SKIPPED
+system_log_unsafe_skipped_count=$SYSTEM_LOG_UNSAFE_SKIPPED
+fast_rollback_reclaimed_kb=$FAST_ROLLBACK_RECLAIMED_KB
+fast_rollback_pruned_count=$FAST_ROLLBACK_PRUNED
+fast_rollback_unmatched_count=$FAST_ROLLBACK_UNMATCHED
+fast_rollback_prune_failed_count=$FAST_ROLLBACK_PRUNE_FAILED
+fast_rollback_pruned_manifest_sha256=$FAST_ROLLBACK_PRUNED_MANIFEST_SHA256
+status=FAST_ROLLBACK_PRUNE_FAILED
+EOF
+
+    sha256sum \
+        "$RECEIPT_DIR/recovery.txt" \
+        >"$RECEIPT_DIR/RECOVERY_SHA256"
+
+    sync
+
+    printf 'status\\tFAST_ROLLBACK_PRUNE_FAILED\\n'
+    printf 'receipt_dir\\t%s\\n' "$RECEIPT_DIR"
+    printf 'before_kb\\t%s\\n' "$BEFORE_KB"
+    printf 'after_kb\\t%s\\n' "$AFTER_KB"
+    printf 'reclaimed_kb\\t%s\\n' "$RECLAIMED_KB"
+    printf 'fast_rollback_pruned_count\\t%s\\n' "$FAST_ROLLBACK_PRUNED"
+    printf 'fast_rollback_prune_failed_count\\t%s\\n' "$FAST_ROLLBACK_PRUNE_FAILED"
+
+    exit 46
+fi
+
 
 # ------------------------------------------------------------
 # FINAL SAFETY + CAPACITY PROOF
@@ -1759,6 +2332,15 @@ journal_reclaimed_kb=$JOURNAL_RECLAIMED_KB
 nginx_reclaimed_kb=$NGINX_RECLAIMED_KB
 nginx_archived_count=$NGINX_ARCHIVED
 nginx_open_skipped_count=$NGINX_OPEN_SKIPPED
+system_log_reclaimed_kb=$SYSTEM_LOG_RECLAIMED_KB
+system_log_archived_count=$SYSTEM_LOG_ARCHIVED
+system_log_open_skipped_count=$SYSTEM_LOG_OPEN_SKIPPED
+system_log_unsafe_skipped_count=$SYSTEM_LOG_UNSAFE_SKIPPED
+fast_rollback_reclaimed_kb=$FAST_ROLLBACK_RECLAIMED_KB
+fast_rollback_pruned_count=$FAST_ROLLBACK_PRUNED
+fast_rollback_unmatched_count=$FAST_ROLLBACK_UNMATCHED
+fast_rollback_prune_failed_count=$FAST_ROLLBACK_PRUNE_FAILED
+fast_rollback_pruned_manifest_sha256=$FAST_ROLLBACK_PRUNED_MANIFEST_SHA256
 status=INSUFFICIENT
 EOF
 
@@ -1816,6 +2398,15 @@ journal_reclaimed_kb=$JOURNAL_RECLAIMED_KB
 nginx_reclaimed_kb=$NGINX_RECLAIMED_KB
 nginx_archived_count=$NGINX_ARCHIVED
 nginx_open_skipped_count=$NGINX_OPEN_SKIPPED
+system_log_reclaimed_kb=$SYSTEM_LOG_RECLAIMED_KB
+system_log_archived_count=$SYSTEM_LOG_ARCHIVED
+system_log_open_skipped_count=$SYSTEM_LOG_OPEN_SKIPPED
+system_log_unsafe_skipped_count=$SYSTEM_LOG_UNSAFE_SKIPPED
+fast_rollback_reclaimed_kb=$FAST_ROLLBACK_RECLAIMED_KB
+fast_rollback_pruned_count=$FAST_ROLLBACK_PRUNED
+fast_rollback_unmatched_count=$FAST_ROLLBACK_UNMATCHED
+fast_rollback_prune_failed_count=$FAST_ROLLBACK_PRUNE_FAILED
+fast_rollback_pruned_manifest_sha256=$FAST_ROLLBACK_PRUNED_MANIFEST_SHA256
 service_after=active
 wolo8092_after=$W8092_AFTER
 wolo8093_after=$W8093_AFTER
@@ -1841,6 +2432,15 @@ printf 'journal_reclaimed_kb\\t%s\\n' "$JOURNAL_RECLAIMED_KB"
 printf 'nginx_reclaimed_kb\\t%s\\n' "$NGINX_RECLAIMED_KB"
 printf 'nginx_archived_count\\t%s\\n' "$NGINX_ARCHIVED"
 printf 'nginx_open_skipped_count\\t%s\\n' "$NGINX_OPEN_SKIPPED"
+printf 'system_log_reclaimed_kb\\t%s\\n' "$SYSTEM_LOG_RECLAIMED_KB"
+printf 'system_log_archived_count\\t%s\\n' "$SYSTEM_LOG_ARCHIVED"
+printf 'system_log_open_skipped_count\\t%s\\n' "$SYSTEM_LOG_OPEN_SKIPPED"
+printf 'system_log_unsafe_skipped_count\\t%s\\n' "$SYSTEM_LOG_UNSAFE_SKIPPED"
+printf 'fast_rollback_reclaimed_kb\\t%s\\n' "$FAST_ROLLBACK_RECLAIMED_KB"
+printf 'fast_rollback_pruned_count\\t%s\\n' "$FAST_ROLLBACK_PRUNED"
+printf 'fast_rollback_unmatched_count\\t%s\\n' "$FAST_ROLLBACK_UNMATCHED"
+printf 'fast_rollback_prune_failed_count\\t%s\\n' "$FAST_ROLLBACK_PRUNE_FAILED"
+printf 'fast_rollback_pruned_manifest_sha256\\t%s\\n' "$FAST_ROLLBACK_PRUNED_MANIFEST_SHA256"
 printf 'source_sha\\t%s\\n' "$EXPECTED_SOURCE"
 printf 'active_build_id\\t%s\\n' "$EXPECTED_ACTIVE"
 printf 'service\\tactive\\n'
@@ -1925,6 +2525,13 @@ def recover_root_headroom(
         + 1023
     ) // 1024
 
+    allow_verified_fast_rollback_prune = bool(
+        finish.get(
+            "root_headroom_prune_verified_fast_rollback",
+            False,
+        )
+    )
+
     script = remote_root_headroom_recovery_script(
         volume=volume,
         floor_kb=floor_kb,
@@ -1932,6 +2539,9 @@ def recover_root_headroom(
         journal_limit_mib=journal_limit_mib,
         expected_source_sha=source_sha,
         expected_active_build_id=active_build_id,
+        allow_verified_fast_rollback_prune=(
+            allow_verified_fast_rollback_prune
+        ),
     )
 
     rc, output = ssh_text(
@@ -1955,6 +2565,12 @@ def recover_root_headroom(
                 "bounded root-headroom recovery exhausted "
                 "approved reclaim classes but the recovery "
                 "target is still unmet"
+            )
+
+        if result.get("status") == "FAST_ROLLBACK_PRUNE_FAILED":
+            raise FinishError(
+                "verified fast-rollback headroom pruning failed; "
+                "the durable recovery receipt must be inspected"
             )
 
         raise FinishError(
@@ -2001,6 +2617,42 @@ def recover_root_headroom(
             "root-headroom recovery claimed success below "
             "the configured recovery target"
         )
+
+    counter_keys = (
+        "fast_rollback_reclaimed_kb",
+        "fast_rollback_pruned_count",
+        "fast_rollback_unmatched_count",
+        "fast_rollback_prune_failed_count",
+    )
+    parsed_fast_counters: dict[str, int] = {}
+
+    try:
+        for key in counter_keys:
+            value = int(result.get(key) or "0")
+            if value < 0:
+                raise ValueError(key)
+            parsed_fast_counters[key] = value
+    except ValueError as exc:
+        raise FinishError(
+            "root-headroom recovery returned invalid fast-rollback evidence"
+        ) from exc
+
+    if parsed_fast_counters["fast_rollback_pruned_count"] > 0:
+        if not allow_verified_fast_rollback_prune:
+            raise FinishError(
+                "root-headroom recovery pruned fast rollback while the "
+                "verified-prune policy was disabled"
+            )
+
+        manifest_sha = str(
+            result.get("fast_rollback_pruned_manifest_sha256")
+            or ""
+        )
+        if re.fullmatch(r"[0-9a-f]{64}", manifest_sha) is None:
+            raise FinishError(
+                "root-headroom recovery returned no sealed fast-rollback "
+                "prune manifest"
+            )
 
     if result.get("source_sha") != source_sha:
         raise FinishError(
@@ -3048,6 +3700,7 @@ def run_workshop_chronicler(
 
     production = certified_release.get("production", {})
     local = certified_release.get("local", {})
+    certification = certified_release.get("certification", {})
     canonical = contract["canonical"]
 
     host = str(
@@ -3059,7 +3712,12 @@ def run_workshop_chronicler(
         or canonical["production_repo"]
     )
     service = str(canonical["service"])
-    release_sha = str(local.get("head") or "")
+    release_sha = str(
+        certification.get("release_sha")
+        or production.get("source_sha")
+        or local.get("head")
+        or ""
+    )
 
     if not release_sha:
         raise FinishError(
@@ -3387,6 +4045,22 @@ def assert_no_competing_operator_process() -> None:
         )
 
 
+def planned_database_migration_paths(
+    data: dict[str, Any],
+) -> list[str]:
+    """Return the exact Prisma migration paths in the current release scope.
+
+    The planner reuses Release Gate's source-scope authority rather than
+    inventing a second diff model. This function is read-only.
+    """
+    scope = aoe2_release_gate.release_scope(data)
+    return sorted(
+        path
+        for path in (scope.get("changed_files") or [])
+        if str(path).startswith("prisma/migrations/")
+    )
+
+
 def plan_payload(*, preserve_context_history: bool = False) -> dict[str, Any]:
     data = aoe2_release.collect()
     local = data["local"]
@@ -3410,6 +4084,11 @@ def plan_payload(*, preserve_context_history: bool = False) -> dict[str, Any]:
     external_sources = external_source_authority_snapshot()
     capacity_snapshot = production_capacity_snapshot()
     deploy_expected = plan.mode != "clean" or needs_deploy(data)
+    database_migration_paths = (
+        planned_database_migration_paths(data)
+        if deploy_expected
+        else []
+    )
     documentation_plan = aoe2_update.collect_plan(
         preserve_context_history=preserve_context_history,
         defer_runtime_provenance=deploy_expected,
@@ -3479,10 +4158,27 @@ def plan_payload(*, preserve_context_history: bool = False) -> dict[str, Any]:
     if storage_rc != 0 or storage_preview.get("status") not in {"READY", "NOOP"}:
         blockers.append("storage-retention preview did not pass")
     blockers.extend(external_sources["blockers"])
+
+    root_recovery_remediable = root_headroom_plan_recovery_available(
+        capacity_snapshot,
+        production,
+    )
     try:
         assert_capacity_headroom(capacity_snapshot)
     except FinishError as exc:
-        blockers.append(str(exc))
+        if (
+            root_recovery_remediable
+            and str(exc).startswith(
+                "production root headroom is below the release floor:"
+            )
+        ):
+            remediated_blockers.append(
+                "bounded root-headroom recovery will reclaim only approved "
+                "regenerable/archived classes or durable-proven fast rollback "
+                "cache before staging"
+            )
+        else:
+            blockers.append(str(exc))
 
     if documentation_summary["blocked"]:
         blockers.append(
@@ -3545,6 +4241,22 @@ def plan_payload(*, preserve_context_history: bool = False) -> dict[str, Any]:
         "doctor": doctor,
         "storage_retention": storage_preview,
         "capacity": capacity_snapshot,
+        "database_plan": {
+            "mutation_expected": bool(database_migration_paths),
+            "migration_paths": database_migration_paths,
+            "lane": (
+                "protected-additive"
+                if database_migration_paths
+                else "none"
+            ),
+            "proof": (
+                "stage first; exact pending frontier; durable pre-migration "
+                "pg_dump + SHA-256; manifest-only migrate deploy; "
+                "_prisma_migrations receipt proof before activation"
+                if database_migration_paths
+                else "no Prisma migration in current release scope"
+            ),
+        },
         "documentation_plan": documentation_summary,
         "evidence_retention": {
             "preserve_context_history": preserve_context_history,
@@ -3560,6 +4272,8 @@ def plan_payload(*, preserve_context_history: bool = False) -> dict[str, Any]:
         "validation_plan": [
             "safe storage retention preview/apply when policy permits",
             "explicit root + mounted-volume release headroom proof",
+            "protected additive database backup/migration/receipt proof when "
+            "the release scope contains Prisma migrations",
             "transaction-seam maintenance runner reconciliation",
             "pre-mutation operational Doctor",
             "source authority reconciliation and release gate",
@@ -3572,11 +4286,12 @@ def plan_payload(*, preserve_context_history: bool = False) -> dict[str, Any]:
             "independent estate audit and final Doctor",
         ],
         "automatic_mutation_boundaries": {
-            "database": False,
+            "database": bool(database_migration_paths),
             "wolo": False,
             "host_reboot": False,
             "package_upgrade": False,
             "maintenance_runner_reconcile": True,
+            "root_headroom_recovery": root_recovery_remediable,
             "context_archive_pruning": bool(
                 documentation_summary["context_projects"]
                 and not preserve_context_history
@@ -3740,7 +4455,7 @@ def execute_finish(
         progress.start(
             "Recovering approved root headroom "
             "(APT → disabled Snap revisions → journal → "
-            "archived closed nginx logs)..."
+            "archived closed nginx/system logs → verified fast rollback cache)..."
         )
 
         recovery = recover_root_headroom(

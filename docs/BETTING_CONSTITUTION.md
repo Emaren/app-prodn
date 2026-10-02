@@ -64,6 +64,45 @@ A later phase can never dilute, reprice, or subsidize an earlier phase.
 The server owns all timing fences. Browser clocks and stale UI state never
 create financial admission authority.
 
+### Activation boundary
+
+The application now contains an additive **dormant** Phase Books V2 foundation.
+Existing `BetMarket` rows remain `book_phase = legacy`; no historical row is
+rewritten. Future phase markets may carry a unique `phase_book_key` plus
+server-owned open/close timestamps, and the pure planner fixes Opening Minute at
+exactly 60 seconds from authoritative battle start.
+
+Those fields are not financial authority by themselves. Presentation may
+classify an already-accepted slip by server-proven timing without changing this
+boundary: chain-backed slips use `stakeLockedAt` when available, otherwise the
+wager row's `createdAt`; unscheduled live slips require canonical
+`BattleIdentity.startedAt`, while scheduled Challenge books are Pre-Game by
+their current admission contract. Unknown start truth remains Legacy rather
+than guessed.
+
+That timing label does not split or reprice a legacy pool. Until a separately
+reviewed activation connects phase identity to market materialization,
+transactional wager admission, settlement, recovery, and financial
+presentation, the production Betting Fairness V1.2 compatibility bridge remains
+authoritative. A configuration value alone may not activate Phase Books V2.
+
+### Battle-start authority
+
+Opening Minute and Late timing must use one server-proven battle clock. The
+source is the stabilized `LiveGameSession.createdAt` produced from exact
+Watcher session evidence, including duration-derived start and earliest
+observation across promoted rows. It is persisted on
+`BattleIdentity.startedAt`.
+
+A Challenge's `scheduledAt` is a Pre-Game appointment/cutoff, not proof that
+the game started at that instant. If a scheduled match binds to a Watcher
+session, its live phase clock comes from that exact session identity.
+
+Once a BattleIdentity start exists, ordinary later observations may not move it
+later. When exact fallback/canonical identities are merged, the survivor keeps
+the earliest non-null start already proven inside that exact family. Ambiguous
+session aliases have no start authority.
+
 ## Current #JimsRule matching authority
 
 For each market, current settlement first computes:

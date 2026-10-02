@@ -693,7 +693,7 @@ test(
 
     assert.match(
       settlements,
-      /if \(row\.protocolVersion === CHALLENGE_PROTOCOL_VERSION\) return null/,
+      /if \(\[CHALLENGE_PROTOCOL_VERSION,\s*CHAMPIONSHIP_PROTOCOL_VERSION\]\.includes\(row\.protocolVersion \?\? ""\)\) return null/,
     );
 
     assert.match(

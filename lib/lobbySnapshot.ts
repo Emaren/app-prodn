@@ -19,6 +19,7 @@ import { reconcileTournamentMatchProofs } from "@/lib/tournamentProofReconciler"
 import { loadWoloDevSnapshot } from "@/lib/woloDevSnapshot";
 import { loadWoloMarketSnapshot } from "@/lib/woloMarket";
 import { featuredWarriorHonorLabel } from "@/lib/featuredWarriorPresentation";
+import { loadPublicTrophies, trophyIsPubliclyForcedVacant } from "@/lib/trophies/service";
 
 const LOBBY_RECENT_MATCH_INITIAL_LIMIT = 8;
 const LOBBY_MAINTENANCE_INTERVAL_MS = 15_000;
@@ -30,35 +31,17 @@ async function loadFeaturedWarriorHonors(
   prisma: PrismaClient
 ) {
   try {
-    const trophies =
-      await prisma.trophy.findMany({
-        where: {
-          status: {
-            in: ["held", "active"],
-          },
-        },
-        select: {
-          id: true,
-          trophyId: true,
-          displayName: true,
-          holderSince: true,
-          currentHolderDisplayName: true,
-          currentHolder: {
-            select: {
-              uid: true,
-              inGameName: true,
-              steamPersonaName: true,
-            },
-          },
-        },
-        orderBy: [
-          { holderSince: "desc" },
-          { id: "desc" },
-        ],
-      });
+    const trophies = (await loadPublicTrophies(prisma))
+      .filter(trophy=>["held","active"].includes(trophy.status))
+      .sort((left,right)=>(right.holderSince?.getTime() ?? 0) - (left.holderSince?.getTime() ?? 0) || right.id-left.id);
 
     return trophies.flatMap(
       (trophy) => {
+        if (!trophy.hasExplicitChampionshipCustody && trophyIsPubliclyForcedVacant(trophy.trophyId)) {
+          return [];
+        }
+        if (trophy.championshipRoster?.length) return trophy.championshipRoster.map(member=>({uid:member.uid,name:member.displayName,title:featuredWarriorHonorLabel(trophy.trophyId,trophy.displayName),holderSince:trophy.holderSince?.toISOString() ?? null}));
+
         const name =
           trophy.currentHolderDisplayName ||
           trophy.currentHolder?.inGameName ||

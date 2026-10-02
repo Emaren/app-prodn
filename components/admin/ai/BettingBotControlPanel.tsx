@@ -49,6 +49,7 @@ type Snapshot = {
     perActionHardCapWolo: number;
     llmAuthority: "flavour_only";
     executionInstalled: false;
+    shadowEvaluatorConnected: boolean;
   };
   limits: {
     perActionHardCapWolo: number;
@@ -62,10 +63,17 @@ type Snapshot = {
     botConfigId: number;
     botSlugSnapshot: string;
     eventType: string;
+    marketId: number | null;
+    sourceWagerId: number | null;
     configuredModeSnapshot: string;
     effectiveModeSnapshot: string;
+    sourceSide: string | null;
+    counterSide: string | null;
     proposedCounterstakeWolo: number | null;
     committedCounterstakeWolo: number | null;
+    marketExposureBeforeWolo: number | null;
+    dailyExposureBeforeWolo: number | null;
+    availableBalanceWolo: number | null;
     reasonCode: string;
     reasonDetail: string | null;
     custodyVerified: boolean;
@@ -88,6 +96,39 @@ function modeLabel(mode: Mode) {
 function shortDate(value: string) {
   const parsed = new Date(value);
   return Number.isFinite(parsed.getTime()) ? parsed.toLocaleString() : value;
+}
+
+function actionLabel(eventType: string) {
+  if (eventType === "shadow_proposal") return "Shadow proposal";
+  if (eventType === "evaluation_skipped") return "Skipped";
+  if (eventType === "config_updated") return "Config updated";
+  return eventType.replaceAll("_", " ");
+}
+
+function actionDecision(action: Snapshot["recentActions"][number]) {
+  if (action.eventType === "shadow_proposal") {
+    return [
+      action.sourceWagerId ? `wager #${action.sourceWagerId}` : null,
+      action.marketId ? `market #${action.marketId}` : null,
+      action.sourceSide && action.counterSide
+        ? `${action.sourceSide} → ${action.counterSide}`
+        : null,
+      action.proposedCounterstakeWolo
+        ? `${action.proposedCounterstakeWolo} WOLO preview`
+        : null,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+  }
+  if (action.eventType === "evaluation_skipped") {
+    return [
+      action.sourceWagerId ? `wager #${action.sourceWagerId}` : null,
+      action.reasonCode,
+    ]
+      .filter(Boolean)
+      .join(" · ");
+  }
+  return action.reasonDetail || action.reasonCode;
 }
 
 export default function BettingBotControlPanel() {
@@ -207,7 +248,7 @@ export default function BettingBotControlPanel() {
           <div>
             <div className="text-xs font-bold uppercase tracking-[0.35em] text-amber-100/55">Counter-Action Lab</div>
             <h2 className="mt-3 font-serif text-3xl">Tony &amp; Paulie</h2>
-            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">Deterministic, opposite-side counter-bettor policy with a hard 10 WOLO ceiling per action. Both identities ship disabled. This release can preview policy only; it cannot reserve funds, sign, or create wagers.</p>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">Deterministic, opposite-side counter-bettor policy with a hard 10 WOLO ceiling per action. Both identities ship disabled. When Shadow is enabled, committed human wagers can produce append-only preview decisions; no funds are reserved and no counter-wager is created.</p>
           </div>
           <div className="rounded-2xl border border-rose-200/20 bg-rose-300/8 px-4 py-3 text-right">
             <div className="text-[10px] font-bold uppercase tracking-[0.24em] text-rose-100/60">Money authority</div>
@@ -275,8 +316,8 @@ export default function BettingBotControlPanel() {
       </div>
 
       <div className="rounded-[1.6rem] border border-white/10 bg-slate-950/70 p-5 sm:p-7">
-        <div className="flex flex-wrap items-end justify-between gap-3"><div><h3 className="text-xl font-semibold">Append-only counter-action audit</h3><p className="mt-1 text-xs leading-5 text-slate-500">Config saves and future deterministic decisions append evidence. Existing rows cannot be edited, deleted, or truncated.</p></div><span className="text-xs text-slate-500">{snapshot?.recentActions.length ?? 0} recent</span></div>
-        <div className="mt-4 space-y-2">{snapshot?.recentActions.length ? snapshot.recentActions.map((action) => <div key={action.id} className="grid gap-2 rounded-xl border border-white/8 bg-white/[0.025] px-4 py-3 text-xs sm:grid-cols-[6rem_8rem_9rem_1fr_auto]"><span className="font-semibold text-amber-100">{action.botSlugSnapshot}</span><span className="text-slate-400">{action.eventType}</span><span className="text-slate-400">{action.configuredModeSnapshot} → {action.effectiveModeSnapshot}</span><span className="text-slate-300">{action.reasonDetail || action.reasonCode}</span><span className="text-slate-500">{shortDate(action.createdAt)}</span></div>) : <div className="rounded-xl border border-white/8 bg-white/[0.025] p-4 text-sm text-slate-500">No counter-actions recorded. Tony and Paulie remain disabled.</div>}</div>
+        <div className="flex flex-wrap items-end justify-between gap-3"><div><h3 className="text-xl font-semibold">Append-only counter-action audit</h3><p className="mt-1 text-xs leading-5 text-slate-500">Config saves and deterministic shadow decisions append evidence. Preview amounts are proposals only; committed WOLO remains empty until a separately reviewed custody executor exists.</p></div><span className="text-xs text-slate-500">{snapshot?.recentActions.length ?? 0} recent</span></div>
+        <div className="mt-4 space-y-2">{snapshot?.recentActions.length ? snapshot.recentActions.map((action) => <div key={action.id} className="rounded-xl border border-white/8 bg-white/[0.025] px-4 py-3 text-xs"><div className="flex flex-wrap items-center gap-x-3 gap-y-1"><span className="font-semibold text-amber-100">{action.botSlugSnapshot}</span><span className="text-slate-300">{actionLabel(action.eventType)}</span><span className="text-slate-500">{action.configuredModeSnapshot} → {action.effectiveModeSnapshot}</span><span className="ml-auto text-slate-500">{shortDate(action.createdAt)}</span></div><div className="mt-2 text-slate-200">{actionDecision(action)}</div>{action.eventType === "shadow_proposal" ? <div className="mt-1 text-[11px] text-slate-500">Exposure before: market {action.marketExposureBeforeWolo ?? 0} · day {action.dailyExposureBeforeWolo ?? 0} WOLO · custody proof {action.custodyVerified ? "verified" : "not used"}</div> : action.reasonDetail ? <div className="mt-1 text-[11px] text-slate-500">{action.reasonDetail}</div> : null}</div>) : <div className="rounded-xl border border-white/8 bg-white/[0.025] p-4 text-sm text-slate-500">No counter-actions recorded yet. Enable Shadow on a bot to begin recording deterministic previews after committed human wagers.</div>}</div>
       </div>
     </section>
   );

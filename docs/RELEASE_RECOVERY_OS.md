@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "release-recovery-contract"
-reviewed_at: "2026-09-22"
+reviewed_at: "2026-09-29"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -64,6 +64,7 @@ human diagnosis only for failure classes that have a tested recovery contract.
 13. The release gate establishes deterministic Prisma generated state before
     TypeScript or Prisma validation.
 14. Recovery never substitutes for the canonical release checks that follow it.
+15. Dry-run planning may classify low-root capacity as automatically remediable only when the apply path's bounded recovery preconditions are already provable; preview itself remains read-only.
 
 ## Recovery matrix
 
@@ -71,6 +72,7 @@ human diagnosis only for failure classes that have a tested recovery contract.
 | --- | --- | --- | --- |
 | Root meets release floor | None | Filesystem capacity | Continue |
 | Root below release floor | Bounded reclaim ladder | Source/build/service/Wolo identity and mounted-volume capacity | Re-prove capacity, continue |
+| Dry-run sees root below floor and the bounded recovery preconditions are provable | Report automatic remediation only; do not reclaim bytes in preview | Recovery enabled, non-critical evidence volume, exact source/BUILD_ID, Wolo 8092=1 and 8093=1, valid recovery bounds | Plan is `READY_WITH_AUTOMATIC_REMEDIATION`; apply still re-proves every invariant before mutation |
 | Approved reclaim exhausted below floor | None beyond approved classes | Recovery receipt + remaining capacity | Stop |
 | Exact current staged candidate | Resume exact artifact | Release SHA, BUILD_ID, artifact and receipt bindings | Continue at activation |
 | Current staged candidate but exact resume evidence invalid | None | Current-release classification | Stop |
@@ -269,6 +271,89 @@ For each candidate the controller must:
 
 Selection stops immediately when the configured recovery target is met.
 
+### Tier 5 — strictly allowlisted closed rotated system logs
+
+If the target is still unmet after nginx recovery, Release Recovery OS may
+archive and retire only these already-rotated system-log namespaces:
+
+~~~text
+/var/log/syslog.1
+/var/log/auth.log.1
+/var/log/syslog.[2-9].gz
+/var/log/btmp.1
+/var/log/postgresql/postgresql-*.log.1
+/var/log/audit/audit.log.[1-9]
+~~~
+
+This is an allowlist, not a generic `/var/log` cleanup. Current log bodies,
+compressed generations outside the list, arbitrary application logs, database
+data, and unknown files remain out of bounds.
+
+For every candidate the controller must:
+
+1. re-check that the source is a regular file from the exact allowlist;
+2. reject symlinks;
+3. prove the rotated source is not held open by any process file descriptor;
+4. preserve its `/var/log`-relative path beneath the durable receipt directory;
+5. copy with metadata preserved;
+6. compute source and destination SHA-256 and require equality;
+7. require the durable copy's byte size to equal the enumerated source size;
+8. sync the durable evidence before removing the root copy;
+9. remove only that verified rotated source;
+10. remeasure root capacity and stop immediately once the target is met.
+
+The tier was added on October 1, 2026 after the October Blackout release reached
+the protected 5.125 GiB staging target with roughly 176 MiB still required while
+the existing APT/Snap/journal/nginx classes had no further safe reclaim. A
+read-only census found about 211 MiB of immediately useful allowlisted rotated
+system logs after including older compressed syslog rotations and the rotated
+binary login-history file btmp.1; all candidates were closed and
+non-symlinked. Every removed root copy remains byte-for-byte preserved beneath
+the durable recovery receipt. The retained fast rollback generation remained
+protected.
+
+### Tier 6 — durable-proven fast rollback cache
+
+If the recovery target is still unmet, Release Recovery OS may retire a
+canonical **fast rollback pair** only when the pair has already become redundant
+cache because a complete BUILD_ID-matched durable twin exists on the mounted
+volume.
+
+Eligible root namespaces are limited to:
+
+~~~text
+.next-rollback-activate-<UTC>
+.node_modules-rollback-activate-<UTC>
+.next-rollback-manual-<UTC>
+.node_modules-rollback-manual-<UTC>
+~~~
+
+The controller must:
+
+1. require the explicit
+   `finish.root_headroom_prune_verified_fast_rollback=true` policy switch;
+2. consider only exact timestamp-shaped top-level pairs and reject symlinks,
+   incomplete pairs, missing BUILD_ID values, or namespace drift;
+3. prove the same BUILD_ID in either a complete durable rollback pair
+   (`rollbacks/*/next` + `node_modules`) or complete durable rescue pair
+   (`deploy-receipts/*/current-next` + `current-node_modules`);
+4. re-read both the fast and durable BUILD_ID immediately before pruning;
+5. rename both root halves out of the canonical fast namespace before deletion,
+   restoring the first half if the second rename fails;
+6. delete only those renamed temporary halves;
+7. record path, paired path, BUILD_ID, measured size, actual root-space delta,
+   durable proof kind, and durable proof path in
+   `fast-rollback-pruned.tsv`;
+8. SHA-256 seal that manifest into the recovery receipt;
+9. stop immediately once the configured recovery target is reached.
+
+This tier is safe specifically **before staging a new release**. The currently
+active `.next` and `node_modules` remain untouched and continue serving
+production. If activation later begins, the activation transaction creates a
+fresh fast rollback pair from that still-current runtime before the candidate
+swap. The older fast pair is therefore acceleration cache once its durable twin
+has been proven, not the sole recovery authority.
+
 Durable evidence lives beneath:
 
 ~~~text
@@ -276,8 +361,11 @@ Durable evidence lives beneath:
 ~~~
 
 The receipt records before/after free space and reclaimed amounts attributed to
-APT, disabled-Snap, journal, and nginx recovery, including the exact count of
-disabled revisions removed or rejected as unsafe.
+APT, disabled-Snap, journal, nginx, allowlisted system-log, and verified
+fast-rollback recovery. Archived nginx and system-log bodies remain on the
+mounted evidence volume with SHA-256 manifests. A fast rollback prune
+additionally records matched/unmatched/failure counts plus the SHA-256 of the
+exact per-pair prune manifest.
 
 ### Never automatic
 
@@ -290,8 +378,8 @@ Root-headroom recovery does not automatically remove:
 - PNPM store material;
 - active `.next`;
 - active `node_modules`;
-- `.next-rollback-*`;
-- `.node_modules-rollback-*`;
+- legacy, unpaired, symlinked, malformed, or durable-unproven
+  `.next-rollback-*` / `.node_modules-rollback-*` material;
 - PostgreSQL data;
 - WoloChain binaries, state, services, or data;
 - arbitrary application/runtime data;
@@ -511,6 +599,7 @@ config/aoe2war-operations.json
   finish.auto_root_headroom_recovery
   finish.root_headroom_journal_limit_mib
   finish.root_headroom_recovery_margin_mib
+  finish.root_headroom_prune_verified_fast_rollback
   capacity.root_free_warn_gib
   capacity.root_free_preferred_gib
 ~~~

@@ -76,6 +76,27 @@ test("a cancelled former-holder row does not strand the new champion", () => {
   );
 });
 
+test("an in-flight payout blocks custody reconciliation", () => {
+  assert.deepEqual(
+    reconcileDailyTrophyTribute(
+      [
+        payout({
+          id: 98,
+          recipientUserId: 10,
+          recipientWoloAddress: "wolo1oldholder",
+          status: "executing",
+        }),
+      ],
+      jim
+    ),
+    {
+      action: "blocked_by_execution",
+      stalePayoutIds: [],
+      blockingPayoutId: 98,
+    }
+  );
+});
+
 test("operator cancellation for the current holder is preserved", () => {
   assert.deepEqual(
     reconcileDailyTrophyTribute(
@@ -193,8 +214,14 @@ test("admin payout rail treats cancelled and superseded rows as terminal", () =>
     source,
     /\["paid", "cancelled", "superseded"\]\.includes\(payout\.status\)/
   );
+  assert.match(source, /function trophyPayoutIsExecutable/);
+  assert.match(source, /payout.status !== "executing" && !payout.confirmedAllocationCount/);
   assert.match(
     source,
-    /disabled=\{busy \|\| trophyPayoutIsTerminal\(payout\) \|\| !payout\.recipientWoloAddress\}/
+    /disabled=\{busy \|\| !trophyPayoutIsExecutable\(payout\) \|\| \(!payout\.recipientWoloAddress && !payout\.allocationCount\)\}/
+  );
+  assert.match(
+    source,
+    /payout\.payoutKind === "dethrone_bounty"[\s\S]*\["pending", "retrying", "failed", "partial_paid"\]\.includes\(payout\.status\)/
   );
 });

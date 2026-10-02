@@ -23,8 +23,56 @@ test("Watcher 1.5.7 identity metadata is read from the persisted watcher_upload 
       watcherSessionId: "session-a",
       replayFingerprint: "fingerprint-a",
       watcherVersion: "1.5.7",
+      signatureSupplied: false,
+      provenanceVerified: false,
+      clientSha256Verified: false,
+      liveMonitor: false,
+      championshipPresenceVerified: false,
     }
   );
+});
+
+test("legacy verified live-monitor bytes are championship presence authority, but a bad supplied signature is not", () => {
+  const base = {
+    watcher_id: "watcher-a",
+    watcher_session_id: "session-a",
+    replay_fingerprint: "123:456",
+    ingestion_provenance: "live_monitor",
+    client_sha256_verified: true,
+  };
+
+  const legacy = readWatcherUploadMetadata({
+    watcher_upload: base,
+  });
+  assert.equal(legacy?.provenanceVerified, false);
+  assert.equal(legacy?.championshipPresenceVerified, true);
+
+  const invalidSigned = readWatcherUploadMetadata({
+    watcher_upload: {
+      ...base,
+      provenance_signature_supplied: true,
+      provenance_signature_verified: false,
+    },
+  });
+  assert.equal(invalidSigned?.championshipPresenceVerified, false);
+
+  const signed = readWatcherUploadMetadata({
+    watcher_upload: {
+      ...base,
+      provenance_signature_supplied: true,
+      provenance_signature_verified: true,
+      client_sha256_verified: false,
+    },
+  });
+  assert.equal(signed?.championshipPresenceVerified, true);
+
+  const historical = readWatcherUploadMetadata({
+    watcher_upload: {
+      ...base,
+      ingestion_provenance: "historical_import",
+    },
+  });
+  assert.equal(historical?.championshipPresenceVerified, false);
 });
 
 test("the same platform game dedupes across independent watcher sessions", () => {

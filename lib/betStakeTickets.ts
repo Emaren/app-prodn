@@ -2,6 +2,8 @@ import { createHash } from "node:crypto";
 
 import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
 
+import { runBetCounterShadowWorkerBestEffort } from "@/lib/bettingBotShadowWorker";
+
 import {
   POST_BROADCAST_RECOVERY_MARKET_STATUSES,
   isPostBroadcastStakeRecovery,
@@ -765,6 +767,10 @@ export async function commitBetStakeTicket(
     if (ticket.legs.some((leg) => !leg.wager)) {
       throw new BetWagerError(409, "This recorded ticket is incomplete and needs operator review.");
     }
+    await runBetCounterShadowWorkerBestEffort(
+      prisma,
+      ticket.legs.flatMap((leg) => (leg.wager ? [leg.wager.id] : []))
+    );
     return serializeBetStakeTicket(ticket, true);
   }
   if (ticket.stakeTxHash && ticket.stakeTxHash !== stakeTxHash) {
@@ -867,6 +873,8 @@ export async function commitBetStakeTicket(
       return { leg, context, postBroadcastRecovery };
     })
   );
+
+  const createdWagerIds: number[] = [];
 
   try {
     await prisma.$transaction(async (tx) => {
@@ -996,7 +1004,7 @@ export async function commitBetStakeTicket(
           walletAddress: ticket.walletAddress,
           side: leg.side === "right" ? "right" : "left",
         });
-        await tx.betWager.create({
+        const createdWager = await tx.betWager.create({
           data: {
             marketId: leg.marketId,
             userId: input.viewer.id,
@@ -1010,6 +1018,7 @@ export async function commitBetStakeTicket(
             stakeLockedAt: chainTimestamp ?? lockedAt,
           },
         });
+        createdWagerIds.push(createdWager.id);
         if (firstStake.count === 1) {
           await recordUserActivity(tx as PrismaClient, {
             userId: input.viewer.id,
@@ -1080,6 +1089,10 @@ export async function commitBetStakeTicket(
       refreshed.stakeTxHash === stakeTxHash &&
       refreshed.legs.every((leg) => Boolean(leg.wager))
     ) {
+      await runBetCounterShadowWorkerBestEffort(
+        prisma,
+        refreshed.legs.flatMap((leg) => (leg.wager ? [leg.wager.id] : []))
+      );
       return serializeBetStakeTicket(refreshed, true);
     }
     await prisma.betStakeTicket.updateMany({
@@ -1091,6 +1104,8 @@ export async function commitBetStakeTicket(
     });
     throw error;
   }
+
+  await runBetCounterShadowWorkerBestEffort(prisma, createdWagerIds);
 
   return serializeBetStakeTicket(
     await loadOwnedTicket(prisma, ticket.id, input.viewer.id)

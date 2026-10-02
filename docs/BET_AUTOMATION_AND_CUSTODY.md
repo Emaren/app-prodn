@@ -8,7 +8,7 @@ systems: ["app-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "financial-domain-contract"
-reviewed_at: "2026-09-09"
+reviewed_at: "2026-09-29"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -149,7 +149,7 @@ separately certified.
 
 ## Current app capability
 
-The profile Auto Bet Reserve is a preview-only configuration surface.
+The profile Auto Bet Reserve is a preview-only automation surface.
 
 It may:
 
@@ -157,15 +157,24 @@ It may:
 - store an optional explicit Desync `NO` or `YES` leg and stake;
 - store a finite game count or `Until Out`;
 - enforce a maximum estimated plan of 10,000 WOLO;
-- expose a durable future execution/outbox schema;
-- show identity, Watcher, runtime, and preview-history readiness.
+- evaluate canonical live Watcher winner markets after market reconciliation;
+- require a frozen proposition with resolved high-confidence teams and verified
+  market integrity;
+- prove the preset owner from both an exact roster Steam ID and an uploader UID
+  on the exact canonical live session;
+- require the exact live Desync child with the same proposition hash when a
+  Desync leg is configured;
+- materialize at most one durable `shadow_ready` `BetAutoExecution` row for
+  each preset/canonical-game identity;
+- show identity, Watcher, shadow-worker, runtime, and preview-history readiness.
 
 It does not:
 
 - hold, reserve, escrow, sign, or move WOLO;
-- place `BetWager` or `BetStakeTicket` rows;
-- evaluate watcher telemetry as financial authority;
+- place `BetWager`, `BetStakeIntent`, or `BetStakeTicket` rows;
+- consume raw watcher event telemetry as financial authority;
 - decrement a finite game count;
+- set `acceptedAt`, `reservationId`, or `ticketId` on shadow rows;
 - expose a deposit or withdrawal control.
 
 The app endpoints are:
@@ -175,40 +184,167 @@ The app endpoints are:
 - `GET /api/user/bet-automation/executions`.
 
 All three use the signed-in app session and private, no-store responses. A
-preset belongs to exactly one `User`. `BetAutoExecution` is a dormant durable
-audit/outbox model with a unique preset/game identity, immutable proposition
-evidence, retry/lease fields, and an optional future `BetStakeTicket` link.
+preset belongs to exactly one `User`. `BetAutoExecution` is now an active
+preview audit/outbox model. The database uniqueness contract
+`(presetId, gameIdentityKey)` makes one canonical game one-shot for a preset,
+while `presetVersion`, proposition evidence, retry/lease fields, and the
+optional future `BetStakeTicket` link preserve the evidence needed by a later
+funded executor.
+
+A `shadow_ready` row is historical preview evidence, not a funded queue item.
+Editing a preset later does not rewrite that already-observed game decision.
+
+The signed-in Betting Hall may project exactly one pristine `shadow_ready`
+row for the viewer's own preset and winner market as **Your Auto Bet Preview**.
+That projection is private/no-store viewer state, not public liquidity and not a
+recalculation from the current preset. It displays the frozen
+`presetVersion`, winner side/stake, optional Desync side/stake, and decision
+timestamp recorded when the worker observed the game.
+
+The viewer projector independently revalidates the frozen shadow evidence before
+display. It requires the original exact Steam-roster match, exact uploader-UID
+match, verified market integrity, resolved/high team authority, matching frozen
+proposition hash, and non-empty canonical session/user identity evidence. It
+also requires every future-funded marker to remain untouched: no ticket,
+reservation, attempt, retry time, lease, lease expiry, or `acceptedAt`.
+Malformed winner/Desync amounts or relationships fail closed.
+
+If more than one shadow execution for the viewer's preset references the same
+winner market, the Hall displays neither rather than choosing a newest row.
+The private preview is attached to the parent winner market only; an optional
+Desync leg remains nested inside that frozen plan instead of becoming a second
+private card. The DTO carries `financiallyCommitted=false` and never affects
+pools, pot, crowd split, odds, projected return, settlement, War Chest, or the
+public house **Preview Liquidity** rail.
+
+The Betting Hall may offer an explicit **Load Preview into Bet Slip** action for
+that private frozen preview. This is a manual convenience bridge, not Auto Bet
+acceptance. A pure client planner re-checks the current winner book, absence of
+an existing real viewer wager, exact current Desync child identity/open state,
+absence of an existing Desync wager, whole-WOLO amounts, and the current
+verified wallet/app cap including the combined Winner + Desync total. It never
+clamps or rewrites the frozen preview. If any current condition has drifted, the
+button fails closed with a concrete blocker.
+
+A successful load copies the frozen winner/optional Desync side and amounts only
+into the existing local manual Bet Slip `SelectionState`. It does not call a
+ticket/stake-intent API, connect Keplr, reserve WOLO, sign, broadcast, mutate the
+`BetAutoExecution`, set `acceptedAt`, or decrement a finite Auto Bet count.
+Financial authority still begins only when the user separately chooses the
+existing manual Lock/Wallet action, whose server/chain rail revalidates current
+market and stake authority again.
+
+Watcher identity promotion also fails closed around preview evidence. If two
+`BetAutoExecution` rows for the same preset would collapse onto one canonical
+game identity, promotion is blocked with `auto_execution_preset_collision`
+and the exact market family is moved to operator review. The reconciler never
+silently merges those preview rows or guesses which one should survive.
 
 ## Runtime gate
 
 `BET_AUTOMATION_MODE` is server-owned:
 
-- `disabled`: a plan may be saved, but no evaluation is active;
-- `shadow`: safe default; rules are stored and no financial action occurs;
+- `disabled`: a plan may be saved, but no shadow evaluation or financial
+  execution is active;
+- `shadow`: safe default; exact eligible games are evaluated and durable
+  preview evidence is recorded, but no financial action occurs;
 - `live`: fails closed unless the exact `bet-custody-v1` capability, a valid
   custody URL, and the server settlement token exist.
 
-This app revision has no durable executor, so even a complete future custody
-configuration falls back to `shadow`. Environment configuration alone can
-never activate a money path.
+The durable shadow producer exists. The funded consumer does not. If complete
+custody configuration is advertised while the live consumer is still absent,
+runtime falls back to `shadow`; if live mode is requested without complete
+custody capability, it fails closed to `disabled`. Environment configuration
+alone can never activate a money path.
 
 ## Why watcher telemetry is not the hook
 
 `POST /api/watcher/events` is telemetry. It does not prove a frozen market,
 player side, proposition, stake availability, or chain custody.
 
-Future evaluation must consume a durable market outbox after:
+The shadow evaluator runs only after the existing market reconciler has consumed
+the canonical live-session snapshot and persisted the market proposition. Its
+admission chain is:
 
 1. watchers for one game converge on one canonical game identity;
-2. the winner market has explicit, high-confidence teams;
-3. the proposition hash is frozen;
-4. the preset owner matches an exact roster Steam ID and an uploader UID;
-5. a database uniqueness guard creates at most one execution for that preset
-   and game;
-6. Wolo atomically accepts an available-to-reserved transition.
+2. the unscheduled winner market is still `live`;
+3. team resolution is `resolved` / `high` and market integrity is
+   `verified`;
+4. the proposition hash is frozen;
+5. the preset owner matches an exact roster Steam ID on exactly one side;
+6. that same user's UID is an uploader on the exact canonical session or one of
+   its proven identity aliases;
+7. an optional Desync leg resolves only through the exact live child market with
+   the same proposition hash;
+8. database uniqueness creates at most one `shadow_ready` row for that preset
+   and canonical game.
 
-Finite counts decrement only after that final acceptance. Display order on
-`/bets` never determines financial processing order.
+The worker reuses the same active-session snapshot already loaded by market
+reconciliation; it does not trigger a second estate-wide session scan.
+
+A future funded consumer adds the next authority boundary: Wolo must atomically
+accept an available-to-reserved transition and the app must durably accept the
+corresponding stake ticket. Finite counts decrement only after that financial
+acceptance. Shadow evaluation never decrements them. Display order on `/bets`
+never determines financial processing order.
+
+## Counter-bettor shadow decisions
+
+Tony and Paulie use the same Preview-first safety philosophy but a different
+trigger. Auto Bet begins from canonical Watcher/player identity; counter-bettor
+Preview begins only from an already-committed human `BetWager`.
+
+When a counter-bettor is explicitly enabled in effective `shadow` mode:
+
+1. the human wager commits first on the existing financial rail;
+2. a best-effort post-commit hook passes that exact wager ID to the shadow
+   evaluator;
+3. the evaluator acquires a transaction-scoped per-bot advisory lock and
+   re-reads the current bot policy plus source wager;
+4. reserved internal-system identities are rejected;
+5. only active wagers on an `open` or `live`, integrity-verified market with
+   a frozen proposition are admitted;
+6. the deterministic `opposite-counter` policy chooses the opposite side and
+   caps the proposal by source amount, configured default/max, the immutable
+   10-WOLO hard cap, and remaining per-market/daily shadow exposure;
+7. one append-only `BetCounterAction` is written under a policy/bot/market/
+   source-wager/proposition idempotency key.
+
+The action is evidence only. `committedCounterstakeWolo`,
+`availableBalanceWolo`, custody verification/reservation fields, and
+`stakeTxHash` remain null/false. Shadow mode uses a labeled policy-planning
+balance envelope only to exercise the pure balance-floor guard; it is not a
+wallet lookup or a custody claim. Database constraints independently prevent a
+committed counterstake from existing without verified custody, reservation and
+transaction proof.
+
+A shadow decision happens once at the source wager's commit context. If daily or
+market exposure blocks that action, the skip is not retried the next day as a
+late counter to an old human wager. Duplicate client recovery may rerun the same
+decision safely because the append-only idempotency key deduplicates it.
+
+Bot configuration updates take the same advisory lock as shadow decisions. A
+decision therefore snapshots either the policy before the save or the policy
+after it, never a race between both.
+
+No LLM has money authority. Commentary remains optional flavour after the
+deterministic decision and cannot choose market, side, amount, exposure,
+custody, transaction or wager.
+
+### Betting Hall Preview Liquidity
+
+A counter-bettor shadow proposal may be visible on its current Betting Hall
+market as **Preview Liquidity**. The visible row is deliberately not a wager,
+standing offer, reserve, pool contribution or quoted executable balance. It
+records that deterministic policy would have countered the already-committed
+human action in that historical decision context.
+
+The public board reads only zero-custody `shadow_proposal` evidence and exposes
+a small display DTO: bot label, counter side, proposed WOLO, recorded time and
+`financiallyCommitted=false`. Rows carrying any committed counterstake,
+available-balance value, verified custody, reservation or stake transaction are
+excluded from this Preview surface. Real pot/odds/return math continues to read
+only canonical seeds and countable committed human wagers.
 
 ## Required Wolo architecture
 
@@ -326,11 +462,18 @@ live-state/key mutation.
 
 Before changing the app from Preview:
 
-1. deploy and verify the Wolo service contract without touching consensus;
-2. back up and verify settlement state;
-3. add app custody account/deposit/withdrawal projections;
-4. add a durable database-leased market evaluator;
-5. test duplicate watchers, concurrent games, insufficient balance, roster
-   change, void, restart, and withdrawal races;
-6. enable shadow evaluation and reconcile its decisions;
-7. enable live execution only in a separate reviewed release.
+1. **Done in app:** durable canonical-market shadow evaluation with exact
+   Steam/uploader identity proof, preset/game uniqueness, and no money path.
+2. Run the shadow worker long enough in production to reconcile its decisions
+   against actual live Watcher games, identity promotion, Desync siblings, and
+   concurrent market refreshes.
+3. Deploy and verify the Wolo service contract without touching consensus.
+4. Back up and verify settlement state.
+5. Add app custody account/deposit/withdrawal projections.
+6. Add a separately reviewed funded consumer with database leasing,
+   reservation idempotency, stake-ticket acceptance, and restart recovery.
+7. Test duplicate watchers, concurrent games, insufficient balance, roster
+   change, proposition promotion, void, restart, and withdrawal races across
+   both the app and custody service.
+8. Decrement finite game counts only after durable financial acceptance.
+9. Enable live execution only in a separate reviewed release.

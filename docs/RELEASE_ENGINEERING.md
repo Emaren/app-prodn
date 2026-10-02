@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "release-engineering-contract"
-reviewed_at: "2026-09-22"
+reviewed_at: "2026-09-29"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -78,10 +78,17 @@ consumer; current or ambiguous stages remain preserved.
     After the ordinary durable pre-migration backup, the controller records the
     state with `prisma migrate resolve --applied`; it executes no production
     index DDL.
-13. Mutating release commands are serialized by a deployment lock.
-14. Machine-readable receipts must let a fresh operator or AI reconstruct the
+13. `aoe2war finish --dry-run` must expose database mutation intent from the
+    same Release Gate source scope used by the real ship path. If that scope
+    contains `prisma/migrations/` paths, the plan reports
+    `automatic_mutation_boundaries.database=true`, lists the exact migration
+    paths, and states the protected additive proof sequence. Preview remains
+    read-only; this declaration is planning truth, not permission to bypass
+    backup/frontier/receipt checks.
+14. Mutating release commands are serialized by a deployment lock.
+15. Machine-readable receipts must let a fresh operator or AI reconstruct the
     release state without conversational memory.
-15. Dependency-contract changes are supported only by the candidate-owned
+16. Dependency-contract changes are supported only by the candidate-owned
     dependency lane: frozen-lockfile network fetch with third-party lifecycle
     scripts disabled, then lifecycle/build work in the offline/private sandbox.
     When Prisma changes, one tracked first-party seed helper may fetch only the
@@ -96,13 +103,13 @@ consumer; current or ambiguous stages remain preserved.
     staged beside live, atomically activated with `.next`, and rolled back as
     one runtime bundle. Root and mounted-volume capacity are preflighted
     independently before candidate materialization.
-16. Before operational Doctor/staging, Finish reconciles the source-controlled
+17. Before operational Doctor/staging, Finish reconciles the source-controlled
     build/dependency sandbox units and SpeedOS Cloudflare helper/unit onto the
     VPS through the inherited root release channel. Installation is hash-bound,
     atomically replaced, daemon-reloaded without service restart, Wolo-guarded,
     and durably receipted. The build-scratch parent is root-created but owned by
     the unprivileged release user with mode `0750`.
-17. A `WATCHER`-risk release may not stage application metadata ahead of its
+18. A `WATCHER`-risk release may not stage application metadata ahead of its
     distributable bytes. Before candidate materialization, Release OS derives
     the Watcher version from the exact sealed release commit and proves the
     canonical mounted download vault contains the complete nine-file release
@@ -111,7 +118,7 @@ consumer; current or ambiguous stages remain preserved.
     must all agree exactly; missing files, duplicate or unexpected checksum
     entries, symlinks, version drift, path drift, or digest disagreement fail
     closed while the live source and runtime remain untouched.
-18. The source-side `watcher:sync` promotion is itself transactional. It proves
+19. The source-side `watcher:sync` promotion is itself transactional. It proves
     the complete certified source bundle before mutation, stages copies beside
     the canonical target, re-proves the staged canonical bundle, rejects unsafe
     target file types, promotes payloads and inventory receipts before updater
@@ -120,7 +127,7 @@ consumer; current or ambiguous stages remain preserved.
     restores every prior target byte in reverse order. Temporary stage/backup
     directories are removed on both success and failure.
 
-19. Production Watcher distribution promotion is a separate governed
+20. Production Watcher distribution promotion is a separate governed
     transaction: `aoe2war watcher-release` proves the exact local 11-file
     bundle against the public `Emaren/aoe2-watcher` GitHub release digest
     multiset, then `--apply` stages those bytes on the canonical mounted
@@ -537,6 +544,13 @@ The manifest binds:
 The manifest and companion SHA-256 live beneath
 `.aoe2war-release/manifests/`.
 
+A manifest is immutable once sealed for one exact release identity. Re-running
+the manifest command for the same release/gate/scope reuses the original bytes
+and timestamp; it must not regenerate `generated_at`, because the stage receipt
+binds the manifest SHA-256. If an existing manifest or sidecar conflicts with
+the current release identity, the engine fails closed instead of overwriting
+evidence.
+
 ### 6. Isolated stage beside live
 
 For `WATCHER` risk, staging begins with a distribution preflight against
@@ -645,7 +659,9 @@ Current automatic recovery classes are:
 - **low production-root headroom** — reclaim regenerable APT material first,
   then exact Snap revisions already marked `disabled` by Snap itself, then
   bound the journal, then checksum-archive only closed rotated nginx `.log.1`
-  files until the configured recovery target is restored;
+  files. If the target is still unmet, a canonical fast rollback pair may be
+  retired only after both runtime halves are proven by exact BUILD_ID against a
+  complete durable rollback/rescue twin on the mounted volume;
 - **superseded staged candidates** — exact current-release resume remains first,
   then `.next-release` and `.node_modules-release` may be retired only when one
   durable receipt proves older provenance and staged trees have zero runtime
@@ -658,8 +674,10 @@ state, live staged references, insufficient approved reclaim, abnormal Wolo
 listeners, database uncertainty, or runtime identity drift remain fail-closed.
 
 Root recovery never broadly removes `/tmp`, active runtime/dependencies,
-rollback material, PostgreSQL data, or Wolo state. Superseded-stage recovery
-never touches active runtime or restarts Wolo.
+durable-unproven or malformed rollback material, PostgreSQL data, or Wolo
+state. A verified fast pair is treated as reclaimable cache only before staging,
+only under explicit policy, and only while the live runtime remains untouched.
+Superseded-stage recovery never touches active runtime or restarts Wolo.
 
 Every mutating recovery path leaves durable evidence, and ordinary release
 checks re-prove capacity, runtime identity, service health, and protected Wolo
@@ -707,11 +725,29 @@ dump, applies the exact Prisma frontier, and proves every live AFTER hash before
 the migration is accepted and its durable receipt is written. That receipt
 records each exact before/after CHECK proof.
 
-For an already-applied release, the engine requires the durable release-bound
-receipt to contain those exact CHECK proof lines and independently re-proves the
-live AFTER definitions. Missing, changed, partial, mixed, duplicated, or
-unrelated SQL fails closed. This mode provides no authority over Wolo or
-settlement state.
+For an already-applied release, the engine first proves each expected Prisma row
+is finished exactly once, its recorded checksum matches the immutable migration
+SQL bytes, no unfinished rows exist, and every live AFTER definition matches the
+release proof. The preferred evidence remains an exact release-bound receipt.
+
+If an interrupted migration transaction applied the SQL but failed while sealing
+post-apply evidence, a descendant release may adopt one older canonical receipt
+only in this CHECK-replacement lane. Adoption requires the older release to be a
+Git ancestor, identical migration blobs in both releases, an intact receipt
+SHA-256 sidecar, the exact migration/check proof set, and a verified
+pre-migration.dump whose SHA matches the source receipt. Multiple qualifying
+receipts fail closed. The descendant receipt records its source lineage and
+database_mutation=NONE; the SQL is never replayed merely to manufacture a new
+receipt.
+
+Applied migrations are immutable. If an embedded AFTER proof was derived from
+non-canonical CHECK text, the release engine may use
+config/migration-check-proof-corrections.json only when the correction is bound
+to the exact migration SQL SHA-256 and exact marker-declared proof set. Any
+migration-byte, identity, or declared-hash drift fails closed.
+
+Missing, changed, partial, mixed, duplicated, ambiguous, or unrelated evidence
+fails closed. This mode provides no authority over Wolo or settlement state.
 
 ### Activation transport timeout recovery
 

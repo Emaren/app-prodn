@@ -201,6 +201,23 @@ export type WatcherFocusUserDiagnostics = {
   latestStatus: "online" | "watching" | "idle" | "no_telemetry";
   connected: boolean;
   monitorState: "active" | "stopped" | "unknown";
+  rendererStatus: string | null;
+  rendererReady: boolean | null;
+  rendererReadyAt: string | null;
+  rendererBootstrapMs: number | null;
+  rendererLastFailureAt: string | null;
+  rendererFailureReason: string | null;
+  rendererReloadAttempts: number | null;
+  rendererFailureCount: number | null;
+  rendererConsecutiveFailures: number | null;
+  resourceCpuPercent: number | null;
+  resourceAverageCpuPercent: number | null;
+  resourceWorkingSetMb: number | null;
+  resourcePeakWorkingSetMb: number | null;
+  resourceIdleWakeupsPerSecond: number | null;
+  resourceNetworkMbps: number | null;
+  resourcePowerSignal: string | null;
+  resourceProcessCount: number | null;
   folderState: "valid_hd" | "missing" | "invalid" | "unknown";
   folderSupportedReplayCount: number | null;
   folderLatestReplayBasename: string | null;
@@ -381,6 +398,31 @@ function metadataNumber(metadata: Prisma.JsonValue | null | undefined, key: stri
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
 
+function nestedMetadataObject(
+  metadata: Prisma.JsonValue | null | undefined,
+  key: string,
+) {
+  return metadataObject(metadataObject(metadata)[key]);
+}
+
+function nestedMetadataNumber(
+  metadata: Prisma.JsonValue | null | undefined,
+  objectKey: string,
+  key: string,
+) {
+  const value = nestedMetadataObject(metadata, objectKey)[key];
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function nestedMetadataPowerSignal(
+  metadata: Prisma.JsonValue | null | undefined,
+) {
+  const profile = nestedMetadataObject(metadata, "resourceProfile");
+  const signal = metadataObject(profile.powerSignal);
+  const label = signal.label;
+  return typeof label === "string" && label.trim() ? label.trim() : null;
+}
+
 function metadataStringArray(metadata: Prisma.JsonValue | null | undefined, key: string) {
   const value = metadataObject(metadata)[key];
   if (!Array.isArray(value)) {
@@ -482,6 +524,57 @@ function deriveIndependentWatcherState(events: FocusWatcherEventRow[], appVersio
     ? metadataBoolean(heartbeat.metadata, "monitorAttached") ??
       metadataBoolean(heartbeat.metadata, "isWatching")
     : null;
+  const rendererStatus = heartbeat
+    ? metadataString(heartbeat.metadata, "rendererStatus")
+    : null;
+  const rendererReady = heartbeat
+    ? metadataBoolean(heartbeat.metadata, "rendererReady")
+    : null;
+  const rendererReadyAt = heartbeat
+    ? metadataString(heartbeat.metadata, "rendererReadyAt")
+    : null;
+  const rendererBootstrapMs = heartbeat
+    ? metadataNumber(heartbeat.metadata, "rendererBootstrapMs")
+    : null;
+  const rendererLastFailureAt = heartbeat
+    ? metadataString(heartbeat.metadata, "rendererLastFailureAt")
+    : null;
+  const rendererFailureReason = heartbeat
+    ? metadataString(heartbeat.metadata, "rendererFailureReason")
+    : null;
+  const rendererReloadAttempts = heartbeat
+    ? metadataNumber(heartbeat.metadata, "rendererReloadAttempts")
+    : null;
+  const rendererFailureCount = heartbeat
+    ? metadataNumber(heartbeat.metadata, "rendererFailureCount")
+    : null;
+  const rendererConsecutiveFailures = heartbeat
+    ? metadataNumber(heartbeat.metadata, "rendererConsecutiveFailures")
+    : null;
+  const resourceCpuPercent = heartbeat
+    ? nestedMetadataNumber(heartbeat.metadata, "resourceProfile", "cpuPercent")
+    : null;
+  const resourceAverageCpuPercent = heartbeat
+    ? nestedMetadataNumber(heartbeat.metadata, "resourceProfile", "averageCpuPercent")
+    : null;
+  const resourceWorkingSetMb = heartbeat
+    ? nestedMetadataNumber(heartbeat.metadata, "resourceProfile", "workingSetMb")
+    : null;
+  const resourcePeakWorkingSetMb = heartbeat
+    ? nestedMetadataNumber(heartbeat.metadata, "resourceProfile", "sessionPeakWorkingSetMb")
+    : null;
+  const resourceIdleWakeupsPerSecond = heartbeat
+    ? nestedMetadataNumber(heartbeat.metadata, "resourceProfile", "idleWakeupsPerSecond")
+    : null;
+  const resourceNetworkMbps = heartbeat
+    ? nestedMetadataNumber(heartbeat.metadata, "resourceProfile", "networkMbps")
+    : null;
+  const resourcePowerSignal = heartbeat
+    ? nestedMetadataPowerSignal(heartbeat.metadata)
+    : null;
+  const resourceProcessCount = heartbeat
+    ? nestedMetadataNumber(heartbeat.metadata, "resourceProfile", "processCount")
+    : null;
   const lastStart = firstEventAt(events, ["watcher_ready", "watching_started"]);
   const lastStop = firstEventAt(events, ["watching_stopped", "watcher_stopped"]);
   const monitorState =
@@ -525,6 +618,18 @@ function deriveIndependentWatcherState(events: FocusWatcherEventRow[], appVersio
   if (monitorState === "active" && folderState === "unknown") warnings.push("Monitoring active but folder state unknown.");
   if (
     connected &&
+    rendererStatus &&
+    rendererStatus !== "closed" &&
+    rendererReady === false
+  ) {
+    warnings.push(
+      rendererFailureReason
+        ? `Watcher engine is connected but the dashboard is not ready (${rendererFailureReason.replace(/_/g, " ")}). The client can self-recover once; no user DevTools are required.`
+        : "Watcher engine is connected but the dashboard has not completed startup. The client can self-recover once; no user DevTools are required.",
+    );
+  }
+  if (
+    connected &&
     monitorState === "active" &&
     folderState === "valid_hd" &&
     folderSupportedReplayCount === 0 &&
@@ -543,6 +648,23 @@ function deriveIndependentWatcherState(events: FocusWatcherEventRow[], appVersio
   return {
     connected,
     monitorState,
+    rendererStatus,
+    rendererReady,
+    rendererReadyAt,
+    rendererBootstrapMs,
+    rendererLastFailureAt,
+    rendererFailureReason,
+    rendererReloadAttempts,
+    rendererFailureCount,
+    rendererConsecutiveFailures,
+    resourceCpuPercent,
+    resourceAverageCpuPercent,
+    resourceWorkingSetMb,
+    resourcePeakWorkingSetMb,
+    resourceIdleWakeupsPerSecond,
+    resourceNetworkMbps,
+    resourcePowerSignal,
+    resourceProcessCount,
     folderState,
     folderSupportedReplayCount,
     folderLatestReplayBasename,
@@ -1012,6 +1134,23 @@ async function loadFocusUserDiagnostics(
     latestStatus: deriveFocusStatus(recentEvents),
     connected: independentState.connected,
     monitorState: independentState.monitorState,
+    rendererStatus: independentState.rendererStatus,
+    rendererReady: independentState.rendererReady,
+    rendererReadyAt: independentState.rendererReadyAt,
+    rendererBootstrapMs: independentState.rendererBootstrapMs,
+    rendererLastFailureAt: independentState.rendererLastFailureAt,
+    rendererFailureReason: independentState.rendererFailureReason,
+    rendererReloadAttempts: independentState.rendererReloadAttempts,
+    rendererFailureCount: independentState.rendererFailureCount,
+    rendererConsecutiveFailures: independentState.rendererConsecutiveFailures,
+    resourceCpuPercent: independentState.resourceCpuPercent,
+    resourceAverageCpuPercent: independentState.resourceAverageCpuPercent,
+    resourceWorkingSetMb: independentState.resourceWorkingSetMb,
+    resourcePeakWorkingSetMb: independentState.resourcePeakWorkingSetMb,
+    resourceIdleWakeupsPerSecond: independentState.resourceIdleWakeupsPerSecond,
+    resourceNetworkMbps: independentState.resourceNetworkMbps,
+    resourcePowerSignal: independentState.resourcePowerSignal,
+    resourceProcessCount: independentState.resourceProcessCount,
     folderState: independentState.folderState,
     folderSupportedReplayCount: independentState.folderSupportedReplayCount,
     folderLatestReplayBasename: independentState.folderLatestReplayBasename,

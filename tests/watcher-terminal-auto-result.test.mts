@@ -174,6 +174,7 @@ test("automatic reconciliation refuses recorder-exit winner authority", async ()
     $queryRaw: async () => [{ lock_acquired: 1 }],
     gameStats: {
       findUnique: async () => game,
+      findMany: async () => [],
     },
     replayResultAdjudication: {
       findUnique: async () => null,
@@ -221,6 +222,9 @@ test("automatic reconciliation refuses recorder-exit winner authority", async ()
   };
 
   const prisma = {
+    gameStats: {
+      findMany: async () => [],
+    },
     $transaction: async (
       callback: (transaction: typeof tx) => Promise<unknown>
     ) => callback(tx),
@@ -243,6 +247,249 @@ test("automatic reconciliation refuses recorder-exit winner authority", async ()
       adjudicationId: null,
     },
   ]);
+});
+
+
+test("later exact-roster rating snapshot resolves the immediately preceding unknown RM final", async () => {
+  const sourceId = 41001;
+  const laterId = 41002;
+  const sourceCreatedAt =
+    new Date("2026-10-02T01:13:22.000Z");
+  const laterCreatedAt =
+    new Date("2026-10-02T01:24:01.000Z");
+
+  const sourcePlayers = [
+    {
+      name: "Jim",
+      steam_id: "76561198166409520",
+      user_id: "76561198166409520",
+      number: 1,
+      team_id: 0,
+      winner: null,
+      steam_rm_rating: 960,
+      steam_dm_rating: 1676,
+    },
+    {
+      name: "Emaren",
+      steam_id: "76561198065420384",
+      user_id: "76561198065420384",
+      number: 2,
+      team_id: null,
+      winner: null,
+      steam_rm_rating: 1071,
+      steam_dm_rating: 1549,
+    },
+  ];
+  const laterPlayers = [
+    {
+      ...sourcePlayers[0],
+      steam_rm_rating: 980,
+    },
+    {
+      ...sourcePlayers[1],
+      steam_rm_rating: 1051,
+    },
+  ];
+
+  const sourceGame = {
+    id: sourceId,
+    userUid: "jim-uid",
+    replay_file: "rm-final.aoe2record",
+    replayHash: "a".repeat(64),
+    createdAt: sourceCreatedAt,
+    game_version: "HD",
+    map: { name: "Arabia" },
+    game_type: "TurboRandom9",
+    duration: 1200,
+    game_duration: 1200,
+    winner: "Unknown",
+    players: sourcePlayers,
+    event_types: [],
+    key_events: {
+      result_resolution: {
+        result_status: "review_required",
+        result_trusted: false,
+        winning_player_names: [],
+      },
+    },
+    timestamp: sourceCreatedAt,
+    played_on: sourceCreatedAt,
+    parse_iteration: 69,
+    is_final: true,
+    disconnect_detected: false,
+    parse_source: "watcher_final",
+    parse_reason: "watcher_final_submission",
+    original_filename: "rm-final.aoe2record",
+    user: {
+      id: 18168,
+      uid: "jim-uid",
+      steamId: "76561198166409520",
+      inGameName: "Jim",
+      steamPersonaName: "Jim",
+    },
+  };
+
+  const laterObservation = {
+    id: laterId,
+    createdAt: laterCreatedAt,
+    game_type: "DM",
+    players: laterPlayers,
+    replayHash: "b".repeat(64),
+    parse_iteration: 1,
+  };
+
+  let createdData:
+    Record<string, unknown> | null =
+      null;
+
+  const gameStatsFindMany = async (
+    args: {
+      where?: {
+        id?: { in?: number[] };
+        is_final?: boolean;
+        createdAt?: { gt?: Date };
+      };
+    }
+  ) => {
+    if (args?.where?.id?.in) {
+      return [
+        {
+          id: laterId,
+          createdAt: laterCreatedAt,
+          players: laterPlayers,
+        },
+      ];
+    }
+
+    if (
+      args?.where?.is_final === true
+    ) {
+      return [
+        {
+          id: sourceId,
+          game_type: "TurboRandom9",
+          players: sourcePlayers,
+        },
+      ];
+    }
+
+    if (
+      args?.where?.createdAt?.gt
+    ) {
+      return [laterObservation];
+    }
+
+    return [];
+  };
+
+  const tx = {
+    $queryRaw: async () => [
+      { lock_acquired: 1 },
+    ],
+    gameStats: {
+      findUnique: async ({
+        where,
+      }: {
+        where: { id: number };
+      }) =>
+        where.id === sourceId
+          ? sourceGame
+          : null,
+      findMany:
+        gameStatsFindMany,
+    },
+    replayResultAdjudication: {
+      findUnique: async () => null,
+      findFirst: async () => null,
+      create: async ({
+        data,
+      }: {
+        data: Record<
+          string,
+          unknown
+        >;
+      }) => {
+        createdData = data;
+        return { id: 92001 };
+      },
+    },
+    replayDesyncIncident: {
+      findFirst: async () => null,
+    },
+    watcherClientEvent: {
+      findFirst: async () => null,
+      count: async () => 0,
+    },
+    replayParseRun: {
+      findFirst: async () => null,
+    },
+    betMarket: {
+      findMany: async () => [],
+    },
+    pendingWoloClaim: {
+      findMany: async () => [],
+    },
+  };
+
+  const prisma = {
+    gameStats: {
+      findMany:
+        gameStatsFindMany,
+    },
+    $transaction: async (
+      callback: (
+        transaction:
+          typeof tx
+      ) => Promise<unknown>
+    ) => callback(tx),
+  };
+
+  const report =
+    await reconcileAutomaticWatcherTerminalResults(
+      prisma as never,
+      [laterId]
+    );
+
+  assert.equal(
+    report.requestedCount,
+    1
+  );
+  assert.equal(
+    report.createdCount,
+    1
+  );
+  assert.equal(
+    report.outcomes.find(
+      (entry) =>
+        entry.gameStatsId ===
+        sourceId
+    )?.detail,
+    "exact_zero_sum_rating_delta"
+  );
+  assert.match(
+    String(
+      createdData?.idempotencyKey
+    ),
+    /^title-authority:rating-delta-v1:41001:41002$/
+  );
+  assert.equal(
+    createdData?.affectsStats,
+    true
+  );
+  assert.equal(
+    createdData?.affectsBets,
+    false
+  );
+  assert.equal(
+    createdData?.winningTeamKey,
+    "steam:76561198166409520"
+  );
+  assert.deepEqual(
+    createdData?.winningPlayerKeys,
+    [
+      "steam:76561198166409520",
+    ]
+  );
 });
 
 test("automatic watcher evidence uses stats-only append-only authority", () => {

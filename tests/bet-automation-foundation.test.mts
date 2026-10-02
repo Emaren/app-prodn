@@ -131,11 +131,31 @@ test("profile and API keep the preview boundary explicit", () => {
 
   assert.match(card, /No WOLO moves and no wager is placed in Preview mode/);
   assert.match(card, /No funding control is active/);
+  assert.match(card, /Shadow worker/);
+  assert.match(card, /Preview matched/);
+  assert.match(card, /Exact Watcher uploader \+ Steam roster proof matched/);
+  assert.doesNotMatch(card, /market worker is intentionally not connected yet/);
   assert.doesNotMatch(card, /sendTokens|SigningStargateClient|connectWallet/);
   assert.match(route, /getSessionUid/);
+  assert.match(route, /durableMarketEvaluatorReady: true/);
+  assert.match(route, /shadow evaluator is connected/);
   assert.match(route, /error\.code === "P2002"/);
   assert.match(route, /status: 409/);
   assert.doesNotMatch(route, /betWager\.create|betStakeTicket\.create/);
+});
+
+test("runtime copy distinguishes shadow evaluation from funded execution", () => {
+  const runtimeSource = readFileSync(
+    new URL("../lib/betAutomation.ts", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(
+    runtimeSource,
+    /Preview mode evaluates eligible self-bet rules and records shadow evidence only/
+  );
+  assert.match(runtimeSource, /funded executor is not installed/);
+  assert.match(runtimeSource, /LIVE_EXECUTOR_IMPLEMENTED = false/);
 });
 
 test("schema foundation is an outbox, not an implicit financial trigger", () => {
@@ -153,6 +173,8 @@ test("schema foundation is an outbox, not an implicit financial trigger", () => 
 
   assert.match(schema, /model BetAutoPreset/);
   assert.match(schema, /model BetAutoExecution/);
+  assert.match(schema, /shadow producer writes preview/);
+  assert.match(schema, /funded reservation\/ticket consumption remains disabled/);
   assert.match(schema, /ticketId\s+Int\?\s+@unique/);
   assert.match(migration, /ck_bet_auto_presets_self_only/);
   assert.match(migration, /ck_bet_auto_presets_game_plan/);

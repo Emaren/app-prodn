@@ -26,6 +26,15 @@ import {
 import {
   replayWinnerHasPublicStatsAuthority,
 } from "./unresolvedWatcherResult.ts";
+import {
+  replayEloLane,
+  type EloTrophyLane,
+} from "./champions/eloTrophy.ts";
+import {
+  evaluateReplayRatingDeltaAuthority,
+  REPLAY_RATING_DELTA_POLICY_VERSION,
+  type ReplayRatingDeltaEvaluation,
+} from "./replayRatingDeltaAuthority.ts";
 
 export const REPLAY_RESULT_ACCEPTED = "accepted" as const;
 export const REPLAY_RESULT_PENDING_ADMIN = "pending_admin_approval" as const;
@@ -159,6 +168,35 @@ export function replayResultAdjudicationAuthorizesBets(
     adjudication.idempotencyKey?.startsWith(
       "financial-authority:"
     ) === true
+  );
+}
+
+export function replayResultAdjudicationAuthorizesChampionship(
+  adjudication:
+    | Pick<
+        EffectiveReplayResultAdjudication,
+        "decisionStatus" | "affectsStats" | "actorRole"
+      > & {
+        idempotencyKey?: string | null;
+      }
+    | null
+    | undefined
+) {
+  if (
+    !adjudication ||
+    adjudication.decisionStatus !== REPLAY_RESULT_ACCEPTED ||
+    adjudication.affectsStats !== true
+  ) {
+    return false;
+  }
+
+  if (adjudication.actorRole === "site_admin") {
+    return true;
+  }
+
+  return (
+    adjudication.idempotencyKey?.startsWith("title-authority:") === true ||
+    adjudication.idempotencyKey?.startsWith("financial-authority:") === true
   );
 }
 
@@ -2994,11 +3032,398 @@ async function loadExactPromotedTeamResolution(
   };
 }
 
+
+const WATCHER_RATING_DELTA_LOOKAHEAD_MS =
+  2 * 60 * 60 * 1000;
+const WATCHER_RATING_DELTA_SCAN_LIMIT = 500;
+
+function exactSteam1v1RosterKey(
+  value: unknown,
+) {
+  const players =
+    canonicalPlayers(value);
+
+  if (
+    players.length !== 2 ||
+    players.some(
+      (player) =>
+        !player.steamId,
+    )
+  ) {
+    return null;
+  }
+
+  const steamIds =
+    players
+      .map(
+        (player) =>
+          player.steamId as string,
+      )
+      .sort();
+
+  return new Set(steamIds).size === 2
+    ? steamIds.join(":")
+    : null;
+}
+
+type EligibleReplayRatingDelta =
+  Extract<
+    ReplayRatingDeltaEvaluation,
+    { eligible: true }
+  > & {
+    laterGameStatsId: number;
+    laterReplayHash: string;
+    laterParseIteration: number;
+    laterCreatedAt: Date;
+  };
+
+async function loadAutomaticReplayRatingDelta(
+  tx: Pick<
+    Prisma.TransactionClient,
+    "gameStats"
+  >,
+  game: {
+    id: number;
+    createdAt: Date;
+    game_type: string | null;
+    players: Prisma.JsonValue | null;
+    winner: string | null;
+    event_types: Prisma.JsonValue | null;
+    key_events: Prisma.JsonValue | null;
+    parse_iteration: number;
+    is_final: boolean;
+    disconnect_detected: boolean;
+    parse_source: string;
+    parse_reason: string;
+    replayHash: string;
+  },
+): Promise<
+  EligibleReplayRatingDelta | null
+> {
+  if (
+    !game.is_final ||
+    game.disconnect_detected ||
+    cleanText(
+      game.parse_source,
+      40,
+    ) !== "watcher_final" ||
+    cleanText(
+      game.parse_reason,
+      80,
+    ) !==
+      "watcher_final_submission"
+  ) {
+    return null;
+  }
+
+  if (
+    replayWinnerHasPublicStatsAuthority({
+      winner:
+        game.winner,
+      players:
+        Array.isArray(
+          parseJson(
+            game.players,
+          ),
+        )
+          ? (
+              parseJson(
+                game.players,
+              ) as Array<{
+                name?: unknown;
+                winner?: unknown;
+              }>
+            )
+          : [],
+      parseReason:
+        game.parse_reason,
+      parseSource:
+        game.parse_source,
+      keyEvents:
+        game.key_events,
+      eventTypes:
+        game.event_types,
+      disconnectDetected:
+        game.disconnect_detected,
+      isFinal:
+        game.is_final,
+    })
+  ) {
+    return null;
+  }
+
+  const lane =
+    replayEloLane(
+      game.game_type,
+    );
+
+  const sourceRosterKey =
+    exactSteam1v1RosterKey(
+      game.players,
+    );
+
+  if (
+    !lane ||
+    !sourceRosterKey
+  ) {
+    return null;
+  }
+
+  const laterRows =
+    await tx.gameStats.findMany({
+      where: {
+        createdAt: {
+          gt:
+            game.createdAt,
+          lte:
+            new Date(
+              game.createdAt.getTime() +
+                WATCHER_RATING_DELTA_LOOKAHEAD_MS,
+            ),
+        },
+        parse_source: {
+          in: [
+            "watcher_live",
+            "watcher_final",
+          ],
+        },
+      },
+      orderBy: [
+        {
+          createdAt:
+            "asc",
+        },
+        {
+          id:
+            "asc",
+        },
+      ],
+      take:
+        WATCHER_RATING_DELTA_SCAN_LIMIT,
+      select: {
+        id:
+          true,
+        createdAt:
+          true,
+        game_type:
+          true,
+        players:
+          true,
+        replayHash:
+          true,
+        parse_iteration:
+          true,
+      },
+    });
+
+  for (
+    const later of
+      laterRows
+  ) {
+    if (
+      exactSteam1v1RosterKey(
+        later.players,
+      ) !==
+      sourceRosterKey
+    ) {
+      continue;
+    }
+
+    const evaluation =
+      evaluateReplayRatingDeltaAuthority(
+        {
+          lane,
+          sourcePlayers:
+            game.players,
+          laterPlayers:
+            later.players,
+        },
+      );
+
+    if (
+      !evaluation.eligible
+    ) {
+      continue;
+    }
+
+    return {
+      ...evaluation,
+      laterGameStatsId:
+        later.id,
+      laterReplayHash:
+        later.replayHash,
+      laterParseIteration:
+        later.parse_iteration,
+      laterCreatedAt:
+        later.createdAt,
+    };
+  }
+
+  return null;
+}
+
+async function expandAutomaticRatingDeltaCandidates(
+  prisma: PrismaClient,
+  requestedGameStatsIds: number[],
+) {
+  if (
+    requestedGameStatsIds.length ===
+    0
+  ) {
+    return requestedGameStatsIds;
+  }
+
+  const observations =
+    await prisma.gameStats.findMany({
+      where: {
+        id: {
+          in:
+            requestedGameStatsIds,
+        },
+      },
+      select: {
+        id:
+          true,
+        createdAt:
+          true,
+        players:
+          true,
+      },
+    });
+
+  const additions =
+    new Set<number>();
+
+  for (
+    const observation of
+      observations
+  ) {
+    const rosterKey =
+      exactSteam1v1RosterKey(
+        observation.players,
+      );
+
+    if (
+      !rosterKey
+    ) {
+      continue;
+    }
+
+    const priorFinals =
+      await prisma.gameStats.findMany({
+        where: {
+          is_final:
+            true,
+          parse_source:
+            "watcher_final",
+          createdAt: {
+            gte:
+              new Date(
+                observation.createdAt.getTime() -
+                  WATCHER_RATING_DELTA_LOOKAHEAD_MS,
+              ),
+            lt:
+              observation.createdAt,
+          },
+        },
+        orderBy: [
+          {
+            createdAt:
+              "desc",
+          },
+          {
+            id:
+              "desc",
+          },
+        ],
+        take:
+          WATCHER_RATING_DELTA_SCAN_LIMIT,
+        select: {
+          id:
+            true,
+          game_type:
+            true,
+          players:
+            true,
+        },
+      });
+
+    const seenLanes =
+      new Set<EloTrophyLane>();
+
+    for (
+      const prior of
+        priorFinals
+    ) {
+      if (
+        exactSteam1v1RosterKey(
+          prior.players,
+        ) !==
+        rosterKey
+      ) {
+        continue;
+      }
+
+      const lane =
+        replayEloLane(
+          prior.game_type,
+        );
+
+      if (
+        !lane ||
+        seenLanes.has(
+          lane,
+        )
+      ) {
+        continue;
+      }
+
+      /*
+       * Never reach past a newer same-lane final for the same exact
+       * Steam roster. The first such row is the only game whose
+       * rating movement can be attributed to this later snapshot.
+       */
+      seenLanes.add(
+        lane,
+      );
+
+      const evaluation =
+        evaluateReplayRatingDeltaAuthority(
+          {
+            lane,
+            sourcePlayers:
+              prior.players,
+            laterPlayers:
+              observation.players,
+          },
+        );
+
+      if (
+        evaluation.eligible
+      ) {
+        additions.add(
+          prior.id,
+        );
+      }
+    }
+  }
+
+  return automaticGameIds([
+    ...requestedGameStatsIds,
+    ...additions,
+  ]);
+}
+
 export async function reconcileAutomaticWatcherTerminalResults(
   prisma: PrismaClient,
   rawGameStatsIds: readonly (string | number | null | undefined)[]
 ): Promise<AutomaticWatcherTerminalResultReport> {
-  const gameStatsIds = automaticGameIds(rawGameStatsIds);
+  const requestedGameStatsIds = automaticGameIds(rawGameStatsIds);
+  const gameStatsIds =
+    await expandAutomaticRatingDeltaCandidates(
+      prisma,
+      requestedGameStatsIds,
+    );
   const outcomes: AutomaticWatcherTerminalResultReport["outcomes"] = [];
 
   for (const gameStatsId of gameStatsIds) {
@@ -3097,6 +3522,183 @@ export async function reconcileAutomaticWatcherTerminalResults(
             outcome: "skipped" as const,
             detail: "confirmed_desync",
             adjudicationId: null,
+          };
+        }
+
+
+        const ratingDelta =
+          await loadAutomaticReplayRatingDelta(
+            tx,
+            game,
+          );
+
+        if (ratingDelta) {
+          const ratingIdempotencyKey = [
+            "title-authority",
+            REPLAY_RATING_DELTA_POLICY_VERSION,
+            gameStatsId,
+            ratingDelta.laterGameStatsId,
+          ].join(":");
+
+          const existingRatingDelta =
+            await tx.replayResultAdjudication.findUnique({
+              where: {
+                idempotencyKey:
+                  ratingIdempotencyKey,
+              },
+              select: {
+                id: true,
+              },
+            });
+
+          if (existingRatingDelta) {
+            return {
+              gameStatsId,
+              outcome:
+                "existing" as const,
+              detail:
+                "rating_delta_adjudication_exists",
+              adjudicationId:
+                existingRatingDelta.id,
+            };
+          }
+
+          const validated =
+            validateReplayResultAdjudication({
+              payload: {
+                idempotencyKey:
+                  ratingIdempotencyKey,
+                sourceReplayHash:
+                  game.replayHash,
+                sourceParseIteration:
+                  game.parse_iteration,
+                sourceRosterHash:
+                  buildRosterHash(
+                    automaticRoster,
+                  ),
+                teams:
+                  ratingDelta.teams,
+                winningTeamKey:
+                  ratingDelta.winningTeamKey,
+                reason:
+                  (
+                    `Automatic ${ratingDelta.lane.toUpperCase()} rating-delta result authority: ` +
+                    `${ratingDelta.winner.player.name} gained ${ratingDelta.delta} rating while ` +
+                    `${ratingDelta.loser.player.name} lost ${ratingDelta.delta}; exact same Steam 1v1 roster.`
+                  ),
+                evidence: {
+                  ...ratingDelta.evidence,
+                  sourceGameStatsId:
+                    game.id,
+                  sourceReplayHash:
+                    game.replayHash,
+                  sourceParseIteration:
+                    game.parse_iteration,
+                  laterGameStatsId:
+                    ratingDelta.laterGameStatsId,
+                  laterReplayHash:
+                    ratingDelta.laterReplayHash,
+                  laterParseIteration:
+                    ratingDelta.laterParseIteration,
+                  laterCreatedAt:
+                    ratingDelta.laterCreatedAt.toISOString(),
+                  financialAuthority:
+                    false,
+                },
+              },
+              replayHash:
+                game.replayHash,
+              parseIteration:
+                game.parse_iteration,
+              players:
+                game.players,
+            });
+
+          const marketState =
+            await buildMarketSnapshot(
+              tx as unknown as MarketSnapshotPrisma,
+              gameStatsId,
+              [
+                game.original_filename,
+                game.replay_file,
+              ],
+            );
+
+          const adjudication =
+            await tx.replayResultAdjudication.create({
+              data: {
+                gameStatsId,
+                actorUserId:
+                  game.user.id,
+                supersedesId:
+                  null,
+                idempotencyKey:
+                  validated.idempotencyKey,
+                inputHash:
+                  validated.inputHash,
+                decisionStatus:
+                  REPLAY_RESULT_ACCEPTED,
+                actorUidSnapshot:
+                  game.user.uid,
+                actorDisplayNameSnapshot:
+                  displayName(
+                    game.user,
+                  ),
+                actorRole:
+                  WATCHER_TERMINAL_ADJUDICATION_ACTOR_ROLE,
+                teamAssignments:
+                  validated.teams as unknown as Prisma.InputJsonValue,
+                winningTeamKey:
+                  validated.winningTeamKey,
+                winningPlayerKeys:
+                  validated.winningPlayerKeys as Prisma.InputJsonValue,
+                reason:
+                  validated.reason,
+                ...(validated.evidence ===
+                null
+                  ? {}
+                  : {
+                      evidence:
+                        validated.evidence,
+                    }),
+                sourceReplayHash:
+                  validated.sourceReplayHash,
+                sourceParseIteration:
+                  validated.sourceParseIteration,
+                sourceRosterHash:
+                  validated.sourceRosterHash,
+                sourcePropositionHash:
+                  validated.sourcePropositionHash,
+                rawParserSnapshot:
+                  rawParserSnapshot(
+                    game,
+                  ),
+                marketSnapshot:
+                  marketState.snapshot,
+                hasLinkedMarket:
+                  marketState.hasLinkedMarket,
+                financialDisposition:
+                  marketState.hasLinkedMarket
+                    ? WATCHER_TERMINAL_LINKED_MARKET_DISPOSITION
+                    : "none",
+                affectsStats:
+                  true,
+                affectsBets:
+                  false,
+              },
+              select: {
+                id: true,
+              },
+            });
+
+          return {
+            gameStatsId,
+            outcome:
+              "created" as const,
+            detail:
+              "exact_zero_sum_rating_delta",
+            adjudicationId:
+              adjudication.id,
           };
         }
 
@@ -3620,7 +4222,7 @@ export async function reconcileAutomaticWatcherTerminalResults(
   }
 
   return {
-    requestedCount: gameStatsIds.length,
+    requestedCount: requestedGameStatsIds.length,
     createdCount: outcomes.filter((entry) => entry.outcome === "created").length,
     existingCount: outcomes.filter((entry) => entry.outcome === "existing").length,
     skippedCount: outcomes.filter((entry) => entry.outcome === "skipped").length,

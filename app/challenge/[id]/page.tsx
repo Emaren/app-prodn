@@ -1,15 +1,19 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import ChallengeDetailDisplay from "@/components/challenge/ChallengeDetailDisplay";
+import { loadChampionshipProjection } from "@/lib/championshipChallenges";
 import ChallengeRoomControls from "@/components/challenge/ChallengeRoomControls";
 import ChallengeRoomConversation from "@/components/challenge/ChallengeRoomConversation";
 import { deriveChallengeFinancialConservation } from "@/lib/challengeFinancialConservation";
 import { getPrisma } from "@/lib/prisma";
+import { championshipPhaseLabel } from "@/lib/challengePresentation";
+import TimeDisplayText from "@/components/time/TimeDisplayText";
 
 export const dynamic = "force-dynamic";
 
 type Params = Promise<{ id: string }>;
-type SearchParams = Promise<{ view?: string }>;
+type SearchParams = Promise<{ view?: string; version?: string }>;
 
 type RoomView = "basic" | "advanced" | "extreme";
 
@@ -197,6 +201,7 @@ function buildMoneyRows(input: {
   guarantee: number;
   leftFunded: boolean;
   rightFunded: boolean;
+  completedWagerMatched: boolean;
 }) {
   const rows: MoneyRow[] = [];
 
@@ -230,6 +235,15 @@ function buildMoneyRows(input: {
     }
     if (input.rightFunded) {
       refund(`${input.rightName} challenge funding return`, input.wager + input.guarantee, "right");
+    }
+  }
+
+  if (input.status === "completed" && !input.completedWagerMatched) {
+    if (input.leftFunded) {
+      refund(`${input.leftName} unmatched challenge funding return`, input.wager + input.guarantee, "left");
+    }
+    if (input.rightFunded) {
+      refund(`${input.rightName} unmatched challenge funding return`, input.wager + input.guarantee, "right");
     }
   }
 
@@ -314,6 +328,7 @@ export default async function ChallengeDetailPage({
   const match = await prisma.scheduledMatch.findUnique({
     where: { id: challengeId },
     include: {
+      championshipLeg: true,
       challenger: {
         select: {
           uid: true,
@@ -355,28 +370,46 @@ export default async function ChallengeDetailPage({
     },
   });
 
-  if (!match) {
+  if (!match || match.championshipLeg) {
     notFound();
   }
 
+  const championship = await loadChampionshipProjection(prisma, challengeId);
+  const serverNow = new Date().toISOString();
   const leftName = playerName(match.challenger);
   const rightName = playerName(match.challenged);
+  const leftRosterName = championship?.participants.filter((member) => member.side === "challenger").map((member) => member.name).join(" + ") || leftName;
+  const rightRosterName = championship?.participants.filter((member) => member.side === "defender").map((member) => member.name).join(" + ") || rightName;
   const totalEach = match.wagerAmountWolo + match.guaranteeAmountWolo;
+  const leftFunded = Boolean(match.challengerFundingTxHash);
+  const rightFunded = Boolean(match.challengedFundingTxHash);
+  const fundedSides = Number(leftFunded) + Number(rightFunded);
+  const watcherStartMs = match.liveConfirmedAt?.getTime() ?? NaN;
+  const championshipWagerMatchedAtStart = championship
+    ? Number.isFinite(watcherStartMs) &&
+      leftFunded &&
+      rightFunded &&
+      Boolean(match.challengerFundedAt) &&
+      Boolean(match.challengedFundedAt) &&
+      match.challengerFundedAt!.getTime() <= watcherStartMs &&
+      match.challengedFundedAt!.getTime() <= watcherStartMs
+    : leftFunded && rightFunded;
   const latestDesyncIncident = match.replayDesyncIncidents[0] ?? null;
   const activeDesync = Boolean(
     match.status === "desync_review" &&
       latestDesyncIncident?.desyncOccurred &&
       latestDesyncIncident.settlementDisposition === "commissioner_review"
   );
-  const headline = statusLabel(match.status, leftName, rightName);
+  const headline = championship ? championshipPhaseLabel(championship.phase, Boolean(championship.titleName)) : statusLabel(match.status, leftName, rightName);
   const moneyRows = buildMoneyRows({
     status: match.status,
     leftName,
     rightName,
     wager: match.wagerAmountWolo,
     guarantee: match.guaranteeAmountWolo,
-    leftFunded: Boolean(match.challengerFundedAt),
-    rightFunded: Boolean(match.challengedFundedAt),
+    leftFunded,
+    rightFunded,
+    completedWagerMatched: championshipWagerMatchedAtStart,
   });
   const executedSettlements = match.settlements.filter(
     (settlement) => settlement.status === "executed" && settlement.txHash
@@ -387,14 +420,21 @@ export default async function ChallengeDetailPage({
   );
   const financialConservation = deriveChallengeFinancialConservation({
     fundingEachWolo: totalEach,
-    leftFunded: Boolean(match.challengerFundedAt),
-    rightFunded: Boolean(match.challengedFundedAt),
+    leftFunded,
+    rightFunded,
     settlements: match.settlements,
   });
   const conservationBreach = financialConservation.overSettledWolo > 0;
   const refundTerminal = ["canceled", "cancelled", "expired", "funding_expired", "refunded"].includes(match.status);
-  const fundedSides = Number(Boolean(match.challengerFundedAt)) + Number(Boolean(match.challengedFundedAt));
-  const expectedRefundWolo = refundTerminal ? fundedSides * totalEach : 0;
+  const completedUnmatched =
+    match.status === "completed" &&
+    fundedSides > 0 &&
+    !championshipWagerMatchedAtStart;
+  const expectedRefundWolo = refundTerminal
+    ? fundedSides * totalEach
+    : completedUnmatched
+      ? fundedSides * totalEach
+      : 0;
   const refundConfirmed = expectedRefundWolo > 0 && executedSettlementWolo >= expectedRefundWolo;
   const noShowResult = ["no_show_left", "no_show_right", "double_no_show"].includes(match.status);
   const totalIsPositive = totalEach > 0;
@@ -403,7 +443,11 @@ export default async function ChallengeDetailPage({
       ? fundedSides
       : 0
     : match.status === "completed"
-      ? (match.guaranteeAmountWolo > 0 ? 2 : 0) + (match.wagerAmountWolo > 0 ? 1 : 0)
+      ? completedUnmatched
+        ? totalIsPositive
+          ? fundedSides
+          : 0
+        : (match.guaranteeAmountWolo > 0 ? 2 : 0) + (match.wagerAmountWolo > 0 ? 1 : 0)
       : match.status === "double_no_show"
         ? (match.wagerAmountWolo > 0 ? fundedSides : 0) + (match.guaranteeAmountWolo > 0 && fundedSides > 0 ? 1 : 0)
         : ["no_show_left", "no_show_right"].includes(match.status)
@@ -428,7 +472,7 @@ export default async function ChallengeDetailPage({
           ? "Settlement needs attention"
           : match.settlements.length > 0
             ? "Settlement in progress"
-            : refundTerminal && expectedRefundWolo > 0
+            : expectedRefundWolo > 0
               ? `${fmtWolo(expectedRefundWolo)} WOLO refund due`
               : "No settlement consequence recorded yet";
   const terminalTitleStates = new Set([
@@ -448,54 +492,81 @@ export default async function ChallengeDetailPage({
     "expired",
     "funding_expired",
   ].includes(match.status);
-  const protocolSteps = activeDesync
-    ? [
-        { label: "Challenge issued", done: true },
-        { label: "Terms accepted", done: Boolean(match.acceptedAt) },
-        {
-          label: "Both rails funded",
-          done: Boolean(match.challengerFundedAt && match.challengedFundedAt),
-        },
-        {
-          label: "10-minute check-in",
-          done: Boolean(match.challengerCheckedInAt && match.challengedCheckedInAt),
-        },
-        { label: "DESYNC incident confirmed", done: true },
-        { label: "Commissioner disposition", done: false },
-        { label: "WOLO / title settlement", done: false },
-      ]
-    : [
-        { label: "Challenge issued", done: true },
-        { label: "Terms accepted", done: Boolean(match.acceptedAt) },
-        {
-          label: "Both rails funded",
-          done: Boolean(match.challengerFundedAt && match.challengedFundedAt),
-        },
-        {
-          label: "10-minute check-in",
-          done:
-            noShowResult ||
-            Boolean(match.challengerCheckedInAt && match.challengedCheckedInAt),
-        },
-        {
-          label: noShowResult ? "Check-in verdict" : "Watcher result proof",
-          done:
-            noShowResult ||
-            Boolean(
-              match.status === "completed" &&
-              match.resultAt &&
-              match.linkedSessionKey &&
-              match.linkedWinner
-            ),
-        },
-        {
-          label: "WOLO settlement",
-          done: settlementComplete,
-        },
-        ...(match.trophyChallenges.length > 0
-          ? [{ label: "Commissioner title decision", done: titleDecisionComplete }]
-          : []),
-      ];
+  const watcherMatchDetected = Boolean(
+    championship?.defenseStartedAt ||
+      match.liveConfirmedAt ||
+      ["live_confirmed", "result_pending", "completed"].includes(match.status)
+  );
+  const watcherResultVerified = Boolean(
+    match.status === "completed" &&
+      match.resultAt &&
+      match.linkedSessionKey &&
+      match.linkedWinner
+  );
+  const championshipMoneySettled =
+    totalEach <= 0 ||
+    fundedSides === 0 ||
+    settlementComplete ||
+    refundConfirmed;
+  const protocolSteps = championship
+    ? activeDesync
+      ? [
+          { label: "Challenge issued", done: true },
+          { label: "Watcher match detected", done: watcherMatchDetected },
+          { label: "DESYNC incident confirmed", done: true },
+          { label: "Commissioner disposition", done: false },
+          { label: "WOLO / title settlement", done: false },
+        ]
+      : [
+          { label: "Challenge issued", done: true },
+          { label: "Watcher match detected", done: watcherMatchDetected },
+          { label: "Watcher result proof", done: watcherResultVerified },
+          { label: "WOLO settlement", done: championshipMoneySettled },
+          ...(match.trophyChallenges.length > 0
+            ? [{ label: "Championship custody", done: titleDecisionComplete }]
+            : []),
+        ]
+    : activeDesync
+      ? [
+          { label: "Challenge issued", done: true },
+          { label: "Terms accepted", done: Boolean(match.acceptedAt) },
+          {
+            label: "Both rails funded",
+            done: Boolean(match.challengerFundedAt && match.challengedFundedAt),
+          },
+          {
+            label: "10-minute check-in",
+            done: Boolean(match.challengerCheckedInAt && match.challengedCheckedInAt),
+          },
+          { label: "DESYNC incident confirmed", done: true },
+          { label: "Commissioner disposition", done: false },
+          { label: "WOLO / title settlement", done: false },
+        ]
+      : [
+          { label: "Challenge issued", done: true },
+          { label: "Terms accepted", done: Boolean(match.acceptedAt) },
+          {
+            label: "Both rails funded",
+            done: Boolean(match.challengerFundedAt && match.challengedFundedAt),
+          },
+          {
+            label: "10-minute check-in",
+            done:
+              noShowResult ||
+              Boolean(match.challengerCheckedInAt && match.challengedCheckedInAt),
+          },
+          {
+            label: noShowResult ? "Check-in verdict" : "Watcher result proof",
+            done: noShowResult || watcherResultVerified,
+          },
+          {
+            label: "WOLO settlement",
+            done: settlementComplete,
+          },
+          ...(match.trophyChallenges.length > 0
+            ? [{ label: "Commissioner title decision", done: titleDecisionComplete }]
+            : []),
+        ];
   const currentProtocolStep = protocolStopped
     ? -1
     : protocolSteps.findIndex((step) => !step.done);
@@ -504,6 +575,7 @@ export default async function ChallengeDetailPage({
   const basic = view === "basic";
 
   return (
+    <ChallengeDetailDisplay requestedLayout={resolvedSearch.view} requestedVersion={resolvedSearch.version} renderedLayout={view} championship={championship} serverNow={serverNow}>
     <main className="min-h-screen overflow-hidden bg-[#030711] text-white">
       <div
         className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_50%_-12%,rgba(251,191,36,0.18),transparent_32%),radial-gradient(circle_at_14%_26%,rgba(30,64,175,0.28),transparent_34%),radial-gradient(circle_at_92%_24%,rgba(16,185,129,0.11),transparent_30%),linear-gradient(180deg,#0b1628_0%,#050914_48%,#02040a_100%)]"
@@ -523,7 +595,7 @@ export default async function ChallengeDetailPage({
             ← Challenge Hall
           </Link>
 
-          <BaEToggle id={match.id} view={view} />
+          <div data-challenge-legacy-toggle><BaEToggle id={match.id} view={view} /></div>
 
           <div className="rounded-full border border-amber-100/14 bg-amber-100/[0.05] px-4 py-2 text-xs font-black uppercase tracking-[0.24em] text-amber-100/78">
             Match #{match.id}
@@ -585,6 +657,8 @@ export default async function ChallengeDetailPage({
           </section>
         ) : null}
 
+        {championship ? <section className="mb-6"><ChallengeRoomControls challengeId={match.id} /></section> : null}
+
         <section className="relative overflow-hidden rounded-[2.7rem] border border-amber-100/18 bg-[#070b16]/92 shadow-[0_44px_160px_rgba(0,0,0,0.68)]">
           <div
             className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_18%,rgba(251,191,36,0.18),transparent_28%),radial-gradient(circle_at_78%_18%,rgba(16,185,129,0.13),transparent_30%),linear-gradient(90deg,rgba(251,191,36,0.08),transparent_30%,rgba(16,185,129,0.07))]"
@@ -611,13 +685,13 @@ export default async function ChallengeDetailPage({
                   className={`${extreme ? "mt-3 max-w-7xl font-serif text-[clamp(3.65rem,7.4vw,8.6rem)] leading-[0.82] tracking-[-0.075em]" : "mt-3 font-serif text-[clamp(2.7rem,5.2vw,5.3rem)] leading-[0.9] tracking-[-0.055em]"} font-semibold`}
                 >
                   <span className="relative inline-block bg-[linear-gradient(180deg,#fff7d6_0%,#f0cf78_28%,#c18a2d_66%,#74420f_100%)] bg-clip-text text-transparent drop-shadow-[0_14px_30px_rgba(0,0,0,0.9)]">
-                    {leftName}
+                    {leftRosterName}
                   </span>
                   <span className="mx-4 inline-block translate-y-[-0.08em] font-sans text-[0.28em] font-black uppercase tracking-[0.22em] text-amber-100/42 drop-shadow-[0_6px_20px_rgba(0,0,0,0.9)]">
                     vs
                   </span>
                   <span className="relative inline-block bg-[linear-gradient(180deg,#fff4c4_0%,#e8bd5f_30%,#a96f20_70%,#5a330e_100%)] bg-clip-text text-transparent drop-shadow-[0_14px_30px_rgba(0,0,0,0.9)]">
-                    {rightName}
+                    {rightRosterName}
                   </span>
                 </h1>
               </div>
@@ -630,7 +704,7 @@ export default async function ChallengeDetailPage({
                   {fmtWolo(totalEach)} WOLO each
                 </span>
                 <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs font-bold text-slate-300">
-                  {match.timingMode === "open"
+                  {championship ? <><span>Battle starts by </span><TimeDisplayText value={championship.challengeDeadline} includeZone bubbleClassName="max-w-[18rem]" /></> : match.timingMode === "open"
                     ? match.acceptBy
                       ? `Accept by ${fmtDate(match.acceptBy)}`
                       : "Play anytime"
@@ -649,9 +723,9 @@ export default async function ChallengeDetailPage({
                     </div>
                     <div>
                       <div className="text-[10px] font-black uppercase tracking-[0.24em] text-amber-100/38">
-                        Match Guarantee
+                        {championship ? "Challenge purse" : "Match Guarantee"}
                       </div>
-                      <div className="mt-2 text-3xl font-black">{fmtWolo(match.guaranteeAmountWolo)} WOLO</div>
+                      <div className="mt-2 text-3xl font-black">{fmtWolo(championship ? match.wagerAmountWolo * championship.participants.length : match.guaranteeAmountWolo)} WOLO</div>
                     </div>
                     <div>
                       <div className="text-[10px] font-black uppercase tracking-[0.24em] text-amber-100/62">
@@ -667,7 +741,7 @@ export default async function ChallengeDetailPage({
             <div className={`${extreme ? "relative grid content-start gap-4" : "mt-8 grid gap-4 lg:grid-cols-2"}`}>
               <div className="rounded-[1.6rem] border border-white/10 bg-black/26 p-5">
                 <p className="text-[10px] font-black uppercase tracking-[0.28em] text-amber-100/38">
-                  Duelists
+                  {championship && championship.participants.length > 2 ? "War rosters" : "Duelists"}
                 </p>
 
                 <div className="mt-4 grid gap-3">
@@ -675,14 +749,14 @@ export default async function ChallengeDetailPage({
                     <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">
                       Challenger
                     </div>
-                    <div className="mt-1 text-xl font-black">{leftName}</div>
+                    <div className="mt-1 text-xl font-black">{leftRosterName}</div>
                   </div>
 
                   <div className="rounded-[1.1rem] border border-white/10 bg-white/[0.035] p-4">
                     <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-500">
-                      Opponent
+                      {championship?.titleName ? "Champion side" : "Opponent"}
                     </div>
-                    <div className="mt-1 text-xl font-black">{rightName}</div>
+                    <div className="mt-1 text-xl font-black">{rightRosterName}</div>
                   </div>
                 </div>
               </div>
@@ -799,7 +873,7 @@ export default async function ChallengeDetailPage({
           </section>
         ) : null}
 
-        <section className="mt-6 rounded-[2rem] border border-white/10 bg-slate-950/72 p-5 shadow-[0_25px_90px_rgba(0,0,0,0.38)]">
+        <section data-challenge-protocol className="mt-6 rounded-[2rem] border border-white/10 bg-slate-950/72 p-5 shadow-[0_25px_90px_rgba(0,0,0,0.38)]">
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-100/44">
@@ -837,9 +911,9 @@ export default async function ChallengeDetailPage({
           </div>
         </section>
 
-        <section className="mt-6">
+        {!championship ? <section className="mt-6">
           <ChallengeRoomControls challengeId={match.id} />
-        </section>
+        </section> : null}
 
         <section className="mt-6">
           <ChallengeRoomConversation
@@ -848,6 +922,7 @@ export default async function ChallengeDetailPage({
             challengedUid={match.challenged.uid}
             challengerName={leftName}
             challengedName={rightName}
+            participants={championship?.participants}
             entries={[...match.activities].reverse().map((activity) => ({
               id: activity.id,
               eventType: activity.eventType,
@@ -863,7 +938,7 @@ export default async function ChallengeDetailPage({
         </section>
 
         {!basic ? (
-          <section className={`mt-6 grid gap-6 ${extreme ? "xl:grid-cols-[1.15fr_0.85fr]" : "xl:grid-cols-[1fr_0.8fr]"}`}>
+          <section data-challenge-detail-level="advanced" className={`mt-6 grid gap-6 ${extreme ? "xl:grid-cols-[1.15fr_0.85fr]" : "xl:grid-cols-[1fr_0.8fr]"}`}>
             <div className="rounded-[2rem] border border-white/10 bg-slate-950/72 p-5 shadow-[0_25px_90px_rgba(0,0,0,0.38)]">
               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-100/38">
                 Protocol ledger · system audit
@@ -973,5 +1048,6 @@ export default async function ChallengeDetailPage({
         ) : null}
       </section>
     </main>
+    </ChallengeDetailDisplay>
   );
 }

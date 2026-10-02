@@ -2,6 +2,7 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -10,6 +11,8 @@ import {
   type CSSProperties,
   type ReactNode,
 } from "react";
+
+import { usePathname } from "next/navigation";
 
 import { useUserAuth } from "@/context/UserAuthContext";
 import {
@@ -72,6 +75,14 @@ import {
   writeStoredLeaderboardLane,
   type LeaderboardLane,
 } from "@/lib/leaderboardLane";
+import {
+  resolveEffectiveSiteThemeKey,
+  type SiteThemeCampaignControl,
+} from "@/lib/siteThemeCampaign";
+import {
+  fetchSiteThemeCampaignState,
+  saveThemeCampaignOverride,
+} from "@/lib/siteThemeCampaignClient";
 
 type LobbyAppearanceContextValue = {
   themeKey: LobbyThemeKey;
@@ -100,7 +111,13 @@ const LobbyAppearanceContext = createContext<LobbyAppearanceContextValue | undef
 
 export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
   const { user } = useUserAuth();
-  const [themeKey, setThemeKey] = useState<LobbyThemeKey>(DEFAULT_LOBBY_THEME);
+  const pathname = usePathname();
+  const [preferredThemeKey, setPreferredThemeKey] =
+    useState<LobbyThemeKey>(DEFAULT_LOBBY_THEME);
+  const [siteThemeCampaign, setSiteThemeCampaign] =
+    useState<SiteThemeCampaignControl | null>(null);
+  const [campaignOverrideThemeKey, setCampaignOverrideThemeKey] =
+    useState<LobbyThemeKey | null>(null);
   const [tileThemeKey, setTileThemeKey] = useState<LobbyThemeKey>(DEFAULT_LOBBY_TILE_THEME);
   const [viewMode, setViewMode] = useState<LobbyViewMode>(DEFAULT_LOBBY_VIEW);
   const [textColor, setTextColor] = useState<LobbyTextColor>(DEFAULT_LOBBY_TEXT_COLOR);
@@ -144,9 +161,21 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
     setAppearanceLoaded(false);
 
     const hydrateAppearance = async () => {
+      try {
+        const campaignState = await fetchSiteThemeCampaignState();
+        if (cancelled) return;
+        setSiteThemeCampaign(campaignState.campaign);
+        setCampaignOverrideThemeKey(campaignState.overrideThemeKey);
+      } catch (error) {
+        console.warn("Failed to hydrate site theme campaign:", error);
+        if (cancelled) return;
+        setSiteThemeCampaign(null);
+        setCampaignOverrideThemeKey(null);
+      }
+
       if (!user?.uid) {
         if (!cancelled) {
-          setThemeKey(storedTheme);
+          setPreferredThemeKey(storedTheme);
           setTileThemeKey(storedTileTheme);
           setViewMode(storedView);
           setTextColor(storedTextColor);
@@ -189,7 +218,7 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
         );
         persistedAppearanceFingerprintRef.current = appearancePreferenceFingerprint(preference);
         pendingAppearanceFingerprintRef.current = null;
-        setThemeKey(preference.themeKey);
+        setPreferredThemeKey(preference.themeKey);
         setTileThemeKey(preference.tileThemeKey);
         setViewMode(preference.viewMode);
         setTextColor(preference.textColor);
@@ -202,7 +231,7 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
       } catch (error) {
         console.warn("Failed to hydrate appearance from account:", error);
         if (cancelled) return;
-        setThemeKey(storedTheme);
+        setPreferredThemeKey(storedTheme);
         setTileThemeKey(storedTileTheme);
         setViewMode(storedView);
         setTextColor(storedTextColor);
@@ -226,8 +255,64 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
   }, [user?.uid]);
 
   useEffect(() => {
-    writeStoredLobbyTheme(themeKey);
-  }, [themeKey]);
+    if (typeof window === "undefined") return;
+
+    const interval = window.setInterval(() => {
+      void fetchSiteThemeCampaignState()
+        .then((state) => {
+          setSiteThemeCampaign(state.campaign);
+          if (user?.uid) {
+            setCampaignOverrideThemeKey(state.overrideThemeKey);
+          }
+        })
+        .catch((error) => {
+          console.warn("Failed to refresh site theme campaign:", error);
+        });
+    }, 60_000);
+
+    return () => {
+      window.clearInterval(interval);
+    };
+  }, [user?.uid]);
+
+  const themeKey = useMemo(
+    () =>
+      resolveEffectiveSiteThemeKey({
+        preferredThemeKey,
+        overrideThemeKey: campaignOverrideThemeKey,
+        campaign: siteThemeCampaign,
+        pathname,
+      }),
+    [
+      campaignOverrideThemeKey,
+      pathname,
+      preferredThemeKey,
+      siteThemeCampaign,
+    ],
+  );
+
+  const setThemeKey = useCallback(
+    (nextThemeKey: LobbyThemeKey) => {
+      setPreferredThemeKey(nextThemeKey);
+
+      if (!siteThemeCampaign?.active) return;
+
+      setCampaignOverrideThemeKey(nextThemeKey);
+      if (!user?.uid) return;
+
+      void saveThemeCampaignOverride({
+        campaignKey: siteThemeCampaign.campaignKey,
+        themeKey: nextThemeKey,
+      }).catch((error) => {
+        console.warn("Failed to save site theme campaign override:", error);
+      });
+    },
+    [siteThemeCampaign, user?.uid],
+  );
+
+  useEffect(() => {
+    writeStoredLobbyTheme(preferredThemeKey);
+  }, [preferredThemeKey]);
 
   useEffect(() => {
     writeStoredLobbyTileTheme(tileThemeKey);
@@ -274,7 +359,7 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
     if (!appearanceLoaded || !user?.uid) return;
 
     const nextPreference: AppearancePreferenceInput = {
-      themeKey,
+      themeKey: preferredThemeKey,
       tileThemeKey,
       viewMode,
       textColor,
@@ -315,7 +400,7 @@ export function LobbyAppearanceProvider({ children }: { children: ReactNode }) {
     appearanceLoaded,
     browserTimeZone,
     textColor,
-    themeKey,
+    preferredThemeKey,
     tileThemeKey,
     tileViewPreferences,
     leaderboardLane,

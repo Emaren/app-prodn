@@ -108,9 +108,9 @@
       "owner": "aoe2war-web",
       "path": "WORKSPACE.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-08-22",
+      "reviewed_at": "2026-09-29",
       "sensitivity": "internal",
-      "sha256": "c3d8a1982216f60c523766cde8b3058cc4c0feb3eabdeb2829329edcfe8caa0a",
+      "sha256": "b1fcd14c63698c3a37b04c835d68683271d19fd0672e860e2da4278689f0a7cb",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -222,7 +222,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-09-22",
       "sensitivity": "internal",
-      "sha256": "f732918e37709e8aaf791ac88eec1f095ebb8230568bd303c535fe04b3b67a1d",
+      "sha256": "61ecf03d7e7a2632c8237b1538f24faeceeb82f789b511b9c6e2d80840e424be",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -243,9 +243,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BETTING_HALL_PRODUCT_AND_CONCURRENCY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-05",
+      "reviewed_at": "2026-09-29",
       "sensitivity": "internal",
-      "sha256": "44761394f98086a6c0348add182d3e398328fc210c5b5490d9097c9eeb4a1540",
+      "sha256": "3a314aa841840f4a9f6d65f813a8771e875d83e8d3955856a60680a23ef65a19",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -292,9 +292,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BET_AUTOMATION_AND_CUSTODY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-09",
+      "reviewed_at": "2026-09-29",
       "sensitivity": "internal",
-      "sha256": "85b329a801bdbdb45d9e9cfefa6001f10fb3955be266b192a49714f950f96a22",
+      "sha256": "70468b0bfda753d4628441420378df1d35e51469f8ff13df73c313b94cc1a0f0",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -360,16 +360,112 @@
       "owner": "aoe2war-web",
       "path": "docs/CHALLENGE_SYSTEM.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-09-22",
+      "reviewed_at": "2026-10-01",
       "sensitivity": "internal",
-      "sha256": "93388e2c4ec7f5da202f524adf385cd203f1ee786bcc6e383362d70232763a02",
+      "sha256": "1db2e78a36c9d94e12d24d03e5ba84ccbc7db8ff429cde5db178c55227e6aeaa",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
         "app-prodn",
         "wolochain"
       ],
-      "title": "AoE2WAR Challenge System v2",
+      "title": "AoE2WAR Challenge Protocols and Presentation",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "product-contract",
+      "id": "aoe2war.app-prodn.docs-championship-belt-constitution",
+      "owner": "aoe2war-web",
+      "path": "docs/CHAMPIONSHIP_BELT_CONSTITUTION.md",
+      "review_interval_days": 60,
+      "reviewed_at": "2026-09-30",
+      "sensitivity": "internal",
+      "sha256": "bd60e4c907a4200f9ac81b4a1929f835f54637ab08bf7ea27b92a57ab0cbc999",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "api-prodn",
+        "aoe2-watcher",
+        "wolochain"
+      ],
+      "title": "Championship Belt Constitution V1",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "integration-contract",
+      "id": "aoe2war.app-prodn.docs-championship-chain-handoff",
+      "owner": "aoe2war-web",
+      "path": "docs/CHAMPIONSHIP_CHAIN_HANDOFF.md",
+      "review_interval_days": 60,
+      "reviewed_at": "2026-09-30",
+      "sensitivity": "internal",
+      "sha256": "2f795b0195ece931ba2be341a24c5d3e05cc34ef6584bdd821455474f05b1bd4",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "wolochain"
+      ],
+      "title": "Championship Belt Chain Capability Handoff",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "operators",
+        "developers",
+        "ai-agents"
+      ],
+      "authority": "operational-procedure",
+      "id": "aoe2war.app-prodn.docs-championship-commissioner-runbook",
+      "owner": "aoe2war-web",
+      "path": "docs/CHAMPIONSHIP_COMMISSIONER_RUNBOOK.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-09-30",
+      "sensitivity": "internal",
+      "sha256": "358d990355e1050a36699ac3c9fe6b8f819b9fb480f1434878f913be01775897",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "wolochain"
+      ],
+      "title": "Championship Commissioner V1 Runbook",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "engineering-handoff",
+      "id": "aoe2war.app-prodn.docs-championship-implementation-handoff",
+      "owner": "aoe2war-web",
+      "path": "docs/CHAMPIONSHIP_IMPLEMENTATION_HANDOFF.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-09-30",
+      "sensitivity": "internal",
+      "sha256": "4fdf2709d95a2dd775bf493a2ba0475610423210b9deb35d03df0c84a11d0837",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "api-prodn",
+        "aoe2-watcher",
+        "wolochain"
+      ],
+      "title": "Championship Challenge V1 Implementation and Release Handoff",
       "type": "reference"
     },
     {
@@ -383,9 +479,9 @@
       "owner": "aoe2war-web",
       "path": "docs/CHAMPIONS_TITLE_ECONOMY.md",
       "review_interval_days": 90,
-      "reviewed_at": "2026-09-27",
+      "reviewed_at": "2026-09-30",
       "sensitivity": "internal",
-      "sha256": "3f75a23cbcf3950eebe1a12a8b15f5893095281bfa373263e8466c2a1ead62ca",
+      "sha256": "134bde2013ba6a5b09c30ba29a2bb9f5821590bb986cea62286c98988b6e3218",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -454,7 +550,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-04",
       "sensitivity": "internal",
-      "sha256": "338c1c628c51bd8189fe94414442a0708cbc8d92fb3190c9718496c1cf36ef70",
+      "sha256": "977a33bf3f127a922449babbd8fbdddafa15d5b81367f55bc007aeeff2a68682",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -521,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "75dd033fa0c482bc8dcef0d95942e1be6ef8c1c1cbd669b5c8bfd84f5908530d",
+      "sha256": "82f88ffbabfd76df857a10a642586fa1fe22466a133b771224b9fdfc98048410",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -563,9 +659,9 @@
       "owner": "aoe2war-web",
       "path": "docs/ENGINEERING_MEMORY.md",
       "review_interval_days": 14,
-      "reviewed_at": "2026-09-27",
+      "reviewed_at": "2026-10-01",
       "sensitivity": "internal",
-      "sha256": "ef44d7b48a2266620ac9928a97a437f0f718d18bf8a9516e67dd036da6a8b467",
+      "sha256": "0517e43ecce628a30265efd47e01f01575926b37e5f275471e9b5e18ac02aeb2",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -683,7 +779,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-20",
       "sensitivity": "restricted",
-      "sha256": "30423154d417cf8a21063d287b12fd488cb577db191c99fe3ae84f5687c073f4",
+      "sha256": "9f7b4c55d84b06b545153eeb13132b454848b06172dbfb7b28cf509c08f3acc4",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -844,7 +940,7 @@
       "review_interval_days": 60,
       "reviewed_at": "2026-08-21",
       "sensitivity": "internal",
-      "sha256": "297c4a10ec73ebb38a8f0302fc4a6120401c03767bae461df33ce91da0f3404a",
+      "sha256": "08b175c37865bc13ebf8de40d4003854d4ecff73153bf782f64988a3daee45e6",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -983,7 +1079,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-21",
       "sensitivity": "internal",
-      "sha256": "468ee3c853bd7f450b6e167f3f42b36b0c4801e18f0632df10973d21a354f7b8",
+      "sha256": "3bc1e2c8cd2a735963b19839cd3db07a39257fd73a604b853621d822ff459161",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1141,7 +1237,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-28",
       "sensitivity": "internal",
-      "sha256": "b47c1efaf7104da636b19b4c02448a9983c33817d76085b517530e3d6d3c1a55",
+      "sha256": "2b27102821c587d729c0866701f00d19cda36b5bb4e8bba0a89ef008d36339b0",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1277,9 +1373,9 @@
       "owner": "aoe2war-web",
       "path": "docs/RELEASE_ENGINEERING.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-22",
+      "reviewed_at": "2026-09-29",
       "sensitivity": "internal",
-      "sha256": "0e72f843c6db1780114bb26770999733f055b6f2c7066f1c5fce893fb2d05857",
+      "sha256": "5c40625eca96b35013c0a820a3a18fab59ca09e9929963ce17fccff149fc4833",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1323,9 +1419,9 @@
       "owner": "aoe2war-web",
       "path": "docs/RELEASE_RECOVERY_OS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-22",
+      "reviewed_at": "2026-09-29",
       "sensitivity": "internal",
-      "sha256": "0141b702f44170f1aa7111b3492af184b841caa6c936b550aedfa21349414b86",
+      "sha256": "c1b9f48939f6b938cf3152f32184c0585fc6aa3f0eac29dccc252e3a1ea1b329",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1393,9 +1489,9 @@
       "owner": "aoe2war-web",
       "path": "docs/REPLAY_TRUTH_OS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-28",
+      "reviewed_at": "2026-09-27",
       "sensitivity": "restricted",
-      "sha256": "a9ad658fc52596562d2bdec87343371d2443e5a7bec1590ae69a95f397aca8ea",
+      "sha256": "933e6ec8cafa5b1f34aa5c8649e2972810043fc8953377b4b2389533b876b440",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1438,9 +1534,9 @@
       "owner": "aoe2war-web",
       "path": "docs/SCHEDULED_MATCH_SETTLEMENTS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-22",
+      "reviewed_at": "2026-09-30",
       "sensitivity": "restricted",
-      "sha256": "921e8df3441f9423c9ceac90517189930b1234936f7a4f6b9c0b3c12d99953c6",
+      "sha256": "58a36ec555e63af97b1bab873ef3415198f564feebd414ee22fcc47c001fffa1",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1473,6 +1569,28 @@
       ],
       "title": "Security Incident Notes",
       "type": "historical"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "presentation-policy",
+      "id": "aoe2war.app-prodn.docs-site-theme-campaign",
+      "owner": "aoe2war-web",
+      "path": "docs/SITE_THEME_CAMPAIGN.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-10-01",
+      "sensitivity": "internal",
+      "sha256": "76d4c17477764175e4055afb272dc419797f030f7572753cee32ece06b389374",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Site Theme Campaign",
+      "type": "reference"
     },
     {
       "audience": [
@@ -1519,6 +1637,29 @@
         "vpssentry"
       ],
       "title": "AoE2WAR Storage OS",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "product-contract",
+      "id": "aoe2war.app-prodn.docs-television-wolo",
+      "owner": "aoe2war-web",
+      "path": "docs/TELEVISION_WOLO.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-09-30",
+      "sensitivity": "internal",
+      "sha256": "b1c89689d688d2889ae90119f6608beaf77e0e963f12c5d7f416253fd53964f1",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "aoe2-watcher"
+      ],
+      "title": "Television WOLO",
       "type": "reference"
     },
     {
@@ -1646,9 +1787,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WATCHER_TELEMETRY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-22",
+      "reviewed_at": "2026-09-29",
       "sensitivity": "restricted",
-      "sha256": "8c3066f7befd6acc1fbf54688ad6ac9ab24c26f75853992734dfa597dacb6bd1",
+      "sha256": "c668e6684ad619f6fa3c4d7b1d41fe12ca31c136a8309ec0437afba77d7574b3",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1693,9 +1834,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WOLO_FAUCET_SECURITY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-01",
+      "reviewed_at": "2026-10-01",
       "sensitivity": "restricted",
-      "sha256": "cdba005d874f1613c9a0b699d161fdc349eae27c9dc14e7ca4336fba964070aa",
+      "sha256": "9be52f24cdcd5d8c84479a70b9dbedc712af549485b1ef5e9e988643cdcbae28",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1738,9 +1879,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WOLO_WALLET_AND_HOLDER_PROJECTION.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-01",
+      "reviewed_at": "2026-10-01",
       "sensitivity": "internal",
-      "sha256": "b3c9645113cb921cc4498fc19e1af347341cbf00192ef539c207bffe205f8064",
+      "sha256": "bf0b108c2f59bac59b28e37cff9f8b3ebe9ab30d960d3a05683b05a724674220",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1862,8 +2003,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "integration/replay-receipt-promotion-20260927",
-    "commit": "e2917e50b1300e4a37043a84a3bebfde1dc85364"
+    "branch": "main",
+    "commit": "91bd19989eaa8f257189a4bad4c53b9e283814e6"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

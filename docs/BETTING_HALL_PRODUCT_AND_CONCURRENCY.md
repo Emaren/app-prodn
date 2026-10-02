@@ -8,7 +8,7 @@ systems: ["app-prodn", "aoe2-watcher", "wolochain"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "product-and-concurrency-contract"
-reviewed_at: "2026-09-05"
+reviewed_at: "2026-09-29"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -82,14 +82,89 @@ when to switch. Every open winner book remains reachable.
 read-only provider metadata. Public lobby AI never reads or mirrors private DM
 history, and a disabled persona never falls through to another model.
 
-Tony and Paulie are dormant operator-configurable counter-bettor foundations.
-Policy, not an LLM, chooses the opposite side and enforces the 10 WOLO action
-cap. Live execution remains impossible until dedicated operator custody,
-reservation proof, and an idempotent executor exist.
+Tony and Paulie are operator-configurable deterministic counter-bettors. Both
+identities still ship disabled. When an operator explicitly enables a bot in
+`shadow`, an already-committed human `BetWager` can trigger one append-only
+counter-decision for that bot/policy/market/wager/proposition identity. Policy,
+not an LLM, chooses the opposite side and enforces the 10 WOLO action cap plus
+configured per-market and daily shadow exposure.
+
+The shadow evaluator runs only after the human wager transaction commits. Its
+failure is best-effort and can never roll back or invalidate the bettor's wager.
+Duplicate/recovery paths may replay the evaluator because the decision key is
+idempotent. All reserved internal-system UIDs are excluded as source bettors, so
+Tony, Paulie, AI personas, protocol accounts, Moose, and clan scribes cannot
+recursively manufacture counter-actions.
+
+Shadow exposure is simulated policy evidence, not custody. The worker does not
+query or claim a spendable bot balance: `availableBalanceWolo` remains null,
+`custodyVerified=false`, committed amount/reservation/transaction fields stay
+null, and a labeled internal planning envelope only exercises the deterministic
+balance-floor math. Bot-policy edits and decisions share one per-bot PostgreSQL
+advisory lock so an action snapshot is cleanly before or after a config update.
+The append-only admin audit shows source wager/market, side flip, proposed WOLO,
+and exposure-before without claiming a counter-wager was placed.
+
+The public Betting Hall may project those zero-custody `shadow_proposal`
+actions as **Preview Liquidity**. This is presentation evidence only. It lives on
+a separate `previewLiquidity` field after the real market card has calculated
+user pools, total pot, slip counts, crowd split and projected return. Preview
+amounts must never be added to those financial fields.
+
+The public projection fails closed. It accepts only effective `shadow` actions
+with a positive proposed amount and no committed counterstake, available-balance
+claim, custody verification, custody reservation or stake transaction hash.
+Each displayed row is explicitly marked `financiallyCommitted=false`, and the
+Hall labels the rail “Shadow only · not in pot or odds.” Winner and Desync
+markets each retain their own Preview Liquidity evidence.
+
+A separate **Your Auto Bet Preview** rail is private to the signed-in viewer.
+It reads only that user's own preset-linked `BetAutoExecution` evidence through
+the private/no-store Betting Hall snapshot. The Hall never derives this row by
+re-running today's preset against an old market; it presents the immutable
+decision version and timestamp recorded by the shadow worker.
+
+Only one exact pristine `shadow_ready` row may project for a winner market.
+The presenter rechecks the frozen identity evidence and requires all financial
+consumer fields to remain untouched. Ambiguous duplicate rows, missing identity
+proof, proposition mismatch, malformed Desync linkage, or any ticket,
+reservation, attempt, lease, retry time or acceptance marker suppress the
+preview. The optional Desync leg is shown inside the parent winner preview and
+is not repeated on the Desync child card.
+
+This viewer rail is independent from public house **Preview Liquidity** and from
+`viewerWager`. It is presentation-only and must not enter seed/wager pools,
+total pot, crowd percentages, return math, War Tape financial proof, settlement,
+or War Chest accounting.
+
+The viewer may explicitly copy a still-valid private Preview into the ordinary
+manual Bet Slip. The copy action is local state only. Before loading, a pure
+planner requires the winner book to remain open with no existing real viewer
+wager, preserves the exact recorded winner side/amount, requires any recorded
+Desync leg to point at the same currently attached open child with no existing
+viewer wager, and rejects any leg or combined total outside the current
+wallet/app stake cap. A stale preview is rejected rather than clamped or
+silently adapted.
+
+Loading the Preview is not a wager and is not financial acceptance. It performs
+no fetch, wallet connection, ticket preparation, stake intent, escrow
+reservation, signature, transaction, or Auto Bet outbox mutation. The user must
+still review the populated slip and explicitly use the existing Lock WOLO flow.
+That manual rail remains the sole authority that can enter financial state.
+
+Live execution remains impossible until dedicated operator custody,
+reservation proof, and an idempotent executor exist. The existing database
+constraint additionally requires real custody verification, reservation, and
+stake transaction proof before a committed counterstake can exist.
 
 The profile Auto Bet Reserve is Preview only. It stores self-only winner and
 optional Desync settings, finite games or Until Out, and a 10,000 WOLO plan
-envelope. It neither moves nor reserves funds. See
+envelope. The durable shadow worker now evaluates exact eligible live Watcher
+winner markets after canonical market reconciliation and records one
+`shadow_ready` evidence row per preset/canonical game. Admission requires exact
+Steam roster-side proof plus uploader UID proof; an optional Desync leg must
+match the exact live child proposition. It still neither moves nor reserves
+funds, creates no wager/ticket, and never decrements a finite plan. See
 `BET_AUTOMATION_AND_CUSTODY.md` for the Wolo settlement-service upgrade prompt.
 
 ## Deployment and rollback
@@ -186,6 +261,99 @@ phase.
 
 Locked earlier books remain visible while later books operate.
 
+### Foundation implementation status — 2026-09-29
+
+Phase Books V2 now has both its additive data/authority foundation and a
+durable **shadow materializer**:
+
+- `BetMarket.bookPhase` defaults every existing financial market to `legacy`;
+- nullable unique `phaseBookKey` gives each future independent book durable
+  identity without backfilling or reinterpreting historical rows;
+- nullable `phaseOpensAt` / `phaseClosesAt` store server-owned phase fences;
+- the pure planner defines Pre-Game, exact 60-second Opening Minute, and Late
+  windows from authoritative server time;
+- `BET_PHASE_BOOKS_V2_MODE=shadow` may materialize isolated phase evidence
+  rows after canonical market reconciliation;
+- `BET_PHASE_BOOKS_V2_MODE=live` still fails closed because financial
+  activation is intentionally not installed.
+
+Shadow phase rows are intentionally quarantined from current financial rails.
+They use:
+
+- `status = phase_shadow`, which is not a production `BetStatus`;
+- `marketType = phase_shadow_winner`, so winner/Desync reconciliation,
+  settlement, Auto Bet, stale-market cleanup, and public board queries do not
+  accidentally consume them;
+- zero seeded WOLO;
+- no wager, stake intent, stake ticket, wallet-lock, escrow, payout, or
+  settlement mutation;
+- one transaction-scoped advisory lock per deterministic `phaseBookKey`.
+
+If a row with that `phaseBookKey` ever stops being an untouched shadow row,
+the materializer leaves it alone. A future financial activation must therefore
+be an explicit reviewed promotion path, not an environment-variable side
+effect.
+
+Pre-Game shadow identity is derived from the accepted scheduled Challenge. The
+current source model proves the authoritative scheduled cutoff, so the shadow
+book stores that as `phaseClosesAt`. It does **not** fabricate a
+`phaseOpensAt` merely from the “up to seven days” product ceiling; an actual
+opening/acceptance timestamp belongs to a later financial activation contract.
+
+Opening Minute and Late are stricter. They materialize only after canonical
+Watcher evidence has produced:
+
+- a real public Battle identity;
+- the immutable public Battle number;
+- a stabilized Watcher `BattleIdentity.startedAt`;
+- verified proposition integrity.
+
+Opening Minute starts exactly at that Watcher battle-start fence and has a
+maximum 60-second window. Trusted terminal truth may close it sooner. Late opens
+at the +60-second boundary only if the battle actually survives into Late; a
+battle that becomes terminal during Opening Minute gets no Late shadow row. A
+trusted terminal `settledAt` closes Late once it exists; a transient Watcher
+snapshot gap does not manufacture a terminal phase fence.
+
+The live phase key uses immutable `BattleIdentity.publicNumber`, not mutable
+database row id or transient fallback/platform session identity. Watcher
+identity promotion may repoint `BetMarket.battleId`, but it preserves the
+public Battle number, so promotion cannot create a duplicate Opening Minute or
+Late shadow book.
+
+This shadow materialization does **not** split any live money pool, admit phase
+wagers, alter stake tickets, change recovery/settlement, migrate historical
+wagers, or change the current Betting Fairness V1.2 compatibility bridge.
+Transactional phase write fences, ticket/escrow validation, recovery,
+settlement, and financial UI activation remain separately reviewed work.
+
+### Accepted-slip phase provenance — presentation only
+
+`Your Book` may now label an already-accepted slip by timing provenance without
+claiming the underlying V1 pool was economically phase-isolated.
+
+Classification uses server evidence only:
+
+- an explicit non-legacy `BetMarket.bookPhase` is authoritative for that future
+  phase row;
+- otherwise a scheduled Challenge market is **Pre-Game** because current
+  production admits that book before play only;
+- otherwise the accepted timestamp is compared with canonical
+  `BattleIdentity.startedAt`;
+- `stakeLockedAt` outranks the later wager-row `createdAt` when chain-backed
+  stake proof exists;
+- before start is **Pre-Game**;
+- start through `< start + 60s` is **Opening Minute**;
+- `>= start + 60s` is **Late**;
+- missing authoritative start evidence remains **Legacy timing** rather than
+  being guessed from browser time, market status, or a schedule.
+
+When one current V1 market contains several viewer slips, the presentation may
+show a phase breakdown across those slips. That breakdown describes information
+age only. The slips still share the existing V1 economic pool until Phase Books
+V2 financial activation is separately certified.
+
+
 ### Presentation direction
 
 The horizontal `InstrumentStakeRail` has been retired.
@@ -209,11 +377,15 @@ decoration.
 
 ### Auto Bet direction
 
-The existing Auto Bet Reserve remains preview-only today.
+The existing Auto Bet Reserve remains preview-only today, but Preview now has a
+durable evaluator. After canonical live-market reconciliation, the shadow worker
+can record an exact self-match decision without reserving WOLO or creating a
+wager. Raw Watcher telemetry is never the authority boundary.
 
-Future automation may add independent phase presets, but execution must use the
-reviewed prefunded Wolo custody/reservation architecture. Watcher telemetry
-detects game state; it never becomes money authority by itself.
+Future automation may add independent phase presets, but funded execution must
+use the reviewed prefunded Wolo custody/reservation architecture and a separate
+durable consumer. Shadow evidence must not be treated as accepted financial
+work.
 
 ## Premium betting composer implementation — V2 branch
 

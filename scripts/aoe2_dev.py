@@ -587,6 +587,7 @@ def new_worktree(
     name: str,
     *,
     refresh_shadow: bool,
+    persistent: bool,
 ) -> Path:
     canonical = operator_repo()
 
@@ -668,6 +669,26 @@ def new_worktree(
                 "refresh",
             ],
             cwd=target,
+            capture=False,
+        )
+
+    if persistent:
+        checked(
+            [
+                "python3",
+                "scripts/aoe2_workspace.py",
+                "adopt",
+                "--repo",
+                "app-prodn",
+                "--path",
+                str(target),
+                "--purpose",
+                "Persistent AoE2WAR Development OS environment",
+                "--agent",
+                "development-os",
+                "--preserve-when-merged",
+            ],
+            cwd=canonical,
             capture=False,
         )
 
@@ -797,6 +818,14 @@ def main() -> int:
         "--no-refresh",
         action="store_true",
     )
+    create.add_argument(
+        "--persistent",
+        action="store_true",
+        help=(
+            "preserve this prepared development worktree "
+            "from automatic merged-worktree cleanup"
+        ),
+    )
 
     args = parser.parse_args()
 
@@ -835,6 +864,7 @@ def main() -> int:
                 refresh_shadow=(
                     not args.no_refresh
                 ),
+                persistent=args.persistent,
             )
             return 0
 

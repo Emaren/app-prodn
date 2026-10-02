@@ -172,6 +172,23 @@ def classify(*, main: bool, dirty: bool, merged: bool, detached: bool) -> str:
     return "CLEANUP_CANDIDATE"
 
 
+def classify_registered_workspace(
+    *,
+    dirty: bool,
+    merged: bool,
+    preserve_when_merged: bool,
+) -> str:
+    if dirty:
+        return "AGENT_ACTIVE_DIRTY"
+    if merged:
+        return (
+            "AGENT_PRESERVED"
+            if preserve_when_merged
+            else "AGENT_RETIREABLE"
+        )
+    return "AGENT_ACTIVE_UNMERGED"
+
+
 def parse_worktree_porcelain(raw: str) -> list[str]:
     """Split `git worktree list --porcelain` records."""
     return [item for item in raw.split("\n\n") if item.strip()]
@@ -334,12 +351,14 @@ def snapshot() -> dict[str, Any]:
                 row["purpose"] = meta.get("purpose")
                 row["base_sha"] = meta.get("base_sha")
                 row["created_at"] = meta.get("created_at")
-                if row["dirty"]:
-                    row["classification"] = "AGENT_ACTIVE_DIRTY"
-                elif row["merged_into_canonical"]:
-                    row["classification"] = "AGENT_RETIREABLE"
-                else:
-                    row["classification"] = "AGENT_ACTIVE_UNMERGED"
+                row["preserve_when_merged"] = bool(
+                    meta.get("preserve_when_merged", False)
+                )
+                row["classification"] = classify_registered_workspace(
+                    dirty=row["dirty"],
+                    merged=row["merged_into_canonical"],
+                    preserve_when_merged=row["preserve_when_merged"],
+                )
             else:
                 row["agent_workspace"] = False
             worktrees.append(row)
@@ -434,6 +453,7 @@ def create_workspace(
     agent: str,
     path: Path | None,
     base_ref: str | None,
+    preserve_when_merged: bool = False,
 ) -> dict[str, Any]:
     if not BRANCH_RE.fullmatch(branch):
         raise WorkspaceError(f"unsafe branch: {branch!r}")
@@ -469,6 +489,7 @@ def create_workspace(
         "agent": agent,
         "created_at": utc_now(),
         "status": "ACTIVE",
+        "preserve_when_merged": preserve_when_merged,
     }
     write_metadata(payload)
     payload["receipt_path"] = write_json_receipt("workspace-create", payload)
@@ -481,6 +502,7 @@ def adopt_workspace(
     path: Path,
     purpose: str,
     agent: str,
+    preserve_when_merged: bool = False,
 ) -> dict[str, Any]:
     spec = repo_spec(repo_id)
     canonical = ensure_canonical_clean(spec)
@@ -517,6 +539,7 @@ def adopt_workspace(
         "agent": agent,
         "created_at": utc_now(),
         "status": "ACTIVE",
+        "preserve_when_merged": preserve_when_merged,
     }
     write_metadata(payload)
     payload["receipt_path"] = write_json_receipt("workspace-adopt", payload)
@@ -694,6 +717,7 @@ def main() -> int:
     q.add_argument("--agent", required=True)
     q.add_argument("--path")
     q.add_argument("--base")
+    q.add_argument("--preserve-when-merged", action="store_true")
     q.add_argument("--json", action="store_true")
 
     q = sub.add_parser("adopt")
@@ -701,6 +725,7 @@ def main() -> int:
     q.add_argument("--path", required=True)
     q.add_argument("--purpose", required=True)
     q.add_argument("--agent", required=True)
+    q.add_argument("--preserve-when-merged", action="store_true")
     q.add_argument("--json", action="store_true")
 
     q = sub.add_parser("retire")
@@ -735,6 +760,7 @@ def main() -> int:
                 agent=args.agent,
                 path=Path(args.path) if args.path else None,
                 base_ref=args.base,
+                preserve_when_merged=args.preserve_when_merged,
             )
             if args.json:
                 print(json.dumps(payload, indent=2, sort_keys=True))
@@ -748,6 +774,7 @@ def main() -> int:
                 path=Path(args.path),
                 purpose=args.purpose,
                 agent=args.agent,
+                preserve_when_merged=args.preserve_when_merged,
             )
             if args.json:
                 print(json.dumps(payload, indent=2, sort_keys=True))

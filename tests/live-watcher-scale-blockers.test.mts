@@ -341,6 +341,95 @@ test("a parse-one completion is final proof, never a new generic battle boundary
   );
 });
 
+test("internal championship evidence lookback preserves old authenticated watcher-live start proof", async () => {
+  const now = Date.now();
+  const startedAt = new Date(now - 30 * 60 * 1000);
+  const finalAt = new Date(now - 20 * 60 * 1000);
+  const platformMatchId = "championship-evidence-window";
+  const players = [
+    { name: "Jim", steam_id: "76561198166409520", number: 1, team_id: 0 },
+    { name: "Emaren", steam_id: "76561198065420384", number: 2, team_id: null },
+  ];
+  const live = {
+    id: 901,
+    replayHash: "live-evidence",
+    replay_file: "championship.aoe2record",
+    original_filename: "championship.aoe2record",
+    parse_iteration: 2,
+    createdAt: startedAt,
+    timestamp: startedAt,
+    played_on: startedAt,
+    map: { name: "Arabia" },
+    game_type: "TurboRandom9",
+    game_duration: 60,
+    winner: null,
+    players,
+    event_types: [],
+    key_events: {
+      platform_match_id: platformMatchId,
+      watcher_upload: {
+        watcher_id: "watcher-emaren",
+        watcher_session_id: "session-emaren",
+        watcher_version: "1.6.2",
+        provenance_signature_verified: true,
+        ingestion_provenance: "live_monitor",
+      },
+    },
+    disconnect_detected: false,
+    parse_reason: "watcher_live_iteration",
+    parse_source: "watcher_live",
+    user: { uid: "emaren-uid", inGameName: "Emaren", steamPersonaName: null },
+  };
+  const final = {
+    ...live,
+    id: 902,
+    replayHash: "final-evidence",
+    parse_iteration: 3,
+    createdAt: finalAt,
+    timestamp: finalAt,
+    game_duration: 600,
+    winner: "Jim",
+    players: [
+      { ...players[0], winner: true },
+      { ...players[1], winner: false },
+    ],
+    key_events: {
+      platform_match_id: platformMatchId,
+      completed: true,
+      watcher_upload: {
+        watcher_id: "watcher-jim",
+        watcher_session_id: "session-jim",
+        watcher_version: "1.6.2",
+        provenance_signature_verified: true,
+        ingestion_provenance: "live_monitor",
+      },
+    },
+    parse_reason: "watcher_final_submission",
+    parse_source: "watcher_final",
+    user: { uid: "jim-uid", inGameName: "Jim", steamPersonaName: null },
+  };
+
+  const responses = [[], [final], [], [], [live]];
+  let queryIndex = 0;
+  const prisma = {
+    gameStats: {
+      findMany: async () => responses[queryIndex++] ?? [],
+    },
+  } as unknown as PrismaClient;
+
+  const snapshot = await loadLiveSessionSnapshot(prisma, {
+    evidenceLookbackMs: 25 * 60 * 60 * 1000,
+  });
+  assert.equal(snapshot.activeSessions.length, 0);
+  assert.equal(snapshot.recentlyCompletedSessions.length, 1);
+  const completed = snapshot.recentlyCompletedSessions[0]!;
+  assert.deepEqual(completed.authenticatedLiveWatcherParticipantUids, ["emaren-uid"]);
+  assert.equal(completed.authenticatedLiveObservations?.length, 1);
+  assert.equal(completed.authenticatedLiveObservations?.[0]?.uid, "emaren-uid");
+  assert.equal(completed.authenticatedLiveObservations?.[0]?.observedAt, startedAt.toISOString());
+  assert.equal(completed.parseRows, 2);
+});
+
 test("a UUID replay name remains a strong cross-watcher rolling identity", () => {
   const replayName = "record-550e8400-e29b-41d4-a716-446655440000.aoe2mpgame";
   const first = liveSessionRowGroupingKey({

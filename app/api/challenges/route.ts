@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { createChampionshipChallenge } from "@/lib/championshipChallenges";
 
 import { NextRequest, NextResponse } from "next/server";
 
@@ -39,6 +40,8 @@ import { getSessionUid } from "@/lib/session";
 import {
   ensureTrophySeedData,
   loadTrophyUsers,
+  lockTrophyMoneyState,
+  projectTrophyChallengeAuthority,
   seededTrophyKeyForChallenge,
 } from "@/lib/trophies/service";
 import { recordUserActivity } from "@/lib/userExperience";
@@ -217,6 +220,12 @@ export async function POST(request: NextRequest) {
 
     const { prisma, viewer } = viewerState;
     const payload = (await request.json().catch(() => ({}))) as {
+      championshipVersion?: number;
+      mode?: string;
+      trophyId?: string | number | null;
+      challengerTeamUids?: string[];
+      eligibilityOverride?: boolean;
+      commissionerReason?: string;
       challengedUid?: string;
       timingMode?: string;
       acceptanceWindowHours?: number | string;
@@ -229,6 +238,11 @@ export async function POST(request: NextRequest) {
       trophyTitleId?: string | null;
       trophyCountry?: string | null;
     };
+
+    if (payload.championshipVersion === 2) {
+      const createdChallengeId = await createChampionshipChallenge(prisma, viewer.id, payload);
+      return NextResponse.json({ ...await loadChallengeHubSnapshot(prisma, viewer.uid), createdChallengeId });
+    }
 
     const challengedUid =
       typeof payload.challengedUid === "string" ? payload.challengedUid.trim() : "";
@@ -347,6 +361,35 @@ export async function POST(request: NextRequest) {
       if (!targetTrophy) {
         return NextResponse.json({ detail: "That trophy target is unavailable." }, { status: 404 });
       }
+
+      const authority = projectTrophyChallengeAuthority(targetTrophy);
+      if (!authority.statusChallengeable) {
+        return NextResponse.json(
+          {
+            detail: `${targetTrophy.displayName} is ${authority.status} and is not open for title challenges.`,
+          },
+          { status: 409 }
+        );
+      }
+      if (!authority.custodyConsistent) {
+        return NextResponse.json(
+          {
+            detail: `${targetTrophy.displayName} custody is inconsistent with its ${authority.status} state. An admin must repair custody before scheduling its title fight.`,
+          },
+          { status: 409 }
+        );
+      }
+
+      targetTrophy = {
+        ...targetTrophy,
+        status: authority.status,
+        currentHolderUserId: authority.currentHolderUserId,
+        currentHolderDisplayName: authority.currentHolderDisplayName,
+        currentHolderWoloAddress: authority.currentHolderWoloAddress,
+        guardianHolderUserId: authority.guardianHolderUserId,
+        guardianHolderDisplayName: authority.guardianHolderDisplayName,
+        guardianHolderWoloAddress: authority.guardianHolderWoloAddress,
+      };
 
       const expectedDefenderId =
         targetTrophy.currentHolderUserId ?? targetTrophy.guardianHolderUserId;
@@ -503,6 +546,43 @@ export async function POST(request: NextRequest) {
               ${title.id}
             )
           `;
+
+          const liveTitle = await lockTrophyMoneyState(tx, title.id);
+          if (!liveTitle) {
+            throw new TitleChallengeConflictError(
+              `${title.displayName} disappeared before the title challenge was created.`
+            );
+          }
+          const liveAuthority = projectTrophyChallengeAuthority(liveTitle);
+          if (!liveAuthority.statusChallengeable) {
+            throw new TitleChallengeConflictError(
+              `${liveTitle.displayName} is ${liveAuthority.status} and is not open for title challenges.`
+            );
+          }
+          if (!liveAuthority.custodyConsistent) {
+            throw new TitleChallengeConflictError(
+              `${liveTitle.displayName} custody became inconsistent before challenge creation. Reload after custody is repaired.`
+            );
+          }
+          if (
+            liveAuthority.status !== title.status ||
+            liveAuthority.currentHolderUserId !== title.currentHolderUserId ||
+            liveAuthority.guardianHolderUserId !== title.guardianHolderUserId
+          ) {
+            throw new TitleChallengeConflictError(
+              `${liveTitle.displayName} custody or status changed while the challenge was being created. Reload and try again.`
+            );
+          }
+
+          Object.assign(title, {
+            status: liveAuthority.status,
+            currentHolderUserId: liveAuthority.currentHolderUserId,
+            currentHolderDisplayName: liveAuthority.currentHolderDisplayName,
+            currentHolderWoloAddress: liveAuthority.currentHolderWoloAddress,
+            guardianHolderUserId: liveAuthority.guardianHolderUserId,
+            guardianHolderDisplayName: liveAuthority.guardianHolderDisplayName,
+            guardianHolderWoloAddress: liveAuthority.guardianHolderWoloAddress,
+          });
 
           const competingTitleChallenge = await tx.trophyChallenge.findFirst({
             where: {
@@ -757,6 +837,7 @@ export async function POST(request: NextRequest) {
       duplicateWarning,
     });
   } catch (error) {
+    if (error instanceof Error && "status" in error && typeof error.status === "number") return NextResponse.json({detail:error.message}, {status:error.status});
     if (error instanceof ChallengeProtocolError) {
       return NextResponse.json(
         { detail: error.message, code: error.code },

@@ -165,16 +165,16 @@ export default function BettingMechanicsPage() {
 
           <div className="mt-3 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-2xl border border-white/10 bg-slate-950/45 p-4">
-              <div className="text-sm font-black text-white">Tony or Phil opens.</div>
+              <div className="text-sm font-black text-white">Tony + Paulie preview counters.</div>
               <p className="mt-2 text-xs leading-5 text-slate-400">
-                Every streamed match can get a random 1 WOLO AI liquidity bet.
+                An enabled Shadow bot reacts only after a real human wager commits.
               </p>
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-slate-950/45 p-4">
-              <div className="text-sm font-black text-white">One-sided action clears.</div>
+              <div className="text-sm font-black text-white">Preview is not the book.</div>
               <p className="mt-2 text-xs leading-5 text-slate-400">
-                If a human bets one side, an AI bettor can take the other.
+                The opposite-side proposal is visible, but it never changes the pot, odds, or payout math.
               </p>
             </div>
 
@@ -194,8 +194,8 @@ export default function BettingMechanicsPage() {
           </div>
 
           <p className="mt-4 text-xs leading-5 text-slate-500">
-            Human-directed books come next: post your action, let another human take it,
-            or turn AI assistance off for pure player-vs-player betting.
+            Current house automation is Preview-only. Funded AI/house execution remains disabled
+            until separately reviewed custody, reservation, and idempotent settlement rails exist.
           </p>
         </section>
 

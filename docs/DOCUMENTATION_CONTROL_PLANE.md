@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `integration/replay-receipt-promotion-20260927` at `e2917e50b1300e4a37043a84a3bebfde1dc85364`
+Implementation baseline: `main` at `91bd19989eaa8f257189a4bad4c53b9e283814e6`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **81**
+- Authoritative repository documents: **87**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,13 +36,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 49
-- `runbook`: 13
+- `reference`: 54
+- `runbook`: 14
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 65
+- `active`: 71
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -66,7 +66,11 @@ This page is generated from the validated front matter in this repository. Cross
 | [Bet Automation and Wolo Custody Boundary](BET_AUTOMATION_AND_CUSTODY.md) | `reference` | `active` | `financial-domain-contract` |
 | [Manual Bet Stake Tickets](BET_STAKE_TICKETS.md) | `reference` | `active` | `financial-domain-contract` |
 | [AoE2WAR Bounty Board](BOUNTY_BOARD.md) | `reference` | `active` | `product-contract` |
-| [AoE2WAR Challenge System v2](CHALLENGE_SYSTEM.md) | `reference` | `active` | `product-contract` |
+| [AoE2WAR Challenge Protocols and Presentation](CHALLENGE_SYSTEM.md) | `reference` | `active` | `product-contract` |
+| [Championship Belt Constitution V1](CHAMPIONSHIP_BELT_CONSTITUTION.md) | `reference` | `active` | `product-contract` |
+| [Championship Belt Chain Capability Handoff](CHAMPIONSHIP_CHAIN_HANDOFF.md) | `reference` | `active` | `integration-contract` |
+| [Championship Commissioner V1 Runbook](CHAMPIONSHIP_COMMISSIONER_RUNBOOK.md) | `runbook` | `active` | `operational-procedure` |
+| [Championship Challenge V1 Implementation and Release Handoff](CHAMPIONSHIP_IMPLEMENTATION_HANDOFF.md) | `reference` | `active` | `engineering-handoff` |
 | [Championship Title Economy](CHAMPIONS_TITLE_ECONOMY.md) | `reference` | `active` | `product-contract` |
 | [Clan Halls](CLAN_HALLS.md) | `reference` | `active` | `product-contract` |
 | [AoE2WAR Campaign III Final Handoff](CODEX_CAMPAIGN_III_HANDOFF.md) | `historical` | `historical` | `historical-evidence` |
@@ -114,8 +118,10 @@ This page is generated from the validated front matter in this repository. Cross
 | [Rivalries and the War Vault](RIVALRIES_AND_WAR_VAULT.md) | `reference` | `active` | `product-contract` |
 | [Scheduled Match Escrow Settlements](SCHEDULED_MATCH_SETTLEMENTS.md) | `runbook` | `active` | `operational-procedure` |
 | [Security Incident Notes](SECURITY_INCIDENT_NOTES.md) | `historical` | `historical` | `incident-evidence` |
+| [Site Theme Campaign](SITE_THEME_CAMPAIGN.md) | `reference` | `active` | `presentation-policy` |
 | [Staking Treasury Payouts](STAKING_TREASURY_PAYOUTS.md) | `runbook` | `active` | `operational-procedure` |
 | [AoE2WAR Storage OS](STORAGE_OS.md) | `reference` | `active` | `storage-operating-contract` |
+| [Television WOLO](TELEVISION_WOLO.md) | `reference` | `active` | `product-contract` |
 | [Universal Translator](UNIVERSAL_TRANSLATOR.md) | `reference` | `active` | `product-contract` |
 | [AoE2WAR WarGraph V1](WARGRAPH_V1.md) | `reference` | `active` | `architecture-contract` |
 | [The War Engine](WAR_ENGINE.md) | `reference` | `active` | `replay-evidence-escalation-contract` |

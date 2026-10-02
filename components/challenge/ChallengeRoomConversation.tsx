@@ -24,6 +24,7 @@ type ChallengeRoomConversationProps = {
   challengedUid: string;
   challengerName: string;
   challengedName: string;
+  participants?: Array<{ uid: string; side: "challenger" | "defender"; name: string }>;
   entries: ChallengeRoomTimelineEntry[];
 };
 
@@ -96,6 +97,7 @@ export default function ChallengeRoomConversation({
   challengedUid,
   challengerName,
   challengedName,
+  participants,
   entries,
 }: ChallengeRoomConversationProps) {
   const router = useRouter();
@@ -106,8 +108,10 @@ export default function ChallengeRoomConversation({
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const viewerIsChallenger = uid === challengerUid;
-  const viewerIsChallenged = uid === challengedUid;
+  const challengerUids = participants?.filter((member) => member.side === "challenger").map((member) => member.uid) ?? [challengerUid];
+  const defenderUids = participants?.filter((member) => member.side === "defender").map((member) => member.uid) ?? [challengedUid];
+  const viewerIsChallenger = Boolean(uid && challengerUids.includes(uid));
+  const viewerIsChallenged = Boolean(uid && defenderUids.includes(uid));
 
   const canPost =
     Boolean(isAuthenticated) &&
@@ -185,13 +189,13 @@ export default function ChallengeRoomConversation({
             </h2>
 
             <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-400">
-              {challengerName} vs {challengedName} · negotiations, protocol events,
+              {participants?.length ? participants.filter((member) => member.side === "challenger").map((member) => member.name).join(" + ") : challengerName} vs {participants?.length ? participants.filter((member) => member.side === "defender").map((member) => member.name).join(" + ") : challengedName} · negotiations, protocol events,
               result truth, settlement, and championship history in one chronological record.
             </p>
           </div>
 
           <div className="rounded-full border border-emerald-200/12 bg-emerald-300/[0.055] px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-emerald-100/75">
-            Public read · Duelists + Commissioner write
+            Public read · Warriors + Commissioner write
           </div>
         </div>
       </div>
@@ -218,8 +222,8 @@ export default function ChallengeRoomConversation({
                 entry.eventType === "room_message" && Boolean(entry.message);
 
               if (isRoomMessage) {
-                const fromChallenger = entry.actorUid === challengerUid;
-                const fromChallenged = entry.actorUid === challengedUid;
+                const fromChallenger = Boolean(entry.actorUid && challengerUids.includes(entry.actorUid));
+                const fromChallenged = Boolean(entry.actorUid && defenderUids.includes(entry.actorUid));
                 const fromCommissioner =
                   !fromChallenger && !fromChallenged && Boolean(entry.actorUid);
 

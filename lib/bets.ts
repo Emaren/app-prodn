@@ -12,6 +12,11 @@ import {
   platformMatchIdFromBattleSession,
 } from "@/lib/battleIdentity";
 import {
+  buildWatcherBattleStartIndex,
+  earliestBattleStartedAt,
+  resolveWatcherBattleStartedAt,
+} from "@/lib/betBattleStartAuthority";
+import {
   loadScheduledMatchTilesForLiveBoard,
   type ScheduledMatchTile,
 } from "@/lib/challenges";
@@ -45,6 +50,12 @@ import {
   loadReplayDesyncIncidentProvenance,
 } from "@/lib/replayDesyncIncidents";
 import { loadLiveSessionSnapshot, type LiveGameSession } from "@/lib/liveSessionSnapshot";
+import { runBetAutoShadowWorker } from "@/lib/betAutomationShadowWorker";
+import { materializeBetPhaseBookShadows } from "@/lib/betPhaseBookShadowMaterializer";
+import {
+  classifyAcceptedBetPhase,
+  type BetBookPhase,
+} from "@/lib/betPhaseBooks";
 import { resolveFinalGameStatsIdForSessionKey } from "@/lib/liveReplayDetail";
 import {
   isUnknownishReplayValue,
@@ -173,6 +184,28 @@ export type BetWarTapeRow = {
   createdAt: string;
 };
 
+export type BetPreviewLiquidityRow = {
+  id: number;
+  botLabel: string;
+  side: BetSide;
+  amountWolo: number;
+  recordedAt: string;
+  financiallyCommitted: false;
+};
+
+export type BetViewerAutoBetPreview = {
+  id: number;
+  presetVersion: number;
+  selectedSide: BetSide;
+  winnerStakeWolo: number;
+  desyncSide: "none" | "yes" | "no";
+  desyncStakeWolo: number;
+  desyncMarketId: number | null;
+  propositionHash: string;
+  recordedAt: string;
+  financiallyCommitted: false;
+};
+
 export type BetBroadcastFeeds = {
   left: WatchStreamPayload | null;
   god: WatchStreamPayload | null;
@@ -214,6 +247,8 @@ export type BetBoardMarket = {
   right: BetBoardSide;
   founderBonuses: BetFounderChip[];
   warTape: BetWarTapeRow[];
+  previewLiquidity: BetPreviewLiquidityRow[];
+  viewerAutoBetPreview: BetViewerAutoBetPreview | null;
   broadcastFeeds: BetBroadcastFeeds;
   broadcastPreviewUrls: BetBroadcastPreviewUrls;
   viewerWager: {
@@ -224,9 +259,16 @@ export type BetBoardMarket = {
     stakeTxHash: string | null;
     stakeWalletAddress: string | null;
     stakeLockedAt: string | null;
+    phaseBreakdown: BetBookPhaseSummary[];
   } | null;
   winnerSide: BetSide | null;
   desyncMarket: BetBoardMarket | null;
+};
+
+export type BetBookPhaseSummary = {
+  phase: BetBookPhase;
+  amountWolo: number;
+  slipCount: number;
 };
 
 export type BetBookEntry = {
@@ -245,6 +287,7 @@ export type BetBookEntry = {
   executionMode: "app_only" | "onchain_escrow";
   stakeTxHash: string | null;
   stakeProofUrl: string | null;
+  phaseBreakdown: BetBookPhaseSummary[];
 };
 
 export type BetSettledResult = {
@@ -501,6 +544,232 @@ function computeSharePercent(sidePoolWolo: number, totalPotWolo: number) {
   return Math.round((sidePoolWolo / totalPotWolo) * 100);
 }
 
+type BetPreviewLiquidityEvidenceRow = {
+  id: number;
+  marketId: number | null;
+  botSlugSnapshot: string;
+  eventType: string;
+  effectiveModeSnapshot: string;
+  counterSide: string | null;
+  proposedCounterstakeWolo: number | null;
+  committedCounterstakeWolo: number | null;
+  availableBalanceWolo: number | null;
+  custodyVerified: boolean;
+  custodyVerificationId: string | null;
+  custodyReservationId: string | null;
+  stakeTxHash: string | null;
+  createdAt: Date;
+};
+
+function publicCounterBotLabel(slug: string) {
+  const normalized = slug.trim().toLowerCase();
+  if (normalized === "tony") return "Tony";
+  if (normalized === "paulie") return "Paulie";
+  return "House preview";
+}
+
+export function buildBetPreviewLiquidityMap(
+  rows: readonly BetPreviewLiquidityEvidenceRow[]
+) {
+  const byMarketId = new Map<number, BetPreviewLiquidityRow[]>();
+
+  for (const row of rows) {
+    if (
+      !Number.isSafeInteger(row.marketId) ||
+      (row.marketId ?? 0) <= 0 ||
+      row.eventType !== "shadow_proposal" ||
+      row.effectiveModeSnapshot !== "shadow" ||
+      (row.counterSide !== "left" && row.counterSide !== "right") ||
+      !Number.isSafeInteger(row.proposedCounterstakeWolo) ||
+      (row.proposedCounterstakeWolo ?? 0) <= 0 ||
+      row.committedCounterstakeWolo !== null ||
+      row.availableBalanceWolo !== null ||
+      row.custodyVerified ||
+      Boolean(row.custodyVerificationId?.trim()) ||
+      Boolean(row.custodyReservationId?.trim()) ||
+      Boolean(row.stakeTxHash?.trim())
+    ) {
+      continue;
+    }
+
+    const marketId = row.marketId as number;
+    const bucket = byMarketId.get(marketId) ?? [];
+    if (bucket.length >= 4) continue;
+
+    bucket.push({
+      id: row.id,
+      botLabel: publicCounterBotLabel(row.botSlugSnapshot),
+      side: row.counterSide,
+      amountWolo: row.proposedCounterstakeWolo as number,
+      recordedAt: row.createdAt.toISOString(),
+      financiallyCommitted: false,
+    });
+    byMarketId.set(marketId, bucket);
+  }
+
+  return byMarketId;
+}
+
+export function attachBetPreviewLiquidity<
+  T extends { id: number; previewLiquidity: BetPreviewLiquidityRow[] },
+>(
+  market: T,
+  byMarketId: ReadonlyMap<number, readonly BetPreviewLiquidityRow[]>
+): T {
+  return {
+    ...market,
+    previewLiquidity: [...(byMarketId.get(market.id) ?? [])],
+  };
+}
+
+type BetViewerAutoBetPreviewEvidenceRow = {
+  id: number;
+  presetVersion: number;
+  winnerMarketId: number;
+  desyncMarketId: number | null;
+  propositionHash: string;
+  selectedSide: string | null;
+  winnerStakeWolo: number;
+  desyncSide: string;
+  desyncStakeWolo: number;
+  status: string;
+  reason: string | null;
+  ticketId: number | null;
+  reservationId: string | null;
+  attemptCount: number;
+  nextAttemptAt: Date | null;
+  leaseOwner: string | null;
+  leaseExpiresAt: Date | null;
+  acceptedAt: Date | null;
+  sourceEvidence: unknown;
+  createdAt: Date;
+};
+
+function exactViewerAutoBetPreview(
+  row: BetViewerAutoBetPreviewEvidenceRow
+): BetViewerAutoBetPreview | null {
+  const sourceEvidence =
+    row.sourceEvidence &&
+    typeof row.sourceEvidence === "object" &&
+    !Array.isArray(row.sourceEvidence)
+      ? (row.sourceEvidence as Record<string, unknown>)
+      : null;
+  const propositionHash = row.propositionHash.trim();
+  const sourcePropositionHash =
+    typeof sourceEvidence?.propositionHash === "string"
+      ? sourceEvidence.propositionHash.trim()
+      : "";
+
+  if (
+    row.status !== "shadow_ready" ||
+    row.reason !== "shadow_preview_eligible" ||
+    !Number.isSafeInteger(row.winnerMarketId) ||
+    row.winnerMarketId <= 0 ||
+    !Number.isSafeInteger(row.presetVersion) ||
+    row.presetVersion <= 0 ||
+    (row.selectedSide !== "left" && row.selectedSide !== "right") ||
+    !Number.isSafeInteger(row.winnerStakeWolo) ||
+    row.winnerStakeWolo <= 0 ||
+    !/^[a-f0-9]{64}$/i.test(propositionHash) ||
+    !sourceEvidence ||
+    sourceEvidence.mode !== "shadow" ||
+    sourceEvidence.exactSteamRosterMatch !== true ||
+    sourceEvidence.exactUploaderUidMatch !== true ||
+    sourceEvidence.marketIntegrityStatus !== "verified" ||
+    sourceEvidence.teamResolutionStatus !== "resolved" ||
+    sourceEvidence.teamConfidence !== "high" ||
+    sourcePropositionHash !== propositionHash ||
+    typeof sourceEvidence.canonicalSessionKey !== "string" ||
+    !sourceEvidence.canonicalSessionKey.trim() ||
+    typeof sourceEvidence.ownerUid !== "string" ||
+    !sourceEvidence.ownerUid.trim() ||
+    typeof sourceEvidence.ownerSteamId !== "string" ||
+    !sourceEvidence.ownerSteamId.trim() ||
+    row.ticketId !== null ||
+    row.reservationId !== null ||
+    row.attemptCount !== 0 ||
+    row.nextAttemptAt !== null ||
+    row.leaseOwner !== null ||
+    row.leaseExpiresAt !== null ||
+    row.acceptedAt !== null
+  ) {
+    return null;
+  }
+
+  const desyncSide =
+    row.desyncSide === "yes" || row.desyncSide === "no"
+      ? row.desyncSide
+      : row.desyncSide === "none"
+        ? "none"
+        : null;
+  if (!desyncSide) return null;
+
+  if (
+    desyncSide === "none"
+      ? row.desyncMarketId !== null || row.desyncStakeWolo !== 0
+      : !Number.isSafeInteger(row.desyncMarketId) ||
+        (row.desyncMarketId ?? 0) <= 0 ||
+        !Number.isSafeInteger(row.desyncStakeWolo) ||
+        row.desyncStakeWolo <= 0
+  ) {
+    return null;
+  }
+
+  return {
+    id: row.id,
+    presetVersion: row.presetVersion,
+    selectedSide: row.selectedSide,
+    winnerStakeWolo: row.winnerStakeWolo,
+    desyncSide,
+    desyncStakeWolo: row.desyncStakeWolo,
+    desyncMarketId: row.desyncMarketId,
+    propositionHash,
+    recordedAt: row.createdAt.toISOString(),
+    financiallyCommitted: false,
+  };
+}
+
+/**
+ * Private viewer projection of immutable Auto Bet shadow evidence.
+ *
+ * Duplicate shadow rows for one winner market are treated as ambiguous and
+ * suppressed instead of choosing a "latest" decision.
+ */
+export function buildViewerAutoBetPreviewMap(
+  rows: readonly BetViewerAutoBetPreviewEvidenceRow[]
+) {
+  const rowsByWinnerMarket = new Map<
+    number,
+    BetViewerAutoBetPreviewEvidenceRow[]
+  >();
+
+  for (const row of rows) {
+    const bucket = rowsByWinnerMarket.get(row.winnerMarketId) ?? [];
+    bucket.push(row);
+    rowsByWinnerMarket.set(row.winnerMarketId, bucket);
+  }
+
+  const byMarketId = new Map<number, BetViewerAutoBetPreview>();
+  for (const [marketId, bucket] of rowsByWinnerMarket) {
+    if (bucket.length !== 1) continue;
+    const preview = exactViewerAutoBetPreview(bucket[0]);
+    if (preview) byMarketId.set(marketId, preview);
+  }
+  return byMarketId;
+}
+
+export function attachViewerAutoBetPreview<
+  T extends { id: number; viewerAutoBetPreview: BetViewerAutoBetPreview | null },
+>(
+  market: T,
+  byMarketId: ReadonlyMap<number, BetViewerAutoBetPreview>
+): T {
+  return {
+    ...market,
+    viewerAutoBetPreview: byMarketId.get(market.id) ?? null,
+  };
+}
+
 function formatCloseLabel(status: BetStatus, closeAt: Date | null) {
   if (status === "settled") return "Settled";
   if (WOLO_BET_TEST_MODE) {
@@ -618,10 +887,17 @@ export function expiredWatcherMarketResolutionReason(input: {
 
 export type MarketSeed = {
   battleId?: number | null;
+  /** Immutable public Battle number used by future phase-book identity. */
+  battlePublicNumber?: number | null;
   scheduledMatchId: number | null;
   linkedSessionKey: string | null;
   /** Exact pre-platform identities proven by the live-session grouper. */
   identityAliases?: string[];
+  /**
+   * Server-stabilized Watcher battle start. Internal identity evidence only;
+   * BetMarket persistence does not consume this field.
+   */
+  battleStartedAt?: Date | null;
   linkedGameStatsId?: number | null;
   slug: string;
   title: string;
@@ -5419,6 +5695,10 @@ export async function reconcileWatcherMarketIdentityPromotions(
 
       if (battleIdentities.length > 0) {
         const survivor = battleIdentities[0];
+        const mergedBattleStartedAt = earliestBattleStartedAt([
+          family.winnerSeed.battleStartedAt ?? null,
+          ...battleIdentities.map((identity) => identity.startedAt),
+        ]);
         for (const loser of battleIdentities.slice(1)) {
           await tx.battleIdentity.update({
             where: { id: loser.id },
@@ -5434,6 +5714,7 @@ export async function reconcileWatcherMarketIdentityPromotions(
           where: { id: survivor.id },
           data: {
             platformMatchId,
+            startedAt: mergedBattleStartedAt ?? survivor.startedAt ?? null,
             state:
               family.winnerSeed.status === "settled"
                 ? "completed"
@@ -5502,7 +5783,20 @@ async function buildOpenMarketSeeds(prisma: PrismaClient) {
   );
   let seeds: MarketSeed[] = [];
   const seenSlugs = new Set<string>();
-  const challengeSeeds = buildChallengeMarketSeeds(scheduledMatchTiles);
+  const battleStartBySessionIdentity = buildWatcherBattleStartIndex([
+    ...sessionSnapshot.activeSessions,
+    ...sessionSnapshot.recentlyCompletedSessions,
+  ]);
+  const attachBattleStart = (seed: MarketSeed): MarketSeed => ({
+    ...seed,
+    battleStartedAt: resolveWatcherBattleStartedAt(
+      battleStartBySessionIdentity,
+      seed.linkedSessionKey
+    ),
+  });
+  const challengeSeeds = buildChallengeMarketSeeds(scheduledMatchTiles).map(
+    attachBattleStart
+  );
   const hasFeaturedChallenge = challengeSeeds.some((seed) => seed.featured);
 
   challengeSeeds.forEach((seed) => {
@@ -5524,7 +5818,7 @@ async function buildOpenMarketSeeds(prisma: PrismaClient) {
 
     if (!seed || seenSlugs.has(seed.slug)) return;
     seenSlugs.add(seed.slug);
-    seeds.push(seed);
+    seeds.push(attachBattleStart(seed));
   });
 
   sessionSnapshot.recentlyCompletedSessions.forEach((session, index) => {
@@ -5532,7 +5826,7 @@ async function buildOpenMarketSeeds(prisma: PrismaClient) {
     const seed = buildSessionMarketSeed(session, 100 + index, false);
     if (!seed || seenSlugs.has(seed.slug)) return;
     seenSlugs.add(seed.slug);
-    seeds.push(seed);
+    seeds.push(attachBattleStart(seed));
   });
 
   /*
@@ -5592,6 +5886,7 @@ async function buildOpenMarketSeeds(prisma: PrismaClient) {
               : seed.status === "awaiting_final_proof"
                 ? "awaiting_final_proof" as const
                 : "live" as const,
+        startedAt: seed.battleStartedAt ?? null,
         completedAt: seed.settledAt,
         // A public number is born only while a battle is genuinely live. This
         // keeps historical proof/review rows that predate the numbering rail
@@ -5604,7 +5899,9 @@ async function buildOpenMarketSeeds(prisma: PrismaClient) {
 
   for (const seed of seeds) {
     const identityKey = canonicalBattleIdentityKey(normalizeName(seed.linkedSessionKey));
-    seed.battleId = identityKey ? battleIdentities.get(identityKey)?.id ?? null : null;
+    const battleIdentity = identityKey ? battleIdentities.get(identityKey) ?? null : null;
+    seed.battleId = battleIdentity?.id ?? null;
+    seed.battlePublicNumber = battleIdentity?.publicNumber ?? null;
   }
 
   /*
@@ -5621,6 +5918,7 @@ async function buildOpenMarketSeeds(prisma: PrismaClient) {
   return {
     seeds,
     reconciledSessionKeys,
+    activeSessions: sessionSnapshot.activeSessions,
   };
 }
 
@@ -7518,7 +7816,11 @@ async function reconcileAuthorizedReplayVerdictMarkets(
 async function runBetMarketEnsure(prisma: PrismaClient) {
   await archiveLowConfidenceZeroPotMarkets(prisma);
   const ticketMarketGuard = buildBetStakeTicketMarketGuardWhere();
-  const { seeds, reconciledSessionKeys } = await buildOpenMarketSeeds(prisma);
+  const {
+    seeds,
+    reconciledSessionKeys,
+    activeSessions,
+  } = await buildOpenMarketSeeds(prisma);
   const slugs = [...new Set(seeds.map((seed) => seed.slug))];
   const staleMarketCutoff = new Date(Date.now() - 2 * 60_000);
 
@@ -7593,6 +7895,15 @@ async function runBetMarketEnsure(prisma: PrismaClient) {
       });
     })
   );
+
+  try {
+    await materializeBetPhaseBookShadows(prisma, seeds);
+  } catch (error) {
+    console.warn(
+      "Phase Books V2 shadow materialization failed after canonical market seed reconciliation:",
+      error
+    );
+  }
 
   const desyncParentPairs = seeds
     .filter(
@@ -7746,6 +8057,12 @@ async function runBetMarketEnsure(prisma: PrismaClient) {
   await reconcilePendingCoreBetClaims(prisma);
   await settleMarketIntegrityCorrections(prisma);
   await settleFounderBonuses(prisma);
+
+  try {
+    await runBetAutoShadowWorker(prisma, { activeSessions });
+  } catch (error) {
+    console.warn("Auto Bet shadow evaluation failed after market reconciliation:", error);
+  }
 }
 
 // Several public/admin/replay routes can request the same reconciliation pass.
@@ -7834,6 +8151,11 @@ function buildMarketCard(
     { ...market, wagers: activeWagers },
     claimsByMarketId.get(market.id) ?? []
   );
+  const viewerPhaseBreakdown = summarizeAcceptedBetPhases(viewerWagers, {
+    marketBookPhase: market.bookPhase,
+    battleStartAt: market.battle?.startedAt ?? null,
+    scheduledPreGameOnly: Boolean(market.scheduledMatchId),
+  });
 
   const bettingCloseReason =
     freshBettingCloseReason({
@@ -7905,6 +8227,8 @@ function buildMarketCard(
     },
     founderBonuses,
     warTape,
+    previewLiquidity: [],
+    viewerAutoBetPreview: null,
     broadcastFeeds: EMPTY_BROADCAST_FEEDS,
     broadcastPreviewUrls: { ...EMPTY_BET_BROADCAST_PREVIEW_URLS },
     viewerWager: latestViewerWager
@@ -7922,6 +8246,7 @@ function buildMarketCard(
             ),
           stakeWalletAddress: latestViewerWager.stakeWalletAddress ?? null,
           stakeLockedAt: latestViewerWager.stakeLockedAt?.toISOString() ?? null,
+          phaseBreakdown: viewerPhaseBreakdown,
         }
       : null,
     winnerSide:
@@ -7932,6 +8257,60 @@ function buildMarketCard(
   };
 }
 
+function normalizeFinancialBookPhase(value: string | null | undefined): BetBookPhase {
+  return value === "pre_game" ||
+    value === "opening_minute" ||
+    value === "late"
+    ? value
+    : "legacy";
+}
+
+function summarizeAcceptedBetPhases(
+  wagers: Array<{
+    createdAt: Date;
+    stakeLockedAt?: Date | null;
+    amountWolo: number;
+  }>,
+  options: {
+    marketBookPhase?: string | null;
+    battleStartAt?: Date | null;
+    scheduledPreGameOnly?: boolean;
+  }
+): BetBookPhaseSummary[] {
+  const declaredPhase = normalizeFinancialBookPhase(options.marketBookPhase);
+  const totals = new Map<BetBookPhase, BetBookPhaseSummary>();
+  const phaseOrder: BetBookPhase[] = [
+    "pre_game",
+    "opening_minute",
+    "late",
+    "legacy",
+  ];
+
+  for (const wager of wagers) {
+    const phase =
+      declaredPhase !== "legacy"
+        ? declaredPhase
+        : classifyAcceptedBetPhase({
+            acceptedAt: wager.stakeLockedAt ?? wager.createdAt,
+            battleStartAt: options.battleStartAt,
+            scheduledPreGameOnly: options.scheduledPreGameOnly,
+          });
+    const current = totals.get(phase) ?? {
+      phase,
+      amountWolo: 0,
+      slipCount: 0,
+    };
+    current.amountWolo += wager.amountWolo;
+    current.slipCount += 1;
+    totals.set(phase, current);
+  }
+
+  return phaseOrder.flatMap((phase) => {
+    const row = totals.get(phase);
+    return row ? [row] : [];
+  });
+}
+
 async function loadMarketsByStatus(prisma: PrismaClient, statuses: BetStatus[]) {
   const markets = await prisma.betMarket.findMany({
     where: { status: { in: statuses } },
@@ -7940,6 +8319,7 @@ async function loadMarketsByStatus(prisma: PrismaClient, statuses: BetStatus[]) 
       battle: {
         select: {
           publicNumber: true,
+          startedAt: true,
         },
       },
       parentMarket: {
@@ -8858,6 +9238,7 @@ async function loadViewerRecentClosedBookEntries(
       payoutWolo: true,
       executionMode: true,
       stakeTxHash: true,
+      stakeLockedAt: true,
       stakeLeg: {
         select: {
           ticket: {
@@ -8877,10 +9258,17 @@ async function loadViewerRecentClosedBookEntries(
           slug: true,
           title: true,
           eventLabel: true,
+          bookPhase: true,
+          scheduledMatchId: true,
           status: true,
           leftLabel: true,
           rightLabel: true,
           settledAt: true,
+          battle: {
+            select: {
+              startedAt: true,
+            },
+          },
         },
       },
     },
@@ -8927,6 +9315,11 @@ async function loadViewerRecentClosedBookEntries(
       stakeProofUrl: effectiveBetWagerStakeTxHash(row)
         ? buildWoloRestTxLookupUrl(effectiveBetWagerStakeTxHash(row) as string)
         : null,
+      phaseBreakdown: summarizeAcceptedBetPhases([row], {
+        marketBookPhase: row.market.bookPhase,
+        battleStartAt: row.market.battle?.startedAt ?? null,
+        scheduledPreGameOnly: Boolean(row.market.scheduledMatchId),
+      }),
     };
   });
 }
@@ -9025,6 +9418,9 @@ export async function loadBetBoardSnapshot(
           id: true,
           inGameName: true,
           steamPersonaName: true,
+          betAutoPreset: {
+            select: { id: true },
+          },
         },
       })
     : null;
@@ -9046,29 +9442,99 @@ export async function loadBetBoardSnapshot(
   ]);
 
   const openMarketIds = [...openMarketsRaw, ...awaitingProofRaw].map((market) => market.id);
-  const claimRows = openMarketIds.length
-    ? await prisma.pendingWoloClaim.findMany({
-        where: {
-          sourceMarketId: { in: openMarketIds },
-        },
-        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
-        select: {
-          id: true,
-          sourceMarketId: true,
-          displayPlayerName: true,
-          amountWolo: true,
-          claimKind: true,
-          status: true,
-          note: true,
-          payoutTxHash: true,
-          payoutProofUrl: true,
-          errorState: true,
-          createdAt: true,
-          claimedAt: true,
-          rescindedAt: true,
-        },
-      })
-    : [];
+  const [claimRows, previewActionRows, viewerAutoBetRows] = await Promise.all([
+    prisma.pendingWoloClaim.findMany({
+      where: {
+        sourceMarketId: { in: openMarketIds },
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      select: {
+        id: true,
+        sourceMarketId: true,
+        displayPlayerName: true,
+        amountWolo: true,
+        claimKind: true,
+        status: true,
+        note: true,
+        payoutTxHash: true,
+        payoutProofUrl: true,
+        errorState: true,
+        createdAt: true,
+        claimedAt: true,
+        rescindedAt: true,
+      },
+    }),
+    prisma.betCounterAction.findMany({
+      where: {
+        marketId: { in: openMarketIds },
+        eventType: "shadow_proposal",
+        effectiveModeSnapshot: "shadow",
+        proposedCounterstakeWolo: { gt: 0 },
+        committedCounterstakeWolo: null,
+        availableBalanceWolo: null,
+        custodyVerified: false,
+        custodyVerificationId: null,
+        custodyReservationId: null,
+        stakeTxHash: null,
+        counterSide: { in: ["left", "right"] },
+      },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      take: 500,
+      select: {
+        id: true,
+        marketId: true,
+        botSlugSnapshot: true,
+        eventType: true,
+        effectiveModeSnapshot: true,
+        counterSide: true,
+        proposedCounterstakeWolo: true,
+        committedCounterstakeWolo: true,
+        availableBalanceWolo: true,
+        custodyVerified: true,
+        custodyVerificationId: true,
+        custodyReservationId: true,
+        stakeTxHash: true,
+        createdAt: true,
+      },
+    }),
+    viewer?.betAutoPreset?.id && openMarketIds.length > 0
+      ? prisma.betAutoExecution.findMany({
+          where: {
+            presetId: viewer.betAutoPreset.id,
+            winnerMarketId: { in: openMarketIds },
+            status: "shadow_ready",
+          },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          select: {
+            id: true,
+            presetVersion: true,
+            winnerMarketId: true,
+            desyncMarketId: true,
+            propositionHash: true,
+            selectedSide: true,
+            winnerStakeWolo: true,
+            desyncSide: true,
+            desyncStakeWolo: true,
+            status: true,
+            reason: true,
+            ticketId: true,
+            reservationId: true,
+            attemptCount: true,
+            nextAttemptAt: true,
+            leaseOwner: true,
+            leaseExpiresAt: true,
+            acceptedAt: true,
+            sourceEvidence: true,
+            createdAt: true,
+          },
+        })
+      : Promise.resolve([]),
+  ]);
+  const previewLiquidityByMarketId =
+    buildBetPreviewLiquidityMap(previewActionRows);
+
+  const viewerAutoBetPreviewByMarketId =
+    buildViewerAutoBetPreviewMap(viewerAutoBetRows);
 
   const claimsByMarketId = new Map<number, typeof claimRows>();
   for (const claim of claimRows) {
@@ -9081,10 +9547,22 @@ export async function loadBetBoardSnapshot(
   }
 
   const openMarketsWithoutFeeds = openMarketsRaw.map((market) =>
-    buildMarketCard(market, viewer?.id ?? null, claimsByMarketId)
+    attachViewerAutoBetPreview(
+      attachBetPreviewLiquidity(
+        buildMarketCard(market, viewer?.id ?? null, claimsByMarketId),
+        previewLiquidityByMarketId
+      ),
+      viewerAutoBetPreviewByMarketId
+    )
   );
   const awaitingProofMarketsWithoutFeeds = awaitingProofRaw.map((market) =>
-    buildMarketCard(market, viewer?.id ?? null, claimsByMarketId)
+    attachViewerAutoBetPreview(
+      attachBetPreviewLiquidity(
+        buildMarketCard(market, viewer?.id ?? null, claimsByMarketId),
+        previewLiquidityByMarketId
+      ),
+      viewerAutoBetPreviewByMarketId
+    )
   );
   const broadcastSessionKeys = [
     ...openMarketsWithoutFeeds.map((market) => market.linkedSessionKey),
@@ -9200,6 +9678,7 @@ export async function loadBetBoardSnapshot(
         stakeProofUrl: market.viewerWager?.stakeTxHash
           ? buildWoloRestTxLookupUrl(market.viewerWager.stakeTxHash)
           : null,
+        phaseBreakdown: market.viewerWager?.phaseBreakdown ?? [],
       } satisfies BetBookEntry;
     })
     .sort((left, right) => right.amountWolo - left.amountWolo);

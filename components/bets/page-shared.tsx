@@ -32,6 +32,28 @@ export type BetWarTapeRow = {
   createdAt: string;
 };
 
+export type BetPreviewLiquidityRow = {
+  id: number;
+  botLabel: string;
+  side: BetSide;
+  amountWolo: number;
+  recordedAt: string;
+  financiallyCommitted: false;
+};
+
+export type BetViewerAutoBetPreview = {
+  id: number;
+  presetVersion: number;
+  selectedSide: BetSide;
+  winnerStakeWolo: number;
+  desyncSide: "none" | "yes" | "no";
+  desyncStakeWolo: number;
+  desyncMarketId: number | null;
+  propositionHash: string;
+  recordedAt: string;
+  financiallyCommitted: false;
+};
+
 export type BetBroadcastFeed = {
   id: number;
   sessionKey: string;
@@ -108,6 +130,8 @@ export type BetBoardMarket = {
   right: BetBoardSide;
   founderBonuses: BetFounderChip[];
   warTape: BetWarTapeRow[];
+  previewLiquidity?: BetPreviewLiquidityRow[];
+  viewerAutoBetPreview?: BetViewerAutoBetPreview | null;
   broadcastFeeds: BetBroadcastFeeds;
   broadcastPreviewUrls: BetBroadcastPreviewUrls;
   viewerWager: {
@@ -121,6 +145,14 @@ export type BetBoardMarket = {
   } | null;
   winnerSide: BetSide | null;
   desyncMarket: BetBoardMarket | null;
+};
+
+export type BetBookPhase = "legacy" | "pre_game" | "opening_minute" | "late";
+
+export type BetBookPhaseSummary = {
+  phase: BetBookPhase;
+  amountWolo: number;
+  slipCount: number;
 };
 
 export type BetBookEntry = {
@@ -139,6 +171,7 @@ export type BetBookEntry = {
   executionMode: "app_only" | "onchain_escrow";
   stakeTxHash: string | null;
   stakeProofUrl: string | null;
+  phaseBreakdown?: BetBookPhaseSummary[];
 };
 
 export type BetSettledResult = {

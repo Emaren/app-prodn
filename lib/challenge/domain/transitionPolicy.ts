@@ -1627,6 +1627,7 @@ export function planChallengeRoomMessage(
     };
 
     match: {
+      participantUserIds?: number[];
       challengerUserId:
         number;
 
@@ -1643,6 +1644,7 @@ export function planChallengeRoomMessage(
 ) {
   const actorMayWrite =
     input.actor.isAdmin ||
+    input.match.participantUserIds?.includes(input.actor.id) ||
     input.actor.id ===
       input.match.challengerUserId ||
     input.actor.id ===

@@ -67,6 +67,11 @@ export type LiveGameSession = {
   }>;
   watcherCount: number;
   watcherIds: string[];
+  /** Authenticated live-monitor replay provenance; manual imports never count. */
+  authenticatedWatcherParticipantUids?: string[];
+  authenticatedLiveWatcherParticipantUids?: string[];
+  authenticatedLiveObservations?: Array<{ uid: string; observedAt: string; gameType: string; players: CanonicalReplayPlayer[] }>;
+  authenticatedLiveObservedAt?: string | null;
   watcherSessionIds: string[];
   replayFingerprints: string[];
   watcherVersions: string[];
@@ -346,12 +351,29 @@ export function readWatcherUploadMetadata(keyEventsValue: unknown) {
 
   const upload = rawUpload as Record<string, unknown>;
   const read = (value: unknown) => (typeof value === "string" ? value.trim() : "");
+  const watcherId = read(upload.watcher_id);
+  const watcherSessionId = read(upload.watcher_session_id);
+  const replayFingerprint = read(upload.replay_fingerprint);
+  const liveMonitor = upload.ingestion_provenance === "live_monitor";
+  const signatureSupplied = upload.provenance_signature_supplied === true;
+  const provenanceVerified = upload.provenance_signature_verified === true;
+  const clientSha256Verified = upload.client_sha256_verified === true;
+  const legacyTransportVerified =
+    !signatureSupplied &&
+    clientSha256Verified &&
+    Boolean(watcherId && watcherSessionId && replayFingerprint);
 
   return {
-    watcherId: read(upload.watcher_id),
-    watcherSessionId: read(upload.watcher_session_id),
-    replayFingerprint: read(upload.replay_fingerprint),
+    watcherId,
+    watcherSessionId,
+    replayFingerprint,
     watcherVersion: read(upload.watcher_version),
+    signatureSupplied,
+    provenanceVerified,
+    clientSha256Verified,
+    liveMonitor,
+    championshipPresenceVerified:
+      liveMonitor && (provenanceVerified || legacyTransportVerified),
   };
 }
 
@@ -774,6 +796,10 @@ function publicSessionKeyForGroup(
 
 function collectWatcherCoverage(rows: SessionRow[]) {
   const watcherIds = new Set<string>();
+  const authenticatedWatcherParticipantUids = new Set<string>();
+  const authenticatedLiveWatcherParticipantUids = new Set<string>();
+  const authenticatedLiveObservations: NonNullable<LiveGameSession["authenticatedLiveObservations"]> = [];
+  let earliestAuthenticatedLive = Number.POSITIVE_INFINITY;
   const watcherSessionIds = new Set<string>();
   const replayFingerprints = new Set<string>();
   const watcherVersions = new Set<string>();
@@ -781,6 +807,14 @@ function collectWatcherCoverage(rows: SessionRow[]) {
   for (const row of rows) {
     const upload = readWatcherUploadMetadata(row.key_events);
     if (!upload) continue;
+    if(upload.championshipPresenceVerified && row.user?.uid) {
+      authenticatedWatcherParticipantUids.add(row.user.uid);
+      if(row.parse_source === "watcher_live" && Array.isArray(row.players) && row.players.length >= 2 && row.game_type) {
+        authenticatedLiveWatcherParticipantUids.add(row.user.uid);
+        earliestAuthenticatedLive = Math.min(earliestAuthenticatedLive,row.createdAt.getTime());
+        authenticatedLiveObservations.push({uid:row.user.uid,observedAt:row.createdAt.toISOString(),gameType:row.game_type,players:mergeReplayPlayerIterations([row.players]).players});
+      }
+    }
     const add = (target: Set<string>, value: unknown) => {
       const normalized = typeof value === "string" ? value.trim() : "";
       if (normalized) target.add(normalized);
@@ -793,6 +827,10 @@ function collectWatcherCoverage(rows: SessionRow[]) {
   }
 
   return {
+    authenticatedWatcherParticipantUids:[...authenticatedWatcherParticipantUids].sort(),
+    authenticatedLiveWatcherParticipantUids:[...authenticatedLiveWatcherParticipantUids].sort(),
+    authenticatedLiveObservations:authenticatedLiveObservations.sort((a,b)=>Date.parse(a.observedAt)-Date.parse(b.observedAt)),
+    authenticatedLiveObservedAt:Number.isFinite(earliestAuthenticatedLive) ? new Date(earliestAuthenticatedLive).toISOString() : null,
     watcherIds: [...watcherIds].sort(),
     watcherSessionIds: [...watcherSessionIds].sort(),
     replayFingerprints: [...replayFingerprints].sort(),
@@ -916,6 +954,12 @@ function buildSessionFromRow(
     uploaders,
     watcherCount,
     watcherIds: watcherCoverage.watcherIds,
+    authenticatedWatcherParticipantUids:watcherCoverage.authenticatedWatcherParticipantUids,
+    authenticatedLiveWatcherParticipantUids:
+      watcherCoverage.authenticatedLiveWatcherParticipantUids,
+    authenticatedLiveObservations:
+      watcherCoverage.authenticatedLiveObservations,
+    authenticatedLiveObservedAt:watcherCoverage.authenticatedLiveObservedAt,
     watcherSessionIds: watcherCoverage.watcherSessionIds,
     replayFingerprints: watcherCoverage.replayFingerprints,
     watcherVersions: watcherCoverage.watcherVersions,
@@ -936,16 +980,72 @@ function buildSessionFromRow(
   };
 }
 
-export async function loadLiveSessionSnapshot(prisma: PrismaClient): Promise<{
+function mergeSessionSourceRows(
+  ...groups: readonly SessionRow[][]
+) {
+  const rowsById = new Map<number, SessionRow>();
+  for (const group of groups) {
+    for (const row of group) rowsById.set(row.id, row);
+  }
+  return [...rowsById.values()].sort((left, right) => {
+    const createdDiff = left.createdAt.getTime() - right.createdAt.getTime();
+    if (createdDiff !== 0) return createdDiff;
+    const iterationDiff = left.parse_iteration - right.parse_iteration;
+    return iterationDiff !== 0 ? iterationDiff : left.id - right.id;
+  });
+}
+
+export type LiveSessionSnapshotOptions = {
+  /**
+   * Internal evidence consumers may retain completed sessions and the
+   * authenticated watcher-live rows that prove their start for longer than
+   * the public Live Games linger window. Public callers should omit this.
+   */
+  evidenceLookbackMs?: number;
+  /** Restrict historical watcher-live evidence to relevant signed participants. */
+  evidenceParticipantUids?: readonly string[];
+};
+
+export async function loadLiveSessionSnapshot(
+  prisma: PrismaClient,
+  options: LiveSessionSnapshotOptions = {}
+): Promise<{
   activeSessions: LiveGameSession[];
   recentlyCompletedSessions: LiveGameSession[];
 }> {
-  const freshnessCutoff = new Date(Date.now() - LIVE_SESSION_FRESHNESS_MS);
-  const lingerCutoff = Date.now() - LIVE_SESSION_LINGER_MS;
-  const completedCompatCutoff = new Date(lingerCutoff);
-  const finalProofCutoff = new Date(Date.now() - LIVE_FINAL_PROOF_LOOKBACK_MS);
+  const nowMs = Date.now();
+  const requestedEvidenceLookbackMs =
+    typeof options.evidenceLookbackMs === "number" &&
+    Number.isFinite(options.evidenceLookbackMs)
+      ? Math.max(
+          LIVE_SESSION_LINGER_MS,
+          Math.min(
+            LIVE_FINAL_PROOF_LOOKBACK_MS,
+            Math.floor(options.evidenceLookbackMs)
+          )
+        )
+      : LIVE_SESSION_LINGER_MS;
+  const freshnessCutoff = new Date(nowMs - LIVE_SESSION_FRESHNESS_MS);
+  const lingerCutoff = nowMs - requestedEvidenceLookbackMs;
+  /*
+   * Keep the legacy non-final completion compatibility query on its original
+   * short UI horizon. Longer championship evidence is supplied by a separate
+   * authenticated-live provenance lane below.
+   */
+  const completedCompatCutoff = new Date(nowMs - LIVE_SESSION_LINGER_MS);
+  const finalProofCutoff = new Date(nowMs - LIVE_FINAL_PROOF_LOOKBACK_MS);
+  const historicalLiveEvidenceCutoff =
+    options.evidenceLookbackMs === undefined
+      ? null
+      : new Date(nowMs - requestedEvidenceLookbackMs);
 
-  const [activeCandidateRows, finalRows, completedLiveRows, legacyBoundaryRows] = await Promise.all([
+  const [
+    activeCandidateRows,
+    finalRows,
+    completedLiveRows,
+    legacyBoundaryRows,
+    historicalLiveEvidenceRows,
+  ] = await Promise.all([
     prisma.gameStats.findMany({
       where: {
         is_final: false,
@@ -1211,6 +1311,76 @@ export async function loadLiveSessionSnapshot(prisma: PrismaClient): Promise<{
         },
       },
     }),
+    historicalLiveEvidenceCutoff
+      ? prisma.gameStats.findMany({
+          where: {
+            is_final: false,
+            parse_source: "watcher_live",
+            ...(options.evidenceParticipantUids?.length
+              ? {
+                  userUid: {
+                    in: [...new Set(options.evidenceParticipantUids)],
+                  },
+                }
+              : {}),
+            parse_iteration: {
+              gt: 0,
+            },
+            OR: [
+              {
+                timestamp: {
+                  gte: historicalLiveEvidenceCutoff,
+                },
+              },
+              {
+                createdAt: {
+                  gte: historicalLiveEvidenceCutoff,
+                },
+              },
+            ],
+            NOT: {
+              parse_reason: {
+                in: [
+                  SUPERSEDED_PARSE_REASON,
+                  UNPARSED_FINAL_PARSE_REASON,
+                ],
+              },
+            },
+          },
+          orderBy: [
+            { createdAt: "asc" },
+            { parse_iteration: "asc" },
+            { id: "asc" },
+          ],
+          select: {
+            id: true,
+            replayHash: true,
+            replay_file: true,
+            original_filename: true,
+            parse_iteration: true,
+            createdAt: true,
+            timestamp: true,
+            played_on: true,
+            map: true,
+            game_type: true,
+            game_duration: true,
+            winner: true,
+            players: true,
+            event_types: true,
+            key_events: true,
+            disconnect_detected: true,
+            parse_reason: true,
+            parse_source: true,
+            user: {
+              select: {
+                uid: true,
+                inGameName: true,
+                steamPersonaName: true,
+              },
+            },
+          },
+        })
+      : Promise.resolve([]),
   ]);
 
   const activeRows = activeCandidateRows.filter(isActiveLiveCandidateRow);
@@ -1221,6 +1391,9 @@ export async function loadLiveSessionSnapshot(prisma: PrismaClient): Promise<{
       .filter(isCompletedLiveCompatRow)
       .map((row) => row as SessionRow),
   ];
+  const historicalLiveRows = (historicalLiveEvidenceRows ?? []).map(
+    (row) => row as SessionRow
+  );
   const legacyBoundaryRowIds = new Set(
     legacyBoundaryRows
       .filter(
@@ -1240,6 +1413,7 @@ export async function loadLiveSessionSnapshot(prisma: PrismaClient): Promise<{
       ...activeRows,
       ...completedRows,
       ...legacyBoundaryRows,
+      ...historicalLiveRows,
     ],
     legacyBoundaryRowIds
   );
@@ -1268,6 +1442,14 @@ export async function loadLiveSessionSnapshot(prisma: PrismaClient): Promise<{
     ) {
       latestLiveBySession.set(groupingKey, row);
     }
+  }
+
+  const historicalLiveRowsBySession = new Map<string, SessionRow[]>();
+  for (const row of historicalLiveRows) {
+    const groupingKey = groupingKeyFor(row);
+    const rows = historicalLiveRowsBySession.get(groupingKey) ?? [];
+    rows.push(row);
+    historicalLiveRowsBySession.set(groupingKey, rows);
   }
 
   const latestFinalBySession = new Map<string, SessionRow>();
@@ -1303,10 +1485,11 @@ export async function loadLiveSessionSnapshot(prisma: PrismaClient): Promise<{
       const finalActivityAt = getRowActivityTime(finalRow).getTime();
       if (finalActivityAt >= liveActivityAt) {
         const finalSourceRows = finalRowsBySession.get(groupingKey) ?? [finalRow];
-        const combinedSourceRows = [
-          ...(liveRowsBySession.get(groupingKey) ?? [row]),
-          ...finalSourceRows,
-        ];
+        const combinedSourceRows = mergeSessionSourceRows(
+          historicalLiveRowsBySession.get(groupingKey) ?? [],
+          liveRowsBySession.get(groupingKey) ?? [row],
+          finalSourceRows
+        );
         const completedSession = buildSessionFromRow(
           finalRow,
           sessionKey,
@@ -1353,7 +1536,10 @@ export async function loadLiveSessionSnapshot(prisma: PrismaClient): Promise<{
         row,
         sessionKey,
         "live",
-        liveRowsBySession.get(groupingKey) ?? [row],
+        mergeSessionSourceRows(
+          historicalLiveRowsBySession.get(groupingKey) ?? [],
+          liveRowsBySession.get(groupingKey) ?? [row]
+        ),
         {
           identityAliases: identityAliasesFor(groupingKey),
         }
@@ -1374,7 +1560,10 @@ export async function loadLiveSessionSnapshot(prisma: PrismaClient): Promise<{
         row,
         sessionKey,
         "completed",
-        finalRowsBySession.get(groupingKey) ?? [row],
+        mergeSessionSourceRows(
+          historicalLiveRowsBySession.get(groupingKey) ?? [],
+          finalRowsBySession.get(groupingKey) ?? [row]
+        ),
         {
           identityAliases: identityAliasesFor(groupingKey),
         }

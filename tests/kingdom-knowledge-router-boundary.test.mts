@@ -58,15 +58,33 @@ test("admin router inspector is read-only", () => {
 });
 
 
-test("shadow honors uses realtime production public trophy truth", () => {
+test("honors use one public Trophy authority in shadow and production", () => {
   assert.match(
     router,
     /async function loadHonors\(args: RepositoryArgs\) \{[\s\S]*?if \(isShadowMode\(\)\) \{[\s\S]*?return publicJson\("\/api\/trophies"\);/,
   );
 
+  const honorsStart = router.indexOf("async function loadHonors(args: RepositoryArgs)");
+  const honorsEnd = router.indexOf("async function loadClans(args: RepositoryArgs)", honorsStart);
+  assert.ok(honorsStart >= 0);
+  assert.ok(honorsEnd > honorsStart);
+
+  const honors = router.slice(honorsStart, honorsEnd);
+  assert.match(honors, /loadPublicTrophies\(args\.prisma\)/);
+  assert.match(honors, /projectedTrophyBounty\(trophy\)/);
+  assert.match(honors, /eventsByTrophyId/);
+  assert.match(honors, /take: 8/);
+  assert.doesNotMatch(honors, /eligibilityNote/);
+  assert.doesNotMatch(
+    honors,
+    /return args\.prisma\.trophy\.findMany/,
+  );
+});
+
+test("KKR strips admin-only Trophy eligibility notes from public model context", () => {
   assert.match(
     router,
-    /loadHonors[\s\S]*?prisma\.trophy/,
+    /const SENSITIVE_KEYS = new Set\([\s\S]*?"eligibilityNote"/,
   );
 });
 
