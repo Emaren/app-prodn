@@ -47,7 +47,10 @@ RM crown; eligible national/regional titles; explicitly governed special solo
 classes; World last. The first ordinarily eligible match-winner title is the
 automatic stake. Protected higher titles remain visible. One Challenge attacks
 one solo title; one replay cannot strip several titles through competing
-Challenges. Canonical registry IDs, including retained DM aliases, are used.
+Challenges. Canonical RM ELO registry IDs are `elo-rising`, `elo-challenger`,
+`elo-veteran`, `elo-elite`, and `elo-legend`; canonical DM identities remain
+independent, including the retained `dm-contender` alias for the displayed
+Challenger division.
 
 ## IV. Team championship custody
 
