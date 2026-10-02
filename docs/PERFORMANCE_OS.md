@@ -212,9 +212,9 @@ edge caching requires deployment-integrated purge proof first.
 `anonymous_dynamic_candidate_review` is no longer a dead-end classification. A
 separate fail-closed lane can promote an explicitly governed subset without weakening
 the static cache rule. `config/speed-edge-dynamic-policy.json` is the source-controlled
-staleness authority. The current bounded cohort contains **20 exact routes**, all at
+staleness authority. The current bounded cohort contains **19 exact routes**, all at
 exactly 30 seconds and empty-query HTML only. It includes the public academy,
-AI, archive, champion, clan, leaderboard, national-title and Emaren-profile
+AI, champion, clan, leaderboard, national-title and Emaren-profile
 surfaces; the request-time public `/forum`, `/market` and
 `/market/shops/chat-effects` shells; five September 17 read-only additions: both governed matchup-history
 representatives, `/traffic`, `/radio`, and `/game-stats/16218/review`; the
@@ -242,6 +242,12 @@ authorized cohort after the certified qualification observed both public and dir
 body churn across the proof window; its live database-backed presentation remains uncached.
 A later read-only review window technically passed `/bounties`, but that single stable
 window does not override the earlier churn evidence or its live contract semantics.
+On October 2, certified release `ac77f7b374ce` revoked `/battle-archive` for the
+same reason: the governed 0/15/30-second qualification observed two public body
+hashes and public/origin byte inequality while new replay-generation truth was
+legitimately advancing. The page remains force-dynamic, retains its process-local
+generation/page-coordinate cache, and remains in release prewarm/readiness proof;
+only shared Cloudflare HTML caching is removed.
 
 The September 22 read-only review tested the 15 routes still outside installed
 authority: 8/15 were technically byte-stable for 30 seconds. Product review initially
@@ -285,10 +291,10 @@ plan to the policy SHA, qualification SHA, exact release/source identity, cookie
 bypass census and the independent 30-second rule. `apply-dynamic` stages a separate
 root request and can mutate only the independent Cloudflare rule
 `AOE2WAR SpeedOS qualified dynamic HTML v1`. The root helper has its own hardcoded
-20-route allowlist, requires TTL exactly 30 seconds, reconstructs the expression,
+19-route allowlist, requires TTL exactly 30 seconds, reconstructs the expression,
 requires the existing certified static SpeedOS rule, and proves the request source SHA
 against the live production checkout before touching Cloudflare. The privileged
-allowlist contains the same 21 routes and cannot be broadened by the staged request.
+allowlist contains the same 19 routes and cannot be broadened by the staged request.
 
 Post-apply proof is intentionally broader than the new rule: every qualified
 empty-query anonymous route must converge to HIT; every known AoE2WAR cookie, RSC
@@ -307,7 +313,7 @@ proofs do not authorize mutation.
 
 The homepage LCP image has its own fail-closed edge lane. It is deliberately
 independent of both HTML cache rules: no `/_next/image` request is admitted by the
-28-route static rule or the 21-route dynamic rule.
+28-route static rule or the 19-route dynamic rule.
 
 `aoe2war speed edge plan-asset` first requires exact certified production identity:
 production SHA, GitHub `main`, and the clean operator `main` worktree must agree. It
@@ -337,7 +343,7 @@ variants must each preserve one stable body hash across the MISS-to-HIT boundary
 remain image content, retain `Vary: Accept`, and converge to `CF-Cache-Status: HIT`.
 Both 1080px and 1920px q95 variants must HIT. The same hero at q90 must remain
 outside the rule. Every route in the authoritative 28-route static cohort and
-21-route dynamic cohort must still converge to HIT, while
+19-route dynamic cohort must still converge to HIT, while
 `/api/deployment-version` must remain outside shared cache.
 
 A hero change invalidates the source-bound plan. The operator must build a fresh

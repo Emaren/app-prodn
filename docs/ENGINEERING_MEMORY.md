@@ -263,6 +263,29 @@ Unit mocks can prove application policy while still missing live-schema rejectio
 alignment must ship through the proof-bound migration rail; never bypass an atomic production
 rejection with manual SQL.
 
+## 2026-10-02 — Battle Archive replay-generation churn revokes shared edge HTML
+
+Certified release `ac77f7b374ce` re-qualified the governed dynamic-edge cohort on
+production. Nineteen routes remained byte-stable, but `/battle-archive` produced
+two public body hashes across the t=0/15/30-second window and failed exact
+public/origin byte equality on two samples. This is consistent with the page's
+actual contract: `loadPublicBattleArchivePage()` is keyed by public replay
+generation, and a newly-final replay legitimately advances that generation and
+refreshes the archive.
+
+SpeedOS therefore removes `/battle-archive` from both the source-controlled
+dynamic policy and the privileged Cloudflare allowlist. The page remains
+`force-dynamic`, keeps its process-local generation/page-coordinate cache,
+stays in production prewarm, and retains its explicit SpeedReady marker. Only
+shared Cloudflare HTML caching is revoked. The governed dynamic cohort is now
+19 exact routes.
+
+Durable rule: replay-history presentation may use generation-keyed process-local
+reuse without gaining shared-edge staleness authority. When a certified
+qualification proves body churn inside the edge TTL, revoke the shared cache
+route even if the page is read-only and passed earlier quiet windows. Never
+freeze advancing replay truth to preserve a speed score.
+
 ## 2026-09-28 — A re-qualified dynamic route can still lose cache authority later
 
 The certified Champions E2 release `fa04c02f320f` completed cleanly, but its governed

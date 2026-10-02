@@ -17,13 +17,6 @@
       "admission": "anonymous_dynamic"
     },
     {
-      "route": "/battle-archive",
-      "ttl_seconds": 30,
-      "empty_query_only": true,
-      "rationale": "Anonymous public battle archive snapshot; read-only historical presentation and exact public/origin bytes proven stable across a full 30-second window.",
-      "admission": "anonymous_dynamic"
-    },
-    {
       "route": "/champions",
       "ttl_seconds": 30,
       "empty_query_only": true,
