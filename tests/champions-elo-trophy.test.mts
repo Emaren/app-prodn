@@ -49,6 +49,8 @@ test("legacy generic ELO trophies remain RM by band while explicit DM ids stay D
 test("verified replay game type resolves the title lane without guessing", () => {
   assert.equal(replayEloLane("Random Map"), "rm");
   assert.equal(replayEloLane("RM"), "rm");
+  assert.equal(replayEloLane("TurboRandom9"), "rm");
+  assert.equal(replayEloLane("Turbo Random 12"), "rm");
   assert.equal(replayEloLane("Death Match"), "dm");
   assert.equal(replayEloLane("Deathmatch"), "dm");
   assert.equal(replayEloLane("Empire Wars"), null);
