@@ -2538,3 +2538,24 @@ only invoke the page-owned local selection setter. Ticket preparation, stake
 intent creation, Keplr connection, escrow broadcast, and wager recording remain
 behind the user's later explicit manual Lock action. Never repurpose this UI
 bridge as the claim operation for a future funded Auto Bet consumer.
+
+
+## 2026-10-02 — Championship result recovery separates start proof, result proof, and money authority
+
+Championship V2 does not depend on legacy player check-in timestamps. Acceptance
+and funding make the challenge ready; an authenticated defending-participant
+Watcher live observation proves the qualifying match started. Preserve that
+start evidence for the complete 24-hour challenge plus one-hour Commissioner
+grace, independently of the short public Live Games linger window, and scope
+historical evidence reads to participants in active title protocols.
+
+HD parser token `TurboRandom<N>` belongs to the RM championship lane. When an
+otherwise unresolved final rated 1v1 has an exact two-Steam-ID roster, a later
+Watcher snapshot may establish result authority only if the same source-lane
+ratings move equal-and-opposite by a non-zero bounded amount. Persist that proof
+append-only under `title-authority:rating-delta-v1`.
+
+Rating-delta authority may affect stats and championship custody, but never
+betting or WOLO settlement. Recorder-exit and terminal action ordering remain
+non-authoritative for 1v1 results. Unrated or ambiguous games still require
+stronger replay truth or an authorized Commissioner adjudication.

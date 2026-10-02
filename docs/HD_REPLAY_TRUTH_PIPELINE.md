@@ -155,6 +155,31 @@ serialized resignation evidence and exact resignation/team integrity
 before terminal timing is considered.
 <!-- AOE2WAR:AUTOMATIC_TERMINAL_ACTION_TAIL_V3:END -->
 
+### Exact 1v1 rating-delta authority — 2026-10-02
+
+Policy `rating-delta-v1` is a narrow automatic recovery rail for rated HD 1v1
+finals whose replay bytes do not serialize a trustworthy winner. It does not
+re-enable recorder-exit or action-tail guessing.
+
+The source row must be an unresolved, non-disconnected `watcher_final` /
+`watcher_final_submission` with an exact two-player Steam roster and a known
+ELO lane. `TurboRandom<N>` is normalized to RM; DM remains explicit DM. A later
+Watcher row within two hours must contain the exact same two Steam IDs and
+explicit ratings for the source lane. One rating must rise and the other fall
+by the same non-zero integer magnitude, bounded by the policy maximum. Confirmed
+desync or pre-existing result adjudication still fails closed.
+
+A qualifying proof appends an accepted `ReplayResultAdjudication` with a
+`title-authority:rating-delta-v1:...` idempotency key. It sets
+`affectsStats=true` and `affectsBets=false`; linked markets therefore remain
+outside automatic financial authority. The same append-only adjudication may be
+consumed by Championship V2 to project the winner and settle custody.
+
+This rail is intentionally incomplete. Unrated matches, unchanged ratings,
+non-zero-sum movement, roster changes, missing lane-specific ratings, or
+otherwise ambiguous evidence remain unresolved and require stronger replay
+truth or authorized human review.
+
 Watcher authentication and user lookup use a short database transaction that
 commits before CPU-bound binary parsing starts. Do not move parser execution
 back inside that transaction: concurrent uploads would hold connections for

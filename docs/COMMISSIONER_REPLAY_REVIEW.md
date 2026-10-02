@@ -175,6 +175,20 @@ but the automatic reconciler must return `action_tail_diagnostic_only` rather
 than creating a new accepted 1v1 adjudication.
 <!-- AOE2WAR:AUTOMATIC_TERMINAL_ADJUDICATION_V3:END -->
 
+### Automatic title-only rating-delta adjudication
+
+A separate `rating-delta-v1` rail may append an accepted result for an
+otherwise unresolved rated HD 1v1 when a later authenticated Watcher snapshot
+shows the exact same two Steam IDs with equal-and-opposite non-zero movement in
+the source RM or DM rating. It is not uploader-opponent inference and does not
+turn recorder shutdown into result authority.
+
+These rows use a `title-authority:` idempotency identity, set
+`affectsStats=true`, and always keep `affectsBets=false`. Championship V2 may
+consume that accepted result for custody settlement. A linked betting market
+still requires its separate reviewed financial-authority path; rating movement
+alone never settles bets or moves WOLO.
+
 ## Public presentation versus private evidence
 
 Public presentation should feel complete and confident without making false

@@ -112,6 +112,23 @@ Commissioner reasons, custody transition, frozen bounty and obligation IDs.
 New custody CAS and advisory/money locks fail closed on stale or conflicting
 records. Reconcile an unknown broadcast outcome read-only before retrying.
 
+Championship V2 does not use legacy player check-in timestamps as a match-start
+gate. Once all required participants have accepted and funded, a qualifying
+Watcher encounter is the start proof. The reconciler retains authenticated
+participant watcher-live evidence for the complete 24-hour challenge plus the
+one-hour Commissioner grace window, separately from the much shorter public
+Live Games linger window. Historical evidence lookup is scoped to participants
+in active championship protocols.
+
+For HD mode matching, `TurboRandom<N>` is canonical RM title play. A completed
+rated 1v1 whose replay lacks serialized winner truth may receive append-only
+`title-authority:rating-delta-v1` result authority when a later Watcher
+snapshot proves the exact same two Steam IDs moved by equal-and-opposite,
+non-zero RM or DM rating. That authority affects result/stat projection and may
+settle a championship; it never grants betting authority. An unrated or
+otherwise ambiguous final remains unresolved until stronger replay evidence or
+a reasoned Commissioner result adjudication exists.
+
 For production, use `aoe2war status`, `aoe2war audit` and `aoe2war doctor` for
 live truth. The separate authorized release uses `aoe2war finish` and its
 protected additive migration lane. Never run an ad hoc migration or restart
