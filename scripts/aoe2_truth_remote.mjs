@@ -28,6 +28,9 @@ import {
   normalizeReplayPlayers,
   resolveReplayTeams,
 } from "@/lib/teamResolution";
+import {
+  HD_REPLAY_PARSER_CONTRACT,
+} from "@/lib/replayEngineRoom";
 
 const command =
   String(
@@ -979,7 +982,8 @@ function topologyProjection(
   const recoveryRoute =
     !artifactAvailable
       ? "SOURCE_ARTIFACT_REQUIRED"
-      : run
+      : game.hasExactCurrentParserRun ===
+          true
         ? "PARSER_RESEARCH_REQUIRED"
         : "REPARSE_REQUIRED";
 
@@ -1424,7 +1428,11 @@ function classifyRoute(
     parseReason ===
       "watcher_final_submission"
   ) {
-    return "REPARSE_REQUIRED";
+    return game
+      .hasExactCurrentParserRun ===
+      true
+      ? "PARSER_RESEARCH_REQUIRED"
+      : "REPARSE_REQUIRED";
   }
 
   if (
@@ -1616,23 +1624,51 @@ function certaintyDisposition(
     route ===
       "PARSER_RESEARCH_REQUIRED"
   ) {
+    const exactCurrentParserRun =
+      game.hasExactCurrentParserRun ===
+      true;
+
+    if (
+      artifactAvailable &&
+      !exactCurrentParserRun
+    ) {
+      return {
+        disposition:
+          "REPARSE_REQUIRED",
+        currentVaultCertainty:
+          "ARTIFACT_PRESENT_REPARSE",
+        artifactAvailable:
+          true,
+        requiresParserWork:
+          true,
+        requiresHumanEvidence:
+          false,
+        terminalForCurrentVault:
+          false,
+        reason:
+          "Replay evidence exists, but the exact current parser has not yet run on these bytes.",
+      };
+    }
+
     return {
       disposition:
-        "PARSER_RESEARCH_REQUIRED",
+        exactCurrentParserRun
+          ? "PARSER_RESEARCH_REQUIRED"
+          : "SOURCE_ARTIFACT_REQUIRED",
       currentVaultCertainty:
-        artifactAvailable
+        exactCurrentParserRun
           ? "ARTIFACT_PRESENT_CURRENT_PARSER_INSUFFICIENT"
           : "SOURCE_ARTIFACT_REQUIRED",
       artifactAvailable,
       requiresParserWork:
-        artifactAvailable,
+        exactCurrentParserRun,
       requiresHumanEvidence:
-        !artifactAvailable,
+        !exactCurrentParserRun,
       terminalForCurrentVault:
         !artifactAvailable,
       reason:
-        artifactAvailable
-          ? "The current vault has replay/candidate evidence, but the reviewed parser rules cannot yet derive complete truth from it."
+        exactCurrentParserRun
+          ? "The exact current parser already ran on the canonical replay bytes, but the reviewed parser rules still cannot derive complete truth."
           : "Parser research cannot proceed because the source artifact is absent from the current vault.",
     };
   }
@@ -1978,23 +2014,140 @@ async function proveReadOnly(
   };
 }
 
+async function loadExactCurrentParserRunGameIds(
+  prisma,
+  gameIds = null
+) {
+  if (
+    Array.isArray(gameIds) &&
+    gameIds.length === 0
+  ) {
+    return new Set();
+  }
+
+  const runs =
+    await prisma.replayParseRun.findMany({
+      where: {
+        gameStatsId:
+          Array.isArray(gameIds)
+            ? {
+                in:
+                  gameIds,
+              }
+            : {
+                not:
+                  null,
+              },
+
+        parserName:
+          HD_REPLAY_PARSER_CONTRACT
+            .parserName,
+
+        parserVersion:
+          HD_REPLAY_PARSER_CONTRACT
+            .parserVersion,
+
+        passName:
+          HD_REPLAY_PARSER_CONTRACT
+            .passName,
+
+        passVersion:
+          HD_REPLAY_PARSER_CONTRACT
+            .passVersion,
+
+        schemaVersion:
+          HD_REPLAY_PARSER_CONTRACT
+            .schemaVersion,
+
+        status: {
+          in: [
+            "completed",
+            "recovered",
+          ],
+        },
+
+        candidateOnly:
+          true,
+
+        affectsPublicAggregates:
+          false,
+      },
+
+      select: {
+        gameStatsId:
+          true,
+
+        inputHash:
+          true,
+
+        gameStats: {
+          select: {
+            replayHash:
+              true,
+          },
+        },
+      },
+    });
+
+  return new Set(
+    runs
+      .filter(
+        (run) =>
+          run.gameStatsId !==
+            null &&
+          cleanTruthText(
+            run.inputHash
+          ).toLowerCase() ===
+            cleanTruthText(
+              run.gameStats
+                ?.replayHash
+            ).toLowerCase()
+      )
+      .map(
+        (run) =>
+          run.gameStatsId
+      )
+  );
+}
+
 async function loadFinalGames(
   prisma
 ) {
-  return prisma.gameStats.findMany({
-    where: {
-      is_final:
-        true,
-    },
+  const games =
+    await prisma.gameStats.findMany({
+      where: {
+        is_final:
+          true,
+      },
 
-    orderBy: {
-      id:
-        "asc",
-    },
+      orderBy: {
+        id:
+          "asc",
+      },
 
-    select:
-      baseSelect,
-  });
+      select:
+        baseSelect,
+    });
+
+  const currentRunGameIds =
+    await loadExactCurrentParserRunGameIds(
+      prisma,
+      games.map(
+        (game) =>
+          game.id
+      )
+    );
+
+  return games.map(
+    (game) => ({
+      ...game,
+
+      hasExactCurrentParserRun:
+        currentRunGameIds.has(
+          game.id
+        ),
+    })
+  );
 }
 
 function buildCorpus(
@@ -2555,9 +2708,26 @@ async function runTarget(
     );
   }
 
+  const currentRunGameIds =
+    await loadExactCurrentParserRunGameIds(
+      prisma,
+      [
+        game.id,
+      ]
+    );
+
+  const truthGame = {
+    ...game,
+
+    hasExactCurrentParserRun:
+      currentRunGameIds.has(
+        game.id
+      ),
+  };
+
   const analysis =
     analyzeGame(
-      game
+      truthGame
     );
 
   return {
@@ -2618,6 +2788,11 @@ async function runTarget(
       duration:
         game.game_duration ??
         game.duration,
+
+      exactCurrentParserRun:
+        truthGame
+          .hasExactCurrentParserRun ===
+        true,
     },
 
     truth:
