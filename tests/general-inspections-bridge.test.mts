@@ -11,6 +11,7 @@ import path from "node:path";
 import test from "node:test";
 
 import { buildBridgeGeneralInspectionsSnapshot } from "../lib/generalInspections/bridgeSnapshot.ts";
+import { WATCHER_RELEASE } from "../lib/watcherRelease.ts";
 
 const RELEASE = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 
@@ -118,7 +119,7 @@ function bridgePayload(speedCurrent = true) {
         central_docs_synced: true,
         source_repositories_synced: 5,
         source_repositories_total: 5,
-        watcher_version: "1.6.2",
+        watcher_version: WATCHER_RELEASE.version,
       },
       knowledge: {
         docs_due_7d: 0,
@@ -253,8 +254,19 @@ function makeEstate(speedCurrent = true) {
   );
 
   mkdir(downloadRoot);
-  writeFileSync(path.join(downloadRoot, "AoE2HDBets Watcher 1.6.2.exe"), "");
-  writeFileSync(path.join(downloadRoot, "AoE2HDBets Watcher 1.6.1.exe"), "");
+  writeFileSync(
+    path.join(downloadRoot, `AoE2HDBets Watcher ${WATCHER_RELEASE.version}.exe`),
+    "",
+  );
+  if (WATCHER_RELEASE.previousVersion) {
+    writeFileSync(
+      path.join(
+        downloadRoot,
+        `AoE2HDBets Watcher ${WATCHER_RELEASE.previousVersion}.exe`,
+      ),
+      "",
+    );
+  }
   writeFileSync(path.join(downloadRoot, "watcher-release-manifest-1.5.10.json"), "{}\n");
 
   const campaign = path.join(expiryRoot, "campaign-20260919T030000Z");
