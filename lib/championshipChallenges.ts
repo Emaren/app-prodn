@@ -44,6 +44,15 @@ async function lockChampionships(tx:Prisma.TransactionClient,rows:Array<{id:numb
 }
 function name(user: { uid: string; inGameName: string | null; steamPersonaName: string | null }) { return user.inGameName || user.steamPersonaName || user.uid; }
 function legIds(row: ProtocolRow) { return [row.scheduledMatchId, ...row.legs.map(leg => leg.scheduledMatchId)]; }
+function scheduledResultSidesByLeg(row:ProtocolRow,winnerSide:"challenger"|"defender") {
+  const result=new Map<number,"challenger"|"challenged">();
+  for(const participant of row.participants.filter(participant=>participant.side===winnerSide)) {
+    if(result.has(participant.fundingScheduledMatchId))throw new ChallengeConflictError("Winner funding identity is ambiguous for a championship leg.");
+    result.set(participant.fundingScheduledMatchId,participant.fundingSide==="left"? "challenger":"challenged");
+  }
+  if(legIds(row).some(id=>!result.has(id)))throw new ChallengeConflictError("Winner funding identity is incomplete for the championship settlement.");
+  return result;
+}
 async function participantProofs(prisma: Pick<PrismaClient, "scheduledMatchFundingProof" | "scheduledMatch">, row: ProtocolRow): Promise<ChampionshipParticipantProof[]> {
   const [proofs,legs] = await Promise.all([
     prisma.scheduledMatchFundingProof.findMany({ where: { scheduledMatchId: { in: legIds(row) } } }),
@@ -101,8 +110,11 @@ async function existingCreation(prisma:Pick<PrismaClient,"scheduledMatch"|"troph
   const terms=requestedCreationTerms(payload,creator.uid,selected?.id??null,creator.isAdmin&&payload.eligibilityOverride===true);
   const sealed=(row?.eligibilitySnapshot as {creationTerms?:ReturnType<typeof requestedCreationTerms>}|null)?.creationTerms;
   if(!row || existing.wagerAmountWolo!==wager || (payload.trophyId&&!selected) || (sealed?!isDeepStrictEqual(terms,sealed):selected?.id!==undefined&&selected.id!==row.trophyId))throw new ChallengeConflictError("Request identity was reused with different stake, title or roster terms.");
-  const sealedChallengers=row.participants.filter(p=>p.side==="challenger").sort((a,b)=>a.seat-b.seat).map(p=>p.uidSnapshot);
-  if(JSON.stringify(sealedChallengers)!==JSON.stringify([creator.uid,...terms.challengerTeamUids]) || !row.participants.some(p=>p.side==="defender"&&p.uidSnapshot===payload.challengedUid))throw new ChallengeConflictError("Request identity was reused with different stake, title or roster terms.");
+  // Creation identity follows immutable financial left/right, not the mutable
+  // championship role. A watcher-started generic Challenge may later inherit
+  // ambient title stakes and re-label the title holder as defender.
+  const sealedChallengers=row.participants.filter(p=>p.fundingSide==="left").sort((a,b)=>a.seat-b.seat).map(p=>p.uidSnapshot);
+  if(JSON.stringify(sealedChallengers)!==JSON.stringify([creator.uid,...terms.challengerTeamUids]) || !row.participants.some(p=>p.fundingSide==="right"&&p.uidSnapshot===payload.challengedUid))throw new ChallengeConflictError("Request identity was reused with different stake, title or roster terms.");
   return existing.id;
 }
 export async function createChampionshipChallenge(prisma: PrismaClient, viewerUserId: number, payload: ChampionshipCreationPayload) {
@@ -357,17 +369,166 @@ function spontaneousObservedStart(session:LiveGameSession,participantUids:string
   if(participantUids.some(uid=>!firstByUid.has(uid)))return null;
   return new Date(Math.max(...participantUids.map(uid=>firstByUid.get(uid)!)));
 }
-async function explicitChampionshipClaimsSession(prisma:PrismaClient,session:LiveGameSession,steamIds:string[]) {
+async function explicitChampionshipSessionClaims(prisma:PrismaClient,session:LiveGameSession,steamIds:string[]) {
   const rows=await prisma.championshipChallenge.findMany({where:{state:{in:AUTOMATIC_EVIDENCE},commissionerActionAt:null},include:CHAMPIONSHIP_INCLUDE,take:100});
+  const matches:ProtocolRow[]=[];
   for(const row of rows) {
     const roster=row.participants.map(participant=>participant.steamIdSnapshot).sort();
     if(!sameStringSet(roster,steamIds))continue;
     const participants=await participantProofs(prisma,row);
     const start=validateChampionshipBattleStart({...row,participants,battle:battleProof(session,row,participants)});
-    if(start.ok&&await readinessPrecedesStart(prisma,row,start.startedAt))return true;
+    if(start.ok&&await readinessPrecedesStart(prisma,row,start.startedAt))matches.push(row);
   }
-  return false;
+  return matches;
 }
+
+async function promoteExplicitChallengeToAmbientTitle(
+  prisma:PrismaClient,
+  input:{
+    row:ProtocolRow;
+    session:LiveGameSession;
+    startAt:Date;
+    lane:"rm"|"dm";
+    trophyId:number;
+    holderUserId:number;
+    challengerUserId:number;
+    candidate:Awaited<ReturnType<typeof loadChampionshipCandidate>>;
+  }
+) {
+  return prisma.$transaction(async tx=>{
+    await acquireChallengeDesyncAdvisoryLock(tx,input.row.scheduledMatchId);
+    await tx.$queryRaw`SELECT 1::int AS lock_acquired FROM pg_advisory_xact_lock(${SPONTANEOUS_LOCK_NAMESPACE}, ${input.session.id})`;
+    await acquireChampionshipTitleLock(tx,input.trophyId);
+    await protocolLock(tx,input.row.id);
+
+    const current=await tx.championshipChallenge.findUniqueOrThrow({where:{id:input.row.id},include:CHAMPIONSHIP_INCLUDE});
+    if(!AUTOMATIC_EVIDENCE.includes(current.state)||current.commissionerActionAt||current.defenseStartedAt||current.defenseSessionKey)return null;
+    if(current.trophyId)return current.trophyId===input.trophyId ? current.scheduledMatchId : null;
+    if(current.teamSize!==1||current.mode!==input.lane||current.participants.length!==2)return null;
+
+    const participantIds=current.participants.map(participant=>participant.userId).sort((a,b)=>a-b);
+    const expectedIds=[input.holderUserId,input.challengerUserId].sort((a,b)=>a-b);
+    if(participantIds.some((id,index)=>id!==expectedIds[index]))return null;
+
+    const trophy=await lockTrophyMoneyState(tx,input.trophyId);
+    if(!trophy||!["held","active"].includes(trophy.status))return null;
+    const policy=championshipBeltPolicy(trophy);
+    if(policy.teamSize!==1||(policy.mode!==null&&policy.mode!==input.lane)||policy.transferPolicy!=="MATCH_WINNER")return null;
+    const custody=await getChampionshipCustody(tx,trophy);
+    if(custody.roster.length!==1||custody.roster[0]?.userId!==input.holderUserId)return null;
+
+    const [holder,challenger]=await Promise.all([
+      tx.user.findUnique({where:{id:input.holderUserId},select:USER_SELECT}),
+      tx.user.findUnique({where:{id:input.challengerUserId},select:USER_SELECT}),
+    ]);
+    if(!holder||!challenger||!holder.steamId||!challenger.steamId)return null;
+    const liveCandidate={...input.candidate,representedCountry:challenger.representedCountry,genderDivision:challenger.genderDivision};
+    const eligibility=championshipEligibility(trophy,liveCandidate);
+    if(!eligibility.eligible)return null;
+
+    const priorSnapshot=current.eligibilitySnapshot&&typeof current.eligibilitySnapshot==="object"&&!Array.isArray(current.eligibilitySnapshot)
+      ? current.eligibilitySnapshot as Record<string,unknown>
+      : {};
+    const sealedEligibility={
+      ...priorSnapshot,
+      origin:SPONTANEOUS_TITLE_ORIGIN,
+      policy,
+      candidates:[{userId:challenger.id,...liveCandidate}],
+      overrideReceipt:null,
+      watcherEncounter:{
+        sessionKey:input.session.sessionKey,
+        replayId:input.session.id,
+        observedAt:input.startAt.toISOString(),
+        lane:input.lane,
+        promotedExistingChallenge:true,
+      },
+      ambientTitlePromotion:{
+        scheduledMatchId:current.scheduledMatchId,
+        holderUserId:holder.id,
+        challengerUserId:challenger.id,
+        custodyEpoch:custody.epoch,
+      },
+    };
+
+    const titleChallenge=await tx.trophyChallenge.create({data:{
+      trophyId:trophy.id,
+      challengeKind:"watcher_encounter",
+      challengerUserId:challenger.id,
+      defenderUserId:holder.id,
+      challengerWoloAddress:challenger.walletAddress,
+      defenderWoloAddress:holder.walletAddress,
+      expectedPlayerNames:[name(challenger),name(holder)],
+      requiredNationality:trophy.eligibleNationality,
+      requiredEloMin:trophy.eloBandMin,
+      requiredEloMax:trophy.eloBandMax,
+      eligibilitySnapshot:sealedEligibility as Prisma.InputJsonValue,
+      eligibilityOverride:false,
+      status:"accepted",
+      scheduledMatchId:current.scheduledMatchId,
+      watcherSessionId:input.session.sessionKey,
+      settlementStatus:"not_started",
+      createdAt:input.startAt,
+    }});
+
+    // Championship role is independent from financial left/right. Use two
+    // temporary unique role values so a holder who originally clicked
+    // Challenge can safely become the title defender without violating the
+    // protocol side/seat uniqueness constraint. fundingSide never changes.
+    await tx.$executeRaw`
+      UPDATE championship_challenge_participants
+      SET side = CASE
+        WHEN user_id = ${holder.id} THEN 'tmp_d'
+        WHEN user_id = ${challenger.id} THEN 'tmp_c'
+        ELSE side
+      END
+      WHERE protocol_id = ${current.id}
+    `;
+    await tx.$executeRaw`
+      UPDATE championship_challenge_participants
+      SET side = CASE
+        WHEN user_id = ${holder.id} THEN 'defender'
+        WHEN user_id = ${challenger.id} THEN 'challenger'
+        ELSE side
+      END
+      WHERE protocol_id = ${current.id}
+    `;
+
+    await tx.championshipChallenge.update({where:{id:current.id},data:{
+      trophyChallengeId:titleChallenge.id,
+      trophyId:trophy.id,
+      titleName:trophy.displayName,
+      mode:input.lane,
+      teamSize:1,
+      expectedCustodyEpoch:custody.epoch,
+      expectedDefenderRoster:[holder.id],
+      eligibilitySnapshot:sealedEligibility as Prisma.InputJsonValue,
+      eligibilityOverride:false,
+    }});
+
+    const promoted=await tx.championshipChallenge.findUniqueOrThrow({where:{id:current.id},include:CHAMPIONSHIP_INCLUDE});
+    await audit(tx,promoted,"watcher_title_stakes_attached",null,null,{
+      origin:SPONTANEOUS_TITLE_ORIGIN,
+      sessionKey:input.session.sessionKey,
+      replayId:input.session.id,
+      lane:input.lane,
+      holderUserId:holder.id,
+      challengerUserId:challenger.id,
+      custodyEpoch:custody.epoch,
+    },input.startAt);
+
+    const body=[
+      "Challenge game underway",
+      name(challenger)+" vs "+name(holder),
+      "Title Stakes: "+trophy.displayName,
+      "Status: Watchers confirmed both warriors in "+input.lane.toUpperCase()+" play. No check-in required.",
+      "This existing Challenge now carries the eligible championship. The verified final replay will defend or transfer it automatically.",
+    ].join("\n");
+    await postChallengeInboxNotice(tx,{senderUserId:holder.id,targetUserId:challenger.id,challengeId:current.scheduledMatchId,body,now:input.startAt});
+    await postChallengeInboxNotice(tx,{senderUserId:challenger.id,targetUserId:holder.id,challengeId:current.scheduledMatchId,body,now:input.startAt});
+    return current.scheduledMatchId;
+  },{timeout:30_000});
+}
+
 function platformSessionKeyFromEvents(value:Prisma.JsonValue|null) {
   if(!value||typeof value!=="object"||Array.isArray(value))return null;
   const matchId=(value as Record<string,unknown>).platform_match_id;
@@ -403,7 +564,10 @@ export async function materializeSpontaneousChampionshipEncounters(
     const startAt=spontaneousObservedStart(session,users.map(user=>user.uid),steamIds,lane);
     if(!startAt)continue;
     if(await prisma.championshipChallenge.findFirst({where:{defenseSessionKey:session.sessionKey},select:{id:true}}))continue;
-    if(await explicitChampionshipClaimsSession(prisma,session,steamIds))continue;
+    const explicitClaims=await explicitChampionshipSessionClaims(prisma,session,steamIds);
+    if(explicitClaims.length>1)continue;
+    const explicitClaim=explicitClaims[0]??null;
+    if(explicitClaim?.trophyId)continue;
 
     const directions=[];
     for(const holder of users) {
@@ -429,6 +593,22 @@ export async function materializeSpontaneousChampionshipEncounters(
     if(!trophy)continue;
     const candidate=await loadChampionshipCandidate(prisma,selected.challenger.id);
     if(!championshipEligibility(trophy,candidate).eligible)continue;
+
+    if(explicitClaim) {
+      const promoted=await promoteExplicitChallengeToAmbientTitle(prisma,{
+        row:explicitClaim,
+        session,
+        startAt,
+        lane,
+        trophyId:trophy.id,
+        holderUserId:selected.holder.id,
+        challengerUserId:selected.challenger.id,
+        candidate,
+      });
+      if(promoted)materialized.push(promoted);
+      continue;
+    }
+
     const requestId="championship-watch:"+session.id+":"+trophy.id;
     const clock=championshipClock(startAt);
     const proof:ChampionshipBattleProof={
@@ -667,7 +847,8 @@ export async function reconcileChampionshipEvidence(prisma: PrismaClient, option
         }
         await tx.championshipChallenge.update({where:{id:row.id},data:{state:"completed",winnerSide,resultReplayId:session.id,reasonCode:null}});
         if(current.trophyChallengeId) await tx.trophyChallenge.update({where:{id:current.trophyChallengeId},data:{status:"settled",settlementStatus:winnerSide === "challenger" ? "app_custody_transferred":"holder_retained",winnerUserId:current.participants.find(p=>p.side===winnerSide&&p.seat===0)!.userId,replayId:session.id,verificationSummary:"Complete sealed roster, participant Watcher coverage and final replay winner verified."}});
-        await tx.scheduledMatch.updateMany({where:{id:{in:legIds(current)}},data:{status:"completed",resultWinnerSide:winnerSide === "challenger"?"challenger":"challenged",linkedSessionKey:session.sessionKey,linkedMapName:session.mapName,linkedWinner:resultSession.winner,linkedDurationSeconds:session.durationSeconds,resultAt:now,settlementReadyAt:now,liveConfirmedAt:lockedStart.startedAt}});
+        const financialWinnerSides=scheduledResultSidesByLeg(current,winnerSide);
+        for(const legId of legIds(current))await tx.scheduledMatch.update({where:{id:legId},data:{status:"completed",resultWinnerSide:financialWinnerSides.get(legId)!,linkedSessionKey:session.sessionKey,linkedMapName:session.mapName,linkedWinner:resultSession.winner,linkedDurationSeconds:session.durationSeconds,resultAt:now,settlementReadyAt:now,liveConfirmedAt:lockedStart.startedAt}});
         await tx.scheduledMatch.update({where:{id:row.scheduledMatchId},data:{currentReplayClaimId:replayClaim.id}});
         await audit(tx,current,"title_result_verified",null,null,{replayId:session.id,winnerSide},now);
         if(current.trophyId) {

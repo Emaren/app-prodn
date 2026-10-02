@@ -2592,3 +2592,25 @@ hide a newly proven Rising/Veteran/Elite/Legend eligibility boundary. Public
 Championship V2 progress is Challenge issued → Watcher match detected → Watcher
 result proof → WOLO settlement → championship custody. Legacy scheduled-match
 check-in semantics remain legacy-only.
+
+## 2026-10-02 — Existing generic Challenges inherit eligible ambient title stakes
+
+A generic Championship V2 Challenge must not create a belt-free zone. If the
+same exact dual-Watcher 1v1 encounter would qualify as a spontaneous solo title
+bout, promote the single matching generic Challenge in place at authenticated
+Watcher start instead of suppressing the title or creating a second public
+Challenge/replay claim.
+
+Championship role and financial side are deliberately independent. The current
+title holder becomes championship defender and the eligible opponent becomes
+championship challenger even when the holder was the original Challenge creator.
+Never rewrite fundingSide, funding proofs, or scheduled-match left/right
+identity. On settlement, derive each financial leg's persisted winner side from
+the winning championship participants' immutable fundingSide; title-role
+reversal must never reverse WOLO ownership.
+
+Promotion revalidates exact roster, observed RM/DM lane, current custody epoch,
+MATCH_WINNER policy and live challenger eligibility under the normal lock order.
+More than one matching explicit Challenge remains ambiguous and must fail
+closed. A matching explicit title Challenge already owns the session and is not
+re-promoted.

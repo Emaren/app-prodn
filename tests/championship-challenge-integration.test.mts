@@ -45,6 +45,55 @@ async function battle(id:number,state:"live"|"completed",at?:Date,coverage?:stri
 }
 const snapshot=(session:LiveGameSession)=>({loadSnapshot:async()=>({activeSessions:session.state==="live"?[session]:[],recentlyCompletedSessions:session.state==="completed"?[session]:[]})});
 
+async function dualWatcherLiveRows(id:number,label:string) {
+ const row=await protocol(id);
+ const startedAt=new Date(row.createdAt.getTime()+60_000);
+ const platformMatchId=`qa-${prefix}-${id}`;
+ const players=row.participants.map((participant,index)=>({
+  name:participant.displayNameSnapshot,
+  steam_id:participant.steamIdSnapshot,
+  number:index+1,
+  team_id:index===0?0:null,
+  color:index,
+ }));
+ const rows=[];
+ for(let index=0;index<row.participants.length;index++) {
+  const participant=row.participants[index]!;
+  const createdAt=new Date(startedAt.getTime()+index*1000);
+  rows.push(await prisma!.gameStats.create({data:{
+   userUid:participant.uidSnapshot,
+   replay_file:`qa/${prefix}/${label}-${index}.aoe2record`,
+   original_filename:`${label}-${index}.aoe2record`,
+   replayHash:createHash("sha256").update(`${platformMatchId}:${label}:${index}`).digest("hex"),
+   game_type:"TurboRandom9",
+   map:{name:"Arabia"},
+   players,
+   played_on:startedAt,
+   createdAt,
+   timestamp:createdAt,
+   parse_iteration:index+1,
+   is_final:false,
+   disconnect_detected:false,
+   parse_source:"watcher_live",
+   parse_reason:"watcher_live_iteration",
+   key_events:{
+    platform_match_id:platformMatchId,
+    watcher_upload:{
+     watcher_id:`watcher-${label}-${participant.userId}`,
+     watcher_session_id:`session-${label}-${participant.userId}`,
+     watcher_version:"1.6.2",
+     ingestion_provenance:"live_monitor",
+     provenance_signature_supplied:false,
+     provenance_signature_verified:false,
+     client_sha256_verified:true,
+     replay_fingerprint:`qa-${label}-fingerprint`,
+    },
+   },
+  }}));
+ }
+ return {startedAt,platformMatchId,rows,players};
+}
+
 async function seedAcceptedRatingEvidence(
  left:Awaited<ReturnType<typeof warrior>>,
  right:Awaited<ReturnType<typeof warrior>>,
@@ -223,6 +272,86 @@ test("watcher play completes an explicit championship when the defender skips ac
  assert.equal(plan.liability.refundWolo,5);
  assert.equal(plan.liability.treasuryWolo,0);
  assert.equal(plan.liability.conservationOk,true);
+});
+
+test("existing generic Challenge inherits ambient title stakes when the original challenged player holds the belt",{skip:!enabled},async()=>{
+ const creator=await warrior("ambient-existing-a"),holder=await warrior("ambient-existing-b");
+ const request=prefix+":ambient-existing:defender";
+ const id=await createChampionshipChallenge(prisma!,creator.id,{challengedUid:holder.uid,wagerAmountWolo:5,mode:"rm",creationRequestId:request});
+ await modeledFunding(id);
+ const title=await soloTitle("ambient-existing-defender",holder);
+ const scheduledCount=await prisma!.scheduledMatch.count();
+ const live=await dualWatcherLiveRows(id,"ambient-existing-defender");
+ const materialized=await materializeSpontaneousChampionshipEncounters(prisma!,{gameStatsIds:live.rows.map(row=>row.id)});
+ assert.deepEqual(materialized,[id]);
+ assert.equal(await prisma!.scheduledMatch.count(),scheduledCount);
+
+ const promoted=await protocol(id);
+ assert.equal(promoted.trophyId,title.id);
+ assert.equal(promoted.titleName,title.displayName);
+ assert.equal(promoted.trophyChallengeId!==null,true);
+ assert.equal(promoted.participants.find(p=>p.side==="challenger")!.userId,creator.id);
+ assert.equal(promoted.participants.find(p=>p.side==="defender")!.userId,holder.id);
+ assert.equal(promoted.participants.find(p=>p.userId===creator.id)!.fundingSide,"left");
+ assert.equal(promoted.participants.find(p=>p.userId===holder.id)!.fundingSide,"right");
+ assert.equal(await createChampionshipChallenge(prisma!,creator.id,{challengedUid:holder.uid,wagerAmountWolo:5,mode:"rm",creationRequestId:request}),id);
+
+ const final=await battle(id,"completed",live.startedAt,[creator.uid,holder.uid],"TurboRandom9",true);
+ await reconcileChampionshipEvidence(prisma!,{challengeIds:[id],now:new Date(live.startedAt.getTime()+20*60_000),executeSettlements:false},snapshot(final));
+ const after=await protocol(id);
+ const scheduled=await prisma!.scheduledMatch.findUniqueOrThrow({where:{id}});
+ const moved=await prisma!.trophy.findUniqueOrThrow({where:{id:title.id}});
+ assert.equal(after.state,"completed");
+ assert.equal(after.winnerSide,"challenger");
+ assert.equal(moved.currentHolderUserId,creator.id);
+ assert.equal(scheduled.resultWinnerSide,"challenger");
+ assert.equal(scheduled.linkedWinner,creator.inGameName);
+
+ const plans=await loadScheduledMatchSettlementPlans(prisma!,{ids:[id],take:1});
+ const transfer=plans.rows[0]!.transfers[0]!;
+ assert.equal(transfer.action,"left_winner_wager_award");
+ assert.equal(transfer.amountWolo,10);
+ assert.equal(transfer.recipientAddress,creator.walletAddress);
+ assert.equal(plans.rows[0]!.liability.conservationOk,true);
+});
+
+test("existing generic Challenge can reverse title roles without reversing original WOLO sides",{skip:!enabled},async()=>{
+ const holder=await warrior("ambient-reverse-holder"),opponent=await warrior("ambient-reverse-opponent");
+ const request=prefix+":ambient-existing:reverse";
+ const id=await createChampionshipChallenge(prisma!,holder.id,{challengedUid:opponent.uid,wagerAmountWolo:5,mode:"rm",creationRequestId:request});
+ await modeledFunding(id);
+ const title=await soloTitle("ambient-existing-reverse",holder);
+ const scheduledCount=await prisma!.scheduledMatch.count();
+ const live=await dualWatcherLiveRows(id,"ambient-existing-reverse");
+ const materialized=await materializeSpontaneousChampionshipEncounters(prisma!,{gameStatsIds:live.rows.map(row=>row.id)});
+ assert.deepEqual(materialized,[id]);
+ assert.equal(await prisma!.scheduledMatch.count(),scheduledCount);
+
+ const promoted=await protocol(id);
+ assert.equal(promoted.trophyId,title.id);
+ assert.equal(promoted.participants.find(p=>p.side==="defender")!.userId,holder.id);
+ assert.equal(promoted.participants.find(p=>p.side==="challenger")!.userId,opponent.id);
+ assert.equal(promoted.participants.find(p=>p.userId===holder.id)!.fundingSide,"left");
+ assert.equal(promoted.participants.find(p=>p.userId===opponent.id)!.fundingSide,"right");
+ assert.equal(await createChampionshipChallenge(prisma!,holder.id,{challengedUid:opponent.uid,wagerAmountWolo:5,mode:"rm",creationRequestId:request}),id);
+
+ const final=await battle(id,"completed",live.startedAt,[holder.uid,opponent.uid],"TurboRandom9",true);
+ await reconcileChampionshipEvidence(prisma!,{challengeIds:[id],now:new Date(live.startedAt.getTime()+20*60_000),executeSettlements:false},snapshot(final));
+ const after=await protocol(id);
+ const scheduled=await prisma!.scheduledMatch.findUniqueOrThrow({where:{id}});
+ const moved=await prisma!.trophy.findUniqueOrThrow({where:{id:title.id}});
+ assert.equal(after.state,"completed");
+ assert.equal(after.winnerSide,"challenger");
+ assert.equal(moved.currentHolderUserId,opponent.id);
+ assert.equal(scheduled.resultWinnerSide,"challenged");
+ assert.equal(scheduled.linkedWinner,opponent.inGameName);
+
+ const plans=await loadScheduledMatchSettlementPlans(prisma!,{ids:[id],take:1});
+ const transfer=plans.rows[0]!.transfers[0]!;
+ assert.equal(transfer.action,"right_winner_wager_award");
+ assert.equal(transfer.amountWolo,10);
+ assert.equal(transfer.recipientAddress,opponent.walletAddress);
+ assert.equal(plans.rows[0]!.liability.conservationOk,true);
 });
 
 test("dual Watchers materialize one spontaneous solo title bout and the verified final transfers custody once",{skip:!enabled},async()=>{

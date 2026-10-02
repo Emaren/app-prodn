@@ -130,10 +130,16 @@ original meaning.
 
 An exact dual-Watcher 1v1 encounter may also materialize a zero-wager solo title
 bout without a prior Challenge when one warrior holds an eligible RM/DM-compatible
-title and the other satisfies its policy. Existing explicit Challenges take
-precedence. The ambient bout is idempotent by session/title locks and remains
-subject to exact roster, lane, custody epoch, eligibility, result, and desync
-proof before custody can move.
+title and the other satisfies its policy. A single matching explicit generic
+Championship V2 Challenge takes precedence as the public/money container, but it
+does not suppress an otherwise eligible title: at authenticated Watcher start,
+the existing Challenge inherits the ambient title stakes instead of creating a
+second card. Championship role and financial side are independent authority:
+the current holder becomes title defender and the eligible opponent title
+challenger, while each participant's original immutable funding side remains
+unchanged. The ambient bout/promotion is idempotent by session/title/protocol
+locks and remains subject to exact roster, lane, custody epoch, eligibility,
+result, and desync proof before custody can move.
 
 ## IX. Championship Reward Tribute
 
