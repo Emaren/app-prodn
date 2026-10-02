@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "performance-operating-contract"
-reviewed_at: "2026-09-28"
+reviewed_at: "2026-10-02"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -489,15 +489,23 @@ estate claims still require a new governed SpeedOS receipt.
 
 ### Durable browser performance evidence
 
-Explicit readiness-authority coverage proves that a route has a semantic Ready
-boundary. The ordinary form is a literal `SpeedReadyMarker` on the route. A
-primary client experience may instead delegate that authority through a tested
-binding such as `speedReadyRoute`, with the child component owning the actual
-`SpeedReadyMarker`. The census counts the union of direct markers and delegated
-bindings; it must not force a detached page-level marker merely to satisfy a
-source regex. Authority coverage does **not** prove what users actually
-observed. Browser timing is durably ingested by Traffic and is joined back into
-Speed OS by exact build version and Traffic's canonical route-group contract.
+Explicit readiness-authority coverage proves that a public benchmark
+representative is owned by a page template with a semantic Ready boundary. The
+canonical performance inventory resolves each concrete cohort URL to exactly
+one source template; readiness is then projected from that owner back to the
+representative. This matters for dynamic templates such as `/clans/[slug]`,
+`/game-stats/[id]`, and `/players/[uid]`, whose runtime Ready signal is
+necessarily a concrete path rather than a literal source string.
+
+Authority may be activated by a direct `SpeedReadyMarker`, a direct
+`publishExplicitSpeedReady()` call after the page's real readiness condition,
+or a tested delegated binding such as `speedReadyRoute` whose child owns the
+marker. A conditional marker merely present inside an imported generic
+component is not page authority unless the page activates that contract. The
+census must never force a detached page-level marker merely to satisfy a source
+regex. Authority coverage does **not** prove what users actually observed.
+Browser timing is durably ingested by Traffic and is joined back into Speed OS
+by exact build version and Traffic's canonical route-group contract.
 
 `aoe2war speed browser` reads the existing Traffic performance overview through
 the VPS-local admin API. The Traffic admin credential is sourced and consumed
@@ -857,10 +865,13 @@ receipt for a like-for-like comparison; Speed OS must not manufacture an
 benchmark is never substituted for a full-estate baseline.
 
 The global `SpeedRuntime` is telemetry infrastructure. Route-specific
-application-ready authority comes from either a direct `SpeedReadyMarker` or a
-tested delegated binding whose primary client boundary owns that marker. Global
-runtime presence and its double-animation-frame fallback must not be mistaken
-for complete route-level Ready authority.
+application-ready authority belongs to the owning page template and may come
+from a direct `SpeedReadyMarker`, a direct explicit Ready publish after the
+page's real condition, or a tested delegated binding whose primary client
+boundary owns that marker. Concrete benchmark representatives inherit only
+their owning template's proven authority. Global runtime presence and its
+double-animation-frame fallback must not be mistaken for complete route-level
+Ready authority.
 
 ## Production non-interference contract
 

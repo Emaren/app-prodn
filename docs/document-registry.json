@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "82f88ffbabfd76df857a10a642586fa1fe22466a133b771224b9fdfc98048410",
+      "sha256": "77b51c381a2f295f44115e46d2cc24f8e1bf7b2ef73bf783618a32c0a96eb39d",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -659,9 +659,9 @@
       "owner": "aoe2war-web",
       "path": "docs/ENGINEERING_MEMORY.md",
       "review_interval_days": 14,
-      "reviewed_at": "2026-10-01",
+      "reviewed_at": "2026-10-02",
       "sensitivity": "internal",
-      "sha256": "0517e43ecce628a30265efd47e01f01575926b37e5f275471e9b5e18ac02aeb2",
+      "sha256": "220fa22140a8b2f549671dde61391f081217f86cb60edc6879a6ab729eb2815a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1235,9 +1235,9 @@
       "owner": "aoe2war-web",
       "path": "docs/PERFORMANCE_OS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-28",
+      "reviewed_at": "2026-10-02",
       "sensitivity": "internal",
-      "sha256": "2b27102821c587d729c0866701f00d19cda36b5bb4e8bba0a89ef008d36339b0",
+      "sha256": "57f77e279009e9a8a34431f9974b7a4a5548e22cbd0f796d39e8c3a446b9a048",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2003,8 +2003,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "main",
-    "commit": "91bd19989eaa8f257189a4bad4c53b9e283814e6"
+    "branch": "integration/speed-readiness-census-v1",
+    "commit": "408f023d622d0e9fbb69f0703c353fa7eded61b4"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

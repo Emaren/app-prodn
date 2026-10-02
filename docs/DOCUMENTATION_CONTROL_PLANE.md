@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `main` at `91bd19989eaa8f257189a4bad4c53b9e283814e6`
+Implementation baseline: `integration/speed-readiness-census-v1` at `408f023d622d0e9fbb69f0703c353fa7eded61b4`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

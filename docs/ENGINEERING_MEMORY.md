@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "repository-entrypoint"
-reviewed_at: "2026-10-01"
+reviewed_at: "2026-10-02"
 review_interval_days: 14
 sensitivity: "internal"
 ---
@@ -449,12 +449,30 @@ client-side `PremiumTimeSeriesChart`, so readiness is delegated through a
 already rendered before hydration.
 
 Durable rule: observability coverage must represent authority, not syntax.
-Speed OS readiness census now unions direct markers with explicit delegated
-bindings and reports both counts separately. Do not duplicate a fake marker to
-satisfy a regex; place the authoritative signal at the component boundary that
-actually knows when the primary experience is usable. Global `SpeedRuntime`
-fallback remains diagnostic telemetry and is not promoted to route-level
-authority merely because no explicit binding exists.
+The public benchmark cohort is a set of concrete representative URLs, while
+source ownership belongs to Next page templates. Speed OS therefore resolves
+each representative through the canonical page inventory and asks whether the
+owning template has a real readiness authority boundary. Valid activation forms
+are a direct `SpeedReadyMarker`, a direct `publishExplicitSpeedReady()` call
+owned by the page after its real readiness condition, or an explicit delegated
+binding such as `speedReadyRoute` whose child owns the marker. A marker buried
+inside a generic imported component does not authorize the page unless the page
+actually activates that contract.
+
+This template-aware projection is required for dynamic pages such as
+`/clans/[slug]`, `/game-stats/[id]`, and `/players/[uid]`: their runtime
+markers correctly publish concrete URLs, but a literal-string source scan
+cannot enumerate those representatives. The 2026-10-02 repair moved current
+coverage from a misleading 30/87 literal-route count to 38/87 semantically
+owned benchmark representatives without adding decorative markers. The same
+pass corrected `/champions/legacy`, whose marker had incorrectly published
+`/champions`.
+
+Do not duplicate a fake marker to satisfy a counter. Place the authoritative
+signal at the component boundary that actually knows when the primary
+experience is usable. Global `SpeedRuntime` fallback remains diagnostic
+telemetry and is not promoted to route-level authority merely because no
+explicit binding exists.
 
 General rule: when an instrumentation metric starts driving implementation
 behavior, verify that it measures the semantic contract you care about rather
