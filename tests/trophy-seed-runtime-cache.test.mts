@@ -50,18 +50,10 @@ test("read-only production preview skips trophy seed writes", () => {
 });
 
 test("RM ELO bootstrap uses all five canonical custody ids", () => {
-  for (const id of [
-    "elo-rising",
-    "elo-challenger",
-    "elo-veteran",
-    "elo-elite",
-    "elo-legend",
-  ]) {
-    assert.match(service, new RegExp(`trophyId: definition\.id`));
-    assert.match(service, /\.\.\.eloTitles\.map/);
-    assert.match(service, /displayName: `RM \$\{definition\.displayName\}`/);
-    assert.match(service, /status: "vacant"/);
-  }
+  assert.match(service, /\.\.\.eloTitles\.map/);
+  assert.match(service, /trophyId: definition\.id/);
+  assert.match(service, /displayName: `RM \$\{definition\.displayName\}`/);
+  assert.match(service, /status: "vacant"/);
 
   assert.doesNotMatch(service, /trophyId: "elite_champion_belt"/);
   assert.doesNotMatch(service, /trophyId: "veteran_champion_rm"/);
