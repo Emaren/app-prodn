@@ -73,6 +73,45 @@ class SpeedInventoryTests(unittest.TestCase):
         ]
         self.assertEqual(len(representatives), len(set(representatives)))
 
+    def test_readiness_authority_follows_page_template_and_first_hop_boundaries(self):
+        payload = MODULE.snapshot()
+        pages = {page["template"]: page for page in payload["pages"]}
+
+        for template, representative in (
+            ("/clans/[slug]", "/clans/mystikal"),
+            ("/game-stats/[id]", "/game-stats/16218"),
+            ("/players/[uid]", "/players/u_626ea6497a984dabbc2338ef54c5d333"),
+            ("/champions/legacy", "/champions/legacy"),
+        ):
+            row = pages[template]
+            self.assertEqual(row["benchmark_representative"], representative)
+            self.assertTrue(
+                row["source_profile"]["explicit_ready_authority_signal"],
+                template,
+            )
+            self.assertGreaterEqual(
+                row["source_profile"]["ready_marker_usages"]
+                + row["source_profile"]["delegated_ready_bindings"],
+                1,
+                template,
+            )
+
+        statistics = pages["/statistics"]["source_profile"]
+        self.assertTrue(statistics["explicit_ready_authority_signal"])
+        self.assertGreaterEqual(statistics["page_ready_publish_usages"], 1)
+        self.assertEqual(statistics["dependency_ready_marker_usages"], 0)
+        self.assertGreaterEqual(statistics["delegated_marker_dependencies"], 1)
+
+        traffic = pages["/traffic"]["source_profile"]
+        self.assertTrue(traffic["explicit_ready_authority_signal"])
+        self.assertGreaterEqual(traffic["page_delegated_ready_bindings"], 1)
+        self.assertEqual(traffic["dependency_ready_marker_usages"], 0)
+        self.assertGreaterEqual(traffic["delegated_marker_dependencies"], 1)
+
+        self.assertFalse(
+            pages["/about"]["source_profile"]["explicit_ready_authority_signal"]
+        )
+
     def test_asset_inventory_is_typed_and_size_accounted(self):
         assets = MODULE.asset_inventory()
 

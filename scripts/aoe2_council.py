@@ -178,12 +178,23 @@ def ready_coverage() -> dict[str, Any]:
 
         ready = aoe2_speed.ready_coverage()
         cohort_count = len(aoe2_speed_inventory.cohort_routes())
+        representative_total = int(
+            ready.get("representative_route_count") or cohort_count
+        )
+        representative_ready = int(
+            ready.get("representative_ready_route_count")
+            if ready.get("representative_route_count")
+            else ready.get("ready_route_count")
+            or 0
+        )
         return {
-            "ready_routes": int(ready.get("ready_route_count") or 0),
+            "ready_routes": representative_ready,
+            "literal_ready_routes": int(ready.get("ready_route_count") or 0),
+            "authority_templates": int(ready.get("authority_template_count") or 0),
             "marker_mounts": int(ready.get("ready_marker_usages") or 0),
             "delegated_bindings": int(ready.get("delegated_ready_bindings") or 0),
             "authority_bindings": int(ready.get("ready_authority_bindings") or 0),
-            "baseline_routes": cohort_count,
+            "baseline_routes": representative_total,
         }
     except Exception:
         return {
