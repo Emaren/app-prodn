@@ -236,7 +236,10 @@ export async function mutateChampionshipParticipant(prisma: PrismaClient, challe
   return true;
 }
 function battleProof(session: LiveGameSession,row:ProtocolRow,participants:ChampionshipParticipantProof[]):ChampionshipBattleProof {
-  const base={id:session.id,sessionKey:session.sessionKey,startedAt:null,mode:replayEloLane(session.gameType),state:session.state,finalProofPending:session.finalProofPending,desync:session.disconnectDetected,watcherParticipantUids:session.authenticatedWatcherParticipantUids ?? [],players:session.players};
+  // HD's raw disconnect flag also covers final files that simply lack a
+  // postgame/resignation marker. Competitive desync authority lives in the
+  // append-only ReplayDesyncIncident stream checked during settlement.
+  const base={id:session.id,sessionKey:session.sessionKey,startedAt:null,mode:replayEloLane(session.gameType),state:session.state,finalProofPending:session.finalProofPending,desync:false,watcherParticipantUids:session.authenticatedWatcherParticipantUids ?? [],players:session.players};
   if(row.defenseStartedAt && row.defenseSessionKey===session.sessionKey) {
     const frozen=row.defenseProof as ChampionshipBattleProof|null;
     return {...base,startedAt:row.defenseStartedAt.toISOString(),startProvenance:"preserved_defense_start",startWatcherParticipantUids:frozen?.startWatcherParticipantUids??[]};

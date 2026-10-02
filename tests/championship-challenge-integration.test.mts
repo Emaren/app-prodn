@@ -106,6 +106,7 @@ test("accepted Commissioner replay verdict settles an ambiguous watched champion
  const a=await warrior("commissioner-result-a",true),b=await warrior("commissioner-result-b");
  const id=await createChampionshipChallenge(prisma!,a.id,{challengedUid:b.uid,wagerAmountWolo:5,mode:"rm"}),row=await modeledFunding(id);
  const completed=await battle(id,"completed",new Date(row.createdAt.getTime()+60_000),[a.uid,b.uid],"TurboRandom9",false);
+ completed.disconnectDetected=true;
  const replayHash=createHash("sha256").update(prefix+":"+id+":commissioner-result").digest("hex");
  const updatedGame=await prisma!.gameStats.update({where:{id:completed.id},data:{replayHash}});
  completed.replayHash=replayHash;
