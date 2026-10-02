@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5244a1e14eb6c5678c29988d3f0926574d5bff9cb4f6dccb89e3f558951a45cf",
+      "sha256": "d43a92a7e93aa4722693c7c7389f78729912fd7e7031907ecb2fbea30139ef00",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1787,9 +1787,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WATCHER_TELEMETRY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-29",
+      "reviewed_at": "2026-10-02",
       "sensitivity": "restricted",
-      "sha256": "c668e6684ad619f6fa3c4d7b1d41fe12ca31c136a8309ec0437afba77d7574b3",
+      "sha256": "c2c53c243e88a196b8a9ed0f7d79503999f502efa25500bae856da46ac1edab7",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2004,7 +2004,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "main",
-    "commit": "969b279c07b725351c87876d8a2f6acedbf317a3"
+    "commit": "bc11a13b281e33fa8adf025cc42ab76992506ab0"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
