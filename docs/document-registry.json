@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "77b51c381a2f295f44115e46d2cc24f8e1bf7b2ef73bf783618a32c0a96eb39d",
+      "sha256": "5244a1e14eb6c5678c29988d3f0926574d5bff9cb4f6dccb89e3f558951a45cf",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2003,8 +2003,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "integration/speed-readiness-census-v1",
-    "commit": "408f023d622d0e9fbb69f0703c353fa7eded61b4"
+    "branch": "main",
+    "commit": "969b279c07b725351c87876d8a2f6acedbf317a3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
