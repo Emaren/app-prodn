@@ -18,7 +18,7 @@ type TransferGroup = {
   seats: Array<{ seat: number; nftId: string; nftClassId: string | null; status: string;
     expectedOwnerAddress: string | null; recipientAddress: string | null; txHash: string | null; errorCode: string | null }>;
 };
-type CommissionerAction = "protect" | "veto" | "extend" | "force_default" | "review" | "acknowledge_evidence";
+type CommissionerAction = "protect" | "veto" | "extend" | "force_default" | "review" | "acknowledge_evidence" | "resume_evidence";
 const ACTIONS: Array<{ action: CommissionerAction; label: string }> = [
   { action: "protect", label: "Protect champion" },
   { action: "veto", label: "Veto defense" },
@@ -26,6 +26,7 @@ const ACTIONS: Array<{ action: CommissionerAction; label: string }> = [
   { action: "force_default", label: "Evaluate default" },
   { action: "review", label: "Hold for review" },
   { action: "acknowledge_evidence", label: "Record exceptional evidence" },
+  { action: "resume_evidence", label: "Resume preserved evidence" },
 ];
 const fieldClass = "w-full rounded-xl border border-white/15 bg-slate-950 px-3 py-2 text-sm text-white focus:border-emerald-300 focus:outline-none";
 
@@ -138,7 +139,7 @@ export default function ChampionshipCommissionerCockpit({ trophies, users, onCus
             <div className="mt-3 flex flex-wrap gap-2 text-xs">{row.participants.map(participant => <span key={`${participant.side}:${participant.seat}`} className="rounded-lg bg-white/5 px-2 py-1 text-slate-300">{participant.name} · {participant.side} · {participant.accepted ? "accepted" : "response required"} · {participant.funded ? "funding verified" : "funding required"} · {participant.notified ? "card delivered" : "delivery unproven"}</span>)}</div>
             <p className="mt-2 text-[11px] text-slate-400">State: {row.phase} · reason: {row.reasonCode || "none"} · start: {row.defenseStartedAt || "unproven"}</p>
             <label className="mt-3 block text-xs text-slate-400">Immutable disposition reason<input className={`${fieldClass} mt-1`} maxLength={1000} value={reasons[row.id] || ""} onChange={event => setReasons(current => ({ ...current, [row.id]: event.target.value }))} /></label>
-            <div className="mt-3 flex flex-wrap gap-2">{ACTIONS.map(({ action, label }) => <button key={action} type="button" disabled={busy || !reasons[row.id]?.trim()} onClick={() => void act(row, action)} className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs text-slate-200 hover:border-emerald-200/40 disabled:opacity-40">{label}</button>)}<label className="flex items-center gap-2 text-xs text-slate-400">Extension hours<input type="number" min={1} max={168} value={extensionHours} onChange={event => setExtensionHours(event.target.value)} className="w-16 rounded-lg border border-white/15 bg-black/30 p-2 text-white" /></label></div>
+            <div className="mt-3 flex flex-wrap gap-2">{ACTIONS.filter(({ action }) => action !== "resume_evidence" || (row.phase === "commissioner_review" && row.reasonCode === "MATCH_DESYNC" && Boolean(row.defenseStartedAt))).map(({ action, label }) => <button key={action} type="button" disabled={busy || !reasons[row.id]?.trim()} onClick={() => void act(row, action)} className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs text-slate-200 hover:border-emerald-200/40 disabled:opacity-40">{label}</button>)}<label className="flex items-center gap-2 text-xs text-slate-400">Extension hours<input type="number" min={1} max={168} value={extensionHours} onChange={event => setExtensionHours(event.target.value)} className="w-16 rounded-lg border border-white/15 bg-black/30 p-2 text-white" /></label></div>
           </article>;
         })}
         {rows.length === 0 && !error ? <p className="text-xs text-slate-400">No championship defaults or reviews require attention.</p> : null}

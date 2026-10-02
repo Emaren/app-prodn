@@ -142,6 +142,39 @@ test("accepted Commissioner replay verdict settles an ambiguous watched champion
  assert.equal(adjudication.affectsStats,true);
  assert.equal(adjudication.affectsBets,false);
 });
+test("Commissioner can resume a stale machine MATCH_DESYNC review without changing frozen match proof",{skip:!enabled},async()=>{
+ const challenger=await warrior("resume-a"),defender=await warrior("resume-b"),admin=await warrior("resume-admin",true);
+ const id=await createChampionshipChallenge(prisma!,challenger.id,{challengedUid:defender.uid,wagerAmountWolo:5,mode:"rm"}),row=await modeledFunding(id);
+ const final=await battle(id,"completed",new Date(row.createdAt.getTime()+60_000),[challenger.uid,defender.uid],"TurboRandom9",false);
+ const startedAt=new Date(final.playedOn!);
+ await prisma!.championshipChallenge.update({where:{scheduledMatchId:id},data:{state:"commissioner_review",reasonCode:"MATCH_DESYNC",defenseStartedAt:startedAt,defenseSessionKey:final.sessionKey,defenseProof:final as any}});
+ await prisma!.scheduledMatch.update({where:{id},data:{status:"result_pending",liveConfirmedAt:startedAt,linkedSessionKey:final.sessionKey}});
+ let reconciles=0;
+ await commissionerChampionshipAction(prisma!,admin.id,{challengeId:id,action:"resume_evidence",reason:"Legacy raw disconnect semantics created a false machine review."},{reconcileEvidence:async(_db,options)=>{reconciles+=1;assert.deepEqual(options.challengeIds,[id]);assert.equal(options.executeSettlements,false);return[];}});
+ const after=await protocol(id),scheduled=await prisma!.scheduledMatch.findUniqueOrThrow({where:{id}});
+ assert.equal(after.state,"defense_in_progress");
+ assert.equal(after.reasonCode,null);
+ assert.equal(after.defenseStartedAt?.toISOString(),startedAt.toISOString());
+ assert.equal(after.defenseSessionKey,final.sessionKey);
+ assert.equal(after.challengeDeadline.toISOString(),row.challengeDeadline.toISOString());
+ assert.equal(after.commissionerActionAt,null);
+ assert.equal(scheduled.status,"live_confirmed");
+ assert.equal(scheduled.linkedSessionKey,final.sessionKey);
+ assert.equal(reconciles,1);
+});
+test("Commissioner cannot resume machine review across a human-confirmed desync incident",{skip:!enabled},async()=>{
+ const challenger=await warrior("resume-block-a"),defender=await warrior("resume-block-b"),admin=await warrior("resume-block-admin",true);
+ const id=await createChampionshipChallenge(prisma!,challenger.id,{challengedUid:defender.uid,wagerAmountWolo:5,mode:"rm"}),row=await modeledFunding(id);
+ const final=await battle(id,"completed",new Date(row.createdAt.getTime()+60_000),[challenger.uid,defender.uid],"TurboRandom9",false);
+ const startedAt=new Date(final.playedOn!);
+ await prisma!.championshipChallenge.update({where:{scheduledMatchId:id},data:{state:"commissioner_review",reasonCode:"MATCH_DESYNC",defenseStartedAt:startedAt,defenseSessionKey:final.sessionKey,defenseProof:final as any}});
+ await prisma!.scheduledMatch.update({where:{id},data:{status:"result_pending",liveConfirmedAt:startedAt,linkedSessionKey:final.sessionKey}});
+ await prisma!.replayDesyncIncident.create({data:{gameStatsId:final.id,scheduledMatchId:id,reviewerUserId:admin.id,idempotencyKey:`${prefix}:resume-desync:${id}`,inputHash:"8".repeat(64),desyncOccurred:true,reviewerUidSnapshot:admin.uid,reviewerDisplayNameSnapshot:admin.inGameName!,sourceReplayHash:"9".repeat(64),sourceParseIteration:1,machineEvidence:{qaFixture:true}}});
+ await assert.rejects(()=>commissionerChampionshipAction(prisma!,admin.id,{challengeId:id,action:"resume_evidence",reason:"Attempt to resume must fail closed."},{reconcileEvidence:async()=>{throw new Error("must not reconcile");}}),/human-confirmed desync/i);
+ const after=await protocol(id);
+ assert.equal(after.state,"commissioner_review");
+ assert.equal(after.reasonCode,"MATCH_DESYNC");
+});
 test("authenticated exact defending start freezes default and a full final after five hours transfers once",{skip:!enabled},async()=>{
  const a=await warrior("proof-a"),b=await warrior("proof-b"),title=await soloTitle("proof",b);
  const id=await createChampionshipChallenge(prisma!,a.id,{challengedUid:b.uid,wagerAmountWolo:5}),row=await modeledFunding(id);

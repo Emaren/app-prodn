@@ -598,7 +598,7 @@ export async function loadActionableChampionshipPayments(prisma:PrismaClient,tak
   const rows=await prisma.championshipChallenge.findMany({where:{id:{in:ids.map(row=>row.id)}},include:CHAMPIONSHIP_INCLUDE});
   return ids.map(id=>rows.find(row=>row.id===id.id)!);
 }
-export async function commissionerChampionshipAction(prisma:PrismaClient,actorUserId:number,input:{challengeId:number;action:string;reason:string;extensionHours?:number}) {
+export async function commissionerChampionshipAction(prisma:PrismaClient,actorUserId:number,input:{challengeId:number;action:string;reason:string;extensionHours?:number},dependencies:{reconcileEvidence?:typeof reconcileChampionshipEvidence}={}) {
   const row=await prisma.championshipChallenge.findUnique({where:{scheduledMatchId:input.challengeId},include:CHAMPIONSHIP_INCLUDE});
   if(!row)throw new ChallengeConflictError("Championship Challenge not found.",404);
   const reason=input.reason?.trim();
@@ -607,6 +607,29 @@ export async function commissionerChampionshipAction(prisma:PrismaClient,actorUs
   if(!admin?.isAdmin)throw new ChallengeConflictError("Commissioner authority required.",403);
   const now=new Date();
   if(input.action==="force_default") {if(!ACTIVE.includes(row.state))throw new ChallengeConflictError("This Challenge already reached a durable disposition.");await defaultDisposition(prisma,row,now,true,actorUserId,reason);return;}
+  if(input.action==="resume_evidence") {
+    const frozen=row.defenseProof as ChampionshipBattleProof|null;
+    const replayId=Number(frozen?.id);
+    if(row.state!=="commissioner_review"||row.reasonCode!=="MATCH_DESYNC"||row.commissionerActionAt)throw new ChallengeConflictError("Only an untouched machine MATCH_DESYNC review can resume automatic evidence.",409);
+    if(!row.defenseStartedAt||!row.defenseSessionKey||!Number.isSafeInteger(replayId)||replayId<=0)throw new ChallengeConflictError("Preserved match-start and replay evidence are required before resuming review.",409);
+    await prisma.$transaction(async tx=>{
+      await acquireChallengeDesyncAdvisoryLock(tx,row.scheduledMatchId);
+      await lockChampionship(tx,row);
+      const current=await tx.championshipChallenge.findUniqueOrThrow({where:{id:row.id},include:CHAMPIONSHIP_INCLUDE});
+      if(current.state!=="commissioner_review"||current.reasonCode!=="MATCH_DESYNC"||current.commissionerActionAt)throw new ChallengeConflictError("Championship review changed; reload before resuming evidence.",409);
+      const currentProof=current.defenseProof as ChampionshipBattleProof|null;
+      const currentReplayId=Number(currentProof?.id);
+      if(!current.defenseStartedAt||!current.defenseSessionKey||currentReplayId!==replayId)throw new ChallengeConflictError("Preserved championship evidence changed; reload before resuming.",409);
+      const incidents=await loadDesyncIncidentsForSettlement(tx,{gameStatsId:replayId,scheduledMatchId:current.scheduledMatchId});
+      assertWinnerSettlementAllowed({incidents,competitiveCandidate:{gameStatsId:replayId,observedAt:now}});
+      assertTitleTransferAllowed({incidents,competitiveCandidate:{gameStatsId:replayId,observedAt:now}});
+      await tx.championshipChallenge.update({where:{id:current.id},data:{state:"defense_in_progress",reasonCode:null}});
+      await tx.scheduledMatch.update({where:{id:current.scheduledMatchId},data:{status:"live_confirmed",liveConfirmedAt:current.defenseStartedAt,linkedSessionKey:current.defenseSessionKey}});
+      await audit(tx,current,"title_evidence_resumed",null,actorUserId,{reason,previousReasonCode:"MATCH_DESYNC",replayId,sessionKey:current.defenseSessionKey},now);
+    },{timeout:30_000});
+    await (dependencies.reconcileEvidence??reconcileChampionshipEvidence)(prisma,{challengeIds:[row.scheduledMatchId],executeSettlements:false});
+    return;
+  }
   if(!["protect","veto","extend","review","acknowledge_evidence"].includes(input.action))throw new ChallengeConflictError("Unknown Commissioner action.",400);
   await prisma.$transaction(async tx=>{
     await lockChampionship(tx,row);
