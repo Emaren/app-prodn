@@ -1834,9 +1834,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WOLO_FAUCET_SECURITY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-01",
+      "reviewed_at": "2026-10-01",
       "sensitivity": "restricted",
-      "sha256": "cdba005d874f1613c9a0b699d161fdc349eae27c9dc14e7ca4336fba964070aa",
+      "sha256": "9be52f24cdcd5d8c84479a70b9dbedc712af549485b1ef5e9e988643cdcbae28",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1879,9 +1879,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WOLO_WALLET_AND_HOLDER_PROJECTION.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-01",
+      "reviewed_at": "2026-10-01",
       "sensitivity": "internal",
-      "sha256": "b3c9645113cb921cc4498fc19e1af347341cbf00192ef539c207bffe205f8064",
+      "sha256": "bf0b108c2f59bac59b28e37cff9f8b3ebe9ab30d960d3a05683b05a724674220",
       "source_of_truth": "git",
       "status": "active",
       "systems": [

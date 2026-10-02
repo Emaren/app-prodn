@@ -8,7 +8,7 @@ systems: ["app-prodn","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "wallet-read-model-contract"
-reviewed_at: "2026-09-01"
+reviewed_at: "2026-10-01"
 review_interval_days: 30
 sensitivity: "internal"
 ---
