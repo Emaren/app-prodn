@@ -49,6 +49,7 @@ type TrophySeed = {
   definition: ChampionTitleDefinition;
   family: "national" | "elo" | "champion";
   tier: string;
+  displayName?: string;
   holderName?: string;
   guardianName?: string;
   status: "held" | "guardian_held" | "vacant";
@@ -87,13 +88,14 @@ const SEEDS: TrophySeed[] = [
     status: "vacant",
   },
   ...[...teamChampionshipTitles,...modeChampionshipTitles,...dmEloChampionshipTitles].map(definition=>({trophyId:definition.id,definition,family:definition.type === "elo" ? "elo" as const : "champion" as const,tier:definition.type === "elo" ? definition.shortName : "Champion",status:"vacant" as const})),
-  {
-    trophyId: "elite_champion_belt",
-    definition: eloTitles.find((title) => title.id === "elo-elite")!,
-    family: "elo",
-    tier: "Elite",
-    status: "vacant",
-  },
+  ...eloTitles.map((definition) => ({
+    trophyId: definition.id,
+    definition,
+    family: "elo" as const,
+    tier: definition.shortName,
+    displayName: `RM ${definition.displayName}`,
+    status: "vacant" as const,
+  })),
 ];
 
 
@@ -1280,7 +1282,7 @@ export async function ensureTrophySeedData(prisma: PrismaClient) {
     const created = await prisma.trophy.create({
       data: {
         trophyId: seed.trophyId,
-        displayName: definition.displayName,
+        displayName: seed.displayName ?? definition.displayName,
         kind: "belt",
         family: seed.family,
         tier: seed.tier,
