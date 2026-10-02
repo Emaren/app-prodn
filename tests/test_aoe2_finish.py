@@ -85,6 +85,42 @@ class FinishTests(unittest.TestCase):
             }
         )
 
+    def test_workshop_chronicler_uses_certified_runtime_sha_for_docs_only_descendant(self):
+        runtime_sha = "b" * 40
+        docs_head = "c" * 40
+        release = self.workshop_release()
+        release["local"]["head"] = docs_head
+        release["production"]["source_sha"] = runtime_sha
+        release["certification"] = {
+            "status": "CERTIFIED",
+            "release_sha": runtime_sha,
+        }
+        passed = MODULE.subprocess.CompletedProcess(
+            args=["ssh"], returncode=0, stdout=self.workshop_pass_output()
+        )
+
+        with (
+            patch.object(
+                MODULE.aoe2_doctor,
+                "load_contract",
+                return_value=self.workshop_contract(),
+            ),
+            patch.object(
+                MODULE.subprocess,
+                "run",
+                return_value=passed,
+            ) as run,
+        ):
+            result = MODULE.run_workshop_chronicler(
+                certified_release=release,
+                progress=MODULE.Progress(enabled=False),
+            )
+
+        self.assertEqual(result["status"], "PASS")
+        remote_script = run.call_args.kwargs["input"]
+        self.assertIn(runtime_sha, remote_script)
+        self.assertNotIn(docs_head, remote_script)
+
     def test_workshop_chronicler_retries_ssh_255_then_passes(self):
         failed = MODULE.subprocess.CompletedProcess(
             args=["ssh"], returncode=255, stdout=""

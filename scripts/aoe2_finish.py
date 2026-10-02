@@ -3700,6 +3700,7 @@ def run_workshop_chronicler(
 
     production = certified_release.get("production", {})
     local = certified_release.get("local", {})
+    certification = certified_release.get("certification", {})
     canonical = contract["canonical"]
 
     host = str(
@@ -3711,7 +3712,12 @@ def run_workshop_chronicler(
         or canonical["production_repo"]
     )
     service = str(canonical["service"])
-    release_sha = str(local.get("head") or "")
+    release_sha = str(
+        certification.get("release_sha")
+        or production.get("source_sha")
+        or local.get("head")
+        or ""
+    )
 
     if not release_sha:
         raise FinishError(
