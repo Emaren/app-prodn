@@ -2,7 +2,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import test from "node:test";
-import { PrismaClient } from "../lib/generated/prisma/index.js";
+import { Prisma, PrismaClient } from "../lib/generated/prisma/index.js";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { createChampionshipChallenge,loadChampionshipProjection,loadActionableChampionshipPayments,mutateChampionshipParticipant,reconcileChampionshipChallenges,reconcileChampionshipEvidence,commissionerChampionshipAction,CHAMPIONSHIP_INCLUDE } from "../lib/championshipChallenges.ts";
 import { getChampionshipCustody,transitionChampionshipCustody } from "../lib/trophies/championship.ts";
@@ -147,7 +147,7 @@ test("Commissioner can resume a stale machine MATCH_DESYNC review without changi
  const id=await createChampionshipChallenge(prisma!,challenger.id,{challengedUid:defender.uid,wagerAmountWolo:5,mode:"rm"}),row=await modeledFunding(id);
  const final=await battle(id,"completed",new Date(row.createdAt.getTime()+60_000),[challenger.uid,defender.uid],"TurboRandom9",false);
  const startedAt=new Date(final.playedOn!);
- await prisma!.championshipChallenge.update({where:{scheduledMatchId:id},data:{state:"commissioner_review",reasonCode:"MATCH_DESYNC",defenseStartedAt:startedAt,defenseSessionKey:final.sessionKey,defenseProof:final as any}});
+ await prisma!.championshipChallenge.update({where:{scheduledMatchId:id},data:{state:"commissioner_review",reasonCode:"MATCH_DESYNC",defenseStartedAt:startedAt,defenseSessionKey:final.sessionKey,defenseProof:final as unknown as Prisma.InputJsonValue}});
  await prisma!.scheduledMatch.update({where:{id},data:{status:"result_pending",liveConfirmedAt:startedAt,linkedSessionKey:final.sessionKey}});
  let reconciles=0;
  await commissionerChampionshipAction(prisma!,admin.id,{challengeId:id,action:"resume_evidence",reason:"Legacy raw disconnect semantics created a false machine review."},{reconcileEvidence:async(_db,options)=>{reconciles+=1;assert.deepEqual(options.challengeIds,[id]);assert.equal(options.executeSettlements,false);return[];}});
@@ -167,7 +167,7 @@ test("Commissioner cannot resume machine review across a human-confirmed desync 
  const id=await createChampionshipChallenge(prisma!,challenger.id,{challengedUid:defender.uid,wagerAmountWolo:5,mode:"rm"}),row=await modeledFunding(id);
  const final=await battle(id,"completed",new Date(row.createdAt.getTime()+60_000),[challenger.uid,defender.uid],"TurboRandom9",false);
  const startedAt=new Date(final.playedOn!);
- await prisma!.championshipChallenge.update({where:{scheduledMatchId:id},data:{state:"commissioner_review",reasonCode:"MATCH_DESYNC",defenseStartedAt:startedAt,defenseSessionKey:final.sessionKey,defenseProof:final as any}});
+ await prisma!.championshipChallenge.update({where:{scheduledMatchId:id},data:{state:"commissioner_review",reasonCode:"MATCH_DESYNC",defenseStartedAt:startedAt,defenseSessionKey:final.sessionKey,defenseProof:final as unknown as Prisma.InputJsonValue}});
  await prisma!.scheduledMatch.update({where:{id},data:{status:"result_pending",liveConfirmedAt:startedAt,linkedSessionKey:final.sessionKey}});
  await prisma!.replayDesyncIncident.create({data:{gameStatsId:final.id,scheduledMatchId:id,reviewerUserId:admin.id,idempotencyKey:`${prefix}:resume-desync:${id}`,inputHash:"8".repeat(64),desyncOccurred:true,reviewerUidSnapshot:admin.uid,reviewerDisplayNameSnapshot:admin.inGameName!,sourceReplayHash:"9".repeat(64),sourceParseIteration:1,machineEvidence:{qaFixture:true}}});
  await assert.rejects(()=>commissionerChampionshipAction(prisma!,admin.id,{challengeId:id,action:"resume_evidence",reason:"Attempt to resume must fail closed."},{reconcileEvidence:async()=>{throw new Error("must not reconcile");}}),/human-confirmed desync/i);
