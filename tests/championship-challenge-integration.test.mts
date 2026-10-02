@@ -1,5 +1,6 @@
 /** Explicit disposable database only. No production connection, no invented chain proof. */
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import test from "node:test";
 import { PrismaClient } from "../lib/generated/prisma/index.js";
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -7,6 +8,8 @@ import { createChampionshipChallenge,loadChampionshipProjection,loadActionableCh
 import { getChampionshipCustody,transitionChampionshipCustody } from "../lib/trophies/championship.ts";
 import { loadScheduledMatchSettlementPlans, executeScheduledMatchSettlement } from "../lib/scheduledMatchSettlements.ts";
 import type { LiveGameSession } from "../lib/liveSessionSnapshot.ts";
+import { buildRosterHash, normalizeReplayPlayers } from "../lib/teamResolution.ts";
+import { submitReplayResultAdjudication } from "../lib/replayResultAdjudications.ts";
 const url=process.env.CHAMPIONSHIP_QA_DATABASE_URL;
 const enabled=Boolean(url&&/^postgresql:\/\/(?:[^@]+@)?(?:127\.0\.0\.1|localhost):5432\/aoe2_championship_v1_qa_/.test(url));
 if(url&&!enabled)throw new Error("Integration tests require an explicitly named isolated local championship QA database.");
@@ -30,11 +33,11 @@ async function modeledFunding(id:number,sides:string[]=["challenger","defender"]
  if(sides.length===2)await prisma!.championshipChallenge.update({where:{id:row.id},data:{state:"ready"}});
  return protocol(id);
 }
-async function battle(id:number,state:"live"|"completed",at?:Date,coverage?:string[],gameType="rm") {
+async function battle(id:number,state:"live"|"completed",at?:Date,coverage?:string[],gameType="rm",winnerKnown=true) {
  const row=await protocol(id),startedAt=at??new Date(row.createdAt.getTime()+1000);
- const players=row.participants.map(p=>({steamId:p.steamIdSnapshot,teamId:p.side==="challenger"?"0":"1",winner:p.side==="challenger",name:p.displayNameSnapshot}));
+ const players=row.participants.map(p=>({steamId:p.steamIdSnapshot,teamId:p.side==="challenger"?"0":"1",winner:winnerKnown?p.side==="challenger":null,name:p.displayNameSnapshot}));
  const game=await prisma!.gameStats.create({data:{replay_file:`qa/${prefix}/${id}`,replayHash:`${prefix}-${id}-${state}-${Date.now()}`,is_final:state==="completed",game_type:gameType,players,played_on:startedAt,createdAt:startedAt,parse_source:state==="live"?"watcher_live":"watcher_final",parse_reason:"qa_modelled_evidence"}});
- return {id:game.id,sessionKey:`platform:qa-${prefix}-${id}`,state,playedOn:startedAt.toISOString(),gameType,players,authenticatedWatcherParticipantUids:coverage??row.participants.map(p=>p.uidSnapshot),authenticatedLiveObservations:[{uid:row.participants.find(p=>p.side==="defender")!.uidSnapshot,observedAt:startedAt.toISOString(),gameType,players}],finalProofPending:false,disconnectDetected:false,mapName:"QA Arabia",winner:row.participants.find(p=>p.side==="challenger")!.displayNameSnapshot,durationSeconds:state==="completed"?18000:null} as unknown as LiveGameSession;
+ return {id:game.id,sessionKey:`platform:qa-${prefix}-${id}`,state,playedOn:startedAt.toISOString(),gameType,players,authenticatedWatcherParticipantUids:coverage??row.participants.map(p=>p.uidSnapshot),authenticatedLiveObservations:[{uid:row.participants.find(p=>p.side==="defender")!.uidSnapshot,observedAt:startedAt.toISOString(),gameType,players}],finalProofPending:false,disconnectDetected:false,mapName:"QA Arabia",winner:winnerKnown?row.participants.find(p=>p.side==="challenger")!.displayNameSnapshot:null,durationSeconds:state==="completed"?18000:null} as unknown as LiveGameSession;
 }
 const snapshot=(session:LiveGameSession)=>({loadSnapshot:async()=>({activeSessions:session.state==="live"?[session]:[],recentlyCompletedSessions:session.state==="completed"?[session]:[]})});
 test("real protocol creation is idempotent, seals one clock, and per-participant acceptance never renews it",{skip:!enabled},async()=>{
@@ -98,6 +101,45 @@ test("TurboRandom HD watcher encounter starts RM championship without any check-
  assert.ok(scheduledAfter.liveConfirmedAt);
  assert.equal(scheduledAfter.challengerCheckedInAt,null);
  assert.equal(scheduledAfter.challengedCheckedInAt,null);
+});
+test("accepted Commissioner replay verdict settles an ambiguous watched championship without granting betting authority",{skip:!enabled},async()=>{
+ const a=await warrior("commissioner-result-a",true),b=await warrior("commissioner-result-b");
+ const id=await createChampionshipChallenge(prisma!,a.id,{challengedUid:b.uid,wagerAmountWolo:5,mode:"rm"}),row=await modeledFunding(id);
+ const completed=await battle(id,"completed",new Date(row.createdAt.getTime()+60_000),[a.uid,b.uid],"TurboRandom9",false);
+ const replayHash=createHash("sha256").update(prefix+":"+id+":commissioner-result").digest("hex");
+ const updatedGame=await prisma!.gameStats.update({where:{id:completed.id},data:{replayHash}});
+ completed.replayHash=replayHash;
+ completed.parseIteration=updatedGame.parse_iteration;
+ const canonical=normalizeReplayPlayers(completed.players);
+ const winner=canonical.find(player=>player.steamId===a.steamId)!;
+ await submitReplayResultAdjudication({
+  prisma:prisma!,
+  viewerUid:a.uid,
+  gameStatsId:completed.id,
+  payload:{
+   idempotencyKey:`commissioner:qa:${id}:result:v1`,
+   sourceReplayHash:completed.replayHash,
+   sourceParseIteration:completed.parseIteration,
+   sourceRosterHash:buildRosterHash(canonical),
+   teams:canonical.map(player=>({teamKey:player.stablePlayerKey,playerKeys:[player.stablePlayerKey]})),
+   winningTeamKey:winner.stablePlayerKey,
+   reason:"Commissioner observed the completed title game and records the unambiguous winner.",
+   evidence:{kind:"qa_commissioner_observation"}
+  }
+ });
+ await reconcileChampionshipEvidence(prisma!,{now:new Date(row.createdAt.getTime()+61_000)},snapshot(completed));
+ const after=await protocol(id);
+ const scheduled=await prisma!.scheduledMatch.findUniqueOrThrow({where:{id}});
+ const adjudication=await prisma!.replayResultAdjudication.findFirstOrThrow({where:{gameStatsId:completed.id},orderBy:{id:"desc"}});
+ assert.equal(after.state,"completed");
+ assert.equal(after.winnerSide,"challenger");
+ assert.equal(after.resultReplayId,completed.id);
+ assert.equal(scheduled.status,"completed");
+ assert.equal(scheduled.linkedWinner,a.inGameName);
+ assert.equal(adjudication.decisionStatus,"accepted");
+ assert.equal(adjudication.actorRole,"site_admin");
+ assert.equal(adjudication.affectsStats,true);
+ assert.equal(adjudication.affectsBets,false);
 });
 test("authenticated exact defending start freezes default and a full final after five hours transfers once",{skip:!enabled},async()=>{
  const a=await warrior("proof-a"),b=await warrior("proof-b"),title=await soloTitle("proof",b);

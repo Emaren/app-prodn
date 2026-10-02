@@ -162,6 +162,35 @@ export function replayResultAdjudicationAuthorizesBets(
   );
 }
 
+export function replayResultAdjudicationAuthorizesChampionship(
+  adjudication:
+    | Pick<
+        EffectiveReplayResultAdjudication,
+        "decisionStatus" | "affectsStats" | "actorRole"
+      > & {
+        idempotencyKey?: string | null;
+      }
+    | null
+    | undefined
+) {
+  if (
+    !adjudication ||
+    adjudication.decisionStatus !== REPLAY_RESULT_ACCEPTED ||
+    adjudication.affectsStats !== true
+  ) {
+    return false;
+  }
+
+  if (adjudication.actorRole === "site_admin") {
+    return true;
+  }
+
+  return (
+    adjudication.idempotencyKey?.startsWith("title-authority:") === true ||
+    adjudication.idempotencyKey?.startsWith("financial-authority:") === true
+  );
+}
+
 type MarketSnapshotPrisma = Pick<PrismaClient, "betMarket" | "pendingWoloClaim">;
 
 const IDEMPOTENCY_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{7,127}$/;
