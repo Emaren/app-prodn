@@ -535,6 +535,9 @@ def desired_dynamic_rule(request: dict[str, Any]) -> dict[str, Any]:
                     {"status_code_range": {"from": 500, "to": 999}, "value": -1},
                 ],
             },
+            # Dynamic HTML may live at the edge for 30 seconds, but browsers
+            # must continue honoring Next's no-store origin contract.
+            "browser_ttl": {"mode": "respect_origin"},
         },
         "expression": request["expression"],
         "description": DYNAMIC_RULE_DESCRIPTION,

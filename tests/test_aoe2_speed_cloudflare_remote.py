@@ -255,7 +255,12 @@ class CloudflareRemoteHelperTests(unittest.TestCase):
         self.assertEqual(validated["edge_ttl_seconds"], 30)
         self.assertEqual(validated["eligible_exact_routes"], list(MODULE.DYNAMIC_ALLOWED_ROUTES))
         self.assertIn('http.request.uri.query eq ""', validated["expression"])
-        self.assertEqual(MODULE.desired_dynamic_rule(validated)["description"], MODULE.DYNAMIC_RULE_DESCRIPTION)
+        rule = MODULE.desired_dynamic_rule(validated)
+        self.assertEqual(rule["description"], MODULE.DYNAMIC_RULE_DESCRIPTION)
+        self.assertEqual(
+            rule["action_parameters"]["browser_ttl"],
+            {"mode": "respect_origin"},
+        )
 
         widened = {**payload, "expression": payload["expression"] + " or true"}
         unauthorized_routes = ["/academy", "/players"]

@@ -186,6 +186,19 @@ require fresh `x-nextjs-cache: HIT` evidence. Installed routes are revoked when 
 or runtime evidence crosses a fail-closed boundary. This makes repeated `apply`
 idempotent instead of replacing the existing rule with only newly uncached routes.
 
+### Browser freshness contract for dynamic HTML
+
+SpeedOS dynamic HTML may use a 30-second Cloudflare **edge** TTL, but it must
+never convert that edge cache into a long-lived browser cache. The dynamic
+Cloudflare rule therefore uses `browser_ttl.mode = respect_origin`. Next's
+origin response for force-dynamic pages remains `private, no-cache, no-store,
+max-age=0, must-revalidate`, so browsers refetch while Cloudflare may still
+absorb anonymous origin load for at most 30 seconds.
+
+This distinction is release-critical: a zone-level browser-cache default must
+not turn a 30-second edge optimization into hours of stale Champions, Market,
+Clan, Radio, or other dynamic UI after a deployment.
+
 ### Governed Cloudflare authority and mutation rail
 
 The edge controller never reads Cloudflare credentials on the Mac or inside the web
