@@ -133,6 +133,15 @@ tail.
 
 ## Edge Delivery audit rail
 
+`aoe2war speed edge verify-featured-avatar` refreshes the installed edge-delivery
+proof for the currently certified release without changing Cloudflare rules. It
+reuses the sealed static, dynamic, and hero-asset authorities, verifies those
+cohorts plus the featured-avatar rule and exclusions, and writes a dedicated
+verification receipt with explicit non-mutation boundaries for Cloudflare
+configuration, production, the database, and Wolo. General Inspections and Brain
+accept the newest matching apply or verification receipt, so a new release does
+not need to re-apply an already-exact cache rule merely to renew evidence.
+
 `aoe2war speed edge audit` joins the latest full per-route cost-stack receipt to
 source cache-safety evidence and live public response headers. It records Cloudflare
 cache status, Next cache status, cache-control directives, Set-Cookie presence and

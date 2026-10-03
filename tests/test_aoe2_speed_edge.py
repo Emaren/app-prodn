@@ -1025,6 +1025,17 @@ class SpeedEdgeTests(unittest.TestCase):
         self.assertIn('SPEED_EDGE="$BIN_DIR/../scripts/aoe2_speed_edge.py"', source)
         self.assertIn('[ "${1:-}" = "edge" ]', source)
 
+    def test_cli_exposes_non_mutating_featured_avatar_verification(self):
+        source = (ROOT / "scripts" / "aoe2_speed_edge.py").read_text(encoding="utf-8")
+        self.assertIn('"verify-featured-avatar"', source)
+        self.assertIn(
+            '"kind": "aoe2war-speedos-cloudflare-featured-avatar-verification"',
+            source,
+        )
+        self.assertIn('"cloudflare_rules_mutated": False', source)
+        self.assertIn('"database_mutated": False', source)
+        self.assertIn('"wolo_mutated": False', source)
+
 
 if __name__ == "__main__":
     unittest.main()

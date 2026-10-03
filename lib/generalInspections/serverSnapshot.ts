@@ -160,7 +160,12 @@ function latestColdReceipt(releaseSha: string | null) {
 function latestFeaturedReceipt(releaseSha: string | null) {
   const dir = path.join(RELEASE_ROOT, "performance-edge-receipts");
   const names = safeEntries(dir)
-    .filter((entry) => entry.isFile() && entry.name.endsWith("cloudflare-featured-avatar-apply.json"))
+    .filter(
+      (entry) =>
+        entry.isFile() &&
+        (entry.name.endsWith("cloudflare-featured-avatar-apply.json") ||
+          entry.name.endsWith("cloudflare-featured-avatar-verify.json")),
+    )
     .map((entry) => entry.name)
     .sort()
     .reverse();

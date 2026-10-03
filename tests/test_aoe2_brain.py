@@ -255,6 +255,39 @@ class KingdomIntelligenceTests(unittest.TestCase):
                 )
             )
 
+            (edge_root / "20260919T014521Z-cloudflare-featured-avatar-verify.json").write_text(
+                json.dumps(
+                    {
+                        "kind": "aoe2war-speedos-cloudflare-featured-avatar-verification",
+                        "generated_at": "2026-09-19T01:45:21Z",
+                        "avatar_plan": {
+                            "release_sha": "a" * 40,
+                        },
+                        "verification": {
+                            "generated_at": "2026-09-19T01:45:21Z",
+                            "ok": True,
+                            "static_cohort": [
+                                {"final": {"cf_cache_status": "HIT", "http_status": 200}},
+                                {"final": {"cf_cache_status": "HIT", "http_status": 200}},
+                            ],
+                            "dynamic_cohort": [
+                                {"final": {"cf_cache_status": "HIT", "http_status": 200}},
+                            ],
+                            "featured_avatar_rows": [
+                                {"final": {"cf_cache_status": "HIT", "http_status": 200}},
+                                {"final": {"cf_cache_status": "HIT", "http_status": 200}},
+                            ],
+                        },
+                        "mutation_boundary": {
+                            "cloudflare_rules_mutated": False,
+                            "production_mutated": False,
+                            "database_mutated": False,
+                            "wolo_mutated": False,
+                        },
+                    }
+                )
+            )
+
             with (
                 patch.object(MODULE, "COLD_LCP_ROOT", cold_root),
                 patch.object(MODULE, "EDGE_RECEIPT_ROOT", edge_root),
@@ -271,7 +304,7 @@ class KingdomIntelligenceTests(unittest.TestCase):
         self.assertTrue(edge["ok"])
         self.assertEqual(edge["static"], {"passed": 2, "total": 2})
         self.assertEqual(edge["dynamic"], {"passed": 1, "total": 1})
-        self.assertEqual(edge["featured_avatar"], {"passed": 1, "total": 2})
+        self.assertEqual(edge["featured_avatar"], {"passed": 2, "total": 2})
         self.assertNotIn("cf_ray", repr(edge))
 
     def test_source_summary_requires_exact_four_plane_identity(self):

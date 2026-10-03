@@ -335,7 +335,10 @@ def latest_edge_delivery(now: datetime) -> dict[str, Any]:
         return {"available": False}
 
     receipts = sorted(
-        EDGE_RECEIPT_ROOT.glob("*cloudflare-featured-avatar-apply.json"),
+        [
+            *EDGE_RECEIPT_ROOT.glob("*cloudflare-featured-avatar-apply.json"),
+            *EDGE_RECEIPT_ROOT.glob("*cloudflare-featured-avatar-verify.json"),
+        ],
         key=lambda path: (path.stat().st_mtime_ns, path.name),
         reverse=True,
     )

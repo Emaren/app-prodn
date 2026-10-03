@@ -2344,7 +2344,7 @@ def print_audit(payload: dict[str, Any], limit: int) -> None:
 
 def main() -> int:
     parser = argparse.ArgumentParser(prog="aoe2war speed edge")
-    parser.add_argument("command", nargs="?", choices=["audit", "plan", "bootstrap", "authority", "snapshot", "apply", "rollback", "qualify-review", "qualify-dynamic", "plan-dynamic", "apply-dynamic", "rollback-dynamic", "plan-asset", "apply-asset", "rollback-asset", "plan-featured-avatar", "apply-featured-avatar", "rollback-featured-avatar"], default="audit")
+    parser.add_argument("command", nargs="?", choices=["audit", "plan", "bootstrap", "authority", "snapshot", "apply", "rollback", "qualify-review", "qualify-dynamic", "plan-dynamic", "apply-dynamic", "rollback-dynamic", "plan-asset", "apply-asset", "rollback-asset", "plan-featured-avatar", "verify-featured-avatar", "apply-featured-avatar", "rollback-featured-avatar"], default="audit")
     parser.add_argument("--json", action="store_true")
     parser.add_argument("--limit", type=int, default=20)
     parser.add_argument("--no-receipt", action="store_true")
@@ -2380,7 +2380,7 @@ def main() -> int:
                     print(f"{key}: {value}")
         return 0
 
-    if args.command in {"plan-featured-avatar", "apply-featured-avatar"}:
+    if args.command in {"plan-featured-avatar", "verify-featured-avatar", "apply-featured-avatar"}:
         try:
             avatar_plan = build_featured_avatar_cloudflare_plan()
             if args.command == "plan-featured-avatar":
@@ -2406,7 +2406,7 @@ def main() -> int:
             asset_authority = latest_successful_asset_apply()
             if not static_authority or not dynamic_authority or not asset_authority:
                 raise EdgeAuditError(
-                    "featured-avatar apply requires successful static, dynamic and hero-asset authority receipts"
+                    "featured-avatar verification/apply requires successful static, dynamic and hero-asset authority receipts"
                 )
             static_plan = static_authority.get("plan") or {}
             dynamic_plan = dynamic_authority.get("dynamic_plan") or {}
@@ -2414,6 +2414,65 @@ def main() -> int:
             authority = remote_cloudflare_service("verify")
             authority["runtime_exact"] = runtime["exact"]
             snapshot_result = remote_cloudflare_service("snapshot")
+            if args.command == "verify-featured-avatar":
+                verification = verify_featured_avatar_cloudflare_apply(
+                    avatar_plan, static_plan, dynamic_plan
+                )
+                receipt_payload = {
+                    "schema": 1,
+                    "kind": "aoe2war-speedos-cloudflare-featured-avatar-verification",
+                    "generated_at": utc_now(),
+                    "authority": authority,
+                    "snapshot": snapshot_result,
+                    "avatar_plan": avatar_plan,
+                    "static_plan_authority_receipt": speed.evidence_ref(
+                        Path(str(static_authority.get("_path") or ""))
+                    ),
+                    "dynamic_plan_authority_receipt": speed.evidence_ref(
+                        Path(str(dynamic_authority.get("_path") or ""))
+                    ),
+                    "asset_plan_authority_receipt": speed.evidence_ref(
+                        Path(str(asset_authority.get("_path") or ""))
+                    ),
+                    "verification": verification,
+                    "mutation_boundary": {
+                        "cloudflare_rules_mutated": False,
+                        "production_mutated": False,
+                        "database_mutated": False,
+                        "wolo_mutated": False,
+                    },
+                    "rollback_performed": False,
+                }
+                receipt = write_edge_operation_receipt(
+                    "featured-avatar-verify", receipt_payload
+                )
+                if not verification.get("ok"):
+                    raise EdgeAuditError(
+                        "featured-avatar Cloudflare verification failed without mutation: "
+                        + "; ".join(verification.get("failures") or [])
+                        + f" · receipt {speed.evidence_ref(receipt)}"
+                    )
+                if args.json:
+                    print(json.dumps(receipt_payload, indent=2, sort_keys=True))
+                else:
+                    print("⚔️  AOE2WAR SPEED FEATURED AVATAR CLOUDFLARE VERIFY")
+                    print()
+                    print(f"Paths:          {avatar_plan['eligible_path_count']}")
+                    print(f"Edge TTL:       {FEATURED_AVATAR_EDGE_TTL_SECONDS}s")
+                    print("Avatar cohort:  PASS")
+                    print("Hero asset:     PRESERVED")
+                    print(
+                        f"Static HTML:    {len(static_plan.get('eligible_exact_routes') or [])} verified"
+                    )
+                    print(
+                        f"Dynamic HTML:   {len(dynamic_plan.get('eligible_exact_routes') or [])} verified"
+                    )
+                    print("Exclusions:     thumb + wrong-version PASS")
+                    print("Cloudflare:     CONFIGURATION NOT MUTATED")
+                    print("Database/Wolo:  NOT MUTATED")
+                    print(f"Receipt:        {speed.evidence_ref(receipt)}")
+                return 0
+
             request, plan_sha = stage_featured_avatar_cloudflare_request(avatar_plan)
             applied = remote_cloudflare_service("apply-featured-avatar")
             verification = verify_featured_avatar_cloudflare_apply(
