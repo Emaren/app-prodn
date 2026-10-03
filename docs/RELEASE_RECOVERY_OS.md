@@ -347,12 +347,24 @@ The controller must:
 8. SHA-256 seal that manifest into the recovery receipt;
 9. stop immediately once the configured recovery target is reached.
 
-This tier is safe specifically **before staging a new release**. The currently
-active `.next` and `node_modules` remain untouched and continue serving
-production. If activation later begins, the activation transaction creates a
-fresh fast rollback pair from that still-current runtime before the candidate
-swap. The older fast pair is therefore acceleration cache once its durable twin
-has been proven, not the sole recovery authority.
+This tier is safe **before staging a new release**. The currently active
+`.next` and `node_modules` remain untouched and continue serving production.
+If activation later begins, the activation transaction creates a fresh fast
+rollback pair from that still-current runtime before the candidate swap. The
+older fast pair is therefore acceleration cache once its durable twin has been
+proven, not the sole recovery authority.
+
+The same bounded tier is also valid **after a release has been certified** when
+the final Finish capacity proof falls below the release floor. In that case
+Finish first re-proves the new runtime's CERTIFIED provenance, then may retire
+only a non-active fast rollback pair whose exact BUILD_ID-matched durable twin
+was already sealed by the activation transaction. Source SHA, active BUILD_ID,
+web-service health, Wolo listener identity, the durable proof, and final root
+capacity are all re-proved after recovery. This closes the staging/activation
+headroom loop without weakening rollback authority: the fast pair remains
+preferred acceleration when capacity permits, but it cannot make an otherwise
+certified release fail housekeeping when an exact durable rollback already
+exists.
 
 Durable evidence lives beneath:
 

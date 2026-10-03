@@ -1174,6 +1174,82 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
             int(5.0625 * 1024 ** 3),
         )
 
+    def test_final_capacity_noops_when_root_remains_healthy(self):
+        snapshot = self.snapshot()
+        snapshot["root"]["available_bytes"] = 6 * 1024 ** 3
+
+        with (
+            mock.patch.object(
+                MODULE.aoe2_doctor,
+                "load_contract",
+                return_value=self.contract(),
+            ),
+            mock.patch.object(
+                MODULE.aoe2_release,
+                "collect",
+            ) as collect_release,
+        ):
+            refreshed, recovery = MODULE.ensure_final_capacity_headroom(
+                snapshot,
+            )
+
+        self.assertIs(refreshed, snapshot)
+        self.assertEqual(
+            recovery,
+            {"status": "NOT_REQUIRED"},
+        )
+        collect_release.assert_not_called()
+
+    def test_final_capacity_recovers_only_after_certified_release(self):
+        recovered_snapshot = self.snapshot()
+        recovered_snapshot["root"]["available_bytes"] = 6 * 1024 ** 3
+        recovery = {
+            "status": "RECOVERED",
+            "reclaimed_kb": "1200000",
+            "fast_rollback_pruned_count": "1",
+        }
+        release = {
+            "production": self.production(),
+        }
+
+        with (
+            mock.patch.object(
+                MODULE.aoe2_doctor,
+                "load_contract",
+                return_value=self.contract(),
+            ),
+            mock.patch.object(
+                MODULE.aoe2_release,
+                "collect",
+                return_value=release,
+            ),
+            mock.patch.object(
+                MODULE,
+                "assert_certified_release",
+            ) as assert_certified,
+            mock.patch.object(
+                MODULE,
+                "recover_root_headroom",
+                return_value=recovery,
+            ) as recover,
+            mock.patch.object(
+                MODULE,
+                "production_capacity_snapshot",
+                return_value=recovered_snapshot,
+            ),
+        ):
+            refreshed, result = MODULE.ensure_final_capacity_headroom(
+                self.snapshot(),
+            )
+
+        assert_certified.assert_called_once_with(release)
+        recover.assert_called_once_with(
+            snapshot=self.snapshot(),
+            production=self.production(),
+        )
+        self.assertIs(refreshed, recovered_snapshot)
+        self.assertEqual(result, recovery)
+
     def test_generated_recovery_script_is_strictly_bounded(self):
         script = MODULE.remote_root_headroom_recovery_script(
             volume="/mnt/HC_Volume_105319120",

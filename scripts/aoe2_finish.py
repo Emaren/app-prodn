@@ -2687,6 +2687,54 @@ def recover_root_headroom(
     }
 
 
+def ensure_final_capacity_headroom(
+    snapshot: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Re-prove or safely recover post-certification root headroom.
+
+    Release staging and activation can consume root capacity after the ordinary
+    preflight has already passed.  Once the new runtime is CERTIFIED, the fast
+    rollback pair is acceleration cache rather than sole recovery authority
+    because the activation transaction has sealed a durable rollback twin on
+    the mounted volume.  If final root capacity fell below the release floor,
+    reuse the same bounded receipt-backed recovery lane before Finish closes.
+    """
+
+    if not root_below_release_floor(snapshot):
+        assert_capacity_headroom(snapshot)
+        return snapshot, {
+            "status": "NOT_REQUIRED",
+        }
+
+    final_release = aoe2_release.collect()
+    assert_certified_release(final_release)
+
+    production = final_release.get("production")
+    if not isinstance(production, dict):
+        raise FinishError(
+            "post-release root recovery has no certified production payload"
+        )
+
+    if not root_headroom_plan_recovery_available(
+        snapshot,
+        production,
+    ):
+        # Preserve the canonical capacity failure when recovery is unavailable.
+        assert_capacity_headroom(snapshot)
+        raise FinishError(
+            "post-release root headroom is low and bounded recovery is unavailable"
+        )
+
+    recovery = recover_root_headroom(
+        snapshot=snapshot,
+        production=production,
+    )
+    refreshed = production_capacity_snapshot()
+    assert_capacity_headroom(refreshed)
+
+    return refreshed, recovery
+
+
 
 def recover_superseded_stage_before_capacity(
     *,
@@ -4840,8 +4888,22 @@ def execute_finish(
     start_phase(receipt, "final_capacity", checkpoint)
     progress.start("Re-proving final filesystem headroom...")
     final_capacity = production_capacity_snapshot()
-    assert_capacity_headroom(final_capacity)
+    if root_below_release_floor(final_capacity):
+        progress.start(
+            "Recovering certified post-release root headroom "
+            "(durable-proven classes only)..."
+        )
+    final_capacity, final_recovery = ensure_final_capacity_headroom(
+        final_capacity,
+    )
+    receipt["post_release_root_headroom_recovery"] = final_recovery
     receipt["final_capacity"] = final_capacity
+    checkpoint()
+    if final_recovery.get("status") == "RECOVERED":
+        progress.done(
+            "Post-release root recovery complete — "
+            f"reclaimed={final_recovery.get('reclaimed_kb', '0')} KiB"
+        )
     progress.done("Final capacity proof passed — " + capacity_human(final_capacity))
     finish_phase(receipt, "final_capacity", checkpoint)
 
