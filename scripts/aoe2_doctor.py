@@ -312,7 +312,11 @@ def check_supply_chain(doctor: Doctor) -> None:
         return
 
     doctor.info["supply_chain"] = payload
-    counts = payload.get("unique_advisories") or {}
+    counts = (
+        payload.get("actionable_unique_advisories")
+        or payload.get("unique_advisories")
+        or {}
+    )
     critical = int(counts.get("critical", 0))
     high = int(counts.get("high", 0))
     moderate = int(counts.get("moderate", 0))

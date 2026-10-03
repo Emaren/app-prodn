@@ -299,12 +299,23 @@ exact installed graph bound by `package.json` and `yarn.lock`, including build
 and development tooling because that code executes inside the software factory.
 Advisories are deduplicated by advisory identity while vulnerable dependency
 paths remain separately counted. Missing or malformed audit summary evidence
-fails closed. The protected release gate and GitHub CI both require zero known
-advisories at every severity before application code may ship.
+fails closed.
 
-Doctor exposes this as the first-class **Supply Chain** category. Critical/high
-advisories are blockers; moderate/low advisories are warnings, so strict Doctor
-cannot report 100/100 while known dependency debt exists.
+A narrow exception exists only for an upstream advisory with no published
+patched release when the audited graph proves every vulnerable path is rooted
+exclusively in `devDependencies`. `config/dependency-security-waivers.json`
+must bind that exception to the exact advisory ID, module, installed version,
+`package.json` + `yarn.lock` digest, `dev-only` scope and an expiry date. Any
+runtime path, unknown path root, version drift, dependency-graph drift, malformed
+waiver or expiry makes the advisory actionable again. Raw advisory counts remain
+in the security receipt even when one exact exception is accepted; the gate
+passes only when **actionable** counts are zero.
+
+Doctor exposes this as the first-class **Supply Chain** category. Actionable
+critical/high advisories are blockers; actionable moderate/low advisories are
+warnings. A reviewed dev-only waiver therefore never erases the underlying
+advisory; it records why that immutable graph is temporarily non-blocking and
+automatically fails closed when its proof stops matching.
 
 ### Next output tracing authority
 

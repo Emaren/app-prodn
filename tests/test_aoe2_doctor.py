@@ -65,6 +65,78 @@ class DoctorTests(unittest.TestCase):
         self.assertEqual(doctor.status(), "UNSAFE")
         self.assertEqual(doctor.category_status("Production"), "FAIL")
 
+    def test_supply_chain_uses_actionable_counts_and_preserves_waiver_evidence(self):
+        doctor = MODULE.Doctor()
+        payload = {
+            "status": "PASS",
+            "unique_advisories": {
+                "critical": 0,
+                "high": 1,
+                "moderate": 0,
+                "low": 0,
+            },
+            "actionable_unique_advisories": {
+                "critical": 0,
+                "high": 0,
+                "moderate": 0,
+                "low": 0,
+            },
+            "waived_advisories": [
+                {
+                    "id": 1240992,
+                    "module": "braces",
+                    "waiver": {"dev_only": True},
+                }
+            ],
+            "malformed_stdout_lines": 0,
+        }
+        with patch.object(
+            MODULE.check_dependency_security,
+            "collect",
+            return_value=payload,
+        ):
+            MODULE.check_supply_chain(doctor)
+
+        self.assertEqual(doctor.findings, [])
+        self.assertEqual(
+            doctor.info["supply_chain"]["unique_advisories"]["high"],
+            1,
+        )
+        self.assertEqual(
+            doctor.info["supply_chain"]["actionable_unique_advisories"]["high"],
+            0,
+        )
+
+    def test_supply_chain_still_blocks_actionable_high_advisory(self):
+        doctor = MODULE.Doctor()
+        payload = {
+            "status": "FAIL",
+            "unique_advisories": {
+                "critical": 0,
+                "high": 1,
+                "moderate": 0,
+                "low": 0,
+            },
+            "actionable_unique_advisories": {
+                "critical": 0,
+                "high": 1,
+                "moderate": 0,
+                "low": 0,
+            },
+            "waived_advisories": [],
+            "malformed_stdout_lines": 0,
+        }
+        with patch.object(
+            MODULE.check_dependency_security,
+            "collect",
+            return_value=payload,
+        ):
+            MODULE.check_supply_chain(doctor)
+
+        blockers = [item for item in doctor.findings if item.severity == "BLOCKER"]
+        self.assertEqual(len(blockers), 1)
+        self.assertEqual(blockers[0].key, "dependency-advisories")
+
     def test_collect_doctor_overlaps_estate_audit_with_independent_checks(self):
         audit_started = threading.Event()
         release_seen = threading.Event()
