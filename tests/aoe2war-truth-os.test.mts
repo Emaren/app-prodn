@@ -323,6 +323,11 @@ test("Replay Truth certainty closure accounts for every final game without guess
 
   assert.match(
     remote,
+    /route ===[\s\S]*REPARSE_REQUIRED[\s\S]*disposition:[\s\S]*artifactAvailable[\s\S]*REPARSE_REQUIRED[\s\S]*SOURCE_ARTIFACT_REQUIRED/
+  );
+
+  assert.match(
+    remote,
     /ARTIFACT_PRESENT_CURRENT_PARSER_INSUFFICIENT/
   );
 

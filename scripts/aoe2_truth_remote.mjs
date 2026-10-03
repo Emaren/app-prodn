@@ -1604,7 +1604,9 @@ function certaintyDisposition(
   ) {
     return {
       disposition:
-        "REPARSE_REQUIRED",
+        artifactAvailable
+          ? "REPARSE_REQUIRED"
+          : "SOURCE_ARTIFACT_REQUIRED",
       currentVaultCertainty:
         artifactAvailable
           ? "ARTIFACT_PRESENT_REPARSE"
