@@ -270,7 +270,17 @@ test("Replay Truth distinguishes missing parser work from exhausted current pars
 
   assert.match(
     remote,
-    /run\.inputHash[\s\S]*run\.gameStats[\s\S]*replayHash/
+    /gameIdsWithExactParserArtifactAttempt/
+  );
+
+  assert.match(
+    remote,
+    /inputHash:[\s\S]*in:[\s\S]*replayHashes/
+  );
+
+  assert.match(
+    remote,
+    /status:[\s\S]*completed[\s\S]*recovered[\s\S]*failed/
   );
 
   assert.match(

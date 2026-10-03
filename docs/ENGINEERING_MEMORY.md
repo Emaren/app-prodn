@@ -201,6 +201,27 @@ repair. Activation does not silently escalate itself into recursive root
 mutation.
 
 
+## 2026-10-02 — Current-parser exhaustion follows immutable replay bytes, not row linkage
+
+A bounded Replay Truth closure campaign exposed a lineage bug after an exact
+Pass-10 Engine Room job encountered historical artifacts whose immutable parser
+identity already existed. The worker correctly skipped duplicate work by
+`artifact SHA + run identity`, but Replay Truth still classified those
+`GameStats` rows as `REPARSE_REQUIRED` because its exhaustion check required
+the existing `ReplayParseRun.gameStatsId` to equal that exact historical row.
+
+The durable authority is the immutable source artifact. For the operational
+question “does this replay still need the exact current parser?”, an
+`aoe2war.mgz_hd` run over the same SHA with the same parser/pass/schema
+identity counts for every `GameStats` row bound to that SHA. This remains true
+when the historical run was linked to another row or when the deterministic
+run failed. A failed exact run means parser research is required; it does not
+mean the identical parser should be queued forever.
+
+This rule changes workflow classification only. Candidate-only runs remain
+non-public, do not affect public aggregates, and do not create winner,
+statistics, betting, settlement or Wolo authority.
+
 ## 2026-09-27 — Promoted topology must be consumable without rewriting historical result evidence
 
 Production game 44862 proved a second authority-layer seam after the V3 roster repair itself

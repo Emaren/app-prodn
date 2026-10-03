@@ -31,6 +31,9 @@ import {
 import {
   HD_REPLAY_PARSER_CONTRACT,
 } from "@/lib/replayEngineRoom";
+import {
+  gameIdsWithExactParserArtifactAttempt,
+} from "@/lib/replayTruthParserLineage";
 
 const command =
   String(
@@ -2016,11 +2019,54 @@ async function proveReadOnly(
 
 async function loadExactCurrentParserRunGameIds(
   prisma,
-  gameIds = null
+  games = null
 ) {
   if (
-    Array.isArray(gameIds) &&
-    gameIds.length === 0
+    Array.isArray(games) &&
+    games.length === 0
+  ) {
+    return new Set();
+  }
+
+  const targetGames =
+    Array.isArray(games)
+      ? games
+      : await prisma.gameStats.findMany({
+          where: {
+            is_final:
+              true,
+          },
+
+          select: {
+            id:
+              true,
+
+            replayHash:
+              true,
+          },
+        });
+
+  const replayHashes = [
+    ...new Set(
+      targetGames
+        .map(
+          (game) =>
+            cleanTruthText(
+              game.replayHash
+            ).toLowerCase()
+        )
+        .filter(
+          (replayHash) =>
+            SHA256_RE.test(
+              replayHash
+            )
+        )
+    ),
+  ];
+
+  if (
+    replayHashes.length ===
+      0
   ) {
     return new Set();
   }
@@ -2028,16 +2074,10 @@ async function loadExactCurrentParserRunGameIds(
   const runs =
     await prisma.replayParseRun.findMany({
       where: {
-        gameStatsId:
-          Array.isArray(gameIds)
-            ? {
-                in:
-                  gameIds,
-              }
-            : {
-                not:
-                  null,
-              },
+        inputHash: {
+          in:
+            replayHashes,
+        },
 
         parserName:
           HD_REPLAY_PARSER_CONTRACT
@@ -2063,6 +2103,7 @@ async function loadExactCurrentParserRunGameIds(
           in: [
             "completed",
             "recovered",
+            "failed",
           ],
         },
 
@@ -2074,39 +2115,14 @@ async function loadExactCurrentParserRunGameIds(
       },
 
       select: {
-        gameStatsId:
-          true,
-
         inputHash:
           true,
-
-        gameStats: {
-          select: {
-            replayHash:
-              true,
-          },
-        },
       },
     });
 
-  return new Set(
+  return gameIdsWithExactParserArtifactAttempt(
+    targetGames,
     runs
-      .filter(
-        (run) =>
-          run.gameStatsId !==
-            null &&
-          cleanTruthText(
-            run.inputHash
-          ).toLowerCase() ===
-            cleanTruthText(
-              run.gameStats
-                ?.replayHash
-            ).toLowerCase()
-      )
-      .map(
-        (run) =>
-          run.gameStatsId
-      )
   );
 }
 
@@ -2132,10 +2148,7 @@ async function loadFinalGames(
   const currentRunGameIds =
     await loadExactCurrentParserRunGameIds(
       prisma,
-      games.map(
-        (game) =>
-          game.id
-      )
+      games
     );
 
   return games.map(
@@ -2712,7 +2725,7 @@ async function runTarget(
     await loadExactCurrentParserRunGameIds(
       prisma,
       [
-        game.id,
+        game,
       ]
     );
 
