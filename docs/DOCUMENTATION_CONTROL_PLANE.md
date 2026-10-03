@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `integration/replay-receipt-promotion-20260927` at `bc1652e5012a7bfaf0096c111b552e2a05260ba1`
+Implementation baseline: `integration/replay-receipt-promotion-20260927` at `9d226a76d65135d700b826a4d7016dedd7467feb`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
