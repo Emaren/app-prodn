@@ -3033,6 +3033,16 @@ async function loadExactPromotedTeamResolution(
 }
 
 
+/*
+ * Same-roster rating movement is candidate evidence, not an exact game result.
+ * The numeric policy cannot exclude intervening matches or bind its before/
+ * after snapshots to one replay. Keep that evaluator available for research,
+ * but require an independently validated exact-game evidence contract before
+ * this automatic writer may use it. Existing accepted ledger rows retain
+ * their separate replay-hash/roster authority and are not rewritten here.
+ */
+export const WATCHER_RATING_DELTA_RESULT_AUTHORITY = false as const;
+
 const WATCHER_RATING_DELTA_LOOKAHEAD_MS =
   2 * 60 * 60 * 1000;
 const WATCHER_RATING_DELTA_SCAN_LIMIT = 500;
@@ -3420,10 +3430,12 @@ export async function reconcileAutomaticWatcherTerminalResults(
 ): Promise<AutomaticWatcherTerminalResultReport> {
   const requestedGameStatsIds = automaticGameIds(rawGameStatsIds);
   const gameStatsIds =
-    await expandAutomaticRatingDeltaCandidates(
-      prisma,
-      requestedGameStatsIds,
-    );
+    WATCHER_RATING_DELTA_RESULT_AUTHORITY
+      ? await expandAutomaticRatingDeltaCandidates(
+          prisma,
+          requestedGameStatsIds,
+        )
+      : requestedGameStatsIds;
   const outcomes: AutomaticWatcherTerminalResultReport["outcomes"] = [];
 
   for (const gameStatsId of gameStatsIds) {
@@ -3527,10 +3539,12 @@ export async function reconcileAutomaticWatcherTerminalResults(
 
 
         const ratingDelta =
-          await loadAutomaticReplayRatingDelta(
-            tx,
-            game,
-          );
+          WATCHER_RATING_DELTA_RESULT_AUTHORITY
+            ? await loadAutomaticReplayRatingDelta(
+                tx,
+                game,
+              )
+            : null;
 
         if (ratingDelta) {
           const ratingIdempotencyKey = [

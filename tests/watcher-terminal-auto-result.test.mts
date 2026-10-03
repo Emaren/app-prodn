@@ -6,6 +6,7 @@ import {
   evaluateWatcherTerminalOwnerLoss,
   isProvisionalWatcherRecorderExitAdjudication,
   reconcileAutomaticWatcherTerminalResults,
+  WATCHER_RATING_DELTA_RESULT_AUTHORITY,
   WATCHER_TERMINAL_ACTION_TAIL_RESULT_AUTHORITY,
   WATCHER_TERMINAL_RECORDER_EXIT_POLICY_VERSION,
   WATCHER_TERMINAL_RECORDER_EXIT_RESULT_AUTHORITY,
@@ -15,6 +16,10 @@ import {
   WATCHER_TERMINAL_RAW_ACTIVITY_FIELD_PATH,
   type WatcherTerminalOwnerLossInput,
 } from "../lib/replayResultAdjudications.ts";
+import { evaluateReplayRatingDeltaAuthority } from "../lib/replayRatingDeltaAuthority.ts";
+import { applyReplayAdjudicationToGameStats } from "../lib/replayAdjudications.ts";
+import { publicReplayWinnerTruth } from "../lib/publicReplayTruth.ts";
+import { buildRosterHash, normalizeReplayPlayers } from "../lib/teamResolution.ts";
 const replayHash = "4".repeat(64);
 
 function baseInput(): WatcherTerminalOwnerLossInput {
@@ -250,7 +255,7 @@ test("automatic reconciliation refuses recorder-exit winner authority", async ()
 });
 
 
-test("later exact-roster rating snapshot resolves the immediately preceding unknown RM final", async () => {
+test("same-roster RM rating movement in a later DM snapshot cannot write an exact-game result", async () => {
   const sourceId = 41001;
   const laterId = 41002;
   const sourceCreatedAt =
@@ -341,6 +346,7 @@ test("later exact-roster rating snapshot resolves the immediately preceding unkn
   let createdData:
     Record<string, unknown> | null =
       null;
+  let ratingScanCount = 0;
 
   const gameStatsFindMany = async (
     args: {
@@ -351,6 +357,7 @@ test("later exact-roster rating snapshot resolves the immediately preceding unkn
       };
     }
   ) => {
+    ratingScanCount += 1;
     if (args?.where?.id?.in) {
       return [
         {
@@ -444,52 +451,83 @@ test("later exact-roster rating snapshot resolves the immediately preceding unkn
     ) => callback(tx),
   };
 
-  const report =
+  // The arithmetic remains available as candidate evidence. It says nothing
+  // about intervening matches or whether this replay caused the rating change.
+  const numericCandidate = evaluateReplayRatingDeltaAuthority({
+    lane: "rm",
+    sourcePlayers,
+    laterPlayers,
+  });
+  assert.equal(numericCandidate.eligible, true);
+
+  const laterReport =
     await reconcileAutomaticWatcherTerminalResults(
       prisma as never,
       [laterId]
     );
 
   assert.equal(
-    report.requestedCount,
+    laterReport.requestedCount,
     1
   );
-  assert.equal(
-    report.createdCount,
-    1
-  );
-  assert.equal(
-    report.outcomes.find(
-      (entry) =>
-        entry.gameStatsId ===
-        sourceId
-    )?.detail,
-    "exact_zero_sum_rating_delta"
-  );
-  assert.match(
-    String(
-      createdData?.idempotencyKey
-    ),
-    /^title-authority:rating-delta-v1:41001:41002$/
-  );
-  assert.equal(
-    createdData?.affectsStats,
-    true
-  );
-  assert.equal(
-    createdData?.affectsBets,
-    false
-  );
-  assert.equal(
-    createdData?.winningTeamKey,
-    "steam:76561198166409520"
-  );
-  assert.deepEqual(
-    createdData?.winningPlayerKeys,
-    [
-      "steam:76561198166409520",
-    ]
-  );
+  assert.equal(laterReport.createdCount, 0);
+  assert.deepEqual(laterReport.outcomes.map((entry) => entry.gameStatsId), [laterId]);
+
+  const sourceReport = await reconcileAutomaticWatcherTerminalResults(prisma as never, [sourceId]);
+  assert.equal(sourceReport.createdCount, 0);
+  assert.equal(sourceReport.outcomes[0]?.detail, "raw_activity_observation_missing");
+  assert.equal(createdData, null);
+  assert.equal(ratingScanCount, 0, "disabled rating authority cannot expand or scan unrelated replay rows");
+  assert.equal(publicReplayWinnerTruth(sourceGame).statsEligible, false);
+});
+
+test("disabling new rating promotion preserves an existing exact-bound accepted stats ledger result", () => {
+  const players = [
+    { name: "Jim", steam_id: "76561198166409520", number: 1, team_id: 0, winner: null },
+    { name: "Emaren", steam_id: "76561198065420384", number: 2, team_id: 1, winner: null },
+  ];
+  const teams = normalizeReplayPlayers(players).map((player) => ({
+    teamKey: player.stablePlayerKey,
+    players: [{
+      stablePlayerKey: player.stablePlayerKey,
+      name: player.name,
+      normalizedName: player.normalizedName,
+      steamId: player.steamId,
+      sourceTeamId: player.teamId,
+      playerNumber: player.playerNumber,
+    }],
+  }));
+  const accepted = {
+    id: 92001,
+    idempotencyKey: "title-authority:rating-delta-v1:41001:41002",
+    decisionStatus: "accepted",
+    affectsStats: true,
+    affectsBets: false,
+    actorDisplayNameSnapshot: "Jim",
+    actorRole: "verified_submitter",
+    teamAssignments: teams,
+    winningTeamKey: "steam:76561198166409520",
+    winningPlayerKeys: ["steam:76561198166409520"],
+    reason: "Existing accepted exact-bound statistics verdict.",
+    sourceReplayHash: replayHash,
+    sourceParseIteration: 69,
+    sourceRosterHash: buildRosterHash(normalizeReplayPlayers(players))!,
+    sourcePropositionHash: "b".repeat(64),
+    createdAt: "2026-10-02T01:24:01.000Z",
+  };
+  const game = {
+    id: 41001, replayHash, players, winner: "Unknown",
+    parse_source: "watcher_final", parse_reason: "watcher_final_submission",
+    is_final: true, disconnect_detected: false,
+    replayResultAdjudications: [accepted],
+  };
+  assert.equal(WATCHER_RATING_DELTA_RESULT_AUTHORITY, false);
+  const effective = applyReplayAdjudicationToGameStats(game);
+  const truth = publicReplayWinnerTruth(effective);
+  assert.equal(truth.winner, "Jim");
+  assert.equal(truth.statsEligible, true);
+  assert.equal(truth.bettingEligible, false);
+  assert.equal(publicReplayWinnerTruth({ ...game, replayHash: "f".repeat(64) }).statsEligible, false);
 });
 
 test("automatic watcher evidence uses stats-only append-only authority", () => {
@@ -517,6 +555,7 @@ test("automatic watcher evidence uses stats-only append-only authority", () => {
     WATCHER_TERMINAL_RECORDER_EXIT_RESULT_AUTHORITY,
     false
   );
+  assert.equal(WATCHER_RATING_DELTA_RESULT_AUTHORITY, false);
 });
 
 
