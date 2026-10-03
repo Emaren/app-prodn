@@ -199,6 +199,12 @@ This distinction is release-critical: a zone-level browser-cache default must
 not turn a 30-second edge optimization into hours of stale Champions, Market,
 Clan, Radio, or other dynamic UI after a deployment.
 
+As of 2026-10-03, `/champions` is explicitly revoked from the dynamic edge
+cohort. The certified qualification window observed changing origin/public
+bytes, so Champions remains uncached at the shared HTML layer until a future
+full qualification proves stability again. Championship state and deployed UI
+must favor freshness over the small edge-latency win.
+
 ### Governed Cloudflare authority and mutation rail
 
 The edge controller never reads Cloudflare credentials on the Mac or inside the web

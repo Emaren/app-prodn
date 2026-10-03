@@ -17,13 +17,6 @@
       "admission": "anonymous_dynamic"
     },
     {
-      "route": "/champions",
-      "ttl_seconds": 30,
-      "empty_query_only": true,
-      "rationale": "Anonymous public champion snapshot; non-transactional and byte-stable across a full 30-second public/origin proof window.",
-      "admission": "anonymous_dynamic"
-    },
-    {
       "route": "/champions/world",
       "ttl_seconds": 30,
       "empty_query_only": true,

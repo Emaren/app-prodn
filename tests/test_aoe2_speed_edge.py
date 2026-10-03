@@ -342,7 +342,7 @@ class SpeedEdgeTests(unittest.TestCase):
         policy = MODULE.load_dynamic_policy()
         self.assertEqual(
             [row["route"] for row in policy["routes"]],
-            ["/academy", "/ai", "/champions", "/champions/world", "/clans", "/forum", "/game-stats/16218/review", "/leaderboard/og", "/market", "/market/shops/chat-effects", "/matchups/c_u_0df73bdbb64646c19e4a9bfd225b3285/n_Seedy_SI69", "/matchups/team/WyJjX3VfMGRmNzNiZGJiNjQ2NDZjMTllNGE5YmZkMjI1YjMyODUiLCJjX3VfMTc4MTYzODQzNjFmNGM4YThkNTdjNjkzNDI2NTEwMGIiLCJuX2NvcHBlcl9oZWFkX3JvYWQiXQ/WyJuX2Nhcmxvc2lzbSIsIm5fUm9NYV9WaWNUb1JfIiwibl9UYW5rVG9wTWFzdGVyIl0", "/national-champions", "/players/by-name/Emaren", "/radio", "/traffic", "/war-engine", "/wolo", "/zodiac"],
+            ["/academy", "/ai", "/champions/world", "/clans", "/forum", "/game-stats/16218/review", "/leaderboard/og", "/market", "/market/shops/chat-effects", "/matchups/c_u_0df73bdbb64646c19e4a9bfd225b3285/n_Seedy_SI69", "/matchups/team/WyJjX3VfMGRmNzNiZGJiNjQ2NDZjMTllNGE5YmZkMjI1YjMyODUiLCJjX3VfMTc4MTYzODQzNjFmNGM4YThkNTdjNjkzNDI2NTEwMGIiLCJuX2NvcHBlcl9oZWFkX3JvYWQiXQ/WyJuX2Nhcmxvc2lzbSIsIm5fUm9NYV9WaWNUb1JfIiwibl9UYW5rVG9wTWFzdGVyIl0", "/national-champions", "/players/by-name/Emaren", "/radio", "/traffic", "/war-engine", "/wolo", "/zodiac"],
         )
         self.assertTrue(all(row["ttl_seconds"] == 30 for row in policy["routes"]))
         self.assertTrue(all(row["empty_query_only"] is True for row in policy["routes"]))
@@ -568,7 +568,7 @@ class SpeedEdgeTests(unittest.TestCase):
     def test_dynamic_qualification_holds_route_when_origin_changes_within_ttl(self):
         original = MODULE.require_dynamic_release_identity
         clock = [0.0]
-        calls = {"/champions": 0}
+        calls = {"/academy": 0}
         try:
             MODULE.require_dynamic_release_identity = lambda: self._dynamic_identity()
 
@@ -594,7 +594,7 @@ class SpeedEdgeTests(unittest.TestCase):
                 row = public(route)
                 row["effective_url"] = MODULE.speed.ORIGIN_BASE + route
                 row["cf_cache_status"] = None
-                if route == "/champions":
+                if route == "/academy":
                     calls[route] += 1
                     if calls[route] == 3:
                         row["body_sha256"] = "f" * 64
@@ -610,8 +610,8 @@ class SpeedEdgeTests(unittest.TestCase):
             )
             by_route = {row["route"]: row for row in result["rows"]}
             self.assertFalse(result["all_qualified"])
-            self.assertFalse(by_route["/champions"]["qualified"])
-            self.assertTrue(any("origin body changed" in reason for reason in by_route["/champions"]["reasons"]))
+            self.assertFalse(by_route["/academy"]["qualified"])
+            self.assertTrue(any("origin body changed" in reason for reason in by_route["/academy"]["reasons"]))
         finally:
             MODULE.require_dynamic_release_identity = original
 
