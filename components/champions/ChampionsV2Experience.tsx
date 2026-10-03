@@ -507,8 +507,14 @@ function TeamTitleCard({
           </div>
           <h3 className="mt-1 font-serif text-3xl font-semibold">{title.name}</h3>
         </div>
-        <span className="rounded-full border border-slate-400/14 bg-slate-600/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-slate-500">
-          Vacant
+        <span
+          className={
+            title.holders?.length === title.holderSlots
+              ? "rounded-full border border-emerald-200/18 bg-emerald-300/8 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-emerald-100"
+              : "rounded-full border border-slate-400/14 bg-slate-600/10 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-slate-500"
+          }
+        >
+          {title.holders?.length === title.holderSlots ? "Held" : "Vacant"}
         </span>
       </div>
 
@@ -524,12 +530,19 @@ function TeamTitleCard({
             className={`relative ${stageHeight} overflow-hidden rounded-[1.25rem] border border-white/[0.065] bg-[radial-gradient(circle_at_50%_18%,rgba(96,165,250,0.09),transparent_46%),rgba(0,0,0,0.18)]`}
           >
             <Image
-              src={MALE_SILHOUETTE}
-              alt=""
+              src={
+                title.holders?.[index]
+                  ? avatarCardUrlForUser(
+                      title.holders[index].uid,
+                      title.holders[index].name,
+                    )
+                  : MALE_SILHOUETTE
+              }
+              alt={title.holders?.[index]?.name ?? ""}
               fill
               unoptimized
               sizes="420px"
-              className={`object-contain object-bottom opacity-52 ${avatarScale}`}
+              className={`object-contain object-bottom ${title.holders?.[index] ? "opacity-92" : "opacity-52"} ${avatarScale}`}
             />
             <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_40%,rgba(3,7,17,0.10)_60%,#030711_100%)]" />
             {title.holders?.[index] && (
