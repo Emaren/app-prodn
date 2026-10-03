@@ -13,8 +13,9 @@ const titles = fs.readFileSync("lib/champions/titles.ts", "utf8");
 const titleState = fs.readFileSync("lib/champions/titleState.ts", "utf8");
 const trophyService = fs.readFileSync("lib/trophies/service.ts", "utf8");
 const shell = fs.readFileSync("app/AppShell.tsx", "utf8");
+const globalCss = fs.readFileSync("app/globals.css", "utf8");
 
-test("Champions E2 is default while B A E preserves E1 behind the Extreme hover", () => {
+test("Champions E2 is default while B A E preserves E1 behind a production-safe Extreme hover", () => {
   assert.match(page, /ChampionsV2Experience/);
   assert.match(page, /loadChampionsV2State/);
   assert.doesNotMatch(page, /function PodiumCard/);
@@ -23,8 +24,13 @@ test("Champions E2 is default while B A E preserves E1 behind the Extreme hover"
   assert.match(legacyPage, /ChampionsDisplayRail/);
   assert.match(displayRail, /\/champions\/legacy\?view=b/);
   assert.match(displayRail, /\/champions\/legacy\?view=a/);
-  assert.match(displayRail, /group\/extreme/);
-  assert.match(displayRail, /group-hover\/extreme/);
+  assert.match(displayRail, /champions-extreme-group/);
+  assert.match(displayRail, /champions-extreme-menu/);
+  assert.doesNotMatch(displayRail, /group-hover\/extreme/);
+  assert.match(globalCss, /\.champions-extreme-group:hover \.champions-extreme-menu/);
+  assert.match(globalCss, /\.champions-extreme-group:focus-within \.champions-extreme-menu/);
+  assert.match(globalCss, /pointer-events: auto/);
+  assert.match(globalCss, /opacity: 1/);
   assert.match(displayRail, /E1/);
   assert.match(displayRail, /E2/);
 });

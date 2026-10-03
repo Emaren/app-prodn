@@ -68,6 +68,16 @@ button:disabled,
     cursor: not-allowed;
 }
 
+/* Champions display rail: keep the E1/E2 selector independent of Tailwind's
+   generated group-hover variants. Production builds have previously omitted
+   those variant selectors even when the markup contained them. */
+.champions-extreme-group:hover .champions-extreme-menu,
+.champions-extreme-group:focus-within .champions-extreme-menu {
+    pointer-events: auto;
+    opacity: 1;
+    transform: translateY(0);
+}
+
 .aoe2-nav-scroll {
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;

@@ -68,7 +68,7 @@ export default function ChampionsDisplayRail({
           A
         </Link>
 
-        <div className="group/extreme relative">
+        <div className="champions-extreme-group relative">
           <Link
             href="/champions"
             aria-current={extremeSelected ? "page" : undefined}
@@ -79,7 +79,7 @@ export default function ChampionsDisplayRail({
           </Link>
 
           <div
-            className="pointer-events-none absolute bottom-full right-0 z-50 mb-1 flex translate-y-1 gap-1 rounded-full border border-white/[0.09] bg-slate-950/95 p-1 opacity-0 shadow-[0_14px_34px_rgba(0,0,0,0.44)] backdrop-blur transition duration-150 group-hover/extreme:pointer-events-auto group-hover/extreme:translate-y-0 group-hover/extreme:opacity-100 group-focus-within/extreme:pointer-events-auto group-focus-within/extreme:translate-y-0 group-focus-within/extreme:opacity-100"
+            className="champions-extreme-menu pointer-events-none absolute bottom-full right-0 z-50 mb-1 flex translate-y-1 gap-1 rounded-full border border-white/[0.09] bg-slate-950/95 p-1 opacity-0 shadow-[0_14px_34px_rgba(0,0,0,0.44)] backdrop-blur transition duration-150"
             aria-label="Extreme Champions versions"
           >
             <Link
