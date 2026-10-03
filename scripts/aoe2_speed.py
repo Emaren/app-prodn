@@ -406,6 +406,25 @@ def baseline_zero_summary() -> dict[str, Any] | None:
     return None
 
 
+def speed_inventory_snapshot() -> dict[str, Any] | None:
+    inventory_tool = ROOT / "scripts" / "aoe2_speed_inventory.py"
+    if not inventory_tool.is_file():
+        return None
+    try:
+        spec = importlib.util.spec_from_file_location(
+            "aoe2_speed_readiness_inventory",
+            inventory_tool,
+        )
+        if not spec or not spec.loader:
+            return None
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        payload = module.snapshot()
+    except Exception:
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
 def ready_coverage() -> dict[str, Any]:
     routes: set[str] = set()
     usage_count = 0
@@ -441,12 +460,46 @@ def ready_coverage() -> dict[str, Any]:
                 encoding="utf-8",
                 errors="replace",
             ).count("<SpeedRuntime")
+    representative_ready_routes: list[str] = []
+    representative_missing_routes: list[str] = []
+    authority_templates: list[str] = []
+    representative_route_count = 0
+    inventory = speed_inventory_snapshot()
+    if inventory:
+        representative_route_count = int(
+            inventory.get("public_campaign_route_count") or 0
+        )
+        for page in inventory.get("pages") or []:
+            if not isinstance(page, dict) or page.get("classification") != "public":
+                continue
+            representative = page.get("benchmark_representative")
+            if not isinstance(representative, str) or not representative:
+                continue
+            profile = (
+                page.get("source_profile")
+                if isinstance(page.get("source_profile"), dict)
+                else {}
+            )
+            if profile.get("explicit_ready_authority_signal") is True:
+                representative_ready_routes.append(representative)
+                template = page.get("template")
+                if isinstance(template, str) and template:
+                    authority_templates.append(template)
+            else:
+                representative_missing_routes.append(representative)
+
     return {
         "ready_marker_usages": usage_count,
         "delegated_ready_bindings": delegated_usage_count,
         "ready_authority_bindings": usage_count + delegated_usage_count,
         "ready_routes": sorted(routes),
         "ready_route_count": len(routes),
+        "representative_ready_routes": sorted(representative_ready_routes),
+        "representative_ready_route_count": len(representative_ready_routes),
+        "representative_missing_routes": sorted(representative_missing_routes),
+        "representative_route_count": representative_route_count,
+        "authority_templates": sorted(authority_templates),
+        "authority_template_count": len(authority_templates),
         "speed_runtime_mounts": runtime_mounts,
     }
 
@@ -2057,12 +2110,26 @@ def print_status() -> None:
     else:
         print("FAST operator loop:   no timing receipts yet")
 
-    print(
-        f"Ready authority:      {ready['ready_route_count']} explicit routes · "
-        f"{ready['ready_authority_bindings']} authority binding(s) "
-        f"({ready['ready_marker_usages']} direct marker(s), "
-        f"{ready['delegated_ready_bindings']} delegated)"
+    representative_total = int(ready.get("representative_route_count") or 0)
+    representative_ready = int(
+        ready.get("representative_ready_route_count") or 0
     )
+    if representative_total:
+        print(
+            f"Ready authority:      {representative_ready}/{representative_total} "
+            "benchmark representatives · "
+            f"{ready['authority_template_count']} owning template(s) · "
+            f"{ready['ready_authority_bindings']} literal binding(s) "
+            f"({ready['ready_marker_usages']} direct marker mount(s), "
+            f"{ready['delegated_ready_bindings']} delegated)"
+        )
+    else:
+        print(
+            f"Ready authority:      {ready['ready_route_count']} explicit routes · "
+            f"{ready['ready_authority_bindings']} authority binding(s) "
+            f"({ready['ready_marker_usages']} direct marker(s), "
+            f"{ready['delegated_ready_bindings']} delegated)"
+        )
 
 
 def diagnose() -> None:
@@ -2125,12 +2192,25 @@ def diagnose() -> None:
             f"median total {baseline['median_total_ms']:.1f} ms."
         )
 
-    print(
-        "Ready authority: "
-        f"{ready['ready_route_count']} explicit route(s); "
-        "global SpeedRuntime is present but route-level readiness authority is not yet "
-        "complete across the full public cohort."
+    representative_total = int(ready.get("representative_route_count") or 0)
+    representative_ready = int(
+        ready.get("representative_ready_route_count") or 0
     )
+    if representative_total:
+        print(
+            "Ready authority: "
+            f"{representative_ready}/{representative_total} benchmark representative(s) "
+            f"owned by {ready['authority_template_count']} template(s); "
+            "global SpeedRuntime is present but route-level readiness authority is not yet "
+            "complete across the full public cohort."
+        )
+    else:
+        print(
+            "Ready authority: "
+            f"{ready['ready_route_count']} explicit route(s); "
+            "global SpeedRuntime is present but route-level readiness authority is not yet "
+            "complete across the full public cohort."
+        )
 
 
 def comparable_performance_cohorts(

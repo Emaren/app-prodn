@@ -835,7 +835,7 @@ def maintain(*, apply: bool, until_target: bool, max_generations: int, force: bo
             break
         watch_continuation = False
         if plan["status"] == "WATCH" and not force:
-            if until_target and archived > 0:
+            if until_target:
                 if not plan.get("candidate"):
                     raise StorageError(
                         "healthy target not reached but no eligible "

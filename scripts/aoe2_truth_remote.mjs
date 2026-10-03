@@ -28,6 +28,12 @@ import {
   normalizeReplayPlayers,
   resolveReplayTeams,
 } from "@/lib/teamResolution";
+import {
+  HD_REPLAY_PARSER_CONTRACT,
+} from "@/lib/replayEngineRoom";
+import {
+  gameIdsWithExactParserArtifactAttempt,
+} from "@/lib/replayTruthParserLineage";
 
 const command =
   String(
@@ -979,7 +985,8 @@ function topologyProjection(
   const recoveryRoute =
     !artifactAvailable
       ? "SOURCE_ARTIFACT_REQUIRED"
-      : run
+      : game.hasExactCurrentParserRun ===
+          true
         ? "PARSER_RESEARCH_REQUIRED"
         : "REPARSE_REQUIRED";
 
@@ -1424,7 +1431,11 @@ function classifyRoute(
     parseReason ===
       "watcher_final_submission"
   ) {
-    return "REPARSE_REQUIRED";
+    return game
+      .hasExactCurrentParserRun ===
+      true
+      ? "PARSER_RESEARCH_REQUIRED"
+      : "REPARSE_REQUIRED";
   }
 
   if (
@@ -1593,7 +1604,9 @@ function certaintyDisposition(
   ) {
     return {
       disposition:
-        "REPARSE_REQUIRED",
+        artifactAvailable
+          ? "REPARSE_REQUIRED"
+          : "SOURCE_ARTIFACT_REQUIRED",
       currentVaultCertainty:
         artifactAvailable
           ? "ARTIFACT_PRESENT_REPARSE"
@@ -1616,23 +1629,51 @@ function certaintyDisposition(
     route ===
       "PARSER_RESEARCH_REQUIRED"
   ) {
+    const exactCurrentParserRun =
+      game.hasExactCurrentParserRun ===
+      true;
+
+    if (
+      artifactAvailable &&
+      !exactCurrentParserRun
+    ) {
+      return {
+        disposition:
+          "REPARSE_REQUIRED",
+        currentVaultCertainty:
+          "ARTIFACT_PRESENT_REPARSE",
+        artifactAvailable:
+          true,
+        requiresParserWork:
+          true,
+        requiresHumanEvidence:
+          false,
+        terminalForCurrentVault:
+          false,
+        reason:
+          "Replay evidence exists, but the exact current parser has not yet run on these bytes.",
+      };
+    }
+
     return {
       disposition:
-        "PARSER_RESEARCH_REQUIRED",
+        exactCurrentParserRun
+          ? "PARSER_RESEARCH_REQUIRED"
+          : "SOURCE_ARTIFACT_REQUIRED",
       currentVaultCertainty:
-        artifactAvailable
+        exactCurrentParserRun
           ? "ARTIFACT_PRESENT_CURRENT_PARSER_INSUFFICIENT"
           : "SOURCE_ARTIFACT_REQUIRED",
       artifactAvailable,
       requiresParserWork:
-        artifactAvailable,
+        exactCurrentParserRun,
       requiresHumanEvidence:
-        !artifactAvailable,
+        !exactCurrentParserRun,
       terminalForCurrentVault:
         !artifactAvailable,
       reason:
-        artifactAvailable
-          ? "The current vault has replay/candidate evidence, but the reviewed parser rules cannot yet derive complete truth from it."
+        exactCurrentParserRun
+          ? "The exact current parser already ran on the canonical replay bytes, but the reviewed parser rules still cannot derive complete truth."
           : "Parser research cannot proceed because the source artifact is absent from the current vault.",
     };
   }
@@ -1978,23 +2019,150 @@ async function proveReadOnly(
   };
 }
 
+async function loadExactCurrentParserRunGameIds(
+  prisma,
+  games = null
+) {
+  if (
+    Array.isArray(games) &&
+    games.length === 0
+  ) {
+    return new Set();
+  }
+
+  const targetGames =
+    Array.isArray(games)
+      ? games
+      : await prisma.gameStats.findMany({
+          where: {
+            is_final:
+              true,
+          },
+
+          select: {
+            id:
+              true,
+
+            replayHash:
+              true,
+          },
+        });
+
+  const replayHashes = [
+    ...new Set(
+      targetGames
+        .map(
+          (game) =>
+            cleanTruthText(
+              game.replayHash
+            ).toLowerCase()
+        )
+        .filter(
+          (replayHash) =>
+            SHA256_RE.test(
+              replayHash
+            )
+        )
+    ),
+  ];
+
+  if (
+    replayHashes.length ===
+      0
+  ) {
+    return new Set();
+  }
+
+  const runs =
+    await prisma.replayParseRun.findMany({
+      where: {
+        inputHash: {
+          in:
+            replayHashes,
+        },
+
+        parserName:
+          HD_REPLAY_PARSER_CONTRACT
+            .parserName,
+
+        parserVersion:
+          HD_REPLAY_PARSER_CONTRACT
+            .parserVersion,
+
+        passName:
+          HD_REPLAY_PARSER_CONTRACT
+            .passName,
+
+        passVersion:
+          HD_REPLAY_PARSER_CONTRACT
+            .passVersion,
+
+        schemaVersion:
+          HD_REPLAY_PARSER_CONTRACT
+            .schemaVersion,
+
+        status: {
+          in: [
+            "completed",
+            "recovered",
+            "failed",
+          ],
+        },
+
+        candidateOnly:
+          true,
+
+        affectsPublicAggregates:
+          false,
+      },
+
+      select: {
+        inputHash:
+          true,
+      },
+    });
+
+  return gameIdsWithExactParserArtifactAttempt(
+    targetGames,
+    runs
+  );
+}
+
 async function loadFinalGames(
   prisma
 ) {
-  return prisma.gameStats.findMany({
-    where: {
-      is_final:
-        true,
-    },
+  const games =
+    await prisma.gameStats.findMany({
+      where: {
+        is_final:
+          true,
+      },
 
-    orderBy: {
-      id:
-        "asc",
-    },
+      orderBy: {
+        id:
+          "asc",
+      },
 
-    select:
-      baseSelect,
-  });
+      select:
+        baseSelect,
+    });
+
+  const currentRunGameIds =
+    await loadExactCurrentParserRunGameIds(
+      prisma,
+      games
+    );
+
+  return games.map(
+    (game) => ({
+      ...game,
+
+      hasExactCurrentParserRun:
+        currentRunGameIds.has(
+          game.id
+        ),
+    })
+  );
 }
 
 function buildCorpus(
@@ -2555,9 +2723,26 @@ async function runTarget(
     );
   }
 
+  const currentRunGameIds =
+    await loadExactCurrentParserRunGameIds(
+      prisma,
+      [
+        game,
+      ]
+    );
+
+  const truthGame = {
+    ...game,
+
+    hasExactCurrentParserRun:
+      currentRunGameIds.has(
+        game.id
+      ),
+  };
+
   const analysis =
     analyzeGame(
-      game
+      truthGame
     );
 
   return {
@@ -2618,6 +2803,11 @@ async function runTarget(
       duration:
         game.game_duration ??
         game.duration,
+
+      exactCurrentParserRun:
+        truthGame
+          .hasExactCurrentParserRun ===
+        true,
     },
 
     truth:

@@ -61,6 +61,7 @@ export const WATCHER_CLIENT_EVENT_TYPES = [
   "final_candidate_reopened",
   "final_settle_observation_started",
   "final_settle_observation_complete",
+  "final_result_review_observation_complete",
   "batch_upload_started",
   "batch_upload_scanned",
   "batch_upload_file_started",

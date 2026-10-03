@@ -833,6 +833,10 @@ def print_target(
     print(
         f"Route:              {payload.get('route')}"
     )
+    print(
+        f"Exact current parser: "
+        f"{'YES' if game.get('exactCurrentParserRun') else 'NO'}"
+    )
 
     parse_run = payload.get(
         "latestParseRun"

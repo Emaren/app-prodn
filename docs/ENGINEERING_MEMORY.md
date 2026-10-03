@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "repository-entrypoint"
-reviewed_at: "2026-10-01"
+reviewed_at: "2026-10-02"
 review_interval_days: 14
 sensitivity: "internal"
 ---
@@ -201,6 +201,27 @@ repair. Activation does not silently escalate itself into recursive root
 mutation.
 
 
+## 2026-10-02 — Current-parser exhaustion follows immutable replay bytes, not row linkage
+
+A bounded Replay Truth closure campaign exposed a lineage bug after an exact
+Pass-10 Engine Room job encountered historical artifacts whose immutable parser
+identity already existed. The worker correctly skipped duplicate work by
+`artifact SHA + run identity`, but Replay Truth still classified those
+`GameStats` rows as `REPARSE_REQUIRED` because its exhaustion check required
+the existing `ReplayParseRun.gameStatsId` to equal that exact historical row.
+
+The durable authority is the immutable source artifact. For the operational
+question “does this replay still need the exact current parser?”, an
+`aoe2war.mgz_hd` run over the same SHA with the same parser/pass/schema
+identity counts for every `GameStats` row bound to that SHA. This remains true
+when the historical run was linked to another row or when the deterministic
+run failed. A failed exact run means parser research is required; it does not
+mean the identical parser should be queued forever.
+
+This rule changes workflow classification only. Candidate-only runs remain
+non-public, do not affect public aggregates, and do not create winner,
+statistics, betting, settlement or Wolo authority.
+
 ## 2026-09-27 — Promoted topology must be consumable without rewriting historical result evidence
 
 Production game 44862 proved a second authority-layer seam after the V3 roster repair itself
@@ -262,6 +283,29 @@ ledger, audit every persistent CHECK/enum/index contract that constrains the sam
 Unit mocks can prove application policy while still missing live-schema rejection. Schema
 alignment must ship through the proof-bound migration rail; never bypass an atomic production
 rejection with manual SQL.
+
+## 2026-10-02 — Battle Archive replay-generation churn revokes shared edge HTML
+
+Certified release `ac77f7b374ce` re-qualified the governed dynamic-edge cohort on
+production. Nineteen routes remained byte-stable, but `/battle-archive` produced
+two public body hashes across the t=0/15/30-second window and failed exact
+public/origin byte equality on two samples. This is consistent with the page's
+actual contract: `loadPublicBattleArchivePage()` is keyed by public replay
+generation, and a newly-final replay legitimately advances that generation and
+refreshes the archive.
+
+SpeedOS therefore removes `/battle-archive` from both the source-controlled
+dynamic policy and the privileged Cloudflare allowlist. The page remains
+`force-dynamic`, keeps its process-local generation/page-coordinate cache,
+stays in production prewarm, and retains its explicit SpeedReady marker. Only
+shared Cloudflare HTML caching is revoked. The governed dynamic cohort is now
+19 exact routes.
+
+Durable rule: replay-history presentation may use generation-keyed process-local
+reuse without gaining shared-edge staleness authority. When a certified
+qualification proves body churn inside the edge TTL, revoke the shared cache
+route even if the page is read-only and passed earlier quiet windows. Never
+freeze advancing replay truth to preserve a speed score.
 
 ## 2026-09-28 — A re-qualified dynamic route can still lose cache authority later
 
@@ -449,12 +493,30 @@ client-side `PremiumTimeSeriesChart`, so readiness is delegated through a
 already rendered before hydration.
 
 Durable rule: observability coverage must represent authority, not syntax.
-Speed OS readiness census now unions direct markers with explicit delegated
-bindings and reports both counts separately. Do not duplicate a fake marker to
-satisfy a regex; place the authoritative signal at the component boundary that
-actually knows when the primary experience is usable. Global `SpeedRuntime`
-fallback remains diagnostic telemetry and is not promoted to route-level
-authority merely because no explicit binding exists.
+The public benchmark cohort is a set of concrete representative URLs, while
+source ownership belongs to Next page templates. Speed OS therefore resolves
+each representative through the canonical page inventory and asks whether the
+owning template has a real readiness authority boundary. Valid activation forms
+are a direct `SpeedReadyMarker`, a direct `publishExplicitSpeedReady()` call
+owned by the page after its real readiness condition, or an explicit delegated
+binding such as `speedReadyRoute` whose child owns the marker. A marker buried
+inside a generic imported component does not authorize the page unless the page
+actually activates that contract.
+
+This template-aware projection is required for dynamic pages such as
+`/clans/[slug]`, `/game-stats/[id]`, and `/players/[uid]`: their runtime
+markers correctly publish concrete URLs, but a literal-string source scan
+cannot enumerate those representatives. The 2026-10-02 repair moved current
+coverage from a misleading 30/87 literal-route count to 38/87 semantically
+owned benchmark representatives without adding decorative markers. The same
+pass corrected `/champions/legacy`, whose marker had incorrectly published
+`/champions`.
+
+Do not duplicate a fake marker to satisfy a counter. Place the authoritative
+signal at the component boundary that actually knows when the primary
+experience is usable. Global `SpeedRuntime` fallback remains diagnostic
+telemetry and is not promoted to route-level authority merely because no
+explicit binding exists.
 
 General rule: when an instrumentation metric starts driving implementation
 behavior, verify that it measures the semantic contract you care about rather

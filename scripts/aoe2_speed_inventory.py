@@ -112,6 +112,12 @@ SERVER_PERSONALIZATION_PATTERN = re.compile(
     r"\bverifySession\s*\(|\bgetServerSession\s*\(|"
     r"\bSESSION_COOKIE_NAME\b"
 )
+READY_MARKER_PATTERN = re.compile(r"<SpeedReadyMarker\b")
+READY_PUBLISH_PATTERN = re.compile(r"\bpublishExplicitSpeedReady\s*\(")
+READY_DELEGATED_BINDING_PATTERN = re.compile(r"\bspeedReadyRoute\s*=")
+READY_DELEGATED_MARKER_PATTERN = re.compile(
+    r"speedReadyRoute\s*\?\s*<SpeedReadyMarker\b"
+)
 
 
 def applicable_layout_files(page: Path) -> list[Path]:
@@ -184,6 +190,41 @@ def page_source_profile(path: Path) -> dict[str, Any]:
     fetch_calls = len(re.findall(r"\bfetch\s*\(", combined))
     suspense_usages = len(re.findall(r"<Suspense\b", page))
     image_usages = len(re.findall(r"<Image\b", combined))
+    page_ready_marker_usages = len(READY_MARKER_PATTERN.findall(page))
+    page_ready_publish_usages = len(READY_PUBLISH_PATTERN.findall(page))
+    page_delegated_ready_bindings = len(
+        READY_DELEGATED_BINDING_PATTERN.findall(page)
+    )
+
+    dependency_ready_marker_usages = 0
+    dependency_ready_publish_usages = 0
+    delegated_marker_dependencies = 0
+    for _, text in dependency_sources:
+        marker_count = len(READY_MARKER_PATTERN.findall(text))
+        publish_count = len(READY_PUBLISH_PATTERN.findall(text))
+        delegated_marker_count = len(READY_DELEGATED_MARKER_PATTERN.findall(text))
+        delegated_marker_dependencies += delegated_marker_count
+        # A component whose marker exists only behind speedReadyRoute does not
+        # authorize the importing page by itself. The page must activate that
+        # contract with speedReadyRoute=... at its own boundary.
+        dependency_ready_marker_usages += max(
+            0,
+            marker_count - delegated_marker_count,
+        )
+        dependency_ready_publish_usages += publish_count
+
+    ready_marker_usages = (
+        page_ready_marker_usages + dependency_ready_marker_usages
+    )
+    ready_publish_usages = (
+        page_ready_publish_usages + dependency_ready_publish_usages
+    )
+    delegated_ready_bindings = page_delegated_ready_bindings
+    explicit_ready_authority_signal = bool(
+        ready_marker_usages
+        or page_ready_publish_usages
+        or delegated_ready_bindings
+    )
     generation_cache_signal = bool(
         re.search(
             r"createGenerationKeyedLoader|replayGeneration|generationKeyed|CacheGeneration",
@@ -271,6 +312,16 @@ def page_source_profile(path: Path) -> dict[str, Any]:
         "fetch_signals": fetch_calls,
         "suspense_usages": suspense_usages,
         "image_usages": image_usages,
+        "ready_marker_usages": ready_marker_usages,
+        "ready_publish_usages": ready_publish_usages,
+        "delegated_ready_bindings": delegated_ready_bindings,
+        "page_ready_marker_usages": page_ready_marker_usages,
+        "page_ready_publish_usages": page_ready_publish_usages,
+        "page_delegated_ready_bindings": page_delegated_ready_bindings,
+        "dependency_ready_marker_usages": dependency_ready_marker_usages,
+        "dependency_ready_publish_usages": dependency_ready_publish_usages,
+        "delegated_marker_dependencies": delegated_marker_dependencies,
+        "explicit_ready_authority_signal": explicit_ready_authority_signal,
         "generation_cache_signal": generation_cache_signal,
         "complete_corpus_signal": complete_corpus_signal,
         "static_complexity_score": round(max(0.0, static_complexity_score), 3),

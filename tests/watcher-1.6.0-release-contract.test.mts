@@ -141,10 +141,10 @@ function makeFakeWatcher(root: string, version: string, options = {}) {
   return { watcherDir, dist };
 }
 
-test("Watcher 1.6.2 public release identity is exact", () => {
-  assert.match(release, /version: "1\.6\.2"/);
-  assert.match(release, /previousVersion: "1\.6\.1"/);
-  assert.match(release, /releasedOn: "Sep 29, 2026"/);
+test("Watcher 1.6.3 public release identity is exact", () => {
+  assert.match(release, /version: "1\.6\.3"/);
+  assert.match(release, /previousVersion: "1\.6\.2"/);
+  assert.match(release, /releasedOn: "Oct 2, 2026"/);
   assert.match(release, /Active replay-folder recovery/);
   assert.match(release, /Fresh replay adoption after restart/);
   assert.match(release, /Localized out-of-sync MP save support/);
@@ -296,7 +296,7 @@ test("Watcher release sync rolls vault back if metadata commit fails", async (t)
   );
 });
 
-test("Watcher release sync preserves reliability, media shedding, and 1.6.2 support truth", () => {
+test("Watcher release sync preserves reliability, media shedding, and 1.6.x support truth", () => {
   for (const feature of [
     "Adaptive Watcher resource profiling",
     "Heartbeat-scoped resource telemetry",
@@ -327,20 +327,24 @@ test("Watcher reliability telemetry remains admitted server-side", () => {
   }
 });
 
-test("Watcher 1.6.2 docs bind public metadata to certified artifacts", () => {
-  assert.match(docs, /version: 1\.6\.2/);
-  assert.match(docs, /1d1e9b3ca9f95a89cf47ab582219e4c85b725603/);
-  assert.match(docs, /b1e3b1353aa48840bdaa7d8afc353e1afc5bf22d/);
-  assert.match(docs, /36649412730/);
-  assert.match(docs, /36649412594/);
+test("Watcher 1.6.3 docs bind public metadata to certified artifacts", () => {
+  assert.match(docs, /version: 1\.6\.3/);
+  assert.match(docs, /22397221167bac75c710804d526d33cbdfe8d559/);
+  assert.match(docs, /ad44e34a49901aed58ee72bd922ea5b047b76870/);
+  assert.match(docs, /37042601127/);
+  assert.match(docs, /37042597135/);
+  assert.match(docs, /37043600091/);
+  assert.match(docs, /11242987071/);
 
   for (const hash of [
-    "80c04168949c791cfdc0c67432c2ac4868459219923d8b7c96efc40f24d8d0c3",
-    "4b7d0709dae6e9a80ea400bbb88a87a3880b0d5bf99dac11bcdb5e8b6ff129f7",
-    "89860bc8d3a95283cb49d9d86f8a8b8b07e0423b3c7f53ddd5ddd003b1c8df95",
-    "d2bfb053cf78418fa90d1dca20d223f8488c3baa82071d5db515dbbaceb38a78",
-    "a73367344321e0e9399192dd47e588adab68770aa1632636ab4f3f3e1743237a",
-    "c14e65579e54b2417766c5ab816798fb2f87221798b3fee5fd4c788fa3beaf63",
+    "54cae410e9808e363efe0c1f1eed26648563be7fc09fa70dd9567a1eb7916e77",
+    "a69c35ab8712451cca60da7fcd42e55f019c9ac47ffdaecd0e946ce592c37038",
+    "04c04738b23eefdb5c9c6e29c7cc1de77d28c728a34ab72d1fa48c24b354a9ff",
+    "055b20df70b76f2e8b8a3f87b2106580d7fd8e427ed4ab740de708cc97cded9c",
+    "c1d1d149dac0e49dc8ad1361e07acc85ceea61ab8d3782b6a8e54b1790d155d0",
+    "d7ede3335d6f11765c035be500dadaaad9af431570bf72c31494ee5127e46147",
+    "de4fe319f18df4bcf5190ca2625466b6a73a48e7a015b28fe49a48f395805471",
+    "80fffba25b93588343346553e1f6d447c21f1b45cf7cb559e00ebc014609c4a2",
   ]) {
     assert.match(docs, new RegExp(hash));
   }

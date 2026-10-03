@@ -80,9 +80,13 @@ class StageTests(unittest.TestCase):
             "risk_class": "WATCHER",
             "release_sha": head,
         }
+        release_source = (MODULE.ROOT / "lib" / "watcherRelease.ts").read_text(
+            encoding="utf-8"
+        )
+        declared_version = release_source.split('version: "', 1)[1].split('"', 1)[0]
         self.assertEqual(
             MODULE.watcher_distribution_version(manifest),
-            "1.6.2",
+            declared_version,
         )
         self.assertEqual(
             MODULE.watcher_distribution_version(

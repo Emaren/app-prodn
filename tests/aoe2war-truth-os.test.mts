@@ -257,6 +257,53 @@ test("Replay Truth target exposes evidence and current projection", () => {
   );
 });
 
+test("Replay Truth distinguishes missing parser work from exhausted current parser evidence", () => {
+  assert.match(
+    remote,
+    /HD_REPLAY_PARSER_CONTRACT/
+  );
+
+  assert.match(
+    remote,
+    /loadExactCurrentParserRunGameIds/
+  );
+
+  assert.match(
+    remote,
+    /gameIdsWithExactParserArtifactAttempt/
+  );
+
+  assert.match(
+    remote,
+    /inputHash:[\s\S]*in:[\s\S]*replayHashes/
+  );
+
+  assert.match(
+    remote,
+    /status:[\s\S]*completed[\s\S]*recovered[\s\S]*failed/
+  );
+
+  assert.match(
+    remote,
+    /hasExactCurrentParserRun[\s\S]*PARSER_RESEARCH_REQUIRED[\s\S]*REPARSE_REQUIRED/
+  );
+
+  assert.match(
+    remote,
+    /const recoveryRoute =[\s\S]*game\.hasExactCurrentParserRun[\s\S]*PARSER_RESEARCH_REQUIRED[\s\S]*REPARSE_REQUIRED/
+  );
+
+  assert.match(
+    remote,
+    /route ===[\s\S]*PARSER_RESEARCH_REQUIRED[\s\S]*!exactCurrentParserRun[\s\S]*REPARSE_REQUIRED[\s\S]*ARTIFACT_PRESENT_REPARSE/
+  );
+
+  assert.match(
+    python,
+    /Exact current parser:/
+  );
+});
+
 
 test("Replay Truth certainty closure accounts for every final game without guessing settlement truth", () => {
   assert.match(
@@ -272,6 +319,11 @@ test("Replay Truth certainty closure accounts for every final game without guess
   assert.match(
     remote,
     /ARTIFACT_PRESENT_REPARSE/
+  );
+
+  assert.match(
+    remote,
+    /route ===[\s\S]*REPARSE_REQUIRED[\s\S]*disposition:[\s\S]*artifactAvailable[\s\S]*REPARSE_REQUIRED[\s\S]*SOURCE_ARTIFACT_REQUIRED/
   );
 
   assert.match(

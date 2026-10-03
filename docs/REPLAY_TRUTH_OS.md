@@ -118,6 +118,17 @@ existing parser run whose evidence still cannot establish topology routes to
 `PARSER_RESEARCH_REQUIRED`; an archived but not-yet-parsed source may route to
 `REPARSE_REQUIRED`.
 
+Current-parser exhaustion is scoped to immutable source bytes, not to the
+historical `GameStats` row that happened to request a run. If the exact live
+parser contract has already attempted the exact `replay_hash`, every
+`GameStats` row bound to that SHA is considered parser-attempted even when the
+append-only `ReplayParseRun.gameStatsId` points to a different historical row
+or is absent. Deterministic `failed` runs also exhaust that exact parser
+identity: rerunning identical bytes through identical parser/pass/schema
+versions is not recovery work. Those cases route to parser research while the
+source artifact remains available; they never grant result, statistics,
+betting, settlement or Wolo authority.
+
 A game is result-resolved only when the participant resolver produces a
 complete coherent proposition containing at least one winner, at least one
 loser and no unknown participant result.

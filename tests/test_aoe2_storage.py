@@ -331,7 +331,53 @@ class StorageOSTests(unittest.TestCase):
         self.assertEqual(rc, 0)
         self.assertEqual(worker.call_count, 2)
 
-    def test_until_target_does_not_start_while_already_in_watch(self):
+    def test_until_target_can_resume_while_already_in_watch(self):
+        plan = {
+            "status": "WATCH",
+            "candidate": "activate-20260815T233717Z-e20f5689ea3b",
+        }
+
+        with (
+            mock.patch.object(
+                MODULE,
+                "operator_baseline",
+                return_value=("a" * 40, "certified-build"),
+            ),
+            mock.patch.object(
+                MODULE,
+                "make_plan",
+                return_value=plan,
+            ),
+            mock.patch.object(
+                MODULE,
+                "invoke_worker",
+            ) as worker,
+            mock.patch.object(
+                MODULE,
+                "snapshot",
+                return_value={"used_percent": 77.90},
+            ),
+            mock.patch.object(
+                MODULE,
+                "print_status",
+            ),
+            mock.patch.object(
+                MODULE,
+                "policy",
+                return_value={"healthy_target": 78},
+            ),
+        ):
+            rc = MODULE.maintain(
+                apply=True,
+                until_target=True,
+                max_generations=5,
+                force=False,
+            )
+
+        self.assertEqual(rc, 0)
+        worker.assert_called_once()
+
+    def test_plain_apply_does_not_start_while_already_in_watch(self):
         plan = {
             "status": "WATCH",
             "candidate": "activate-20260815T233717Z-e20f5689ea3b",
@@ -355,8 +401,8 @@ class StorageOSTests(unittest.TestCase):
         ):
             rc = MODULE.maintain(
                 apply=True,
-                until_target=True,
-                max_generations=5,
+                until_target=False,
+                max_generations=1,
                 force=False,
             )
 

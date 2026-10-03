@@ -96,6 +96,53 @@ class PerformanceOSTests(unittest.TestCase):
         self.assertEqual(ready["ready_route_count"], 2)
         self.assertEqual(ready["speed_runtime_mounts"], 1)
 
+    def test_ready_coverage_projects_template_authority_to_benchmark_representatives(self):
+        inventory = {
+            "public_campaign_route_count": 3,
+            "pages": [
+                {
+                    "template": "/clans/[slug]",
+                    "classification": "public",
+                    "benchmark_representative": "/clans/mystikal",
+                    "source_profile": {"explicit_ready_authority_signal": True},
+                },
+                {
+                    "template": "/game-stats/[id]",
+                    "classification": "public",
+                    "benchmark_representative": "/game-stats/16218",
+                    "source_profile": {"explicit_ready_authority_signal": True},
+                },
+                {
+                    "template": "/about",
+                    "classification": "public",
+                    "benchmark_representative": "/about",
+                    "source_profile": {"explicit_ready_authority_signal": False},
+                },
+            ],
+        }
+        with tempfile.TemporaryDirectory() as temporary:
+            root = pathlib.Path(temporary)
+            (root / "app").mkdir()
+            (root / "components").mkdir()
+            with patch.object(SPEED_MODULE, "ROOT", root), patch.object(
+                SPEED_MODULE,
+                "speed_inventory_snapshot",
+                return_value=inventory,
+            ):
+                ready = SPEED_MODULE.ready_coverage()
+
+        self.assertEqual(ready["representative_route_count"], 3)
+        self.assertEqual(ready["representative_ready_route_count"], 2)
+        self.assertEqual(
+            ready["representative_ready_routes"],
+            ["/clans/mystikal", "/game-stats/16218"],
+        )
+        self.assertEqual(ready["representative_missing_routes"], ["/about"])
+        self.assertEqual(
+            ready["authority_templates"],
+            ["/clans/[slug]", "/game-stats/[id]"],
+        )
+
     def test_cohort_summary_uses_route_medians(self):
         rows = [
             {

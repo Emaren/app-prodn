@@ -8,16 +8,54 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "telemetry-contract"
-reviewed_at: "2026-09-29"
+reviewed_at: "2026-10-02"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
 
 # Watcher Telemetry
 
-## Production release identity — 2026-09-29
+## Production release identity — 2026-10-02
 
-Watcher 1.6.2 is the smaller-footprint / stronger-support release. It reduces passive replay-folder, journal, retry, and historical-state work while adding bounded process resource profiling, heartbeat-scoped support telemetry, explicit renderer bootstrap/readiness state, sanitized renderer failure evidence, and one bounded dashboard self-recovery reload. Replay monitoring remains owned by the separate Watcher engine and does not depend on dashboard lifetime.
+Watcher 1.6.3 is the current public release. It preserves the 1.6.2 low-footprint lifecycle while tightening replay terminal truth, duplicate-monitor ownership, bounded background update discovery, and manual-update handoff. The terminal-state correction is deliberately semantic rather than more aggressive polling: durable replay storage is no longer mislabeled as a settled competitive result when winner authority is still unresolved.
+
+The canonical live download root remains `/mnt/HC_Volume_105319120/aoe2-downloads`, exposed through the app's `public/downloads` symlink at runtime. The Watcher 1.6.3 release contract requires the Windows, macOS, and Linux updater manifests plus all versioned payloads and both inventory receipts to agree byte-for-byte before web metadata may advertise `version: 1.6.3`.
+
+Release evidence:
+
+- Watcher runtime source: `22397221167bac75c710804d526d33cbdfe8d559`;
+- cross-platform build source and annotated `v1.6.3` tag target: `ad44e34a49901aed58ee72bd922ea5b047b76870`;
+- successful Windows Azure Artifact Signing run: `37042601127`;
+- successful macOS/Linux release build run: `37042597135`;
+- successful certification run: `37043600091`;
+- certified publication bundle artifact ID: `11242987071`;
+- public GitHub release: `v1.6.3`, published 2026-10-02 18:00:05 UTC;
+- owner-side publication proof: 11/11 public assets matched the certified bundle by SHA-256 digest multiset;
+- full Watcher contract validation: **112/112**, with runtime JavaScript lint clean and locked dependency install reporting 0 vulnerabilities.
+
+Verified release binary SHA-256 values:
+
+- Windows installer: `54cae410e9808e363efe0c1f1eed26648563be7fc09fa70dd9567a1eb7916e77`;
+- Windows portable EXE: `a69c35ab8712451cca60da7fcd42e55f019c9ac47ffdaecd0e946ce592c37038`;
+- Apple Silicon DMG: `04c04738b23eefdb5c9c6e29c7cc1de77d28c728a34ab72d1fa48c24b354a9ff`;
+- macOS direct ZIP: `055b20df70b76f2e8b8a3f87b2106580d7fd8e427ed4ab740de708cc97cded9c`;
+- Linux AppImage: `c1d1d149dac0e49dc8ad1361e07acc85ceea61ab8d3782b6a8e54b1790d155d0`.
+
+Secondary release evidence is pinned: macOS DMG blockmap `d7ede3335d6f11765c035be500dadaaad9af431570bf72c31494ee5127e46147`, Windows `latest.yml` `ca80f8ff75af5cd7a1566471b13d0ddff1313a8fa0d8e54bf866047131e3657d`, `latest-mac.yml` `9aa7f3b553b907a4ed7eb1b9f25f5335922655f42386aad99481167dc999b24a`, and `latest-linux.yml` `9dd2432a25922f7e1d73e1c26488f7d19f43263d7d87ff87bec56ae3915bae5b`. The authoritative inventory receipts are `SHA256SUMS-1.6.3.txt` (`de4fe319f18df4bcf5190ca2625466b6a73a48e7a015b28fe49a48f395805471`) and `watcher-release-manifest-1.6.3.json` (`80fffba25b93588343346553e1f6d447c21f1b45cf7cb559e00ebc014609c4a2`).
+
+Terminal replay semantics are explicit in 1.6.3:
+
+- `finalStored=true` means the candidate bytes are durably archived;
+- `finalAccepted/resultReady=true` means those bytes are accepted competitive-result authority;
+- archived-but-unresolved finals enter the separate review-routed state and emit `final-result-review-observation-complete` with `resultReady=false`;
+- only accepted results emit `final-settle-observation-complete`;
+- both paths retain the same bounded observation window, and changed replay bytes still reopen monitoring through the existing recovery watchdog.
+
+This does not infer winners or weaken replay, betting, settlement, database, or Wolo authority. It prevents storage proof from masquerading as result proof; accepted server adjudication and rating-delta authority remain the safe fallback when HD terminal bytes omit a trustworthy winner.
+
+## Previous production release identity — 2026-09-29
+
+Watcher 1.6.2 was the smaller-footprint / stronger-support release. It reduces passive replay-folder, journal, retry, and historical-state work while adding bounded process resource profiling, heartbeat-scoped support telemetry, explicit renderer bootstrap/readiness state, sanitized renderer failure evidence, and one bounded dashboard self-recovery reload. Replay monitoring remains owned by the separate Watcher engine and does not depend on dashboard lifetime.
 
 The canonical live download root remains `/mnt/HC_Volume_105319120/aoe2-downloads`, exposed through the app's `public/downloads` symlink at runtime. The Watcher 1.6.2 release contract requires the Windows, macOS, and Linux updater manifests plus all versioned payloads and both inventory receipts to agree byte-for-byte before web metadata may advertise `version: 1.6.2`.
 

@@ -659,9 +659,9 @@
       "owner": "aoe2war-web",
       "path": "docs/ENGINEERING_MEMORY.md",
       "review_interval_days": 14,
-      "reviewed_at": "2026-10-01",
+      "reviewed_at": "2026-10-02",
       "sensitivity": "internal",
-      "sha256": "0517e43ecce628a30265efd47e01f01575926b37e5f275471e9b5e18ac02aeb2",
+      "sha256": "0677920c8b0d97709d5c940b8bd4b17d81cbfd80ba2ead5d54591608ea9e22ac",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1235,9 +1235,9 @@
       "owner": "aoe2war-web",
       "path": "docs/PERFORMANCE_OS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-28",
+      "reviewed_at": "2026-10-02",
       "sensitivity": "internal",
-      "sha256": "2b27102821c587d729c0866701f00d19cda36b5bb4e8bba0a89ef008d36339b0",
+      "sha256": "14f9de4fb5af9625dcf57df4068105e6400809b46fb4e244c249466cd674385b",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1375,7 +1375,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-29",
       "sensitivity": "internal",
-      "sha256": "5c40625eca96b35013c0a820a3a18fab59ca09e9929963ce17fccff149fc4833",
+      "sha256": "7c97a619a5ff72acc2e24e1b90612b50d327c4e1354e5ca002eb9b7cf670f984",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1421,7 +1421,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-29",
       "sensitivity": "internal",
-      "sha256": "c1b9f48939f6b938cf3152f32184c0585fc6aa3f0eac29dccc252e3a1ea1b329",
+      "sha256": "c9cc090265435790dfb3c81a13a5278b885c92011f9a383e3ef100951d648364",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1787,9 +1787,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WATCHER_TELEMETRY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-29",
+      "reviewed_at": "2026-10-02",
       "sensitivity": "restricted",
-      "sha256": "c668e6684ad619f6fa3c4d7b1d41fe12ca31c136a8309ec0437afba77d7574b3",
+      "sha256": "c2c53c243e88a196b8a9ed0f7d79503999f502efa25500bae856da46ac1edab7",
       "source_of_truth": "git",
       "status": "active",
       "systems": [

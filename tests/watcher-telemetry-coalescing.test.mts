@@ -60,6 +60,7 @@ test("never suppresses meaningful watcher transitions", () => {
     "result_ready",
     "final_candidate_accepted",
     "final_settle_observation_complete",
+    "final_result_review_observation_complete",
   ]) {
     const event = {
       ...ignored(),

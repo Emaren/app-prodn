@@ -140,6 +140,18 @@ test("Browser Truth cohort has truthful Ready boundaries for formerly fallback-o
   assert.match(proof, /players\\\/u_/);
   assert.match(proof, /clans\\\//);
 });
+test("legacy championship page publishes its own readiness route", () => {
+  const legacy = source("app/champions/legacy/page.tsx");
+  assert.match(
+    legacy,
+    /<SpeedReadyMarker route="\/champions\/legacy" \/>/,
+  );
+  assert.doesNotMatch(
+    legacy,
+    /<SpeedReadyMarker route="\/champions" \/>/,
+  );
+});
+
 test("Traffic publishes readiness from inside the hydrated primary chart boundary", () => {
   const traffic = source("app/traffic/page.tsx");
   const chart = source("components/observatory/PremiumTimeSeriesChart.tsx");
