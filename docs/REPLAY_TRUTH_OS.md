@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-09-28"
+reviewed_at: "2026-10-02"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
@@ -438,3 +438,80 @@ Wolo, or native mutation occurred. There are no eligible player-first IDs,
 names, or UIDs. The separate **112-case parser/evidence-disagreement tranche
 was not started**. The next action is to audit that 112-case family from a fresh
 governed inventory with the existing roster planner.
+
+## Recovery Campaign V2 checkpoint — 2026-10-03 UTC
+
+The read-only observer at `2026-10-03T05:49:17.010Z` and subsequent canonical
+recount both report **3,851 / 5,541 final rows with coherent accepted participant
+results (69.500090%)**, leaving **1,690 unresolved**. This final-row metric is
+separate from Workshop Full Battle Truth: **3,601 / 5,304 logical battles
+(67.892157%)**. No results were promoted in production or QA; projected gain is
+zero. Historical percentages above retain their original counting grain.
+
+Run the reusable census from this governed app branch:
+
+```bash
+python3 scripts/census-replay-recovery-v2.py --json
+```
+
+Optional serial modern-receipt revalidation requires three explicit absolute
+paths: `--api-root`, `--python`, and `--archive-dir`. Reuse the preserved API
+planner on `integration/replay-open-gate-20260922`; the validated local runtime
+is `api-prodn/.venv/bin/python` with mgz 1.8.51 and construct 2.8.16. Provide an
+actual readable local canonical archive for candidates that reach byte
+revalidation. The observed 28 modern cases all failed before archive access;
+16 were disconnected and 12 had malformed/ineligible receipts. This command has
+no apply mode. Planner eligibility remains candidate-only; the existing
+app-owned fenced writer is the independent statistics-only promotion rail.
+
+The command reuses the Truth OS SSH, clean-source, service-continuity and
+protected-listener checks. Its PostgreSQL session and repeatable-read
+transaction are read-only. It bundles the local dependency-free classifier,
+uses production's shared public resolver contracts, records source hashes,
+classifies every unresolved final, reads exact-hash/platform siblings including
+nonfinal aliases, hashes stored parser gzip bytes, invokes the existing planner
+serially, and takes a separate canonical recount. It writes only a local,
+exclusive-create, hash-named receipt with mode `0400`. It records external
+source/count drift explicitly and grants no authority from inventory facts.
+
+Primary dispositions sum exactly to 1,690: disconnected/review 992; duplicate
+sibling evidence 223; stale parser evidence 167; parser history only 296;
+modern receipts requiring revalidation 12. Overlapping shapes include 601 rows
+with exact-hash/platform siblings, 28 with modern receipts, 12 with adjudication
+history, 905 verified current candidate outputs, and 1,658 with archive presence.
+There are zero effective accepted rating-authority cases among unresolved
+finals, zero detected coherent accepted-result conflicts, and zero completely
+empty indexed-evidence cases. Ingestion or rating metadata never supplies winner
+authority. All 12 historical adjudication cases use the retired recorder-exit
+policy; they cannot be rehydrated. Four terminal proof prefilters are early
+exits with disconnect guards. Candidate 27269 is resolver-positive only through
+fragment recovery; its independent terminal proof rejects incomplete roster
+and resignation identity. No new parser-result promotion policy was activated.
+
+Automatic numerical rating-delta promotion is now fail-closed. Equal opposite
+RM/DM movement on the same Steam roster does not prove which replay caused the
+change. The numerical evaluator remains diagnostic; independently accepted
+ledger rows keep their existing exact source/roster projection. This change
+also prevents an unrelated later upload from expanding automatic result-write
+IDs. Existing action-tail and recorder-exit authority gates remain closed.
+
+The immutable full receipt is recorded in
+`docs/replay-receipts/recovery-v2-2026-10-03.json`, with SHA-256
+`fac1c39a6fe6d21320aa43cb9a4797466616cffb3ea88dcf6b9a9e60cdd11761`.
+The repository summary includes exact paths, source hashes, rule assessments,
+raw/normalized blocker counts and next-target IDs. Source checkpoints are
+`11477a2c` (rating guard), `c1f62aa3` (observer/classifier) and `90b15e8c`
+(array-bound alias read). Validation passed 127 focused app tests, six isolated
+PostgreSQL checks, 196 canonical-runtime API tests (one private-fixture skip),
+TypeScript and diff checks. The PostgreSQL test executes the actual alias query
+with 40,003 hashes, proving exact matching without Prisma parameter overflow.
+
+The highest-ROI next research tranche is the **173 archive-bearing,
+non-disconnected unresolved finals lacking a completed exact current Pass 10
+run**: 136 incomplete team resignations, 24 unparsed Watcher finals, 12 recorded
+resignations and one parse-match fallback. Start a bounded serial offline canary
+with the exact IDs in the summary, prioritize registered participants using
+exact Steam identity, retain immutable candidate receipts, and independently
+revalidate result/roster/source semantics before consuming a writer. These are
+research targets, not promised additions. Native terminal work and deployment
+remain outside this checkpoint; no production writes were performed.

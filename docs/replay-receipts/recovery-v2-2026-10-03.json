@@ -1,0 +1,298 @@
+{
+  "acceptedRatingAuthority": 0,
+  "acceptedRatingLedgerPrefilter": 0,
+  "after": {
+    "contract": {
+      "contractMismatchGames": 0,
+      "contractMismatchIds": [],
+      "scalarAuthorityIncoherent": 0,
+      "scalarAuthorityIncoherentIds": [],
+      "scalarAuthorityRows": 411
+    },
+    "coverage": {
+      "bothResolved": 3851,
+      "bothUnknown": 270,
+      "resultResolved": 3851,
+      "resultUnknown": 1690,
+      "teamResolved": 5271,
+      "teamUnknown": 270,
+      "topologyKnown": 5492,
+      "topologyUnknown": 49,
+      "unexplainedTopologyDebt": 0,
+      "unknownParticipantResults": 8191,
+      "unresolvedDisconnectGames": 989
+    },
+    "finalGames": 5541,
+    "generatedAt": "2026-10-03T05:50:53.688Z",
+    "productionSource": "7175cbc6b9b0c52e4b3696f172866676fb40193f"
+  },
+  "appSourceCommit": "90b15e8c27a19b4945c90c9ff0a4883fabb49922",
+  "authorityGranted": false,
+  "conflictingEvidence": 0,
+  "countingGrain": "all is_final=true GameStats rows; coherent participant results under current public resolver",
+  "databaseReadOnly": {
+    "defaultTransactionReadOnly": "on",
+    "transactionReadOnly": "on"
+  },
+  "databaseWrites": 0,
+  "duplicateRehostSiblingEvidence": 601,
+  "evidenceShapeCounts": {
+    "adjudication_history_requires_review": 12,
+    "archive_present_no_accepted_result": 1617,
+    "current_parser_result_needs_revalidation": 1,
+    "modern_receipt_needs_quorum_revalidation": 28,
+    "source_artifact_missing": 32
+  },
+  "finalBattles": 5541,
+  "generatedAt": "2026-10-03T05:49:55.563Z",
+  "implementationBranch": "integration/replay-receipt-promotion-20260927",
+  "inventoryCountsChangedAfterObservation": false,
+  "kind": "aoe2war-replay-truth-v2-governed-summary",
+  "limitations": [
+    "Archive presence is inventory evidence, not an archive byte proof or result proof.",
+    "Zero safe yield is a verified lower bound for the examined accepted evidence rails; 173 cheap source-bearing current-parser research targets are not promised recoveries.",
+    "The exploratory first receipt checked decompressed candidate bytes; immutable superseding receipts use the required stored-gzip SHA scope.",
+    "Production advanced externally between initial and later observations; the final protected observation and recount share source 7175cbc6 with unchanged coverage.",
+    "No result/adjudication/roster/parser-run persistence, native execution, deployment, betting/settlement/Wolo mutation occurred."
+  ],
+  "measuredAdditionalResolutions": {
+    "percentagePointGain": 0,
+    "production": 0,
+    "projected": 0,
+    "qaPromoted": 0,
+    "registeredPlayerNewResolutions": 0
+  },
+  "modernRevalidation": {
+    "authorityGranted": false,
+    "casesInspected": 28,
+    "eligibleCandidates": 0,
+    "note": "Fresh planner candidates still require the app-owned fenced writer; no apply mode exists here.",
+    "rawBlockers": {
+      "malformed_or_ineligible_modern_receipt": 12,
+      "target_disconnected": 16
+    },
+    "safeYield": 0
+  },
+  "nextAutonomousCampaign": {
+    "action": "bounded offline current-Pass-10 archive canary for clean unresolved finals lacking a completed exact current parser run; preserve candidate-only evidence and re-evaluate before any writer",
+    "authorityGranted": false,
+    "eligibleResearchTargets": 173,
+    "estimatedSafeYield": 0,
+    "firstSerialTargetIds": [
+      5045,
+      9159,
+      10567,
+      11435,
+      11439,
+      11446,
+      11452,
+      11453,
+      11455,
+      11464
+    ],
+    "rawReasons": {
+      "hd_final_parse_match_fallback": 1,
+      "recorded_resignation_final": 12,
+      "team_resignation_not_complete": 136,
+      "watcher_final_unparsed": 24
+    }
+  },
+  "observationTimestamp": "2026-10-03T05:49:17.010Z",
+  "productionAuthorityFingerprints": {
+    "lib/publicBattleArchiveEligibility.ts": "58f65ed05aad80a957d1f043f668783c7283e8e8fd2174de6002f7e265aeceb0",
+    "lib/publicReplayRosterV2.ts": "9ae05719c962c5012a8e69b4f190b87a7a6de5255ae13de93fc28802362840b0",
+    "lib/publicReplayTruth.ts": "d6ee0c540f795259d25792b382f79ff4f21ef4f5d989f6ff15ff0fed9e8d0284",
+    "lib/replayAdjudications.ts": "79324c304a3ef871c6343408ec8766ea3abf1770d535cc72d306a93cd50098ac",
+    "lib/replayPlayerIdentity.ts": "23a8843cb5aeec128e2af79aebeaa177ebb9f2bbb6e0cd6adbdcc2fc6511f1c8",
+    "lib/replayPlayerResult.ts": "89b41bda1955a398d3bb96b42b640ffd66d507942338c3f23dffdc6ebbd8bb17",
+    "lib/replayResultAdjudications.ts": "e81776963d32eb2a9610a58968e8a4591b318e697f6986c6f8818f975995ced4",
+    "lib/teamResolution.ts": "196beca5a9c3580b922e2a85aa64b2e603762f40ff17ad05b8a8aa82aaa88a8e",
+    "lib/unresolvedWatcherResult.ts": "2f511d1adb750e340b8788b2fe797965229fc30f3e7f3d7e0ffe7cf8b702a8e8"
+  },
+  "productionMutatedByThisCommand": false,
+  "productionSource": "7175cbc6b9b0c52e4b3696f172866676fb40193f",
+  "productionSourceChangedAfterObservation": false,
+  "projectedResultAdditions": 0,
+  "reasonCounts": {
+    "engine_room_structural_projection": 220,
+    "hd_early_exit_under_60s": 95,
+    "hd_final_parse_match_fallback": 1,
+    "hd_fragment_header_body_recovery": 22,
+    "hd_metadata_fragment_body_recovery": 34,
+    "hd_metadata_fragment_only_recovery": 11,
+    "hd_trailing_header_body_recovery": 3,
+    "header_only_summary_fallback": 16,
+    "manual_backfill": 2,
+    "manual_override": 3,
+    "recorded_resignation_final": 12,
+    "repaired_parse_match_fallback": 1,
+    "team_resignation_not_complete": 466,
+    "watcher_final_submission": 234,
+    "watcher_final_unparsed": 31,
+    "watcher_inferred_opponent_win_on_incomplete_1v1": 539
+  },
+  "receipt": {
+    "bytes": 30072569,
+    "path": "/Users/tonyblum/projects/AoE2HDBets/.aoe2war-workspaces/app-prodn/integration-replay-receipt-promotion-20260927/.aoe2war-release/truth-receipts/recovery-v2-fac1c39a6fe6d21320aa43cb9a4797466616cffb3ea88dcf6b9a9e60cdd11761.json",
+    "sha256": "fac1c39a6fe6d21320aa43cb9a4797466616cffb3ea88dcf6b9a9e60cdd11761"
+  },
+  "resolved": 3851,
+  "resolvedPercent": 69.50009023641942,
+  "ruleAssessment": {
+    "currentParserCandidates": {
+      "allTerminalPrefiltersDisconnectedEarlyExit": true,
+      "coherentResolverPositiveFragmentIds": [
+        27269
+      ],
+      "fragmentTerminalBlockers": [
+        "incomplete_or_ambiguous_roster_and_sides",
+        "resignation_player_not_in_roster"
+      ],
+      "promotable": 0,
+      "terminalPrefilters": 4,
+      "verifiedGzipOutputs": 905
+    },
+    "ledgerHistory": {
+      "examined": 12,
+      "rehydratable": 0,
+      "retiredRecorderExitPolicy": 12
+    },
+    "modernReceipts": {
+      "blockedDisconnected": 16,
+      "blockedMalformedOrIneligible": 12,
+      "eligible": 0,
+      "examined": 28
+    },
+    "siblings": {
+      "acceptedFinalSourceCandidates": 0,
+      "definition": "same exact SHA or platform match identity, including nonfinal aliases; never filename/title proximity",
+      "safeYield": 0,
+      "sourceBearingUnresolvedFinalRows": 601
+    }
+  },
+  "safeRules": [
+    {
+      "prefilter": 4,
+      "rule": "fresh_exact_byte_parser_result",
+      "safeYield": 0,
+      "validation": "independent byte/parser/result proof and source conflict revalidation pending"
+    },
+    {
+      "prefilter": 0,
+      "rule": "accepted_exact_roster_sibling",
+      "safeYield": 0,
+      "validation": "platform key alone insufficient; source/archive/side/exact game binding pending"
+    },
+    {
+      "prefilter": 28,
+      "rule": "modern_signed_cross_side_receipt",
+      "safeYield": 0,
+      "validation": "fresh existing independent planner required"
+    },
+    {
+      "prefilter": 12,
+      "rule": "adjudication_history_revalidation",
+      "safeYield": 0,
+      "validation": "exact accepted source/roster/version and conflict checks required"
+    },
+    {
+      "prefilter": 0,
+      "rule": "accepted_exact_game_rating_authority",
+      "safeYield": 0,
+      "validation": "numeric zero sum alone is not accepted exact replay attribution"
+    }
+  ],
+  "schema": 2,
+  "sourceCheckpoints": {
+    "aliasFence": "90b15e8c",
+    "census": "c1f62aa3c0f961a32cf8ffed3a492514812f52c0",
+    "integrationReconciliation": "687f48c08d4fbc99603c646749cdb5edb21b68af",
+    "ratingGate": "11477a2c"
+  },
+  "sourceFingerprints": {
+    "lib/replayRecoveryCensus.ts": "b18b60832fdf5aa9df8c5ef439890fcb64f8596ef5f1707f98ccb00f00b0e6ca",
+    "lib/watcherReceiptPromotion.ts": "f640392035dd4dbb2022b52567e72f4ae0bc99f6894421f1ed8b2b66a2a5d570",
+    "scripts/aoe2_truth_remote.mjs": "ceb07138aff26de633d1a1d57f759735096465aa47a50783722f68e7b29fb2d0",
+    "scripts/census-replay-recovery-v2.py": "901b0622879ac5f96c41c8e554a7619dc60a811cf1a920e79f110864f10d8e7d",
+    "scripts/replay_recovery_census_remote.mjs": "d86651362f6c53025ceb42568b8680b10fd5018846f610e20b8c87b83a6bacff"
+  },
+  "sourceSnapshotSha256": "8001e1d2fd6909783cdd914d81f4c0fbe7c5602b5a314664a45c71867a8b20ad",
+  "summary": {
+    "authorityGranted": false,
+    "bettingAuthority": false,
+    "duplicateInputCount": 0,
+    "evidenceShapeCounts": {
+      "archive": 1658,
+      "attempts": 1690,
+      "currentParserCandidate": 905,
+      "decisiveParserCandidate": 4,
+      "disconnectedOrReview": 992,
+      "duplicateSiblings": 601,
+      "exactParserRuns": 1648,
+      "ledgerHistory": 12,
+      "modernReceipts": 28,
+      "publicProjection": 1661,
+      "ratingDiagnostics": 1423,
+      "rawWinnerFlags": 831,
+      "staleOrSuperseded": 743
+    },
+    "grain": "final_game_stats_row",
+    "missingParseReasonCount": 0,
+    "primaryFamilyCounts": {
+      "disconnected_or_review": 992,
+      "duplicate_sibling_evidence": 223,
+      "modern_receipts_require_revalidation": 12,
+      "parser_history_only": 296,
+      "stale_or_superseded_evidence": 167
+    },
+    "rawReasonCounts": {
+      "engine_room_structural_projection": 220,
+      "hd_early_exit_under_60s": 95,
+      "hd_final_parse_match_fallback": 1,
+      "hd_fragment_header_body_recovery": 22,
+      "hd_metadata_fragment_body_recovery": 34,
+      "hd_metadata_fragment_only_recovery": 11,
+      "hd_trailing_header_body_recovery": 3,
+      "header_only_summary_fallback": 16,
+      "manual_backfill": 2,
+      "manual_override": 3,
+      "recorded_resignation_final": 12,
+      "repaired_parse_match_fallback": 1,
+      "team_resignation_not_complete": 466,
+      "watcher_final_submission": 234,
+      "watcher_final_unparsed": 31,
+      "watcher_inferred_opponent_win_on_incomplete_1v1": 539
+    },
+    "requiresIndependentRevalidation": true,
+    "resolvedCount": 3851,
+    "resolvedPercentage": 69.50009023641942,
+    "safeYield": 0,
+    "safeYieldByFamily": {
+      "disconnected_or_review": 0,
+      "duplicate_sibling_evidence": 0,
+      "modern_receipts_require_revalidation": 0,
+      "parser_history_only": 0,
+      "stale_or_superseded_evidence": 0
+    },
+    "schema": "aoe2war-replay-recovery-census/v2",
+    "settlementAuthority": false,
+    "totalFinalBattles": 5541,
+    "unresolvedCount": 1690,
+    "woloAuthority": false
+  },
+  "tests": {
+    "canonicalApi": 196,
+    "canonicalApiSkipped": 1,
+    "diffCheck": "pass",
+    "focusedApp": 127,
+    "isolatedPostgreSQL": 6,
+    "typeScript": "pass"
+  },
+  "trulyEvidenceEmpty": 0,
+  "unresolved": 1690,
+  "workshop": {
+    "fullTruth": 3601,
+    "fullTruthPercent": 67.8921568627451,
+    "logicalBattles": 5304
+  }
+}
