@@ -6,6 +6,10 @@ const watcherTelemetrySource = await readFile(
   new URL("../lib/watcherTelemetry.ts", import.meta.url),
   "utf8"
 );
+const watcherEventsRouteSource = await readFile(
+  new URL("../app/api/watcher/events/route.ts", import.meta.url),
+  "utf8"
+);
 
 test("watcher acceptance telemetry keeps archive, parse, result, and review milestones distinct", () => {
   for (const eventType of [
@@ -16,6 +20,7 @@ test("watcher acceptance telemetry keeps archive, parse, result, and review mile
     "result_review_routed",
     "final_settle_observation_started",
     "final_settle_observation_complete",
+    "final_result_review_observation_complete",
   ]) {
     assert.match(
       watcherTelemetrySource,
@@ -23,4 +28,10 @@ test("watcher acceptance telemetry keeps archive, parse, result, and review mile
       `${eventType} must remain in the watcher telemetry allowlist`
     );
   }
+
+  assert.match(
+    watcherEventsRouteSource,
+    /"final_result_review_observation_complete"/,
+    "review-complete telemetry must trigger the idempotent terminal reconciliation check"
+  );
 });
