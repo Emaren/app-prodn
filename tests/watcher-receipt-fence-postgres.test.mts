@@ -4,7 +4,7 @@
  */
 import assert from "node:assert/strict";
 import { execFile } from "node:child_process";
-import { mkdtemp, mkdir, appendFile, rm } from "node:fs/promises";
+import { mkdtemp, mkdir, appendFile, readFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import test from "node:test";
@@ -162,6 +162,51 @@ test("real PostgreSQL source snapshot and promotion fences reject concurrent dri
         await first.query("ROLLBACK");
         if (pending) await pending.catch(() => undefined);
         await second.query("ROLLBACK");
+      }
+    });
+
+    await t.test("recovery observer binds large alias inventories as arrays and selects only exact nonfinal matches", async () => {
+      // Read the actual observer query without importing its production entry
+      // point. The same SQL must work beyond Prisma's expanded parameter limit.
+      const observer = await readFile(new URL("../scripts/replay_recovery_census_remote.mjs", import.meta.url), "utf8");
+      const match = observer.match(/^const recoveryAliasSql = `([^`]+)`;/m);
+      assert.ok(match, "observer alias SQL remains directly inspectable");
+      const aliasSql = match[1];
+      assert.match(aliasSql, /g\.replay_hash=ANY\(\$1::text\[\]\)/);
+      assert.match(aliasSql, /platform_match_id'=ANY\(\$2::text\[\]\)/);
+      assert.deepEqual([...new Set(aliasSql.match(/\$\d+/g))], ["$1", "$2"]);
+      const hashes = Array.from({ length: 40_001 }, (_, index) => index.toString(16).padStart(64, "0"));
+      hashes.push(hashes[0], hashes[40_000]);
+      const platformIds = ["qa-exact-platform", "qa-exact-platform"];
+      await db.query("BEGIN");
+      try {
+        await db.query(`ALTER TABLE game_stats
+          ADD COLUMN is_final boolean NOT NULL DEFAULT true,
+          ADD COLUMN players jsonb DEFAULT '[]',
+          ADD COLUMN winner text,
+          ADD COLUMN parse_reason text,
+          ADD COLUMN parse_source text,
+          ADD COLUMN disconnect_detected boolean DEFAULT false,
+          ADD COLUMN replay_file text,
+          ADD COLUMN original_filename text`);
+        await db.query(`INSERT INTO game_stats (id, replay_hash, is_final, key_events) VALUES
+          (1000,$1,false,'{"platform_match_id":"unrelated"}'),
+          (1001,$2,false,'{"platform_match_id":"qa-exact-platform"}'),
+          (1002,$3,false,'{"platform_match_id":"qa-exact-platform"}'),
+          (1003,$3,true,'{"platform_match_id":"qa-exact-platform"}'),
+          (1004,$2,false,'{"platform_match_id":"qa-exact-platform-suffix"}'),
+          (1005,$4,false,'{"platform_match_id":"unrelated"}'),
+          (1006,$1,true,'{"platform_match_id":"unrelated"}')`,
+        [hashes[0], "f".repeat(64), hashes[40_000], `${hashes[0]}-suffix`]);
+        const largeInventory = await db.query(aliasSql, [hashes, platformIds]);
+        assert.deepEqual(largeInventory.rows.map((row: { id: number }) => row.id), [1000, 1001, 1002]);
+        assert.ok(largeInventory.rows.every((row: { is_final: boolean }) => row.is_final === false));
+        assert.equal(largeInventory.rows[2].replayHash, hashes[40_000], "array tail is bound exactly");
+        assert.deepEqual((await db.query(aliasSql, [hashes, []])).rows.map((row: { id: number }) => row.id), [1000, 1002]);
+        assert.deepEqual((await db.query(aliasSql, [[], platformIds])).rows.map((row: { id: number }) => row.id), [1001, 1002]);
+        assert.deepEqual((await db.query(aliasSql, [[], []])).rows, []);
+      } finally {
+        await db.query("ROLLBACK");
       }
     });
   } finally {

@@ -40,6 +40,7 @@ function candidate(run) {
 }
 const recoveryEvidenceHelper = await import('__RECOVERY_HELPER_MODULE_URL__');
 const receiptSnapshotSql = __RECEIPT_SNAPSHOT_SQL__;
+const recoveryAliasSql = `SELECT g.id, g.replay_hash AS "replayHash", g.is_final, g.players, g.winner, g.parse_reason, g.parse_source, g.key_events, g.disconnect_detected, g.replay_file, g.original_filename FROM game_stats g WHERE NOT g.is_final AND (g.replay_hash=ANY($1::text[]) OR g.key_events->>'platform_match_id'=ANY($2::text[])) ORDER BY g.id`;
 async function recoveryCensus() {
     const prisma = getPrisma();
     try {
@@ -50,7 +51,8 @@ async function recoveryCensus() {
             const currentRunIds = await loadExactCurrentParserRunGameIds(tx, raw);
             const games = raw.map(g => ({ ...g, hasExactCurrentParserRun: currentRunIds.has(g.id) }));
             const attempts = await tx.replayParseAttempt.findMany({ orderBy: { id: 'asc' }, select: { id: true, gameStatsId: true, replayHash: true, userUid: true, status: true, uploadMode: true, detail: true, createdAt: true, evidence: true } });
-            const aliases = await tx.gameStats.findMany({ where: { is_final: false }, orderBy: { id: 'asc' }, select: { ...baseSelect, parse_iteration: true, game_type: true, replay_file: true, original_filename: true } });
+            // Arrays bind once each: large live history must not expand Prisma relation parameters.
+            const aliases = await tx.$queryRawUnsafe(recoveryAliasSql, games.map(g=>g.replayHash), games.map(g=>g.key_events?.platform_match_id).filter(Boolean));
             const runs = await tx.replayParseRun.findMany({ orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], select: { id: true, gameStatsId: true, inputHash: true, artifact: { select: { sha256: true } }, parserName: true, parserVersion: true, schemaVersion: true, passName: true, passVersion: true, status: true, candidateOnly: true, affectsPublicAggregates: true, candidateOutputHash: true, candidateOutputStorageKey: true, createdAt: true } });
             const adjudications = await tx.replayResultAdjudication.findMany({ orderBy: { id: 'asc' } });
             const projections = await tx.replayStatProjection.findMany({ orderBy: { id: 'asc' }, select: { id: true, gameStatsId: true, parseRunId: true, supersedesId: true, sourceKind: true, sourceIdentity: true, sourceHash: true, resultEligibility: true, projectionStatus: true, affectsResults: true, affectsBets: true, settlementAuthority: true, provenance: true } });

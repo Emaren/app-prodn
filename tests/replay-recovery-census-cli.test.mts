@@ -19,6 +19,9 @@ test("observer bundles local classifier and exact preserved snapshot SQL without
     assert.match(program, /data:text\/javascript;base64,/);
     assert.match(program, /aoe2war-modern-receipt-source\/v1/);
     assert.match(program, /REPEATABLE READ READ ONLY/);
+    assert.match(program, /replay_hash=ANY\(\$1::text\[\]\)/);
+    assert.match(program, /platform_match_id.*ANY\(\$2::text\[\]\)/);
+    assert.doesNotMatch(program, /where: \{ is_final: false \}/);
     assert.doesNotMatch(program, /__RECOVERY_HELPER_MODULE_URL__|__RECEIPT_SNAPSHOT_SQL__|__SOURCE_FINGERPRINTS__/);
     const path = join(directory, "observer.mjs");
     writeFileSync(path, program);
