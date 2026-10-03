@@ -426,8 +426,8 @@ def serve_shadow() -> int:
 
     print("> Local code + hot reload: https://localhost:3000")
     print(f"> Browser opens: https://localhost:3000{open_route}")
-    print("> Clan/AI control plane: LOCAL WRITABLE PRODUCTION-SHAPED CLONE")
-    print("> Heavy game/replay corpus: NOT CLONED")
+    print("> Production application DB: FULL LOCAL WRITABLE MIRROR")
+    print("> Production managed media: READ-ONLY FALLBACK")
     print("> Production DB write path: NONE")
     print()
 

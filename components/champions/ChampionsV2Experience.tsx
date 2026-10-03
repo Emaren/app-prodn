@@ -491,12 +491,18 @@ function TeamTitleCard({
       : title.size === 3
         ? "h-[9.5rem]"
         : "h-36";
-  const avatarScale =
+  const vacantAvatarScale =
     title.size === 2
       ? "scale-[1.10]"
       : title.size === 3
         ? "scale-[1.05]"
         : "scale-100";
+  const holderAvatarScale =
+    title.size === 2
+      ? "scale-[0.96]"
+      : title.size === 3
+        ? "scale-[0.95]"
+        : "scale-[0.94]";
 
   return (
     <article className="overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,rgba(12,20,35,0.95),rgba(3,7,17,0.99))]">
@@ -542,15 +548,9 @@ function TeamTitleCard({
               fill
               unoptimized
               sizes="420px"
-              className={`object-contain object-bottom ${title.holders?.[index] ? "opacity-92" : "opacity-52"} ${avatarScale}`}
+              className={`object-contain object-bottom ${title.holders?.[index] ? `opacity-92 ${holderAvatarScale}` : `opacity-52 ${vacantAvatarScale}`}`}
             />
             <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_40%,rgba(3,7,17,0.10)_60%,#030711_100%)]" />
-            {title.holders?.[index] && (
-              <a href={title.holders[index].href ?? "/champions"} className="absolute left-2 right-2 top-3 z-10 rounded-lg border border-amber-300/20 bg-slate-950/85 px-2 py-2 text-center text-sm font-black text-amber-100">
-                {title.holders[index].name}
-                <span className="block text-[9px] uppercase tracking-widest text-amber-200/70">Current Champion</span>
-              </a>
-            )}
             <div className={`absolute bottom-0 left-1/2 ${beltHeight} w-full -translate-x-1/2`}>
               <Image
                 src={title.beltUrl}

@@ -635,6 +635,19 @@ def desired_snapshot_tables(
         shadow_url
     )
 
+    scope = str(
+        development_contract().get(
+            "shadow_snapshot_scope"
+        )
+        or "product-slice"
+    ).strip().lower()
+
+    if scope == "full":
+        # Full-mirror mode follows the current Prisma-backed public schema
+        # automatically. New application tables therefore enter the disposable
+        # local shadow without requiring a hand-maintained allowlist.
+        return set(available)
+
     roots = {
         table
         for table in BASE_ROOTS
@@ -1295,76 +1308,108 @@ def reset_sequences(
                 + table
             )
 
-        sequence_rows = query_lines(
-            shadow_url,
-            (
-                "SELECT pg_get_serial_sequence("
-                f"'public.{table}',"
-                "'id'"
-                ");"
-            ),
-        )
-
-        # UUID/string IDs or tables without an owned sequence
-        # legitimately have nothing to align.
-        if not sequence_rows:
-            continue
-
-        sequence = sequence_rows[0].strip()
-
-        if not sequence:
-            continue
-
-        stats = query_lines(
+        bindings = query_lines(
             shadow_url,
             (
                 "SELECT "
-                "COALESCE(MAX(id),1)::text "
-                "|| '|' || "
-                "(COUNT(*) > 0)::text "
-                f'FROM public."{table}";'
+                "a.attname || '|' || "
+                "quote_ident(sn.nspname) || '.' || quote_ident(seq.relname) "
+                "FROM pg_class AS tbl "
+                "JOIN pg_namespace AS tn "
+                "  ON tn.oid = tbl.relnamespace "
+                "JOIN pg_attribute AS a "
+                "  ON a.attrelid = tbl.oid "
+                " AND a.attnum > 0 "
+                " AND NOT a.attisdropped "
+                "JOIN pg_depend AS dep "
+                "  ON dep.refobjid = tbl.oid "
+                " AND dep.refobjsubid = a.attnum "
+                " AND dep.deptype IN ('a','i') "
+                "JOIN pg_class AS seq "
+                "  ON seq.oid = dep.objid "
+                " AND seq.relkind = 'S' "
+                "JOIN pg_namespace AS sn "
+                "  ON sn.oid = seq.relnamespace "
+                "WHERE tn.nspname = 'public' "
+                f"  AND tbl.relname = '{table}' "
+                "ORDER BY a.attnum;"
             ),
         )
 
-        if len(stats) != 1 or "|" not in stats[0]:
-            stop(
-                "sequence statistics were malformed "
-                f"for {table}"
+        # Metadata tables such as alembic_version, UUID/string primary keys,
+        # and tables without an owned sequence legitimately have nothing to
+        # align. Do not assume every mirrored table has an integer id column.
+        for binding in bindings:
+            if "|" not in binding:
+                stop(
+                    "sequence binding was malformed "
+                    f"for {table}"
+                )
+
+            column, sequence = binding.split(
+                "|",
+                1,
             )
 
-        max_id_raw, has_rows_raw = stats[0].split(
-            "|",
-            1,
-        )
-
-        max_id = int(max_id_raw)
-
-        has_rows = has_rows_raw in {
-            "t",
-            "true",
-        }
-
-        sequence_literal = sequence.replace(
-            "'",
-            "''",
-        )
-
-        query_lines(
-            shadow_url,
-            (
-                "SELECT setval("
-                f"'{sequence_literal}'::regclass,"
-                f"{max_id},"
-                + (
-                    "true"
-                    if has_rows
-                    else "false"
+            if not column.replace(
+                "_",
+                "",
+            ).isalnum():
+                stop(
+                    "unsafe sequence column identifier: "
+                    + column
                 )
-                + ");"
-            ),
-        )
 
-        aligned += 1
+            stats = query_lines(
+                shadow_url,
+                (
+                    "SELECT "
+                    f'COALESCE(MAX("{column}"),1)::text '
+                    "|| '|' || "
+                    "(COUNT(*) > 0)::text "
+                    f'FROM public."{table}";'
+                ),
+            )
+
+            if len(stats) != 1 or "|" not in stats[0]:
+                stop(
+                    "sequence statistics were malformed "
+                    f"for {table}.{column}"
+                )
+
+            max_value_raw, has_rows_raw = stats[0].split(
+                "|",
+                1,
+            )
+
+            max_value = int(max_value_raw)
+
+            has_rows = has_rows_raw in {
+                "t",
+                "true",
+            }
+
+            sequence_literal = sequence.replace(
+                "'",
+                "''",
+            )
+
+            query_lines(
+                shadow_url,
+                (
+                    "SELECT setval("
+                    f"'{sequence_literal}'::regclass,"
+                    f"{max_value},"
+                    + (
+                        "true"
+                        if has_rows
+                        else "false"
+                    )
+                    + ");"
+                ),
+            )
+
+            aligned += 1
 
     print(
         "PASS: writable local sequences aligned "
@@ -1592,11 +1637,22 @@ def refresh_shadow_v12() -> None:
 
     bounded_rows = 0
 
-    activity_limit = int(
+    snapshot_scope = str(
         development.get(
-            "shadow_activity_event_limit"
+            "shadow_snapshot_scope"
         )
-        or 0
+        or "product-slice"
+    ).strip().lower()
+
+    activity_limit = (
+        0
+        if snapshot_scope == "full"
+        else int(
+            development.get(
+                "shadow_activity_event_limit"
+            )
+            or 0
+        )
     )
 
     local_available = local_public_tables(

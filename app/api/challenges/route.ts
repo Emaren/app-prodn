@@ -200,10 +200,12 @@ export async function GET(request: NextRequest) {
     const prisma = getPrisma();
     const viewerUid = await getSessionUid(request);
     const payload = await loadChallengeHubSnapshot(prisma, viewerUid);
-    await retryChallengeCommissionerNotices(prisma, [
-      ...payload.scheduledMatches.map((match) => match.id),
-      ...payload.historyMatches.map((match) => match.id),
-    ]);
+    if (process.env.AOE2WAR_PROD_DB_PREVIEW !== "true") {
+      await retryChallengeCommissionerNotices(prisma, [
+        ...payload.scheduledMatches.map((match) => match.id),
+        ...payload.historyMatches.map((match) => match.id),
+      ]);
+    }
     return NextResponse.json(payload);
   } catch (error) {
     console.error("Failed to load challenge hub:", error);

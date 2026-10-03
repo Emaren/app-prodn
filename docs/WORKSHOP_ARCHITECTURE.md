@@ -130,30 +130,28 @@ Implementation baseline for this Workshop campaign: `5f9af6425e03a8bec25ebde2837
 <!-- AOE2WAR:TRUTH_IN_PRODUCTION_20260808:END -->
 
 
-## Writable Clan social shadow — 2026-08-16
+## Writable Clan social shadow — 2026-08-16 historical design
 
-Clan Hall development has two explicit parity lanes. `npm run dev:prod` remains
-a hard read-only live-production preview. `npm run dev:shadow:fresh` rebuilds
-the local `aoe2hdbets_shadow` database from the current canonical Prisma schema
-and imports only `users`, `clans`, `clan_members`, `clan_messages`, and
-`clan_message_reactions` from production. Direct-message tables exist locally
-and begin empty so invitation/chat work is freely writable. The 6.7 GB
-replay/parser/game corpus is deliberately excluded.
-
-The shadow launcher refuses a non-loopback base database, strips production
-mutation credentials, and keeps heavy game/parser read surfaces on the public
-production upstream. It is development infrastructure only and is never a
-production migration mechanism.
+This section records the original bounded Clan-development shadow. That design
+is superseded by the full current-schema production-data mirror described
+below. The safety boundary remains: the launcher refuses a non-loopback local
+database target, strips production mutation credentials, and never turns the
+Development OS into a production migration mechanism.
 
 
 ## Production-shaped local shadow
 
+The complete lane-selection, persistence, reset, and deployment contract lives
+in [`docs/LOCAL_DEVELOPMENT.md`](./LOCAL_DEVELOPMENT.md). This section records
+the shadow implementation details only.
+
 `npm run shadow:refresh` builds a disposable local PostgreSQL database from the
-current Prisma schema and imports the small production-shaped development
-slice needed for realistic UI work. It includes Clan/social truth plus
-`ai_agents`, `ai_request_traces`, `betting_bot_configs`, and
-`bet_counter_actions`, so `/admin/ai` mirrors the production control plane.
-Heavy replay/parser/game/financial corpus remains outside the clone.
+current Prisma schema and imports the complete current-schema production
+application dataset needed for realistic UI work. Table discovery is automatic:
+every production table also represented by the local current Prisma schema is
+mirrored, including Clan/social, Championship, betting, replay/game, AI,
+marketplace, event, Radio and Workshop state. Production remains read-only;
+all application writes target only the disposable localhost clone.
 
 `npm run dev:shadow` keeps `DATABASE_URL` local and strips production
 application/chain mutation credentials. For direct OpenAI development parity,

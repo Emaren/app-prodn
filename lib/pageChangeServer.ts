@@ -27,6 +27,15 @@ function noticeByHref() {
 }
 
 export async function syncPageChangeReleaseManifest(prisma: Db) {
+  if (process.env.AOE2WAR_PROD_DB_PREVIEW === "true") {
+    return prisma.pageChangeRevision.findMany({
+      where: {
+        href: { in: PAGE_CHANGE_NOTICES.map((notice) => notice.href) },
+      },
+      orderBy: { href: "asc" },
+    });
+  }
+
   const existing = await prisma.pageChangeRevision.findMany();
   const byHref = new Map(existing.map((row) => [row.href, row]));
   const now = new Date();
@@ -101,7 +110,12 @@ export async function loadUserPageChangeState(
   let seenRows = await prisma.userPageChangeSeen.findMany({ where: { userId } });
 
   // Brand-new accounts should not inherit every historical gray dot.
-  if (seenRows.length === 0) {
+  // Live-production preview is intentionally read-only, so it must never
+  // bootstrap seen-state into production while rendering local code.
+  if (
+    seenRows.length === 0 &&
+    process.env.AOE2WAR_PROD_DB_PREVIEW !== "true"
+  ) {
     await prisma.userPageChangeSeen.createMany({
       data: revisions.map((revision) => ({
         userId,
@@ -136,6 +150,9 @@ export async function markUserPageChangeSeen(
   href: string
 ) {
   const revisions = await syncPageChangeReleaseManifest(prisma);
+  if (process.env.AOE2WAR_PROD_DB_PREVIEW === "true") {
+    return revisions.find((candidate) => candidate.href === href) ?? null;
+  }
   const revision = revisions.find((candidate) => candidate.href === href);
   if (!revision) throw new Error("That page is not on the Kingdom change-notice rail.");
 

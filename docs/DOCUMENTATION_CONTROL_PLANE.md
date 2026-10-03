@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **87**
+- Authoritative repository documents: **88**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -37,12 +37,12 @@ This page is generated from the validated front matter in this repository. Cross
 - `generated`: 1
 - `historical`: 12
 - `reference`: 54
-- `runbook`: 14
+- `runbook`: 15
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 71
+- `active`: 72
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -94,6 +94,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [AoE2WAR Leaderboards](LEADERBOARDS.md) | `reference` | `active` | `product-contract` |
 | [HD Leaderboard View Modes](LEADERBOARD_VIEW_MODES.md) | `reference` | `active` | `product-contract` |
 | [Live Final-Proof Visibility](LIVE_FINAL_PROOF_VISIBILITY.md) | `reference` | `active` | `product-contract` |
+| [Local Development](LOCAL_DEVELOPMENT.md) | `runbook` | `active` | `operator-contract` |
 | [Marketplace Business V1](MARKETPLACE_BUSINESS.md) | `reference` | `active` | `financial-domain-contract` |
 | [Team Market Integrity](MARKET_TEAM_INTEGRITY.md) | `reference` | `active` | `financial-domain-contract` |
 | [AoE2WAR Operator Start Here](OPERATOR_START_HERE.md) | `runbook` | `active` | `operational-procedure` |

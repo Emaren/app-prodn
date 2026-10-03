@@ -223,6 +223,10 @@ remains accepted for historical compatibility, but new UI copy uses `@Scribe`.
 
 ### Local Hall Scribe verification
 
+The authoritative Development OS lane contract is
+[`docs/LOCAL_DEVELOPMENT.md`](./LOCAL_DEVELOPMENT.md). Hall-specific guidance
+below must not be read as redefining those global persistence or safety rules.
+
 `npm run dev:prod` is deliberately a read-only production-data preview. It
 cannot persist a Hall message, and it does not import the production OpenAI
 credential by default, so it cannot be used as a functional Hall Scribe write
@@ -264,13 +268,13 @@ not silently included in this release. They remain explicit later boundaries.
 
 ## Writable development shadow
 
-`npm run dev:shadow:fresh` rebuilds a local disposable PostgreSQL database from
-the current Prisma schema and imports only the production social slice needed
-for Hall development. Heavy replay/parser/game history is intentionally not
-cloned. Application database writes in shadow mode target localhost only;
-production internal mutation credentials are stripped. The social shadow exists
-to make invitation, chat, roster, and future Scribe work safely writable while
-preserving production-shaped identities and Clan truth.
+`npm run dev:shadow:fresh` rebuilds the disposable full production-data shadow
+from the current Prisma schema. Application database writes in shadow mode
+target localhost only; production internal mutation credentials are stripped.
+The same full mirror supports Hall development and every other UI surface, so
+Clan truth, identities, Championships, games/replays and adjacent product state
+cannot silently drift behind production merely because a table was omitted
+from a hand-maintained development slice.
 
 The production release lane never deploys or migrates the shadow database.
 

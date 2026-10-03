@@ -161,18 +161,41 @@ fresh certified runtime truth.
 ## Development OS
 
 Feature worktrees are first-class AoE2WAR development environments. The
-ordinary workflow is:
+authoritative local-development contract is
+[`docs/LOCAL_DEVELOPMENT.md`](./LOCAL_DEVELOPMENT.md). Read it before choosing
+a data lane; do not infer that "local development" means one database mode.
+
+AoE2WAR has two sanctioned lanes:
+
+- `npm run dev:prod` — local source + hot reload + **live production data**,
+  with PostgreSQL and Prisma hard-fenced read-only. This is the default for
+  frontend/read-path work and requires no database copy.
+- `npm run dev:shadow` — local source + hot reload + the existing writable
+  `aoe2hdbets_shadow` snapshot. Local mutations persist across server restarts
+  and can never deploy as database state.
+- `npm run dev:shadow:fresh` / `aoe2war dev refresh` — destructive refresh of
+  the shadow from current production truth. Use only when a newer clean writable
+  baseline is required.
+
+Do **not** use plain `yarn dev` / `npm run dev` when production parity matters;
+that lane may point at stale, empty, or test local data.
+
+A feature-worktree workflow may therefore be:
 
 ```bash
 aoe2war dev new feature-name
 cd "$HOME/projects/AoE2HDBets/app-prodn-feature-name"
 
 aoe2war dev prepare
-aoe2war dev refresh
+
+# Default: exact live production truth, hard read-only.
+aoe2war dev serve --prod-data
+
+# OR, when the feature needs writes:
 aoe2war dev serve
 
-# Optional reusable parked environment:
-aoe2war dev new dev-environment --persistent
+# Refresh the writable shadow only when a clean/new production baseline is needed.
+aoe2war dev refresh
 ```
 
 A persistent Development OS worktree is registered with Workspace OS and is not
@@ -185,27 +208,16 @@ client generation. It may bridge `node_modules` only from an exact
 `package.json` + `yarn.lock` fingerprint match; otherwise it materializes the
 frozen dependency contract.
 
-`aoe2war dev refresh` rebuilds the disposable `aoe2hdbets_shadow` database
-through local PostgreSQL bootstrap authority while keeping the application role
-least-privileged. `aoe2user` must remain non-superuser and `NOCREATEDB`.
-
-The shadow is production-shaped but mutation-safe:
-
-- production database credentials remain on the VPS;
-- production application/chain mutation credentials do not enter the local app;
-- application writes target localhost only;
-- selected product state is streamed into the disposable shadow;
-- foreign-key parent closure is discovered from the current schema instead of
-  maintained as a hand-written table list;
-- Direct/Nav Chat history, reactions and related dependencies are included;
-- high-volume activity history is bounded by machine policy;
-- production media/public read surfaces may remain available where explicitly
-  supported.
+The writable shadow remains least-privileged: `aoe2user` is non-superuser and
+`NOCREATEDB`; production application/chain mutation credentials do not enter
+the local app; application writes target localhost only; and a fresh shadow
+refresh destroys prior local mutations and rebuilds from production truth.
 
 For an interactive UI change, source tests are necessary but not always
 sufficient. When browser event ordering, portals, focus, pointer handling,
 optimistic state or persistence are material to the behavior, perform a real
-browser smoke against the writable production-shaped shadow before release.
+browser smoke in the lane appropriate to the behavior: `dev:prod` for exact
+read parity, or `dev:shadow` when the behavior must persist writes.
 
 ## Release command choice
 

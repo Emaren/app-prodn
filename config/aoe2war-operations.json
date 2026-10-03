@@ -305,7 +305,8 @@
     "shadow_restore_authority": "local-superuser-only",
     "shadow_app_role_createdb": false,
     "shadow_fk_policy": "automatic-referenced-table-closure",
-    "shadow_activity_event_limit": 5000
+    "shadow_activity_event_limit": 5000,
+    "shadow_snapshot_scope": "full"
   },
   "runtime_expiry": {
     "policy": "lean-two-hot-three-cold",

@@ -504,7 +504,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-08-22",
       "sensitivity": "internal",
-      "sha256": "bfcd693e706986638604c8672b9a845573f0e0b4702c6728aa11a6ef2981a9e2",
+      "sha256": "fc15aa105b60336408c03849de946292555ba477c11de7af6026e1ca298d60f6",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d853dc30e719a0f1f6ff57a243d5a312ee31e62ee8fe623d345a031e3f2f25ac",
+      "sha256": "d114f85a055c2f6491784ce792aad907638db8a2a86d042bf26357755976137a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1024,6 +1024,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "operator-contract",
+      "id": "aoe2war.app-prodn.docs-local-development",
+      "owner": "aoe2war-web",
+      "path": "docs/LOCAL_DEVELOPMENT.md",
+      "review_interval_days": 60,
+      "reviewed_at": "2026-10-03",
+      "sensitivity": "internal",
+      "sha256": "a5d8a9b4633be0ef1eb730ac382e11cf2c2b84a3e5665598a0aa0a5e83be6694",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Local Development",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "financial-domain-contract",
       "id": "aoe2war.app-prodn.docs-marketplace-business",
       "owner": "aoe2war-web",
@@ -1079,7 +1101,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-21",
       "sensitivity": "internal",
-      "sha256": "3bc1e2c8cd2a735963b19839cd3db07a39257fd73a604b853621d822ff459161",
+      "sha256": "fe29207619d89508e623cbc0279ef21d9121c9b2745ae0464405be68228f713e",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1903,7 +1925,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-08-20",
       "sensitivity": "internal",
-      "sha256": "9a0071e8d4c8cf7b77ed877ca8401d2fdea699f62fd909fc9c50f0961714e93c",
+      "sha256": "078c3b81bb5cb5283cffaf4bd4cf556c90c2eb77b9344755fd631eaf14fa6a2a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [

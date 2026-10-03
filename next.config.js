@@ -33,6 +33,14 @@ const UPSTREAM_API = (process.env.AOE2_BACKEND_UPSTREAM ?? "http://127.0.0.1:333
 module.exports = {
   reactStrictMode: false,
   productionBrowserSourceMaps: false,
+  images: {
+    qualities: [75, 95],
+    localPatterns: [
+      { pathname: "/api/media-assets/**" },
+      { pathname: "/uploads/managed-assets/**" },
+      { pathname: "/champions/**" },
+    ],
+  },
 
   // Bind output tracing to this repository instead of allowing unrelated
   // ancestor lockfiles on an operator machine to redefine Next's workspace
