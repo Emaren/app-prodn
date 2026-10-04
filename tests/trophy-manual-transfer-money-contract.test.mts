@@ -152,6 +152,9 @@ test("User Command and Trophy Command share one championship custody authority",
   assert.ok(userCommunityRoute.includes("Championship belts are custody, not removable badges"));
 
   assert.ok(championship.includes("syncChampionshipBeltHonorMirror"));
+  assert.ok(actions.includes("syncChampionshipBeltHonorMirror"));
+  assert.ok(actions.includes("guardianOwnsCustody || !currentTrophy.currentHolderUserId"));
+  assert.ok(actions.includes("holderUserIds: clearing"));
   assert.ok(beltHonorMirror.includes('buildHonorLabel("belt", input.displayName)'));
   assert.ok(beltHonorMirror.includes("userBadge.deleteMany"));
   assert.ok(beltHonorMirror.includes("userBadge.upsert"));
