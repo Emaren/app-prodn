@@ -56,7 +56,7 @@ test("E3 carries the complete E2 championship ledger inside the E1 war-table lay
   assert.match(e3Experience, /state\.teams\.dm/);
   assert.match(e3Experience, /\[2, 3, 4\]\.map/);
   assert.match(e3Experience, /state\.nationals\.map/);
-  assert.match(e3Experience, /\(["rm", "dm"] as ChampionsLane\[\]\)\.map/);
+  assert.ok(e3Experience.includes('(["rm", "dm"] as ChampionsLane[]).map'));
   assert.match(e3Experience, /state\.elo\[lane\]\.map/);
   assert.match(e3Experience, /state\.designationTitles\.map/);
   assert.match(e3Experience, /ChampionsDisplayRail active="e3"/);
