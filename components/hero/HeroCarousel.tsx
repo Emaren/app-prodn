@@ -352,6 +352,9 @@ export function HeroCarousel({
               setHiddenLanguage(variantPair.group, null);
               return;
             }
+            if (currentLanguage !== "en") {
+              setIndex((currentIndex) => Math.max(0, currentIndex - 1));
+            }
             setHiddenLanguage(variantPair.group, currentLanguage);
           }}
           title={
