@@ -91,7 +91,11 @@ function formatTileViewMode(mode: TileViewMode) {
 type JourneySummary = AdminUserRow["journeySummary"];
 
 const BELT_HONOR_OPTIONS = allChampionTitles
-  .filter((title) => title.type !== "designation")
+  .filter(
+    (title) =>
+      title.type !== "designation" &&
+      title.type !== "tag_team"
+  )
   .map((title) => title.displayName);
 const ARTIFACT_HONOR_OPTIONS = designationTitles.map((title) => title.displayName);
 
@@ -627,6 +631,8 @@ export default function AdminUserCard({
                 onDisplayChange={(beltDisplayOnProfile) =>
                   onDraftChange(user.uid, { beltDisplayOnProfile })
                 }
+                removable={false}
+                showDisplayControl={false}
                 onGrant={() => {
                   void onRunCommunityAction(user.uid, {
                     action: "grant_honor",
@@ -1201,7 +1207,7 @@ function JourneyDetailsPanel({ journey }: { journey: JourneySummary }) {
   );
 }
 
-function HonorItem({ honor, onRemove }: { honor: AdminBadge; onRemove: () => void }) {
+function HonorItem({ honor, onRemove }: { honor: AdminBadge; onRemove?: () => void }) {
   return (
     <div className="min-w-0 rounded-xl border border-white/8 bg-slate-900/70 px-3 py-2">
       <div className="flex flex-wrap items-center gap-2">
@@ -1222,14 +1228,20 @@ function HonorItem({ honor, onRemove }: { honor: AdminBadge; onRemove: () => voi
       <div className="mt-1 break-words text-xs text-slate-400">
         {honor.note || "No note"} · <AdminTime value={honor.acceptedAt || honor.createdAt} />
       </div>
-      <button
-        type="button"
-        onClick={onRemove}
-        className="mt-2 text-xs text-red-300 transition hover:text-red-200"
-        title="Remove honor"
-      >
-        Remove
-      </button>
+      {onRemove ? (
+        <button
+          type="button"
+          onClick={onRemove}
+          className="mt-2 text-xs text-red-300 transition hover:text-red-200"
+          title="Remove honor"
+        >
+          Remove
+        </button>
+      ) : (
+        <div className="mt-2 text-[11px] text-amber-100/65">
+          Synced from Trophy custody · reassign or vacate in Trophy Command
+        </div>
+      )}
     </div>
   );
 }
@@ -1249,6 +1261,8 @@ function HonorGrantSection({
   onDisplayChange,
   onGrant,
   onRemove,
+  removable = true,
+  showDisplayControl = true,
 }: {
   icon: LucideIcon;
   title: string;
@@ -1264,6 +1278,8 @@ function HonorGrantSection({
   onDisplayChange: (value: boolean) => void;
   onGrant: () => void;
   onRemove: (badgeId: number) => void;
+  removable?: boolean;
+  showDisplayControl?: boolean;
 }) {
   const singularTitle = title.endsWith("s") ? title.slice(0, -1) : title;
   const canGrant = value.trim().length > 0 && !busy;
@@ -1281,7 +1297,11 @@ function HonorGrantSection({
       <div className="mt-3 space-y-2">
         {honors.length > 0 ? (
           honors.map((honor) => (
-            <HonorItem key={honor.id} honor={honor} onRemove={() => onRemove(honor.id)} />
+            <HonorItem
+              key={honor.id}
+              honor={honor}
+              onRemove={removable ? () => onRemove(honor.id) : undefined}
+            />
           ))
         ) : (
           <div className="rounded-lg border border-white/8 bg-slate-900/70 px-2.5 py-2 text-xs text-slate-400">
@@ -1316,15 +1336,21 @@ function HonorGrantSection({
           className="w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-amber-300/35"
         />
         <div className="flex items-center justify-between gap-3">
-          <label className="flex items-center gap-2 text-xs text-slate-300">
-            <input
-              type="checkbox"
-              checked={displayOnProfile}
-              onChange={(event) => onDisplayChange(event.target.checked)}
-              className="h-4 w-4 rounded border-white/10 bg-slate-900 accent-amber-300"
-            />
-            Public
-          </label>
+          {showDisplayControl ? (
+            <label className="flex items-center gap-2 text-xs text-slate-300">
+              <input
+                type="checkbox"
+                checked={displayOnProfile}
+                onChange={(event) => onDisplayChange(event.target.checked)}
+                className="h-4 w-4 rounded border-white/10 bg-slate-900 accent-amber-300"
+              />
+              Public
+            </label>
+          ) : (
+            <div className="text-[11px] text-amber-100/65">
+              Public championship custody
+            </div>
+          )}
           <button
             type="button"
             onClick={onGrant}
