@@ -11,6 +11,7 @@ import {
   ChallengeDesyncError,
   loadDesyncIncidentsForSettlement,
 } from "@/lib/desyncChallenge";
+import { syncChampionshipBeltHonorMirror } from "@/lib/trophies/beltHonorMirror";
 import {
   executePendingTrophyPayouts,
   lockTrophyMoneyState,
@@ -399,6 +400,14 @@ async function assignHolder(
             : `Admin eligibility override: ${eligibility.detail}`,
         },
       });
+      if (currentTrophy.kind === "belt") {
+        await syncChampionshipBeltHonorMirror(tx, {
+          displayName: currentTrophy.displayName,
+          holderUserIds: [user.id],
+          actorUserId: actor.id,
+          now,
+        });
+      }
       await recordEvent(tx, {
         trophyId: currentTrophy.id,
         eventType: "HOLDER_DETAILS_REFRESHED",
@@ -449,6 +458,14 @@ async function assignHolder(
           : `Admin eligibility override: ${eligibility.detail}`,
       },
     });
+    if (currentTrophy.kind === "belt") {
+      await syncChampionshipBeltHonorMirror(tx, {
+        displayName: currentTrophy.displayName,
+        holderUserIds: [user.id],
+        actorUserId: actor.id,
+        now,
+      });
+    }
 
     await recordEvent(tx, {
       trophyId: currentTrophy.id,
@@ -512,6 +529,14 @@ async function assignGuardian(
             "Commissioner Guardian custody; Guardian nationality does not define title eligibility.",
         },
       });
+      if (currentTrophy.kind === "belt") {
+        await syncChampionshipBeltHonorMirror(tx, {
+          displayName: currentTrophy.displayName,
+          holderUserIds: [guardian.id],
+          actorUserId: actor.id,
+          now,
+        });
+      }
       await recordEvent(tx, {
         trophyId: currentTrophy.id,
         eventType: "GUARDIAN_DETAILS_REFRESHED",
@@ -564,6 +589,14 @@ async function assignGuardian(
           "Commissioner Guardian custody; Guardian nationality does not define title eligibility.",
       },
     });
+    if (currentTrophy.kind === "belt") {
+      await syncChampionshipBeltHonorMirror(tx, {
+        displayName: currentTrophy.displayName,
+        holderUserIds: [guardian.id],
+        actorUserId: actor.id,
+        now,
+      });
+    }
 
     await recordEvent(tx, {
       trophyId: currentTrophy.id,
@@ -647,6 +680,17 @@ async function clearGuardian(
           : {}),
       },
     });
+    if (currentTrophy.kind === "belt") {
+      await syncChampionshipBeltHonorMirror(tx, {
+        displayName: currentTrophy.displayName,
+        holderUserIds:
+          guardianOwnsCustody || !currentTrophy.currentHolderUserId
+            ? []
+            : [currentTrophy.currentHolderUserId],
+        actorUserId: actor.id,
+        now,
+      });
+    }
 
     await recordEvent(tx, {
       trophyId: currentTrophy.id,
@@ -749,6 +793,22 @@ async function changeTrophyStatus(
           : {}),
       },
     });
+    if (currentTrophy.kind === "belt") {
+      await syncChampionshipBeltHonorMirror(tx, {
+        displayName: currentTrophy.displayName,
+        holderUserIds: clearing
+          ? []
+          : custody.roster.length
+            ? custody.roster.map((member) => member.userId)
+            : currentTrophy.currentHolderUserId
+              ? [currentTrophy.currentHolderUserId]
+              : currentTrophy.guardianHolderUserId
+                ? [currentTrophy.guardianHolderUserId]
+                : [],
+        actorUserId: actor.id,
+        now,
+      });
+    }
 
     await tx.trophyEvent.create({
       data: {
@@ -1843,6 +1903,14 @@ async function forceForfeiture(
         eligibilityNote: reason,
       },
     });
+    if (currentTrophy.kind === "belt") {
+      await syncChampionshipBeltHonorMirror(tx, {
+        displayName: currentTrophy.displayName,
+        holderUserIds: [],
+        actorUserId: actor.id,
+        now,
+      });
+    }
 
     await tx.trophyEvent.create({
       data: {
