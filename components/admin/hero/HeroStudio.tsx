@@ -924,12 +924,13 @@ export default function HeroStudio() {
                   }`}
                 >
                   <div className="flex flex-wrap items-center gap-3">
-                    <button
-                      type="button"
+                    <div
+                      role="button"
+                      tabIndex={busy ? -1 : 0}
                       draggable={!busy}
-                      disabled={busy}
-                      aria-label={`Drag ${item.screen.name} to reorder. Use the up and down arrow keys for keyboard reordering.`}
-                      title="Drag to reorder"
+                      aria-disabled={busy}
+                      aria-label={`Drag ${item.screen.name} to reorder. Arrow keys wrap through the chain.`}
+                      title="Click, hold, and drag to reorder"
                       onClick={() =>
                         setDraft(
                           snapshot.screens.find(
@@ -938,6 +939,14 @@ export default function HeroStudio() {
                         )
                       }
                       onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          setDraft(
+                            snapshot.screens.find(
+                              (screen) => screen.id === item.screen.id
+                            ) || item.screen
+                          );
+                        }
                         if (event.key === "ArrowUp") {
                           event.preventDefault();
                           moveItem(index, -1);
@@ -960,11 +969,11 @@ export default function HeroStudio() {
                         setDraggedScreenId(null);
                         setDragOverIndex(null);
                       }}
-                      className="flex h-11 min-w-14 shrink-0 cursor-grab items-center justify-center gap-1 rounded-xl border border-amber-200/18 bg-amber-300/9 px-2 font-serif text-lg text-amber-100 outline-none transition hover:border-amber-100/40 hover:bg-amber-300/14 focus-visible:ring-2 focus-visible:ring-amber-200/50 active:cursor-grabbing"
+                      className="flex h-11 min-w-14 shrink-0 cursor-grab select-none items-center justify-center gap-1 rounded-xl border border-amber-200/18 bg-amber-300/9 px-2 font-serif text-lg text-amber-100 outline-none transition hover:border-amber-100/40 hover:bg-amber-300/14 focus-visible:ring-2 focus-visible:ring-amber-200/50 active:cursor-grabbing"
                     >
                       <GripVertical className="h-4 w-4 text-amber-100/55" />
                       <span>{index + 1}</span>
-                    </button>
+                    </div>
                     <button
                       type="button"
                       onClick={() =>
@@ -979,8 +988,11 @@ export default function HeroStudio() {
                       <span className="block text-sm font-semibold text-white">
                         {item.screen.name}
                       </span>
-                      <span className="mt-1 block text-[9px] uppercase tracking-[0.18em] text-slate-600">
-                        {TYPE_LABELS[item.screen.type]}
+                      <span className="mt-1 flex flex-wrap items-center gap-2 text-[9px] uppercase tracking-[0.18em] text-slate-600">
+                        <span>{TYPE_LABELS[item.screen.type]}</span>
+                        <span className="rounded-full border border-sky-200/15 bg-sky-300/[0.06] px-1.5 py-0.5 text-sky-100/70">
+                          {HERO_LANGUAGE_LABELS[heroScreenLanguage(item.screen.config)]}
+                        </span>
                       </span>
                     </button>
                     <label className="flex items-center gap-2 text-xs text-slate-400">
@@ -996,17 +1008,17 @@ export default function HeroStudio() {
                     </label>
                     <Button
                       onClick={() => moveItem(index, -1)}
-                      disabled={busy || index === 0}
-                      ariaLabel={`Move ${item.screen.name} up`}
-                      title="Move up"
+                      disabled={busy || items.length < 2}
+                      ariaLabel={`Move ${item.screen.name} up; wraps to the bottom`}
+                      title="Move up · top wraps to bottom"
                     >
                       <ArrowUp className="h-3.5 w-3.5" />
                     </Button>
                     <Button
                       onClick={() => moveItem(index, 1)}
-                      disabled={busy || index === items.length - 1}
-                      ariaLabel={`Move ${item.screen.name} down`}
-                      title="Move down"
+                      disabled={busy || items.length < 2}
+                      ariaLabel={`Move ${item.screen.name} down; wraps to the top`}
+                      title="Move down · bottom wraps to top"
                     >
                       <ArrowDown className="h-3.5 w-3.5" />
                     </Button>
