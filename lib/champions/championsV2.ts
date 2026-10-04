@@ -783,7 +783,9 @@ function buildNationalBelts(
 
   return COUNTRY_BELT_CATALOG.map((country) => {
     const live = nationalBySlug.get(country.slug) ?? null;
-    const active = ["canada", "usa", "mexico"].includes(country.slug);
+    const active =
+      ["canada", "usa", "mexico"].includes(country.slug) ||
+      live?.status === "held";
     const liveHolder = active ? live?.holders[0] ?? null : null;
 
     const overrideNames = NATIONAL_CONTENDER_OVERRIDES[country.slug] ?? [];
