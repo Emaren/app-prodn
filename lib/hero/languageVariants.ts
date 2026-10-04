@@ -131,3 +131,36 @@ export function heroVariantPairForItem<T extends HeroPlaylistItemView>(
     translatedLanguage: selectedLanguage,
   };
 }
+
+export function normalizeHeroHiddenLanguageByGroup(
+  value: unknown
+): HeroHiddenLanguageByGroup {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const raw = value as Record<string, unknown>;
+  const hiddenByGroup =
+    raw.hiddenByGroup &&
+    typeof raw.hiddenByGroup === "object" &&
+    !Array.isArray(raw.hiddenByGroup)
+      ? (raw.hiddenByGroup as Record<string, unknown>)
+      : raw;
+
+  const normalized: HeroHiddenLanguageByGroup = {};
+  for (const [rawGroup, rawLanguage] of Object.entries(hiddenByGroup)) {
+    const group = rawGroup.trim().slice(0, 120);
+    if (!group || !HERO_LANGUAGE_CODES.includes(rawLanguage as HeroLanguageCode)) {
+      continue;
+    }
+    normalized[group] = rawLanguage as HeroLanguageCode;
+    if (Object.keys(normalized).length >= 100) break;
+  }
+  return normalized;
+}
+
+export function serializeHeroHiddenLanguageByGroup(
+  hiddenByGroup: HeroHiddenLanguageByGroup
+) {
+  return {
+    version: 1,
+    hiddenByGroup: normalizeHeroHiddenLanguageByGroup(hiddenByGroup),
+  };
+}
