@@ -638,6 +638,21 @@ export default function HeroStudio() {
     );
   }
 
+  async function createLanguageVariant(language: Exclude<HeroLanguageCode, "en">) {
+    if (!draft.id) {
+      setError("Save the English Hero screen before creating a language version.");
+      return;
+    }
+    await action(
+      {
+        action: "create_language_variant",
+        id: draft.id,
+        language,
+      },
+      `${HERO_LANGUAGE_LABELS[language]} version created and placed after its English counterpart.`
+    );
+  }
+
   async function saveChain() {
     if (!playlist) return null;
     const purePlaylist = purePlaylistSettings(playlist);
@@ -679,6 +694,14 @@ export default function HeroStudio() {
 
   const activeEvent =
     snapshot.eventTiles.find((event) => event.isActive && event.isPublished) || null;
+  const draftLanguage = heroScreenLanguage(draft.config);
+  const englishCounterparts = snapshot.screens.filter(
+    (screen) =>
+      screen.id !== draft.id &&
+      screen.type === draft.type &&
+      screen.status !== "archived" &&
+      heroScreenLanguage(screen.config) === "en"
+  );
 
   return (
     <div className="w-full min-w-0 space-y-5 py-2 text-white">
@@ -1308,6 +1331,70 @@ export default function HeroStudio() {
                   <option value="archived">Archived</option>
                 </select>
               </Field>
+              {draft.type !== "featured_event" ? (
+                <Field label="Hero language" hint="English is the canonical chain slot. French/Spanish appear only for viewers who explicitly chose that language.">
+                  <select
+                    className={selectClass}
+                    value={draftLanguage}
+                    onChange={(event) => {
+                      const language = event.target.value as HeroLanguageCode;
+                      patchConfig({
+                        languageCode: language,
+                        languageGroupKey:
+                          language === "en"
+                            ? ""
+                            : draft.config.languageGroupKey || "",
+                      });
+                    }}
+                  >
+                    <option value="en">English</option>
+                    <option value="fr">French</option>
+                    <option value="es">Spanish</option>
+                  </select>
+                </Field>
+              ) : null}
+              {draft.type !== "featured_event" && draftLanguage !== "en" ? (
+                <Field label="English counterpart" hint="The translated image is shown immediately after this English Hero for matching viewers.">
+                  <select
+                    className={selectClass}
+                    value={draft.config.languageGroupKey || ""}
+                    onChange={(event) =>
+                      patchConfig({ languageGroupKey: event.target.value })
+                    }
+                  >
+                    <option value="">Choose the English Hero</option>
+                    {englishCounterparts.map((screen) => (
+                      <option key={screen.id} value={screen.key}>
+                        {screen.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              ) : null}
+              {draft.type !== "featured_event" && draftLanguage === "en" && draft.id ? (
+                <div className="rounded-xl border border-sky-200/12 bg-sky-300/[0.045] p-3">
+                  <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-100/70">
+                    <Languages className="h-3.5 w-3.5" />
+                    Language versions
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Button
+                      disabled={busy}
+                      onClick={() => void createLanguageVariant("fr")}
+                      title="Create a French copy directly after this English Hero"
+                    >
+                      + French
+                    </Button>
+                    <Button
+                      disabled={busy}
+                      onClick={() => void createLanguageVariant("es")}
+                      title="Create a Spanish copy directly after this English Hero"
+                    >
+                      + Spanish
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
               {draft.type === "featured_event" ? (
                 <Field label="Live event source">
                   <div className="rounded-xl border border-emerald-200/15 bg-emerald-300/[0.06] px-3 py-3 text-xs text-emerald-100">
