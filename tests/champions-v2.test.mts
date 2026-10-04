@@ -162,6 +162,17 @@ test("France is an authoritative national title with live Trophy custody", () =>
   assert.match(state, /additionalActiveNationals/);
 });
 
+test("national champion rail is ordered by live reign age before vacant catalog standards", () => {
+  assert.match(state, /const catalogOrder = new Map/);
+  assert.match(state, /leftState\?\.status === "held" && Boolean\(left\.holder\)/);
+  assert.match(state, /rightState\?\.status === "held" && Boolean\(right\.holder\)/);
+  assert.match(state, /if \(leftHeld !== rightHeld\) return leftHeld \? -1 : 1/);
+  assert.match(state, /Date\.parse\(leftState\.holderSince\)/);
+  assert.match(state, /Date\.parse\(rightState\.holderSince\)/);
+  assert.match(state, /return safeLeftStarted - safeRightStarted/);
+  assert.match(state, /catalogOrder\.get\(left\.slug\)/);
+});
+
 test("national belt hall reads represented-country truth for every crown", () => {
   assert.match(directory, /representedCountry: string \| null/);
   assert.match(directory, /representedCountry: true/);
