@@ -68,6 +68,30 @@ non-terminal books: an already executed/refunded market is not silently
 reopened and no wallet is clawed back. Any historical compensation requires a
 separate evidence-locked correction with explicit funding authority.
 
+## 2026-10-04 — Two admin surfaces may share control, never authority
+
+User Command had a legacy Belt honor path that wrote `user_badges` while Trophy
+Command independently owned championship custody. That created two plausible
+operator truths: a warrior could visually receive a belt without becoming the
+title holder, or Trophy custody could change without the user-card honor moving.
+
+Permanent rule: keep both workflows because they answer different operator
+questions, but make Trophy custody the single writer. `/admin/user-list` is the
+warrior-centric fast path for single-player assignment; `/admin/trophies` is the
+title-centric control tower for roster custody, disputes, vacancy, economics,
+chain proof, and audit history. A User Command belt grant resolves an
+authoritative Trophy row and delegates to the same locked `assign_holder`
+transition. The transition repairs the typed `Belt: ...` user-badge chip inside
+the same transaction, deleting stale copies for prior holders and upserting the
+current roster. Direct deletion of a belt chip is forbidden because it would
+only delete the projection, not custody.
+
+France also crossed the roadmap/authority boundary in this repair. It now has a
+real `national-france` title definition and `france_champion_belt` Trophy seed.
+Its public national card becomes active when live Trophy custody is held. This
+does **not** activate daily Champion Tribute: payout authority remains the
+separate explicit allowlist.
+
 ## 2026-09-30 — Championship custody, proof clocks, and paired team funding
 
 The active contract is [Championship Belt Constitution V1](./CHAMPIONSHIP_BELT_CONSTITUTION.md).
