@@ -26,10 +26,17 @@ import type {
 } from "@/lib/champions/championsV2";
 import type { ChampionTitleState } from "@/lib/champions/titleState";
 import type { TitleContender } from "@/lib/champions/titles";
-import { managedMediaPublicUrl } from "@/lib/managedMediaAssets";
 
 const MALE_SILHOUETTE = "/champions/players/silhouette.card.webp";
 const FEMALE_SILHOUETTE = "/champions/players/female_silhouette.webp";
+
+function managedMediaPublicUrl(
+  kind: "belt" | "artifact",
+  target: string,
+  fallback: string,
+) {
+  return `/api/media-assets/${encodeURIComponent(kind)}/${encodeURIComponent(target)}?fallback=${encodeURIComponent(fallback)}`;
+}
 
 function holderAvatar(holder: { name: string; uid?: string | null } | null, female = false) {
   if (holder?.uid) return avatarCardUrlForUser(holder.uid, holder.name);
