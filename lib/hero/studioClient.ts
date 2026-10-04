@@ -43,15 +43,18 @@ export function reorderHeroItem<T extends PositionedHeroItem>(
   toIndex: number
 ): T[] {
   const fromIndex = current.findIndex((item) => item.screen.id === screenId);
-  if (fromIndex < 0 || toIndex < 0 || toIndex >= current.length) {
+  if (fromIndex < 0 || current.length < 2) {
     return [...current];
   }
-  if (fromIndex === toIndex) return [...current];
+
+  const wrappedIndex =
+    ((toIndex % current.length) + current.length) % current.length;
+  if (fromIndex === wrappedIndex) return [...current];
 
   const next = [...current];
   const [moved] = next.splice(fromIndex, 1);
   if (!moved) return [...current];
-  next.splice(toIndex, 0, moved);
+  next.splice(wrappedIndex, 0, moved);
   return normalizeHeroItemPositions(next);
 }
 
