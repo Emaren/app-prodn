@@ -294,7 +294,7 @@ async function createLanguageVariant(
         forumThreadId: source.forumThreadId,
         mediaAssetId: source.mediaAssetId,
         config: normalizeHeroScreenConfig(sourceType, {
-          ...(sourceConfig as Record<string, unknown>),
+          ...sourceConfig,
           languageCode: language,
           languageGroupKey,
         }),
