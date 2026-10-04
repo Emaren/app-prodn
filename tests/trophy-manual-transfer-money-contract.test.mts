@@ -18,6 +18,22 @@ const adminRoute = readFileSync(
   new URL("../app/api/admin/trophies/route.ts", import.meta.url),
   "utf8"
 );
+const championship = readFileSync(
+  new URL("../lib/trophies/championship.ts", import.meta.url),
+  "utf8"
+);
+const beltHonorMirror = readFileSync(
+  new URL("../lib/trophies/beltHonorMirror.ts", import.meta.url),
+  "utf8"
+);
+const userCommunityRoute = readFileSync(
+  new URL("../app/api/admin/users/[uid]/community/route.ts", import.meta.url),
+  "utf8"
+);
+const userCommand = readFileSync(
+  new URL("../components/admin/command-tower/AdminUserCard.tsx", import.meta.url),
+  "utf8"
+);
 
 test("manual trophy custody change is serialized and money-aware", () => {
   assert.ok(service.includes("pg_advisory_xact_lock"));
@@ -126,4 +142,24 @@ test("Trophy payout execution claims money authority before external settlement"
   assert.ok(ui.includes("function trophyPayoutIsMutable"));
   assert.ok(ui.includes('payout.status !== "executing"'));
   assert.ok(ui.includes("!trophyPayoutIsMutable(payout)"));
+});
+
+test("User Command and Trophy Command share one championship custody authority", () => {
+  assert.ok(userCommunityRoute.includes('honorKind === "belt"'));
+  assert.ok(userCommunityRoute.includes("executeTrophyAdminAction"));
+  assert.ok(userCommunityRoute.includes('action: "assign_holder"'));
+  assert.ok(userCommunityRoute.includes('custodyAuthority: "trophy"'));
+  assert.ok(userCommunityRoute.includes("Championship belts are custody, not removable badges"));
+
+  assert.ok(championship.includes("syncChampionshipBeltHonorMirror"));
+  assert.ok(beltHonorMirror.includes('buildHonorLabel("belt", input.displayName)'));
+  assert.ok(beltHonorMirror.includes("userBadge.deleteMany"));
+  assert.ok(beltHonorMirror.includes("userBadge.upsert"));
+  assert.ok(beltHonorMirror.includes('status: "accepted"'));
+  assert.ok(beltHonorMirror.includes("displayOnProfile: true"));
+
+  assert.ok(userCommand.includes("removable={false}"));
+  assert.ok(userCommand.includes("showDisplayControl={false}"));
+  assert.ok(userCommand.includes("Synced from Trophy custody"));
+  assert.ok(userCommand.includes('title.type !== "tag_team"'));
 });
