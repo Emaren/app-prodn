@@ -13,7 +13,7 @@
       "review_interval_days": 60,
       "reviewed_at": "2026-10-04",
       "sensitivity": "internal",
-      "sha256": "66f9d82852640a4a66f99f8d644fc4b7b2857b67dced7a3c85abcb179a58bc84",
+      "sha256": "5422983e76e3b12164fe85f67a816abea6636889c48b2a8be08e2f420ada0300",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -593,9 +593,9 @@
       "owner": "aoe2war-web",
       "path": "docs/DIRECT_CHAT.md",
       "review_interval_days": 90,
-      "reviewed_at": "2026-09-01",
+      "reviewed_at": "2026-10-04",
       "sensitivity": "internal",
-      "sha256": "8d4e3781cdf35780682cdd555e3307cc969f8ce5a9a1eb8cc608b6d838eccf2e",
+      "sha256": "f8d247681fbad03cf25009033011339cab60593b970d08acf53064cee8f7dfe7",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "8c9aad0d5ea0ffbb8db9a84ad289ec395b76fe36e48ace81acbbdf41254f5711",
+      "sha256": "f34e79701bd19506f82a44df80cb4a08f4303fb5c3a7011d72b8523f18d0305e",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -661,7 +661,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-04",
       "sensitivity": "internal",
-      "sha256": "3b02c29503c31e9e678659ecfeccfd1261cf01b1d218298b64bfd60e43dc53f7",
+      "sha256": "3a086e6acb1aea0c0ec62db07e7f9418b3eb565257b18a5159e59e12315a6734",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2026,7 +2026,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "main",
-    "commit": "f626f3b920b6e775fa9ea78b248ddd4998eb40d1"
+    "commit": "80c392dab529d5f036cf5d699dca27277e2eb24e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
