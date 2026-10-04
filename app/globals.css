@@ -78,6 +78,18 @@ button:disabled,
     transform: translateY(0);
 }
 
+/* Keep the pointer inside the Extreme hover ownership while it travels from
+   the E pill into the version balloon. This invisible bridge prevents the
+   menu from collapsing during that tiny vertical crossing. */
+.champions-extreme-menu::after {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    left: 0;
+    height: 0.55rem;
+    content: "";
+}
+
 .aoe2-nav-scroll {
     scrollbar-width: none;
     -webkit-overflow-scrolling: touch;
