@@ -5,6 +5,7 @@ import { loadLobbyLeaderboard } from "@/lib/lobbyLeaderboard";
 import { parsePlayers, readPlayerSteamDmRating, readPlayerSteamRmRating } from "@/lib/gameStatsView";
 import { readLeaderboardSteamId } from "@/lib/leaderboardIdentity";
 import { managedMediaPublicUrl } from "@/lib/managedMediaAssets";
+import { syncChampionshipBeltHonorMirror } from "@/lib/trophies/beltHonorMirror";
 
 export class ChampionshipCustodyError extends Error {
   status = 409;
@@ -218,6 +219,12 @@ export async function transitionChampionshipCustody(tx: Prisma.TransactionClient
     const refreshed = custody.roster.map(member=>({ ...member, ...roster.find(next=>next.userId === member.userId), seat: member.seat, nftId: member.nftId, nftClassId: member.nftClassId }));
     if (custody.reignId) for (const member of refreshed) await tx.championshipCustodySeat.update({where:{reignId_seat:{reignId:custody.reignId,seat:member.seat}},data:{uid:member.uid,displayName:member.displayName,walletAddress:member.walletAddress,steamId:member.steamId}});
     await tx.trophy.update({where:{id:trophy.id},data:{currentHolderDisplayName:refreshed.map(member=>member.displayName).join(" + ").slice(0,120),currentHolderWoloAddress:policy.teamSize === 1 ? refreshed[0].walletAddress : null,forfeitureNeeded:false,eligibilityNote:input.note ?? trophy.eligibilityNote}});
+    await syncChampionshipBeltHonorMirror(tx, {
+      displayName: trophy.displayName,
+      holderUserIds: refreshed.map(member => member.userId),
+      actorUserId: input.actorUserId,
+      now: input.now,
+    });
     await tx.trophyEvent.create({ data: { trophyId: trophy.id, eventType: "HOLDER_DETAILS_REFRESHED", actorUserId: input.actorUserId, rawRequest: { requestKey: input.requestKey, custodyChanged: false, reason: input.reason, reignId:custody.reignId, requestTerms:custodyRequestTerms(input) } } });
     return { groupId: null, reignId: custody.reignId, bountyPayoutId: null, frozenBountyWolo: 0, idempotent: false, changed: false };
   }
@@ -236,6 +243,12 @@ export async function transitionChampionshipCustody(tx: Prisma.TransactionClient
   if (custody.reignId) await tx.championshipCustodyReign.update({ where: { id: custody.reignId }, data: { endedAt: now, frozenBountyWolo } });
   const reign = input.toDispute ? null : await tx.championshipCustodyReign.create({ data: { trophyId: trophy.id, mode: policy.mode, teamSize: policy.teamSize, startedAt: now, reason: input.reason, requestKey: input.requestKey, seats: { create: roster.map(member=>({ ...member, nftId: member.nftId! })) } } });
   await tx.trophy.update({ where: { id: trophy.id }, data: { status: input.toDispute ? "disputed" : "held", currentHolderUserId: policy.teamSize === 1 && !input.toDispute ? roster[0].userId : null, currentHolderDisplayName: input.toDispute ? null : roster.map(member=>member.displayName).join(" + ").slice(0,120), currentHolderWoloAddress: policy.teamSize === 1 && !input.toDispute ? roster[0].walletAddress : null, guardianHolderUserId: null, guardianHolderDisplayName: null, guardianHolderWoloAddress: null, holderSince: input.toDispute ? null : now, currentBountyWolo: input.toDispute ? frozenBountyWolo : 0, forfeitureNeeded: false, eligibilityNote: input.note ?? `Championship ${input.reason} transition.` } });
+  await syncChampionshipBeltHonorMirror(tx, {
+    displayName: trophy.displayName,
+    holderUserIds: input.toDispute ? [] : roster.map(member => member.userId),
+    actorUserId: input.actorUserId,
+    now,
+  });
   if (!input.toDispute && policy.teamSize > 1 && exit.chainBackedTributePayoutIds.length === 0 && trophy.tributeAmountWolo > 0 && trophy.payoutFrequency === "daily") {
     const active = await tx.trophySetting.findUnique({where:{key:`championship_tribute_active:${trophy.trophyId}`}});
     if (active?.value === true) await createAllocatedPayout(tx,{trophy,roster,amountWolo:trophy.tributeAmountWolo,kind:"daily_tribute",requestKey:`tribute:${trophy.id}:reign:${reign!.id}:${now.toISOString().slice(0,10)}`,now,reason:input.reason});
