@@ -218,6 +218,12 @@ The certified release inventory contains nine canonical entries: the five user-f
 
 `aoe2war watcher-staging --apply` persists the digest-bound plan, re-runs the inventory, rechecks production source/build/service and Wolo 8092/8093 listener identity, removes only exact-duplicate subtrees, then seals a durable result receipt. Symlinks, special files, path escape, changed plans, runtime drift, or unique historical bytes fail closed. The command never interprets age or version text as deletion authority.
 
+### Live download-vault retention
+
+The public download vault deliberately retains only the current Watcher generation and the immediately previous generation as live AoE2WAR-hosted rollback/download surfaces. Older releases remain immutable historical releases on GitHub; documentation and release receipts preserve their provenance.
+
+`aoe2war watcher-downloads` is the only governed live-vault retirement lane. Preview scans only a strict allowlist of versioned Watcher payload/receipt filenames, protects `WATCHER_RELEASE.version` and `WATCHER_RELEASE.previousVersion`, hashes every older candidate, and requires that exact SHA-256 to exist in the corresponding non-draft, non-prerelease GitHub release. `--apply` re-proves the digest-bound plan as `root@hel1`, checks clean exact production source/build/service and the Wolo 8092/8093 listener boundary before every unlink, never follows symlinks, fsyncs the canonical vault, re-proves runtime identity afterward, and seals a durable receipt. Shared updater manifests, the current direct ZIP, artwork, staging evidence, and any unproven historical byte are outside the deletion allowlist.
+
 Preview deliberately uses the ordinary `hel1` operator identity. Apply uses the existing canonical `rollback_archive.root_maintenance_host` authority (`root@hel1`) because release staging is root-owned. The privilege boundary changes only the SSH transport; the exact same encoded path/hash/runtime/Wolo policy still executes remotely. The first live apply attempt proved why this separation matters: unprivileged deletion failed with `Permission denied`, sealed a FAILED result receipt, changed no runtime/Wolo identity, and left the candidate intact.
 
 The 2026-09-19 live preview classified the 1.5.12 staging body as an exact canonical duplicate while preserving the 1.5.9 staging body and the version-1.5.11 previous direct ZIP because those contain bytes not duplicated in the canonical vault. This preserves release evidence instead of deleting it for a storage score.

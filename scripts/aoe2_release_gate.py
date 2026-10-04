@@ -258,8 +258,10 @@ def path_risk(path: str) -> str:
 
     if p in {
         "scripts/aoe2_watcher_staging.py",
+        "scripts/aoe2_watcher_downloads.py",
         "scripts/aoe2_watcher_release.py",
         "tests/test_aoe2_watcher_staging.py",
+        "tests/test_aoe2_watcher_downloads.py",
         "tests/test_aoe2_watcher_release.py",
     }:
         return "INFRASTRUCTURE"
@@ -291,6 +293,7 @@ def path_risk(path: str) -> str:
         "scripts/aoe2_storage_retention.py",
         "scripts/aoe2_db_snapshot_retention.py",
         "scripts/aoe2_watcher_staging.py",
+        "scripts/aoe2_watcher_downloads.py",
         "scripts/aoe2_storage.py",
         "scripts/aoe2_storage_campaign.py",
         "scripts/aoe2_storage_handoff.py",
@@ -315,6 +318,7 @@ def path_risk(path: str) -> str:
         "tests/test_aoe2_storage_expire.py",
         "tests/test_aoe2_storage_retention.py",
         "tests/test_aoe2_watcher_staging.py",
+        "tests/test_aoe2_watcher_downloads.py",
         "scripts/run_test_contract.py",
         "scripts/scan_tracked_secrets.py",
         "tests/test_test_contract.py",
@@ -499,6 +503,7 @@ def command_plan(
             "scripts/aoe2_storage_expire.py",
             "scripts/aoe2_storage_retention.py",
             "scripts/aoe2_watcher_staging.py",
+        "scripts/aoe2_watcher_downloads.py",
             "scripts/aoe2_watcher_release.py",
             "scripts/aoe2_storage.py",
             "scripts/aoe2_storage_campaign.py",
@@ -529,6 +534,7 @@ def command_plan(
             "tests/test_aoe2_storage_expire.py",
             "tests/test_aoe2_storage_retention.py",
             "tests/test_aoe2_watcher_staging.py",
+        "tests/test_aoe2_watcher_downloads.py",
             "tests/test_aoe2_watcher_release.py",
             "scripts/run_test_contract.py",
             "scripts/run_python_contract.py",
@@ -589,6 +595,7 @@ def command_plan(
                     "scripts/aoe2_storage_expire.py",
                     "scripts/aoe2_storage_retention.py",
                     "scripts/aoe2_watcher_staging.py",
+        "scripts/aoe2_watcher_downloads.py",
                     "scripts/aoe2_watcher_release.py",
                     "scripts/aoe2_storage.py",
                     "scripts/aoe2_storage_campaign.py",

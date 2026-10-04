@@ -89,6 +89,7 @@ FINISH="$BIN_DIR/../scripts/aoe2_finish.py"
 BRIDGE="$BIN_DIR/../scripts/aoe2_operator_bridge.py"
 STORAGE_RETENTION="$BIN_DIR/../scripts/aoe2_storage_retention.py"
 WATCHER_STAGING="$BIN_DIR/../scripts/aoe2_watcher_staging.py"
+WATCHER_DOWNLOADS="$BIN_DIR/../scripts/aoe2_watcher_downloads.py"
 WATCHER_RELEASE="$BIN_DIR/../scripts/aoe2_watcher_release.py"
 STORAGE="$BIN_DIR/../scripts/aoe2_storage.py"
 SPEED="$BIN_DIR/../scripts/aoe2_speed.py"
@@ -125,6 +126,7 @@ Usage:
   aoe2war speed [status|release-history|benchmark|compare|browser|browser-truth|cold-lcp|diagnose|inventory|edge|build|campaign|pulse]
   aoe2war storage-retention [--apply] [--json]
   aoe2war watcher-staging [--apply] [--json]
+  aoe2war watcher-downloads [--apply] [--json]
   aoe2war watcher-release [--apply] [--json] [--version VERSION] [--source PATH]
   aoe2war storage <status|estate|local-maintain|plan|maintain|verify|campaign|handoff|db-snapshots> [options]
   aoe2war council [--json]
@@ -245,6 +247,11 @@ SAFE / READ-ONLY
       every file already exists byte-for-byte in the canonical download vault
       as reclaimable. Unique historical or previous-release bytes are preserved.
 
+  aoe2war watcher-downloads
+      Preview live Watcher download-vault retention. Current + previous release
+      generations are protected; older versioned files are reclaimable only
+      when their exact SHA-256 is present in the immutable public GitHub release.
+
   aoe2war watcher-release
       Prove one local certified Watcher bundle against its exact public GitHub
       release digests and preview production-vault convergence. Makes no
@@ -276,6 +283,12 @@ BOUNDED STORAGE WRITE
       staging subtrees already duplicated byte-for-byte in the canonical
       download vault. Unique bytes are never deleted. Production and Wolo
       identities are re-proven before and after mutation and a receipt is sealed.
+
+  aoe2war watcher-downloads --apply
+      Persist and recheck the exact live-vault plan, then unlink only obsolete
+      versioned files whose SHA-256 is independently present in the immutable
+      public GitHub release. Current + previous are protected. Production and
+      Wolo identities are proven unchanged and a durable receipt is sealed.
 
   aoe2war watcher-release --apply
       Stage the exact public Watcher release bundle into the governed mounted
@@ -594,6 +607,10 @@ case "$command" in
   watcher-staging)
     shift
     exec "$AOE2WAR_PYTHON" "$WATCHER_STAGING" "$@"
+    ;;
+  watcher-downloads)
+    shift
+    exec "$AOE2WAR_PYTHON" "$WATCHER_DOWNLOADS" "$@"
     ;;
   watcher-release)
     shift
