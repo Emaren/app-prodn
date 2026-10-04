@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 
-import ChampionsE3Experience from "@/components/champions/ChampionsE3Experience";
+import ChampionsV2Experience from "@/components/champions/ChampionsV2Experience";
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import { loadChampionsV2State } from "@/lib/champions/championsV2";
 import { getPrisma } from "@/lib/prisma";
@@ -8,18 +8,18 @@ import { getPrisma } from "@/lib/prisma";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Championship Belts",
+  title: "Championship Belts · E2",
   description:
-    "AoE2WAR Champions E3: the preserved E1 war-table layout with the complete E2 championship ledger.",
+    "AoE2WAR championship belts, RM and DM contenders, team crowns, national titles, and ELO divisions.",
 };
 
-export default async function ChampionsPage() {
+export default async function ChampionsE2Page() {
   const state = await loadChampionsV2State(getPrisma());
 
   return (
     <>
-      <SpeedReadyMarker route="/champions" />
-      <ChampionsE3Experience state={state} />
+      <SpeedReadyMarker route="/champions/e2" />
+      <ChampionsV2Experience state={state} />
     </>
   );
 }

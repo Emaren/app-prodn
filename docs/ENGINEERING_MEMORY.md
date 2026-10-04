@@ -41,6 +41,22 @@ memory before closing the work.
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
 
+## 2026-10-04 — Versioned presentation is additive provenance
+
+The Champions display rail exposed two coupled UI/product mistakes. First, the
+Extreme version balloon sat above its trigger with a physical pointer gap.
+Hovering E opened E1/E2, but crossing the gap dropped the parent hover before the
+pointer could reach the menu. Permanent rule: a hover-owned flyout must own the
+entire pointer travel corridor, not merely its visible pixels. The Champions
+rail now uses both an overlapping placement and an invisible pointer bridge.
+
+Second, E1 and E2 are product provenance, not scratch buffers. E3 is therefore a
+new projection rather than an in-place rewrite: E1 remains the original legacy
+war-table surface, E2 remains the preserved V2 surface, and E3 combines the E1
+composition with the complete E2 data authority. New versions may supersede the
+default route, but prior named versions remain directly reachable and their
+content is not repurposed.
+
 ## 2026-10-04 — Screen edits do not own chain order; language variants do not own publication order
 
 A Hero Studio workflow exposed two ownership mistakes. Fresh image uploads were

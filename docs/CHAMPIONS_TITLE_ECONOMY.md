@@ -8,7 +8,7 @@ systems: ["app-prodn","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-09-30"
+reviewed_at: "2026-10-04"
 review_interval_days: 90
 sensitivity: "internal"
 ---
@@ -40,14 +40,16 @@ operator intents until a future Warbound chain module exists.
 
 ## Public routes
 
-- `/champions` is the default Champions E2 title-economy hall. E2 separates
-  RM and DM rating authority, derives Chaos contenders from linked Watcher
-  activity, presents each 2v2/3v3/4v4 crown on its own row with one persisted
-  RM/DM preference, and renders the national catalog as a horizontal belt hall.
-  The preserved pre-E2 Basic / Advanced / Extreme presentation remains reachable
-  through the thin B / A / E display rail at the bottom of the page; hovering
-  or focusing E reveals E1 (preserved) and E2 (current). E2 remains the public
-  default.
+- `/champions` is the default Champions E3 hall. E3 intentionally preserves
+  the E1 war-table composition while projecting the complete E2 authority:
+  current World/Chaos/Women custody, separate RM and DM solo crowns, every RM/DM
+  2v2/3v3/4v4 team title, the complete national/regional catalog, both ELO lanes,
+  and special designations. E1 remains provenance at
+  `/champions/legacy?view=e`; E2 remains provenance at `/champions/e2`.
+  The B / A / E rail now reveals E1, E2, and E3. The Extreme hover owns an
+  explicit pointer bridge so the version balloon remains traversable while the
+  pointer moves from E into the version controls. E1 and E2 content are not
+  rewritten to create E3.
 - `/champions/[...slug]` renders detail pages for belts, national titles, ELO
   titles, tag titles, and designations.
 - `/national-champions` is the cinematic national-title projection. It must

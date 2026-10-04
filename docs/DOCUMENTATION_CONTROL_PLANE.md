@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `main` at `d1937a1bdeaefe524fae14389ad8bf1385cbd66c`
+Implementation baseline: `feat/champions-e3-provenance-20261004` at `bec42f304b243a8877fe1c84dbe4c40db44002e0`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

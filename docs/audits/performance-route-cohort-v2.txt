@@ -17,6 +17,7 @@
 /bounties
 /challenge
 /champions
+/champions/e2
 /champions/legacy
 /chaosium
 /clans
