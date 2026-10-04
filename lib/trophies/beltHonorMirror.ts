@@ -1,6 +1,15 @@
 import type { Prisma } from "@/lib/generated/prisma";
 import { buildHonorLabel } from "@/lib/communityHonors";
 
+export const CHAMPIONSHIP_BELT_MIRROR_NOTE =
+  "Current AoE2WAR championship custody.";
+export const LEGACY_CHAMPIONSHIP_BELT_MIRROR_NOTE =
+  "Current championship custody · synchronized from Trophy Command.";
+export const CHAMPIONSHIP_BELT_MIRROR_NOTES = [
+  CHAMPIONSHIP_BELT_MIRROR_NOTE,
+  LEGACY_CHAMPIONSHIP_BELT_MIRROR_NOTE,
+] as const;
+
 /**
  * User-list belt chips are a projection of championship custody, never a
  * second custody ledger. Every authoritative title transition repairs this
@@ -45,20 +54,22 @@ export async function syncChampionshipBeltHonorMirror(
         },
       },
       update: {
-        note: "Current championship custody · synchronized from Trophy Command.",
+        note: CHAMPIONSHIP_BELT_MIRROR_NOTE,
         status: "accepted",
         displayOnProfile: true,
         acceptedAt: now,
-        createdByUserId: input.actorUserId ?? null,
+        // Custody mirrors are system projections, not human-issued chat honors.
+        createdByUserId: null,
       },
       create: {
         userId,
         label,
-        note: "Current championship custody · synchronized from Trophy Command.",
+        note: CHAMPIONSHIP_BELT_MIRROR_NOTE,
         status: "accepted",
         displayOnProfile: true,
         acceptedAt: now,
-        createdByUserId: input.actorUserId ?? null,
+        // Custody mirrors are system projections, not human-issued chat honors.
+        createdByUserId: null,
       },
     });
   }
