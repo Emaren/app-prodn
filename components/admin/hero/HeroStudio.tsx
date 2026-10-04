@@ -460,20 +460,21 @@ export default function HeroStudio() {
   function addScreenToChain(screen: HeroScreenDefinition) {
     if (!snapshot || items.some((item) => item.screen.id === screen.id)) return;
     const resolved = clientResolvedScreen(screen, snapshot);
-    setItems((current) => [
-      ...current,
-      {
-        id: -screen.id,
-        position: current.length,
-        enabled: true,
-        startsAt: null,
-        endsAt: null,
-        durationMs: null,
-        hrefOverride: "",
-        href: screen.defaultHref || "/",
-        screen: resolved,
-      },
-    ]);
+    setItems((current) =>
+      prependHeroItems(current, [
+        {
+          id: -screen.id,
+          position: 0,
+          enabled: true,
+          startsAt: null,
+          endsAt: null,
+          durationMs: null,
+          hrefOverride: "",
+          href: screen.defaultHref || "/",
+          screen: resolved,
+        },
+      ])
+    );
   }
 
 
@@ -576,35 +577,46 @@ export default function HeroStudio() {
           const screen = screensById.get(id);
           return screen ? [screen] : [];
         });
+        const existing = new Set(items.map((item) => item.screen.id));
+        const newItems = createdScreens
+          .filter((screen) => !existing.has(screen.id))
+          .map((screen) => ({
+            id: -screen.id,
+            position: 0,
+            enabled: true,
+            startsAt: null,
+            endsAt: null,
+            durationMs: null,
+            hrefOverride: "",
+            href: screen.defaultHref || "/",
+            screen: clientResolvedScreen(
+              screen,
+              latestSnapshot as HeroStudioSnapshot
+            ),
+          }));
+        const nextItems = prependHeroItems(items, newItems);
 
-        applySnapshot(latestSnapshot, createdIds[0]);
-
-        setItems((current) => {
-          const existing = new Set(current.map((item) => item.screen.id));
-          const newItems = createdScreens
-            .filter((screen) => !existing.has(screen.id))
-            .map((screen) => {
-              const resolved = clientResolvedScreen(screen, latestSnapshot as HeroStudioSnapshot);
-              return {
-                id: -screen.id,
-                position: 0,
-                enabled: true,
-                startsAt: null,
-                endsAt: null,
-                durationMs: null,
-                hrefOverride: "",
-                href: screen.defaultHref || "/",
-                screen: resolved,
-              };
-            });
-
-          return prependHeroItems(current, newItems);
+        const chainResponse = await fetch("/api/admin/hero-studio", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            action: "save_items",
+            items: itemPayload(nextItems),
+          }),
         });
+        const chainPayload = (await chainResponse.json().catch(() => ({}))) as {
+          snapshot?: HeroStudioSnapshot;
+          detail?: string;
+        };
+        if (!chainResponse.ok || !chainPayload.snapshot) {
+          throw new Error(
+            chainPayload.detail || "The uploaded Hero could not be pinned to #1."
+          );
+        }
 
+        applySnapshot(chainPayload.snapshot, createdIds[0]);
         setNotice(
-          `${files.length} image${
-            files.length === 1 ? "" : "s"
-          } added to the top of the hero chain.`
+          `${files.length} image${files.length === 1 ? "" : "s"} added and saved at the top of the hero chain.`
         );
       }
     } catch (uploadError) {
