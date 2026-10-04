@@ -13,6 +13,7 @@ import {
   FileText,
   GripVertical,
   Images,
+  Languages,
   Loader2,
   Monitor,
   Plus,
@@ -42,8 +43,13 @@ import {
   type HeroStudioPreviewMode,
 } from "@/lib/hero/studioClient";
 import {
+  HERO_LANGUAGE_LABELS,
+  heroScreenLanguage,
+} from "@/lib/hero/languageVariants";
+import {
   HERO_SCREEN_TYPES,
   HERO_TRANSITION_STYLES,
+  type HeroLanguageCode,
   type HeroPlaylistItemView,
   type HeroPlaylistSettings,
   type HeroPlaylistView,
@@ -143,7 +149,7 @@ function blankScreen(type: HeroScreenType): HeroScreenDefinition {
     eventTileId: null,
     forumThreadId: null,
     mediaAssetId: null,
-    config: configs[type],
+    config: { ...configs[type], languageCode: "en" },
     createdAt: now,
     updatedAt: now,
   };
