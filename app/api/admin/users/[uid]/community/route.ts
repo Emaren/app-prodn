@@ -7,6 +7,7 @@ import {
   normalizeGiftKind,
   normalizeHonorKind,
   normalizeHonorTitle,
+  parseHonorLabel,
 } from "@/lib/communityHonors";
 import {
   getOrCreateConversationByUsers,
@@ -16,6 +17,13 @@ import { buildClanLeaderProtocolMessage } from "@/lib/clanProtocolMessages";
 import { rescindPendingWoloClaim } from "@/lib/pendingWoloClaims";
 import { recordUserActivity } from "@/lib/userExperience";
 import { requireAdmin } from "@/lib/adminSession";
+import { invalidateFeaturedWarriorProjectionCaches } from "@/lib/featuredWarriorCache";
+import { ChampionshipCustodyError } from "@/lib/trophies/championship";
+import {
+  executeTrophyAdminAction,
+  TrophyActionError,
+} from "@/lib/trophies/actions";
+import { ensureTrophySeedData } from "@/lib/trophies/service";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -158,6 +166,53 @@ export async function POST(
           return NextResponse.json({ detail: "Honor title is required" }, { status: 400 });
         }
 
+        if (honorKind === "belt") {
+          await ensureTrophySeedData(prisma);
+          const trophy = await prisma.trophy.findFirst({
+            where: { displayName: title },
+            select: { id: true, displayName: true },
+          });
+
+          if (!trophy) {
+            return NextResponse.json(
+              {
+                detail:
+                  "That belt is not an authoritative championship title. Create or activate it in Trophy Command first.",
+              },
+              { status: 409 },
+            );
+          }
+
+          await executeTrophyAdminAction(
+            prisma,
+            { id: admin.id, uid: admin.uid },
+            {
+              action: "assign_holder",
+              trophyId: trophy.id,
+              userId: target.id,
+              eligibilityOverride: false,
+              reason:
+                note ||
+                "Assigned from User Command through authoritative championship custody.",
+            },
+          );
+          invalidateFeaturedWarriorProjectionCaches();
+
+          await recordUserActivity(prisma, {
+            userId: target.id,
+            type: "championship_custody_assigned",
+            path: "/admin/user-list",
+            label: trophy.displayName,
+            metadata: {
+              trophyId: trophy.id,
+              source: "user_command",
+              custodyAuthority: "trophy",
+            },
+            dedupeWithinSeconds: 0,
+          });
+          break;
+        }
+
         await getOrCreateConversationByUsers(prisma, admin.id, target.id);
 
         const label = buildHonorLabel(honorKind, title);
@@ -207,6 +262,24 @@ export async function POST(
       case "remove_honor": {
         if (typeof payload.badgeId !== "number") {
           return NextResponse.json({ detail: "Honor id is required" }, { status: 400 });
+        }
+
+        const honor = await prisma.userBadge.findFirst({
+          where: {
+            id: payload.badgeId,
+            userId: target.id,
+          },
+          select: { label: true },
+        });
+
+        if (honor && parseHonorLabel(honor.label).honorKind === "belt") {
+          return NextResponse.json(
+            {
+              detail:
+                "Championship belts are custody, not removable badges. Reassign or vacate the title in Trophy Command.",
+            },
+            { status: 409 },
+          );
         }
 
         await prisma.userBadge.deleteMany({
@@ -454,6 +527,9 @@ export async function POST(
       },
     });
   } catch (error) {
+    if (error instanceof TrophyActionError || error instanceof ChampionshipCustodyError) {
+      return NextResponse.json({ detail: error.message }, { status: error.status });
+    }
     console.error("Failed to update user community settings:", error);
     return NextResponse.json({ detail: "Update failed" }, { status: 500 });
   }
