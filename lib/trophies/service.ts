@@ -87,6 +87,13 @@ const SEEDS: TrophySeed[] = [
     tier: "National",
     status: "vacant",
   },
+  {
+    trophyId: "france_champion_belt",
+    definition: nationalTitles.find((title) => title.country === "France")!,
+    family: "national",
+    tier: "National",
+    status: "vacant",
+  },
   ...[...teamChampionshipTitles,...modeChampionshipTitles,...dmEloChampionshipTitles].map(definition=>({trophyId:definition.id,definition,family:definition.type === "elo" ? "elo" as const : "champion" as const,tier:definition.type === "elo" ? definition.shortName : "Champion",status:"vacant" as const})),
   ...eloTitles.map((definition) => ({
     trophyId: definition.id,
