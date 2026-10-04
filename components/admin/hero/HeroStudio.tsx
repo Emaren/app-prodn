@@ -288,15 +288,38 @@ export default function HeroStudio() {
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const applySnapshot = useCallback((next: HeroStudioSnapshot, selectedId?: number | null) => {
-    setSnapshot(next);
-    setPlaylist(purePlaylistSettings(next.draft.playlist));
-    setItems(next.draft.items);
-    setDraft((current) => {
-      const targetId = selectedId ?? (current.id || next.screens[0]?.id);
-      return next.screens.find((screen) => screen.id === targetId) ?? current;
-    });
-  }, []);
+  const applySnapshot = useCallback(
+    (
+      next: HeroStudioSnapshot,
+      selectedId?: number | null,
+      preserveLocalItems = false
+    ) => {
+      setSnapshot(next);
+      setPlaylist(purePlaylistSettings(next.draft.playlist));
+      if (preserveLocalItems) {
+        setItems((current) =>
+          current.map((item) => {
+            const definition = next.screens.find(
+              (screen) => screen.id === item.screen.id
+            );
+            return definition
+              ? {
+                  ...item,
+                  screen: clientResolvedScreen(definition, next),
+                }
+              : item;
+          })
+        );
+      } else {
+        setItems(next.draft.items);
+      }
+      setDraft((current) => {
+        const targetId = selectedId ?? (current.id || next.screens[0]?.id);
+        return next.screens.find((screen) => screen.id === targetId) ?? current;
+      });
+    },
+    []
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -324,7 +347,8 @@ export default function HeroStudio() {
   async function action(
     body: Record<string, unknown>,
     success: string,
-    selectedId?: number | null
+    selectedId?: number | null,
+    options?: { preserveLocalItems?: boolean }
   ) {
     setBusy(true);
     setError(null);
@@ -343,7 +367,11 @@ export default function HeroStudio() {
       if (!response.ok || !payload.snapshot) {
         throw new Error(payload.detail || "Hero Studio action failed.");
       }
-      applySnapshot(payload.snapshot, selectedId ?? payload.resultId ?? null);
+      applySnapshot(
+        payload.snapshot,
+        selectedId ?? payload.resultId ?? null,
+        options?.preserveLocalItems === true
+      );
       setNotice(success);
       return payload.snapshot;
     } catch (actionError) {
@@ -593,7 +621,8 @@ export default function HeroStudio() {
         ...draft,
       },
       `${draft.name} saved.`,
-      draft.id || null
+      draft.id || null,
+      { preserveLocalItems: true }
     );
   }
 
