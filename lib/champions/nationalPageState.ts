@@ -47,6 +47,13 @@ const SUPPORTED_NATIONAL_LAYOUT = [
     x: 45,
     y: 36,
   },
+  {
+    id: "france",
+    titleId: "national-france",
+    country: "France",
+    x: 49,
+    y: 44,
+  },
 ] as const;
 
 const PLANNED_NATIONAL_LAYOUT = [

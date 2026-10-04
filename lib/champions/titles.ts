@@ -320,6 +320,27 @@ export const nationalTitles: ChampionTitleDefinition[] = [
     detailLore: "The UK title is a represented-country belt. It can sit beside the world crown, but it remains its own target.",
     historyPlaceholder: "UK title defenses will appear here after verified challenges.",
   },
+  {
+    id: "national-france",
+    slug: "france",
+    type: "national",
+    displayName: "France Champion",
+    shortName: "France",
+    eyebrow: "Representing Country",
+    assetUrl: "/champions/belts/aoe2war-world.webp",
+    routeHref: "/champions/nations/france",
+    tributeKind: "REIGN_TRIBUTE",
+    dailyWolo: 10,
+    status: "vacant",
+    holders: [],
+    tone: "blue",
+    country: "France",
+    eligibility: "Only players representing France can hold or challenge this national belt.",
+    rule: "Set Representing Country to France, then win the verified national challenge.",
+    challengeCopy: "Challenge for France",
+    detailLore: "The France title is a represented-country belt. Current custody is decided by the shared AoE2WAR championship ledger.",
+    historyPlaceholder: "France title defenses will appear here after verified challenges.",
+  },
 ];
 
 export const eloTitles: ChampionTitleDefinition[] = [

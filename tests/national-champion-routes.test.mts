@@ -46,6 +46,7 @@ test("supported national champions project holders and economics from persistent
     "national-usa",
     "national-mexico",
     "national-uk",
+    "national-france",
   ]) {
     assert.match(stateSource, new RegExp(titleId));
   }
