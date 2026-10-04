@@ -205,9 +205,9 @@ Current strengths:
 - `/admin/events` uses the exact Featured Event renderer and is the single live-event switch: **Make live** publishes + activates one EventTile, while every Featured Event Hero screen resolves that active EventTile and CTA automatically; Hero Studio controls placement/order, not event selection
 - `/admin/user-list` has top-level operator navigation for Admin Home, Media Assets, WoloChain, and the User List / Command Tower
 - can award badges/gifts, with the badge panel now presented as Honors
-- Honors Phase 3A can grant/remove Badges, Belts, Artifacts, and Designations from `/admin/user-list`
-- Honors Phase 3A reuses the existing `user_badges` table with typed labels such as `Belt: ...`, `Artifact: ...`, and `Designation: ...`; no new migration was added
-- public Honors display is intentionally limited to the existing profile/community badge-pill rail when an honor is public, accepted, and displayable; richer belt/artifact profile layout is Phase 3B
+- `/admin/user-list` remains the warrior-centric quick command surface while `/admin/trophies` remains the title-centric control tower; both now share the Trophy custody ledger instead of competing belt state
+- single-player Belt grants from User Command execute the same locked `assign_holder` championship transition as Trophy Command; current custody then maintains a derived public `Belt: ...` chip in `user_badges` for compatibility, while belt removal/reassignment/vacancy stays on the authoritative Trophy rail
+- Badges, Artifacts, and Designations remain ordinary community honors; France is now a real vacant national Trophy seed and becomes an active national crown when live custody is assigned
 - can see inbox/unread/honor state
 - can see appearance preferences, including exact Community Lobby mode labels for Basic, Advanced, and Extreme
 - can see a compact app-local Journey Summary per user, inspired by Traffic session ideas but built from AoE2WAR `UserActivityEvent` rows
