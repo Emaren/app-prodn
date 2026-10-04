@@ -91,15 +91,20 @@ export function HeroCarousel({
   const pointerStart = useRef<number | null>(null);
   const arrangedItems = useMemo(
     () =>
-      arrangeHeroItemsForLanguage(
-        playlist.items,
-        languageLoaded ? selectedLanguage : null
-      ),
-    [languageLoaded, playlist.items, selectedLanguage]
+      preview
+        ? playlist.items
+        : arrangeHeroItemsForLanguage(
+            playlist.items,
+            languageLoaded ? selectedLanguage : null
+          ),
+    [languageLoaded, playlist.items, preview, selectedLanguage]
   );
   const items = useMemo(
-    () => filterHeroItemsByVisibility(arrangedItems, hiddenByGroup),
-    [arrangedItems, hiddenByGroup]
+    () =>
+      preview
+        ? arrangedItems
+        : filterHeroItemsByVisibility(arrangedItems, hiddenByGroup),
+    [arrangedItems, hiddenByGroup, preview]
   );
   const hasMultiple = items.length > 1;
   const current = items[index] || items[0];
