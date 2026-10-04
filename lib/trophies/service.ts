@@ -1369,6 +1369,10 @@ export async function ensureTrophySeedData(prisma: PrismaClient) {
     where: {
       label: { startsWith: "Belt: " },
       note: { in: [...CHAMPIONSHIP_BELT_MIRROR_NOTES] },
+      OR: [
+        { createdByUserId: { not: null } },
+        { note: { not: CHAMPIONSHIP_BELT_MIRROR_NOTE } },
+      ],
     },
     data: {
       note: CHAMPIONSHIP_BELT_MIRROR_NOTE,
