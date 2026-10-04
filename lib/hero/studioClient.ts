@@ -75,5 +75,7 @@ export function heroStudioPreviewKey(
     config.posterUrl ?? "",
     config.overlayOpacity ?? "",
     config.pureImage === true ? "pure" : "composed",
+    config.languageCode ?? "en",
+    config.languageGroupKey ?? "",
   ].join("|");
 }
