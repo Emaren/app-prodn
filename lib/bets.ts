@@ -885,6 +885,48 @@ export function expiredWatcherMarketResolutionReason(input: {
   return "final_replay_not_received";
 }
 
+export type ExpiredWatcherMarketDisposition =
+  | "void_refund"
+  | "hold_for_result_review";
+
+/**
+ * A missing final replay may safely time out to the exact-refund rail.
+ *
+ * A final replay that is already linked is materially different: the battle
+ * evidence exists and only result authority is missing. Keep that liability
+ * locked for review instead of refunding the losing side merely because the
+ * automatic proof clock expired. Explicit desync remains an evidence-backed
+ * void/refund condition.
+ */
+export function expiredWatcherMarketDisposition(input: {
+  resolutionReason: string | null | undefined;
+  linkedGameStatsId: number | null | undefined;
+}): ExpiredWatcherMarketDisposition {
+  return (
+    input.linkedGameStatsId &&
+    input.resolutionReason !== "explicit_desync_without_safe_winner"
+  )
+    ? "hold_for_result_review"
+    : "void_refund";
+}
+
+export function shouldKeepExpiredWatcherResultReviewHeld(input: {
+  status: string;
+  commissionerReviewState: string | null | undefined;
+  proofDeadlineAt: Date | null | undefined;
+  failureDisposition: WatcherFinalFailureDisposition;
+}, now = new Date()) {
+  return (
+    input.status === "under_review" &&
+    input.commissionerReviewState === "settlement_blocked" &&
+    input.failureDisposition === "awaiting_final_proof" &&
+    Boolean(
+      input.proofDeadlineAt &&
+      input.proofDeadlineAt.getTime() <= now.getTime()
+    )
+  );
+}
+
 export type MarketSeed = {
   battleId?: number | null;
   /** Immutable public Battle number used by future phase-book identity. */
@@ -4671,6 +4713,40 @@ async function voidExpiredWatcherMarkets(prisma: PrismaClient) {
 
   await prisma.$transaction(async (tx) => {
     for (const market of expired) {
+      if (
+        expiredWatcherMarketDisposition(market) ===
+        "hold_for_result_review"
+      ) {
+        const held = await tx.betMarket.updateMany({
+          where: {
+            id: market.id,
+            status: "awaiting_final_proof",
+            proofDeadlineAt: { lte: now },
+          },
+          data: {
+            status: "under_review",
+            featured: false,
+            winnerSide: null,
+            settledAt: null,
+            integrityStatus: "under_review",
+            integrityReason: clampDbText(
+              expiredWatcherMarketResolutionReason(market),
+              120
+            ),
+            commissionerReviewState: "settlement_blocked",
+            underReviewAt: now,
+            resolutionReason:
+              expiredWatcherMarketResolutionReason(market),
+          },
+        });
+        if (held.count === 1) {
+          console.warn(
+            `Holding watcher market #${market.id} for result review after proof grace expired; linked final replay evidence exists.`
+          );
+        }
+        continue;
+      }
+
       await tx.betMarket.updateMany({
         where: { id: market.id, status: "awaiting_final_proof" },
         data: {
@@ -6261,6 +6337,29 @@ export async function reconcileDetachedWatcherMarkets(
           });
           return;
         }
+
+        /*
+         * Once a linked final has exhausted its automatic proof grace, keep
+         * the existing liability under review. Re-running reconciliation with
+         * the same inconclusive final must not restart the grace clock and then
+         * refund the book. A later trusted parser result or bet-authorizing
+         * adjudication still reaches the normal settlement branch below.
+         */
+        if (
+          shouldKeepExpiredWatcherResultReviewHeld(
+            {
+              status: market.status,
+              commissionerReviewState:
+                market.commissionerReviewState,
+              proofDeadlineAt:
+                market.proofDeadlineAt,
+              failureDisposition,
+            }
+          )
+        ) {
+          return;
+        }
+
         const disconnectEvidence = Boolean(
           finalGame.disconnect_detected ||
           (finalGame.key_events &&
