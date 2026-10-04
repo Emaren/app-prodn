@@ -1055,6 +1055,14 @@ export async function loadChampionsV2State(
   const designationTitles = titleEconomy.titles.filter(
     (title) => title.type === "designation",
   );
+  const nationals = buildNationalBelts(titleEconomy, directoryEntries);
+  const baselineNationalSlugs = new Set(["canada", "usa", "mexico", "uk"]);
+  const additionalAuthoritativeNationals = nationalTitles.filter(
+    (title) => !baselineNationalSlugs.has(title.slug),
+  );
+  const additionalActiveNationals = additionalAuthoritativeNationals.filter(
+    (title) => nationals.find((belt) => belt.slug === title.slug)?.active,
+  ).length;
 
   return {
     world,
@@ -1070,11 +1078,14 @@ export async function loadChampionsV2State(
       rm: buildEloDivisions(directoryEntries, "rm", eloCustody),
       dm: buildEloDivisions(directoryEntries, "dm", eloCustody),
     },
-    nationals: buildNationalBelts(titleEconomy, directoryEntries),
+    nationals,
     designationTitles,
     summary: {
-      active: CHAMPIONS_V2_ACTIVE_COUNT,
-      vacant: CHAMPIONS_V2_VACANT_COUNT,
+      active: CHAMPIONS_V2_ACTIVE_COUNT + additionalActiveNationals,
+      vacant:
+        CHAMPIONS_V2_VACANT_COUNT +
+        additionalAuthoritativeNationals.length -
+        additionalActiveNationals,
       tributePoolWolo: CHAMPIONS_V2_TRIBUTE_POOL_WOLO,
     },
   };
