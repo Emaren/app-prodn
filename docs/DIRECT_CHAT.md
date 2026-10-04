@@ -8,14 +8,14 @@ systems: ["app-prodn"]
 audience: ["developers","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-09-01"
+reviewed_at: "2026-10-04"
 review_interval_days: 90
 sensitivity: "internal"
 ---
 
 # Direct Chat UI
 
-The private direct-chat experience is shared by the header Nav Chat and the full `/contact-emaren` workspace.
+The private direct-chat experience is shared by the header Nav Chat and the full `/contact-emaren` workspace.\n\nChampionship custody is not a chat transport. Derived `Belt: ...` rows used to mirror live Trophy custody are system-owned profile/admin projections and are filtered out of Direct Chat even if an older row still carries legacy operator attribution. Only actual direct messages and intentionally human-issued honors belong in the conversation timeline.
 
 ## Ownership
 

@@ -160,6 +160,10 @@ test("User Command and Trophy Command share one championship custody authority",
   assert.ok(beltHonorMirror.includes("userBadge.upsert"));
   assert.ok(beltHonorMirror.includes('status: "accepted"'));
   assert.ok(beltHonorMirror.includes("displayOnProfile: true"));
+  assert.ok(beltHonorMirror.includes("createdByUserId: null"));
+  assert.ok(beltHonorMirror.includes("CHAMPIONSHIP_BELT_MIRROR_NOTE"));
+  assert.ok(service.includes('label: { startsWith: "Belt: " }'));
+  assert.ok(service.includes("CHAMPIONSHIP_BELT_MIRROR_NOTES"));
 
   assert.ok(userCommand.includes("removable={false}"));
   assert.ok(userCommand.includes("showDisplayControl={false}"));

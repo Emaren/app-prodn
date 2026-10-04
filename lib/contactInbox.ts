@@ -25,6 +25,7 @@ import {
   DIRECT_MESSAGE_TYPING_WINDOW_MS,
 } from "@/lib/contactInboxConfig";
 import { recordUserActivity } from "@/lib/userExperience";
+import { CHAMPIONSHIP_BELT_MIRROR_NOTES } from "@/lib/trophies/beltHonorMirror";
 
 export type InboxCounterpart = {
   uid: string;
@@ -1502,6 +1503,11 @@ async function loadConversationMessages(
           { userId: viewerUserId, createdByUserId: targetUserId },
           { userId: targetUserId, createdByUserId: viewerUserId },
         ],
+        // Championship belt rows are custody projections for profile/admin
+        // surfaces, not human-authored Direct Chat events.
+        NOT: {
+          note: { in: [...CHAMPIONSHIP_BELT_MIRROR_NOTES] },
+        },
       },
       include: {
         createdBy: {

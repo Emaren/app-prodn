@@ -240,3 +240,28 @@ test("opening an already-read direct thread does not rewrite its read timestamp"
     /lastReadAt: readUpperBound/
   );
 });
+
+test("championship custody mirrors never masquerade as human Direct Chat honors", () => {
+  const inboxSource = readFileSync(
+    new URL("../lib/contactInbox.ts", import.meta.url),
+    "utf8"
+  );
+  const mirrorSource = readFileSync(
+    new URL("../lib/trophies/beltHonorMirror.ts", import.meta.url),
+    "utf8"
+  );
+  const trophyService = readFileSync(
+    new URL("../lib/trophies/service.ts", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(inboxSource, /CHAMPIONSHIP_BELT_MIRROR_NOTES/);
+  assert.match(
+    inboxSource,
+    /NOT:\s*\{\s*note: \{ in: \[\.\.\.CHAMPIONSHIP_BELT_MIRROR_NOTES\] \}/
+  );
+  assert.match(mirrorSource, /createdByUserId: null/);
+  assert.match(mirrorSource, /Current AoE2WAR championship custody\./);
+  assert.match(trophyService, /createdByUserId: null/);
+  assert.match(trophyService, /label: \{ startsWith: "Belt: " \}/);
+});
