@@ -151,6 +151,17 @@ test("ELO crowns use exact managed-media targets and lane-specific Trophy custod
   assert.match(experience, /eloFirstLane === "rm" \? \["rm", "dm"\] : \["dm", "rm"\]/);
 });
 
+test("France is an authoritative national title with live Trophy custody", () => {
+  assert.match(titles, /id: "national-france"/);
+  assert.match(titles, /displayName: "France Champion"/);
+  assert.match(titles, /country: "France"/);
+  assert.match(trophyService, /trophyId: "france_champion_belt"/);
+  assert.match(trophyService, /title\.country === "France"/);
+  assert.match(state, /live\?\.status === "held"/);
+  assert.match(state, /additionalAuthoritativeNationals/);
+  assert.match(state, /additionalActiveNationals/);
+});
+
 test("national belt hall reads represented-country truth for every crown", () => {
   assert.match(directory, /representedCountry: string \| null/);
   assert.match(directory, /representedCountry: true/);
