@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "repository-entrypoint"
-reviewed_at: "2026-10-02"
+reviewed_at: "2026-10-04"
 review_interval_days: 14
 sensitivity: "internal"
 ---
@@ -40,6 +40,33 @@ memory before closing the work.
 4. `aoe2war finish` remains the canonical end-of-work transaction and owns
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
+
+## 2026-10-04 — A proof timeout is not permission to refund known battle evidence
+
+A live user report exposed a financial-lifecycle distinction that the original
+Watcher proof-grace contract collapsed. A winner market could already have a
+durable linked final replay while winner authority was still inconclusive. When
+the 20-minute automatic proof grace expired, the old path voided the market and
+queued exact refunds exactly as if no final replay had ever arrived.
+
+Permanent rule: **timeout answers how long automation waits; it does not decide
+whether accepted liability disappears.** If no final replay exists when the
+grace expires, the missing-evidence book may void/refund. If a final replay is
+already linked and only winner authority remains unresolved, the book moves to
+`under_review` and keeps every accepted wager locked. No refund, betting fee,
+winner payout, or optional bonus is created by that timeout. Explicit
+disconnect/desync evidence remains a separate evidence-backed void/refund path.
+
+The held review stays closed to fresh betting. Reconciliation may settle it
+later only when the ordinary frozen-proposition checks receive a trusted parser
+result or a separately reviewed bet-authorizing adjudication. Re-running the
+same inconclusive final must not restart another proof window and eventually
+refund it.
+
+Terminal money remains append-only. This correction is prospective for
+non-terminal books: an already executed/refunded market is not silently
+reopened and no wallet is clawed back. Any historical compensation requires a
+separate evidence-locked correction with explicit funding authority.
 
 ## 2026-09-30 — Championship custody, proof clocks, and paired team funding
 
