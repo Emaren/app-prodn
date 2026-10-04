@@ -4,6 +4,8 @@ import test from "node:test";
 
 const page = fs.readFileSync("app/champions/page.tsx", "utf8");
 const experience = fs.readFileSync("components/champions/ChampionsV2Experience.tsx", "utf8");
+const e3Experience = fs.readFileSync("components/champions/ChampionsE3Experience.tsx", "utf8");
+const e2Page = fs.readFileSync("app/champions/e2/page.tsx", "utf8");
 const displayRail = fs.readFileSync("components/champions/ChampionsDisplayRail.tsx", "utf8");
 const legacyPage = fs.readFileSync("app/champions/legacy/page.tsx", "utf8");
 const directory = fs.readFileSync("lib/publicPlayerDirectory.ts", "utf8");
@@ -15,24 +17,49 @@ const trophyService = fs.readFileSync("lib/trophies/service.ts", "utf8");
 const shell = fs.readFileSync("app/AppShell.tsx", "utf8");
 const globalCss = fs.readFileSync("app/globals.css", "utf8");
 
-test("Champions E2 is default while B A E preserves E1 behind a production-safe Extreme hover", () => {
-  assert.match(page, /ChampionsV2Experience/);
+test("Champions E3 is current while E1 and E2 remain explicit provenance views", () => {
+  assert.match(page, /ChampionsE3Experience/);
   assert.match(page, /loadChampionsV2State/);
-  assert.doesNotMatch(page, /function PodiumCard/);
+  assert.match(e2Page, /ChampionsV2Experience/);
+  assert.match(e2Page, /loadChampionsV2State/);
   assert.match(legacyPage, /LegacyChampionsPage/);
   assert.match(legacyPage, /champions-page-shell/);
   assert.match(legacyPage, /ChampionsDisplayRail/);
   assert.match(displayRail, /\/champions\/legacy\?view=b/);
   assert.match(displayRail, /\/champions\/legacy\?view=a/);
+  assert.match(displayRail, /\/champions\/legacy\?view=e/);
+  assert.match(displayRail, /\/champions\/e2/);
+  assert.match(displayRail, /selectedMode === "e3"/);
   assert.match(displayRail, /champions-extreme-group/);
   assert.match(displayRail, /champions-extreme-menu/);
   assert.doesNotMatch(displayRail, /group-hover\/extreme/);
   assert.match(globalCss, /\.champions-extreme-group:hover \.champions-extreme-menu/);
   assert.match(globalCss, /\.champions-extreme-group:focus-within \.champions-extreme-menu/);
+  assert.match(globalCss, /\.champions-extreme-menu::after/);
+  assert.match(globalCss, /height: 0\.55rem/);
   assert.match(globalCss, /pointer-events: auto/);
   assert.match(globalCss, /opacity: 1/);
   assert.match(displayRail, /E1/);
   assert.match(displayRail, /E2/);
+  assert.match(displayRail, /E3/);
+});
+
+test("E3 carries the complete E2 championship ledger inside the E1 war-table layout", () => {
+  assert.match(e3Experience, /champions-page-shell/);
+  assert.match(e3Experience, /champions-e-breakout/);
+  assert.match(e3Experience, /state\.world/);
+  assert.match(e3Experience, /state\.chaos/);
+  assert.match(e3Experience, /state\.womens/);
+  assert.match(e3Experience, /state\.rmChampion/);
+  assert.match(e3Experience, /state\.dmChampion/);
+  assert.match(e3Experience, /state\.teams\.rm/);
+  assert.match(e3Experience, /state\.teams\.dm/);
+  assert.match(e3Experience, /\[2, 3, 4\]\.map/);
+  assert.match(e3Experience, /state\.nationals\.map/);
+  assert.match(e3Experience, /\(["rm", "dm"] as ChampionsLane\[\]\)\.map/);
+  assert.match(e3Experience, /state\.elo\[lane\]\.map/);
+  assert.match(e3Experience, /state\.designationTitles\.map/);
+  assert.match(e3Experience, /ChampionsDisplayRail active="e3"/);
 });
 
 test("World and UK are explicitly vacant public titles", () => {
