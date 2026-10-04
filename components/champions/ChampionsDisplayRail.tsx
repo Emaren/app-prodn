@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 
-export type ChampionsDisplayMode = "b" | "a" | "e1" | "e2";
+export type ChampionsDisplayMode = "b" | "a" | "e1" | "e2" | "e3";
 
 function itemClass(selected: boolean) {
   return `min-w-8 rounded-full px-2.5 py-1 text-center text-[9px] font-black uppercase tracking-[0.16em] transition ${
@@ -29,9 +29,12 @@ export default function ChampionsDisplayRail({
         : requestedLegacy === "a"
           ? "a"
           : "e1"
-      : "e2";
+      : pathname.includes("/champions/e2")
+        ? "e2"
+        : "e3";
   const selectedMode = active ?? inferred;
-  const extremeSelected = selectedMode === "e1" || selectedMode === "e2";
+  const extremeSelected =
+    selectedMode === "e1" || selectedMode === "e2" || selectedMode === "e3";
 
   useEffect(() => {
     document.documentElement.dataset.championsView =
@@ -79,7 +82,7 @@ export default function ChampionsDisplayRail({
           </Link>
 
           <div
-            className="champions-extreme-menu pointer-events-none absolute bottom-full right-0 z-50 mb-1 flex translate-y-1 gap-1 rounded-full border border-white/[0.09] bg-slate-950/95 p-1 opacity-0 shadow-[0_14px_34px_rgba(0,0,0,0.44)] backdrop-blur transition duration-150"
+            className="champions-extreme-menu pointer-events-none absolute bottom-[calc(100%-1px)] right-0 z-50 flex translate-y-1 gap-1 rounded-full border border-white/[0.09] bg-slate-950/95 p-1 opacity-0 shadow-[0_14px_34px_rgba(0,0,0,0.44)] backdrop-blur transition duration-150"
             aria-label="Extreme Champions versions"
           >
             <Link
@@ -91,12 +94,20 @@ export default function ChampionsDisplayRail({
               E1
             </Link>
             <Link
-              href="/champions"
+              href="/champions/e2"
               aria-current={selectedMode === "e2" ? "page" : undefined}
-              title="Extreme 2 · current"
+              title="Extreme 2 · preserved"
               className={itemClass(selectedMode === "e2")}
             >
               E2
+            </Link>
+            <Link
+              href="/champions"
+              aria-current={selectedMode === "e3" ? "page" : undefined}
+              title="Extreme 3 · current"
+              className={itemClass(selectedMode === "e3")}
+            >
+              E3
             </Link>
           </div>
         </div>
