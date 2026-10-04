@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-07-26"
+reviewed_at: "2026-10-04"
 review_interval_days: 90
 sensitivity: "internal"
 ---
@@ -72,6 +72,12 @@ trusted renderer and configuration validator:
 - optional display-duration override
 - optional safe link override for non-Featured-Event screens
 
+Screen language is presentation metadata inside trusted `HeroScreen.config`:
+`languageCode` is `en`, `fr`, or `es`, and translated screens carry a
+`languageGroupKey` pointing at their canonical English counterpart. English
+owns the editorial chain slot. French and Spanish are viewer-specific
+presentation variants, not independent editorial positions.
+
 `HeroPlaylistPublication` stores an immutable ordered snapshot. Public routes
 read the newest publication, while Admin may continue editing the draft. A
 rollback creates a new live version from an older snapshot rather than mutating
@@ -129,6 +135,23 @@ The transition keys are:
 If Hero persistence is unavailable, the public routes retain the permanent
 Featured Event fallback. A failed migration must never remove the Main Stage.
 
+### Language variants
+
+Language-image variants are opt-in through the existing Universal Translator.
+Auto mode and English show the canonical English Hero only. A viewer who
+explicitly chooses French or Spanish receives the English Hero followed
+immediately by that Hero's matching French or Spanish version when one is
+published. Other languages do not receive either translated image.
+
+For a complete English + translated pair, the public carousel exposes a small
+upper-right hover/focus control. The viewer may hide either the English image or
+their selected-language image. The surviving image exposes the restore action,
+so a player cannot hide both halves and strand the recovery control. The choice
+persists locally and, for authenticated users, in
+`user_appearance_preferences.hero_language_visibility`. This preference only
+filters the viewer's presentation; it never mutates Hero publication order,
+screen enablement, or another player's experience.
+
 ## Chronicle date and link truth
 
 Chronicle covers bind to an explicitly selected `ForumThread`. The cover date
@@ -177,14 +200,23 @@ so no public-tree symlink is required.
 
 ### Other Hero screens
 
-1. Create or select a typed screen.
-2. Save it.
-3. Add it to the transition chain.
-4. Set ordering, schedules, duration, and optional link override.
-5. Save the chain.
-6. Preview desktop and mobile with the public renderer.
-7. Publish Live.
-8. Restore a prior revision if the live composition needs rollback.
+1. Uploading an image into Hero Studio creates its Media Takeover and
+   immediately persists it at **#1** in the draft chain.
+2. Saving screen treatment such as **Full Image + Bars** updates the screen
+   definition without replacing the operator's current chain order.
+3. Reorder by click-hold-drag on the numbered handle or with circular arrow
+   controls. Up from #1 wraps to the bottom; down from the final item wraps to
+   #1.
+4. For translated newspaper/art versions, keep the English screen canonical and
+   create or mark a French/Spanish screen with its English counterpart.
+5. Set schedules, duration, enablement, and optional link override.
+6. Save the chain, preview desktop/mobile, then Publish Live.
+7. Restore a prior revision if the live composition needs rollback.
+
+The additive migration
+`20261004213000_add_hero_language_visibility` stores only per-user language
+visibility state. Hero language identity itself remains inside the validated
+screen config and therefore remains part of immutable publication snapshots.
 
 ## Verification
 
