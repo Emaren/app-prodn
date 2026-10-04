@@ -781,7 +781,11 @@ function buildNationalBelts(
     ]),
   );
 
-  return COUNTRY_BELT_CATALOG.map((country) => {
+  const catalogOrder = new Map(
+    COUNTRY_BELT_CATALOG.map((country, index) => [country.slug, index]),
+  );
+
+  const belts = COUNTRY_BELT_CATALOG.map((country) => {
     const live = nationalBySlug.get(country.slug) ?? null;
     const active =
       ["canada", "usa", "mexico"].includes(country.slug) ||
@@ -837,6 +841,41 @@ function buildNationalBelts(
         : null,
       contenders,
     };
+  });
+
+  /*
+   * The national hall is reign chronology, not catalog chronology.
+   * Live champions lead the rail from oldest reign to newest so every newly
+   * crowned nation is appended on the right. Vacant / not-yet-held standards
+   * follow in stable catalog order. Legacy held rows without a usable
+   * holderSince are treated as oldest rather than jumping ahead of known reigns.
+   */
+  return belts.sort((left, right) => {
+    const leftState = nationalBySlug.get(left.slug) ?? null;
+    const rightState = nationalBySlug.get(right.slug) ?? null;
+    const leftHeld = leftState?.status === "held" && Boolean(left.holder);
+    const rightHeld = rightState?.status === "held" && Boolean(right.holder);
+
+    if (leftHeld !== rightHeld) return leftHeld ? -1 : 1;
+
+    if (leftHeld && rightHeld) {
+      const leftStarted = leftState?.holderSince
+        ? Date.parse(leftState.holderSince)
+        : 0;
+      const rightStarted = rightState?.holderSince
+        ? Date.parse(rightState.holderSince)
+        : 0;
+      const safeLeftStarted = Number.isFinite(leftStarted) ? leftStarted : 0;
+      const safeRightStarted = Number.isFinite(rightStarted) ? rightStarted : 0;
+      if (safeLeftStarted !== safeRightStarted) {
+        return safeLeftStarted - safeRightStarted;
+      }
+    }
+
+    return (
+      (catalogOrder.get(left.slug) ?? Number.MAX_SAFE_INTEGER) -
+      (catalogOrder.get(right.slug) ?? Number.MAX_SAFE_INTEGER)
+    );
   });
 }
 
