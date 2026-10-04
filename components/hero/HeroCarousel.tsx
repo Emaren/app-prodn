@@ -1,7 +1,8 @@
 "use client";
 
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { preload } from "react-dom";
 
 import {
@@ -9,6 +10,17 @@ import {
   heroScreenPreloadUrl,
 } from "@/components/hero/HeroScreenRenderer";
 import { useHomeCopy } from "@/components/i18n/useHomeCopy";
+import { useUniversalLanguage } from "@/context/UniversalLanguageContext";
+import {
+  HERO_LANGUAGE_LABELS,
+  arrangeHeroItemsForLanguage,
+  filterHeroItemsByVisibility,
+  heroScreenLanguage,
+  heroVariantPairForItem,
+  normalizeHeroHiddenLanguageByGroup,
+  serializeHeroHiddenLanguageByGroup,
+  type HeroHiddenLanguageByGroup,
+} from "@/lib/hero/languageVariants";
 import type {
   HeroPlaylistView,
   HeroTransitionStyle,
@@ -54,6 +66,9 @@ function motionState(
   return { opacity: phase === "animate" ? 1 : 0 };
 }
 
+const HERO_LANGUAGE_VISIBILITY_STORAGE_KEY =
+  "aoe2war.heroLanguageVisibility.v1";
+
 export function HeroCarousel({
   playlist,
   preview = false,
@@ -64,14 +79,33 @@ export function HeroCarousel({
   presentation?: "default" | "advanced";
 }) {
   const h = useHomeCopy();
+  const { selectedLanguage, languageLoaded } = useUniversalLanguage();
   const reducedMotion = useReducedMotion();
+  const [hiddenByGroup, setHiddenByGroup] =
+    useState<HeroHiddenLanguageByGroup>({});
   const [index, setIndex] = useState(0);
   const [direction, setDirection] = useState(1);
   const [interactionPaused, setInteractionPaused] = useState(false);
   const [documentHidden, setDocumentHidden] = useState(false);
   const [cycle, setCycle] = useState(0);
   const pointerStart = useRef<number | null>(null);
-  const items = playlist.items;
+  const arrangedItems = useMemo(
+    () =>
+      preview
+        ? playlist.items
+        : arrangeHeroItemsForLanguage(
+            playlist.items,
+            languageLoaded ? selectedLanguage : null
+          ),
+    [languageLoaded, playlist.items, preview, selectedLanguage]
+  );
+  const items = useMemo(
+    () =>
+      preview
+        ? arrangedItems
+        : filterHeroItemsByVisibility(arrangedItems, hiddenByGroup),
+    [arrangedItems, hiddenByGroup, preview]
+  );
   const hasMultiple = items.length > 1;
   const current = items[index] || items[0];
   const settings = playlist.playlist;
@@ -100,6 +134,83 @@ export function HeroCarousel({
   useEffect(() => {
     if (index >= items.length) setIndex(0);
   }, [index, items.length]);
+
+  useEffect(() => {
+    if (preview) return;
+    try {
+      const raw = window.localStorage.getItem(
+        HERO_LANGUAGE_VISIBILITY_STORAGE_KEY
+      );
+      if (raw) {
+        setHiddenByGroup(
+          normalizeHeroHiddenLanguageByGroup(JSON.parse(raw))
+        );
+      }
+    } catch {
+      // Server persistence remains available when local storage is blocked.
+    }
+
+    const controller = new AbortController();
+    void fetch("/api/user/hero-language-visibility", {
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) return;
+        const payload = (await response.json().catch(() => ({}))) as {
+          authenticated?: boolean;
+          hiddenByGroup?: unknown;
+        };
+        if (!payload.authenticated) return;
+        const normalized = normalizeHeroHiddenLanguageByGroup(
+          payload.hiddenByGroup
+        );
+        setHiddenByGroup(normalized);
+        try {
+          window.localStorage.setItem(
+            HERO_LANGUAGE_VISIBILITY_STORAGE_KEY,
+            JSON.stringify(serializeHeroHiddenLanguageByGroup(normalized))
+          );
+        } catch {
+          // Account persistence remains authoritative.
+        }
+      })
+      .catch(() => {});
+
+    return () => controller.abort();
+  }, [preview]);
+
+  const setHiddenLanguage = useCallback(
+    (group: string, language: ReturnType<typeof heroScreenLanguage> | null) => {
+      setHiddenByGroup((current) => {
+        const next = { ...current };
+        if (language) next[group] = language;
+        else delete next[group];
+        try {
+          window.localStorage.setItem(
+            HERO_LANGUAGE_VISIBILITY_STORAGE_KEY,
+            JSON.stringify(serializeHeroHiddenLanguageByGroup(next))
+          );
+        } catch {
+          // The in-memory choice still works for this session.
+        }
+        return next;
+      });
+
+      void fetch("/api/user/hero-language-visibility", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          groupKey: group,
+          hiddenLanguage: language,
+        }),
+        keepalive: true,
+      }).catch(() => {
+        // Signed-out viewers retain the local preference.
+      });
+    },
+    []
+  );
 
   useEffect(() => {
     const onVisibility = () => setDocumentHidden(document.hidden);
@@ -148,6 +259,20 @@ export function HeroCarousel({
   ]);
 
   if (!current) return null;
+
+  const variantPair = heroVariantPairForItem(
+    arrangedItems,
+    current,
+    languageLoaded ? selectedLanguage : null
+  );
+  const currentLanguage = heroScreenLanguage(current.screen.config);
+  const hiddenPairLanguage = variantPair
+    ? hiddenByGroup[variantPair.group]
+    : undefined;
+  const restoreLanguage =
+    hiddenPairLanguage && hiddenPairLanguage !== currentLanguage
+      ? hiddenPairLanguage
+      : null;
 
   const transitionStyle = reducedMotion ? "cut" : settings.transitionStyle;
   const transitionSeconds =
@@ -215,6 +340,42 @@ export function HeroCarousel({
           </div>
         </motion.div>
       </AnimatePresence>
+
+      {!preview && variantPair ? (
+        <button
+          type="button"
+          onPointerDown={(event) => event.stopPropagation()}
+          onPointerUp={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation();
+            if (restoreLanguage) {
+              setHiddenLanguage(variantPair.group, null);
+              return;
+            }
+            if (currentLanguage !== "en") {
+              setIndex((currentIndex) => Math.max(0, currentIndex - 1));
+            }
+            setHiddenLanguage(variantPair.group, currentLanguage);
+          }}
+          title={
+            restoreLanguage
+              ? `Show ${HERO_LANGUAGE_LABELS[restoreLanguage]} version`
+              : "Hide this image from now on"
+          }
+          aria-label={
+            restoreLanguage
+              ? `Show ${HERO_LANGUAGE_LABELS[restoreLanguage]} Hero image`
+              : `Hide ${HERO_LANGUAGE_LABELS[currentLanguage]} Hero image from now on`
+          }
+          className="group absolute right-4 top-4 z-[150] grid h-8 w-8 place-items-center rounded-full border border-white/10 bg-black/35 text-white/55 opacity-35 shadow-[0_8px_24px_rgba(0,0,0,0.28)] backdrop-blur-md transition hover:border-amber-100/30 hover:bg-black/60 hover:text-amber-50 hover:opacity-100 focus-visible:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-100/35"
+        >
+          {restoreLanguage ? (
+            <Eye className="h-3.5 w-3.5" />
+          ) : (
+            <EyeOff className="h-3.5 w-3.5" />
+          )}
+        </button>
+      ) : null}
 
       {hasMultiple ? (
         <>

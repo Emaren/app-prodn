@@ -17,6 +17,9 @@ export type HeroScreenType = (typeof HERO_SCREEN_TYPES)[number];
 export const HERO_SCREEN_STATUSES = ["draft", "published", "archived"] as const;
 export type HeroScreenStatus = (typeof HERO_SCREEN_STATUSES)[number];
 
+export const HERO_LANGUAGE_CODES = ["en", "fr", "es"] as const;
+export type HeroLanguageCode = (typeof HERO_LANGUAGE_CODES)[number];
+
 export const HERO_TRANSITION_STYLES = [
   "crossfade",
   "banner_wipe",
@@ -47,6 +50,8 @@ export type HeroScreenConfig = {
   overlayOpacity?: number;
   imageFit?: "cover" | "contain";
   pureImage?: boolean;
+  languageCode?: HeroLanguageCode;
+  languageGroupKey?: string;
 };
 
 export type HeroForumThreadSource = {
@@ -230,6 +235,8 @@ export function normalizeHeroScreenConfig(
     "contain",
   ] as const);
   const pureImage = raw.pureImage === true || raw.pureImage === "true";
+  const languageCode = choiceValue(raw.languageCode, "en", HERO_LANGUAGE_CODES);
+  const languageGroupKey = stringValue(raw.languageGroupKey, "", 120);
 
   for (const url of [
     backgroundImageUrl,
@@ -257,6 +264,8 @@ export function normalizeHeroScreenConfig(
       overlayOpacity: numberValue(raw.overlayOpacity, 0.72, 0, 1),
       imageFit,
       pureImage,
+      languageCode,
+      languageGroupKey,
       theme: choiceValue(raw.theme, "chronicle", [
         "royal",
         "chronicle",
@@ -300,6 +309,8 @@ export function normalizeHeroScreenConfig(
       overlayOpacity: numberValue(raw.overlayOpacity, 0.62, 0, 1),
       imageFit,
       pureImage,
+      languageCode,
+      languageGroupKey,
     };
   }
 
@@ -316,6 +327,8 @@ export function normalizeHeroScreenConfig(
       overlayOpacity: numberValue(raw.overlayOpacity, 0.45, 0, 1),
       imageFit,
       pureImage,
+      languageCode,
+      languageGroupKey,
       theme: choiceValue(raw.theme, "midnight", [
         "royal",
         "chronicle",
@@ -326,7 +339,10 @@ export function normalizeHeroScreenConfig(
     };
   }
 
-  return {};
+  return {
+    languageCode,
+    languageGroupKey,
+  };
 }
 
 export const FALLBACK_HERO_PLAYLIST: HeroPlaylistView = {

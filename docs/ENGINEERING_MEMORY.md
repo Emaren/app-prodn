@@ -41,6 +41,35 @@ memory before closing the work.
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
 
+## 2026-10-04 — Screen edits do not own chain order; language variants do not own publication order
+
+A Hero Studio workflow exposed two ownership mistakes. Fresh image uploads were
+shown locally at #1 but their playlist placement was not persisted immediately,
+so a later screen-definition save could hydrate the older database chain and
+make the upload appear at the bottom. Separately, translated Chronicle art
+needed a way to coexist with English without turning French/Spanish into a
+second editorial playlist.
+
+Permanent rule: **screen definition and chain composition are separate
+authorities.** Upload creates the Media Takeover and immediately persists the
+resulting chain with the new screen at #1. Saving image treatment refreshes that
+screen without replacing local chain state. Reordering uses stable screen
+identity; drag is primary for long moves and arrow movement is circular so the
+chain has no dead edge.
+
+English remains the canonical Hero chain. French and Spanish are validated
+presentation variants linked to an English screen through config metadata.
+Only an explicitly selected Universal Translator language expands that English
+slot into English + matching native-language art for that viewer. Auto mode
+does not infer a Hero-image variant from browser locale.
+
+Viewer suppression is personal presentation state, never publication state.
+A paired Hero exposes a subtle hide control; hiding one half leaves the other
+half as the recovery surface. Signed-in choices persist in
+`user_appearance_preferences.hero_language_visibility` with local storage as
+the device fallback. Neither preference path may alter screen enablement,
+playlist positions, immutable publication snapshots, or another user's view.
+
 ## 2026-10-04 — A proof timeout is not permission to refund known battle evidence
 
 A live user report exposed a financial-lifecycle distinction that the original

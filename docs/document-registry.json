@@ -13,7 +13,7 @@
       "review_interval_days": 60,
       "reviewed_at": "2026-10-04",
       "sensitivity": "internal",
-      "sha256": "5422983e76e3b12164fe85f67a816abea6636889c48b2a8be08e2f420ada0300",
+      "sha256": "51c56b050149abaafc5a62b525ef21185ed009e779da1459af6fbd4667f5ee61",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -85,7 +85,7 @@
       "review_interval_days": 60,
       "reviewed_at": "2026-10-04",
       "sensitivity": "internal",
-      "sha256": "a93b08d3403ba97f2c115a564836fc7a496d8d3ac4e20488caaae70700d0e050",
+      "sha256": "9da40f70d3cbbdf4dd35fd6cb3a7e246a8c5fb0c9d15aed32e7252ec45c3e4c7",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "f34e79701bd19506f82a44df80cb4a08f4303fb5c3a7011d72b8523f18d0305e",
+      "sha256": "e111e5d1e9024b92e2841365c030007e2510c065bcab0086e86d9aad2b33d593",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -661,7 +661,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-04",
       "sensitivity": "internal",
-      "sha256": "3a086e6acb1aea0c0ec62db07e7f9418b3eb565257b18a5159e59e12315a6734",
+      "sha256": "6e493e12696430035cbadb96600e8ec3f17bcb824858f2d7f5c57c418d208d68",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -801,9 +801,9 @@
       "owner": "aoe2war-web",
       "path": "docs/HERO_STUDIO.md",
       "review_interval_days": 90,
-      "reviewed_at": "2026-07-26",
+      "reviewed_at": "2026-10-04",
       "sensitivity": "internal",
-      "sha256": "06305a467a4ddeb8ca7fdd27cf061298d73d23dc41f40c9e408e0fc1c5d339d2",
+      "sha256": "cc9f868ba6392335d50f9449ef5810c875458049e73288dea1dc5d516010c02c",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2026,7 +2026,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "main",
-    "commit": "80c392dab529d5f036cf5d699dca27277e2eb24e"
+    "commit": "f0759c03d558be3ede5c7cdf2f4d1e832e5fb4b1"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

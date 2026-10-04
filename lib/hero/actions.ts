@@ -1,9 +1,11 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
 import {
+  HERO_LANGUAGE_CODES,
   HERO_PLAYLIST_KEY,
   HERO_SCREEN_STATUSES,
   HERO_SCREEN_TYPES,
   HERO_TRANSITION_STYLES,
+  type HeroLanguageCode,
   type HeroScreenStatus,
   type HeroScreenType,
   isSafeHeroHref,
@@ -63,6 +65,11 @@ function screenType(value: unknown): HeroScreenType {
 function screenStatus(value: unknown): HeroScreenStatus {
   const parsed = text(value, 24) as HeroScreenStatus;
   return HERO_SCREEN_STATUSES.includes(parsed) ? parsed : "draft";
+}
+
+function heroLanguage(value: unknown): HeroLanguageCode {
+  const parsed = text(value, 12) as HeroLanguageCode;
+  return HERO_LANGUAGE_CODES.includes(parsed) ? parsed : "en";
 }
 
 function dateValue(value: unknown) {
@@ -164,6 +171,32 @@ async function saveScreen(prisma: PrismaClient, payload: Payload) {
       error instanceof Error ? error.message : "Hero screen configuration is invalid."
     );
   }
+  if (
+    config.languageCode &&
+    config.languageCode !== "en" &&
+    !config.languageGroupKey
+  ) {
+    throw new HeroStudioActionError(
+      "French and Spanish Hero screens must choose an English counterpart."
+    );
+  }
+  if (config.languageCode && config.languageCode !== "en") {
+    const base = await prisma.heroScreen.findUnique({
+      where: { key: config.languageGroupKey },
+      select: { id: true, type: true, config: true },
+    });
+    if (!base || base.id === id || base.type !== type) {
+      throw new HeroStudioActionError(
+        "The translated Hero screen must reference an English screen of the same type."
+      );
+    }
+    const baseConfig = normalizeHeroScreenConfig(type, base.config);
+    if ((baseConfig.languageCode ?? "en") !== "en") {
+      throw new HeroStudioActionError(
+        "The translated Hero screen must reference an English counterpart."
+      );
+    }
+  }
   const data = {
     key,
     name,
@@ -210,6 +243,112 @@ async function duplicateScreen(prisma: PrismaClient, payload: Payload) {
       mediaAssetId: screen.mediaAssetId,
       config: screen.config ?? undefined,
     },
+  });
+}
+
+async function createLanguageVariant(
+  prisma: PrismaClient,
+  payload: Payload
+) {
+  const source = await getScreen(prisma, payload);
+  if (source.type === "featured_event") {
+    throw new HeroStudioActionError(
+      "Featured Event follows Event Foundry and does not use image-language variants."
+    );
+  }
+
+  const language = heroLanguage(payload.language);
+  if (language === "en") {
+    throw new HeroStudioActionError("Choose French or Spanish for a translated Hero.");
+  }
+
+  const sourceType = screenType(source.type);
+  const sourceConfig = normalizeHeroScreenConfig(sourceType, source.config);
+  if ((sourceConfig.languageCode ?? "en") !== "en") {
+    throw new HeroStudioActionError(
+      "Create translated Hero versions from their English counterpart."
+    );
+  }
+
+  const languageName = language === "fr" ? "French" : "Spanish";
+  const languageGroupKey = sourceConfig.languageGroupKey || source.key;
+  const baseKey = `${source.key}-${language}`.slice(0, 120);
+  let key = baseKey;
+  let suffix = 2;
+  while (await prisma.heroScreen.findUnique({ where: { key }, select: { id: true } })) {
+    key = `${baseKey.slice(0, Math.max(1, 116 - String(suffix).length))}-${suffix}`;
+    suffix += 1;
+  }
+
+  const playlist = await getPlaylist(prisma);
+  return prisma.$transaction(async (tx) => {
+    const created = await tx.heroScreen.create({
+      data: {
+        key,
+        name: `${source.name} · ${languageName}`,
+        type: source.type,
+        status: "draft",
+        defaultHref: source.defaultHref,
+        ariaLabel: source.ariaLabel,
+        eventTileId: null,
+        forumThreadId: source.forumThreadId,
+        mediaAssetId: source.mediaAssetId,
+        config: normalizeHeroScreenConfig(sourceType, {
+          ...sourceConfig,
+          languageCode: language,
+          languageGroupKey,
+        }),
+      },
+    });
+
+    const baseItem = await tx.heroPlaylistItem.findUnique({
+      where: {
+        playlistId_screenId: {
+          playlistId: playlist.id,
+          screenId: source.id,
+        },
+      },
+    });
+    if (!baseItem) return created;
+
+    const chain = await tx.heroPlaylistItem.findMany({
+      where: { playlistId: playlist.id },
+      include: { screen: true },
+      orderBy: [{ position: "asc" }, { id: "asc" }],
+    });
+    const relatedPositions = chain.flatMap((item) => {
+      const itemType = screenType(item.screen.type);
+      const itemConfig = normalizeHeroScreenConfig(itemType, item.screen.config);
+      const itemGroup =
+        itemConfig.languageCode === "en"
+          ? itemConfig.languageGroupKey || item.screen.key
+          : itemConfig.languageGroupKey;
+      return itemGroup === languageGroupKey ? [item.position] : [];
+    });
+    const insertAt =
+      Math.max(baseItem.position, ...relatedPositions, baseItem.position) + 1;
+
+    await tx.heroPlaylistItem.updateMany({
+      where: {
+        playlistId: playlist.id,
+        position: { gte: insertAt },
+      },
+      data: { position: { increment: 1 } },
+    });
+    await tx.heroPlaylistItem.create({
+      data: {
+        playlistId: playlist.id,
+        screenId: created.id,
+        position: insertAt,
+        enabled: true,
+        startsAt: baseItem.startsAt,
+        endsAt: baseItem.endsAt,
+        durationMs: baseItem.durationMs,
+        hrefOverride: baseItem.hrefOverride,
+      },
+    });
+
+    return created;
   });
 }
 
@@ -408,6 +547,9 @@ export async function executeHeroStudioAction(
   if (action === "save_playlist") return savePlaylist(prisma, payload);
   if (action === "save_screen") return saveScreen(prisma, payload);
   if (action === "duplicate_screen") return duplicateScreen(prisma, payload);
+  if (action === "create_language_variant") {
+    return createLanguageVariant(prisma, payload);
+  }
   if (action === "archive_screen") return archiveScreen(prisma, payload);
   if (action === "save_items") return saveItems(prisma, payload);
   if (action === "publish_playlist") return publishPlaylist(prisma, actorUid);

@@ -13,6 +13,7 @@ import {
   FileText,
   GripVertical,
   Images,
+  Languages,
   Loader2,
   Monitor,
   Plus,
@@ -42,8 +43,13 @@ import {
   type HeroStudioPreviewMode,
 } from "@/lib/hero/studioClient";
 import {
+  HERO_LANGUAGE_LABELS,
+  heroScreenLanguage,
+} from "@/lib/hero/languageVariants";
+import {
   HERO_SCREEN_TYPES,
   HERO_TRANSITION_STYLES,
+  type HeroLanguageCode,
   type HeroPlaylistItemView,
   type HeroPlaylistSettings,
   type HeroPlaylistView,
@@ -143,7 +149,7 @@ function blankScreen(type: HeroScreenType): HeroScreenDefinition {
     eventTileId: null,
     forumThreadId: null,
     mediaAssetId: null,
-    config: configs[type],
+    config: { ...configs[type], languageCode: "en" },
     createdAt: now,
     updatedAt: now,
   };
@@ -282,15 +288,38 @@ export default function HeroStudio() {
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const applySnapshot = useCallback((next: HeroStudioSnapshot, selectedId?: number | null) => {
-    setSnapshot(next);
-    setPlaylist(purePlaylistSettings(next.draft.playlist));
-    setItems(next.draft.items);
-    setDraft((current) => {
-      const targetId = selectedId ?? (current.id || next.screens[0]?.id);
-      return next.screens.find((screen) => screen.id === targetId) ?? current;
-    });
-  }, []);
+  const applySnapshot = useCallback(
+    (
+      next: HeroStudioSnapshot,
+      selectedId?: number | null,
+      preserveLocalItems = false
+    ) => {
+      setSnapshot(next);
+      setPlaylist(purePlaylistSettings(next.draft.playlist));
+      if (preserveLocalItems) {
+        setItems((current) =>
+          current.map((item) => {
+            const definition = next.screens.find(
+              (screen) => screen.id === item.screen.id
+            );
+            return definition
+              ? {
+                  ...item,
+                  screen: clientResolvedScreen(definition, next),
+                }
+              : item;
+          })
+        );
+      } else {
+        setItems(next.draft.items);
+      }
+      setDraft((current) => {
+        const targetId = selectedId ?? (current.id || next.screens[0]?.id);
+        return next.screens.find((screen) => screen.id === targetId) ?? current;
+      });
+    },
+    []
+  );
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -318,7 +347,8 @@ export default function HeroStudio() {
   async function action(
     body: Record<string, unknown>,
     success: string,
-    selectedId?: number | null
+    selectedId?: number | null,
+    options?: { preserveLocalItems?: boolean }
   ) {
     setBusy(true);
     setError(null);
@@ -337,7 +367,11 @@ export default function HeroStudio() {
       if (!response.ok || !payload.snapshot) {
         throw new Error(payload.detail || "Hero Studio action failed.");
       }
-      applySnapshot(payload.snapshot, selectedId ?? payload.resultId ?? null);
+      applySnapshot(
+        payload.snapshot,
+        selectedId ?? payload.resultId ?? null,
+        options?.preserveLocalItems === true
+      );
       setNotice(success);
       return payload.snapshot;
     } catch (actionError) {
@@ -426,20 +460,21 @@ export default function HeroStudio() {
   function addScreenToChain(screen: HeroScreenDefinition) {
     if (!snapshot || items.some((item) => item.screen.id === screen.id)) return;
     const resolved = clientResolvedScreen(screen, snapshot);
-    setItems((current) => [
-      ...current,
-      {
-        id: -screen.id,
-        position: current.length,
-        enabled: true,
-        startsAt: null,
-        endsAt: null,
-        durationMs: null,
-        hrefOverride: "",
-        href: screen.defaultHref || "/",
-        screen: resolved,
-      },
-    ]);
+    setItems((current) =>
+      prependHeroItems(current, [
+        {
+          id: -screen.id,
+          position: 0,
+          enabled: true,
+          startsAt: null,
+          endsAt: null,
+          durationMs: null,
+          hrefOverride: "",
+          href: screen.defaultHref || "/",
+          screen: resolved,
+        },
+      ])
+    );
   }
 
 
@@ -542,35 +577,46 @@ export default function HeroStudio() {
           const screen = screensById.get(id);
           return screen ? [screen] : [];
         });
+        const existing = new Set(items.map((item) => item.screen.id));
+        const newItems = createdScreens
+          .filter((screen) => !existing.has(screen.id))
+          .map((screen) => ({
+            id: -screen.id,
+            position: 0,
+            enabled: true,
+            startsAt: null,
+            endsAt: null,
+            durationMs: null,
+            hrefOverride: "",
+            href: screen.defaultHref || "/",
+            screen: clientResolvedScreen(
+              screen,
+              latestSnapshot as HeroStudioSnapshot
+            ),
+          }));
+        const nextItems = prependHeroItems(items, newItems);
 
-        applySnapshot(latestSnapshot, createdIds[0]);
-
-        setItems((current) => {
-          const existing = new Set(current.map((item) => item.screen.id));
-          const newItems = createdScreens
-            .filter((screen) => !existing.has(screen.id))
-            .map((screen) => {
-              const resolved = clientResolvedScreen(screen, latestSnapshot as HeroStudioSnapshot);
-              return {
-                id: -screen.id,
-                position: 0,
-                enabled: true,
-                startsAt: null,
-                endsAt: null,
-                durationMs: null,
-                hrefOverride: "",
-                href: screen.defaultHref || "/",
-                screen: resolved,
-              };
-            });
-
-          return prependHeroItems(current, newItems);
+        const chainResponse = await fetch("/api/admin/hero-studio", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            action: "save_items",
+            items: itemPayload(nextItems),
+          }),
         });
+        const chainPayload = (await chainResponse.json().catch(() => ({}))) as {
+          snapshot?: HeroStudioSnapshot;
+          detail?: string;
+        };
+        if (!chainResponse.ok || !chainPayload.snapshot) {
+          throw new Error(
+            chainPayload.detail || "The uploaded Hero could not be pinned to #1."
+          );
+        }
 
+        applySnapshot(chainPayload.snapshot, createdIds[0]);
         setNotice(
-          `${files.length} image${
-            files.length === 1 ? "" : "s"
-          } added to the top of the hero chain.`
+          `${files.length} image${files.length === 1 ? "" : "s"} added and saved at the top of the hero chain.`
         );
       }
     } catch (uploadError) {
@@ -587,7 +633,23 @@ export default function HeroStudio() {
         ...draft,
       },
       `${draft.name} saved.`,
-      draft.id || null
+      draft.id || null,
+      { preserveLocalItems: true }
+    );
+  }
+
+  async function createLanguageVariant(language: Exclude<HeroLanguageCode, "en">) {
+    if (!draft.id) {
+      setError("Save the English Hero screen before creating a language version.");
+      return;
+    }
+    await action(
+      {
+        action: "create_language_variant",
+        id: draft.id,
+        language,
+      },
+      `${HERO_LANGUAGE_LABELS[language]} version created and placed after its English counterpart.`
     );
   }
 
@@ -632,6 +694,14 @@ export default function HeroStudio() {
 
   const activeEvent =
     snapshot.eventTiles.find((event) => event.isActive && event.isPublished) || null;
+  const draftLanguage = heroScreenLanguage(draft.config);
+  const englishCounterparts = snapshot.screens.filter(
+    (screen) =>
+      screen.id !== draft.id &&
+      screen.type === draft.type &&
+      screen.status !== "archived" &&
+      heroScreenLanguage(screen.config) === "en"
+  );
 
   return (
     <div className="w-full min-w-0 space-y-5 py-2 text-white">
@@ -877,12 +947,13 @@ export default function HeroStudio() {
                   }`}
                 >
                   <div className="flex flex-wrap items-center gap-3">
-                    <button
-                      type="button"
+                    <div
+                      role="button"
+                      tabIndex={busy ? -1 : 0}
                       draggable={!busy}
-                      disabled={busy}
-                      aria-label={`Drag ${item.screen.name} to reorder. Use the up and down arrow keys for keyboard reordering.`}
-                      title="Drag to reorder"
+                      aria-disabled={busy}
+                      aria-label={`Drag ${item.screen.name} to reorder. Arrow keys wrap through the chain.`}
+                      title="Click, hold, and drag to reorder"
                       onClick={() =>
                         setDraft(
                           snapshot.screens.find(
@@ -891,6 +962,14 @@ export default function HeroStudio() {
                         )
                       }
                       onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          event.preventDefault();
+                          setDraft(
+                            snapshot.screens.find(
+                              (screen) => screen.id === item.screen.id
+                            ) || item.screen
+                          );
+                        }
                         if (event.key === "ArrowUp") {
                           event.preventDefault();
                           moveItem(index, -1);
@@ -913,11 +992,11 @@ export default function HeroStudio() {
                         setDraggedScreenId(null);
                         setDragOverIndex(null);
                       }}
-                      className="flex h-11 min-w-14 shrink-0 cursor-grab items-center justify-center gap-1 rounded-xl border border-amber-200/18 bg-amber-300/9 px-2 font-serif text-lg text-amber-100 outline-none transition hover:border-amber-100/40 hover:bg-amber-300/14 focus-visible:ring-2 focus-visible:ring-amber-200/50 active:cursor-grabbing"
+                      className="flex h-11 min-w-14 shrink-0 cursor-grab select-none items-center justify-center gap-1 rounded-xl border border-amber-200/18 bg-amber-300/9 px-2 font-serif text-lg text-amber-100 outline-none transition hover:border-amber-100/40 hover:bg-amber-300/14 focus-visible:ring-2 focus-visible:ring-amber-200/50 active:cursor-grabbing"
                     >
                       <GripVertical className="h-4 w-4 text-amber-100/55" />
                       <span>{index + 1}</span>
-                    </button>
+                    </div>
                     <button
                       type="button"
                       onClick={() =>
@@ -932,8 +1011,11 @@ export default function HeroStudio() {
                       <span className="block text-sm font-semibold text-white">
                         {item.screen.name}
                       </span>
-                      <span className="mt-1 block text-[9px] uppercase tracking-[0.18em] text-slate-600">
-                        {TYPE_LABELS[item.screen.type]}
+                      <span className="mt-1 flex flex-wrap items-center gap-2 text-[9px] uppercase tracking-[0.18em] text-slate-600">
+                        <span>{TYPE_LABELS[item.screen.type]}</span>
+                        <span className="rounded-full border border-sky-200/15 bg-sky-300/[0.06] px-1.5 py-0.5 text-sky-100/70">
+                          {HERO_LANGUAGE_LABELS[heroScreenLanguage(item.screen.config)]}
+                        </span>
                       </span>
                     </button>
                     <label className="flex items-center gap-2 text-xs text-slate-400">
@@ -949,17 +1031,17 @@ export default function HeroStudio() {
                     </label>
                     <Button
                       onClick={() => moveItem(index, -1)}
-                      disabled={busy || index === 0}
-                      ariaLabel={`Move ${item.screen.name} up`}
-                      title="Move up"
+                      disabled={busy || items.length < 2}
+                      ariaLabel={`Move ${item.screen.name} up; wraps to the bottom`}
+                      title="Move up · top wraps to bottom"
                     >
                       <ArrowUp className="h-3.5 w-3.5" />
                     </Button>
                     <Button
                       onClick={() => moveItem(index, 1)}
-                      disabled={busy || index === items.length - 1}
-                      ariaLabel={`Move ${item.screen.name} down`}
-                      title="Move down"
+                      disabled={busy || items.length < 2}
+                      ariaLabel={`Move ${item.screen.name} down; wraps to the top`}
+                      title="Move down · bottom wraps to top"
                     >
                       <ArrowDown className="h-3.5 w-3.5" />
                     </Button>
@@ -1249,6 +1331,70 @@ export default function HeroStudio() {
                   <option value="archived">Archived</option>
                 </select>
               </Field>
+              {draft.type !== "featured_event" ? (
+                <Field label="Hero language" hint="English is the canonical chain slot. French/Spanish appear only for viewers who explicitly chose that language.">
+                  <select
+                    className={selectClass}
+                    value={draftLanguage}
+                    onChange={(event) => {
+                      const language = event.target.value as HeroLanguageCode;
+                      patchConfig({
+                        languageCode: language,
+                        languageGroupKey:
+                          language === "en"
+                            ? ""
+                            : draft.config.languageGroupKey || "",
+                      });
+                    }}
+                  >
+                    <option value="en">English</option>
+                    <option value="fr">French</option>
+                    <option value="es">Spanish</option>
+                  </select>
+                </Field>
+              ) : null}
+              {draft.type !== "featured_event" && draftLanguage !== "en" ? (
+                <Field label="English counterpart" hint="The translated image is shown immediately after this English Hero for matching viewers.">
+                  <select
+                    className={selectClass}
+                    value={draft.config.languageGroupKey || ""}
+                    onChange={(event) =>
+                      patchConfig({ languageGroupKey: event.target.value })
+                    }
+                  >
+                    <option value="">Choose the English Hero</option>
+                    {englishCounterparts.map((screen) => (
+                      <option key={screen.id} value={screen.key}>
+                        {screen.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              ) : null}
+              {draft.type !== "featured_event" && draftLanguage === "en" && draft.id ? (
+                <div className="rounded-xl border border-sky-200/12 bg-sky-300/[0.045] p-3">
+                  <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-100/70">
+                    <Languages className="h-3.5 w-3.5" />
+                    Language versions
+                  </div>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    <Button
+                      disabled={busy}
+                      onClick={() => void createLanguageVariant("fr")}
+                      title="Create a French copy directly after this English Hero"
+                    >
+                      + French
+                    </Button>
+                    <Button
+                      disabled={busy}
+                      onClick={() => void createLanguageVariant("es")}
+                      title="Create a Spanish copy directly after this English Hero"
+                    >
+                      + Spanish
+                    </Button>
+                  </div>
+                </div>
+              ) : null}
               {draft.type === "featured_event" ? (
                 <Field label="Live event source">
                   <div className="rounded-xl border border-emerald-200/15 bg-emerald-300/[0.06] px-3 py-3 text-xs text-emerald-100">
