@@ -12,7 +12,11 @@ import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import { formatDurationLabel } from "@/lib/gameStatsView";
 import { buildMatchupHref } from "@/lib/publicMatchups";
 import { getPrisma } from "@/lib/prisma";
-import { loadPublicTrophies, trophyIsPubliclyForcedVacant } from "@/lib/trophies/service";
+import {
+  loadPublicTrophies,
+  seededTrophyDefinition,
+  trophyIsPubliclyForcedVacant,
+} from "@/lib/trophies/service";
 import type {
   PlayerBreakdownRow,
   PlayerBestGame,
@@ -49,6 +53,9 @@ function normalizedTitleHolder(value: string | null | undefined) {
 }
 
 function trophyRouteHref(trophyId: string) {
+  const seededRoute = seededTrophyDefinition(trophyId)?.definition.routeHref;
+  if (seededRoute) return seededRoute;
+
   const normalized = trophyId.trim().toLowerCase();
   const map: Record<string, string> = {
     canada_champion_belt: "/champions/nations/canada",
