@@ -14,7 +14,9 @@ import {
   resolveMarketSettlementStatus,
   watcherFinalProofDeadline,
   watcherSessionCanSeedSettledWinnerMarket,
+  expiredWatcherMarketDisposition,
   expiredWatcherMarketResolutionReason,
+  shouldKeepExpiredWatcherResultReviewHeld,
 } from "../lib/bets.ts";
 import {
   buildRosterHash,
@@ -533,5 +535,76 @@ test("proof expiry never says final replay not received when final evidence is a
       linkedGameStatsId: null,
     }),
     "final_replay_not_received"
+  );
+});
+
+test("proof expiry refunds only missing finals or explicit desyncs", () => {
+  assert.equal(
+    expiredWatcherMarketDisposition({
+      resolutionReason: "final_replay_pending",
+      linkedGameStatsId: null,
+    }),
+    "void_refund"
+  );
+  assert.equal(
+    expiredWatcherMarketDisposition({
+      resolutionReason: "explicit_desync_without_safe_winner",
+      linkedGameStatsId: 24404,
+    }),
+    "void_refund"
+  );
+  assert.equal(
+    expiredWatcherMarketDisposition({
+      resolutionReason: "final_result_not_betting_eligible",
+      linkedGameStatsId: 24404,
+    }),
+    "hold_for_result_review"
+  );
+  assert.equal(
+    expiredWatcherMarketDisposition({
+      resolutionReason: "final_replay_pending",
+      linkedGameStatsId: 24404,
+    }),
+    "hold_for_result_review"
+  );
+});
+
+test("an expired linked-final review stays held until stronger result authority arrives", () => {
+  const expiredAt = new Date("2026-10-04T06:16:00.000Z");
+  assert.equal(
+    shouldKeepExpiredWatcherResultReviewHeld(
+      {
+        status: "under_review",
+        commissionerReviewState: "settlement_blocked",
+        proofDeadlineAt: expiredAt,
+        failureDisposition: "awaiting_final_proof",
+      },
+      new Date("2026-10-04T06:17:00.000Z")
+    ),
+    true
+  );
+  assert.equal(
+    shouldKeepExpiredWatcherResultReviewHeld(
+      {
+        status: "under_review",
+        commissionerReviewState: "settlement_blocked",
+        proofDeadlineAt: expiredAt,
+        failureDisposition: "integrity_review",
+      },
+      new Date("2026-10-04T06:17:00.000Z")
+    ),
+    false
+  );
+  assert.equal(
+    shouldKeepExpiredWatcherResultReviewHeld(
+      {
+        status: "awaiting_final_proof",
+        commissionerReviewState: null,
+        proofDeadlineAt: expiredAt,
+        failureDisposition: "awaiting_final_proof",
+      },
+      new Date("2026-10-04T06:17:00.000Z")
+    ),
+    false
   );
 });
