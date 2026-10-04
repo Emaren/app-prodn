@@ -68,6 +68,26 @@ non-terminal books: an already executed/refunded market is not silently
 reopened and no wallet is clawed back. Any historical compensation requires a
 separate evidence-locked correction with explicit funding authority.
 
+## 2026-10-04 — Projection metadata must not become a human message
+
+The first live France custody assignment exposed a presentation leak in the new
+shared-authority model. The synchronized `Belt: France Champion` UserBadge was
+written with the operator as `createdByUserId` and a technical synchronization
+note. Direct Chat correctly treats human-created badge rows as timeline honors,
+so the custody projection appeared to the champion like operator/developer copy.
+
+Permanent rule: derived championship belt mirrors are **system projections**,
+not messages. They use `createdByUserId = null`, a bounded seed repair removes
+legacy operator attribution, and Direct Chat independently excludes known
+custody-mirror notes. The Trophy event ledger retains the real operator audit
+trail; the user-facing conversation does not inherit implementation copy from
+that ledger.
+
+National crown presentation follows custody history too. Held national titles
+lead the public rail in ascending `holderSince` order—oldest reign on the left,
+newest reign appended on the right. Vacant standards follow in stable catalog
+order. Country catalog position must never displace a reigning champion.
+
 ## 2026-10-04 — Two admin surfaces may share control, never authority
 
 User Command had a legacy Belt honor path that wrote `user_badges` while Trophy
