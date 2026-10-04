@@ -18,6 +18,10 @@ import {
 import { managedMediaPublicUrl } from "@/lib/managedMediaAssets";
 import { countriesEligibilityMatch } from "@/lib/countryEligibility";
 import { reconcileDailyTrophyTribute } from "@/lib/trophies/dailyTributePolicy";
+import {
+  CHAMPIONSHIP_BELT_MIRROR_NOTE,
+  CHAMPIONSHIP_BELT_MIRROR_NOTES,
+} from "@/lib/trophies/beltHonorMirror";
 import type {
   TrophyCommandSnapshot,
   TrophyHolding,
@@ -1357,6 +1361,22 @@ export async function ensureTrophySeedData(prisma: PrismaClient) {
       create: setting,
     });
   }
+
+  // Repair early custody mirrors that were accidentally attributed to the
+  // operator who moved the title. Those rows are profile/admin projections,
+  // never Direct Chat messages from that human.
+  await prisma.userBadge.updateMany({
+    where: {
+      label: { startsWith: "Belt: " },
+      note: { in: [...CHAMPIONSHIP_BELT_MIRROR_NOTES] },
+    },
+    data: {
+      note: CHAMPIONSHIP_BELT_MIRROR_NOTE,
+      createdByUserId: null,
+      status: "accepted",
+      displayOnProfile: true,
+    },
+  });
 }
 
 const publicTrophySeedEnsureByClient =
