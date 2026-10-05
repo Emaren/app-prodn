@@ -41,6 +41,28 @@ memory before closing the work.
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
 
+## 2026-10-04 — Docs-only Git descendants must not deadlock post-release control refresh
+
+Champions E3 exposed a release-control seam after the runtime was already certified.
+A later documentation-only commit was correctly recognized by Finish as
+`production_implementation_equivalent`, so no redundant production build was
+needed. The forced post-release control refresh, however, still required production
+`source_sha == GitHub main SHA` and therefore rejected the same safe docs-only
+descendant that Finish had just accepted.
+
+The repair keeps both identities truthful. Local and GitHub must still be exact and
+clean. Production must still be healthy, version-exact, Wolo-safe, and backed by the
+exact CERTIFIED activation receipt. Only when the release collector independently
+proves `production_implementation_equivalent=true` may Git documentation HEAD sit
+ahead of runtime. Generated SYSTEM_MAP / SERVER_STORAGE_MAP state remains bound to
+the active certified runtime SHA, never to a documentation commit that was not
+deployed.
+
+Durable rule: implementation-equivalence is a shared authority contract across
+deploy planning and post-release self-knowledge. A docs-only descendant must not
+force a fake runtime deployment, and a generated runtime map must never pretend that
+a non-runtime documentation commit is active production.
+
 ## 2026-10-04 — Versioned presentation is additive provenance
 
 The Champions display rail exposed two coupled UI/product mistakes. First, the
