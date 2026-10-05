@@ -236,7 +236,7 @@ test("Nav Chat keeps honors on one slim non-wrapping strip and protects message 
   assert.match(panelSource, /data-contact-player-name="true"/);
   assert.match(panelSource, /bg-gradient-to-r from-amber-100 via-stone-100 to-slate-300/);
   assert.match(panelSource, /data-contact-honor-strip="true"/);
-  assert.match(panelSource, /h-9 max-w-full border-t/);
+  assert.match(panelSource, /h-10 max-w-full border-t/);
   assert.match(panelSource, /data-contact-honor-scroll="true"/);
   assert.match(panelSource, /h-8 max-w-full items-center gap-1\.5 overflow-x-auto overflow-y-hidden/);
   assert.match(panelSource, /whitespace-nowrap px-1\.5 pb-1/);
