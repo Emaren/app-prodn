@@ -27,6 +27,7 @@ export default function ChaosiumBeltRail({
     startScrollLeft: number;
     moved: boolean;
   } | null>(null);
+  const suppressClickRef = useRef(false);
   const [dragging, setDragging] = useState(false);
 
   const stopEdgeGlide = useCallback(() => {
@@ -116,6 +117,7 @@ export default function ChaosiumBeltRail({
     const node = scrollerRef.current;
     const drag = dragRef.current;
     if (!node || !drag || drag.pointerId !== event.pointerId) return;
+    suppressClickRef.current = drag.moved;
     dragRef.current = null;
     if (node.hasPointerCapture(event.pointerId)) {
       node.releasePointerCapture(event.pointerId);
@@ -148,6 +150,12 @@ export default function ChaosiumBeltRail({
         onPointerDown={handlePointerDown}
         onPointerUp={finishDrag}
         onPointerCancel={finishDrag}
+        onClickCapture={(event) => {
+          if (!suppressClickRef.current) return;
+          suppressClickRef.current = false;
+          event.preventDefault();
+          event.stopPropagation();
+        }}
         onKeyDown={(event) => {
           if (event.key === "ArrowLeft") {
             event.preventDefault();
