@@ -977,10 +977,24 @@ function BufferedFeaturedWarriorImage({
       return;
     }
 
+    const imageStillMatchesExpectedSource = () => {
+      try {
+        const expectedHref = new URL(expectedSrc, window.location.href).href;
+        return (image.currentSrc || image.src) === expectedHref;
+      } catch {
+        return false;
+      }
+    };
+
+    if (!imageStillMatchesExpectedSource()) {
+      return;
+    }
+
     const reveal = () => {
       if (
         pendingLayerRef.current !== layer ||
-        pendingSrcRef.current !== expectedSrc
+        pendingSrcRef.current !== expectedSrc ||
+        !imageStillMatchesExpectedSource()
       ) {
         return;
       }
@@ -992,7 +1006,8 @@ function BufferedFeaturedWarriorImage({
       revealFrameRef.current = window.requestAnimationFrame(() => {
         if (
           pendingLayerRef.current !== layer ||
-          pendingSrcRef.current !== expectedSrc
+          pendingSrcRef.current !== expectedSrc ||
+          !imageStillMatchesExpectedSource()
         ) {
           return;
         }
