@@ -94,7 +94,7 @@ test("Lobby reserves the critical image lane for the actual hero", () => {
   assert.doesNotMatch(carousel, /mode="sync"/);
   assert.doesNotMatch(carousel, /exit=\{motionState/);
   assert.match(renderer, /data-hero-studio-pure-image/);
-  assert.match(renderer, /loading="eager"[\s\S]*?fetchPriority="high"[\s\S]*?decoding="async"/);
+  assert.match(renderer, /loading="eager"[\s\S]*?fetchPriority="high"[\s\S]*?decoding="sync"/);
   assert.doesNotMatch(renderer, /<Image[\s\S]*?quality=\{95\}/);
   assert.doesNotMatch(renderer, /import Image from "next\/image"/);
   assert.match(eventHero, /quality=\{95\}/);
