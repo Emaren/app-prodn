@@ -359,6 +359,22 @@ export function HeroCarousel({
         if (Math.abs(distance) > 72) move(distance > 0 ? -1 : 1);
       }}
     >
+      {imageFit === "contain" || previousImageFit === "contain" ? (
+        <style>{`
+          .aoe2-hero-fit-contain img.object-cover,
+          .aoe2-hero-fit-contain video.object-cover {
+            object-fit: contain !important;
+            background-color: #000 !important;
+          }
+          .aoe2-hero-fit-contain [style*="background-image"] {
+            background-size: contain !important;
+            background-repeat: no-repeat !important;
+            background-position: center center !important;
+            background-color: #000 !important;
+          }
+        `}</style>
+      ) : null}
+
       {previousItem ? (
         <div
           data-hero-carousel-underlay
@@ -386,21 +402,6 @@ export function HeroCarousel({
         aria-label={`${index + 1} of ${items.length}: ${current.screen.name}`}
       >
         <div className={imageFit === "contain" ? "aoe2-hero-fit-contain h-full w-full bg-black" : "h-full w-full"}>
-          {imageFit === "contain" ? (
-            <style>{`
-              .aoe2-hero-fit-contain img.object-cover,
-              .aoe2-hero-fit-contain video.object-cover {
-                object-fit: contain !important;
-                background-color: #000 !important;
-              }
-              .aoe2-hero-fit-contain [style*="background-image"] {
-                background-size: contain !important;
-                background-repeat: no-repeat !important;
-                background-position: center center !important;
-                background-color: #000 !important;
-              }
-            `}</style>
-          ) : null}
           <HeroScreenRenderer item={current} />
         </div>
       </motion.div>
