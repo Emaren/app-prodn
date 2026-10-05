@@ -67,7 +67,7 @@ test("Chaosium E2 is the frontier default while B1 A1 and E1 stay directly recov
   assert.match(chaosiumDisplayRail, /key: "e2"[\s\S]*href: "\/chaosium"/);
   assert.match(chaosiumDisplayRail, /href="\/chaosium\?view=b1"/);
   assert.match(chaosiumDisplayRail, /href="\/chaosium\?view=a1"/);
-  assert.match(chaosiumDisplayRail, /href="\/chaosium\?view=e1"/);
+  assert.match(chaosiumDisplayRail, /href: "\/chaosium\?view=e1"/);
   assert.match(chaosiumDisplayRail, /data-chaosium-version=\{active\}/);
 });
 
