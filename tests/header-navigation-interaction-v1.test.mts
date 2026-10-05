@@ -172,23 +172,23 @@ test("desktop Kingdom doors share the center navigation chip spacing", () => {
 test("desktop Kingdom menu escapes the scroll rail through a viewport portal", () => {
   const kingdom =
     source.match(
-      /function KingdomNavItem\\([\\s\\S]*?function KingdomMenuPanel\\(/,
+      /function KingdomNavItem\([\s\S]*?function KingdomMenuPanel\(/,
     )?.[0] ?? "";
 
-  assert.match(kingdom, /const desktopPanelRef = React\\.useRef/);
-  assert.match(kingdom, /const mobilePanelRef = React\\.useRef/);
-  assert.match(kingdom, /const syncDesktopMenuAnchor = React\\.useCallback/);
+  assert.match(kingdom, /const desktopPanelRef = React\.useRef/);
+  assert.match(kingdom, /const mobilePanelRef = React\.useRef/);
+  assert.match(kingdom, /const syncDesktopMenuAnchor = React\.useCallback/);
   assert.match(
     kingdom,
-    /createPortal\\([\\s\\S]*ref=\\{desktopPanelRef\\}[\\s\\S]*className="fixed z-\\[240\\] hidden w-\\[22rem\\]/,
+    /createPortal\([\s\S]*ref=\{desktopPanelRef\}[\s\S]*className="fixed z-\[240\] hidden w-\[22rem\]/,
   );
-  assert.doesNotMatch(
-    kingdom,
-    /className="absolute left-1\\/2 top-full z-\\[220\\]/,
+  assert.equal(
+    kingdom.includes('className="absolute left-1/2 top-full z-[220]'),
+    false,
   );
   assert.match(
     kingdom,
-    /window\\.addEventListener\\("scroll", syncDesktopMenuAnchor, true\\)/,
+    /window\.addEventListener\("scroll", syncDesktopMenuAnchor, true\)/,
   );
 });
 
