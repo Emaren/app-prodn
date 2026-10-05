@@ -10,6 +10,7 @@ const displayRail = fs.readFileSync("components/champions/ChampionsDisplayRail.t
 const legacyPage = fs.readFileSync("app/champions/legacy/page.tsx", "utf8");
 const directory = fs.readFileSync("lib/publicPlayerDirectory.ts", "utf8");
 const state = fs.readFileSync("lib/champions/championsV2.ts", "utf8");
+const nationalCatalog = fs.readFileSync("lib/champions/nationalBeltCatalog.ts", "utf8");
 const policy = fs.readFileSync("lib/champions/championshipPolicy.ts", "utf8");
 const titles = fs.readFileSync("lib/champions/titles.ts", "utf8");
 const titleState = fs.readFileSync("lib/champions/titleState.ts", "utf8");
@@ -209,7 +210,7 @@ test("national belt hall reads represented-country truth for every crown", () =>
   assert.match(state, /"United Kingdom"/);
   assert.match(state, /"southeast-asia": \["Pakistan"\]/);
   for (const name of ["Scavanger_Ab", "Zodiac", "Sniper", "Dil Pascana", "Maxi"]) assert.ok(state.includes(name));
-  for (const country of ["Brazil", "Argentina", "France", "Japan", "Taiwan", "Saudi Arabia"]) assert.ok(state.includes(`country: "${country}"`));
+  for (const country of ["Brazil", "Argentina", "France", "Japan", "Taiwan", "Saudi Arabia"]) assert.ok(nationalCatalog.includes(`country: "${country}"`));
   assert.match(experience, /snap-x/);
   assert.match(experience, /hover:opacity-100/);
   assert.match(experience, /scrollBy/);
