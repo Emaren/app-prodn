@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/hero-studio-persistent-double-buffer-20261005` at `c5db3f155f0b10a6cabca95dd287b6b9cb4517d3`
+Implementation baseline: `fix/hero-studio-native-crossfade-20261005` at `fe10161f8748c6791070c3248eb8ffa8a9a395b5`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
