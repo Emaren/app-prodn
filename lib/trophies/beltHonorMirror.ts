@@ -124,7 +124,23 @@ export async function reconcileChampionshipBeltHonorMirrors(
     );
   }
 
+  const canonicalLabels = trophies.map((trophy) =>
+    buildHonorLabel("belt", trophy.displayName),
+  );
+
   await prisma.$transaction(async (tx) => {
+    // Retire pre-unification / renamed Belt chips that no longer map to any
+    // authoritative Trophy display name. This prevents historical labels such
+    // as an older Chaos title spelling from surviving beside current custody.
+    await tx.userBadge.deleteMany({
+      where: {
+        label: { startsWith: "Belt: " },
+        ...(canonicalLabels.length > 0
+          ? { NOT: { label: { in: canonicalLabels } } }
+          : {}),
+      },
+    });
+
     for (const trophy of trophies) {
       const held = trophy.status === "held" || trophy.status === "active";
       const explicitHolderIds =
