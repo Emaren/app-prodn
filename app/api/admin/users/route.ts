@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import type { PrismaClient } from "@/lib/generated/prisma";
 
 import { loadUserCommunitySummaries } from "@/lib/communityHonors";
+import { ensureTrophySeedData } from "@/lib/trophies/service";
 import { loadInboxPayload } from "@/lib/contactInbox";
 import { requireAdmin } from "@/lib/adminSession";
 import { isLiveProductionReadOnlyPreview } from "@/lib/previewDataSource";
@@ -233,6 +234,11 @@ export async function GET(request: NextRequest) {
     }
 
     const { prisma, user: admin } = gate;
+
+    // User Command is a read projection over Trophy custody. Repair any
+    // historical Belt mirrors before loading community honors so this admin
+    // surface can never disagree with Trophy Command about current champions.
+    await ensureTrophySeedData(prisma);
     const users = await prisma.user.findMany({
       select: {
         id: true,
