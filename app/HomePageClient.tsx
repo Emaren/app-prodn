@@ -1370,7 +1370,7 @@ const { uid, isAdmin, isAuthenticated, loading, loginWithSteam, playerName, user
   const [aiGrimerEnabled, setAiGrimerEnabled] = useState(true);
 
   const chatScrollRef = useRef<HTMLDivElement | null>(null);
-  const rightColumnRef = useRef<HTMLDivElement | null>(null);
+  const [rightColumnElement, setRightColumnElement] = useState<HTMLDivElement | null>(null);
   const chatHistoryPendingRef = useRef(false);
   const chatHistoryExhaustedRef = useRef(false);
   const chatInitialBottomScrollDoneRef = useRef(false);
@@ -1918,7 +1918,7 @@ const { uid, isAdmin, isAuthenticated, loading, loginWithSteam, playerName, user
         return;
       }
 
-      const rightHeight = rightColumnRef.current?.getBoundingClientRect().height ?? 0;
+      const rightHeight = rightColumnElement?.getBoundingClientRect().height ?? 0;
       const nextHeight = rightHeight > 0 ? Math.ceil(rightHeight) : null;
 
       setChatCardHeight((current) => (current === nextHeight ? current : nextHeight));
@@ -1936,7 +1936,7 @@ const { uid, isAdmin, isAuthenticated, loading, loginWithSteam, playerName, user
     };
 
     const attachObserver = () => {
-      if (observer || typeof ResizeObserver === "undefined" || !rightColumnRef.current) {
+      if (observer || typeof ResizeObserver === "undefined" || !rightColumnElement) {
         return;
       }
 
@@ -1944,7 +1944,7 @@ const { uid, isAdmin, isAuthenticated, loading, loginWithSteam, playerName, user
         scheduleMeasure();
       });
 
-      observer.observe(rightColumnRef.current);
+      observer.observe(rightColumnElement);
     };
 
     const settleTimers = [0, 50, 150, 300, 700, 1200].map((delay) =>
@@ -1987,7 +1987,7 @@ const { uid, isAdmin, isAuthenticated, loading, loginWithSteam, playerName, user
       window.removeEventListener("resize", handleResize);
       window.removeEventListener("load", handleResize);
     };
-  }, []);
+  }, [rightColumnElement]);
 
   async function handleJoinTournament() {
     if (!tournament.id) return;
@@ -2369,7 +2369,7 @@ return (
           surface={isExtremeLobby ? "extreme" : "standard"}
         />
 
-        <div ref={rightColumnRef} className="flex min-w-0 flex-col gap-6">
+        <div ref={setRightColumnElement} className="flex min-w-0 flex-col gap-6">
           <OnlinePlayersPanel
             onlineUsers={onlineUsers}
             themeKey={tileThemeKey}
