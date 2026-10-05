@@ -1,6 +1,6 @@
 import type { Prisma, PrismaClient, Trophy } from "@/lib/generated/prisma";
 import { championshipBeltPolicy, championshipEligibility, soloDefenseLadder, splitTitleUwolo, type BeltCandidate } from "@/lib/champions/beltPolicy";
-import { lockTrophyMoneyState, prepareManualTrophyHolderTransferPayouts, prepareTrophyCustodyExit, projectedTrophyBounty, loadPublicTrophies, seededTrophyDefinition, trophyIsPubliclyForcedVacant, trophyPresentationAssetUrl } from "@/lib/trophies/service";
+import { lockTrophyMoneyState, prepareManualTrophyHolderTransferPayouts, prepareTrophyCustodyExit, projectedTrophyBounty, loadPublicTrophies, trophyIsPubliclyForcedVacant, trophyPresentationAssetUrl } from "@/lib/trophies/service";
 import { loadLobbyLeaderboard } from "@/lib/lobbyLeaderboard";
 import { parsePlayers, readPlayerSteamDmRating, readPlayerSteamRmRating } from "@/lib/gameStatsView";
 import { readLeaderboardSteamId } from "@/lib/leaderboardIdentity";
@@ -155,7 +155,6 @@ export async function loadHeldChampionshipStack(prisma: PrismaClient, holderUser
   const ordered = [...held].sort((a,b)=> championshipBeltPolicy(a.trophy).priority - championshipBeltPolicy(b.trophy).priority || a.trophy.trophyId.localeCompare(b.trophy.trophyId));
   const titles = ordered.map(({trophy,custody})=> {
     const eligibility = soloMap.get(trophy.id) ?? { ...championshipEligibility(trophy,candidate), attackable: false, protected: false };
-    const definition = seededTrophyDefinition(trophy.trophyId)?.definition;
     return { trophyId: trophy.id, trophyKey: trophy.trophyId, championTitleId: championshipBeltPolicy(trophy).titleId, displayName: trophy.displayName, imageUri: trophyPresentationAssetUrl({ trophyId: trophy.trophyId, kind: trophy.kind, nftImageUri: trophy.nftImageUri }), kind: trophy.kind, eligible: eligibility.eligible, reason: eligibility.reason, reasonCode: eligibility.reasonCode, attackable: eligibility.attackable, protected: eligibility.protected, teamSize: custody.teamSize, mode: custody.mode, roster: custody.roster, custodyEpoch: custody.epoch };
   });
   return { titles, soloTitleId: solo.find(row=>row.attackable)?.trophy.id ?? null };
