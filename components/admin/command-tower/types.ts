@@ -387,6 +387,7 @@ export type AdminUserLiveRow = Pick<
   AdminUserRow,
   | "uid"
   | "displayName"
+  | "badges"
   | "lastSeen"
   | "unreadCount"
   | "userUnreadCount"
