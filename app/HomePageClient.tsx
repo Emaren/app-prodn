@@ -918,148 +918,27 @@ function decodeFeaturedWarriorImage(src: string) {
   return guardedPromise;
 }
 
-type BufferedFeaturedWarriorImageProps = {
+type StableFeaturedWarriorPortraitProps = {
   warrior: FeaturedWarrior;
-  sizes: string;
-  fetchPriority: "high" | "low";
-  className: string;
+  position: "top" | "center";
 };
 
-function BufferedFeaturedWarriorImage({
+function StableFeaturedWarriorPortrait({
   warrior,
-  sizes,
-  fetchPriority,
-  className,
-}: BufferedFeaturedWarriorImageProps) {
+  position,
+}: StableFeaturedWarriorPortraitProps) {
   const src = featuredWarriorImageSrc(warrior);
-  const [sources, setSources] = useState<[string, string | null]>(() => [src, null]);
-  const [visibleLayer, setVisibleLayer] = useState<0 | 1>(0);
-  const sourcesRef = useRef<[string, string | null]>([src, null]);
-  const visibleLayerRef = useRef<0 | 1>(0);
-  const pendingLayerRef = useRef<0 | 1 | null>(null);
-  const pendingSrcRef = useRef<string | null>(null);
-  const revealFrameRef = useRef<number | null>(null);
-
-  useEffect(() => {
-    const activeSrc = sourcesRef.current[visibleLayerRef.current];
-    if (src === activeSrc) {
-      return;
-    }
-
-    const nextLayer: 0 | 1 = visibleLayerRef.current === 0 ? 1 : 0;
-    const nextSources: [string, string | null] =
-      nextLayer === 0
-        ? [src, sourcesRef.current[1]]
-        : [sourcesRef.current[0], src];
-
-    pendingLayerRef.current = nextLayer;
-    pendingSrcRef.current = src;
-    sourcesRef.current = nextSources;
-    setSources(nextSources);
-  }, [src]);
-
-  useEffect(() => {
-    return () => {
-      if (revealFrameRef.current !== null) {
-        window.cancelAnimationFrame(revealFrameRef.current);
-      }
-    };
-  }, []);
-
-  const revealLoadedLayer = (layer: 0 | 1, image: HTMLImageElement) => {
-    const expectedSrc = sourcesRef.current[layer];
-
-    if (
-      pendingLayerRef.current !== layer ||
-      !expectedSrc ||
-      pendingSrcRef.current !== expectedSrc
-    ) {
-      return;
-    }
-
-    const imageStillMatchesExpectedSource = () => {
-      try {
-        const expectedHref = new URL(expectedSrc, window.location.href).href;
-        return (image.currentSrc || image.src) === expectedHref;
-      } catch {
-        return false;
-      }
-    };
-
-    if (!imageStillMatchesExpectedSource()) {
-      return;
-    }
-
-    const reveal = () => {
-      if (
-        pendingLayerRef.current !== layer ||
-        pendingSrcRef.current !== expectedSrc ||
-        !imageStillMatchesExpectedSource()
-      ) {
-        return;
-      }
-
-      if (revealFrameRef.current !== null) {
-        window.cancelAnimationFrame(revealFrameRef.current);
-      }
-
-      revealFrameRef.current = window.requestAnimationFrame(() => {
-        if (
-          pendingLayerRef.current !== layer ||
-          pendingSrcRef.current !== expectedSrc ||
-          !imageStillMatchesExpectedSource()
-        ) {
-          return;
-        }
-
-        visibleLayerRef.current = layer;
-        setVisibleLayer(layer);
-        pendingLayerRef.current = null;
-        pendingSrcRef.current = null;
-        revealFrameRef.current = null;
-      });
-    };
-
-    if (typeof image.decode === "function") {
-      void image.decode().then(reveal).catch(() => undefined);
-    } else if (image.complete && image.naturalWidth > 0) {
-      reveal();
-    }
-  };
 
   return (
-    <>
-      {sources.map((layerSrc, index) => {
-        if (!layerSrc) return null;
-
-        const layer = index as 0 | 1;
-
-        return (
-          <div
-            key={`buffer-${layer}`}
-            data-featured-warrior-image-buffer={layer}
-            className="absolute inset-0"
-            style={{
-              opacity: visibleLayer === layer ? 1 : 0,
-              transition: "opacity 90ms linear",
-              pointerEvents: "none",
-            }}
-          >
-            <Image
-              src={layerSrc}
-              alt=""
-              fill
-              sizes={sizes}
-              loading="eager"
-              fetchPriority={fetchPriority}
-              unoptimized
-              className={className}
-              onLoad={(event) => revealLoadedLayer(layer, event.currentTarget)}
-            />
-          </div>
-        );
-      })}
-    </>
+    <div
+      data-featured-warrior-single-paint
+      aria-hidden="true"
+      className="absolute inset-0 bg-no-repeat [background-size:contain]"
+      style={{
+        backgroundImage: `url(${JSON.stringify(src)})`,
+        backgroundPosition: position === "top" ? "center top" : "center center",
+      }}
+    />
   );
 }
 
@@ -1273,17 +1152,14 @@ function AdvancedFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] })
             <Link
               key={index}
               href={warrior.href}
-              className="block group relative min-h-[16rem] overflow-visible transform-gpu transition-transform duration-300 ease-out hover:-translate-y-0.5 [backface-visibility:hidden]"
+              className="block group relative min-h-[16rem] overflow-visible"
             >
-              <BufferedFeaturedWarriorImage
-                warrior={warrior}
-                sizes="(min-width: 1280px) 250px, (min-width: 640px) 45vw, 90vw"
-                fetchPriority={index === 0 ? "high" : "low"}
-                className="object-contain object-top transition-transform duration-500 ease-out group-hover:scale-[1.01] opacity-90"
-              />
+              <div className="absolute inset-0 opacity-90">
+                <StableFeaturedWarriorPortrait warrior={warrior} position="top" />
+              </div>
               <div className="absolute inset-0 bg-gradient-to-t from-black/52 via-black/8 to-transparent" />
               <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-[radial-gradient(circle_at_50%_100%,rgba(251,191,36,0.11),transparent_64%)]" />
-              <div className="absolute inset-x-3 bottom-3 rounded-2xl border border-amber-200/12 bg-black/48 px-2.5 py-2.5 text-center backdrop-blur">
+              <div className="absolute inset-x-3 bottom-3 rounded-2xl border border-amber-200/12 bg-black/72 px-2.5 py-2.5 text-center">
                 <div className="mx-auto max-w-full overflow-hidden text-balance break-words font-serif text-[clamp(0.78rem,1.02vw,1.05rem)] font-semibold uppercase leading-[1.05] tracking-[0.075em] text-white [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
                   {warrior.name}
                 </div>
@@ -1394,21 +1270,17 @@ function ExtremeFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] }) 
               <Link
                 key={index}
                 href={warrior.href}
-                className="block group relative min-h-[16rem] overflow-visible transform-gpu transition-transform duration-300 ease-out hover:-translate-y-0.5 [backface-visibility:hidden]"
+                className="block group relative min-h-[16rem] overflow-visible"
               >
                 <div className="absolute inset-x-0 bottom-2 top-7 overflow-hidden rounded-[1.35rem] border border-amber-100/12 bg-slate-950/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.045),0_18px_60px_rgba(0,0,0,0.24)] transition group-hover:border-amber-200/26">
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_90%,rgba(251,191,36,0.10),transparent_58%)]" />
                   <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/70 to-transparent" />
                 </div>
-                <div className={`absolute inset-x-[-12%] -top-5 bottom-6 z-10 transition-transform duration-700 group-hover:-translate-y-1 group-hover:scale-[1.012] opacity-100`}>
-                  <BufferedFeaturedWarriorImage
-                    warrior={warrior}
-                    sizes="(min-width: 1280px) 280px, (min-width: 640px) 45vw, 90vw"
-                    fetchPriority={index === 0 ? "high" : "low"}
-                    className="object-contain object-center drop-shadow-[0_18px_34px_rgba(0,0,0,0.56)] transition-transform duration-500 ease-out [mask-image:linear-gradient(180deg,black_0%,black_88%,transparent_100%)]"
-                  />
+                <div className="absolute inset-x-[-12%] -top-5 bottom-6 z-10 opacity-100">
+                  <StableFeaturedWarriorPortrait warrior={warrior} position="center" />
+                  <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[18%] bg-gradient-to-t from-slate-950/85 via-slate-950/20 to-transparent" />
                 </div>
-                <div className="absolute inset-x-4 bottom-4 z-20 rounded-xl bg-black/58 px-2.5 py-2.5 text-center shadow-[0_12px_30px_rgba(0,0,0,0.34)] backdrop-blur">
+                <div className="absolute inset-x-4 bottom-4 z-20 rounded-xl bg-black/78 px-2.5 py-2.5 text-center shadow-[0_12px_30px_rgba(0,0,0,0.34)]">
                   <div className="mx-auto max-w-full overflow-hidden text-balance break-words font-serif text-[clamp(0.76rem,0.96vw,1rem)] font-semibold uppercase leading-[1.05] tracking-[0.07em] text-white [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
                     {warrior.name}
                   </div>
