@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { ArrowUpRight, Crown, Feather, Quote, Swords } from "lucide-react";
 
@@ -47,9 +46,12 @@ export function heroScreenPreloadUrl(item: HeroPlaylistItemView) {
         !config.subtitle &&
         !config.ctaLabel));
 
-  // Pure-image takeovers already emit the exact responsive preload through
-  // next/image's priority path. CSS backgrounds and video posters do not.
-  if (isPureImage && !videoUrl) return "";
+  // Pure-image takeovers deliberately use one exact asset URL instead of a
+  // responsive optimizer/srcset. Preload that same URL so the carousel fade
+  // never races a later currentSrc candidate swap.
+  if (isPureImage && !videoUrl) {
+    return backgroundUrl && isSafeHeroMediaUrl(backgroundUrl) ? backgroundUrl : "";
+  }
 
   const preloadUrl = videoUrl
     ? config.posterUrl || backgroundUrl
@@ -355,14 +357,17 @@ function MediaTakeover({ item }: { item: HeroPlaylistItemView }) {
             preload="metadata"
           />
         ) : url ? (
-          <Image
+          // Hero Studio pure-image slides intentionally avoid next/image here.
+          // A single exact src prevents a responsive currentSrc replacement from
+          // repainting the hero after the intentional carousel fade has finished.
+          <img
+            data-hero-studio-pure-image
             src={url}
             alt={item.screen.ariaLabel || item.screen.name || "AoE2WAR hero image"}
-            fill
-            priority
-            quality={95}
-            sizes="100vw"
-            className={fitClass}
+            loading="eager"
+            fetchPriority="high"
+            decoding="async"
+            className={`absolute inset-0 h-full w-full ${fitClass}`}
             draggable={false}
           />
         ) : null}
