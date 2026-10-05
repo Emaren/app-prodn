@@ -43,3 +43,14 @@ test("AoE2 Shorts posters are allowed through Next image optimization", () => {
     /localPatterns:[\s\S]{0,500}\{ pathname: "\/shorts\/\*\*" \}/,
   );
 });
+
+test("legacy WOLO artwork is allowed through Next image optimization", () => {
+  const config = source("next.config.js");
+  const staking = source("app/staking/page.tsx");
+
+  assert.match(
+    config,
+    /localPatterns:[\s\S]{0,600}\{ pathname: "\/legacy\/\*\*" \}/,
+  );
+  assert.match(staking, /const WOLO_LOGO_SRC = "\/legacy\/wolo-logo-transparent\.webp";/);
+});

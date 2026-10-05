@@ -554,9 +554,14 @@ function KingdomNavItem({
   const [open, setOpen] = React.useState(false);
   const [portalReady, setPortalReady] = React.useState(false);
   const rootRef = React.useRef<HTMLDivElement | null>(null);
-  const panelRef = React.useRef<HTMLDivElement | null>(null);
+  const desktopPanelRef = React.useRef<HTMLDivElement | null>(null);
+  const mobilePanelRef = React.useRef<HTMLDivElement | null>(null);
   const closeTimerRef = React.useRef<number | null>(null);
   const desktopClickLatchRef = React.useRef(false);
+  const [desktopMenuAnchor, setDesktopMenuAnchor] = React.useState<{
+    left: number;
+    top: number;
+  } | null>(null);
 
   const clearCloseTimer = React.useCallback(() => {
     if (closeTimerRef.current !== null) {
@@ -565,12 +570,31 @@ function KingdomNavItem({
     }
   }, []);
 
+  const syncDesktopMenuAnchor = React.useCallback(() => {
+    if (typeof window === "undefined") return;
+
+    const rect = rootRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    const halfPanelWidth = 176;
+    const viewportPadding = 12;
+    const desiredLeft = rect.left + rect.width / 2;
+    const minLeft = halfPanelWidth + viewportPadding;
+    const maxLeft = window.innerWidth - halfPanelWidth - viewportPadding;
+
+    setDesktopMenuAnchor({
+      left: Math.min(Math.max(desiredLeft, minLeft), Math.max(minLeft, maxLeft)),
+      top: rect.bottom,
+    });
+  }, []);
+
   const openMenu = React.useCallback(() => {
     clearCloseTimer();
+    syncDesktopMenuAnchor();
     router.prefetch("/leaderboard");
     void warmLeaderboardClient();
     setOpen(true);
-  }, [clearCloseTimer, router]);
+  }, [clearCloseTimer, router, syncDesktopMenuAnchor]);
 
   const scheduleClose = React.useCallback(() => {
     desktopClickLatchRef.current = false;
@@ -586,11 +610,14 @@ function KingdomNavItem({
   React.useEffect(() => {
     if (!open) return;
 
+    syncDesktopMenuAnchor();
+
     function handlePointerDown(event: PointerEvent) {
       const target = event.target as Node;
       if (
         !rootRef.current?.contains(target) &&
-        !panelRef.current?.contains(target)
+        !desktopPanelRef.current?.contains(target) &&
+        !mobilePanelRef.current?.contains(target)
       ) {
         setOpen(false);
       }
@@ -604,11 +631,15 @@ function KingdomNavItem({
 
     document.addEventListener("pointerdown", handlePointerDown);
     document.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("resize", syncDesktopMenuAnchor);
+    window.addEventListener("scroll", syncDesktopMenuAnchor, true);
     return () => {
       document.removeEventListener("pointerdown", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("resize", syncDesktopMenuAnchor);
+      window.removeEventListener("scroll", syncDesktopMenuAnchor, true);
     };
-  }, [open]);
+  }, [open, syncDesktopMenuAnchor]);
 
   return (
     <div
@@ -660,18 +691,26 @@ function KingdomNavItem({
         ) : null}
       </button>
 
-      {open ? (
-        <div
-          className="absolute left-1/2 top-full z-[220] hidden w-[22rem] -translate-x-1/2 pt-7 sm:block"
-          onMouseEnter={openMenu}
-          onMouseLeave={scheduleClose}
-        >
-          <KingdomMenuPanel
-            onNavigate={() => setOpen(false)}
-            unseenPageChanges={unseenPageChanges}
-          />
-        </div>
-      ) : null}
+      {portalReady && open && desktopMenuAnchor
+        ? createPortal(
+            <div
+              ref={desktopPanelRef}
+              className="fixed z-[240] hidden w-[22rem] -translate-x-1/2 pt-2 sm:block"
+              style={{
+                left: desktopMenuAnchor.left,
+                top: desktopMenuAnchor.top,
+              }}
+              onMouseEnter={openMenu}
+              onMouseLeave={scheduleClose}
+            >
+              <KingdomMenuPanel
+                onNavigate={() => setOpen(false)}
+                unseenPageChanges={unseenPageChanges}
+              />
+            </div>,
+            document.body
+          )
+        : null}
 
       {portalReady && open
         ? createPortal(
@@ -683,7 +722,7 @@ function KingdomNavItem({
                 aria-label={t("kingdom.closeAria")}
               />
               <div
-                ref={panelRef}
+                ref={mobilePanelRef}
                 className="absolute inset-x-3 top-[calc(env(safe-area-inset-top)+0.75rem)] max-h-[calc(100dvh-env(safe-area-inset-top)-1.5rem)] overflow-y-auto overscroll-contain touch-pan-y [scrollbar-gutter:stable] rounded-[1.65rem] border border-amber-200/18 bg-[#07101a]/98 p-3 shadow-[0_34px_110px_rgba(0,0,0,0.7)] backdrop-blur-2xl"
               >
                 <div className="mb-2 flex items-center justify-between gap-3 px-2 py-2">

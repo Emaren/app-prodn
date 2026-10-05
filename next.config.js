@@ -40,6 +40,7 @@ module.exports = {
       { pathname: "/uploads/managed-assets/**" },
       { pathname: "/champions/**" },
       { pathname: "/shorts/**" },
+      { pathname: "/legacy/**" },
     ],
   },
 
