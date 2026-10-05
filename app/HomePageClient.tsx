@@ -1201,7 +1201,7 @@ function FeaturedWarriorSubtitle({ warrior }: { warrior: FeaturedWarrior }) {
 
 function ExtremeFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] }) {
   const h = useHomeCopy();
-  const { visibleWarriors, fadingSlot, featuredWarriorsReady } = useRotatingFeaturedWarriors(warriors, false);
+  const { visibleWarriors } = useRotatingFeaturedWarriors(warriors, false);
 
   return (
     <section
