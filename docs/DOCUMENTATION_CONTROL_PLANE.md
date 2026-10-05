@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/docs-only-control-refresh-20261004` at `2213b47f411daad55f336d587d1e27d2c52c7528`
+Implementation baseline: `main` at `f57b7e70c30357db8d8176f3a478b8f460bb5359`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
