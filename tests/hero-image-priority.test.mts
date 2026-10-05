@@ -55,35 +55,39 @@ test("Lobby reserves the critical image lane for the actual hero", () => {
   const renderer = source("components/hero/HeroScreenRenderer.tsx");
   const eventHero = source("components/lobby/WolomaniaPromoTile.tsx");
 
-  assert.match(home, /function StableFeaturedWarriorPortrait/);
+  assert.match(home, /function BufferedFeaturedWarriorImage/);
   assert.equal(
-    (home.match(/<StableFeaturedWarriorPortrait/g) || []).length,
+    (home.match(/<BufferedFeaturedWarriorImage/g) || []).length,
     2,
   );
   assert.equal((home.match(/priority=\{index < 2\}/g) || []).length, 0);
-  assert.match(
-    home,
-    /decodeFeaturedWarriorImage\(featuredWarriorImageSrc\(nextWarrior\)\)/,
-  );
-  assert.match(
-    home,
-    /preload\(src, \{ as: "image", fetchPriority \}\)/,
-  );
   assert.equal(
     (home.match(/fetchPriority=\{index === 0 \? "high" : "low"\}/g) || []).length,
     2,
   );
   assert.match(
     home,
-    /backgroundImage: `url\(\$\{JSON\.stringify\(src\)\}\)`/,
+    /<Image[\s\S]*?loading="eager"[\s\S]*?fetchPriority=\{fetchPriority\}[\s\S]*?unoptimized/,
   );
   assert.match(
     lobbyHero,
     /src=\{avatarUrlForUser\([\s\S]*?quality=\{95\}[\s\S]*?loading="lazy"[\s\S]*?fetchPriority="low"/,
   );
   assert.match(carousel, /preload\(currentHeroImageUrl, \{ as: "image", fetchPriority: "high" \}\)/);
-  assert.match(renderer, /Pure-image takeovers already emit the exact responsive preload/);
-  assert.match(renderer, /quality=\{95\}/);
+  assert.match(carousel, /preload\(nextHeroImageUrl, \{ as: "image", fetchPriority: "low" \}\)/);
+  assert.match(carousel, /function decodeHeroStudioImage/);
+  assert.match(carousel, /decodeHeroStudioImage\(currentHeroImageUrl\)/);
+  assert.match(carousel, /decodeHeroStudioImage\(nextHeroImageUrl\)/);
+  assert.match(carousel, /data-hero-carousel-underlay/);
+  assert.match(carousel, /data-hero-carousel-active/);
+  assert.match(carousel, /setPreviousItem\(items\[currentIndex\] \|\| null\)/);
+  assert.doesNotMatch(carousel, /AnimatePresence/);
+  assert.doesNotMatch(carousel, /mode="sync"/);
+  assert.doesNotMatch(carousel, /exit=\{motionState/);
+  assert.match(renderer, /data-hero-studio-pure-image/);
+  assert.match(renderer, /loading="eager"[\s\S]*?fetchPriority="high"[\s\S]*?decoding="async"/);
+  assert.doesNotMatch(renderer, /<Image[\s\S]*?quality=\{95\}/);
+  assert.doesNotMatch(renderer, /import Image from "next\/image"/);
   assert.match(eventHero, /quality=\{95\}/);
   assert.match(eventHero, /fetchPriority=\{priority \? "high" : "low"\}/);
 });

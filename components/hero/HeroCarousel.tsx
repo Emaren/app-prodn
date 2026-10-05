@@ -1,6 +1,6 @@
 "use client";
 
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { preload } from "react-dom";
@@ -22,6 +22,7 @@ import {
   type HeroHiddenLanguageByGroup,
 } from "@/lib/hero/languageVariants";
 import type {
+  HeroPlaylistItemView,
   HeroPlaylistView,
   HeroTransitionStyle,
 } from "@/lib/hero/types";
@@ -29,7 +30,7 @@ import type {
 function motionState(
   style: HeroTransitionStyle,
   direction: number,
-  phase: "initial" | "animate" | "exit"
+  phase: "initial" | "animate"
 ) {
   if (style === "cut") return { opacity: phase === "animate" ? 1 : 0 };
   if (style === "banner_wipe") {
@@ -42,25 +43,14 @@ function motionState(
             : "polygon(100% 0,100% 0,100% 100%,100% 100%)",
       };
     }
-    if (phase === "exit") {
-      return {
-        opacity: 0.55,
-        clipPath:
-          direction >= 0
-            ? "polygon(100% 0,100% 0,100% 100%,100% 100%)"
-            : "polygon(0 0,0 0,0 100%,0 100%)",
-      };
-    }
     return { opacity: 1, clipPath: "polygon(0 0,100% 0,100% 100%,0 100%)" };
   }
   if (style === "siege_push") {
     if (phase === "initial") return { opacity: 0, x: direction >= 0 ? "8%" : "-8%" };
-    if (phase === "exit") return { opacity: 0, x: direction >= 0 ? "-5%" : "5%" };
     return { opacity: 1, x: 0 };
   }
   if (style === "ember_dissolve") {
     if (phase === "initial") return { opacity: 0, scale: 1.018, filter: "blur(12px)" };
-    if (phase === "exit") return { opacity: 0, scale: 0.992, filter: "blur(10px)" };
     return { opacity: 1, scale: 1, filter: "blur(0px)" };
   }
   return { opacity: phase === "animate" ? 1 : 0 };
@@ -68,6 +58,43 @@ function motionState(
 
 const HERO_LANGUAGE_VISIBILITY_STORAGE_KEY =
   "aoe2war.heroLanguageVisibility.v1";
+
+const heroStudioDecodeCache = new Map<string, Promise<void>>();
+
+function decodeHeroStudioImage(src: string) {
+  if (typeof window === "undefined" || !src) return Promise.resolve();
+
+  const cached = heroStudioDecodeCache.get(src);
+  if (cached) return cached;
+
+  const promise = new Promise<void>((resolve, reject) => {
+    const image = new window.Image();
+    image.decoding = "async";
+    image.onload = () => {
+      if (typeof image.decode === "function") {
+        void image.decode().then(resolve).catch(reject);
+      } else {
+        resolve();
+      }
+    };
+    image.onerror = () => reject(new Error(`Hero Studio image preload failed: ${src}`));
+    image.src = src;
+
+    if (image.complete && image.naturalWidth > 0) {
+      if (typeof image.decode === "function") {
+        void image.decode().then(resolve).catch(reject);
+      } else {
+        resolve();
+      }
+    }
+  }).catch((error) => {
+    heroStudioDecodeCache.delete(src);
+    throw error;
+  });
+
+  heroStudioDecodeCache.set(src, promise);
+  return promise;
+}
 
 export function HeroCarousel({
   playlist,
@@ -85,6 +112,7 @@ export function HeroCarousel({
     useState<HeroHiddenLanguageByGroup>({});
   const [index, setIndex] = useState(0);
   const [direction, setDirection] = useState(1);
+  const [previousItem, setPreviousItem] = useState<HeroPlaylistItemView | null>(null);
   const [interactionPaused, setInteractionPaused] = useState(false);
   const [documentHidden, setDocumentHidden] = useState(false);
   const [cycle, setCycle] = useState(0);
@@ -110,14 +138,34 @@ export function HeroCarousel({
   const current = items[index] || items[0];
   const settings = playlist.playlist;
   const currentHeroImageUrl = current ? heroScreenPreloadUrl(current) : "";
+  const nextHeroItem =
+    items.length > 1 ? items[(index + 1) % items.length] : null;
+  const nextHeroImageUrl = nextHeroItem ? heroScreenPreloadUrl(nextHeroItem) : "";
 
   if (currentHeroImageUrl) {
     preload(currentHeroImageUrl, { as: "image", fetchPriority: "high" });
   }
+  if (nextHeroImageUrl && nextHeroImageUrl !== currentHeroImageUrl) {
+    preload(nextHeroImageUrl, { as: "image", fetchPriority: "low" });
+  }
+
+  useEffect(() => {
+    if (currentHeroImageUrl) {
+      void decodeHeroStudioImage(currentHeroImageUrl).catch(() => undefined);
+    }
+    if (nextHeroImageUrl && nextHeroImageUrl !== currentHeroImageUrl) {
+      void decodeHeroStudioImage(nextHeroImageUrl).catch(() => undefined);
+    }
+  }, [currentHeroImageUrl, nextHeroImageUrl]);
 
   const imageFit =
     presentation === "advanced" ||
     current?.screen.config.imageFit === "contain"
+      ? "contain"
+      : "cover";
+  const previousImageFit =
+    presentation === "advanced" ||
+    previousItem?.screen.config.imageFit === "contain"
       ? "contain"
       : "cover";
 
@@ -222,16 +270,21 @@ export function HeroCarousel({
   const move = useCallback(
     (nextDirection: number) => {
       if (!hasMultiple) return;
+
+      const currentIndex = index >= 0 && index < items.length ? index : 0;
+      const nextIndex =
+        currentIndex + nextDirection < 0
+          ? items.length - 1
+          : currentIndex + nextDirection >= items.length
+            ? 0
+            : currentIndex + nextDirection;
+
+      setPreviousItem(items[currentIndex] || null);
       setDirection(nextDirection);
-      setIndex((currentIndex) => {
-        const next = currentIndex + nextDirection;
-        if (next < 0) return items.length - 1;
-        if (next >= items.length) return 0;
-        return next;
-      });
+      setIndex(nextIndex);
       setCycle((value) => value + 1);
     },
-    [hasMultiple, items.length]
+    [hasMultiple, index, items]
   );
 
   useEffect(() => {
@@ -306,40 +359,52 @@ export function HeroCarousel({
         if (Math.abs(distance) > 72) move(distance > 0 ? -1 : 1);
       }}
     >
-      <AnimatePresence initial={false} custom={direction} mode="sync">
-        <motion.div
-          key={`${current.screen.id}-${index}`}
-          className="absolute inset-0"
-          initial={motionState(transitionStyle, direction, "initial")}
-          animate={motionState(transitionStyle, direction, "animate")}
-          exit={motionState(transitionStyle, direction, "exit")}
-          transition={{
-            duration: transitionSeconds,
-            ease: [0.22, 1, 0.36, 1],
-          }}
-          aria-roledescription="slide"
-          aria-label={`${index + 1} of ${items.length}: ${current.screen.name}`}
+      {imageFit === "contain" || previousImageFit === "contain" ? (
+        <style>{`
+          .aoe2-hero-fit-contain img.object-cover,
+          .aoe2-hero-fit-contain video.object-cover {
+            object-fit: contain !important;
+            background-color: #000 !important;
+          }
+          .aoe2-hero-fit-contain [style*="background-image"] {
+            background-size: contain !important;
+            background-repeat: no-repeat !important;
+            background-position: center center !important;
+            background-color: #000 !important;
+          }
+        `}</style>
+      ) : null}
+
+      {previousItem ? (
+        <div
+          data-hero-carousel-underlay
+          className="pointer-events-none absolute inset-0 z-0"
+          aria-hidden="true"
+          inert
         >
-          <div className={imageFit === "contain" ? "aoe2-hero-fit-contain h-full w-full bg-black" : "h-full w-full"}>
-            {imageFit === "contain" ? (
-              <style>{`
-                .aoe2-hero-fit-contain img.object-cover,
-                .aoe2-hero-fit-contain video.object-cover {
-                  object-fit: contain !important;
-                  background-color: #000 !important;
-                }
-                .aoe2-hero-fit-contain [style*="background-image"] {
-                  background-size: contain !important;
-                  background-repeat: no-repeat !important;
-                  background-position: center center !important;
-                  background-color: #000 !important;
-                }
-              `}</style>
-            ) : null}
-            <HeroScreenRenderer item={current} />
+          <div className={previousImageFit === "contain" ? "aoe2-hero-fit-contain h-full w-full bg-black" : "h-full w-full"}>
+            <HeroScreenRenderer item={previousItem} />
           </div>
-        </motion.div>
-      </AnimatePresence>
+        </div>
+      ) : null}
+
+      <motion.div
+        key={`${current.screen.id}-${index}-${cycle}`}
+        data-hero-carousel-active
+        className="absolute inset-0 z-10"
+        initial={cycle === 0 ? false : motionState(transitionStyle, direction, "initial")}
+        animate={motionState(transitionStyle, direction, "animate")}
+        transition={{
+          duration: transitionSeconds,
+          ease: [0.22, 1, 0.36, 1],
+        }}
+        aria-roledescription="slide"
+        aria-label={`${index + 1} of ${items.length}: ${current.screen.name}`}
+      >
+        <div className={imageFit === "contain" ? "aoe2-hero-fit-contain h-full w-full bg-black" : "h-full w-full"}>
+          <HeroScreenRenderer item={current} />
+        </div>
+      </motion.div>
 
       {!preview && variantPair ? (
         <button
