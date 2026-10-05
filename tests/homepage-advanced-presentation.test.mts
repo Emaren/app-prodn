@@ -168,6 +168,8 @@ test(
     assert.match(homepage, /function BufferedFeaturedWarriorImage/);
     assert.match(homepage, /data-featured-warrior-image-buffer/);
     assert.match(homepage, /pendingSrcRef\.current/);
+    assert.match(homepage, /imageStillMatchesExpectedSource/);
+    assert.match(homepage, /image\.currentSrc \|\| image\.src/);
     assert.match(homepage, /image preload timed out/);
     assert.match(homepage, /featuredWarriorDecodeCache\.delete\(src\)/);
     assert.doesNotMatch(
