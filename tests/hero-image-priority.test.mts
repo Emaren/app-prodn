@@ -78,6 +78,12 @@ test("Lobby reserves the critical image lane for the actual hero", () => {
   assert.match(carousel, /function decodeHeroStudioImage/);
   assert.match(carousel, /decodeHeroStudioImage\(currentHeroImageUrl\)/);
   assert.match(carousel, /decodeHeroStudioImage\(nextHeroImageUrl\)/);
+  assert.match(carousel, /data-hero-carousel-underlay/);
+  assert.match(carousel, /data-hero-carousel-active/);
+  assert.match(carousel, /setPreviousItem\(items\[currentIndex\] \|\| null\)/);
+  assert.doesNotMatch(carousel, /AnimatePresence/);
+  assert.doesNotMatch(carousel, /mode="sync"/);
+  assert.doesNotMatch(carousel, /exit=\{motionState/);
   assert.match(renderer, /data-hero-studio-pure-image/);
   assert.match(renderer, /loading="eager"[\s\S]*?fetchPriority="high"[\s\S]*?decoding="async"/);
   assert.doesNotMatch(renderer, /<Image[\s\S]*?quality=\{95\}/);
