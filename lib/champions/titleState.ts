@@ -329,7 +329,7 @@ async function loadLiveChampionDefinitionMap(
               : "coming_soon";
       liveDefinitionMap.set(definition.id, {
         ...definition,
-        assetUrl: trophy.nftImageUri?.trim() || definition.assetUrl,
+        assetUrl: definition.assetUrl,
         dailyWolo: trophy.tributeAmountWolo,
         status: publicStatus,
         holders: forceVacant || publicStatus === "coming_soon" ? [] : holders,
