@@ -548,9 +548,9 @@
       "owner": "aoe2war-web",
       "path": "docs/COMMISSIONER_REPLAY_REVIEW.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-04",
+      "reviewed_at": "2026-10-04",
       "sensitivity": "internal",
-      "sha256": "977a33bf3f127a922449babbd8fbdddafa15d5b81367f55bc007aeeff2a68682",
+      "sha256": "18934e94a5681c18d6e858281fdb3a32229cc11b468e53dea2a73a70c3d8aeed",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1741,9 +1741,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WAR_ENGINE.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-04",
+      "reviewed_at": "2026-10-04",
       "sensitivity": "internal",
-      "sha256": "e47f509ffe856bfd80c4c83a6e5c30b42f2c9281acfb76587082563297be2d99",
+      "sha256": "4fb5cfd36abf0ed3c3f9c3760da2a60091c8236f50e48ccc9f057d1f334ac41b",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
