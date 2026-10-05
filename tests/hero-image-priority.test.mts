@@ -86,6 +86,7 @@ test("Lobby reserves the critical image lane for the actual hero", () => {
   assert.match(carousel, /requestAnimationFrame/);
   assert.match(carousel, /setActiveSlot\(pendingMove\.slot\)/);
   assert.match(carousel, /transitionLocked\.current/);
+  assert.match(carousel, /transitionSeconds !== 0/);
   assert.doesNotMatch(carousel, /previousItem/);
   assert.doesNotMatch(carousel, /data-hero-carousel-underlay/);
   assert.doesNotMatch(carousel, /key=\{`\$\{current\.screen\.id\}/);
