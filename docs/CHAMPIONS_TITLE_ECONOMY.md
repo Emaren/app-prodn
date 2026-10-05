@@ -65,8 +65,15 @@ operator intents until a future Warbound chain module exists.
 - `/chaosium` is the belt-lineage projection for Chaos, Canada, United States,
   and Mexico. Current custody comes from Champion/Trophy authority. Historical
   reigns come from holder-changing `TrophyEvent` rows, preserving repeated
-  reigns when a warrior later regains the same title. The belt's persisted
-  `createdAt` is the origin marker.
+  reigns when a warrior later regains the same title while holder-preserving
+  assignment/reassignment events do not create duplicate reign cards. The
+  belt's persisted `createdAt` is the origin marker. Belt art resolves through
+  the managed-media belt target before falling back to the static title asset.
+  Presentation is versioned: B1 is the public default, A1 is the roomier
+  alternative, E1 preserves the prior three-metric card composition, and E2 is
+  the corrected dense four-column composition. The bottom Display rail exposes
+  B/A/E families and the exact B1/A1/E1/E2 versions so visual experiments remain
+  reversible and attributable.
 - The world map may also show explicit planned-country placeholders before a
   Trophy definition or belt asset exists. Those placeholders are roadmap
   visualization only: they have no holder, Tribute, bounty, challenge right, or
