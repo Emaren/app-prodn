@@ -110,9 +110,15 @@ export function HeroCarousel({
   const current = items[index] || items[0];
   const settings = playlist.playlist;
   const currentHeroImageUrl = current ? heroScreenPreloadUrl(current) : "";
+  const nextHeroItem =
+    items.length > 1 ? items[(index + 1) % items.length] : null;
+  const nextHeroImageUrl = nextHeroItem ? heroScreenPreloadUrl(nextHeroItem) : "";
 
   if (currentHeroImageUrl) {
     preload(currentHeroImageUrl, { as: "image", fetchPriority: "high" });
+  }
+  if (nextHeroImageUrl && nextHeroImageUrl !== currentHeroImageUrl) {
+    preload(nextHeroImageUrl, { as: "image", fetchPriority: "low" });
   }
 
   const imageFit =
