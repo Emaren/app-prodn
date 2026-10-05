@@ -16,6 +16,7 @@ import {
   loadPublicTrophies,
   seededTrophyDefinition,
   trophyIsPubliclyForcedVacant,
+  trophyPresentationAssetUrl,
 } from "@/lib/trophies/service";
 import type {
   PlayerBreakdownRow,
@@ -76,7 +77,7 @@ async function loadPlayerTitleHonors(profile: PlayerProfile): Promise<PlayerTitl
 
   try {
     const trophies = (await loadPublicTrophies(getPrisma()))
-      .filter(trophy=>["held","active","guardian_held"].includes(trophy.status))
+      .filter(trophy=>["held","active"].includes(trophy.status))
       .sort((left,right)=>left.family.localeCompare(right.family) || (left.tier ?? "").localeCompare(right.tier ?? "") || left.displayName.localeCompare(right.displayName));
     const holderUid = profile.identity.kind === "claimed" ? profile.identity.uid : null;
 
@@ -84,10 +85,9 @@ async function loadPlayerTitleHonors(profile: PlayerProfile): Promise<PlayerTitl
       .filter((trophy) => {
         if (!trophy.hasExplicitChampionshipCustody && trophyIsPubliclyForcedVacant(trophy.trophyId)) return false;
         if (trophy.hasExplicitChampionshipCustody) return trophy.championshipRoster?.some(member=>holderUid ? member.uid === holderUid : normalizedTitleHolder(member.displayName) === holderName) ?? false;
-        if (holderUid && (trophy.currentHolder?.uid === holderUid || trophy.guardianHolder?.uid === holderUid)) return true;
+        if (holderUid && trophy.currentHolder?.uid === holderUid) return true;
         const currentHolder = normalizedTitleHolder(trophy.currentHolderDisplayName);
-        const guardianHolder = normalizedTitleHolder(trophy.guardianHolderDisplayName);
-        return currentHolder === holderName || guardianHolder === holderName;
+        return currentHolder === holderName;
       })
       .map((trophy) => ({
         id: trophy.id,
@@ -97,7 +97,11 @@ async function loadPlayerTitleHonors(profile: PlayerProfile): Promise<PlayerTitl
         family: trophy.family,
         tier: trophy.tier || "title",
         status: trophy.status,
-        imageUrl: trophy.nftImageUri || null,
+        imageUrl: trophyPresentationAssetUrl({
+          trophyId: trophy.trophyId,
+          kind: trophy.kind,
+          nftImageUri: trophy.nftImageUri,
+        }),
         holderSince: trophy.holderSince?.toISOString() ?? null,
         routeHref: trophyRouteHref(trophy.trophyId),
       }));
