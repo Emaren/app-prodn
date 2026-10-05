@@ -74,8 +74,11 @@ test("Lobby reserves the critical image lane for the actual hero", () => {
     /src=\{avatarUrlForUser\([\s\S]*?quality=\{95\}[\s\S]*?loading="lazy"[\s\S]*?fetchPriority="low"/,
   );
   assert.match(carousel, /preload\(currentHeroImageUrl, \{ as: "image", fetchPriority: "high" \}\)/);
-  assert.match(renderer, /Pure-image takeovers already emit the exact responsive preload/);
-  assert.match(renderer, /quality=\{95\}/);
+  assert.match(carousel, /preload\(nextHeroImageUrl, \{ as: "image", fetchPriority: "low" \}\)/);
+  assert.match(renderer, /data-hero-studio-pure-image/);
+  assert.match(renderer, /loading="eager"[\s\S]*?fetchPriority="high"[\s\S]*?decoding="async"/);
+  assert.doesNotMatch(renderer, /<Image[\s\S]*?quality=\{95\}/);
+  assert.doesNotMatch(renderer, /import Image from "next\/image"/);
   assert.match(eventHero, /quality=\{95\}/);
   assert.match(eventHero, /fetchPriority=\{priority \? "high" : "low"\}/);
 });
