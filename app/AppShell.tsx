@@ -1824,57 +1824,55 @@ function InnerShell({ children }: { children: React.ReactNode }) {
               </div>
             </div>
 
-            <nav className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-1 md:justify-self-stretch xl:gap-2">
-              <KingdomNavItem
-                className={`${headerSkin.surface} -mr-2`}
-                active={KINGDOM_LINKS.some((link) => isRouteActive(pathname, link.href))}
-                unseenPageChanges={unseenPageChanges}
-                activeEffectClass={navActiveEffectClass}
-              />
+            <nav className="aoe2-nav-scroll min-w-0 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden md:justify-self-stretch">
+              <div className="flex min-w-max items-center justify-start gap-1 px-0.5 lg:gap-1.5 xl:min-w-full xl:justify-center xl:gap-2">
+                <KingdomNavItem
+                  className={headerSkin.surface}
+                  active={KINGDOM_LINKS.some((link) => isRouteActive(pathname, link.href))}
+                  unseenPageChanges={unseenPageChanges}
+                  activeEffectClass={navActiveEffectClass}
+                />
 
-              <div className="aoe2-nav-scroll min-w-0 overflow-x-auto overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                <div className="flex min-w-max items-center justify-start gap-1 px-0.5 lg:gap-1.5 xl:justify-center xl:gap-2">
-                  {HEADER_LINKS.map((link) => (
-                    <React.Fragment key={link.href}>
-                      <HeaderPillLink
-                        href={link.href}
-                        label={HEADER_LINK_KEYS[link.href] ? t(HEADER_LINK_KEYS[link.href]!) : link.label}
-                        className={headerSkin.surface}
-                        active={isRouteActive(pathname, link.href)}
-                        requestCount={link.countKey === "requests" ? requestCount : undefined}
-                        activeEffectClass={navActiveEffectClass}
-                        onCycleActiveEffect={cycleNavActiveEffect}
-                      />
+                {HEADER_LINKS.map((link) => (
+                  <React.Fragment key={link.href}>
+                    <HeaderPillLink
+                      href={link.href}
+                      label={HEADER_LINK_KEYS[link.href] ? t(HEADER_LINK_KEYS[link.href]!) : link.label}
+                      className={headerSkin.surface}
+                      active={isRouteActive(pathname, link.href)}
+                      requestCount={link.countKey === "requests" ? requestCount : undefined}
+                      activeEffectClass={navActiveEffectClass}
+                      onCycleActiveEffect={cycleNavActiveEffect}
+                    />
 
-                      {link.href === "/bets" ? (
-                        <>
-                          <HeaderLiveGamesLink
-                            liveGamesCount={liveGamesCount}
-                            active={isRouteActive(pathname, "/live-games")}
+                    {link.href === "/bets" ? (
+                      <>
+                        <HeaderLiveGamesLink
+                          liveGamesCount={liveGamesCount}
+                          active={isRouteActive(pathname, "/live-games")}
+                          activeEffectClass={navActiveEffectClass}
+                          onCycleActiveEffect={cycleNavActiveEffect}
+                        />
+
+                        {workshopLive ? (
+                          <HeaderWorkshopLiveLink
+                            active={isRouteActive(pathname, "/workshop")}
                             activeEffectClass={navActiveEffectClass}
                             onCycleActiveEffect={cycleNavActiveEffect}
                           />
+                        ) : null}
+                      </>
+                    ) : null}
+                  </React.Fragment>
+                ))}
 
-                          {workshopLive ? (
-                            <HeaderWorkshopLiveLink
-                              active={isRouteActive(pathname, "/workshop")}
-                              activeEffectClass={navActiveEffectClass}
-                              onCycleActiveEffect={cycleNavActiveEffect}
-                            />
-                          ) : null}
-                        </>
-                      ) : null}
-                    </React.Fragment>
-                  ))}
-                </div>
+                <KingdomNavItem
+                  className={headerSkin.surface}
+                  active={KINGDOM_LINKS.some((link) => isRouteActive(pathname, link.href))}
+                  unseenPageChanges={unseenPageChanges}
+                  activeEffectClass={navActiveEffectClass}
+                />
               </div>
-
-              <KingdomNavItem
-                className={`${headerSkin.surface} -ml-2`}
-                active={KINGDOM_LINKS.some((link) => isRouteActive(pathname, link.href))}
-                unseenPageChanges={unseenPageChanges}
-                activeEffectClass={navActiveEffectClass}
-              />
             </nav>
 
             <div className="flex min-w-0 items-center justify-end gap-1.5 md:justify-self-end xl:gap-2">

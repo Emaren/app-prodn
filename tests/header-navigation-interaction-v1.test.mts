@@ -147,23 +147,24 @@ test("desktop Kingdom doors are hover-owned while touch retains tap toggle", () 
   );
 });
 
-test("desktop Kingdom doors hug the center navigation rail", () => {
-  assert.equal(
-    (
-      source.match(
-        /className=\{`\$\{headerSkin\.surface\} -mr-2`\}/g,
-      ) ?? []
-    ).length,
-    1,
+test("desktop Kingdom doors share the center navigation chip spacing", () => {
+  assert.doesNotMatch(
+    source,
+    /className=\{\`\$\{headerSkin\.surface\} -m[lr]-2\`\}/,
   );
 
+  const desktopRail = source.match(
+    /<nav className="aoe2-nav-scroll[^"]*md:justify-self-stretch[^"]*"[\s\S]*?<\/nav>/,
+  )?.[0];
+
+  assert.ok(desktopRail);
   assert.equal(
-    (
-      source.match(
-        /className=\{`\$\{headerSkin\.surface\} -ml-2`\}/g,
-      ) ?? []
-    ).length,
-    1,
+    (desktopRail.match(/<KingdomNavItem/g) ?? []).length,
+    2,
+  );
+  assert.match(
+    desktopRail,
+    /gap-1[\s\S]*lg:gap-1\.5[\s\S]*xl:gap-2/,
   );
 });
 
