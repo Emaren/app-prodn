@@ -46,7 +46,7 @@ test("Chaosium reads canonical Trophy lineage and the complete Champions belt ca
   assert.match(chaosium, /return belts\.sort/);
   assert.match(chaosium, /if \(leftHeld !== rightHeld\) return leftHeld \? -1 : 1/);
   assert.match(nationalBeltCatalog, /export const CHAMPIONS_NATIONAL_BELT_CATALOG/);
-  assert.equal((nationalBeltCatalog.match(/slug: /g) ?? []).length, 42);
+  assert.equal((nationalBeltCatalog.match(/flag: "/g) ?? []).length, 42);
 });
 
 test("Chaosium E2 is the frontier default while B1 A1 and E1 stay directly recoverable", () => {
