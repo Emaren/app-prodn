@@ -161,24 +161,29 @@ test(
       /decodeFeaturedWarriorImage\(featuredWarriorImageSrc\(nextWarrior\)\)[\s\S]*setVisibleWarriors/,
     );
     assert.equal((homepage.match(/key=\{index\}/g) || []).length, 2);
+    assert.match(homepage, /function StableFeaturedWarriorPortrait/);
     assert.equal(
-      (homepage.match(/transition-transform duration-300 ease-out hover:-translate-y-0\.5/g) || []).length,
+      (homepage.match(/<StableFeaturedWarriorPortrait/g) || []).length,
       2,
     );
-    assert.match(homepage, /function BufferedFeaturedWarriorImage/);
-    assert.match(homepage, /data-featured-warrior-image-buffer/);
-    assert.match(homepage, /pendingSrcRef\.current/);
-    assert.match(homepage, /imageStillMatchesExpectedSource/);
-    assert.match(homepage, /image\.currentSrc \|\| image\.src/);
+    assert.equal(
+      (homepage.match(/data-featured-warrior-single-paint/g) || []).length,
+      1,
+    );
+    assert.match(homepage, /backgroundImage: `url\(\$\{JSON\.stringify\(src\)\}\)`/);
     assert.match(homepage, /image preload timed out/);
     assert.match(homepage, /featuredWarriorDecodeCache\.delete\(src\)/);
+    assert.doesNotMatch(homepage, /data-featured-warrior-image-buffer/);
+    assert.doesNotMatch(homepage, /transition: "opacity 90ms linear"/);
+    assert.doesNotMatch(homepage, /pendingSrcRef\.current/);
+    assert.doesNotMatch(homepage, /imageStillMatchesExpectedSource/);
+    assert.doesNotMatch(homepage, /mask-image:linear-gradient/);
+    assert.doesNotMatch(homepage, /drop-shadow-\[0_18px_34px/);
+    assert.doesNotMatch(homepage, /transform-gpu/);
+    assert.doesNotMatch(homepage, /backface-visibility:hidden/);
     assert.doesNotMatch(
       homepage,
       /decodeFeaturedWarriorImage\(featuredWarriorImageSrc\(nextWarrior\)\)[\s\S]*?\.catch\(\(\) => undefined\)[\s\S]*?\.then/,
-    );
-    assert.equal(
-      (homepage.match(/<BufferedFeaturedWarriorImage/g) || []).length,
-      2,
     );
     assert.doesNotMatch(homepage, /<FeaturedWarriorSubtitle key=/);
   },
