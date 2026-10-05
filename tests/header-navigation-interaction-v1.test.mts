@@ -169,6 +169,29 @@ test("desktop Kingdom doors share the center navigation chip spacing", () => {
 });
 
 
+test("desktop Kingdom menu escapes the scroll rail through a viewport portal", () => {
+  const kingdom =
+    source.match(
+      /function KingdomNavItem\\([\\s\\S]*?function KingdomMenuPanel\\(/,
+    )?.[0] ?? "";
+
+  assert.match(kingdom, /const desktopPanelRef = React\\.useRef/);
+  assert.match(kingdom, /const mobilePanelRef = React\\.useRef/);
+  assert.match(kingdom, /const syncDesktopMenuAnchor = React\\.useCallback/);
+  assert.match(
+    kingdom,
+    /createPortal\\([\\s\\S]*ref=\\{desktopPanelRef\\}[\\s\\S]*className="fixed z-\\[240\\] hidden w-\\[22rem\\]/,
+  );
+  assert.doesNotMatch(
+    kingdom,
+    /className="absolute left-1\\/2 top-full z-\\[220\\]/,
+  );
+  assert.match(
+    kingdom,
+    /window\\.addEventListener\\("scroll", syncDesktopMenuAnchor, true\\)/,
+  );
+});
+
 test("Kingdom hover and click cooperate instead of fighting each other", () => {
   const kingdom =
     source.match(
