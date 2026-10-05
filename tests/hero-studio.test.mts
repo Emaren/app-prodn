@@ -319,6 +319,23 @@ test("viewer can hide one language in a Hero pair and restore it persistently", 
   );
 });
 
+test("Hero Studio preserves operator-selected transition timing", () => {
+  const studio = readFileSync(
+    new URL("../components/admin/hero/HeroStudio.tsx", import.meta.url),
+    "utf8"
+  );
+
+  const pureSettingsStart = studio.indexOf("function purePlaylistSettings");
+  const pureSettingsEnd = studio.indexOf("\n}\n", pureSettingsStart) + 2;
+  const pureSettings = studio.slice(pureSettingsStart, pureSettingsEnd);
+
+  assert.match(pureSettings, /\.\.\.settings/);
+  assert.doesNotMatch(pureSettings, /transitionDurationMs:/);
+  assert.doesNotMatch(pureSettings, /transitionStyle:/);
+  assert.doesNotMatch(pureSettings, /2900/);
+  assert.doesNotMatch(pureSettings, /1600/);
+});
+
 test("Hero Studio exposes explicit reorder and reactive preview contracts", () => {
   const studio = readFileSync(
     new URL("../components/admin/hero/HeroStudio.tsx", import.meta.url),
