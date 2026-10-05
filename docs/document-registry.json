@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "431f76639623014153ff54f0aff2afc06e0bc92e74c6ffdd2029bcb2ac786b07",
+      "sha256": "d1ed8596eac69bab87ade91a1accc535230267052d0c6badecb1dfe479a3e45a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2026,7 +2026,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/hero-studio-persistent-double-buffer-20261005",
-    "commit": "d79827038fb805bdc461dc9796731779e6137ea6"
+    "commit": "c5db3f155f0b10a6cabca95dd287b6b9cb4517d3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
