@@ -6,6 +6,7 @@ const shell = fs.readFileSync("app/AppShell.tsx", "utf8");
 const olympia = fs.readFileSync("app/olympia/page.tsx", "utf8");
 const chaosium = fs.readFileSync("lib/champions/chaosium.ts", "utf8");
 const chaosiumPage = fs.readFileSync("app/chaosium/page.tsx", "utf8");
+const chaosiumDisplayRail = fs.readFileSync("components/chaosium/ChaosiumDisplayRail.tsx", "utf8");
 const leagues = fs.readFileSync("lib/leagues.ts", "utf8");
 const leagueApi = fs.readFileSync("app/api/leagues/route.ts", "utf8");
 const leagueQuote = fs.readFileSync("app/api/leagues/quote/route.ts", "utf8");
@@ -38,8 +39,28 @@ test("Chaosium reads holder-changing Trophy events and preserves an origin marke
   assert.match(chaosium, /trophy\.createdAt\.toISOString\(\)/);
   assert.match(chaosium, /fromHolder/);
   assert.match(chaosium, /Walk the custody chain backward/);
+  assert.match(chaosium, /previousIdentity === toIdentity/);
+  assert.match(chaosium, /managedMediaPublicUrl\("belt", title\.id, title\.assetUrl\)/);
   assert.match(chaosiumPage, /animate-ping/);
   assert.match(chaosiumPage, /Newest reign to origin/);
+});
+
+test("Chaosium B1 is the public default with preserved A1 E1 and E2 provenance", () => {
+  assert.match(chaosiumPage, /return "b1";/);
+  assert.match(chaosiumPage, /CorrectedMetrics/);
+  assert.match(chaosiumPage, /PreservedE1Metrics/);
+  assert.match(chaosiumPage, /belt\.dmRating/);
+  assert.match(chaosiumPage, /belt\.rmRating/);
+  assert.match(chaosiumPage, /whitespace-nowrap/);
+  assert.match(chaosiumPage, /ChaosiumDisplayRail active=\{view\}/);
+
+  for (const version of ["b1", "a1", "e1", "e2"]) {
+    assert.match(chaosiumDisplayRail, new RegExp(`key: "${version}"`));
+  }
+  assert.match(chaosiumDisplayRail, /href="\/chaosium"/);
+  assert.match(chaosiumDisplayRail, /href="\/chaosium\?view=a1"/);
+  assert.match(chaosiumDisplayRail, /href="\/chaosium\?view=e2"/);
+  assert.match(chaosiumDisplayRail, /data-chaosium-version=\{active\}/);
 });
 
 test("league charter is a verified 100 WOLO signed creation rail", () => {
