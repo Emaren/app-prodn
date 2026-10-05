@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9ddffd766d3d64e81d8a27e51469414a99c29d67be04963cf14192052c2c50b0",
+      "sha256": "390aaae91726b1b1eaf484c1e7decf9762488073126892ed2834d87c8c440f9c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2025,8 +2025,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/hero-studio-native-crossfade-20261005",
-    "commit": "fe10161f8748c6791070c3248eb8ffa8a9a395b5"
+    "branch": "perf/fix-kingdom-oracle-images-and-champions-paint-20261005",
+    "commit": "dc2561773e812fd5e27fd76237377287f2b6eff6"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

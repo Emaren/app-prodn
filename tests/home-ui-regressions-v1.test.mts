@@ -54,3 +54,21 @@ test("legacy WOLO artwork is allowed through Next image optimization", () => {
   );
   assert.match(staking, /const WOLO_LOGO_SRC = "\/legacy\/wolo-logo-transparent\.webp";/);
 });
+
+test("Kingdom and Oracle hero art is allowed through Next image optimization", () => {
+  const config = source("next.config.js");
+  const kingdom = source("app/kingdom/KingdomHero.tsx");
+  const oracle = source("components/oracle/OraclePremiumFloor.tsx");
+
+  assert.match(
+    config,
+    /localPatterns:[\s\S]{0,700}\{ pathname: "\/kingdom\/\*\*" \}/,
+  );
+  assert.match(
+    config,
+    /localPatterns:[\s\S]{0,700}\{ pathname: "\/oracle\/\*\*" \}/,
+  );
+  assert.match(kingdom, /src="\/kingdom\/kingdom-hero-bg\.webp"/);
+  assert.match(oracle, /src="\/oracle\/oracle-hero-bg\.webp"/);
+});
+

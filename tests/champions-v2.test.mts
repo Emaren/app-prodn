@@ -296,3 +296,22 @@ test("RM/DM and team crowns present live title-economy custody holders",()=>{
   assert.match(state,/holders: economy\?\.titles\.find\(title=>title\.id === \(rm \? "random-map-champion" : "deathmatch-champion"\)\)\?\.holders/);
   assert.match(state,/holders: economy\?\.titles\.find\(title=>title\.id === `\$\{size\}v\$\{size\}-\$\{lane\}`\)\?\.holders/);
 });
+
+test("E3 defers heavy below-fold championship sections from initial paint", () => {
+  assert.match(
+    e3Experience,
+    /const DEFERRED_CHAMPIONS_SECTION_CLASS =\s*"\[content-visibility:auto\] \[contain-intrinsic-size:auto_1200px\]"/,
+  );
+  assert.equal(
+    (e3Experience.match(/data-champions-deferred-section/g) || []).length,
+    4,
+  );
+  assert.doesNotMatch(
+    e3Experience.slice(
+      e3Experience.indexOf("Championship Belts"),
+      e3Experience.indexOf('data-champions-deferred-section'),
+    ),
+    /content-visibility:auto/,
+  );
+});
+

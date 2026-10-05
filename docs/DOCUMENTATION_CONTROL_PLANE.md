@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/hero-studio-native-crossfade-20261005` at `fe10161f8748c6791070c3248eb8ffa8a9a395b5`
+Implementation baseline: `perf/fix-kingdom-oracle-images-and-champions-paint-20261005` at `dc2561773e812fd5e27fd76237377287f2b6eff6`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
