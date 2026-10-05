@@ -372,6 +372,7 @@ export async function GET(request: NextRequest) {
       users: rows.map((row) => ({
         uid: row.uid,
         displayName: row.displayName,
+        badges: row.badges,
         lastSeen: row.lastSeen,
         unreadCount: row.unreadCount,
         userUnreadCount: row.userUnreadCount,
