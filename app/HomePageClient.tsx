@@ -860,46 +860,192 @@ function decodeFeaturedWarriorImage(src: string) {
     return cached;
   }
 
-  const promise = new Promise<void>((resolve) => {
+  const promise = new Promise<void>((resolve, reject) => {
     const image = new window.Image();
     image.decoding = "async";
     image.loading = "eager";
     (image as HTMLImageElement & { fetchPriority?: "high" | "low" | "auto" }).fetchPriority = "high";
 
-    let done = false;
-    const finish = () => {
-      if (done) return;
-      done = true;
+    let settled = false;
+    let timeout = 0;
 
-      if (typeof image.decode === "function") {
-        image.decode().catch(() => undefined).finally(resolve);
+    const settle = (error?: Error) => {
+      if (settled) return;
+      settled = true;
+      window.clearTimeout(timeout);
+      image.onload = null;
+      image.onerror = null;
+
+      if (error) {
+        reject(error);
       } else {
         resolve();
       }
     };
 
-    const timeout = window.setTimeout(finish, 2800);
+    const proveDecoded = () => {
+      if (typeof image.decode !== "function") {
+        settle();
+        return;
+      }
 
-    image.onload = () => {
-      window.clearTimeout(timeout);
-      finish();
+      void image
+        .decode()
+        .then(() => settle())
+        .catch(() => settle(new Error(`Featured warrior image decode failed: ${src}`)));
     };
 
-    image.onerror = () => {
-      window.clearTimeout(timeout);
-      finish();
-    };
+    timeout = window.setTimeout(
+      () => settle(new Error(`Featured warrior image preload timed out: ${src}`)),
+      5000
+    );
 
+    image.onload = proveDecoded;
+    image.onerror = () => settle(new Error(`Featured warrior image preload failed: ${src}`));
     image.src = src;
 
-    if (image.complete) {
-      window.clearTimeout(timeout);
-      finish();
+    if (image.complete && image.naturalWidth > 0) {
+      proveDecoded();
     }
   });
 
-  featuredWarriorDecodeCache.set(src, promise);
-  return promise;
+  const guardedPromise = promise.catch((error) => {
+    featuredWarriorDecodeCache.delete(src);
+    throw error;
+  });
+
+  featuredWarriorDecodeCache.set(src, guardedPromise);
+  return guardedPromise;
+}
+
+type BufferedFeaturedWarriorImageProps = {
+  warrior: FeaturedWarrior;
+  sizes: string;
+  fetchPriority: "high" | "low";
+  className: string;
+};
+
+function BufferedFeaturedWarriorImage({
+  warrior,
+  sizes,
+  fetchPriority,
+  className,
+}: BufferedFeaturedWarriorImageProps) {
+  const src = featuredWarriorImageSrc(warrior);
+  const [sources, setSources] = useState<[string, string | null]>(() => [src, null]);
+  const [visibleLayer, setVisibleLayer] = useState<0 | 1>(0);
+  const sourcesRef = useRef<[string, string | null]>([src, null]);
+  const visibleLayerRef = useRef<0 | 1>(0);
+  const pendingLayerRef = useRef<0 | 1 | null>(null);
+  const pendingSrcRef = useRef<string | null>(null);
+  const revealFrameRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    const activeSrc = sourcesRef.current[visibleLayerRef.current];
+    if (src === activeSrc) {
+      return;
+    }
+
+    const nextLayer: 0 | 1 = visibleLayerRef.current === 0 ? 1 : 0;
+    const nextSources: [string, string | null] =
+      nextLayer === 0
+        ? [src, sourcesRef.current[1]]
+        : [sourcesRef.current[0], src];
+
+    pendingLayerRef.current = nextLayer;
+    pendingSrcRef.current = src;
+    sourcesRef.current = nextSources;
+    setSources(nextSources);
+  }, [src]);
+
+  useEffect(() => {
+    return () => {
+      if (revealFrameRef.current !== null) {
+        window.cancelAnimationFrame(revealFrameRef.current);
+      }
+    };
+  }, []);
+
+  const revealLoadedLayer = (layer: 0 | 1, image: HTMLImageElement) => {
+    const expectedSrc = sourcesRef.current[layer];
+
+    if (
+      pendingLayerRef.current !== layer ||
+      !expectedSrc ||
+      pendingSrcRef.current !== expectedSrc
+    ) {
+      return;
+    }
+
+    const reveal = () => {
+      if (
+        pendingLayerRef.current !== layer ||
+        pendingSrcRef.current !== expectedSrc
+      ) {
+        return;
+      }
+
+      if (revealFrameRef.current !== null) {
+        window.cancelAnimationFrame(revealFrameRef.current);
+      }
+
+      revealFrameRef.current = window.requestAnimationFrame(() => {
+        if (
+          pendingLayerRef.current !== layer ||
+          pendingSrcRef.current !== expectedSrc
+        ) {
+          return;
+        }
+
+        visibleLayerRef.current = layer;
+        setVisibleLayer(layer);
+        pendingLayerRef.current = null;
+        pendingSrcRef.current = null;
+        revealFrameRef.current = null;
+      });
+    };
+
+    if (typeof image.decode === "function") {
+      void image.decode().then(reveal).catch(() => undefined);
+    } else if (image.complete && image.naturalWidth > 0) {
+      reveal();
+    }
+  };
+
+  return (
+    <>
+      {sources.map((layerSrc, index) => {
+        if (!layerSrc) return null;
+
+        const layer = index as 0 | 1;
+
+        return (
+          <div
+            key={`buffer-${layer}`}
+            data-featured-warrior-image-buffer={layer}
+            className="absolute inset-0"
+            style={{
+              opacity: visibleLayer === layer ? 1 : 0,
+              transition: "opacity 90ms linear",
+              pointerEvents: "none",
+            }}
+          >
+            <Image
+              src={layerSrc}
+              alt=""
+              fill
+              sizes={sizes}
+              loading="eager"
+              fetchPriority={fetchPriority}
+              unoptimized
+              className={className}
+              onLoad={(event) => revealLoadedLayer(layer, event.currentTarget)}
+            />
+          </div>
+        );
+      })}
+    </>
+  );
 }
 
 function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
@@ -1036,16 +1182,15 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
       transitionInFlightRef.current = true;
 
       void decodeFeaturedWarriorImage(featuredWarriorImageSrc(nextWarrior))
-        .catch(() => undefined)
         .then(() => {
           if (disposed || paused) {
             transitionInFlightRef.current = false;
             return;
           }
 
-          // The incoming image is fully decoded before we update the stable slot.
-          // Keep the existing card painted until that exact moment: no opacity-to-zero
-          // phase, no blank frame, and no remount-driven "Fight Club" flash.
+          // The incoming resource has been decoded before state changes. The card's
+          // double-buffered image surface then proves the actual DOM image is loaded
+          // before revealing it, so one painted bitmap remains visible at all times.
           setVisibleWarriors((latest) => {
             const next = [...latest];
             const outgoing = next[slot];
@@ -1059,6 +1204,13 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
           transitionInFlightRef.current = false;
 
           if (!disposed) {
+            later(rotateOnce, FEATURED_WARRIOR_ROTATE_MS);
+          }
+        })
+        .catch(() => {
+          transitionInFlightRef.current = false;
+
+          if (!disposed && !paused) {
             later(rotateOnce, FEATURED_WARRIOR_ROTATE_MS);
           }
         });
@@ -1108,14 +1260,10 @@ function AdvancedFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] })
               href={warrior.href}
               className="block group relative min-h-[16rem] overflow-visible transform-gpu transition-transform duration-300 ease-out hover:-translate-y-0.5 [backface-visibility:hidden]"
             >
-              <Image
-                src={featuredWarriorImageSrc(warrior)}
-                alt=""
-                fill
+              <BufferedFeaturedWarriorImage
+                warrior={warrior}
                 sizes="(min-width: 1280px) 250px, (min-width: 640px) 45vw, 90vw"
-                loading="eager"
                 fetchPriority={index === 0 ? "high" : "low"}
-                unoptimized
                 className="object-contain object-top transition-transform duration-500 ease-out group-hover:scale-[1.01] opacity-90"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/52 via-black/8 to-transparent" />
@@ -1124,7 +1272,7 @@ function AdvancedFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] })
                 <div className="mx-auto max-w-full overflow-hidden text-balance break-words font-serif text-[clamp(0.78rem,1.02vw,1.05rem)] font-semibold uppercase leading-[1.05] tracking-[0.075em] text-white [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
                   {warrior.name}
                 </div>
-                <FeaturedWarriorSubtitle key={warrior.key} warrior={warrior} />
+                <FeaturedWarriorSubtitle warrior={warrior} />
               </div>
             </Link>
           ))}
@@ -1239,14 +1387,10 @@ function ExtremeFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] }) 
                   <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/70 to-transparent" />
                 </div>
                 <div className={`absolute inset-x-[-12%] -top-5 bottom-6 z-10 transition-transform duration-700 group-hover:-translate-y-1 group-hover:scale-[1.012] opacity-100`}>
-                  <Image
-                    src={avatarSrc}
-                    alt=""
-                    fill
+                  <BufferedFeaturedWarriorImage
+                    warrior={warrior}
                     sizes="(min-width: 1280px) 280px, (min-width: 640px) 45vw, 90vw"
-                    loading="eager"
                     fetchPriority={index === 0 ? "high" : "low"}
-                    unoptimized
                     className="object-contain object-center drop-shadow-[0_18px_34px_rgba(0,0,0,0.56)] transition-transform duration-500 ease-out [mask-image:linear-gradient(180deg,black_0%,black_88%,transparent_100%)]"
                   />
                 </div>
@@ -1254,7 +1398,7 @@ function ExtremeFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] }) 
                   <div className="mx-auto max-w-full overflow-hidden text-balance break-words font-serif text-[clamp(0.76rem,0.96vw,1rem)] font-semibold uppercase leading-[1.05] tracking-[0.07em] text-white [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
                     {warrior.name}
                   </div>
-                  <FeaturedWarriorSubtitle key={warrior.key} warrior={warrior} />
+                  <FeaturedWarriorSubtitle warrior={warrior} />
                 </div>
               </Link>
             );
