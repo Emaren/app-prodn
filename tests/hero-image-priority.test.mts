@@ -67,6 +67,14 @@ test("Lobby reserves the critical image lane for the actual hero", () => {
   );
   assert.match(
     home,
+    /preload\(src, \{ as: "image", fetchPriority \}\)/,
+  );
+  assert.equal(
+    (home.match(/fetchPriority=\{index === 0 \? "high" : "low"\}/g) || []).length,
+    2,
+  );
+  assert.match(
+    home,
     /backgroundImage: `url\(\$\{JSON\.stringify\(src\)\}\)`/,
   );
   assert.match(
