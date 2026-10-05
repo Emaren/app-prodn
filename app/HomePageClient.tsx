@@ -3,6 +3,7 @@
 import {type CSSProperties, type ReactNode, useCallback, useEffect, useMemo, useRef, useState} from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { preload } from "react-dom";
 import { ChevronRight, Crown } from "lucide-react";
 import { LobbyHero } from "@/components/lobby/LobbyHero";
 import { LiveTickerStrip } from "@/components/lobby/LiveTickerStrip";
@@ -920,13 +921,19 @@ function decodeFeaturedWarriorImage(src: string) {
 type StableFeaturedWarriorPortraitProps = {
   warrior: FeaturedWarrior;
   position: "top" | "center";
+  fetchPriority: "high" | "low";
 };
 
 function StableFeaturedWarriorPortrait({
   warrior,
   position,
+  fetchPriority,
 }: StableFeaturedWarriorPortraitProps) {
   const src = featuredWarriorImageSrc(warrior);
+
+  if (src) {
+    preload(src, { as: "image", fetchPriority });
+  }
 
   return (
     <div
@@ -1154,7 +1161,7 @@ function AdvancedFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] })
               className="block group relative min-h-[16rem] overflow-visible"
             >
               <div className="absolute inset-0">
-                <StableFeaturedWarriorPortrait warrior={warrior} position="top" />
+                <StableFeaturedWarriorPortrait warrior={warrior} position="top" fetchPriority={index === 0 ? "high" : "low"} />
               </div>
               <div className="absolute inset-0 bg-gradient-to-t from-black/52 via-black/8 to-transparent" />
               <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-[radial-gradient(circle_at_50%_100%,rgba(251,191,36,0.11),transparent_64%)]" />
@@ -1276,7 +1283,7 @@ function ExtremeFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] }) 
                   <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/70 to-transparent" />
                 </div>
                 <div className="absolute inset-x-[-12%] -top-5 bottom-6 z-10">
-                  <StableFeaturedWarriorPortrait warrior={warrior} position="center" />
+                  <StableFeaturedWarriorPortrait warrior={warrior} position="center" fetchPriority={index === 0 ? "high" : "low"} />
                   <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[18%] bg-gradient-to-t from-slate-950/85 via-slate-950/20 to-transparent" />
                 </div>
                 <div className="absolute inset-x-4 bottom-4 z-20 rounded-xl bg-black/78 px-2.5 py-2.5 text-center shadow-[0_12px_30px_rgba(0,0,0,0.34)]">
