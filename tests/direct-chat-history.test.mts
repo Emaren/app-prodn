@@ -233,11 +233,16 @@ test("Nav Chat keeps honors on one slim non-wrapping strip and protects message 
     "utf8"
   );
 
+  assert.match(panelSource, /data-contact-player-name="true"/);
+  assert.match(panelSource, /bg-gradient-to-r from-amber-100 via-stone-100 to-slate-300/);
   assert.match(panelSource, /data-contact-honor-strip="true"/);
-  assert.match(panelSource, /h-6 max-w-full items-center gap-1\.5 overflow-x-auto/);
+  assert.match(panelSource, /h-9 max-w-full border-t/);
+  assert.match(panelSource, /data-contact-honor-scroll="true"/);
+  assert.match(panelSource, /h-8 max-w-full items-center gap-1\.5 overflow-x-auto overflow-y-hidden/);
+  assert.match(panelSource, /whitespace-nowrap px-1\.5 pb-1/);
   assert.match(panelSource, /<CommunityBadgePill key=\{badge\.id\} label=\{badge\.label\} compact \/>/);
   assert.match(badgeSource, /compact = false/);
-  assert.match(badgeSource, /px-2 py-0\.5 text-\[9px\] leading-4/);
+  assert.match(badgeSource, /shrink-0 px-2\.5 py-\[2px\] text-\[10px\] leading-\[1\.05rem\]/);
   assert.match(headerSource, /sm:h-\[min\(40rem,calc\(100dvh-6\.5rem\)\)\]/);
 });
 
