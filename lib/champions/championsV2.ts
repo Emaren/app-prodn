@@ -115,7 +115,7 @@ export type ChampionsV2State = {
   };
 };
 
-type CountryCatalogRow = {
+export type ChampionsNationalBeltCatalogRow = {
   slug: string;
   country: string;
   flag: string;
@@ -123,7 +123,7 @@ type CountryCatalogRow = {
   scope?: "national" | "regional";
 };
 
-const COUNTRY_BELT_CATALOG: CountryCatalogRow[] = [
+export const CHAMPIONS_NATIONAL_BELT_CATALOG: ChampionsNationalBeltCatalogRow[] = [
   { slug: "canada", country: "Canada", flag: "🇨🇦" },
   { slug: "usa", country: "USA", flag: "🇺🇸" },
   { slug: "mexico", country: "Mexico", flag: "🇲🇽" },
@@ -421,7 +421,7 @@ function representedCountryKey(value: string | null | undefined) {
   return normalizedIdentity(value);
 }
 
-function countryEligibilityValues(country: CountryCatalogRow) {
+function countryEligibilityValues(country: ChampionsNationalBeltCatalogRow) {
   if (country.scope === "regional") {
     return REGIONAL_COUNTRY_ELIGIBILITY[country.slug] ?? [];
   }
@@ -431,7 +431,7 @@ function countryEligibilityValues(country: CountryCatalogRow) {
 
 function countryDirectoryContenders(
   entries: PublicPlayerDirectoryEntry[],
-  country: CountryCatalogRow,
+  country: ChampionsNationalBeltCatalogRow,
 ): TitleContender[] {
   const eligible = new Set(
     countryEligibilityValues(country)
@@ -782,10 +782,10 @@ function buildNationalBelts(
   );
 
   const catalogOrder = new Map(
-    COUNTRY_BELT_CATALOG.map((country, index) => [country.slug, index]),
+    CHAMPIONS_NATIONAL_BELT_CATALOG.map((country, index) => [country.slug, index]),
   );
 
-  const belts = COUNTRY_BELT_CATALOG.map((country) => {
+  const belts = CHAMPIONS_NATIONAL_BELT_CATALOG.map((country) => {
     const live = nationalBySlug.get(country.slug) ?? null;
     const active =
       ["canada", "usa", "mexico"].includes(country.slug) ||
