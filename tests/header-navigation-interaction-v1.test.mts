@@ -154,7 +154,7 @@ test("desktop Kingdom doors share the center navigation chip spacing", () => {
   );
 
   const desktopRail = source.match(
-    /<nav className="aoe2-nav-scroll[\s\S]*?<\/nav>/,
+    /<nav className="aoe2-nav-scroll[^"]*md:justify-self-stretch[^"]*"[\s\S]*?<\/nav>/,
   )?.[0];
 
   assert.ok(desktopRail);
