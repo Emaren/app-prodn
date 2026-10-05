@@ -69,6 +69,43 @@ function motionState(
 const HERO_LANGUAGE_VISIBILITY_STORAGE_KEY =
   "aoe2war.heroLanguageVisibility.v1";
 
+const heroStudioDecodeCache = new Map<string, Promise<void>>();
+
+function decodeHeroStudioImage(src: string) {
+  if (typeof window === "undefined" || !src) return Promise.resolve();
+
+  const cached = heroStudioDecodeCache.get(src);
+  if (cached) return cached;
+
+  const promise = new Promise<void>((resolve, reject) => {
+    const image = new window.Image();
+    image.decoding = "async";
+    image.onload = () => {
+      if (typeof image.decode === "function") {
+        void image.decode().then(resolve).catch(reject);
+      } else {
+        resolve();
+      }
+    };
+    image.onerror = () => reject(new Error(`Hero Studio image preload failed: ${src}`));
+    image.src = src;
+
+    if (image.complete && image.naturalWidth > 0) {
+      if (typeof image.decode === "function") {
+        void image.decode().then(resolve).catch(reject);
+      } else {
+        resolve();
+      }
+    }
+  }).catch((error) => {
+    heroStudioDecodeCache.delete(src);
+    throw error;
+  });
+
+  heroStudioDecodeCache.set(src, promise);
+  return promise;
+}
+
 export function HeroCarousel({
   playlist,
   preview = false,
@@ -120,6 +157,15 @@ export function HeroCarousel({
   if (nextHeroImageUrl && nextHeroImageUrl !== currentHeroImageUrl) {
     preload(nextHeroImageUrl, { as: "image", fetchPriority: "low" });
   }
+
+  useEffect(() => {
+    if (currentHeroImageUrl) {
+      void decodeHeroStudioImage(currentHeroImageUrl).catch(() => undefined);
+    }
+    if (nextHeroImageUrl && nextHeroImageUrl !== currentHeroImageUrl) {
+      void decodeHeroStudioImage(nextHeroImageUrl).catch(() => undefined);
+    }
+  }, [currentHeroImageUrl, nextHeroImageUrl]);
 
   const imageFit =
     presentation === "advanced" ||
