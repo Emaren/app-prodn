@@ -33,7 +33,7 @@ test("wallet Trophy association separates app custody from chain-owner evidence"
 
 test("wallet Trophy presentation uses projected economics and canonical media/routes", () => {
   assert.match(route, /currentBountyWolo: projectedTrophyBounty\(trophy\)/);
-  assert.match(route, /managedMediaPublicUrl\(/);
+  assert.match(route, /trophyPresentationAssetUrl\(\{/);
   assert.match(route, /seededTrophyDefinition\(trophy\.trophyId\)/);
   assert.match(route, /routeHref: definition\?\.routeHref \|\| "\/champions"/);
 
