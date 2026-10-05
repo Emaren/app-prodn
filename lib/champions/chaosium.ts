@@ -494,13 +494,15 @@ export async function loadChaosium(prisma: PrismaClient): Promise<ChaosiumBelt[]
     const rightHeld = Boolean(right.currentHolder);
     if (leftHeld !== rightHeld) return leftHeld ? -1 : 1;
 
-    if (leftHeld && rightHeld) {
-      const leftTime = Date.parse(left.recentActivityAt ?? "");
-      const rightTime = Date.parse(right.recentActivityAt ?? "");
-      const safeLeft = Number.isFinite(leftTime) ? leftTime : 0;
-      const safeRight = Number.isFinite(rightTime) ? rightTime : 0;
-      if (safeLeft !== safeRight) return safeRight - safeLeft;
-    }
+    const leftTime = Date.parse(left.recentActivityAt ?? "");
+    const rightTime = Date.parse(right.recentActivityAt ?? "");
+    const safeLeft = Number.isFinite(leftTime) ? leftTime : 0;
+    const safeRight = Number.isFinite(rightTime) ? rightTime : 0;
+
+    // Held belts lead. Within either the held or vacant cohort, the most
+    // recently active provenance comes first; never-activated standards then
+    // fall back to stable catalog order at the far edge of the museum.
+    if (safeLeft !== safeRight) return safeRight - safeLeft;
 
     return left.catalogOrder - right.catalogOrder;
   });
