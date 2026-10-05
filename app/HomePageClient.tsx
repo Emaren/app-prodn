@@ -2,7 +2,6 @@
 
 import {type CSSProperties, type ReactNode, useCallback, useEffect, useMemo, useRef, useState} from "react";
 import dynamic from "next/dynamic";
-import Image from "next/image";
 import Link from "next/link";
 import { ChevronRight, Crown } from "lucide-react";
 import { LobbyHero } from "@/components/lobby/LobbyHero";
@@ -990,7 +989,7 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
     setFeaturedWarriorsReady(false);
 
     // Preserve the server-rendered deterministic opening lineup through hydration.
-    // The rotation lane introduces variety after the first 6.2s; swapping the
+    // The rotation lane introduces variety only after the initial 14s dwell; swapping the
     // opening four here can abort the browser's first avatar request and extend LCP.
     visibleWarriorsRef.current.forEach((warrior, index) => {
       lastWarriorBySlotRef.current[index] = warrior.key;
@@ -1154,7 +1153,7 @@ function AdvancedFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] })
               href={warrior.href}
               className="block group relative min-h-[16rem] overflow-visible"
             >
-              <div className="absolute inset-0 opacity-90">
+              <div className="absolute inset-0">
                 <StableFeaturedWarriorPortrait warrior={warrior} position="top" />
               </div>
               <div className="absolute inset-0 bg-gradient-to-t from-black/52 via-black/8 to-transparent" />
@@ -1276,7 +1275,7 @@ function ExtremeFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] }) 
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_90%,rgba(251,191,36,0.10),transparent_58%)]" />
                   <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/70 to-transparent" />
                 </div>
-                <div className="absolute inset-x-[-12%] -top-5 bottom-6 z-10 opacity-100">
+                <div className="absolute inset-x-[-12%] -top-5 bottom-6 z-10">
                   <StableFeaturedWarriorPortrait warrior={warrior} position="center" />
                   <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[18%] bg-gradient-to-t from-slate-950/85 via-slate-950/20 to-transparent" />
                 </div>
