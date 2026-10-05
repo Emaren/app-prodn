@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "331f305dc7b5b063d32ac6db173c3c369be355ee8655f315b1bbc1146205fd23",
+      "sha256": "d73a96d3323f74e02f969c7d191f16228de55cd4e4e168ac74f8b9e33f9fddfe",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2026,7 +2026,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/hero-studio-flicker-20261005",
-    "commit": "1512379c54dbad21818988921e480c1524410203"
+    "commit": "36635a20127030410c3ce85149435452041921d9"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
