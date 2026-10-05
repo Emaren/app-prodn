@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "3a22d02005e8216edefb6e3382463f3915ecf01aee87f42ec6252af037123013",
+      "sha256": "638adaefccd6d8eb51b385103e3a3dafe723c6df20ef607acc419e5b063f7a43",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2026,7 +2026,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/featured-warrior-single-paint-20261005",
-    "commit": "2f51a3d807f304605fb5881009559d2d01be3efd"
+    "commit": "db5c88b9394a5c5b323660b69dee77f2293a898c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
