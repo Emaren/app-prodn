@@ -328,12 +328,22 @@ Champions economy map. Omitting the row can make the challenge handoff lose its
 target and can force Champions to fall back to stale static definition state.
 
 Current-holder attribution surfaces obey the same season authority. Signed-in
-profile holdings, public player title honors, and Lobby Featured Warrior honors
-must not display a forced-vacant historical holder or Guardian as a current
-champion. Profile reads use the retained public seed-bootstrap boundary rather
-than the fully re-runnable operator reconciler. Static profile fallback also
-rejects forced-vacant title definitions so an old holder cannot be resurrected
-by definition drift.
+profile holdings, public player title honors, User Command Belt mirrors, and
+Lobby Featured Warrior honors must not display a forced-vacant historical
+holder or Guardian as a current champion. User Command bootstrap repairs its
+system-owned Belt mirrors from live Trophy/championship custody, and its live
+refresh carries those mirrors so Trophy Command and User Command remain
+complementary projections over one authority. Profile reads use the retained
+public seed-bootstrap boundary rather than a separate title ledger. Static
+profile fallback also rejects forced-vacant title definitions so an old holder
+cannot be resurrected by definition drift.
+
+Managed Media is the presentation authority for belt artwork. Persisted
+`nftImageUri` remains chain/provenance evidence and may be retained indefinitely,
+but it must not pin player honors, Trophy APIs, wallet surfaces, challenge
+projections, or Champions state to obsolete art. Presentation resolves the
+canonical title/managed-media target first and uses historical NFT image data
+only as a final fallback when no canonical definition asset exists.
 
 Projected bounty is display math: stored bounty plus whole elapsed days times
 the configured bounty growth. It is not a chain balance and must not be called
