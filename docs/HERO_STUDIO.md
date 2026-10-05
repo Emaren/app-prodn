@@ -123,6 +123,7 @@ type without another template-specific database migration.
 - reduced-motion fallback
 - stable responsive stage height
 - persistent two-slot render buffers: the visible Hero surface is never remounted at a slide boundary; the next screen is prepared in the inactive slot before the slots trade visibility
+- lifecycle-free native CSS transitions between those persistent buffers; transition completion must not trigger a React state write or remount because the stable dwell is intentionally inert
 - the five transition presets
 
 The transition keys are:
