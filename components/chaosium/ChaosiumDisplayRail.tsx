@@ -12,10 +12,10 @@ const VERSIONS: Array<{
   href: string;
   title: string;
 }> = [
-  { key: "b1", label: "B1", href: "/chaosium", title: "Balanced 1 · default" },
+  { key: "b1", label: "B1", href: "/chaosium?view=b1", title: "Balanced 1" },
   { key: "a1", label: "A1", href: "/chaosium?view=a1", title: "Advanced 1 · roomier" },
   { key: "e1", label: "E1", href: "/chaosium?view=e1", title: "Extreme 1 · preserved" },
-  { key: "e2", label: "E2", href: "/chaosium?view=e2", title: "Extreme 2 · dense" },
+  { key: "e2", label: "E2", href: "/chaosium", title: "Extreme 2 · frontier default" },
 ];
 
 function itemClass(selected: boolean) {
@@ -60,7 +60,7 @@ export default function ChaosiumDisplayRail({
           aria-label="Chaosium view family"
         >
           <Link
-            href="/chaosium"
+            href="/chaosium?view=b1"
             aria-current={family === "b" ? "page" : undefined}
             className={itemClass(family === "b")}
             title="Balanced"
@@ -76,7 +76,7 @@ export default function ChaosiumDisplayRail({
             A
           </Link>
           <Link
-            href="/chaosium?view=e2"
+            href="/chaosium"
             aria-current={family === "e" ? "page" : undefined}
             className={itemClass(family === "e")}
             title="Extreme"
