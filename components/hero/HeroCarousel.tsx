@@ -163,6 +163,11 @@ export function HeroCarousel({
     current?.screen.config.imageFit === "contain"
       ? "contain"
       : "cover";
+  const previousImageFit =
+    presentation === "advanced" ||
+    previousItem?.screen.config.imageFit === "contain"
+      ? "contain"
+      : "cover";
 
   const paused =
     interactionPaused ||
@@ -359,8 +364,9 @@ export function HeroCarousel({
           data-hero-carousel-underlay
           className="pointer-events-none absolute inset-0 z-0"
           aria-hidden="true"
+          inert
         >
-          <div className={imageFit === "contain" ? "aoe2-hero-fit-contain h-full w-full bg-black" : "h-full w-full"}>
+          <div className={previousImageFit === "contain" ? "aoe2-hero-fit-contain h-full w-full bg-black" : "h-full w-full"}>
             <HeroScreenRenderer item={previousItem} />
           </div>
         </div>
