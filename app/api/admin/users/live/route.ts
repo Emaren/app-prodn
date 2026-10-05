@@ -279,6 +279,7 @@ export async function GET(request: NextRequest) {
         return {
           uid: entry.uid,
           displayName: entry.inGameName || entry.steamPersonaName || entry.uid,
+          badges: community.badges,
           lastSeen: entry.lastSeen ? entry.lastSeen.toISOString() : null,
           unreadCount: unreadMap.get(entry.uid) ?? 0,
           userUnreadCount,
