@@ -50,7 +50,7 @@ test("legacy WOLO artwork is allowed through Next image optimization", () => {
 
   assert.match(
     config,
-    /localPatterns:[\\s\\S]{0,600}\\{ pathname: "\\/legacy\\/\\*\\*" \\}/,
+    /localPatterns:[\s\S]{0,600}\{ pathname: "\/legacy\/\*\*" \}/,
   );
-  assert.match(staking, /const WOLO_LOGO_SRC = "\\/legacy\\/wolo-logo-transparent\\.webp";/);
+  assert.match(staking, /const WOLO_LOGO_SRC = "\/legacy\/wolo-logo-transparent\.webp";/);
 });
