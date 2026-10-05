@@ -219,6 +219,28 @@ test("reply attachments survive serialization and Nav Chat keeps challenge actio
   );
 });
 
+test("Nav Chat keeps honors on one slim non-wrapping strip and protects message height", () => {
+  const panelSource = readFileSync(
+    new URL("../components/contact/ContactInboxPanel.tsx", import.meta.url),
+    "utf8"
+  );
+  const badgeSource = readFileSync(
+    new URL("../components/contact/CommunityBadgePill.tsx", import.meta.url),
+    "utf8"
+  );
+  const headerSource = readFileSync(
+    new URL("../components/contact/HeaderInboxControl.tsx", import.meta.url),
+    "utf8"
+  );
+
+  assert.match(panelSource, /data-contact-honor-strip="true"/);
+  assert.match(panelSource, /h-6 max-w-full items-center gap-1\.5 overflow-x-auto/);
+  assert.match(panelSource, /<CommunityBadgePill key=\{badge\.id\} label=\{badge\.label\} compact \/>/);
+  assert.match(badgeSource, /compact = false/);
+  assert.match(badgeSource, /px-2 py-0\.5 text-\[9px\] leading-4/);
+  assert.match(headerSource, /sm:h-\[min\(40rem,calc\(100dvh-6\.5rem\)\)\]/);
+});
+
 test("opening an already-read direct thread does not rewrite its read timestamp", () => {
   const inboxSource = readFileSync(
     new URL("../lib/contactInbox.ts", import.meta.url),

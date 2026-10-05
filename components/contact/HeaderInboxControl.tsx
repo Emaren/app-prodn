@@ -553,7 +553,7 @@ export default function HeaderInboxControl({ buttonClassName }: HeaderInboxContr
           <div
             role="dialog"
             aria-label="Private inbox"
-            className="fixed inset-x-2 top-[5.75rem] z-[220] h-[calc(var(--contact-inbox-viewport-height,100dvh)-6.35rem)] transform-gpu [backface-visibility:hidden] sm:inset-x-auto sm:right-[var(--contact-inbox-right)] sm:top-[var(--contact-inbox-top)] sm:h-[min(38rem,calc(100dvh-6.5rem))] sm:w-[min(31rem,calc(100vw-2rem))]"
+            className="fixed inset-x-2 top-[5.75rem] z-[220] h-[calc(var(--contact-inbox-viewport-height,100dvh)-6.35rem)] transform-gpu [backface-visibility:hidden] sm:inset-x-auto sm:right-[var(--contact-inbox-right)] sm:top-[var(--contact-inbox-top)] sm:h-[min(40rem,calc(100dvh-6.5rem))] sm:w-[min(31rem,calc(100vw-2rem))]"
             style={{
               "--contact-inbox-right": `${desktopAnchor.right}px`,
               "--contact-inbox-top": `${desktopAnchor.top}px`,

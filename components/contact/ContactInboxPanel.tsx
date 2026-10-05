@@ -2812,22 +2812,26 @@ export default function ContactInboxPanel({
       }`}
       style={{ boxShadow: isLineView ? "inset 0 0 0 1px rgba(255,255,255,0.08)" : undefined }}
     >
-      <div className={`shrink-0 border-b px-3 py-2.5 sm:px-4 sm:py-3 ${chromeClassName}`}>
+      <div className={`shrink-0 border-b px-3 py-2 sm:px-4 sm:py-2.5 ${chromeClassName}`}>
         <div className="flex items-start justify-between gap-2">
-          <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1.5">
+          <div className="min-w-0">
             <h2 className="min-w-0 break-words text-lg font-semibold leading-tight text-white sm:truncate sm:text-xl">
               {heading}
             </h2>
-            {counterpart?.badges.map((badge) => (
-              <CommunityBadgePill key={badge.id} label={badge.label} />
-            ))}
-            {counterpart && counterpart.giftedWolo > 0 ? (
-              <span className="rounded-full border border-amber-200/15 bg-amber-300/[0.06] px-2 py-1 text-[10px] font-medium text-amber-100/80">
-                {counterpart.giftedWolo} WOLO gifted
-              </span>
-            ) : null}
-            {unreadCount > 0 ? (
-              <span className="rounded-full bg-red-500/90 px-2 py-1 text-[10px] font-semibold text-white">{unreadCount} unread</span>
+            {mode === "page" ? (
+              <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                {counterpart?.badges.map((badge) => (
+                  <CommunityBadgePill key={badge.id} label={badge.label} />
+                ))}
+                {counterpart && counterpart.giftedWolo > 0 ? (
+                  <span className="rounded-full border border-amber-200/15 bg-amber-300/[0.06] px-2 py-1 text-[10px] font-medium text-amber-100/80">
+                    {counterpart.giftedWolo} WOLO gifted
+                  </span>
+                ) : null}
+                {unreadCount > 0 ? (
+                  <span className="rounded-full bg-red-500/90 px-2 py-1 text-[10px] font-semibold text-white">{unreadCount} unread</span>
+                ) : null}
+              </div>
             ) : null}
           </div>
           <div className="flex shrink-0 items-center gap-1 sm:gap-1.5">
@@ -2848,6 +2852,31 @@ export default function ContactInboxPanel({
               <ChatViewSwitcher value={chatViewMode} onChange={setChatViewMode} />
           </div>
         </div>
+
+        {mode === "popover" &&
+        ((counterpart?.badges.length ?? 0) > 0 ||
+          Boolean(counterpart && counterpart.giftedWolo > 0) ||
+          unreadCount > 0) ? (
+          <div
+            data-contact-honor-strip="true"
+            className="aoe2-nav-scroll mt-1.5 flex h-6 max-w-full items-center gap-1.5 overflow-x-auto overscroll-x-contain whitespace-nowrap border-t border-white/[0.055] pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            aria-label="Player honors"
+          >
+            {counterpart?.badges.map((badge) => (
+              <CommunityBadgePill key={badge.id} label={badge.label} compact />
+            ))}
+            {counterpart && counterpart.giftedWolo > 0 ? (
+              <span className="shrink-0 rounded-full border border-amber-200/15 bg-amber-300/[0.06] px-2 py-0.5 text-[9px] font-medium leading-4 text-amber-100/80">
+                {counterpart.giftedWolo} WOLO gifted
+              </span>
+            ) : null}
+            {unreadCount > 0 ? (
+              <span className="shrink-0 rounded-full bg-red-500/90 px-2 py-0.5 text-[9px] font-semibold leading-4 text-white">
+                {unreadCount} unread
+              </span>
+            ) : null}
+          </div>
+        ) : null}
 
         {searchOpen ? (
           <div className="mt-3 rounded-xl border border-white/10 bg-black/20 p-2">
