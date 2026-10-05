@@ -362,6 +362,12 @@ export function HeroCarousel({
   }, [pendingMove, slotItems]);
 
   useEffect(() => {
+    if (!transitioning || pendingMove || transitionSeconds !== 0) return;
+    transitionLocked.current = false;
+    setTransitioning(false);
+  }, [activeSlot, pendingMove, transitionSeconds, transitioning]);
+
+  useEffect(() => {
     if (
       preview ||
       !hasMultiple ||
