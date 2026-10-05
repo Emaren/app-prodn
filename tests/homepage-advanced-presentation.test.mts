@@ -165,6 +165,22 @@ test(
       (homepage.match(/transition-transform duration-300 ease-out hover:-translate-y-0\.5/g) || []).length,
       2,
     );
+    assert.match(homepage, /function BufferedFeaturedWarriorImage/);
+    assert.match(homepage, /data-featured-warrior-image-buffer/);
+    assert.match(homepage, /pendingSrcRef\.current/);
+    assert.match(homepage, /imageStillMatchesExpectedSource/);
+    assert.match(homepage, /image\.currentSrc \|\| image\.src/);
+    assert.match(homepage, /image preload timed out/);
+    assert.match(homepage, /featuredWarriorDecodeCache\.delete\(src\)/);
+    assert.doesNotMatch(
+      homepage,
+      /decodeFeaturedWarriorImage\(featuredWarriorImageSrc\(nextWarrior\)\)[\s\S]*?\.catch\(\(\) => undefined\)[\s\S]*?\.then/,
+    );
+    assert.equal(
+      (homepage.match(/<BufferedFeaturedWarriorImage/g) || []).length,
+      2,
+    );
+    assert.doesNotMatch(homepage, /<FeaturedWarriorSubtitle key=/);
   },
 );
 

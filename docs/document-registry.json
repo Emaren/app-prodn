@@ -278,7 +278,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "Bet and Replay Reliability Release \u2014 2026-07-29",
+      "title": "Bet and Replay Reliability Release — 2026-07-29",
       "type": "historical"
     },
     {
@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "10e2118e7b3773cbf10293d9f00659af11b062a4c76b7db87ee5f2401a1525be",
+      "sha256": "045e6b678ac4f4b58ca5e394e0e54fecd9e3392e78a08faeec4c3102754f89e0",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1221,7 +1221,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "AoE2WAR Production Performance Audit \u2014 2026-07-18",
+      "title": "AoE2WAR Production Performance Audit — 2026-07-18",
       "type": "historical"
     },
     {
@@ -1243,7 +1243,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "AoE2WAR Production Performance Audit \u2014 2026-08-13",
+      "title": "AoE2WAR Production Performance Audit — 2026-08-13",
       "type": "historical"
     },
     {
@@ -1288,7 +1288,7 @@
         "app-prodn",
         "api-prodn"
       ],
-      "title": "Player Identity Wave 2 \u2014 Deterministic Discovery V2",
+      "title": "Player Identity Wave 2 — Deterministic Discovery V2",
       "type": "reference"
     },
     {
@@ -1335,7 +1335,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "AoE2WAR Production Parity Seal \u2014 2026-07-26",
+      "title": "AoE2WAR Production Parity Seal — 2026-07-26",
       "type": "historical"
     },
     {
@@ -1427,7 +1427,7 @@
         "app-prodn",
         "wolochain"
       ],
-      "title": "AoE2WAR Certified Release Engineering Seal \u2014 2026-08-10",
+      "title": "AoE2WAR Certified Release Engineering Seal — 2026-08-10",
       "type": "historical"
     },
     {
@@ -1497,7 +1497,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "Replay Statistics and Operations Release \u2014 2026-07-25",
+      "title": "Replay Statistics and Operations Release — 2026-07-25",
       "type": "historical"
     },
     {
@@ -1997,7 +1997,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "War Room Forum \u2014 Saturday July 4, 2026 Edition",
+      "title": "War Room Forum — Saturday July 4, 2026 Edition",
       "type": "historical"
     },
     {
@@ -2025,8 +2025,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "main",
-    "commit": "56adaedf7667b8c87d0dd91ed6a290c9a7e403b6"
+    "branch": "fix/featured-warrior-zero-blank-20261005",
+    "commit": "2a3b6b2ef2174cbcfff068aa85c8fff3cf621d29"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
