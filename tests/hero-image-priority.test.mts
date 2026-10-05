@@ -86,7 +86,14 @@ test("Lobby reserves the critical image lane for the actual hero", () => {
   assert.match(carousel, /requestAnimationFrame/);
   assert.match(carousel, /setActiveSlot\(pendingMove\.slot\)/);
   assert.match(carousel, /transitionLocked\.current/);
-  assert.match(carousel, /transitionSeconds !== 0/);
+  assert.match(carousel, /function nativeTransitionStyle/);
+  assert.match(carousel, /data-hero-native-transition=\{transitionStyle\}/);
+  assert.match(carousel, /transitionUnlockTimer/);
+  assert.match(carousel, /dwellMs \+ settleMs/);
+  assert.doesNotMatch(carousel, /setTransitioning/);
+  assert.doesNotMatch(carousel, /onAnimationComplete/);
+  assert.doesNotMatch(carousel, /<motion\.div/);
+  assert.doesNotMatch(carousel, /motionState\(/);
   assert.doesNotMatch(carousel, /previousItem/);
   assert.doesNotMatch(carousel, /data-hero-carousel-underlay/);
   assert.doesNotMatch(carousel, /key=\{`\$\{current\.screen\.id\}/);
