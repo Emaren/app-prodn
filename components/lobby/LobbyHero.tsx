@@ -18,7 +18,7 @@ import {
 import { StatCard } from "@/components/lobby/StatCard";
 import type { Aoe2HdPulseItem, Aoe2HdPulseSnapshot } from "@/lib/aoe2HdPulse";
 import type { LobbyLeaderboardEntry, LobbyMatchRow, LobbySnapshot } from "@/lib/lobby";
-import { avatarThumbUrlForUser, avatarUrlForUser } from "@/lib/avatarAssets";
+import { avatarThumbUrlForUser, avatarUrlForUser, featuredAvatarThumbUrlForUser } from "@/lib/avatarAssets";
 import type { LeaderboardLane } from "@/lib/leaderboardLane";
 import { trackLeaderboardEvent } from "@/lib/leaderboardTelemetry";
 import { warmLeaderboardClient } from "@/lib/leaderboardNavigationWarmup";
@@ -701,7 +701,15 @@ export function LobbyHero({
                           </div>
                           <div className="relative h-14 w-14 overflow-hidden rounded-full border border-amber-200/24 bg-black/30">
                             <Image
-                              src={avatarThumbUrlForUser(entry.uid, entry.name)}
+                              src={
+                                entry.hasFeaturedAvatar
+                                  ? featuredAvatarThumbUrlForUser(
+                                      entry.uid,
+                                      entry.name,
+                                      entry.featuredAvatarRevision,
+                                    )
+                                  : avatarThumbUrlForUser(entry.uid, entry.name)
+                              }
                               alt=""
                               fill
                               unoptimized
