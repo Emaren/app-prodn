@@ -3,8 +3,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Circle, Crown, History, Radio, Shield, Swords } from "lucide-react";
 
+import ChaosiumDisplayRail, {
+  type ChaosiumDisplayMode,
+} from "@/components/chaosium/ChaosiumDisplayRail";
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
-import { loadChaosium } from "@/lib/champions/chaosium";
+import { loadChaosium, type ChaosiumBelt } from "@/lib/champions/chaosium";
 import { getPrisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +18,10 @@ export const metadata: Metadata = {
     "AoE2WAR championship belt lineage: current holders, previous reigns, transfer dates, and each belt's road from vacancy into history.",
 };
 
+type ChaosiumSearchParams = Promise<{
+  view?: string | string[];
+}>;
+
 function dateLabel(value: string | null) {
   if (!value) return "Date pending";
   return new Intl.DateTimeFormat("en-CA", {
@@ -24,11 +31,109 @@ function dateLabel(value: string | null) {
   }).format(new Date(value));
 }
 
-export default async function ChaosiumPage() {
+function normalizeView(value: string | string[] | undefined): ChaosiumDisplayMode {
+  const raw = Array.isArray(value) ? value[0] : value;
+  if (raw === "a" || raw === "a1" || raw === "advanced") return "a1";
+  if (raw === "e1") return "e1";
+  if (raw === "e" || raw === "e2" || raw === "extreme") return "e2";
+  return "b1";
+}
+
+function holderNameClass(name: string | null) {
+  const long = (name?.length ?? 0) > 10;
+  return long
+    ? "text-[1.65rem] leading-none tracking-[-0.045em] sm:text-[1.8rem] 2xl:text-[1.95rem]"
+    : "text-4xl leading-none tracking-[-0.035em]";
+}
+
+function lineageEventLabel(value: string) {
+  if (value === "CURRENT_HOLDER") return "Current holder";
+  if (value === "Origin") return "Origin";
+  return value;
+}
+
+function metricValue(value: number | string | null | undefined) {
+  return value == null || value === "" ? "—" : String(value);
+}
+
+function CorrectedMetrics({ belt }: { belt: ChaosiumBelt }) {
+  return (
+    <div className="mt-3 grid grid-cols-2 gap-2">
+      <div className="min-w-0 rounded-xl border border-white/8 bg-black/36 px-3 py-2 backdrop-blur-sm">
+        <div className="text-[8px] uppercase tracking-[0.16em] text-slate-500">Battles</div>
+        <div className="mt-1 truncate font-semibold">{metricValue(belt.totalMatches)}</div>
+      </div>
+      <div className="min-w-0 rounded-xl border border-white/8 bg-black/36 px-3 py-2 backdrop-blur-sm">
+        <div className="text-[8px] uppercase tracking-[0.16em] text-slate-500">Record</div>
+        <div className="mt-1 truncate font-semibold">{metricValue(belt.currentRecord)}</div>
+      </div>
+      <div className="min-w-0 rounded-xl border border-white/8 bg-black/36 px-3 py-2 backdrop-blur-sm">
+        <div className="text-[8px] uppercase tracking-[0.16em] text-slate-500">DM</div>
+        <div className="mt-1 truncate font-semibold">{metricValue(belt.dmRating)}</div>
+      </div>
+      <div className="min-w-0 rounded-xl border border-white/8 bg-black/36 px-3 py-2 backdrop-blur-sm">
+        <div className="text-[8px] uppercase tracking-[0.16em] text-slate-500">RM</div>
+        <div className="mt-1 truncate font-semibold">{metricValue(belt.rmRating)}</div>
+      </div>
+    </div>
+  );
+}
+
+function PreservedE1Metrics({ belt }: { belt: ChaosiumBelt }) {
+  return (
+    <div className="mt-3 grid grid-cols-3 gap-2">
+      <div className="rounded-xl border border-white/8 bg-black/36 px-3 py-2 backdrop-blur-sm">
+        <div className="text-[8px] uppercase tracking-[0.18em] text-slate-500">Battles</div>
+        <div className="mt-1 font-semibold">{metricValue(belt.totalMatches)}</div>
+      </div>
+      <div className="rounded-xl border border-white/8 bg-black/36 px-3 py-2 backdrop-blur-sm">
+        <div className="text-[8px] uppercase tracking-[0.18em] text-slate-500">Record</div>
+        <div className="mt-1 font-semibold">{metricValue(belt.currentRecord)}</div>
+      </div>
+      <div className="rounded-xl border border-white/8 bg-black/36 px-3 py-2 backdrop-blur-sm">
+        <div className="text-[8px] uppercase tracking-[0.18em] text-slate-500">Rating</div>
+        <div className="mt-1 whitespace-nowrap font-semibold">
+          {belt.rating != null ? `${belt.rating} ${belt.ratingLabel ?? ""}` : "—"}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default async function ChaosiumPage({
+  searchParams,
+}: {
+  searchParams?: ChaosiumSearchParams;
+}) {
+  const resolvedSearch = searchParams ? await searchParams : {};
+  const view = normalizeView(resolvedSearch.view);
   const belts = await loadChaosium(getPrisma());
 
+  const mainWidthClass =
+    view === "a1"
+      ? "max-w-[92rem]"
+      : view === "e2"
+        ? "max-w-[118rem]"
+        : "max-w-[106rem]";
+  const gridClass =
+    view === "a1"
+      ? "grid gap-6 md:grid-cols-2"
+      : view === "e2"
+        ? "grid gap-4 md:grid-cols-2 xl:grid-cols-4"
+        : "grid gap-5 md:grid-cols-2 2xl:grid-cols-4";
+  const heroHeightClass =
+    view === "a1"
+      ? "min-h-[34rem]"
+      : view === "e2"
+        ? "min-h-[29rem]"
+        : "min-h-[30rem]";
+  const preserveE1Metrics = view === "e1";
+
   return (
-    <main className="mx-auto w-full max-w-[106rem] space-y-8 overflow-x-hidden px-3 py-4 text-white sm:px-5 sm:py-6">
+    <main
+      data-chaosium-view={view}
+      className={`mx-auto w-full ${mainWidthClass} space-y-8 overflow-x-hidden px-3 py-4 text-white sm:px-5 sm:py-6`}
+    >
       <SpeedReadyMarker route="/chaosium" />
 
       <section className="relative overflow-hidden rounded-[2.6rem] border border-violet-200/14 bg-[radial-gradient(circle_at_50%_-10%,rgba(139,92,246,0.22),transparent_36%),radial-gradient(circle_at_12%_25%,rgba(251,191,36,0.12),transparent_22%),linear-gradient(145deg,#080d19,#080612_55%,#130711)] px-6 py-10 shadow-[0_48px_160px_rgba(0,0,0,0.52)] sm:px-8 lg:px-10">
@@ -62,13 +167,13 @@ export default async function ChaosiumPage() {
         </div>
       </section>
 
-      <section className="grid gap-5 md:grid-cols-2 2xl:grid-cols-4">
+      <section className={gridClass}>
         {belts.map((belt) => (
           <article
             key={belt.id}
             className="relative overflow-hidden rounded-[2.1rem] border border-white/10 bg-[linear-gradient(180deg,rgba(15,23,42,0.92),rgba(3,7,18,0.99))] shadow-[0_28px_100px_rgba(0,0,0,0.34)]"
           >
-            <div className="relative min-h-[30rem] overflow-hidden border-b border-white/8">
+            <div className={`relative ${heroHeightClass} overflow-hidden border-b border-white/8`}>
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_22%,rgba(251,191,36,0.12),transparent_40%)]" />
 
               {belt.currentHolderAvatarUrl ? (
@@ -120,39 +225,30 @@ export default async function ChaosiumPage() {
                 </div>
               )}
 
-              <div className="absolute bottom-5 left-5 right-5 z-20">
-                <div className="text-[10px] font-black uppercase tracking-[0.26em] text-amber-100/65">
+              <div className="absolute bottom-5 left-5 right-5 z-20 min-w-0">
+                <div className="truncate text-[10px] font-black uppercase tracking-[0.24em] text-amber-100/65">
                   {belt.displayName}
                 </div>
                 {belt.currentHolderHref ? (
                   <Link
                     href={belt.currentHolderHref}
-                    className="mt-1 block font-serif text-4xl font-semibold tracking-[-0.035em] text-white transition hover:text-amber-100"
+                    className={`mt-1 block max-w-full whitespace-nowrap font-serif font-semibold text-white transition hover:text-amber-100 ${holderNameClass(belt.currentHolder)}`}
                   >
                     {belt.currentHolder}
                   </Link>
                 ) : (
-                  <div className="mt-1 font-serif text-4xl font-semibold tracking-[-0.035em] text-white">
+                  <div
+                    className={`mt-1 max-w-full whitespace-nowrap font-serif font-semibold text-white ${holderNameClass(belt.currentHolder || "Vacant")}`}
+                  >
                     {belt.currentHolder || "Vacant"}
                   </div>
                 )}
 
-                <div className="mt-3 grid grid-cols-3 gap-2">
-                  <div className="rounded-xl border border-white/8 bg-black/36 px-3 py-2 backdrop-blur-sm">
-                    <div className="text-[8px] uppercase tracking-[0.18em] text-slate-500">Battles</div>
-                    <div className="mt-1 font-semibold">{belt.totalMatches ?? "—"}</div>
-                  </div>
-                  <div className="rounded-xl border border-white/8 bg-black/36 px-3 py-2 backdrop-blur-sm">
-                    <div className="text-[8px] uppercase tracking-[0.18em] text-slate-500">Record</div>
-                    <div className="mt-1 font-semibold">{belt.currentRecord ?? "—"}</div>
-                  </div>
-                  <div className="rounded-xl border border-white/8 bg-black/36 px-3 py-2 backdrop-blur-sm">
-                    <div className="text-[8px] uppercase tracking-[0.18em] text-slate-500">Rating</div>
-                    <div className="mt-1 whitespace-nowrap font-semibold">
-                      {belt.rating != null ? `${belt.rating} ${belt.ratingLabel ?? ""}` : "—"}
-                    </div>
-                  </div>
-                </div>
+                {preserveE1Metrics ? (
+                  <PreservedE1Metrics belt={belt} />
+                ) : (
+                  <CorrectedMetrics belt={belt} />
+                )}
               </div>
             </div>
 
@@ -197,12 +293,14 @@ export default async function ChaosiumPage() {
                         )}
                       </div>
 
-                      <div className={`rounded-[1rem] border px-3 py-3 ${
-                        entry.current
-                          ? "border-emerald-200/16 bg-emerald-300/[0.045]"
-                          : "border-white/7 bg-white/[0.018]"
-                      }`}>
-                        <div className="flex items-start gap-3">
+                      <div
+                        className={`min-w-0 rounded-[1rem] border px-3 py-3 ${
+                          entry.current
+                            ? "border-emerald-200/16 bg-emerald-300/[0.045]"
+                            : "border-white/7 bg-white/[0.018]"
+                        }`}
+                      >
+                        <div className="flex min-w-0 items-start gap-3">
                           {entry.avatarUrl && entry.kind === "holder" ? (
                             <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl border border-white/10 bg-black/30">
                               <Image
@@ -224,16 +322,21 @@ export default async function ChaosiumPage() {
                             </div>
                           )}
 
-                          <div className="min-w-0">
+                          <div className="min-w-0 flex-1">
                             {entry.href ? (
-                              <Link href={entry.href} className="font-semibold text-white hover:text-amber-100">
+                              <Link
+                                href={entry.href}
+                                className="block truncate font-semibold leading-tight text-white hover:text-amber-100"
+                              >
                                 {entry.name}
                               </Link>
                             ) : (
-                              <div className="font-semibold text-slate-300">{entry.name}</div>
+                              <div className="font-semibold leading-tight text-slate-300">
+                                {entry.name}
+                              </div>
                             )}
-                            <div className="mt-1 text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                              {entry.eventType}
+                            <div className="mt-1 break-words text-[9px] font-bold uppercase leading-4 tracking-[0.1em] text-slate-500">
+                              {lineageEventLabel(entry.eventType)}
                             </div>
                             <div className="mt-1 text-xs text-slate-600">
                               {dateLabel(entry.at)}
@@ -261,6 +364,8 @@ export default async function ChaosiumPage() {
           </article>
         ))}
       </section>
+
+      <ChaosiumDisplayRail active={view} />
     </main>
   );
 }

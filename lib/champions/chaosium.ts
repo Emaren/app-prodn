@@ -3,6 +3,7 @@ import { featuredAvatarCardUrlForUser } from "@/lib/avatarAssets";
 import { loadChampionTitleEconomyState } from "@/lib/champions/titleState";
 import { loadPublicPlayerDirectory } from "@/lib/publicPlayerDirectory";
 import { seededTrophyDefinition } from "@/lib/trophies/service";
+import { managedMediaPublicUrl } from "@/lib/managedMediaAssets";
 
 const CHAOSIUM_TITLE_IDS = [
   "chaos",
@@ -46,6 +47,8 @@ export type ChaosiumBelt = {
   losses: number | null;
   rating: number | null;
   ratingLabel: string | null;
+  dmRating: number | null;
+  rmRating: number | null;
   holderSince: string | null;
   lineage: ChaosiumLineageEntry[];
 };
@@ -217,6 +220,15 @@ export async function loadChaosium(prisma: PrismaClient): Promise<ChaosiumBelt[]
       const previousIdentity = holderIdentity(previousHolder.uid, previousName);
       if (!previousIdentity) continue;
 
+      // A holder-preserving assignment/reassignment is not a new reign.
+      // Chaosium is a custody lineage, so only holder-changing transitions
+      // create a historical reign card. This also prevents an origin-day
+      // self-assignment from duplicating the first holder beside Origin.
+      if (toIdentity && previousIdentity === toIdentity) {
+        lineageCursor = previousIdentity;
+        continue;
+      }
+
       const player =
         directory.allEntries.find(
           (entry) =>
@@ -263,14 +275,13 @@ export async function loadChaosium(prisma: PrismaClient): Promise<ChaosiumBelt[]
       });
     }
 
-    const rating =
-      holderPlayer?.steamRmRating ??
-      holderPlayer?.steamDmRating ??
-      null;
+    const rmRating = holderPlayer?.steamRmRating ?? null;
+    const dmRating = holderPlayer?.steamDmRating ?? null;
+    const rating = rmRating ?? dmRating;
     const ratingLabel =
-      holderPlayer?.steamRmRating != null
+      rmRating != null
         ? "RM"
-        : holderPlayer?.steamDmRating != null
+        : dmRating != null
           ? "DM"
           : null;
 
@@ -279,7 +290,7 @@ export async function loadChaosium(prisma: PrismaClient): Promise<ChaosiumBelt[]
       displayName: title.displayName,
       shortName: title.shortName,
       routeHref: title.routeHref,
-      assetUrl: title.assetUrl,
+      assetUrl: managedMediaPublicUrl("belt", title.id, title.assetUrl),
       status: title.status,
       currentHolder: holderName,
       currentHolderUid: holder?.uid ?? holderPlayer?.uid ?? null,
@@ -299,6 +310,8 @@ export async function loadChaosium(prisma: PrismaClient): Promise<ChaosiumBelt[]
       losses: holderPlayer?.losses ?? null,
       rating,
       ratingLabel,
+      dmRating,
+      rmRating,
       holderSince: title.holderSince ?? null,
       lineage,
     }];
