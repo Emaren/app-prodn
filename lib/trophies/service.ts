@@ -21,6 +21,7 @@ import { reconcileDailyTrophyTribute } from "@/lib/trophies/dailyTributePolicy";
 import {
   CHAMPIONSHIP_BELT_MIRROR_NOTE,
   CHAMPIONSHIP_BELT_MIRROR_NOTES,
+  reconcileChampionshipBeltHonorMirrors,
 } from "@/lib/trophies/beltHonorMirror";
 import type {
   TrophyCommandSnapshot,
@@ -1381,6 +1382,11 @@ export async function ensureTrophySeedData(prisma: PrismaClient) {
       displayOnProfile: true,
     },
   });
+
+  // Belt chips are read-model projections only. Rebuild them from live
+  // championship custody so historical pre-unification rows can never make
+  // User Command disagree with Trophy Command.
+  await reconcileChampionshipBeltHonorMirrors(prisma);
 }
 
 const publicTrophySeedEnsureByClient =
@@ -1482,6 +1488,23 @@ function trophyDefinitionForRow(trophyId: string) {
     championDefinitionForTrophyId(trophyId) ??
     allChampionTitles.find((title) => title.id === trophyId) ??
     null
+  );
+}
+
+export function trophyPresentationAssetUrl(input: {
+  trophyId: string;
+  kind?: string | null;
+  nftImageUri?: string | null;
+}) {
+  const definition = trophyDefinitionForRow(input.trophyId);
+  const assetKind = input.kind === "artifact" ? "artifact" : "belt";
+
+  // Managed media is the live visual authority. Persisted nftImageUri remains
+  // chain/provenance evidence, but it must not pin UI surfaces to stale art.
+  return managedMediaPublicUrl(
+    assetKind,
+    definition?.id || input.trophyId,
+    definition?.assetUrl || input.nftImageUri || null,
   );
 }
 
@@ -2064,11 +2087,11 @@ export async function loadUserTrophyHoldings(
         bountyGrowthWolo: trophy.bountyGrowthWolo,
         currentBountyWolo: projectedTrophyBounty(trophy),
         routeHref: definition?.routeHref || "/champions",
-        assetUrl: managedMediaPublicUrl(
-          assetKind,
-          definition?.id || trophy.trophyId,
-          trophy.nftImageUri || definition?.assetUrl
-        ),
+        assetUrl: trophyPresentationAssetUrl({
+          trophyId: trophy.trophyId,
+          kind: assetKind,
+          nftImageUri: trophy.nftImageUri,
+        }),
         holderSince: trophy.holderSince?.toISOString() ?? null,
         status: trophy.status,
         chainStatus: trophy.chainStatus,
