@@ -1375,7 +1375,6 @@ function ExtremeFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] }) 
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4 xl:gap-4">
           {visibleWarriors.map((warrior, index) => {
-            const avatarSrc = featuredWarriorImageSrc(warrior);
             return (
               <Link
                 key={index}
