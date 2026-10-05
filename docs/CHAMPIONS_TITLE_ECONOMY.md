@@ -62,18 +62,31 @@ operator intents until a future Warbound chain module exists.
   because it is not a national title. Holder identity and live player stats
   remain projections of the same title/player authorities, never a second
   handwritten custody table.
-- `/chaosium` is the belt-lineage projection for Chaos, Canada, United States,
-  and Mexico. Current custody comes from Champion/Trophy authority. Historical
-  reigns come from holder-changing `TrophyEvent` rows, preserving repeated
-  reigns when a warrior later regains the same title while holder-preserving
-  assignment/reassignment events do not create duplicate reign cards. The
-  belt's persisted `createdAt` is the origin marker. Belt art resolves through
-  the managed-media belt target before falling back to the static title asset.
-  Presentation is versioned: B1 is the public default, A1 is the roomier
-  alternative, E1 preserves the prior three-metric card composition, and E2 is
-  the corrected dense four-column composition. The bottom Display rail exposes
-  B/A/E families and the exact B1/A1/E1/E2 versions so visual experiments remain
-  reversible and attributable.
+- `/chaosium` is the belt-lineage projection for the complete championship
+  belt catalog rather than a four-title showcase. Current custody comes from
+  Champion/Trophy authority; holder-changing `TrophyEvent` rows form the
+  historical road and holder-preserving assignment/reassignment events do not
+  create duplicate reign cards. Trophy `createdAt` remains the origin marker.
+  National/regional standards consume the same canonical catalog and managed
+  media targets as Champions, while mode, team, ELO, World, Women's, and Chaos
+  standards consume their live title definitions. Designation artifacts and
+  the legacy generic tag-team placeholder are not duplicated into the belt
+  museum.
+- Chaosium ordering is operational chronology: belts with current custody lead,
+  newest custody activity first, and vacant standards follow in stable catalog
+  order. The museum is one horizontal native-scroll rail with pointer drag,
+  trackpad/swipe, keyboard arrows, invisible edge-click zones, and quiet
+  edge-hover auto-glide.
+- Every belt card shares one fixed road viewport and one bottom-aligned Open
+  Championship footer. Current custody is anchored at the top. Historical
+  transfers and origin markers use a shared, compressed semi-proportional time
+  scale, so an older June 19 origin renders slightly below June 28 without
+  allowing multi-year history to create absurd card heights. Per-belt roads
+  vertically scroll when collision-safe event spacing exceeds that viewport.
+- Presentation remains versioned and reversible. E2 is the public frontier
+  default; B1 and A1 remain alternate density/composition treatments and E1
+  preserves the prior three-metric card composition. The Display rail exposes
+  B/A/E families plus exact B1/A1/E1/E2 provenance.
 - The world map may also show explicit planned-country placeholders before a
   Trophy definition or belt asset exists. Those placeholders are roadmap
   visualization only: they have no holder, Tribute, bounty, challenge right, or
