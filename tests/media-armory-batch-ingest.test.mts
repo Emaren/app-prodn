@@ -16,6 +16,10 @@ const championState = fs.readFileSync(
   "lib/champions/championsV2.ts",
   "utf8",
 );
+const nationalCatalog = fs.readFileSync(
+  "lib/champions/nationalBeltCatalog.ts",
+  "utf8",
+);
 
 test("Media Armory exposes a one-shot ZIP batch lane", () => {
   assert.match(admin, /Batch asset pack/);
@@ -61,6 +65,7 @@ test("Champions V2 can blend cinematic and regional belt pack entries", () => {
   assert.match(champions, /saudi-arabia/);
   assert.match(champions, /taiwan/);
   assert.match(champions, /Regional crown/);
-  assert.match(championState, /regional-norse/);
-  assert.match(championState, /regional-southeast-asia/);
+  assert.match(championState, /CHAMPIONS_NATIONAL_BELT_CATALOG/);
+  assert.match(nationalCatalog, /regional-norse/);
+  assert.match(nationalCatalog, /regional-southeast-asia/);
 });
