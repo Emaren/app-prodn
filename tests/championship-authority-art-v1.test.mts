@@ -29,6 +29,9 @@ test("Trophy custody is the only current-champion authority for User Command mir
   assert.match(mirror, /championshipCustodyReign\.findMany/);
   assert.match(mirror, /where: \{ endedAt: null \}/);
   assert.match(mirror, /explicitHolderIdsByTrophyId/);
+  assert.match(mirror, /canonicalLabels/);
+  assert.match(mirror, /label: \{ startsWith: "Belt: " \}/);
+  assert.match(mirror, /NOT: \{ label: \{ in: canonicalLabels \} \}/);
   assert.match(mirror, /trophy\.status === "held" \|\| trophy\.status === "active"/);
   assert.match(mirror, /syncChampionshipBeltHonorMirror\(tx/);
 
