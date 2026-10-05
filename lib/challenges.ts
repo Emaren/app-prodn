@@ -2,6 +2,7 @@
 import { loadChampionshipProjectionMap, reconcileChampionshipEvidence, type ChampionshipChallengeProjection } from "@/lib/championshipChallenges";
 import { CHAMPIONSHIP_PROTOCOL_VERSION } from "@/lib/challengeChampionshipProtocol";
 import { acquireChampionshipTitleLock } from "@/lib/trophies/championship";
+import { syncChampionshipBeltHonorMirror } from "@/lib/trophies/beltHonorMirror";
 import { lockTrophyMoneyState } from "@/lib/trophies/service";
 import { CHALLENGE_NOTE_MAX_CHARS } from "@/lib/challengeConfig";
 import {
@@ -1881,6 +1882,16 @@ async function recordVerifiedScheduledMatchTitleResults(
             if (review.count === 0) return;
             return;
           }
+
+          // This legacy automatic solo-transfer path predates the unified
+          // championship-custody command. Keep its user-facing Belt mirror in
+          // the same transaction so User Command and Trophy Command cannot
+          // diverge after a verified title result.
+          await syncChampionshipBeltHonorMirror(tx, {
+            displayName: titleChallenge.trophy.displayName,
+            holderUserIds: [winner.id],
+            now: completedAt,
+          });
         }
 
         const settled = await tx.trophyChallenge.updateMany({
