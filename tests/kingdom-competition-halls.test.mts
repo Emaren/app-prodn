@@ -8,7 +8,7 @@ const chaosium = fs.readFileSync("lib/champions/chaosium.ts", "utf8");
 const chaosiumPage = fs.readFileSync("app/chaosium/page.tsx", "utf8");
 const chaosiumDisplayRail = fs.readFileSync("components/chaosium/ChaosiumDisplayRail.tsx", "utf8");
 const chaosiumBeltRail = fs.readFileSync("components/chaosium/ChaosiumBeltRail.tsx", "utf8");
-const championsV2 = fs.readFileSync("lib/champions/championsV2.ts", "utf8");
+const nationalBeltCatalog = fs.readFileSync("lib/champions/nationalBeltCatalog.ts", "utf8");
 const leagues = fs.readFileSync("lib/leagues.ts", "utf8");
 const leagueApi = fs.readFileSync("app/api/leagues/route.ts", "utf8");
 const leagueQuote = fs.readFileSync("app/api/leagues/quote/route.ts", "utf8");
@@ -45,7 +45,8 @@ test("Chaosium reads canonical Trophy lineage and the complete Champions belt ca
   assert.match(chaosium, /title\.id !== "tag-team"/);
   assert.match(chaosium, /return belts\.sort/);
   assert.match(chaosium, /if \(leftHeld !== rightHeld\) return leftHeld \? -1 : 1/);
-  assert.match(championsV2, /export const CHAMPIONS_NATIONAL_BELT_CATALOG/);
+  assert.match(nationalBeltCatalog, /export const CHAMPIONS_NATIONAL_BELT_CATALOG/);
+  assert.equal((nationalBeltCatalog.match(/slug: /g) ?? []).length, 42);
 });
 
 test("Chaosium E2 is the frontier default while B1 A1 and E1 stay directly recoverable", () => {
