@@ -423,9 +423,17 @@ def archive_project_from_finding(detail: str) -> str | None:
 def certified_source_ready(
     release_data: dict[str, Any],
 ) -> tuple[bool, str, str | None]:
-    """Prove that intended Git source is the active certified production source."""
+    """Prove the source identity that owns the active certified runtime.
+
+    A documentation-only Git descendant is allowed to remain ahead of the
+    runtime source only when the release collector has independently proven
+    `production_implementation_equivalent=true`. In that case the generated
+    control maps must remain bound to the active certified runtime SHA rather
+    than falsely claiming the documentation commit was deployed.
+    """
     local = release_data.get("local")
     github = release_data.get("github")
+    documentation = release_data.get("documentation")
     production = release_data.get("production")
     certification = release_data.get("certification")
     if not all(
@@ -434,20 +442,32 @@ def certified_source_ready(
     ):
         return False, "release evidence is incomplete", None
 
-    intended = github.get("main_sha")
-    if not isinstance(intended, str) or re.fullmatch(r"[0-9a-f]{40}", intended) is None:
+    git_source = github.get("main_sha")
+    if not isinstance(git_source, str) or re.fullmatch(r"[0-9a-f]{40}", git_source) is None:
         return False, "GitHub source is unresolved", None
-    if local.get("head") != intended:
-        return False, "local and GitHub source are not exact", intended
+    if local.get("head") != git_source:
+        return False, "local and GitHub source are not exact", git_source
     if local.get("dirty_count") != 0:
-        return False, "local source worktree is not clean", intended
+        return False, "local source worktree is not clean", git_source
     if not production.get("reachable"):
-        return False, "production inspection is unavailable", intended
-    if production.get("source_sha") != intended:
+        return False, "production inspection is unavailable", git_source
+
+    runtime_source = production.get("source_sha")
+    if not isinstance(runtime_source, str) or re.fullmatch(r"[0-9a-f]{40}", runtime_source) is None:
+        return False, "production source is unresolved", git_source
+
+    docs_only_descendant = bool(
+        runtime_source != git_source
+        and isinstance(documentation, dict)
+        and documentation.get("production_implementation_equivalent") is True
+    )
+    intended = runtime_source if docs_only_descendant else git_source
+
+    if runtime_source != intended:
         return (
             False,
             "production is not yet at intended Git source; defer until post-deploy",
-            intended,
+            git_source,
         )
     if production.get("dirty_count") != 0:
         return False, "production source worktree is not clean", intended
@@ -475,8 +495,15 @@ def certified_source_ready(
         return False, "protected Wolo listener 8092 count is not exactly 1", intended
     if production.get("wolo_8093_count") != 1:
         return False, "protected Wolo listener 8093 count is not exactly 1", intended
-    return True, "exact intended source is active and receipt-certified", intended
 
+    if docs_only_descendant:
+        return (
+            True,
+            "documentation-only Git descendant is implementation-equivalent; "
+            "control state remains bound to active certified runtime source",
+            intended,
+        )
+    return True, "exact intended source is active and receipt-certified", intended
 
 def bounded_control_source(
     path: Path,

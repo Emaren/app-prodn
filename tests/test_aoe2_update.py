@@ -641,6 +641,35 @@ class UpdateCommandTests(unittest.TestCase):
         self.assertEqual(source, "c" * 40)
         self.assertIn("defer until post-deploy", reason)
 
+    def test_certified_source_ready_accepts_proven_docs_only_descendant(self):
+        docs_ahead = certified_release("a" * 40)
+        docs_ahead["local"]["head"] = "c" * 40
+        docs_ahead["github"]["main_sha"] = "c" * 40
+        docs_ahead["documentation"] = {
+            "production_implementation_equivalent": True,
+        }
+
+        ready, reason, source = MODULE.certified_source_ready(docs_ahead)
+
+        self.assertTrue(ready, reason)
+        self.assertEqual(source, "a" * 40)
+        self.assertIn("implementation-equivalent", reason)
+
+    def test_certified_source_ready_does_not_trust_docs_only_flag_without_certification(self):
+        docs_ahead = certified_release("a" * 40)
+        docs_ahead["local"]["head"] = "c" * 40
+        docs_ahead["github"]["main_sha"] = "c" * 40
+        docs_ahead["documentation"] = {
+            "production_implementation_equivalent": True,
+        }
+        docs_ahead["certification"]["release_sha"] = "b" * 40
+
+        ready, reason, source = MODULE.certified_source_ready(docs_ahead)
+
+        self.assertFalse(ready)
+        self.assertEqual(source, "a" * 40)
+        self.assertIn("certified receipt source", reason)
+
     def test_estate_map_plan_refreshes_only_certified_intended_source(self):
         with tempfile.TemporaryDirectory() as temporary:
             base = pathlib.Path(temporary)
@@ -683,6 +712,20 @@ class UpdateCommandTests(unittest.TestCase):
                 vpssentry=vpssentry,
             )
             self.assertEqual(deferred["status"], "deferred")
+
+            docs_only_release = certified_release()
+            docs_only_release["local"]["head"] = "c" * 40
+            docs_only_release["github"]["main_sha"] = "c" * 40
+            docs_only_release["documentation"] = {
+                "production_implementation_equivalent": True,
+            }
+            docs_only = MODULE.estate_map_refresh_plan(
+                docs_only_release,
+                vpssentry=vpssentry,
+            )
+            self.assertEqual(docs_only["status"], "refresh")
+            self.assertEqual(docs_only["intended_source_sha"], "a" * 40)
+            self.assertEqual(docs_only["current_source_sha"], "d" * 40)
 
     def test_historical_closure_ledger_is_excluded_from_living_source_convergence(self):
         with tempfile.TemporaryDirectory() as temporary:

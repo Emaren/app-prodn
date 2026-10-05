@@ -41,7 +41,11 @@ consumer; current or ambiguous stages remain preserved.
    blindly require the production checkout to equal a newer documentation snapshot HEAD.
    A production checkout may sit anywhere from the implementation baseline through the
    current documentation-only descendant chain, provided the entire interval is proven
-   documentation-owned and ancestry remains exact.
+   documentation-owned and ancestry remains exact. Generated current-state control maps
+   must bind to the active certified runtime SHA in this case; they must not falsely claim
+   that the newer documentation-only HEAD was deployed. A forced post-release control
+   refresh therefore accepts the same independently proven
+   `production_implementation_equivalent` authority used by Finish's deploy decision.
 3. The release SHA and implementation SHA are distinct identities when the
    generated documentation-baseline commit follows implementation.
 4. Production builds occur in a disposable detached Git worktree. Staging
