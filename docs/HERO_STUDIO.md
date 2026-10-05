@@ -122,6 +122,7 @@ type without another template-specific database migration.
 - tab-visibility pause
 - reduced-motion fallback
 - stable responsive stage height
+- persistent two-slot render buffers: the visible Hero surface is never remounted at a slide boundary; the next screen is prepared in the inactive slot before the slots trade visibility
 - the five transition presets
 
 The transition keys are:

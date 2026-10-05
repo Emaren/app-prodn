@@ -61,6 +61,15 @@ const HERO_LANGUAGE_VISIBILITY_STORAGE_KEY =
 
 const heroStudioDecodeCache = new Map<string, Promise<void>>();
 
+type HeroSlot = 0 | 1;
+
+type PendingHeroMove = {
+  slot: HeroSlot;
+  index: number;
+  direction: number;
+  itemId: number;
+};
+
 function decodeHeroStudioImage(src: string) {
   if (typeof window === "undefined" || !src) return Promise.resolve();
 
@@ -110,13 +119,6 @@ export function HeroCarousel({
   const reducedMotion = useReducedMotion();
   const [hiddenByGroup, setHiddenByGroup] =
     useState<HeroHiddenLanguageByGroup>({});
-  const [index, setIndex] = useState(0);
-  const [direction, setDirection] = useState(1);
-  const [previousItem, setPreviousItem] = useState<HeroPlaylistItemView | null>(null);
-  const [interactionPaused, setInteractionPaused] = useState(false);
-  const [documentHidden, setDocumentHidden] = useState(false);
-  const [cycle, setCycle] = useState(0);
-  const pointerStart = useRef<number | null>(null);
   const arrangedItems = useMemo(
     () =>
       preview
@@ -134,9 +136,25 @@ export function HeroCarousel({
         : filterHeroItemsByVisibility(arrangedItems, hiddenByGroup),
     [arrangedItems, hiddenByGroup, preview]
   );
+  const [index, setIndex] = useState(0);
+  const [direction, setDirection] = useState(1);
+  const [activeSlot, setActiveSlot] = useState<HeroSlot>(0);
+  const [slotItems, setSlotItems] = useState<
+    [HeroPlaylistItemView | null, HeroPlaylistItemView | null]
+  >(() => [items[0] || null, items[1] || items[0] || null]);
+  const [pendingMove, setPendingMove] = useState<PendingHeroMove | null>(null);
+  const [transitioning, setTransitioning] = useState(false);
+  const [interactionPaused, setInteractionPaused] = useState(false);
+  const [documentHidden, setDocumentHidden] = useState(false);
+  const [cycle, setCycle] = useState(0);
+  const pointerStart = useRef<number | null>(null);
+  const transitionLocked = useRef(false);
   const hasMultiple = items.length > 1;
   const current = items[index] || items[0];
   const settings = playlist.playlist;
+  const transitionStyle = reducedMotion ? "cut" : settings.transitionStyle;
+  const transitionSeconds =
+    transitionStyle === "cut" ? 0 : settings.transitionDurationMs / 1000;
   const currentHeroImageUrl = current ? heroScreenPreloadUrl(current) : "";
   const nextHeroItem =
     items.length > 1 ? items[(index + 1) % items.length] : null;
@@ -158,14 +176,14 @@ export function HeroCarousel({
     }
   }, [currentHeroImageUrl, nextHeroImageUrl]);
 
-  const imageFit =
-    presentation === "advanced" ||
-    current?.screen.config.imageFit === "contain"
-      ? "contain"
-      : "cover";
-  const previousImageFit =
-    presentation === "advanced" ||
-    previousItem?.screen.config.imageFit === "contain"
+  const slotUsesContain = slotItems.some(
+    (item) =>
+      presentation === "advanced" ||
+      item?.screen.config.imageFit === "contain"
+  );
+
+  const fitForItem = (item: HeroPlaylistItemView | null) =>
+    presentation === "advanced" || item?.screen.config.imageFit === "contain"
       ? "contain"
       : "cover";
 
@@ -182,6 +200,21 @@ export function HeroCarousel({
   useEffect(() => {
     if (index >= items.length) setIndex(0);
   }, [index, items.length]);
+
+  useEffect(() => {
+    if (!current || transitioning || pendingMove) return;
+    const activeItem = slotItems[activeSlot];
+    if (activeItem?.screen.id === current.screen.id) return;
+
+    setSlotItems((slots) => {
+      const next = [...slots] as [
+        HeroPlaylistItemView | null,
+        HeroPlaylistItemView | null,
+      ];
+      next[activeSlot] = current;
+      return next;
+    });
+  }, [activeSlot, current, pendingMove, slotItems, transitioning]);
 
   useEffect(() => {
     if (preview) return;
@@ -269,7 +302,7 @@ export function HeroCarousel({
 
   const move = useCallback(
     (nextDirection: number) => {
-      if (!hasMultiple) return;
+      if (!hasMultiple || transitionLocked.current) return;
 
       const currentIndex = index >= 0 && index < items.length ? index : 0;
       const nextIndex =
@@ -278,14 +311,61 @@ export function HeroCarousel({
           : currentIndex + nextDirection >= items.length
             ? 0
             : currentIndex + nextDirection;
+      const nextItem = items[nextIndex];
+      if (!nextItem) return;
 
-      setPreviousItem(items[currentIndex] || null);
+      const targetSlot: HeroSlot = activeSlot === 0 ? 1 : 0;
+      const targetUrl = heroScreenPreloadUrl(nextItem);
+
+      transitionLocked.current = true;
+      setTransitioning(true);
       setDirection(nextDirection);
-      setIndex(nextIndex);
-      setCycle((value) => value + 1);
+
+      const prepared = targetUrl
+        ? decodeHeroStudioImage(targetUrl).catch(() => undefined)
+        : Promise.resolve();
+
+      void prepared.then(() => {
+        setSlotItems((slots) => {
+          const next = [...slots] as [
+            HeroPlaylistItemView | null,
+            HeroPlaylistItemView | null,
+          ];
+          next[targetSlot] = nextItem;
+          return next;
+        });
+        setPendingMove({
+          slot: targetSlot,
+          index: nextIndex,
+          direction: nextDirection,
+          itemId: nextItem.screen.id,
+        });
+      });
     },
-    [hasMultiple, index, items]
+    [activeSlot, hasMultiple, index, items]
   );
+
+  useEffect(() => {
+    if (!pendingMove) return;
+    const preparedItem = slotItems[pendingMove.slot];
+    if (preparedItem?.screen.id !== pendingMove.itemId) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      setIndex(pendingMove.index);
+      setDirection(pendingMove.direction);
+      setActiveSlot(pendingMove.slot);
+      setPendingMove(null);
+      setCycle((value) => value + 1);
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [pendingMove, slotItems]);
+
+  useEffect(() => {
+    if (!transitioning || pendingMove || transitionSeconds !== 0) return;
+    transitionLocked.current = false;
+    setTransitioning(false);
+  }, [activeSlot, pendingMove, transitionSeconds, transitioning]);
 
   useEffect(() => {
     if (
@@ -293,6 +373,7 @@ export function HeroCarousel({
       !hasMultiple ||
       !settings.autoplay ||
       paused ||
+      transitioning ||
       !current
     ) {
       return;
@@ -309,6 +390,7 @@ export function HeroCarousel({
     preview,
     settings.autoplay,
     settings.defaultDurationMs,
+    transitioning,
   ]);
 
   if (!current) return null;
@@ -327,9 +409,6 @@ export function HeroCarousel({
       ? hiddenPairLanguage
       : null;
 
-  const transitionStyle = reducedMotion ? "cut" : settings.transitionStyle;
-  const transitionSeconds =
-    transitionStyle === "cut" ? 0 : settings.transitionDurationMs / 1000;
   const pauseForInteraction = settings.pauseOnHover
     ? {
         onMouseEnter: () => setInteractionPaused(true),
@@ -359,7 +438,7 @@ export function HeroCarousel({
         if (Math.abs(distance) > 72) move(distance > 0 ? -1 : 1);
       }}
     >
-      {imageFit === "contain" || previousImageFit === "contain" ? (
+      {slotUsesContain ? (
         <style>{`
           .aoe2-hero-fit-contain img.object-cover,
           .aoe2-hero-fit-contain video.object-cover {
@@ -375,36 +454,55 @@ export function HeroCarousel({
         `}</style>
       ) : null}
 
-      {previousItem ? (
-        <div
-          data-hero-carousel-underlay
-          className="pointer-events-none absolute inset-0 z-0"
-          aria-hidden="true"
-          inert
-        >
-          <div className={previousImageFit === "contain" ? "aoe2-hero-fit-contain h-full w-full bg-black" : "h-full w-full"}>
-            <HeroScreenRenderer item={previousItem} />
-          </div>
-        </div>
-      ) : null}
+      {([0, 1] as const).map((slot) => {
+        const item = slotItems[slot];
+        if (!item) return null;
 
-      <motion.div
-        key={`${current.screen.id}-${index}-${cycle}`}
-        data-hero-carousel-active
-        className="absolute inset-0 z-10"
-        initial={cycle === 0 ? false : motionState(transitionStyle, direction, "initial")}
-        animate={motionState(transitionStyle, direction, "animate")}
-        transition={{
-          duration: transitionSeconds,
-          ease: [0.22, 1, 0.36, 1],
-        }}
-        aria-roledescription="slide"
-        aria-label={`${index + 1} of ${items.length}: ${current.screen.name}`}
-      >
-        <div className={imageFit === "contain" ? "aoe2-hero-fit-contain h-full w-full bg-black" : "h-full w-full"}>
-          <HeroScreenRenderer item={current} />
-        </div>
-      </motion.div>
+        const isActive = slot === activeSlot;
+        const fit = fitForItem(item);
+
+        return (
+          <motion.div
+            key={`hero-buffer-${slot}`}
+            data-hero-carousel-buffer={slot}
+            data-hero-carousel-active={isActive ? "true" : "false"}
+            className={`absolute inset-0 ${isActive ? "z-10" : "pointer-events-none z-0"}`}
+            initial={false}
+            animate={motionState(
+              transitionStyle,
+              direction,
+              isActive ? "animate" : "initial"
+            )}
+            transition={{
+              duration: transitionSeconds,
+              ease: [0.22, 1, 0.36, 1],
+            }}
+            aria-hidden={!isActive}
+            inert={!isActive ? true : undefined}
+            aria-roledescription={isActive ? "slide" : undefined}
+            aria-label={
+              isActive
+                ? `${index + 1} of ${items.length}: ${item.screen.name}`
+                : undefined
+            }
+            onAnimationComplete={() => {
+              if (!isActive || !transitionLocked.current) return;
+              transitionLocked.current = false;
+              setTransitioning(false);
+            }}
+          >
+            <div
+              className={
+                fit === "contain"
+                  ? "aoe2-hero-fit-contain h-full w-full bg-black"
+                  : "h-full w-full"
+              }
+            >
+              <HeroScreenRenderer item={item} />
+            </div>
+          </motion.div>
+        );
+      })}
 
       {!preview && variantPair ? (
         <button

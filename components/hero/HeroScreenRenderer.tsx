@@ -366,7 +366,7 @@ function MediaTakeover({ item }: { item: HeroPlaylistItemView }) {
             alt={item.screen.ariaLabel || item.screen.name || "AoE2WAR hero image"}
             loading="eager"
             fetchPriority="high"
-            decoding="async"
+            decoding="sync"
             className={`absolute inset-0 h-full w-full ${fitClass}`}
             draggable={false}
           />

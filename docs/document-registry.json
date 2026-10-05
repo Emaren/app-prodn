@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "fdf592cadd6611d0e58f7a4319d6f55d4fbb34ab2509f55436ada0efc6c77c54",
+      "sha256": "d1ed8596eac69bab87ade91a1accc535230267052d0c6badecb1dfe479a3e45a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -803,7 +803,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-10-04",
       "sensitivity": "internal",
-      "sha256": "cc9f868ba6392335d50f9449ef5810c875458049e73288dea1dc5d516010c02c",
+      "sha256": "39c1c5ab57b164aaded1ca4cf6887b4ea35c5503d4dd46a7973133cb4ecc37e0",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2025,8 +2025,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/hero-studio-flicker-final-20261005",
-    "commit": "c805309e37d491d3b82cc6278f48a588abfeed01"
+    "branch": "fix/hero-studio-persistent-double-buffer-20261005",
+    "commit": "c5db3f155f0b10a6cabca95dd287b6b9cb4517d3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

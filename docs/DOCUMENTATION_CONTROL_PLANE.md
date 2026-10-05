@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/hero-studio-flicker-final-20261005` at `c805309e37d491d3b82cc6278f48a588abfeed01`
+Implementation baseline: `fix/hero-studio-persistent-double-buffer-20261005` at `c5db3f155f0b10a6cabca95dd287b6b9cb4517d3`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
