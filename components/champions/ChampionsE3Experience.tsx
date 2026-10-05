@@ -29,6 +29,8 @@ import type { TitleContender } from "@/lib/champions/titles";
 
 const MALE_SILHOUETTE = "/champions/players/silhouette.card.webp";
 const FEMALE_SILHOUETTE = "/champions/players/female_silhouette.webp";
+const DEFERRED_CHAMPIONS_SECTION_CLASS =
+  "[content-visibility:auto] [contain-intrinsic-size:auto_1200px]";
 
 function managedMediaPublicUrl(
   kind: "belt" | "artifact",
@@ -521,7 +523,7 @@ export default function ChampionsE3Experience({ state }: { state: ChampionsV2Sta
         </div>
       </section>
 
-      <section className="space-y-5 rounded-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(0,0,0,0.22))] p-5 sm:p-6">
+      <section data-champions-deferred-section className={`${DEFERRED_CHAMPIONS_SECTION_CLASS} space-y-5 rounded-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(0,0,0,0.22))] p-5 sm:p-6`}>
         <SectionHeader icon={Users} eyebrow="War Team Championships" title="RM and DM 2v2, 3v3, and 4v4 crowns." />
         {[2, 3, 4].map((size) => {
           const rm = state.teams.rm.find((title) => title.size === size);
@@ -536,7 +538,7 @@ export default function ChampionsE3Experience({ state }: { state: ChampionsV2Sta
         })}
       </section>
 
-      <section className="space-y-4 rounded-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(0,0,0,0.22))] p-5 sm:p-6">
+      <section data-champions-deferred-section className={`${DEFERRED_CHAMPIONS_SECTION_CLASS} space-y-4 rounded-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(0,0,0,0.22))] p-5 sm:p-6`}>
         <SectionHeader icon={Globe2} eyebrow="National & Regional Champions" title="Every current E2 national standard, in the E1 grid." />
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {state.nationals.map((belt) => (
@@ -545,7 +547,7 @@ export default function ChampionsE3Experience({ state }: { state: ChampionsV2Sta
         </div>
       </section>
 
-      <section className="space-y-5 rounded-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(0,0,0,0.22))] p-5 sm:p-6">
+      <section data-champions-deferred-section className={`${DEFERRED_CHAMPIONS_SECTION_CLASS} space-y-5 rounded-[1.8rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(0,0,0,0.22))] p-5 sm:p-6`}>
         <SectionHeader icon={Medal} eyebrow="ELO Champions" title="Complete RM and DM division lineups." />
         {(["rm", "dm"] as ChampionsLane[]).map((lane) => (
           <div key={lane} className="space-y-3">
@@ -560,7 +562,7 @@ export default function ChampionsE3Experience({ state }: { state: ChampionsV2Sta
       </section>
 
       {state.designationTitles.length ? (
-        <section className="space-y-4 rounded-[1.8rem] border border-amber-200/12 bg-[radial-gradient(circle_at_0%_0%,rgba(251,191,36,0.12),transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.035),rgba(0,0,0,0.24))] p-5 sm:p-6">
+        <section data-champions-deferred-section className={`${DEFERRED_CHAMPIONS_SECTION_CLASS} space-y-4 rounded-[1.8rem] border border-amber-200/12 bg-[radial-gradient(circle_at_0%_0%,rgba(251,191,36,0.12),transparent_24%),linear-gradient(180deg,rgba(255,255,255,0.035),rgba(0,0,0,0.24))] p-5 sm:p-6`}>
           <SectionHeader icon={Gem} eyebrow="Special Designation Artifacts" title="The complete artifact cabinet." />
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {state.designationTitles.map((title) => (
