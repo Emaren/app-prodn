@@ -96,10 +96,8 @@ const MOOSE_UID = "aoe2hd-moose";
 const LEADERBOARD_LANE_PREFETCH_SIZE = 64;
 
 const FEATURED_WARRIOR_SLOT_COUNT = 4;
-const FEATURED_WARRIOR_ROTATE_MS = 3800;
-const FEATURED_WARRIOR_FIRST_ROTATE_MS = 6200;
-const FEATURED_WARRIOR_FADE_MS = 300;
-const FEATURED_WARRIOR_HOLD_MS = 60;
+const FEATURED_WARRIOR_ROTATE_MS = 12_000;
+const FEATURED_WARRIOR_FIRST_ROTATE_MS = 14_000;
 
 function AheadOfScroll({
   children,
@@ -913,7 +911,6 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
   const openingLineup = curatedFeaturedWarriorOpening(pool, false);
   const [visibleWarriors, setVisibleWarriors] = useState(openingLineup);
   const [featuredWarriorsReady, setFeaturedWarriorsReady] = useState(false);
-  const [fadingSlot, setFadingSlot] = useState<number | null>(null);
 
   const poolRef = useRef<FeaturedWarrior[]>(pool);
   const visibleWarriorsRef = useRef<FeaturedWarrior[]>(openingLineup);
@@ -950,7 +947,6 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
     transitionInFlightRef.current = false;
     lastChangedSlotRef.current = null;
     lastWarriorBySlotRef.current = {};
-    setFadingSlot(null);
     setFeaturedWarriorsReady(false);
 
     // Preserve the server-rendered deterministic opening lineup through hydration.
@@ -1047,51 +1043,24 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
             return;
           }
 
-          setFadingSlot(slot);
+          // The incoming image is fully decoded before we update the stable slot.
+          // Keep the existing card painted until that exact moment: no opacity-to-zero
+          // phase, no blank frame, and no remount-driven "Fight Club" flash.
+          setVisibleWarriors((latest) => {
+            const next = [...latest];
+            const outgoing = next[slot];
+            lastWarriorBySlotRef.current[slot] = outgoing?.key ?? null;
+            next[slot] = nextWarrior;
+            visibleWarriorsRef.current = next;
+            return next;
+          });
 
-          later(() => {
-            if (disposed || paused) {
-              transitionInFlightRef.current = false;
-              return;
-            }
+          lastChangedSlotRef.current = slot;
+          transitionInFlightRef.current = false;
 
-            setVisibleWarriors((latest) => {
-              const next = [...latest];
-              const outgoing = next[slot];
-              lastWarriorBySlotRef.current[slot] = outgoing?.key ?? null;
-              next[slot] = nextWarrior;
-              visibleWarriorsRef.current = next;
-              return next;
-            });
-
-            lastChangedSlotRef.current = slot;
-
-            later(() => {
-              if (disposed) {
-                transitionInFlightRef.current = false;
-                return;
-              }
-
-              window.requestAnimationFrame(() => {
-                window.requestAnimationFrame(() => {
-                  if (disposed) {
-                    transitionInFlightRef.current = false;
-                    return;
-                  }
-
-                  setFadingSlot(null);
-
-                  later(() => {
-                    transitionInFlightRef.current = false;
-
-                    if (!disposed) {
-                      later(rotateOnce, FEATURED_WARRIOR_ROTATE_MS);
-                    }
-                  }, FEATURED_WARRIOR_FADE_MS + 120);
-                });
-              });
-            }, FEATURED_WARRIOR_HOLD_MS);
-          }, FEATURED_WARRIOR_FADE_MS);
+          if (!disposed) {
+            later(rotateOnce, FEATURED_WARRIOR_ROTATE_MS);
+          }
         });
     };
 
@@ -1104,7 +1073,7 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
     };
   }, [paused, featuredWarriorsReady, poolSignature, clearTimers, later]);
 
-  return { visibleWarriors, fadingSlot, featuredWarriorsReady };
+  return { visibleWarriors, featuredWarriorsReady };
 }
 
 type HomePageClientProps = {
@@ -1115,7 +1084,7 @@ type HomePageClientProps = {
 
 function AdvancedFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] }) {
   const h = useHomeCopy();
-  const { visibleWarriors, fadingSlot, featuredWarriorsReady } = useRotatingFeaturedWarriors(warriors, false);
+  const { visibleWarriors } = useRotatingFeaturedWarriors(warriors, false);
 
   return (
     <section
@@ -1135,10 +1104,9 @@ function AdvancedFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] })
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {visibleWarriors.map((warrior, index) => (
             <Link
-              key={`${index}:${warrior.key}`}
+              key={index}
               href={warrior.href}
-              className={`block group relative min-h-[16rem] overflow-visible transform-gpu will-change-[opacity] transition-opacity ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 [backface-visibility:hidden] ${!featuredWarriorsReady ? "opacity-0" : fadingSlot === index ? "opacity-0" : "opacity-100"}`}
-              style={{ transitionDuration: `${FEATURED_WARRIOR_FADE_MS}ms` }}
+              className="block group relative min-h-[16rem] overflow-visible transform-gpu transition-transform duration-300 ease-out hover:-translate-y-0.5 [backface-visibility:hidden]"
             >
               <Image
                 src={featuredWarriorImageSrc(warrior)}
@@ -1148,7 +1116,7 @@ function AdvancedFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] })
                 loading="eager"
                 fetchPriority={index === 0 ? "high" : "low"}
                 unoptimized
-                className="object-contain object-top transition duration-500 ease-out group-hover:scale-[1.01] opacity-90"
+                className="object-contain object-top transition-transform duration-500 ease-out group-hover:scale-[1.01] opacity-90"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/52 via-black/8 to-transparent" />
               <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-[radial-gradient(circle_at_50%_100%,rgba(251,191,36,0.11),transparent_64%)]" />
@@ -1262,16 +1230,15 @@ function ExtremeFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] }) 
             const avatarSrc = featuredWarriorImageSrc(warrior);
             return (
               <Link
-                key={`${index}:${warrior.key}`}
+                key={index}
                 href={warrior.href}
-                className={`block group relative min-h-[16rem] overflow-visible transform-gpu will-change-[opacity] transition-opacity ease-[cubic-bezier(0.22,1,0.36,1)] hover:-translate-y-0.5 [backface-visibility:hidden] ${!featuredWarriorsReady ? "opacity-0" : fadingSlot === index ? "opacity-0" : "opacity-100"}`}
-                style={{ transitionDuration: `${FEATURED_WARRIOR_FADE_MS}ms` }}
+                className="block group relative min-h-[16rem] overflow-visible transform-gpu transition-transform duration-300 ease-out hover:-translate-y-0.5 [backface-visibility:hidden]"
               >
                 <div className="absolute inset-x-0 bottom-2 top-7 overflow-hidden rounded-[1.35rem] border border-amber-100/12 bg-slate-950/35 shadow-[inset_0_1px_0_rgba(255,255,255,0.045),0_18px_60px_rgba(0,0,0,0.24)] transition group-hover:border-amber-200/26">
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_90%,rgba(251,191,36,0.10),transparent_58%)]" />
                   <div className="absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/70 to-transparent" />
                 </div>
-                <div className={`absolute inset-x-[-12%] -top-5 bottom-6 z-10 transition duration-700 group-hover:-translate-y-1 group-hover:scale-[1.012] opacity-100`}>
+                <div className={`absolute inset-x-[-12%] -top-5 bottom-6 z-10 transition-transform duration-700 group-hover:-translate-y-1 group-hover:scale-[1.012] opacity-100`}>
                   <Image
                     src={avatarSrc}
                     alt=""
@@ -1280,7 +1247,7 @@ function ExtremeFeaturedWarriors({ warriors }: { warriors: FeaturedWarrior[] }) 
                     loading="eager"
                     fetchPriority={index === 0 ? "high" : "low"}
                     unoptimized
-                    className="object-contain object-center drop-shadow-[0_18px_34px_rgba(0,0,0,0.56)] transition duration-500 ease-out [mask-image:linear-gradient(180deg,black_0%,black_88%,transparent_100%)]"
+                    className="object-contain object-center drop-shadow-[0_18px_34px_rgba(0,0,0,0.56)] transition-transform duration-500 ease-out [mask-image:linear-gradient(180deg,black_0%,black_88%,transparent_100%)]"
                   />
                 </div>
                 <div className="absolute inset-x-4 bottom-4 z-20 rounded-xl bg-black/58 px-2.5 py-2.5 text-center shadow-[0_12px_30px_rgba(0,0,0,0.34)] backdrop-blur">
