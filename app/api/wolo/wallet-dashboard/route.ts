@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getPrisma } from "@/lib/prisma";
-import { managedMediaPublicUrl } from "@/lib/managedMediaAssets";
 import {
   loadPublicTrophies,
   projectedTrophyBounty,
   projectTrophyChallengeAuthority,
   seededTrophyDefinition,
+  trophyPresentationAssetUrl,
 } from "@/lib/trophies/service";
 import { WOLO_MAINNET_WALLET_ALIAS_BY_ADDRESS } from "@/lib/woloMainnetWallets";
 
@@ -133,11 +133,11 @@ export async function GET(request: NextRequest) {
           nftClassId: trophy.nftClassId,
           nftId: trophy.nftId,
           metadataUri: trophy.nftMetadataUri,
-          imageUri: managedMediaPublicUrl(
-            assetKind,
-            definition?.id || trophy.trophyId,
-            trophy.nftImageUri || definition?.assetUrl
-          ),
+          imageUri: trophyPresentationAssetUrl({
+            trophyId: trophy.trophyId,
+            kind: assetKind,
+            nftImageUri: trophy.nftImageUri,
+          }),
           routeHref: definition?.routeHref || "/champions",
           chainStatus: trophy.chainStatus,
           chainOwnerAddress: trophy.chainOwnerAddress,
