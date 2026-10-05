@@ -2817,7 +2817,11 @@ export default function ContactInboxPanel({
           <div className="min-w-0">
             <h2
               data-contact-player-name="true"
-              className="min-w-0 break-words bg-gradient-to-r from-amber-100 via-stone-100 to-slate-300 bg-clip-text font-serif text-[1.45rem] font-semibold leading-[1.04] tracking-[-0.035em] text-transparent [text-shadow:0_1px_18px_rgba(251,191,36,0.12)] sm:truncate sm:text-[1.65rem]"
+              className={`min-w-0 break-words sm:truncate ${
+                mode === "popover"
+                  ? "bg-gradient-to-r from-amber-100 via-stone-100 to-slate-300 bg-clip-text font-serif text-[1.45rem] font-semibold leading-[1.04] tracking-[-0.035em] text-transparent [text-shadow:0_1px_18px_rgba(251,191,36,0.12)] sm:text-[1.65rem]"
+                  : "text-lg font-semibold leading-tight text-white sm:text-xl"
+              }`}
             >
               {heading}
             </h2>
@@ -2862,7 +2866,7 @@ export default function ContactInboxPanel({
           unreadCount > 0) ? (
           <div
             data-contact-honor-strip="true"
-            className="mt-1.5 h-9 max-w-full border-t border-white/[0.055] pt-1"
+            className="mt-1.5 h-10 max-w-full border-t border-white/[0.055] pt-1"
             aria-label="Player honors"
           >
             <div
