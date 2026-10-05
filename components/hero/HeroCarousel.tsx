@@ -1,8 +1,8 @@
 "use client";
 
-import { motion, useReducedMotion } from "framer-motion";
+import { useReducedMotion } from "framer-motion";
 import { Eye, EyeOff } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { preload } from "react-dom";
 
 import {
@@ -27,33 +27,58 @@ import type {
   HeroTransitionStyle,
 } from "@/lib/hero/types";
 
-function motionState(
+function nativeTransitionStyle(
   style: HeroTransitionStyle,
   direction: number,
-  phase: "initial" | "animate"
-) {
-  if (style === "cut") return { opacity: phase === "animate" ? 1 : 0 };
+  active: boolean,
+  durationMs: number
+): CSSProperties {
+  const easing = "cubic-bezier(0.22, 1, 0.36, 1)";
+
+  if (style === "cut" || durationMs <= 0) {
+    return {
+      opacity: active ? 1 : 0,
+      transition: "none",
+    };
+  }
+
   if (style === "banner_wipe") {
-    if (phase === "initial") {
-      return {
-        opacity: 1,
-        clipPath:
-          direction >= 0
-            ? "polygon(0 0,0 0,0 100%,0 100%)"
-            : "polygon(100% 0,100% 0,100% 100%,100% 100%)",
-      };
-    }
-    return { opacity: 1, clipPath: "polygon(0 0,100% 0,100% 100%,0 100%)" };
+    return {
+      opacity: 1,
+      clipPath: active
+        ? "polygon(0 0,100% 0,100% 100%,0 100%)"
+        : direction >= 0
+          ? "polygon(100% 0,100% 0,100% 100%,100% 100%)"
+          : "polygon(0 0,0 0,0 100%,0 100%)",
+      transition: `clip-path ${durationMs}ms ${easing}`,
+    };
   }
+
   if (style === "siege_push") {
-    if (phase === "initial") return { opacity: 0, x: direction >= 0 ? "8%" : "-8%" };
-    return { opacity: 1, x: 0 };
+    return {
+      opacity: active ? 1 : 0,
+      transform: active
+        ? "translateX(0)"
+        : direction >= 0
+          ? "translateX(-5%)"
+          : "translateX(5%)",
+      transition: `opacity ${durationMs}ms ${easing}, transform ${durationMs}ms ${easing}`,
+    };
   }
+
   if (style === "ember_dissolve") {
-    if (phase === "initial") return { opacity: 0, scale: 1.018, filter: "blur(12px)" };
-    return { opacity: 1, scale: 1, filter: "blur(0px)" };
+    return {
+      opacity: active ? 1 : 0,
+      transform: active ? "scale(1)" : "scale(0.992)",
+      filter: active ? "blur(0px)" : "blur(10px)",
+      transition: `opacity ${durationMs}ms ${easing}, transform ${durationMs}ms ${easing}, filter ${durationMs}ms ${easing}`,
+    };
   }
-  return { opacity: phase === "animate" ? 1 : 0 };
+
+  return {
+    opacity: active ? 1 : 0,
+    transition: `opacity ${durationMs}ms ${easing}`,
+  };
 }
 
 const HERO_LANGUAGE_VISIBILITY_STORAGE_KEY =
@@ -143,18 +168,18 @@ export function HeroCarousel({
     [HeroPlaylistItemView | null, HeroPlaylistItemView | null]
   >(() => [items[0] || null, items[1] || items[0] || null]);
   const [pendingMove, setPendingMove] = useState<PendingHeroMove | null>(null);
-  const [transitioning, setTransitioning] = useState(false);
   const [interactionPaused, setInteractionPaused] = useState(false);
   const [documentHidden, setDocumentHidden] = useState(false);
   const [cycle, setCycle] = useState(0);
   const pointerStart = useRef<number | null>(null);
   const transitionLocked = useRef(false);
+  const transitionUnlockTimer = useRef<number | null>(null);
   const hasMultiple = items.length > 1;
   const current = items[index] || items[0];
   const settings = playlist.playlist;
   const transitionStyle = reducedMotion ? "cut" : settings.transitionStyle;
-  const transitionSeconds =
-    transitionStyle === "cut" ? 0 : settings.transitionDurationMs / 1000;
+  const transitionDurationMs =
+    transitionStyle === "cut" ? 0 : settings.transitionDurationMs;
   const currentHeroImageUrl = current ? heroScreenPreloadUrl(current) : "";
   const nextHeroItem =
     items.length > 1 ? items[(index + 1) % items.length] : null;
@@ -202,7 +227,7 @@ export function HeroCarousel({
   }, [index, items.length]);
 
   useEffect(() => {
-    if (!current || transitioning || pendingMove) return;
+    if (!current || pendingMove) return;
     const activeItem = slotItems[activeSlot];
     if (activeItem?.screen.id === current.screen.id) return;
 
@@ -214,7 +239,7 @@ export function HeroCarousel({
       next[activeSlot] = current;
       return next;
     });
-  }, [activeSlot, current, pendingMove, slotItems, transitioning]);
+  }, [activeSlot, current, pendingMove, slotItems]);
 
   useEffect(() => {
     if (preview) return;
@@ -318,29 +343,31 @@ export function HeroCarousel({
       const targetUrl = heroScreenPreloadUrl(nextItem);
 
       transitionLocked.current = true;
-      setTransitioning(true);
-      setDirection(nextDirection);
 
       const prepared = targetUrl
-        ? decodeHeroStudioImage(targetUrl).catch(() => undefined)
+        ? decodeHeroStudioImage(targetUrl)
         : Promise.resolve();
 
-      void prepared.then(() => {
-        setSlotItems((slots) => {
-          const next = [...slots] as [
-            HeroPlaylistItemView | null,
-            HeroPlaylistItemView | null,
-          ];
-          next[targetSlot] = nextItem;
-          return next;
+      void prepared
+        .then(() => {
+          setSlotItems((slots) => {
+            const next = [...slots] as [
+              HeroPlaylistItemView | null,
+              HeroPlaylistItemView | null,
+            ];
+            next[targetSlot] = nextItem;
+            return next;
+          });
+          setPendingMove({
+            slot: targetSlot,
+            index: nextIndex,
+            direction: nextDirection,
+            itemId: nextItem.screen.id,
+          });
+        })
+        .catch(() => {
+          transitionLocked.current = false;
         });
-        setPendingMove({
-          slot: targetSlot,
-          index: nextIndex,
-          direction: nextDirection,
-          itemId: nextItem.screen.id,
-        });
-      });
     },
     [activeSlot, hasMultiple, index, items]
   );
@@ -356,16 +383,32 @@ export function HeroCarousel({
       setActiveSlot(pendingMove.slot);
       setPendingMove(null);
       setCycle((value) => value + 1);
+
+      if (transitionUnlockTimer.current !== null) {
+        window.clearTimeout(transitionUnlockTimer.current);
+      }
+      if (transitionDurationMs <= 0) {
+        transitionLocked.current = false;
+        transitionUnlockTimer.current = null;
+      } else {
+        transitionUnlockTimer.current = window.setTimeout(() => {
+          transitionLocked.current = false;
+          transitionUnlockTimer.current = null;
+        }, transitionDurationMs);
+      }
     });
 
     return () => window.cancelAnimationFrame(frame);
-  }, [pendingMove, slotItems]);
+  }, [pendingMove, slotItems, transitionDurationMs]);
 
-  useEffect(() => {
-    if (!transitioning || pendingMove || transitionSeconds !== 0) return;
-    transitionLocked.current = false;
-    setTransitioning(false);
-  }, [activeSlot, pendingMove, transitionSeconds, transitioning]);
+  useEffect(
+    () => () => {
+      if (transitionUnlockTimer.current !== null) {
+        window.clearTimeout(transitionUnlockTimer.current);
+      }
+    },
+    []
+  );
 
   useEffect(() => {
     if (
@@ -373,13 +416,14 @@ export function HeroCarousel({
       !hasMultiple ||
       !settings.autoplay ||
       paused ||
-      transitioning ||
       !current
     ) {
       return;
     }
-    const duration = current.durationMs || settings.defaultDurationMs;
-    const timer = window.setTimeout(() => move(1), duration);
+
+    const dwellMs = current.durationMs || settings.defaultDurationMs;
+    const settleMs = cycle === 0 ? 0 : transitionDurationMs;
+    const timer = window.setTimeout(() => move(1), dwellMs + settleMs);
     return () => window.clearTimeout(timer);
   }, [
     current,
@@ -390,7 +434,7 @@ export function HeroCarousel({
     preview,
     settings.autoplay,
     settings.defaultDurationMs,
-    transitioning,
+    transitionDurationMs,
   ]);
 
   if (!current) return null;
@@ -462,21 +506,18 @@ export function HeroCarousel({
         const fit = fitForItem(item);
 
         return (
-          <motion.div
+          <div
             key={`hero-buffer-${slot}`}
             data-hero-carousel-buffer={slot}
             data-hero-carousel-active={isActive ? "true" : "false"}
+            data-hero-native-transition={transitionStyle}
             className={`absolute inset-0 ${isActive ? "z-10" : "pointer-events-none z-0"}`}
-            initial={false}
-            animate={motionState(
+            style={nativeTransitionStyle(
               transitionStyle,
               direction,
-              isActive ? "animate" : "initial"
+              isActive,
+              transitionDurationMs
             )}
-            transition={{
-              duration: transitionSeconds,
-              ease: [0.22, 1, 0.36, 1],
-            }}
             aria-hidden={!isActive}
             inert={!isActive ? true : undefined}
             aria-roledescription={isActive ? "slide" : undefined}
@@ -485,11 +526,6 @@ export function HeroCarousel({
                 ? `${index + 1} of ${items.length}: ${item.screen.name}`
                 : undefined
             }
-            onAnimationComplete={() => {
-              if (!isActive || !transitionLocked.current) return;
-              transitionLocked.current = false;
-              setTransitioning(false);
-            }}
           >
             <div
               className={
@@ -500,7 +536,7 @@ export function HeroCarousel({
             >
               <HeroScreenRenderer item={item} />
             </div>
-          </motion.div>
+          </div>
         );
       })}
 
@@ -571,21 +607,6 @@ export function HeroCarousel({
             <span className="pointer-events-none absolute inset-y-[12%] right-0 w-px rounded-full bg-white/22 opacity-0 shadow-[0_0_18px_rgba(255,255,255,0.18)] transition-opacity duration-500 group-hover:opacity-55 group-focus-visible:opacity-55" />
           </button>
 
-          {false && settings.showProgress && settings.autoplay && !preview ? (
-            <div className="absolute inset-x-0 bottom-0 z-[130] h-1 bg-black/45">
-              <motion.div
-                key={`progress-${current.screen.id}-${cycle}-${paused}`}
-                className="h-full origin-left bg-gradient-to-r from-amber-500 via-amber-200 to-sky-300"
-                initial={{ scaleX: 0 }}
-                animate={{ scaleX: paused ? 0 : 1 }}
-                transition={{
-                  duration:
-                    (current.durationMs || settings.defaultDurationMs) / 1000,
-                  ease: "linear",
-                }}
-              />
-            </div>
-          ) : null}
         </>
       ) : null}
     </section>
