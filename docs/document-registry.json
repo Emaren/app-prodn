@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "045e6b678ac4f4b58ca5e394e0e54fecd9e3392e78a08faeec4c3102754f89e0",
+      "sha256": "638adaefccd6d8eb51b385103e3a3dafe723c6df20ef607acc419e5b063f7a43",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2025,8 +2025,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/featured-warrior-zero-blank-20261005",
-    "commit": "2a3b6b2ef2174cbcfff068aa85c8fff3cf621d29"
+    "branch": "fix/featured-warrior-single-paint-20261005",
+    "commit": "db5c88b9394a5c5b323660b69dee77f2293a898c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

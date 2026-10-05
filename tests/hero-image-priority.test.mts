@@ -55,19 +55,27 @@ test("Lobby reserves the critical image lane for the actual hero", () => {
   const renderer = source("components/hero/HeroScreenRenderer.tsx");
   const eventHero = source("components/lobby/WolomaniaPromoTile.tsx");
 
-  assert.match(home, /function BufferedFeaturedWarriorImage/);
+  assert.match(home, /function StableFeaturedWarriorPortrait/);
   assert.equal(
-    (home.match(/<BufferedFeaturedWarriorImage/g) || []).length,
+    (home.match(/<StableFeaturedWarriorPortrait/g) || []).length,
     2,
   );
   assert.equal((home.match(/priority=\{index < 2\}/g) || []).length, 0);
+  assert.match(
+    home,
+    /decodeFeaturedWarriorImage\(featuredWarriorImageSrc\(nextWarrior\)\)/,
+  );
+  assert.match(
+    home,
+    /preload\(src, \{ as: "image", fetchPriority \}\)/,
+  );
   assert.equal(
     (home.match(/fetchPriority=\{index === 0 \? "high" : "low"\}/g) || []).length,
     2,
   );
   assert.match(
     home,
-    /<Image[\s\S]*?loading="eager"[\s\S]*?fetchPriority=\{fetchPriority\}[\s\S]*?unoptimized/,
+    /backgroundImage: `url\(\$\{JSON\.stringify\(src\)\}\)`/,
   );
   assert.match(
     lobbyHero,
