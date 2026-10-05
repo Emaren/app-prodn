@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/featured-warrior-zero-blank-20261005` at `2a3b6b2ef2174cbcfff068aa85c8fff3cf621d29`
+Implementation baseline: `fix/hero-studio-flicker-20261005` at `1512379c54dbad21818988921e480c1524410203`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
