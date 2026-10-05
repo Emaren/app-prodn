@@ -7,6 +7,8 @@ const olympia = fs.readFileSync("app/olympia/page.tsx", "utf8");
 const chaosium = fs.readFileSync("lib/champions/chaosium.ts", "utf8");
 const chaosiumPage = fs.readFileSync("app/chaosium/page.tsx", "utf8");
 const chaosiumDisplayRail = fs.readFileSync("components/chaosium/ChaosiumDisplayRail.tsx", "utf8");
+const chaosiumBeltRail = fs.readFileSync("components/chaosium/ChaosiumBeltRail.tsx", "utf8");
+const championsV2 = fs.readFileSync("lib/champions/championsV2.ts", "utf8");
 const leagues = fs.readFileSync("lib/leagues.ts", "utf8");
 const leagueApi = fs.readFileSync("app/api/leagues/route.ts", "utf8");
 const leagueQuote = fs.readFileSync("app/api/leagues/quote/route.ts", "utf8");
@@ -31,38 +33,54 @@ test("Olympia is deliberately the three-nation opening delegation", () => {
   assert.match(olympia, /kind: "national"/);
 });
 
-test("Chaosium reads holder-changing Trophy events and preserves an origin marker", () => {
+test("Chaosium reads canonical Trophy lineage and the complete Champions belt catalog", () => {
   assert.match(chaosium, /HOLDER_ASSIGNED/);
   assert.match(chaosium, /HOLDER_REASSIGNED/);
   assert.match(chaosium, /CHALLENGE_SETTLED_HOLDER_CHANGED/);
   assert.match(chaosium, /Belt entered the Kingdom/);
   assert.match(chaosium, /trophy\.createdAt\.toISOString\(\)/);
-  assert.match(chaosium, /fromHolder/);
-  assert.match(chaosium, /Walk the custody chain backward/);
   assert.match(chaosium, /previousIdentity === toIdentity/);
-  assert.match(chaosium, /managedMediaPublicUrl\("belt", title\.id, title\.assetUrl\)/);
-  assert.match(chaosiumPage, /animate-ping/);
-  assert.match(chaosiumPage, /Newest reign to origin/);
+  assert.match(chaosium, /CHAMPIONS_NATIONAL_BELT_CATALOG/);
+  assert.match(chaosium, /title\.type !== "designation"/);
+  assert.match(chaosium, /title\.id !== "tag-team"/);
+  assert.match(chaosium, /return belts\.sort/);
+  assert.match(chaosium, /if \(leftHeld !== rightHeld\) return leftHeld \? -1 : 1/);
+  assert.match(championsV2, /export const CHAMPIONS_NATIONAL_BELT_CATALOG/);
 });
 
-test("Chaosium B1 is the public default with preserved A1 E1 and E2 provenance", () => {
-  assert.match(chaosiumPage, /return "b1";/);
+test("Chaosium E2 is the frontier default while B1 A1 and E1 stay directly recoverable", () => {
+  assert.match(chaosiumPage, /return "e2";/);
   assert.match(chaosiumPage, /CorrectedMetrics/);
   assert.match(chaosiumPage, /PreservedE1Metrics/);
-  assert.match(chaosiumPage, /belt\.dmRating/);
-  assert.match(chaosiumPage, /belt\.rmRating/);
-  assert.match(chaosiumPage, /whitespace-nowrap/);
+  assert.match(chaosiumPage, /ChaosiumBeltRail/);
+  assert.match(chaosiumPage, /ROAD_VIEWPORT_HEIGHT = 560/);
+  assert.match(chaosiumPage, /Math\.pow\(ageRatio, 0\.82\)/);
+  assert.match(chaosiumPage, /data-chaosium-belt-road/);
+  assert.match(chaosiumPage, /h-\[35rem\] overflow-y-auto/);
+  assert.match(chaosiumPage, /Open championship/);
   assert.match(chaosiumPage, /ChaosiumDisplayRail active=\{view\}/);
 
   for (const version of ["b1", "a1", "e1", "e2"]) {
     assert.match(chaosiumDisplayRail, new RegExp(`key: "${version}"`));
   }
-  assert.match(chaosiumDisplayRail, /href="\/chaosium"/);
+  assert.match(chaosiumDisplayRail, /key: "e2"[\s\S]*href: "\/chaosium"/);
+  assert.match(chaosiumDisplayRail, /href="\/chaosium\?view=b1"/);
   assert.match(chaosiumDisplayRail, /href="\/chaosium\?view=a1"/);
-  assert.match(chaosiumDisplayRail, /href="\/chaosium\?view=e2"/);
+  assert.match(chaosiumDisplayRail, /href="\/chaosium\?view=e1"/);
   assert.match(chaosiumDisplayRail, /data-chaosium-version=\{active\}/);
 });
 
+test("Chaosium museum rail supports native swipe, drag, keyboard, click, and quiet edge-hover glide", () => {
+  assert.match(chaosiumBeltRail, /overflow-x-auto/);
+  assert.match(chaosiumBeltRail, /scrollBy\(\{ left: direction \* distance, behavior: "smooth" \}\)/);
+  assert.match(chaosiumBeltRail, /onPointerDown=\{handlePointerDown\}/);
+  assert.match(chaosiumBeltRail, /event\.key === "ArrowLeft"/);
+  assert.match(chaosiumBeltRail, /event\.key === "ArrowRight"/);
+  assert.match(chaosiumBeltRail, /EDGE_SPEED_PX_PER_SECOND/);
+  assert.match(chaosiumBeltRail, /onMouseEnter=\{\(\) => startEdgeGlide\(-1\)\}/);
+  assert.match(chaosiumBeltRail, /onMouseEnter=\{\(\) => startEdgeGlide\(1\)\}/);
+  assert.match(chaosiumBeltRail, /opacity-0/);
+});
 test("league charter is a verified 100 WOLO signed creation rail", () => {
   assert.match(leagues, /LEAGUE_CREATION_PRICE_WOLO = 100/);
   assert.match(leagues, /verifyWoloTransfer\(/);
