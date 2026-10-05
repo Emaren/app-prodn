@@ -1,6 +1,6 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
 import { featuredAvatarCardUrlForUser } from "@/lib/avatarAssets";
-import { CHAMPIONS_NATIONAL_BELT_CATALOG } from "@/lib/champions/championsV2";
+import { CHAMPIONS_NATIONAL_BELT_CATALOG } from "@/lib/champions/nationalBeltCatalog";
 import { loadChampionTitleEconomyState } from "@/lib/champions/titleState";
 import { managedMediaPublicUrl } from "@/lib/managedMediaAssets";
 import { loadPublicPlayerDirectory } from "@/lib/publicPlayerDirectory";
