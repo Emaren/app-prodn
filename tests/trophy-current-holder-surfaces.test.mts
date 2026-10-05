@@ -83,6 +83,8 @@ test("human-facing Trophy honor surfaces consume forced-vacancy authority", () =
   assert.match(lobby,/championshipRoster\.map/);
   assert.match(lobby,/!trophy\.hasExplicitChampionshipCustody && trophyIsPubliclyForcedVacant/);
   assert.match(playerProfile, /currentHolderDisplayName/);
-  assert.match(playerProfile, /guardianHolderDisplayName/);
+  assert.doesNotMatch(playerProfile, /guardianHolderDisplayName/);
+  assert.match(playerProfile, /\["held","active"\]\.includes\(trophy\.status\)/);
+  assert.match(playerProfile, /trophyPresentationAssetUrl/);
   assert.match(lobby, /featuredWarriorHonorLabel/);
 });

@@ -171,7 +171,20 @@ authoritative Trophy row and delegates to the same locked `assign_holder`
 transition. The transition repairs the typed `Belt: ...` user-badge chip inside
 the same transaction, deleting stale copies for prior holders and upserting the
 current roster. Direct deletion of a belt chip is forbidden because it would
-only delete the projection, not custody.
+only delete the projection, not custody. The repair boundary is deliberately
+re-runnable: admin/bootstrap reconciliation reconstructs every system Belt
+mirror from live Trophy/championship custody, explicit active reign seats take
+precedence for team titles, and the retained legacy automatic solo-transfer
+writer repairs the mirror before committing its settlement. Admin live refresh
+must carry Belt mirrors so the two control surfaces cannot remain visually
+divergent after a valid title transfer.
+
+A second authority split existed in artwork. Historical `Trophy.nftImageUri`
+values are provenance/chain metadata and can legitimately point at an older
+belt image. They are never the live visual authority. Player title honors,
+Trophy/wallet APIs, championship/challenge projections, and Champions title
+state resolve current managed-media/title-definition art first; the historical
+NFT URI is fallback evidence only.
 
 France also crossed the roadmap/authority boundary in this repair. It now has a
 real `national-france` title definition and `france_champion_belt` Trophy seed.

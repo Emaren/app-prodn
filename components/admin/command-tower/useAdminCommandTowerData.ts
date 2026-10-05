@@ -67,6 +67,7 @@ function mergeUsersWithLiveData(users: AdminUserRow[], liveRows: AdminUsersLiveP
     return {
       ...user,
       displayName: live.displayName,
+      badges: live.badges,
       lastSeen: live.lastSeen,
       unreadCount: live.unreadCount,
       userUnreadCount: live.userUnreadCount,

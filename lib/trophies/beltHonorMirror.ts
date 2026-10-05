@@ -1,4 +1,4 @@
-import type { Prisma } from "@/lib/generated/prisma";
+import type { Prisma, PrismaClient } from "@/lib/generated/prisma";
 import { buildHonorLabel } from "@/lib/communityHonors";
 
 export const CHAMPIONSHIP_BELT_MIRROR_NOTE =
@@ -15,8 +15,10 @@ export const CHAMPIONSHIP_BELT_MIRROR_NOTES = [
  * second custody ledger. Every authoritative title transition repairs this
  * mirror inside the same database transaction.
  */
+type BeltHonorMirrorClient = Pick<Prisma.TransactionClient, "userBadge">;
+
 export async function syncChampionshipBeltHonorMirror(
-  tx: Prisma.TransactionClient,
+  tx: BeltHonorMirrorClient,
   input: {
     displayName: string;
     holderUserIds: number[];
@@ -75,4 +77,91 @@ export async function syncChampionshipBeltHonorMirror(
   }
 
   return { label, holderUserIds };
+}
+
+
+/**
+ * Rebuild every system-owned Belt mirror from live Trophy/championship custody.
+ *
+ * This is a repair/projection boundary, not a second authority. It exists so
+ * older pre-unification rows cannot leave User Command claiming a different
+ * champion than Trophy Command. Explicit championship reign seats win for team
+ * titles; otherwise the live solo Trophy holder is projected. Guardians and
+ * vacant/disputed titles never receive current-champion Belt mirrors.
+ */
+export async function reconcileChampionshipBeltHonorMirrors(
+  prisma: PrismaClient,
+) {
+  const [trophies, activeReigns] = await Promise.all([
+    prisma.trophy.findMany({
+      where: { kind: "belt" },
+      select: {
+        id: true,
+        displayName: true,
+        status: true,
+        currentHolderUserId: true,
+      },
+      orderBy: [{ id: "asc" }],
+    }),
+    prisma.championshipCustodyReign.findMany({
+      where: { endedAt: null },
+      select: {
+        trophyId: true,
+        seats: {
+          select: { userId: true },
+          orderBy: [{ seat: "asc" }],
+        },
+      },
+      orderBy: [{ id: "asc" }],
+    }),
+  ]);
+
+  const explicitHolderIdsByTrophyId = new Map<number, number[]>();
+  for (const reign of activeReigns) {
+    explicitHolderIdsByTrophyId.set(
+      reign.trophyId,
+      reign.seats.map((seat) => seat.userId),
+    );
+  }
+
+  const canonicalLabels = trophies.map((trophy) =>
+    buildHonorLabel("belt", trophy.displayName),
+  );
+
+  await prisma.$transaction(async (tx) => {
+    // Retire pre-unification / renamed Belt chips that no longer map to any
+    // authoritative Trophy display name. This prevents historical labels such
+    // as an older Chaos title spelling from surviving beside current custody.
+    await tx.userBadge.deleteMany({
+      where: {
+        label: { startsWith: "Belt: " },
+        ...(canonicalLabels.length > 0
+          ? { NOT: { label: { in: canonicalLabels } } }
+          : {}),
+      },
+    });
+
+    for (const trophy of trophies) {
+      const held = trophy.status === "held" || trophy.status === "active";
+      const explicitHolderIds =
+        explicitHolderIdsByTrophyId.get(trophy.id) ?? [];
+      const holderUserIds = !held
+        ? []
+        : explicitHolderIds.length > 0
+          ? explicitHolderIds
+          : trophy.currentHolderUserId
+            ? [trophy.currentHolderUserId]
+            : [];
+
+      await syncChampionshipBeltHonorMirror(tx, {
+        displayName: trophy.displayName,
+        holderUserIds,
+      });
+    }
+  });
+
+  return {
+    trophies: trophies.length,
+    activeReigns: activeReigns.length,
+  };
 }

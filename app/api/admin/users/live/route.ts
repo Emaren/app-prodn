@@ -279,6 +279,7 @@ export async function GET(request: NextRequest) {
         return {
           uid: entry.uid,
           displayName: entry.inGameName || entry.steamPersonaName || entry.uid,
+          badges: community.badges,
           lastSeen: entry.lastSeen ? entry.lastSeen.toISOString() : null,
           unreadCount: unreadMap.get(entry.uid) ?? 0,
           userUnreadCount,
@@ -371,6 +372,7 @@ export async function GET(request: NextRequest) {
       users: rows.map((row) => ({
         uid: row.uid,
         displayName: row.displayName,
+        badges: row.badges,
         lastSeen: row.lastSeen,
         unreadCount: row.unreadCount,
         userUnreadCount: row.userUnreadCount,

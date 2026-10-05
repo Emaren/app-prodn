@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 
 import { getPrisma } from "@/lib/prisma";
-import { managedMediaPublicUrl } from "@/lib/managedMediaAssets";
 import {
   loadPublicTrophies,
   projectedTrophyBounty,
   seededTrophyDefinition,
+  trophyPresentationAssetUrl,
 } from "@/lib/trophies/service";
 
 export const runtime = "nodejs";
@@ -48,11 +48,11 @@ export async function GET() {
           nftClassId: trophy.nftClassId,
           nftId: trophy.nftId,
           metadataUri: trophy.nftMetadataUri,
-          imageUri: managedMediaPublicUrl(
-            assetKind,
-            definition?.id || trophy.trophyId,
-            trophy.nftImageUri || definition?.assetUrl
-          ),
+          imageUri: trophyPresentationAssetUrl({
+            trophyId: trophy.trophyId,
+            kind: assetKind,
+            nftImageUri: trophy.nftImageUri,
+          }),
           holderSince: trophy.holderSince?.toISOString() ?? null,
         };
       }),

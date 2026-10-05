@@ -5,6 +5,7 @@ import {
   loadPublicTrophy,
   projectedTrophyBounty,
   seededTrophyDefinition,
+  trophyPresentationAssetUrl,
 } from "@/lib/trophies/service";
 
 export const runtime = "nodejs";
@@ -27,7 +28,11 @@ export async function GET(
     trophy.currentHolder?.inGameName ||
     trophy.currentHolder?.steamPersonaName ||
     null;
-  const image = trophy.nftImageUri || definition?.assetUrl || null;
+  const image = trophyPresentationAssetUrl({
+    trophyId: trophy.trophyId,
+    kind: trophy.kind,
+    nftImageUri: trophy.nftImageUri,
+  });
   const externalUrl = definition?.routeHref
     ? `https://aoe2war.com${definition.routeHref}`
     : "https://aoe2war.com/champions";
