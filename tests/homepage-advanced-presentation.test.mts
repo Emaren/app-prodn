@@ -147,6 +147,28 @@ test(
 );
 
 test(
+  "Featured warrior rotation never blanks a painted slot",
+  () => {
+    assert.match(homepage, /FEATURED_WARRIOR_ROTATE_MS = 12_000/);
+    assert.match(homepage, /FEATURED_WARRIOR_FIRST_ROTATE_MS = 14_000/);
+    assert.doesNotMatch(homepage, /FEATURED_WARRIOR_FADE_MS/);
+    assert.doesNotMatch(homepage, /FEATURED_WARRIOR_HOLD_MS/);
+    assert.doesNotMatch(homepage, /setFadingSlot/);
+    assert.doesNotMatch(homepage, /will-change-\[opacity\]/);
+    assert.doesNotMatch(homepage, /fadingSlot === index/);
+    assert.match(
+      homepage,
+      /decodeFeaturedWarriorImage\(featuredWarriorImageSrc\(nextWarrior\)\)[\s\S]*setVisibleWarriors/,
+    );
+    assert.equal((homepage.match(/key=\{index\}/g) || []).length, 2);
+    assert.equal(
+      (homepage.match(/transition-transform duration-300 ease-out hover:-translate-y-0\.5/g) || []).length,
+      2,
+    );
+  },
+);
+
+test(
   "Featured warrior subtitle hydration is deterministic before cosmetic rotation",
   () => {
     assert.doesNotMatch(homepage, /julioFeaturedSubtitleCursor/);

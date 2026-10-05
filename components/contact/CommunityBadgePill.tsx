@@ -15,7 +15,7 @@ export default function CommunityBadgePill({
     <span
       className={`whitespace-nowrap rounded-full border font-medium ${badgeToneClassName(label)} ${
         compact
-          ? "px-2 py-0.5 text-[9px] leading-4"
+          ? "shrink-0 px-2.5 py-[2px] text-[10px] leading-[1.05rem]"
           : "px-2.5 py-1 text-[11px]"
       }`}
     >
