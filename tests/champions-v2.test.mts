@@ -314,4 +314,3 @@ test("E3 defers heavy below-fold championship sections from initial paint", () =
     /content-visibility:auto/,
   );
 });
-
