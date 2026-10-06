@@ -159,6 +159,16 @@ test("invalid immutable source hash fails closed even if a caller marks its arch
   assert.equal(buildPlayerResultRecoveryPlan(data, request).cases[0].primaryRoute, "source_artifact_missing");
 });
 
+test("indexed output metadata is not mistaken for a present candidate file", () => {
+  const data = facts();
+  assert.equal(buildPlayerResultRecoveryPlan(data, request).cases[0].candidateOutputAvailability, "catalog_only");
+  assert.equal(buildPlayerResultRecoveryPlan(data, request).cases[0].candidateOutputPresent, false);
+  data.candidateOutputs = new Map([[101, false]]);
+  assert.equal(buildPlayerResultRecoveryPlan(data, request).cases[0].candidateOutputAvailability, "missing");
+  data.candidateOutputs.set(101, true);
+  assert.equal(buildPlayerResultRecoveryPlan(data, request).cases[0].candidateOutputPresent, true);
+});
+
 test("native structural eligibility remains candidate-only with independent controls missing", () => {
   const plan = buildPlayerResultRecoveryPlan(facts(), request);
   assert.equal(plan.cases[0].primaryRoute, "native_replay_eligible");

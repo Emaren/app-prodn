@@ -51,6 +51,7 @@ export type PlayerResultRecoveryFacts = {
   rows: PublicGameStatsLike[]; runs: RecoveryRun[];
   archives: Map<string, PlayerRecoveryArchive>; exposures: Map<number, PlayerRecoveryExposure>;
   rosterPlans: Map<number, RosterPlan>;
+  candidateOutputs?: Map<number, boolean>;
 };
 export type PlayerResultRecoveryCase = {
   canonicalGameStatsId: number; logicalBattleIds: string[]; sourceGameStatsIds: number[];
@@ -60,6 +61,7 @@ export type PlayerResultRecoveryCase = {
   roster: Array<{ name: string; steamId: string | null; slot: number | null; teamId: string | null; result: string }>;
   rawWinner: unknown; rawPlayerWinnerFlags: unknown[]; currentResultProjection: string | null;
   parserLineage: RecoveryRun[]; currentParserAttempted: boolean; candidateOutputPresent: boolean;
+  candidateOutputAvailability: "presence_verified" | "missing" | "catalog_only";
   archive: PlayerRecoveryArchive; acceptedAdjudicationIds: number[];
   financialExposure: PlayerRecoveryExposure; disconnectedReview: boolean; confirmedDesync: boolean;
   rosterPlan: RosterPlan | null; primaryRoute: PlayerResultRecoveryRoute;
@@ -211,7 +213,8 @@ export function buildPlayerResultRecoveryPlan(facts: PlayerResultRecoveryFacts, 
       rawPlayerWinnerFlags: rawPlayers(sourceRows.find((row) => gameId(row) === gameId(game))?.players).map((player) => player.winner ?? null),
       currentResultProjection: publicReplayWinnerTruth(game).winner,
       parserLineage: lineage, currentParserAttempted: current.length > 0,
-      candidateOutputPresent: current.some((run) => Boolean(run.candidateOutputHash && run.candidateOutputStorageKey)),
+      candidateOutputPresent: current.some((run) => Boolean(run.candidateOutputHash && run.candidateOutputStorageKey) && facts.candidateOutputs?.get(run.id) === true),
+      candidateOutputAvailability: current.some((run) => facts.candidateOutputs?.get(run.id) === true) ? "presence_verified" : facts.candidateOutputs ? "missing" : "catalog_only",
       archive, acceptedAdjudicationIds: [...new Set(acceptedAdjudicationIds)], financialExposure,
       disconnectedReview: sourceRows.some((row) => row.disconnect_detected === true), confirmedDesync,
       rosterPlan, primaryRoute, nativeStructurallyEligible, blockers: [...new Set(blockers)].sort(),
@@ -241,6 +244,7 @@ export function buildPlayerResultRecoveryPlan(facts: PlayerResultRecoveryFacts, 
 }
 
 const ARCHIVE_ROOT = "/mnt/HC_Volume_105319120/aoe2-replay-archive";
+const CANDIDATE_ROOT = "/mnt/HC_Volume_105319120/aoe2-parser-engine/";
 export async function inspectPlayerRecoveryArchive(sha256: string): Promise<PlayerRecoveryArchive> {
   if (!/^[a-f0-9]{64}$/.test(sha256)) return { present: false, byteSize: null, reason: "invalid_replay_sha256" };
   const path = join(ARCHIVE_ROOT, sha256.slice(0, 2), sha256.slice(2, 4), `${sha256}.aoe2record`);
@@ -292,11 +296,23 @@ export async function loadPlayerResultRecoveryPlan(prisma: PrismaClient, request
     const archives = new Map<string, PlayerRecoveryArchive>();
     // Bounded to this exact three-player cohort; no full archive scan or body hashing in the web request.
     for (const hash of hashes) archives.set(hash, await inspectPlayerRecoveryArchive(hash));
+    const candidateOutputs = new Map<number, boolean>();
+    for (const run of runs.filter(isCurrent)) {
+      const path = run.candidateOutputStorageKey;
+      let present = false;
+      if (path?.startsWith(CANDIDATE_ROOT) && /^[a-f0-9]{64}$/.test(run.candidateOutputHash ?? "")) {
+        try {
+          const stat = await fs.lstat(path);
+          present = stat.isFile() && !stat.isSymbolicLink() && stat.size > 0 && (await fs.realpath(path)) === path;
+        } catch { /* Missing candidate output remains missing; the indexed run is still preserved. */ }
+      }
+      candidateOutputs.set(run.id, present);
+    }
     const rosterPlans = new Map<number, RosterPlan>();
     for (const row of initial.cases.filter((game) => !game.rosterComplete)) {
       const plan = await planTargetedReplayRosterRecovery(tx as unknown as PrismaClient, row.canonicalGameStatsId);
       if (plan) rosterPlans.set(row.canonicalGameStatsId, { status: plan.status, blockers: plan.blockers, decisionHash: plan.decisionHash });
     }
-    return buildPlayerResultRecoveryPlan({ rows: scopedRows, runs, archives, exposures, rosterPlans }, request);
+    return buildPlayerResultRecoveryPlan({ rows: scopedRows, runs, archives, exposures, rosterPlans, candidateOutputs }, request);
   }, { isolationLevel: "RepeatableRead", timeout: 90_000, maxWait: 5_000 });
 }
