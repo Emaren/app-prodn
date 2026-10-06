@@ -248,7 +248,7 @@ export default function ChallengeRoomControls({ challengeId }: { challengeId: nu
           <p className="mt-1 text-sm text-slate-300">
             {isAdmin
               ? "Commissioner view: monitor the exact match state here; title disposition stays on the audited Trophy rail."
-              : match.championship ? "Coordinate and play before the deadline. Watchers start the match automatically; accept and fund only if you want the WOLO stake matched." : "Accept, fund, negotiate exact terms, and check in from this room."}
+              : match.championship ? "Run the watcher and play before the deadline. A watcher-verified start owns the competitive clock." : "Accept, fund, negotiate exact terms, and check in from this room."}
           </p>
         </div>
         <button
