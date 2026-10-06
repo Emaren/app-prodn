@@ -72,6 +72,13 @@ operator intents until a future Warbound chain module exists.
   standards consume their live title definitions. Designation artifacts and
   the legacy generic tag-team placeholder are not duplicated into the belt
   museum.
+- Team-title custody remains one championship/reign, but Chaosium projects every
+  co-holder as an individually linkable identity rather than collapsing 2v2,
+  3v3, or 4v4 custody into one synthetic player. The current hero uses a quiet
+  shared portrait treatment and linked holder tiles; the current lineage node
+  reuses that co-holder group. This is presentation over the existing
+  `holders[]` authority only: it does not duplicate the belt, create parallel
+  roads, invent team ratings, or alter Trophy custody/history.
 - Chaosium ordering is operational chronology: belts with current custody lead,
   newest custody activity first, and vacant standards follow in stable catalog
   order. The museum is one horizontal native-scroll rail with pointer drag,

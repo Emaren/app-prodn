@@ -49,6 +49,19 @@ test("Chaosium reads canonical Trophy lineage and the complete Champions belt ca
   assert.equal((nationalBeltCatalog.match(/flag: "/g) ?? []).length, 42);
 });
 
+test("Chaosium projects and renders every co-holder in team championship reigns", () => {
+  assert.match(chaosium, /export type ChaosiumHolder/);
+  assert.match(chaosium, /currentHolders: ChaosiumHolder\[\]/);
+  assert.match(chaosium, /const currentHolders = resolvedHolderRows\.map/);
+  assert.match(chaosium, /holders: currentHolders/);
+  assert.match(chaosiumPage, /TeamHolderBackdrop/);
+  assert.match(chaosiumPage, /TeamHolderIdentityGroup/);
+  assert.match(chaosiumPage, /data-chaosium-team-holder-portraits/);
+  assert.match(chaosiumPage, /data-chaosium-team-holder-group/);
+  assert.match(chaosiumPage, /LineageTeamHolderGroup/);
+  assert.match(chaosiumPage, /data-chaosium-lineage-team-holder-group/);
+});
+
 test("Chaosium E2 is the frontier default while B1 A1 and E1 stay directly recoverable", () => {
   assert.match(chaosiumPage, /return "e2";/);
   assert.match(chaosiumPage, /CorrectedMetrics/);
