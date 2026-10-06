@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/radio-wolo-visitor-intelligence-20261006` at `543029146f9cf9a9bb33978ea12951b8d02d1216`
+Implementation baseline: `feature/radio-wolo-visitor-intelligence-20261006` at `1daf30ff8a3e8fa8bab75f0bba999d5e6503e17f`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
