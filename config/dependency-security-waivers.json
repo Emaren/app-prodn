@@ -6,9 +6,9 @@
       "module": "braces",
       "version": "3.0.3",
       "scope": "dev-only",
-      "dependency_digest": "7049de9ce10da3f074af038b153edf2025f202f4e5204087fb587825d69d3670",
+      "dependency_digest": "60a8aa6261b61e13d8d7f9051a8c0a3dda9b6015d825777d41dd2d9e91dc361c",
       "expires_on": "2026-10-16",
-      "reason": "No upstream patched release exists; every audited resolution path is rooted exclusively in build/lint devDependencies. Any lockfile, version, path-scope, or expiry change invalidates this waiver.",
+      "reason": "No upstream patched braces release exists; every audited resolution path remains rooted exclusively in build/lint devDependencies. This waiver is digest-bound, expires 2026-10-16, and becomes actionable on any version, dependency-graph, path-scope, or expiry drift.",
       "upstream": "https://github.com/micromatch/braces/issues/73"
     }
   ]
