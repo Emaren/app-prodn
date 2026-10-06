@@ -1269,7 +1269,7 @@ export default function RadioWoloVault() {
           </button>
 
           <div className="mt-4 text-[11px] uppercase tracking-[0.2em] text-slate-600">
-            MP3 · WAV · OGG · M4A · ZIP batches · 250 MB max per track
+            MP3 · WAV · OGG · M4A · ZIP batches · 250 MB max each track
           </div>
         </div>
       </section>
