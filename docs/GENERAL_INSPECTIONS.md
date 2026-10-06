@@ -8,7 +8,7 @@ systems: ["app-prodn","aoe2war","wolochain","vpssentry"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "inspection-scoring-contract"
-reviewed_at: "2026-09-22"
+reviewed_at: "2026-10-06"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -178,6 +178,10 @@ clean canonical workspace when Workspace OS reports cleanup candidates or canoni
 
 This evidence is intentionally weaker than live VPS filesystem evidence: if the operator bridge
 ages out, its contribution decays instead of silently assuming the Mac remains healthy forever.
+A live Operator Bridge PID or heartbeat does not renew this evidence by itself. After Finish,
+Kingdom Intelligence must publish a new bounded snapshot once the Finish lock clears; if that
+publication fails, General Inspections remains conservatively degraded and the bridge must expose
+and retry the publication failure rather than masking it as healthy liveness.
 
 ## Fail-closed rules
 
