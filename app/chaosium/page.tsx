@@ -143,8 +143,8 @@ function TeamHolderBackdrop({
     >
       {holders.map((holder, holderIndex) => (
         <div
-          key={`${holder.uid ?? normalizeView(undefined)}:${holder.name}:${holderIndex}`}
-          className="relative min-h-0 min-w-0 overflow-hidden border-white/10 [&:nth-child(even)]:border-l"
+          key={`${holder.uid ?? holder.name}:${holderIndex}`}
+          className="relative min-h-0 min-w-0 overflow-hidden border border-white/[0.035]"
         >
           {holder.avatarUrl ? (
             <Image
