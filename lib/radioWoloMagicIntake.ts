@@ -198,17 +198,23 @@ export function inferRadioWoloImportProfile(
     RADIO_WOLO_DEFAULT_IMPORT_PROFILE.credit;
 
   const tags =
-    uniqueTags([
-      ...current.tags.split(","),
+    uniqueTags(
       artist
-        ? tagSlug(
-            artist,
-          )
-        : "",
-      fromSuno
-        ? "suno"
-        : "",
-    ]).join(", ");
+        ? [
+            tagSlug(
+              artist,
+            ),
+            fromSuno
+              ? "suno"
+              : "",
+          ]
+        : [
+            ...current.tags.split(","),
+            fromSuno
+              ? "suno"
+              : "",
+          ],
+    ).join(", ");
 
   return {
     credit,
