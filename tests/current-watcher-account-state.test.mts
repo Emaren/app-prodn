@@ -8,7 +8,7 @@ import {
 } from "../lib/currentWatcherAccountState.ts";
 
 test(
-  "current account state reads both Watcher live and final observations",
+  "current account state reads immutable live/final Watcher observations",
   () => {
     const source =
       fs.readFileSync(
@@ -26,7 +26,7 @@ test(
 
     assert.match(
       source,
-      /g\.played_on IS NOT NULL/,
+      /a\.played_on IS NOT NULL/,
     );
 
     assert.match(
@@ -46,7 +46,7 @@ test(
 
     assert.doesNotMatch(
       source,
-      /created_at[\s\S]*ORDER BY[\s\S]*steam_id/,
+      /ORDER BY[\s\S]{0,100}created_at DESC/,
     );
   },
 );

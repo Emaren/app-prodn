@@ -8,7 +8,6 @@ import {
   readMapName,
   readPlayedAt,
   readPlayerCivilizationLabel,
-  readPlayerSteamId,
   isEarlyExitNoResult,
 } from "@/lib/gameStatsView";
 import type { PrismaClient } from "@/lib/generated/prisma";
