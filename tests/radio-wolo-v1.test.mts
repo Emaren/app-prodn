@@ -3429,6 +3429,14 @@ test(
     );
     assert.match(
       builder,
+      /Fill target/,
+    );
+    assert.match(
+      builder,
+      /fillTargetFromVisibleAssets/,
+    );
+    assert.match(
+      builder,
       /RADIO_PROGRAM_MAX_ITEMS/,
     );
   },
