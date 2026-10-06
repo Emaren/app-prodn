@@ -1367,6 +1367,16 @@ export const WATCHER_TERMINAL_ACTION_TAIL_RESULT_AUTHORITY =
   false as const;
 
 /*
+ * Team action ordering is diagnostic evidence too. Game 25892 can satisfy
+ * V4 after an exact roster repair while only one of two opposing players
+ * resigned. A later-active side does not prove a winner.
+ * Keep the evaluator and historical append-only rows; never append a new
+ * accepted result from this candidate reason alone.
+ */
+export const WATCHER_TEAM_TERMINAL_ACTION_TAIL_RESULT_AUTHORITY =
+  false as const;
+
+/*
  * Recorder shutdown is not result authority.
  *
  * Production game 32173 proved the missing counterexample: the authenticated
@@ -4122,6 +4132,18 @@ export async function reconcileAutomaticWatcherTerminalResults(
             gameStatsId,
             outcome: "skipped" as const,
             detail: evaluation.reason,
+            adjudicationId: null,
+          };
+        }
+
+        if (
+          evaluation.reason === "decisive_team_terminal_action_tail" &&
+          !WATCHER_TEAM_TERMINAL_ACTION_TAIL_RESULT_AUTHORITY
+        ) {
+          return {
+            gameStatsId,
+            outcome: "skipped" as const,
+            detail: "team_terminal_action_tail_is_not_result_authority",
             adjudicationId: null,
           };
         }
