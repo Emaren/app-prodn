@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "engineering-handoff"
-reviewed_at: "2026-09-30"
+reviewed_at: "2026-10-06"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -26,11 +26,11 @@ blocked until the chain capability handoff is implemented.
 | Area | Contract |
 | --- | --- |
 | Display | Persisted V1/V2 dimension, default V2, independent Basic/Advanced/Extreme rails at the bottom of hub/detail. Existing V1 remains selectable. Display changes cannot change a persisted protocol or clock. |
-| Challenge formation | V2 removes duration/appointment controls, shows the selected rival's complete held title stack, selects the weakest eligible solo title, and exposes only held team-title actions. Admin title selection/bypass is explicit and audited. |
+| Challenge formation | V2 removes duration/appointment controls, shows the selected rival's complete held title stack, selects the weakest eligible solo title, exposes only held team-title actions, defaults stake to 0 WOLO, and offers only 0 or 100 WOLO. Issuance performs no wallet transaction. Admin title selection/bypass is explicit and audited. |
 | Solo policy | Central ELO Rising through Legend, DM before RM within each tier, DM/RM crowns, eligible national/regional and explicit special titles, World last. World is open; unknown policy fails closed; Chaos requires popular vote or Commissioner authority. |
 | Team custody | Six independent RM/DM size identities, 18 stable physical seats, atomic full-roster reigns. A team title does not become independent per-member titles or affect another lane/size. |
 | Participants | Exact disjoint registered rosters, current Steam identities and sealed wallet snapshots. Everyone receives the parent card. Acceptance/funding may establish financial/default rights, but are not sporting prerequisites once the exact roster actually plays. Ordinary roster substitution is forbidden. |
-| Money | Existing signed left/right WOLO verifier reused through hidden paired financial legs. Positive title wager per warrior, zero new Match Guarantee. A wager is matched only when both required deposits predate or equal authenticated Watcher start; unilateral/late deposits refund whole. Sporting result never waits for funding. |
+| Money | Existing signed left/right WOLO verifier remains available for historical and optional funded legs. New V2 issuance defaults to 0 WOLO, permits only 0 or 100 WOLO, uses zero Match Guarantee, and never requires a deposit to create or play. A 100-WOLO wager is matched only when both required deposits predate or equal authenticated Watcher start; unilateral/late deposits refund whole. Sporting result never waits for funding. |
 | Clock | Server creation plus 24h, then one Commissioner hour for title default. Acceptance/funding never renew it. Championship V2 has no player check-in step. The live seconds countdown uses a server anchor; final-hour urgency includes text and accessible status. |
 | Start | Authenticated parsed live Watcher evidence, exact roster/mode/size/opposing teams and timely server observation. Watcher-observed play is competitive consent, durably stops the timer/default, and freezes WOLO matchability at that start timestamp; final may arrive later. |
 | Final | Exact full roster, opposing teams including team ID zero, lane, trusted full Watcher coverage, canonical winner, desync safety, unique replay/session and unchanged custody. Weak/contradictory proof remains review. Late final cannot reopen disposition. |
