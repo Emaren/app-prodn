@@ -1377,7 +1377,7 @@ test(
 
     assert.match(
       station,
-      /resolveRadioStationPosition/,
+      /resolveLoopingRadioStationPosition/,
     );
 
     assert.doesNotMatch(
