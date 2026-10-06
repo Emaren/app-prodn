@@ -41,6 +41,27 @@ memory before closing the work.
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
 
+## 2026-10-06 — Bridge liveness is not Kingdom Intelligence freshness
+
+A certified release exposed a split-brain control-plane seam: production, Release OS,
+Doctor and the estate audit were current and healthy, while General Inspections remained
+at 59/100 because the sanitized Kingdom Intelligence snapshot was roughly ten hours old.
+The Operator Bridge had been successfully reloaded, but reload success proved only that
+the launchd process was running. It did not prove that `aoe2war brain --json` had produced
+and published a fresh snapshot.
+
+Two implementation details made the stale state hard to diagnose. The bridge merged Brain
+stderr into stdout before strict JSON parsing, and a nonzero Brain exit or invalid JSON was
+silently converted to `None`. A direct Finish also reloads the bridge while the Finish lock
+is still active, so the startup snapshot can observe a transaction seam rather than final
+estate truth.
+
+Permanent rule: **bridge heartbeat authority and Intelligence freshness authority are
+separate.** Brain JSON is parsed from clean stdout, failures are explicit, a bridge restarted
+inside Finish defers Intelligence until the Finish lock clears, and failed/deferred refreshes
+retry promptly before returning to the normal periodic cadence. General Inspections remains
+fail-closed on stale evidence; the repair belongs in evidence publication, not score inflation.
+
 ## 2026-10-04 — Docs-only Git descendants must not deadlock post-release control refresh
 
 Champions E3 exposed a release-control seam after the runtime was already certified.

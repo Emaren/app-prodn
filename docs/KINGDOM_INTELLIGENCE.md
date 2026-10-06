@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "self-knowledge-contract"
-reviewed_at: "2026-09-06"
+reviewed_at: "2026-10-06"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -195,6 +195,14 @@ snapshot atomically in the OS control store. The bridge publishes a snapshot at
 startup, after an explicit Brain action, and periodically (five minutes by
 default, bounded to no faster than two minutes). The public page then reads only
 the sanitized server projection.
+
+Bridge process liveness is not Intelligence freshness. A direct `aoe2war finish`
+may reload the persistent bridge while the Finish transaction lock is still held.
+In that case the bridge must defer the startup Intelligence observation, retry
+promptly once the lock clears, and then resume the ordinary periodic cadence.
+Brain command failures, malformed JSON output, and publication failures are
+operator-visible warnings and receive bounded fast retries; they may never be
+silently converted into a successful-but-stale bridge.
 
 The raw Brain snapshot must never be exposed publicly. The public projection must
 never publish:
