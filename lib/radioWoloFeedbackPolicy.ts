@@ -6,10 +6,6 @@ export const RADIO_WOLO_LISTENER_HEARTBEAT_MS =
 export const RADIO_WOLO_LISTENER_ACTIVE_WINDOW_MS =
   150_000;
 
-export type RadioWoloRatingStyle =
-  | "icons"
-  | "emoji";
-
 export function radioWoloListenerIdIsValid(
   value: unknown,
 ): value is string {
