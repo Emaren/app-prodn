@@ -5,7 +5,7 @@ export const RADIO_PROGRAM_MAX_TARGET_MS =
   24 * 60 * 60 * 1000;
 
 export const RADIO_PROGRAM_MAX_ITEMS =
-  500;
+  2_000;
 
 export type RadioProgramStatus =
   | "draft"
