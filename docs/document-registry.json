@@ -278,7 +278,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "Bet and Replay Reliability Release — 2026-07-29",
+      "title": "Bet and Replay Reliability Release \u2014 2026-07-29",
       "type": "historical"
     },
     {
@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b71adcb0e4eb13e3ee3b4abe670b1e5e8600a675850a869dd0f40a6bfe09f76f",
+      "sha256": "cf22af141dc33c57314461a3a81e0126485ad97b0d81d71580a84d9e1010bbba",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1167,9 +1167,9 @@
       "owner": "aoe2war-web",
       "path": "docs/PARSER_ENGINE_ROOM.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-09-23",
+      "reviewed_at": "2026-10-06",
       "sensitivity": "restricted",
-      "sha256": "239ebce8a2035ad85776e6066a0eec83c72857d3c2bef746693c89ea36d93f80",
+      "sha256": "4135fc85a67cf266c79a9248d62ac1d8f1cf13af7604663e456a8b48a28fd650",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1221,7 +1221,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "AoE2WAR Production Performance Audit — 2026-07-18",
+      "title": "AoE2WAR Production Performance Audit \u2014 2026-07-18",
       "type": "historical"
     },
     {
@@ -1243,7 +1243,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "AoE2WAR Production Performance Audit — 2026-08-13",
+      "title": "AoE2WAR Production Performance Audit \u2014 2026-08-13",
       "type": "historical"
     },
     {
@@ -1288,7 +1288,7 @@
         "app-prodn",
         "api-prodn"
       ],
-      "title": "Player Identity Wave 2 — Deterministic Discovery V2",
+      "title": "Player Identity Wave 2 \u2014 Deterministic Discovery V2",
       "type": "reference"
     },
     {
@@ -1335,7 +1335,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "AoE2WAR Production Parity Seal — 2026-07-26",
+      "title": "AoE2WAR Production Parity Seal \u2014 2026-07-26",
       "type": "historical"
     },
     {
@@ -1371,9 +1371,9 @@
       "owner": "aoe2war-web",
       "path": "docs/REALTIME_TRUTH_CONTRACT.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-22",
+      "reviewed_at": "2026-10-06",
       "sensitivity": "internal",
-      "sha256": "23821c0199c6e47f60c46c2858d87a6a6559e80ed52813054971f99b001bd498",
+      "sha256": "55f7b19f207e1a15dbc90ad7eab86d3089ccc98fd6ff1040ce8d3b72381a1a01",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1427,7 +1427,7 @@
         "app-prodn",
         "wolochain"
       ],
-      "title": "AoE2WAR Certified Release Engineering Seal — 2026-08-10",
+      "title": "AoE2WAR Certified Release Engineering Seal \u2014 2026-08-10",
       "type": "historical"
     },
     {
@@ -1497,7 +1497,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "Replay Statistics and Operations Release — 2026-07-25",
+      "title": "Replay Statistics and Operations Release \u2014 2026-07-25",
       "type": "historical"
     },
     {
@@ -1511,9 +1511,9 @@
       "owner": "aoe2war-web",
       "path": "docs/REPLAY_TRUTH_OS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-27",
+      "reviewed_at": "2026-10-06",
       "sensitivity": "restricted",
-      "sha256": "bfb8c8f79fbb2a83038207c28d1fbd24672d1abe83982fec26b32fb9c7ab37c0",
+      "sha256": "46f497cc82023c2ddffd38eb9dd38ab113d6fa98beaebb3b27ccee09c6445259",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1997,7 +1997,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "War Room Forum — Saturday July 4, 2026 Edition",
+      "title": "War Room Forum \u2014 Saturday July 4, 2026 Edition",
       "type": "historical"
     },
     {
@@ -2025,8 +2025,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/bridge-finish-lock-test-determinism-20261006",
-    "commit": "5a970d94496b2537ec74b8b9da1033e5143cc271"
+    "branch": "fix/player-first-truth-current-rating-20261005",
+    "commit": "b847854dd1cbb52f3f1e1ce57af9deccabc5be67"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

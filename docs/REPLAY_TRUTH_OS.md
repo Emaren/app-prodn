@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-09-27"
+reviewed_at: "2026-10-06"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
@@ -270,3 +270,56 @@ The per-disposition game-ID manifests are the canonical handoff for bounded
 parser/backfill campaigns. Parser work should target artifact-present reparse
 and parser-research cohorts first; source-missing rows require evidence recovery,
 not looser parsing.
+
+## Player Result Recovery — 2026-10-06 checkpoint
+
+The bounded campaign owns exact Steam identities for Zodiac
+`76561198103810510`, mYsTikaL_VeGeTa `76561199849204394`, and mYsTikaL JiReN
+`76561198754754435`. Display names and uploader identity never expand that scope.
+
+From the governed app checkout, run:
+
+```bash
+python3 scripts/player-replay-truth.py plan --target all --max-games 3
+python3 scripts/player-replay-truth.py baseline --targets config/replay-truth-player-first-20261005.json
+```
+
+`plan` compiles the checked-in read-only planner and sends it through the existing
+protected observer. No deployment or production source file is written. Both
+commands seal immutable SHA-named receipts in the owning canonical checkout's
+`.aoe2war-release/truth-receipts/`, preserving them when a worktree is retired.
+`evidence --baseline <receipt> --baseline-sha256 <exact-digest>` independently
+checks the scoped archive and stored compressed candidate bytes. It never applies
+roster recovery, reconciles results, writes parser rows or schedules native work.
+
+The admin Parser Lab includes the same Player Result Recovery dry-run plan,
+separate Full Truth/result unknown counts, source/financial blockers and existing
+commissioner review links. The plan deduplicates logical battles and SHA execution
+work, caps selection at 1–10 games and fixes concurrency to one. Unknown batch
+execution remains disabled; no resumable unknown dispatcher is claimed by this
+checkpoint. Existing persistent OS run receipts track bounded known controls;
+workers reject duplicate attempt IDs and serialize native execution.
+
+The fresh production census at 2026-10-06T13:10:15.554Z was 3670/5396 Full Battle
+Truth (68.013343%). Target totals remained 761/356/255 with 55/17/22 Full Truth
+unknowns; only 52/17/22 are result unknowns. The later plan observed 94 distinct
+logical battles and 94 replay jobs: 23 native structural candidates, 2 existing
+roster-only plans, 10 parser research cases and 59 financial-linked commissioner
+review cases. All archives were present, and their exact bytes were verified in
+the companion evidence receipt. These route counts are not promised winner yield.
+
+No result was promoted and no production data was written. Existing roster plans
+25892/27269 pass their own contract but add no Workshop Full Truth under the current
+completeness rule. The local display correction for existing adjudications 25985
+and 41041 projects two fewer Zodiac roster gaps, with zero new winners; it is not
+deployed. Exact per-case IDs, SHAs, roster, slots, teams, financial exposure,
+parser lineage, raw blockers and immutable receipt seals live in
+`replay-receipts/player-first-2026-10-06-report.json` and its linked immutable
+campaign report.
+
+Next autonomous action: prove deterministic accelerated terminal arrival on
+control 32388, validate independent 1v1/team/4v4 controls, and only then review an
+unknown admission contract and bounded resumable dispatcher. Refresh this plan
+before execution. Native observations remain candidates; commissioner adjudication
+must freshly bind replay SHA, parser iteration, roster and proposition. No native
+job grants betting, claim, settlement or Wolo authority.

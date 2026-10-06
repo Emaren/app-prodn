@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/bridge-finish-lock-test-determinism-20261006` at `5a970d94496b2537ec74b8b9da1033e5143cc271`
+Implementation baseline: `fix/player-first-truth-current-rating-20261005` at `b847854dd1cbb52f3f1e1ce57af9deccabc5be67`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

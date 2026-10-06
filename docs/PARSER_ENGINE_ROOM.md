@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "architecture-explanation"
-reviewed_at: "2026-09-23"
+reviewed_at: "2026-10-06"
 review_interval_days: 60
 sensitivity: "restricted"
 ---
@@ -85,7 +85,7 @@ admin Replay Operations
 
 The browser never supplies a local path or arbitrary command. The server queues
 only a GameStats identity; the run freezes the current replay SHA and roster
-slots. During the canary stage, GameStats **32388** is additionally bound at the
+slots. Legacy canary GameStats **32388** remains bound at the
 admin parser, bridge, and Mac worker to exact replay SHA
 `02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b`
 and exact roster slots `[1, 2, 3, 4]`. A historical presentation filename is
@@ -144,16 +144,47 @@ for that exact replay is automatically checked by
 it does not globally authorize terminal semantics, broad execution, result
 promotion, betting, Wolo, or settlement.
 
-The widening ladder remains fail-closed: positive control 32388 first, then the
-documented disconnect/identity/conflict controls and deterministic validation
-cohort. During this canary stage, the admin request parser, Operator Bridge, and
-Mac worker all reject every GameStats ID except **32388**; the unresolved-corpus
-table exposes no native-play button. Widening therefore requires an explicit,
-reviewed source change after the control gate passes. Do not add a broad
-unresolved-game execution surface until those controls show that the native
-slot/result surface is reproducible. The product target is 100% disposition
-accounting and every provable winner resolved, not fabricated certainty for
-truncated/desynced/unprovable recordings.
+The v2 widening contract admits independently known controls only. A server-generated
+`aoe2war-native-replay-manifest/v2` binds canonical GameStats/logical identity,
+all source IDs including nonfinal same-artifact duplicates, a full source snapshot
+digest, exact SHA-named archive/size, raw unrounded slots, unique Steam identities,
+explicit two sides, current candidate-only parser lineage and independent complete
+winning-side result. Any linked market, claim, schedule/trophy exposure or desync
+fails admission. The browser supplies only a canonical GameStats ID.
+
+The internal artifact endpoint re-derives the manifest before transfer. Bridge and
+worker independently validate the closed manifest, digest and envelope, then bind
+the authenticated artifact header, size and byte hash. No path, executable, bottle,
+Steam command or shell text comes from the browser. Legacy exact 32388 requests
+retain their original fixed SHA/slot guards.
+
+The worker serializes execution with a fixed native lock and rejects duplicate
+attempt IDs. API source may live in a governed worktree, but runtime evidence is
+staged under the canonical API durable attempt root. The API runner rejects ordinary
+Windows replay/script/output paths beyond 259 characters before launch. The exact
+normal Steam wrapper is a preserved prerequisite; extra arguments or unrelated
+Wine processes remain conflicts.
+
+The independent referee rehashes the original replay, fixed executable/data,
+performance load witness and attempt inventory; it reconstructs the full AILog
+copy, before/after identity, prior prefix and exact attempt-new suffix. A second
+malformed GAME OVER marker also rejects the observation. A complete unique roster
+partition must match the trusted control's slots and exact Steam/team mapping.
+Synthetic fixture passes do not count as live control-ladder passes.
+
+Only an independent control PASS emits stats-only review evidence. This is a draft,
+not an adjudication request or new ledger: it requires commissioner approval through
+`/game-stats/[id]/review`, keeps `affectsStats=false` until acceptance, and never
+grants betting, claims, settlement or Wolo authority. The existing adjudicator must
+freshly bind parser iteration, roster and proposition before any accepted verdict.
+
+The 2026-10-06 bounded 32388 control proved exact loading and a complete 240-second
+performance record with cleanup, but no terminal GAME OVER/Won/Lost block.
+The ladder remains incomplete. Known 1v1/team/4v4 live controls have not passed;
+unknown manifests, broad campaigns and automatic native result promotion remain
+rejected. Exact receipts and continuation are in
+`replay-receipts/player-first-2026-10-06-report.json`. The next frontier is
+reproducible terminal arrival, not another replay-load experiment.
 
 The Replay Operations UI follows a queued native run through the existing OS
 receipt store and shows its terminal status, observed winner slots, and trusted
