@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6f7261c2ca81c77b2c69ed41ff53719d74aa7aeabf578b1a48b3060f1795c9ad",
+      "sha256": "b71adcb0e4eb13e3ee3b4abe670b1e5e8600a675850a869dd0f40a6bfe09f76f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2025,8 +2025,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/kingdom-intelligence-self-healing-20261006",
-    "commit": "25a701aed6d45a790f72766a6d53901d80f8361d"
+    "branch": "fix/bridge-finish-lock-test-determinism-20261006",
+    "commit": "5a970d94496b2537ec74b8b9da1033e5143cc271"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
