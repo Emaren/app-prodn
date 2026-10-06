@@ -30,6 +30,7 @@ import {
 
 import {
   expandRadioWoloIntakeFiles,
+  isRadioWoloZipFile,
 } from "@/lib/radioWoloZipImport";
 
 type RadioAsset = {
@@ -550,183 +551,258 @@ export default function RadioWoloVault() {
     setUploading(true);
     setError(null);
     setNotice(null);
+    setUploadJobs([]);
 
-    setUploadJobs(
-      selected.map(
-        (
-          file,
-          index,
-        ) => ({
-          key:
-            `intake-${Date.now()}-${index}-${file.name}`,
-          name:
-            file.name,
-          state:
-            "reading" as const,
-          detail:
-            file.name
-              .toLowerCase()
-              .endsWith(
-                ".zip",
-              )
-              ? "Opening ZIP…"
-              : "Reading metadata…",
-        }),
-      ),
-    );
-
-    let intake:
-      Awaited<
-        ReturnType<
-          typeof expandRadioWoloIntakeFiles
-        >
-      >;
-
-    try {
-      intake =
-        await expandRadioWoloIntakeFiles(
-          selected,
-        );
-    } catch (cause) {
-      setError(
-        cause instanceof Error
-          ? cause.message
-          : "Could not unpack the Radio WOLO intake.",
-      );
-      setUploadJobs([]);
-      setUploading(false);
-      return;
-    }
-
-    const jobs =
-      intake.map(
-        (
-          item,
-          index,
-        ) => ({
-          key:
-            `${Date.now()}-${index}-${item.sourceLabel}-${item.file.name}`,
-          name:
-            item.file.name,
-          state:
-            "reading" as const,
-          detail:
-            item.sourceLabel ===
-            item.file.name
-              ? undefined
-              : `From ${item.sourceLabel}`,
-        }),
-      );
-
-    setUploadJobs(
-      jobs,
-    );
+    const batchId =
+      Date.now();
 
     let uploaded = 0;
     let skipped = 0;
     let failed = 0;
 
     for (
-      let index = 0;
-      index <
-      intake.length;
-      index += 1
+      let sourceIndex = 0;
+      sourceIndex <
+      selected.length;
+      sourceIndex += 1
     ) {
-      const file =
-        intake[index].file;
+      const source =
+        selected[sourceIndex];
 
-      const job =
-        jobs[index];
+      const isArchive =
+        isRadioWoloZipFile(
+          source,
+        );
+
+      const archiveKey =
+        `archive-${batchId}-${sourceIndex}-${source.name}`;
+
+      if (isArchive) {
+        setUploadJobs(
+          (current) => [
+            ...current,
+            {
+              key:
+                archiveKey,
+              name:
+                source.name,
+              state:
+                "reading",
+              detail:
+                "Opening ZIP…",
+            },
+          ],
+        );
+      }
+
+      let intake:
+        Awaited<
+          ReturnType<
+            typeof expandRadioWoloIntakeFiles
+          >
+        >;
 
       try {
-        const durationMs =
-          await audioDurationMs(
-            file,
+        // Expand and upload one source archive at a time. Selecting all 18
+        // Suno ZIPs therefore never retains the entire library in memory.
+        intake =
+          await expandRadioWoloIntakeFiles(
+            [source],
           );
 
-        updateJob(
-          job.key,
-          {
-            state:
-              "uploading",
-            detail:
-              `${formatDuration(
-                durationMs,
-              )} · uploading`,
-          },
-        );
-
-        const form =
-          new FormData();
-
-        form.set(
-          "audio",
-          file,
-        );
-
-        form.set(
-          "durationMs",
-          String(
-            durationMs,
-          ),
-        );
-
-        if (
-          importCredit.trim()
-        ) {
-          form.set(
-            "credit",
-            importCredit.trim(),
-          );
-        }
-
-        if (
-          importKind.trim()
-        ) {
-          form.set(
-            "kind",
-            importKind.trim(),
-          );
-        }
-
-        if (
-          importTags.trim()
-        ) {
-          form.set(
-            "tags",
-            importTags.trim(),
-          );
-        }
-
-        const response =
-          await fetch(
-            "/api/admin/radio/assets",
+        if (isArchive) {
+          updateJob(
+            archiveKey,
             {
-              method:
-                "POST",
-              body:
-                form,
+              state:
+                "done",
+              detail:
+                `${intake.length} tracks found`,
+            },
+          );
+        }
+      } catch (cause) {
+        failed += 1;
+
+        const detail =
+          cause instanceof Error
+            ? cause.message
+            : "Could not unpack this Radio WOLO intake.";
+
+        if (isArchive) {
+          updateJob(
+            archiveKey,
+            {
+              state:
+                "error",
+              detail,
+            },
+          );
+        } else {
+          setUploadJobs(
+            (current) => [
+              ...current,
+              {
+                key:
+                  archiveKey,
+                name:
+                  source.name,
+                state:
+                  "error",
+                detail,
+              },
+            ],
+          );
+        }
+
+        continue;
+      }
+
+      for (
+        let trackIndex = 0;
+        trackIndex <
+        intake.length;
+        trackIndex += 1
+      ) {
+        const item =
+          intake[trackIndex];
+
+        const file =
+          item.file;
+
+        const job: UploadJob = {
+          key:
+            `track-${batchId}-${sourceIndex}-${trackIndex}-${file.name}`,
+          name:
+            file.name,
+          state:
+            "reading",
+          detail:
+            isArchive
+              ? `From ${source.name}`
+              : undefined,
+        };
+
+        setUploadJobs(
+          (current) => [
+            ...current,
+            job,
+          ],
+        );
+
+        try {
+          const durationMs =
+            await audioDurationMs(
+              file,
+            );
+
+          updateJob(
+            job.key,
+            {
+              state:
+                "uploading",
+              detail:
+                `${formatDuration(
+                  durationMs,
+                )} · uploading`,
             },
           );
 
-        const payload =
-          (await response
-            .json()
-            .catch(
-              () => ({}),
-            )) as {
-            detail?:
-              string;
-            duplicateId?:
-              number;
-          };
+          const form =
+            new FormData();
 
-        if (
-          response.status ===
-            409 &&
-          payload.duplicateId
-        ) {
-          skipped += 1;
+          form.set(
+            "audio",
+            file,
+          );
+
+          form.set(
+            "durationMs",
+            String(
+              durationMs,
+            ),
+          );
+
+          if (
+            importCredit.trim()
+          ) {
+            form.set(
+              "credit",
+              importCredit.trim(),
+            );
+          }
+
+          if (
+            importKind.trim()
+          ) {
+            form.set(
+              "kind",
+              importKind.trim(),
+            );
+          }
+
+          if (
+            importTags.trim()
+          ) {
+            form.set(
+              "tags",
+              importTags.trim(),
+            );
+          }
+
+          const response =
+            await fetch(
+              "/api/admin/radio/assets",
+              {
+                method:
+                  "POST",
+                body:
+                  form,
+              },
+            );
+
+          const payload =
+            (await response
+              .json()
+              .catch(
+                () => ({}),
+              )) as {
+              detail?:
+                string;
+              duplicateId?:
+                number;
+            };
+
+          if (
+            response.status ===
+              409 &&
+            payload.duplicateId
+          ) {
+            skipped += 1;
+
+            updateJob(
+              job.key,
+              {
+                state:
+                  "done",
+                detail:
+                  "Already in Vault · skipped",
+              },
+            );
+
+            continue;
+          }
+
+          if (
+            !response.ok
+          ) {
+            throw new Error(
+              payload.detail ||
+                "Upload failed.",
+            );
+          }
+
+          uploaded += 1;
 
           updateJob(
             job.key,
@@ -734,52 +810,29 @@ export default function RadioWoloVault() {
               state:
                 "done",
               detail:
-                "Already in Vault · skipped",
+                `${formatDuration(
+                  durationMs,
+                )} · preserved`,
             },
           );
-
-          continue;
-        }
-
-        if (
-          !response.ok
+        } catch (
+          cause
         ) {
-          throw new Error(
-            payload.detail ||
-              "Upload failed.",
+          failed += 1;
+
+          updateJob(
+            job.key,
+            {
+              state:
+                "error",
+              detail:
+                cause instanceof
+                  Error
+                  ? cause.message
+                  : "Upload failed.",
+            },
           );
         }
-
-        uploaded += 1;
-
-        updateJob(
-          job.key,
-          {
-            state:
-              "done",
-            detail:
-              `${formatDuration(
-                durationMs,
-              )} · preserved`,
-          },
-        );
-      } catch (
-        cause
-      ) {
-        failed += 1;
-
-        updateJob(
-          job.key,
-          {
-            state:
-              "error",
-            detail:
-              cause instanceof
-                Error
-                ? cause.message
-                : "Upload failed.",
-          },
-        );
       }
     }
 
