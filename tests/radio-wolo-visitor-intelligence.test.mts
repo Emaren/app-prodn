@@ -92,5 +92,7 @@ test("Radio WOLO admin rail keeps one account row, durable sound history, and Tr
   assert.match(component, /"USED"/);
   assert.match(component, /"heard radio"/);
   assert.match(component, /currentTrailIndex/);
+  assert.match(component, /Browser \{browserIndex \+ 1\}/);
+  assert.match(component, /new visit/);
   assert.match(component, /shadow-\[0_0_8px_rgba\(110,231,183,0\.8\)\]/);
 });
