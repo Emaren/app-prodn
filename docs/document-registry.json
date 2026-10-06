@@ -893,9 +893,9 @@
       "owner": "aoe2war-web",
       "path": "docs/KINGDOM_CIVIC_SURFACES.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-05",
+      "reviewed_at": "2026-10-06",
       "sensitivity": "internal",
-      "sha256": "a7963fdaa407aae310b588fe198f6c741c46010b535677fc6795409713564192",
+      "sha256": "ff3feb20a53617b4cfc5db028dfa4af8f27b6ec4b0ee0a91a61e2da12a816d84",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
