@@ -30,7 +30,7 @@ DEFAULT_TOKEN_FILE = Path(
     )
 ).expanduser()
 
-VERSION = "1.4.1"
+VERSION = "1.4.2"
 NATIVE_REPLAY_CANARY_SHA256 = {32388: "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b"}
 NATIVE_REPLAY_CANARY_GAME_IDS = set(NATIVE_REPLAY_CANARY_SHA256)
 NATIVE_REPLAY_CANARY_ROSTER = {32388: [1, 2, 3, 4]}
@@ -379,23 +379,43 @@ def run_kingdom_intelligence_snapshot(
     base_url: str,
     run_id: str | None,
     source_action: str,
-) -> dict[str, Any] | None:
+) -> dict[str, Any]:
     process = subprocess.run(
         [str(CLI), "brain", "--json"],
         cwd=str(ROOT),
         text=True,
         stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
+        stderr=subprocess.PIPE,
         timeout=240,
     )
+    stdout = process.stdout or ""
+    stderr = process.stderr or ""
     if process.returncode not in (0, 1):
-        return None
+        detail = (stderr.strip() or stdout.strip() or "no output")[-4000:]
+        raise BridgeError(
+            "Kingdom Intelligence command failed "
+            f"exit={process.returncode}: {detail}"
+        )
 
-    payload = try_parse_json(process.stdout)
+    payload = try_parse_json(stdout)
     if not isinstance(payload, dict):
-        return None
+        detail = stdout.strip()[-2000:] or "(empty stdout)"
+        if stderr.strip():
+            detail += " · stderr=" + stderr.strip()[-1200:]
+        raise BridgeError(
+            "Kingdom Intelligence command did not emit one JSON object: "
+            + detail
+        )
     if payload.get("kind") != "aoe2war-kingdom-intelligence":
-        return None
+        raise BridgeError(
+            "Kingdom Intelligence command returned unexpected kind="
+            + repr(payload.get("kind"))
+        )
+    if payload.get("status") == "ERROR":
+        raise BridgeError(
+            "Kingdom Intelligence command reported ERROR: "
+            + str(payload.get("error") or "unknown error")[:2000]
+        )
 
     publish_kingdom_intelligence(
         token=token,
@@ -413,10 +433,17 @@ def kingdom_intelligence_loop(
     token: str,
     base_url: str,
     interval_seconds: float,
+    initial_delay_seconds: float = 0.0,
 ) -> None:
     interval = max(120.0, interval_seconds)
-    while not stop.wait(interval):
+    retry = min(15.0, interval)
+    delay = max(0.0, initial_delay_seconds)
+    while not stop.wait(delay):
         if finish_in_progress():
+            # A direct `aoe2war finish` reloads this bridge before its own
+            # final audit/Doctor/performance phases complete. Do not seal a
+            # transient snapshot. Retry promptly once the Finish lock clears.
+            delay = retry
             continue
         try:
             snapshot = run_kingdom_intelligence_snapshot(
@@ -425,19 +452,22 @@ def kingdom_intelligence_loop(
                 run_id=None,
                 source_action="bridge_periodic",
             )
-            if snapshot:
-                print(
-                    "[kingdom intelligence] "
-                    f"{snapshot.get('war_date')} · "
-                    f"{snapshot.get('operating_state')}",
-                    flush=True,
-                )
+            print(
+                "[kingdom intelligence] "
+                f"{snapshot.get('war_date')} · "
+                f"{snapshot.get('operating_state')}",
+                flush=True,
+            )
+            delay = interval
         except Exception as exc:
             print(
                 f"[kingdom intelligence warning] {exc}",
                 file=sys.stderr,
                 flush=True,
             )
+            # Broken publication must self-heal quickly instead of leaving the
+            # public ledger stale until the full periodic interval elapses.
+            delay = retry
 
 
 def run_audit_snapshot(
@@ -715,34 +745,42 @@ def run_bridge(
                 flush=True,
             )
 
-        print("publishing initial Kingdom Intelligence snapshot...", flush=True)
-        try:
-            intelligence = run_kingdom_intelligence_snapshot(
-                token=token,
-                base_url=base_url,
-                run_id=None,
-                source_action="bridge_startup",
-            )
+        intelligence_published = False
+        if finish_in_progress():
             print(
-                "Kingdom Intelligence: "
-                + (
+                "Finish lock is active; deferring initial Kingdom Intelligence "
+                "until the transaction closes.",
+                flush=True,
+            )
+        else:
+            print("publishing initial Kingdom Intelligence snapshot...", flush=True)
+            try:
+                intelligence = run_kingdom_intelligence_snapshot(
+                    token=token,
+                    base_url=base_url,
+                    run_id=None,
+                    source_action="bridge_startup",
+                )
+                intelligence_published = True
+                print(
+                    "Kingdom Intelligence: "
                     f"{intelligence.get('war_date')} · "
-                    f"{intelligence.get('operating_state')}"
-                    if intelligence
-                    else "unavailable"
-                ),
-                flush=True,
-            )
-        except Exception as exc:
-            print(
-                f"[kingdom intelligence warning] {exc}",
-                file=sys.stderr,
-                flush=True,
-            )
+                    f"{intelligence.get('operating_state')}",
+                    flush=True,
+                )
+            except Exception as exc:
+                print(
+                    f"[kingdom intelligence warning] {exc}",
+                    file=sys.stderr,
+                    flush=True,
+                )
     finally:
         startup_heartbeat_stop.set()
         startup_heartbeat.join(timeout=2)
 
+    intelligence_interval = float(
+        os.getenv("AOE2WAR_KI_REFRESH_SECONDS", "300")
+    )
     intelligence_stop = threading.Event()
     intelligence_thread = threading.Thread(
         target=kingdom_intelligence_loop,
@@ -750,8 +788,9 @@ def run_bridge(
             "stop": intelligence_stop,
             "token": token,
             "base_url": base_url,
-            "interval_seconds": float(
-                os.getenv("AOE2WAR_KI_REFRESH_SECONDS", "300")
+            "interval_seconds": intelligence_interval,
+            "initial_delay_seconds": (
+                intelligence_interval if intelligence_published else 0.0
             ),
         },
         daemon=True,
