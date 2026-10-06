@@ -649,6 +649,98 @@ export default function RadioWoloBuilder() {
     );
   }
 
+  function fillTargetFromVisibleAssets() {
+    if (
+      !visibleAssets.length ||
+      targetDurationMs <= 0
+    ) {
+      return;
+    }
+
+    updateChain(
+      (current) => {
+        let duration =
+          calculateRadioProgramDurationMs(
+            current.map(
+              (item) => ({
+                durationMs:
+                  item.asset
+                    .durationMs,
+                transition:
+                  item.transition,
+                crossfadeMs:
+                  item.crossfadeMs,
+              }),
+            ),
+          );
+
+        if (
+          duration >=
+          targetDurationMs
+        ) {
+          setError(
+            "This program already meets or exceeds its target duration.",
+          );
+          return current;
+        }
+
+        const additions:
+          ChainItem[] = [];
+
+        for (
+          const asset of
+          visibleAssets
+        ) {
+          if (
+            current.length +
+              additions.length >=
+            RADIO_PROGRAM_MAX_ITEMS
+          ) {
+            break;
+          }
+
+          additions.push({
+            key:
+              chainKey(
+                `asset-${asset.id}`,
+              ),
+            asset,
+            transition:
+              "cut",
+            crossfadeMs:
+              0,
+          });
+
+          duration +=
+            asset.durationMs;
+
+          if (
+            duration >=
+            targetDurationMs
+          ) {
+            break;
+          }
+        }
+
+        if (
+          !additions.length
+        ) {
+          setError(
+            "No filtered tracks could be added to this target.",
+          );
+          return current;
+        }
+
+        setError(null);
+
+        return [
+          ...current,
+          ...additions,
+        ];
+      },
+    );
+  }
+
   function removeItem(
     index: number,
   ) {
@@ -1485,25 +1577,47 @@ export default function RadioWoloBuilder() {
                     Vault source
                   </div>
 
-                  <button
-                    type="button"
-                    disabled={
-                      selectedProgramIsOnAir ||
-                      visibleAssets.length ===
-                        0 ||
-                      chain.length +
-                        visibleAssets.length >
-                        RADIO_PROGRAM_MAX_ITEMS
-                    }
-                    onClick={
-                      addVisibleAssets
-                    }
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-fuchsia-100/15 bg-fuchsia-100/[0.055] px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-fuchsia-100/70 transition hover:bg-fuchsia-100/[0.10] hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
-                    title="Add every track matching the current Vault search"
-                  >
-                    <Plus size={12} />
-                    Add filtered · {visibleAssets.length}
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      disabled={
+                        selectedProgramIsOnAir ||
+                        visibleAssets.length ===
+                          0 ||
+                        builtDurationMs >=
+                          targetDurationMs ||
+                        chain.length >=
+                          RADIO_PROGRAM_MAX_ITEMS
+                      }
+                      onClick={
+                        fillTargetFromVisibleAssets
+                      }
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-white/8 bg-white/[0.03] px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400 transition hover:border-fuchsia-100/15 hover:text-fuchsia-100 disabled:cursor-not-allowed disabled:opacity-30"
+                      title="Add filtered tracks until the program reaches its target duration"
+                    >
+                      Fill target
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={
+                        selectedProgramIsOnAir ||
+                        visibleAssets.length ===
+                          0 ||
+                        chain.length +
+                          visibleAssets.length >
+                          RADIO_PROGRAM_MAX_ITEMS
+                      }
+                      onClick={
+                        addVisibleAssets
+                      }
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-fuchsia-100/15 bg-fuchsia-100/[0.055] px-2.5 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-fuchsia-100/70 transition hover:bg-fuchsia-100/[0.10] hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+                      title="Add every track matching the current Vault search"
+                    >
+                      <Plus size={12} />
+                      Add filtered · {visibleAssets.length}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="relative mt-3">
