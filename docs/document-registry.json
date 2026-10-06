@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0cb9599a0ced549ef35a4c38017ab4aac3a28445946195c896f3c311f6cf9dcd",
+      "sha256": "e5e51498d2cb37d2ad234af279accea328a13c58ff7fee7f2bd4f69539e0b657",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2026,7 +2026,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feat/frictionless-championship-challenges-20261006",
-    "commit": "4e9097b16fd77be31f671b213154a1da285a4b26"
+    "commit": "48981e7c5f54312c14b3a099d6ae7bab0f413a39"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
