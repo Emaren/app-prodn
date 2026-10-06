@@ -283,6 +283,126 @@ class OperatorBridgeTests(unittest.TestCase):
         self.assertEqual(MODULE.try_parse_json('{"p0":0}'), {"p0": 0})
         self.assertIsNone(MODULE.try_parse_json("not json"))
 
+    def test_kingdom_intelligence_uses_clean_stdout_when_stderr_has_noise(self):
+        process = MODULE.subprocess.CompletedProcess(
+            [str(MODULE.CLI), "brain", "--json"],
+            0,
+            stdout=(
+                '{"kind":"aoe2war-kingdom-intelligence",'
+                '"war_date":"2026.279.0100Z","operating_state":"READY"}'
+            ),
+            stderr="advisory warning on stderr\n",
+        )
+        with patch.object(MODULE.subprocess, "run", return_value=process), \
+             patch.object(MODULE, "publish_kingdom_intelligence") as publish:
+            payload = MODULE.run_kingdom_intelligence_snapshot(
+                token="token",
+                base_url="https://example.invalid",
+                run_id=None,
+                source_action="test",
+            )
+
+        self.assertEqual(payload["operating_state"], "READY")
+        publish.assert_called_once()
+
+    def test_kingdom_intelligence_failure_is_not_silently_discarded(self):
+        process = MODULE.subprocess.CompletedProcess(
+            [str(MODULE.CLI), "brain", "--json"],
+            2,
+            stdout='{"kind":"aoe2war-kingdom-intelligence","status":"ERROR"}',
+            stderr="brain exploded",
+        )
+        with patch.object(MODULE.subprocess, "run", return_value=process):
+            with self.assertRaisesRegex(
+                MODULE.BridgeError,
+                r"Kingdom Intelligence command failed exit=2: brain exploded",
+            ):
+                MODULE.run_kingdom_intelligence_snapshot(
+                    token="token",
+                    base_url="https://example.invalid",
+                    run_id=None,
+                    source_action="test",
+                )
+
+    def test_kingdom_intelligence_loop_retries_promptly_after_finish_lock(self):
+        waits = []
+
+        class FakeStop:
+            def __init__(self):
+                self.calls = 0
+
+            def wait(self, seconds):
+                waits.append(seconds)
+                self.calls += 1
+                return self.calls >= 3
+
+        snapshot = {
+            "war_date": "2026.279.0100Z",
+            "operating_state": "READY",
+        }
+        with patch.object(
+            MODULE,
+            "finish_in_progress",
+            side_effect=[True, False],
+        ), patch.object(
+            MODULE,
+            "run_kingdom_intelligence_snapshot",
+            return_value=snapshot,
+        ) as refresh:
+            MODULE.kingdom_intelligence_loop(
+                FakeStop(),
+                token="token",
+                base_url="https://example.invalid",
+                interval_seconds=300,
+                initial_delay_seconds=0,
+            )
+
+        self.assertEqual(waits, [0, 15.0, 300])
+        refresh.assert_called_once()
+
+    def test_startup_defers_kingdom_intelligence_while_finish_is_locked(self):
+        events = []
+
+        class FakeThread:
+            def __init__(self, *, target, kwargs, daemon):
+                self.target = target
+                self.kwargs = kwargs
+                self.daemon = daemon
+
+            def start(self):
+                events.append(("start", self.target.__name__, self.kwargs))
+
+            def join(self, timeout=None):
+                events.append(("join", self.target.__name__, timeout))
+
+        def post_bridge(payload, *, token, base_url):
+            events.append(("post", payload["op"]))
+            return {"run": None} if payload["op"] == "claim" else {}
+
+        with patch.object(MODULE.threading, "Thread", FakeThread), \
+             patch.object(MODULE, "post_bridge", side_effect=post_bridge), \
+             patch.object(MODULE, "finish_in_progress", return_value=True), \
+             patch.object(MODULE, "run_audit_snapshot", return_value={"p0": 0, "p1": 0}), \
+             patch.object(MODULE, "run_kingdom_intelligence_snapshot") as intelligence:
+            result = MODULE.run_bridge(
+                token="token",
+                base_url="https://example.invalid",
+                once=True,
+                interval=3.0,
+                initial_audit=True,
+            )
+
+        self.assertEqual(result, 0)
+        intelligence.assert_not_called()
+        refresh_thread = next(
+            row for row in events
+            if row[0] == "start" and row[1] == "kingdom_intelligence_loop"
+        )
+        self.assertEqual(
+            refresh_thread[2]["initial_delay_seconds"],
+            0.0,
+        )
+
     def test_startup_snapshots_keep_bridge_heartbeat_thread_live(self):
         events = []
 
