@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "390aaae91726b1b1eaf484c1e7decf9762488073126892ed2834d87c8c440f9c",
+      "sha256": "cf9414ba2436920f57264e12f44fdad2f49d8735d91a60a700c73a8513d02d8f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2025,8 +2025,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "perf/fix-kingdom-oracle-images-and-champions-paint-20261005",
-    "commit": "dc2561773e812fd5e27fd76237377287f2b6eff6"
+    "branch": "fix/release-gate-test-eof-20261006",
+    "commit": "c51dbfb5c04a6b6167f999b3d3a495c693a274a3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

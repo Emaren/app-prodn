@@ -71,4 +71,3 @@ test("Kingdom and Oracle hero art is allowed through Next image optimization", (
   assert.match(kingdom, /src="\/kingdom\/kingdom-hero-bg\.webp"/);
   assert.match(oracle, /src="\/oracle\/oracle-hero-bg\.webp"/);
 });
-
