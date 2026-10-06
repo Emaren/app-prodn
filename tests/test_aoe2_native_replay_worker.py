@@ -204,6 +204,9 @@ class NativeReplayWorkerTests(unittest.TestCase):
                 "candidate_terminal_witness_control_pass",
             )
             self.assertTrue(result["trustedControlValidation"]["control_passed"])
+            # The legacy canary has no v2 snapshot/Steam manifest. A legacy
+            # PASS cannot manufacture a modern stats-only review proposal.
+            self.assertNotIn("statsOnlyReviewEvidence", result)
             self.assertRegex(
                 result["evidenceSha256"]["trusted-control-validation.json"],
                 r"^[0-9a-f]{64}$",
