@@ -8,7 +8,7 @@ systems: ["app-prodn","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-10-01"
+reviewed_at: "2026-10-06"
 review_interval_days: 60
 sensitivity: "internal"
 ---
@@ -24,20 +24,21 @@ invitation lifecycle below is retained for older records and V1 issuance;
 its use of the name "v2" predates this renderer and is not the new belt protocol.
 
 New presentation V2 has one server-owned deadline, creation plus 24 hours.
-There are no duration or appointment controls. Acceptance and each warrior's
-verified signed funding never extend the deadline. The selected rival's full
+There are no duration or appointment controls. Acceptance and any optional
+verified funding never extend the deadline. The selected rival's full
 held title stack appears immediately; centralized policy chooses one weakest
 eligible solo title. Team-title actions appear only for that rival's held
-rosters and require exact registered teams and participant-scoped funding.
+rosters and require exact registered teams. Funding is optional sporting-side
+metadata and never blocks issuing or playing the Challenge.
 Chaos uses separate popular-vote authority.
 
-Reliable exact-roster/lane start proof before the deadline durably stops
+Reliable watcher-verified exact-roster/lane start proof before the deadline durably stops
 defaulting. Final proof may arrive later and requires stronger full-roster
 Watcher/replay, desync, and current-custody gates. Countdown, readiness, and
 next action come from one shared projection used on detail and chat cards.
 
 No qualifying start at hour 24 enters Commissioner grace; hour 25 considers
-all valid funded claimant sides under the title lock. One defensible claimant
+all valid default-claimant sides under the title lock. One defensible claimant
 may default; multiple claimants create dispute/Guardian custody; two ready
 sides with ambiguous fault remain review. Default does not fabricate a purse
 winner. Financial refund is complete only after chain transaction proof.
