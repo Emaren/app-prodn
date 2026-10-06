@@ -122,8 +122,9 @@ export async function createChampionshipChallenge(prisma: PrismaClient, viewerUs
   const rival = await prisma.user.findUnique({where:{uid:payload.challengedUid || ""},select:USER_SELECT});
   if (!creator || !rival || creator.id === rival.id) throw new ChallengeConflictError("Choose another linked warrior.",400);
   const requestId = typeof payload.creationRequestId === "string" && /^[A-Za-z0-9:_-]{12,128}$/.test(payload.creationRequestId) ? payload.creationRequestId : `championship-v2:${creator.id}:${randomUUID()}`;
-  const wager = normalizeChallengeWoloAmount(payload.wagerAmountWolo) ?? CHAMPIONSHIP_DEFAULT_WAGER_WOLO;
-  if (!isChampionshipChallengeWagerAmount(wager)) throw new ChallengeConflictError("Championship stake must be 0 or 100 WOLO.",400);
+  const normalizedWager = normalizeChallengeWoloAmount(payload.wagerAmountWolo);
+  const wager = payload.wagerAmountWolo == null ? CHAMPIONSHIP_DEFAULT_WAGER_WOLO : normalizedWager;
+  if (wager === null || !isChampionshipChallengeWagerAmount(wager)) throw new ChallengeConflictError("Championship stake must be 0 or 100 WOLO.",400);
   const replay=await existingCreation(prisma,requestId,creator,payload,wager);
   if(replay)return replay;
   await ensureTrophySeedData(prisma);
