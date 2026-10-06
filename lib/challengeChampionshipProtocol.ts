@@ -43,9 +43,9 @@ export function projectChampionshipChallenge(input: {
     : phase === "commissioner_review" ? "COMMISSIONER REVIEW"
     : phase === "disputed" ? "TITLE IN DISPUTE — Commissioner playoff required"
     : TERMINAL.has(phase) ? phase === "completed" ? "Result verified — inspect custody and chain payment proof" : phase === "defaulted" ? "Title default recorded — refunds require chain proof" : `Challenge ${phase}`
-    : !allAccepted ? "Coordinate and play before the deadline — Watchers start the match automatically. Accept only to confirm and fund WOLO terms."
-    : !allFunded ? "Play whenever ready — Watchers start the match automatically. Fund before play only if you want the WOLO stake matched."
-    : "Ready — play before the deadline; Watchers will detect the battle automatically.";
+    : !allAccepted ? "Run the watcher and play before the deadline — a watcher-verified start owns the competitive clock."
+    : !allFunded ? "Play whenever ready — watcher-verified play starts the match automatically; WOLO funding is optional."
+    : "Ready — play before the deadline; the watcher will detect the battle automatically.";
   return { version: 2, serverNow: now.toISOString(), challengeDeadline: input.challengeDeadline.toISOString(), commissionerGraceDeadline: input.commissionerGraceDeadline.toISOString(), phase, titleName: input.titleName, nextInstruction, defenseStartedAt: input.defenseStartedAt?.toISOString() ?? null, reasonCode: input.reasonCode,
     participants: input.participants.map(p => ({ ...p, canAccept: open && p.userId === viewerUserId && !p.accepted, canFund: open && p.userId === viewerUserId && p.accepted && !p.funded })) };
 }
