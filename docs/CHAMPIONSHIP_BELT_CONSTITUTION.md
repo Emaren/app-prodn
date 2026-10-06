@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-09-30"
+reviewed_at: "2026-10-06"
 review_interval_days: 60
 sensitivity: "internal"
 ---
@@ -74,7 +74,7 @@ correction requires Commissioner disposition and immutable history.
 
 ## VI. Challenge clock
 
-The server creates one deadline: creation plus 24 hours. Acceptance, funding,
+The server creates one deadline: creation plus 24 hours. Acceptance, optional funding,
 refresh, reconnect, renderer choice, and device changes never reset it. There
 is no V2 duration or appointment selector. Every surface renders the same
 projection, using a live seconds countdown and accessible final-hour urgency.
@@ -108,8 +108,10 @@ No inferred winner is allowed. A late result cannot reopen a disposed title.
 
 ## VIII. WOLO funding
 
-Every obligated warrior signs an actual bank transfer from their sealed linked
-wallet to the existing Bet Escrow wallet. Chain verification binds sender,
+Championship issuance itself never requires a wallet transaction. New explicit
+V2 challenges default to 0 WOLO and may optionally declare a 100 WOLO per-warrior
+stake. Existing funding rails remain available for voluntary matched stakes and
+historical liabilities. When a warrior does fund, chain verification binds sender,
 recipient, transaction, CID/SID, left/right side, wager and guarantee buckets,
 and amount. Each transaction is used once. Acceptance is not funding.
 
@@ -124,8 +126,9 @@ Sporting truth never waits for money: a played battle still counts when its
 WOLO stake never matched. Any unilateral or late deposit remains real escrow
 liability and returns whole to its original funding wallet; it cannot
 retroactively create winner-take-pool authority. No app-created pooled balance
-or new escrow wallet exists. V2 uses positive per-warrior wager for explicit
-title challenges and zero Match Guarantee; historical guarantees retain their
+or new escrow wallet exists. V2 explicit title challenges use exactly 0 or 100
+WOLO per warrior and zero Match Guarantee; 0 is the default and no deposit is a
+precondition to issue or play the Challenge. Historical guarantees retain their
 original meaning.
 
 An exact dual-Watcher 1v1 encounter may also materialize a zero-wager solo title
