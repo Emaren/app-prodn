@@ -24,13 +24,15 @@ def targets_from_file(path):
         raise ValueError("expected 1-10 exact player identities")
     result = []
     for value in values:
-        if not isinstance(value, dict) or set(value) - {"name", "uid"}:
-            raise ValueError("player accepts only name and optional canonical UID")
+        if not isinstance(value, dict) or set(value) - {"name", "uid", "steamId"}:
+            raise ValueError("player accepts only name and optional canonical UID/exact Steam ID")
         name = value.get("name")
         if not isinstance(name, str) or not name.strip() or len(name) > 100:
             raise ValueError("exact player name required")
         if "uid" in value and (not isinstance(value["uid"], str) or not re.fullmatch(r"u_[a-zA-Z0-9_-]{1,96}", value["uid"])):
             raise ValueError("invalid canonical UID")
+        if "steamId" in value and (not isinstance(value["steamId"], str) or not re.fullmatch(r"[0-9]{17}", value["steamId"])):
+            raise ValueError("invalid exact Steam identity")
         result.append({**value, "name": name.strip()})
     if len({(v["name"].casefold(), v.get("uid")) for v in result}) != len(result):
         raise ValueError("duplicate target identity")
@@ -79,25 +81,39 @@ def seal(payload, directory, kind):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("mode", choices=["baseline", "evidence"])
+    parser.add_argument("mode", choices=["baseline", "evidence", "plan"])
     parser.add_argument("--targets", type=Path)
     parser.add_argument("--baseline", type=Path)
     parser.add_argument("--baseline-sha256")
     parser.add_argument("--receipt-dir", type=Path)
+    parser.add_argument("--target", choices=["all", "zodiac", "vegeta", "jiren"], default="all")
+    parser.add_argument("--max-games", type=int, default=3)
     args = parser.parse_args(argv)
     if args.mode == "baseline":
         if not args.targets or args.baseline:
             parser.error("baseline requires --targets, without --baseline")
         targets = targets_from_file(args.targets)
         source = ROOT / "scripts/player_replay_truth_remote.mjs"
-    else:
+    elif args.mode == "evidence":
         if not args.baseline or not args.baseline_sha256 or args.targets:
             parser.error("evidence requires --baseline and --baseline-sha256, without --targets")
         targets = evidence_targets(args.baseline, args.baseline_sha256)
         source = ROOT / "scripts/player_replay_evidence_remote.mjs"
-    program = source.read_text()
+    else:
+        if args.targets or args.baseline or not 1 <= args.max_games <= 10:
+            parser.error("plan requires a fixed Steam target and --max-games 1..10, without a baseline or target file")
+        source = ROOT / "lib/playerResultRecovery.ts"
+        targets = {"target": args.target, "dryRun": True, "maxGames": args.max_games, "concurrency": 1}
+    if args.mode == "plan":
+        # Send a reviewed, versioned read-only loader through the existing protected
+        # observer. No deployment or temporary production source files are required.
+        program = subprocess.check_output(["node", "-e", "const ts=require('typescript'),fs=require('fs');process.stdout.write(ts.transpileModule(fs.readFileSync(process.argv[1],'utf8'),{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText)", str(source)], cwd=ROOT, text=True)
+        program = re.sub(r'from "\./([^"\n]+)"', r'from "@/lib/\1"', program)
+        program += '\nimport {getPrisma} from "@/lib/prisma";\nconst p=getPrisma();try{const mode=await p.$queryRawUnsafe("SELECT current_setting(\'default_transaction_read_only\') AS readonly");if(mode[0]?.readonly!=="on")throw Error("read-only required");process.stdout.write(JSON.stringify(await loadPlayerResultRecoveryPlan(p,' + json.dumps(targets) + ')));}finally{await p.$disconnect()}\n'
+    else:
+        program = source.read_text()
     marker = "const targets = []; // injected exact scope"
-    if program.count(marker) != 1:
+    if args.mode != "plan" and program.count(marker) != 1:
         raise ValueError("remote scope marker missing or ambiguous")
     program = program.replace(marker, "const targets=" + json.dumps(targets, ensure_ascii=True) + ";")
     spec = importlib.util.spec_from_file_location("truth", ROOT / "scripts/aoe2_truth.py")

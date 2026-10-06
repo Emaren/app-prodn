@@ -17,6 +17,8 @@ class PlayerTruthCliTests(unittest.TestCase):
                 with self.assertRaises(ValueError):m.targets_from_file(p)
             p.write_text(json.dumps([{'name':'A','uid':'u_exact'}]))
             self.assertEqual(m.targets_from_file(p),[{'name':'A','uid':'u_exact'}])
+            p.write_text(json.dumps([{'name':'same name','steamId':'76561198103810510'}]))
+            self.assertEqual(m.targets_from_file(p)[0]['steamId'],'76561198103810510')
 
     def test_immutable_receipts_cannot_be_overwritten(self):
         with tempfile.TemporaryDirectory() as d:

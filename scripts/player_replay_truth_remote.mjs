@@ -34,8 +34,8 @@ const identities=targets.map(t=>{
  const direct=[...new Set(all.flatMap(g=>normalizeReplayPlayers(g.players).filter(v=>norm(v.name)===norm(t.name)).map(readLeaderboardSteamId).filter(Boolean)))];
  let u=matched.length===1?matched[0]:null;
  const accepted=[...new Set(acceptedSeedSnapshots.filter(v=>v.normalizedName===norm(t.name)).map(v=>v.steamId).filter(v=>typeof v==='string'&&/^\d{17}$/.test(v)))];
- const steamIds=u?.steamId?[u.steamId]:accepted;
- const identityEvidence=u?.steamId?'registered_user_exact_steam':accepted.length===1?'accepted_exact_replay_snapshots':'unresolved_name_identity';
+ const steamIds=t.steamId?[t.steamId]:u?.steamId?[u.steamId]:accepted;
+ const identityEvidence=t.steamId?'explicit_exact_steam':u?.steamId?'registered_user_exact_steam':accepted.length===1?'accepted_exact_replay_snapshots':'unresolved_name_identity';
  const knownAccounts=users.filter(v=>v.steamId&&steamIds.includes(v.steamId));
  if(!u&&knownAccounts.length===1)u=knownAccounts[0];
  const ambiguous=steamIds.length!==1;
@@ -64,7 +64,7 @@ const players=identities.map(i=>{
  const cases=ownLogical.map(g=>{
  const result=resolveReplayResultForPlayer(g,i.match);
  const roster=publicReplayRosterV2DisplayState(g.players);
- const related=ownRows.filter(r=>publicReplayIdentity(r)===publicReplayIdentity(g));
+ const related=[...effective,...relatedNonfinal].filter(r=>publicReplayIdentity(r)===publicReplayIdentity(g)||r.replayHash===g.replayHash);
  const ownRuns=runs.filter(r=>related.some(a=>a.replayHash===r.inputHash));
  const exact=ownRuns.filter(current);
  const rawReasons=[...new Set(related.map(r=>r.parse_reason))];
@@ -75,12 +75,12 @@ const players=identities.map(i=>{
  if(g.disconnect_detected)blockers.push('disconnected/review');
  if(!exact.some(r=>['completed','recovered'].includes(r.status)))blockers.push(exact.length?'parser_incomplete':'stale_or_missing_current_parser');
  if(i.identityAmbiguous)blockers.push('identity_ambiguity');
- return {logicalBattleId:publicReplayIdentity(g),id:g.id,replayHash:g.replayHash,sourceIds:related.map(r=>r.id),sourceHashes:related.map(r=>r.replayHash),result,roster,fullBattleTruth:coherent(g)&&result!=='unknown'&&roster.complete,blockers,rawReasons,players:g.players};
+ return {logicalBattleId:publicReplayIdentity(g),id:g.id,replayHash:g.replayHash,sourceIds:related.map(r=>r.id),sourceHashes:related.map(r=>r.replayHash),map:g.map,playedOn:g.played_on,timestamp:g.timestamp,rawWinner:all.find(r=>r.id===g.id)?.winner,parseSource:g.parse_source,parseReason:g.parse_reason,parseIteration:g.parse_iteration,acceptedAdjudication:g.replayResultAdjudications,currentParser:exact.map(r=>({id:r.id,status:r.status,parserName:r.parserName,parserVersion:r.parserVersion,passName:r.passName,passVersion:r.passVersion,schemaVersion:r.schemaVersion,candidateOutputHash:r.candidateOutputHash,candidateOutputStorageKey:r.candidateOutputStorageKey})),result,roster,fullBattleTruth:coherent(g)&&result!=='unknown'&&roster.complete,blockers,rawReasons,players:g.players};
  });
  const aliasKeys=new Set(ownRows.flatMap(g=>normalizeReplayPlayers(g.players).filter(i.match).map(v=>norm(v.name))));
  const aliasIdentityCandidates=effective.filter(g=>!ownRows.includes(g)&&normalizeReplayPlayers(g.players).some(v=>aliasKeys.has(norm(v.name)))).map(g=>({id:g.id,replayHash:g.replayHash,logicalBattleId:publicReplayIdentity(g),reason:'alias_without_exact_target_steam_identity',participants:normalizeReplayPlayers(g.players).filter(v=>aliasKeys.has(norm(v.name))).map(v=>({name:v.name,steamId:readLeaderboardSteamId(v)}))}));
  const unknown=cases.filter(c=>!c.fullBattleTruth);
- return {name:i.name,uid:i.uid??i.accountMatches[0]?.uid??null,accountMatches:i.accountMatches,knownAccounts:i.knownAccounts,steamIds:i.steamIds,rawObservedSteamIds:i.rawObservedSteamIds,identityEvidence:i.identityEvidence,identityAmbiguous:i.identityAmbiguous,aliasIdentityCandidates,aliases:[...new Set(ownRows.flatMap(g=>normalizeReplayPlayers(g.players).filter(i.match).map(v=>v.name)))].sort(),total:cases.length,resolved:cases.length-unknown.length,resultResolved:cases.filter(c=>c.result!=='unknown').length,unknown:unknown.length,unknownPercentage:cases.length?100*unknown.length/cases.length:0,sourceRowCount:ownRows.length,nonfinalRows:ownRows.filter(g=>!g.is_final).map(g=>g.id),nameOnlyRows:scoped.filter(g=>!ownRows.includes(g)&&normalizeReplayPlayers(g.players).some(v=>norm(v.name)===norm(i.name))).map(g=>g.id),blockerCounts:Object.fromEntries([...new Set(unknown.flatMap(c=>c.blockers))].sort().map(k=>[k,unknown.filter(c=>c.blockers.includes(k)).length])),rawBlockerCounts:Object.fromEntries([...new Set(unknown.flatMap(c=>c.rawReasons))].sort().map(k=>[k,unknown.filter(c=>c.rawReasons.includes(k)).length])),cases};
+ return {name:i.name,uid:i.uid??i.accountMatches[0]?.uid??null,accountMatches:i.accountMatches,knownAccounts:i.knownAccounts,steamIds:i.steamIds,rawObservedSteamIds:i.rawObservedSteamIds,identityEvidence:i.identityEvidence,identityAmbiguous:i.identityAmbiguous,aliasIdentityCandidates,aliases:[...new Set(ownRows.flatMap(g=>normalizeReplayPlayers(g.players).filter(i.match).map(v=>v.name)))].sort(),total:cases.length,resolved:cases.length-unknown.length,resultResolved:cases.filter(c=>c.result!=='unknown').length,unknown:unknown.length,unknownResults:cases.filter(c=>c.result==='unknown').length,unknownPercentage:cases.length?100*unknown.length/cases.length:0,sourceRowCount:ownRows.length,nonfinalRows:ownRows.filter(g=>!g.is_final).map(g=>g.id),nameOnlyRows:scoped.filter(g=>!ownRows.includes(g)&&normalizeReplayPlayers(g.players).some(v=>norm(v.name)===norm(i.name))).map(g=>g.id),blockerCounts:Object.fromEntries([...new Set(unknown.flatMap(c=>c.blockers))].sort().map(k=>[k,unknown.filter(c=>c.blockers.includes(k)).length])),rawBlockerCounts:Object.fromEntries([...new Set(unknown.flatMap(c=>c.rawReasons))].sort().map(k=>[k,unknown.filter(c=>c.rawReasons.includes(k)).length])),cases};
 });
 return {observedAt:new Date().toISOString(),productionSource:process.env.AOE2WAR_TRUTH_PRODUCTION_SOURCE,databaseReadOnly:mode,parserContract:HD_REPLAY_PARSER_CONTRACT,mutations:{production:0,parserRows:0,identityRows:0,currentRatingRows:0,wolo:0},grain:'canonical public archive logical battles; unknown means result unknown OR Workshop V2 roster incomplete',global:{fullBattleTruthNumerator:full,denominator:logical.length,percentage:100*full/logical.length,finalRowCount:all.filter(g=>g.is_final).length},players,identities:{aliases,platforms,snapshots,publications},sourceGames:scoped,runs,attempts,archives,currentWatcherAccountStates:activeCurrentStates.filter(s=>identities.some(i=>i.steamIds.includes(s.steamId)))};
 },{isolationLevel:'RepeatableRead',timeout:120000,maxWait:5000});
