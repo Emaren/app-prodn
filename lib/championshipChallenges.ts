@@ -9,6 +9,7 @@ import { verifyChallengeFundingTransfer } from "@/lib/woloBetSettlement";
 import { executeScheduledMatchSettlement } from "@/lib/scheduledMatchSettlements";
 import { normalizeChallengeSteamId } from "@/lib/challengeProtocol";
 import { normalizeChallengeWoloAmount } from "@/lib/challengeEconomy";
+import { CHAMPIONSHIP_DEFAULT_WAGER_WOLO, isChampionshipChallengeWagerAmount } from "@/lib/challengeConfig";
 function normalizeChallengeNote(value:unknown) { return typeof value === "string" ? value.trim().replace(/\s+/g," ").slice(0,160) || null : null; }
 import { loadLiveSessionSnapshot, type LiveGameSession } from "@/lib/liveSessionSnapshot";
 import { replayEloLane } from "@/lib/champions/eloTrophy";
@@ -121,8 +122,8 @@ export async function createChampionshipChallenge(prisma: PrismaClient, viewerUs
   const rival = await prisma.user.findUnique({where:{uid:payload.challengedUid || ""},select:USER_SELECT});
   if (!creator || !rival || creator.id === rival.id) throw new ChallengeConflictError("Choose another linked warrior.",400);
   const requestId = typeof payload.creationRequestId === "string" && /^[A-Za-z0-9:_-]{12,128}$/.test(payload.creationRequestId) ? payload.creationRequestId : `championship-v2:${creator.id}:${randomUUID()}`;
-  const wager = normalizeChallengeWoloAmount(payload.wagerAmountWolo);
-  if (wager === null || wager <= 0) throw new ChallengeConflictError("Put positive WOLO on the line.",400);
+  const wager = normalizeChallengeWoloAmount(payload.wagerAmountWolo) ?? CHAMPIONSHIP_DEFAULT_WAGER_WOLO;
+  if (!isChampionshipChallengeWagerAmount(wager)) throw new ChallengeConflictError("Championship stake must be 0 or 100 WOLO.",400);
   const replay=await existingCreation(prisma,requestId,creator,payload,wager);
   if(replay)return replay;
   await ensureTrophySeedData(prisma);
@@ -177,7 +178,7 @@ export async function createChampionshipChallenge(prisma: PrismaClient, viewerUs
     for (const [side,users] of [["challenger",challengers],["defender",defenders]] as const) for(let seat=0;seat<size;seat++) {
       const user = users[seat]!;
       await tx.championshipChallengeParticipant.create({data:{protocolId:protocol.id,userId:user.id,uidSnapshot:user.uid,displayNameSnapshot:name(user),side,seat,steamIdSnapshot:user.steamId!,walletAddressSnapshot:user.walletAddress,fundingScheduledMatchId:financial[seat]!.id,fundingSide:side === "challenger" ? "left":"right",acceptedAt:user.id === creator.id ? now:null,notifiedAt:now}});
-      if(user.id !== creator.id) await postChallengeInboxNotice(tx,{senderUserId:creator.id,targetUserId:user.id,challengeId:parent.id,body:["Challenge issued",`${name(creator)} vs ${name(rival)}`,`Title Stakes: ${target?.displayName || "Warrior battle"}`,`Challenge deadline ISO: ${clock.challengeDeadline.toISOString()}`,"ALL CHALLENGES REMAIN OPEN FOR 24 HOURS",`${wager} WOLO per warrior`,"Status: Accept, fund your side, and start the qualifying battle before the deadline."].join("\n"),now});
+      if(user.id !== creator.id) await postChallengeInboxNotice(tx,{senderUserId:creator.id,targetUserId:user.id,challengeId:parent.id,body:["Challenge issued",`${name(creator)} vs ${name(rival)}`,`Title Stakes: ${target?.displayName || "Warrior battle"}`,`Challenge deadline ISO: ${clock.challengeDeadline.toISOString()}`,"ALL CHALLENGES REMAIN OPEN FOR 24 HOURS",`Stake: ${wager} WOLO per warrior`,"Status: Run the watcher and start the qualifying battle before the deadline."].join("\n"),now});
     }
     await audit(tx,protocol,"title_challenge_created",null,creator.id,{rosters:all.map(user => ({id:user.id,steamId:user.steamId})),deadline:clock.challengeDeadline.toISOString(),eligibilityOverride:override,commissionerReason:commissionerReason??null},now);
     return parent.id;
