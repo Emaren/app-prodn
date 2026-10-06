@@ -22,6 +22,10 @@ export function compareAdminRadioWoloVisitors(
     return left.activeOnSite ? -1 : 1;
   }
 
+  if (left.activeOnSite && right.activeOnSite) {
+    return timestamp(right.lastSeenAt) - timestamp(left.lastSeenAt);
+  }
+
   const leftVisitRanked =
     left.identityKind === "user" ||
     left.visitCount >= RADIO_WOLO_VISIT_LEADERBOARD_THRESHOLD;
