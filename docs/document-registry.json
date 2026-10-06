@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ef8b67c13146261953118655831d6df8b9a591f29ae8771d0f1b5c9d6795a89b",
+      "sha256": "6f7261c2ca81c77b2c69ed41ff53719d74aa7aeabf578b1a48b3060f1795c9ad",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -661,7 +661,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-04",
       "sensitivity": "internal",
-      "sha256": "9611067e6339949e4a78f9adacae94658386b519a7aba937073d6cd4cf17caa7",
+      "sha256": "f1f41403dc06dda3ab7877cd8924428d79aa1e3989f56ed306e7cd464e801d52",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -709,9 +709,9 @@
       "owner": "aoe2war-web",
       "path": "docs/GENERAL_INSPECTIONS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-22",
+      "reviewed_at": "2026-10-06",
       "sensitivity": "internal",
-      "sha256": "933d073302a54a421450338afed8a8f9eb1f9eed00c1b9e635cca5bff1c1e9a2",
+      "sha256": "10c23019d024a9f17378d7b82be95225953289578cd45f1c4d977a2cb6679019",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -916,9 +916,9 @@
       "owner": "aoe2war-web",
       "path": "docs/KINGDOM_INTELLIGENCE.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-06",
+      "reviewed_at": "2026-10-06",
       "sensitivity": "internal",
-      "sha256": "042619c459b2fc756585fc2d59cb763fb33faec01a5c97ddcaee2d308964d187",
+      "sha256": "009106692854e44ee51529b1bacbdc3e83992a6912c447f29a6e6c8c57dbf6ec",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2025,8 +2025,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/frictionless-championship-challenges-20261006",
-    "commit": "48981e7c5f54312c14b3a099d6ae7bab0f413a39"
+    "branch": "fix/kingdom-intelligence-self-healing-20261006",
+    "commit": "25a701aed6d45a790f72766a6d53901d80f8361d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
