@@ -126,6 +126,23 @@ test("scheduled match and trophy links are review-only even without a market", (
   }
 });
 
+test("accepted adjudication provenance survives an unresolved Workshop roster shape", () => {
+  const original = game();
+  original.players.push({ name: "Third player", steam_id: jiren, number: 3, team_id: 1, winner: null });
+  const validated = validateReplayResultAdjudication({ replayHash: hash, parseIteration: 3, players: original.players, payload: {
+    idempotencyKey: "commissioner:control:uneven", sourceReplayHash: hash, sourceParseIteration: 3,
+    sourceRosterHash: buildRosterHash(normalizeReplayPlayers(original.players)),
+    teams: [{ teamKey: "team:0", playerKeys: [`steam:${zodiac}`] }, { teamKey: "team:1", playerKeys: [`steam:${vegeta}`, `steam:${jiren}`] }], winningTeamKey: "team:0", reason: "Independently reviewed complete uneven roster.",
+  } });
+  const row = { ...original, replayResultAdjudications: [{ ...validated, id: 999, decisionStatus: "accepted", affectsStats: true, affectsBets: false, teamAssignments: validated.teams, actorRole: "site_admin", actorDisplayNameSnapshot: "Commissioner", createdAt: "2026-01-01T00:00:00Z" }] };
+  const plan = buildPlayerResultRecoveryPlan(facts([row]), request);
+  assert.equal(plan.cases.length, 1);
+  assert.deepEqual(plan.cases[0].acceptedAdjudicationIds, [999]);
+  assert.equal(plan.cases[0].resultUnknown, false);
+  assert.equal(plan.cases[0].rawWinner, null);
+  assert.equal(plan.cases[0].nativeStructurallyEligible, false);
+});
+
 test("exposure across duplicate source rows counts each market and claim once", () => {
   const data = facts([game(), game(2)]);
   data.exposures.set(1, { marketIds: [21], wagers: 3, stakeIntents: 1, claims: 1, settlementRecorded: false, marketCounts: [{ id: 21, wagers: 3, stakeIntents: 1 }], claimIds: [91] });

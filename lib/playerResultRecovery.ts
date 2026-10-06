@@ -172,7 +172,8 @@ export function buildPlayerResultRecoveryPlan(facts: PlayerResultRecoveryFacts, 
     const acceptedAdjudicationIds = sourceRows.flatMap((row) => {
       const projected = applyReplayAdjudicationToGameStats(row);
       const adjudication = record(projected.replayResultAdjudication);
-      return adjudication.decisionStatus === "accepted" && adjudication.affectsStats === true && typeof adjudication.id === "number" ? [adjudication.id] : [];
+      const id = adjudication.adjudication_id ?? adjudication.id;
+      return (adjudication.decision_status ?? adjudication.decisionStatus) === "accepted" && (adjudication.affects_stats ?? adjudication.affectsStats) === true && typeof id === "number" ? [id] : [];
     });
     const confirmedDesync = sourceRows.some((row) => row.currentDesyncOccurred === true);
     const financial = financialExposure.marketIds.length > 0 || financialExposure.claims > 0 || financialExposure.scheduledMatchIds.length > 0 || financialExposure.trophyChallengeIds.length > 0 || financialExposure.settlementRecorded;
