@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "8ec3b41f059a43651e7aae656631fea977f928ff0c8f65573d22f023716fce6c",
+      "sha256": "4e182dc63f63b3349d1554466c95be6a28c0ae85ea7879f5a7edd8b820185b32",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2026,7 +2026,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/national-champions-art-challenge-20261006",
-    "commit": "f50f9fb96272fbb5d56eac7e2b1168ef94df8120"
+    "commit": "17f5c012c36261a0ba79191f46165b06b1e4598d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
