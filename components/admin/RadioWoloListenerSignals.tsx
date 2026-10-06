@@ -373,14 +373,16 @@ export function RadioWoloListenerSignals() {
                     const currentTrailIndex =
                       row.activeOnSite &&
                       row.currentPage
-                        ? row.pathTrail
-                            .map(
-                              (step) =>
-                                step.path,
-                            )
-                            .lastIndexOf(
-                              row.currentPage,
-                            )
+                        ? row.pathTrail.findLastIndex(
+                            (step) =>
+                              step.path ===
+                                row.currentPage &&
+                              (
+                                !row.trafficVisitorId ||
+                                step.trafficVisitorId ===
+                                  row.trafficVisitorId
+                              ),
+                          )
                         : -1;
 
                     return (
