@@ -44,5 +44,5 @@ export function championshipPhaseLabel(phase: string, hasTitle = true) {
 }
 
 export function challengeStakeLabel(wagerAmountWolo: number) {
-  return wagerAmountWolo === 10 ? "Friendly" : wagerAmountWolo === 25 ? "Ranked" : wagerAmountWolo === 100 ? "Grudge" : "Custom stakes";
+  return wagerAmountWolo === 0 ? "No stake" : wagerAmountWolo === 10 ? "Friendly" : wagerAmountWolo === 25 ? "Ranked" : wagerAmountWolo === 100 ? "Grudge" : "Custom stakes";
 }
