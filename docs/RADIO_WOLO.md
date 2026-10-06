@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-09-20"
+reviewed_at: "2026-10-06"
 review_interval_days: 90
 sensitivity: "internal"
 ---
@@ -23,7 +23,9 @@ Radio WOLO is the cultural broadcast wing of AoE2WAR. `/radio` exposes only trac
 
 The form collects artist, title, genre/mood, private email, optional Discord, audio, optional artwork, notes, and an explicit rights checkbox. The accepted statement grants AoE2WAR a non-exclusive, revocable permission to store, review, stream, and promote the submitted work. Copyright remains with the rights holder.
 
-Private operator Vault audio is limited to 250 MB; public creator submissions remain limited to 60 MB. Audio is validated by magic bytes as MP3, WAV, OGG, or M4A. Artwork is limited to 8 MB and validated as PNG, JPEG, or WebP. Extensions and browser MIME labels are not trusted. Original filenames are sanitized; stored files use random keys plus a SHA-256 prefix. Failed database writes remove partial files.
+Private operator Vault audio is limited to 250 MB per track; public creator submissions remain limited to 60 MB. Audio is validated by magic bytes as MP3, WAV, OGG, or M4A. The private Vault also accepts bounded standard ZIP batches in the browser. ZIP intake ignores non-audio entries such as lyric text files, expands each supported audio entry into its own RadioAsset, reads that track's duration independently, preserves duplicate protection by SHA-256, and uploads tracks through the same canonical asset endpoint. ZIP64, encrypted entries, unsupported compression methods, oversized tracks, malformed directories, and unsafe expansion totals fail closed. Artwork is limited to 8 MB and validated as PNG, JPEG, or WebP. Extensions and browser MIME labels are not trusted by server storage. Original filenames are sanitized; stored files use random keys plus a SHA-256 prefix. Failed database writes remove partial files.
+
+Bulk Vault intake may apply one credit, kind, and tag set to every track in the selected audio/ZIP batch. This is intended for libraries such as one player's Suno catalog: set the credit once, tag the collection, import all archives, then use BUILD search plus **Add filtered** to assemble a complete rotation or a player-specific hour without clicking hundreds of tracks individually.
 
 The intake allows at most three submissions in a rolling day for the same contact email or signed-in user. Publication is never automatic.
 
@@ -53,6 +55,14 @@ Radio WOLO is a live broadcast, not resumable local media. Listener controls
 therefore communicate **sound on / sound off**, never pause/resume. Turning
 sound back on joins the authoritative current station position rather than
 resuming an old local timestamp.
+
+An ON AIR program is a continuous station rotation. Its immutable program
+timeline loops until an operator explicitly presses Stop Transmission. The
+station clock exposes the current loop cycle while track identity, track offset,
+track duration, NEXT, media authorization, and rating authority continue to
+resolve from the same canonical program items. Reaching the end of the last item
+does not make the station go off air; NEXT wraps to the first item. No database
+migration or second playlist truth is introduced.
 
 Desktop Radio WOLO playback is intentionally persistent across ordinary
 backgrounding. Changing browser tabs, changing windows, foregrounding Steam,
@@ -139,10 +149,11 @@ durable: the admin row renders that state as previously used rather than implyin
 the listener never enabled sound. Interaction and rating history are likewise
 combined across deduplicated signed-in account rows.
 
-Track ratings are integers from 1 through 10.
-Emoji stars are the default fresh-listener presentation; the premium icon-star face remains selectable. There is no submit step: clicking
-a star immediately saves or replaces the listener's rating. Signed-in ratings
-are canonical per AoE2WAR account and RadioAsset; anonymous ratings are canonical
+Track ratings are integers from 1 through 10. The global player presents one
+emoji-star face only; the old Icons/Emoji presentation toggle and explanatory
+"click another star" copy are retired. There is no submit step: clicking a star
+immediately saves or replaces the listener's rating. Signed-in ratings are
+canonical per AoE2WAR account and RadioAsset; anonymous ratings are canonical
 per random browser listener and RadioAsset.
 
 Rating truth is loaded only while the global player is expanded, because that is
