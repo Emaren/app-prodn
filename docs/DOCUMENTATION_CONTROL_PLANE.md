@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/release-gate-test-eof-20261006` at `c51dbfb5c04a6b6167f999b3d3a495c693a274a3`
+Implementation baseline: `feat/frictionless-championship-challenges-20261006` at `77d320211059a1be70b2ca2492e91f6c94e8ffd3`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
