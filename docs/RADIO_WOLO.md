@@ -110,9 +110,32 @@ also stamp `X-AoE2WAR-Synthetic`; Traffic and Radio reject those writes before
 they enter human analytics.
 
 The bold visit multiplier shown in Command Tower is based on distinct persisted
-Traffic sessions for the same browser visitor ID. It is deliberately not derived
-from IP address or fingerprinting. Clearing site storage or changing browsers or
-devices creates a new anonymous browser identity.
+Traffic sessions rather than page requests, IP address, or fingerprinting.
+Clearing site storage or changing browsers/devices creates a new anonymous browser
+identity. The private admin intelligence rail asks Traffic for both the recent
+human cohort and durable all-time repeat visitors, so a frequent visitor does not
+disappear merely because they signed off today.
+
+The private rail resolves authenticated browser identities back to one AoE2WAR
+account row and combines visit totals across that account's known browser visitor
+IDs. Anonymous browser identities remain separate. Ordering is intentional:
+currently active people are always pinned first; the remaining member identities
+and anonymous visitors with at least five visits form a descending visit
+leaderboard; low-frequency anonymous visitors then fall back to last-seen
+chronology. Operator/owner identities may appear in this authenticated private
+admin view even though ordinary human analytics continue to exclude them.
+
+Traffic also supplies a bounded recent page-view trail for each returned browser
+identity. Expanding a row reveals that route sequence and marks the current page
+with a live beacon when presence is fresh. The drill-down is presentation over
+Traffic's first-party browser/session evidence only; it does not expose arbitrary
+payload JSON, IP history, or create a second visitor identity system.
+
+Radio state remains an enrichment rather than presence authority. A stale
+listening heartbeat still means Radio is not live now, but historical Sound On is
+durable: the admin row renders that state as previously used rather than implying
+the listener never enabled sound. Interaction and rating history are likewise
+combined across deduplicated signed-in account rows.
 
 Track ratings are integers from 1 through 10.
 Emoji stars are the default fresh-listener presentation; the premium icon-star face remains selectable. There is no submit step: clicking
