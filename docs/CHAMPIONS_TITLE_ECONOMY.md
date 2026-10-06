@@ -56,7 +56,12 @@ operator intents until a future Warbound chain module exists.
   derive current holders, Tribute, projected bounty, and reign age from the
   same `loadChampionTitleEconomyState()` / persistent Trophy authority as the
   main Champions surface; it must not maintain a second handwritten holder
-  table.
+  table. Belt presentation resolves the canonical Media Armory
+  `national-<slug>` target before its static title fallback, matching the
+  Champions/Chaosium presentation authority. National challenge CTAs hand off
+  to `/challenge` with title, national-kind, and country context so Challenge
+  Hall resolves the current holder or Guardian; chat/contact is never title
+  challenge authority.
 - `/olympia` is the between-Games national presentation hall. Its opening
   delegation is Canada, United States, and Mexico only; Chaos is excluded
   because it is not a national title. Holder identity and live player stats
