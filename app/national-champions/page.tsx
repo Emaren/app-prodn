@@ -15,6 +15,7 @@ import {
 
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import { getPrisma } from "@/lib/prisma";
+import { managedMediaPublicUrl } from "@/lib/managedMediaAssets";
 import { loadChampionTitleEconomyState } from "@/lib/champions/titleState";
 import {
   buildNationalChampionBeacons,
@@ -58,13 +59,13 @@ function beltPageHrefForNationalBelt(id: string) {
   return `/champions/nations/${encodeURIComponent(championNationSlugs[id] ?? id)}`;
 }
 
-function challengeHrefForNationalBelt(id: string, champion?: string | null) {
-  const to = champion || "Emaren";
-  return `/contact-emaren?challenge=${encodeURIComponent(
-    nationalBeltTarget(id)
-  )}&to=${encodeURIComponent(to)}&cc=${encodeURIComponent("Emaren")}&role=${encodeURIComponent(
-    "Commissioner"
-  )}`;
+function challengeHrefForNationalBelt(id: string, country: string) {
+  const params = new URLSearchParams({
+    title: nationalBeltTarget(id),
+    kind: "national",
+    country,
+  });
+  return `/challenge?${params.toString()}#schedule-game`;
 }
 
 function playerHref(champion: string | null) {
@@ -72,8 +73,17 @@ function playerHref(champion: string | null) {
   return `/players/by-name/${encodeURIComponent(champion)}`;
 }
 
-function nationalBeltImage(id: string) {
-  return nationalBeltArt[id as keyof typeof nationalBeltArt] ?? null;
+function nationalBeltImage(beacon: NationalBeacon) {
+  const fallback =
+    nationalBeltArt[beacon.id as keyof typeof nationalBeltArt] ??
+    beacon.assetUrl ??
+    null;
+
+  return managedMediaPublicUrl(
+    "belt",
+    nationalBeltTarget(beacon.id),
+    fallback,
+  );
 }
 
 function nationalBeltShortName(id: string, country: string) {
@@ -208,12 +218,15 @@ function HeroStat({ label, value, detail }: { label: string; value: string; deta
 }
 
 function ChampionShowcaseCard({ beacon, priority = false }: { beacon: NationalBeacon; priority?: boolean }) {
-  const image = beacon.assetUrl || nationalBeltImage(beacon.id);
+  const image = nationalBeltImage(beacon);
   const shortName = nationalBeltShortName(beacon.id, beacon.country);
   const champion = beacon.champion || "Vacant";
   const championHref = beacon.championHref || playerHref(beacon.champion);
   const beltHref = beacon.beltHref || beltPageHrefForNationalBelt(beacon.id);
-  const challengeHref = challengeHrefForNationalBelt(beacon.id, beacon.champion);
+  const challengeHref = challengeHrefForNationalBelt(
+    beacon.id,
+    beacon.representedCountry,
+  );
 
   return (
     <article className="group overflow-hidden rounded-[2rem] border border-amber-200/20 bg-[radial-gradient(circle_at_70%_6%,rgba(251,191,36,0.16),transparent_28%),linear-gradient(135deg,rgba(20,27,41,0.92),rgba(6,10,20,0.96)_54%,rgba(30,12,18,0.88))] p-4 shadow-[0_32px_100px_rgba(0,0,0,0.32)] [content-visibility:auto] [contain-intrinsic-size:auto_32rem]">
@@ -302,7 +315,7 @@ function ChampionShowcaseCard({ beacon, priority = false }: { beacon: NationalBe
           </div>
 
           <div className="mt-3 text-center text-[10px] uppercase tracking-[0.2em] text-slate-600 sm:text-left">
-            Challenge sent to the Champion · Emaren CC’d as Commissioner
+            Opens Challenge Hall · Emaren remains Commissioner
           </div>
         </div>
       </div>
@@ -311,9 +324,12 @@ function ChampionShowcaseCard({ beacon, priority = false }: { beacon: NationalBe
 }
 
 function VacantCrownCard({ beacon }: { beacon: NationalBeacon }) {
-  const image = nationalBeltImage(beacon.id);
+  const image = nationalBeltImage(beacon);
   const beltHref = beacon.beltHref || beltPageHrefForNationalBelt(beacon.id);
-  const challengeHref = challengeHrefForNationalBelt(beacon.id, "Emaren");
+  const challengeHref = challengeHrefForNationalBelt(
+    beacon.id,
+    beacon.representedCountry,
+  );
   const shortName = nationalBeltShortName(beacon.id, beacon.country);
 
   return (
