@@ -935,7 +935,7 @@ export async function loadAdminRadioWoloAnalytics(
 
         const primary =
           active ??
-          ordered[0];
+          ordered[0]!;
 
         const trafficRowsById =
           new Map<
