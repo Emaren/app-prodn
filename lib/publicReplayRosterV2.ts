@@ -411,6 +411,23 @@ function teamIdFromPlayer(
 }
 
 
+function displayTeamIdFromPlayer(
+  player: Obj
+) {
+  const raw = player.team_id ?? player.teamId ?? player.team;
+
+  // Accepted result adjudications serialize explicit numeric sides as
+  // canonical team keys. Reading that display representation must not change
+  // the numeric-only parser observation and roster promotion contract below.
+  if (typeof raw === "string" && /^team:(0|[1-9]\d*)$/.test(raw)) {
+    const teamId = Number(raw.slice(5));
+    return Number.isSafeInteger(teamId) ? teamId : null;
+  }
+
+  return teamIdFromPlayer(player);
+}
+
+
 export function publicReplayRosterV2DisplayState(
   playersValue: unknown
 ) {
@@ -516,7 +533,7 @@ export function publicReplayRosterV2DisplayState(
     players
   ) {
     const teamId =
-      teamIdFromPlayer(
+      displayTeamIdFromPlayer(
         player
       );
 
