@@ -399,16 +399,24 @@ class NativeWitnessByteIntegrationTests(unittest.TestCase):
         ) + "FPS\n\tAverage: 1fps\n\tLow: 1fps\n\tHigh: 1fps\n")
         terminal = output / "native-delta-001-Stats.txt"
         terminal.write_text("GAME OVER!\n" + "".join(f"  Player #{slot} {'Won' if slot in winners else 'Lost'}.\n" for slot in slots))
+        prefix = b"preexisting native output\n"
+        full_log = output / "native-001-Stats.txt"
+        full_log.write_bytes(prefix + terminal.read_bytes())
+        source_path = str(base / "AILog/Stats.txt")
+        source = {**witness.file_identity(full_log), "path": source_path}
         invocation = {"replay_selection": {"requested_path": requested}, "steam_app_context": True}
         witness.write_new_json(output / "invocation.json", invocation)
         (output / "events.jsonl").write_text('{"kind":"fixture-never-launched"}\n')
         observation = {
             "native_performance_outputs": [witness.file_identity(performance)],
-            "copied_native_logs": [{"source": {"path": str(base / "AILog/Stats.txt")}, "delta_copy": witness.file_identity(terminal)}],
+            "native_logs_before": {source_path: {"path": source_path, "byte_size": len(prefix), "sha256": hashlib.sha256(prefix).hexdigest()}},
+            "native_logs_after": {source_path: source},
+            "copied_native_logs": [{"source": source, "copy": witness.file_identity(full_log),
+                "delta_copy": witness.file_identity(terminal), "delta_start": len(prefix), "delta_reason": None}],
         }
         witness.write_new_json(output / "observation.json", observation)
         receipt = witness.receipt_template(plan)
-        for name in (performance.name, terminal.name, "invocation.json", "events.jsonl", "observation.json"):
+        for name in (performance.name, terminal.name, full_log.name, "invocation.json", "events.jsonl", "observation.json"):
             receipt["evidence"].append(witness.evidence_file(output / name, evidence_id=name, kind="log"))
         refs = [terminal.name]
         receipt["observations"] = {
@@ -428,7 +436,19 @@ class NativeWitnessByteIntegrationTests(unittest.TestCase):
         witness.write_new_json(output / "attempt.json", attempt)
         return output, value, witness, WORKER.sha256_file(executable), WORKER.sha256_file(data)
 
-    def refresh_integrity(self, output, witness):
+    def refresh_integrity(self, output, witness, *, sync_full=True):
+        observation = json.loads((output / "observation.json").read_text())
+        for row in observation["copied_native_logs"]:
+            delta = Path(row["delta_copy"]["path"])
+            if sync_full:
+                full = Path(row["copy"]["path"])
+                prior_size = observation["native_logs_before"].get(row["source"]["path"], {}).get("byte_size", 0)
+                full.write_bytes(full.read_bytes()[:prior_size] + delta.read_bytes())
+                row["copy"] = witness.file_identity(full)
+                row["source"] = {**row["copy"], "path": row["source"]["path"]}
+                observation["native_logs_after"][row["source"]["path"]] = row["source"]
+            row["delta_copy"] = witness.file_identity(delta)
+        (output / "observation.json").write_bytes(witness.canonical(observation))
         receipt = json.loads((output / "receipt.json").read_text())
         for item in receipt["evidence"]:
             item["file"] = witness.file_identity(item["file"]["path"])
@@ -504,6 +524,47 @@ class NativeWitnessByteIntegrationTests(unittest.TestCase):
             (output / "observation.json").write_bytes(witness.canonical(observation))
             self.refresh_integrity(output, witness)
             with patch.object(WORKER, "EXPECTED_EXECUTABLE_SHA256", exe_sha), patch.object(WORKER, "EXPECTED_DATA_SHA256", data_sha), self.assertRaisesRegex(WORKER.WorkerError, "load is not proven"):
+                WORKER.independently_revalidate_control_evidence(output, value)
+
+    def test_resealed_shifted_delta_boundary_is_rejected(self):
+        with tempfile.TemporaryDirectory() as temp:
+            output, value, witness, exe_sha, data_sha = self.make_evidence(Path(temp))
+            observation = json.loads((output / "observation.json").read_text())
+            row = observation["copied_native_logs"][0]
+            row["delta_start"] += 1
+            Path(row["delta_copy"]["path"]).write_bytes(Path(row["copy"]["path"]).read_bytes()[row["delta_start"]:])
+            (output / "observation.json").write_bytes(witness.canonical(observation))
+            self.refresh_integrity(output, witness, sync_full=False)
+            with patch.object(WORKER, "EXPECTED_EXECUTABLE_SHA256", exe_sha), patch.object(WORKER, "EXPECTED_DATA_SHA256", data_sha), self.assertRaisesRegex(WORKER.WorkerError, "delta boundary"):
+                WORKER.independently_revalidate_control_evidence(output, value)
+
+    def test_resealed_false_before_prefix_hash_is_rejected(self):
+        with tempfile.TemporaryDirectory() as temp:
+            output, value, witness, exe_sha, data_sha = self.make_evidence(Path(temp))
+            observation = json.loads((output / "observation.json").read_text())
+            source_path = observation["copied_native_logs"][0]["source"]["path"]
+            observation["native_logs_before"][source_path]["sha256"] = "f" * 64
+            (output / "observation.json").write_bytes(witness.canonical(observation))
+            self.refresh_integrity(output, witness, sync_full=False)
+            with patch.object(WORKER, "EXPECTED_EXECUTABLE_SHA256", exe_sha), patch.object(WORKER, "EXPECTED_DATA_SHA256", data_sha), self.assertRaisesRegex(WORKER.WorkerError, "prior-prefix"):
+                WORKER.independently_revalidate_control_evidence(output, value)
+
+    def test_resealed_delta_that_is_not_the_full_copy_suffix_is_rejected(self):
+        with tempfile.TemporaryDirectory() as temp:
+            output, value, witness, exe_sha, data_sha = self.make_evidence(Path(temp))
+            delta = output / "native-delta-001-Stats.txt"
+            delta.write_bytes(b"fabricated prefix\n" + delta.read_bytes())
+            self.refresh_integrity(output, witness, sync_full=False)
+            with patch.object(WORKER, "EXPECTED_EXECUTABLE_SHA256", exe_sha), patch.object(WORKER, "EXPECTED_DATA_SHA256", data_sha), self.assertRaisesRegex(WORKER.WorkerError, "full-log suffix"):
+                WORKER.independently_revalidate_control_evidence(output, value)
+
+    def test_second_malformed_game_over_marker_is_rejected(self):
+        with tempfile.TemporaryDirectory() as temp:
+            output, value, witness, exe_sha, data_sha = self.make_evidence(Path(temp))
+            delta = output / "native-delta-001-Stats.txt"
+            delta.write_bytes(delta.read_bytes() + b"GAME OVER!\n  malformed native result\n")
+            self.refresh_integrity(output, witness)
+            with patch.object(WORKER, "EXPECTED_EXECUTABLE_SHA256", exe_sha), patch.object(WORKER, "EXPECTED_DATA_SHA256", data_sha), self.assertRaisesRegex(WORKER.WorkerError, "GAME OVER partition"):
                 WORKER.independently_revalidate_control_evidence(output, value)
 
 

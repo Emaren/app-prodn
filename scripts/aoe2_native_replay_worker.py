@@ -641,14 +641,53 @@ def independently_revalidate_control_evidence(
         raise WorkerError("Independent exact native replay load is not proven.")
 
     terminal_partitions = []
+    native_before = observation.get("native_logs_before")
+    native_after = observation.get("native_logs_after")
+    if type(native_before) is not dict or type(native_after) is not dict:
+        raise WorkerError("Native terminal evidence lacks before/after log inventories.")
     for row in observation.get("copied_native_logs", []):
         delta = row.get("delta_copy")
-        if Path(row.get("source", {}).get("path", "")).parent.name.lower() != "ailog" or not delta or not delta.get("byte_size"):
+        source = row.get("source", {})
+        source_path = source.get("path", "")
+        if Path(source_path).parent.name.lower() != "ailog":
             continue
+        if native_after.get(source_path) != source:
+            raise WorkerError("Native full log does not bind the after-snapshot identity.")
+        if source.get("byte_size") == 0 and row.get("copy") is None and delta is None:
+            continue
+        copied = row.get("copy")
+        if type(copied) is not dict or type(delta) is not dict or row.get("delta_reason") is not None:
+            raise WorkerError("Native terminal log does not prove an append-safe copy.")
+        full_path = bound_file(str(copied.get("path", "")))
+        full_bytes = full_path.read_bytes()
+        if (
+            full_path.name not in evidence_names
+            or len(full_bytes) != copied.get("byte_size")
+            or hashlib.sha256(full_bytes).hexdigest() != copied.get("sha256")
+            or copied.get("sha256") != source.get("sha256")
+            or copied.get("byte_size") != source.get("byte_size")
+        ):
+            raise WorkerError("Native full log copy differs from the after-snapshot bytes.")
+        prior = native_before.get(source_path)
+        prior_size = 0
+        if prior is not None:
+            if type(prior) is not dict or prior.get("path") != source_path or type(prior.get("byte_size")) is not int:
+                raise WorkerError("Native before-snapshot identity is invalid.")
+            prior_size = prior["byte_size"]
+            if prior_size < 0 or prior_size > len(full_bytes) or hashlib.sha256(full_bytes[:prior_size]).hexdigest() != prior.get("sha256"):
+                raise WorkerError("Native prior-prefix bytes do not match the before-snapshot hash/size.")
+        if type(row.get("delta_start")) is not int or row["delta_start"] != prior_size:
+            raise WorkerError("Native delta boundary differs from the independently derived prior prefix.")
         path = bound_file(str(delta.get("path", "")))
         if path.name not in evidence_names or sha256_file(path) != delta.get("sha256") or path.stat().st_size != delta.get("byte_size"):
             raise WorkerError("Native terminal evidence hash mismatch.")
+        if path.read_bytes() != full_bytes[prior_size:]:
+            raise WorkerError("Native terminal delta is not the exact attempt-new full-log suffix.")
+        if not delta.get("byte_size"):
+            continue
         text = path.read_text(encoding="utf-8").replace("\r\n", "\n")
+        if text.count("GAME OVER!") != 1:
+            continue
         blocks = re.findall(r"GAME OVER!\n((?:  Player #[0-9]+ (?:Won|Lost)\.\n)+)", text)
         if len(blocks) != 1:
             continue
