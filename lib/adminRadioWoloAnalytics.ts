@@ -6,8 +6,8 @@ import {
   radioWoloRaterKey,
 } from "@/lib/radioWoloFeedbackPolicy";
 import {
-  radioWoloOperatorUids,
-} from "@/lib/radioWoloOperatorPolicy";
+  compareAdminRadioWoloVisitors,
+} from "@/lib/adminRadioWoloVisitorRanking";
 
 export type AdminRadioWoloAnalytics = {
   generatedAt: string;
@@ -18,6 +18,8 @@ export type AdminRadioWoloAnalytics = {
     signedInCount: number;
     anonymousCount: number;
     totalRatings: number;
+    activeOnSiteCount: number;
+    everSoundOnCount: number;
   };
   listeners: Array<{
     listenerId: string;
@@ -59,6 +61,17 @@ export type AdminRadioWoloAnalytics = {
     hasInteracted: boolean;
     everSoundOn: boolean;
     hasRated: boolean;
+    firstSeenAt:
+      | string
+      | null;
+    trafficVisitorIds: string[];
+    browserIdentityCount: number;
+    pathTrail: Array<{
+      path: string;
+      seenAt: string;
+      sessionId: string;
+      trafficVisitorId: string;
+    }>;
   }>;
   tracks: Array<{
     assetId: number;
@@ -85,6 +98,12 @@ type TrafficAudienceRow = {
   known_visitor_kind: string;
   authenticated_uid: string;
   exclude_from_human_analytics: boolean;
+  first_seen_at: string;
+  path_trail: Array<{
+    path: string;
+    seen_at: string;
+    session_id: string;
+  }>;
 };
 
 async function loadTrafficAudience() {
@@ -141,11 +160,11 @@ async function loadTrafficAudience() {
                 project_slug:
                   "aoe2hdbets",
                 since_hours: 24,
-                limit: 160,
-                exclude_authenticated_uids:
-                  [
-                    ...radioWoloOperatorUids(),
-                  ],
+                limit: 240,
+                all_time: true,
+                path_limit: 24,
+                include_operators: true,
+                exclude_authenticated_uids: [],
               },
             ),
           cache: "no-store",
@@ -173,9 +192,6 @@ async function loadTrafficAudience() {
       return [];
     }
 
-    const operators =
-      radioWoloOperatorUids();
-
     return (
       payload.visitors as
         TrafficAudienceRow[]
@@ -189,15 +205,7 @@ async function loadTrafficAudience() {
             row
               .traffic_visitor_id &&
             !row
-              .exclude_from_human_analytics &&
-            !(
-              row
-                .authenticated_uid &&
-              operators.has(
-                row
-                  .authenticated_uid,
-              )
-            ),
+              .exclude_from_human_analytics,
         ),
     );
   } catch {
@@ -218,6 +226,8 @@ export function emptyAdminRadioWoloAnalytics(
       signedInCount: 0,
       anonymousCount: 0,
       totalRatings: 0,
+      activeOnSiteCount: 0,
+      everSoundOnCount: 0,
     },
     listeners: [],
     tracks: [],
@@ -297,7 +307,7 @@ export async function loadAdminRadioWoloAnalytics(
               id: "desc",
             },
           ],
-          take: 200,
+          take: 1000,
           select: {
             listenerId:
               true,
@@ -588,26 +598,24 @@ export async function loadAdminRadioWoloAnalytics(
   };
 
   const stateByTrafficVisitor =
-    new Map(
-      states
-        .filter(
-          (
-            row,
-          ): row is StateRow & {
-            trafficVisitorId:
-              string;
-          } =>
-            Boolean(
-              row.trafficVisitorId,
-            ),
-        )
-        .map(
-          (row) => [
-            row.trafficVisitorId,
-            row,
-          ] as const,
-        ),
-    );
+    new Map<
+      string,
+      StateRow
+    >();
+
+  for (const row of states) {
+    if (
+      row.trafficVisitorId &&
+      !stateByTrafficVisitor.has(
+        row.trafficVisitorId,
+      )
+    ) {
+      stateByTrafficVisitor.set(
+        row.trafficVisitorId,
+        row,
+      );
+    }
+  }
 
   const joinedStateIds =
     new Set<string>();
@@ -749,6 +757,40 @@ export async function loadAdminRadioWoloAnalytics(
               .everSoundOn,
           hasRated:
             signals.hasRated,
+          firstSeenAt:
+            traffic.first_seen_at ||
+            null,
+          trafficVisitorIds: [
+            traffic.traffic_visitor_id,
+          ],
+          browserIdentityCount: 1,
+          pathTrail:
+            Array.isArray(
+              traffic.path_trail,
+            )
+              ? traffic.path_trail
+                  .filter(
+                    (step) =>
+                      Boolean(
+                        step?.path &&
+                          step?.seen_at,
+                      ),
+                  )
+                  .map(
+                    (step) => ({
+                      path:
+                        step.path,
+                      seenAt:
+                        step.seen_at,
+                      sessionId:
+                        step.session_id ||
+                        "",
+                      trafficVisitorId:
+                        traffic
+                          .traffic_visitor_id,
+                    }),
+                  )
+              : [],
         };
       },
     );
@@ -824,28 +866,267 @@ export async function loadAdminRadioWoloAnalytics(
                 .everSoundOn,
             hasRated:
               signals.hasRated,
+            firstSeenAt:
+              row.lastSeenAt.toISOString(),
+            trafficVisitorIds:
+              row.trafficVisitorId
+                ? [
+                    row.trafficVisitorId,
+                  ]
+                : [],
+            browserIdentityCount: 1,
+            pathTrail: [],
           };
         },
       );
 
-  const listeners =
-    [
-      ...trafficListeners,
-      ...legacyRadioListeners,
-    ]
-      .sort(
-        (left, right) =>
-          Date.parse(
-            right.lastSeenAt,
-          ) -
-          Date.parse(
-            left.lastSeenAt,
-          ),
-      )
-      .slice(
-        0,
-        120,
-      );
+  type ListenerRow =
+    AdminRadioWoloAnalytics["listeners"][number];
+
+  const rawListeners = [
+    ...trafficListeners,
+    ...legacyRadioListeners,
+  ];
+
+  const groupedListeners =
+    new Map<string, ListenerRow[]>();
+
+  for (const row of rawListeners) {
+    const key =
+      row.userUid
+        ? `user:${row.userUid}`
+        : row.trafficVisitorId
+          ? `traffic:${row.trafficVisitorId}`
+          : `listener:${row.listenerId}`;
+
+    const group =
+      groupedListeners.get(
+        key,
+      ) ?? [];
+
+    group.push(row);
+    groupedListeners.set(
+      key,
+      group,
+    );
+  }
+
+  const listeners = [
+    ...groupedListeners.values(),
+  ]
+    .map(
+      (group): ListenerRow => {
+        const ordered =
+          [...group].sort(
+            (left, right) =>
+              Date.parse(
+                right.lastSeenAt,
+              ) -
+              Date.parse(
+                left.lastSeenAt,
+              ),
+          );
+
+        const active =
+          ordered.find(
+            (row) =>
+              row.activeOnSite,
+          ) ?? null;
+
+        const primary =
+          active ??
+          ordered[0]!;
+
+        const trafficRowsById =
+          new Map<
+            string,
+            ListenerRow
+          >();
+
+        for (const row of ordered) {
+          if (!row.trafficVisitorId) {
+            continue;
+          }
+
+          const existing =
+            trafficRowsById.get(
+              row.trafficVisitorId,
+            );
+
+          if (
+            !existing ||
+            row.visitCount >
+              existing.visitCount
+          ) {
+            trafficRowsById.set(
+              row.trafficVisitorId,
+              row,
+            );
+          }
+        }
+
+        const trafficRows = [
+          ...trafficRowsById.values(),
+        ];
+
+        const visitorIds =
+          Array.from(
+            new Set(
+              trafficRows.flatMap(
+                (row) =>
+                  row
+                    .trafficVisitorIds,
+              ),
+            ),
+          );
+
+        const visitCount =
+          trafficRows.length
+            ? trafficRows.reduce(
+                (sum, row) =>
+                  sum +
+                  Math.max(
+                    0,
+                    row.visitCount,
+                  ),
+                0,
+              )
+            : Math.max(
+                1,
+                primary.visitCount,
+              );
+
+        const firstSeenAt =
+          ordered
+            .map(
+              (row) =>
+                row.firstSeenAt,
+            )
+            .filter(
+              (
+                value,
+              ): value is string =>
+                Boolean(value),
+            )
+            .sort()[0] ??
+          null;
+
+        const pathTrail =
+          ordered
+            .flatMap(
+              (row) =>
+                row.pathTrail,
+            )
+            .sort(
+              (left, right) =>
+                Date.parse(
+                  left.seenAt,
+                ) -
+                Date.parse(
+                  right.seenAt,
+                ),
+            )
+            .slice(-36);
+
+        const liveSound =
+          ordered.some(
+            (row) =>
+              row.status ===
+              "on",
+          );
+
+        const everSoundOn =
+          ordered.some(
+            (row) =>
+              row.everSoundOn,
+          );
+
+        const latestTrackRow =
+          ordered.find(
+            (row) =>
+              Boolean(
+                row.currentTrack,
+              ),
+          ) ?? primary;
+
+        const latestRatingRow =
+          ordered.find(
+            (row) =>
+              row.currentRating !==
+              null,
+          ) ?? primary;
+
+        return {
+          ...primary,
+          status:
+            liveSound
+              ? "on"
+              : "off",
+          storedListening:
+            ordered.some(
+              (row) =>
+                row
+                  .storedListening,
+            ),
+          currentTrack:
+            latestTrackRow
+              .currentTrack,
+          currentRating:
+            latestRatingRow
+              .currentRating,
+          visitCount:
+            Math.max(
+              1,
+              visitCount,
+            ),
+          returnCount:
+            Math.max(
+              0,
+              visitCount - 1,
+            ),
+          activeOnSite:
+            ordered.some(
+              (row) =>
+                row
+                  .activeOnSite,
+            ),
+          currentPage:
+            active
+              ?.currentPage ??
+            primary.currentPage,
+          hasInteracted:
+            ordered.some(
+              (row) =>
+                row
+                  .hasInteracted,
+            ),
+          everSoundOn,
+          hasRated:
+            ordered.some(
+              (row) =>
+                row.hasRated,
+            ),
+          firstSeenAt,
+          trafficVisitorId:
+            active
+              ?.trafficVisitorId ??
+            primary
+              .trafficVisitorId,
+          trafficVisitorIds:
+            visitorIds,
+          browserIdentityCount:
+            Math.max(
+              1,
+              visitorIds.length,
+            ),
+          pathTrail,
+        };
+      },
+    )
+    .sort(
+      compareAdminRadioWoloVisitors,
+    )
+    .slice(0, 120);
 
   const tracks =
     [...trackGroups]
@@ -942,6 +1223,16 @@ export async function loadAdminRadioWoloAnalytics(
             signedInCount,
         ),
       totalRatings,
+      activeOnSiteCount:
+        listeners.filter(
+          (row) =>
+            row.activeOnSite,
+        ).length,
+      everSoundOnCount:
+        listeners.filter(
+          (row) =>
+            row.everSoundOn,
+        ).length,
     },
     listeners,
     tracks,
