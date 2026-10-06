@@ -189,9 +189,6 @@ async function loadTrafficAudience() {
       return [];
     }
 
-    const operators =
-      radioWoloOperatorUids();
-
     return (
       payload.visitors as
         TrafficAudienceRow[]
@@ -205,15 +202,7 @@ async function loadTrafficAudience() {
             row
               .traffic_visitor_id &&
             !row
-              .exclude_from_human_analytics &&
-            !(
-              row
-                .authenticated_uid &&
-              operators.has(
-                row
-                  .authenticated_uid,
-              )
-            ),
+              .exclude_from_human_analytics,
         ),
     );
   } catch {
