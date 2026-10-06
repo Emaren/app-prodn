@@ -524,12 +524,12 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
   const [commissionerReason, setCommissionerReason] = useState("");
   const handleTitlesLoaded = useCallback((titles: HeldChallengeTitle[], busy: boolean) => { setHeldTitles(titles); setHeldTitlesLoading(busy); }, []);
   useEffect(() => { setSelectedTeamTitle(null); setTeammateUids([]); setCommissionerTitleId(null); setEligibilityOverride(false); setCommissionerReason(""); }, [challengedUid]);
+  useEffect(() => { if (version2) setScheduleMode(display.layout); }, [display.layout, version2]);
   useEffect(() => {
     if (!version2) return;
-    setScheduleMode(display.layout);
     setWagerAmountWolo(String(CHAMPIONSHIP_DEFAULT_WAGER_WOLO));
     setGuaranteeAmountWolo("0");
-  }, [display.layout, version2]);
+  }, [version2]);
   const challengeHallExtreme = challengeHallView === "extreme";
   const routeFocusId =
     typeof initialFocusId === "number" && Number.isFinite(initialFocusId) && initialFocusId > 0
@@ -1612,13 +1612,13 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
 </div>
                 <div
                   className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em] ${
-                    challengeEscrowReady
+                    version2 || challengeEscrowReady
                       ? "border-emerald-300/25 bg-emerald-400/10 text-emerald-100"
                       : "border-rose-300/25 bg-rose-400/10 text-rose-100"
                   }`}
                 >
                   <ShieldCheck className="h-3.5 w-3.5" />
-                  {version2 ? "Watcher proof" : challengeEscrowReady ? "" : "Escrow unavailable"}
+                  {version2 ? "Watcher required" : challengeEscrowReady ? "" : "Escrow unavailable"}
                 </div>
               </div>
 
