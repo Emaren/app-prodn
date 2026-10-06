@@ -85,7 +85,7 @@
       "review_interval_days": 60,
       "reviewed_at": "2026-10-04",
       "sensitivity": "internal",
-      "sha256": "3602458b14c441637ba94514c54b8ec1364fe12a7567c67cb452df3c34524443",
+      "sha256": "cb80e5fcb71ab955a6d3e56cea296ec21ebae815d8deb1b5d8f5105d46723e4b",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -481,7 +481,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-10-04",
       "sensitivity": "internal",
-      "sha256": "f1a6cc1421e09da85375ec4505a3698ed578461f6e0a5e428d7fcca4aa39a3f9",
+      "sha256": "1080e35de9b3d5300e86b78093a4b643fb57899b8b116f9c473878502e10a800",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b71adcb0e4eb13e3ee3b4abe670b1e5e8600a675850a869dd0f40a6bfe09f76f",
+      "sha256": "477d202c12f0742847e92322f1bba46306dada02ad1aa604a1da8780e40a0b7f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2025,8 +2025,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/bridge-finish-lock-test-determinism-20261006",
-    "commit": "5a970d94496b2537ec74b8b9da1033e5143cc271"
+    "branch": "main",
+    "commit": "83449c491f53b50fead3853f169830837a4a68ac"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
