@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/national-champions-art-challenge-20261006` at `17f5c012c36261a0ba79191f46165b06b1e4598d`
+Implementation baseline: `main` at `7aef5f8d8591fd406f4beac2bf6a8dd5a8be4338`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
