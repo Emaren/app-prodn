@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 680" role="img" aria-labelledby="title desc">
+  <title id="title">France Championship belt art pending</title>
+  <desc id="desc">Neutral France Championship placeholder used only when the managed national-france belt asset is unavailable.</desc>
+  <defs>
+    <radialGradient id="g" cx="50%" cy="45%" r="55%">
+      <stop offset="0" stop-color="#24324a"/>
+      <stop offset="1" stop-color="#070b12"/>
+    </radialGradient>
+    <linearGradient id="metal" x1="0" x2="1">
+      <stop offset="0" stop-color="#8f7443"/>
+      <stop offset=".5" stop-color="#d8c38f"/>
+      <stop offset="1" stop-color="#7a6135"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="680" fill="none"/>
+  <path d="M85 285c135-75 240-84 352-55l48 20h230l48-20c112-29 217-20 352 55l-22 112c-126-40-224-44-326-11l-58 20H491l-58-20c-102-33-200-29-326 11z" fill="#111722" stroke="#6f5b36" stroke-width="10"/>
+  <path d="M390 180h420l75 160-75 160H390l-75-160z" fill="url(#g)" stroke="url(#metal)" stroke-width="14"/>
+  <path d="M455 226h290l50 114-50 114H455l-50-114z" fill="#0b1020" stroke="#b99b5b" stroke-width="8"/>
+  <text x="600" y="318" text-anchor="middle" fill="#e7d7ac" font-family="Georgia,serif" font-size="52" font-weight="700">FRANCE</text>
+  <text x="600" y="377" text-anchor="middle" fill="#aab5c7" font-family="Arial,sans-serif" font-size="26" letter-spacing="8">CHAMPIONSHIP</text>
+  <text x="600" y="566" text-anchor="middle" fill="#677386" font-family="Arial,sans-serif" font-size="20" letter-spacing="4">MANAGED BELT ART PENDING</text>
+</svg>

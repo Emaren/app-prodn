@@ -67,10 +67,11 @@
     "pg": "^8.18.0",
     "react": "19.1.9",
     "react-dom": "19.1.9",
-    "sharp": "^0.35.4",
+    "sharp": "^0.35.5",
     "sonner": "^2.0.3"
   },
   "resolutions": {
+    "sharp": "0.35.5",
     "ws": "7.5.11",
     "bn.js": "4.12.3",
     "decode-uri-component": "0.5.0",
