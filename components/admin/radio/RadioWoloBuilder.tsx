@@ -657,88 +657,72 @@ export default function RadioWoloBuilder() {
       return;
     }
 
-    updateChain(
-      (current) => {
-        let duration =
-          calculateRadioProgramDurationMs(
-            current.map(
-              (item) => ({
-                durationMs:
-                  item.asset
-                    .durationMs,
-                transition:
-                  item.transition,
-                crossfadeMs:
-                  item.crossfadeMs,
-              }),
-            ),
-          );
+    if (
+      builtDurationMs >=
+      targetDurationMs
+    ) {
+      setError(
+        "This program already meets or exceeds its target duration.",
+      );
+      return;
+    }
 
-        if (
-          duration >=
-          targetDurationMs
-        ) {
-          setError(
-            "This program already meets or exceeds its target duration.",
-          );
-          return current;
-        }
+    let duration =
+      builtDurationMs;
 
-        const additions:
-          ChainItem[] = [];
+    const additions:
+      ChainItem[] = [];
 
-        for (
-          const asset of
-          visibleAssets
-        ) {
-          if (
-            current.length +
-              additions.length >=
-            RADIO_PROGRAM_MAX_ITEMS
-          ) {
-            break;
-          }
+    for (
+      const asset of
+      visibleAssets
+    ) {
+      if (
+        chain.length +
+          additions.length >=
+        RADIO_PROGRAM_MAX_ITEMS
+      ) {
+        break;
+      }
 
-          additions.push({
-            key:
-              chainKey(
-                `asset-${asset.id}`,
-              ),
-            asset,
-            transition:
-              "cut",
-            crossfadeMs:
-              0,
-          });
+      additions.push({
+        key:
+          chainKey(
+            `asset-${asset.id}`,
+          ),
+        asset,
+        transition:
+          "cut",
+        crossfadeMs:
+          0,
+      });
 
-          duration +=
-            asset.durationMs;
+      duration +=
+        asset.durationMs;
 
-          if (
-            duration >=
-            targetDurationMs
-          ) {
-            break;
-          }
-        }
+      if (
+        duration >=
+        targetDurationMs
+      ) {
+        break;
+      }
+    }
 
-        if (
-          !additions.length
-        ) {
-          setError(
-            "No filtered tracks could be added to this target.",
-          );
-          return current;
-        }
+    if (
+      !additions.length
+    ) {
+      setError(
+        "No filtered tracks could be added to this target.",
+      );
+      return;
+    }
 
-        setError(null);
+    setError(null);
 
-        return [
-          ...current,
-          ...additions,
-        ];
-      },
-    );
+    updateChain([
+      ...chain,
+      ...additions,
+    ]);
   }
 
   function removeItem(
