@@ -126,10 +126,12 @@ chronology. Operator/owner identities may appear in this authenticated private
 admin view even though ordinary human analytics continue to exclude them.
 
 Traffic also supplies a bounded recent page-view trail for each returned browser
-identity. Expanding a row reveals that route sequence and marks the current page
-with a live beacon when presence is fresh. The drill-down is presentation over
-Traffic's first-party browser/session evidence only; it does not expose arbitrary
-payload JSON, IP history, or create a second visitor identity system.
+identity. Expanding a row reveals those routes grouped by browser identity and
+visit/session so a deduplicated account never invents arrows between separate
+devices or visits. The active browser and current page receive the live beacon
+when presence is fresh. The drill-down is presentation over Traffic's first-party
+browser/session evidence only; it does not expose arbitrary payload JSON, IP
+history, or create a second visitor identity system.
 
 Radio state remains an enrichment rather than presence authority. A stale
 listening heartbeat still means Radio is not live now, but historical Sound On is
