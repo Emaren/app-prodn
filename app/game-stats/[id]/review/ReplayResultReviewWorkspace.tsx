@@ -741,7 +741,7 @@ export default function ReplayResultReviewWorkspace({ gameStatsId }: { gameStats
           <Link href={`/game-stats/${gameStatsId}`} className="rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white">Open Battle Record</Link>
           {state.linkedMarkets.length > 0 ? <span className="rounded-full border border-violet-200/20 bg-violet-300/10 px-4 py-2 text-sm text-violet-100">{state.linkedMarkets.length} market link{state.linkedMarkets.length === 1 ? "" : "s"} protected</span> : null}
         </div>
-        {canAdminister && [27269, 44670].includes(gameStatsId) ? <div className="mt-5 rounded-2xl border border-amber-200/20 bg-amber-200/5 p-4">
+        {canAdminister && state.adjudications.length === 0 && [27269, 44670].includes(gameStatsId) ? <div className="mt-5 rounded-2xl border border-amber-200/20 bg-amber-200/5 p-4">
           <div className="font-semibold text-amber-100">Zodiac Recovery · serialized resignation evidence</div>
           <p className="mt-2 text-sm text-slate-300">The immutable replay packet binds the complete losing side to canonical player slots and Steam identities. Load the checked draft for a stats-only Commissioner decision.</p>
           <button type="button" disabled={proposalLoading || saving || resultWritePaused} onClick={() => void loadRecoveryDraft()} className="mt-3 rounded-full border border-amber-200/30 px-4 py-2 text-sm font-bold text-amber-100 disabled:opacity-40">{proposalLoading ? "Revalidating exact evidence…" : "Load evidence-backed draft"}</button>
