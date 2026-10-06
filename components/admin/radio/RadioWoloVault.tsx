@@ -28,6 +28,10 @@ import {
   X,
 } from "lucide-react";
 
+import {
+  expandRadioWoloIntakeFiles,
+} from "@/lib/radioWoloZipImport";
+
 type RadioAsset = {
   id: number;
   publicId: string;
@@ -251,6 +255,21 @@ export default function RadioWoloVault() {
     kindFilter,
     setKindFilter,
   ] = useState("all");
+
+  const [
+    importCredit,
+    setImportCredit,
+  ] = useState("");
+
+  const [
+    importKind,
+    setImportKind,
+  ] = useState("song");
+
+  const [
+    importTags,
+    setImportTags,
+  ] = useState("");
 
   const [
     loading,
@@ -517,14 +536,14 @@ export default function RadioWoloVault() {
       | FileList
       | File[],
   ) {
-    const list =
+    const selected =
       Array.from(files)
         .filter(
           (file) =>
             file.size > 0,
         );
 
-    if (!list.length) {
+    if (!selected.length) {
       return;
     }
 
@@ -532,18 +551,70 @@ export default function RadioWoloVault() {
     setError(null);
     setNotice(null);
 
-    const jobs =
-      list.map(
+    setUploadJobs(
+      selected.map(
         (
           file,
           index,
         ) => ({
           key:
-            `${Date.now()}-${index}-${file.name}`,
+            `intake-${Date.now()}-${index}-${file.name}`,
           name:
             file.name,
           state:
             "reading" as const,
+          detail:
+            file.name
+              .toLowerCase()
+              .endsWith(
+                ".zip",
+              )
+              ? "Opening ZIP…"
+              : "Reading metadata…",
+        }),
+      ),
+    );
+
+    let intake:
+      Awaited<
+        ReturnType<
+          typeof expandRadioWoloIntakeFiles
+        >
+      >;
+
+    try {
+      intake =
+        await expandRadioWoloIntakeFiles(
+          selected,
+        );
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "Could not unpack the Radio WOLO intake.",
+      );
+      setUploadJobs([]);
+      setUploading(false);
+      return;
+    }
+
+    const jobs =
+      intake.map(
+        (
+          item,
+          index,
+        ) => ({
+          key:
+            `${Date.now()}-${index}-${item.sourceLabel}-${item.file.name}`,
+          name:
+            item.file.name,
+          state:
+            "reading" as const,
+          detail:
+            item.sourceLabel ===
+            item.file.name
+              ? undefined
+              : `From ${item.sourceLabel}`,
         }),
       );
 
@@ -552,15 +623,17 @@ export default function RadioWoloVault() {
     );
 
     let uploaded = 0;
+    let skipped = 0;
+    let failed = 0;
 
     for (
       let index = 0;
       index <
-      list.length;
+      intake.length;
       index += 1
     ) {
       const file =
-        list[index];
+        intake[index].file;
 
       const job =
         jobs[index];
@@ -577,9 +650,9 @@ export default function RadioWoloVault() {
             state:
               "uploading",
             detail:
-              formatDuration(
+              `${formatDuration(
                 durationMs,
-              ),
+              )} · uploading`,
           },
         );
 
@@ -597,6 +670,33 @@ export default function RadioWoloVault() {
             durationMs,
           ),
         );
+
+        if (
+          importCredit.trim()
+        ) {
+          form.set(
+            "credit",
+            importCredit.trim(),
+          );
+        }
+
+        if (
+          importKind.trim()
+        ) {
+          form.set(
+            "kind",
+            importKind.trim(),
+          );
+        }
+
+        if (
+          importTags.trim()
+        ) {
+          form.set(
+            "tags",
+            importTags.trim(),
+          );
+        }
 
         const response =
           await fetch(
@@ -617,7 +717,29 @@ export default function RadioWoloVault() {
             )) as {
             detail?:
               string;
+            duplicateId?:
+              number;
           };
+
+        if (
+          response.status ===
+            409 &&
+          payload.duplicateId
+        ) {
+          skipped += 1;
+
+          updateJob(
+            job.key,
+            {
+              state:
+                "done",
+              detail:
+                "Already in Vault · skipped",
+            },
+          );
+
+          continue;
+        }
 
         if (
           !response.ok
@@ -636,12 +758,16 @@ export default function RadioWoloVault() {
             state:
               "done",
             detail:
-              "Preserved",
+              `${formatDuration(
+                durationMs,
+              )} · preserved`,
           },
         );
       } catch (
         cause
       ) {
+        failed += 1;
+
         updateJob(
           job.key,
           {
@@ -659,15 +785,25 @@ export default function RadioWoloVault() {
 
     await load();
 
+    const summary = [
+      uploaded
+        ? `${uploaded} added`
+        : null,
+      skipped
+        ? `${skipped} duplicates skipped`
+        : null,
+      failed
+        ? `${failed} failed`
+        : null,
+    ].filter(Boolean);
+
     if (
-      uploaded > 0
+      summary.length
     ) {
       setNotice(
-        `${uploaded} ${
-          uploaded === 1
-            ? "asset"
-            : "assets"
-        } added to the Vault.`,
+        `Radio WOLO intake complete · ${summary.join(
+          " · ",
+        )}.`,
       );
     }
 
@@ -941,7 +1077,7 @@ export default function RadioWoloVault() {
         ref={inputRef}
         type="file"
         multiple
-        accept="audio/mpeg,audio/wav,audio/ogg,audio/mp4,.mp3,.wav,.ogg,.m4a"
+        accept="audio/mpeg,audio/wav,audio/ogg,audio/mp4,application/zip,application/x-zip-compressed,.mp3,.wav,.ogg,.m4a,.zip"
         onChange={onInput}
         className="hidden"
       />
@@ -1015,23 +1151,72 @@ export default function RadioWoloVault() {
             the station needs.
           </p>
 
+          <div className="mt-6 grid w-full max-w-xl gap-2 sm:grid-cols-3">
+            <label className="text-left">
+              <span className="mb-1 block text-[9px] font-bold uppercase tracking-[0.18em] text-slate-600">
+                Import credit
+              </span>
+              <input
+                value={importCredit}
+                onChange={(event) =>
+                  setImportCredit(
+                    event.target.value,
+                  )
+                }
+                placeholder="Lord Molyneaux"
+                className="w-full rounded-xl border border-white/8 bg-black/25 px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-700 focus:border-fuchsia-100/25"
+              />
+            </label>
+
+            <label className="text-left">
+              <span className="mb-1 block text-[9px] font-bold uppercase tracking-[0.18em] text-slate-600">
+                Kind
+              </span>
+              <input
+                value={importKind}
+                onChange={(event) =>
+                  setImportKind(
+                    event.target.value,
+                  )
+                }
+                placeholder="song"
+                className="w-full rounded-xl border border-white/8 bg-black/25 px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-700 focus:border-fuchsia-100/25"
+              />
+            </label>
+
+            <label className="text-left">
+              <span className="mb-1 block text-[9px] font-bold uppercase tracking-[0.18em] text-slate-600">
+                Import tags
+              </span>
+              <input
+                value={importTags}
+                onChange={(event) =>
+                  setImportTags(
+                    event.target.value,
+                  )
+                }
+                placeholder="lord molyneaux, suno"
+                className="w-full rounded-xl border border-white/8 bg-black/25 px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-700 focus:border-fuchsia-100/25"
+              />
+            </label>
+          </div>
+
           <button
             type="button"
             disabled={uploading}
             onClick={() =>
               inputRef.current?.click()
             }
-            className="pointer-events-auto mt-6 inline-flex items-center gap-2 rounded-full border border-fuchsia-100/20 bg-fuchsia-100 px-5 py-2.5 text-sm font-bold text-slate-950 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+            className="pointer-events-auto mt-5 inline-flex items-center gap-2 rounded-full border border-fuchsia-100/20 bg-fuchsia-100 px-5 py-2.5 text-sm font-bold text-slate-950 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Plus
               size={16}
             />
-            Choose audio
+            Choose audio / ZIPs
           </button>
 
           <div className="mt-4 text-[11px] uppercase tracking-[0.2em] text-slate-600">
-            MP3 · WAV · OGG ·
-            M4A · 250 MB max each
+            MP3 · WAV · OGG · M4A · ZIP batches · 250 MB max per track
           </div>
         </div>
       </section>
