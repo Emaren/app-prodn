@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/frictionless-championship-challenges-20261006` at `4e9097b16fd77be31f671b213154a1da285a4b26`
+Implementation baseline: `feat/frictionless-championship-challenges-20261006` at `48981e7c5f54312c14b3a099d6ae7bab0f413a39`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
