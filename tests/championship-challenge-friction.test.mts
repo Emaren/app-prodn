@@ -20,6 +20,7 @@ test("issuing a championship challenge does not require escrow or wallet funding
   assert.match(workspace, /if \(!version2 && \(!snapshot\.fundingRail\.configured/);
   assert.match(workspace, /if \(!version2 && \(walletStatus !== "connected"/);
   assert.match(workspace, /if \(version2\) \{[\s\S]*?replaceSnapshot\(payload\)[\s\S]*?Challenge sent/);
+  assert.match(workspace, /Watcher required/);
   assert.match(workspace, /Watcher proof\. No wallet required\./);
   assert.match(workspace, /No wallet transaction is required to issue the Challenge\./);
   assert.doesNotMatch(workspace, /Your signed WOLO funds the Challenge purse\. Every warrior funds their own share\./);
@@ -31,6 +32,8 @@ test("watcher proof owns the championship start copy", () => {
   assert.match(workspace, /placeholder=\{version2 \? "Call out your rival"/);
   assert.match(protocol, /watcher-verified start owns the competitive clock/);
   assert.doesNotMatch(protocol, /Accept only to confirm and fund WOLO terms/);
+  const roomControls = readFileSync("components/challenge/ChallengeRoomControls.tsx", "utf8");
+  assert.doesNotMatch(roomControls, /accept and fund only if you want the WOLO stake matched/);
 });
 
 test("championship hero reserves glyph breathing room", () => {
