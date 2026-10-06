@@ -456,7 +456,6 @@ export default function RadioWoloGlobalPlayer() {
     playbackBlocked,
 
     liveOffsetMs,
-    liveElapsedMs,
 
     targetVolume,
     setTargetVolume,
