@@ -163,10 +163,10 @@ async function seedAcceptedRatingEvidence(
 test("real protocol creation is idempotent, seals one clock, and per-participant acceptance never renews it",{skip:!enabled},async()=>{
  const a=await warrior("creator"),b=await warrior("defender");
  const request=`${prefix}:create:solo`;
- const id=await createChampionshipChallenge(prisma!,a.id,{challengedUid:b.uid,wagerAmountWolo:5,creationRequestId:request});
- assert.equal(await createChampionshipChallenge(prisma!,a.id,{challengedUid:b.uid,wagerAmountWolo:5,creationRequestId:request}),id);
- await assert.rejects(createChampionshipChallenge(prisma!,a.id,{challengedUid:b.uid,wagerAmountWolo:6,creationRequestId:request}),/different stake, title or roster/);
- await assert.rejects(createChampionshipChallenge(prisma!,a.id,{challengedUid:b.uid,wagerAmountWolo:5,mode:"dm",creationRequestId:request}),/different stake, title or roster/);
+ const id=await createChampionshipChallenge(prisma!,a.id,{challengedUid:b.uid,wagerAmountWolo:0,creationRequestId:request});
+ assert.equal(await createChampionshipChallenge(prisma!,a.id,{challengedUid:b.uid,wagerAmountWolo:0,creationRequestId:request}),id);
+ await assert.rejects(createChampionshipChallenge(prisma!,a.id,{challengedUid:b.uid,wagerAmountWolo:100,creationRequestId:request}),/different stake, title or roster/);
+ await assert.rejects(createChampionshipChallenge(prisma!,a.id,{challengedUid:b.uid,wagerAmountWolo:0,mode:"dm",creationRequestId:request}),/different stake, title or roster/);
  const row=await prisma!.championshipChallenge.findUniqueOrThrow({where:{scheduledMatchId:id}});
  assert.equal(row.challengeDeadline.getTime()-row.createdAt.getTime(),24*60*60*1000);
  await mutateChampionshipParticipant(prisma!,id,b.id,"accept");
@@ -180,7 +180,7 @@ test("real protocol creation is idempotent, seals one clock, and per-participant
 });
 test("funded claimant defaults once after the Commissioner hour; payment and NFT remain unproven",{skip:!enabled},async()=>{
  const a=await warrior("default-a"),b=await warrior("default-b"),title=await soloTitle("default",b);
- const id=await createChampionshipChallenge(prisma!,a.id,{challengedUid:b.uid,wagerAmountWolo:5}),row=await modeledFunding(id,["challenger"]);
+ const id=await createChampionshipChallenge(prisma!,a.id,{challengedUid:b.uid,wagerAmountWolo:100}),row=await modeledFunding(id,["challenger"]);
  await Promise.all([reconcileChampionshipChallenges(prisma!,{challengeIds:[id],now:row.commissionerGraceDeadline}),reconcileChampionshipChallenges(prisma!,{challengeIds:[id],now:row.commissionerGraceDeadline})]);
  assert.equal((await protocol(id)).state,"defaulted");
  assert.equal((await prisma!.trophy.findUniqueOrThrow({where:{id:title.id}})).currentHolderUserId,a.id);
@@ -193,7 +193,7 @@ test("funded claimant defaults once after the Commissioner hour; payment and NFT
 });
 test("multiple funded claimant rosters enter one durable dispute without awarding a click-order winner",{skip:!enabled},async()=>{
  const a=await warrior("dispute-a"),b=await warrior("dispute-b"),c=await warrior("dispute-c"),title=await soloTitle("dispute",b);
- const left=await createChampionshipChallenge(prisma!,a.id,{challengedUid:b.uid,wagerAmountWolo:5}),right=await createChampionshipChallenge(prisma!,c.id,{challengedUid:b.uid,wagerAmountWolo:5});
+ const left=await createChampionshipChallenge(prisma!,a.id,{challengedUid:b.uid,wagerAmountWolo:100}),right=await createChampionshipChallenge(prisma!,c.id,{challengedUid:b.uid,wagerAmountWolo:100});
  const rows=await Promise.all([modeledFunding(left,["challenger"]),modeledFunding(right,["challenger"])]);
  const now=new Date(Math.max(...rows.map(row=>row.commissionerGraceDeadline.getTime())));
  await Promise.all([reconcileChampionshipChallenges(prisma!,{challengeIds:[left,right],now}),reconcileChampionshipChallenges(prisma!,{challengeIds:[left,right],now})]);
@@ -206,7 +206,7 @@ test("multiple funded claimant rosters enter one durable dispute without awardin
 });
 test("TurboRandom HD watcher encounter starts RM championship without any check-in ceremony",{skip:!enabled},async()=>{
  const a=await warrior("turbo-rm-a"),b=await warrior("turbo-rm-b");
- const id=await createChampionshipChallenge(prisma!,a.id,{challengedUid:b.uid,wagerAmountWolo:5,mode:"rm"}),row=await modeledFunding(id);
+ const id=await createChampionshipChallenge(prisma!,a.id,{challengedUid:b.uid,wagerAmountWolo:100,mode:"rm"}),row=await modeledFunding(id);
  const scheduledBefore=await prisma!.scheduledMatch.findUniqueOrThrow({where:{id}});
  assert.equal(scheduledBefore.challengerCheckedInAt,null);
  assert.equal(scheduledBefore.challengedCheckedInAt,null);
@@ -224,7 +224,7 @@ test("TurboRandom HD watcher encounter starts RM championship without any check-
 });
 test("watcher play completes an explicit championship when the defender skips acceptance and funding; unmatched creator stake returns whole",{skip:!enabled},async()=>{
  const creator=await warrior("honor-creator"),defender=await warrior("honor-defender");
- const id=await createChampionshipChallenge(prisma!,creator.id,{challengedUid:defender.uid,wagerAmountWolo:5,mode:"rm"});
+ const id=await createChampionshipChallenge(prisma!,creator.id,{challengedUid:defender.uid,wagerAmountWolo:100,mode:"rm"});
  const row=await modeledFunding(id,["challenger"]);
  const before=await protocol(id);
  assert.equal(before.participants.find(p=>p.side==="challenger")!.acceptedAt!==null,true);
@@ -277,7 +277,7 @@ test("watcher play completes an explicit championship when the defender skips ac
 test("existing generic Challenge inherits ambient title stakes when the original challenged player holds the belt",{skip:!enabled},async()=>{
  const creator=await warrior("ambient-existing-a"),holder=await warrior("ambient-existing-b");
  const request=prefix+":ambient-existing:defender";
- const id=await createChampionshipChallenge(prisma!,creator.id,{challengedUid:holder.uid,wagerAmountWolo:5,mode:"rm",creationRequestId:request});
+ const id=await createChampionshipChallenge(prisma!,creator.id,{challengedUid:holder.uid,wagerAmountWolo:100,mode:"rm",creationRequestId:request});
  await modeledFunding(id);
  const title=await soloTitle("ambient-existing-defender",holder);
  const scheduledCount=await prisma!.scheduledMatch.count();
@@ -294,7 +294,7 @@ test("existing generic Challenge inherits ambient title stakes when the original
  assert.equal(promoted.participants.find(p=>p.side==="defender")!.userId,holder.id);
  assert.equal(promoted.participants.find(p=>p.userId===creator.id)!.fundingSide,"left");
  assert.equal(promoted.participants.find(p=>p.userId===holder.id)!.fundingSide,"right");
- assert.equal(await createChampionshipChallenge(prisma!,creator.id,{challengedUid:holder.uid,wagerAmountWolo:5,mode:"rm",creationRequestId:request}),id);
+ assert.equal(await createChampionshipChallenge(prisma!,creator.id,{challengedUid:holder.uid,wagerAmountWolo:100,mode:"rm",creationRequestId:request}),id);
 
  const final=await battle(id,"completed",live.startedAt,[creator.uid,holder.uid],"TurboRandom9",true);
  await reconcileChampionshipEvidence(prisma!,{challengeIds:[id],now:new Date(live.startedAt.getTime()+20*60_000),executeSettlements:false},snapshot(final));
@@ -318,7 +318,7 @@ test("existing generic Challenge inherits ambient title stakes when the original
 test("existing generic Challenge can reverse title roles without reversing original WOLO sides",{skip:!enabled},async()=>{
  const holder=await warrior("ambient-reverse-holder"),opponent=await warrior("ambient-reverse-opponent");
  const request=prefix+":ambient-existing:reverse";
- const id=await createChampionshipChallenge(prisma!,holder.id,{challengedUid:opponent.uid,wagerAmountWolo:5,mode:"rm",creationRequestId:request});
+ const id=await createChampionshipChallenge(prisma!,holder.id,{challengedUid:opponent.uid,wagerAmountWolo:100,mode:"rm",creationRequestId:request});
  await modeledFunding(id);
  const title=await soloTitle("ambient-existing-reverse",holder);
  const scheduledCount=await prisma!.scheduledMatch.count();
@@ -333,7 +333,7 @@ test("existing generic Challenge can reverse title roles without reversing origi
  assert.equal(promoted.participants.find(p=>p.side==="challenger")!.userId,opponent.id);
  assert.equal(promoted.participants.find(p=>p.userId===holder.id)!.fundingSide,"left");
  assert.equal(promoted.participants.find(p=>p.userId===opponent.id)!.fundingSide,"right");
- assert.equal(await createChampionshipChallenge(prisma!,holder.id,{challengedUid:opponent.uid,wagerAmountWolo:5,mode:"rm",creationRequestId:request}),id);
+ assert.equal(await createChampionshipChallenge(prisma!,holder.id,{challengedUid:opponent.uid,wagerAmountWolo:100,mode:"rm",creationRequestId:request}),id);
 
  const final=await battle(id,"completed",live.startedAt,[holder.uid,opponent.uid],"TurboRandom9",true);
  await reconcileChampionshipEvidence(prisma!,{challengeIds:[id],now:new Date(live.startedAt.getTime()+20*60_000),executeSettlements:false},snapshot(final));
@@ -541,7 +541,7 @@ test("dual Watchers select canonical RM Rising from accepted replay rating autho
 
 test("accepted Commissioner replay verdict settles an ambiguous watched championship without granting betting authority",{skip:!enabled},async()=>{
  const a=await warrior("commissioner-result-a",true),b=await warrior("commissioner-result-b");
- const id=await createChampionshipChallenge(prisma!,a.id,{challengedUid:b.uid,wagerAmountWolo:5,mode:"rm"}),row=await modeledFunding(id);
+ const id=await createChampionshipChallenge(prisma!,a.id,{challengedUid:b.uid,wagerAmountWolo:100,mode:"rm"}),row=await modeledFunding(id);
  const completed=await battle(id,"completed",new Date(row.createdAt.getTime()+60_000),[a.uid,b.uid],"TurboRandom9",false);
  completed.disconnectDetected=true;
  const replayHash=createHash("sha256").update(prefix+":"+id+":commissioner-result").digest("hex");
@@ -581,7 +581,7 @@ test("accepted Commissioner replay verdict settles an ambiguous watched champion
 });
 test("Commissioner can resume a stale machine MATCH_DESYNC review without changing frozen match proof",{skip:!enabled},async()=>{
  const challenger=await warrior("resume-a"),defender=await warrior("resume-b"),admin=await warrior("resume-admin",true);
- const id=await createChampionshipChallenge(prisma!,challenger.id,{challengedUid:defender.uid,wagerAmountWolo:5,mode:"rm"}),row=await modeledFunding(id);
+ const id=await createChampionshipChallenge(prisma!,challenger.id,{challengedUid:defender.uid,wagerAmountWolo:100,mode:"rm"}),row=await modeledFunding(id);
  const final=await battle(id,"completed",new Date(row.createdAt.getTime()+60_000),[challenger.uid,defender.uid],"TurboRandom9",false);
  const startedAt=new Date(final.playedOn!);
  await prisma!.championshipChallenge.update({where:{scheduledMatchId:id},data:{state:"commissioner_review",reasonCode:"MATCH_DESYNC",defenseStartedAt:startedAt,defenseSessionKey:final.sessionKey,defenseProof:final as unknown as Prisma.InputJsonValue}});
@@ -601,7 +601,7 @@ test("Commissioner can resume a stale machine MATCH_DESYNC review without changi
 });
 test("Commissioner cannot resume machine review across a human-confirmed desync incident",{skip:!enabled},async()=>{
  const challenger=await warrior("resume-block-a"),defender=await warrior("resume-block-b"),admin=await warrior("resume-block-admin",true);
- const id=await createChampionshipChallenge(prisma!,challenger.id,{challengedUid:defender.uid,wagerAmountWolo:5,mode:"rm"}),row=await modeledFunding(id);
+ const id=await createChampionshipChallenge(prisma!,challenger.id,{challengedUid:defender.uid,wagerAmountWolo:100,mode:"rm"}),row=await modeledFunding(id);
  const final=await battle(id,"completed",new Date(row.createdAt.getTime()+60_000),[challenger.uid,defender.uid],"TurboRandom9",false);
  const startedAt=new Date(final.playedOn!);
  await prisma!.championshipChallenge.update({where:{scheduledMatchId:id},data:{state:"commissioner_review",reasonCode:"MATCH_DESYNC",defenseStartedAt:startedAt,defenseSessionKey:final.sessionKey,defenseProof:final as unknown as Prisma.InputJsonValue}});
@@ -614,7 +614,7 @@ test("Commissioner cannot resume machine review across a human-confirmed desync 
 });
 test("authenticated exact defending start freezes default and a full final after five hours transfers once",{skip:!enabled},async()=>{
  const a=await warrior("proof-a"),b=await warrior("proof-b"),title=await soloTitle("proof",b);
- const id=await createChampionshipChallenge(prisma!,a.id,{challengedUid:b.uid,wagerAmountWolo:5}),row=await modeledFunding(id);
+ const id=await createChampionshipChallenge(prisma!,a.id,{challengedUid:b.uid,wagerAmountWolo:100}),row=await modeledFunding(id);
  const live=await battle(id,"live",new Date(row.challengeDeadline.getTime()-1000),[b.uid]);
  await reconcileChampionshipEvidence(prisma!,{now:row.challengeDeadline},snapshot(live));
  assert.equal((await protocol(id)).state,"defense_in_progress");
@@ -627,7 +627,7 @@ test("authenticated exact defending start freezes default and a full final after
 });
 test("an unsigned parsed early start cannot suppress default; partial final coverage goes to review",{skip:!enabled},async()=>{
  const a=await warrior("unsigned-a"),b=await warrior("unsigned-b");await soloTitle("unsigned",b);
- const id=await createChampionshipChallenge(prisma!,a.id,{challengedUid:b.uid,wagerAmountWolo:5}),row=await modeledFunding(id);
+ const id=await createChampionshipChallenge(prisma!,a.id,{challengedUid:b.uid,wagerAmountWolo:100}),row=await modeledFunding(id);
  const unsigned=await battle(id,"live");unsigned.authenticatedLiveObservations=[];unsigned.authenticatedWatcherParticipantUids=[];
  await reconcileChampionshipEvidence(prisma!,{now:row.challengeDeadline},snapshot(unsigned));assert.equal((await protocol(id)).defenseStartedAt,null);
  const weakFinal=await battle(id,"completed",undefined,[b.uid]);
@@ -637,7 +637,7 @@ test("an unsigned parsed early start cannot suppress default; partial final cove
 });
 test("human-confirmed desync blocks automatic default custody",{skip:!enabled},async()=>{
  const a=await warrior("desync-a"),b=await warrior("desync-b"),admin=await warrior("desync-admin",true),title=await soloTitle("desync",b);
- const id=await createChampionshipChallenge(prisma!,a.id,{challengedUid:b.uid,wagerAmountWolo:5}),row=await modeledFunding(id,["challenger"]),game=await battle(id,"completed");
+ const id=await createChampionshipChallenge(prisma!,a.id,{challengedUid:b.uid,wagerAmountWolo:100}),row=await modeledFunding(id,["challenger"]),game=await battle(id,"completed");
  await prisma!.replayDesyncIncident.create({data:{gameStatsId:game.id,scheduledMatchId:id,reviewerUserId:admin.id,idempotencyKey:`${prefix}:desync:${id}`,inputHash:"0".repeat(64),desyncOccurred:true,reviewerUidSnapshot:admin.uid,reviewerDisplayNameSnapshot:admin.inGameName!,sourceReplayHash:"1".repeat(64),sourceParseIteration:1,machineEvidence:{qaFixture:true}}});
  await reconcileChampionshipChallenges(prisma!,{challengeIds:[id],now:row.commissionerGraceDeadline});
  assert.equal((await protocol(id)).state,"commissioner_review");assert.equal((await protocol(id)).reasonCode,"MATCH_DESYNC");assert.equal((await prisma!.trophy.findUniqueOrThrow({where:{id:title.id}})).currentHolderUserId,b.id);
@@ -645,21 +645,21 @@ test("human-confirmed desync blocks automatic default custody",{skip:!enabled},a
 });
 test("a signed final with only parsed start time prevents silent default and requires Commissioner review",{skip:!enabled},async()=>{
  const a=await warrior("parsed-start-a"),b=await warrior("parsed-start-b");await soloTitle("parsed-start",b);
- const id=await createChampionshipChallenge(prisma!,a.id,{challengedUid:b.uid,wagerAmountWolo:5}),row=await modeledFunding(id),final=await battle(id,"completed");final.authenticatedLiveObservations=[];
+ const id=await createChampionshipChallenge(prisma!,a.id,{challengedUid:b.uid,wagerAmountWolo:100}),row=await modeledFunding(id),final=await battle(id,"completed");final.authenticatedLiveObservations=[];
  await reconcileChampionshipEvidence(prisma!,{now:row.challengeDeadline},snapshot(final));
  assert.equal((await protocol(id)).state,"commissioner_review");assert.equal((await protocol(id)).defenseStartedAt,null);assert.equal((await protocol(id)).reasonCode,"WATCHER_PROOF_MISSING");
  assert.equal(await prisma!.scheduledMatchReplayClaim.count({where:{scheduledMatchId:id}}),0);
 });
 test("a durable Commissioner review cannot starve the next timed Challenge in a one-row worker batch",{skip:!enabled},async()=>{
  const a=await warrior("fair-review-a"),b=await warrior("fair-review-b"),c=await warrior("fair-timed-a"),d=await warrior("fair-timed-b");
- const held=await createChampionshipChallenge(prisma!,a.id,{challengedUid:b.uid,wagerAmountWolo:5}),due=await createChampionshipChallenge(prisma!,c.id,{challengedUid:d.uid,wagerAmountWolo:5});
+ const held=await createChampionshipChallenge(prisma!,a.id,{challengedUid:b.uid,wagerAmountWolo:100}),due=await createChampionshipChallenge(prisma!,c.id,{challengedUid:d.uid,wagerAmountWolo:100});
  await prisma!.championshipChallenge.update({where:{scheduledMatchId:held},data:{state:"commissioner_review"}});
  await reconcileChampionshipChallenges(prisma!,{challengeIds:[held,due],now:(await protocol(due)).challengeDeadline,take:1});
  assert.equal((await protocol(held)).state,"commissioner_review");assert.equal((await protocol(due)).state,"expired");
 });
 test("payment selection skips proven history and retains outstanding funded principal",{skip:!enabled},async()=>{
  const a=await warrior("paid-a"),b=await warrior("paid-b"),c=await warrior("pending-a"),d=await warrior("pending-b");
- const paid=await createChampionshipChallenge(prisma!,a.id,{challengedUid:b.uid,wagerAmountWolo:5}),pending=await createChampionshipChallenge(prisma!,c.id,{challengedUid:d.uid,wagerAmountWolo:5});
+ const paid=await createChampionshipChallenge(prisma!,a.id,{challengedUid:b.uid,wagerAmountWolo:100}),pending=await createChampionshipChallenge(prisma!,c.id,{challengedUid:d.uid,wagerAmountWolo:100});
  await modeledFunding(paid,["challenger"]);await modeledFunding(pending,["challenger"]);
  await prisma!.championshipChallenge.updateMany({where:{scheduledMatchId:{in:[paid,pending]}},data:{state:"cancelled"}});
  await prisma!.scheduledMatchSettlement.create({data:{scheduledMatchId:paid,status:"executed",action:"left_full_refund",recipientAddress:a.walletAddress!,amountWolo:5,requestId:`${prefix}:modeled-paid`,txHash:`QA_MODELLED_SETTLEMENT_${paid}`,lastAttemptAt:new Date()}});
@@ -674,7 +674,7 @@ test("team cancellation queues exact original-stake refunds for every financial 
  const admin=await warrior("cancel-admin",true),roster=await Promise.all(Array.from({length:4},(_,i)=>warrior(`cancel-${i}`)));
  const title=await prisma!.trophy.findUniqueOrThrow({where:{trophyId:"2v2-rm"}}),custody=await getChampionshipCustody(prisma!,title);
  await prisma!.$transaction(tx=>transitionChampionshipCustody(tx,{trophyId:title.id,requestKey:`${prefix}:cancel-team`,expectedEpoch:custody.epoch,expectedRosterUserIds:custody.roster.map(p=>p.userId),nextRosterUserIds:roster.slice(2).map(p=>p.id),reason:"commissioner",actorUserId:admin.id,note:"QA complete team assignment"}));
- const id=await createChampionshipChallenge(prisma!,roster[0]!.id,{challengedUid:roster[2]!.uid,trophyId:title.id,challengerTeamUids:[roster[1]!.uid],wagerAmountWolo:5}),row=await modeledFunding(id);
+ const id=await createChampionshipChallenge(prisma!,roster[0]!.id,{challengedUid:roster[2]!.uid,trophyId:title.id,challengerTeamUids:[roster[1]!.uid],wagerAmountWolo:100}),row=await modeledFunding(id);
  const queued:number[]=[];
  const executeSettlement=(async(_db,legId)=>{queued.push(legId);throw new Error("QA fixture intentionally leaves chain execution unavailable");}) as typeof executeScheduledMatchSettlement;
  await mutateChampionshipParticipant(prisma!,id,roster[1]!.id,"cancel",{},{executeSettlement});
@@ -687,7 +687,7 @@ test("one full 3v3 final replaces all seats and every financial leg inherits the
  const admin=await warrior("team-proof-admin",true),roster=await Promise.all(Array.from({length:6},(_,i)=>warrior(`team-proof-${i}`)));
  const title=await prisma!.trophy.findUniqueOrThrow({where:{trophyId:"3v3-rm"}}),custody=await getChampionshipCustody(prisma!,title);
  await prisma!.$transaction(tx=>transitionChampionshipCustody(tx,{trophyId:title.id,requestKey:`${prefix}:proof-team`,expectedEpoch:custody.epoch,expectedRosterUserIds:custody.roster.map(p=>p.userId),nextRosterUserIds:roster.slice(3).map(p=>p.id),reason:"commissioner",actorUserId:admin.id,note:"QA complete team assignment"}));
- const id=await createChampionshipChallenge(prisma!,roster[0]!.id,{challengedUid:roster[3]!.uid,trophyId:title.id,challengerTeamUids:roster.slice(1,3).map(p=>p.uid),wagerAmountWolo:5}),row=await modeledFunding(id),final=await battle(id,"completed");
+ const id=await createChampionshipChallenge(prisma!,roster[0]!.id,{challengedUid:roster[3]!.uid,trophyId:title.id,challengerTeamUids:roster.slice(1,3).map(p=>p.uid),wagerAmountWolo:100}),row=await modeledFunding(id),final=await battle(id,"completed");
  await Promise.all([reconcileChampionshipEvidence(prisma!,{challengeIds:[id],now:row.challengeDeadline},snapshot(final)),reconcileChampionshipEvidence(prisma!,{challengeIds:[id],now:row.challengeDeadline},snapshot(final))]);
  assert.equal((await protocol(id)).state,"completed");
  const current=await getChampionshipCustody(prisma!,await prisma!.trophy.findUniqueOrThrow({where:{id:title.id}}));assert.deepEqual(current.roster.map(p=>p.userId),roster.slice(0,3).map(p=>p.id));
@@ -699,7 +699,7 @@ test("one full 3v3 final replaces all seats and every financial leg inherits the
 });
 test("unfunded solo cannot capture at Hour25; repeat workers are idempotent",{skip:!enabled},async()=>{
  const a=await warrior("unfunded-a"),b=await warrior("unfunded-b");
- const id=await createChampionshipChallenge(prisma!,a.id,{challengedUid:b.uid,wagerAmountWolo:5});
+ const id=await createChampionshipChallenge(prisma!,a.id,{challengedUid:b.uid,wagerAmountWolo:100});
  const row=await prisma!.championshipChallenge.findUniqueOrThrow({where:{scheduledMatchId:id}});
  await reconcileChampionshipChallenges(prisma!,{challengeIds:[id],now:new Date(row.challengeDeadline.getTime()),take:100});
  assert.equal((await prisma!.championshipChallenge.findUniqueOrThrow({where:{id:row.id}})).state,"expired");
@@ -712,7 +712,7 @@ test("team roster is durable, every participant receives parent notice, and hidd
  const trophy=await prisma!.trophy.findUniqueOrThrow({where:{trophyId:"3v3-rm"}});
  const custody=await getChampionshipCustody(prisma!,trophy);
  await prisma!.$transaction(tx=>transitionChampionshipCustody(tx,{trophyId:trophy.id,requestKey:`${prefix}:assign-team`,expectedEpoch:custody.epoch,expectedRosterUserIds:custody.roster.map(p=>p.userId),nextRosterUserIds:[c.id,d.id,f.id],reason:"commissioner",actorUserId:admin.id,eligibilityOverride:true,note:"Isolated protocol integration fixture"}));
- const id=await createChampionshipChallenge(prisma!,a.id,{challengedUid:c.uid,trophyId:trophy.id,challengerTeamUids:[b.uid,e.uid],wagerAmountWolo:5});
+ const id=await createChampionshipChallenge(prisma!,a.id,{challengedUid:c.uid,trophyId:trophy.id,challengerTeamUids:[b.uid,e.uid],wagerAmountWolo:100});
  const row=await prisma!.championshipChallenge.findUniqueOrThrow({where:{scheduledMatchId:id},include:{participants:true,legs:true}});
  assert.equal(row.participants.length,6);assert.equal(row.legs.length,2);assert.equal(row.mode,"rm");
  assert.equal(row.participants.every(p=>Boolean(p.notifiedAt)),true);
