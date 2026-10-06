@@ -12,6 +12,11 @@ const stateSource = readFileSync(
   "utf8",
 );
 
+const titlesSource = readFileSync(
+  new URL("../lib/champions/titles.ts", import.meta.url),
+  "utf8",
+);
+
 test("national champion belt cards use canonical nation routes", () => {
   assert.match(pageSource, /us:\s*"usa"/);
   assert.match(pageSource, /uk:\s*"uk"/);
@@ -87,4 +92,38 @@ test("future countries remain visible as honest planned crown placeholders", () 
   assert.match(pageSource, /plannedBeacons\.map/);
   assert.match(pageSource, /Economy/);
   assert.match(pageSource, /Not live/);
+});
+
+
+test("national champions resolve belt presentation through canonical managed-media targets", () => {
+  assert.match(pageSource, /managedMediaPublicUrl/);
+  assert.match(pageSource, /nationalBeltTarget\(beacon\.id\)/);
+  assert.match(
+    pageSource,
+    /national-canada-1fd048b9-lossless\.webp/,
+  );
+  assert.match(
+    titlesSource,
+    /id: "national-france"[\s\S]*assetUrl: "\/champions\/belts\/national-france-placeholder\.svg"/,
+  );
+  assert.doesNotMatch(
+    titlesSource,
+    /id: "national-france"[\s\S]{0,420}assetUrl: "\/champions\/belts\/aoe2war-world\.webp"/,
+  );
+  assert.doesNotMatch(
+    pageSource,
+    /beacon\.assetUrl\s*\|\|\s*nationalBeltImage/,
+  );
+});
+
+test("national champion challenge CTAs hand off to Challenge Hall, never chat", () => {
+  assert.match(pageSource, /title: nationalBeltTarget\(id\)/);
+  assert.match(pageSource, /kind: "national"/);
+  assert.match(pageSource, /country,/);
+  assert.match(
+    pageSource,
+    /return `\/challenge\?\$\{params\.toString\(\)\}#schedule-game`/,
+  );
+  assert.doesNotMatch(pageSource, /\/contact-emaren\?challenge=/);
+  assert.match(pageSource, /Opens Challenge Hall · Emaren remains Commissioner/);
 });
