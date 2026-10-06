@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `perf/fix-kingdom-oracle-images-and-champions-paint-20261005` at `dc2561773e812fd5e27fd76237377287f2b6eff6`
+Implementation baseline: `fix/release-gate-test-eof-20261006` at `c51dbfb5c04a6b6167f999b3d3a495c693a274a3`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
