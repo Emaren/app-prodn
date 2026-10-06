@@ -3217,3 +3217,281 @@ test(
     );
   },
 );
+
+
+test(
+  "Radio WOLO continuous station clock wraps to the first track without going off air",
+  async () => {
+    const {
+      resolveLoopingRadioStationPosition,
+    } = await import(
+      "../lib/radioWoloStation.ts"
+    );
+
+    const items = [
+      {
+        value: "one",
+        durationMs: 10_000,
+        transition: "cut",
+        crossfadeMs: 0,
+      },
+      {
+        value: "two",
+        durationMs: 10_000,
+        transition: "crossfade",
+        crossfadeMs: 2_000,
+      },
+      {
+        value: "three",
+        durationMs: 5_000,
+        transition: "cut",
+        crossfadeMs: 0,
+      },
+    ];
+
+    const lastTrack =
+      resolveLoopingRadioStationPosition(
+        items,
+        22_000,
+      );
+
+    assert.equal(
+      lastTrack.ended,
+      false,
+    );
+    assert.equal(
+      lastTrack.looping,
+      true,
+    );
+    assert.equal(
+      lastTrack.current?.value,
+      "three",
+    );
+    assert.equal(
+      lastTrack.next?.value,
+      "one",
+    );
+    assert.equal(
+      lastTrack.next?.startMs,
+      23_000,
+    );
+
+    const secondCycle =
+      resolveLoopingRadioStationPosition(
+        items,
+        23_500,
+      );
+
+    assert.equal(
+      secondCycle.cycleIndex,
+      1,
+    );
+    assert.equal(
+      secondCycle.totalElapsedMs,
+      23_500,
+    );
+    assert.equal(
+      secondCycle.elapsedMs,
+      500,
+    );
+    assert.equal(
+      secondCycle.current?.value,
+      "one",
+    );
+  },
+);
+
+test(
+  "Radio WOLO station APIs use the continuous loop clock and require explicit stop",
+  () => {
+    const admin =
+      read(
+        "app/api/admin/radio/station/route.ts",
+      );
+    const publicStation =
+      read(
+        "app/api/radio/station/route.ts",
+      );
+    const start =
+      read(
+        "app/api/admin/radio/station/start/route.ts",
+      );
+    const audio =
+      read(
+        "app/api/radio/station/audio/[publicId]/route.ts",
+      );
+    const feedback =
+      read(
+        "lib/radioWoloFeedback.ts",
+      );
+
+    assert.match(
+      admin,
+      /resolveLoopingRadioStationPosition/,
+    );
+    assert.match(
+      publicStation,
+      /resolveLoopingRadioStationPosition/,
+    );
+    assert.match(
+      feedback,
+      /resolveLoopingRadioStationPosition/,
+    );
+    assert.doesNotMatch(
+      publicStation,
+      /if \(clock\.ended\)/,
+    );
+    assert.match(
+      start,
+      /current\?\.state ===\s*"on_air"/,
+    );
+    assert.doesNotMatch(
+      audio,
+      /elapsedMs >=\s*timeline\.durationMs/,
+    );
+    assert.match(
+      publicStation,
+      /cycle:\s*clock\.cycleIndex \+ 1/,
+    );
+  },
+);
+
+test(
+  "Radio WOLO Vault can unpack bounded ZIP libraries into individual audio assets",
+  () => {
+    const vault =
+      read(
+        "components/admin/radio/RadioWoloVault.tsx",
+      );
+    const zip =
+      read(
+        "lib/radioWoloZipImport.ts",
+      );
+
+    assert.match(
+      vault,
+      /\.zip/,
+    );
+    assert.match(
+      vault,
+      /expandRadioWoloIntakeFiles/,
+    );
+    assert.match(
+      vault,
+      /Choose audio \/ ZIPs/,
+    );
+    assert.match(
+      vault,
+      /Import credit/,
+    );
+    assert.match(
+      vault,
+      /Import tags/,
+    );
+    assert.match(
+      zip,
+      /ZIP_EOCD_SIGNATURE/,
+    );
+    assert.match(
+      zip,
+      /DecompressionStream/,
+    );
+    assert.match(
+      zip,
+      /ZIP64 archives are not supported/,
+    );
+    assert.match(
+      zip,
+      /AUDIO_MAX_BYTES/,
+    );
+    assert.match(
+      zip,
+      /no MP3, WAV, OGG, or M4A tracks were found/,
+    );
+  },
+);
+
+test(
+  "Radio WOLO BUILD can add an entire filtered player catalog to one rotation",
+  () => {
+    const builder =
+      read(
+        "components/admin/radio/RadioWoloBuilder.tsx",
+      );
+
+    assert.match(
+      builder,
+      /function addVisibleAssets/,
+    );
+    assert.match(
+      builder,
+      /Add filtered/,
+    );
+    assert.match(
+      builder,
+      /RADIO_PROGRAM_MAX_ITEMS/,
+    );
+  },
+);
+
+test(
+  "Radio WOLO global player is track-first and emoji-only for ratings",
+  () => {
+    const player =
+      read(
+        "components/radio/RadioWoloGlobalPlayer.tsx",
+      );
+
+    assert.match(
+      player,
+      /current\?\.asset[\s\S]*?durationMs/,
+    );
+    assert.match(
+      player,
+      /liveOffsetMs/,
+    );
+    assert.match(
+      player,
+      /⭐/,
+    );
+    assert.doesNotMatch(
+      player,
+      /click another star to change/,
+    );
+    assert.doesNotMatch(
+      player,
+      /setRatingStyle/,
+    );
+    assert.doesNotMatch(
+      player,
+      />Icons</,
+    );
+    assert.match(
+      player,
+      /Saved · \{radioFeedback\.rating\}\/10/,
+    );
+  },
+);
+
+test(
+  "Radio WOLO transmitter tells operators that broadcasts loop until stopped",
+  () => {
+    const onAir =
+      read(
+        "components/admin/radio/RadioWoloOnAir.tsx",
+      );
+
+    assert.match(
+      onAir,
+      /Continuous loop/,
+    );
+    assert.match(
+      onAir,
+      /Loop left/,
+    );
+    assert.match(
+      onAir,
+      /loops continuously until you stop transmission/,
+    );
+  },
+);
