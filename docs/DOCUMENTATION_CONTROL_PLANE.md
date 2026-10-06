@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/kingdom-intelligence-self-healing-20261006` at `25a701aed6d45a790f72766a6d53901d80f8361d`
+Implementation baseline: `fix/bridge-finish-lock-test-determinism-20261006` at `5a970d94496b2537ec74b8b9da1033e5143cc271`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
