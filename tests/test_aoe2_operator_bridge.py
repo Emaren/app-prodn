@@ -432,6 +432,7 @@ class OperatorBridgeTests(unittest.TestCase):
 
         with patch.object(MODULE.threading, "Thread", FakeThread), \
              patch.object(MODULE, "post_bridge", side_effect=post_bridge), \
+             patch.object(MODULE, "finish_in_progress", return_value=False), \
              patch.object(MODULE, "run_audit_snapshot", side_effect=audit_snapshot), \
              patch.object(
                  MODULE,
