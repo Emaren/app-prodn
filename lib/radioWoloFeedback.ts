@@ -2,7 +2,7 @@ import type {
   PrismaClient,
 } from "@/lib/generated/prisma";
 import {
-  resolveRadioStationPosition,
+  resolveLoopingRadioStationPosition,
 } from "@/lib/radioWoloStation";
 
 export async function resolveCurrentRadioAsset(
@@ -65,7 +65,7 @@ export async function resolveCurrentRadioAsset(
   }
 
   const clock =
-    resolveRadioStationPosition(
+    resolveLoopingRadioStationPosition(
       station.program.items.map(
         (item) => ({
           value: item,
