@@ -1,6 +1,9 @@
 "use client";
 
 import {
+  ChevronDown,
+  ChevronRight,
+  History,
   MousePointerClick,
   RadioTower,
   RefreshCw,
@@ -24,6 +27,8 @@ type Payload = {
     signedInCount: number;
     anonymousCount: number;
     totalRatings: number;
+    activeOnSiteCount: number;
+    everSoundOnCount: number;
   };
   listeners: Array<{
     listenerId: string;
@@ -65,6 +70,17 @@ type Payload = {
     hasInteracted: boolean;
     everSoundOn: boolean;
     hasRated: boolean;
+    firstSeenAt:
+      | string
+      | null;
+    trafficVisitorIds: string[];
+    browserIdentityCount: number;
+    pathTrail: Array<{
+      path: string;
+      seenAt: string;
+      sessionId: string;
+      trafficVisitorId: string;
+    }>;
   }>;
   tracks: Array<{
     assetId: number;
@@ -103,6 +119,16 @@ function shortTime(
       minute: "2-digit",
     },
   );
+}
+
+function listenerIdentityKey(
+  row: Payload["listeners"][number],
+) {
+  return row.userUid
+    ? `user:${row.userUid}`
+    : row.trafficVisitorId
+      ? `traffic:${row.trafficVisitorId}`
+      : `listener:${row.listenerId}`;
 }
 
 function SummaryCard(
@@ -149,6 +175,14 @@ export function RadioWoloListenerSignals() {
     setRefreshing,
   ] =
     useState(false);
+
+  const [
+    expandedListener,
+    setExpandedListener,
+  ] =
+    useState<string | null>(
+      null,
+    );
 
   const refresh =
     useCallback(
@@ -262,23 +296,31 @@ export function RadioWoloListenerSignals() {
                 data.summary
                   .totalListeners
               }
-              detail="Traffic-qualified AoE2WAR browsers"
+              detail="Durable Traffic identities shown here"
             />
             <SummaryCard
-              label="ON"
+              label="Live now"
+              value={
+                data.summary
+                  .activeOnSiteCount
+              }
+              detail="Pinned above the visit leaderboard"
+            />
+            <SummaryCard
+              label="Radio live"
               value={
                 data.summary
                   .onCount
               }
-              detail="Fresh listening heartbeat"
+              detail="Fresh Sound On heartbeat"
             />
             <SummaryCard
-              label="OFF"
+              label="Heard Radio"
               value={
                 data.summary
-                  .offCount
+                  .everSoundOnCount
               }
-              detail="Sound off or heartbeat expired"
+              detail="Sound was turned on at least once"
             />
             <SummaryCard
               label="Members"
@@ -286,15 +328,7 @@ export function RadioWoloListenerSignals() {
                 data.summary
                   .signedInCount
               }
-              detail="Resolved signed-in identities"
-            />
-            <SummaryCard
-              label="Anonymous"
-              value={
-                data.summary
-                  .anonymousCount
-              }
-              detail="Random browser identities"
+              detail={`${data.summary.anonymousCount} anonymous identities`}
             />
             <SummaryCard
               label="Ratings"
@@ -308,7 +342,7 @@ export function RadioWoloListenerSignals() {
 
           <div className="mt-5 overflow-hidden rounded-2xl border border-white/8 bg-slate-950/55">
             <div className="grid grid-cols-[minmax(10rem,1.2fr)_4.5rem_5rem_7rem_minmax(11rem,1.2fr)_8rem] gap-3 border-b border-white/8 px-4 py-3 text-[9px] font-bold uppercase tracking-[0.18em] text-slate-500">
-              <span>Visitor</span>
+              <span>Visitor · live → visits → recent</span>
               <span>Visits</span>
               <span>Sound</span>
               <span>Radio</span>
@@ -325,13 +359,51 @@ export function RadioWoloListenerSignals() {
                 .map(
                   (
                     row,
-                  ) => (
+                  ) => {
+                    const identityKey =
+                      listenerIdentityKey(
+                        row,
+                      );
+                    const expanded =
+                      expandedListener ===
+                      identityKey;
+                    const historicalSound =
+                      row.status !== "on" &&
+                      row.everSoundOn;
+                    const currentTrailIndex =
+                      row.activeOnSite &&
+                      row.currentPage
+                        ? row.pathTrail
+                            .map(
+                              (step) =>
+                                step.path,
+                            )
+                            .lastIndexOf(
+                              row.currentPage,
+                            )
+                        : -1;
+
+                    return (
                     <div
                       key={
-                        row.listenerId
+                        identityKey
                       }
-                      className="grid grid-cols-[minmax(10rem,1.2fr)_4.5rem_5rem_7rem_minmax(11rem,1.2fr)_8rem] gap-3 border-b border-white/[0.05] px-4 py-3 text-xs last:border-b-0"
+                      className="border-b border-white/[0.05] last:border-b-0"
                     >
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExpandedListener(
+                            expanded
+                              ? null
+                              : identityKey,
+                          )
+                        }
+                        className="grid w-full cursor-pointer grid-cols-[minmax(10rem,1.2fr)_4.5rem_5rem_7rem_minmax(11rem,1.2fr)_8rem] gap-3 px-4 py-3 text-left text-xs transition hover:bg-cyan-300/[0.025]"
+                        aria-expanded={
+                          expanded
+                        }
+                      >
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
                           {row.identityKind === "user" ? (
@@ -343,6 +415,13 @@ export function RadioWoloListenerSignals() {
                             {
                               row.displayName
                             }
+                          </span>
+                          <span className="ml-auto shrink-0 text-slate-600">
+                            {expanded ? (
+                              <ChevronDown className="h-3.5 w-3.5" />
+                            ) : (
+                              <ChevronRight className="h-3.5 w-3.5" />
+                            )}
                           </span>
                           {row.activeOnSite ? (
                             <span
@@ -380,10 +459,23 @@ export function RadioWoloListenerSignals() {
                           className={`rounded-full border px-2 py-1 text-[10px] font-bold ${
                             row.status === "on"
                               ? "border-emerald-300/25 bg-emerald-400/10 text-emerald-100"
-                              : "border-white/10 bg-white/5 text-slate-400"
+                              : historicalSound
+                                ? "border-cyan-300/20 bg-cyan-300/[0.06] text-cyan-100/80"
+                                : "border-white/10 bg-white/5 text-slate-500"
                           }`}
+                          title={
+                            row.status === "on"
+                              ? "Sound is on now"
+                              : historicalSound
+                                ? "Sound was turned on previously"
+                                : "No recorded Sound On"
+                          }
                         >
-                          {row.status.toUpperCase()}
+                          {row.status === "on"
+                            ? "ON"
+                            : historicalSound
+                              ? "USED"
+                              : "NEVER"}
                         </span>
                       </div>
 
@@ -428,7 +520,9 @@ export function RadioWoloListenerSignals() {
 
                       <div>
                         <div className="text-slate-400">
-                          {row.lastEvent}
+                          {row.activeOnSite
+                            ? "live"
+                            : row.lastEvent}
                         </div>
                         <div className="mt-1 text-[10px] text-slate-600">
                           {shortTime(
@@ -436,8 +530,96 @@ export function RadioWoloListenerSignals() {
                           )}
                         </div>
                       </div>
+                    </button>
+
+                    {expanded ? (
+                      <div className="bg-[linear-gradient(90deg,rgba(34,211,238,0.035),transparent_70%)] px-4 pb-4 pt-1">
+                        <div className="rounded-xl border border-cyan-200/[0.08] bg-slate-950/65 p-3">
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.18em] text-cyan-100/55">
+                              <History className="h-3.5 w-3.5" />
+                              Traffic path
+                            </div>
+                            <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px] text-slate-500">
+                              <span>
+                                first {row.firstSeenAt
+                                  ? shortTime(row.firstSeenAt)
+                                  : "unknown"}
+                              </span>
+                              <span>
+                                last {shortTime(row.lastSeenAt)}
+                              </span>
+                              <span>
+                                {row.browserIdentityCount} browser identit{row.browserIdentityCount === 1 ? "y" : "ies"}
+                              </span>
+                              <span>
+                                {row.returnCount} return{row.returnCount === 1 ? "" : "s"}
+                              </span>
+                            </div>
+                          </div>
+
+                          {row.pathTrail.length > 0 ? (
+                            <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                              {row.pathTrail.map(
+                                (
+                                  step,
+                                  index,
+                                ) => {
+                                  const isCurrent =
+                                    row.activeOnSite &&
+                                    index ===
+                                      currentTrailIndex;
+
+                                  return (
+                                    <div
+                                      key={`${step.trafficVisitorId}:${step.sessionId}:${step.seenAt}:${index}`}
+                                      className="flex items-center gap-1.5"
+                                    >
+                                      {index > 0 ? (
+                                        <span className="text-slate-700">
+                                          →
+                                        </span>
+                                      ) : null}
+                                      <span
+                                        className={`inline-flex max-w-[18rem] items-center gap-1.5 rounded-lg border px-2 py-1.5 font-mono text-[10px] ${
+                                          isCurrent
+                                            ? "border-emerald-300/30 bg-emerald-300/[0.08] text-emerald-100"
+                                            : "border-white/[0.07] bg-white/[0.025] text-slate-300"
+                                        }`}
+                                        title={`${step.path} · ${shortTime(step.seenAt)}`}
+                                      >
+                                        {isCurrent ? (
+                                          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-300 shadow-[0_0_8px_rgba(110,231,183,0.8)]" />
+                                        ) : null}
+                                        <span className="truncate">
+                                          {step.path}
+                                        </span>
+                                      </span>
+                                    </div>
+                                  );
+                                },
+                              )}
+                            </div>
+                          ) : (
+                            <div className="mt-3 text-xs text-slate-600">
+                              No Traffic page-view trail is available for this historical identity yet.
+                            </div>
+                          )}
+
+                          {row.activeOnSite &&
+                          row.currentPage &&
+                          currentTrailIndex < 0 ? (
+                            <div className="mt-3 inline-flex items-center gap-2 rounded-lg border border-emerald-300/20 bg-emerald-300/[0.05] px-2 py-1.5 font-mono text-[10px] text-emerald-100">
+                              <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_8px_rgba(110,231,183,0.8)]" />
+                              NOW {row.currentPage}
+                            </div>
+                          ) : null}
+                        </div>
+                      </div>
+                    ) : null}
                     </div>
-                  ),
+                  );
+                  },
                 )
             ) : (
               <div className="px-4 py-5 text-sm text-slate-500">
