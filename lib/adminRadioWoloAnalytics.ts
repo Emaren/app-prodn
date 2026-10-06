@@ -934,13 +934,37 @@ export async function loadAdminRadioWoloAnalytics(
           active ??
           ordered[0];
 
-        const trafficRows =
-          ordered.filter(
-            (row) =>
-              Boolean(
-                row.trafficVisitorId,
-              ),
-          );
+        const trafficRowsById =
+          new Map<
+            string,
+            ListenerRow
+          >();
+
+        for (const row of ordered) {
+          if (!row.trafficVisitorId) {
+            continue;
+          }
+
+          const existing =
+            trafficRowsById.get(
+              row.trafficVisitorId,
+            );
+
+          if (
+            !existing ||
+            row.visitCount >
+              existing.visitCount
+          ) {
+            trafficRowsById.set(
+              row.trafficVisitorId,
+              row,
+            );
+          }
+        }
+
+        const trafficRows = [
+          ...trafficRowsById.values(),
+        ];
 
         const visitorIds =
           Array.from(
