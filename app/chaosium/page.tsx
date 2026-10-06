@@ -17,7 +17,11 @@ import ChaosiumDisplayRail, {
   type ChaosiumDisplayMode,
 } from "@/components/chaosium/ChaosiumDisplayRail";
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
-import { loadChaosium, type ChaosiumBelt } from "@/lib/champions/chaosium";
+import {
+  loadChaosium,
+  type ChaosiumBelt,
+  type ChaosiumHolder,
+} from "@/lib/champions/chaosium";
 import { getPrisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -93,6 +97,177 @@ function lineageEventLabel(value: string) {
 
 function metricValue(value: number | string | null | undefined) {
   return value == null || value === "" ? "—" : String(value);
+}
+
+function teamPortraitGridClass(count: number) {
+  if (count >= 4) return "grid-cols-2 grid-rows-2";
+  if (count === 3) return "grid-cols-3";
+  return "grid-cols-2";
+}
+
+function teamIdentityGridClass(count: number) {
+  if (count === 3) return "grid-cols-3";
+  return "grid-cols-2";
+}
+
+function TeamHolderBackdrop({
+  holders,
+  priority,
+}: {
+  holders: ChaosiumHolder[];
+  priority: boolean;
+}) {
+  if (holders.length <= 1) {
+    const holder = holders[0] ?? null;
+    return holder?.avatarUrl ? (
+      <Image
+        src={holder.avatarUrl}
+        alt=""
+        fill
+        priority={priority}
+        unoptimized
+        sizes="352px"
+        className="object-cover object-top opacity-96"
+      />
+    ) : (
+      <div className="absolute inset-0 flex items-center justify-center">
+        <Crown className="h-24 w-24 text-slate-700" />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      data-chaosium-team-holder-portraits
+      className={`absolute inset-0 grid ${teamPortraitGridClass(holders.length)}`}
+    >
+      {holders.map((holder, holderIndex) => (
+        <div
+          key={`${holder.uid ?? normalizeView(undefined)}:${holder.name}:${holderIndex}`}
+          className="relative min-h-0 min-w-0 overflow-hidden border-white/10 [&:nth-child(even)]:border-l"
+        >
+          {holder.avatarUrl ? (
+            <Image
+              src={holder.avatarUrl}
+              alt=""
+              fill
+              priority={priority && holderIndex < 2}
+              unoptimized
+              sizes={holders.length >= 3 ? "176px" : "220px"}
+              className="object-cover object-top opacity-92"
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center bg-slate-950/45">
+              <Crown className="h-12 w-12 text-slate-700" />
+            </div>
+          )}
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(3,7,18,0.04),rgba(3,7,18,0.18)_55%,rgba(3,7,18,0.72))]" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TeamHolderIdentityGroup({
+  holders,
+}: {
+  holders: ChaosiumHolder[];
+}) {
+  return (
+    <div
+      data-chaosium-team-holder-group
+      className="relative mt-2 overflow-hidden rounded-[1rem] border border-white/10 bg-black/36 p-1.5 backdrop-blur-md"
+    >
+      <div className="pointer-events-none absolute left-4 right-4 top-1/2 h-px bg-[linear-gradient(90deg,transparent,rgba(251,191,36,0.28),transparent)]" />
+      <div
+        className={`relative z-10 grid gap-1.5 ${teamIdentityGridClass(holders.length)}`}
+      >
+        {holders.map((holder, index) => {
+          const body = (
+            <>
+              <span className="truncate font-serif text-[11px] font-semibold text-white">
+                {holder.name}
+              </span>
+              <span className="ml-auto h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-300/70" />
+            </>
+          );
+
+          return holder.href ? (
+            <Link
+              key={holder.uid ?? `${holder.name}:${index}`}
+              href={holder.href}
+              className="flex min-w-0 items-center gap-1.5 rounded-lg border border-white/8 bg-slate-950/72 px-2 py-1.5 transition hover:border-amber-200/22 hover:bg-slate-900/80"
+            >
+              {body}
+            </Link>
+          ) : (
+            <div
+              key={holder.uid ?? `${holder.name}:${index}`}
+              className="flex min-w-0 items-center gap-1.5 rounded-lg border border-white/8 bg-slate-950/72 px-2 py-1.5"
+            >
+              {body}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function LineageTeamHolderGroup({
+  holders,
+}: {
+  holders: ChaosiumHolder[];
+}) {
+  return (
+    <div
+      data-chaosium-lineage-team-holder-group
+      className="grid grid-cols-2 gap-1.5"
+    >
+      {holders.map((holder, index) => {
+        const body = (
+          <>
+            <div className="relative h-7 w-7 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-black/30">
+              {holder.avatarUrl ? (
+                <Image
+                  src={holder.avatarUrl}
+                  alt=""
+                  fill
+                  unoptimized
+                  sizes="28px"
+                  className="object-cover object-top"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center">
+                  <Crown className="h-3.5 w-3.5 text-slate-600" />
+                </div>
+              )}
+            </div>
+            <span className="min-w-0 truncate text-[10px] font-semibold text-white">
+              {holder.name}
+            </span>
+          </>
+        );
+
+        return holder.href ? (
+          <Link
+            key={holder.uid ?? `${holder.name}:${index}`}
+            href={holder.href}
+            className="flex min-w-0 items-center gap-1.5 rounded-lg border border-white/7 bg-black/22 px-1.5 py-1 transition hover:border-amber-200/18"
+          >
+            {body}
+          </Link>
+        ) : (
+          <div
+            key={holder.uid ?? `${holder.name}:${index}`}
+            className="flex min-w-0 items-center gap-1.5 rounded-lg border border-white/7 bg-black/22 px-1.5 py-1"
+          >
+            {body}
+          </div>
+        );
+      })}
+    </div>
+  );
 }
 
 function historicalBounds(belts: ChaosiumBelt[]): HistoricalBounds {
@@ -330,21 +505,10 @@ export default async function ChaosiumPage({
               >
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_22%,rgba(251,191,36,0.12),transparent_40%)]" />
 
-                {belt.currentHolderAvatarUrl ? (
-                  <Image
-                    src={belt.currentHolderAvatarUrl}
-                    alt=""
-                    fill
-                    priority={index < 4}
-                    unoptimized
-                    sizes="352px"
-                    className="object-cover object-top opacity-96"
-                  />
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Crown className="h-24 w-24 text-slate-700" />
-                  </div>
-                )}
+                <TeamHolderBackdrop
+                  holders={belt.currentHolders}
+                  priority={index < 4}
+                />
 
                 <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_32%,rgba(3,7,18,0.22)_55%,#030712_100%)]" />
 
@@ -383,7 +547,9 @@ export default async function ChaosiumPage({
                   <div className="truncate text-[10px] font-black uppercase tracking-[0.24em] text-amber-100/65">
                     {belt.displayName}
                   </div>
-                  {belt.currentHolderHref ? (
+                  {belt.currentHolders.length > 1 ? (
+                    <TeamHolderIdentityGroup holders={belt.currentHolders} />
+                  ) : belt.currentHolderHref ? (
                     <Link
                       href={belt.currentHolderHref}
                       className={`mt-1 block max-w-full whitespace-nowrap font-serif font-semibold text-white transition hover:text-amber-100 ${holderNameClass(belt.currentHolder)}`}
@@ -485,7 +651,10 @@ export default async function ChaosiumPage({
                               )}
 
                               <div className="min-w-0 flex-1">
-                                {entry.href ? (
+                                {entry.kind === "holder" &&
+                                entry.holders.length > 1 ? (
+                                  <LineageTeamHolderGroup holders={entry.holders} />
+                                ) : entry.href ? (
                                   <Link
                                     href={entry.href}
                                     className={`block whitespace-normal break-words font-semibold text-white hover:text-amber-100 ${lineageNameClass(entry.name)}`}
