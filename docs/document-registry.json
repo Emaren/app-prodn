@@ -2026,7 +2026,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "main",
-    "commit": "037e2954df1610850e0ece5547922a59357e86e1"
+    "commit": "bb98b9be11d1370ff7f2be403b7c0cbf8290b23c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
