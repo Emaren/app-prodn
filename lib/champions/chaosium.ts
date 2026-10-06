@@ -32,6 +32,13 @@ type MuseumTitle = {
   catalogOrder: number;
 };
 
+export type ChaosiumHolder = {
+  name: string;
+  uid: string | null;
+  href: string | null;
+  avatarUrl: string | null;
+};
+
 export type ChaosiumLineageEntry = {
   key: string;
   kind: "holder" | "origin";
@@ -39,6 +46,7 @@ export type ChaosiumLineageEntry = {
   uid: string | null;
   href: string | null;
   avatarUrl: string | null;
+  holders: ChaosiumHolder[];
   at: string | null;
   eventType: string;
   current: boolean;
@@ -55,6 +63,7 @@ export type ChaosiumBelt = {
   currentHolderUid: string | null;
   currentHolderHref: string | null;
   currentHolderAvatarUrl: string | null;
+  currentHolders: ChaosiumHolder[];
   currentRecord: string | null;
   totalMatches: number | null;
   wins: number | null;
@@ -302,21 +311,45 @@ export async function loadChaosium(prisma: PrismaClient): Promise<ChaosiumBelt[]
 
   const belts = museumTitles.map((title) => {
     const trophy = trophyByDefinitionId.get(title.id) ?? null;
-    const primaryHolder = title.holders[0] ?? null;
-    const holderNames = title.holders.map((holder) => holder.name).filter(Boolean);
+    const resolvedHolderRows = title.holders.map((holder) => {
+      const holderKey = normalizeIdentity(holder.name);
+      const player =
+        (holder.uid
+          ? directory.allEntries.find(
+              (entry) =>
+                entry.uid?.toLowerCase() === holder.uid?.toLowerCase(),
+            )
+          : null) ??
+        directory.allEntries.find(
+          (entry) => normalizeIdentity(entry.name) === holderKey,
+        ) ??
+        null;
+      const uid = holder.uid ?? player?.uid ?? null;
+      const href =
+        holder.href ??
+        player?.href ??
+        (uid ? `/players/${encodeURIComponent(uid)}` : null);
+
+      return {
+        holder: {
+          name: holder.name,
+          uid,
+          href,
+          avatarUrl: featuredAvatarCardUrlForUser(
+            uid ?? undefined,
+            holder.name,
+            player?.featuredAvatarRevision,
+          ),
+        } satisfies ChaosiumHolder,
+        player,
+      };
+    });
+    const currentHolders = resolvedHolderRows.map((entry) => entry.holder);
+    const primaryHolder = currentHolders[0] ?? null;
+    const holderPlayer = resolvedHolderRows[0]?.player ?? null;
+    const holderNames = currentHolders.map((holder) => holder.name).filter(Boolean);
     const holderName = holderNames.length ? holderNames.join(" + ") : null;
     const holderKey = normalizeIdentity(primaryHolder?.name ?? holderName);
-    const holderPlayer =
-      (primaryHolder?.uid
-        ? directory.allEntries.find(
-            (entry) =>
-              entry.uid?.toLowerCase() === primaryHolder.uid?.toLowerCase(),
-          )
-        : null) ??
-      directory.allEntries.find(
-        (entry) => normalizeIdentity(entry.name) === holderKey,
-      ) ??
-      null;
 
     const lineage: ChaosiumLineageEntry[] = [];
     let lineageCursor = holderIdentity(
@@ -329,16 +362,13 @@ export async function loadChaosium(prisma: PrismaClient): Promise<ChaosiumBelt[]
         key: `current:${title.id}:${holderKey || normalizeIdentity(holderName)}`,
         kind: "holder",
         name: holderName,
-        uid: primaryHolder?.uid ?? holderPlayer?.uid ?? null,
-        href:
-          title.holders.length === 1
-            ? primaryHolder?.href ?? holderPlayer?.href ?? null
+        uid: currentHolders.length === 1 ? primaryHolder?.uid ?? null : null,
+        href: currentHolders.length === 1 ? primaryHolder?.href ?? null : null,
+        avatarUrl:
+          currentHolders.length === 1
+            ? primaryHolder?.avatarUrl ?? null
             : null,
-        avatarUrl: featuredAvatarCardUrlForUser(
-          primaryHolder?.uid ?? holderPlayer?.uid,
-          primaryHolder?.name ?? holderName,
-          holderPlayer?.featuredAvatarRevision,
-        ),
+        holders: currentHolders,
         at: title.holderSince ?? null,
         eventType: "CURRENT_HOLDER",
         current: true,
@@ -402,6 +432,20 @@ export async function loadChaosium(prisma: PrismaClient): Promise<ChaosiumBelt[]
           previousName,
           player?.featuredAvatarRevision,
         ),
+        holders: [
+          {
+            name: previousName,
+            uid: previousHolder.uid ?? player?.uid ?? null,
+            href:
+              player?.href ??
+              `/players/${encodeURIComponent(previousHolder.uid)}`,
+            avatarUrl: featuredAvatarCardUrlForUser(
+              previousHolder.uid ?? player?.uid,
+              previousName,
+              player?.featuredAvatarRevision,
+            ),
+          },
+        ],
         at: event.createdAt.toISOString(),
         eventType: previousReignLabel(event.eventType),
         current: false,
@@ -418,6 +462,7 @@ export async function loadChaosium(prisma: PrismaClient): Promise<ChaosiumBelt[]
         uid: null,
         href: null,
         avatarUrl: null,
+        holders: [],
         at: trophy.createdAt.toISOString(),
         eventType: "Origin",
         current: false,
@@ -442,43 +487,35 @@ export async function loadChaosium(prisma: PrismaClient): Promise<ChaosiumBelt[]
       assetUrl: title.assetUrl,
       status: title.status,
       currentHolder: holderName,
-      currentHolderUid:
-        primaryHolder?.uid ?? holderPlayer?.uid ?? null,
+      currentHolderUid: primaryHolder?.uid ?? null,
       currentHolderHref:
-        title.holders.length === 1
-          ? primaryHolder?.href ?? holderPlayer?.href ?? null
-          : null,
-      currentHolderAvatarUrl: holderName
-        ? featuredAvatarCardUrlForUser(
-            primaryHolder?.uid ?? holderPlayer?.uid,
-            primaryHolder?.name ?? holderName,
-            holderPlayer?.featuredAvatarRevision,
-          )
-        : null,
+        currentHolders.length === 1 ? primaryHolder?.href ?? null : null,
+      currentHolderAvatarUrl: primaryHolder?.avatarUrl ?? null,
+      currentHolders,
       currentRecord:
-        title.holders.length === 1 && holderPlayer
+        currentHolders.length === 1 && holderPlayer
           ? `${holderPlayer.wins}-${holderPlayer.losses}`
           : null,
       totalMatches:
-        title.holders.length === 1
+        currentHolders.length === 1
           ? holderPlayer?.totalMatches ?? null
           : null,
       wins:
-        title.holders.length === 1
+        currentHolders.length === 1
           ? holderPlayer?.wins ?? null
           : null,
       losses:
-        title.holders.length === 1
+        currentHolders.length === 1
           ? holderPlayer?.losses ?? null
           : null,
       rating:
-        title.holders.length === 1 ? rating : null,
+        currentHolders.length === 1 ? rating : null,
       ratingLabel:
-        title.holders.length === 1 ? ratingLabel : null,
+        currentHolders.length === 1 ? ratingLabel : null,
       dmRating:
-        title.holders.length === 1 ? dmRating : null,
+        currentHolders.length === 1 ? dmRating : null,
       rmRating:
-        title.holders.length === 1 ? rmRating : null,
+        currentHolders.length === 1 ? rmRating : null,
       holderSince: title.holderSince,
       recentActivityAt: latestIso([
         title.holderSince,
