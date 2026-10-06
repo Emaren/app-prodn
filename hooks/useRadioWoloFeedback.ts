@@ -9,7 +9,6 @@ import {
 
 import {
   RADIO_WOLO_LISTENER_HEARTBEAT_MS,
-  type RadioWoloRatingStyle,
 } from "@/lib/radioWoloFeedbackPolicy";
 import {
   readOrCreateBrowserVisitorId,
@@ -20,30 +19,6 @@ import {
 
 const FEEDBACK_URL =
   "/api/radio/feedback";
-
-const RATING_STYLE_STORAGE_KEY =
-  "aoe2war:radio-wolo-rating-style:v1";
-
-function readRatingStyle():
-  RadioWoloRatingStyle {
-  try {
-    const stored =
-      window.localStorage.getItem(
-        RATING_STYLE_STORAGE_KEY,
-      );
-
-    if (
-      stored === "emoji" ||
-      stored === "icons"
-    ) {
-      return stored;
-    }
-  } catch {
-    // Presentation persistence is optional.
-  }
-
-  return "emoji";
-}
 
 async function postFeedback(
   body: Record<
@@ -135,14 +110,6 @@ export function useRadioWoloFeedback(
     >(null);
 
   const [
-    ratingStyle,
-    setRatingStyleState,
-  ] =
-    useState<RadioWoloRatingStyle>(
-      "emoji",
-    );
-
-  const [
     ratingSaving,
     setRatingSaving,
   ] =
@@ -178,10 +145,6 @@ export function useRadioWoloFeedback(
   useEffect(() => {
     setListenerId(
       readOrCreateBrowserVisitorId(),
-    );
-
-    setRatingStyleState(
-      readRatingStyle(),
     );
   }, []);
 
@@ -591,36 +554,12 @@ export function useRadioWoloFeedback(
       ],
     );
 
-  const setRatingStyle =
-    useCallback(
-      (
-        next:
-          RadioWoloRatingStyle,
-      ) => {
-        setRatingStyleState(
-          next,
-        );
-
-        try {
-          window.localStorage.setItem(
-            RATING_STYLE_STORAGE_KEY,
-            next,
-          );
-        } catch {
-          // Presentation persistence is optional.
-        }
-      },
-      [],
-    );
-
   return {
     listenerId,
     rating,
-    ratingStyle,
     ratingSaving,
     ratingError,
     saveRating,
-    setRatingStyle,
     noteInteraction,
   };
 }
