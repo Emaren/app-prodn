@@ -38,6 +38,8 @@ import {
   CHALLENGE_DEFAULT_GUARANTEE_WOLO,
   CHALLENGE_DEFAULT_WAGER_WOLO,
   CHALLENGE_NOTE_MAX_CHARS,
+  CHAMPIONSHIP_CHALLENGE_WAGER_OPTIONS,
+  CHAMPIONSHIP_DEFAULT_WAGER_WOLO,
 } from "@/lib/challengeConfig";
 import {
   fundChallengeEscrow,
@@ -522,7 +524,12 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
   const [commissionerReason, setCommissionerReason] = useState("");
   const handleTitlesLoaded = useCallback((titles: HeldChallengeTitle[], busy: boolean) => { setHeldTitles(titles); setHeldTitlesLoading(busy); }, []);
   useEffect(() => { setSelectedTeamTitle(null); setTeammateUids([]); setCommissionerTitleId(null); setEligibilityOverride(false); setCommissionerReason(""); }, [challengedUid]);
-  useEffect(() => { if (version2) setScheduleMode(display.layout); }, [display.layout, version2]);
+  useEffect(() => {
+    if (!version2) return;
+    setScheduleMode(display.layout);
+    setWagerAmountWolo(String(CHAMPIONSHIP_DEFAULT_WAGER_WOLO));
+    setGuaranteeAmountWolo("0");
+  }, [display.layout, version2]);
   const challengeHallExtreme = challengeHallView === "extreme";
   const routeFocusId =
     typeof initialFocusId === "number" && Number.isFinite(initialFocusId) && initialFocusId > 0
@@ -885,21 +892,25 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
     [trophyTarget]
   );
   const steamIdentityReady = Boolean(snapshot.viewer?.steamId && selectedOpponent?.steamId);
-  const createButtonLabel = !challengeEscrowReady
-    ? "Escrow Not Wired"
-    : challengedUid && !steamIdentityReady
-      ? "Steam Required"
-      : savingPhase === "connecting"
-      ? "Connecting..."
-      : walletStatus !== "connected"
-        ? "Connect Wallet"
-        : savingPhase === "creating"
-          ? "Creating..."
-          : savingPhase === "funding"
-            ? "Sign Escrow"
-            : savingPhase === "recording"
-              ? "Recording..."
-              : `Send Challenge · ${totalFundingPreview.toLocaleString()} WOLO`;
+  const createButtonLabel = version2
+    ? saving
+      ? "Sending..."
+      : "Send Challenge"
+    : !challengeEscrowReady
+      ? "Escrow Not Wired"
+      : challengedUid && !steamIdentityReady
+        ? "Steam Required"
+        : savingPhase === "connecting"
+          ? "Connecting..."
+          : walletStatus !== "connected"
+            ? "Connect Wallet"
+            : savingPhase === "creating"
+              ? "Creating..."
+              : savingPhase === "funding"
+                ? "Sign Escrow"
+                : savingPhase === "recording"
+                  ? "Recording..."
+                  : `Send Challenge · ${totalFundingPreview.toLocaleString()} WOLO`;
   const focusedMatch = useMemo(
     () => visibleMatchTiles.find((match) => match.id === focusedMatchId) || visibleMatchTiles[0] || null,
     [focusedMatchId, visibleMatchTiles]
@@ -1227,7 +1238,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
     setError(null);
     setNotice(null);
 
-    if (!snapshot.fundingRail.configured || !snapshot.fundingRail.escrowAddress) {
+    if (!version2 && (!snapshot.fundingRail.configured || !snapshot.fundingRail.escrowAddress)) {
       setError("Challenge escrow is not configured yet.");
       setSaving(false);
       setSavingPhase("idle");
@@ -1235,13 +1246,13 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
     }
 
     if (!snapshot.viewer?.steamId || !selectedOpponent?.steamId) {
-      setError("Both players must link Steam before issuing a WOLO challenge.");
+      setError("Both players need linked Steam identities so the watcher can verify the battle.");
       setSaving(false);
       setSavingPhase("idle");
       return;
     }
 
-    if (walletStatus !== "connected" || !connectedWalletAddress) {
+    if (!version2 && (walletStatus !== "connected" || !connectedWalletAddress)) {
       try {
         setSavingPhase("connecting");
         await connectKeplr();
@@ -1353,7 +1364,27 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
       const duplicateWarning = payload.duplicateWarning;
       const createdChallengeId = payload.createdChallengeId;
       if (!createdChallengeId || !Number.isFinite(createdChallengeId)) {
-        throw new Error("Challenge created, but the funding rail did not return a match id.");
+        throw new Error("Challenge created, but the server did not return a match id.");
+      }
+
+      if (version2) {
+        replaceSnapshot(payload);
+        setFocusedMatchId(createdChallengeId);
+        router.push(`/challenge/${createdChallengeId}?version=${display.version}`);
+        setNotice(
+          duplicateWarning
+            ? `${duplicateWarning} Challenge sent.`
+            : payload.linkedTrophyChallengeId
+              ? `${payload.titleStakeNames?.join(", ") || trophyTarget?.displayName || "Title"} attached. Challenge sent.`
+              : "Challenge sent. Run the watcher when you play."
+        );
+        setChallengedUid("");
+        setChallengeNote("");
+        creationRequestIdRef.current = null;
+        removeLocalValue(PENDING_CHALLENGE_DRAFT_KEY);
+        setWagerAmountWolo(String(CHAMPIONSHIP_DEFAULT_WAGER_WOLO));
+        setGuaranteeAmountWolo("0");
+        return;
       }
 
       let fundedPayload: ChallengeHubSnapshot | null = null;
@@ -1467,8 +1498,8 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
       setScheduledAt(defaultScheduledAtValue());
       creationRequestIdRef.current = null;
       removeLocalValue(PENDING_CHALLENGE_DRAFT_KEY);
-      setWagerAmountWolo(String(CHALLENGE_DEFAULT_WAGER_WOLO));
-      setGuaranteeAmountWolo(String(CHALLENGE_DEFAULT_GUARANTEE_WOLO));
+      setWagerAmountWolo(version2 ? String(CHAMPIONSHIP_DEFAULT_WAGER_WOLO) : String(CHALLENGE_DEFAULT_WAGER_WOLO));
+      setGuaranteeAmountWolo(version2 ? "0" : String(CHALLENGE_DEFAULT_GUARANTEE_WOLO));
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : "Unable to send the challenge.");
     } finally {
@@ -1492,7 +1523,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
             <h1
               className={`${
                 challengeHallExtreme
-                  ? "max-w-5xl bg-[linear-gradient(180deg,#fff7d6_0%,#f0cf78_27%,#c18a2d_65%,#74420f_100%)] bg-clip-text font-serif text-[clamp(3.15rem,5.8vw,7rem)] font-semibold leading-[0.88] tracking-[-0.055em] text-transparent drop-shadow-[0_16px_34px_rgba(0,0,0,0.85)]"
+                  ? "max-w-5xl overflow-visible bg-[linear-gradient(180deg,#fff7d6_0%,#f0cf78_27%,#c18a2d_65%,#74420f_100%)] bg-clip-text pb-[0.14em] pr-[0.12em] font-serif text-[clamp(3.15rem,5.8vw,7rem)] font-semibold leading-[0.96] tracking-[-0.045em] text-transparent drop-shadow-[0_16px_34px_rgba(0,0,0,0.85)]"
                   : "max-w-3xl text-4xl font-semibold leading-[1.02] text-white sm:text-5xl"
               }`}
             >
@@ -1587,7 +1618,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                   }`}
                 >
                   <ShieldCheck className="h-3.5 w-3.5" />
-                  {challengeEscrowReady ? "" : "Escrow unavailable"}
+                  {version2 ? "Watcher proof" : challengeEscrowReady ? "" : "Escrow unavailable"}
                 </div>
               </div>
 
@@ -1761,7 +1792,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                   {version2 ? (
                     <section className="rounded-[1.4rem] border border-emerald-200/15 bg-emerald-950/25 p-4 sm:p-5">
                       <div className="text-xs font-black uppercase tracking-[0.18em] text-emerald-100">ALL CHALLENGES REMAIN OPEN FOR 24 HOURS</div>
-                      <p className="mt-2 text-sm leading-6 text-slate-300">Accept, fund, and start the qualifying battle within the same server-owned window. A verified start stops the title-default clock.</p>
+                      <p className="mt-2 text-sm leading-6 text-slate-300">A watcher-verified start stops the title-default clock.</p>
                     </section>
                   ) : (
                   <section className="rounded-[1.4rem] border border-white/10 bg-black/20 p-4 sm:p-5">
@@ -1877,7 +1908,33 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                       </div>
                       <div className="text-sm font-black text-amber-100">{totalFundingPreview.toLocaleString()} WOLO each</div>
                     </div>
-                    {version2 || scheduleMode !== "basic" ? (
+                    {version2 ? (
+                      <>
+                        <div className="mt-3 grid grid-cols-2 gap-2">
+                          {CHAMPIONSHIP_CHALLENGE_WAGER_OPTIONS.map((wager) => {
+                            const active = wagerAmountWolo === String(wager);
+                            return (
+                              <button
+                                key={wager}
+                                type="button"
+                                onClick={() => {
+                                  setWagerAmountWolo(String(wager));
+                                  setGuaranteeAmountWolo("0");
+                                }}
+                                className={`rounded-xl border px-3 py-3 text-sm font-black transition ${
+                                  active
+                                    ? "border-amber-200/30 bg-amber-300/14 text-amber-50"
+                                    : "border-white/10 bg-white/[0.04] text-slate-300 hover:border-white/20 hover:text-white"
+                                }`}
+                              >
+                                {wager} WOLO
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <p className="mt-3 text-xs leading-5 text-slate-400">No wallet transaction is required to issue the Challenge.</p>
+                      </>
+                    ) : scheduleMode !== "basic" ? (
                       <>
                         <div className="mt-3 grid grid-cols-3 gap-2">
                           {[
@@ -1885,35 +1942,17 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                             ["Ranked", 25, 10],
                             ["Grudge", 100, 25],
                           ].map(([label, wager, guarantee]) => {
-                            const active = wagerAmountWolo === String(wager) && (version2 || guaranteeAmountWolo === String(guarantee));
+                            const active = wagerAmountWolo === String(wager) && guaranteeAmountWolo === String(guarantee);
                             return (
-                              <button
-                                key={String(label)}
-                                type="button"
-                                onClick={() => {
-                                  setWagerAmountWolo(String(wager));
-                                  setGuaranteeAmountWolo(String(guarantee));
-                                }}
-                                className={`rounded-xl border px-2 py-2.5 text-xs font-semibold transition ${
-                                  active
-                                    ? "border-amber-200/30 bg-amber-300/14 text-amber-50"
-                                    : "border-white/10 bg-white/[0.04] text-slate-300 hover:border-white/20 hover:text-white"
-                                }`}
-                              >
+                              <button key={String(label)} type="button" onClick={() => { setWagerAmountWolo(String(wager)); setGuaranteeAmountWolo(String(guarantee)); }} className={`rounded-xl border px-2 py-2.5 text-xs font-semibold transition ${active ? "border-amber-200/30 bg-amber-300/14 text-amber-50" : "border-white/10 bg-white/[0.04] text-slate-300 hover:border-white/20 hover:text-white"}`}>
                                 {label}
                               </button>
                             );
                           })}
                         </div>
                         <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                          <label>
-                            <span className="text-xs text-slate-400">Winner&apos;s wager</span>
-                            <input type="number" min={1} step={1} value={wagerAmountWolo} onChange={(event) => setWagerAmountWolo(event.target.value)} className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-white outline-none focus:border-amber-300/50" />
-                          </label>
-                          {!version2 ? <label>
-                            <span className="text-xs text-slate-400">Show-up guarantee</span>
-                            <input type="number" min={1} step={1} value={guaranteeAmountWolo} onChange={(event) => setGuaranteeAmountWolo(event.target.value)} className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-white outline-none focus:border-amber-300/50" />
-                          </label> : <p className="self-end pb-2 text-xs leading-5 text-slate-400">Your signed WOLO funds the Challenge purse. Every warrior funds their own share.</p>}
+                          <label><span className="text-xs text-slate-400">Winner&apos;s wager</span><input type="number" min={1} step={1} value={wagerAmountWolo} onChange={(event) => setWagerAmountWolo(event.target.value)} className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-white outline-none focus:border-amber-300/50" /></label>
+                          <label><span className="text-xs text-slate-400">Show-up guarantee</span><input type="number" min={1} step={1} value={guaranteeAmountWolo} onChange={(event) => setGuaranteeAmountWolo(event.target.value)} className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-white outline-none focus:border-amber-300/50" /></label>
                         </div>
                       </>
                     ) : (
@@ -1990,7 +2029,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                         maxRows={4}
                         maxLength={CHALLENGE_NOTE_MAX_CHARS}
                         className="mt-3 w-full rounded-2xl border border-white/10 bg-slate-950 px-4 py-3 text-sm leading-6 text-white outline-none focus:border-amber-300/50"
-                        placeholder={version2 ? "Call out your rival. Let war decide." : "Name the battlefield. Set the hour. Let war decide."}
+                        placeholder={version2 ? "Call out your rival" : "Name the battlefield. Set the hour. Let war decide."}
                       />
                       <div className="mt-1.5 text-right text-[10px] uppercase tracking-[0.16em] text-slate-500">{challengeNote.length}/{CHALLENGE_NOTE_MAX_CHARS}</div>
                     </section>
@@ -2049,16 +2088,16 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                     <div className="flex min-w-0 items-center gap-3">
                       <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-emerald-300/12 text-emerald-100"><ShieldCheck className="h-5 w-5" /></span>
                       <div className="min-w-0">
-                        <div className="text-xs font-bold text-emerald-50">One signature. Real chain proof.</div>
-                        <div className="mt-0.5 truncate text-[11px] text-emerald-100/55">{snapshot.fundingRail.chainId} · structured challenge deposit · replay-verified result</div>
+                        <div className="text-xs font-bold text-emerald-50">{version2 ? "Watcher proof. No wallet required." : "One signature. Real chain proof."}</div>
+                        <div className="mt-0.5 truncate text-[11px] text-emerald-100/55">{version2 ? "Issue the challenge now · watcher-verified play owns the competitive result" : `${snapshot.fundingRail.chainId} · structured challenge deposit · replay-verified result`}</div>
                       </div>
                     </div>
                     <button
                       type="submit"
-                      disabled={saving || !challengeEscrowReady || !challengedUid || !steamIdentityReady || (version2 && heldTitlesLoading) || (version2 && isAdmin && Boolean(commissionerTitleId || eligibilityOverride) && commissionerReason.trim().length < 5) || (version2 && Boolean(selectedTeamTitle) && (teammateUids.filter(Boolean).length !== (selectedTeamTitle?.teamSize ?? 1) - 1 || new Set(teammateUids).size !== teammateUids.length))}
+                      disabled={saving || (!version2 && !challengeEscrowReady) || !challengedUid || !steamIdentityReady || (version2 && heldTitlesLoading) || (version2 && isAdmin && Boolean(commissionerTitleId || eligibilityOverride) && commissionerReason.trim().length < 5) || (version2 && Boolean(selectedTeamTitle) && (teammateUids.filter(Boolean).length !== (selectedTeamTitle?.teamSize ?? 1) - 1 || new Set(teammateUids).size !== teammateUids.length))}
                       className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[linear-gradient(135deg,#fde68a,#fbbf24)] px-5 py-3 text-sm font-black text-slate-950 shadow-[0_14px_34px_rgba(251,191,36,0.22)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50 sm:mt-0 sm:w-auto"
                     >
-                      {walletStatus !== "connected" ? <Wallet className="h-4 w-4" /> : saving ? <Sparkles className="h-4 w-4" /> : <Swords className="h-4 w-4" />}
+                      {version2 ? (saving ? <Sparkles className="h-4 w-4" /> : <Swords className="h-4 w-4" />) : walletStatus !== "connected" ? <Wallet className="h-4 w-4" /> : saving ? <Sparkles className="h-4 w-4" /> : <Swords className="h-4 w-4" />}
                       {createButtonLabel}
                     </button>
                   </div>
