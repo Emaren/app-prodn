@@ -528,7 +528,11 @@ export function RadioWoloListenerSignals() {
                         <div className="text-slate-400">
                           {row.activeOnSite
                             ? "live"
-                            : row.lastEvent}
+                            : row.status === "on"
+                              ? "radio live"
+                              : historicalSound
+                                ? "heard radio"
+                                : row.lastEvent}
                         </div>
                         <div className="mt-1 text-[10px] text-slate-600">
                           {shortTime(
