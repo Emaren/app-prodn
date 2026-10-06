@@ -481,7 +481,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-10-04",
       "sensitivity": "internal",
-      "sha256": "1080e35de9b3d5300e86b78093a4b643fb57899b8b116f9c473878502e10a800",
+      "sha256": "21fde34da0a7ff98f814167ccecfe890b57238ddbdb23cd96b05000c82cf36e9",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6dc4ddbc2b0e0a98c897ad4996c24bc9cfaff02f2f48bee4adb23926659af498",
+      "sha256": "86abcb12f488a3539dfa593c47120f3be7a0cc78a56a03814705c64037fe8738",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2026,7 +2026,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/player-first-truth-current-rating-20261005",
-    "commit": "38c4cbcd6b892fbfdf45c36e4210adce914db847"
+    "commit": "0d26c0f0b7fadb0c76aaa0976c53e372638c2101"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
