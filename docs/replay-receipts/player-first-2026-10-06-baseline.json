@@ -1,0 +1,3558 @@
+{
+  "global": {
+    "denominator": 5392,
+    "finalRowCount": 5629,
+    "fullBattleTruthNumerator": 3670,
+    "percentage": 68.06379821958457
+  },
+  "grain": "canonical public archive logical battles; unknown means result unknown OR Workshop V2 roster incomplete",
+  "immutable_receipt": {
+    "bytes": 123579809,
+    "path": "/Users/tonyblum/projects/AoE2HDBets/app-prodn/.aoe2war-release/truth-receipts/player-first-baseline-91bc616470185fd0d8267d4981a0bbc19d9cacfa39010b005c493a0eda024722.json",
+    "sha256": "91bc616470185fd0d8267d4981a0bbc19d9cacfa39010b005c493a0eda024722"
+  },
+  "kind": "aoe2war-player-first-baseline-index",
+  "limitations": [
+    "Archive presence remains unchecked in this baseline; separate byte-bound evidence audit follows.",
+    "Profile UI additionally deduplicates filenames; this receipt uses canonical platform/SHA logical battles.",
+    "Unknown includes unresolved result or incomplete current Workshop V2 roster. Candidate-only identity projections do not establish ownership."
+  ],
+  "observation_timestamp": "2026-10-06T02:36:19.919Z",
+  "players": [
+    {
+      "accountMatches": [
+        {
+          "id": 124585,
+          "inGameName": "Zodiac",
+          "lockName": true,
+          "steamId": "76561198103810510",
+          "steamPersonaName": "Zodiac",
+          "uid": "u_06c16d39d25c476fac2c86fee7b4d189",
+          "verificationLevel": 2,
+          "verified": true
+        }
+      ],
+      "aliases": [
+        "BrutalCommander, Zodiac",
+        "Mr Wolf, [Thee]Zodiac",
+        "TheZodiac",
+        "Zodiac",
+        "[Thee]Zodiac",
+        "_kiLLa, Zodiac",
+        "lencerhk, [Thee]Zodiac",
+        "x4___, [Thee]Zodiac"
+      ],
+      "blockerCounts": {
+        "disconnected/review": 41,
+        "roster_incomplete:participant_count_incomplete": 8,
+        "roster_incomplete:team_id_missing": 2,
+        "stale_or_missing_current_parser": 1,
+        "unknown_result": 52
+      },
+      "identityAmbiguous": false,
+      "name": "Zodiac",
+      "nameOnlyRows": [],
+      "rawBlockerCounts": {
+        "automatic_result_evidence": 2,
+        "hd_early_exit_under_60s": 14,
+        "hd_metadata_fragment_body_recovery": 2,
+        "hd_metadata_fragment_only_recovery": 4,
+        "recorded_resignation_final": 6,
+        "team_resignation_not_complete": 20,
+        "watcher_final_submission": 19,
+        "watcher_live_iteration": 18
+      },
+      "resolved": 706,
+      "resultResolved": 709,
+      "sourceRowCount": 2603,
+      "steamIds": [
+        "76561198103810510"
+      ],
+      "total": 761,
+      "uid": "u_06c16d39d25c476fac2c86fee7b4d189",
+      "unknown": 55,
+      "unknownPercentage": 7.227332457293035,
+      "unknown_cases": [
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 48811,
+          "logicalBattleId": "platform:0abfbf56-807a-3a4f-a836-8d4b662f3fdc",
+          "rawReasons": [
+            "watcher_final_submission",
+            "watcher_live_iteration"
+          ],
+          "replayHash": "1bb62fd43421cc9caf387639d46dff6c0a5622e278739712c89de5bfbbf620a8",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "3v3",
+            "playerCount": 6,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "1bb62fd43421cc9caf387639d46dff6c0a5622e278739712c89de5bfbbf620a8",
+            "1bb62fd43421cc9caf387639d46dff6c0a5622e278739712c89de5bfbbf620a8"
+          ],
+          "sourceIds": [
+            48811,
+            48766
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 48793,
+          "logicalBattleId": "platform:8c22302a-34c5-f047-b4fb-4549c64456fc",
+          "rawReasons": [
+            "hd_early_exit_under_60s",
+            "watcher_live_iteration"
+          ],
+          "replayHash": "c344a870256591a7fa0309d3ba35034abc8b3547e2426772fa2a0c8a4114dbf1",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "2v2",
+            "playerCount": 4,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "c344a870256591a7fa0309d3ba35034abc8b3547e2426772fa2a0c8a4114dbf1",
+            "c344a870256591a7fa0309d3ba35034abc8b3547e2426772fa2a0c8a4114dbf1"
+          ],
+          "sourceIds": [
+            48793,
+            48769
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 48787,
+          "logicalBattleId": "platform:a0b55cf9-472f-b041-b894-244f0e6026ff",
+          "rawReasons": [
+            "hd_early_exit_under_60s",
+            "recorded_resignation_final"
+          ],
+          "replayHash": "eda5b7aa97f5d64c0ba4a2b7cebafa7da6e3d07a146673646dd55f781a554e95",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "2v2",
+            "playerCount": 4,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "eda5b7aa97f5d64c0ba4a2b7cebafa7da6e3d07a146673646dd55f781a554e95",
+            "eda5b7aa97f5d64c0ba4a2b7cebafa7da6e3d07a146673646dd55f781a554e95"
+          ],
+          "sourceIds": [
+            48787,
+            48763
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result"
+          ],
+          "id": 46624,
+          "logicalBattleId": "platform:7cbbbc9e-9161-894b-a9c1-fe7405f5b6d9",
+          "rawReasons": [
+            "team_resignation_not_complete"
+          ],
+          "replayHash": "78ba0fa9cd14987cd2dba9cab9bd6a6d2f9735e89a3b4e16b52006cd4997abfd",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "4v4",
+            "playerCount": 8,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "78ba0fa9cd14987cd2dba9cab9bd6a6d2f9735e89a3b4e16b52006cd4997abfd",
+            "78ba0fa9cd14987cd2dba9cab9bd6a6d2f9735e89a3b4e16b52006cd4997abfd"
+          ],
+          "sourceIds": [
+            46624,
+            46610
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 46620,
+          "logicalBattleId": "platform:f330a986-85cf-a94f-a57e-7a62d3942312",
+          "rawReasons": [
+            "watcher_final_submission",
+            "watcher_live_iteration"
+          ],
+          "replayHash": "b817ea7634dfe0fbdc42fa6d76b46e2fc20c9350479b3ef66fa821eb46b85bbe",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "2v2",
+            "playerCount": 4,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "b817ea7634dfe0fbdc42fa6d76b46e2fc20c9350479b3ef66fa821eb46b85bbe",
+            "843816bd31c1eb9119691aa35dce147a3f3412380cd4891d4c84d6134c9898ff",
+            "ab9960e1c62255c0e9dde53bd5ead8b61383586a40008932321a9c891344c5da",
+            "335389bccd660973cd117daf7fb68ce5e920b1e2460c61ea6ebc4092da05cba3",
+            "05a51974a46cc1d9eb9a0118561ed201ae9a37fa40fd74dbf546919f150bf945",
+            "3a352adeab9e8dc88ebeaa23350ad495e3c1b0704e47e8df1bc95e7df7288b32",
+            "a12136ba7933ca0ac121d83b169ab8c54e6c3445f821bf984501cc9e69f9c176",
+            "4c71c46ddd6603631d55aeda7e1a59120cf1a4de0f8dd7b14d241b5ca3900df3",
+            "c1486f2e506dff98f0329b17f53cbfc881feb8c615ea02c742a1db8416f6e94a",
+            "94eb16cd18483183aff1bf5f0365a0fcc546d739d43a585693f4bbaea7c70c13",
+            "d9cc0105cb60b848d51c0613e4c56d39eb8f8ecaf37ab705c384b4a8d53f2267",
+            "331f34830fcfa0c28d16a9ef4be54874f39ffb635a270e89668234ca2c7428ca",
+            "9806d957dc036c3530a7f6de7ecaf230748b30dfbcaefa9b8b97e7fcc815d146",
+            "28205b4144d85b154d3727fe0da3668ef9b46a3855ba91934f909802d0e4ea23",
+            "2efb22685f1b2a663be6fe19e2f27d20a710f6d1e14e3216122daa95dceb33ab",
+            "b817ea7634dfe0fbdc42fa6d76b46e2fc20c9350479b3ef66fa821eb46b85bbe"
+          ],
+          "sourceIds": [
+            46620,
+            25294,
+            25295,
+            25296,
+            25297,
+            25298,
+            25299,
+            25300,
+            25301,
+            25302,
+            25303,
+            25304,
+            25305,
+            25306,
+            25307,
+            46615
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "roster_incomplete:participant_count_incomplete"
+          ],
+          "id": 44862,
+          "logicalBattleId": "platform:c00df2fb-0de9-f842-ace6-088a5826e585",
+          "rawReasons": [
+            "team_resignation_not_complete",
+            "hd_metadata_fragment_only_recovery",
+            "watcher_live_iteration"
+          ],
+          "replayHash": "04879f22e2ced71c779255ec5166977cd16b84dd223220efa79d55e92f80408d",
+          "result": "unknown",
+          "roster": {
+            "complete": false,
+            "format": "unknown",
+            "playerCount": 3,
+            "reason": "participant_count_incomplete"
+          },
+          "sourceHashes": [
+            "04879f22e2ced71c779255ec5166977cd16b84dd223220efa79d55e92f80408d",
+            "f3798b43b414db1fce2b5b83672054b82935464c08c3464fe21f8c5f6942b997",
+            "df9e7721c78ed8c399cbd0dc22eb1de851fd3fb3b23026e29e96c4ab0a48d441",
+            "a7459995663b46f264781a082ddecd22595928fc11ce0e2c1cbe5a8c2fa34652",
+            "416a8755a6d0d9473fbbe2c4223500d0290ef4c645dbd2f81a45fb7926bd6767",
+            "ee2af9a3dbee7dd05497289fa9c24aa481affbbde291f37a2b8d7e3ea5ff90e5",
+            "e03f0d159b48643e36a343b49adca70a678e3ce52668bf3a0565aeebdd99d684",
+            "d88c3ed694570012dcd92dd27ee2ca09829b8a3e76533040fed7ea7f73dac806",
+            "752b1289b52472397e91b7aae501ec6f9d5369926f90a282d8b96744be3c47fb",
+            "f8b584b5d5b5fb7660eb4179850c448b883c4b127d2e5f1fce698ccbbd24b39e",
+            "073e74db168a1ec3b64b799868156cc7bd6cd6baa34316e443bd7ae38cc8e03c",
+            "cb8b43c4c75ca75ce895482d5d7487adbe33b5215858a6c71f731ee99c69b811",
+            "a9abd721d567a6abd937bea3692e50eb967f39669d265612766bac53a37ed4be",
+            "14a98a327b2e2e03b7e0398d79a9d1f96f1c1193e15c1c82961a4eac26e43e3b",
+            "f81e5dd3969b05ece60d5f62584eeee6197dbabedf0c5e207996bc3747c9cf20",
+            "fb46caaaf4e98a73f19c0e1f79d69f068794bb44b33035a2c2fced1e81bc2ad6",
+            "61781f2fc9e640ebcc006c25561d46d053bee29fa72f8616c2e2cf3707e291a8",
+            "d9e99c3d02b9334286afd88dd9d8f4c9f7c866207529c82e585cf5d5b8d53d70",
+            "c80a4e179323c074d81ecb4f1a24e83b819f52a03e78914335a6a4b1579ae7fb",
+            "8c34d1f1bbbcc13ee9dffa161edc3fa6ad8c59014d7cb9bef6088f81fc7985f8",
+            "27248bbcda95cb827686e01ce5f20b6f50b6ef44df78ddca5c69b851ae0f0f10",
+            "dfcdafbf134bbf4769ca72288641fcc88348046c40226aff95adb7950cebbe87",
+            "b138f3101f1c76cbe1ac0d94e9365a05cb37c8fd6feeb9685f19623ece0f162e",
+            "e400d72f012009eedcf5e4224842b27987a961811df52af5855890dba729226f",
+            "17cb5b3ac0a2105843f1e6b5b17bab28bf5ed60ac7263934b17d0caa012da1a4",
+            "10b4ed150228c6047ba6e0f33309f1605bba44b766373fb6cb9939e7bf2a125d",
+            "2fdd0e0ee000923b7f3beda369b2387594b0d983584c8a4e5ff72441531e5c1d",
+            "84359dab5669ed55c71be9000891a44b7aa41ec7d27722b9c61d38c3f188d437",
+            "2572cf742a35d90cb97b2a3c139946579120817664c5868fe63368dda942e539",
+            "512fc49c5126c273be9fddb14db456045ff3f0db6737c41b3e7b8f81d9f01ad8",
+            "bd0e1aa9dd3b520743e9dd3d8f82da750c3e3bd11321657976abe237416cfebd",
+            "f9b0d6e3b9fe04d40918a16a0c1aa5c4b14afe15692591a8cc08f50a0856ef1e",
+            "bb3f3a9410fd76c72a87bb30687e7b4928f4a3306093225af73a085940e4df99",
+            "c9e4cb7a9764ecd93bbd600f236a0e241712bc575131718f710491d623987c5c",
+            "d46cfeac9a7097d4e6b2d6809784f360ae1d466fbf54407974dfb16cf2e57aa3",
+            "d5fdde8a08af69ef03f7bc76a18425cfc957102e8e24dd394d32fba1cbcb34e1",
+            "8f224bf462889f671b54888d6343c086d9e4dfe377523a6a8b5f19ec17332d75",
+            "8511495d2d57c434a69c3c95f08de1b4154aa4938e2309e371e0037aba649736",
+            "807392eb62141704b5ec459f3d269257350a32ad989cf05c19dd748f4d28536d",
+            "6fe623e3732372c8cf891abb711494eb4ca4b62167444e50a93c9327d14e2757",
+            "1903c6e0daf534b81d307633ab89c87266b6a8b81a0a4891d8f67593916d5810",
+            "da835b147ff5d1e5656f9427b3d40998e5726075ccc0d7ce52a34f47a23f9922",
+            "092005b656c8db7fbaa1e70e430586e6e9c994f1b09332261ee4c80b7f4c47f9",
+            "76630d7caf7f2ad7cf28dbfd095f44ba75d7f18bcddcfde9b7b263b9a22603da",
+            "bbcda952aa8e65d03e15688644aeb1b3eb52908c100534e47b09f4f8c532b1c3",
+            "a6d73be01a74cfdd8da750a36cda9edb34cf97de6d1c93c37eeb25b063aec58e",
+            "faabcd77777c31c0f236e3debe46422b4431651535324397844207040b745f59",
+            "5b27fe00cb510c9316344ece7b5976954a187cbf8a8c0a771a4edb646afb94b0",
+            "e22ef6dba4a9f724b161d4b83dd004abb625bd04d441d526829d7c05ff47cf6e",
+            "31c1a5fd58eb8339576107562d54ae7ece7386478fe0957638eb3330f8c6aff2",
+            "f0e1134875d73bc28da7ac4b82c7f22f5e40dca4a39a384bcbff86db27cf6c47",
+            "fef17cbf949170d35a8f77e6d4601d7720b3fb941f8bbfa092ccac6b81ba36ba",
+            "84bb561f1511f60b215d486297f04927f40df5f73bada528942b8367205d9791",
+            "60b10d7eb93669651e57e8ce390de58a3cfbd72a992aaf1310ddcdf2ff3b9fea",
+            "c20c1c21b74fe87160920bcbcce0886a2997e38a88412a20ec1ebf927bc82f6a",
+            "8c61eff7d1470301360e2f75cb3f0bab97a5ec6798530fa137fdfd5df2a89026",
+            "d30b26c1466c460c9c8323a6e504563410925e54fbaf71159bf5b0d3f876cb1e",
+            "b74c50000d67e6d88dd4252af589ba7ad4ee09cdbcf5b9c8197cd83e448ddc35",
+            "209661f9d92727158639766e48e11bd1c7aae00a9eb9d84e3b017a686bcaf13a",
+            "b980e1b4eceec0f0ae4f1f6b3e9cedb04dce0e2ffff91a5f3510a764d17db413",
+            "8aa896eeddbb2e219466d63c232987c6da7d73a287daf0523ebfa9564abfcc6b",
+            "c41f5d29224dc87f7af97890aa5de18ab8566a7c7091960d9ab986951ea99178",
+            "499d3b625e8da06e2a5e6d87ff11bc38f733656e72fec891891e65d854b10118",
+            "b91535582866a4e2863823d85bf1071ed59e9d947a058b1024fb05112b213ce8",
+            "76f558b70cf38bca43e278722636471a09770da3c40c5dde89007cc3463b61fd",
+            "e24ffb92d439203857846c03ade441e67aacbff900c3e9345eca0a27421f36a9",
+            "8b22d5fd4d9963a3eb9ab5771961cd3eaa623846d9042a0201317f66d9b30006",
+            "61e3d0fa887a63b803b3723a212e47c3a3067d4bffaa4580b278d5fdf63799ba",
+            "b859bb5e090cc34f3f3364a4743ee8185f5eb1248c8d5ce539713b671c9080ea",
+            "595e26a1bc65fa1430d04d81e970a7b60a6ea7461b4f4f34e07432b58db35f8d",
+            "bdbae1bde904dda5031045944df84041c2701e24527005713106dd56ff2378be",
+            "686dd245363a91388e46617ca988bb101dea662f137e29907d8f653a4a15b2ea",
+            "c8c1911cae0572a4d494c51be90b1a148e58c67feddf9a634abf45a149b806e3",
+            "dfd0a9d5c3eaf9dd01705e4e038730f95d6c7911196e287091d24310a97eaf6f",
+            "46cbcfba33e0ae7d88e2b1bb0f57daf36a6d5640950dff69f298d5aff789eee5",
+            "8731c617bfbdb8db04ff1fc93b24776729f16e19e30040473f3c4a6644bad238",
+            "b23018c7ee005783cb6a48123d4db1cd6edd3558c31ed0cca69c7d6ca5416d3b",
+            "5cbbe8cf8955ddb3071cdf8d50b195aa024ac95fc753ca28e1095cb54b3b1dbc",
+            "02d0036276e58969cbbfafa0e854f44a0cb19cfa51c0ef6de2f941a18002fe9d",
+            "0b7ad99750fecb29973f576f67f4dc10e4f548657d1934ff25401bf180ba8c9f",
+            "cfe430ee74aca3a9a5bc3b2796c6ea01e9587e2bf9d636bef281c66ca494bc6c",
+            "fb31fa4d86cdc77daf8fa93d28027e93f6618e8f070d48c231752e809c088d45",
+            "4db8a7afdb3490722a623e3351918ee401752cde35cb3a56020b1d5e013cd182",
+            "a982e59c3c6d1eb4a39a4eefd1440dff81bcc8b528c8adc42b3c978a83d3eefe",
+            "15f9478ea3dd95a4a45e7912b696e590d6be678af1e4bbcd59331b9e0b0e2b4c",
+            "3abd4381fdb96f77048d753144c1f594f4d4b05f83eff70c1b795ee598a16247",
+            "a27797928aacd8215a3691594aa8b77335c7b75879bba151879a5f1ff11fdf9a",
+            "0a8616a07eeac9f730ecb45a2054b7cfdf19f0e5776dbf136b286e3461b19701",
+            "bf533daf3eae444438d64088618a76a70bd87266b712671c084c1d510fc3b761",
+            "0718e123c556bc1f456f4b00eaf1bb5f1ac7f88c6022922ab45f30891f4ae251",
+            "e070de0a630a346bb405f5d42e07de2c6302e5877cbdfbe6dd3c367d95e6aae6",
+            "dfe9bc1216a7f10813aefef73442ba0862b607a2f60d1c404de79f7f5fea3f03",
+            "a9c599fbc98d7242764ebaf17833247a72561e23b4784e638e49f5ab2130064e",
+            "deec0a27c0ec4be5e1bdad3426d565cf3b8eab3e3ba767f43b980a8bff2bbb91",
+            "46e53a5b3030be791f63bcc432aca8a3997ff675e9131f19ebee854c4fb27575",
+            "3a1eed039e16492cce9d4c713b83df38b8db04a1d3f23516eee052b4b2cd7e82",
+            "5dcda92bdcd113b1c612a91ede447c03dda18882167cee65e19c9c5392641348",
+            "d856c3195ddf1435af4d0b1873273848d5ce06245d352f26c81015eff8d6d98b",
+            "e9900d761a0bdfb712843553249da48d82bf24662769c59b77aebc1c2c9487eb",
+            "33720dce2e3fdf9cbbdc45c57da7e037f96bedaf70a6b5cdab15e74461ca2f7e",
+            "9d6180b73f57cdb8eff68aae23e0321b1983993f63839489c2f37cb730948517",
+            "10389b9c1972087554eff909478090d4c6a3000c0990e4ddfecf4dd85ded663e",
+            "56eaf639f68c21ac1b5ffc00392ab73e298c39f16e685ac4697379c1d35797df",
+            "65fe2d816befa6122b7c6c3f9ce2055d377b4a842f0abfa0900815d81dd24d8e",
+            "a1aa50232951b0139d4668d058aa8ed2c6f73f016a4ba566cb4f9e64aa40cf7e",
+            "c7cef5b2b645d0063fe1b409688f0a921475e983b707271e2ff5a67537184941",
+            "7ffe120f5034814b377bc4d539a5e3ff3f63dea8de8f436dbdc8e4363e4659ca",
+            "cb5d8c6e33af940192dd7a86cea6197eb8b9c73703b2a761ebd94356b4a25066",
+            "e41eca1b66557775c6184d8e080182a80549215ea2df74e80988c8b46ebcd294",
+            "17e5ab2523ad410ea1d3426dc16b83036df3b9edbc0c899aee68bae4df763908",
+            "183807f09540f4c5bb637664c6ed4f66c845f2ab9a730b7c406a5163b705c199",
+            "06bcb8bc7d886b61a9ecdafb1f2e7e27440a2d8d5ad729ebe8a220154ec2f33d",
+            "abdcce8380ab482ad10cdededfc620643155e82f99e828a28dbd8d4f98ae898f",
+            "1a1d16b120a2212a666fdcc12091b20dc8ad712f97efcd9a6fa40a564daeb179",
+            "524b190d3703999fc130f81ba033d4d803609f2b1d2bcdf34abd86051c4aef0b",
+            "a800915a05faa911e91c311001ce5e78796d1f768b5dd7fa6b887c2c078bbc63",
+            "21732198dc41ec3d030ecc5c285e507ec90957ebd1e0533512c22a687ee704f7",
+            "06de33a9ff5a93e6d8a760b75862e05c0e7b53dde4b949d146a4318e6f251ff9",
+            "c6f849f6f00bda134aa88c6f64b66b92b07afec4c53540d23ef9b884b2fb4b71",
+            "e5ecd5d4f3c93d85a905ea42f7bd0b7b9fb43cedc4bd01c17e13aced3facb47b",
+            "fe3dffd9a7f50c0113f6aeadf953c03798d49840c4adeba3908960c58fe5084c",
+            "8680ea3efb8f439f732fa353c6b6ae9c4ba23c98f01c1e5ef8e8ae4c4768238e",
+            "1bb5e303bc2539b136cf3a85f3217459b788110296c7a329d6fa0f04504f0203",
+            "5e2237aad207cbd36656d79d1dcb661b0ae927f542dbf2626b9c533d20cf7fd7",
+            "dadc745d3587521d72b5c7a90dc3441df25a4b5c7873bde2e4706de322e86a8d",
+            "b5fe2727ea6d8ac647dbd6550ae61f65f7af0fe8657f6e21430fa321c907bafa",
+            "b39dd1de020f5383f53a65741fd17610b9407f69c57951484d1d269b32f4eab5",
+            "3744b59bd92bfd714d087b90afe1f2618c6f7b1aa4dc78375b9141ca57d02a68",
+            "c1a10cace7176faff1b9d49e431962e6d90a399fdeb6fe34bc321b3f802cf143",
+            "896398569ed1942feb0a0d4f034c02f300cb164a761361e67c9dc510defd901b",
+            "a0fc3926631b9cffbda64e8c86174c8f84fe96cfef4b3d6efc9127a5e51fa219",
+            "6eda295be0ecc9a7bdf87f91376b98d079b108dca173d40df07b7c48807673f5",
+            "1ca20a63ba7b0d5fa6c785a7f4b315c44d0b20758b50ad2de54ec59383f12b5a",
+            "75b4475a0c55c7936958676201bb76446e9a136f260adcc1b6c0aa96fa4e5971",
+            "152d27a21e329a030d2f0207b4286bc3d19ed59820822c5860c4221629e7fef1",
+            "dbf0f7836a6bde3068c8c05fc1a312dc82b54771642d5040c3deccfbe013f5ba",
+            "8e7a85c07495429f0cb34678aafdc2494d8d576a98111c27e459f956b661a8c3",
+            "848c82c61d054b767a3dcd2fec962884b7fa704364a664a3df44434acdfcb10a",
+            "d168c4f8b794b1be996554d3181c6686640f4c9fe9f411fd6ad8c77a390ef424",
+            "e8298f06b4467d7c95be354f4b8bad5523f4c761f111211d3504678c40d0705b",
+            "b9520e8298345ce38166dbbf629c712747ee273aa364ef5b901554a2457eeb5b",
+            "1df612229ad8fa6c9df3e97367f07b0a3308490979a322805ea13a396c4fd4be",
+            "074d8e684efa10b40d37977f9f23e04f44b3007d32508487c4b0b5b06dbea55d",
+            "e76dc9026a235ab952de5e93a5de7202949fc8c5fb0301db573f60306b522484",
+            "b23f839e5af71067cdd6cf76eec2f3bc03c34e50e2bbbeb5147ac3ddc6326688",
+            "7dd059457e8cbb8bf43af3f53ea155f9e834a8c3bed5c8371bdfdb4e2c93a40b",
+            "4df32a61a08066ae7bc5bd5a4b892d707d46e3ac6e453920950c97541c97d77a",
+            "3333d0970506bb26f7018499c483e6b83b84ac004a39dd0f867fed51589655ac",
+            "2ff8ef8143a89661a42d225fda2e51b1ceeb26652a9051cb8404f87b20f29765",
+            "71fedf3c8999f6a82c7167325467d96589df329db2184e6732c0b72f1aaffb67",
+            "86540d6236babf0fa4d27116db8c6224a720ac10fdee4ea58ce9ccf7d231f836",
+            "67d34f83dff6783cec17af3594f6b0856476d0c2a755b973dfa4872a32ef0a0a",
+            "883089aac3202eceddefad378430bc529de500bf80cf10316291eeff5e48a82d",
+            "751a4217b8b911a0d268edaa475c0135ef4f6bdc36ff07ba223aa60c8c4612f9",
+            "e860f0fc502ae57d7fd9d5f9b7e0b1859fbdb7a0fcd00585fc5d0f651a7eb62b",
+            "d21d11b48618f98586738efe2135bc592003b92c1d80015207b1c11b7f5ff346",
+            "df911e9c3d8fc95149089ab04098dea40c40e1a8c33aad01b440ff15c71d9e28",
+            "0b00445f1f1dbf1c48b463d18dfe05d32d4f7ed512b2cb11e83264902c6e9312",
+            "f10875add1b36705dabfbebca07fdef3f9c3a295be6e5b0c12786efb4c4c4e55",
+            "12d8e7fe61ac7f0cf49060a9eb949593399f50550736ae82b56ef7250b755a06",
+            "d695a8ef1304ea6cc528a27a73c14c53f4f753f69b1a6cbe5ecb55c2ccbd5a73",
+            "4291c04577ed0dafa68648ea043f6ad4201aa5a876fa0fc7d1989d9a2e6c380e",
+            "1109049e419a8a67f5aba0703559527af9d42d125168dc3b4b54c4677e1ae44f",
+            "4f4a4b8575bdfa09a43f817f0c5f425f2fc347739263bbb1a64971378c6675b2",
+            "1c3cd5ac129d94f0fdf11b9e2a6c5136f78bfbae6803addbc8f630697aef4c94",
+            "fdb5bc671ea086f4eca537336a3335c453bc0206f585e85b7a171b0479ad392c",
+            "204f46907e7d744e34b2c058db53259183a74f4190c0c01c9fca05e613269f03",
+            "a22253e0a276677ca26e49c59707e75972848742d001a566f4caa7029ff119d4",
+            "e76bd6577a5d8cb8dcfabbf5674242191628a1202bc5eab24c29641d04f20454",
+            "d443ecffacceeb8196e900bd50b39ea0667022eb8f895f96b589af1bf7e929a5",
+            "a9a01cb47d15e9560b3cac472696bf4f87c775d7bd4d1400e8af6699e579abd6",
+            "60e61890b5cfee8bcf6b53b4c7160ce9738b7c99316f023bf6b6b31cd3efcde3",
+            "09f9265b6d150e7ee10e6a266912e6fd5f91f35b05c25abc456580f45aab479a",
+            "2bc86b18b2a6f5ae5c851c56c6182567bfbd4de1a12d672bc3de50621b66a22f",
+            "85b990e831c4dd0f6c95869375fba0a83a915c57fd4401e7679ef1b80cea4fac",
+            "3442168c38503a347cc947a0b132cb18c381e68d46dbc9eba188b20f472191b1",
+            "9829175a54ed41b041add065ecf68a8b5fdc7c5c4dfd61c1504252b964e34538",
+            "db997280a7791efff445702e001c2f226596613f04ce971bff9a83060cff2352",
+            "c49a3d55f357961f7ce0c7311a1665bd1325e3e511936a5bd28184ca773ddd1b",
+            "91ed4c4b88aea782ecff477196bb7ed7f59835d24b3e82325c56b3b16088f910",
+            "a76b3f2e14ad03962b15fd0f5fdd6d1aef6d32f498d0b46d5d6602d04a6c81f4",
+            "d30ec5950b0d4aff89926c1d46d78423b87ed1f4e4ed854b53adb16b8ec1d9de",
+            "c74e2a9240ed05a74577380f511c66c5b43f0acc84b07a887f92e7c44713b23f",
+            "2c6f4f30cdcbc50895d4b5d0f5994451010a21f35748d3fc8bf2c16138af8acb",
+            "7159ffdb8a84366aa7200918655edf34ec9e8b99e92a5a632677c19542bd4245",
+            "7c636b9dea2ccb92eabc3821253f6937f00a4ab27ea700d6f74f943d73fac3a8",
+            "5f25506128681e7491535af9fc6a2bef6e6d57cb1dce734e1408a31132e803d6",
+            "3d8f63b2262895f424873ebf9e4a09d636e794e8f897225470eb6bc2f693df28",
+            "9c6439111d1470d5a18050e1c2e750072900cdba8f8692d1e644cbb703fe2bd1",
+            "da436eaa9dfed024584fe53c9dce0112b72ec4456b5cd83b84fa873699ca451a",
+            "adfede87a02c59505bbb406c588e7f13160f9d1e69fb0d0c329cfb431fe3d352",
+            "21068dcfae334ac8f21b8452baff29193a4a5722d3b40e8a8420126fc74f4d72"
+          ],
+          "sourceIds": [
+            44862,
+            44671,
+            44672,
+            44673,
+            44674,
+            44675,
+            44676,
+            44677,
+            44678,
+            44679,
+            44680,
+            44681,
+            44682,
+            44683,
+            44684,
+            44685,
+            44686,
+            44687,
+            44688,
+            44689,
+            44690,
+            44691,
+            44692,
+            44693,
+            44694,
+            44695,
+            44696,
+            44697,
+            44698,
+            44699,
+            44700,
+            44701,
+            44702,
+            44703,
+            44704,
+            44705,
+            44706,
+            44707,
+            44708,
+            44709,
+            44710,
+            44711,
+            44712,
+            44713,
+            44714,
+            44715,
+            44716,
+            44717,
+            44718,
+            44719,
+            44720,
+            44721,
+            44722,
+            44723,
+            44724,
+            44725,
+            44726,
+            44727,
+            44728,
+            44729,
+            44730,
+            44731,
+            44732,
+            44733,
+            44734,
+            44735,
+            44736,
+            44737,
+            44738,
+            44739,
+            44740,
+            44741,
+            44742,
+            44743,
+            44744,
+            44745,
+            44746,
+            44747,
+            44748,
+            44749,
+            44750,
+            44751,
+            44752,
+            44753,
+            44754,
+            44755,
+            44756,
+            44757,
+            44758,
+            44759,
+            44760,
+            44761,
+            44762,
+            44763,
+            44764,
+            44765,
+            44766,
+            44767,
+            44768,
+            44769,
+            44770,
+            44771,
+            44772,
+            44773,
+            44774,
+            44775,
+            44776,
+            44777,
+            44778,
+            44779,
+            44780,
+            44781,
+            44782,
+            44783,
+            44784,
+            44785,
+            44786,
+            44787,
+            44788,
+            44789,
+            44790,
+            44791,
+            44792,
+            44793,
+            44794,
+            44795,
+            44796,
+            44797,
+            44798,
+            44799,
+            44800,
+            44801,
+            44802,
+            44803,
+            44804,
+            44805,
+            44806,
+            44807,
+            44808,
+            44809,
+            44810,
+            44811,
+            44812,
+            44813,
+            44814,
+            44815,
+            44816,
+            44817,
+            44818,
+            44819,
+            44820,
+            44821,
+            44822,
+            44823,
+            44824,
+            44825,
+            44826,
+            44827,
+            44828,
+            44829,
+            44830,
+            44831,
+            44832,
+            44833,
+            44834,
+            44835,
+            44836,
+            44837,
+            44838,
+            44839,
+            44840,
+            44841,
+            44842,
+            44843,
+            44844,
+            44845,
+            44846,
+            44847,
+            44848,
+            44849,
+            44850,
+            44851,
+            44852,
+            44853,
+            44854,
+            44855,
+            44856,
+            44857,
+            44858,
+            44859,
+            44860,
+            44861
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "roster_incomplete:participant_count_incomplete"
+          ],
+          "id": 44670,
+          "logicalBattleId": "platform:88e59fb8-74ce-9343-ab7e-24cfc1835467",
+          "rawReasons": [
+            "team_resignation_not_complete",
+            "hd_metadata_fragment_only_recovery",
+            "watcher_live_iteration"
+          ],
+          "replayHash": "ff606a01553c1063ca2ea5ce1cc7e89d97c2a247021fa1fa9bf330adfa1cb406",
+          "result": "unknown",
+          "roster": {
+            "complete": false,
+            "format": "unknown",
+            "playerCount": 3,
+            "reason": "participant_count_incomplete"
+          },
+          "sourceHashes": [
+            "ff606a01553c1063ca2ea5ce1cc7e89d97c2a247021fa1fa9bf330adfa1cb406",
+            "3a29ea09975e7b5802e4fe45eb727f654578482893bc9720c4e5c42ecb88118b",
+            "781f09fac168e5478e0b548e8c2aa304f3278720150dfa174b8d7025f931bfa2",
+            "bbd746f21368ab3b25c891e3b0a3075818b9d53b1785fe87ecf1e93bf3ce0211",
+            "53632cb4ab904ee956c4adf93ac2c5f0a5ffe7952ba49f9aa153f0368d95709b",
+            "b47a8d4584399d1190645f5de8acac7829e0faabdbd9d6ff700f98600126309f",
+            "6c5e7aa0a0f4cbabe67b5a102cfbfce92a62acb525ed2bf61c34df8f59375510",
+            "b27b114a1807e1fdd39d42de6afdf90b8d06574c4c28826b1ac5f44b86ccf911",
+            "9da16dd63395435fd519e1e1aefa5c47aadda18995eb2c21e04798b0035318e4",
+            "430f64ac118209131a5ba774aff670a17cb1ecb8a4e69367546427d9d344ac1e",
+            "24d72e4de83024d2cd1647e23908378c8d69eb02578e3eea9115d931759c2289",
+            "a9d3ec5d4ec772868d5cc3e6c53cd2f4fd08985fc38e6c95b3d94f6630258837",
+            "beea060a88d64702ac25eda7a4c716deed32dadfe9ce1f16fa73b35ee6403301",
+            "f95851cebbaef3477c971994fba34068badd104f3f2820c32cdf9fb2284cc5a4",
+            "c628be8eb3b9691a9d3371f77e31279d6ce7c1a1e99a5cc0e10b7594139f65b1",
+            "da5b74a5f1e50069c9fa29d50a600e631ed5147f71ad6a45d291121d78b36b3d",
+            "021a9adfe8d12499cedeecc331b4434bc0ca8ef0e6e9e8c2e75393fd6d8a4024",
+            "a865cd059cf62daa914ff683853b1a134688a46fd62e3affa2f41afacc03620c",
+            "2c5dc0c8eaa3a26ccf44b968d2ca0442c2172f5a04f32a7b184f2c2d7a38fe14",
+            "49cedb08575402f9eee32ffbfc083a9d101986765914b80f2258e8bc541161b3",
+            "337f46d98f06b7506a60c4d5b84d87dbdab77977ae0e2a0836034a931cc5dbc4",
+            "da8028226380a020e4cf578291ebde7907ae5a684d7250aaad648012237b6407",
+            "abbacdac2105fed540a4fbb05c0a94c996b54e875df2da1f78995f80c5deaf9a",
+            "d88b7036660a8c7cd440ceece943410831e995314acfc7c1116f58d780b84be9",
+            "7824c6d1f3d08e27430aee243e3abb39f13b1c963bf426ae127dc175b62a43c7",
+            "8e98f90847cc96c8809f7ace9d956781857e3726db0300f0b56c0bef7e4ac137",
+            "80ab13aa5a45a4699d7b663b901d4d3efb41668b7f63e73f912439c7d6716af0",
+            "985fc08ce86062beb97dbc6e226767ea0d71dc85e5905a2f40bb76154c2edc22",
+            "cc6a8d9a1e54b7d4247ffd34e5790c23f96ee4d251712b58befbef53be3987f5",
+            "0238e67c0d75d9bce20a9b2df18b3f9a86b6dcca1b7478fb8e8dbeafbcbf0e73",
+            "97f8ec610accea46f649174c6ffa4be59ac3777cf6b0fe342277562a980b2649",
+            "50df29c1b4fe283ea0cc68f4bb23bf40dd724552daf9a98f269e81572aa58862",
+            "68cd95f35263163088c79e35b163fd4b66e27310e186f233cac235fa27304a95",
+            "75765b49d937dfb44146c83266099988ba0aa3587a1a348b0bd6d5523bc3f395",
+            "5bfa92cde38d5bf6d468c5c812e87da3138a265a2877e348727aa8607c7a886e",
+            "c117a4ea2bf35d8595b050a192f11ef156043f5d9977905f24e6ee986841c6b1",
+            "5fc35450f131ca5c7c8b666ba66acaaf398ac9f185d501a94a9f657084f7d024",
+            "7c388c2bd5d670d9a0d522a14ea90055776e4a683b251852f9e4c22c0c182061",
+            "cb1cf8af0a08332440d7c9a8142aa2820ac62c9e24e409a7ee0957e9cf993293",
+            "9ea68167185ecf9fb93e7d8d8e313f1dbdd67d85c8d7311359bb9381dfd128ef",
+            "ceda6b173a232ab0414945aae52161b262687796a55215ae22a3ba8eb9a789bf",
+            "a25726ea19690f5272b81ff1d1b5b0189cfc70c1d228e60fee43784b1acc6ff7",
+            "e17c7370e27439d6785b5734e197ad2e3fa98ed8f16716516d289aefb96d7d84",
+            "3c66abbc097614851fa61834685d3f87aa38a3c78e3d8396b54ed0c38a0ba698",
+            "1de3918605909cf9c7e57a1021b86beb32c828284fd1eca8f9bdb9a423b4c00b",
+            "65ed5dd135b6d9b1c63836814e3bfb3cba13b1fd8db65607a2f24a65067a319a",
+            "e17b027b3542bf054884543d70882709072a23368e75c07fd4500eee15aad33d",
+            "826f6d08433079a430717653e7e99f698e0dda9c4e09ed8129ad95c2d59c5ee0",
+            "a5dcc643d3d4717aaca1fdb7a0085986e411dead1545d51464becdf41356690d",
+            "5df90d4dc2914e789dd5a1aef767a8bb9629b7ae16ed7ed1500e8eb09e48beb1",
+            "acd51ba5051a6ab36ac79728114bffe921493aee927c0893f45cd2f494bb54ba",
+            "4f2956574c41c696d1cafcebae4d7415ea722175c261905eff5d44f91dcf0e03",
+            "857c5bfb99170823a16b9556851607e698b7205e7244015acdc51a7f34f0ee79",
+            "2454eff6eec82ea5d76e217ce54af1893be8f810dda36cdb277b399fa381ad55",
+            "e41c28b85d7abfbb34450fab4f6b5be9f8eb1bba457d866e01112aa36d214581",
+            "c1117835a77e4933faef13d29536ee8a2a4a8502ca931b38f52c9ae8f28d1fe5",
+            "d60c507f1dd57f4caae454b382b65ac1f55d0a5be99e0578bec4567696340f2b",
+            "fcd85a063ab8b7dfdff70b5eab5f6c47b73b3395b2f4f950ff9ca19d4807b7c1",
+            "afb90baded40e0b63022d2bcfc673a4152925fbe9af6dd3a91e9a487249639a0",
+            "0a1a7646a16109f73c90a500d066faef20ee01662f1b91071b4bd55e70199858",
+            "00e194922195044446d2394b6fe77ad164ebd1fafd0b2f12a2c71e5fe68499a6",
+            "c407f54fad412062c42f0fae9a69aeae931ee786e935e98f1e8d926d75e10c37",
+            "a2c534e829cb77f289184ddbe10fc2662985ca1fa12f5990caa4bf83e88a358d",
+            "a6127bc0cc7633622c9399a54b0795403e085807bd71539da0ead7e392adaf13",
+            "2714b058d745319ed9caeca5535483049f972eed3997ab133608c04eda563647",
+            "9247acd870cba49eacb2dc41f5485d8a34893d1b80f76f1d4c58ade2d36d5fc6",
+            "937a3cb3bec4af932f454b168752b0de01ed2130601eeb14f141c4881da7fc33",
+            "217817e9e0e208e9e44a1914b31ead6901334ed8638cc457265d977ebdd66aa8",
+            "26f83ade067558968ab0a2efef0867c71b5e759862f41127716d1e47b314a10d",
+            "c75b9b31806fec38b2059c2ded7dd532f0c3e78861941ade5b2a9fff52612e19",
+            "1129dc045857cbe0f680ee3190c9b69c6ff634944ec4a358648d2c64d101c49d",
+            "140e695f0c7f01817be72df52232d5ebbb6e6cdab35d49e208af65a89e3a74bb",
+            "9ee8f83ed751d4faaa8ba3dbb026e0ea9e66d1cb09275dc7373cf1ccaf75d766",
+            "52a9a2a3df5bbd942836a20c92748c059b5267f30b8d66f2581d4f059c574c76"
+          ],
+          "sourceIds": [
+            44670,
+            44597,
+            44598,
+            44599,
+            44600,
+            44601,
+            44602,
+            44603,
+            44604,
+            44605,
+            44606,
+            44607,
+            44608,
+            44609,
+            44610,
+            44611,
+            44612,
+            44613,
+            44614,
+            44615,
+            44616,
+            44617,
+            44618,
+            44619,
+            44620,
+            44621,
+            44622,
+            44623,
+            44624,
+            44625,
+            44626,
+            44627,
+            44628,
+            44629,
+            44630,
+            44631,
+            44632,
+            44633,
+            44634,
+            44635,
+            44636,
+            44637,
+            44638,
+            44639,
+            44640,
+            44641,
+            44642,
+            44643,
+            44644,
+            44645,
+            44646,
+            44647,
+            44648,
+            44649,
+            44650,
+            44651,
+            44652,
+            44653,
+            44654,
+            44655,
+            44656,
+            44657,
+            44658,
+            44659,
+            44660,
+            44661,
+            44662,
+            44663,
+            44664,
+            44665,
+            44666,
+            44667,
+            44668,
+            44669
+          ]
+        },
+        {
+          "blockers": [
+            "roster_incomplete:team_id_missing"
+          ],
+          "id": 41041,
+          "logicalBattleId": "platform:683e976c-b0ed-f44c-a59a-af26015c503a",
+          "rawReasons": [
+            "automatic_result_evidence",
+            "team_resignation_not_complete"
+          ],
+          "replayHash": "5a16af83553846ea9cf2ef81c458532930c09b382fa0415ed8801b0249de4968",
+          "result": "win",
+          "roster": {
+            "complete": false,
+            "format": "4v4",
+            "playerCount": 8,
+            "reason": "team_id_missing"
+          },
+          "sourceHashes": [
+            "5a16af83553846ea9cf2ef81c458532930c09b382fa0415ed8801b0249de4968",
+            "5a16af83553846ea9cf2ef81c458532930c09b382fa0415ed8801b0249de4968"
+          ],
+          "sourceIds": [
+            41041,
+            41030
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "roster_incomplete:participant_count_incomplete",
+            "disconnected/review"
+          ],
+          "id": 41017,
+          "logicalBattleId": "platform:29cf936d-1889-c248-ba97-4fa2fa1bd6a1",
+          "rawReasons": [
+            "hd_early_exit_under_60s",
+            "hd_metadata_fragment_body_recovery"
+          ],
+          "replayHash": "9811138bdcbf3e02007a1a0550ab80e14841a21b324086b6a081e812f1555916",
+          "result": "unknown",
+          "roster": {
+            "complete": false,
+            "format": "unknown",
+            "playerCount": 1,
+            "reason": "participant_count_incomplete"
+          },
+          "sourceHashes": [
+            "9811138bdcbf3e02007a1a0550ab80e14841a21b324086b6a081e812f1555916",
+            "9811138bdcbf3e02007a1a0550ab80e14841a21b324086b6a081e812f1555916"
+          ],
+          "sourceIds": [
+            41017,
+            40995
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 40899,
+          "logicalBattleId": "platform:4788b07e-715b-6d43-830c-bd78cde59cca",
+          "rawReasons": [
+            "hd_early_exit_under_60s",
+            "hd_metadata_fragment_only_recovery"
+          ],
+          "replayHash": "69d5149dd6ceee0f3bdbc14a4d80236c5d7fcc59b66ef2ed6b50c5f6d1f61829",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "3v3",
+            "playerCount": 6,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "69d5149dd6ceee0f3bdbc14a4d80236c5d7fcc59b66ef2ed6b50c5f6d1f61829",
+            "a052efda96908a23c91504ff799a88ee21572db92449b5d98d939938b734b782"
+          ],
+          "sourceIds": [
+            40899,
+            40897
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "roster_incomplete:participant_count_incomplete",
+            "disconnected/review"
+          ],
+          "id": 35636,
+          "logicalBattleId": "platform:6cc83ad4-90af-c642-b090-079fcc07b620",
+          "rawReasons": [
+            "hd_metadata_fragment_body_recovery"
+          ],
+          "replayHash": "9adaba4a3535fd9410346f991d55d2d45519ab5cb7b6b0a4e8aeecde29af354a",
+          "result": "unknown",
+          "roster": {
+            "complete": false,
+            "format": "unknown",
+            "playerCount": 1,
+            "reason": "participant_count_incomplete"
+          },
+          "sourceHashes": [
+            "9adaba4a3535fd9410346f991d55d2d45519ab5cb7b6b0a4e8aeecde29af354a",
+            "9adaba4a3535fd9410346f991d55d2d45519ab5cb7b6b0a4e8aeecde29af354a"
+          ],
+          "sourceIds": [
+            35636,
+            35623
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 33386,
+          "logicalBattleId": "platform:f66e1131-aeaa-c24e-b0a2-43258703545e",
+          "rawReasons": [
+            "watcher_final_submission",
+            "watcher_live_iteration"
+          ],
+          "replayHash": "8a00e9929dd0b97c8412ece162303193c3bfb0c9eb27cee4a40c69c6bef40814",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "4v4",
+            "playerCount": 8,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "8a00e9929dd0b97c8412ece162303193c3bfb0c9eb27cee4a40c69c6bef40814",
+            "8a00e9929dd0b97c8412ece162303193c3bfb0c9eb27cee4a40c69c6bef40814"
+          ],
+          "sourceIds": [
+            33386,
+            33357
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 33373,
+          "logicalBattleId": "platform:c91ff89b-e12c-dd41-9f98-b281b764767d",
+          "rawReasons": [
+            "hd_early_exit_under_60s",
+            "watcher_live_iteration"
+          ],
+          "replayHash": "33a470cd9426c67a0973672689e8a4d6af0424e088a8e2e4170db23efebda9df",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "4v4",
+            "playerCount": 8,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "33a470cd9426c67a0973672689e8a4d6af0424e088a8e2e4170db23efebda9df",
+            "33a470cd9426c67a0973672689e8a4d6af0424e088a8e2e4170db23efebda9df"
+          ],
+          "sourceIds": [
+            33373,
+            33355
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 32379,
+          "logicalBattleId": "platform:e13bf64f-c36b-704b-a18d-8bb322040c8d",
+          "rawReasons": [
+            "team_resignation_not_complete"
+          ],
+          "replayHash": "0c8cb8ffc4316fcc40fb423b6a583af06091ad20d2abf269799cf0476dc27c37",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "4v4",
+            "playerCount": 8,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "0c8cb8ffc4316fcc40fb423b6a583af06091ad20d2abf269799cf0476dc27c37"
+          ],
+          "sourceIds": [
+            32379
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 32354,
+          "logicalBattleId": "platform:c547b246-40fe-6d42-adf2-5e3134c44e0e",
+          "rawReasons": [
+            "team_resignation_not_complete"
+          ],
+          "replayHash": "e4e81e82caf99c9e4f9b3ff3dd14a0dda0e5656be4833959aa4fb83a206fa5a8",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "4v4",
+            "playerCount": 8,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "e4e81e82caf99c9e4f9b3ff3dd14a0dda0e5656be4833959aa4fb83a206fa5a8"
+          ],
+          "sourceIds": [
+            32354
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 31588,
+          "logicalBattleId": "platform:dce3ff17-be05-9146-a485-787d48b15a5c",
+          "rawReasons": [
+            "watcher_final_submission",
+            "hd_metadata_fragment_only_recovery",
+            "watcher_live_iteration"
+          ],
+          "replayHash": "4d4f87af5f6408364f1be50fb83a8986b8138a6db2340c244430e8972a49ae9f",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "1v1",
+            "playerCount": 2,
+            "reason": "two_exact_participants"
+          },
+          "sourceHashes": [
+            "4d4f87af5f6408364f1be50fb83a8986b8138a6db2340c244430e8972a49ae9f",
+            "8f8d762696948c914c927e8bc8509d77ab87c9c2c496fe42a87bc8ce42608d86",
+            "99f5e8f39630bcada47f3f4103c25e7127dd4d0f71493a8189bc5a88ca0d8817",
+            "0bf242db03eb649fb7b5664193f96b18f26efcc3799124bad7f78920272409e4",
+            "5b8717cfad7a841d4299f5033a1c0443c3a982e6c66e4476e537674c7b302719",
+            "05849a7ac841e6010dc78dbfda5102071e8d8b3344ecbab1e5295874a528935b",
+            "ec1add0c2a746d91d1cb41fc710008b1f6585925c56fa38a0a52dc611ba99ae4",
+            "8cc5e76e82fc38bc9bda2b23dd765fcab4e33090dfc8758fa42380f464500005",
+            "716a59af09c6aa1551c6453850addb664399595f84a7e51b7a3765a306338b92",
+            "199d809f5d540521fd0d4a2cc1e58f54e19e36b01eb44e8d69a213b7206c8122",
+            "785978c76dbccc8106e51b25c3b1e4ca595d26109c130fb2bee11d231cb334bc",
+            "3b8d325cc116c94ec61d00491672d0e7dd692432d9ff3816159b27a78e6a053b",
+            "cdebe92c933b4206732ba362755d27cb6abd610ecaa106bf1524d7e72ec020a7",
+            "413e026792a2dbcbccaddb606fb1a357ee8af2be7afbad4a9826ec1e5fa59a99",
+            "a4ed9d626439a3ce0a7045f8220343df64ef0383bc9e89d6b789a5f7b756b9a7",
+            "ace7ac05ea623650dfb0d5de3d19a56668cb5820c8120bf37ce6606093dbcef9",
+            "d4a6736cd192ba6cff62046630880177e3f13b4f506412d17c7df3c611c3bfd5",
+            "ac03c307377dc513b0830b7af453e19178c77a1a66a376bd4e27344d1a504bce",
+            "8c6e624fd7b1a0bee02df90cb56a61061c16984b59fe52176cdcd242d310e970",
+            "5da6239abbdb9d4e8831888c669c0e5893d8ece99a140993069850b9a3bac721",
+            "ef930e95d7bcdf05bb6ff6e089cd760656700c0e1aca73abdc4a528762512f2a",
+            "141fc15f942283ac9529380bd7dc04d91e36280e98e2eacb921561cf084d2b20",
+            "f4dcd905479184c386d81550736f949fe1d95f9119fa10624f2fefaa4323af42",
+            "ae90b5aa34984cf6a2e7db7badbdb90e0110f6f3fe57ed74782011e91e906568",
+            "0d22c103c74156672da7e66d1261fa050f670edd171aa7b2ea0d58caccad657c",
+            "8abe5ce2a1dda276bb91328de8567855f69ff253d6481473975b154472e4430f",
+            "5fa7ca813eabc0abc3f6d667d60f7444b0c9ddff8e904fb8b5839ef76c66ec8a",
+            "74b4d38131126c06f16f9aa8a5db80f057dee506fa2aa7cb8bd9488b5752ef85",
+            "b4a40943e4e3d6aba321f1d4aa2c61f5c5cfd5b0491939109d14497d5657bf5d",
+            "226c3cf1c46472b9a8dcd4337ee7d8996aa32ba1b894944a94c9a96cbddeb149",
+            "81d5245aeff6cff3cbccac8e215b8e10001e02ada42469f780d08266678fdcdc",
+            "132ce1c5bac62a8a25208bfb81375b7bddb4bef1c46f7fb01d6e7863a6814454",
+            "e2a89bfe4f9336a7fd553dd5336283947f6f92af4bb4a25037e0a079c0354ef5",
+            "bb80966c261e4309b202f50b160ffee82f00bc99187df5843db0f44dfcbb09e0",
+            "3a6eccdf060cf2faf7a7efa55d5c7139364cb376732129dddcb69642534bfcde",
+            "63768fe07cb0a4a693c240d2e19987ba34f2194c3a20bea8d93cc4244981b8db",
+            "15d0c9e3dbfc850eaade1bc56f27bcaac6f879d36699b59b0813045eee702a29",
+            "1b50ffc63f046ffbd3ea7f12b774590c3980cbe1cf44c5451ea4538a0b9165be",
+            "cb0bccd2e5b20c711b7a9400efbfbadcf0a606e9c1e05a0b9e63c0c1ab7fc950",
+            "8bd9a2233feab00c18547e6d1953ec22b350f8ac9dfac0be3364c40f89100975",
+            "9cef2f47f702c0fe1883375434886487cb75bb3ba7bbea4e980913cd5bebcdca",
+            "83bf3d30bff6054bec266ed42ff7fc8452f9d29c24523ad9dc60b12f42b1b55b",
+            "8632b55781375ef36e4e1169a80446b401b3b97bca366c9baf8221143e813099",
+            "4cd9ddd02bce76feb17b0c9726b80aae464d8329dc7efba484ed2db83df61c3c",
+            "c7dcabb2bc4835d622f2b711bffc33323a4a88fa42af70a538631264249c22ab",
+            "0ebdadd173e6c87ce06c89d115938b183e67948e7ab4abf7b16c9877f3b3afad",
+            "b891f850bb79198c4636309e08dd23794b0892e9144449180ed3b06ca0a011d0",
+            "90313e5ddeb9542424aafe36177d1fb34a9b9ae59a0904f1eab184b3b243804e",
+            "3ed5d090519b1eb07f0124e0be414c23d872536667706667a21469415a6cb205",
+            "da13ac4a74fb2091a48d4282158fd94110cf21c906f1505ac51f6bf7490cab80",
+            "6449ca2ffc5ad7c4b75c2195825c987a29ed0838bf9f37c323f43ed5e95fb6cf"
+          ],
+          "sourceIds": [
+            31588,
+            31492,
+            31494,
+            31496,
+            31498,
+            31500,
+            31502,
+            31504,
+            31506,
+            31508,
+            31510,
+            31512,
+            31513,
+            31515,
+            31517,
+            31519,
+            31521,
+            31523,
+            31525,
+            31527,
+            31529,
+            31531,
+            31532,
+            31534,
+            31536,
+            31538,
+            31540,
+            31542,
+            31544,
+            31546,
+            31548,
+            31550,
+            31551,
+            31553,
+            31555,
+            31557,
+            31559,
+            31561,
+            31563,
+            31565,
+            31567,
+            31569,
+            31570,
+            31572,
+            31574,
+            31576,
+            31578,
+            31580,
+            31582,
+            31584,
+            31586
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 30112,
+          "logicalBattleId": "platform:8c4dd4e9-8414-794c-a44d-545f8ea8dbc0",
+          "rawReasons": [
+            "watcher_final_submission"
+          ],
+          "replayHash": "6c48cda7fb7776df3b6ef3fbf26a37ba3b11388930da0de31a027ee10c75a95c",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "4v4",
+            "playerCount": 8,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "6c48cda7fb7776df3b6ef3fbf26a37ba3b11388930da0de31a027ee10c75a95c"
+          ],
+          "sourceIds": [
+            30112
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 30062,
+          "logicalBattleId": "platform:f87df286-9e45-2345-ae16-7a519418dd76",
+          "rawReasons": [
+            "watcher_final_submission",
+            "watcher_live_iteration"
+          ],
+          "replayHash": "208bd773b83c13bbca38d1b9d33c6e448b68d5310821931dd764a8dd028e0292",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "4v4",
+            "playerCount": 8,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "208bd773b83c13bbca38d1b9d33c6e448b68d5310821931dd764a8dd028e0292",
+            "208bd773b83c13bbca38d1b9d33c6e448b68d5310821931dd764a8dd028e0292"
+          ],
+          "sourceIds": [
+            30062,
+            30040
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 29949,
+          "logicalBattleId": "platform:b8323236-056c-6a49-b284-c14562ce27db",
+          "rawReasons": [
+            "team_resignation_not_complete",
+            "watcher_live_iteration"
+          ],
+          "replayHash": "f66c9c5d5ed66d6c7423636b85756f560109d50a20ab658e57eb06e5baf18856",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "2v2",
+            "playerCount": 4,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "f66c9c5d5ed66d6c7423636b85756f560109d50a20ab658e57eb06e5baf18856",
+            "f5181bbea50a10be6ee97eea10c210b9a1bf0c3a7e2dc24b81648059e46cfd1c"
+          ],
+          "sourceIds": [
+            29949,
+            29948
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result"
+          ],
+          "id": 29440,
+          "logicalBattleId": "platform:de5a0851-a404-bf4b-9bb4-789184940f82",
+          "rawReasons": [
+            "team_resignation_not_complete"
+          ],
+          "replayHash": "6db087011179e6cc3fe1681e3d7c814c84ef2270ded5c579667b4aba10344732",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "2v2",
+            "playerCount": 4,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "6db087011179e6cc3fe1681e3d7c814c84ef2270ded5c579667b4aba10344732",
+            "6db087011179e6cc3fe1681e3d7c814c84ef2270ded5c579667b4aba10344732"
+          ],
+          "sourceIds": [
+            29440,
+            29433
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 29434,
+          "logicalBattleId": "platform:8cc8a86b-820c-ce40-8657-92f1ecb0a879",
+          "rawReasons": [
+            "watcher_final_submission",
+            "watcher_live_iteration"
+          ],
+          "replayHash": "cfe8ff1eaf954c157502eef76f7da9a11c5a918a752cf77e92e387978c73c580",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "4v4",
+            "playerCount": 8,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "cfe8ff1eaf954c157502eef76f7da9a11c5a918a752cf77e92e387978c73c580",
+            "cfe8ff1eaf954c157502eef76f7da9a11c5a918a752cf77e92e387978c73c580"
+          ],
+          "sourceIds": [
+            29434,
+            29424
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 29155,
+          "logicalBattleId": "platform:688e4425-7c14-3a4d-b061-18e7ed08d674",
+          "rawReasons": [
+            "hd_early_exit_under_60s",
+            "watcher_live_iteration"
+          ],
+          "replayHash": "24d100ee02e32eda617f05a30844e363f68084152b98610fe5d9b97f7b0a3ed7",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "4v4",
+            "playerCount": 8,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "24d100ee02e32eda617f05a30844e363f68084152b98610fe5d9b97f7b0a3ed7",
+            "24d100ee02e32eda617f05a30844e363f68084152b98610fe5d9b97f7b0a3ed7"
+          ],
+          "sourceIds": [
+            29155,
+            29134
+          ]
+        },
+        {
+          "blockers": [
+            "roster_incomplete:participant_count_incomplete"
+          ],
+          "id": 29063,
+          "logicalBattleId": "platform:227de71d-1a57-4149-890b-707a47fd161c",
+          "rawReasons": [
+            "recorded_resignation_final"
+          ],
+          "replayHash": "eee264c28d4a6cccc487580c0721d38c6661151e564b40adff144ad75a73b437",
+          "result": "win",
+          "roster": {
+            "complete": false,
+            "format": "unknown",
+            "playerCount": 7,
+            "reason": "participant_count_incomplete"
+          },
+          "sourceHashes": [
+            "eee264c28d4a6cccc487580c0721d38c6661151e564b40adff144ad75a73b437",
+            "eee264c28d4a6cccc487580c0721d38c6661151e564b40adff144ad75a73b437"
+          ],
+          "sourceIds": [
+            29063,
+            29018
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 28510,
+          "logicalBattleId": "platform:d67d396a-6cf8-ad49-9569-34a7835f485a",
+          "rawReasons": [
+            "watcher_final_submission",
+            "watcher_live_iteration"
+          ],
+          "replayHash": "7dff48bb97413fc05384fa66653d88ed9a6de4330080b48066cc2a117c92f896",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "4v4",
+            "playerCount": 8,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "7dff48bb97413fc05384fa66653d88ed9a6de4330080b48066cc2a117c92f896",
+            "7dff48bb97413fc05384fa66653d88ed9a6de4330080b48066cc2a117c92f896"
+          ],
+          "sourceIds": [
+            28510,
+            28438
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "roster_incomplete:participant_count_incomplete"
+          ],
+          "id": 27269,
+          "logicalBattleId": "platform:3125e6e2-ec9d-014e-8a22-e5410d7caf49",
+          "rawReasons": [
+            "team_resignation_not_complete"
+          ],
+          "replayHash": "ecf9d1e8302493f8aab1114873c6e4114128a9bdf592f89b903c891e4157afc7",
+          "result": "unknown",
+          "roster": {
+            "complete": false,
+            "format": "unknown",
+            "playerCount": 5,
+            "reason": "participant_count_incomplete"
+          },
+          "sourceHashes": [
+            "ecf9d1e8302493f8aab1114873c6e4114128a9bdf592f89b903c891e4157afc7"
+          ],
+          "sourceIds": [
+            27269
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result"
+          ],
+          "id": 27252,
+          "logicalBattleId": "platform:3dae24fc-9327-7f42-add2-e490fb81287f",
+          "rawReasons": [
+            "team_resignation_not_complete"
+          ],
+          "replayHash": "a51fddd9316ff5beda523171df6ef1ef61a95250925d6b3aa531209451c6280c",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "4v4",
+            "playerCount": 8,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "a51fddd9316ff5beda523171df6ef1ef61a95250925d6b3aa531209451c6280c"
+          ],
+          "sourceIds": [
+            27252
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 27239,
+          "logicalBattleId": "platform:39908e19-6c4b-4b44-82ea-07d83ab2ee32",
+          "rawReasons": [
+            "hd_early_exit_under_60s",
+            "recorded_resignation_final"
+          ],
+          "replayHash": "a7ac5f71734cf58d239e474a022f95649447d2da97e525ae2733c1d95bb59312",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "2v2",
+            "playerCount": 4,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "a7ac5f71734cf58d239e474a022f95649447d2da97e525ae2733c1d95bb59312",
+            "a7ac5f71734cf58d239e474a022f95649447d2da97e525ae2733c1d95bb59312"
+          ],
+          "sourceIds": [
+            27239,
+            27203
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 26028,
+          "logicalBattleId": "platform:4dd4105a-06b0-f149-a8b8-5024498e241c",
+          "rawReasons": [
+            "watcher_final_submission"
+          ],
+          "replayHash": "fcdb0845164b3eab505b888ab68d104e2cdbbf0ba16dff1d18a5ae935a1509af",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "1v1",
+            "playerCount": 2,
+            "reason": "two_exact_participants"
+          },
+          "sourceHashes": [
+            "fcdb0845164b3eab505b888ab68d104e2cdbbf0ba16dff1d18a5ae935a1509af"
+          ],
+          "sourceIds": [
+            26028
+          ]
+        },
+        {
+          "blockers": [
+            "roster_incomplete:team_id_missing"
+          ],
+          "id": 25985,
+          "logicalBattleId": "platform:e17c5e79-74d8-9542-97fe-06330b6d9706",
+          "rawReasons": [
+            "automatic_result_evidence",
+            "team_resignation_not_complete"
+          ],
+          "replayHash": "451ac8b4712a7a0d05daabb42dfd946014084698ef04781d4822d5e8c1681320",
+          "result": "loss",
+          "roster": {
+            "complete": false,
+            "format": "4v4",
+            "playerCount": 8,
+            "reason": "team_id_missing"
+          },
+          "sourceHashes": [
+            "451ac8b4712a7a0d05daabb42dfd946014084698ef04781d4822d5e8c1681320",
+            "451ac8b4712a7a0d05daabb42dfd946014084698ef04781d4822d5e8c1681320"
+          ],
+          "sourceIds": [
+            25985,
+            25954
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 25965,
+          "logicalBattleId": "platform:09d427d3-c985-c344-9505-65513aeb9bb9",
+          "rawReasons": [
+            "team_resignation_not_complete"
+          ],
+          "replayHash": "3a2b252ce8b3180ba37e25a33a9cd7bea9549fe20bb94c8692148078a2eda885",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "3v3",
+            "playerCount": 6,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "3a2b252ce8b3180ba37e25a33a9cd7bea9549fe20bb94c8692148078a2eda885",
+            "3a2b252ce8b3180ba37e25a33a9cd7bea9549fe20bb94c8692148078a2eda885"
+          ],
+          "sourceIds": [
+            25965,
+            25951
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 25907,
+          "logicalBattleId": "platform:5e710637-ecc6-6f40-b014-c9ab46c6c86f",
+          "rawReasons": [
+            "watcher_final_submission"
+          ],
+          "replayHash": "60440a17490b05a0f9ccd690eaec5f83620e32fa1a3716fe98682bf740d562c9",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "3v3",
+            "playerCount": 6,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "60440a17490b05a0f9ccd690eaec5f83620e32fa1a3716fe98682bf740d562c9"
+          ],
+          "sourceIds": [
+            25907
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "roster_incomplete:participant_count_incomplete"
+          ],
+          "id": 25892,
+          "logicalBattleId": "platform:2fde8b5b-1941-2c47-aa33-699236502f8c",
+          "rawReasons": [
+            "team_resignation_not_complete"
+          ],
+          "replayHash": "fb273754e8d31c458b6696508a2562edb90ab961072c34f7b3951a34745491d4",
+          "result": "unknown",
+          "roster": {
+            "complete": false,
+            "format": "unknown",
+            "playerCount": 3,
+            "reason": "participant_count_incomplete"
+          },
+          "sourceHashes": [
+            "fb273754e8d31c458b6696508a2562edb90ab961072c34f7b3951a34745491d4",
+            "fb273754e8d31c458b6696508a2562edb90ab961072c34f7b3951a34745491d4"
+          ],
+          "sourceIds": [
+            25892,
+            25854
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 25882,
+          "logicalBattleId": "platform:2d9c20db-3715-0b41-9f6b-d24de8ae735f",
+          "rawReasons": [
+            "hd_early_exit_under_60s",
+            "watcher_live_iteration"
+          ],
+          "replayHash": "943a1bf63266c368b449a15fba479693f585e59af3a709edfbb33f2a4322c4eb",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "4v4",
+            "playerCount": 8,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "943a1bf63266c368b449a15fba479693f585e59af3a709edfbb33f2a4322c4eb",
+            "943a1bf63266c368b449a15fba479693f585e59af3a709edfbb33f2a4322c4eb"
+          ],
+          "sourceIds": [
+            25882,
+            25840
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 25693,
+          "logicalBattleId": "platform:fc4da8f6-7f2d-6442-afca-b30ebf4f5631",
+          "rawReasons": [
+            "team_resignation_not_complete"
+          ],
+          "replayHash": "613238f1e19fe332ffe094bdbaf306eb35796042b476b3722b0c23e02c65a3cb",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "3v3",
+            "playerCount": 6,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "613238f1e19fe332ffe094bdbaf306eb35796042b476b3722b0c23e02c65a3cb",
+            "613238f1e19fe332ffe094bdbaf306eb35796042b476b3722b0c23e02c65a3cb"
+          ],
+          "sourceIds": [
+            25693,
+            25609
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 25683,
+          "logicalBattleId": "platform:54aef3e4-8589-0a4e-a10c-fa25572e58bd",
+          "rawReasons": [
+            "watcher_final_submission",
+            "watcher_live_iteration"
+          ],
+          "replayHash": "887581127fe0b1571a3befc7d448fab3b43ff86e1dded619b8fbf6eb91b5d5b3",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "2v2",
+            "playerCount": 4,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "887581127fe0b1571a3befc7d448fab3b43ff86e1dded619b8fbf6eb91b5d5b3",
+            "887581127fe0b1571a3befc7d448fab3b43ff86e1dded619b8fbf6eb91b5d5b3"
+          ],
+          "sourceIds": [
+            25683,
+            25642
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 25671,
+          "logicalBattleId": "platform:7ab94f93-776e-cb4c-9fd3-d6a9173fcf69",
+          "rawReasons": [
+            "hd_early_exit_under_60s"
+          ],
+          "replayHash": "6f62aa3d6a3daf905f35642ed4d534f0bb8bbdacb855d0cf31d7d1ca6686f33f",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "3v3",
+            "playerCount": 6,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "6f62aa3d6a3daf905f35642ed4d534f0bb8bbdacb855d0cf31d7d1ca6686f33f"
+          ],
+          "sourceIds": [
+            25671
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 25634,
+          "logicalBattleId": "platform:677b8fcf-6ef9-894e-bff4-e9f4eea150ee",
+          "rawReasons": [
+            "hd_early_exit_under_60s",
+            "recorded_resignation_final"
+          ],
+          "replayHash": "032e3937d3b51a524ec07b17b8523fe84a77d034f14658588b08261ee6fe405f",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "2v2",
+            "playerCount": 4,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "032e3937d3b51a524ec07b17b8523fe84a77d034f14658588b08261ee6fe405f",
+            "032e3937d3b51a524ec07b17b8523fe84a77d034f14658588b08261ee6fe405f"
+          ],
+          "sourceIds": [
+            25634,
+            25613
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 25620,
+          "logicalBattleId": "platform:8ba25217-1ed0-b94c-bc11-e0edb6be32a1",
+          "rawReasons": [
+            "hd_early_exit_under_60s",
+            "recorded_resignation_final"
+          ],
+          "replayHash": "416b8ce86aedea3869dacbd83ab6953848532f33c7b19a6bd315521d832b6814",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "3v3",
+            "playerCount": 6,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "416b8ce86aedea3869dacbd83ab6953848532f33c7b19a6bd315521d832b6814",
+            "416b8ce86aedea3869dacbd83ab6953848532f33c7b19a6bd315521d832b6814"
+          ],
+          "sourceIds": [
+            25620,
+            25608
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 25590,
+          "logicalBattleId": "platform:023ae091-36e1-e645-889d-a423a83ff0a7",
+          "rawReasons": [
+            "watcher_final_submission"
+          ],
+          "replayHash": "06e3d445571e32419f910482b93adce93024c26968eec6cc3060c9999580a09e",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "2v2",
+            "playerCount": 4,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "06e3d445571e32419f910482b93adce93024c26968eec6cc3060c9999580a09e"
+          ],
+          "sourceIds": [
+            25590
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result"
+          ],
+          "id": 25583,
+          "logicalBattleId": "platform:0129a56f-b68b-de43-ab1a-93bc60494dee",
+          "rawReasons": [
+            "team_resignation_not_complete"
+          ],
+          "replayHash": "8573c30b06fcc3b9dda26446127e7247b72441c985134de0b850156fa21f3f10",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "4v4",
+            "playerCount": 8,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "8573c30b06fcc3b9dda26446127e7247b72441c985134de0b850156fa21f3f10",
+            "8573c30b06fcc3b9dda26446127e7247b72441c985134de0b850156fa21f3f10"
+          ],
+          "sourceIds": [
+            25583,
+            25525
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 25578,
+          "logicalBattleId": "platform:3c2f61b8-2e28-ed47-961a-98ee07886eb3",
+          "rawReasons": [
+            "watcher_final_submission"
+          ],
+          "replayHash": "67b77acb73eae0cdea793fba30d53bdabfbdc8aedc3aae3612aeaf1269867c68",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "1v1",
+            "playerCount": 2,
+            "reason": "two_exact_participants"
+          },
+          "sourceHashes": [
+            "67b77acb73eae0cdea793fba30d53bdabfbdc8aedc3aae3612aeaf1269867c68"
+          ],
+          "sourceIds": [
+            25578
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 25006,
+          "logicalBattleId": "platform:7c55b1a3-15f1-5f46-b9e5-c9fc27937e72",
+          "rawReasons": [
+            "watcher_final_submission"
+          ],
+          "replayHash": "e4c16886b1cff7e1e95de9bb411eba1fdd391639b7cd57326b397c2b704efca3",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "1v1",
+            "playerCount": 2,
+            "reason": "two_exact_participants"
+          },
+          "sourceHashes": [
+            "e4c16886b1cff7e1e95de9bb411eba1fdd391639b7cd57326b397c2b704efca3"
+          ],
+          "sourceIds": [
+            25006
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 24975,
+          "logicalBattleId": "platform:17eadee4-4626-b84d-9dfa-39d42b6e2f13",
+          "rawReasons": [
+            "hd_early_exit_under_60s"
+          ],
+          "replayHash": "538cf387005461ae80ded0a7ad94db181b81224fc23ba31b8a54a69d0a8d3904",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "2v2",
+            "playerCount": 4,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "538cf387005461ae80ded0a7ad94db181b81224fc23ba31b8a54a69d0a8d3904"
+          ],
+          "sourceIds": [
+            24975
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "roster_incomplete:participant_count_incomplete",
+            "disconnected/review"
+          ],
+          "id": 24972,
+          "logicalBattleId": "platform:e42fc692-0880-0c42-b5da-a04b45957716",
+          "rawReasons": [
+            "team_resignation_not_complete"
+          ],
+          "replayHash": "971f80151432c9a91c2a65ac11566be2d0dc7bfb0563fa156e7b68bd4696a823",
+          "result": "unknown",
+          "roster": {
+            "complete": false,
+            "format": "unknown",
+            "playerCount": 5,
+            "reason": "participant_count_incomplete"
+          },
+          "sourceHashes": [
+            "971f80151432c9a91c2a65ac11566be2d0dc7bfb0563fa156e7b68bd4696a823"
+          ],
+          "sourceIds": [
+            24972
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 24954,
+          "logicalBattleId": "platform:d0ab393c-48b4-b449-80a0-d381e8a131b9",
+          "rawReasons": [
+            "hd_early_exit_under_60s",
+            "watcher_live_iteration"
+          ],
+          "replayHash": "7c9d0fc972ff2b2c34b8df726571fddf38af3a303266ad78763b95cbc4fb13ea",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "2v2",
+            "playerCount": 4,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "7c9d0fc972ff2b2c34b8df726571fddf38af3a303266ad78763b95cbc4fb13ea",
+            "7c9d0fc972ff2b2c34b8df726571fddf38af3a303266ad78763b95cbc4fb13ea"
+          ],
+          "sourceIds": [
+            24954,
+            24939
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 24699,
+          "logicalBattleId": "platform:26a76260-d5f7-9b4b-ad67-b44916776d20",
+          "rawReasons": [
+            "hd_early_exit_under_60s"
+          ],
+          "replayHash": "e6b76ab2651a39f17377fa8164c8448ff55984c9c2acdccadb49ccaf93bbc52e",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "3v3",
+            "playerCount": 6,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "e6b76ab2651a39f17377fa8164c8448ff55984c9c2acdccadb49ccaf93bbc52e"
+          ],
+          "sourceIds": [
+            24699
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result"
+          ],
+          "id": 24654,
+          "logicalBattleId": "platform:0bba4248-5ac0-3a4e-bd92-af8f370117bb",
+          "rawReasons": [
+            "team_resignation_not_complete"
+          ],
+          "replayHash": "c88784fc4e4d212e885194c4463c19598d6fbd8e1e7258d1696ac108f3fcab74",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "4v4",
+            "playerCount": 8,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "c88784fc4e4d212e885194c4463c19598d6fbd8e1e7258d1696ac108f3fcab74",
+            "c88784fc4e4d212e885194c4463c19598d6fbd8e1e7258d1696ac108f3fcab74"
+          ],
+          "sourceIds": [
+            24654,
+            24631
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 24306,
+          "logicalBattleId": "platform:9f862c50-5990-8b4a-aa88-b3bb2b1a8d64",
+          "rawReasons": [
+            "watcher_final_submission"
+          ],
+          "replayHash": "47d7e3f34a3e7a3841291b4c4e65b7fa7062d46b1691290f6a00a8a66157a793",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "1v1",
+            "playerCount": 2,
+            "reason": "two_exact_participants"
+          },
+          "sourceHashes": [
+            "47d7e3f34a3e7a3841291b4c4e65b7fa7062d46b1691290f6a00a8a66157a793"
+          ],
+          "sourceIds": [
+            24306
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "stale_or_missing_current_parser"
+          ],
+          "id": 9159,
+          "logicalBattleId": "platform:4cec6983-21f8-f843-995b-384f50d7285d",
+          "rawReasons": [
+            "team_resignation_not_complete",
+            "recorded_resignation_final"
+          ],
+          "replayHash": "bd3fcc8cd5ee1b81d606fa4d0bdeedfaccd547cb62e3b8ce284e5e34938ebb95",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "1v1",
+            "playerCount": 2,
+            "reason": "two_exact_participants"
+          },
+          "sourceHashes": [
+            "bd3fcc8cd5ee1b81d606fa4d0bdeedfaccd547cb62e3b8ce284e5e34938ebb95",
+            "bd3fcc8cd5ee1b81d606fa4d0bdeedfaccd547cb62e3b8ce284e5e34938ebb95"
+          ],
+          "sourceIds": [
+            9159,
+            9153
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 24276,
+          "logicalBattleId": "platform:cec179f8-005d-8c42-8164-52a082aebec2",
+          "rawReasons": [
+            "watcher_final_submission",
+            "watcher_live_iteration"
+          ],
+          "replayHash": "11f69d7979f495e59038ca77664aefe7500230d6af1459cddf490d03c89a7f32",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "2v2",
+            "playerCount": 4,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "11f69d7979f495e59038ca77664aefe7500230d6af1459cddf490d03c89a7f32",
+            "11f69d7979f495e59038ca77664aefe7500230d6af1459cddf490d03c89a7f32"
+          ],
+          "sourceIds": [
+            24276,
+            24258
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 24232,
+          "logicalBattleId": "platform:3b4d7658-ccd8-3b45-a3cc-844a8c41d943",
+          "rawReasons": [
+            "team_resignation_not_complete"
+          ],
+          "replayHash": "bb0e6826101ffbf980eac39dd405d759a941dbaf15ffa96de6a16e224e8a5e44",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "3v3",
+            "playerCount": 6,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "bb0e6826101ffbf980eac39dd405d759a941dbaf15ffa96de6a16e224e8a5e44",
+            "bb0e6826101ffbf980eac39dd405d759a941dbaf15ffa96de6a16e224e8a5e44"
+          ],
+          "sourceIds": [
+            24232,
+            24216
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result"
+          ],
+          "id": 23841,
+          "logicalBattleId": "platform:50950e0d-8c86-014e-8a36-89d8f8787f1a",
+          "rawReasons": [
+            "team_resignation_not_complete"
+          ],
+          "replayHash": "462de54699f17560bd2b698214747e183a1e5fd7e951caad8e7ea5ec36b58b75",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "4v4",
+            "playerCount": 8,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "462de54699f17560bd2b698214747e183a1e5fd7e951caad8e7ea5ec36b58b75",
+            "462de54699f17560bd2b698214747e183a1e5fd7e951caad8e7ea5ec36b58b75"
+          ],
+          "sourceIds": [
+            23841,
+            23817
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 23124,
+          "logicalBattleId": "platform:33ab39c2-f5c7-c444-870e-0edb06fbc499",
+          "rawReasons": [
+            "watcher_final_submission",
+            "watcher_live_iteration"
+          ],
+          "replayHash": "d80e0b9f1e0d5a3b2a3032431dbbed332db4a0192eae02c41de6d8b358a3c52b",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "2v2",
+            "playerCount": 4,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "d80e0b9f1e0d5a3b2a3032431dbbed332db4a0192eae02c41de6d8b358a3c52b",
+            "d80e0b9f1e0d5a3b2a3032431dbbed332db4a0192eae02c41de6d8b358a3c52b"
+          ],
+          "sourceIds": [
+            23124,
+            23111
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 21046,
+          "logicalBattleId": "platform:6e51f54c-76e4-554d-94fc-12c1109c855b",
+          "rawReasons": [
+            "watcher_final_submission"
+          ],
+          "replayHash": "3cf39d1165255c06d06a496b56970ff14e368e615f30830a14c89b5a57616438",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "1v1",
+            "playerCount": 2,
+            "reason": "two_exact_participants"
+          },
+          "sourceHashes": [
+            "3cf39d1165255c06d06a496b56970ff14e368e615f30830a14c89b5a57616438"
+          ],
+          "sourceIds": [
+            21046
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 21018,
+          "logicalBattleId": "platform:6a4e75c7-0ffe-bc4d-ae9d-ff8717d0eda8",
+          "rawReasons": [
+            "watcher_final_submission"
+          ],
+          "replayHash": "6419acec4ac591bf78ef34f8e59f8ab389b1c8525f6bb82e26971042e12406db",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "3v3",
+            "playerCount": 6,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "6419acec4ac591bf78ef34f8e59f8ab389b1c8525f6bb82e26971042e12406db"
+          ],
+          "sourceIds": [
+            21018
+          ]
+        }
+      ]
+    },
+    {
+      "accountMatches": [],
+      "aliases": [
+        "41, mYsTikaL_VeGeTa",
+        "Brian_de_Bois, RiseOfCobra_",
+        "IYIaYaN_I3L00D",
+        "Patches, mYstikaL_VeGeTa",
+        "Praxes, RiseOfCobra_",
+        "RiseOfCobra_",
+        "_kiLLa, mYsTikaL_VeGeTa",
+        "_kiLLa, mYstikaL_VeGeTa",
+        "mYsTiKaL_Goten, mYsTikaL_VeGeTa",
+        "mYsTikaL_VeGeTa",
+        "mYstikaL_VeGeTa",
+        "somniosator, RiseOfCobra_"
+      ],
+      "blockerCounts": {
+        "disconnected/review": 15,
+        "roster_incomplete:participant_count_incomplete": 1,
+        "roster_incomplete:team_count_3": 1,
+        "unknown_result": 17
+      },
+      "identityAmbiguous": false,
+      "name": "mYsTikaL_VeGeTa",
+      "nameOnlyRows": [],
+      "rawBlockerCounts": {
+        "hd_early_exit_under_60s": 4,
+        "hd_metadata_fragment_body_recovery": 1,
+        "team_resignation_not_complete": 6,
+        "watcher_final_submission": 7,
+        "watcher_live_iteration": 9
+      },
+      "resolved": 339,
+      "resultResolved": 339,
+      "sourceRowCount": 685,
+      "steamIds": [
+        "76561199849204394"
+      ],
+      "total": 356,
+      "uid": null,
+      "unknown": 17,
+      "unknownPercentage": 4.775280898876405,
+      "unknown_cases": [
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 48790,
+          "logicalBattleId": "platform:68670b3f-0c91-a243-8c6a-2cb4d6970bc7",
+          "rawReasons": [
+            "team_resignation_not_complete"
+          ],
+          "replayHash": "5e3b67aeef70527bedbd8d1e1338ed740b4c930c6d800172fc17b513b2f54ab8",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "3v3",
+            "playerCount": 6,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "5e3b67aeef70527bedbd8d1e1338ed740b4c930c6d800172fc17b513b2f54ab8",
+            "5e3b67aeef70527bedbd8d1e1338ed740b4c930c6d800172fc17b513b2f54ab8"
+          ],
+          "sourceIds": [
+            48790,
+            48775
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 41039,
+          "logicalBattleId": "platform:576b5daf-431e-7041-90d3-8e0507614f1a",
+          "rawReasons": [
+            "watcher_final_submission",
+            "watcher_live_iteration"
+          ],
+          "replayHash": "ec16eb90ad6d944090295ffdcb3e2760e76b2525d661fcc1e051f5e285e246f6",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "3v3",
+            "playerCount": 6,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "ec16eb90ad6d944090295ffdcb3e2760e76b2525d661fcc1e051f5e285e246f6",
+            "ec16eb90ad6d944090295ffdcb3e2760e76b2525d661fcc1e051f5e285e246f6"
+          ],
+          "sourceIds": [
+            41039,
+            41034
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 35649,
+          "logicalBattleId": "platform:594b4202-f10e-674d-bc76-d0916e24c192",
+          "rawReasons": [
+            "team_resignation_not_complete"
+          ],
+          "replayHash": "75982d6bacb5bc5e72a3cc541e30e9097108c290120ad2875f821e13fb51d15c",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "4v4",
+            "playerCount": 8,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "75982d6bacb5bc5e72a3cc541e30e9097108c290120ad2875f821e13fb51d15c",
+            "75982d6bacb5bc5e72a3cc541e30e9097108c290120ad2875f821e13fb51d15c"
+          ],
+          "sourceIds": [
+            35649,
+            35622
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "roster_incomplete:participant_count_incomplete",
+            "disconnected/review"
+          ],
+          "id": 35637,
+          "logicalBattleId": "platform:79a65f80-3cb2-0140-b543-83a3df8eca45",
+          "rawReasons": [
+            "hd_metadata_fragment_body_recovery"
+          ],
+          "replayHash": "cd7f5dc222f5247b13b8c0d96f949689fdca7105f77f912ab574f6aea6ce650c",
+          "result": "unknown",
+          "roster": {
+            "complete": false,
+            "format": "unknown",
+            "playerCount": 1,
+            "reason": "participant_count_incomplete"
+          },
+          "sourceHashes": [
+            "cd7f5dc222f5247b13b8c0d96f949689fdca7105f77f912ab574f6aea6ce650c",
+            "cd7f5dc222f5247b13b8c0d96f949689fdca7105f77f912ab574f6aea6ce650c"
+          ],
+          "sourceIds": [
+            35637,
+            35611
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "roster_incomplete:team_count_3",
+            "disconnected/review"
+          ],
+          "id": 35629,
+          "logicalBattleId": "platform:5781a531-e20e-0946-898f-7f005f31be27",
+          "rawReasons": [
+            "watcher_final_submission",
+            "watcher_live_iteration"
+          ],
+          "replayHash": "4dd92a85d65f24c36d42ba9b95879ecff72a93aaa82e615806a0a3eb530b877d",
+          "result": "unknown",
+          "roster": {
+            "complete": false,
+            "format": "4v4",
+            "playerCount": 8,
+            "reason": "team_count_3"
+          },
+          "sourceHashes": [
+            "4dd92a85d65f24c36d42ba9b95879ecff72a93aaa82e615806a0a3eb530b877d",
+            "4dd92a85d65f24c36d42ba9b95879ecff72a93aaa82e615806a0a3eb530b877d"
+          ],
+          "sourceIds": [
+            35629,
+            35610
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result"
+          ],
+          "id": 30111,
+          "logicalBattleId": "platform:61e9ae30-c559-4243-9acf-6acdc55427fc",
+          "rawReasons": [
+            "team_resignation_not_complete"
+          ],
+          "replayHash": "7e6d3eb226ab92276ad4c48a0f594697049dff4e07bf227105ed3cbc653cc9e5",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "3v3",
+            "playerCount": 6,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "7e6d3eb226ab92276ad4c48a0f594697049dff4e07bf227105ed3cbc653cc9e5",
+            "7e6d3eb226ab92276ad4c48a0f594697049dff4e07bf227105ed3cbc653cc9e5"
+          ],
+          "sourceIds": [
+            30111,
+            30041
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 30078,
+          "logicalBattleId": "platform:7d7324c7-6942-6747-9ac9-3027140b7410",
+          "rawReasons": [
+            "hd_early_exit_under_60s",
+            "watcher_live_iteration"
+          ],
+          "replayHash": "1778e0ba246be18a22850e25a1ad5ccabcc14fc72306038704f0a1e59f85189e",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "4v4",
+            "playerCount": 8,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "1778e0ba246be18a22850e25a1ad5ccabcc14fc72306038704f0a1e59f85189e",
+            "1778e0ba246be18a22850e25a1ad5ccabcc14fc72306038704f0a1e59f85189e"
+          ],
+          "sourceIds": [
+            30078,
+            30056
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 30071,
+          "logicalBattleId": "platform:e8cbf0d0-351d-ac4a-ad35-90075ba21491",
+          "rawReasons": [
+            "watcher_final_submission",
+            "watcher_live_iteration"
+          ],
+          "replayHash": "b0e465bf0401006305526222d953702e48b82bece54b0a44499757e8448dcfe8",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "4v4",
+            "playerCount": 8,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "b0e465bf0401006305526222d953702e48b82bece54b0a44499757e8448dcfe8",
+            "b0e465bf0401006305526222d953702e48b82bece54b0a44499757e8448dcfe8"
+          ],
+          "sourceIds": [
+            30071,
+            30048
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 28453,
+          "logicalBattleId": "platform:fa26b4cb-8dfc-d84a-b16b-28362d35a50d",
+          "rawReasons": [
+            "watcher_final_submission",
+            "watcher_live_iteration"
+          ],
+          "replayHash": "6d7e2a41bb36fcfc036703bd58828aa7214b4a4cf6d62bb62ab5d5ac7a4bc2a1",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "1v1",
+            "playerCount": 2,
+            "reason": "two_exact_participants"
+          },
+          "sourceHashes": [
+            "6d7e2a41bb36fcfc036703bd58828aa7214b4a4cf6d62bb62ab5d5ac7a4bc2a1",
+            "6d7e2a41bb36fcfc036703bd58828aa7214b4a4cf6d62bb62ab5d5ac7a4bc2a1"
+          ],
+          "sourceIds": [
+            28453,
+            28440
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 27235,
+          "logicalBattleId": "platform:5221413c-aca2-e74c-95bd-b7aa6972acf1",
+          "rawReasons": [
+            "team_resignation_not_complete"
+          ],
+          "replayHash": "9508a785d113226ac8a8a7ae9bd9ddfb402ede9c7c9a34def2c39198bb18ede9",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "2v2",
+            "playerCount": 4,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "9508a785d113226ac8a8a7ae9bd9ddfb402ede9c7c9a34def2c39198bb18ede9",
+            "9508a785d113226ac8a8a7ae9bd9ddfb402ede9c7c9a34def2c39198bb18ede9"
+          ],
+          "sourceIds": [
+            27235,
+            27209
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 25872,
+          "logicalBattleId": "platform:97e92ce0-ce1b-2c4a-af15-59385e0f85ad",
+          "rawReasons": [
+            "watcher_final_submission",
+            "watcher_live_iteration"
+          ],
+          "replayHash": "e124c688b9634008602411c9b92c8ad6835f8eb104666855f94d3fa0b6d2a1a9",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "4v4",
+            "playerCount": 8,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "e124c688b9634008602411c9b92c8ad6835f8eb104666855f94d3fa0b6d2a1a9",
+            "e124c688b9634008602411c9b92c8ad6835f8eb104666855f94d3fa0b6d2a1a9"
+          ],
+          "sourceIds": [
+            25872,
+            25853
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 25782,
+          "logicalBattleId": "platform:d710e383-ec04-4e45-a531-4f0e4e9b0b5d",
+          "rawReasons": [
+            "hd_early_exit_under_60s",
+            "team_resignation_not_complete"
+          ],
+          "replayHash": "3591e140b5f12f6ba06e4341a7adb0b16f1b8d02ea3d7042f6748be8d6397dda",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "2v2",
+            "playerCount": 4,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "3591e140b5f12f6ba06e4341a7adb0b16f1b8d02ea3d7042f6748be8d6397dda",
+            "8211bfe7dced9085b199a7c707c466764673721676d4800c112db12054ad2719"
+          ],
+          "sourceIds": [
+            25782,
+            25781
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 25717,
+          "logicalBattleId": "platform:f80cd1ba-644e-fc4d-9961-b79d8bf90141",
+          "rawReasons": [
+            "watcher_final_submission",
+            "watcher_live_iteration"
+          ],
+          "replayHash": "0c4abdb44f7002e96163f43919e9de59d3e84568b41040d8aaeb7d652ad9bb58",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "4v4",
+            "playerCount": 8,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "0c4abdb44f7002e96163f43919e9de59d3e84568b41040d8aaeb7d652ad9bb58",
+            "0c4abdb44f7002e96163f43919e9de59d3e84568b41040d8aaeb7d652ad9bb58"
+          ],
+          "sourceIds": [
+            25717,
+            25705
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 25627,
+          "logicalBattleId": "platform:4db7724e-7ee1-654a-b229-417d24701acb",
+          "rawReasons": [
+            "hd_early_exit_under_60s",
+            "watcher_live_iteration"
+          ],
+          "replayHash": "7dcf5f63baad58ec47f6696862531a22514139fd0abedecf65bfa7f5212c825c",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "3v3",
+            "playerCount": 6,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "7dcf5f63baad58ec47f6696862531a22514139fd0abedecf65bfa7f5212c825c",
+            "7dcf5f63baad58ec47f6696862531a22514139fd0abedecf65bfa7f5212c825c"
+          ],
+          "sourceIds": [
+            25627,
+            25621
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 24982,
+          "logicalBattleId": "platform:b3e0ab93-8b18-b44a-98c9-ab199f4a07e3",
+          "rawReasons": [
+            "watcher_final_submission"
+          ],
+          "replayHash": "abe43752dd1efb024f36154237bf9eb8540cefb9fbdf121dac47a64fc92cb5f0",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "3v3",
+            "playerCount": 6,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "abe43752dd1efb024f36154237bf9eb8540cefb9fbdf121dac47a64fc92cb5f0"
+          ],
+          "sourceIds": [
+            24982
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result"
+          ],
+          "id": 23097,
+          "logicalBattleId": "platform:bbbcdad8-6592-e54a-a511-c14a8cb1bbb9",
+          "rawReasons": [
+            "team_resignation_not_complete"
+          ],
+          "replayHash": "992d8d8a4041245e8fbac88c599005a8369ea67cfdfdc6b502d6637e1d03dc06",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "1v1",
+            "playerCount": 2,
+            "reason": "two_exact_participants"
+          },
+          "sourceHashes": [
+            "992d8d8a4041245e8fbac88c599005a8369ea67cfdfdc6b502d6637e1d03dc06",
+            "992d8d8a4041245e8fbac88c599005a8369ea67cfdfdc6b502d6637e1d03dc06"
+          ],
+          "sourceIds": [
+            23097,
+            23085
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 23073,
+          "logicalBattleId": "platform:108fa91c-725d-404f-9b18-76a874eb991e",
+          "rawReasons": [
+            "hd_early_exit_under_60s",
+            "watcher_live_iteration"
+          ],
+          "replayHash": "d3c8b23fd22828203e23ec9847b307e4f209414c96824f35220d03b1ecd6ebec",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "4v4",
+            "playerCount": 8,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "d3c8b23fd22828203e23ec9847b307e4f209414c96824f35220d03b1ecd6ebec",
+            "d3c8b23fd22828203e23ec9847b307e4f209414c96824f35220d03b1ecd6ebec"
+          ],
+          "sourceIds": [
+            23073,
+            23056
+          ]
+        }
+      ]
+    },
+    {
+      "accountMatches": [],
+      "aliases": [
+        "mYsTikaL Broly, mYsTikaL JiReN",
+        "mYsTikaL JiReN",
+        "mYsTikaL_GoHaN, mYsTikaL JiReN",
+        "mYsTikaL_TrUnKs, mYsTikaL JiReN",
+        "somniosator, mYsTikaL JiReN"
+      ],
+      "blockerCounts": {
+        "disconnected/review": 22,
+        "stale_or_missing_current_parser": 1,
+        "unknown_result": 22
+      },
+      "identityAmbiguous": false,
+      "name": "mYsTikaL JiReN",
+      "nameOnlyRows": [],
+      "rawBlockerCounts": {
+        "hd_early_exit_under_60s": 4,
+        "hd_metadata_fragment_only_recovery": 2,
+        "header_only_summary_fallback": 1,
+        "team_resignation_not_complete": 4,
+        "watcher_final_submission": 13,
+        "watcher_inferred_opponent_win_on_incomplete_1v1": 1,
+        "watcher_live_iteration": 14
+      },
+      "resolved": 233,
+      "resultResolved": 233,
+      "sourceRowCount": 1769,
+      "steamIds": [
+        "76561198754754435"
+      ],
+      "total": 255,
+      "uid": null,
+      "unknown": 22,
+      "unknownPercentage": 8.627450980392156,
+      "unknown_cases": [
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 50810,
+          "logicalBattleId": "platform:049a354b-6832-b543-8678-9296cfffaff6",
+          "rawReasons": [
+            "watcher_final_submission",
+            "hd_metadata_fragment_only_recovery",
+            "watcher_live_iteration"
+          ],
+          "replayHash": "53b456a2c263af2323eafcce0142d98b9e005c80ae24582d563a2eb6493b96c3",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "3v3",
+            "playerCount": 6,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "53b456a2c263af2323eafcce0142d98b9e005c80ae24582d563a2eb6493b96c3",
+            "996ef38f6a4d6b820d0901eeef11369493d4f56f53e3772a6422afa0992dc290",
+            "fdabeeaffee8a9bdba54cf6f1b448573df6e54044a3401f95dc3eff76baed482",
+            "19fc016df68706e4f8a0495c678940535bbe44b59fe2b1a0ff77633599d1a64d",
+            "1a63746ba54d315a96f3250894586617d366c4254e6644e09fc22817bcba4131",
+            "09f6494c56a6419c46533c10025e542028d4bd9792959ff3824392e3c93fc7a4",
+            "9cdea9137efdba055ddc4cfcc39bb5dd894427246000934992d30bfc9d145ef4",
+            "dc0df565a416373f303ad62a739513fb74f976f996d775b5e563d18a06f5d527",
+            "50fba908c0ff79d136c2ee1ec757032323de55dc0718bef4f14e15dee1cb3eff",
+            "86c63f8067db24ae00c21fff15457e65d907594273fb4212faaaa9def795c263",
+            "7f1dbf6e1913e9a9365bd2d0c0beb456c1f3c0d4c642b53d79c0cf54b9b73ff9",
+            "6a5fb34c23328fc97fadef47de16fdc5186afc93fbb5a848e58d6f63c904f969",
+            "53b456a2c263af2323eafcce0142d98b9e005c80ae24582d563a2eb6493b96c3"
+          ],
+          "sourceIds": [
+            50810,
+            28526,
+            28529,
+            28531,
+            28533,
+            28536,
+            28538,
+            28540,
+            28542,
+            28545,
+            28547,
+            28549,
+            50800
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 50564,
+          "logicalBattleId": "platform:b44ba7ef-75ac-d048-bbde-648001cf7b2f",
+          "rawReasons": [
+            "team_resignation_not_complete",
+            "watcher_live_iteration"
+          ],
+          "replayHash": "992edebcf07e54902a250afffce529da306469460f0af49d24b1b98340212856",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "4v4",
+            "playerCount": 8,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "992edebcf07e54902a250afffce529da306469460f0af49d24b1b98340212856",
+            "7383d9235b4d6ce50d69f5bdec980c0442706c9a3e6ffd94de6b5089ab443417",
+            "62837a883824a64d429c7696913fb78d07aff0e4c6b2278bb73c66ee745e4c52"
+          ],
+          "sourceIds": [
+            50564,
+            50563,
+            50565
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 46552,
+          "logicalBattleId": "platform:7b72f74a-62be-1d4f-ac24-791dbd29dcdf",
+          "rawReasons": [
+            "watcher_final_submission",
+            "watcher_live_iteration"
+          ],
+          "replayHash": "632869cb185def240caa0072c56c33de90bfe6ba1fcc8c5473fd8117e9d375e8",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "2v2",
+            "playerCount": 4,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "632869cb185def240caa0072c56c33de90bfe6ba1fcc8c5473fd8117e9d375e8",
+            "d4a129ff6c5f2b3178bef7e2a679c54ce3a38c40a6c147025f159ba0d52bee67",
+            "02a255151a53367546b98aa37a9e443aa902282ac4792f9959b27f5d3ecd27eb",
+            "6cbe5cda972b0d9b88c032b294bb11653c749123457f0ded686b397cfdb91517",
+            "e596268f77ed0a801bf01480ca969a294514f62ccd69386383ebb274514dfd9d"
+          ],
+          "sourceIds": [
+            46552,
+            46548,
+            46549,
+            46550,
+            46551
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 46546,
+          "logicalBattleId": "platform:1311122e-68ee-2946-9e2b-57bb1996029d",
+          "rawReasons": [
+            "watcher_final_submission",
+            "watcher_live_iteration"
+          ],
+          "replayHash": "56243cb0e6aca0433d9d2c263c91873cb2fbe3f5e3b81abf8e1e44dd2cd2d088",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "2v2",
+            "playerCount": 4,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "56243cb0e6aca0433d9d2c263c91873cb2fbe3f5e3b81abf8e1e44dd2cd2d088",
+            "1a131ef8fdb1e4f687b67347dcf3353b3be2b690bf60eba6479b426704a43347",
+            "14de27246d889ccf9f6d9bfe9b565d80be1e9ec5f5bf80e689ef81b203b9c11a",
+            "b5418a0f5e3e69cd7fd0ad08a4ba27d1b47262391cde4d1b21091974cbdd1db7",
+            "cc8c4c0a8903573ba5e37e3e1d959262efe64dfc10fad4abb8642fea30e8d769",
+            "7fbc81fb661fa69be6b08b4cb3a24dd71b155895b275b0f6d3b5a303d1dd4fdd",
+            "24c7bed4922da58d885ce5aadd8dce13649a7796783ea81e9565e0251a98a47d",
+            "076da06faa39e688ca7dcb3aad3d6812aa5cd2eaaece7acfb34c7c1f4bcea1ea",
+            "44d60a8e690ecf00f881a4a3bec65b342c16739449cfcdc692f0dafa33a13f8a",
+            "e70bdcffbf8b3a1d4b49501d1eddd3942cc5cc0b842c9b3da4ba505aa3da6f05",
+            "89a3abeb841928570df706c7366cd0ad9e71f3496ead81e61689238a24b8edcb",
+            "56243cb0e6aca0433d9d2c263c91873cb2fbe3f5e3b81abf8e1e44dd2cd2d088"
+          ],
+          "sourceIds": [
+            46546,
+            46536,
+            46537,
+            46538,
+            46539,
+            46540,
+            46541,
+            46542,
+            46543,
+            46544,
+            46545,
+            46547
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 45871,
+          "logicalBattleId": "platform:f34350bf-f5fc-e449-9c66-e99e4f513b96",
+          "rawReasons": [
+            "watcher_final_submission",
+            "watcher_live_iteration"
+          ],
+          "replayHash": "cba241ff3f0caa4da52465ad640c80f64977d3fc3df81864c59ef687da443306",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "4v4",
+            "playerCount": 8,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "cba241ff3f0caa4da52465ad640c80f64977d3fc3df81864c59ef687da443306",
+            "cba241ff3f0caa4da52465ad640c80f64977d3fc3df81864c59ef687da443306"
+          ],
+          "sourceIds": [
+            45871,
+            45861
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 35635,
+          "logicalBattleId": "platform:e8f87637-090a-d849-8e4d-9154f1e08b08",
+          "rawReasons": [
+            "hd_early_exit_under_60s",
+            "watcher_live_iteration"
+          ],
+          "replayHash": "2581a310544bab1353265eaacaacd150393588cd434155e39e565a717e7df4ff",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "4v4",
+            "playerCount": 8,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "2581a310544bab1353265eaacaacd150393588cd434155e39e565a717e7df4ff",
+            "86bfe90d5b15089fb81a09487095fbd20eed33d3d99c16016d20df8c95dab6a3",
+            "2581a310544bab1353265eaacaacd150393588cd434155e39e565a717e7df4ff"
+          ],
+          "sourceIds": [
+            35635,
+            35226,
+            35612
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 33376,
+          "logicalBattleId": "platform:d82c832b-f594-2e4d-be2f-847b2c00bbc8",
+          "rawReasons": [
+            "watcher_final_submission",
+            "watcher_live_iteration"
+          ],
+          "replayHash": "36da92cedb809f10799841507501193de7edbaf210592f9ea795ee767adc8979",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "1v1",
+            "playerCount": 2,
+            "reason": "two_exact_participants"
+          },
+          "sourceHashes": [
+            "36da92cedb809f10799841507501193de7edbaf210592f9ea795ee767adc8979",
+            "36da92cedb809f10799841507501193de7edbaf210592f9ea795ee767adc8979"
+          ],
+          "sourceIds": [
+            33376,
+            33364
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 32390,
+          "logicalBattleId": "platform:9cf5f49f-384d-4642-8035-127c217ac66d",
+          "rawReasons": [
+            "hd_early_exit_under_60s",
+            "hd_metadata_fragment_only_recovery"
+          ],
+          "replayHash": "0afd66fcbeedc17ea35fa7580093e0baf10b8098df1ca08fbcab170f8ba5efab",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "2v2",
+            "playerCount": 4,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "0afd66fcbeedc17ea35fa7580093e0baf10b8098df1ca08fbcab170f8ba5efab",
+            "f2ba2a5e615b5579fbd332dba2814a6b8929052375a3763c60e352124ec7df7f"
+          ],
+          "sourceIds": [
+            32390,
+            32389
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 30125,
+          "logicalBattleId": "platform:2f2936eb-8434-c643-b6e4-4894178ddff7",
+          "rawReasons": [
+            "watcher_final_submission"
+          ],
+          "replayHash": "4d4cec4a5a5a24e223ed5e625ee938a8be1048877fe96c70186d58ff6cd34738",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "2v2",
+            "playerCount": 4,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "4d4cec4a5a5a24e223ed5e625ee938a8be1048877fe96c70186d58ff6cd34738"
+          ],
+          "sourceIds": [
+            30125
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 26044,
+          "logicalBattleId": "platform:8fed8321-5022-5c43-bd1f-0fefa898482b",
+          "rawReasons": [
+            "watcher_final_submission",
+            "watcher_live_iteration"
+          ],
+          "replayHash": "d839dd41f0270f1cd8b4a75b16f88ffb505ca4a8e7a306a4c1a15fc721a7ff74",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "4v4",
+            "playerCount": 8,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "d839dd41f0270f1cd8b4a75b16f88ffb505ca4a8e7a306a4c1a15fc721a7ff74",
+            "d839dd41f0270f1cd8b4a75b16f88ffb505ca4a8e7a306a4c1a15fc721a7ff74"
+          ],
+          "sourceIds": [
+            26044,
+            25997
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 26003,
+          "logicalBattleId": "platform:246ddfa2-3409-bb43-ab89-3836799bb3a2",
+          "rawReasons": [
+            "hd_early_exit_under_60s"
+          ],
+          "replayHash": "122fef8ea8439bb8191366ba9e69e437f9ef2b2a56f2c022578ca4199a5ab73b",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "3v3",
+            "playerCount": 6,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "122fef8ea8439bb8191366ba9e69e437f9ef2b2a56f2c022578ca4199a5ab73b"
+          ],
+          "sourceIds": [
+            26003
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 25974,
+          "logicalBattleId": "platform:7ec5fa4c-7f6f-4d48-afcf-f88b7cd9caa9",
+          "rawReasons": [
+            "team_resignation_not_complete"
+          ],
+          "replayHash": "8f6f05495d5d6b3222425c3d468f50025f460dd51b7a7f8e2781653a3831295d",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "3v3",
+            "playerCount": 6,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "8f6f05495d5d6b3222425c3d468f50025f460dd51b7a7f8e2781653a3831295d",
+            "8f6f05495d5d6b3222425c3d468f50025f460dd51b7a7f8e2781653a3831295d"
+          ],
+          "sourceIds": [
+            25974,
+            25958
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 25755,
+          "logicalBattleId": "platform:36033ed7-fa75-384e-abb0-467b604522d6",
+          "rawReasons": [
+            "watcher_final_submission"
+          ],
+          "replayHash": "dc040ff9462cb2bc152abfad82d2ea000cde5bef8a7632d6f22b34d35316901d",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "4v4",
+            "playerCount": 8,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "dc040ff9462cb2bc152abfad82d2ea000cde5bef8a7632d6f22b34d35316901d"
+          ],
+          "sourceIds": [
+            25755
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 25601,
+          "logicalBattleId": "platform:b68818cc-7884-8845-8e2d-e5e8fd0cc339",
+          "rawReasons": [
+            "watcher_final_submission",
+            "watcher_live_iteration"
+          ],
+          "replayHash": "dc2867ab0e092d75c4c64c063135ffb19000dabf22af974c9067fca3d9a40f6a",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "3v3",
+            "playerCount": 6,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "dc2867ab0e092d75c4c64c063135ffb19000dabf22af974c9067fca3d9a40f6a",
+            "dc2867ab0e092d75c4c64c063135ffb19000dabf22af974c9067fca3d9a40f6a"
+          ],
+          "sourceIds": [
+            25601,
+            25524
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 25577,
+          "logicalBattleId": "platform:65a36611-75a5-7742-9eec-bbd42b6dd2a3",
+          "rawReasons": [
+            "watcher_final_submission"
+          ],
+          "replayHash": "d10a4e9e9c1e7d3da8a52bb542f296bf858b1a4afd15f04c723a6d81e2599a66",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "4v4",
+            "playerCount": 8,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "d10a4e9e9c1e7d3da8a52bb542f296bf858b1a4afd15f04c723a6d81e2599a66"
+          ],
+          "sourceIds": [
+            25577
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 25574,
+          "logicalBattleId": "platform:6c64fd51-fdd7-8347-9c96-6af10e2eef18",
+          "rawReasons": [
+            "hd_early_exit_under_60s"
+          ],
+          "replayHash": "fcad2cedea0366c96a09db4f4d247c7dc4f58ea6bf225560f00989e07d141ac5",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "4v4",
+            "playerCount": 8,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "fcad2cedea0366c96a09db4f4d247c7dc4f58ea6bf225560f00989e07d141ac5"
+          ],
+          "sourceIds": [
+            25574
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 25551,
+          "logicalBattleId": "platform:13bc1d96-1f75-e14c-868c-13f055abeb58",
+          "rawReasons": [
+            "watcher_final_submission",
+            "watcher_live_iteration"
+          ],
+          "replayHash": "309a835e4309af00d9de1c8ee22bdf3a101e5cf129230a72116e97e7c740f87f",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "2v2",
+            "playerCount": 4,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "309a835e4309af00d9de1c8ee22bdf3a101e5cf129230a72116e97e7c740f87f",
+            "309a835e4309af00d9de1c8ee22bdf3a101e5cf129230a72116e97e7c740f87f"
+          ],
+          "sourceIds": [
+            25551,
+            25533
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 25532,
+          "logicalBattleId": "platform:d4d9f710-ce44-a846-8ae9-ae8880719e62",
+          "rawReasons": [
+            "team_resignation_not_complete"
+          ],
+          "replayHash": "06a01fc8c5a1afd64b43647c58d63eaf6e04e91a8198e53cc160d08d3eaecaa0",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "3v3",
+            "playerCount": 6,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "06a01fc8c5a1afd64b43647c58d63eaf6e04e91a8198e53cc160d08d3eaecaa0",
+            "06a01fc8c5a1afd64b43647c58d63eaf6e04e91a8198e53cc160d08d3eaecaa0"
+          ],
+          "sourceIds": [
+            25532,
+            25519
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 25324,
+          "logicalBattleId": "platform:e4c6e4a4-ca43-de43-9985-df76928f0262",
+          "rawReasons": [
+            "watcher_final_submission",
+            "watcher_live_iteration"
+          ],
+          "replayHash": "89bdfe12025b67bb72014e00d30fa255509ff61c8e6d942d0e21e8a4316504bc",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "3v3",
+            "playerCount": 6,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "89bdfe12025b67bb72014e00d30fa255509ff61c8e6d942d0e21e8a4316504bc",
+            "d36fcd28c6601204a83af8cdb353bd29c16ec977e6d11413ddaf7eaf42f1387f",
+            "04c974300bffb165d6fb619d87ee7091f6ef7f625ff673dba993fcae9a131855",
+            "89bdfe12025b67bb72014e00d30fa255509ff61c8e6d942d0e21e8a4316504bc"
+          ],
+          "sourceIds": [
+            25324,
+            25321,
+            25322,
+            25323
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 24693,
+          "logicalBattleId": "platform:01eaf3b3-e827-ce41-9013-458bdd0d542e",
+          "rawReasons": [
+            "watcher_final_submission",
+            "watcher_live_iteration"
+          ],
+          "replayHash": "e0b66bc9b3fd0d3ccd3593053d7110a32a93a979e7583fa6cc1e4a9d79486eed",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "2v2",
+            "playerCount": 4,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "e0b66bc9b3fd0d3ccd3593053d7110a32a93a979e7583fa6cc1e4a9d79486eed",
+            "e0b66bc9b3fd0d3ccd3593053d7110a32a93a979e7583fa6cc1e4a9d79486eed"
+          ],
+          "sourceIds": [
+            24693,
+            24663
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review"
+          ],
+          "id": 23922,
+          "logicalBattleId": "platform:44fce6c5-bf4c-5745-8a02-315e64ece511",
+          "rawReasons": [
+            "team_resignation_not_complete",
+            "watcher_live_iteration"
+          ],
+          "replayHash": "2c8e82c637fbfdd7b1bd15769ce5e4efbc8da30376453cc3b5f9b23d3c914495",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "3v3",
+            "playerCount": 6,
+            "reason": "balanced_explicit_teams"
+          },
+          "sourceHashes": [
+            "2c8e82c637fbfdd7b1bd15769ce5e4efbc8da30376453cc3b5f9b23d3c914495",
+            "ac956756d6a2aac76ee341c424684369f64f07611caadc29647fe8b0d1d1dd85",
+            "adc99527729be8d99c81d75ef6476fa45de4823067c30ee28f975d05eae3d0ff"
+          ],
+          "sourceIds": [
+            23922,
+            23921,
+            23923
+          ]
+        },
+        {
+          "blockers": [
+            "unknown_result",
+            "disconnected/review",
+            "stale_or_missing_current_parser"
+          ],
+          "id": 9235,
+          "logicalBattleId": "platform:d42d5a5f-07ed-c64a-b7ad-bf46abfd20b5",
+          "rawReasons": [
+            "watcher_inferred_opponent_win_on_incomplete_1v1",
+            "header_only_summary_fallback",
+            "watcher_live_iteration"
+          ],
+          "replayHash": "b6687b8ce62b1bf107c29ed83d90f7fe9eab42b8ee77e0b2a06b441f350832cc",
+          "result": "unknown",
+          "roster": {
+            "complete": true,
+            "format": "1v1",
+            "playerCount": 2,
+            "reason": "two_exact_participants"
+          },
+          "sourceHashes": [
+            "b6687b8ce62b1bf107c29ed83d90f7fe9eab42b8ee77e0b2a06b441f350832cc",
+            "53f8c5cdf7faf53eb1e160729d93ba5e74d9186dbc275cd04e58d02dbfd785b2",
+            "9990f82d8fd9bb15f32d8751bd178022ac12e1040fbb24a9f9ea045a99b99256",
+            "07f83bf3e0c2ea78a6def9a646dca828fee044013395c8b1fbbefd575964f3ae",
+            "9c15379d0bd09118f74e95d6c77a1d6137d845cd32366d84bf162af92e361f02",
+            "ac57dcad29bbb4fd2962026a3b6df2b4d317f52479b40e50596a7098598cca2a",
+            "4c6730354a538031b56054833ab7f940ea236e69467f463f50ad7f398b9d6ac8",
+            "d772a5ceb90d21f3f30246e1c5dd029b0a6d257a84a54e50a769383b5d3ede38",
+            "8e6da2357ff8d3bc85a7c38aadf80da4beeabd1491e82451261cf8b8af22784a",
+            "65010de057d41b07e7adbb5c17b139671c0de96065976f6eb8b4bf944ac9a730",
+            "ef733d7291b12d8b2e3c08cc2ab5b75c60af41d35c46fd20f104d8d2386da87c",
+            "53323c5c0a9afaae3020e8e77b85d1d30968859c73feb9fa5682a601b3bf4fb5",
+            "e00f52d5c75ac2abda5aae37aecd026ff3ff388f846bd30807d121524454cdbe",
+            "0204f4b8a3fee8a7c64ae5f77f030df6e7c242a3ad2a6e3eb97524c5423ce774",
+            "c1039f704b1e03991cce873dfe92bcbb02e5a1b3d08a7f3c0ecd95474b60974b",
+            "f8c391f1325d6a627abb021d0ccb1773873595417030cb917693ff7916ef2adf",
+            "d1c69f8eeb295bb3501bac1d7a9ef3add0f4706cd64bb1c4d80aeadd373be1f1",
+            "4f86f14ee3353db665ba0b89937fc607dca91c8b646267437f3f837437be5538",
+            "29099b94373187bf5f4d7355ce9e8a70990c5f8375d120fad2b2c02e8808310c",
+            "1827818337d9c2ea38d3c8e8328425aac6e94fa732f52f82cb0016b1f7edde52",
+            "264fd9a33451d67bcdbf233f4d8942810595d2dc53253e6c6e890342eb4fc40f",
+            "0f59e37d19611d1250069ebdbec6c38cdd18567eec22ccec69d45bbf496e60a5",
+            "0eb872e077b373a606127cae6f5ff38f194e419bc9e4e101bfde8bf1f2e43e8d",
+            "a917c0b4875df87d55ddb7d96868f10a4b38d350a64eef7c0cd332b8df2ab330",
+            "bd6dfd7bb4cbab9b54c4b8a77b4aa6ab9e456604ae166d6c2d8501547e80e1d3",
+            "a4b22c9fadeb8039b2e6c05e53c0e276eb58f254cc3420ffd903913b838cdd1f",
+            "4410fdab1c18f6b8211b9a61a3250326ec166bb4e67c04f058ff0c03193cd2fd",
+            "8ea17d22ca51432d3e8e0c530fd45445ddee81a4afdfc1f51e1b4414acfcd4f9",
+            "4056aba60c4e76f3c18d9f4f4d89b496dbb24b7e7aef020bfbe83b813ac563b8",
+            "00430c71f803cf962524f865638b9d73737561e3b82c89c8639e52acee14f106",
+            "6d1f241d9dc931f2bf5e075162c5b1d74cf603d4ece68c7a3b25d30c6376af47",
+            "8547803fd3faf04eb4e22056e71ecd69464b0a73ad1f54f8d493b98b781617e4",
+            "18ffacf7444c4b01b26ddd7398e7d8d265834fab751c1b72ce87f982c2b059dc",
+            "006486cab775d63452aaffb55f30db5d71e34646c1b3837347321efab41987ef",
+            "34ce3416c69236a51bc63673124cb70bfc41bfdc5f1722dc89633dd94e94232d",
+            "fe1b157d44ad94b345c9f656488ced52f731653bbff191066d6a4051dbc8d5c3",
+            "a0f207826758c7994e2ffeb3574341837a6217c59b70510539d07e34b2769b57",
+            "b34817ca03de2a41ea3eafe47f10c3a12d9bb7699a49d9f3eb18c28cf1336db5",
+            "125fee96affe9516b1c9ea818e4edb3db5ae4b5add587bd34999062af2a37c82",
+            "ac7d0689c430c920e7e73b3f753f82bd11535d98e047c5397b3cf742e44bfff1",
+            "97b4d84476d033721ed3ed044b8c61ba8efa966e7ee0e3ecc219f37d13167ae0",
+            "1ad9b325e3ef4d91d62d6299f8e17ddc35a195bf4c7f2a7b05682759beeba0cc",
+            "035c517b4e23887550c71255b31d2b35edc5536ae3510affd76b7dec61c4d80b",
+            "d15de1e4f4fd97598345311e4cf04005eeb0f3ef27474e010636a4c6b5cc27ff",
+            "b85a019b6f32fc5b1a769a229b7d2240224806418e990167a23d7e94977703f2",
+            "860f2444ba66572884349b9144684126fabdfd66cfeb41d5c81714c910bae9da",
+            "0f0a573580e311630450fe0c80f75b291991e18a1dfb10ec85a2ff659d865334",
+            "c1dfea8f6120d7eee8fd654e9f4f0740ac4885a0644d1af83f0597be0f02b53a",
+            "c0cc954dd80d3033d686f25ee5c9328ce3b07fb73ce1242f7dedb2758e76ca0d",
+            "d5c8215039198881c2612b27df0acbf10b7cbcf4257aa05d8de3b281123b3aaf",
+            "c50ee2cf86c2957962e311dfb7516b08bfd4aea6f73eb57199ead22be75e2713",
+            "5dd4bd128fd5ec6b458779262113bbdc8b4797b1775e57a24d66fb17556c91bd",
+            "1df18d8a3bd3036bf62b66e34c6652239cf358061416373ea5f0d72be81848e0",
+            "883d929655529f599cd968ed0bf20567b81d7f43d61079c2c5a52225ab8de3fb",
+            "010701f763e879883dbadd201a810a0d384b48c0e3a932f6bf220cf481805780",
+            "ef1b87ab6b200de9948fe64018e1964a24d456696500eadb823c30baec4a0bb7",
+            "53c754dbbfa4dd5644115db7c62a73108ea3373071fb973675fbde029a02af80",
+            "fd65da8beb9b765bccc3946ec08905967e3124416b8551e09ca20731a5114133",
+            "6f3a52a7a68a3a76b646f43cbc889d78bb097bdb28cbc8533718791f094efd48",
+            "d909c7ccd1dac94fef2d2b9795561a722049e66e0f443dbd40c0f5c12bda14f7",
+            "10aec2551c477d2fc811ec043ef12ecd3950c23dd0ce69ca3b0ce4f808af2e6f",
+            "5093563758e98a94b4880fb9269b4459ac6ec3c0dbf9212b45811771ee52fbb0",
+            "d9c7a2b9823109796ea767d19c04f4e25be1c65401fd085ddc4cda3fe508c839",
+            "709997eb4cae50bacba6080dd75b547db8c7ad7b57c490850cee47df0239ceac",
+            "7707526c6f100d7c9867c5b7c59cbab78dcdfa8430d206bb2a2768e4bdb36c5d",
+            "cbf804277109ab7b639a21f574801fe5f4dd95c8baa726145e2239ce54d85abe",
+            "811941770a5746425c2eec12af4aad09fb5b177bc51d8680f3cf92d330a4b531",
+            "988b78523fec283e084412305b0bbf8856dfaf97cc8b665de5c790089a8e34f8",
+            "8b32be896cc6e07aae88ec16db32cd0b347d2490582b6697e0263ed417051e2e"
+          ],
+          "sourceIds": [
+            9235,
+            9168,
+            9169,
+            9170,
+            9171,
+            9172,
+            9173,
+            9174,
+            9175,
+            9176,
+            9177,
+            9178,
+            9179,
+            9180,
+            9181,
+            9182,
+            9183,
+            9184,
+            9185,
+            9186,
+            9187,
+            9188,
+            9189,
+            9190,
+            9191,
+            9192,
+            9193,
+            9194,
+            9195,
+            9196,
+            9197,
+            9198,
+            9199,
+            9200,
+            9201,
+            9202,
+            9203,
+            9204,
+            9205,
+            9206,
+            9207,
+            9208,
+            9209,
+            9210,
+            9211,
+            9212,
+            9213,
+            9214,
+            9215,
+            9216,
+            9217,
+            9218,
+            9219,
+            9220,
+            9221,
+            9222,
+            9223,
+            9224,
+            9225,
+            9226,
+            9227,
+            9228,
+            9229,
+            9230,
+            9231,
+            9232,
+            9233,
+            9234,
+            47981
+          ]
+        }
+      ]
+    }
+  ],
+  "sealed_at": "2026-10-06T02:38:45.178Z",
+  "source": "266e25bbede0ace681303f697a1410709d05f54f",
+  "writes": {
+    "currentRatingRows": 0,
+    "identityRows": 0,
+    "parserRows": 0,
+    "production": 0,
+    "wolo": 0
+  }
+}
