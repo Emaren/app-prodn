@@ -1,0 +1,54 @@
+name: Diagnose dependency audit
+
+on:
+  push:
+    branches:
+      - fix/national-champions-art-challenge-20261006
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: yarn
+      - name: Enable pinned package manager
+        run: |
+          corepack enable
+          yarn --version
+      - name: Install frozen dependencies
+        run: yarn install --frozen-lockfile --ignore-scripts --non-interactive
+      - name: Show exact high advisories and dependency digest
+        shell: bash
+        run: |
+          set +e
+          yarn audit --json > /tmp/audit.json
+          status=$?
+          python3 - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          h=hashlib.sha256()
+          for name in ("package.json","yarn.lock"):
+              h.update(name.encode()); h.update(b"\0"); h.update(Path(name).read_bytes()); h.update(b"\0")
+          print("DEPENDENCY_DIGEST", h.hexdigest())
+          for raw in Path("/tmp/audit.json").read_text().splitlines():
+              try: row=json.loads(raw)
+              except Exception: continue
+              if row.get("type")!="auditAdvisory": continue
+              data=row["data"]; a=data["advisory"]
+              if str(a.get("severity","")).lower()=="high":
+                  print(json.dumps({
+                      "id": a.get("id"),
+                      "module": a.get("module_name"),
+                      "title": a.get("title"),
+                      "vulnerable_versions": a.get("vulnerable_versions"),
+                      "patched_versions": a.get("patched_versions"),
+                      "path": data.get("resolution",{}).get("path"),
+                  }, sort_keys=True))
+          PY
+          exit 0
