@@ -1,0 +1,87 @@
+{
+  "schema": 1,
+  "campaignScope": "The sealed Oct6 761 logical Zodiac battles; no corpus expansion or repeated census.",
+  "metrics": {
+    "zodiacLogicalBattles": 761,
+    "fullTruthIncompleteBefore": 55,
+    "fullTruthIncompleteAfter": 55,
+    "resultUnknownBefore": 52,
+    "resultUnknownAfter": 52,
+    "resultsRecovered": 0,
+    "commissionerReady": 2,
+    "ifBothHumanVerdictsAcceptedResultUnknown": 50,
+    "projectedFullTruthAdditions": 0,
+    "fullTruthProjectionReason": "Existing Workshop roster completeness supports 2/4/6/8 exact participants. Both proposed battles have odd canonical participant counts (5/3), so result recovery does not satisfy that separate rule."
+  },
+  "receipt": {
+    "path": "/Users/tonyblum/projects/AoE2HDBets/app-prodn/.aoe2war-release/truth-receipts/player-first-zodiac-tranche-a-fc97e54380f21651dac895f099bd60d27370174128c572a2de5a105e59214668.json",
+    "sha256": "fc97e54380f21651dac895f099bd60d27370174128c572a2de5a105e59214668",
+    "bytes": 41777
+  },
+  "cases": [
+    {
+      "gameStatsId": 25892,
+      "primaryDisposition": "partial_voluntary_side",
+      "reason": "Only malcschembri (slot2) resigned; Der König (slot3) did not. Partial-team action ordering and legacy flags are rejected.",
+      "proposedPacketSha256": null
+    },
+    {
+      "gameStatsId": 27269,
+      "primaryDisposition": "commissioner_ready",
+      "reason": "Exact canonical slots1/2 (Zodiac/Praxes) both voluntarily resigned. Independent full byte framing and final resignation at EOF prove complete losing side.",
+      "proposedPacketSha256": "fc3db7cfc66a2e32f8646f423161f43d7bf878dcfe427e23d9887ce7469bcab9"
+    },
+    {
+      "gameStatsId": 21046,
+      "primaryDisposition": "no_serialized_result_packet",
+      "reason": "Current exact canonical parse has no serialized resignation/postgame winner. Historical recorder-exit adjudication is retired inference and remains non-authoritative.",
+      "proposedPacketSha256": null
+    },
+    {
+      "gameStatsId": 24306,
+      "primaryDisposition": "no_serialized_result_packet",
+      "reason": "Current exact canonical parse has no serialized resignation/postgame winner. Historical recorder-exit adjudication is retired inference and remains non-authoritative.",
+      "proposedPacketSha256": null
+    },
+    {
+      "gameStatsId": 25006,
+      "primaryDisposition": "no_serialized_result_packet",
+      "reason": "Current exact canonical parse has no serialized resignation/postgame winner. Historical recorder-exit adjudication is retired inference and remains non-authoritative.",
+      "proposedPacketSha256": null
+    },
+    {
+      "gameStatsId": 25578,
+      "primaryDisposition": "no_serialized_result_packet",
+      "reason": "Current exact canonical parse has no serialized resignation/postgame winner. Historical recorder-exit adjudication is retired inference and remains non-authoritative.",
+      "proposedPacketSha256": null
+    },
+    {
+      "gameStatsId": 26028,
+      "primaryDisposition": "no_serialized_result_packet",
+      "reason": "Current exact canonical parse has no serialized resignation/postgame winner. Historical recorder-exit adjudication is retired inference and remains non-authoritative.",
+      "proposedPacketSha256": null
+    },
+    {
+      "gameStatsId": 35636,
+      "primaryDisposition": "side_and_identity_ambiguity",
+      "reason": "Metadata fragment lists Zodiac and seven AI slots with a single team. No serialized result or proven opposing topology; disconnect-marked source.",
+      "proposedPacketSha256": null
+    },
+    {
+      "gameStatsId": 44670,
+      "primaryDisposition": "commissioner_ready",
+      "reason": "Slot2 Zodiac voluntarily resigned at EOF. Canonical contract binds the lone unteamed opponent against the explicit Jim/Emaren side. Independent full byte framing agrees.",
+      "proposedPacketSha256": "2c526b9ef893cbfba0954767c9913a12989c019acf3b4eb1ef4446f8dcfca199"
+    }
+  ],
+  "financialTriage": {
+    "cases": 29,
+    "unknown": 27,
+    "newReady": 0,
+    "triageSha256": "da40553c3158d73c7c315be80ba38df0653a17b08fe628359a15b42010c10f2f"
+  },
+  "rosterApplyReceiptSha256": "a4f0ffa078634c5754d97753358663ff849bc18fae33512940d6278ee0e2b1f7",
+  "sourceFinancialObligationsReceiptSha256": "e8dcf01a11041f8455c3265fbb62915a0133b0b77e593bfe0d08860907fec4ff",
+  "approvalStatus": "pending_explicit_commissioner_decision",
+  "productionResultWrites": 0
+}

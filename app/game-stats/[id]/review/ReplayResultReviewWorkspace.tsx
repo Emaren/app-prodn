@@ -7,6 +7,7 @@ import {
   type ReplayDesyncIncidentView,
 } from "@/components/game-stats/desyncIncidentView";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { ZodiacRecoveryProposal } from "@/lib/zodiacRecoveryProposal";
 
 type ReviewDeskViewMode =
   | "basic"
@@ -446,6 +447,8 @@ export default function ReplayResultReviewWorkspace({ gameStatsId }: { gameStats
   const [desyncNote, setDesyncNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [recoveryDraft, setRecoveryDraft] = useState<ZodiacRecoveryProposal | null>(null);
+  const [proposalLoading, setProposalLoading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -458,6 +461,7 @@ export default function ReplayResultReviewWorkspace({ gameStatsId }: { gameStats
       setState(next);
       setAssignments(initialAssignments(next));
       setWinningTeam(initialWinner(next));
+      setRecoveryDraft(null);
       if (next.adjudications[0]?.reason) setReason(next.adjudications[0].reason);
       return next;
     } catch (nextError) {
@@ -481,6 +485,28 @@ export default function ReplayResultReviewWorkspace({ gameStatsId }: { gameStats
     state && teamPlayers.unassigned.length === 0 && teamPlayers.gold.length > 0 && teamPlayers.blue.length > 0 && winningTeam
   );
 
+  async function loadRecoveryDraft() {
+    if (!state?.access.isAdmin) return;
+    setProposalLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/replay-results/${gameStatsId}/recovery-proposal`, { cache: "no-store" });
+      const result = await response.json() as { proposal?: ZodiacRecoveryProposal; detail?: string };
+      if (!response.ok || !result.proposal) throw new Error(result.detail || "No current evidence packet is ready.");
+      const packet = result.proposal;
+      if (packet.payload.sourceReplayHash !== state.game.replayHash || packet.payload.sourceParseIteration !== state.game.parse_iteration || packet.payload.sourceRosterHash !== state.game.sourceRosterHash) throw new Error("Reload the battle before loading this proposal.");
+      setAssignments(Object.fromEntries(packet.payload.teams.flatMap(t => t.playerKeys.map(key => [key, t.teamKey]))));
+      setWinningTeam(packet.payload.winningTeamKey);
+      setReason(packet.payload.reason);
+      setRecoveryDraft(packet);
+      setNotice("Evidence-backed draft loaded. Review the complete sides and result, then explicitly lock your verdict. No result has been written.");
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Proposal could not be loaded.");
+    } finally {
+      setProposalLoading(false);
+    }
+  }
+
   async function submit() {
     if (
       !state ||
@@ -499,20 +525,21 @@ export default function ReplayResultReviewWorkspace({ gameStatsId }: { gameStats
       teamKey,
       playerKeys: teamPlayers[teamKey].map((player) => player.stablePlayerKey),
     }));
+    const unchangedDraft = recoveryDraft && recoveryDraft.payload.winningTeamKey === winningTeam && recoveryDraft.payload.reason === reason && teams.every(t => JSON.stringify([...t.playerKeys].sort()) === JSON.stringify([...(recoveryDraft.payload.teams.find(p => p.teamKey === t.teamKey)?.playerKeys ?? [])].sort()));
 
     try {
       const response = await fetch(`/api/replay-results/${gameStatsId}/adjudications`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          idempotencyKey: `review:${gameStatsId}:${crypto.randomUUID()}`,
+          idempotencyKey: unchangedDraft ? recoveryDraft.payload.idempotencyKey : `review:${gameStatsId}:${crypto.randomUUID()}`,
           sourceReplayHash: state.game.replayHash,
           sourceParseIteration: state.game.parse_iteration,
           sourceRosterHash: state.game.sourceRosterHash,
           teams,
           winningTeamKey: winningTeam,
           reason,
-          evidence: { note: evidenceNote.trim() || null, submittedVia: "review_result_workspace" },
+          evidence: { ...(unchangedDraft ? recoveryDraft.payload.evidence : {}), note: evidenceNote.trim() || null, submittedVia: "review_result_workspace", recoveryProposalSha256: unchangedDraft ? recoveryDraft.packetSha256 : null, commissionerExplicitApproval: Boolean(unchangedDraft) },
           supersedesId: latest?.id ?? null,
         }),
       });
@@ -714,6 +741,12 @@ export default function ReplayResultReviewWorkspace({ gameStatsId }: { gameStats
           <Link href={`/game-stats/${gameStatsId}`} className="rounded-full border border-white/15 px-4 py-2 text-sm font-semibold text-white">Open Battle Record</Link>
           {state.linkedMarkets.length > 0 ? <span className="rounded-full border border-violet-200/20 bg-violet-300/10 px-4 py-2 text-sm text-violet-100">{state.linkedMarkets.length} market link{state.linkedMarkets.length === 1 ? "" : "s"} protected</span> : null}
         </div>
+        {canAdminister && [27269, 44670].includes(gameStatsId) ? <div className="mt-5 rounded-2xl border border-amber-200/20 bg-amber-200/5 p-4">
+          <div className="font-semibold text-amber-100">Zodiac Recovery · serialized resignation evidence</div>
+          <p className="mt-2 text-sm text-slate-300">The immutable replay packet binds the complete losing side to canonical player slots and Steam identities. Load the checked draft for a stats-only Commissioner decision.</p>
+          <button type="button" disabled={proposalLoading || saving || resultWritePaused} onClick={() => void loadRecoveryDraft()} className="mt-3 rounded-full border border-amber-200/30 px-4 py-2 text-sm font-bold text-amber-100 disabled:opacity-40">{proposalLoading ? "Revalidating exact evidence…" : "Load evidence-backed draft"}</button>
+          {recoveryDraft ? <details className="mt-3 text-xs text-slate-400"><summary>Proposal {recoveryDraft.packetSha256.slice(0, 12)} · proposed winner: {recoveryDraft.winnerNames.join(", ")}</summary><pre className="mt-2 max-h-80 overflow-auto whitespace-pre-wrap break-all">{JSON.stringify(recoveryDraft, null, 2)}</pre></details> : null}
+        </div> : null}
       </section>
 
       <section

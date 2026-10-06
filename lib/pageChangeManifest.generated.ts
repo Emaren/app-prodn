@@ -20,12 +20,12 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/champions",
     label: "Champions",
-    version: "src-0f64fe29838815e799be",
+    version: "src-2de872926aac4f39d4cb",
   },
   {
     href: "/chaosium",
     label: "Chaosium",
-    version: "src-e078e66dd4473059a9f8",
+    version: "src-ddd96df723dfe2ffdf58",
   },
   {
     href: "/olympia",
@@ -40,7 +40,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/national-champions",
     label: "Nations",
-    version: "src-eccd52b4dedf36a15699",
+    version: "src-aa95c4c50f936c618a6a",
   },
   {
     href: "/clans",
@@ -90,7 +90,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/game-stats",
     label: "Parser Observatory",
-    version: "src-9f9fac96dab226d8a3a0",
+    version: "src-d5fba182b8b872987f8b",
   },
   {
     href: "/traffic",

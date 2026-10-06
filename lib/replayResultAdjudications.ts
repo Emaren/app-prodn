@@ -582,6 +582,9 @@ export function applyReplayResultAdjudication<T extends object>(
   adjudication: EffectiveReplayResultAdjudication | null | undefined
 ): T {
   if (!adjudication || adjudication.decisionStatus !== REPLAY_RESULT_ACCEPTED) return row;
+  // A historical accepted inference remains in the ledger, but retired
+  // recorder-exit/action-order policies cannot manufacture public truth.
+  if (isRetiredAutomaticReplayResultAdjudication(adjudication)) return row;
 
   const source = row as Record<string, unknown>;
   const currentReplayHash = cleanText(source.replayHash ?? source.replay_hash, 64).toLowerCase();
@@ -718,7 +721,7 @@ export function applyReplayResultAdjudication<T extends object>(
   } as T;
 }
 
-async function buildMarketSnapshot(
+export async function buildMarketSnapshot(
   prisma: MarketSnapshotPrisma,
   gameStatsId: number,
   linkedSessionKeys: Array<string | null | undefined> = []
@@ -1105,7 +1108,8 @@ export async function loadReplayResultReviewState(
     adjudications.find(
       (entry) =>
         entry.decisionStatus ===
-        REPLAY_RESULT_ACCEPTED
+        REPLAY_RESULT_ACCEPTED &&
+        !isRetiredAutomaticReplayResultAdjudication(entry)
     ) ?? null;
 
   const effectiveGame =
@@ -1415,6 +1419,31 @@ export function isProvisionalWatcherRecorderExitAdjudication(
       value.decisionStatus === REPLAY_RESULT_ACCEPTED &&
       value.affectsStats === true &&
       value.affectsBets === false
+  );
+}
+
+export function isRetiredAutomaticReplayResultAdjudication(
+  value:
+    | {
+        idempotencyKey?: unknown;
+        decisionStatus?: unknown;
+        affectsStats?: unknown;
+        affectsBets?: unknown;
+      }
+    | null
+    | undefined
+) {
+  if (isProvisionalWatcherRecorderExitAdjudication(value)) return true;
+  const idempotencyKey = value?.idempotencyKey;
+  return Boolean(
+    value &&
+      value.decisionStatus === REPLAY_RESULT_ACCEPTED &&
+      typeof idempotencyKey === "string" &&
+      [
+        WATCHER_TERMINAL_RECORDER_EXIT_POLICY_VERSION,
+        WATCHER_TERMINAL_OWNER_LOSS_POLICY_VERSION,
+        WATCHER_TEAM_TERMINAL_POLICY_VERSION,
+      ].some((policy) => idempotencyKey.startsWith(`evidence:auto:${policy}:`))
   );
 }
 
