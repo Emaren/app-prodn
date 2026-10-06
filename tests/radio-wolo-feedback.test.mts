@@ -438,9 +438,9 @@ test(
         "prisma/migrations/20260920170000_radio_traffic_analytics/migration.sql",
       );
 
-    assert.match(
+    assert.doesNotMatch(
       hook,
-      /return "emoji";/,
+      /RATING_STYLE_STORAGE_KEY|readRatingStyle|setRatingStyle/,
     );
 
     assert.match(
