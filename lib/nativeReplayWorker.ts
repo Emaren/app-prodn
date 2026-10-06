@@ -281,9 +281,9 @@ export async function buildNativeControlManifest(gameStatsId: number): Promise<N
     if (results.some(p => p.result === "unknown") || !results.some(p => p.result === "loss")) throw Error("Independent complete participant result required.");
     const ids = group.map(g => g.id).sort((a, b) => a - b);
     const keys = [...new Set(group.flatMap(g => {
-      const k = g.key_events as Record<string, unknown> | null;
+      const k = (typeof g.key_events === "string" ? JSON.parse(g.key_events) : g.key_events) as Record<string, unknown> | null;
       const u = k?.watcher_upload as Record<string, unknown> | undefined;
-      return [publicReplayIdentity(g), g.original_filename, g.replay_file, u?.watcher_session_id, k?.platform_match_id].filter((v): v is string => typeof v === "string" && Boolean(v));
+      return [publicReplayIdentity(g), g.original_filename, g.replay_file, u?.watcher_session_id, k?.platform_match_id].filter((v): v is string => typeof v === "string" && Boolean(v.trim())).map(v => v.trim());
     }))];
     const markets = await tx.betMarket.findMany({ where: { OR: [{ linkedGameStatsId: { in: ids } }, { lateFinalGameStatsId: { in: ids } }, { linkedSessionKey: { in: keys } }, { battle: { identityKey: { in: keys } } }] }, select: { id: true, settlementStatus: true, settledAt: true, settlementRunId: true, _count: { select: { wagers: true } } } });
     const claims = await tx.pendingWoloClaim.count({ where: { sourceGameStatsId: { in: ids } } });

@@ -109,7 +109,7 @@ def main(argv=None):
         # observer. No deployment or temporary production source files are required.
         program = subprocess.check_output(["node", "-e", "const ts=require('typescript'),fs=require('fs');process.stdout.write(ts.transpileModule(fs.readFileSync(process.argv[1],'utf8'),{compilerOptions:{module:ts.ModuleKind.ESNext,target:ts.ScriptTarget.ES2022}}).outputText)", str(source)], cwd=ROOT, text=True)
         program = re.sub(r'from "\./([^"\n]+)"', r'from "@/lib/\1"', program)
-        program += '\nimport {getPrisma} from "@/lib/prisma";\nconst p=getPrisma();try{const mode=await p.$queryRawUnsafe("SELECT current_setting(\'default_transaction_read_only\') AS readonly");if(mode[0]?.readonly!=="on")throw Error("read-only required");process.stdout.write(JSON.stringify(await loadPlayerResultRecoveryPlan(p,' + json.dumps(targets) + ')));}finally{await p.$disconnect()}\n'
+        program += '\nimport {getPrisma} from "@/lib/prisma";\nconst p=getPrisma();try{const mode=await p.$queryRawUnsafe("SELECT current_setting(\'default_transaction_read_only\') AS readonly");if(mode[0]?.readonly!=="on")throw Error("read-only required");const plan=await loadPlayerResultRecoveryPlan(p,' + json.dumps(targets) + ');process.stdout.write(JSON.stringify({...plan,productionSource:process.env.AOE2WAR_TRUTH_PRODUCTION_SOURCE,databaseReadOnly:mode}));}finally{await p.$disconnect()}\n'
     else:
         program = source.read_text()
     marker = "const targets = []; // injected exact scope"
