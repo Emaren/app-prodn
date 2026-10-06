@@ -5,9 +5,6 @@ import {
   radioWoloListenerIsEffectivelyOn,
   radioWoloRaterKey,
 } from "@/lib/radioWoloFeedbackPolicy";
-import {
-  radioWoloOperatorUids,
-} from "@/lib/radioWoloOperatorPolicy";
 
 export type AdminRadioWoloAnalytics = {
   generatedAt: string;
@@ -318,7 +315,7 @@ export async function loadAdminRadioWoloAnalytics(
               id: "desc",
             },
           ],
-          take: 200,
+          take: 1000,
           select: {
             listenerId:
               true,
@@ -609,26 +606,24 @@ export async function loadAdminRadioWoloAnalytics(
   };
 
   const stateByTrafficVisitor =
-    new Map(
-      states
-        .filter(
-          (
-            row,
-          ): row is StateRow & {
-            trafficVisitorId:
-              string;
-          } =>
-            Boolean(
-              row.trafficVisitorId,
-            ),
-        )
-        .map(
-          (row) => [
-            row.trafficVisitorId,
-            row,
-          ] as const,
-        ),
-    );
+    new Map<
+      string,
+      StateRow
+    >();
+
+  for (const row of states) {
+    if (
+      row.trafficVisitorId &&
+      !stateByTrafficVisitor.has(
+        row.trafficVisitorId,
+      )
+    ) {
+      stateByTrafficVisitor.set(
+        row.trafficVisitorId,
+        row,
+      );
+    }
+  }
 
   const joinedStateIds =
     new Set<string>();
