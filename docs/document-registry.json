@@ -360,9 +360,9 @@
       "owner": "aoe2war-web",
       "path": "docs/CHALLENGE_SYSTEM.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-10-01",
+      "reviewed_at": "2026-10-06",
       "sensitivity": "internal",
-      "sha256": "1db2e78a36c9d94e12d24d03e5ba84ccbc7db8ff429cde5db178c55227e6aeaa",
+      "sha256": "27738a671e448658482a701592534a0bc24be1f3b358e65e5feb7fdd4dfd26cc",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -383,9 +383,9 @@
       "owner": "aoe2war-web",
       "path": "docs/CHAMPIONSHIP_BELT_CONSTITUTION.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-09-30",
+      "reviewed_at": "2026-10-06",
       "sensitivity": "internal",
-      "sha256": "bd60e4c907a4200f9ac81b4a1929f835f54637ab08bf7ea27b92a57ab0cbc999",
+      "sha256": "979129b3fbaa03d690ff8adbf82555bda57a4bf161119eb7e2e7aac00e140a44",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -454,9 +454,9 @@
       "owner": "aoe2war-web",
       "path": "docs/CHAMPIONSHIP_IMPLEMENTATION_HANDOFF.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-30",
+      "reviewed_at": "2026-10-06",
       "sensitivity": "internal",
-      "sha256": "4fdf2709d95a2dd775bf493a2ba0475610423210b9deb35d03df0c84a11d0837",
+      "sha256": "fe6148749acacac86275bed1bafc70a08ff99cc23590abd1d6c308c64e355345",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "cf9414ba2436920f57264e12f44fdad2f49d8735d91a60a700c73a8513d02d8f",
+      "sha256": "ffb5f1902697cba392271151ef5ba40f71c47dd3b83c689eaaca0965625f83dc",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2025,8 +2025,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/release-gate-test-eof-20261006",
-    "commit": "c51dbfb5c04a6b6167f999b3d3a495c693a274a3"
+    "branch": "feat/frictionless-championship-challenges-20261006",
+    "commit": "77d320211059a1be70b2ca2492e91f6c94e8ffd3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
