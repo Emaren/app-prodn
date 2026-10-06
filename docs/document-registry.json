@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "2a9c7ca66d6165226a660b5e5ecc12bc7c2f7de433530c5dd188bea20f3b3daf",
+      "sha256": "e2f68f2ca67d370eaf1a2830daa004872bfe559e81e21bde3e69f3f62a772b68",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2025,8 +2025,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/radio-wolo-visitor-intelligence-20261006",
-    "commit": "f2e40113262a46be7553f0f77993bab1f6d9bc45"
+    "branch": "main",
+    "commit": "33367c18be253626b462878d50a1959bf335ac24"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
