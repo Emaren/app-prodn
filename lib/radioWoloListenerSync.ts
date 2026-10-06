@@ -31,6 +31,9 @@ export type RadioWoloListenerClock = {
   elapsedMs: number;
   durationMs: number;
   remainingMs: number;
+  looping?: boolean;
+  cycle?: number;
+  totalElapsedMs?: number;
   current: RadioWoloListenerClockItem | null;
   next: RadioWoloListenerClockItem | null;
 };
@@ -55,6 +58,7 @@ export type RadioWoloListenerEnvelope = {
 export type RadioWoloListenerAnchor = {
   stationStartedAt: string;
   position: number;
+  cycle: number;
   mediaUrl: string;
   mediaKey: string;
 
@@ -105,10 +109,12 @@ export function radioListenerNetworkAdvanceMs(
 export function radioListenerMediaKey(input: {
   stationStartedAt: string;
   position: number;
+  cycle?: number;
   mediaUrl: string;
 }) {
   return [
     input.stationStartedAt,
+    input.cycle ?? 1,
     input.position,
     input.mediaUrl,
   ].join(":");
@@ -178,6 +184,14 @@ export function createRadioListenerAnchor(
     position:
       current.position,
 
+    cycle:
+      Math.max(
+        1,
+        Math.floor(
+          clock.cycle ?? 1,
+        ),
+      ),
+
     mediaUrl:
       current.asset.mediaUrl,
 
@@ -185,6 +199,13 @@ export function createRadioListenerAnchor(
       radioListenerMediaKey({
         stationStartedAt:
           station.startedAt,
+        cycle:
+          Math.max(
+            1,
+            Math.floor(
+              clock.cycle ?? 1,
+            ),
+          ),
         position:
           current.position,
         mediaUrl:

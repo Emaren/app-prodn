@@ -149,8 +149,7 @@ export async function GET(
 
   if (
     elapsedMs < 0 ||
-    elapsedMs >=
-      timeline.durationMs
+    timeline.durationMs <= 0
   ) {
     return unavailable();
   }

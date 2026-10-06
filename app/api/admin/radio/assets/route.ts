@@ -88,7 +88,7 @@ export async function GET(
             id: "desc",
           },
         ],
-        take: 500,
+        take: 5_000,
         select: {
           id: true,
           publicId: true,

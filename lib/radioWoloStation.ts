@@ -218,3 +218,103 @@ export function resolveRadioStationPosition<T>(
     next,
   };
 }
+
+
+/**
+ * Resolve an always-on Radio WOLO program clock.
+ *
+ * A live station repeats the immutable program timeline until an operator
+ * explicitly stops transmission. elapsedMs is the station lifetime; the
+ * returned elapsedMs is the position inside the current loop.
+ */
+export function resolveLoopingRadioStationPosition<T>(
+  items: RadioTimelineItem<T>[],
+  elapsedMs: number,
+) {
+  const timeline =
+    buildRadioProgramTimeline(
+      items,
+    );
+
+  const totalElapsedMs =
+    Math.max(
+      0,
+      Math.floor(
+        elapsedMs,
+      ),
+    );
+
+  if (
+    timeline.segments.length ===
+      0 ||
+    timeline.durationMs <= 0
+  ) {
+    return {
+      ended: true,
+      looping: false,
+      cycleIndex: 0,
+      totalElapsedMs,
+      elapsedMs: 0,
+      durationMs: 0,
+      remainingMs: 0,
+      current: null,
+      next: null,
+    };
+  }
+
+  const cycleIndex =
+    Math.floor(
+      totalElapsedMs /
+        timeline.durationMs,
+    );
+
+  const cycleElapsedMs =
+    totalElapsedMs %
+    timeline.durationMs;
+
+  const resolved =
+    resolveRadioStationPosition(
+      items,
+      cycleElapsedMs,
+    );
+
+  let next =
+    resolved.next;
+
+  // The station does not have a terminal item. While the last track is
+  // playing, expose the first track as NEXT at the upcoming loop boundary.
+  if (
+    !next &&
+    resolved.current
+  ) {
+    const first =
+      timeline.segments[0];
+
+    next = {
+      ...first,
+      startMs:
+        timeline.durationMs +
+        first.startMs,
+      endMs:
+        timeline.durationMs +
+        first.endMs,
+    };
+  }
+
+  return {
+    ...resolved,
+    ended: false,
+    looping: true,
+    cycleIndex,
+    totalElapsedMs,
+    elapsedMs:
+      cycleElapsedMs,
+    remainingMs:
+      Math.max(
+        0,
+        timeline.durationMs -
+          cycleElapsedMs,
+      ),
+    next,
+  };
+}

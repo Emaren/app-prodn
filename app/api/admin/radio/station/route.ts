@@ -7,7 +7,7 @@ import {
   requireRadioWoloOperator,
 } from "@/lib/radioWoloOperator";
 import {
-  resolveRadioStationPosition,
+  resolveLoopingRadioStationPosition,
 } from "@/lib/radioWoloStation";
 
 export const runtime =
@@ -79,7 +79,7 @@ function stationTimeline(
   },
   elapsedMs: number,
 ) {
-  return resolveRadioStationPosition(
+  return resolveLoopingRadioStationPosition(
     program.items.map(
       (item) => ({
         value: item,
@@ -246,7 +246,7 @@ export async function GET(
       typeof stationTimeline
     > | null = null;
 
-  let endedNaturally =
+  const endedNaturally =
     false;
 
   if (
@@ -261,52 +261,6 @@ export async function GET(
         now.getTime() -
           station.startedAt.getTime(),
       );
-
-    if (clock.ended) {
-      const naturalStop =
-        new Date(
-          station.startedAt.getTime() +
-            clock.durationMs,
-        );
-
-      station =
-        await gate.prisma.radioStationState.update(
-          {
-            where: {
-              id: 1,
-            },
-            data: {
-              state:
-                "off_air",
-              stoppedAt:
-                naturalStop,
-            },
-            select: {
-              id: true,
-              programId:
-                true,
-              state: true,
-              startedAt:
-                true,
-              stoppedAt:
-                true,
-              launchedByUid:
-                true,
-              updatedAt:
-                true,
-              program: {
-                select:
-                  PROGRAM_SELECT,
-              },
-            },
-          },
-        );
-
-      clock = null;
-
-      endedNaturally =
-        true;
-    }
   }
 
   return NextResponse.json(
@@ -356,6 +310,12 @@ export async function GET(
                   clock.durationMs,
                 remainingMs:
                   clock.remainingMs,
+                looping:
+                  clock.looping,
+                cycle:
+                  clock.cycleIndex + 1,
+                totalElapsedMs:
+                  clock.totalElapsedMs,
                 current:
                   serializeClockItem(
                     clock.current,
