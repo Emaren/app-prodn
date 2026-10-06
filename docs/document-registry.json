@@ -1348,9 +1348,9 @@
       "owner": "aoe2war-web",
       "path": "docs/RADIO_WOLO.md",
       "review_interval_days": 90,
-      "reviewed_at": "2026-09-20",
+      "reviewed_at": "2026-10-06",
       "sensitivity": "internal",
-      "sha256": "2e80fad114fef4bd85de3ca6165df7fd394e63ecc4f0e3bfa7437a0e10f408d9",
+      "sha256": "dc39ff21cba9134a12cd1dee2b2c4fc01fe6787d5ecada1290be0a397192c5d7",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
