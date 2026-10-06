@@ -5,6 +5,9 @@ import {
   radioWoloListenerIsEffectivelyOn,
   radioWoloRaterKey,
 } from "@/lib/radioWoloFeedbackPolicy";
+import {
+  compareAdminRadioWoloVisitors,
+} from "@/lib/adminRadioWoloVisitorRanking";
 
 export type AdminRadioWoloAnalytics = {
   generatedAt: string;
@@ -1121,55 +1124,7 @@ export async function loadAdminRadioWoloAnalytics(
       },
     )
     .sort(
-      (left, right) => {
-        if (
-          left.activeOnSite !==
-          right.activeOnSite
-        ) {
-          return left.activeOnSite
-            ? -1
-            : 1;
-        }
-
-        const leftRanked =
-          left.identityKind ===
-            "user" ||
-          left.visitCount >= 5;
-        const rightRanked =
-          right.identityKind ===
-            "user" ||
-          right.visitCount >= 5;
-
-        if (
-          leftRanked !==
-          rightRanked
-        ) {
-          return leftRanked
-            ? -1
-            : 1;
-        }
-
-        if (
-          leftRanked &&
-          rightRanked &&
-          left.visitCount !==
-            right.visitCount
-        ) {
-          return (
-            right.visitCount -
-            left.visitCount
-          );
-        }
-
-        return (
-          Date.parse(
-            right.lastSeenAt,
-          ) -
-          Date.parse(
-            left.lastSeenAt,
-          )
-        );
-      },
+      compareAdminRadioWoloVisitors,
     )
     .slice(0, 120);
 
