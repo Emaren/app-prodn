@@ -2,15 +2,11 @@ import {
   normalizeDurationSeconds,
   parsePlayers,
   readMapName,
-  readPlayerSteamDmRating,
-  readPlayerSteamRmRating,
 } from "@/lib/gameStatsView";
-import {
-  parseReplayRatingObservation,
-  shouldReplaceCurrentReplayRating,
-} from "@/lib/playerRatingRecency";
+import type { CurrentWatcherAccountState } from "@/lib/currentWatcherAccountState";
 import {
   type PublicPlayerRef,
+  normalizePublicPlayerSteamId,
   publicPlayerMatchesReplayParticipant,
 } from "@/lib/publicPlayers";
 import { applyReplayAdjudicationToGameStats } from "@/lib/replayAdjudications";
@@ -79,7 +75,8 @@ function readCivilization(player: Record<string, unknown>) {
 
 export function buildPlayerPerformanceStats(
   matches: PerformanceGame[],
-  currentPlayer: PublicPlayerRef
+  currentPlayer: PublicPlayerRef,
+  currentAccountState: CurrentWatcherAccountState | null = null,
 ): PlayerPerformanceStats {
   const durations: number[] = [];
   const opponentKeys = new Set<string>();
@@ -90,9 +87,18 @@ export function buildPlayerPerformanceStats(
   let losses = 0;
   let unknowns = 0;
   let ratedMatches = 0;
-  let steamRating: number | null = null;
-  let ladderRating: number | null = null;
-  let ratingLastSeenAt: string | null = null;
+  /*
+   * Embedded replay ratings remain battle-time evidence. Current account
+   * presentation comes only from the shared signed live-monitor rail, never
+   * from this historical corpus or a name/alias match.
+   */
+  const steamId = normalizePublicPlayerSteamId(currentPlayer.steamId);
+  const current = steamId && currentAccountState?.steamId === steamId
+    ? currentAccountState
+    : null;
+  const steamRating = current?.steamRmRating ?? null;
+  const ladderRating = current?.steamDmRating ?? null;
+  const ratingLastSeenAt = current?.ratingObservedAt ?? null;
 
   for (const rawMatch of matches) {
     const match = applyReplayAdjudicationToGameStats(rawMatch);
@@ -104,49 +110,6 @@ export function buildPlayerPerformanceStats(
     if (currentRecord) {
       const civ = readCivilization(currentRecord);
       if (civ) civilizations.add(civ);
-
-      const nextSteamRating = readPlayerSteamRmRating(currentRecord);
-      const nextLadderRating = readPlayerSteamDmRating(currentRecord);
-      if (nextSteamRating !== null || nextLadderRating !== null) {
-        const currentHasRating =
-          steamRating !== null ||
-          ladderRating !== null;
-
-        const shouldReplace =
-          shouldReplaceCurrentReplayRating({
-            currentHasRating,
-            currentObservedAt:
-              ratingLastSeenAt,
-            nextPlayedOn:
-              match.played_on,
-          });
-
-        if (shouldReplace) {
-          /*
-           * Preserve each lane independently. A replay carrying only one
-           * official rating must not erase the other lane.
-           */
-          if (nextSteamRating !== null) {
-            steamRating =
-              nextSteamRating;
-          }
-
-          if (nextLadderRating !== null) {
-            ladderRating =
-              nextLadderRating;
-          }
-
-          const observation =
-            parseReplayRatingObservation(
-              match.played_on,
-            );
-
-          if (observation) {
-            ratingLastSeenAt =
-              observation.iso;
-          }
-        }
-      }
     }
 
     for (const player of players) {

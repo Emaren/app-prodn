@@ -20,6 +20,7 @@ import {
 } from "@/lib/pendingWoloClaims";
 import { isMainnetVisibleFundedBetWager } from "@/lib/betStakeFunding";
 import { buildPlayerPerformanceStats } from "@/lib/playerPerformance";
+import { loadCurrentWatcherAccountStates } from "@/lib/currentWatcherAccountState";
 import {
   loadPlayerNormalizedStats,
   type PlayerNormalizedStats,
@@ -2087,7 +2088,7 @@ async function buildProfileFromPlayer(
   // The snapshot index is independent of the watermark read, so start both at
   // once; the replay corpus still waits for both and remains generation-bound.
   const exactSteamId = input.currentPlayer.steamId?.trim();
-  const [matchFeedGeneration, exactSteamIndex] = await Promise.all([
+  const [matchFeedGeneration, exactSteamIndex, currentAccountStates] = await Promise.all([
     loadPublicReplayGeneration(prisma),
     exactSteamId
       ? loadExactSteamCandidateIndex(
@@ -2095,6 +2096,9 @@ async function buildProfileFromPlayer(
           exactSteamId,
         )
       : Promise.resolve(undefined),
+    exactSteamId
+      ? loadCurrentWatcherAccountStates(prisma)
+      : Promise.resolve([]),
   ]);
   const candidateGames = await loadCandidateFinalGames(
     prisma,
@@ -2172,7 +2176,14 @@ async function buildProfileFromPlayer(
     pendingClaimSummaries,
   );
 
-  const performance = buildPlayerPerformanceStats(matchedGames, currentPlayer);
+  const currentAccountState = currentAccountStates.find(
+    (state) => state.steamId === exactSteamId,
+  ) ?? null;
+  const performance = buildPlayerPerformanceStats(
+    matchedGames,
+    currentPlayer,
+    currentAccountState,
+  );
   const command = buildCommandStats(matchedGames, currentPlayer);
   const resources = buildResourceStats(matchedGames, currentPlayer);
   const charts = buildCharts(matchedGames, currentPlayer);
@@ -2203,20 +2214,10 @@ async function buildProfileFromPlayer(
 
   /*
    * A recently ingested replay is not necessarily a recently played replay.
-   * Current RM/DM presentation therefore consumes the chronology-aware
-   * performance projection instead of blindly trusting the first replay row.
+   * Current RM/DM presentation consumes the same exact-Steam signed Watcher
+   * account state as the leaderboard. Historical ratings and aliases remain
+   * evidence about their battles and cannot redefine current account state.
    */
-  const latestPlayerRecord =
-    matchedGames
-      .map(
-        (game) =>
-          currentPlayerRecord(
-            game,
-            currentPlayer,
-          ),
-      )
-      .find(Boolean);
-
   const steamRmRating =
     performance.steamRating;
 
@@ -2224,14 +2225,9 @@ async function buildProfileFromPlayer(
     performance.ladderRating;
 
   const steamId =
+    currentPlayer.steamId ??
     input.user?.steamId ??
-    (
-      latestPlayerRecord
-        ? readPlayerSteamId(
-            latestPlayerRecord,
-          )
-        : null
-    );
+    null;
 
   const profileCore = {
     displayName: input.displayName,

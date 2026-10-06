@@ -105,7 +105,7 @@ test(
 );
 
 test(
-  "newly uploaded old replay cannot override newer replay rating",
+  "historical replay chronology cannot establish current account rating",
   () => {
     const zodiac =
       buildReplayPublicPlayerRef(
@@ -166,18 +166,18 @@ test(
 
     assert.equal(
       stats.steamRating,
-      1671,
+      null,
     );
 
     assert.equal(
       stats.ratingLastSeenAt,
-      "2026-09-03T22:00:00.000Z",
+      null,
     );
   },
 );
 
 test(
-  "undated batch replay arriving later cannot override known rating",
+  "undated batch replay cannot establish current account rating",
   () => {
     const zodiac =
       buildReplayPublicPlayerRef(
@@ -230,7 +230,7 @@ test(
 
     assert.equal(
       stats.steamRating,
-      1671,
+      null,
     );
   },
 );

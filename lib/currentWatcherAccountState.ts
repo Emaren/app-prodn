@@ -87,9 +87,11 @@ function newestIso(
  * Current account state is deliberately separate from historical
  * replay/publication truth.
  *
- * Only exact-Steam Watcher observations with a real played_on may enter
- * this rail. Upload time, parse time, acceptance time, and finality are
- * not current-state chronology.
+ * Only server-verified, hash-bound live-monitor Watcher observations with
+ * an exact Steam identity and a real played_on may enter this rail. A signed
+ * historical import is still historical evidence; watcher_final alone does
+ * not prove a current account observation. Upload time, parse time,
+ * acceptance time, and finality are not current-state chronology.
  *
  * watcher_live is intentionally included: it may be the newest exact
  * observation even though it is not eligible for historical W/L truth.
@@ -161,6 +163,17 @@ async function loadCurrentWatcherAccountStatesFresh(
             'watcher_final'
           )
           AND g.played_on IS NOT NULL
+          AND g.key_events::jsonb #>>
+            '{watcher_upload,ingestion_provenance}' = 'live_monitor'
+          AND g.key_events::jsonb #>
+            '{watcher_upload,provenance_signature_verified}' = 'true'::jsonb
+          AND g.key_events::jsonb #>
+            '{watcher_upload,client_sha256_verified}' = 'true'::jsonb
+          AND LOWER(g.replay_hash) ~ '^[a-f0-9]{64}$'
+          AND LOWER(g.key_events::jsonb #>>
+            '{watcher_upload,server_sha256}') = LOWER(g.replay_hash)
+          AND LOWER(g.key_events::jsonb #>>
+            '{watcher_upload,client_sha256}') = LOWER(g.replay_hash)
       ),
 
       valid_observations AS (
