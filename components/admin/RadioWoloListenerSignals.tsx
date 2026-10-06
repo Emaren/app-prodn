@@ -569,42 +569,112 @@ export function RadioWoloListenerSignals() {
                           </div>
 
                           {row.pathTrail.length > 0 ? (
-                            <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                              {row.pathTrail.map(
+                            <div className="mt-3 space-y-2">
+                              {Array.from(
+                                new Set(
+                                  row.pathTrail.map(
+                                    (step) =>
+                                      step.trafficVisitorId,
+                                  ),
+                                ),
+                              ).map(
                                 (
-                                  step,
-                                  index,
+                                  visitorId,
+                                  browserIndex,
                                 ) => {
-                                  const isCurrent =
+                                  const browserTrail =
+                                    row.pathTrail.filter(
+                                      (step) =>
+                                        step.trafficVisitorId ===
+                                        visitorId,
+                                    );
+                                  const isActiveBrowser =
                                     row.activeOnSite &&
-                                    index ===
-                                      currentTrailIndex;
+                                    row.trafficVisitorId ===
+                                      visitorId;
 
                                   return (
                                     <div
-                                      key={`${step.trafficVisitorId}:${step.sessionId}:${step.seenAt}:${index}`}
-                                      className="flex items-center gap-1.5"
+                                      key={
+                                        visitorId
+                                      }
+                                      className="rounded-lg border border-white/[0.04] bg-white/[0.015] px-2 py-2"
                                     >
-                                      {index > 0 ? (
-                                        <span className="text-slate-700">
-                                          →
+                                      <div className="mb-2 flex items-center gap-2 text-[9px] font-bold uppercase tracking-[0.16em] text-slate-600">
+                                        <span>
+                                          Browser {browserIndex + 1}
                                         </span>
-                                      ) : null}
-                                      <span
-                                        className={`inline-flex max-w-[18rem] items-center gap-1.5 rounded-lg border px-2 py-1.5 font-mono text-[10px] ${
-                                          isCurrent
-                                            ? "border-emerald-300/30 bg-emerald-300/[0.08] text-emerald-100"
-                                            : "border-white/[0.07] bg-white/[0.025] text-slate-300"
-                                        }`}
-                                        title={`${step.path} · ${shortTime(step.seenAt)}`}
-                                      >
-                                        {isCurrent ? (
-                                          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-300 shadow-[0_0_8px_rgba(110,231,183,0.8)]" />
+                                        {isActiveBrowser ? (
+                                          <span className="inline-flex items-center gap-1 text-emerald-200/80">
+                                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_8px_rgba(110,231,183,0.8)]" />
+                                            live
+                                          </span>
                                         ) : null}
-                                        <span className="truncate">
-                                          {step.path}
-                                        </span>
-                                      </span>
+                                      </div>
+
+                                      <div className="flex flex-wrap items-center gap-1.5">
+                                        {browserTrail.map(
+                                          (
+                                            step,
+                                            index,
+                                          ) => {
+                                            const previous =
+                                              browserTrail[
+                                                index - 1
+                                              ];
+                                            const newSession =
+                                              index > 0 &&
+                                              previous
+                                                ?.sessionId !==
+                                                step.sessionId;
+                                            const isCurrent =
+                                              row.activeOnSite &&
+                                              row.trafficVisitorId ===
+                                                visitorId &&
+                                              step.path ===
+                                                row.currentPage &&
+                                              row.pathTrail.indexOf(
+                                                step,
+                                              ) ===
+                                                currentTrailIndex;
+
+                                            return (
+                                              <div
+                                                key={`${step.trafficVisitorId}:${step.sessionId}:${step.seenAt}:${index}`}
+                                                className="flex items-center gap-1.5"
+                                              >
+                                                {newSession ? (
+                                                  <span
+                                                    className="rounded border border-white/[0.06] px-1.5 py-1 text-[8px] font-semibold uppercase tracking-[0.12em] text-slate-600"
+                                                    title="A new Traffic session / visit began here"
+                                                  >
+                                                    new visit
+                                                  </span>
+                                                ) : index > 0 ? (
+                                                  <span className="text-slate-700">
+                                                    →
+                                                  </span>
+                                                ) : null}
+                                                <span
+                                                  className={`inline-flex max-w-[18rem] items-center gap-1.5 rounded-lg border px-2 py-1.5 font-mono text-[10px] ${
+                                                    isCurrent
+                                                      ? "border-emerald-300/30 bg-emerald-300/[0.08] text-emerald-100"
+                                                      : "border-white/[0.07] bg-white/[0.025] text-slate-300"
+                                                  }`}
+                                                  title={`${step.path} · ${shortTime(step.seenAt)}`}
+                                                >
+                                                  {isCurrent ? (
+                                                    <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-300 shadow-[0_0_8px_rgba(110,231,183,0.8)]" />
+                                                  ) : null}
+                                                  <span className="truncate">
+                                                    {step.path}
+                                                  </span>
+                                                </span>
+                                              </div>
+                                            );
+                                          },
+                                        )}
+                                      </div>
                                     </div>
                                   );
                                 },
