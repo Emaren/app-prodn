@@ -85,7 +85,7 @@ def invoke_control(args: argparse.Namespace) -> int:
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(prog="aoe2war truth native-control", description=__doc__)
     modes = result.add_subparsers(dest="mode", required=True)
-    for name in ("prepare", "run", "verify"):
+    for name in ("prepare", "run", "verify", "calibrate"):
         mode = modes.add_parser(name)
         mode.add_argument("--run-id", required=True)
         mode.add_argument(
