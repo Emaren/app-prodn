@@ -8,7 +8,7 @@ systems: ["app-prodn","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-10-06"
+reviewed_at: "2026-10-07"
 review_interval_days: 60
 sensitivity: "internal"
 ---
@@ -58,6 +58,27 @@ the same release; application constants alone are not schema authority.
 
 The implementation and production handoff are recorded in
 [Championship implementation handoff](./CHAMPIONSHIP_IMPLEMENTATION_HANDOFF.md).
+
+## Concurrent pair Challenge queue
+
+Challenge issuance is directional while battle matching is pair-based.
+
+- One warrior may hold active Challenges against many different opponents.
+- A second active Challenge in the **same direction** against the same opponent is rejected until the first is terminal or its 24-hour window expires. Directional advisory locking makes this rule single-flight under double-click/API races.
+- The reverse direction may coexist: `Jim -> Emaren` and `Emaren -> Jim` are two legitimate obligations.
+- When more than one active Challenge exists between the same two warriors, the oldest eligible Challenge owns the **next** authenticated Watcher duel. Later reverse-direction Challenges remain open for later battles; they are not converted into ambiguity or Commissioner review merely because both directions exist.
+- An already session-bound Challenge keeps authority over its exact session.
+- The same queue rule governs ordinary Challenge reconciliation, Championship evidence reconciliation, spontaneous title-bout promotion, and chat projection.
+
+A verified duel ends the owning Challenge's sporting clock immediately. The terminal Challenge leaves the active Live Games Challenge rail; the actual battle may continue through the ordinary recent-result/archive lane. Challenge Hall and chat keep the durable historical record. Active cards may remain green/urgent; completed cards use a terminal stone/blood presentation and no live countdown.
+
+Direct/Nav Chat carries **all** active Challenges for the selected warrior pair and stacks them oldest/actionable first. It labels direction explicitly and identifies which obligation owns the next duel. A single `activeChallenge` compatibility field may remain for older consumers, but it is never the full pair authority.
+
+Title custody is independent of who clicked Challenge. On authenticated Watcher start, the actual current title holder, opponent eligibility, mode and team size determine which eligible belt is on the line. A generic explicit Challenge may therefore be promoted in place to the qualifying ambient title bout even when the holder was the Challenge creator. Reverse Challenges do not duplicate one belt defense; the oldest qualifying duel owns the encounter.
+
+### Challenge betting during result review
+
+A pre-game Challenge winner book closes at the authoritative start fence. If the linked battle reaches `result_pending` or `desync_review`, the existing financial liability stays attached as **under review**. Review is not a settled no-winner state and must not make the Challenge market disappear into a stale/refund path. Winner payout still requires the existing result/desync/integrity settlement gates; this queue change does not make a manual UI result or provisional Watcher flag sufficient replay authority.
 
 ## Legacy invitation product contract
 
