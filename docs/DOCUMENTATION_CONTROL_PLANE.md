@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `chatgpt/replay-truth-operator-20261007` at `e32b17eda23a711ca3b2407fd9c21fa9a55a33ef`
+Implementation baseline: `chatgpt/replay-truth-operator-20261007` at `f753f8175cf8a46c5b896325645b7ddc4a35d19e`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
