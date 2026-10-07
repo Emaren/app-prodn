@@ -27,39 +27,6 @@ export const RADIO_WOLO_DEFAULT_IMPORT_PROFILE:
 const MAX_FOLDER_FILES =
   5_000;
 
-type WebkitEntry = {
-  isFile: boolean;
-  isDirectory: boolean;
-  name: string;
-  file?: (
-    success: (
-      file: File,
-    ) => void,
-    failure?: (
-      error: DOMException,
-    ) => void,
-  ) => void;
-  createReader?: () => {
-    readEntries: (
-      success: (
-        entries:
-          WebkitEntry[],
-      ) => void,
-      failure?: (
-        error:
-          DOMException,
-      ) => void,
-    ) => void;
-  };
-};
-
-type WebkitDataTransferItem =
-  DataTransferItem & {
-    webkitGetAsEntry?: () =>
-      | WebkitEntry
-      | null;
-  };
-
 function cleanTitleCase(
   value: string,
 ) {
@@ -259,7 +226,8 @@ export function isRadioWoloSupportedSource(
 }
 
 async function readDirectory(
-  entry: WebkitEntry,
+  entry:
+    FileSystemDirectoryEntry,
 ) {
   const reader =
     entry.createReader?.();
@@ -269,12 +237,12 @@ async function readDirectory(
   }
 
   const all:
-    WebkitEntry[] = [];
+    FileSystemEntry[] = [];
 
   for (;;) {
     const batch =
       await new Promise<
-        WebkitEntry[]
+        FileSystemEntry[]
       >(
         (
           resolve,
@@ -301,18 +269,15 @@ async function readDirectory(
 }
 
 async function readFileEntry(
-  entry: WebkitEntry,
+  entry:
+    FileSystemFileEntry,
 ) {
-  if (!entry.file) {
-    return null;
-  }
-
   return new Promise<File>(
     (
       resolve,
       reject,
     ) =>
-      entry.file?.(
+      entry.file(
         resolve,
         reject,
       ),
@@ -320,7 +285,7 @@ async function readFileEntry(
 }
 
 async function walkEntry(
-  entry: WebkitEntry,
+  entry: FileSystemEntry,
   parentPath: string,
   result:
     RadioWoloIntakeSource[],
@@ -342,7 +307,8 @@ async function walkEntry(
   if (entry.isFile) {
     const file =
       await readFileEntry(
-        entry,
+        entry as
+          FileSystemFileEntry,
       );
 
     if (file) {
@@ -363,7 +329,8 @@ async function walkEntry(
 
   const children =
     await readDirectory(
-      entry,
+      entry as
+        FileSystemDirectoryEntry,
     );
 
   for (const child of children) {
@@ -389,17 +356,14 @@ export async function collectRadioWoloDropSources(
     items
       .map(
         (item) =>
-          (
-            item as
-              WebkitDataTransferItem
-          ).webkitGetAsEntry?.() ||
+          item.webkitGetAsEntry?.() ||
           null,
       )
       .filter(
         (
           entry,
-        ): entry is WebkitEntry =>
-          Boolean(entry),
+        ): entry is FileSystemEntry =>
+          entry !== null,
       );
 
   if (
