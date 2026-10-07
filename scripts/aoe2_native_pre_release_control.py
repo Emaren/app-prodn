@@ -237,7 +237,11 @@ def write_immutable_receipt(payload: dict[str, Any]) -> tuple[Path, str]:
 
 
 def bounded_run(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
-    api_root = canonical_api_root()
+    api_root = (
+        args.api_root.expanduser().resolve(strict=True)
+        if args.api_root is not None
+        else canonical_api_root()
+    )
     app_source = git_state(ROOT, "app-prodn")
     api_source = git_state(api_root, "api-prodn")
 
@@ -471,6 +475,14 @@ def bounded_run(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run-id")
+    parser.add_argument(
+        "--api-root",
+        type=Path,
+        help=(
+            "optional api-prodn checkout/worktree to execute; defaults to the "
+            "canonical sibling api-prodn checkout"
+        ),
+    )
     parser.add_argument("--native-performance-seconds", type=int, default=240)
     parser.add_argument("--timeout-seconds", type=int, default=280)
     parser.add_argument("--probe-wait-seconds", type=int, default=120)
