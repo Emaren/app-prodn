@@ -3594,20 +3594,28 @@ export async function loadScheduledMatchTilesForLiveBoard(
     recentlyCompletedSessions,
     now
   );
-  const recentResolvedTiles = buildComparableChallengeTiles(reconciledRows, now)
-    .filter((tile) => isResolvedChallengeDisplayState(tile.displayState))
-    .filter(
-      (tile) => now.getTime() - new Date(tile.activityAt).getTime() <= CHALLENGE_RECENT_LINGER_MS
-    )
-    .sort(compareHistoryTileOrder);
-  const combinedTiles = [...activeSnapshot.tiles, ...recentResolvedTiles];
-  const { matchedActiveSessionKeys, matchedCompletedSessionKeys } =
-    deriveMatchedSessionKeys(combinedTiles);
+  /*
+   * Live Games owns active Challenge obligations, not Challenge history.
+   * Once watcher truth resolves a Challenge it leaves this rail immediately;
+   * the completed battle can continue through the ordinary recent-result lane
+   * while the Challenge itself remains durable in Challenge Hall/chat history.
+   */
+  const activeTiles =
+    activeSnapshot.tiles;
+
+  const {
+    matchedActiveSessionKeys,
+  } =
+    deriveMatchedSessionKeys(
+      activeTiles,
+    );
 
   return {
-    tiles: combinedTiles,
+    tiles:
+      activeTiles,
     matchedActiveSessionKeys,
-    matchedCompletedSessionKeys,
+    matchedCompletedSessionKeys:
+      new Set<string>(),
   };
 }
 
