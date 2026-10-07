@@ -318,6 +318,9 @@ def command_for_run(
             command.extend(["--roster-slot", str(slot)])
         if manifest is not None:
             command.extend(["--manifest-json", canonical_json(manifest)])
+        api_source = os.getenv("AOE2WAR_NATIVE_API_SOURCE", "").strip()
+        if api_source:
+            command.extend(["--api-source", api_source])
         return command
     if action == "rollback_preview":
         return [str(CLI), "rollback", "--dry-run", "--json"]
