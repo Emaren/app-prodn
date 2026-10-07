@@ -1052,6 +1052,36 @@ function marketSeedCreateData(seed: MarketSeed) {
   };
 }
 
+export function canChallengeWinnerResolveMarketReview(input: {
+  existingStatus: string | null | undefined;
+  scheduledMatchId: number | null | undefined;
+  seedStatus: string;
+  winnerSide: string | null | undefined;
+  integrityStatus: string | null | undefined;
+  integrityReason: string | null | undefined;
+  commissionerReviewState: string | null | undefined;
+}) {
+  return (
+    input.existingStatus ===
+      "under_review" &&
+    Boolean(
+      input.scheduledMatchId,
+    ) &&
+    input.seedStatus ===
+      "settled" &&
+    (
+      input.winnerSide ===
+        "left" ||
+      input.winnerSide ===
+        "right"
+    ) &&
+    input.integrityStatus ===
+      "verified" &&
+    !input.integrityReason &&
+    !input.commissionerReviewState
+  );
+}
+
 function marketSeedUpdateData(
   seed: MarketSeed,
   existing?: {
@@ -1101,20 +1131,22 @@ function marketSeedUpdateData(
   }
 
   const challengeWinnerCanResolveReview =
-    existing?.status ===
-      "under_review" &&
-    Boolean(
-      seed.scheduledMatchId,
-    ) &&
-    seed.status ===
-      "settled" &&
-    Boolean(
-      seed.winnerSide,
-    ) &&
-    existing.integrityStatus ===
-      "verified" &&
-    !existing.integrityReason &&
-    !existing.commissionerReviewState;
+    canChallengeWinnerResolveMarketReview({
+      existingStatus:
+        existing?.status,
+      scheduledMatchId:
+        seed.scheduledMatchId,
+      seedStatus:
+        seed.status,
+      winnerSide:
+        seed.winnerSide,
+      integrityStatus:
+        existing?.integrityStatus,
+      integrityReason:
+        existing?.integrityReason,
+      commissionerReviewState:
+        existing?.commissionerReviewState,
+    });
 
   if (
     existing?.status ===
@@ -2640,7 +2672,7 @@ function marketStatusFromScheduledMatch(displayState: ScheduledMatchTile["displa
   return "settled";
 }
 
-function inferWinnerSideFromChallenge(match: ScheduledMatchTile): BetSide | null {
+export function inferWinnerSideFromChallenge(match: ScheduledMatchTile): BetSide | null {
   /*
    * ScheduledMatch.resultWinnerSide is the durable Challenge-result authority.
    * It may be written by exact Watcher/replay reconciliation or by the governed
