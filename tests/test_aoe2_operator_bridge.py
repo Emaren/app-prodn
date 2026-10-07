@@ -163,6 +163,25 @@ class OperatorBridgeTests(unittest.TestCase):
             ],
         )
 
+    def test_native_replay_command_can_bind_governed_api_worktree(self):
+        with patch.dict(os.environ, {"AOE2WAR_NATIVE_API_SOURCE": "/tmp/governed-api-worktree"}):
+            command = MODULE.command_for_run(
+                {
+                    "id": "20260923120000-abcd1234",
+                    "action": "replay_native_run",
+                    "parameters": {
+                        "gameStatsId": 32388,
+                        "replaySha256": "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b",
+                        "rosterSlots": [1, 2, 3, 4],
+                        "candidateOnly": True,
+                        "nativePerformanceSeconds": 240,
+                        "timeoutSeconds": 300,
+                    },
+                },
+                base_url="https://example.invalid",
+            )
+        self.assertEqual(command[-2:], ["--api-source", "/tmp/governed-api-worktree"])
+
     def test_native_replay_command_rejects_non_canary_game(self):
         with self.assertRaisesRegex(
             MODULE.BridgeError,
