@@ -160,6 +160,39 @@ export function normalizeRadioProgramItems(
   return result;
 }
 
+export function findRadioProgramDuplicateAssetIds(
+  items: Array<{
+    assetId: number;
+  }>,
+) {
+  const seen =
+    new Set<number>();
+
+  const duplicates =
+    new Set<number>();
+
+  for (const item of items) {
+    if (
+      seen.has(
+        item.assetId,
+      )
+    ) {
+      duplicates.add(
+        item.assetId,
+      );
+      continue;
+    }
+
+    seen.add(
+      item.assetId,
+    );
+  }
+
+  return Array.from(
+    duplicates,
+  );
+}
+
 export function calculateRadioProgramDurationMs(
   items: Array<{
     durationMs: number;

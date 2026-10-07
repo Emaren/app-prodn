@@ -220,9 +220,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BETTING_CONSTITUTION.md",
       "review_interval_days": 14,
-      "reviewed_at": "2026-09-22",
+      "reviewed_at": "2026-10-07",
       "sensitivity": "internal",
-      "sha256": "61ecf03d7e7a2632c8237b1538f24faeceeb82f789b511b9c6e2d80840e424be",
+      "sha256": "fcc9849787cfef56c6cd6d9289d2152919ca9ed421dc0712f25ee94c02693dab",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -278,7 +278,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "Bet and Replay Reliability Release \u2014 2026-07-29",
+      "title": "Bet and Replay Reliability Release — 2026-07-29",
       "type": "historical"
     },
     {
@@ -550,7 +550,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-04",
       "sensitivity": "internal",
-      "sha256": "a31519e482d94d81a851db8f6538ef6427ff968f8cc620ecd5f1250558cd83c8",
+      "sha256": "18934e94a5681c18d6e858281fdb3a32229cc11b468e53dea2a73a70c3d8aeed",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "22cc02b6a94a20507e584f62e7af2fab1e1b0a7471163142c56a2ebf60daae41",
+      "sha256": "650e24a96d2bf9db2f16f53422d28f6f0dfb4b44f8d13f7cac1745236cb65db6",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1167,9 +1167,9 @@
       "owner": "aoe2war-web",
       "path": "docs/PARSER_ENGINE_ROOM.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-10-06",
+      "reviewed_at": "2026-09-23",
       "sensitivity": "restricted",
-      "sha256": "4135fc85a67cf266c79a9248d62ac1d8f1cf13af7604663e456a8b48a28fd650",
+      "sha256": "239ebce8a2035ad85776e6066a0eec83c72857d3c2bef746693c89ea36d93f80",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1221,7 +1221,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "AoE2WAR Production Performance Audit \u2014 2026-07-18",
+      "title": "AoE2WAR Production Performance Audit — 2026-07-18",
       "type": "historical"
     },
     {
@@ -1243,7 +1243,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "AoE2WAR Production Performance Audit \u2014 2026-08-13",
+      "title": "AoE2WAR Production Performance Audit — 2026-08-13",
       "type": "historical"
     },
     {
@@ -1288,7 +1288,7 @@
         "app-prodn",
         "api-prodn"
       ],
-      "title": "Player Identity Wave 2 \u2014 Deterministic Discovery V2",
+      "title": "Player Identity Wave 2 — Deterministic Discovery V2",
       "type": "reference"
     },
     {
@@ -1335,7 +1335,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "AoE2WAR Production Parity Seal \u2014 2026-07-26",
+      "title": "AoE2WAR Production Parity Seal — 2026-07-26",
       "type": "historical"
     },
     {
@@ -1348,9 +1348,9 @@
       "owner": "aoe2war-web",
       "path": "docs/RADIO_WOLO.md",
       "review_interval_days": 90,
-      "reviewed_at": "2026-09-20",
+      "reviewed_at": "2026-10-07",
       "sensitivity": "internal",
-      "sha256": "f7c124a4b779b5504062c8d5c2a149c2f984e4e715afda57a2186ed73edbbf13",
+      "sha256": "77e6a402abdacf52e7eb9131e59fae0510d7318015a28ceb8b9088409980efaa",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1371,9 +1371,9 @@
       "owner": "aoe2war-web",
       "path": "docs/REALTIME_TRUTH_CONTRACT.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-06",
+      "reviewed_at": "2026-09-22",
       "sensitivity": "internal",
-      "sha256": "55f7b19f207e1a15dbc90ad7eab86d3089ccc98fd6ff1040ce8d3b72381a1a01",
+      "sha256": "23821c0199c6e47f60c46c2858d87a6a6559e80ed52813054971f99b001bd498",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1427,7 +1427,7 @@
         "app-prodn",
         "wolochain"
       ],
-      "title": "AoE2WAR Certified Release Engineering Seal \u2014 2026-08-10",
+      "title": "AoE2WAR Certified Release Engineering Seal — 2026-08-10",
       "type": "historical"
     },
     {
@@ -1497,7 +1497,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "Replay Statistics and Operations Release \u2014 2026-07-25",
+      "title": "Replay Statistics and Operations Release — 2026-07-25",
       "type": "historical"
     },
     {
@@ -1511,9 +1511,9 @@
       "owner": "aoe2war-web",
       "path": "docs/REPLAY_TRUTH_OS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-06",
+      "reviewed_at": "2026-09-27",
       "sensitivity": "restricted",
-      "sha256": "aabe60d496a62f5593956077335b518deb5276c829c325efd3bc1b365675a963",
+      "sha256": "bfb8c8f79fbb2a83038207c28d1fbd24672d1abe83982fec26b32fb9c7ab37c0",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1997,7 +1997,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "War Room Forum \u2014 Saturday July 4, 2026 Edition",
+      "title": "War Room Forum — Saturday July 4, 2026 Edition",
       "type": "historical"
     },
     {
@@ -2025,8 +2025,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/player-first-truth-current-rating-20261005",
-    "commit": "42b5979cdd005c089f11a40ebd9aeb085eaed80b"
+    "branch": "main",
+    "commit": "095d3814192196ee9d5e412131af3a7666fd2596"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
