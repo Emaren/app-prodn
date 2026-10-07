@@ -109,6 +109,38 @@ class WorkerError(RuntimeError):
     pass
 
 
+def configure_api_source(source: Path) -> None:
+    """Select only a governed worktree of the canonical sibling API checkout."""
+    global API_ROOT, EVIDENCE_ROOT, RUNNER, RUNNER_IMPL, TERMINAL_CONTROL_VALIDATOR, TRUSTED_LOCAL_CONTROLS
+    candidate = source.expanduser().absolute()
+    if candidate.is_symlink():
+        raise WorkerError("Symlinked API source checkout rejected.")
+    try:
+        top = Path(subprocess.check_output(
+            ["git", "rev-parse", "--show-toplevel"], cwd=candidate, text=True, timeout=10,
+        ).strip()).resolve()
+        canonical = canonical_api_root().resolve()
+        candidate_common = canonical_checkout_root(candidate)
+        canonical_common = canonical_checkout_root(canonical)
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise WorkerError("Could not validate governed API source checkout.") from exc
+    candidate = candidate.resolve()
+    if top != candidate or candidate_common != canonical_common:
+        raise WorkerError("API source must be an exact worktree of the canonical sibling repository.")
+    API_ROOT = candidate
+    EVIDENCE_ROOT = None
+    RUNNER = API_ROOT / "scripts" / "replay_engine_runner.py"
+    RUNNER_IMPL = API_ROOT / "utils" / "replay_engine_runner.py"
+    TERMINAL_CONTROL_VALIDATOR = API_ROOT / "scripts" / "validate_replay_engine_terminal_control.py"
+    TRUSTED_LOCAL_CONTROLS = {
+        32388: (
+            canonical_common
+            / "instance/engine-runner-20260920/inputs"
+            / "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b.aoe2record"
+        )
+    }
+
+
 def worker_evidence_root() -> Path:
     global EVIDENCE_ROOT
     if EVIDENCE_ROOT is None:
@@ -158,6 +190,114 @@ def sha256_file(path: Path) -> str:
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     return digest.hexdigest()
+
+
+def file_identity(path: Path) -> dict[str, Any]:
+    path = path.resolve(strict=True)
+    if path.is_symlink() or not path.is_file():
+        raise WorkerError(f"Expected one regular native helper file: {path}")
+    return {"path": str(path), "byte_size": path.stat().st_size, "sha256": sha256_file(path)}
+
+
+def fixed_native_tools() -> dict[str, Path]:
+    """Use the same fixed host toolchain already reviewed by native-control."""
+    clang = Path("/usr/bin/clang").resolve(strict=True)
+    lld_link = (
+        Path.home()
+        / ".rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/"
+          "aarch64-apple-darwin/bin/gcc-ld/lld-link"
+    ).resolve(strict=True)
+    return {"clang": clang, "lld_link": lld_link}
+
+
+def build_native_helper(builder: str, executable: str, target: Path, tools: dict[str, Path]) -> dict[str, Any]:
+    script = API_ROOT / "scripts" / builder
+    if script.is_symlink() or not script.is_file():
+        raise WorkerError(f"Governed native helper builder is unavailable: {script}")
+    subprocess.run(
+        [
+            sys.executable, str(script),
+            "--clang", str(tools["clang"]),
+            "--lld-link", str(tools["lld_link"]),
+            "--output", str(target),
+        ],
+        cwd=str(API_ROOT),
+        check=True,
+        timeout=180,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    return file_identity(target / executable)
+
+
+def prepare_memory_control_runtime(run_id: str, manifest: dict[str, Any]) -> dict[str, Any]:
+    """Build/rebuild the read-only observer lane before one known-control run."""
+    manifest = validate_native_manifest(manifest)
+    root = worker_evidence_root().parent / "preflights" / run_id
+    if root.exists() or root.is_symlink():
+        raise WorkerError(f"Native memory-control preflight already exists: {root}")
+    root.mkdir(parents=True, mode=0o700)
+    if root.is_symlink():
+        raise WorkerError("Native memory-control preflight root cannot be a symlink.")
+
+    manifest_path = root / "control-manifest.json"
+    manifest_bytes = (canonical_json(manifest) + "\n").encode("utf-8")
+    with manifest_path.open("xb") as handle:
+        handle.write(manifest_bytes)
+        handle.flush()
+        os.fsync(handle.fileno())
+    manifest_path.chmod(0o400)
+    manifest_identity = file_identity(manifest_path)
+
+    tools = fixed_native_tools()
+    builds = []
+    for suffix in ("a", "b"):
+        observer = build_native_helper(
+            "build_replay_memory_observer.py", "replay-memory-observer.exe",
+            root / f"observer-{suffix}", tools,
+        )
+        controller = build_native_helper(
+            "build_replay_playback_controller.py", "replay-playback-controller.exe",
+            root / f"controller-{suffix}", tools,
+        )
+        builds.append({"observer": observer, "controller": controller})
+
+    for role in ("observer", "controller"):
+        if (
+            builds[0][role]["sha256"] != builds[1][role]["sha256"]
+            or builds[0][role]["byte_size"] != builds[1][role]["byte_size"]
+        ):
+            raise WorkerError(f"Native {role} helper did not reproduce byte-for-byte.")
+
+    receipt = {
+        "schema": "aoe2war-native-memory-control-preflight/v1",
+        "runId": run_id,
+        "candidateOnly": True,
+        "apiHead": git_head(API_ROOT),
+        "manifest": manifest_identity,
+        "tools": {key: file_identity(value) for key, value in tools.items()},
+        "helpers": builds,
+        "reproducible": True,
+        "writesTargetMemory": False,
+        "resultAuthority": False,
+        "promotionAuthority": False,
+        "bettingAuthority": False,
+        "settlementAuthority": False,
+        "woloAuthority": False,
+    }
+    receipt_path = root / "preflight.json"
+    with receipt_path.open("xb") as handle:
+        handle.write((canonical_json(receipt) + "\n").encode("utf-8"))
+        handle.flush()
+        os.fsync(handle.fileno())
+    receipt_path.chmod(0o400)
+    return {
+        "manifest": manifest_identity,
+        "observer": builds[0]["observer"],
+        "controller": builds[0]["controller"],
+        "preflight": file_identity(receipt_path),
+    }
 
 
 def git_head(repo: Path) -> str:
@@ -489,7 +629,9 @@ def result_payload(
             "settlementMutated": False,
         },
         "nativeObservation": {
+            "memoryTerminalCandidate": observation.get("native_memory_terminal_candidate"),
             "gameOverCandidate": observation.get("native_game_over_result_candidate"),
+            "terminalEvidenceKind": observation.get("terminal_evidence_kind"),
             "performanceLoadWitness": observation.get("native_performance_load_witness"),
         },
     }
@@ -652,68 +794,113 @@ def independently_revalidate_control_evidence(
     if performance_matches != 1:
         raise WorkerError("Independent exact native replay load is not proven.")
 
-    terminal_partitions = []
-    native_before = observation.get("native_logs_before")
-    native_after = observation.get("native_logs_after")
-    if type(native_before) is not dict or type(native_after) is not dict:
-        raise WorkerError("Native terminal evidence lacks before/after log inventories.")
-    for row in observation.get("copied_native_logs", []):
-        delta = row.get("delta_copy")
-        source = row.get("source", {})
-        source_path = source.get("path", "")
-        if Path(source_path).parent.name.lower() != "ailog":
-            continue
-        if native_after.get(source_path) != source:
-            raise WorkerError("Native full log does not bind the after-snapshot identity.")
-        if source.get("byte_size") == 0 and row.get("copy") is None and delta is None:
-            continue
-        copied = row.get("copy")
-        if type(copied) is not dict or type(delta) is not dict or row.get("delta_reason") is not None:
-            raise WorkerError("Native terminal log does not prove an append-safe copy.")
-        full_path = bound_file(str(copied.get("path", "")))
-        full_bytes = full_path.read_bytes()
-        if (
-            full_path.name not in evidence_names
-            or len(full_bytes) != copied.get("byte_size")
-            or hashlib.sha256(full_bytes).hexdigest() != copied.get("sha256")
-            or copied.get("sha256") != source.get("sha256")
-            or copied.get("byte_size") != source.get("byte_size")
-        ):
-            raise WorkerError("Native full log copy differs from the after-snapshot bytes.")
-        prior = native_before.get(source_path)
-        prior_size = 0
-        if prior is not None:
-            if type(prior) is not dict or prior.get("path") != source_path or type(prior.get("byte_size")) is not int:
-                raise WorkerError("Native before-snapshot identity is invalid.")
-            prior_size = prior["byte_size"]
-            if prior_size < 0 or prior_size > len(full_bytes) or hashlib.sha256(full_bytes[:prior_size]).hexdigest() != prior.get("sha256"):
-                raise WorkerError("Native prior-prefix bytes do not match the before-snapshot hash/size.")
-        if type(row.get("delta_start")) is not int or row["delta_start"] != prior_size:
-            raise WorkerError("Native delta boundary differs from the independently derived prior prefix.")
-        path = bound_file(str(delta.get("path", "")))
-        if path.name not in evidence_names or sha256_file(path) != delta.get("sha256") or path.stat().st_size != delta.get("byte_size"):
-            raise WorkerError("Native terminal evidence hash mismatch.")
-        if path.read_bytes() != full_bytes[prior_size:]:
-            raise WorkerError("Native terminal delta is not the exact attempt-new full-log suffix.")
-        if not delta.get("byte_size"):
-            continue
-        text = path.read_text(encoding="utf-8").replace("\r\n", "\n")
-        if text.count("GAME OVER!") != 1:
-            continue
-        blocks = re.findall(r"GAME OVER!\n((?:  Player #[0-9]+ (?:Won|Lost)\.\n)+)", text)
-        if len(blocks) != 1:
-            continue
-        outcomes = [(int(slot), outcome) for slot, outcome in re.findall(r"  Player #([0-9]+) (Won|Lost)\.", blocks[0])]
-        slots = [slot for slot, _ in outcomes]
-        winners = sorted(slot for slot, outcome in outcomes if outcome == "Won")
-        losers = sorted(slot for slot, outcome in outcomes if outcome == "Lost")
-        if sorted(slots) == expected_slots and len(set(slots)) == len(slots) and winners and losers:
-            terminal_partitions.append((winners, losers))
     result = receipt.get("observations", {}).get("result", {})
-    if len(terminal_partitions) != 1 or terminal_partitions[0] != (
-        sorted(result.get("winning_slots", [])), sorted(result.get("losing_slots", [])),
-    ):
-        raise WorkerError("Independent native GAME OVER partition is absent, ambiguous or changed.")
+    terminal_kind = observation.get("terminal_evidence_kind")
+    if terminal_kind == "native_memory_terminal":
+        memory_path = bound_file(str(output / "memory-observer.jsonl"))
+        if memory_path.name not in evidence_names:
+            raise WorkerError("Native memory terminal capture is absent from the immutable evidence inventory.")
+        observer_binding = invocation.get("memory_observer", {}).get("staged_identity")
+        if type(observer_binding) is not dict or observer_binding.get("sha256") != sha256_file(
+            bound_file(str(observer_binding.get("path", "")))
+        ):
+            raise WorkerError("Native memory observer helper binding changed.")
+        module_path = API_ROOT / "utils/replay_engine_memory.py"
+        spec = importlib.util.spec_from_file_location("aoe2war_native_memory_referee", module_path)
+        if spec is None or spec.loader is None:
+            raise WorkerError("Native memory terminal referee is unavailable.")
+        memory = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(memory)
+        recomputed_memory = memory.parse_memory_terminal_candidate(
+            memory_path,
+            game_id=manifest["gameStatsId"],
+            replay_sha256=manifest["replaySha256"],
+            executable_sha256=EXPECTED_EXECUTABLE_SHA256,
+            observer_sha256=observer_binding["sha256"],
+            runtime_sha256=sha256_file(bound_file(str(output / "runtime.json"))),
+            capture_sha256=sha256_file(memory_path),
+            expected_module_path=invocation.get("executable_windows_path"),
+            run_id=attempt.get("run_id"),
+            evidence_id="memory-observer.jsonl",
+            control_manifest=manifest,
+            expected_replay_bytes=manifest["archive"]["byteSize"],
+        )
+        if recomputed_memory.get("proven") is not True or type(recomputed_memory.get("match")) is not dict:
+            raise WorkerError("Independent repeated native memory terminal proof is unavailable.")
+        if canonical_json(recomputed_memory) != canonical_json(observation.get("native_memory_terminal_candidate")):
+            raise WorkerError("Stored native memory terminal candidate differs from independent recomputation.")
+        match = recomputed_memory["match"]
+        if (
+            sorted(match.get("roster_slots", [])) != expected_slots
+            or sorted(match.get("winning_slots", [])) != sorted(result.get("winning_slots", []))
+            or sorted(match.get("losing_slots", [])) != sorted(result.get("losing_slots", []))
+            or result.get("evidence_refs") != ["memory-observer.jsonl"]
+        ):
+            raise WorkerError("Independent native memory terminal partition is absent, ambiguous or changed.")
+    elif terminal_kind == "native_ailog":
+        terminal_partitions = []
+        native_before = observation.get("native_logs_before")
+        native_after = observation.get("native_logs_after")
+        if type(native_before) is not dict or type(native_after) is not dict:
+            raise WorkerError("Native terminal evidence lacks before/after log inventories.")
+        for row in observation.get("copied_native_logs", []):
+            delta = row.get("delta_copy")
+            source = row.get("source", {})
+            source_path = source.get("path", "")
+            if Path(source_path).parent.name.lower() != "ailog":
+                continue
+            if native_after.get(source_path) != source:
+                raise WorkerError("Native full log does not bind the after-snapshot identity.")
+            if source.get("byte_size") == 0 and row.get("copy") is None and delta is None:
+                continue
+            copied = row.get("copy")
+            if type(copied) is not dict or type(delta) is not dict or row.get("delta_reason") is not None:
+                raise WorkerError("Native terminal log does not prove an append-safe copy.")
+            full_path = bound_file(str(copied.get("path", "")))
+            full_bytes = full_path.read_bytes()
+            if (
+                full_path.name not in evidence_names
+                or len(full_bytes) != copied.get("byte_size")
+                or hashlib.sha256(full_bytes).hexdigest() != copied.get("sha256")
+                or copied.get("sha256") != source.get("sha256")
+                or copied.get("byte_size") != source.get("byte_size")
+            ):
+                raise WorkerError("Native full log copy differs from the after-snapshot bytes.")
+            prior = native_before.get(source_path)
+            prior_size = 0
+            if prior is not None:
+                if type(prior) is not dict or prior.get("path") != source_path or type(prior.get("byte_size")) is not int:
+                    raise WorkerError("Native before-snapshot identity is invalid.")
+                prior_size = prior["byte_size"]
+                if prior_size < 0 or prior_size > len(full_bytes) or hashlib.sha256(full_bytes[:prior_size]).hexdigest() != prior.get("sha256"):
+                    raise WorkerError("Native prior-prefix bytes do not match the before-snapshot hash/size.")
+            if type(row.get("delta_start")) is not int or row["delta_start"] != prior_size:
+                raise WorkerError("Native delta boundary differs from the independently derived prior prefix.")
+            path = bound_file(str(delta.get("path", "")))
+            if path.name not in evidence_names or sha256_file(path) != delta.get("sha256") or path.stat().st_size != delta.get("byte_size"):
+                raise WorkerError("Native terminal evidence hash mismatch.")
+            if path.read_bytes() != full_bytes[prior_size:]:
+                raise WorkerError("Native terminal delta is not the exact attempt-new full-log suffix.")
+            if not delta.get("byte_size"):
+                continue
+            text = path.read_text(encoding="utf-8").replace("\r\n", "\n")
+            if text.count("GAME OVER!") != 1:
+                continue
+            blocks = re.findall(r"GAME OVER!\n((?:  Player #[0-9]+ (?:Won|Lost)\.\n)+)", text)
+            if len(blocks) != 1:
+                continue
+            outcomes = [(int(slot), outcome) for slot, outcome in re.findall(r"  Player #([0-9]+) (Won|Lost)\.", blocks[0])]
+            slots = [slot for slot, _ in outcomes]
+            winners = sorted(slot for slot, outcome in outcomes if outcome == "Won")
+            losers = sorted(slot for slot, outcome in outcomes if outcome == "Lost")
+            if sorted(slots) == expected_slots and len(set(slots)) == len(slots) and winners and losers:
+                terminal_partitions.append((winners, losers))
+        if len(terminal_partitions) != 1 or terminal_partitions[0] != (
+            sorted(result.get("winning_slots", [])), sorted(result.get("losing_slots", [])),
+        ):
+            raise WorkerError("Independent native GAME OVER partition is absent, ambiguous or changed.")
+    else:
+        raise WorkerError("Native terminal evidence kind is absent or unsupported.")
     return validate_control_observations(manifest, attempt, receipt, validation, independently_verified=True)
 
 
@@ -752,7 +939,13 @@ def main() -> int:
     parser.add_argument("--timeout-seconds", type=int, default=300)
     parser.add_argument("--url", default=DEFAULT_URL)
     parser.add_argument("--manifest-json")
+    parser.add_argument(
+        "--api-source", type=Path,
+        help="canonical sibling api-prodn checkout or one governed worktree",
+    )
     args = parser.parse_args()
+    if args.api_source is not None:
+        configure_api_source(args.api_source)
 
     with native_execution_lock():
         return run_native_attempt(args)
@@ -797,6 +990,10 @@ def run_native_attempt(args: argparse.Namespace) -> int:
     if output.exists() or output.is_symlink() or (output.parent / (output.name + ".worker-failure.json")).exists():
         raise WorkerError(f"Native attempt directory already exists: {output}")
     output.parent.mkdir(parents=True, exist_ok=True)
+    memory_runtime = (
+        prepare_memory_control_runtime(args.run_id, manifest)
+        if manifest is not None else None
+    )
 
     with tempfile.TemporaryDirectory(prefix="aoe2war-native-replay-") as temp_dir:
         artifact, byte_size, artifact_source = materialize_replay(
@@ -839,6 +1036,16 @@ def run_native_attempt(args: argparse.Namespace) -> int:
             str(args.timeout_seconds),
             "--steam-app-context",
         ]
+        if memory_runtime is not None:
+            command.extend([
+                "--native-fast-replay",
+                "--memory-observer", memory_runtime["observer"]["path"],
+                "--expected-memory-observer-sha256", memory_runtime["observer"]["sha256"],
+                "--playback-controller", memory_runtime["controller"]["path"],
+                "--expected-playback-controller-sha256", memory_runtime["controller"]["sha256"],
+                "--control-manifest", memory_runtime["manifest"]["path"],
+                "--expected-control-manifest-sha256", memory_runtime["manifest"]["sha256"],
+            ])
         for slot in slots:
             command.extend(["--roster-slot", str(slot)])
 
@@ -875,6 +1082,8 @@ def run_native_attempt(args: argparse.Namespace) -> int:
     payload["artifactByteSize"] = byte_size
     payload["artifactSource"] = artifact_source
     payload["sourceIdentity"] = source_identity
+    if memory_runtime is not None:
+        payload["memoryControlPreflight"] = memory_runtime["preflight"]
     if manifest is not None:
         manifest_path = output / "native-manifest.json"
         with manifest_path.open("xb") as handle:
