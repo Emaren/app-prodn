@@ -5,6 +5,7 @@ import {
 
 import {
   calculateRadioProgramDurationMs,
+  findRadioProgramDuplicateAssetIds,
   normalizeRadioProgramItems,
 } from "@/lib/radioWoloPrograms";
 import {
@@ -91,6 +92,28 @@ export async function PUT(
       },
       {
         status: 400,
+        headers:
+          NO_STORE_HEADERS,
+      },
+    );
+  }
+
+  const duplicateAssetIds =
+    findRadioProgramDuplicateAssetIds(
+      items,
+    );
+
+  if (
+    duplicateAssetIds.length
+  ) {
+    return NextResponse.json(
+      {
+        detail:
+          "A Radio WOLO program can contain each Vault track only once. Remove duplicate tracks before saving.",
+        duplicateAssetIds,
+      },
+      {
+        status: 409,
         headers:
           NO_STORE_HEADERS,
       },
