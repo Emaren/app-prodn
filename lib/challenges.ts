@@ -3611,12 +3611,12 @@ export async function loadScheduledMatchTilesForLiveBoard(
   };
 }
 
-export async function loadChallengeThreadTile(
+export async function loadChallengeThreadTiles(
   prisma: PrismaClient,
   viewerUserId: number,
   counterpartUserId: number,
   challengeId?: number | null
-): Promise<ScheduledMatchTile | null> {
+): Promise<ScheduledMatchTile[]> {
   const [rows, sessionSnapshot] = await Promise.all([
     loadScheduledMatchRows(prisma, {
       viewerUserId,
@@ -3634,24 +3634,86 @@ export async function loadChallengeThreadTile(
     sessionSnapshot.recentlyCompletedSessions
   );
 
-  // An embedded Match Room names an exact ledger record, including terminal
-  // matches. Do not let the active-runway filter silently substitute another
-  // challenge from the same pair or hide a resolved one.
+  /*
+   * An embedded Match Room names one exact ledger record, including terminal
+   * matches. Never substitute another reverse-direction Challenge.
+   */
   if (challengeId) {
-    const projections=await loadChampionshipProjectionMap(prisma,[challengeId],viewerUserId);
-    return buildComparableChallengeTiles(reconciledRows).map(tile=>({...tile,championship:projections.get(tile.id)??null})).find(
-      (tile) => tile.id === challengeId
-    ) ?? null;
+    const projections =
+      await loadChampionshipProjectionMap(
+        prisma,
+        [challengeId],
+        viewerUserId,
+      );
+
+    const tile =
+      buildComparableChallengeTiles(
+        reconciledRows,
+      )
+        .map((entry) => ({
+          ...entry,
+          championship:
+            projections.get(
+              entry.id,
+            ) ??
+            null,
+        }))
+        .find(
+          (entry) =>
+            entry.id ===
+            challengeId,
+        );
+
+    return tile
+      ? [tile]
+      : [];
   }
 
-  const { tiles } = deriveScheduledMatchTiles(
-    reconciledRows,
-    sessionSnapshot.activeSessions,
-    sessionSnapshot.recentlyCompletedSessions
-  );
+  const { tiles } =
+    deriveScheduledMatchTiles(
+      reconciledRows,
+      sessionSnapshot.activeSessions,
+      sessionSnapshot.recentlyCompletedSessions
+    );
 
-  const projections=await loadChampionshipProjectionMap(prisma,tiles.map(tile=>tile.id),viewerUserId);
-  return tiles[0] ? {...tiles[0],championship:projections.get(tiles[0].id)??null} : null;
+  const projections =
+    await loadChampionshipProjectionMap(
+      prisma,
+      tiles.map(
+        (tile) =>
+          tile.id,
+      ),
+      viewerUserId,
+    );
+
+  return tiles.map(
+    (tile) => ({
+      ...tile,
+      championship:
+        projections.get(
+          tile.id,
+        ) ??
+        null,
+    }),
+  );
+}
+
+export async function loadChallengeThreadTile(
+  prisma: PrismaClient,
+  viewerUserId: number,
+  counterpartUserId: number,
+  challengeId?: number | null
+): Promise<ScheduledMatchTile | null> {
+  const tiles =
+    await loadChallengeThreadTiles(
+      prisma,
+      viewerUserId,
+      counterpartUserId,
+      challengeId,
+    );
+
+  return tiles[0] ??
+    null;
 }
 
 /** Load one exact ledger tile after the caller has enforced participant/admin access. */
