@@ -1068,6 +1068,9 @@ function marketSeedUpdateData(
     closeAt: Date | null;
     proofDeadlineAt: Date | null;
     resolutionReason: string | null;
+    integrityStatus: string;
+    integrityReason: string | null;
+    commissionerReviewState: string | null;
     createdAt: Date;
   } | null
 ) {
@@ -1097,7 +1100,27 @@ function marketSeedUpdateData(
     };
   }
 
-  if (existing?.status === "under_review") {
+  const challengeWinnerCanResolveReview =
+    existing?.status ===
+      "under_review" &&
+    Boolean(
+      seed.scheduledMatchId,
+    ) &&
+    seed.status ===
+      "settled" &&
+    Boolean(
+      seed.winnerSide,
+    ) &&
+    existing.integrityStatus ===
+      "verified" &&
+    !existing.integrityReason &&
+    !existing.commissionerReviewState;
+
+  if (
+    existing?.status ===
+      "under_review" &&
+    !challengeWinnerCanResolveReview
+  ) {
     return {
       scheduledMatchId: seed.scheduledMatchId,
       linkedSessionKey: seed.linkedSessionKey,
@@ -8010,6 +8033,9 @@ async function runBetMarketEnsure(prisma: PrismaClient) {
             closeAt: true,
             proofDeadlineAt: true,
             resolutionReason: true,
+            integrityStatus: true,
+            integrityReason: true,
+            commissionerReviewState: true,
             createdAt: true,
           },
         });
