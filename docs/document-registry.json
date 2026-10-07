@@ -220,9 +220,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BETTING_CONSTITUTION.md",
       "review_interval_days": 14,
-      "reviewed_at": "2026-09-22",
+      "reviewed_at": "2026-10-07",
       "sensitivity": "internal",
-      "sha256": "61ecf03d7e7a2632c8237b1538f24faeceeb82f789b511b9c6e2d80840e424be",
+      "sha256": "fcc9849787cfef56c6cd6d9289d2152919ca9ed421dc0712f25ee94c02693dab",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
