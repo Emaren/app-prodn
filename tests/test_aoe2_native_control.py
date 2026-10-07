@@ -141,7 +141,7 @@ class NativeControlAdapterTests(unittest.TestCase):
         self.assertNotIn("--api-source", command)
 
     def test_all_modes_preserve_api_json_and_exit_status_without_shell(self):
-        for mode in ("prepare", "run", "verify"):
+        for mode in ("prepare", "run", "verify", "calibrate"):
             with self.subTest(mode=mode), patch.object(MODULE, "ROOT", self.app):
                 command, cwd = MODULE.command_for_control(self.args(mode))
                 result = subprocess.run(command, cwd=cwd, capture_output=True, text=True, check=False)
@@ -153,6 +153,24 @@ class NativeControlAdapterTests(unittest.TestCase):
         with patch.object(MODULE, "command_for_control", return_value=(command, self.api)), patch.object(subprocess, "run", return_value=subprocess.CompletedProcess([], 7)) as run:
             self.assertEqual(MODULE.invoke_control(self.args("verify")), 7)
         self.assertEqual(run.call_args.kwargs, {"cwd": self.api, "check": False})
+
+    def test_calibrate_is_one_shot_api_owned_action(self):
+        with patch.object(MODULE, "ROOT", self.app_worktree):
+            command, cwd = MODULE.command_for_control(self.args(
+                "calibrate", "--api-source", str(self.api_worktree)
+            ))
+        self.assertEqual(cwd, self.api_worktree)
+        self.assertEqual(command, [
+            sys.executable,
+            str(self.api_worktree / MODULE.API_SCRIPT),
+            "calibrate",
+            "--run-id",
+            "control-32388-fixture",
+            "--app-source",
+            str(self.app_worktree),
+        ])
+        self.assertNotIn("--clang", command)
+        self.assertNotIn("--lld-link", command)
 
     def test_invalid_run_id_rejects_before_git_or_execution(self):
         for run_id in ("../escape", "control;launch", "", "a" * 49, "control-ABC", "-control"):
@@ -170,6 +188,7 @@ class NativeControlAdapterTests(unittest.TestCase):
             ["run", "--run-id", "fixture", "--clang", "/tool"],
             ["verify", "--run-id", "fixture", "--lld-link", "/tool"],
             ["run", "--run-id", "fixture", "--game-id", "25782"],
+            ["calibrate", "--run-id", "fixture", "--clang", "/tool"],
             ["prepare", "--run-id", "fixture", "--app-source", str(self.foreign)],
             ["prepare", "--run-id", "fixture", "--output", "/override"],
         ):
