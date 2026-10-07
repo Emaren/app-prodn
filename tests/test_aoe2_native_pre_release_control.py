@@ -103,6 +103,7 @@ class NativePreReleaseControlTests(unittest.TestCase):
         self.assertIn('return result, 0 if probe_recorded else 4', source)
         self.assertIn('"--api-root"', source)
         self.assertIn('args.api_root.expanduser().resolve(strict=True)', source)
+        self.assertIn('"--untracked-files=all"', source)
 
 
 if __name__ == "__main__":
