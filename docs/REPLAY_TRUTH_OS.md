@@ -53,6 +53,56 @@ classification, canonical two-team resolution, participant W/L, parse
 provenance, current accepted normalized-stat projection, effective accepted
 adjudication, exact routing class, and current blocker.
 
+## Native pre-release control
+
+`aoe2war truth native-control`
+
+runs the single governed local native research control for GameStats `#32388`.
+It is deliberately **not** a production SSH command and it never promotes replay
+truth. The command owns the complete operator workflow that previously required
+an AI or human to reconstruct several separate steps:
+
+1. require clean app/API source and record both exact Git heads;
+2. verify the sealed `#32388` replay, exact AoK HD executable and data-file
+   identities;
+3. build the API-owned schema-5 read-only memory observer and bounded Fast
+   Playback UI controller from current source using the audited build scripts;
+4. start the existing candidate-only replay-engine runner;
+5. attach the separate instrumented pre-release probe to the Steam-created
+   32-bit `AoK HD.exe` process;
+6. capture the `0x5a6e99` pre-release boundary, caller and stream
+   cursor/extent/mode/error evidence;
+7. retain runner and debugger evidence under the canonical API evidence root;
+8. write one immutable SHA-named Replay Truth receipt.
+
+The existing schema-5 memory observer remains strictly read-only. The
+pre-release probe is a separate evidence plane because WineDbg uses a software
+breakpoint and can temporarily modify target-process memory while debugging.
+That debugger behavior is explicitly disclosed in the receipt. The command does
+not modify the executable or replay on disk and performs no production,
+database, adjudication, betting, settlement or Wolo write.
+
+The command is fail-closed at the research boundary. Its top-level result remains
+`HOLD_PENDING_INDEPENDENT_REVIEW`; it does not infer EOF from stream closure,
+does not claim whole-input consumption, and does not enable unknown-game
+execution. The known-control expansion gate remains closed until the captured
+instruction-boundary evidence independently proves the required semantics.
+
+This command is the canonical primitive for this workflow. A future Admin
+Dashboard control must call the same governed operation (through a fixed
+operator action) and render its structured receipt. It must not duplicate the
+debugger/runner logic in UI code. That keeps the operating direction explicit:
+**AI discovers; AoE2WAR operationalizes.**
+
+The default bounded run is:
+
+```bash
+./bin/aoe2war truth native-control
+```
+
+Optional run-ID and timeout flags exist for controlled repetition. They do not
+expand game scope or authority.
+
 ## Production safety
 
 Census, audit and target are read-only production commands.
