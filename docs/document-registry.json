@@ -243,9 +243,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BETTING_HALL_PRODUCT_AND_CONCURRENCY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-29",
+      "reviewed_at": "2026-10-07",
       "sensitivity": "internal",
-      "sha256": "3a314aa841840f4a9f6d65f813a8771e875d83e8d3955856a60680a23ef65a19",
+      "sha256": "317d41ad66c191e43bd68079b608eee0e3f165a91f3c4160e7489381388e1aba",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -360,9 +360,9 @@
       "owner": "aoe2war-web",
       "path": "docs/CHALLENGE_SYSTEM.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-10-06",
+      "reviewed_at": "2026-10-07",
       "sensitivity": "internal",
-      "sha256": "27738a671e448658482a701592534a0bc24be1f3b358e65e5feb7fdd4dfd26cc",
+      "sha256": "1155377348eaf8784da126d421d17e93964843aee69b2a48d2af1374c7c4c048",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -454,9 +454,9 @@
       "owner": "aoe2war-web",
       "path": "docs/CHAMPIONSHIP_IMPLEMENTATION_HANDOFF.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-06",
+      "reviewed_at": "2026-10-07",
       "sensitivity": "internal",
-      "sha256": "fe6148749acacac86275bed1bafc70a08ff99cc23590abd1d6c308c64e355345",
+      "sha256": "5e41fc4f4feffa2e942587eafce4f7a355660f457ac5684f85ae84a783186687",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "650e24a96d2bf9db2f16f53422d28f6f0dfb4b44f8d13f7cac1745236cb65db6",
+      "sha256": "864a219b463e0e9d96a704b611d0e3f797a2e54e7986ad5dd43e97625c831451",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2026,7 +2026,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "main",
-    "commit": "095d3814192196ee9d5e412131af3a7666fd2596"
+    "commit": "0efe18b9d8b50e0c62e5aa5a80906dbd13870977"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
