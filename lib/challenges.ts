@@ -2900,7 +2900,7 @@ async function persistScheduledMatchResults(
       }
 
       const activeSession = findLinkedSession(activeSessions, row, matchedActiveSessionKeys, {
-        allowOpenPlayAnytimeCorrelation: openPairIsUnambiguous,
+        allowOpenPlayAnytimeCorrelation: openPairCanClaimNextSession,
       });
 
       if (activeSession) {
