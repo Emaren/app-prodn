@@ -298,6 +298,7 @@ def bounded_run(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
             "--timeout-seconds",
             str(args.timeout_seconds),
             "--steam-app-context",
+            "--native-fast-replay",
             "--memory-observer",
             helpers["observer"]["path"],
             "--expected-memory-observer-sha256",
