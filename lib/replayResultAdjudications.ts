@@ -577,6 +577,49 @@ function adjudicationTeams(value: unknown) {
     .filter((team): team is CanonicalReplayResultTeam => Boolean(team));
 }
 
+function boundNumericSourceTeams(
+  assignments: unknown,
+  players: Record<string, unknown>[],
+  canonical: Array<CanonicalReplayPlayer | null>
+) {
+  if (!Array.isArray(assignments) || assignments.length !== 2 || players.length !== canonical.length) return null;
+  const sourceByKey = new Map<string, { player: CanonicalReplayPlayer; teamId: string }>();
+  for (let index = 0; index < players.length; index++) {
+    const player = canonical[index];
+    if (!player?.steamId || !/^\d{17}$/.test(player.steamId) || player.stablePlayerKey !== `steam:${player.steamId}` || sourceByKey.has(player.stablePlayerKey)) return null;
+    const identities = ["steam_id", "steamId", "user_id"].map(key => players[index][key]).filter(value => value !== null && value !== undefined);
+    if (!identities.length || identities.some(value => value !== player.steamId)) return null;
+    const slots = ["player_number", "playerNumber", "number"].map(key => players[index][key]).filter(value => value !== null && value !== undefined);
+    if (slots.some(value => !((typeof value === "number" || typeof value === "string" && /^\d+$/.test(value)) && Number.isSafeInteger(Number(value)) && Number(value) >= 1 && Number(value) <= 8 && Number(value) === player.playerNumber))) return null;
+    const rawIds = ["team_id", "teamId", "team_number", "teamNumber", "team"].map(key => players[index][key]).filter(value => value !== null && value !== undefined);
+    if (!rawIds.length || rawIds.some(value => !((typeof value === "number" || typeof value === "string" && /^\d+$/.test(value)) && Number.isSafeInteger(Number(value)) && Number(value) >= 0 && Number(value) <= 8))) return null;
+    const ids = new Set(rawIds.map(Number));
+    if (ids.size !== 1) return null;
+    const teamId = String([...ids][0]);
+    if (player.teamId !== teamId) return null;
+    sourceByKey.set(player.stablePlayerKey, { player, teamId });
+  }
+  const assigned = new Set<string>(), teamKeys = new Set<string>(), numericSides = new Set<string>();
+  const result = new Map<string, string>();
+  for (const entry of assignments) {
+    const team = record(entry);
+    if (!team || typeof team.teamKey !== "string" || !team.teamKey.trim() || teamKeys.has(team.teamKey) || !Array.isArray(team.players) || !team.players.length) return null;
+    teamKeys.add(team.teamKey);
+    const sideIds = new Set<string>();
+    for (const value of team.players) {
+      const frozen = record(value);
+      const source = typeof frozen?.stablePlayerKey === "string" ? sourceByKey.get(frozen.stablePlayerKey) : null;
+      if (!frozen || !source || assigned.has(source.player.stablePlayerKey) || frozen.steamId !== source.player.steamId || frozen.name !== source.player.name || frozen.normalizedName !== source.player.normalizedName || frozen.playerNumber !== source.player.playerNumber || frozen.sourceTeamId !== source.teamId) return null;
+      assigned.add(source.player.stablePlayerKey);
+      sideIds.add(source.teamId);
+      result.set(source.player.stablePlayerKey, source.teamId);
+    }
+    if (sideIds.size !== 1) return null;
+    numericSides.add([...sideIds][0]);
+  }
+  return assigned.size === sourceByKey.size && numericSides.size === 2 ? result : null;
+}
+
 export function applyReplayResultAdjudication<T extends object>(
   row: T,
   adjudication: EffectiveReplayResultAdjudication | null | undefined
@@ -634,10 +677,17 @@ export function applyReplayResultAdjudication<T extends object>(
   ) {
     return row;
   }
+  // Keep an already bound native topology when the reviewed sides are exactly
+  // that topology. A manual regrouping still projects its reviewed named sides.
+  const winningTeam = teams.find(team => team.teamKey === adjudication.winningTeamKey);
+  const completeWinningSide = winningTeam && winningTeam.players.length === winningPlayerKeys.size &&
+    winningTeam.players.every(player => winningPlayerKeys.has(player.stablePlayerKey));
+  const numericSourceTeams = completeWinningSide ? boundNumericSourceTeams(adjudication.teamAssignments, players, canonicalCurrentPlayers) : null;
+  const projectedWinningTeamKey = numericSourceTeams?.get([...winningPlayerKeys][0]) ?? adjudication.winningTeamKey;
   const projectedPlayers = players.map((player) => {
     const canonical = normalizeReplayPlayer(player);
     if (!canonical || !teamByPlayerKey.has(canonical.stablePlayerKey)) return player;
-    const teamKey = teamByPlayerKey.get(canonical.stablePlayerKey) as string;
+    const teamKey = numericSourceTeams?.get(canonical.stablePlayerKey) ?? teamByPlayerKey.get(canonical.stablePlayerKey) as string;
     return {
       ...player,
       team_id: teamKey,
@@ -650,9 +700,14 @@ export function applyReplayResultAdjudication<T extends object>(
     .filter((name): name is string => Boolean(name));
   if (winningNames.length === 0) return row;
 
-  const originalWinner = source.winner ?? null;
-  const originalParseReason = source.parse_reason ?? source.parseReason ?? null;
-  const originalParseSource = source.parse_source ?? source.parseSource ?? null;
+  const prior = jsonRecord(source.replayResultAdjudication);
+  const sameProjection = source.winnerProof === "replay_result_adjudication" &&
+    prior.adjudication_id === adjudication.id && prior.idempotency_key === adjudication.idempotencyKey &&
+    prior.source_replay_hash === adjudication.sourceReplayHash && prior.source_roster_hash === adjudication.sourceRosterHash &&
+    prior.source_parse_iteration === adjudication.sourceParseIteration;
+  const originalWinner = sameProjection ? prior.original_winner ?? null : source.winner ?? null;
+  const originalParseReason = sameProjection ? prior.original_parse_reason ?? null : source.parse_reason ?? source.parseReason ?? null;
+  const originalParseSource = sameProjection ? prior.original_parse_source ?? null : source.parse_source ?? source.parseSource ?? null;
   const manualEvidence = {
     adjudication_id: adjudication.id,
     idempotency_key: adjudication.idempotencyKey,
@@ -700,7 +755,7 @@ export function applyReplayResultAdjudication<T extends object>(
     winner: winningNames.join(" / "),
     winnerPlayers: winningNames,
     winningPlayerKeys: [...winningPlayerKeys],
-    winningTeamKey: adjudication.winningTeamKey,
+    winningTeamKey: projectedWinningTeamKey,
     winnerProof: "replay_result_adjudication",
     reviewNeeded: false,
     players: projectedPlayers,
