@@ -945,6 +945,29 @@ export default function RadioWoloBuilder() {
     );
   }
 
+  function cleanDuplicateChain() {
+    if (
+      duplicateChainCount <= 0
+    ) {
+      return;
+    }
+
+    const removed =
+      duplicateChainCount;
+
+    setError(null);
+    setNotice(
+      `Removed ${removed.toLocaleString()} duplicate track${removed === 1 ? "" : "s"} while preserving the first occurrence of each Vault asset.`,
+    );
+
+    updateChain(
+      (current) =>
+        dedupeChainItems(
+          current,
+        ),
+    );
+  }
+
   function removeItem(
     index: number,
   ) {
@@ -1047,7 +1070,9 @@ export default function RadioWoloBuilder() {
               JSON.stringify(
                 {
                   name:
-                    `${program.name} — Draft`,
+                    draftProgramName(
+                      program.name,
+                    ),
                   targetDurationMs:
                     program.targetDurationMs,
                 },
@@ -1073,7 +1098,9 @@ export default function RadioWoloBuilder() {
               JSON.stringify(
                 {
                   items:
-                    chain.map(
+                    dedupeChainItems(
+                      chain,
+                    ).map(
                       (item) => ({
                         assetId:
                           item.asset
@@ -1241,6 +1268,16 @@ export default function RadioWoloBuilder() {
     ) {
       setError(
         "Add at least one asset before marking a program ready.",
+      );
+
+      return;
+    }
+
+    if (
+      duplicateChainCount > 0
+    ) {
+      setError(
+        `Remove ${duplicateChainCount.toLocaleString()} duplicate track${duplicateChainCount === 1 ? "" : "s"} before saving this program.`,
       );
 
       return;
