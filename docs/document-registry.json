@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e034d2e831f9e547d7bc5e73f7b818de246db71c4fd3fed377adcca586a66dd8",
+      "sha256": "f9a0d6c7c4c844d7b7cff055de4858f2c37be5bab04437b9bd8b2d9aac70dc1f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1348,9 +1348,9 @@
       "owner": "aoe2war-web",
       "path": "docs/RADIO_WOLO.md",
       "review_interval_days": 90,
-      "reviewed_at": "2026-10-06",
+      "reviewed_at": "2026-10-07",
       "sensitivity": "internal",
-      "sha256": "a97bd63dd041facdcd8bd7b87adbf06fd9cff420d38e39de0ba22aa29c79d8ee",
+      "sha256": "fb72809e1849ce262ce9ed397da8ffccae95f5e703e4ce0ed21167842ad3780a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2026,7 +2026,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "main",
-    "commit": "4c70b156d686e80eb20c459858ccd3b3cb853fbe"
+    "commit": "a982ae6c3970e4e15ada62a1ad919e1da367e607"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
