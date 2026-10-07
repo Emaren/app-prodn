@@ -546,7 +546,7 @@ test(
 
     assert.match(
       vault,
-      /Drop audio into/,
+      /Drop music here/,
     );
 
     assert.match(
@@ -3357,7 +3357,7 @@ test(
 );
 
 test(
-  "Radio WOLO Vault can unpack bounded ZIP libraries into individual audio assets",
+  "Radio WOLO Vault accepts magical files folders and ZIP libraries",
   () => {
     const vault =
       read(
@@ -3367,14 +3367,18 @@ test(
       read(
         "lib/radioWoloZipImport.ts",
       );
+    const magic =
+      read(
+        "lib/radioWoloMagicIntake.ts",
+      );
 
     assert.match(
       vault,
-      /\.zip/,
+      /expandRadioWoloIntakeFiles/,
     );
     assert.match(
       vault,
-      /expandRadioWoloIntakeFiles/,
+      /collectRadioWoloDropSources/,
     );
     assert.match(
       vault,
@@ -3382,11 +3386,43 @@ test(
     );
     assert.match(
       vault,
-      /Import credit/,
+      /Choose folder/,
     );
     assert.match(
       vault,
-      /Import tags/,
+      /Drop music here/,
+    );
+    assert.match(
+      vault,
+      /Importing as/,
+    );
+    assert.match(
+      vault,
+      /Use magic defaults/,
+    );
+    assert.match(
+      magic,
+      /Lord Molyneaux/,
+    );
+    assert.match(
+      magic,
+      /lord_molyneaux, suno/,
+    );
+    assert.match(
+      magic,
+      /webkitGetAsEntry/,
+    );
+    assert.match(
+      magic,
+      /webkitRelativePath/,
+    );
+    assert.match(
+      magic,
+      /usesuno/,
+    );
+    assert.match(
+      magic,
+      /localStorage/,
     );
     assert.match(
       zip,
@@ -3399,6 +3435,10 @@ test(
     assert.match(
       zip,
       /ZIP64 archives are not supported/,
+    );
+    assert.match(
+      zip,
+      /isRadioWoloAudioFile/,
     );
     assert.match(
       zip,

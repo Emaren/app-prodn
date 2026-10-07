@@ -220,9 +220,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BETTING_CONSTITUTION.md",
       "review_interval_days": 14,
-      "reviewed_at": "2026-09-22",
+      "reviewed_at": "2026-10-07",
       "sensitivity": "internal",
-      "sha256": "61ecf03d7e7a2632c8237b1538f24faeceeb82f789b511b9c6e2d80840e424be",
+      "sha256": "fcc9849787cfef56c6cd6d9289d2152919ca9ed421dc0712f25ee94c02693dab",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "55e1a50d520ec578003d69bdbf22070251b057a8e72d21501004d76fae10d5ff",
+      "sha256": "79760613c8e1e793d5b35637e339bf3c77abf4880422b8931a2bfe37968862bf",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1350,7 +1350,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-10-06",
       "sensitivity": "internal",
-      "sha256": "dc39ff21cba9134a12cd1dee2b2c4fc01fe6787d5ecada1290be0a397192c5d7",
+      "sha256": "a97bd63dd041facdcd8bd7b87adbf06fd9cff420d38e39de0ba22aa29c79d8ee",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2026,7 +2026,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "main",
-    "commit": "28952006aa3ed54134ed394f434073cc77eac596"
+    "commit": "1a13155194beb38e780d4a2193d7f9cbfc72a0c7"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

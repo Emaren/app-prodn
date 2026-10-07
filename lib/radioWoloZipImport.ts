@@ -530,6 +530,29 @@ async function extractZipAudio(
   return extracted;
 }
 
+export function isRadioWoloAudioFile(
+  file: File,
+) {
+  const extension =
+    extensionOf(
+      file.name,
+    );
+
+  return Boolean(
+    AUDIO_MEDIA_TYPES[
+      extension
+    ] ||
+      file.type ===
+        "audio/mpeg" ||
+      file.type ===
+        "audio/wav" ||
+      file.type ===
+        "audio/ogg" ||
+      file.type ===
+        "audio/mp4",
+  );
+}
+
 export function isRadioWoloZipFile(
   file: File,
 ) {
@@ -576,6 +599,14 @@ export async function expandRadioWoloIntakeFiles(
         ),
       );
 
+      continue;
+    }
+
+    if (
+      !isRadioWoloAudioFile(
+        file,
+      )
+    ) {
       continue;
     }
 
