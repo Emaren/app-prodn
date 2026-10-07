@@ -453,7 +453,6 @@ export default function RadioWoloBuilder() {
 
         const selectedId =
           preferredId ??
-          program?.id ??
           next[0]?.id;
 
         if (selectedId) {
@@ -471,7 +470,6 @@ export default function RadioWoloBuilder() {
       [
         fetchJson,
         loadProgram,
-        program?.id,
       ],
     );
 
