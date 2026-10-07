@@ -208,6 +208,16 @@ Current production uses the Betting Fairness V1.2 compatibility bridge:
   unresolved result truth is never projected as a settled no-winner outcome and
   never authorizes a refund merely because the sporting Challenge left its
   active runway;
+- Challenge-derived books resolve winner side first from durable
+  `ScheduledMatch.resultWinnerSide`. An authenticated Commissioner completion
+  is valid economic result authority for that Challenge book even when
+  `linkedWinner` replay text is absent, but it does not become replay
+  provenance or championship title authority;
+- an `under_review` Challenge book may re-enter ordinary winner settlement
+  only when that durable winner exists, the frozen proposition remains verified,
+  no integrity reason or Commissioner review state remains, and desync payout
+  guards still pass. The Challenge mutation route runs Bet reconciliation after
+  the result commit so the financial rail observes the committed winner;
 - an unscheduled Watcher-discovered winner book accepts fresh bets while its
   canonical market remains `open` or `live`;
 - a Watcher-born Desync proposition uses the same authoritative active window;
