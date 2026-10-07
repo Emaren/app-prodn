@@ -12,7 +12,8 @@ export type ChallengeProtocolErrorCode =
   | "CHALLENGE_STEAM_IDENTITY_CONFLICT"
   | "CHALLENGE_STEAM_IDENTITY_DRIFT"
   | "CHALLENGE_REPLAY_IDENTITY_MISMATCH"
-  | "CHALLENGE_RESULT_IDENTITY_UNRESOLVED";
+  | "CHALLENGE_RESULT_IDENTITY_UNRESOLVED"
+  | "CHALLENGE_DIRECTION_ALREADY_ACTIVE";
 
 export class ChallengeProtocolError extends Error {
   readonly code: ChallengeProtocolErrorCode;
