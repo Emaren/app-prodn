@@ -62,7 +62,8 @@ It is deliberately **not** a production SSH command and it never promotes replay
 truth. The command owns the complete operator workflow that previously required
 an AI or human to reconstruct several separate steps:
 
-1. require clean app/API source and record both exact Git heads;
+1. require fully clean app/API source (tracked and untracked) and record both
+   exact Git heads;
 2. verify the sealed `#32388` replay, exact AoK HD executable and data-file
    identities;
 3. build the API-owned schema-5 read-only memory observer and bounded Fast
