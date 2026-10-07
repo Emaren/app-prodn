@@ -633,7 +633,7 @@ export async function POST(request: NextRequest) {
 
         if (existingDirectional) {
           throw new ChallengeProtocolError(
-            "duplicate_directional_challenge",
+            "CHALLENGE_DIRECTION_ALREADY_ACTIVE",
             `You already have active challenge #${existingDirectional.id} to ${challengedName}. Finish it or let its 24-hour window expire before issuing another in the same direction.`,
             409,
           );
