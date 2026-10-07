@@ -193,8 +193,10 @@ def sha256_file(path: Path) -> str:
 
 
 def file_identity(path: Path) -> dict[str, Any]:
+    if path.is_symlink():
+        raise WorkerError(f"Symlinked native helper file rejected: {path}")
     path = path.resolve(strict=True)
-    if path.is_symlink() or not path.is_file():
+    if not path.is_file():
         raise WorkerError(f"Expected one regular native helper file: {path}")
     return {"path": str(path), "byte_size": path.stat().st_size, "sha256": sha256_file(path)}
 
@@ -810,7 +812,18 @@ def independently_revalidate_control_evidence(
         if spec is None or spec.loader is None:
             raise WorkerError("Native memory terminal referee is unavailable.")
         memory = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(memory)
+        api_source = str(API_ROOT)
+        sys.path.insert(0, api_source)
+        try:
+            spec.loader.exec_module(memory)
+        finally:
+            if sys.path and sys.path[0] == api_source:
+                sys.path.pop(0)
+            else:
+                try:
+                    sys.path.remove(api_source)
+                except ValueError:
+                    pass
         recomputed_memory = memory.parse_memory_terminal_candidate(
             memory_path,
             game_id=manifest["gameStatsId"],
