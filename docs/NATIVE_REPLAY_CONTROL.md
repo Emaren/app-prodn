@@ -29,9 +29,10 @@ Run from the governed app checkout:
 aoe2war truth native-control prepare --run-id control-32388-yyyymmddthhmmssz --api-source /absolute/governed/api-worktree
 aoe2war truth native-control run --run-id control-32388-yyyymmddthhmmssz --api-source /absolute/governed/api-worktree
 aoe2war truth native-control verify --run-id control-32388-yyyymmddthhmmssz --api-source /absolute/governed/api-worktree
+aoe2war truth native-control calibrate --run-id calibration-32388-yyyymmddthhmmssz --api-source /absolute/governed/api-worktree
 ```
 
-`prepare` alone accepts `--clang PATH` and `--lld-link PATH` only when their
+`prepare` and `calibrate` accept `--clang PATH` and `--lld-link PATH` only when their
 SHA-256 identities match the reviewed installed clang and Rust stable lld-link
 binaries. These overrides cannot select an unrelated toolchain. `run` consumes
 the prepared intent. `verify` rehashes and
@@ -113,10 +114,18 @@ The immutable canonical copy is
 The retained three-account census is 99 unknowns, zero eligible; it was not
 refreshed and no new truth was promoted.
 
-Next calibrate PE32 hardware-breakpoint delivery in CrossOver, then the already
-documented #32388 world-update entry `0x738720` if supported. Require the exact
-owned trap and living-thread restoration/detach. Handle terminated contexts only
-with bound native process-exit proof. API context acceptance alone cannot select
-between a skipped close path, lost debug state and unavailable hardware delivery.
-The pre-release instruction hit, whole-input consumption, genuine EOF and wider
-result semantics remain unproven; no broader control or unknown-game execution opens.
+The next gate is now operationalized as `native-control calibrate`. It runs the
+same known #32388 replay but derives a calibration helper from the reviewed
+hardware tracer and moves only its DR0 execution address to the hot world-update
+entry `0x738720`. The helper still writes no target memory and has no result
+authority. Calibration is a **PASS** only when the exact PE32 process produces an
+owned first-chance single-step event at `0x738720`, DR0/DR6/DR7 prove the trap,
+the bound world/replay roots are coherent, and all living debug contexts are
+restored before detach.
+
+A calibration PASS proves debugger delivery only. It does **not** prove the
+`0x5a6e99` close path executes, input is fully consumed, EOF occurred, or any
+winner/result proposition. Only after calibration PASS should the fixed #32388
+close-point control be retried. HOLD/REJECT keeps that retry closed and directs
+work back to debugger delivery/cleanup. No broader control or unknown-game
+execution opens.

@@ -69,7 +69,7 @@ def command_for_control(args: argparse.Namespace) -> tuple[list[str], Path]:
         "--app-source",
         str(ROOT),
     ]
-    if args.mode == "prepare":
+    if args.mode in ("prepare", "calibrate"):
         for option, value in (("--clang", args.clang), ("--lld-link", args.lld_link)):
             if value is not None:
                 command.extend([option, str(value)])
@@ -85,14 +85,14 @@ def invoke_control(args: argparse.Namespace) -> int:
 def parser() -> argparse.ArgumentParser:
     result = argparse.ArgumentParser(prog="aoe2war truth native-control", description=__doc__)
     modes = result.add_subparsers(dest="mode", required=True)
-    for name in ("prepare", "run", "verify"):
+    for name in ("prepare", "run", "verify", "calibrate"):
         mode = modes.add_parser(name)
         mode.add_argument("--run-id", required=True)
         mode.add_argument(
             "--api-source", type=Path,
             help="canonical sibling API checkout or its governed worktree",
         )
-        if name == "prepare":
+        if name in ("prepare", "calibrate"):
             mode.add_argument("--clang", type=Path)
             mode.add_argument("--lld-link", type=Path)
     return result
