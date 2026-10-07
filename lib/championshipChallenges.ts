@@ -177,6 +177,72 @@ export async function createChampionshipChallenge(prisma: PrismaClient, viewerUs
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`championship-create:${requestId}`}, 0))`;
     const repeat=await existingCreation(tx,requestId,creator,payload,wager);
     if(repeat)return repeat;
+
+    /*
+     * Creation is directional. Tony -> Jim may coexist with Jim -> Tony,
+     * while Tony -> Jim cannot be duplicated until its first Challenge is
+     * terminal. Lock the direction so two simultaneous clicks cannot race.
+     */
+    await tx.$executeRaw`
+      SELECT pg_advisory_xact_lock(
+        hashtextextended(
+          ${`championship-direction:${creator.id}:${rival.id}`},
+          0
+        )
+      )
+    `;
+
+    const existingDirectional =
+      await tx.championshipChallenge.findFirst({
+        where: {
+          state: {
+            in:
+              ACTIVE,
+          },
+          scheduledMatch: {
+            is: {
+              challengerUserId:
+                creator.id,
+              challengedUserId:
+                rival.id,
+            },
+          },
+          OR: [
+            {
+              defenseStartedAt: {
+                not:
+                  null,
+              },
+            },
+            {
+              challengeDeadline: {
+                gt:
+                  now,
+              },
+            },
+          ],
+        },
+        select: {
+          scheduledMatchId:
+            true,
+        },
+        orderBy: [
+          {
+            createdAt:
+              "asc",
+          },
+          {
+            scheduledMatchId:
+              "asc",
+          },
+        ],
+      });
+
+    if (existingDirectional) {
+      throw new ChallengeConflictError(
+        `You already have an active Challenge to ${name(rival)} (#${existingDirectional.scheduledMatchId}). Finish it or let its 24-hour window expire before issuing another in the same direction.`,
+      );
+    }
     if(target) {await acquireChampionshipTitleLock(tx,target.id);target=await lockTrophyMoneyState(tx,target.id);}
     const custody = target ? await getChampionshipCustody(tx,target) : null;
     if (target && (!custody || custody.roster.length !== size || !custody.roster.some(p => p.userId === rival.id))) throw new ChallengeConflictError("The rival does not hold the complete challenged championship roster.");
