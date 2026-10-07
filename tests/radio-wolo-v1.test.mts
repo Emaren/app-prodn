@@ -546,7 +546,7 @@ test(
 
     assert.match(
       vault,
-      /Drop audio into/,
+      /Drop music here/,
     );
 
     assert.match(
