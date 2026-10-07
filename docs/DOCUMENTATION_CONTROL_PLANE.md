@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/player-first-truth-current-rating-20261005` at `f48682befe5cb5402c55e04dc978543df1ce6f8d`
+Implementation baseline: `chatgpt/native-breakpoint-calibration-20261007` at `1446a5bd799f437410ecfe603d0e5fcd752c3281`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

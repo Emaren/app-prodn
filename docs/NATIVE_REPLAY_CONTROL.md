@@ -29,6 +29,7 @@ Run from the governed app checkout:
 aoe2war truth native-control prepare --run-id control-32388-yyyymmddthhmmssz --api-source /absolute/governed/api-worktree
 aoe2war truth native-control run --run-id control-32388-yyyymmddthhmmssz --api-source /absolute/governed/api-worktree
 aoe2war truth native-control verify --run-id control-32388-yyyymmddthhmmssz --api-source /absolute/governed/api-worktree
+aoe2war truth native-control calibrate --run-id cal-32388-yyyymmddthhmmssz --api-source /absolute/governed/api-worktree
 ```
 
 `prepare` alone accepts `--clang PATH` and `--lld-link PATH` only when their
@@ -39,6 +40,17 @@ recomputes the existing immutable receipt without launching a game. Select a new
 run ID for another attempt; the API owns serial execution and duplicate-attempt
 rejection. Labels contain 1–48 lowercase ASCII letters, digits or hyphens and
 begin with a letter or digit.
+
+`calibrate` is a one-shot governed prerequisite for the close-point experiment.
+It prepares immutable calibration intent, builds the exact API-owned observer,
+Fast Playback controller and PE32 hardware-breakpoint canary, runs #32388 for a
+short bounded window, independently recomputes the raw trace, seals the result,
+and verifies the immutable receipt. Calibration run IDs must begin with
+`cal-`. The canary arms DR0 at hot world-update entry `0x738720`. A calibration
+`PASS` proves only an owned CrossOver/PE32 execution trap plus clean live-thread
+restoration/detach. It does **not** prove EOF, winner truth or the close-point
+`0x5a6e99` path. A clean no-hit remains `HOLD`; malformed identity, authority
+or cleanup evidence is `REJECT`.
 
 Without `--api-source`, the adapter resolves the canonical sibling API checkout
 from the app's Git common directory. An explicit source must be that checkout or
@@ -113,10 +125,12 @@ The immutable canonical copy is
 The retained three-account census is 99 unknowns, zero eligible; it was not
 refreshed and no new truth was promoted.
 
-Next calibrate PE32 hardware-breakpoint delivery in CrossOver, then the already
-documented #32388 world-update entry `0x738720` if supported. Require the exact
-owned trap and living-thread restoration/detach. Handle terminated contexts only
-with bound native process-exit proof. API context acceptance alone cannot select
-between a skipped close path, lost debug state and unavailable hardware delivery.
-The pre-release instruction hit, whole-input consumption, genuine EOF and wider
+The next step is now internalized as
+`aoe2war truth native-control calibrate`. It targets the already documented
+#32388 hot world-update entry `0x738720` and requires the exact owned DR0 trap,
+independent observer/process/world binding, and live-thread restoration/detach.
+Only a calibration `PASS` reopens a single #32388 close-point retry at
+`0x5a6e99`. A calibration `HOLD` or `REJECT` keeps the close experiment
+closed and sends work back to PE32/CrossOver breakpoint delivery. The
+pre-release instruction hit, whole-input consumption, genuine EOF and wider
 result semantics remain unproven; no broader control or unknown-game execution opens.

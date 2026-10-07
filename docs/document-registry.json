@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0ca0cd17a3f60cabc569934333d471a5ead342d23dcd68aa495377da985552a7",
+      "sha256": "3f40b9074de5087e6380a65bb14170347948142565bf3ca799849c5e9b00d55c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1101,7 +1101,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-07",
       "sensitivity": "restricted",
-      "sha256": "888fad9e68590301234037fe0c3cc250dadb1aa6cbb74cd2187d9f3dbd5c5a74",
+      "sha256": "2cecd9561290d86fdc5ebe5e0b4733c5dc263aeb2c65e285a3e13a0d988ce00a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2048,8 +2048,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/player-first-truth-current-rating-20261005",
-    "commit": "f48682befe5cb5402c55e04dc978543df1ce6f8d"
+    "branch": "chatgpt/native-breakpoint-calibration-20261007",
+    "commit": "1446a5bd799f437410ecfe603d0e5fcd752c3281"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
