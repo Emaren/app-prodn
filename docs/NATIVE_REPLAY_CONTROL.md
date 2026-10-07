@@ -109,6 +109,13 @@ open unknown execution or automatic promotion. A passing known control produces
 stats-only commissioner review evidence; it does not affect stats until reviewed
 and never carries betting, settlement or Wolo authority.
 
+For isolated host review, the Operator Bridge may receive
+`AOE2WAR_NATIVE_API_SOURCE=/absolute/api-worktree`. It forwards that path only
+to the native worker; the worker rejects symlinks, subdirectories and foreign
+repositories and requires the selected path to share the canonical API Git common
+checkout. Durable attempt/preflight evidence still lives under the canonical API
+checkout rather than the disposable worktree.
+
 A future Admin action should call this same worker / bridge contract on the operator host and
 render the API receipt, including unresolved propositions and cleanup. It must
 not implement a separate native launch, infer EOF from `PASS`, accept arbitrary
