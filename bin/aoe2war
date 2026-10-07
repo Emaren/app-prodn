@@ -134,7 +134,7 @@ Usage:
   aoe2war workspace <status|plan|clean> [options]
   aoe2war facts [--json]
   aoe2war dev <status|prepare|refresh|serve|new> [options]
-  aoe2war truth <status|census|audit|closure|target> [options]
+  aoe2war truth <status|census|audit|closure|target|native-control> [options]
   aoe2war code-health [--json] [--no-receipt] [--require-clean-worktree]
   aoe2war deps
   aoe2war deps-security [--json]
@@ -541,6 +541,11 @@ REPLAY TRUTH
   aoe2war truth target GAME_ID
       Show one replay's effective truth, canonical teams, participant outcomes,
       parser evidence, accepted projection, adjudication and exact blocker.
+
+  aoe2war truth native-control
+      Run the bounded local #32388 native pre-release instruction control.
+      This is candidate-only research: it emits immutable evidence and remains
+      HOLD until independently reviewed. It never promotes replay truth.
 
 NORMAL RHYTHM
 
