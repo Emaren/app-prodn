@@ -26,6 +26,10 @@ import {
   type ChallengeReplayParticipant,
 } from "@/lib/challengeProtocol";
 import {
+  challengePairKey,
+  challengePairQueueLeaders,
+} from "@/lib/challengePairQueue";
+import {
   deriveChallengeLifecycle,
   deriveChallengeMoneyState,
   type ChallengeLifecyclePhase,
@@ -2109,7 +2113,9 @@ async function persistScheduledMatchResults(
   if(rows.some(row=>row.protocolVersion===CHAMPIONSHIP_PROTOCOL_VERSION)) await reconcileChampionshipEvidence(prisma);
   const matchedActiveSessionKeys = new Set<string>();
   const matchedCompletedSessionKeys = new Set<string>();
-  const unlinkedFundedOpenPairCounts = new Map<string, number>();
+  const unlinkedFundedOpenPairLeaders =
+    new Map<string, number>();
+
   const needsOpenCorrelationGuard = rows.some(
     (row) =>
       row.timingMode === "open" &&
@@ -2121,25 +2127,58 @@ async function persistScheduledMatchResults(
   );
 
   if (needsOpenCorrelationGuard) {
-    const allUnlinkedFundedOpenChallenges = await prisma.scheduledMatch.findMany({
-      where: {
-        championshipProtocol: null,
-        championshipLeg: null,
-        timingMode: "open",
-        matchTime: null,
-        linkedSessionKey: null,
-        challengerFundedAt: { not: null },
-        challengedFundedAt: { not: null },
-        status: { notIn: [...RESOLVED_SCHEDULED_STATUSES] },
-      },
-      select: { challengerUserId: true, challengedUserId: true },
-    });
+    const allUnlinkedFundedOpenChallenges =
+      await prisma.scheduledMatch.findMany({
+        where: {
+          championshipProtocol:
+            null,
+          championshipLeg:
+            null,
+          timingMode:
+            "open",
+          matchTime:
+            null,
+          linkedSessionKey:
+            null,
+          challengerFundedAt: {
+            not:
+              null,
+          },
+          challengedFundedAt: {
+            not:
+              null,
+          },
+          status: {
+            notIn: [
+              ...RESOLVED_SCHEDULED_STATUSES,
+            ],
+          },
+        },
+        select: {
+          id:
+            true,
+          challengerUserId:
+            true,
+          challengedUserId:
+            true,
+          createdAt:
+            true,
+        },
+      });
 
-    for (const challenge of allUnlinkedFundedOpenChallenges) {
-      const key = [challenge.challengerUserId, challenge.challengedUserId]
-        .sort((left, right) => left - right)
-        .join(":");
-      unlinkedFundedOpenPairCounts.set(key, (unlinkedFundedOpenPairCounts.get(key) ?? 0) + 1);
+    const leaders =
+      challengePairQueueLeaders(
+        allUnlinkedFundedOpenChallenges,
+      );
+
+    for (const [
+      key,
+      leader,
+    ] of leaders) {
+      unlinkedFundedOpenPairLeaders.set(
+        key,
+        leader.id,
+      );
     }
   }
 
@@ -2181,11 +2220,28 @@ async function persistScheduledMatchResults(
       now
     );
     const hasTerms = surface.economy.hasTerms;
-    const openPairIsUnambiguous =
-      row.timingMode === "open" &&
+    /*
+     * Multiple reverse-direction Challenges between the same two warriors are
+     * a queue, not an ambiguity. The oldest unlinked funded Challenge owns the
+     * next verified duel; later Challenges remain open for later battles.
+     *
+     * An already-linked row remains authoritative for its exact session.
+     */
+    const openPairCanClaimNextSession =
+      row.timingMode ===
+        "open" &&
       !row.matchTime &&
-      (Boolean(row.linkedSessionKey) ||
-        unlinkedFundedOpenPairCounts.get(openChallengePairKey(row)) === 1);
+      (
+        Boolean(
+          row.linkedSessionKey,
+        ) ||
+        unlinkedFundedOpenPairLeaders.get(
+          challengePairKey(
+            row.challenger.id,
+            row.challenged.id,
+          ),
+        ) === row.id
+      );
     const canLinkScheduledSession =
       row.timingMode === "scheduled" &&
       Boolean(row.matchTime) &&
@@ -2193,7 +2249,7 @@ async function persistScheduledMatchResults(
         ? surface.displayState === "ready" || row.status === "live_confirmed" || row.status === "completed"
         : row.status === "accepted" || row.status === "completed");
     const canLinkOpenSession =
-      openPairIsUnambiguous &&
+      openPairCanClaimNextSession &&
       Boolean(row.challengerFundedAt && row.challengedFundedAt) &&
       ["funded", "ready", "live"].includes(surface.displayState);
     const canLinkSessions =
@@ -2207,7 +2263,7 @@ async function persistScheduledMatchResults(
         recentlyCompletedSessions,
         row,
         matchedCompletedSessionKeys,
-        { allowOpenPlayAnytimeCorrelation: openPairIsUnambiguous }
+        { allowOpenPlayAnytimeCorrelation: openPairCanClaimNextSession }
       );
 
       if (completedSession) {
