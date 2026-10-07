@@ -8,6 +8,13 @@ import {
   challengePairQueueLeader,
   challengePairQueueLeaders,
 } from "../lib/challengePairQueue.ts";
+import {
+  canChallengeWinnerResolveMarketReview,
+  inferWinnerSideFromChallenge,
+} from "../lib/bets.ts";
+import type {
+  ScheduledMatchTile,
+} from "../lib/challenges.ts";
 
 function read(path: string) {
   return readFileSync(
@@ -388,6 +395,124 @@ test(
     assert.match(
       challengeSeeds,
       /"desync_review"/,
+    );
+  },
+);
+
+test(
+  "durable ScheduledMatch winner authority resolves Challenge bet side even without linked replay winner text",
+  () => {
+    const base = {
+      protocol: {
+        resultWinnerUid:
+          "jim",
+      },
+      challenger: {
+        uid:
+          "emaren",
+        name:
+          "Emaren",
+        inGameName:
+          "Emaren",
+        steamPersonaName:
+          null,
+      },
+      challenged: {
+        uid:
+          "jim",
+        name:
+          "Jim",
+        inGameName:
+          "Jim",
+        steamPersonaName:
+          null,
+      },
+      linkedWinner:
+        null,
+    } as unknown as ScheduledMatchTile;
+
+    assert.equal(
+      inferWinnerSideFromChallenge(
+        base,
+      ),
+      "right",
+    );
+
+    assert.equal(
+      inferWinnerSideFromChallenge({
+        ...base,
+        protocol: {
+          ...base.protocol,
+          resultWinnerUid:
+            "emaren",
+        },
+      }),
+      "left",
+    );
+  },
+);
+
+test(
+  "Challenge result review releases only when winner authority arrives on a verified clean proposition",
+  () => {
+    assert.equal(
+      canChallengeWinnerResolveMarketReview({
+        existingStatus:
+          "under_review",
+        scheduledMatchId:
+          39,
+        seedStatus:
+          "settled",
+        winnerSide:
+          "right",
+        integrityStatus:
+          "verified",
+        integrityReason:
+          null,
+        commissionerReviewState:
+          null,
+      }),
+      true,
+    );
+
+    assert.equal(
+      canChallengeWinnerResolveMarketReview({
+        existingStatus:
+          "under_review",
+        scheduledMatchId:
+          39,
+        seedStatus:
+          "settled",
+        winnerSide:
+          "right",
+        integrityStatus:
+          "under_review",
+        integrityReason:
+          "roster_changed_after_stake",
+        commissionerReviewState:
+          null,
+      }),
+      false,
+    );
+
+    assert.equal(
+      canChallengeWinnerResolveMarketReview({
+        existingStatus:
+          "under_review",
+        scheduledMatchId:
+          39,
+        seedStatus:
+          "settled",
+        winnerSide:
+          null,
+        integrityStatus:
+          "verified",
+        integrityReason:
+          null,
+        commissionerReviewState:
+          null,
+      }),
+      false,
     );
   },
 );
