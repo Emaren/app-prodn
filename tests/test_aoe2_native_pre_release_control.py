@@ -46,6 +46,23 @@ class NativePreReleaseControlTests(unittest.TestCase):
         self.assertEqual(payload, {"status": "blocked", "candidateOnly": True})
         self.assertIsNone(MODULE.parse_last_json("only diagnostic text\n"))
 
+    def test_find_tool_uses_reviewed_rust_stable_lld_link(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            lld = (
+                home
+                / ".rustup/toolchains/stable-aarch64-apple-darwin"
+                / "lib/rustlib/aarch64-apple-darwin/bin/gcc-ld/lld-link"
+            )
+            lld.parent.mkdir(parents=True)
+            lld.write_bytes(b"lld")
+            lld.chmod(0o755)
+            with (
+                mock.patch.object(MODULE.shutil, "which", return_value=None),
+                mock.patch.object(MODULE.Path, "home", return_value=home),
+            ):
+                self.assertEqual(MODULE.find_tool("lld-link"), lld.resolve())
+
     def test_helper_build_uses_api_owned_builders(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
