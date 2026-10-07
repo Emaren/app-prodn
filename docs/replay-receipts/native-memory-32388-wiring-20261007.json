@@ -1,0 +1,1069 @@
+{
+  "apiHead": "286384181437270c2b6b151567c4ee2f1edf9e71",
+  "baseAppHead": "af974bf7a77c6040d6b26545f2aae563f322b670",
+  "beforeNextClick": [
+    "Review and activate the manifest-aware server-side queue/artifact source through a separately authorized release; production still uses 87daeb89673ba2bbc74637390f0acd40d3b7f843.",
+    "Resume the clean reviewed candidate bridge with exact governed API worktree binding.",
+    "Build a fresh current manifest at queue time; the manifest inside this dated read-only audit is evidence, not a reusable queued execution token."
+  ],
+  "branch": "chatgpt/native-memory-control-ladder-20261007",
+  "canonicalManifestPrerequisiteAudit": {
+    "apiReviewedHead": "286384181437270c2b6b151567c4ee2f1edf9e71",
+    "appSourceHead": "af974bf7a77c6040d6b26545f2aae563f322b670",
+    "archiveActual": {
+      "byteSize": 665734,
+      "isFile": true,
+      "isSymlink": false,
+      "path": "/mnt/HC_Volume_105319120/aoe2-replay-archive/02/a7/02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b.aoe2record",
+      "realpath": "/mnt/HC_Volume_105319120/aoe2-replay-archive/02/a7/02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b.aoe2record",
+      "sha256": "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b"
+    },
+    "currentParserAffectsPublicAggregates": false,
+    "currentParserCandidateOnly": true,
+    "currentParserRunId": 9117,
+    "desyncIncidentCount": 0,
+    "eligibility": "original buildNativeControlManifest(32388) returned validated v2 manifest",
+    "evidenceFiles": {
+      "audit-loader.mjs": "fbe94fbeaf7b86f90c8c53089c8bfc2576efe4d9573d3141c2fff300ce34fc5f",
+      "audit-output.json": "55fd4ad8706547936c8df26f2a8fb4ba7fecd08e815a4a22cd861dd164b01853",
+      "audit-program.mjs": "bfef06b38ee25c23092bfb530b7682935e00b4001deca2f8b870291653bd86f4",
+      "source-file-shas.json": "a3805c01c799ee7825a5b93f36124248b9527bb3b81437ef5a61ee17e08f9e3d",
+      "ssh-stderr.log": "19220daee9077749dc496315051ab7ceb078df613b02bb824c39d72c7ea2a199"
+    },
+    "executionNotes": {
+      "databasePoolPolicy": "AOE2WAR_PROD_DB_PREVIEW=true / default_transaction_read_only=on",
+      "exactSourceStaging": "/tmp/aoe2war-manifest-32388-audit.ltzIDW",
+      "loader": "alias loader plus server-only no-op server marker and canonical generated-client realpath; original owning function unchanged",
+      "rawDiagnosticSnapshotWarning": "currentAudit.sourceSnapshotSha256 includes run.artifact relation for diagnostics; authoritative builder sourceSnapshotSha256 is manifest.sourceSnapshotSha256 only.",
+      "sourceInventory": "source-file-shas.json"
+    },
+    "financialExposure": {
+      "claims": 0,
+      "markets": 0,
+      "settlements": 0,
+      "wagers": 0
+    },
+    "gameStatsId": 32388,
+    "manifest": {
+      "archive": {
+        "byteSize": 665734,
+        "objectKey": "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b.aoe2record",
+        "sha256": "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b"
+      },
+      "authority": {
+        "bets": false,
+        "settlement": false,
+        "stats": false,
+        "wolo": false
+      },
+      "candidateOnly": true,
+      "executionKind": "control",
+      "financialExposure": {
+        "claims": 0,
+        "markets": 0,
+        "settlements": 0,
+        "wagers": 0
+      },
+      "gameStatsId": 32388,
+      "logicalBattleId": "platform:18c858e1-143d-1f45-b22e-5dfb634c0267",
+      "manifestSha256": "a983841d45a445335fd488f96306c2112cf74787ee846e481ccde7b8210fffb2",
+      "parser": {
+        "parserName": "aoe2war.mgz_hd",
+        "parserVersion": "1.8.51",
+        "passName": "hd_deterministic_evidence",
+        "passVersion": "10",
+        "schemaVersion": "2026-07-25.1",
+        "status": "completed"
+      },
+      "replaySha256": "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b",
+      "result": {
+        "known": true,
+        "provenance": "public_result:watcher_final",
+        "winningSlots": [
+          1,
+          2
+        ]
+      },
+      "roster": [
+        {
+          "name": "mYsTikaL Broly",
+          "slot": 1,
+          "steamId": "76561199881752776",
+          "teamId": 1
+        },
+        {
+          "name": "mYsTiKaL_GoHaN",
+          "slot": 2,
+          "steamId": "76561199138804111",
+          "teamId": 1
+        },
+        {
+          "name": "mYsTikaL_VeGeTa",
+          "slot": 3,
+          "steamId": "76561199849204394",
+          "teamId": 0
+        },
+        {
+          "name": "mYsTikaL_TrUnKs",
+          "slot": 4,
+          "steamId": "76561198250132680",
+          "teamId": 0
+        }
+      ],
+      "schema": "aoe2war-native-replay-manifest/v2",
+      "sourceGameStatsIds": [
+        32336,
+        32388
+      ],
+      "sourceSnapshotSha256": "e0de016603f0ad1b514a0053875578c1a56d2b5b00443b4f1c4e8878621aba20"
+    },
+    "mutations": {
+      "nativeExecution": false,
+      "parser": false,
+      "productionSource": false,
+      "publicTruth": false
+    },
+    "observedAt": "2026-10-07T23:52:10.016Z",
+    "parserRefreshRequired": false,
+    "participantResults": [
+      {
+        "name": "mYsTikaL Broly",
+        "result": "win",
+        "slot": 1,
+        "stablePlayerKey": "steam:76561199881752776"
+      },
+      {
+        "name": "mYsTiKaL_GoHaN",
+        "result": "win",
+        "slot": 2,
+        "stablePlayerKey": "steam:76561199138804111"
+      },
+      {
+        "name": "mYsTikaL_VeGeTa",
+        "result": "loss",
+        "slot": 3,
+        "stablePlayerKey": "steam:76561199849204394"
+      },
+      {
+        "name": "mYsTikaL_TrUnKs",
+        "result": "loss",
+        "slot": 4,
+        "stablePlayerKey": "steam:76561198250132680"
+      }
+    ],
+    "productionSourceHead": "87daeb89673ba2bbc74637390f0acd40d3b7f843",
+    "publicWinnerTruth": {
+      "bettingEligible": false,
+      "candidateWinner": "mYsTiKaL_GoHaN / mYsTikaL Broly",
+      "confidence": "recovered",
+      "diagnosticSummary": "Winning team mYsTiKaL_GoHaN / mYsTikaL Broly matches the complete trusted structured result.",
+      "neededEvidence": [],
+      "publicLabel": "mYsTiKaL_GoHaN / mYsTikaL Broly",
+      "statsEligible": true,
+      "truthReasons": [
+        "trusted_team_result",
+        "recorded_resignation"
+      ],
+      "winner": "mYsTiKaL_GoHaN / mYsTikaL Broly"
+    },
+    "readOnly": [
+      {
+        "default_mode": "on",
+        "transaction_mode": "on"
+      }
+    ],
+    "schema": "aoe2war-native-control-prerequisite-audit/v1"
+  },
+  "canonicalManifestPrerequisiteReceiptSha256": "6192448cc5a4fdc2e59f2943424cea5429088e6eab17e16f4a096ae6952aaccb",
+  "completedAttemptAudit": {
+    "acceleration": {
+      "observed": null,
+      "requested": null,
+      "requires_supported_fast_playback_control": false
+    },
+    "actualGameInvocationArgv": [
+      "/Applications/CrossOver.app/Contents/SharedSupport/CrossOver/CrossOver-Hosted Application/wine",
+      "--bottle",
+      "/Users/tonyblum/Library/Application Support/CrossOver/Bottles/SteamReplayLab",
+      "--no-update",
+      "--workdir",
+      "/Users/tonyblum/Library/Application Support/CrossOver/Bottles/SteamReplayLab/drive_c/Program Files (x86)/Steam/steamapps/common/Age2HD",
+      "--cx-log",
+      "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/crossover.log",
+      "--cx-app",
+      "C:\\Program Files (x86)\\Steam\\steamapps\\common\\Age2HD\\AoK HD.exe",
+      "RUN_PERFORMANCE_TRACKER=Z:\\Users\\tonyblum\\projects\\AoE2HDBets\\api-prodn\\instance\\native-replay-worker\\attempts\\20261007233219-ce777f7b\\replay-performance.txt"
+    ],
+    "allHashChecksPass": true,
+    "apiRunnerArgvNote": "Runner argument vector is not stored directly; explicit absence established from null helper identities/argv and acceleration flag in hash-bound invocation.json plus bare manifest-free worker argv and frozen worker source. Game invocation is recorded verbatim.",
+    "authority": {
+      "bettingMutated": false,
+      "productionResultsMutated": false,
+      "replayTruthPromoted": false,
+      "settlementMutated": false,
+      "woloMutated": false
+    },
+    "cleanup": {
+      "cleanup_complete": true,
+      "cleanup_errors": [],
+      "detached_matching_process_count": 0,
+      "new_bottle_helpers_remaining": [],
+      "preservedPreexistingBottleHelperCount": 16,
+      "remaining_matching_process_count": 0
+    },
+    "completedAt": "2026-10-07T23:36:44.497Z",
+    "controlManifestPresent": false,
+    "diagnosis": "CONFIRMED: bare legacy 32388 queue had no manifest; no memory runtime or fast replay was requested; exact replay loaded only via performance benchmark.",
+    "gameStatsId": 32388,
+    "hashChecks": [
+      {
+        "actualByteSize": 665734,
+        "actualSha256": "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b",
+        "expectedByteSize": 665734,
+        "expectedSha256": "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b",
+        "family": "attempt.artifacts",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b.aoe2record"
+      },
+      {
+        "actualByteSize": 22370,
+        "actualSha256": "b46d8c87f340c5f7130197a0462b791106fdbd6926e4852053d06fc69ccd017e",
+        "expectedByteSize": 22370,
+        "expectedSha256": "b46d8c87f340c5f7130197a0462b791106fdbd6926e4852053d06fc69ccd017e",
+        "family": "attempt.artifacts",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/crossover.log"
+      },
+      {
+        "actualByteSize": 16989,
+        "actualSha256": "4280afdad09a85ee4476b8ddf1627884456886f5c842e2b2c8aac1ac5e8d4389",
+        "expectedByteSize": 16989,
+        "expectedSha256": "4280afdad09a85ee4476b8ddf1627884456886f5c842e2b2c8aac1ac5e8d4389",
+        "family": "attempt.artifacts",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/events.jsonl"
+      },
+      {
+        "actualByteSize": 3641,
+        "actualSha256": "b50cda307077cd313974a2310271e3af3bc64771b9ac75124791715b330d4f16",
+        "expectedByteSize": 3641,
+        "expectedSha256": "b50cda307077cd313974a2310271e3af3bc64771b9ac75124791715b330d4f16",
+        "family": "attempt.artifacts",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/invocation.json"
+      },
+      {
+        "actualByteSize": 2299,
+        "actualSha256": "c3c9c98d8af3578d415b775fc6eb235decc188b981cab9fd269fcf729efd30f8",
+        "expectedByteSize": 2299,
+        "expectedSha256": "c3c9c98d8af3578d415b775fc6eb235decc188b981cab9fd269fcf729efd30f8",
+        "family": "attempt.artifacts",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/native-000-Main.txt"
+      },
+      {
+        "actualByteSize": 15276,
+        "actualSha256": "eadbae6082a42050ddc04944a34adb89c40c28de8895eadd5fa2b63a5f2d5874",
+        "expectedByteSize": 15276,
+        "expectedSha256": "eadbae6082a42050ddc04944a34adb89c40c28de8895eadd5fa2b63a5f2d5874",
+        "family": "attempt.artifacts",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/native-001-Mod.txt"
+      },
+      {
+        "actualByteSize": 65166,
+        "actualSha256": "56345a303856d4e94cc360087aa4ac4475e1e61b47e86388c1fd29047e571d12",
+        "expectedByteSize": 65166,
+        "expectedSha256": "56345a303856d4e94cc360087aa4ac4475e1e61b47e86388c1fd29047e571d12",
+        "family": "attempt.artifacts",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/native-002-Stats.txt"
+      },
+      {
+        "actualByteSize": 21112,
+        "actualSha256": "efe9ea03202e4e8ff58e6afa7ae614a3c48bd83e2ae6e38c8606642fca7b0359",
+        "expectedByteSize": 21112,
+        "expectedSha256": "efe9ea03202e4e8ff58e6afa7ae614a3c48bd83e2ae6e38c8606642fca7b0359",
+        "family": "attempt.artifacts",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/native-003-SyncLog LoadReplay v5.8 2026.10.07 183227.txt"
+      },
+      {
+        "actualByteSize": 2299,
+        "actualSha256": "c3c9c98d8af3578d415b775fc6eb235decc188b981cab9fd269fcf729efd30f8",
+        "expectedByteSize": 2299,
+        "expectedSha256": "c3c9c98d8af3578d415b775fc6eb235decc188b981cab9fd269fcf729efd30f8",
+        "family": "attempt.artifacts",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/native-004-Main.txt"
+      },
+      {
+        "actualByteSize": 15276,
+        "actualSha256": "eadbae6082a42050ddc04944a34adb89c40c28de8895eadd5fa2b63a5f2d5874",
+        "expectedByteSize": 15276,
+        "expectedSha256": "eadbae6082a42050ddc04944a34adb89c40c28de8895eadd5fa2b63a5f2d5874",
+        "family": "attempt.artifacts",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/native-005-Mod.txt"
+      },
+      {
+        "actualByteSize": 65166,
+        "actualSha256": "56345a303856d4e94cc360087aa4ac4475e1e61b47e86388c1fd29047e571d12",
+        "expectedByteSize": 65166,
+        "expectedSha256": "56345a303856d4e94cc360087aa4ac4475e1e61b47e86388c1fd29047e571d12",
+        "family": "attempt.artifacts",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/native-006-Stats.txt"
+      },
+      {
+        "actualByteSize": 21112,
+        "actualSha256": "efe9ea03202e4e8ff58e6afa7ae614a3c48bd83e2ae6e38c8606642fca7b0359",
+        "expectedByteSize": 21112,
+        "expectedSha256": "efe9ea03202e4e8ff58e6afa7ae614a3c48bd83e2ae6e38c8606642fca7b0359",
+        "family": "attempt.artifacts",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/native-007-SyncLog LoadReplay v5.8 2026.10.07 183227.txt"
+      },
+      {
+        "actualByteSize": 2299,
+        "actualSha256": "c3c9c98d8af3578d415b775fc6eb235decc188b981cab9fd269fcf729efd30f8",
+        "expectedByteSize": 2299,
+        "expectedSha256": "c3c9c98d8af3578d415b775fc6eb235decc188b981cab9fd269fcf729efd30f8",
+        "family": "attempt.artifacts",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/native-delta-000-Main.txt"
+      },
+      {
+        "actualByteSize": 15276,
+        "actualSha256": "eadbae6082a42050ddc04944a34adb89c40c28de8895eadd5fa2b63a5f2d5874",
+        "expectedByteSize": 15276,
+        "expectedSha256": "eadbae6082a42050ddc04944a34adb89c40c28de8895eadd5fa2b63a5f2d5874",
+        "family": "attempt.artifacts",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/native-delta-001-Mod.txt"
+      },
+      {
+        "actualByteSize": 65166,
+        "actualSha256": "56345a303856d4e94cc360087aa4ac4475e1e61b47e86388c1fd29047e571d12",
+        "expectedByteSize": 65166,
+        "expectedSha256": "56345a303856d4e94cc360087aa4ac4475e1e61b47e86388c1fd29047e571d12",
+        "family": "attempt.artifacts",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/native-delta-002-Stats.txt"
+      },
+      {
+        "actualByteSize": 21112,
+        "actualSha256": "efe9ea03202e4e8ff58e6afa7ae614a3c48bd83e2ae6e38c8606642fca7b0359",
+        "expectedByteSize": 21112,
+        "expectedSha256": "efe9ea03202e4e8ff58e6afa7ae614a3c48bd83e2ae6e38c8606642fca7b0359",
+        "family": "attempt.artifacts",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/native-delta-003-SyncLog LoadReplay v5.8 2026.10.07 183227.txt"
+      },
+      {
+        "actualByteSize": 2299,
+        "actualSha256": "c3c9c98d8af3578d415b775fc6eb235decc188b981cab9fd269fcf729efd30f8",
+        "expectedByteSize": 2299,
+        "expectedSha256": "c3c9c98d8af3578d415b775fc6eb235decc188b981cab9fd269fcf729efd30f8",
+        "family": "attempt.artifacts",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/native-delta-004-Main.txt"
+      },
+      {
+        "actualByteSize": 15276,
+        "actualSha256": "eadbae6082a42050ddc04944a34adb89c40c28de8895eadd5fa2b63a5f2d5874",
+        "expectedByteSize": 15276,
+        "expectedSha256": "eadbae6082a42050ddc04944a34adb89c40c28de8895eadd5fa2b63a5f2d5874",
+        "family": "attempt.artifacts",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/native-delta-005-Mod.txt"
+      },
+      {
+        "actualByteSize": 65166,
+        "actualSha256": "56345a303856d4e94cc360087aa4ac4475e1e61b47e86388c1fd29047e571d12",
+        "expectedByteSize": 65166,
+        "expectedSha256": "56345a303856d4e94cc360087aa4ac4475e1e61b47e86388c1fd29047e571d12",
+        "family": "attempt.artifacts",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/native-delta-006-Stats.txt"
+      },
+      {
+        "actualByteSize": 21112,
+        "actualSha256": "efe9ea03202e4e8ff58e6afa7ae614a3c48bd83e2ae6e38c8606642fca7b0359",
+        "expectedByteSize": 21112,
+        "expectedSha256": "efe9ea03202e4e8ff58e6afa7ae614a3c48bd83e2ae6e38c8606642fca7b0359",
+        "family": "attempt.artifacts",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/native-delta-007-SyncLog LoadReplay v5.8 2026.10.07 183227.txt"
+      },
+      {
+        "actualByteSize": 94143,
+        "actualSha256": "73189d76001876e3aa671cb00817dfe33758a1e5cd9159654d32de34757464a4",
+        "expectedByteSize": 94143,
+        "expectedSha256": "73189d76001876e3aa671cb00817dfe33758a1e5cd9159654d32de34757464a4",
+        "family": "attempt.artifacts",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/observation.json"
+      },
+      {
+        "actualByteSize": 1388,
+        "actualSha256": "a50cb6477565228bcaec92b8f6304a838789a4bbbfef0ed82f46079d8c2b3b8a",
+        "expectedByteSize": 1388,
+        "expectedSha256": "a50cb6477565228bcaec92b8f6304a838789a4bbbfef0ed82f46079d8c2b3b8a",
+        "family": "attempt.artifacts",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/plan.json"
+      },
+      {
+        "actualByteSize": 7758,
+        "actualSha256": "aab8bdb68d04d956d163beb7df430eabf04988fe24fef484fc6221e65fd78ced",
+        "expectedByteSize": 7758,
+        "expectedSha256": "aab8bdb68d04d956d163beb7df430eabf04988fe24fef484fc6221e65fd78ced",
+        "family": "attempt.artifacts",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/receipt.json"
+      },
+      {
+        "actualByteSize": 229,
+        "actualSha256": "5994f361fe3a23b1f912bfc9c957facd3411ce26f4e702777fea6caa48ef6593",
+        "expectedByteSize": 229,
+        "expectedSha256": "5994f361fe3a23b1f912bfc9c957facd3411ce26f4e702777fea6caa48ef6593",
+        "family": "attempt.artifacts",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/replay-performance.txt"
+      },
+      {
+        "actualByteSize": 412,
+        "actualSha256": "de6a13e0c797635884644a9f6266fdab1c5671960f139a0496042b26079ef02c",
+        "expectedByteSize": 412,
+        "expectedSha256": "de6a13e0c797635884644a9f6266fdab1c5671960f139a0496042b26079ef02c",
+        "family": "attempt.artifacts",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/replay-performanceOutput.txt"
+      },
+      {
+        "actualByteSize": 2135,
+        "actualSha256": "784ab783bba93ac2aff3ec618744957a89356dba55699ee7c73f1c4c426573c0",
+        "expectedByteSize": 2135,
+        "expectedSha256": "784ab783bba93ac2aff3ec618744957a89356dba55699ee7c73f1c4c426573c0",
+        "family": "attempt.artifacts",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/runtime.json"
+      },
+      {
+        "actualByteSize": 0,
+        "actualSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "expectedByteSize": 0,
+        "expectedSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "family": "attempt.artifacts",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/stderr.bin"
+      },
+      {
+        "actualByteSize": 0,
+        "actualSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "expectedByteSize": 0,
+        "expectedSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "family": "attempt.artifacts",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/stdout.bin"
+      },
+      {
+        "actualByteSize": 1002,
+        "actualSha256": "9b078686852ccdeba1f0565a42df51a892c27656a7f28e67bc37d2350d33d39e",
+        "expectedByteSize": 1002,
+        "expectedSha256": "9b078686852ccdeba1f0565a42df51a892c27656a7f28e67bc37d2350d33d39e",
+        "family": "attempt.artifacts",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/validation.json"
+      },
+      {
+        "actualByteSize": 2135,
+        "actualSha256": "784ab783bba93ac2aff3ec618744957a89356dba55699ee7c73f1c4c426573c0",
+        "expectedByteSize": 2135,
+        "expectedSha256": "784ab783bba93ac2aff3ec618744957a89356dba55699ee7c73f1c4c426573c0",
+        "family": "receipt.evidence",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/runtime.json"
+      },
+      {
+        "actualByteSize": 3641,
+        "actualSha256": "b50cda307077cd313974a2310271e3af3bc64771b9ac75124791715b330d4f16",
+        "expectedByteSize": 3641,
+        "expectedSha256": "b50cda307077cd313974a2310271e3af3bc64771b9ac75124791715b330d4f16",
+        "family": "receipt.evidence",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/invocation.json"
+      },
+      {
+        "actualByteSize": 16989,
+        "actualSha256": "4280afdad09a85ee4476b8ddf1627884456886f5c842e2b2c8aac1ac5e8d4389",
+        "expectedByteSize": 16989,
+        "expectedSha256": "4280afdad09a85ee4476b8ddf1627884456886f5c842e2b2c8aac1ac5e8d4389",
+        "family": "receipt.evidence",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/events.jsonl"
+      },
+      {
+        "actualByteSize": 94143,
+        "actualSha256": "73189d76001876e3aa671cb00817dfe33758a1e5cd9159654d32de34757464a4",
+        "expectedByteSize": 94143,
+        "expectedSha256": "73189d76001876e3aa671cb00817dfe33758a1e5cd9159654d32de34757464a4",
+        "family": "receipt.evidence",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/observation.json"
+      },
+      {
+        "actualByteSize": 412,
+        "actualSha256": "de6a13e0c797635884644a9f6266fdab1c5671960f139a0496042b26079ef02c",
+        "expectedByteSize": 412,
+        "expectedSha256": "de6a13e0c797635884644a9f6266fdab1c5671960f139a0496042b26079ef02c",
+        "family": "receipt.evidence",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/replay-performanceOutput.txt"
+      },
+      {
+        "actualByteSize": 229,
+        "actualSha256": "5994f361fe3a23b1f912bfc9c957facd3411ce26f4e702777fea6caa48ef6593",
+        "expectedByteSize": 229,
+        "expectedSha256": "5994f361fe3a23b1f912bfc9c957facd3411ce26f4e702777fea6caa48ef6593",
+        "family": "receipt.evidence",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/replay-performance.txt"
+      },
+      {
+        "actualByteSize": 2299,
+        "actualSha256": "c3c9c98d8af3578d415b775fc6eb235decc188b981cab9fd269fcf729efd30f8",
+        "expectedByteSize": 2299,
+        "expectedSha256": "c3c9c98d8af3578d415b775fc6eb235decc188b981cab9fd269fcf729efd30f8",
+        "family": "receipt.evidence",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/native-000-Main.txt"
+      },
+      {
+        "actualByteSize": 2299,
+        "actualSha256": "c3c9c98d8af3578d415b775fc6eb235decc188b981cab9fd269fcf729efd30f8",
+        "expectedByteSize": 2299,
+        "expectedSha256": "c3c9c98d8af3578d415b775fc6eb235decc188b981cab9fd269fcf729efd30f8",
+        "family": "receipt.evidence",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/native-delta-000-Main.txt"
+      },
+      {
+        "actualByteSize": 15276,
+        "actualSha256": "eadbae6082a42050ddc04944a34adb89c40c28de8895eadd5fa2b63a5f2d5874",
+        "expectedByteSize": 15276,
+        "expectedSha256": "eadbae6082a42050ddc04944a34adb89c40c28de8895eadd5fa2b63a5f2d5874",
+        "family": "receipt.evidence",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/native-001-Mod.txt"
+      },
+      {
+        "actualByteSize": 15276,
+        "actualSha256": "eadbae6082a42050ddc04944a34adb89c40c28de8895eadd5fa2b63a5f2d5874",
+        "expectedByteSize": 15276,
+        "expectedSha256": "eadbae6082a42050ddc04944a34adb89c40c28de8895eadd5fa2b63a5f2d5874",
+        "family": "receipt.evidence",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/native-delta-001-Mod.txt"
+      },
+      {
+        "actualByteSize": 65166,
+        "actualSha256": "56345a303856d4e94cc360087aa4ac4475e1e61b47e86388c1fd29047e571d12",
+        "expectedByteSize": 65166,
+        "expectedSha256": "56345a303856d4e94cc360087aa4ac4475e1e61b47e86388c1fd29047e571d12",
+        "family": "receipt.evidence",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/native-002-Stats.txt"
+      },
+      {
+        "actualByteSize": 65166,
+        "actualSha256": "56345a303856d4e94cc360087aa4ac4475e1e61b47e86388c1fd29047e571d12",
+        "expectedByteSize": 65166,
+        "expectedSha256": "56345a303856d4e94cc360087aa4ac4475e1e61b47e86388c1fd29047e571d12",
+        "family": "receipt.evidence",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/native-delta-002-Stats.txt"
+      },
+      {
+        "actualByteSize": 21112,
+        "actualSha256": "efe9ea03202e4e8ff58e6afa7ae614a3c48bd83e2ae6e38c8606642fca7b0359",
+        "expectedByteSize": 21112,
+        "expectedSha256": "efe9ea03202e4e8ff58e6afa7ae614a3c48bd83e2ae6e38c8606642fca7b0359",
+        "family": "receipt.evidence",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/native-003-SyncLog LoadReplay v5.8 2026.10.07 183227.txt"
+      },
+      {
+        "actualByteSize": 21112,
+        "actualSha256": "efe9ea03202e4e8ff58e6afa7ae614a3c48bd83e2ae6e38c8606642fca7b0359",
+        "expectedByteSize": 21112,
+        "expectedSha256": "efe9ea03202e4e8ff58e6afa7ae614a3c48bd83e2ae6e38c8606642fca7b0359",
+        "family": "receipt.evidence",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/native-delta-003-SyncLog LoadReplay v5.8 2026.10.07 183227.txt"
+      },
+      {
+        "actualByteSize": 2299,
+        "actualSha256": "c3c9c98d8af3578d415b775fc6eb235decc188b981cab9fd269fcf729efd30f8",
+        "expectedByteSize": 2299,
+        "expectedSha256": "c3c9c98d8af3578d415b775fc6eb235decc188b981cab9fd269fcf729efd30f8",
+        "family": "receipt.evidence",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/native-004-Main.txt"
+      },
+      {
+        "actualByteSize": 2299,
+        "actualSha256": "c3c9c98d8af3578d415b775fc6eb235decc188b981cab9fd269fcf729efd30f8",
+        "expectedByteSize": 2299,
+        "expectedSha256": "c3c9c98d8af3578d415b775fc6eb235decc188b981cab9fd269fcf729efd30f8",
+        "family": "receipt.evidence",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/native-delta-004-Main.txt"
+      },
+      {
+        "actualByteSize": 15276,
+        "actualSha256": "eadbae6082a42050ddc04944a34adb89c40c28de8895eadd5fa2b63a5f2d5874",
+        "expectedByteSize": 15276,
+        "expectedSha256": "eadbae6082a42050ddc04944a34adb89c40c28de8895eadd5fa2b63a5f2d5874",
+        "family": "receipt.evidence",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/native-005-Mod.txt"
+      },
+      {
+        "actualByteSize": 15276,
+        "actualSha256": "eadbae6082a42050ddc04944a34adb89c40c28de8895eadd5fa2b63a5f2d5874",
+        "expectedByteSize": 15276,
+        "expectedSha256": "eadbae6082a42050ddc04944a34adb89c40c28de8895eadd5fa2b63a5f2d5874",
+        "family": "receipt.evidence",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/native-delta-005-Mod.txt"
+      },
+      {
+        "actualByteSize": 65166,
+        "actualSha256": "56345a303856d4e94cc360087aa4ac4475e1e61b47e86388c1fd29047e571d12",
+        "expectedByteSize": 65166,
+        "expectedSha256": "56345a303856d4e94cc360087aa4ac4475e1e61b47e86388c1fd29047e571d12",
+        "family": "receipt.evidence",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/native-006-Stats.txt"
+      },
+      {
+        "actualByteSize": 65166,
+        "actualSha256": "56345a303856d4e94cc360087aa4ac4475e1e61b47e86388c1fd29047e571d12",
+        "expectedByteSize": 65166,
+        "expectedSha256": "56345a303856d4e94cc360087aa4ac4475e1e61b47e86388c1fd29047e571d12",
+        "family": "receipt.evidence",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/native-delta-006-Stats.txt"
+      },
+      {
+        "actualByteSize": 21112,
+        "actualSha256": "efe9ea03202e4e8ff58e6afa7ae614a3c48bd83e2ae6e38c8606642fca7b0359",
+        "expectedByteSize": 21112,
+        "expectedSha256": "efe9ea03202e4e8ff58e6afa7ae614a3c48bd83e2ae6e38c8606642fca7b0359",
+        "family": "receipt.evidence",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/native-007-SyncLog LoadReplay v5.8 2026.10.07 183227.txt"
+      },
+      {
+        "actualByteSize": 21112,
+        "actualSha256": "efe9ea03202e4e8ff58e6afa7ae614a3c48bd83e2ae6e38c8606642fca7b0359",
+        "expectedByteSize": 21112,
+        "expectedSha256": "efe9ea03202e4e8ff58e6afa7ae614a3c48bd83e2ae6e38c8606642fca7b0359",
+        "family": "receipt.evidence",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/native-delta-007-SyncLog LoadReplay v5.8 2026.10.07 183227.txt"
+      },
+      {
+        "actualByteSize": 22370,
+        "actualSha256": "b46d8c87f340c5f7130197a0462b791106fdbd6926e4852053d06fc69ccd017e",
+        "expectedByteSize": 22370,
+        "expectedSha256": "b46d8c87f340c5f7130197a0462b791106fdbd6926e4852053d06fc69ccd017e",
+        "family": "receipt.evidence",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/crossover.log"
+      },
+      {
+        "actualByteSize": 17143,
+        "actualSha256": "59b82d4737035f834850fdce08d0c6d099da59b5e6f847b479bedcb8d0b9c14c",
+        "expectedByteSize": null,
+        "expectedSha256": "59b82d4737035f834850fdce08d0c6d099da59b5e6f847b479bedcb8d0b9c14c",
+        "family": "remote.result.evidenceSha256",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/attempt.json"
+      },
+      {
+        "actualByteSize": 16989,
+        "actualSha256": "4280afdad09a85ee4476b8ddf1627884456886f5c842e2b2c8aac1ac5e8d4389",
+        "expectedByteSize": null,
+        "expectedSha256": "4280afdad09a85ee4476b8ddf1627884456886f5c842e2b2c8aac1ac5e8d4389",
+        "family": "remote.result.evidenceSha256",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/events.jsonl"
+      },
+      {
+        "actualByteSize": 3641,
+        "actualSha256": "b50cda307077cd313974a2310271e3af3bc64771b9ac75124791715b330d4f16",
+        "expectedByteSize": null,
+        "expectedSha256": "b50cda307077cd313974a2310271e3af3bc64771b9ac75124791715b330d4f16",
+        "family": "remote.result.evidenceSha256",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/invocation.json"
+      },
+      {
+        "actualByteSize": 94143,
+        "actualSha256": "73189d76001876e3aa671cb00817dfe33758a1e5cd9159654d32de34757464a4",
+        "expectedByteSize": null,
+        "expectedSha256": "73189d76001876e3aa671cb00817dfe33758a1e5cd9159654d32de34757464a4",
+        "family": "remote.result.evidenceSha256",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/observation.json"
+      },
+      {
+        "actualByteSize": 7758,
+        "actualSha256": "aab8bdb68d04d956d163beb7df430eabf04988fe24fef484fc6221e65fd78ced",
+        "expectedByteSize": null,
+        "expectedSha256": "aab8bdb68d04d956d163beb7df430eabf04988fe24fef484fc6221e65fd78ced",
+        "family": "remote.result.evidenceSha256",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/receipt.json"
+      },
+      {
+        "actualByteSize": 1002,
+        "actualSha256": "9b078686852ccdeba1f0565a42df51a892c27656a7f28e67bc37d2350d33d39e",
+        "expectedByteSize": null,
+        "expectedSha256": "9b078686852ccdeba1f0565a42df51a892c27656a7f28e67bc37d2350d33d39e",
+        "family": "remote.result.evidenceSha256",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/validation.json"
+      },
+      {
+        "actualByteSize": 1388,
+        "actualSha256": "a50cb6477565228bcaec92b8f6304a838789a4bbbfef0ed82f46079d8c2b3b8a",
+        "expectedByteSize": null,
+        "expectedSha256": "a50cb6477565228bcaec92b8f6304a838789a4bbbfef0ed82f46079d8c2b3b8a",
+        "family": "receipt.validation.binding",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/plan.json"
+      },
+      {
+        "actualByteSize": 7758,
+        "actualSha256": "aab8bdb68d04d956d163beb7df430eabf04988fe24fef484fc6221e65fd78ced",
+        "expectedByteSize": null,
+        "expectedSha256": "aab8bdb68d04d956d163beb7df430eabf04988fe24fef484fc6221e65fd78ced",
+        "family": "receipt.validation.binding",
+        "pass": true,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/receipt.json"
+      }
+    ],
+    "invocationMemoryObserver": {
+      "argv": null,
+      "identity": null,
+      "role": "raw_read_only_corroboration_no_result_authority",
+      "staged_identity": null
+    },
+    "invocationPlaybackController": {
+      "argv": null,
+      "identity": null,
+      "role": "bounded_normal_ui_input_no_result_authority",
+      "staged_identity": null
+    },
+    "loaded": true,
+    "memoryObserverJsonlExists": false,
+    "memoryObserverRequested": false,
+    "nativeFastReplay": false,
+    "nativeLogSummary": [
+      {
+        "completedWithoutDesync": true,
+        "mismatchLines": [],
+        "note": "FinalSync is not terminal winner proof.",
+        "players": [
+          {
+            "civilization": "Persians",
+            "dat_crc": 1945937194,
+            "humanity": "Human",
+            "mp_game_version": 65,
+            "name": "mYsTikaL Broly",
+            "player_label": 1,
+            "scenario_player_index": 6,
+            "steam_id": 76561199881752776,
+            "team_resolved": 3,
+            "team_user_chosen": 3,
+            "world_player_index": 1
+          },
+          {
+            "civilization": "Goths",
+            "dat_crc": 0,
+            "humanity": "Human",
+            "mp_game_version": 0,
+            "name": "mYsTiKaL_GoHaN",
+            "player_label": 2,
+            "scenario_player_index": 1,
+            "steam_id": 0,
+            "team_resolved": 3,
+            "team_user_chosen": 6,
+            "world_player_index": 2
+          },
+          {
+            "civilization": "Goths",
+            "dat_crc": 0,
+            "humanity": "Human",
+            "mp_game_version": 0,
+            "name": "mYsTikaL_VeGeTa",
+            "player_label": 3,
+            "scenario_player_index": 0,
+            "steam_id": 0,
+            "team_resolved": 2,
+            "team_user_chosen": 2,
+            "world_player_index": 3
+          },
+          {
+            "civilization": "Persians",
+            "dat_crc": 0,
+            "humanity": "Human",
+            "mp_game_version": 0,
+            "name": "mYsTikaL_TrUnKs",
+            "player_label": 4,
+            "scenario_player_index": 2,
+            "steam_id": 0,
+            "team_resolved": 2,
+            "team_user_chosen": 6,
+            "world_player_index": 4
+          }
+        ],
+        "source": {
+          "byte_size": 21112,
+          "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/native-003-SyncLog LoadReplay v5.8 2026.10.07 183227.txt",
+          "sha256": "efe9ea03202e4e8ff58e6afa7ae614a3c48bd83e2ae6e38c8606642fca7b0359"
+        },
+        "turns": {
+          "count": 100,
+          "first": 3307,
+          "last": 3406
+        },
+        "worldTimeMs": {
+          "first": 349120,
+          "last": 359558,
+          "sample_count": 100
+        }
+      },
+      {
+        "completedWithoutDesync": true,
+        "mismatchLines": [],
+        "note": "FinalSync is not terminal winner proof.",
+        "players": [
+          {
+            "civilization": "Persians",
+            "dat_crc": 1945937194,
+            "humanity": "Human",
+            "mp_game_version": 65,
+            "name": "mYsTikaL Broly",
+            "player_label": 1,
+            "scenario_player_index": 6,
+            "steam_id": 76561199881752776,
+            "team_resolved": 3,
+            "team_user_chosen": 3,
+            "world_player_index": 1
+          },
+          {
+            "civilization": "Goths",
+            "dat_crc": 0,
+            "humanity": "Human",
+            "mp_game_version": 0,
+            "name": "mYsTiKaL_GoHaN",
+            "player_label": 2,
+            "scenario_player_index": 1,
+            "steam_id": 0,
+            "team_resolved": 3,
+            "team_user_chosen": 6,
+            "world_player_index": 2
+          },
+          {
+            "civilization": "Goths",
+            "dat_crc": 0,
+            "humanity": "Human",
+            "mp_game_version": 0,
+            "name": "mYsTikaL_VeGeTa",
+            "player_label": 3,
+            "scenario_player_index": 0,
+            "steam_id": 0,
+            "team_resolved": 2,
+            "team_user_chosen": 2,
+            "world_player_index": 3
+          },
+          {
+            "civilization": "Persians",
+            "dat_crc": 0,
+            "humanity": "Human",
+            "mp_game_version": 0,
+            "name": "mYsTikaL_TrUnKs",
+            "player_label": 4,
+            "scenario_player_index": 2,
+            "steam_id": 0,
+            "team_resolved": 2,
+            "team_user_chosen": 6,
+            "world_player_index": 4
+          }
+        ],
+        "source": {
+          "byte_size": 21112,
+          "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/native-007-SyncLog LoadReplay v5.8 2026.10.07 183227.txt",
+          "sha256": "efe9ea03202e4e8ff58e6afa7ae614a3c48bd83e2ae6e38c8606642fca7b0359"
+        },
+        "turns": {
+          "count": 100,
+          "first": 3307,
+          "last": 3406
+        },
+        "worldTimeMs": {
+          "first": 349120,
+          "last": 359558,
+          "sample_count": 100
+        }
+      }
+    ],
+    "nativeMemoryTerminalCandidate": {
+      "match": null,
+      "proven": false,
+      "reason": "observer_not_requested"
+    },
+    "nativePerformanceLoadWitness": {
+      "match": {
+        "byte_size": 412,
+        "evidence_id": "replay-performanceOutput.txt",
+        "metric_blocks": [
+          "fps",
+          "render",
+          "update"
+        ],
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/replay-performanceOutput.txt",
+        "requested_replay_windows_path": "Z:\\Users\\tonyblum\\projects\\AoE2HDBets\\api-prodn\\instance\\native-replay-worker\\attempts\\20261007233219-ce777f7b\\02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b.aoe2record",
+        "sha256": "de6a13e0c797635884644a9f6266fdab1c5671960f139a0496042b26079ef02c"
+      },
+      "matching_output_count": 1,
+      "proven": true,
+      "rejected_outputs": []
+    },
+    "nativeRunId": "5edcbea0-b02b-44ed-994b-fe377aaa2079",
+    "newReplayQueued": false,
+    "newReplayRun": false,
+    "observedAt": "2026-10-07T23:50:10.811782+00:00",
+    "playbackControllerRequested": false,
+    "queueParameters": {
+      "candidateOnly": true,
+      "gameStatsId": 32388,
+      "nativePerformanceSeconds": 240,
+      "replaySha256": "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b",
+      "rosterSlots": [
+        1,
+        2,
+        3,
+        4
+      ],
+      "timeoutSeconds": 300
+    },
+    "readOnly": true,
+    "readOnlyRemoteSnapshot": {
+      "path": "/Users/tonyblum/projects/AoE2HDBets/.aoe2war-workspaces/app-prodn/chatgpt-native-memory-control-ladder-20261007/.aoe2war-release/operator-readiness/completed-attempt-audit-20261007T235000Z-ce777f7b/run-status-read-only.json",
+      "sha256": "522c37910790e52d86b6de567a46c55cafb5156c81463b7f4c4d5947d26a97d6"
+    },
+    "replayIdentity": {
+      "byte_size": 665734,
+      "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/native-replay-worker/attempts/20261007233219-ce777f7b/02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b.aoe2record",
+      "sha256": "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b"
+    },
+    "requestedAt": "2026-10-07T23:32:19.607Z",
+    "runId": "20261007233219-ce777f7b",
+    "schema": "aoe2war.native_control_completed_attempt_audit.v1",
+    "sourceIdentity": {
+      "apiHead": "286384181437270c2b6b151567c4ee2f1edf9e71",
+      "appHead": "af974bf7a77c6040d6b26545f2aae563f322b670",
+      "requiredApiImplementationCommit": "cd99188c55d1d1ecd0465b1662a459db0b30f2a6",
+      "requiredAppImplementationCommit": "abdccc18f6f216ae2b166d70a7aac9665b3bb1ba"
+    },
+    "status": "loaded_without_terminal",
+    "terminalEvidenceKind": null,
+    "terminalOutcomeProven": false,
+    "trustedControlValidation": {
+      "reason": "native terminal witness is not available",
+      "status": "not_run"
+    },
+    "workerCommandRecordedInRemoteSystemEvent": "$ /Users/tonyblum/.pyenv/versions/3.13.5/bin/python3 /Users/tonyblum/projects/AoE2HDBets/.aoe2war-workspaces/app-prodn/chatgpt-native-memory-control-ladder-20261007/scripts/aoe2_native_replay_worker.py --run-id 20261007233219-ce777f7b --game-stats-id 32388 --replay-sha256 02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b --native-performance-seconds 240 --timeout-seconds 300 --url https://aoe2war.com --roster-slot 1 --roster-slot 2 --roster-slot 3 --roster-slot 4 --api-source /Users/tonyblum/projects/AoE2HDBets/.aoe2war-workspaces/api-prodn/fix-historical-upload-identity-authority-20261005"
+  },
+  "completedAttemptAuditSha256": "b2d9bd89a063049d3e565d999015fb56f502313902e6f93302dc6654c7d9ae77",
+  "observedAt": "2026-10-07T23:57:09.260668+00:00",
+  "operationalBoundary": {
+    "adjudicationsChanged": false,
+    "candidateBridgePid64128Paused": true,
+    "financialAuthorityChanged": false,
+    "nativePEExecutionsDuringThisTask": 0,
+    "parserRefreshPerformed": false,
+    "productionSourceChanged": false,
+    "publicResultTruthChanged": false,
+    "queuedReplaysDuringThisTask": 0,
+    "replayRunsDuringThisTask": 0
+  },
+  "schema": "aoe2war.native_memory_control_wiring_audit.v1",
+  "status": "MEMORY_LANE_WIRED_READY_FOR_REVIEW_NOT_LIVE_CLICK",
+  "validation": {
+    "apiMemoryAndManifestSmoke": {
+      "failed": 0,
+      "passed": 232
+    },
+    "appPython": {
+      "apiSourceExplicitlyBound": true,
+      "failed": 0,
+      "passed": 88,
+      "subtestsPassed": 80
+    },
+    "appTypeScript": "PASS",
+    "gitDiffCheck": "PASS",
+    "independentDiffReview": "PASS",
+    "newNodeTestStrictTypeScript": "PASS",
+    "nodeManifestAndWiring": {
+      "failed": 0,
+      "passed": 37
+    },
+    "pythonSyntax": {
+      "files": 8,
+      "status": "PASS"
+    }
+  },
+  "wiringChange": {
+    "allControlsRequireExistingV2Manifest": true,
+    "authority": {
+      "automaticPromotion": false,
+      "betting": false,
+      "candidateOnly": true,
+      "productionResults": false,
+      "settlement": false,
+      "wolo": false
+    },
+    "bare32388RejectedAt": [
+      "queue_parameters",
+      "operator_bridge",
+      "native_worker"
+    ],
+    "changedImplementationAndTests": {
+      "lib/nativeReplayWorker.ts": "6a0570b6bec9af0d092fc6ed923e5cb444658cabe58804963f58d288650ffb89",
+      "scripts/aoe2_native_replay_worker.py": "2974a687df6059c5a84795bc261ef98ec3fa89797cfb47e7d3e2a7fa708dbce0",
+      "scripts/aoe2_operator_bridge.py": "9e85d8dbbfc45c97383b7c20577ecad58c4b58e529aea612263c13a940f46757",
+      "tests/native-replay-worker.test.mts": "7f956bd9230377154a6f491175830aa2f1caaaef7259bdf46aac948b4963996c",
+      "tests/test_aoe2_operator_bridge.py": "41a626933f7fb2beed472368be31baad605b8b112c0b538eeca67de2ce97ef5d",
+      "tests/test_native_replay_manifest.py": "019ac9b06ef904e977ee14a498bc64ca0d8a12c5d12be9198bf0b7f5b48bf1a1"
+    },
+    "currentManifestBuilderUnchanged": true,
+    "existingManifestSchemaChanged": false,
+    "helperPreparationRequired": true,
+    "requiredRunnerArguments": [
+      "--native-fast-replay",
+      "--memory-observer",
+      "--expected-memory-observer-sha256",
+      "--playback-controller",
+      "--expected-playback-controller-sha256",
+      "--control-manifest",
+      "--expected-control-manifest-sha256"
+    ]
+  }
+}

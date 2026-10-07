@@ -951,7 +951,7 @@ def main() -> int:
     parser.add_argument("--native-performance-seconds", type=int, default=240)
     parser.add_argument("--timeout-seconds", type=int, default=300)
     parser.add_argument("--url", default=DEFAULT_URL)
-    parser.add_argument("--manifest-json")
+    parser.add_argument("--manifest-json", required=True)
     parser.add_argument(
         "--api-source", type=Path,
         help="canonical sibling api-prodn checkout or one governed worktree",
@@ -965,29 +965,19 @@ def main() -> int:
 
 
 def run_native_attempt(args: argparse.Namespace) -> int:
-    manifest = load_manifest_json(args.manifest_json) if args.manifest_json is not None else None
+    if args.manifest_json is None:
+        raise WorkerError("Immutable known-control manifest is required for native execution.")
+    manifest = load_manifest_json(args.manifest_json)
 
     if not __import__("re").fullmatch(r"[A-Za-z0-9-]{1,100}", args.run_id):
         raise WorkerError("Invalid AoE2WAR OS run id.")
-    if manifest is None and args.game_stats_id not in TRUSTED_CONTROL_GAME_IDS:
-        raise WorkerError(
-            "Native replay execution is still locked to trusted control GameStats #32388."
-        )
     replay_sha256 = args.replay_sha256.strip().lower()
     if not SHA256_RE.fullmatch(replay_sha256):
         raise WorkerError("Invalid replay SHA-256.")
-    if manifest is None and replay_sha256 != TRUSTED_CONTROL_SHA256[args.game_stats_id]:
-        raise WorkerError(
-            "Replay SHA-256 does not match the trusted GameStats #32388 control."
-        )
     slots = sorted(set(args.roster_slot))
     if len(slots) < 2 or len(slots) > 8 or any(slot < 1 or slot > 8 for slot in slots):
         raise WorkerError("Native replay worker requires 2-8 unique roster slots 1-8.")
-    if manifest is None and slots != TRUSTED_CONTROL_ROSTER[args.game_stats_id]:
-        raise WorkerError(
-            "Native replay roster does not match trusted GameStats #32388 slots 1,2,3,4."
-        )
-    if manifest is not None and (
+    if (
         args.game_stats_id != manifest["gameStatsId"] or args.replay_sha256 != manifest["replaySha256"]
         or args.roster_slot != [player["slot"] for player in manifest["roster"]]
     ):
@@ -1003,10 +993,7 @@ def run_native_attempt(args: argparse.Namespace) -> int:
     if output.exists() or output.is_symlink() or (output.parent / (output.name + ".worker-failure.json")).exists():
         raise WorkerError(f"Native attempt directory already exists: {output}")
     output.parent.mkdir(parents=True, exist_ok=True)
-    memory_runtime = (
-        prepare_memory_control_runtime(args.run_id, manifest)
-        if manifest is not None else None
-    )
+    memory_runtime = prepare_memory_control_runtime(args.run_id, manifest)
 
     with tempfile.TemporaryDirectory(prefix="aoe2war-native-replay-") as temp_dir:
         artifact, byte_size, artifact_source = materialize_replay(
@@ -1049,16 +1036,15 @@ def run_native_attempt(args: argparse.Namespace) -> int:
             str(args.timeout_seconds),
             "--steam-app-context",
         ]
-        if memory_runtime is not None:
-            command.extend([
-                "--native-fast-replay",
-                "--memory-observer", memory_runtime["observer"]["path"],
-                "--expected-memory-observer-sha256", memory_runtime["observer"]["sha256"],
-                "--playback-controller", memory_runtime["controller"]["path"],
-                "--expected-playback-controller-sha256", memory_runtime["controller"]["sha256"],
-                "--control-manifest", memory_runtime["manifest"]["path"],
-                "--expected-control-manifest-sha256", memory_runtime["manifest"]["sha256"],
-            ])
+        command.extend([
+            "--native-fast-replay",
+            "--memory-observer", memory_runtime["observer"]["path"],
+            "--expected-memory-observer-sha256", memory_runtime["observer"]["sha256"],
+            "--playback-controller", memory_runtime["controller"]["path"],
+            "--expected-playback-controller-sha256", memory_runtime["controller"]["sha256"],
+            "--control-manifest", memory_runtime["manifest"]["path"],
+            "--expected-control-manifest-sha256", memory_runtime["manifest"]["sha256"],
+        ])
         for slot in slots:
             command.extend(["--roster-slot", str(slot)])
 

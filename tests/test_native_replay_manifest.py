@@ -270,6 +270,23 @@ class BridgeWorkerManifestTests(unittest.TestCase):
                 WORKER.run_native_attempt(args)
             runtime.assert_not_called()
 
+    def test_bare_32388_is_rejected_before_any_runtime_work(self):
+        args = argparse.Namespace(
+            run_id="bare-32388", game_stats_id=32388,
+            replay_sha256="02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b",
+            roster_slot=[1, 2, 3, 4], native_performance_seconds=240,
+            timeout_seconds=300, url="https://example.invalid", manifest_json=None,
+        )
+        with patch.object(WORKER, "require_runtime") as runtime, \
+             patch.object(WORKER, "prepare_memory_control_runtime") as prepare, \
+             patch.object(WORKER, "materialize_replay") as materialize, \
+             patch.object(WORKER, "load_token") as token, \
+             patch.object(WORKER.subprocess, "run") as run:
+            with self.assertRaisesRegex(WORKER.WorkerError, "Immutable known-control manifest is required"):
+                WORKER.run_native_attempt(args)
+            for boundary in (runtime, prepare, materialize, token, run):
+                boundary.assert_not_called()
+
     def test_worker_rejects_duplicate_execution_attempt(self):
         value = manifest_fixture()
         args = argparse.Namespace(run_id="same-attempt", game_stats_id=123, replay_sha256=value["replaySha256"],
@@ -396,7 +413,14 @@ class BridgeWorkerManifestTests(unittest.TestCase):
             self.assertFalse(payload["authority"]["woloMutated"])
 
     def test_worker_forwards_memory_runtime_hashes_and_manifest_to_api_runner(self):
+        for game_stats_id in (123, 32388):
+            with self.subTest(game_stats_id=game_stats_id):
+                self.assert_worker_forwards_memory_runtime(game_stats_id)
+
+    def assert_worker_forwards_memory_runtime(self, game_stats_id):
         value = manifest_fixture()
+        value.update(gameStatsId=game_stats_id, sourceGameStatsIds=[game_stats_id])
+        reseal(value)
         args = argparse.Namespace(
             run_id="memory-forwarding-control",
             game_stats_id=value["gameStatsId"],

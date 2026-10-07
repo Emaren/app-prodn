@@ -18,18 +18,6 @@ export const NATIVE_REPLAY_DEFAULT_PERFORMANCE_SECONDS = 240;
 export const NATIVE_REPLAY_MAX_PERFORMANCE_SECONDS = 240;
 export const NATIVE_REPLAY_DEFAULT_WALL_SECONDS = 300;
 export const NATIVE_REPLAY_MAX_WALL_SECONDS = 300;
-export const NATIVE_REPLAY_CANARY_SHA256_BY_GAME_ID = new Map<number, string>([
-  [
-    32388,
-    "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b",
-  ],
-]);
-export const NATIVE_REPLAY_CANARY_GAME_IDS = new Set(
-  NATIVE_REPLAY_CANARY_SHA256_BY_GAME_ID.keys()
-);
-export const NATIVE_REPLAY_CANARY_ROSTER_BY_GAME_ID = new Map<number, number[]>([
-  [32388, [1, 2, 3, 4]],
-]);
 
 const ARCHIVE_ROOT = "/mnt/HC_Volume_105319120/aoe2-replay-archive";
 const SHA256_RE = /^[0-9a-f]{64}$/;
@@ -42,7 +30,7 @@ export type NativeReplayRunParameters = {
   candidateOnly: true;
   nativePerformanceSeconds: number;
   timeoutSeconds: number;
-  manifest?: NativeReplayManifest;
+  manifest: NativeReplayManifest;
 };
 
 function boundedPositiveInteger(
@@ -84,12 +72,10 @@ export function parseNativeReplayRunParameters(
     "gameStatsId",
     Number.MAX_SAFE_INTEGER
   );
-  const manifest = source.manifest === undefined ? undefined : validateNativeReplayManifest(source.manifest);
-  if (!manifest && !NATIVE_REPLAY_CANARY_GAME_IDS.has(gameStatsId)) {
-    throw new Error(
-      "Native HD execution is still locked to trusted control GameStats #32388."
-    );
+  if (source.manifest === undefined) {
+    throw new Error("Immutable known-control manifest is required for native execution.");
   }
+  const manifest = validateNativeReplayManifest(source.manifest);
 
   const replaySha256 =
     typeof source.replaySha256 === "string"
@@ -98,11 +84,8 @@ export function parseNativeReplayRunParameters(
   if (!SHA256_RE.test(replaySha256)) {
     throw new Error("replaySha256 must be a complete lowercase SHA-256 digest.");
   }
-  const canarySha256 = NATIVE_REPLAY_CANARY_SHA256_BY_GAME_ID.get(gameStatsId);
-  if (manifest ? manifest.gameStatsId !== gameStatsId || manifest.replaySha256 !== replaySha256 : !canarySha256 || replaySha256 !== canarySha256) {
-    throw new Error(
-      "Native HD canary replay SHA-256 does not match the trusted GameStats #32388 control."
-    );
+  if (manifest.gameStatsId !== gameStatsId || manifest.replaySha256 !== replaySha256) {
+    throw new Error("Native envelope identity differs from the immutable manifest.");
   }
   if (source.candidateOnly !== true) {
     throw new Error("Native replay execution is candidate-only.");
@@ -132,15 +115,12 @@ export function parseNativeReplayRunParameters(
     throw new Error("rosterSlots must contain 2-8 unique AoE2 player slots from 1 through 8.");
   }
 
-  const trustedRoster = manifest?.roster.map(p => p.slot) ?? NATIVE_REPLAY_CANARY_ROSTER_BY_GAME_ID.get(gameStatsId);
+  const trustedRoster = manifest.roster.map(p => p.slot);
   if (
-    !trustedRoster ||
     rosterSlots.length !== trustedRoster.length ||
     rosterSlots.some((slot, index) => slot !== trustedRoster[index])
   ) {
-    throw new Error(
-      "Native HD canary roster does not match trusted GameStats #32388 slots 1,2,3,4."
-    );
+    throw new Error("Native roster differs from the immutable manifest.");
   }
 
   const nativePerformanceSeconds = boundedPositiveInteger(
@@ -171,7 +151,7 @@ export function parseNativeReplayRunParameters(
     candidateOnly: true,
     nativePerformanceSeconds,
     timeoutSeconds,
-    ...(manifest ? { manifest } : {}),
+    manifest,
   };
 }
 
@@ -183,50 +163,13 @@ export async function buildNativeReplayRunParameters(
     "gameStatsId",
     Number.MAX_SAFE_INTEGER
   );
-  if (!NATIVE_REPLAY_CANARY_GAME_IDS.has(gameStatsId)) {
-    const manifest = await buildNativeControlManifest(gameStatsId);
-    return parseNativeReplayRunParameters({ gameStatsId, replaySha256: manifest.replaySha256, rosterSlots: manifest.roster.map(p => p.slot), candidateOnly: true, manifest });
-  }
-  const game = await getPrisma().gameStats.findUnique({
-    where: { id: gameStatsId },
-    select: {
-      id: true,
-      replayHash: true,
-      is_final: true,
-      players: true,
-    },
-  });
-  if (!game || !game.is_final) {
-    throw new Error("Native replay worker requires an existing final GameStats row.");
-  }
-
-  const replaySha256 = String(game.replayHash || "").trim().toLowerCase();
-  if (!SHA256_RE.test(replaySha256)) {
-    throw new Error("The selected battle has no canonical replay SHA-256.");
-  }
-
-  const normalized = normalizeReplayPlayers(game.players);
-  const slots = normalized
-    .map((player) => player.playerNumber)
-    .filter((slot): slot is number => Number.isInteger(slot))
-    .filter((slot) => slot >= 1 && slot <= 8);
-  const rosterSlots = [...new Set(slots)].sort((left, right) => left - right);
-  if (
-    rosterSlots.length < 2 ||
-    rosterSlots.length !== normalized.length
-  ) {
-    throw new Error(
-      "The selected battle does not have one unique canonical player slot for every roster member."
-    );
-  }
-
+  const manifest = await buildNativeControlManifest(gameStatsId);
   return parseNativeReplayRunParameters({
     gameStatsId,
-    replaySha256,
-    rosterSlots,
+    replaySha256: manifest.replaySha256,
+    rosterSlots: manifest.roster.map(p => p.slot),
     candidateOnly: true,
-    nativePerformanceSeconds: NATIVE_REPLAY_DEFAULT_PERFORMANCE_SECONDS,
-    timeoutSeconds: NATIVE_REPLAY_DEFAULT_WALL_SECONDS,
+    manifest,
   });
 }
 

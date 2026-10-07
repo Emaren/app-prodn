@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import fcntl
 import importlib.util
+import json
 import os
 from pathlib import Path
 import sys
@@ -15,6 +16,17 @@ MODULE = importlib.util.module_from_spec(SPEC)
 assert SPEC and SPEC.loader
 sys.modules[SPEC.name] = MODULE
 SPEC.loader.exec_module(MODULE)
+
+
+def native_manifest():
+    # Synthetic known-result fixture; no production result authority.
+    from scripts.native_replay_contract import manifest_digest
+    value = json.loads((SCRIPT.parent.parent / "tests/fixtures/native-replay-manifest-v2.json").read_text())
+    sha = "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b"
+    value.update(gameStatsId=32388, replaySha256=sha, sourceGameStatsIds=[32388])
+    value["archive"].update(objectKey=sha + ".aoe2record", sha256=sha)
+    value["manifestSha256"] = manifest_digest(value)
+    return value
 
 
 class OperatorBridgeTests(unittest.TestCase):
@@ -119,6 +131,16 @@ class OperatorBridgeTests(unittest.TestCase):
             ],
         )
 
+    def test_native_replay_command_rejects_bare_32388_without_fallback(self):
+        parameters = {
+            "gameStatsId": 32388,
+            "replaySha256": native_manifest()["replaySha256"],
+            "rosterSlots": [1, 2, 3, 4], "candidateOnly": True,
+            "nativePerformanceSeconds": 240, "timeoutSeconds": 300,
+        }
+        with self.assertRaisesRegex(MODULE.BridgeError, "Immutable known-control manifest is required"):
+            MODULE.command_for_run({"id": "bare-32388", "action": "replay_native_run", "parameters": parameters})
+
     def test_native_replay_command_is_fixed_and_identity_bound(self):
         command = MODULE.command_for_run(
             {
@@ -129,6 +151,7 @@ class OperatorBridgeTests(unittest.TestCase):
                     "replaySha256": "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b",
                     "rosterSlots": [1, 2, 3, 4],
                     "candidateOnly": True,
+                    "manifest": native_manifest(),
                     "nativePerformanceSeconds": 240,
                     "timeoutSeconds": 300,
                 },
@@ -160,6 +183,8 @@ class OperatorBridgeTests(unittest.TestCase):
                 "3",
                 "--roster-slot",
                 "4",
+                "--manifest-json",
+                MODULE.canonical_json(native_manifest()),
             ],
         )
 
@@ -174,6 +199,7 @@ class OperatorBridgeTests(unittest.TestCase):
                         "replaySha256": "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b",
                         "rosterSlots": [1, 2, 3, 4],
                         "candidateOnly": True,
+                        "manifest": native_manifest(),
                         "nativePerformanceSeconds": 240,
                         "timeoutSeconds": 300,
                     },
@@ -182,10 +208,10 @@ class OperatorBridgeTests(unittest.TestCase):
             )
         self.assertEqual(command[-2:], ["--api-source", "/tmp/governed-api-worktree"])
 
-    def test_native_replay_command_rejects_non_canary_game(self):
+    def test_native_replay_command_rejects_manifest_game_mismatch(self):
         with self.assertRaisesRegex(
             MODULE.BridgeError,
-            "locked to trusted control GameStats #32388",
+            "differs from the immutable manifest",
         ):
             MODULE.command_for_run(
                 {
@@ -196,6 +222,7 @@ class OperatorBridgeTests(unittest.TestCase):
                         "replaySha256": "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b",
                         "rosterSlots": [1, 2],
                         "candidateOnly": True,
+                        "manifest": native_manifest(),
                         "nativePerformanceSeconds": 240,
                         "timeoutSeconds": 300,
                     },
@@ -205,7 +232,7 @@ class OperatorBridgeTests(unittest.TestCase):
     def test_native_replay_command_rejects_wrong_canary_roster(self):
         with self.assertRaisesRegex(
             MODULE.BridgeError,
-            "does not match trusted 32388 slots 1,2,3,4",
+            "differs from the immutable manifest",
         ):
             MODULE.command_for_run(
                 {
@@ -216,6 +243,7 @@ class OperatorBridgeTests(unittest.TestCase):
                         "replaySha256": "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b",
                         "rosterSlots": [1, 2, 3],
                         "candidateOnly": True,
+                        "manifest": native_manifest(),
                         "nativePerformanceSeconds": 240,
                         "timeoutSeconds": 300,
                     },
@@ -225,7 +253,7 @@ class OperatorBridgeTests(unittest.TestCase):
     def test_native_replay_command_rejects_wrong_canary_sha(self):
         with self.assertRaisesRegex(
             MODULE.BridgeError,
-            "does not match the trusted 32388 canary",
+            "differs from the immutable manifest",
         ):
             MODULE.command_for_run(
                 {
@@ -236,6 +264,7 @@ class OperatorBridgeTests(unittest.TestCase):
                         "replaySha256": "a" * 64,
                         "rosterSlots": [1, 2],
                         "candidateOnly": True,
+                        "manifest": native_manifest(),
                         "nativePerformanceSeconds": 240,
                         "timeoutSeconds": 300,
                     },
@@ -253,6 +282,7 @@ class OperatorBridgeTests(unittest.TestCase):
                         "replaySha256": "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b",
                         "rosterSlots": [1, 2, 3, 4],
                         "candidateOnly": True,
+                        "manifest": native_manifest(),
                         "nativePerformanceSeconds": 241,
                         "timeoutSeconds": 300,
                     },
@@ -268,6 +298,7 @@ class OperatorBridgeTests(unittest.TestCase):
                         "replaySha256": "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b",
                         "rosterSlots": [1, 2, 3, 4],
                         "candidateOnly": True,
+                        "manifest": native_manifest(),
                         "nativePerformanceSeconds": 240,
                         "timeoutSeconds": 301,
                     },
@@ -285,6 +316,7 @@ class OperatorBridgeTests(unittest.TestCase):
                         "replaySha256": "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b",
                         "rosterSlots": [1, 2],
                         "candidateOnly": False,
+                        "manifest": native_manifest(),
                         "nativePerformanceSeconds": 240,
                         "timeoutSeconds": 300,
                     },
