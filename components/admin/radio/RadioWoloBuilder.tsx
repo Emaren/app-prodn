@@ -11,6 +11,7 @@ import {
   Archive,
   ArrowDown,
   ArrowUp,
+  Check,
   Clock3,
   Copy,
   GripVertical,
@@ -146,6 +147,59 @@ function chainKey(
   return `${prefix}-${Date.now()}-${Math.random()
     .toString(36)
     .slice(2)}`;
+}
+
+function dedupeChainItems(
+  items: ChainItem[],
+) {
+  const seen =
+    new Set<number>();
+
+  return items.filter(
+    (item) => {
+      if (
+        seen.has(
+          item.asset.id,
+        )
+      ) {
+        return false;
+      }
+
+      seen.add(
+        item.asset.id,
+      );
+
+      return true;
+    },
+  );
+}
+
+function countDuplicateChainItems(
+  items: ChainItem[],
+) {
+  return (
+    items.length -
+    new Set(
+      items.map(
+        (item) =>
+          item.asset.id,
+      ),
+    ).size
+  );
+}
+
+function draftProgramName(
+  name: string,
+) {
+  const base =
+    name
+      .replace(
+        /(?:\s+—\s+Draft)+$/gi,
+        "",
+      )
+      .trim();
+
+  return `${base || "Radio WOLO Program"} — Draft`;
 }
 
 export default function RadioWoloBuilder() {
@@ -399,7 +453,6 @@ export default function RadioWoloBuilder() {
 
         const selectedId =
           preferredId ??
-          program?.id ??
           next[0]?.id;
 
         if (selectedId) {
@@ -417,7 +470,6 @@ export default function RadioWoloBuilder() {
       [
         fetchJson,
         loadProgram,
-        program?.id,
       ],
     );
 
@@ -543,6 +595,42 @@ export default function RadioWoloBuilder() {
       ],
     );
 
+  const chainAssetIds =
+    useMemo(
+      () =>
+        new Set(
+          chain.map(
+            (item) =>
+              item.asset.id,
+          ),
+        ),
+      [chain],
+    );
+
+  const duplicateChainCount =
+    useMemo(
+      () =>
+        countDuplicateChainItems(
+          chain,
+        ),
+      [chain],
+    );
+
+  const addableVisibleAssets =
+    useMemo(
+      () =>
+        visibleAssets.filter(
+          (asset) =>
+            !chainAssetIds.has(
+              asset.id,
+            ),
+        ),
+      [
+        chainAssetIds,
+        visibleAssets,
+      ],
+    );
+
   function updateChain(
     next:
       | ChainItem[]
@@ -562,7 +650,15 @@ export default function RadioWoloBuilder() {
     }
 
     setChain(
-      next,
+      (current) =>
+        dedupeChainItems(
+          typeof next ===
+            "function"
+            ? next(
+                current,
+              )
+            : next,
+        ),
     );
 
     setChainDirty(
@@ -589,25 +685,57 @@ export default function RadioWoloBuilder() {
   function addAsset(
     asset: Asset,
   ) {
+    if (
+      chainAssetIds.has(
+        asset.id,
+      )
+    ) {
+      setError(null);
+      setNotice(
+        `"${asset.title}" is already in this broadcast chain.`,
+      );
+      return;
+    }
+
+    setError(null);
+    setNotice(null);
+
     updateChain(
       (
         current,
-      ) => [
-        ...current,
-        {
-          key:
-            chainKey(
-              `asset-${asset.id}`,
-            ),
-          asset,
-          transition:
-            current.length
-              ? "cut"
-              : "cut",
-          crossfadeMs:
-            0,
-        },
-      ],
+      ) => {
+        if (
+          current.some(
+            (item) =>
+              item.asset.id ===
+              asset.id,
+          )
+        ) {
+          return current;
+        }
+
+        if (
+          current.length >=
+          RADIO_PROGRAM_MAX_ITEMS
+        ) {
+          return current;
+        }
+
+        return [
+          ...current,
+          {
+            key:
+              chainKey(
+                `asset-${asset.id}`,
+              ),
+            asset,
+            transition:
+              "cut",
+            crossfadeMs:
+              0,
+          },
+        ];
+      },
     );
   }
 
@@ -619,8 +747,18 @@ export default function RadioWoloBuilder() {
     }
 
     if (
+      !addableVisibleAssets.length
+    ) {
+      setError(null);
+      setNotice(
+        "Every filtered track is already in this broadcast chain.",
+      );
+      return;
+    }
+
+    if (
       chain.length +
-        visibleAssets.length >
+        addableVisibleAssets.length >
       RADIO_PROGRAM_MAX_ITEMS
     ) {
       setError(
@@ -629,23 +767,66 @@ export default function RadioWoloBuilder() {
       return;
     }
 
+    setError(null);
+    setNotice(
+      `Adding ${addableVisibleAssets.length.toLocaleString()} unique filtered track${addableVisibleAssets.length === 1 ? "" : "s"}.`,
+    );
+
     updateChain(
-      (current) => [
-        ...current,
-        ...visibleAssets.map(
-          (asset) => ({
+      (current) => {
+        const existing =
+          new Set(
+            current.map(
+              (item) =>
+                item.asset.id,
+            ),
+          );
+
+        const additions:
+          ChainItem[] = [];
+
+        for (
+          const asset of
+          visibleAssets
+        ) {
+          if (
+            existing.has(
+              asset.id,
+            )
+          ) {
+            continue;
+          }
+
+          if (
+            current.length +
+              additions.length >=
+            RADIO_PROGRAM_MAX_ITEMS
+          ) {
+            break;
+          }
+
+          existing.add(
+            asset.id,
+          );
+
+          additions.push({
             key:
               chainKey(
                 `asset-${asset.id}`,
               ),
             asset,
             transition:
-              "cut" as const,
+              "cut",
             crossfadeMs:
               0,
-          }),
-        ),
-      ],
+          });
+        }
+
+        return [
+          ...current,
+          ...additions,
+        ];
+      },
     );
   }
 
@@ -667,62 +848,122 @@ export default function RadioWoloBuilder() {
       return;
     }
 
-    let duration =
-      builtDurationMs;
-
-    const additions:
-      ChainItem[] = [];
-
-    for (
-      const asset of
-      visibleAssets
-    ) {
-      if (
-        chain.length +
-          additions.length >=
-        RADIO_PROGRAM_MAX_ITEMS
-      ) {
-        break;
-      }
-
-      additions.push({
-        key:
-          chainKey(
-            `asset-${asset.id}`,
-          ),
-        asset,
-        transition:
-          "cut",
-        crossfadeMs:
-          0,
-      });
-
-      duration +=
-        asset.durationMs;
-
-      if (
-        duration >=
-        targetDurationMs
-      ) {
-        break;
-      }
-    }
-
     if (
-      !additions.length
+      !addableVisibleAssets.length
     ) {
-      setError(
-        "No filtered tracks could be added to this target.",
+      setError(null);
+      setNotice(
+        "Every filtered track is already in this broadcast chain.",
       );
       return;
     }
 
     setError(null);
+    setNotice(null);
 
-    updateChain([
-      ...chain,
-      ...additions,
-    ]);
+    updateChain(
+      (current) => {
+        let duration =
+          calculateRadioProgramDurationMs(
+            current.map(
+              (item) => ({
+                durationMs:
+                  item.asset.durationMs,
+                transition:
+                  item.transition,
+                crossfadeMs:
+                  item.crossfadeMs,
+              }),
+            ),
+          );
+
+        const existing =
+          new Set(
+            current.map(
+              (item) =>
+                item.asset.id,
+            ),
+          );
+
+        const additions:
+          ChainItem[] = [];
+
+        for (
+          const asset of
+          visibleAssets
+        ) {
+          if (
+            existing.has(
+              asset.id,
+            )
+          ) {
+            continue;
+          }
+
+          if (
+            current.length +
+              additions.length >=
+            RADIO_PROGRAM_MAX_ITEMS
+          ) {
+            break;
+          }
+
+          existing.add(
+            asset.id,
+          );
+
+          additions.push({
+            key:
+              chainKey(
+                `asset-${asset.id}`,
+              ),
+            asset,
+            transition:
+              "cut",
+            crossfadeMs:
+              0,
+          });
+
+          duration +=
+            asset.durationMs;
+
+          if (
+            duration >=
+            targetDurationMs
+          ) {
+            break;
+          }
+        }
+
+        return [
+          ...current,
+          ...additions,
+        ];
+      },
+    );
+  }
+
+  function cleanDuplicateChain() {
+    if (
+      duplicateChainCount <= 0
+    ) {
+      return;
+    }
+
+    const removed =
+      duplicateChainCount;
+
+    setError(null);
+    setNotice(
+      `Removed ${removed.toLocaleString()} duplicate track${removed === 1 ? "" : "s"} while preserving the first occurrence of each Vault asset.`,
+    );
+
+    updateChain(
+      (current) =>
+        dedupeChainItems(
+          current,
+        ),
+    );
   }
 
   function removeItem(
@@ -803,6 +1044,33 @@ export default function RadioWoloBuilder() {
     );
   }
 
+  async function selectProgram(
+    id: number,
+  ) {
+    if (
+      program?.id === id
+    ) {
+      return;
+    }
+
+    if (
+      (chainDirty ||
+        metadataDirty) &&
+      !window.confirm(
+        "Discard unsaved Radio WOLO program changes and open another program?",
+      )
+    ) {
+      return;
+    }
+
+    setError(null);
+    setNotice(null);
+
+    await loadProgram(
+      id,
+    );
+  }
+
   async function duplicateProgramToDraft() {
     if (!program) {
       return;
@@ -827,7 +1095,9 @@ export default function RadioWoloBuilder() {
               JSON.stringify(
                 {
                   name:
-                    `${program.name} — Draft`,
+                    draftProgramName(
+                      program.name,
+                    ),
                   targetDurationMs:
                     program.targetDurationMs,
                 },
@@ -853,7 +1123,9 @@ export default function RadioWoloBuilder() {
               JSON.stringify(
                 {
                   items:
-                    chain.map(
+                    dedupeChainItems(
+                      chain,
+                    ).map(
                       (item) => ({
                         assetId:
                           item.asset
@@ -1021,6 +1293,16 @@ export default function RadioWoloBuilder() {
     ) {
       setError(
         "Add at least one asset before marking a program ready.",
+      );
+
+      return;
+    }
+
+    if (
+      duplicateChainCount > 0
+    ) {
+      setError(
+        `Remove ${duplicateChainCount.toLocaleString()} duplicate track${duplicateChainCount === 1 ? "" : "s"} before saving this program.`,
       );
 
       return;
@@ -1253,8 +1535,11 @@ export default function RadioWoloBuilder() {
                     item.id
                   }
                   type="button"
+                  disabled={
+                    busy
+                  }
                   onClick={() =>
-                    void loadProgram(
+                    void selectProgram(
                       item.id,
                     )
                   }
@@ -1264,6 +1549,9 @@ export default function RadioWoloBuilder() {
                     item.id
                       ? "border-fuchsia-100/30 bg-fuchsia-100 text-slate-950"
                       : "border-white/8 bg-white/[0.025] text-slate-400 hover:border-white/15 hover:text-white",
+                    busy
+                      ? "cursor-not-allowed opacity-40"
+                      : "",
                   ].join(
                     " ",
                   )}
@@ -1550,6 +1838,31 @@ export default function RadioWoloBuilder() {
                   </span>
                 </>
               ) : null}
+
+              {duplicateChainCount > 0 ? (
+                <>
+                  <span>·</span>
+                  <button
+                    type="button"
+                    disabled={
+                      selectedProgramIsOnAir
+                    }
+                    onClick={
+                      cleanDuplicateChain
+                    }
+                    className="font-bold text-rose-200/80 underline decoration-rose-200/30 underline-offset-4 transition hover:text-rose-100 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    clean {duplicateChainCount.toLocaleString()} duplicate{duplicateChainCount === 1 ? "" : "s"}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span>·</span>
+                  <span className="text-emerald-300/55">
+                    unique tracks
+                  </span>
+                </>
+              )}
             </div>
           </section>
 
@@ -1566,7 +1879,7 @@ export default function RadioWoloBuilder() {
                       type="button"
                       disabled={
                         selectedProgramIsOnAir ||
-                        visibleAssets.length ===
+                        addableVisibleAssets.length ===
                           0 ||
                         builtDurationMs >=
                           targetDurationMs ||
@@ -1586,10 +1899,10 @@ export default function RadioWoloBuilder() {
                       type="button"
                       disabled={
                         selectedProgramIsOnAir ||
-                        visibleAssets.length ===
+                        addableVisibleAssets.length ===
                           0 ||
                         chain.length +
-                          visibleAssets.length >
+                          addableVisibleAssets.length >
                           RADIO_PROGRAM_MAX_ITEMS
                       }
                       onClick={
@@ -1599,7 +1912,9 @@ export default function RadioWoloBuilder() {
                       title="Add every track matching the current Vault search"
                     >
                       <Plus size={12} />
-                      Add filtered · {visibleAssets.length}
+                      {addableVisibleAssets.length
+                        ? `Add filtered · ${addableVisibleAssets.length}`
+                        : "All filtered added"}
                     </button>
                   </div>
                 </div>
@@ -1641,12 +1956,19 @@ export default function RadioWoloBuilder() {
                         }
                         type="button"
                         disabled={
-                          selectedProgramIsOnAir
+                          selectedProgramIsOnAir ||
+                          chainAssetIds.has(
+                            asset.id,
+                          )
                         }
                         title={
                           selectedProgramIsOnAir
                             ? "Duplicate the live program to a draft before adding audio."
-                            : "Add to broadcast chain"
+                            : chainAssetIds.has(
+                                  asset.id,
+                                )
+                              ? "Already in broadcast chain"
+                              : "Add to broadcast chain"
                         }
                         onClick={() =>
                           addAsset(
@@ -1656,9 +1978,18 @@ export default function RadioWoloBuilder() {
                         className="group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-fuchsia-100/[0.055] disabled:cursor-not-allowed disabled:opacity-35"
                       >
                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/8 bg-white/[0.025] text-slate-600 transition group-hover:border-fuchsia-100/20 group-hover:text-fuchsia-100">
-                          <Plus
-                            size={14}
-                          />
+                          {chainAssetIds.has(
+                            asset.id,
+                          ) ? (
+                            <Check
+                              size={14}
+                              className="text-emerald-300/70"
+                            />
+                          ) : (
+                            <Plus
+                              size={14}
+                            />
+                          )}
                         </span>
 
                         <span className="min-w-0 flex-1">
@@ -1730,6 +2061,8 @@ export default function RadioWoloBuilder() {
                     disabled={
                       busy ||
                       chain.length ===
+                        0 ||
+                      duplicateChainCount >
                         0 ||
                       selectedProgramIsOnAir
                     }

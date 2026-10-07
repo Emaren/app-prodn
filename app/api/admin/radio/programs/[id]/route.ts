@@ -5,6 +5,7 @@ import {
 
 import {
   calculateRadioProgramDurationMs,
+  findRadioProgramDuplicateAssetIds,
   normalizeRadioProgramName,
   normalizeRadioProgramStatus,
   normalizeRadioProgramTargetDurationMs,
@@ -344,6 +345,136 @@ export async function PATCH(
           NO_STORE_HEADERS,
       },
     );
+  }
+
+  const markingReady =
+    body.status !==
+      undefined &&
+    status === "ready";
+
+  if (markingReady) {
+    const readyItems =
+      await gate.prisma.radioProgramItem.findMany(
+        {
+          where: {
+            programId:
+              id,
+          },
+          orderBy: {
+            position:
+              "asc",
+          },
+          select: {
+            transition:
+              true,
+            crossfadeMs:
+              true,
+            asset: {
+              select: {
+                id: true,
+                status: true,
+                durationMs:
+                  true,
+              },
+            },
+          },
+        },
+      );
+
+    if (
+      readyItems.length ===
+      0
+    ) {
+      return NextResponse.json(
+        {
+          detail:
+            "Add at least one Vault track before marking a Radio WOLO program ready.",
+        },
+        {
+          status: 409,
+          headers:
+            NO_STORE_HEADERS,
+        },
+      );
+    }
+
+    const duplicateAssetIds =
+      findRadioProgramDuplicateAssetIds(
+        readyItems.map(
+          (item) => ({
+            assetId:
+              item.asset.id,
+          }),
+        ),
+      );
+
+    if (
+      duplicateAssetIds.length
+    ) {
+      return NextResponse.json(
+        {
+          detail:
+            "A READY Radio WOLO program cannot contain duplicate Vault tracks. Clean duplicates in BUILD first.",
+          duplicateAssetIds,
+        },
+        {
+          status: 409,
+          headers:
+            NO_STORE_HEADERS,
+        },
+      );
+    }
+
+    const unavailable =
+      readyItems.find(
+        (item) =>
+          item.asset.status !==
+          "ready",
+      );
+
+    if (unavailable) {
+      return NextResponse.json(
+        {
+          detail:
+            "Every track must be READY in the Vault before the program can be marked ready.",
+        },
+        {
+          status: 409,
+          headers:
+            NO_STORE_HEADERS,
+        },
+      );
+    }
+
+    const durationMs =
+      calculateRadioProgramDurationMs(
+        readyItems.map(
+          (item) => ({
+            durationMs:
+              item.asset.durationMs,
+            transition:
+              item.transition,
+            crossfadeMs:
+              item.crossfadeMs,
+          }),
+        ),
+      );
+
+    if (
+      durationMs <= 0
+    ) {
+      return NextResponse.json(
+        {
+          detail:
+            "A READY Radio WOLO program must have playable duration.",
+        },
+        {
+          status: 409,
+          headers:
+            NO_STORE_HEADERS,
+        },
+      );
+    }
   }
 
   await gate.prisma.radioProgram.update(

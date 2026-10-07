@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-10-06"
+reviewed_at: "2026-10-07"
 review_interval_days: 90
 sensitivity: "internal"
 ---
@@ -26,6 +26,10 @@ The form collects artist, title, genre/mood, private email, optional Discord, au
 Private operator Vault audio is limited to 250 MB per track; public creator submissions remain limited to 60 MB. Audio is validated by magic bytes as MP3, WAV, OGG, or M4A. The private Vault accepts loose audio, bounded standard ZIP batches, explicit folder selection, and recursive folder drag/drop in supported desktop browsers. Folder intake walks nested directories, ignores unsupported clutter such as lyric text files and Finder metadata, and sends every supported audio file or ZIP through the same canonical intake path. ZIP intake likewise ignores non-audio entries, expands each supported audio entry into its own RadioAsset, reads that track's duration independently, preserves duplicate protection by SHA-256, and uploads tracks through the same canonical asset endpoint. ZIP64, encrypted entries, unsupported compression methods, oversized tracks, malformed directories, unsafe expansion totals, and unbounded folder counts fail closed. Artwork is limited to 8 MB and validated as PNG, JPEG, or WebP. Extensions and browser MIME labels are not trusted by server storage. Original filenames are sanitized; stored files use random keys plus a SHA-256 prefix. Failed database writes remove partial files.
 
 Private Vault intake is deliberately zero-configuration on the current catalog. The default profile is **Lord Molyneaux · song · lord_molyneaux, suno** and is shown as one compact summary rather than three required fields. Operators can expand **Change** when needed; the last profile is remembered locally. When the operator has not manually customized the profile, obvious Suno folder/archive names such as `lord-molyneaux [usesuno.com] part-01-of-18.zip` may refine the artist and source tags automatically. Bulk intake applies the resolved profile to every discovered track. BUILD search plus **Add filtered** assembles a complete rotation without clicking hundreds of tracks individually. **Fill target** adds filtered tracks in order only until the selected program reaches its configured target duration, which is the fast path for a dedicated one-hour player show.
+
+Radio program chains are unique by canonical `RadioAsset.id`. The BUILD surface treats bulk programming as idempotent: **Add filtered** and **Fill target** only add filtered assets that are not already present, individual Vault rows become visibly unavailable once added, and every client-side chain mutation is normalized back to one occurrence per asset. Legacy draft chains that predate this rule expose an explicit duplicate-clean action which preserves the first occurrence and its transition settings. Draft cloning also canonicalizes the name to a single `— Draft` suffix. Switching between programs is guarded when lineup or metadata edits are unsaved, and program selection does not retrigger the full Vault/station bootstrap fetch.
+
+Uniqueness is enforced again at server boundaries rather than trusting the browser. Program-item writes reject duplicate asset IDs, a program cannot become **READY** unless it has at least one playable READY Vault asset with no duplicate asset IDs, and transmitter launch independently refuses legacy duplicate lineups. Therefore READY means launchable under the same core asset invariants used at ON AIR time. No database migration or second playlist truth is introduced.
 
 The intake allows at most three submissions in a rolling day for the same contact email or signed-in user. Publication is never automatic.
 

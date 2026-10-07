@@ -3543,3 +3543,209 @@ test(
     );
   },
 );
+
+test(
+  "Radio WOLO duplicate-track detector reports each repeated Vault asset once",
+  async () => {
+    const {
+      findRadioProgramDuplicateAssetIds,
+    } = await import(
+      "../lib/radioWoloPrograms.ts"
+    );
+
+    assert.deepEqual(
+      findRadioProgramDuplicateAssetIds([
+        { assetId: 7 },
+        { assetId: 9 },
+        { assetId: 7 },
+        { assetId: 11 },
+        { assetId: 9 },
+        { assetId: 7 },
+      ]),
+      [7, 9],
+    );
+  },
+);
+
+test(
+  "Radio WOLO builder keeps broadcast chains unique and makes bulk add idempotent",
+  () => {
+    const source =
+      read(
+        "components/admin/radio/RadioWoloBuilder.tsx",
+      );
+
+    assert.match(
+      source,
+      /function dedupeChainItems/,
+    );
+
+    assert.match(
+      source,
+      /countDuplicateChainItems/,
+    );
+
+    assert.match(
+      source,
+      /addableVisibleAssets/,
+    );
+
+    assert.match(
+      source,
+      /Every filtered track is already in this broadcast chain/,
+    );
+
+    assert.match(
+      source,
+      /All filtered added/,
+    );
+
+    assert.match(
+      source,
+      /Already in broadcast chain/,
+    );
+
+    assert.match(
+      source,
+      /clean \{duplicateChainCount\.toLocaleString\(\)\} duplicate/,
+    );
+
+    assert.match(
+      source,
+      /draftProgramName/,
+    );
+
+    assert.equal(
+      source.includes(
+        "/(?:\\s+—\\s+Draft)+$/gi",
+      ),
+      true,
+    );
+  },
+);
+
+test(
+  "Radio WOLO program writes reject duplicate assets at the server boundary",
+  () => {
+    const source =
+      read(
+        "app/api/admin/radio/programs/[id]/items/route.ts",
+      );
+
+    assert.match(
+      source,
+      /findRadioProgramDuplicateAssetIds/,
+    );
+
+    assert.match(
+      source,
+      /can contain each Vault track only once/,
+    );
+
+    assert.match(
+      source,
+      /duplicateAssetIds/,
+    );
+  },
+);
+
+test(
+  "Radio WOLO READY status and transmitter launch both fence duplicate tracks",
+  () => {
+    const programRoute =
+      read(
+        "app/api/admin/radio/programs/[id]/route.ts",
+      );
+
+    const startRoute =
+      read(
+        "app/api/admin/radio/station/start/route.ts",
+      );
+
+    assert.match(
+      programRoute,
+      /status === "ready"/,
+    );
+
+    assert.match(
+      programRoute,
+      /findRadioProgramDuplicateAssetIds/,
+    );
+
+    assert.match(
+      programRoute,
+      /Every track must be READY in the Vault/,
+    );
+
+    assert.match(
+      programRoute,
+      /must have playable duration/,
+    );
+
+    assert.match(
+      startRoute,
+      /contains duplicate Vault tracks/,
+    );
+
+    assert.match(
+      startRoute,
+      /findRadioProgramDuplicateAssetIds/,
+    );
+
+    const claimRead =
+      startRoute.match(
+        /const current =[\s\S]*?if \(\s*current\?\.state ===/,
+      )?.[0] ?? "";
+
+    assert.match(
+      claimRead,
+      /state: true/,
+    );
+
+    assert.doesNotMatch(
+      claimRead,
+      /startedAt/,
+    );
+
+    assert.doesNotMatch(
+      claimRead,
+      /program:/,
+    );
+  },
+);
+
+test(
+  "Radio WOLO builder avoids bootstrap refetch loops and protects unsaved lineup edits",
+  () => {
+    const source =
+      read(
+        "components/admin/radio/RadioWoloBuilder.tsx",
+      );
+
+    assert.match(
+      source,
+      /Discard unsaved Radio WOLO program changes and open another program/,
+    );
+
+    assert.match(
+      source,
+      /async function selectProgram/,
+    );
+
+    const loadPrograms =
+      source.match(
+        /const loadPrograms =[\s\S]*?\n    \);/,
+      )?.[0] ?? "";
+
+    assert.doesNotMatch(
+      loadPrograms,
+      /program\?\.id/,
+    );
+
+    assert.match(
+      loadPrograms,
+      /preferredId \?\?[\s\S]*?next\[0\]\?\.id/,
+    );
+  },
+);
+
