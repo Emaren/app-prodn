@@ -8,14 +8,14 @@ systems: ["app-prodn","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-10-04"
+reviewed_at: "2026-10-07"
 review_interval_days: 90
 sensitivity: "internal"
 ---
 
 # Championship Title Economy
 
-Last updated: 2026-09-30
+Last updated: 2026-10-07
 
 The [Championship Belt Constitution V1](./CHAMPIONSHIP_BELT_CONSTITUTION.md)
 is the active product contract for `championship_v2` Challenges. It adds exact
@@ -40,16 +40,33 @@ operator intents until a future Warbound chain module exists.
 
 ## Public routes
 
-- `/champions` is the default Champions E3 hall. E3 intentionally preserves
+- `/champions` remains the default Champions E3 hall. E3 intentionally preserves
   the E1 war-table composition while projecting the complete E2 authority:
   current World/Chaos/Women custody, separate RM and DM solo crowns, every RM/DM
   2v2/3v3/4v4 team title, the complete national/regional catalog, both ELO lanes,
   and special designations. E1 remains provenance at
   `/champions/legacy?view=e`; E2 remains provenance at `/champions/e2`.
-  The B / A / E rail now reveals E1, E2, and E3. The Extreme hover owns an
-  explicit pointer bridge so the version balloon remains traversable while the
-  pointer moves from E into the version controls. E1 and E2 content are not
-  rewritten to create E3.
+- `/champions/e4` is an additive hybrid projection, not a custody fork. Its hero
+  and three-throne opening preserve E3's World-centered war-table composition,
+  while all following solo-mode, team, national/regional, ELO, and artifact
+  sections reuse the cleaner E2 card system. The team lane starts RM unless an
+  E4-specific prior choice exists; one RM / DM / Both control governs 2v2, 3v3,
+  and 4v4 together. Both renders the RM and DM title cards side by side for each
+  team size. The E4 preference is presentation-only local storage and never title
+  authority.
+- Every held E4 belt card exposes a quiet direct Challenge shortcut. The link
+  always carries the canonical championship title id into
+  `/challenge#schedule-game`; when the authoritative holder UID is available it
+  is included as an exact opponent prefill, otherwise Challenge Hall resolves the
+  live custodian through title authority. National crowns also carry country and
+  national-kind context. Vacant belts never synthesize a challenge target.
+  Challenge creation, eligibility, custody, money, and proof remain owned by
+  Challenge Hall and championship authority.
+- The shared provenance rail now reveals E1, E2, E3, and E4. B, A, E1, E2, E3,
+  and E4 heroes expose the same compact bronze current-grade cycler so repeated
+  top-of-page clicks and the bottom rail resolve the same routes. The Extreme
+  hover retains its explicit pointer bridge while moving from E into the version
+  controls. Prior E1/E2/E3 content is not rewritten to create E4.
 - `/champions/[...slug]` renders detail pages for belts, national titles, ELO
   titles, tag titles, and designations.
 - `/national-champions` is the cinematic national-title projection. It must

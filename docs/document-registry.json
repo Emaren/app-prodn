@@ -85,7 +85,7 @@
       "review_interval_days": 60,
       "reviewed_at": "2026-10-04",
       "sensitivity": "internal",
-      "sha256": "cb80e5fcb71ab955a6d3e56cea296ec21ebae815d8deb1b5d8f5105d46723e4b",
+      "sha256": "13a6a028e5e452b4333bc30f37eb4a23e23c31328b9a0b0e892a8d89c1e8b135",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -479,9 +479,9 @@
       "owner": "aoe2war-web",
       "path": "docs/CHAMPIONS_TITLE_ECONOMY.md",
       "review_interval_days": 90,
-      "reviewed_at": "2026-10-04",
+      "reviewed_at": "2026-10-07",
       "sensitivity": "internal",
-      "sha256": "21fde34da0a7ff98f814167ccecfe890b57238ddbdb23cd96b05000c82cf36e9",
+      "sha256": "a78baf842911e4189504153ab659b3d63eaeb03473a2dd672212f923ecb2f80d",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9f843e94681dcb6a462aef5c53f227abf0c63a9f23156bc82a7580e2803e9bd4",
+      "sha256": "5366d5af93ffad2b0f75158269370a8198fb277a8bded72eb19445b41c54eaf6",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2026,7 +2026,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "main",
-    "commit": "c5bc21d2e97c3c6834e10979fba30c557e141c76"
+    "commit": "b0715c8738db2e316ee68e3c3ee465a240f48523"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
