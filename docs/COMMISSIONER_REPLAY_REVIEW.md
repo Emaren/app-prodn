@@ -368,6 +368,24 @@ Editing the sides, winner or reason detaches the immutable proposal proof.
 Accepted packets no longer appear as pending drafts. Financial snapshots support
 review and grant no betting, settlement, claim or Wolo authority.
 
+The three-account draft schema binds one of the three exact target Steam IDs
+to exactly one canonical participant; the accounts' histories and ratings stay
+separate. Game `25782` additionally requires the checked 50-second early-exit
+counterevidence and an explicit acknowledgement that the proposed short forfeit
+does not establish a Steam-rated result. Tony approved somniosator/TheGoat_Nicky
+over mYsTikaL_VeGeTa/mYsTikaL_TrUnKs for statistics only. The governed writer
+must independently revalidate current source, archive, review history and full
+financial obligations before recording that decision. The original frozen
+packet remains a proposal receipt; its accepted application requires its own
+superseding receipt.
+
+The shared public query and in-memory projector exclude the exact historical
+recorder-exit v1/v2, action-tail v3, and team-action-tail v2/v3/v4 policies.
+The historical rows remain inspectable. They cannot supply a current verdict,
+including when their stored flags or roster happen to match current evidence.
+An independently accepted human verdict remains eligible under its normal
+source and roster fences.
+
 Human-uploaded postgame screenshots represent deliberate human contribution to the evidence chain, but do not themselves constitute an adjudication.
 
 The UI therefore distinguishes:

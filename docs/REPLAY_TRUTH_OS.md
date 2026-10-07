@@ -317,7 +317,10 @@ parser lineage, raw blockers and immutable receipt seals live in
 `replay-receipts/player-first-2026-10-06-report.json` and its linked immutable
 campaign report.
 
-### Zodiac result tranche — 2026-10-06
+### Historical Zodiac result tranche — 2026-10-06
+
+This preserves the earlier 761-battle checkpoint. The three-account continuation
+below supersedes its inventory and next-action instructions.
 
 The exact sealed 761-battle Zodiac cohort now has **50 result unknowns, down from
 52**. Full Truth incomplete remains **55**. This is a scoped closure update, not
@@ -387,3 +390,54 @@ Frozen original packets remain evidence; the superseding accepted report is
 current for this tranche. No uncommitted implementation work remains. Do not
 repeat parser/roster work on these nine cases; resume at the native terminal
 completeness boundary above.
+
+### Three-account continuation — 2026-10-07 UTC
+
+The Steam identities remain separate: Zodiac `76561198103810510`,
+mYsTikaL_VeGeTa `76561199849204394`, and mYsTikaL JiReN
+`76561198754754435`. The read-only census preserves the existing logical battle
+grain and Workshop roster-completeness rule. `player-replay-truth.py baseline
+--inventory-only` reduces collection volume without changing those contracts;
+omitted bulk evidence is explicitly marked as uncollected.
+
+At `2026-10-07T01:17:14.139Z`, the deployed public projection was
+**3717/5450 = 68.20183486238533%** Full Battle Truth, with unknown result counts
+**51/21/22**. Its receipt SHA-256 is
+`d1835f3da4245f6aaf485881a0f4a9d7fb573cac2479f7b0836ee4906230cb94`.
+This observation does not establish the user's reported 69% metric.
+
+The independent admissible census at `01:23:33.687Z` excludes the six exact
+retired recorder-exit/action-tail policy versions through the same query and
+projection fence. It reports **3694/5450 = 67.77981651376147%**, with
+**57/21/22 = 100** unknown results. Receipt SHA-256:
+`e7e8c6873e41a58680217cd52ac09cfdf4b68c03a9a263e6bbcf292adb05ea8a`.
+The lower percentage reflects rejected authority, not lost replay evidence.
+The fence is branch implementation; no campaign code has been deployed.
+
+The six reopened Zodiac games are `23829`, `24666`, `25985`, `25994`, `29091`
+and `41041`. Independent complete byte scans found four recordings without
+serialized results, one partial voluntary side and one disconnect-marked
+partial side. Their audit receipt SHA-256 is
+`c5a3b8f7f9d3bcf39a6cd7bb91dc3651f6566d305df3c417cd5448866296b97b`.
+Retired ledger rows remain history and grant no current result authority.
+
+The 43 Vegeta/JiReN cases were each hash-checked, parsed with the current
+contract and independently scanned to exact EOF. Their audit receipt SHA-256
+is `d647f2d7b532cb4a3c7dcc3337a4f125ffc51b5c99308c6365a92f26030882c1`.
+Only `25782` proves a complete voluntarily resigned side. Its frozen packet
+is in [`three-account-stats-only-proposals-2026-10-06.json`](replay-receipts/three-account-stats-only-proposals-2026-10-06.json).
+Tony explicitly approved its stats-only short-forfeit verdict in the current
+continuation. Application remains a separately recorded governed writer step.
+The unchanged parser excludes the 50-second game as a rated result; human
+statistical adjudication must preserve that counterevidence and never declare
+a Steam-rated outcome. Nonfinal `25781` is an exact prefix with only one
+resignation, and supplies no result authority.
+
+Native structural control `32388` captured 383 coherent terminal snapshots,
+the complete `[1,2]`/`[3,4]` partition, a same-world route marker transition
+`0→1`, and a clock matching the independently framed archive endpoint
+`1485022ms`. Receipt SHA-256:
+`3c6e45e72e8620511ce962fe305591c81ae78ec148b0e21a37d39c267b2daf75`.
+This is candidate evidence. Engine EOF and an instruction-boundary hit are
+unproven. Generalized manifest-bound memory transcription, explicit negative
+controls and the actual replay input cursor are the next dependencies.
