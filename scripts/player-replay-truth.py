@@ -86,9 +86,12 @@ def main(argv=None):
     parser.add_argument("--baseline", type=Path)
     parser.add_argument("--baseline-sha256")
     parser.add_argument("--receipt-dir", type=Path)
+    parser.add_argument("--inventory-only", action="store_true", help="baseline: retain the exact census while omitting bulk receipt/identity payloads")
     parser.add_argument("--target", choices=["all", "zodiac", "vegeta", "jiren"], default="all")
     parser.add_argument("--max-games", type=int, default=3)
     args = parser.parse_args(argv)
+    if args.inventory_only and args.mode != "baseline":
+        parser.error("--inventory-only is a baseline projection, not an evidence or apply mode")
     if args.mode == "baseline":
         if not args.targets or args.baseline:
             parser.error("baseline requires --targets, without --baseline")
@@ -116,6 +119,11 @@ def main(argv=None):
     if args.mode != "plan" and program.count(marker) != 1:
         raise ValueError("remote scope marker missing or ambiguous")
     program = program.replace(marker, "const targets=" + json.dumps(targets, ensure_ascii=True) + ";")
+    if args.mode == "baseline":
+        inventory_marker = "const inventoryOnly = false; // injected collection mode"
+        if program.count(inventory_marker) != 1:
+            raise ValueError("remote collection marker missing or ambiguous")
+        program = program.replace(inventory_marker, "const inventoryOnly=" + str(args.inventory_only).lower() + ";")
     spec = importlib.util.spec_from_file_location("truth", ROOT / "scripts/aoe2_truth.py")
     truth = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(truth)

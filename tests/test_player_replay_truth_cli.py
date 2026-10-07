@@ -4,11 +4,54 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+import io
+from contextlib import redirect_stdout, redirect_stderr
+from types import SimpleNamespace
+from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location('player_truth', Path(__file__).parents[1]/'scripts/player-replay-truth.py')
 m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
 
 class PlayerTruthCliTests(unittest.TestCase):
+    def test_inventory_collection_mode_is_injected_and_sealed_without_authority(self):
+        for inventory_only in [False, True]:
+            with self.subTest(inventory_only=inventory_only), tempfile.TemporaryDirectory() as d:
+                targets=Path(d)/'targets.json'
+                targets.write_text(json.dumps([{'name':'Zodiac','steamId':'76561198103810510'}]))
+                observed=[]
+                truth=SimpleNamespace()
+                def observe(mode):
+                    self.assertEqual(mode,'census')
+                    observed.append(truth.REMOTE_PROGRAM.read_text())
+                    return {'collection':{'inventoryOnly':inventory_only},'mutations':{'production':0,'wolo':0}}
+                truth.run_remote=observe
+                fake_spec=SimpleNamespace(loader=SimpleNamespace(exec_module=lambda _:None))
+                args=['baseline','--targets',str(targets),'--receipt-dir',str(Path(d)/'receipts')]
+                if inventory_only:args.append('--inventory-only')
+                output=io.StringIO()
+                with patch.object(m.importlib.util,'spec_from_file_location',return_value=fake_spec), patch.object(
+                    m.importlib.util,'module_from_spec',return_value=truth,
+                ), redirect_stdout(output):
+                    m.main(args)
+                self.assertEqual(len(observed),1)
+                self.assertIn('const inventoryOnly='+str(inventory_only).lower()+';',observed[0])
+                self.assertIn('"steamId": "76561198103810510"',observed[0])
+                self.assertNotIn('// injected exact scope',observed[0])
+                receipt=json.loads(output.getvalue())
+                raw=Path(receipt['path']).read_bytes();envelope=json.loads(raw)
+                self.assertEqual(receipt['sha256'],hashlib.sha256(raw).hexdigest())
+                self.assertEqual(envelope['observerSha256'],hashlib.sha256(observed[0].encode()).hexdigest())
+                self.assertEqual(envelope['payload']['collection']['inventoryOnly'],inventory_only)
+                for field in ['databaseMutated','runtimeMutated','woloMutated']:self.assertIs(envelope[field],False)
+
+    def test_inventory_flag_rejects_evidence_and_plan_before_remote_execution(self):
+        for mode in ['evidence','plan']:
+            with self.subTest(mode=mode), patch.object(m.importlib.util,'spec_from_file_location') as load, redirect_stderr(io.StringIO()) as error:
+                with self.assertRaises(SystemExit) as raised:m.main([mode,'--inventory-only'])
+                self.assertEqual(raised.exception.code,2)
+                self.assertIn('baseline projection',error.getvalue())
+                load.assert_not_called()
+
     def test_exact_targets_reject_invented_identity_and_duplicates(self):
         with tempfile.TemporaryDirectory() as d:
             p=Path(d)/'targets.json'
