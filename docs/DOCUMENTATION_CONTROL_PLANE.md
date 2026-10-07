@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/player-first-truth-current-rating-20261005` at `66cbc536bc21088179830cc001810cecf7c1e018`
+Implementation baseline: `chatgpt/replay-truth-operator-20261007` at `637d3d55549eead9a1b630c13c40dcbd7273844d`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
