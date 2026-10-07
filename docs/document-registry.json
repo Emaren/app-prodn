@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9f843e94681dcb6a462aef5c53f227abf0c63a9f23156bc82a7580e2803e9bd4",
+      "sha256": "0ef4d9651ba67f587dd81db080ceac00f2d9e0b14238489e7a83678f3fd1a092",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2025,8 +2025,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "main",
-    "commit": "c5bc21d2e97c3c6834e10979fba30c557e141c76"
+    "branch": "fix/player-first-truth-current-rating-20261005",
+    "commit": "66cbc536bc21088179830cc001810cecf7c1e018"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
