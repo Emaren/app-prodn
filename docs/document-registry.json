@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c75502a70d61170d942f913ad8a0ad65120ac5c87d20fe73fc15545267d04709",
+      "sha256": "12cd73b91ac5b05cda326b13c8421f9d585f1c3a7d3683c701626862b91d07e9",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1513,7 +1513,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-07",
       "sensitivity": "restricted",
-      "sha256": "3f192dfcd28d8ddb88d776890167e6246f0ac3df1bbb545111797cdd5967a204",
+      "sha256": "3ff1e5fa1cef44a0f6f38c8e3bafca8800b14acc219643649a61ecfe1d227407",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2026,7 +2026,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "chatgpt/replay-truth-operator-20261007",
-    "commit": "d2093befef04501a77b15015df500f9bc6ac21da"
+    "commit": "19434f03f2c0631ff4dc3a1c2531dd16682cba55"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
