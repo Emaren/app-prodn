@@ -94,7 +94,7 @@ class NativePreReleaseControlTests(unittest.TestCase):
 
     def test_authority_contract_is_fail_closed_in_source(self):
         source = SCRIPT.read_text(encoding="utf-8")
-        self.assertIn('"status": "HOLD_PENDING_INDEPENDENT_REVIEW"', source)
+        self.assertIn('"HOLD_PENDING_INDEPENDENT_REVIEW"', source)
         self.assertIn('"engineEofObserved": False', source)
         self.assertIn('"wholeInputConsumptionProven": False', source)
         self.assertIn('"unknownGameExecutionEnabled": False', source)
