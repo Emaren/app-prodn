@@ -303,6 +303,98 @@ class BridgeWorkerManifestTests(unittest.TestCase):
             self.assertEqual(git.call_args.kwargs["cwd"], source)
             self.assertNotIn("--output", BRIDGE.command_for_run({"id": "control", "action": "replay_native_run", "parameters": envelope(manifest_fixture())}))
 
+    def test_memory_control_preflight_builds_two_identical_helper_sets(self):
+        value = manifest_fixture()
+        with tempfile.TemporaryDirectory() as temp, \
+             patch.object(WORKER, "EVIDENCE_ROOT", Path(temp) / "attempts"), \
+             patch.object(WORKER, "git_head", return_value="1" * 40):
+            root = Path(temp)
+            clang = root / "clang"
+            lld = root / "lld-link"
+            clang.write_bytes(b"clang")
+            lld.write_bytes(b"lld")
+            calls = []
+
+            def build(builder, executable, target, tools):
+                calls.append((builder, executable, target))
+                target.mkdir(parents=True)
+                binary = target / executable
+                binary.write_bytes(("stable-" + executable).encode())
+                return WORKER.file_identity(binary)
+
+            with patch.object(WORKER, "fixed_native_tools", return_value={"clang": clang, "lld_link": lld}), \
+                 patch.object(WORKER, "build_native_helper", side_effect=build):
+                prepared = WORKER.prepare_memory_control_runtime("known-control-123", value)
+
+            self.assertEqual(len(calls), 4)
+            self.assertEqual(prepared["manifest"]["sha256"], hashlib.sha256(
+                (canonical_json(value) + "\n").encode()
+            ).hexdigest())
+            self.assertEqual(prepared["observer"]["sha256"], WORKER.sha256_file(Path(prepared["observer"]["path"])))
+            self.assertEqual(prepared["controller"]["sha256"], WORKER.sha256_file(Path(prepared["controller"]["path"])))
+            receipt = json.loads(Path(prepared["preflight"]["path"]).read_text())
+            self.assertTrue(receipt["reproducible"])
+            self.assertFalse(receipt["writesTargetMemory"])
+            self.assertFalse(receipt["resultAuthority"])
+            self.assertFalse(receipt["promotionAuthority"])
+
+    def test_memory_control_preflight_rejects_nonreproducible_helper(self):
+        value = manifest_fixture()
+        with tempfile.TemporaryDirectory() as temp, \
+             patch.object(WORKER, "EVIDENCE_ROOT", Path(temp) / "attempts"), \
+             patch.object(WORKER, "git_head", return_value="1" * 40):
+            root = Path(temp)
+            clang = root / "clang"
+            lld = root / "lld-link"
+            clang.write_bytes(b"clang")
+            lld.write_bytes(b"lld")
+            counter = {"observer": 0, "controller": 0}
+
+            def build(builder, executable, target, tools):
+                role = "observer" if "observer" in executable else "controller"
+                counter[role] += 1
+                target.mkdir(parents=True)
+                binary = target / executable
+                binary.write_bytes(f"{role}-{counter[role]}".encode())
+                return WORKER.file_identity(binary)
+
+            with patch.object(WORKER, "fixed_native_tools", return_value={"clang": clang, "lld_link": lld}), \
+                 patch.object(WORKER, "build_native_helper", side_effect=build), \
+                 self.assertRaisesRegex(WORKER.WorkerError, "did not reproduce byte-for-byte"):
+                WORKER.prepare_memory_control_runtime("known-control-mismatch", value)
+
+    def test_result_payload_surfaces_memory_terminal_candidate_without_authority(self):
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp)
+            memory = {"proven": True, "match": {"winning_slots": [1, 2], "losing_slots": [3, 4]}}
+            fixtures = {
+                "attempt.json": {"run_id": "native-run", "cleanup_complete": True},
+                "receipt.json": {"observations": {
+                    "loaded": True, "terminal_outcome_proven": True,
+                    "result": {"outcome": "decisive", "winning_slots": [1, 2], "losing_slots": [3, 4]},
+                }},
+                "validation.json": {"status": "recorded_terminal_witness"},
+                "observation.json": {
+                    "native_memory_terminal_candidate": memory,
+                    "native_game_over_result_candidate": None,
+                    "terminal_evidence_kind": "native_memory_terminal",
+                    "native_performance_load_witness": {"proven": True},
+                },
+                "invocation.json": {},
+                "events.jsonl": {},
+            }
+            for name, value_json in fixtures.items():
+                (output / name).write_text(json.dumps(value_json) + "\n")
+            payload, code = WORKER.result_payload(
+                game_stats_id=123, replay_sha256="a" * 64, output=output, runner_returncode=2,
+            )
+            self.assertEqual(code, 0)
+            self.assertEqual(payload["nativeObservation"]["memoryTerminalCandidate"], memory)
+            self.assertEqual(payload["nativeObservation"]["terminalEvidenceKind"], "native_memory_terminal")
+            self.assertFalse(payload["authority"]["replayTruthPromoted"])
+            self.assertFalse(payload["authority"]["bettingMutated"])
+            self.assertFalse(payload["authority"]["woloMutated"])
+
     def test_download_revalidates_server_manifest_byte_count_and_hash(self):
         data = b"exact native replay bytes"
         value = manifest_fixture()
