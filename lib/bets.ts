@@ -1148,11 +1148,7 @@ function marketSeedUpdateData(
         existing?.commissionerReviewState,
     });
 
-  if (
-    existing?.status ===
-      "under_review" &&
-    !challengeWinnerCanResolveReview
-  ) {
+  if (existing?.status === "under_review" && !challengeWinnerCanResolveReview) {
     return {
       scheduledMatchId: seed.scheduledMatchId,
       linkedSessionKey: seed.linkedSessionKey,
