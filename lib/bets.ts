@@ -2618,8 +2618,49 @@ function marketStatusFromScheduledMatch(displayState: ScheduledMatchTile["displa
 }
 
 function inferWinnerSideFromChallenge(match: ScheduledMatchTile): BetSide | null {
-  const winnerKey = normalizeName(match.linkedWinner).toLowerCase();
-  if (!winnerKey) return null;
+  /*
+   * ScheduledMatch.resultWinnerSide is the durable Challenge-result authority.
+   * It may be written by exact Watcher/replay reconciliation or by the governed
+   * Commissioner completion rail. Betting must not throw that authority away
+   * merely because linkedWinner replay text is absent.
+   *
+   * This is intentionally scoped to Challenge-derived books. Unscheduled
+   * Watcher books still require their own final replay/adjudication authority.
+   */
+  const resultWinnerUid =
+    normalizeName(
+      match.protocol
+        .resultWinnerUid,
+    );
+
+  if (
+    resultWinnerUid &&
+    resultWinnerUid ===
+      normalizeName(
+        match.challenger.uid,
+      )
+  ) {
+    return "left";
+  }
+
+  if (
+    resultWinnerUid &&
+    resultWinnerUid ===
+      normalizeName(
+        match.challenged.uid,
+      )
+  ) {
+    return "right";
+  }
+
+  const winnerKey =
+    normalizeName(
+      match.linkedWinner,
+    ).toLowerCase();
+
+  if (!winnerKey) {
+    return null;
+  }
 
   const challengerNames = uniqueNames([
     match.challenger.name,
@@ -2627,6 +2668,7 @@ function inferWinnerSideFromChallenge(match: ScheduledMatchTile): BetSide | null
     match.challenger.steamPersonaName,
     match.challenger.uid,
   ]).map((value) => value.toLowerCase());
+
   const challengedNames = uniqueNames([
     match.challenged.name,
     match.challenged.inGameName,
