@@ -101,6 +101,8 @@ class NativePreReleaseControlTests(unittest.TestCase):
         self.assertIn('"woloWrites": 0', source)
         self.assertIn('"HOLD_PROBE_INCOMPLETE"', source)
         self.assertIn('return result, 0 if probe_recorded else 4', source)
+        self.assertIn('"--api-root"', source)
+        self.assertIn('args.api_root.expanduser().resolve(strict=True)', source)
 
 
 if __name__ == "__main__":
