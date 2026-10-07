@@ -357,11 +357,23 @@ function challengeNoticeTone(
     case "checkin":
     case "scheduled":
     case "rescheduled":
-    case "result_ready":
       return {
         summary,
         shell:
           "border-emerald-300/18 bg-emerald-400/10 text-emerald-50 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.08)]",
+      };
+    case "result_ready":
+    case "settled":
+      return {
+        summary,
+        shell:
+          "border-rose-950/45 bg-[radial-gradient(circle_at_92%_0%,rgba(127,29,29,0.18),transparent_38%),linear-gradient(145deg,rgba(39,39,42,0.90),rgba(15,15,18,0.96))] text-stone-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]",
+      };
+    case "result_review":
+      return {
+        summary,
+        shell:
+          "border-amber-200/24 bg-amber-950/24 text-amber-50 shadow-[inset_0_0_0_1px_rgba(251,191,36,0.08)]",
       };
     case "no_show":
     case "declined":
@@ -401,6 +413,12 @@ function ChallengeSystemMessageLine({
     summary.state === "scheduled" ||
     summary.state === "rescheduled";
 
+  const terminalResult =
+    summary.state ===
+      "result_ready" ||
+    summary.state ===
+      "settled";
+
   return (
     <div className="flex justify-center">
       <div
@@ -429,7 +447,11 @@ function ChallengeSystemMessageLine({
             ) : null}
           </div>
 
-          <div className="relative mt-3 grid gap-2 sm:grid-cols-2">
+          <div className={`relative mt-3 grid gap-2 ${
+            terminalResult
+              ? "opacity-55 sm:grid-cols-2"
+              : "sm:grid-cols-2"
+          }`}>
             <div className="rounded-xl border border-current/10 bg-black/15 px-3 py-2.5">
               <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.16em] opacity-65">
                 <CalendarClock className="h-3.5 w-3.5" />
@@ -480,7 +502,10 @@ function ChallengeSystemMessageLine({
           <div className="relative mt-3 flex flex-wrap items-center justify-between gap-2">
             <div className="inline-flex items-center gap-2 text-[11px] font-medium">
               <ShieldCheck className="h-3.5 w-3.5" />
-              {summary.statusLabel || "Protected by verified challenge rules"}
+              {summary.statusLabel ||
+                (terminalResult
+                  ? "Challenge complete · record preserved"
+                  : "Protected by verified challenge rules")}
             </div>
             {summary.challengeId ? (
               <Link
