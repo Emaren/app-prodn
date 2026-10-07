@@ -24,6 +24,19 @@ class NativePreReleaseControlTests(unittest.TestCase):
         )
         self.assertEqual(MODULE.ROSTER, (1, 2, 3, 4))
 
+    def test_evidence_inventory_binds_all_regular_files(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "nested").mkdir()
+            (root / "a.txt").write_bytes(b"a")
+            (root / "nested" / "b.bin").write_bytes(b"bb")
+            inventory = MODULE.evidence_inventory(root)
+            self.assertEqual(set(inventory), {"a.txt", "nested/b.bin"})
+            self.assertEqual(
+                inventory["nested/b.bin"]["sha256"],
+                MODULE.hashlib.sha256(b"bb").hexdigest(),
+            )
+
     def test_parse_last_json_ignores_non_json_runner_output(self):
         payload = MODULE.parse_last_json(
             "progress\nnot json\n"
