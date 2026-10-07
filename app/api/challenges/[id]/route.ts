@@ -31,6 +31,7 @@ import {
   ChallengeConflictError,
 } from "@/lib/challenge/domain/errors";
 import { ChallengeDesyncError } from "@/lib/desyncChallenge";
+import { ensureBetMarketsAfterCommit } from "@/lib/bets";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 
@@ -610,6 +611,20 @@ export async function PATCH(
               payload.linkedDurationSeconds,
           },
         },
+      );
+
+      /*
+       * Commissioner completion is already durable economic result authority
+       * for this ScheduledMatch. Reconcile Challenge-derived Bet markets only
+       * after that commit so winner-side projection, review release, and any
+       * idempotent payout work observe the new result rather than an older
+       * single-flight snapshot.
+       *
+       * The betting reconciler remains fail-closed on desync/integrity gates;
+       * this does not grant title/replay provenance authority.
+       */
+      await ensureBetMarketsAfterCommit(
+        prisma,
       );
     }
 
