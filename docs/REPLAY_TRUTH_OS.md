@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-10-06"
+reviewed_at: "2026-10-07"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
@@ -504,6 +504,34 @@ preterminal; receipt
 `6c42e635d8985aabb57f6dd8c4ec2f60993e59879ed1b3fafc3d3be56bde7748`.
 That historical attempt has parser pass 8, so no modern pass-10 manifest was
 fabricated for it; generalized manifest controls are separately tested fixtures.
-Native result authority, engine EOF, instruction-boundary proof and unknown
-execution remain false. The next bounded experiment observes the native logical
-replay cursor and extent; an OS read-ahead position is insufficient.
+Schema-5 normal Steam control `cursor-32388-20261007T040353Z` now observes the
+logical stream cursor and extent. Sample 553 is the last valid active read:
+**664,789 / 665,734 bytes**, leaving **945 bytes unobserved**, with mode and
+current/previous/OS errors 0. At sample 554, 253ms later, terminal state and the
+finalizer marker are present but the stream pointer is null. There are 444
+coherent terminal partitions; no valid bound terminal cursor proves whole-input
+consumption. Aggregate receipt SHA-256:
+`c7844f7c041f0b26f8940d184bbd9bc490605755af80216a2534581a90e4e421`.
+All 44 bound files were reverified. The current independent referee again
+rejects the unchanged preterminal prefix and an altered consumption claim.
+A historical candidate-partition PASS does not pass the strengthened EOF gate.
+No additional control or census was run after this frontier.
+
+Native result authority, whole-input consumption, engine EOF,
+instruction-boundary proof and unknown execution remain false. The next bounded
+experiment stays on `32388`: observe the bound stream **before release at
+`0x5a6e99`**, reading `F=DWORD[ESI+0x14]`, and independently bind the caller,
+process/world, cursor/extent, mode and error fields. A shared stream close is not
+itself EOF. Additional independently known 1v1/team/4v4 and ambiguous controls,
+and a census refresh, require the strengthened known control to pass first.
+The API checkpoint contains the exact read set and teardown boundary.
+
+The final continuation is preserved in
+[`three-account-structural-frontier-handoff-2026-10-07.json`](replay-receipts/three-account-structural-frontier-handoff-2026-10-07.json).
+Its immutable receipt SHA-256 is
+`567cd1db29e5459a442c3ab639354da7991d7cd294522546063061bfcc818e00`.
+Owning suites at the validated PR heads passed: **2,711 Node tests across 401
+active files**, **979 app Python tests**, and **1,518 API tests / 97 skipped**.
+Prisma generation, TypeScript, app production build, exact API runtime lock,
+secret scanning and documentation checks passed. Both PRs remain draft; no
+production write, promotion or deployment occurred in this continuation.

@@ -1511,9 +1511,9 @@
       "owner": "aoe2war-web",
       "path": "docs/REPLAY_TRUTH_OS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-06",
+      "reviewed_at": "2026-10-07",
       "sensitivity": "restricted",
-      "sha256": "5995e21abf00b20df12710bb6d7e8d2d6df030d8cf7570fcdac9532a85a926ba",
+      "sha256": "6958720bbfc7bec6e2931dd24d34abf9ffb2bba1baaf189197f0321709b1fb4b",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
