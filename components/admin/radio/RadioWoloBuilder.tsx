@@ -11,6 +11,7 @@ import {
   Archive,
   ArrowDown,
   ArrowUp,
+  Check,
   Clock3,
   Copy,
   GripVertical,
@@ -146,6 +147,59 @@ function chainKey(
   return `${prefix}-${Date.now()}-${Math.random()
     .toString(36)
     .slice(2)}`;
+}
+
+function dedupeChainItems(
+  items: ChainItem[],
+) {
+  const seen =
+    new Set<number>();
+
+  return items.filter(
+    (item) => {
+      if (
+        seen.has(
+          item.asset.id,
+        )
+      ) {
+        return false;
+      }
+
+      seen.add(
+        item.asset.id,
+      );
+
+      return true;
+    },
+  );
+}
+
+function countDuplicateChainItems(
+  items: ChainItem[],
+) {
+  return (
+    items.length -
+    new Set(
+      items.map(
+        (item) =>
+          item.asset.id,
+      ),
+    ).size
+  );
+}
+
+function draftProgramName(
+  name: string,
+) {
+  const base =
+    name
+      .replace(
+        /(?:\s+—\s+Draft)+$/gi,
+        "",
+      )
+      .trim();
+
+  return `${base || "Radio WOLO Program"} — Draft`;
 }
 
 export default function RadioWoloBuilder() {
