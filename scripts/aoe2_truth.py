@@ -1085,7 +1085,15 @@ def print_status(
             )
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
+    arguments = sys.argv[1:] if argv is None else argv
+    if arguments and arguments[0] == "native-control":
+        if str(ROOT) not in sys.path:
+            sys.path.insert(0, str(ROOT))
+        from scripts.aoe2_native_control import main as native_control_main
+
+        return native_control_main(arguments[1:])
+
     parser = argparse.ArgumentParser(
         prog="aoe2war truth",
         description=(
@@ -1152,7 +1160,14 @@ def main() -> int:
         action="store_true",
     )
 
-    args = parser.parse_args()
+    native_parser = sub.add_parser(
+        "native-control",
+        help="prepare, run or verify a local candidate-only #32388 control",
+        add_help=False,
+    )
+    native_parser.add_argument("native_args", nargs=argparse.REMAINDER)
+
+    args = parser.parse_args(arguments)
 
     try:
         if args.command == "status":

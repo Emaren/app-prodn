@@ -278,7 +278,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "Bet and Replay Reliability Release — 2026-07-29",
+      "title": "Bet and Replay Reliability Release \u2014 2026-07-29",
       "type": "historical"
     },
     {
@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0ef4d9651ba67f587dd81db080ceac00f2d9e0b14238489e7a83678f3fd1a092",
+      "sha256": "26473ab88326b5ed172a8768420a93bda4ba9fd70abd577ad9f8b14e2e366fbe",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1090,6 +1090,29 @@
     },
     {
       "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "operational-procedure",
+      "id": "aoe2war.app-prodn.docs-native-replay-control",
+      "owner": "aoe2war-web",
+      "path": "docs/NATIVE_REPLAY_CONTROL.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-10-07",
+      "sensitivity": "restricted",
+      "sha256": "3a90473d173955e0c0d53206fe7dd5153e8de5c6366be5fd25f034aedde226c6",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "api-prodn"
+      ],
+      "title": "Native Replay Control",
+      "type": "runbook"
+    },
+    {
+      "audience": [
         "operators",
         "developers",
         "ai-agents"
@@ -1221,7 +1244,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "AoE2WAR Production Performance Audit — 2026-07-18",
+      "title": "AoE2WAR Production Performance Audit \u2014 2026-07-18",
       "type": "historical"
     },
     {
@@ -1243,7 +1266,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "AoE2WAR Production Performance Audit — 2026-08-13",
+      "title": "AoE2WAR Production Performance Audit \u2014 2026-08-13",
       "type": "historical"
     },
     {
@@ -1288,7 +1311,7 @@
         "app-prodn",
         "api-prodn"
       ],
-      "title": "Player Identity Wave 2 — Deterministic Discovery V2",
+      "title": "Player Identity Wave 2 \u2014 Deterministic Discovery V2",
       "type": "reference"
     },
     {
@@ -1335,7 +1358,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "AoE2WAR Production Parity Seal — 2026-07-26",
+      "title": "AoE2WAR Production Parity Seal \u2014 2026-07-26",
       "type": "historical"
     },
     {
@@ -1427,7 +1450,7 @@
         "app-prodn",
         "wolochain"
       ],
-      "title": "AoE2WAR Certified Release Engineering Seal — 2026-08-10",
+      "title": "AoE2WAR Certified Release Engineering Seal \u2014 2026-08-10",
       "type": "historical"
     },
     {
@@ -1497,7 +1520,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "Replay Statistics and Operations Release — 2026-07-25",
+      "title": "Replay Statistics and Operations Release \u2014 2026-07-25",
       "type": "historical"
     },
     {
@@ -1513,7 +1536,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-07",
       "sensitivity": "restricted",
-      "sha256": "6958720bbfc7bec6e2931dd24d34abf9ffb2bba1baaf189197f0321709b1fb4b",
+      "sha256": "137bc0b1af5a5df44491773418cee00494ce4489cc08d79db32e5718e8b66951",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1997,7 +2020,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "War Room Forum — Saturday July 4, 2026 Edition",
+      "title": "War Room Forum \u2014 Saturday July 4, 2026 Edition",
       "type": "historical"
     },
     {

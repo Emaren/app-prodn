@@ -535,3 +535,16 @@ active files**, **979 app Python tests**, and **1,518 API tests / 97 skipped**.
 Prisma generation, TypeScript, app production build, exact API runtime lock,
 secret scanning and documentation checks passed. Both PRs remain draft; no
 production write, promotion or deployment occurred in this continuation.
+
+### Reusable native instruction control — 2026-10-07
+
+`aoe2war truth native-control <prepare|run|verify>` now delegates locally to the
+API-owned immutable native operation. It preserves the census and every truth
+plane boundary. A future Admin control must use this same adapter and receipt,
+not implement another launch or interpret preparation PASS as EOF authority.
+See [Native Replay Control](NATIVE_REPLAY_CONTROL.md) for the exact commands,
+prerequisites, schemas, durable roots, failure/cleanup behavior, idempotency and
+expansion gate. The control remains restricted to historical known-result #32388;
+no modern manifest is fabricated. The separate pre-release hardware breakpoint
+helper preserves raw caller/stream state and restores temporary debug contexts.
+Shared close and cursor equality do not prove whole-input consumption or EOF.
