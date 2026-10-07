@@ -107,6 +107,12 @@ The default bounded run is:
 ./bin/aoe2war truth native-control
 ```
 
+Native helper compilation reuses the operator host's reviewed toolchain. Tool
+discovery checks PATH and Homebrew LLVM first, then the existing Rust stable
+`lld-link` at
+`~/.rustup/toolchains/stable-aarch64-apple-darwin/lib/rustlib/aarch64-apple-darwin/bin/gcc-ld/lld-link`.
+No additional LLVM installation is required when that reviewed linker exists.
+
 For review work that must stay isolated from another active agent or branch,
 the operator may point the command at a separate clean API worktree:
 
