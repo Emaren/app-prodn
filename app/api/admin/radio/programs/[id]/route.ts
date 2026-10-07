@@ -254,26 +254,6 @@ export async function PATCH(
           targetDurationMs:
             true,
           status: true,
-          items: {
-            orderBy: {
-              position:
-                "asc",
-            },
-            select: {
-              transition:
-                true,
-              crossfadeMs:
-                true,
-              asset: {
-                select: {
-                  id: true,
-                  status: true,
-                  durationMs:
-                    true,
-                },
-              },
-            },
-          },
         },
       },
     );
@@ -367,11 +347,42 @@ export async function PATCH(
     );
   }
 
-  if (
-    status === "ready"
-  ) {
+  const markingReady =
+    body.status !==
+      undefined &&
+    status === "ready";
+
+  if (markingReady) {
+    const readyItems =
+      await gate.prisma.radioProgramItem.findMany(
+        {
+          where: {
+            programId:
+              id,
+          },
+          orderBy: {
+            position:
+              "asc",
+          },
+          select: {
+            transition:
+              true,
+            crossfadeMs:
+              true,
+            asset: {
+              select: {
+                id: true,
+                status: true,
+                durationMs:
+                  true,
+              },
+            },
+          },
+        },
+      );
+
     if (
-      existing.items.length ===
+      readyItems.length ===
       0
     ) {
       return NextResponse.json(
@@ -389,7 +400,7 @@ export async function PATCH(
 
     const duplicateAssetIds =
       findRadioProgramDuplicateAssetIds(
-        existing.items.map(
+        readyItems.map(
           (item) => ({
             assetId:
               item.asset.id,
@@ -415,7 +426,7 @@ export async function PATCH(
     }
 
     const unavailable =
-      existing.items.find(
+      readyItems.find(
         (item) =>
           item.asset.status !==
           "ready",
@@ -437,7 +448,7 @@ export async function PATCH(
 
     const durationMs =
       calculateRadioProgramDurationMs(
-        existing.items.map(
+        readyItems.map(
           (item) => ({
             durationMs:
               item.asset.durationMs,
