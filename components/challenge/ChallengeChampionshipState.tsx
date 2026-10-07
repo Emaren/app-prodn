@@ -6,9 +6,12 @@ import { useState } from "react";
 import type { ScheduledMatchTile } from "@/lib/challenges";
 import { challengeCountdown, championshipPhaseLabel } from "@/lib/challengePresentation";
 
-export default function ChallengeChampionshipState({ championship, nowMs, defender = false, compact = false }: {
+export default function ChallengeChampionshipState({ championship, nowMs, defender = false, compact = false, dense = false }: {
   championship: NonNullable<ScheduledMatchTile["championship"]>;
-  nowMs: number; defender?: boolean; compact?: boolean;
+  nowMs: number;
+  defender?: boolean;
+  compact?: boolean;
+  dense?: boolean;
 }) {
   const [failedBeltUris, setFailedBeltUris] = useState<Set<string>>(() => new Set());
   const inDefense = championship.phase === "defense_in_progress";
@@ -24,10 +27,50 @@ export default function ChallengeChampionshipState({ championship, nowMs, defend
   const bountyLabels: Record<string, string> = { pending: "Dethrone bounty queued", partial: "Dethrone bounty partially paid", failed: "Dethrone bounty needs attention", paid: "Dethrone bounty paid with chain proof" };
   const nftLabels: Record<string, string> = { not_started: "Belt NFT transfer awaits result", not_required: "Belt NFT custody retained", pending: "Belt NFT transfer pending", blocked: "Belt NFT transfer awaiting chain capability", partial: "Belt NFT seats partially transferred", failed: "Belt NFT transfer needs attention", confirmed: "Belt NFT seats confirmed on chain" };
   const resultState = ["completed", "settled", "defaulted", "disputed", "commissioner_review", "cancelled", "canceled", "expired", "declined"].includes(championship.phase);
+  const terminal = ["completed", "settled", "defaulted", "cancelled", "canceled", "expired", "declined"].includes(championship.phase);
   const refunds = ["defaulted", "disputed", "cancelled", "canceled", "expired", "declined"].includes(championship.phase);
   const label = inDefense || grace || stopped ? championshipPhaseLabel(championship.phase, Boolean(championship.titleName)).toUpperCase() : defender && urgent && championship.titleName ? "YOUR TITLE DEFENSE EXPIRES IN" : "ALL CHALLENGES REMAIN OPEN FOR 24 HOURS";
+
+  if (dense) {
+    return (
+      <div
+        className={`flex min-w-0 items-center justify-between gap-3 rounded-lg border px-2.5 py-1.5 ${
+          terminal
+            ? "border-rose-900/35 bg-[linear-gradient(145deg,rgba(39,39,42,0.72),rgba(69,10,10,0.22))]"
+            : urgent
+              ? "border-amber-200/35 bg-amber-950/25"
+              : "border-emerald-200/16 bg-emerald-950/20"
+        }`}
+        data-championship-phase={championship.phase}
+      >
+        <div className="min-w-0">
+          <div className={`truncate text-[9px] font-black uppercase tracking-[0.15em] ${
+            terminal ? "text-rose-200/65" : "text-emerald-100/65"
+          }`}>
+            {label}
+          </div>
+          <div className="mt-0.5 truncate text-[10px] font-semibold text-slate-300">
+            {championship.titleName ?? `${championship.teamSize ?? 1}v${championship.teamSize ?? 1} ${(championship.mode ?? "").toUpperCase()}`}
+          </div>
+        </div>
+        {!stopped ? (
+          <time
+            dateTime={grace ? championship.commissionerGraceDeadline : championship.challengeDeadline}
+            className="shrink-0 font-mono text-sm font-black tabular-nums text-white"
+          >
+            {nowMs > 0 ? countdown.label : "—"}
+          </time>
+        ) : (
+          <span className="shrink-0 text-[9px] font-black uppercase tracking-[0.14em] text-rose-200/55">
+            dead
+          </span>
+        )}
+      </div>
+    );
+  }
+
   return (
-    <div className={`rounded-xl border ${compact ? "px-3 py-2" : "p-4"} ${urgent ? "border-amber-200/60 bg-amber-950/35 shadow-[0_0_24px_rgba(245,158,11,0.12)]" : grace ? "border-amber-200/30 bg-amber-950/20" : "border-emerald-200/20 bg-emerald-950/35"}`} data-championship-phase={championship.phase}>
+    <div className={`rounded-xl border ${compact ? "px-3 py-2" : "p-4"} ${terminal ? "border-rose-950/45 bg-[radial-gradient(circle_at_90%_0%,rgba(127,29,29,0.16),transparent_38%),linear-gradient(145deg,rgba(39,39,42,0.88),rgba(15,15,18,0.92))] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]" : urgent ? "border-amber-200/60 bg-amber-950/35 shadow-[0_0_24px_rgba(245,158,11,0.12)]" : grace ? "border-amber-200/30 bg-amber-950/20" : "border-emerald-200/20 bg-emerald-950/35"}`} data-championship-phase={championship.phase}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0 flex-1"><div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.17em] text-emerald-100/80">{inDefense ? <ShieldCheck className="h-3.5 w-3.5 shrink-0" /> : <Clock3 className="h-3.5 w-3.5 shrink-0" />}{label}</div>{championship.titleName ? <div className="mt-1 flex items-center gap-2 text-xs font-bold text-amber-100">{championship.titleImageUri && !failedBeltUris.has(championship.titleImageUri) ? <Image src={championship.titleImageUri} alt="" width={48} height={32} unoptimized onError={() => setFailedBeltUris((current) => new Set([...current, championship.titleImageUri!]))} className="h-8 w-12 shrink-0 object-contain" /> : <Crown className="h-3 w-3 shrink-0" />}{championship.titleName}</div> : null}</div>
         {!stopped ? <time dateTime={grace ? championship.commissionerGraceDeadline : championship.challengeDeadline} aria-label={`${grace ? "Commissioner grace" : "Challenge deadline"} remaining ${countdown.label}`} className={`${compact ? "text-xl" : "text-3xl sm:text-4xl"} font-black tabular-nums tracking-[0.06em] ${urgent ? "text-amber-100" : "text-white"}`}>{nowMs > 0 ? countdown.label : "—"}</time> : null}
