@@ -72,8 +72,10 @@ an AI or human to reconstruct several separate steps:
    32-bit `AoK HD.exe` process;
 6. capture the `0x5a6e99` pre-release boundary, caller and stream
    cursor/extent/mode/error evidence;
-7. retain runner and debugger evidence under the canonical API evidence root;
-8. write one immutable SHA-named Replay Truth receipt.
+7. retain the complete runner and debugger evidence trees under the canonical
+   API evidence root;
+8. hash every regular evidence artifact into one immutable SHA-named Replay
+   Truth receipt.
 
 The existing schema-5 memory observer remains strictly read-only. The
 pre-release probe is a separate evidence plane because WineDbg uses a software
