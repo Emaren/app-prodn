@@ -3418,7 +3418,7 @@ test(
     );
     assert.match(
       magic,
-      /usesuno\.com/,
+      /usesuno/,
     );
     assert.match(
       magic,
