@@ -70,6 +70,9 @@ type StationStatus = {
     elapsedMs: number;
     durationMs: number;
     remainingMs: number;
+    looping?: boolean;
+    cycle?: number;
+    totalElapsedMs?: number;
     current: ClockItem | null;
     next: ClockItem | null;
   } | null;
@@ -859,7 +862,7 @@ export default function RadioWoloOnAir() {
             />
 
             <StationClockCard
-              label="Remaining"
+              label="Loop left"
               value={formatClock(
                 programRemainingMs,
               )}
@@ -903,11 +906,16 @@ export default function RadioWoloOnAir() {
                   </div>
                 </div>
 
-                <div className="text-xs text-slate-600">
-                  {station?.program
-                    ?.itemCount ??
-                    0}{" "}
-                  broadcast items
+                <div className="text-right text-xs text-slate-600">
+                  <div>
+                    {station?.program
+                      ?.itemCount ??
+                      0}{" "}
+                    broadcast items
+                  </div>
+                  <div className="mt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-rose-200/55">
+                    Continuous loop · cycle {station?.clock?.cycle ?? 1}
+                  </div>
                 </div>
               </div>
 
@@ -1057,9 +1065,7 @@ export default function RadioWoloOnAir() {
               </div>
 
               <div className="mt-1 text-sm text-slate-400">
-                This program is frozen
-                while its station clock
-                is active.
+                This program is frozen while its station clock is active. It loops continuously until you stop transmission.
               </div>
             </div>
 

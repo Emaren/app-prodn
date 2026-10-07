@@ -7,7 +7,6 @@ import {
   ChevronUp,
   Palette,
   Radio,
-  Star,
   Volume2,
   VolumeX,
   X,
@@ -457,7 +456,6 @@ export default function RadioWoloGlobalPlayer() {
     playbackBlocked,
 
     liveOffsetMs,
-    liveElapsedMs,
 
     targetVolume,
     setTargetVolume,
@@ -729,14 +727,6 @@ export default function RadioWoloGlobalPlayer() {
       liveOffsetMs,
       current?.asset
         .durationMs ??
-        0,
-    );
-
-  const programProgress =
-    progressPercent(
-      liveElapsedMs,
-      station?.clock
-        ?.durationMs ??
         0,
     );
 
@@ -1104,7 +1094,13 @@ export default function RadioWoloGlobalPlayer() {
           {isOnAir ? (
             <div className="mt-0.5 text-[10px] tabular-nums text-white/38">
               {formatClock(
-                liveElapsedMs,
+                liveOffsetMs,
+              )}
+              {" / "}
+              {formatClock(
+                current?.asset
+                  .durationMs ??
+                  0,
               )}
               {isActuallyPlaying
                 ? " · LIVE"
@@ -1304,45 +1300,8 @@ export default function RadioWoloGlobalPlayer() {
               data-radio-wolo-rating
               className="mt-3 rounded-xl border border-amber-200/[0.10] bg-black/15 px-3 py-3"
             >
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <div className="text-[8px] font-bold uppercase tracking-[0.2em] text-white/32">
-                    Rate this track
-                  </div>
-                  <div className="mt-1 text-[9px] text-white/38">
-                    {radioFeedback.rating
-                      ? `${radioFeedback.rating}/10 · click another star to change`
-                      : "Choose 1–10 · saved instantly"}
-                  </div>
-                </div>
-
-                <div className="flex shrink-0 rounded-lg border border-white/[0.06] bg-[#061126]/65 p-0.5">
-                  {(["icons", "emoji"] as const).map(
-                    (style) => (
-                      <button
-                        key={style}
-                        type="button"
-                        onClick={() =>
-                          radioFeedback.setRatingStyle(
-                            style,
-                          )
-                        }
-                        className={`cursor-pointer rounded-md px-2 py-1 text-[8px] font-bold uppercase tracking-[0.12em] transition ${
-                          radioFeedback.ratingStyle === style
-                            ? "bg-amber-300/[0.12] text-amber-100"
-                            : "text-white/28 hover:text-white/60"
-                        }`}
-                        aria-pressed={
-                          radioFeedback.ratingStyle === style
-                        }
-                      >
-                        {style === "icons"
-                          ? "Icons"
-                          : "Emoji"}
-                      </button>
-                    ),
-                  )}
-                </div>
+              <div className="text-[8px] font-bold uppercase tracking-[0.2em] text-white/32">
+                Rate this track
               </div>
 
               <div
@@ -1396,27 +1355,16 @@ export default function RadioWoloGlobalPlayer() {
                         aria-label={`Rate current Radio WOLO track ${value} out of 10`}
                         title={`${value}/10`}
                       >
-                        {radioFeedback.ratingStyle === "emoji" ? (
-                          <span
-                            aria-hidden="true"
-                            className={`text-[15px] leading-none transition ${
-                              active
-                                ? "opacity-100 saturate-100"
-                                : "opacity-20 grayscale group-hover/star:opacity-55"
-                            }`}
-                          >
-                            ⭐
-                          </span>
-                        ) : (
-                          <Star
-                            aria-hidden="true"
-                            className={`h-4 w-4 transition ${
-                              active
-                                ? "fill-amber-300 text-amber-300 drop-shadow-[0_0_6px_rgba(252,211,77,0.25)]"
-                                : "text-white/18 group-hover/star:text-amber-200/55"
-                            }`}
-                          />
-                        )}
+                        <span
+                          aria-hidden="true"
+                          className={`text-[15px] leading-none transition ${
+                            active
+                              ? "opacity-100 saturate-100"
+                              : "opacity-20 grayscale group-hover/star:opacity-55"
+                          }`}
+                        >
+                          ⭐
+                        </span>
                       </button>
                     );
                   },
@@ -1451,7 +1399,7 @@ export default function RadioWoloGlobalPlayer() {
                 <div
                   className={`h-full rounded-full transition-[width] duration-300 ${theme.progress}`}
                   style={{
-                    width: `${programProgress}%`,
+                    width: `${trackProgress}%`,
                   }}
                 />
               </div>
@@ -1459,13 +1407,13 @@ export default function RadioWoloGlobalPlayer() {
               <div className="mt-1.5 flex justify-between text-[9px] tabular-nums text-white/30">
                 <span>
                   {formatClock(
-                    liveElapsedMs,
+                    liveOffsetMs,
                   )}
                 </span>
                 <span>
                   {formatClock(
-                    station?.clock
-                      ?.durationMs ??
+                    current?.asset
+                      .durationMs ??
                       0,
                   )}
                 </span>

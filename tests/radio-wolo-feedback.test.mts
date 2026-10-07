@@ -296,7 +296,7 @@ test(
 );
 
 test(
-  "Radio WOLO exposes ten immediate stars and icon emoji presentation choices",
+  "Radio WOLO exposes ten immediate emoji stars without a presentation toggle",
   () => {
     const player =
       read(
@@ -320,12 +320,17 @@ test(
 
     assert.match(
       player,
+      /⭐/,
+    );
+
+    assert.doesNotMatch(
+      player,
       /\["icons", "emoji"\]/,
     );
 
-    assert.match(
+    assert.doesNotMatch(
       player,
-      /⭐/,
+      /click another star to change/,
     );
 
     assert.doesNotMatch(
@@ -433,9 +438,9 @@ test(
         "prisma/migrations/20260920170000_radio_traffic_analytics/migration.sql",
       );
 
-    assert.match(
+    assert.doesNotMatch(
       hook,
-      /return "emoji";/,
+      /RATING_STYLE_STORAGE_KEY|readRatingStyle|setRatingStyle/,
     );
 
     assert.match(

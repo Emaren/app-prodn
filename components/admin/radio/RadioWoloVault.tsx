@@ -14,6 +14,7 @@ import {
   Check,
   Clock3,
   FileAudio2,
+  FolderOpen,
   HardDrive,
   Loader2,
   Music2,
@@ -27,6 +28,22 @@ import {
   UploadCloud,
   X,
 } from "lucide-react";
+
+import {
+  expandRadioWoloIntakeFiles,
+  isRadioWoloZipFile,
+} from "@/lib/radioWoloZipImport";
+import {
+  RADIO_WOLO_DEFAULT_IMPORT_PROFILE,
+  collectRadioWoloDropSources,
+  inferRadioWoloImportProfile,
+  isRadioWoloSupportedSource,
+  radioWoloSourcesFromFiles,
+  readRememberedRadioWoloImportProfile,
+  rememberRadioWoloImportProfile,
+  type RadioWoloImportProfile,
+  type RadioWoloIntakeSource,
+} from "@/lib/radioWoloMagicIntake";
 
 type RadioAsset = {
   id: number;
@@ -253,6 +270,37 @@ export default function RadioWoloVault() {
   ] = useState("all");
 
   const [
+    importCredit,
+    setImportCredit,
+  ] = useState(
+    RADIO_WOLO_DEFAULT_IMPORT_PROFILE.credit,
+  );
+
+  const [
+    importKind,
+    setImportKind,
+  ] = useState(
+    RADIO_WOLO_DEFAULT_IMPORT_PROFILE.kind,
+  );
+
+  const [
+    importTags,
+    setImportTags,
+  ] = useState(
+    RADIO_WOLO_DEFAULT_IMPORT_PROFILE.tags,
+  );
+
+  const [
+    importProfileOpen,
+    setImportProfileOpen,
+  ] = useState(false);
+
+  const [
+    importProfileCustomized,
+    setImportProfileCustomized,
+  ] = useState(false);
+
+  const [
     loading,
     setLoading,
   ] = useState(true);
@@ -303,6 +351,11 @@ export default function RadioWoloVault() {
   >(null);
 
   const inputRef =
+    useRef<HTMLInputElement>(
+      null,
+    );
+
+  const folderInputRef =
     useRef<HTMLInputElement>(
       null,
     );
@@ -390,6 +443,38 @@ export default function RadioWoloVault() {
       void load();
     },
     [load],
+  );
+
+  useEffect(
+    () => {
+      const remembered =
+        readRememberedRadioWoloImportProfile();
+
+      setImportCredit(
+        remembered.credit,
+      );
+      setImportKind(
+        remembered.kind,
+      );
+      setImportTags(
+        remembered.tags,
+      );
+
+      const folderInput =
+        folderInputRef.current;
+
+      if (folderInput) {
+        folderInput.setAttribute(
+          "webkitdirectory",
+          "",
+        );
+        folderInput.setAttribute(
+          "directory",
+          "",
+        );
+      }
+    },
+    [],
   );
 
   useEffect(
@@ -493,6 +578,75 @@ export default function RadioWoloVault() {
     );
   }
 
+  function currentImportProfile():
+    RadioWoloImportProfile {
+    return {
+      credit:
+        importCredit,
+      kind:
+        importKind,
+      tags:
+        importTags,
+    };
+  }
+
+  function applyImportProfile(
+    profile:
+      RadioWoloImportProfile,
+    options?: {
+      customized?: boolean;
+    },
+  ) {
+    setImportCredit(
+      profile.credit,
+    );
+    setImportKind(
+      profile.kind,
+    );
+    setImportTags(
+      profile.tags,
+    );
+
+    if (
+      typeof options?.customized ===
+      "boolean"
+    ) {
+      setImportProfileCustomized(
+        options.customized,
+      );
+    }
+
+    rememberRadioWoloImportProfile(
+      profile,
+    );
+  }
+
+  function updateImportProfile(
+    change:
+      Partial<RadioWoloImportProfile>,
+  ) {
+    const next = {
+      ...currentImportProfile(),
+      ...change,
+    };
+
+    applyImportProfile(
+      next,
+      {
+        customized: true,
+      },
+    );
+  }
+
+  function resetImportProfile() {
+    applyImportProfile(
+      RADIO_WOLO_DEFAULT_IMPORT_PROFILE,
+      {
+        customized: false,
+      },
+    );
+  }
+
   function updateJob(
     key: string,
     change: Partial<UploadJob>,
@@ -513,161 +667,379 @@ export default function RadioWoloVault() {
   }
 
   async function uploadFiles(
-    files:
-      | FileList
-      | File[],
+    sources:
+      RadioWoloIntakeSource[],
   ) {
-    const list =
-      Array.from(files)
-        .filter(
-          (file) =>
-            file.size > 0,
-        );
+    const selected =
+      sources.filter(
+        (source) =>
+          source.file.size > 0,
+      );
 
-    if (!list.length) {
+    if (!selected.length) {
       return;
+    }
+
+    const supported =
+      selected.filter(
+        isRadioWoloSupportedSource,
+      );
+
+    const ignored =
+      selected.length -
+      supported.length;
+
+    if (!supported.length) {
+      setError(null);
+      setNotice(
+        ignored === 1
+          ? "Radio WOLO ignored that item because it contains no supported audio or ZIP."
+          : `Radio WOLO ignored ${ignored} items because they contain no supported audio or ZIP.`,
+      );
+      return;
+    }
+
+    const profile =
+      importProfileCustomized
+        ? currentImportProfile()
+        : inferRadioWoloImportProfile(
+            supported,
+            currentImportProfile(),
+          );
+
+    if (
+      !importProfileCustomized
+    ) {
+      applyImportProfile(
+        profile,
+      );
+    } else {
+      rememberRadioWoloImportProfile(
+        profile,
+      );
     }
 
     setUploading(true);
     setError(null);
     setNotice(null);
+    setUploadJobs([]);
 
-    const jobs =
-      list.map(
-        (
-          file,
-          index,
-        ) => ({
-          key:
-            `${Date.now()}-${index}-${file.name}`,
-          name:
-            file.name,
-          state:
-            "reading" as const,
-        }),
-      );
-
-    setUploadJobs(
-      jobs,
-    );
+    const batchId =
+      Date.now();
 
     let uploaded = 0;
+    let skipped = 0;
+    let failed = 0;
 
     for (
-      let index = 0;
-      index <
-      list.length;
-      index += 1
+      let sourceIndex = 0;
+      sourceIndex <
+      supported.length;
+      sourceIndex += 1
     ) {
-      const file =
-        list[index];
+      const selectedSource =
+        supported[sourceIndex];
 
-      const job =
-        jobs[index];
+      const source =
+        selectedSource.file;
+
+      const sourceLabel =
+        selectedSource.path ||
+        source.name;
+
+      const isArchive =
+        isRadioWoloZipFile(
+          source,
+        );
+
+      const archiveKey =
+        `archive-${batchId}-${sourceIndex}-${sourceLabel}`;
+
+      if (isArchive) {
+        setUploadJobs(
+          (current) => [
+            ...current,
+            {
+              key:
+                archiveKey,
+              name:
+                source.name,
+              state:
+                "reading",
+              detail:
+                "Opening ZIP…",
+            },
+          ],
+        );
+      }
+
+      let intake:
+        Awaited<
+          ReturnType<
+            typeof expandRadioWoloIntakeFiles
+          >
+        >;
 
       try {
-        const durationMs =
-          await audioDurationMs(
-            file,
+        // Expand and upload one source archive at a time. Selecting a large
+        // Suno library therefore never retains every archive in memory.
+        intake =
+          await expandRadioWoloIntakeFiles(
+            [source],
           );
 
-        updateJob(
-          job.key,
-          {
-            state:
-              "uploading",
-            detail:
-              formatDuration(
-                durationMs,
-              ),
-          },
-        );
-
-        const form =
-          new FormData();
-
-        form.set(
-          "audio",
-          file,
-        );
-
-        form.set(
-          "durationMs",
-          String(
-            durationMs,
-          ),
-        );
-
-        const response =
-          await fetch(
-            "/api/admin/radio/assets",
+        if (isArchive) {
+          updateJob(
+            archiveKey,
             {
-              method:
-                "POST",
-              body:
-                form,
+              state:
+                "done",
+              detail:
+                `${intake.length} tracks found`,
             },
           );
+        }
+      } catch (cause) {
+        failed += 1;
 
-        const payload =
-          (await response
-            .json()
-            .catch(
-              () => ({}),
-            )) as {
-            detail?:
-              string;
-          };
+        const detail =
+          cause instanceof Error
+            ? cause.message
+            : "Could not unpack this Radio WOLO intake.";
 
-        if (
-          !response.ok
-        ) {
-          throw new Error(
-            payload.detail ||
-              "Upload failed.",
+        if (isArchive) {
+          updateJob(
+            archiveKey,
+            {
+              state:
+                "error",
+              detail,
+            },
+          );
+        } else {
+          setUploadJobs(
+            (current) => [
+              ...current,
+              {
+                key:
+                  archiveKey,
+                name:
+                  source.name,
+                state:
+                  "error",
+                detail,
+              },
+            ],
           );
         }
 
-        uploaded += 1;
+        continue;
+      }
 
-        updateJob(
-          job.key,
-          {
-            state:
-              "done",
-            detail:
-              "Preserved",
-          },
-        );
-      } catch (
-        cause
+      for (
+        let trackIndex = 0;
+        trackIndex <
+        intake.length;
+        trackIndex += 1
       ) {
-        updateJob(
-          job.key,
-          {
-            state:
-              "error",
-            detail:
-              cause instanceof
-                Error
-                ? cause.message
-                : "Upload failed.",
-          },
+        const item =
+          intake[trackIndex];
+
+        const file =
+          item.file;
+
+        const job: UploadJob = {
+          key:
+            `track-${batchId}-${sourceIndex}-${trackIndex}-${file.name}`,
+          name:
+            file.name,
+          state:
+            "reading",
+          detail:
+            isArchive ||
+            sourceLabel !==
+              source.name
+              ? `From ${sourceLabel}`
+              : undefined,
+        };
+
+        setUploadJobs(
+          (current) => [
+            ...current,
+            job,
+          ],
         );
+
+        try {
+          const durationMs =
+            await audioDurationMs(
+              file,
+            );
+
+          updateJob(
+            job.key,
+            {
+              state:
+                "uploading",
+              detail:
+                `${formatDuration(
+                  durationMs,
+                )} · uploading`,
+            },
+          );
+
+          const form =
+            new FormData();
+
+          form.set(
+            "audio",
+            file,
+          );
+
+          form.set(
+            "durationMs",
+            String(
+              durationMs,
+            ),
+          );
+
+          if (
+            profile.credit.trim()
+          ) {
+            form.set(
+              "credit",
+              profile.credit.trim(),
+            );
+          }
+
+          if (
+            profile.kind.trim()
+          ) {
+            form.set(
+              "kind",
+              profile.kind.trim(),
+            );
+          }
+
+          if (
+            profile.tags.trim()
+          ) {
+            form.set(
+              "tags",
+              profile.tags.trim(),
+            );
+          }
+
+          const response =
+            await fetch(
+              "/api/admin/radio/assets",
+              {
+                method:
+                  "POST",
+                body:
+                  form,
+              },
+            );
+
+          const payload =
+            (await response
+              .json()
+              .catch(
+                () => ({}),
+              )) as {
+              detail?:
+                string;
+              duplicateId?:
+                number;
+            };
+
+          if (
+            response.status ===
+              409 &&
+            payload.duplicateId
+          ) {
+            skipped += 1;
+
+            updateJob(
+              job.key,
+              {
+                state:
+                  "done",
+                detail:
+                  "Already in Vault · skipped",
+              },
+            );
+
+            continue;
+          }
+
+          if (
+            !response.ok
+          ) {
+            throw new Error(
+              payload.detail ||
+                "Upload failed.",
+            );
+          }
+
+          uploaded += 1;
+
+          updateJob(
+            job.key,
+            {
+              state:
+                "done",
+              detail:
+                `${formatDuration(
+                  durationMs,
+                )} · preserved`,
+            },
+          );
+        } catch (
+          cause
+        ) {
+          failed += 1;
+
+          updateJob(
+            job.key,
+            {
+              state:
+                "error",
+              detail:
+                cause instanceof
+                  Error
+                  ? `${cause.message} · ${file.name}`
+                  : `Could not read or upload ${file.name}.`,
+            },
+          );
+        }
       }
     }
 
     await load();
 
+    const summary = [
+      uploaded
+        ? `${uploaded} added`
+        : null,
+      skipped
+        ? `${skipped} duplicates skipped`
+        : null,
+      ignored
+        ? `${ignored} non-audio items ignored`
+        : null,
+      failed
+        ? `${failed} failed`
+        : null,
+    ].filter(Boolean);
+
     if (
-      uploaded > 0
+      summary.length
     ) {
       setNotice(
-        `${uploaded} ${
-          uploaded === 1
-            ? "asset"
-            : "assets"
-        } added to the Vault.`,
+        `Radio WOLO intake complete · ${summary.join(
+          " · ",
+        )}.`,
       );
     }
 
@@ -910,7 +1282,9 @@ export default function RadioWoloVault() {
       event.target.files
     ) {
       void uploadFiles(
-        event.target.files,
+        radioWoloSourcesFromFiles(
+          event.target.files,
+        ),
       );
 
       event.target.value =
@@ -918,19 +1292,45 @@ export default function RadioWoloVault() {
     }
   }
 
-  function onDrop(
+  function onFolderInput(
+    event:
+      ChangeEvent<HTMLInputElement>,
+  ) {
+    if (
+      event.target.files
+    ) {
+      void uploadFiles(
+        radioWoloSourcesFromFiles(
+          event.target.files,
+        ),
+      );
+
+      event.target.value =
+        "";
+    }
+  }
+
+  async function onDrop(
     event:
       DragEvent<HTMLDivElement>,
   ) {
     event.preventDefault();
     setDragging(false);
 
-    if (
-      event.dataTransfer
-        .files.length
-    ) {
-      void uploadFiles(
-        event.dataTransfer.files,
+    try {
+      const sources =
+        await collectRadioWoloDropSources(
+          event.dataTransfer,
+        );
+
+      await uploadFiles(
+        sources,
+      );
+    } catch (cause) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : "Could not read that Radio WOLO drop.",
       );
     }
   }
@@ -941,9 +1341,19 @@ export default function RadioWoloVault() {
         ref={inputRef}
         type="file"
         multiple
-        accept="audio/mpeg,audio/wav,audio/ogg,audio/mp4,.mp3,.wav,.ogg,.m4a"
+        accept="audio/mpeg,audio/wav,audio/ogg,audio/mp4,application/zip,application/x-zip-compressed,.mp3,.wav,.ogg,.m4a,.zip"
         onChange={onInput}
         className="hidden"
+      />
+
+      <input
+        ref={folderInputRef}
+        type="file"
+        multiple
+        onChange={onFolderInput}
+        className="hidden"
+        aria-hidden="true"
+        tabIndex={-1}
       />
 
       <section
@@ -1002,36 +1412,144 @@ export default function RadioWoloVault() {
           </div>
 
           <h2 className="mt-3 font-serif text-3xl text-white sm:text-4xl">
-            Drop audio into
-            Radio WOLO.
+            Drop music here.
           </h2>
 
           <p className="mt-3 max-w-xl text-sm leading-6 text-slate-400">
-            Songs, bumpers,
-            taunts, talk-ups,
-            station IDs,
-            promos, news,
-            interviews — whatever
-            the station needs.
+            Files, folders, or ZIPs.
+            Radio WOLO finds the music,
+            ignores the clutter, and
+            preserves every track
+            individually.
           </p>
 
-          <button
-            type="button"
-            disabled={uploading}
-            onClick={() =>
-              inputRef.current?.click()
-            }
-            className="pointer-events-auto mt-6 inline-flex items-center gap-2 rounded-full border border-fuchsia-100/20 bg-fuchsia-100 px-5 py-2.5 text-sm font-bold text-slate-950 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <Plus
-              size={16}
-            />
-            Choose audio
-          </button>
+          <div className="pointer-events-auto mt-6 w-full max-w-xl rounded-2xl border border-white/8 bg-black/20 px-4 py-3 text-left">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0">
+                <div className="text-[9px] font-bold uppercase tracking-[0.18em] text-slate-600">
+                  Importing as
+                </div>
+                <div className="mt-1 truncate text-sm text-slate-200">
+                  {importCredit} · {importKind} · {importTags}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  setImportProfileOpen(
+                    (current) =>
+                      !current,
+                  )
+                }
+                className="rounded-lg border border-white/8 bg-white/[0.035] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400 transition hover:border-fuchsia-100/20 hover:text-fuchsia-100"
+              >
+                {importProfileOpen
+                  ? "Done"
+                  : "Change"}
+              </button>
+            </div>
+
+            {importProfileOpen ? (
+              <div className="mt-3 border-t border-white/[0.06] pt-3">
+                <div className="grid gap-2 sm:grid-cols-3">
+                  <label className="text-left">
+                    <span className="mb-1 block text-[9px] font-bold uppercase tracking-[0.18em] text-slate-600">
+                      Credit
+                    </span>
+                    <input
+                      value={importCredit}
+                      onChange={(event) =>
+                        updateImportProfile({
+                          credit:
+                            event.target.value,
+                        })
+                      }
+                      placeholder="Lord Molyneaux"
+                      className="w-full rounded-xl border border-white/8 bg-black/25 px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-700 focus:border-fuchsia-100/25"
+                    />
+                  </label>
+
+                  <label className="text-left">
+                    <span className="mb-1 block text-[9px] font-bold uppercase tracking-[0.18em] text-slate-600">
+                      Kind
+                    </span>
+                    <input
+                      value={importKind}
+                      onChange={(event) =>
+                        updateImportProfile({
+                          kind:
+                            event.target.value,
+                        })
+                      }
+                      placeholder="song"
+                      className="w-full rounded-xl border border-white/8 bg-black/25 px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-700 focus:border-fuchsia-100/25"
+                    />
+                  </label>
+
+                  <label className="text-left">
+                    <span className="mb-1 block text-[9px] font-bold uppercase tracking-[0.18em] text-slate-600">
+                      Tags
+                    </span>
+                    <input
+                      value={importTags}
+                      onChange={(event) =>
+                        updateImportProfile({
+                          tags:
+                            event.target.value,
+                        })
+                      }
+                      placeholder="lord_molyneaux, suno"
+                      className="w-full rounded-xl border border-white/8 bg-black/25 px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-700 focus:border-fuchsia-100/25"
+                    />
+                  </label>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={
+                    resetImportProfile
+                  }
+                  className="mt-2 text-[10px] font-bold uppercase tracking-[0.12em] text-fuchsia-100/55 transition hover:text-fuchsia-100"
+                >
+                  Use magic defaults
+                </button>
+              </div>
+            ) : null}
+          </div>
+
+          <div className="pointer-events-auto mt-5 flex flex-wrap items-center justify-center gap-2">
+            <button
+              type="button"
+              disabled={uploading}
+              onClick={() =>
+                inputRef.current?.click()
+              }
+              className="inline-flex items-center gap-2 rounded-full border border-fuchsia-100/20 bg-fuchsia-100 px-5 py-2.5 text-sm font-bold text-slate-950 transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Plus
+                size={16}
+              />
+              Choose audio / ZIPs
+            </button>
+
+            <button
+              type="button"
+              disabled={uploading}
+              onClick={() =>
+                folderInputRef.current?.click()
+              }
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-5 py-2.5 text-sm font-bold text-slate-300 transition hover:border-fuchsia-100/25 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <FolderOpen
+                size={16}
+              />
+              Choose folder
+            </button>
+          </div>
 
           <div className="mt-4 text-[11px] uppercase tracking-[0.2em] text-slate-600">
-            MP3 · WAV · OGG ·
-            M4A · 250 MB max each
+            MP3 · WAV · OGG · M4A · ZIP · recursive folders · 250 MB max each track
           </div>
         </div>
       </section>

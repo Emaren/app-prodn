@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-09-20"
+reviewed_at: "2026-10-06"
 review_interval_days: 90
 sensitivity: "internal"
 ---
@@ -23,7 +23,9 @@ Radio WOLO is the cultural broadcast wing of AoE2WAR. `/radio` exposes only trac
 
 The form collects artist, title, genre/mood, private email, optional Discord, audio, optional artwork, notes, and an explicit rights checkbox. The accepted statement grants AoE2WAR a non-exclusive, revocable permission to store, review, stream, and promote the submitted work. Copyright remains with the rights holder.
 
-Private operator Vault audio is limited to 250 MB; public creator submissions remain limited to 60 MB. Audio is validated by magic bytes as MP3, WAV, OGG, or M4A. Artwork is limited to 8 MB and validated as PNG, JPEG, or WebP. Extensions and browser MIME labels are not trusted. Original filenames are sanitized; stored files use random keys plus a SHA-256 prefix. Failed database writes remove partial files.
+Private operator Vault audio is limited to 250 MB per track; public creator submissions remain limited to 60 MB. Audio is validated by magic bytes as MP3, WAV, OGG, or M4A. The private Vault accepts loose audio, bounded standard ZIP batches, explicit folder selection, and recursive folder drag/drop in supported desktop browsers. Folder intake walks nested directories, ignores unsupported clutter such as lyric text files and Finder metadata, and sends every supported audio file or ZIP through the same canonical intake path. ZIP intake likewise ignores non-audio entries, expands each supported audio entry into its own RadioAsset, reads that track's duration independently, preserves duplicate protection by SHA-256, and uploads tracks through the same canonical asset endpoint. ZIP64, encrypted entries, unsupported compression methods, oversized tracks, malformed directories, unsafe expansion totals, and unbounded folder counts fail closed. Artwork is limited to 8 MB and validated as PNG, JPEG, or WebP. Extensions and browser MIME labels are not trusted by server storage. Original filenames are sanitized; stored files use random keys plus a SHA-256 prefix. Failed database writes remove partial files.
+
+Private Vault intake is deliberately zero-configuration on the current catalog. The default profile is **Lord Molyneaux · song · lord_molyneaux, suno** and is shown as one compact summary rather than three required fields. Operators can expand **Change** when needed; the last profile is remembered locally. When the operator has not manually customized the profile, obvious Suno folder/archive names such as `lord-molyneaux [usesuno.com] part-01-of-18.zip` may refine the artist and source tags automatically. Bulk intake applies the resolved profile to every discovered track. BUILD search plus **Add filtered** assembles a complete rotation without clicking hundreds of tracks individually. **Fill target** adds filtered tracks in order only until the selected program reaches its configured target duration, which is the fast path for a dedicated one-hour player show.
 
 The intake allows at most three submissions in a rolling day for the same contact email or signed-in user. Publication is never automatic.
 
@@ -53,6 +55,14 @@ Radio WOLO is a live broadcast, not resumable local media. Listener controls
 therefore communicate **sound on / sound off**, never pause/resume. Turning
 sound back on joins the authoritative current station position rather than
 resuming an old local timestamp.
+
+An ON AIR program is a continuous station rotation. Its immutable program
+timeline loops until an operator explicitly presses Stop Transmission. The
+station clock exposes the current loop cycle while track identity, track offset,
+track duration, NEXT, media authorization, and rating authority continue to
+resolve from the same canonical program items. Reaching the end of the last item
+does not make the station go off air; NEXT wraps to the first item. No database
+migration or second playlist truth is introduced.
 
 Desktop Radio WOLO playback is intentionally persistent across ordinary
 backgrounding. Changing browser tabs, changing windows, foregrounding Steam,
@@ -110,14 +120,40 @@ also stamp `X-AoE2WAR-Synthetic`; Traffic and Radio reject those writes before
 they enter human analytics.
 
 The bold visit multiplier shown in Command Tower is based on distinct persisted
-Traffic sessions for the same browser visitor ID. It is deliberately not derived
-from IP address or fingerprinting. Clearing site storage or changing browsers or
-devices creates a new anonymous browser identity.
+Traffic sessions rather than page requests, IP address, or fingerprinting.
+Clearing site storage or changing browsers/devices creates a new anonymous browser
+identity. The private admin intelligence rail asks Traffic for both the recent
+human cohort and durable all-time repeat visitors, so a frequent visitor does not
+disappear merely because they signed off today.
 
-Track ratings are integers from 1 through 10.
-Emoji stars are the default fresh-listener presentation; the premium icon-star face remains selectable. There is no submit step: clicking
-a star immediately saves or replaces the listener's rating. Signed-in ratings
-are canonical per AoE2WAR account and RadioAsset; anonymous ratings are canonical
+The private rail resolves authenticated browser identities back to one AoE2WAR
+account row and combines visit totals across that account's known browser visitor
+IDs. Anonymous browser identities remain separate. Ordering is intentional:
+currently active people are always pinned first; the remaining member identities
+and anonymous visitors with at least five visits form a descending visit
+leaderboard; low-frequency anonymous visitors then fall back to last-seen
+chronology. Operator/owner identities may appear in this authenticated private
+admin view even though ordinary human analytics continue to exclude them.
+
+Traffic also supplies a bounded recent page-view trail for each returned browser
+identity. Expanding a row reveals those routes grouped by browser identity and
+visit/session so a deduplicated account never invents arrows between separate
+devices or visits. The active browser and current page receive the live beacon
+when presence is fresh. The drill-down is presentation over Traffic's first-party
+browser/session evidence only; it does not expose arbitrary payload JSON, IP
+history, or create a second visitor identity system.
+
+Radio state remains an enrichment rather than presence authority. A stale
+listening heartbeat still means Radio is not live now, but historical Sound On is
+durable: the admin row renders that state as previously used rather than implying
+the listener never enabled sound. Interaction and rating history are likewise
+combined across deduplicated signed-in account rows.
+
+Track ratings are integers from 1 through 10. The global player presents one
+emoji-star face only; the old Icons/Emoji presentation toggle and explanatory
+"click another star" copy are retired. There is no submit step: clicking a star
+immediately saves or replaces the listener's rating. Signed-in ratings are
+canonical per AoE2WAR account and RadioAsset; anonymous ratings are canonical
 per random browser listener and RadioAsset.
 
 Rating truth is loaded only while the global player is expanded, because that is

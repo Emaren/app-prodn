@@ -11,7 +11,7 @@ import {
   RADIO_WOLO_TAGLINE,
 } from "@/lib/radioWoloPublicStation";
 import {
-  resolveRadioStationPosition,
+  resolveLoopingRadioStationPosition,
 } from "@/lib/radioWoloStation";
 import {
   getSessionUid,
@@ -55,7 +55,7 @@ function resolveProgramClock(
     StationProgram,
   elapsedMs: number,
 ) {
-  return resolveRadioStationPosition(
+  return resolveLoopingRadioStationPosition(
     program.items.map(
       (item) => ({
         value: item,
@@ -255,26 +255,6 @@ export async function GET(
         station.startedAt.getTime(),
     );
 
-  if (clock.ended) {
-    const stoppedAt =
-      new Date(
-        station.startedAt.getTime() +
-          clock.durationMs,
-      );
-
-    return offAirResponse(
-      authenticated,
-      {
-        startedAt:
-          station.startedAt.toISOString(),
-        stoppedAt:
-          stoppedAt.toISOString(),
-        endedNaturally:
-          true,
-      },
-    );
-  }
-
   return NextResponse.json(
     {
       station: {
@@ -308,6 +288,12 @@ export async function GET(
             clock.durationMs,
           remainingMs:
             clock.remainingMs,
+          looping:
+            clock.looping,
+          cycle:
+            clock.cycleIndex + 1,
+          totalElapsedMs:
+            clock.totalElapsedMs,
           current:
             serializeClockItem(
               clock.current,

@@ -266,54 +266,12 @@ export async function POST(
 
         if (
           current?.state ===
-            "on_air" &&
-          current.startedAt &&
-          current.program
+          "on_air"
         ) {
-          const currentTimeline =
-            buildRadioProgramTimeline(
-              current.program.items.map(
-                (item) => ({
-                  value: null,
-                  durationMs:
-                    item.asset
-                      .durationMs,
-                  transition:
-                    item.transition,
-                  crossfadeMs:
-                    item.crossfadeMs,
-                }),
-              ),
-            );
-
-          const ended =
-            now.getTime() -
-              current.startedAt.getTime() >=
-            currentTimeline.durationMs;
-
-          if (!ended) {
-            return {
-              conflict:
-                true,
-            };
-          }
-
-          await tx.radioStationState.update(
-            {
-              where: {
-                id: 1,
-              },
-              data: {
-                state:
-                  "off_air",
-                stoppedAt:
-                  new Date(
-                    current.startedAt.getTime() +
-                      currentTimeline.durationMs,
-                  ),
-              },
-            },
-          );
+          return {
+            conflict:
+              true,
+          };
         }
 
         const claimed =
