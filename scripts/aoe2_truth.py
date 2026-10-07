@@ -13,6 +13,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 REMOTE_PROGRAM = ROOT / "scripts" / "aoe2_truth_remote.mjs"
+NATIVE_CONTROL = ROOT / "scripts" / "aoe2_native_pre_release_control.py"
 RECEIPT_DIR = ROOT / ".aoe2war-release" / "truth-receipts"
 
 SSH_TARGET = os.environ.get(
@@ -1152,9 +1153,74 @@ def main() -> int:
         action="store_true",
     )
 
+    native_parser = sub.add_parser(
+        "native-control",
+        help=(
+            "run the local candidate-only #32388 native pre-release "
+            "instruction control; never promotes replay truth"
+        ),
+    )
+    native_parser.add_argument("--run-id")
+    native_parser.add_argument(
+        "--native-performance-seconds",
+        type=int,
+        default=240,
+    )
+    native_parser.add_argument(
+        "--timeout-seconds",
+        type=int,
+        default=280,
+    )
+    native_parser.add_argument(
+        "--probe-wait-seconds",
+        type=int,
+        default=120,
+    )
+    native_parser.add_argument(
+        "--debugger-timeout-seconds",
+        type=int,
+        default=240,
+    )
+
     args = parser.parse_args()
 
     try:
+        if args.command == "native-control":
+            if not NATIVE_CONTROL.is_file():
+                raise TruthError(
+                    f"missing native Replay Truth control: {NATIVE_CONTROL}"
+                )
+            command = [
+                sys.executable,
+                str(NATIVE_CONTROL),
+                "--native-performance-seconds",
+                str(args.native_performance_seconds),
+                "--timeout-seconds",
+                str(args.timeout_seconds),
+                "--probe-wait-seconds",
+                str(args.probe_wait_seconds),
+                "--debugger-timeout-seconds",
+                str(args.debugger_timeout_seconds),
+            ]
+            if args.run_id:
+                command.extend(
+                    [
+                        "--run-id",
+                        args.run_id,
+                    ]
+                )
+            return subprocess.run(
+                command,
+                cwd=ROOT,
+                timeout=(
+                    args.probe_wait_seconds
+                    + args.debugger_timeout_seconds
+                    + args.timeout_seconds
+                    + 240
+                ),
+                check=False,
+            ).returncode
+
         if args.command == "status":
             receipt = latest_receipt()
 
