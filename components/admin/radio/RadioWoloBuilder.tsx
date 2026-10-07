@@ -1044,6 +1044,33 @@ export default function RadioWoloBuilder() {
     );
   }
 
+  async function selectProgram(
+    id: number,
+  ) {
+    if (
+      program?.id === id
+    ) {
+      return;
+    }
+
+    if (
+      (chainDirty ||
+        metadataDirty) &&
+      !window.confirm(
+        "Discard unsaved Radio WOLO program changes and open another program?",
+      )
+    ) {
+      return;
+    }
+
+    setError(null);
+    setNotice(null);
+
+    await loadProgram(
+      id,
+    );
+  }
+
   async function duplicateProgramToDraft() {
     if (!program) {
       return;
@@ -1508,8 +1535,11 @@ export default function RadioWoloBuilder() {
                     item.id
                   }
                   type="button"
+                  disabled={
+                    busy
+                  }
                   onClick={() =>
-                    void loadProgram(
+                    void selectProgram(
                       item.id,
                     )
                   }
@@ -1519,6 +1549,9 @@ export default function RadioWoloBuilder() {
                     item.id
                       ? "border-fuchsia-100/30 bg-fuchsia-100 text-slate-950"
                       : "border-white/8 bg-white/[0.025] text-slate-400 hover:border-white/15 hover:text-white",
+                    busy
+                      ? "cursor-not-allowed opacity-40"
+                      : "",
                   ].join(
                     " ",
                   )}
