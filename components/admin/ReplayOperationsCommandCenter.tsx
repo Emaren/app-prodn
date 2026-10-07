@@ -801,14 +801,8 @@ export default function ReplayOperationsCommandCenter() {
               ) : null}
             </div>
           ) : null}
-          {nativeMessage ? (
-            <div className="mt-3 rounded-xl border border-violet-300/15 bg-violet-400/[0.06] px-3 py-2.5 text-xs leading-5 text-violet-100">
-              {nativeMessage}
-            </div>
-          ) : null}
           {errors.plan ? <PanelError>{errors.plan}</PanelError> : null}
           {errors.run ? <PanelError>{errors.run}</PanelError> : null}
-          {errors.native ? <PanelError>{errors.native}</PanelError> : null}
         </article>
 
         <article className="bg-slate-950/80 p-5 sm:p-6">
