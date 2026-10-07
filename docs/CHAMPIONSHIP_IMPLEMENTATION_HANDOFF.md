@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "engineering-handoff"
-reviewed_at: "2026-10-06"
+reviewed_at: "2026-10-07"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -39,7 +39,8 @@ blocked until the chain capability handoff is implemented.
 | Commissioner | Assignment/correction/restoration, exact team roster, explicit eligibility bypass, protection/veto/review, audited extension, objective default evaluation, exceptional-evidence audit and dispute resolution. All share custody/money truth. |
 | NFT | One durable group and every expected-owner/recipient/token seat. No fake ownership. Executor absent is blocked. All seats require success proof; confirmed/tx-backed seats are excluded from unsafe retry. |
 | Public cards | Shared state/proof component in Challenge detail, hub cards and conversation cards; Championship V2 presents Challenge issued → Watcher match detected → Watcher result proof → WOLO settlement → custody. No championship check-in instruction is rendered. Chat notices advance through game underway and title defended/transferred before history. |
-| Spontaneous solo title bout | Exact dual-Watcher 1v1 RM/DM encounters may materialize one zero-wager solo title defense when custody and challenger eligibility are exact. A single matching generic Championship V2 Challenge is promoted in place to carry eligible ambient title stakes rather than suppressing the belt or creating a duplicate card. Title holder/challenger roles may differ from original WOLO left/right; immutable participant funding sides continue to govern financial settlement. Accepted exact-Steam replay ratings are custody eligibility authority before presentation/leaderboard fallback. |
+| Spontaneous solo title bout | Exact dual-Watcher 1v1 RM/DM encounters may materialize one zero-wager solo title defense when custody and challenger eligibility are exact. A single matching generic Championship V2 Challenge is promoted in place to carry eligible ambient title stakes rather than suppressing the belt or creating a duplicate card. Title holder/challenger roles may differ from original WOLO left/right; immutable participant funding sides continue to govern financial settlement. |
+| Pair queue | Same-direction duplicate Challenges are rejected under a directional advisory lock; reverse-direction Challenges may coexist. For one warrior pair, the oldest eligible open Challenge owns the next exact Watcher duel and later reverse Challenges stay open for later battles. Multiple matches no longer poison each other into `TITLE_ALREADY_COMMITTED` review. Ambient title promotion follows this same oldest-first encounter authority. | Accepted exact-Steam replay ratings are custody eligibility authority before presentation/leaderboard fallback. |
 | Legacy | Old Challenge rows retain their clocks, check-in semantics and guarantees. Hidden team legs are excluded from ordinary public/bet seeds and legacy reconciliation, and their payments require the parent's verified result and parent desync authority. Historical scalar ELO result handling cannot silently bypass explicit new custody. |
 
 ## Owning files
