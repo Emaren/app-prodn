@@ -135,7 +135,7 @@ Usage:
   aoe2war facts [--json]
   aoe2war dev <status|prepare|refresh|serve|new> [options]
   aoe2war truth <status|census|audit|closure|target> [options]
-  aoe2war truth native-control <prepare|run|verify> --run-id LABEL [options]
+  aoe2war truth native-control <prepare|run|verify|calibrate> --run-id LABEL [options]
   aoe2war code-health [--json] [--no-receipt] [--require-clean-worktree]
   aoe2war deps
   aoe2war deps-security [--json]

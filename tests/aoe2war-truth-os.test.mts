@@ -17,6 +17,11 @@ const remote = await readFile(
   "utf8"
 );
 
+const nativeControl = await readFile(
+  "scripts/aoe2_native_control.py",
+  "utf8"
+);
+
 test("AoE2WAR CLI exposes Replay Truth OS", () => {
   assert.match(
     cli,
@@ -31,6 +36,18 @@ test("AoE2WAR CLI exposes Replay Truth OS", () => {
   assert.match(
     cli,
     /truth\)\s*[\s\S]*exec "\$AOE2WAR_PYTHON" "\$TRUTH_OS"/
+  );
+});
+
+test("Replay Truth OS exposes the governed breakpoint calibration lane", () => {
+  assert.match(
+    cli,
+    /native-control <prepare\|run\|verify\|calibrate>/
+  );
+
+  assert.match(
+    nativeControl,
+    /"prepare", "run", "verify", "calibrate"/
   );
 });
 
