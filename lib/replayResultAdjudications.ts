@@ -584,13 +584,16 @@ function boundNumericSourceTeams(
 ) {
   if (!Array.isArray(assignments) || assignments.length !== 2 || players.length !== canonical.length) return null;
   const sourceByKey = new Map<string, { player: CanonicalReplayPlayer; teamId: string }>();
+  const sourceSlots = new Set<number>();
   for (let index = 0; index < players.length; index++) {
     const player = canonical[index];
     if (!player?.steamId || !/^\d{17}$/.test(player.steamId) || player.stablePlayerKey !== `steam:${player.steamId}` || sourceByKey.has(player.stablePlayerKey)) return null;
+    if (player.playerNumber === null || !Number.isSafeInteger(player.playerNumber) || player.playerNumber < 1 || player.playerNumber > 8 || sourceSlots.has(player.playerNumber)) return null;
+    sourceSlots.add(player.playerNumber);
     const identities = ["steam_id", "steamId", "user_id"].map(key => players[index][key]).filter(value => value !== null && value !== undefined);
     if (!identities.length || identities.some(value => value !== player.steamId)) return null;
     const slots = ["player_number", "playerNumber", "number"].map(key => players[index][key]).filter(value => value !== null && value !== undefined);
-    if (slots.some(value => !((typeof value === "number" || typeof value === "string" && /^\d+$/.test(value)) && Number.isSafeInteger(Number(value)) && Number(value) >= 1 && Number(value) <= 8 && Number(value) === player.playerNumber))) return null;
+    if (!slots.length || slots.some(value => !((typeof value === "number" || typeof value === "string" && /^\d+$/.test(value)) && Number.isSafeInteger(Number(value)) && Number(value) >= 1 && Number(value) <= 8 && Number(value) === player.playerNumber))) return null;
     const rawIds = ["team_id", "teamId", "team_number", "teamNumber", "team"].map(key => players[index][key]).filter(value => value !== null && value !== undefined);
     if (!rawIds.length || rawIds.some(value => !((typeof value === "number" || typeof value === "string" && /^\d+$/.test(value)) && Number.isSafeInteger(Number(value)) && Number(value) >= 0 && Number(value) <= 8))) return null;
     const ids = new Set(rawIds.map(Number));

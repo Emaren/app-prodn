@@ -6,6 +6,7 @@ import { applyReplayResultAdjudication, RETIRED_AUTOMATIC_REPLAY_RESULT_POLICY_V
 import { publicReplayRosterV2DisplayState } from "../lib/publicReplayRosterV2.ts";
 import { publicReplayWinnerTruth } from "../lib/publicReplayTruth.ts";
 import { resolveReplayResultForPlayer } from "../lib/replayPlayerResult.ts";
+import { buildRosterHash, normalizeReplayPlayers } from "../lib/teamResolution.ts";
 
 const rawFixture = JSON.parse(readFileSync(new URL("./fixtures/three-account-recovery-case-bindings.json", import.meta.url), "utf8"))[25782].game;
 const sealed = JSON.parse(readFileSync(new URL("./fixtures/25782-approved-adjudication-projection.json", import.meta.url), "utf8"));
@@ -89,6 +90,24 @@ test("numeric retention cannot repair an inconsistent accepted winning-side key"
   const projected = applyReplayResultAdjudication(structuredClone(rawFixture), { ...adjudication, winningTeamKey: "gold" });
   assert.deepEqual(projected.players.map((p: any) => p.team_id), sides);
   assert.ok(outcomes(projected).every((result: string) => result === "unknown"));
+});
+
+for (const [name, change, frozenSlot] of [
+  ["missing raw slot aliases", (player: any) => { delete player.number; delete player.playerNumber; delete player.player_number; }, null],
+  ["null raw and frozen slots", (player: any) => { player.number = null; delete player.playerNumber; delete player.player_number; }, null],
+  ["duplicate raw and frozen slot", (player: any) => { player.number = 2; }, 2],
+] as Array<[string, (player: any) => void, number | null]>) test(`numeric topology retention rejects ${name} even when the key-only roster hash is refreshed`, () => {
+  const raw = structuredClone(rawFixture), verdict = structuredClone(adjudication);
+  change(raw.players[0]);
+  const frozen = (verdict.teamAssignments as any[]).flatMap(team => team.players)
+    .find(player => player.steamId === raw.players[0].steam_id);
+  frozen.playerNumber = frozenSlot;
+  verdict.sourceRosterHash = buildRosterHash(normalizeReplayPlayers(raw.players))!;
+  // The upstream identity hash cannot detect these slot-only changes.
+  assert.equal(verdict.sourceRosterHash, adjudication.sourceRosterHash);
+  const projected = applyReplayResultAdjudication(raw, verdict);
+  assert.deepEqual(projected.players.map((p: any) => p.team_id), sides);
+  assert.equal(publicReplayRosterV2DisplayState(projected.players).complete, false);
 });
 
 test("missing frozen participant or changed source Steam roster cannot project an accepted verdict", () => {
