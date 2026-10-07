@@ -3712,3 +3712,38 @@ test(
   },
 );
 
+test(
+  "Radio WOLO builder avoids bootstrap refetch loops and protects unsaved lineup edits",
+  () => {
+    const source =
+      read(
+        "components/admin/radio/RadioWoloBuilder.tsx",
+      );
+
+    assert.match(
+      source,
+      /Discard unsaved Radio WOLO program changes and open another program/,
+    );
+
+    assert.match(
+      source,
+      /async function selectProgram/,
+    );
+
+    const loadPrograms =
+      source.match(
+        /const loadPrograms =[\s\S]*?\n    \);/,
+      )?.[0] ?? "";
+
+    assert.doesNotMatch(
+      loadPrograms,
+      /program\?\.id/,
+    );
+
+    assert.match(
+      loadPrograms,
+      /preferredId \?\?[\s\S]*?next\[0\]\?\.id/,
+    );
+  },
+);
+
