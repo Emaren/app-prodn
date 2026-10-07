@@ -308,7 +308,7 @@ roster-only plans, 10 parser research cases and 59 financial-linked commissioner
 review cases. All archives were present, and their exact bytes were verified in
 the companion evidence receipt. These route counts are not promised winner yield.
 
-No result was promoted and no production data was written. Existing roster plans
+That read-only census promoted no result and wrote no production data. Existing roster plans
 25892/27269 pass their own contract but add no Workshop Full Truth under the current
 completeness rule. The local display correction for existing adjudications 25985
 and 41041 projects two fewer Zodiac roster gaps, with zero new winners; it is not
@@ -317,9 +317,73 @@ parser lineage, raw blockers and immutable receipt seals live in
 `replay-receipts/player-first-2026-10-06-report.json` and its linked immutable
 campaign report.
 
-Next autonomous action: prove deterministic accelerated terminal arrival on
-control 32388, validate independent 1v1/team/4v4 controls, and only then review an
-unknown admission contract and bounded resumable dispatcher. Refresh this plan
-before execution. Native observations remain candidates; commissioner adjudication
-must freshly bind replay SHA, parser iteration, roster and proposition. No native
-job grants betting, claim, settlement or Wolo authority.
+### Zodiac result tranche — 2026-10-06
+
+The exact sealed 761-battle Zodiac cohort now has **50 result unknowns, down from
+52**. Full Truth incomplete remains **55**. This is a scoped closure update, not
+a new census or a changed corpus definition.
+
+The existing roster-only writer recovered 25892 and 27269 (promotion rows 127/128).
+Independent full-byte rescans then established the complete voluntary losing side
+for 27269 and 44670. Tony explicitly approved both frozen Commissioner packets;
+the existing adjudication writer appended rows 189/190 with `affectsStats=true`
+and `affectsBets=false`. Fresh read-only public-result checks resolve Zodiac as a
+loss in both games. The winning sides are PKNT/Monty_Python/Trickster and
+Jim/Emaren respectively. Markets, wagers, claims, settlement and Wolo were not
+mutated. No code was deployed; production source remained `af406960`.
+
+The two rosters have five and three exact participants. They do not pass the
+current Workshop completeness rule, so these two accepted results add zero Full
+Truth battles. The frozen proposal, safe roster apply, approved writes and
+independent post-apply checks are indexed in
+[`zodiac-tranche-a-2026-10-06.json`](replay-receipts/zodiac-tranche-a-2026-10-06.json).
+Immutable final report SHA-256:
+`826066125585ded32cee398a5da4b1ce629c8f44ee6e1bff805a2727f4adb086`.
+
+All nine cheap cases and 29 financial cases were inspected without expanding the
+scope. Remaining unknown routes: 16 native, six parser research, one partial-team
+roster case, and 27 financial review cases. Financial review produced zero new
+complete-result proposals: 14 lack serialized results, six have only partial
+voluntary sides, two have disconnect-marked resignations, two have unproven saved
+chapter terminal states, one has both sides resigned, one has ambiguous serialized
+identity, and 31588 has a forbidden recorder-exit inference. The other two financial
+cases were already known. Exact IDs and evidence are in immutable financial triage
+SHA `da40553c3158d73c7c315be80ba38df0653a17b08fe628359a15b42010c10f2f`.
+
+The branch rejects the partial-team action-tail automatic writer and excludes
+retired recorder-exit/action-tail ledger rows from current projection while
+preserving their history. The exact unchanged-roster 31588 regression demonstrates
+why historical acceptance alone cannot grant current winner authority. These code
+changes await normal review/release.
+
+Two governed fast-play 32388 runs reached coherent memory terminal state with
+slots 1/2 winning and 3/4 losing at simulation 1,485,022ms, measured 11.905× and
+11.460× playback. Both known-memory referees passed and cleanup preserved Steam.
+Neither provides the complete text/EOF witness. A separate read-only diagnostic
+observed 1,027 successful reads with AILog gate `0xaeefdc=0` and handle
+`0xaf472c=0`, including terminal state; zero read failures. Sixteen full/delta logs
+contained no GAME OVER/Won-Lost block. Native receipts:
+`4bc3c840c633a864f30aed11a25d1ed41e3c93b5ba640625f2aab6387c5729d7`
+and `13e0a3ffbd3a9681ebeb40dc28c2663e1d42118b3e9796726d7b70b2cf4d1fa0`.
+
+Next autonomous action: observe the preserved read-only post-finalizer boundary
+`0x739618` to prove natural EOF/result completeness on 32388. Finish the trusted
+1v1/team/4v4 ladder before admitting Zodiac's fixed 16-game native cohort, beginning
+with 21018. The logger words explain a dormant path; they are not permission to
+write target flags or synthesize terminal text. Native evidence remains candidate
+only and grants no result, betting, claim, settlement or Wolo authority.
+
+
+Verification and continuation: app branch
+`fix/player-first-truth-current-rating-20261005`, implementation checkpoint
+`42b5979c` after the tested proposal/fence checkpoint `b8c98df3` and automatic
+team-tail fence `6ac713fa`. API branch
+`fix/historical-upload-identity-authority-20261005`, implementation `129e5c0b`
+after restored native hooks `2db3efdb`. App: 95 focused proposal, adjudication,
+retired-inference, terminal and rating-delta tests; Prisma generation, TypeScript
+and build passed. API: 307 focused tests passed. The producer still precedes the
+stricter current-rating reader at deployment; no campaign deployment occurred.
+Frozen original packets remain evidence; the superseding accepted report is
+current for this tranche. No uncommitted implementation work remains. Do not
+repeat parser/roster work on these nine cases; resume at the native terminal
+completeness boundary above.

@@ -350,6 +350,24 @@ These are separate provenance facts.
 
 A `ReplayResultAdjudication` represents an explicit human decision.
 
+The bounded Zodiac packets for 27269 and 44670 were approved explicitly on
+2026-10-06 and appended through the existing writer as adjudications 189/190.
+Both affect statistics only. The immutable evidence binds each losing-side
+voluntary resignation to exact archived bytes, canonical slots, Steam identities
+and sides; neither relies on recorder exit, raw winner flags or action ordering.
+The accepted tranche and independent post-apply referee are indexed in
+[`zodiac-tranche-a-2026-10-06.json`](replay-receipts/zodiac-tranche-a-2026-10-06.json).
+
+The admin Review Desk's **Load evidence-backed draft** path is read-only. Its
+fixed packet reader independently checks the live source snapshot, raw slot/team
+aliases, current parser contract and inner proof, full financial obligations,
+actual archive hash and serialized losing-side resignation bytes. Changed source,
+review history or financial evidence rejects the draft. Loading never writes a
+result; **Lock Verdict** is the explicit human step through the existing ledger.
+Editing the sides, winner or reason detaches the immutable proposal proof.
+Accepted packets no longer appear as pending drafts. Financial snapshots support
+review and grant no betting, settlement, claim or Wolo authority.
+
 Human-uploaded postgame screenshots represent deliberate human contribution to the evidence chain, but do not themselves constitute an adjudication.
 
 The UI therefore distinguishes:

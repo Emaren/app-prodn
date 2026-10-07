@@ -15,11 +15,11 @@
     "commissionerProposalsApproved": 2
   },
   "receipt": {
-    "path": "/Users/tonyblum/projects/AoE2HDBets/app-prodn/.aoe2war-release/truth-receipts/player-first-zodiac-tranche-a-accepted-9045e89eea16b4e785454876865ef15c4bd3ff1383b113a4812f860a2396265f.json",
-    "sha256": "9045e89eea16b4e785454876865ef15c4bd3ff1383b113a4812f860a2396265f",
-    "bytes": 45094
+    "path": "/Users/tonyblum/projects/AoE2HDBets/app-prodn/.aoe2war-release/truth-receipts/player-first-zodiac-tranche-a-verified-826066125585ded32cee398a5da4b1ce629c8f44ee6e1bff805a2727f4adb086.json",
+    "sha256": "826066125585ded32cee398a5da4b1ce629c8f44ee6e1bff805a2727f4adb086",
+    "bytes": 45454
   },
-  "supersedesReceiptSha256": "fc97e54380f21651dac895f099bd60d27370174128c572a2de5a105e59214668",
+  "supersedesReceiptSha256": "9045e89eea16b4e785454876865ef15c4bd3ff1383b113a4812f860a2396265f",
   "cases": [
     {
       "gameStatsId": 25892,
@@ -183,5 +183,27 @@
   "productionResultAdjudicationWrites": 2,
   "financialWrites": 0,
   "claimWrites": 0,
-  "woloWrites": 0
+  "woloWrites": 0,
+  "verification": {
+    "apiFocusedTests": 307,
+    "appBuild": "passed",
+    "focusedAppTests": 95,
+    "nativeUnknownExecution": false,
+    "postApplyReadOnlyReferee": "PASS",
+    "typeScript": "PASS",
+    "appBuildAtCommit": "b8c98df37c78bd8e6675df2843f33a46f2825a80",
+    "postResultUiTypeScript": "PASS"
+  },
+  "implementation": {
+    "apiCommit": "129e5c0bda3df85013e3f0ddfd86b133a7f8bf74",
+    "appCommit": "42b5979cdd005c089f11a40ebd9aeb085eaed80b",
+    "codeDeployed": false,
+    "productionSourceUnchanged": true
+  },
+  "remainingUnknownRoutes": {
+    "native_control_ladder_blocked": 16,
+    "parser_result_evidence_missing": 6,
+    "partial_roster_resignation": 1,
+    "financial_result_evidence_missing": 27
+  }
 }

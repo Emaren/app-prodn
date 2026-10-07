@@ -550,7 +550,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-04",
       "sensitivity": "internal",
-      "sha256": "18934e94a5681c18d6e858281fdb3a32229cc11b468e53dea2a73a70c3d8aeed",
+      "sha256": "a31519e482d94d81a851db8f6538ef6427ff968f8cc620ecd5f1250558cd83c8",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "86abcb12f488a3539dfa593c47120f3be7a0cc78a56a03814705c64037fe8738",
+      "sha256": "22cc02b6a94a20507e584f62e7af2fab1e1b0a7471163142c56a2ebf60daae41",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1513,7 +1513,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-06",
       "sensitivity": "restricted",
-      "sha256": "46f497cc82023c2ddffd38eb9dd38ab113d6fa98beaebb3b27ccee09c6445259",
+      "sha256": "aabe60d496a62f5593956077335b518deb5276c829c325efd3bc1b365675a963",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2026,7 +2026,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/player-first-truth-current-rating-20261005",
-    "commit": "0d26c0f0b7fadb0c76aaa0976c53e372638c2101"
+    "commit": "42b5979cdd005c089f11a40ebd9aeb085eaed80b"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
