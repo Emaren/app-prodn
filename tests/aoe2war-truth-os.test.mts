@@ -34,6 +34,29 @@ test("AoE2WAR CLI exposes Replay Truth OS", () => {
   );
 });
 
+
+test("Replay Truth OS exposes the governed native known-control lane", () => {
+  assert.match(
+    cli,
+    /aoe2war truth <status\\|census\\|audit\\|closure\\|target\\|native-control>/
+  );
+
+  assert.match(
+    python,
+    /native-control/
+  );
+
+  assert.match(
+    python,
+    /NATIVE_CONTROL/
+  );
+
+  assert.match(
+    python,
+    /aoe2_native_pre_release_control\.py/
+  );
+});
+
 test("Replay Truth OS is hard read-only and guards Wolo", () => {
   assert.match(
     python,
