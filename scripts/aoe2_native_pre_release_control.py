@@ -58,6 +58,19 @@ def identity(path: Path) -> dict[str, Any]:
     }
 
 
+def evidence_inventory(root: Path) -> dict[str, dict[str, Any]]:
+    if not root.is_dir() or root.is_symlink():
+        return {}
+    files: dict[str, dict[str, Any]] = {}
+    for path in sorted(root.rglob("*")):
+        if path.is_symlink():
+            raise ControlError(f"Evidence tree contains a symlink: {path}")
+        if not path.is_file():
+            continue
+        files[path.relative_to(root).as_posix()] = identity(path)
+    return files
+
+
 def canonical_checkout_root(repository: Path) -> Path:
     common = subprocess.check_output(
         ["git", "rev-parse", "--git-common-dir"],
@@ -371,18 +384,8 @@ def bounded_run(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
         runner_payload = parse_last_json(runner_output or "")
         probe_payload = parse_last_json(probe_process.stdout or "")
 
-        attempt_files = {}
-        if attempt.is_dir():
-            for name in ("attempt.json", "receipt.json", "validation.json", "observation.json", "invocation.json", "events.jsonl"):
-                path = attempt / name
-                if path.is_file():
-                    attempt_files[name] = identity(path)
-        probe_files = {}
-        if probe.is_dir():
-            for name in ("plan.json", "invocation.json", "winedbg-transcript.txt", "receipt.json", "process-census.txt"):
-                path = probe / name
-                if path.is_file():
-                    probe_files[name] = identity(path)
+        attempt_files = evidence_inventory(attempt)
+        probe_files = evidence_inventory(probe)
 
         probe_recorded = (
             probe_process.returncode == 0
