@@ -3694,16 +3694,31 @@ export async function loadChallengeThreadTiles(
       viewerUserId,
     );
 
-  return tiles.map(
-    (tile) => ({
-      ...tile,
-      championship:
-        projections.get(
-          tile.id,
-        ) ??
-        null,
-    }),
-  );
+  return tiles
+    .map(
+      (tile) => ({
+        ...tile,
+        championship:
+          projections.get(
+            tile.id,
+          ) ??
+          null,
+      }),
+    )
+    .sort(
+      (
+        left,
+        right,
+      ) =>
+        new Date(
+          left.createdAt,
+        ).getTime() -
+          new Date(
+            right.createdAt,
+          ).getTime() ||
+        left.id -
+          right.id,
+    );
 }
 
 export async function loadChallengeThreadTile(
