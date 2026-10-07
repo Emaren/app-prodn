@@ -1090,9 +1090,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         prog="aoe2war truth",
         description=(
-            "Read-only Replay Truth OS "
-            "for production corpus debt, "
-            "cross-layer audits and one-game forensics."
+            "Replay Truth OS for read-only production corpus/audit work "
+            "and explicitly bounded candidate-only native controls."
         ),
     )
 
