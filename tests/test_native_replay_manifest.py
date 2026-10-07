@@ -395,82 +395,6 @@ class BridgeWorkerManifestTests(unittest.TestCase):
             self.assertFalse(payload["authority"]["bettingMutated"])
             self.assertFalse(payload["authority"]["woloMutated"])
 
-    def test_independent_memory_terminal_referee_recomputes_bound_raw_capture(self):
-        with tempfile.TemporaryDirectory() as temp:
-            output, value, witness, exe_sha, data_sha = self.make_evidence(Path(temp))
-            slots = [row["slot"] for row in value["roster"]]
-            winners = list(value["result"]["winningSlots"])
-            losers = [slot for slot in slots if slot not in winners]
-            memory_path = output / "memory-observer.jsonl"
-            memory_path.write_text('{"kind":"synthetic-memory-capture"}\n', encoding="utf-8")
-            runtime_path = output / "runtime.json"
-            runtime_path.write_text('{"kind":"synthetic-runtime"}\n', encoding="utf-8")
-            observer_path = output / "replay-memory-observer.exe"
-            observer_path.write_bytes(b"synthetic observer bytes, never executed")
-            candidate = {
-                "proven": True,
-                "match": {
-                    "roster_slots": slots,
-                    "winning_slots": winners,
-                    "losing_slots": losers,
-                },
-            }
-
-            observation = json.loads((output / "observation.json").read_text())
-            observation["terminal_evidence_kind"] = "native_memory_terminal"
-            observation["native_memory_terminal_candidate"] = candidate
-            (output / "observation.json").write_bytes(witness.canonical(observation))
-
-            invocation = json.loads((output / "invocation.json").read_text())
-            invocation["memory_observer"] = {"staged_identity": witness.file_identity(observer_path)}
-            invocation["executable_windows_path"] = r"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Age2HD\\AoK HD.exe"
-            (output / "invocation.json").write_bytes(witness.canonical(invocation))
-
-            receipt = json.loads((output / "receipt.json").read_text())
-            receipt["observations"]["terminal_evidence_refs"] = [memory_path.name]
-            receipt["observations"]["result"]["evidence_refs"] = [memory_path.name]
-            receipt["evidence"].append(
-                witness.evidence_file(memory_path, evidence_id=memory_path.name, kind="log")
-            )
-            (output / "receipt.json").write_bytes(witness.canonical(receipt))
-            self.refresh_integrity(output, witness)
-
-            parser_calls = []
-
-            def fake_parser(path, **kwargs):
-                parser_calls.append((Path(path), kwargs))
-                return candidate
-
-            real_spec_from_file = importlib.util.spec_from_file_location
-
-            class MemoryLoader:
-                def create_module(self, spec):
-                    return None
-
-                def exec_module(self, module):
-                    module.parse_memory_terminal_candidate = fake_parser
-
-            def controlled_spec(name, location, *args, **kwargs):
-                if Path(location).name == "replay_engine_memory.py":
-                    return importlib.util.spec_from_loader(name, MemoryLoader())
-                return real_spec_from_file(name, location, *args, **kwargs)
-
-            with patch.object(WORKER, "EXPECTED_EXECUTABLE_SHA256", exe_sha), \
-                 patch.object(WORKER, "EXPECTED_DATA_SHA256", data_sha), \
-                 patch.object(WORKER.importlib.util, "spec_from_file_location", side_effect=controlled_spec):
-                result = WORKER.independently_revalidate_control_evidence(output, value)
-
-            self.assertEqual(result["status"], "PASS")
-            self.assertEqual(result["winningSlots"], winners)
-            self.assertEqual(len(parser_calls), 1)
-            called_path, called = parser_calls[0]
-            self.assertEqual(called_path, memory_path)
-            self.assertEqual(called["game_id"], value["gameStatsId"])
-            self.assertEqual(called["replay_sha256"], value["replaySha256"])
-            self.assertEqual(called["capture_sha256"], WORKER.sha256_file(memory_path))
-            self.assertEqual(called["control_manifest"], value)
-            self.assertEqual(called["expected_replay_bytes"], value["archive"]["byteSize"])
-
     def test_worker_forwards_memory_runtime_hashes_and_manifest_to_api_runner(self):
         value = manifest_fixture()
         args = argparse.Namespace(
@@ -691,6 +615,82 @@ class NativeWitnessByteIntegrationTests(unittest.TestCase):
         attempt = json.loads((output / "attempt.json").read_text())
         attempt["artifacts"] = [witness.file_identity(path) for path in sorted(output.iterdir()) if path.name != "attempt.json"]
         (output / "attempt.json").write_bytes(witness.canonical(attempt))
+
+    def test_independent_memory_terminal_referee_recomputes_bound_raw_capture(self):
+        with tempfile.TemporaryDirectory() as temp:
+            output, value, witness, exe_sha, data_sha = self.make_evidence(Path(temp))
+            slots = [row["slot"] for row in value["roster"]]
+            winners = list(value["result"]["winningSlots"])
+            losers = [slot for slot in slots if slot not in winners]
+            memory_path = output / "memory-observer.jsonl"
+            memory_path.write_text('{"kind":"synthetic-memory-capture"}\n', encoding="utf-8")
+            runtime_path = output / "runtime.json"
+            runtime_path.write_text('{"kind":"synthetic-runtime"}\n', encoding="utf-8")
+            observer_path = output / "replay-memory-observer.exe"
+            observer_path.write_bytes(b"synthetic observer bytes, never executed")
+            candidate = {
+                "proven": True,
+                "match": {
+                    "roster_slots": slots,
+                    "winning_slots": winners,
+                    "losing_slots": losers,
+                },
+            }
+
+            observation = json.loads((output / "observation.json").read_text())
+            observation["terminal_evidence_kind"] = "native_memory_terminal"
+            observation["native_memory_terminal_candidate"] = candidate
+            (output / "observation.json").write_bytes(witness.canonical(observation))
+
+            invocation = json.loads((output / "invocation.json").read_text())
+            invocation["memory_observer"] = {"staged_identity": witness.file_identity(observer_path)}
+            invocation["executable_windows_path"] = r"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Age2HD\\AoK HD.exe"
+            (output / "invocation.json").write_bytes(witness.canonical(invocation))
+
+            receipt = json.loads((output / "receipt.json").read_text())
+            receipt["observations"]["terminal_evidence_refs"] = [memory_path.name]
+            receipt["observations"]["result"]["evidence_refs"] = [memory_path.name]
+            receipt["evidence"].append(
+                witness.evidence_file(memory_path, evidence_id=memory_path.name, kind="log")
+            )
+            (output / "receipt.json").write_bytes(witness.canonical(receipt))
+            self.refresh_integrity(output, witness)
+
+            parser_calls = []
+
+            def fake_parser(path, **kwargs):
+                parser_calls.append((Path(path), kwargs))
+                return candidate
+
+            real_spec_from_file = importlib.util.spec_from_file_location
+
+            class MemoryLoader:
+                def create_module(self, spec):
+                    return None
+
+                def exec_module(self, module):
+                    module.parse_memory_terminal_candidate = fake_parser
+
+            def controlled_spec(name, location, *args, **kwargs):
+                if Path(location).name == "replay_engine_memory.py":
+                    return importlib.util.spec_from_loader(name, MemoryLoader())
+                return real_spec_from_file(name, location, *args, **kwargs)
+
+            with patch.object(WORKER, "EXPECTED_EXECUTABLE_SHA256", exe_sha), \
+                 patch.object(WORKER, "EXPECTED_DATA_SHA256", data_sha), \
+                 patch.object(WORKER.importlib.util, "spec_from_file_location", side_effect=controlled_spec):
+                result = WORKER.independently_revalidate_control_evidence(output, value)
+
+            self.assertEqual(result["status"], "PASS")
+            self.assertEqual(result["winningSlots"], winners)
+            self.assertEqual(len(parser_calls), 1)
+            called_path, called = parser_calls[0]
+            self.assertEqual(called_path, memory_path)
+            self.assertEqual(called["game_id"], value["gameStatsId"])
+            self.assertEqual(called["replay_sha256"], value["replaySha256"])
+            self.assertEqual(called["capture_sha256"], WORKER.sha256_file(memory_path))
+            self.assertEqual(called["control_manifest"], value)
+            self.assertEqual(called["expected_replay_bytes"], value["archive"]["byteSize"])
 
     def test_real_witness_referee_accepts_synthetic_1v1_team_and_4v4_bytes(self):
         for count in (2, 6, 8):
