@@ -4,6 +4,9 @@ import {
 } from "next/server";
 
 import {
+  findRadioProgramDuplicateAssetIds,
+} from "@/lib/radioWoloPrograms";
+import {
   requireRadioWoloOperator,
 } from "@/lib/radioWoloOperator";
 import {
@@ -153,6 +156,33 @@ export async function POST(
     );
   }
 
+  const duplicateAssetIds =
+    findRadioProgramDuplicateAssetIds(
+      program.items.map(
+        (item) => ({
+          assetId:
+            item.asset.id,
+        }),
+      ),
+    );
+
+  if (
+    duplicateAssetIds.length
+  ) {
+    return NextResponse.json(
+      {
+        detail:
+          "This Radio WOLO program contains duplicate Vault tracks. Open BUILD, clean duplicates, and save it before going on air.",
+        duplicateAssetIds,
+      },
+      {
+        status: 409,
+        headers:
+          NO_STORE_HEADERS,
+      },
+    );
+  }
+
   const unavailable =
     program.items.find(
       (item) =>
@@ -236,30 +266,6 @@ export async function POST(
               },
               select: {
                 state: true,
-                startedAt:
-                  true,
-                program: {
-                  select: {
-                    items: {
-                      orderBy: {
-                        position:
-                          "asc",
-                      },
-                      select: {
-                        transition:
-                          true,
-                        crossfadeMs:
-                          true,
-                        asset: {
-                          select: {
-                            durationMs:
-                              true,
-                          },
-                        },
-                      },
-                    },
-                  },
-                },
               },
             },
           );
