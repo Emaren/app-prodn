@@ -106,7 +106,16 @@ The default bounded run is:
 ./bin/aoe2war truth native-control
 ```
 
-Optional run-ID and timeout flags exist for controlled repetition. They do not
+For review work that must stay isolated from another active agent or branch,
+the operator may point the command at a separate clean API worktree:
+
+```bash
+./bin/aoe2war truth native-control --api-root /absolute/path/to/api-prodn-worktree
+```
+
+The selected API checkout is recorded by exact Git head in the receipt, while
+runtime evidence still lands under the canonical API evidence root. Optional
+run-ID and timeout flags exist for controlled repetition. None of these options
 expand game scope or authority.
 
 ## Production safety
