@@ -116,11 +116,17 @@ repositories and requires the selected path to share the canonical API Git commo
 checkout. Durable attempt/preflight evidence still lives under the canonical API
 checkout rather than the disposable worktree.
 
-A future Admin action should call this same worker / bridge contract on the operator host and
-render the API receipt, including unresolved propositions and cleanup. It must
-not implement a separate native launch, infer EOF from `PASS`, accept arbitrary
-game paths or addresses, or turn operation completion into result authority. This
-checkpoint adds no Admin action or production deployment.
+Admin > Replay Operations now presents the five reviewed known-result controls
+as one ladder: `32388`, `4896`, `11403`, `19082`, and `32173`. Each button
+uses the existing fixed `replay_native_run` action and server-built immutable
+manifest; it does not accept an arbitrary replay path or winner. Runs remain
+serialized by the Mac bridge and candidate-only.
+
+The Admin action calls this same worker / bridge contract on the operator host and
+renders the receipt. It must not implement a separate native launch, infer EOF
+from `PASS`, accept arbitrary game paths or addresses, or turn operation
+completion into result authority. This branch adds the review UI but performs no
+production deployment.
 
 ## Current bounded frontier — 2026-10-07 UTC
 
