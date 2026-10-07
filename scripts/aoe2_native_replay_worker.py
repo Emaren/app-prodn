@@ -56,7 +56,9 @@ def native_evidence_root(api_source: Path) -> Path:
 
 
 API_ROOT = canonical_api_root()
-EVIDENCE_ROOT = native_evidence_root(API_ROOT)
+# Importing app-owned contracts does not require the sibling native runtime.
+# Resolve and cache its canonical durable root only when execution starts.
+EVIDENCE_ROOT: Path | None = None
 RUNNER = API_ROOT / "scripts" / "replay_engine_runner.py"
 RUNNER_IMPL = API_ROOT / "utils" / "replay_engine_runner.py"
 TERMINAL_CONTROL_VALIDATOR = (
@@ -107,10 +109,20 @@ class WorkerError(RuntimeError):
     pass
 
 
+def worker_evidence_root() -> Path:
+    global EVIDENCE_ROOT
+    if EVIDENCE_ROOT is None:
+        try:
+            EVIDENCE_ROOT = native_evidence_root(API_ROOT)
+        except (OSError, subprocess.SubprocessError) as exc:
+            raise WorkerError("The governed sibling api-prodn checkout is unavailable for native execution.") from exc
+    return EVIDENCE_ROOT
+
+
 @contextmanager
 def native_execution_lock():
     """One game process at a time across bridge and direct worker invocations."""
-    directory = EVIDENCE_ROOT.parent
+    directory = worker_evidence_root().parent
     directory.mkdir(parents=True, exist_ok=True)
     if directory.is_symlink():
         raise WorkerError("Native worker lock directory cannot be a symlink.")
@@ -781,7 +793,7 @@ def run_native_attempt(args: argparse.Namespace) -> int:
 
     source_identity = require_runtime()
     token = load_token()
-    output = EVIDENCE_ROOT / args.run_id
+    output = worker_evidence_root() / args.run_id
     if output.exists() or output.is_symlink() or (output.parent / (output.name + ".worker-failure.json")).exists():
         raise WorkerError(f"Native attempt directory already exists: {output}")
     output.parent.mkdir(parents=True, exist_ok=True)
