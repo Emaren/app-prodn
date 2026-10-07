@@ -979,10 +979,6 @@ function readSessionStartTime(session: ComparableSession) {
   return endTime - Math.max(0, session.durationSeconds) * 1000;
 }
 
-function openChallengePairKey(row: ScheduledMatchRow) {
-  return [row.challenger.id, row.challenged.id].sort((left, right) => left - right).join(":");
-}
-
 function findLinkedSession(
   sessions: ComparableSession[],
   row: ScheduledMatchRow,
