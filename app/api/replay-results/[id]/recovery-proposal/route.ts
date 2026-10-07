@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { lstat, readFile, realpath } from "node:fs/promises";
 import proposals from "@/docs/replay-receipts/zodiac-stats-only-proposals-2026-10-06.json";
+import playerFirstProposals from "@/docs/replay-receipts/three-account-stats-only-proposals-2026-10-06.json";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 import { buildMarketSnapshot, loadReplayResultReviewState } from "@/lib/replayResultAdjudications";
@@ -15,7 +16,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
   const reply = (body: unknown, status = 200) => NextResponse.json(body, { status, headers: { "Cache-Control": "private, no-store" } });
   if (!uid) return reply({ detail: "Admin session required." }, 401);
   if (!Number.isSafeInteger(id) || id <= 0) return reply({ detail: "Invalid replay ID." }, 400);
-  const packet = proposals.proposals.find(p => p.gameStatsId === id);
+  const packet = [...proposals.proposals, ...playerFirstProposals.proposals].find(p => p.gameStatsId === id);
   const state = await loadReplayResultReviewState(getPrisma(), uid, id);
   if (!state.access.isAdmin) return reply({ detail: "Admin review required." }, 403);
   if (!packet) return reply({ proposal: null });

@@ -1422,6 +1422,17 @@ export function isProvisionalWatcherRecorderExitAdjudication(
   );
 }
 
+// Exact historical versions observed in the ledger. Keep the public query and
+// in-memory projection on the same fence; a later human verdict remains eligible.
+export const RETIRED_AUTOMATIC_REPLAY_RESULT_POLICY_VERSIONS = [
+  "replay-terminal-recorder-exit-v1",
+  WATCHER_TERMINAL_RECORDER_EXIT_POLICY_VERSION,
+  WATCHER_TERMINAL_OWNER_LOSS_POLICY_VERSION,
+  "replay-team-terminal-action-tail-v2",
+  "replay-team-terminal-action-tail-v3",
+  WATCHER_TEAM_TERMINAL_POLICY_VERSION,
+] as const;
+
 export function isRetiredAutomaticReplayResultAdjudication(
   value:
     | {
@@ -1439,11 +1450,7 @@ export function isRetiredAutomaticReplayResultAdjudication(
     value &&
       value.decisionStatus === REPLAY_RESULT_ACCEPTED &&
       typeof idempotencyKey === "string" &&
-      [
-        WATCHER_TERMINAL_RECORDER_EXIT_POLICY_VERSION,
-        WATCHER_TERMINAL_OWNER_LOSS_POLICY_VERSION,
-        WATCHER_TEAM_TERMINAL_POLICY_VERSION,
-      ].some((policy) => idempotencyKey.startsWith(`evidence:auto:${policy}:`))
+      RETIRED_AUTOMATIC_REPLAY_RESULT_POLICY_VERSIONS.some((policy) => idempotencyKey.startsWith(`evidence:auto:${policy}:`))
   );
 }
 

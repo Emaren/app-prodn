@@ -7,7 +7,15 @@ export type ZodiacRecoveryProposal = {
   schema: string;
   gameStatsId: number;
   packetSha256: string;
-  zodiacSteamId: string;
+  zodiacSteamId?: string;
+  targetSteamId?: string;
+  shortForfeitReview?: {
+    noRatedResult: true;
+    completed: false;
+    disconnectDetected: true;
+    terminalTimestampMs: number;
+    acknowledgesNotRatedResult: true;
+  };
   status: string;
   affectsStatsRequested: boolean;
   affectsStats: boolean;
@@ -53,8 +61,10 @@ export function validateZodiacRecoveryProposal(packet: ZodiacRecoveryProposal, s
   const require: (ok: boolean, reason: string) => asserts ok = (ok, reason) => { if (!ok) throw new Error(reason); };
   const { packetSha256, ...material } = packet;
   require(zodiacProposalHash(material) === packetSha256, "proposal_digest_mismatch");
-  require(packet.schema === "aoe2war-zodiac-commissioner-proposal/v1" && packet.status === "requires_commissioner_approval", "unsupported_proposal");
-  require(packet.zodiacSteamId === "76561198103810510" && packet.gameStatsId === state.game.id, "proposal_game_identity_mismatch");
+  const legacy = packet.schema === "aoe2war-zodiac-commissioner-proposal/v1";
+  require((legacy || packet.schema === "aoe2war-player-first-commissioner-proposal/v1") && packet.status === "requires_commissioner_approval", "unsupported_proposal");
+  const targetSteamId = legacy ? packet.zodiacSteamId : packet.targetSteamId;
+  require((legacy ? packet.targetSteamId === undefined && targetSteamId === "76561198103810510" : packet.zodiacSteamId === undefined && ["76561198103810510", "76561198754754435", "76561199849204394"].includes(targetSteamId ?? "")) && packet.gameStatsId === state.game.id, "proposal_game_identity_mismatch");
   require(packet.affectsStatsRequested === true && packet.affectsStats === false && packet.affectsBets === false && packet.settlementAuthority === false && packet.woloAuthority === false, "proposal_authority_escalation");
   require(state.adjudications.length === 0 && !state.desyncOccurred, "proposal_requires_fresh_commissioner_review");
   const bindings = Object.fromEntries([
@@ -72,6 +82,7 @@ export function validateZodiacRecoveryProposal(packet: ZodiacRecoveryProposal, s
   const roster = normalizeReplayPlayers(state.game.players).map(p => ({ stablePlayerKey: p.stablePlayerKey, name: p.name, steamId: p.steamId, playerNumber: p.playerNumber, teamId: p.teamId }));
   require(zodiacProposalHash(roster) === zodiacProposalHash(packet.canonicalRoster), "proposal_roster_changed");
   require(roster.every(p => p.steamId && /^[0-9]{17}$/.test(p.steamId) && p.playerNumber !== null && Number.isSafeInteger(p.playerNumber) && p.playerNumber >= 1 && p.playerNumber <= 8) && new Set(roster.map(p => p.steamId)).size === roster.length && new Set(roster.map(p => p.playerNumber)).size === roster.length, "proposal_slot_identity_ambiguous");
+  require(roster.filter(p => p.steamId === targetSteamId).length === 1, "proposal_target_not_in_roster");
   const evidence = packet.payload.evidence;
   require(evidence.requiresCommissionerApproval === true && evidence.affectsBets === false && evidence.financialAuthority === false && evidence.woloAuthority === false && evidence.automaticPromotionAllowed === false, "proposal_evidence_authority_escalation");
   const parser = evidence.parser as Record<string, unknown>;
@@ -82,9 +93,19 @@ export function validateZodiacRecoveryProposal(packet: ZodiacRecoveryProposal, s
   require(Array.isArray(financial.markets) && Array.isArray(financial.claims) && zodiacProposalHash({ markets: financial.markets, claims: financial.claims }) === zodiacProposalHash({ markets: liveFinancial.markets, claims: liveFinancial.claims }), "proposal_financial_obligations_changed");
   require(packet.financialDisposition === (financial.markets.length ? "operator_review_required" : "none"), "proposal_financial_disposition_mismatch");
   const terminal = evidence.independentTerminalResult as { status?: string; source?: string; blockers?: unknown[]; winning_player_numbers?: number[]; proof?: { artifact_sha256?: string; parser?: unknown; terminal_schema_version?: string; packets?: unknown[] } };
-  const framing = evidence.terminalFraming as { complete?: boolean; last_consumed_offset?: number };
+  const framing = evidence.terminalFraming as { complete?: boolean; last_consumed_offset?: number; end_timestamp_ms?: number };
   require(terminal.status === "deterministic_candidate" && terminal.source === "complete_team_voluntary_resignation" && terminal.blockers?.length === 0 && terminal.proof?.artifact_sha256 === packet.payload.sourceReplayHash && framing.complete === true && framing.last_consumed_offset === evidence.archiveByteSize, "proposal_terminal_proof_incomplete");
   require(evidence.archiveSha256 === packet.payload.sourceReplayHash && zodiacProposalHash(terminal.proof?.parser) === zodiacProposalHash(parser) && terminal.proof?.terminal_schema_version === "hd-terminal-evidence-v2", "proposal_inner_proof_binding_mismatch");
+  const sourceEvents = state.game.key_events as Record<string, unknown> | null;
+  const earlyExit = state.game.parse_reason === "hd_early_exit_under_60s" || sourceEvents?.no_rated_result === true || (typeof framing.end_timestamp_ms === "number" && framing.end_timestamp_ms < 60_000);
+  if (earlyExit) {
+    const review = packet.shortForfeitReview;
+    require(!legacy && review?.noRatedResult === true && review.completed === false && review.disconnectDetected === true && review.acknowledgesNotRatedResult === true && review.terminalTimestampMs === framing.end_timestamp_ms && sourceEvents?.no_rated_result === true && sourceEvents.completed === false && state.game.disconnect_detected === true && state.game.parse_reason === "hd_early_exit_under_60s", "proposal_short_forfeit_review_required");
+    const counterevidence = evidence.counterevidence as Record<string, unknown> | undefined;
+    require(counterevidence?.noRatedResult === sourceEvents.no_rated_result && counterevidence.completed === sourceEvents.completed && counterevidence.disconnectDetected === state.game.disconnect_detected && counterevidence.rawWinner === state.game.winner && counterevidence.currentParseReason === state.game.parse_reason && counterevidence.durationSeconds === state.game.duration && counterevidence.gameDurationSeconds === state.game.game_duration && counterevidence.doNotChangeParserPolicy === true && counterevidence.doesNotProveSteamRatedOutcome === true, "proposal_short_forfeit_counterevidence_changed");
+  } else {
+    require(packet.shortForfeitReview === undefined, "proposal_short_forfeit_counterevidence_mismatch");
+  }
   const resignations = evidence.resignations as Array<{ packet?: unknown }>;
   require(Array.isArray(resignations) && resignations.length > 0 && zodiacProposalHash(resignations.map(r => r.packet)) === zodiacProposalHash(terminal.proof?.packets), "proposal_resignation_proof_mismatch");
   require(Array.isArray(terminal.winning_player_numbers) && terminal.winning_player_numbers.length > 0 && terminal.winning_player_numbers.every(n => Number.isSafeInteger(n) && roster.some(p => p.playerNumber === n)) && new Set(terminal.winning_player_numbers).size === terminal.winning_player_numbers.length, "proposal_winner_slot_ambiguous");

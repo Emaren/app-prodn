@@ -272,20 +272,22 @@ test(
 
 
 test(
-  "disabled recorder-exit rows are excluded from effective public adjudication",
+  "all retired recorder-exit and action-tail rows are excluded from effective public adjudication",
   () => {
     assert.deepEqual(
       EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION.where,
       {
         decisionStatus: "accepted",
         NOT: [
-          {
-            idempotencyKey: {
-              startsWith:
-                "evidence:auto:replay-terminal-recorder-exit-v2:",
-            },
-          },
-        ],
+          "replay-terminal-recorder-exit-v1",
+          "replay-terminal-recorder-exit-v2",
+          "replay-terminal-action-tail-v3",
+          "replay-team-terminal-action-tail-v2",
+          "replay-team-terminal-action-tail-v3",
+          "replay-team-terminal-action-tail-v4",
+        ].map((policy) => ({
+          idempotencyKey: { startsWith: `evidence:auto:${policy}:` },
+        })),
       }
     );
   }

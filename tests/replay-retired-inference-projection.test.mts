@@ -8,6 +8,7 @@ import {
 } from "../lib/replayResultAdjudications.ts";
 import { buildRosterHash, normalizeReplayPlayers } from "../lib/teamResolution.ts";
 import { resolveReplayWinnerTruth } from "../lib/unresolvedWatcherResult.ts";
+import { EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION } from "../lib/replayAdjudications.ts";
 
 // Reduced exact #31588 observation, 2026-10-06T19:08:23.070Z.
 // Receipt SHA-256: 2ac596a70974d00cf95baf2d7b1ae971e943c986826110d1b2d00c2dad40a29a.
@@ -88,10 +89,11 @@ test("#31588 review retains historical ledger evidence while showing no current 
 });
 
 test("only exact retired automatic recorder/action-tail policies are excluded", () => {
-  for (const policy of ["replay-terminal-recorder-exit-v2", "replay-terminal-action-tail-v3", "replay-team-terminal-action-tail-v4"]) {
+  for (const policy of ["replay-terminal-recorder-exit-v1", "replay-terminal-recorder-exit-v2", "replay-terminal-action-tail-v3", "replay-team-terminal-action-tail-v2", "replay-team-terminal-action-tail-v3", "replay-team-terminal-action-tail-v4"]) {
     const row = { ...legacy, idempotencyKey: `evidence:auto:${policy}:31588` };
     assert.equal(isRetiredAutomaticReplayResultAdjudication(row), true);
     assert.strictEqual(applyReplayResultAdjudication(game, row), game);
+    assert.ok(EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION.where.NOT.some(filter => row.idempotencyKey.startsWith(filter.idempotencyKey.startsWith)));
     for (const changedFlags of [{ affectsStats: false }, { affectsBets: true }]) {
       assert.equal(isRetiredAutomaticReplayResultAdjudication({ ...row, ...changedFlags }), true);
       assert.strictEqual(applyReplayResultAdjudication(game, { ...row, ...changedFlags }), game);
