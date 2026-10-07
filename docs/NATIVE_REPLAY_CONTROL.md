@@ -82,11 +82,34 @@ teardown or incomplete capture remains `HOLD` or `REJECT` as the API determines.
 
 This capability does not query or refresh the census, write production or parser
 rows, create adjudications, promote results, alter bets, settle markets, deploy
-production or mutate WoloChain. Unknown-result execution remains locked. The
-strengthened #32388 control must independently pass before additional known and
-ambiguous controls can establish a wider execution or promotion gate.
+production or mutate WoloChain. Unknown-result execution remains locked. A
+diverse known-result control ladder must independently validate the native
+terminal family before any bounded unknown-result cohort is opened.
 
-A future Admin action should call this same adapter on the operator host and
+### Known-control native memory ladder
+
+The general native replay worker now wires the API-owned read-only memory
+observer and one-shot Fast Playback controller into known-result manifest runs.
+For each run it writes the canonical manifest into durable preflight evidence,
+builds the observer/controller twice with the fixed reviewed host toolchain,
+requires byte-identical helpers, and passes their exact hashes plus the exact
+manifest file hash into the API runner. The API runner still owns the normal
+Steam/CrossOver launch and stages every runtime input into the immutable attempt.
+
+Manifest-mode terminal validation is memory-first. The app independently imports
+the API memory referee after execution, rehashes the raw
+`memory-observer.jsonl`, recomputes the repeated coherent terminal partition,
+and requires it to equal both the stored API candidate and the receipt winner /
+loser partition before comparing against the already-trusted control result.
+Attempt-new append-safe AILog remains a supported legacy candidate family, but a
+dormant AILog no longer blocks a valid memory-terminal control.
+
+This closes the prior API-memory / app-AILog verification mismatch. It does not
+open unknown execution or automatic promotion. A passing known control produces
+stats-only commissioner review evidence; it does not affect stats until reviewed
+and never carries betting, settlement or Wolo authority.
+
+A future Admin action should call this same worker / bridge contract on the operator host and
 render the API receipt, including unresolved propositions and cleanup. It must
 not implement a separate native launch, infer EOF from `PASS`, accept arbitrary
 game paths or addresses, or turn operation completion into result authority. This
@@ -113,10 +136,16 @@ The immutable canonical copy is
 The retained three-account census is 99 unknowns, zero eligible; it was not
 refreshed and no new truth was promoted.
 
-Next calibrate PE32 hardware-breakpoint delivery in CrossOver, then the already
-documented #32388 world-update entry `0x738720` if supported. Require the exact
-owned trap and living-thread restoration/detach. Handle terminated contexts only
-with bound native process-exit proof. API context acceptance alone cannot select
-between a skipped close path, lost debug state and unavailable hardware delivery.
-The pre-release instruction hit, whole-input consumption, genuine EOF and wider
-result semantics remain unproven; no broader control or unknown-game execution opens.
+Hardware-breakpoint calibration remains a diagnostic lane for the exact EOF
+research question, but it is no longer the shortest path to reducing historical
+result debt. The operational priority is now the native-memory control ladder:
+run several distinct known-result replays through the same manifest, exact-load,
+Fast Playback, repeated-terminal and independent-referee contract. Include
+different roster sizes / outcomes and at least one negative or ambiguous control.
+
+Only after that ladder is reviewed may source open a deliberately bounded
+unknown-result candidate cohort. Unknown candidates must remain candidate-only
+and produce commissioner-review evidence rather than direct truth writes.
+Whole-input consumption, genuine EOF and its cause remain separately unproven;
+those propositions are not silently redefined merely to recover historical
+winner truth.
