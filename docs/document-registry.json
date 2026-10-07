@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "26473ab88326b5ed172a8768420a93bda4ba9fd70abd577ad9f8b14e2e366fbe",
+      "sha256": "0ca0cd17a3f60cabc569934333d471a5ead342d23dcd68aa495377da985552a7",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2049,7 +2049,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/player-first-truth-current-rating-20261005",
-    "commit": "66cbc536bc21088179830cc001810cecf7c1e018"
+    "commit": "f48682befe5cb5402c55e04dc978543df1ce6f8d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
