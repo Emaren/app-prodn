@@ -3615,9 +3615,11 @@ test(
       /draftProgramName/,
     );
 
-    assert.match(
-      source,
-      /(?:\\s\+—\\s\+Draft)\+\$/,
+    assert.equal(
+      source.includes(
+        "/(?:\\s+—\\s+Draft)+$/gi",
+      ),
+      true,
     );
   },
 );
