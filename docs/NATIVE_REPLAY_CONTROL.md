@@ -91,3 +91,32 @@ render the API receipt, including unresolved propositions and cleanup. It must
 not implement a separate native launch, infer EOF from `PASS`, accept arbitrary
 game paths or addresses, or turn operation completion into result authority. This
 checkpoint adds no Admin action or production deployment.
+
+## Current bounded frontier — 2026-10-07 UTC
+
+`close-32388-20261007t161000z` attached to the normal Steam-created game, armed
+and immediately read back six debug contexts, but received no owned instruction
+hit. Last valid active cursor was **665378 / 665734**; **356 bytes** remained
+unobserved before the stream became null at terminal simulation **1485022 ms**.
+The existing native partition referee remains candidate-only `PASS`. Process
+exit preceded failed restoration of its terminated main thread; raw debug cleanup
+was false, so this operation is **REJECT** and the strengthened EOF gate **HOLD**.
+Runner cleanup completed, no game process remained, and the existing Steam client
+was preserved. `verify` reproduces the rejection; repeating `run` verifies and
+reuses its receipt without another launch.
+
+The identical checked-in handoff is
+[`native-pre-release-capability-handoff-2026-10-07.json`](replay-receipts/native-pre-release-capability-handoff-2026-10-07.json),
+SHA-256 `4c9f160eaccecea81d50fb1c8eb31ab79fa5dceacf51b82db82458bb92f60be9`.
+The immutable canonical copy is
+`.aoe2war-release/truth-receipts/native-pre-release-control-4c9f160eaccecea81d50fb1c8eb31ab79fa5dceacf51b82db82458bb92f60be9.json`.
+The retained three-account census is 99 unknowns, zero eligible; it was not
+refreshed and no new truth was promoted.
+
+Next calibrate PE32 hardware-breakpoint delivery in CrossOver, then the already
+documented #32388 world-update entry `0x738720` if supported. Require the exact
+owned trap and living-thread restoration/detach. Handle terminated contexts only
+with bound native process-exit proof. API context acceptance alone cannot select
+between a skipped close path, lost debug state and unavailable hardware delivery.
+The pre-release instruction hit, whole-input consumption, genuine EOF and wider
+result semantics remain unproven; no broader control or unknown-game execution opens.
