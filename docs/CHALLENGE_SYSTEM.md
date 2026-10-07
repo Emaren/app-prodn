@@ -78,7 +78,21 @@ Title custody is independent of who clicked Challenge. On authenticated Watcher 
 
 ### Challenge betting during result review
 
-A pre-game Challenge winner book closes at the authoritative start fence. If the linked battle reaches `result_pending` or `desync_review`, the existing financial liability stays attached as **under review**. Review is not a settled no-winner state and must not make the Challenge market disappear into a stale/refund path. Winner payout still requires the existing result/desync/integrity settlement gates; this queue change does not make a manual UI result or provisional Watcher flag sufficient replay authority.
+A pre-game Challenge winner book closes at the authoritative start fence. If the linked battle reaches `result_pending` or `desync_review`, the existing financial liability stays attached as **under review**. Review is not a settled no-winner state and must not make the Challenge market disappear into a stale/refund path.
+
+For a **Challenge-derived** winner book, `ScheduledMatch.resultWinnerSide` is the durable economic result authority. Exact Watcher/replay reconciliation may write it automatically; the authenticated Commissioner completion rail may also write it deliberately. Betting projects that participant-bound winner before falling back to human-readable `linkedWinner` replay text, so an absent replay winner label cannot turn a governed Challenge winner into a settled no-winner refund.
+
+A clean Challenge book may leave `under_review` only when all of the following are true:
+
+- the ScheduledMatch is now terminal with an exact participant winner;
+- the frozen market proposition remains `verified`;
+- no market integrity reason remains;
+- no Commissioner review state remains; and
+- desync settlement guards allow an ordinary winner payout.
+
+After Commissioner completion commits, the Challenge API explicitly runs the after-commit Bet reconciler so payout projection observes the new winner immediately instead of waiting for a later visitor to open Betting Hall.
+
+This economic authority does **not** manufacture replay provenance or championship authority. Manual completion records `resultAuthority=commissioner_manual`, keeps canonical replay linkage unchanged, and leaves `titleResultAuthority=false`. Unscheduled Watcher markets and belt movement continue to require their separate replay/adjudication and custody gates.
 
 ## Legacy invitation product contract
 
@@ -165,12 +179,12 @@ Unfunded sides receive nothing because nothing was locked for them.
 
 ### Completed match
 
-When both sides were externally funded and replay/finality evidence uniquely identifies the winner:
+When both sides were externally funded and the Challenge has exact participant-bound winner authority—either verified replay/finality or an authenticated Commissioner result:
 
 - each participant's Match Guarantee is returned;
 - both wagers are awarded to the winner.
 
-If winner identity is ambiguous, execution is blocked for operator review. Replay finality is never inferred from Challenge state alone.
+If winner identity is ambiguous, execution is blocked for operator review. Commissioner completion is economic Challenge-result authority, not replay provenance or title-transfer authority; those remain separately gated.
 
 ### No-show
 
