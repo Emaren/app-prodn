@@ -374,10 +374,27 @@ separate. Game `25782` additionally requires the checked 50-second early-exit
 counterevidence and an explicit acknowledgement that the proposed short forfeit
 does not establish a Steam-rated result. Tony approved somniosator/TheGoat_Nicky
 over mYsTikaL_VeGeTa/mYsTikaL_TrUnKs for statistics only. The governed writer
-must independently revalidate current source, archive, review history and full
-financial obligations before recording that decision. The original frozen
-packet remains a proposal receipt; its accepted application requires its own
-superseding receipt.
+independently revalidated current source, archive, review history and full
+financial obligations before appending accepted adjudication `192`. Its
+application receipt is
+`42df389af7359d5ed9b460ff855583cc69d0b6d37033b6db4ad3788fc59d68ad`.
+The original frozen packet remains a proposal receipt. Raw parser rows and
+financial state are unchanged; no Steam-rated outcome or betting authority is
+declared.
+
+Accepted projections preserve native numeric sides only when all frozen and
+current Steam identities, names, unique slots and strict team IDs form exactly
+the same two complete sides. A manual regrouping or ambiguous binding retains
+the reviewed named sides. This corrects roster presentation without changing
+result eligibility, relaxing Workshop completeness or manufacturing team IDs.
+Original parser provenance survives repeated projection.
+
+The complete-side candidate for `25620` also contains prior voluntary
+resignations by two players on the opposing side. Its actual five serialized
+packets fail the existing strict losing-side archive contract. It remains
+research, not a loadable eligible draft; neither the final remaining recorder
+nor packet order may supply the missing authority. Those semantics require
+independent control validation before any narrow human approval request.
 
 The shared public query and in-memory projector exclude the exact historical
 recorder-exit v1/v2, action-tail v3, and team-action-tail v2/v3/v4 policies.

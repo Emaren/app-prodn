@@ -426,8 +426,14 @@ contract and independently scanned to exact EOF. Their audit receipt SHA-256
 is `d647f2d7b532cb4a3c7dcc3337a4f125ffc51b5c99308c6365a92f26030882c1`.
 Only `25782` proves a complete voluntarily resigned side. Its frozen packet
 is in [`three-account-stats-only-proposals-2026-10-06.json`](replay-receipts/three-account-stats-only-proposals-2026-10-06.json).
-Tony explicitly approved its stats-only short-forfeit verdict in the current
-continuation. Application remains a separately recorded governed writer step.
+Tony explicitly approved its stats-only short-forfeit verdict. The existing
+Commissioner writer appended adjudication **192** at `03:48:51.506Z`, after
+independent final archive, both source snapshots, roster and financial checks
+before and under its Serializable advisory lock. The bounded writer allowed
+exactly one adjudication create. Raw parser rows and the full financial snapshot
+were unchanged; statistics authority is true and betting authority remains false.
+Application receipt SHA-256:
+`42df389af7359d5ed9b460ff855583cc69d0b6d37033b6db4ad3788fc59d68ad`.
 The unchanged parser excludes the 50-second game as a rated result; human
 statistical adjudication must preserve that counterevidence and never declare
 a Steam-rated outcome. Nonfinal `25781` is an exact prefix with only one
@@ -441,3 +447,63 @@ the complete `[1,2]`/`[3,4]` partition, a same-world route marker transition
 This is candidate evidence. Engine EOF and an instruction-boundary hit are
 unproven. Generalized manifest-bound memory transcription, explicit negative
 controls and the actual replay input cursor are the next dependencies.
+
+The post-application census at `2026-10-07T03:49:43.772Z` has
+**57 Zodiac / 20 Vegeta / 22 JiReN = 99** admissible unknown results.
+Its Full Battle Truth is **3696/5453 = 67.77920410783055%**; receipt
+`a14d846e6a31f3236f45f772c3888b62c33f48d7bc144431b58f258723ade45d`.
+The deployed projection at `03:49:44.446Z` still includes the retired authorities:
+**3719/5453 = 68.2009902805795%**, with `51/20/22 = 93` unknown results;
+receipt `f00266e3eaa012e7bebfbc9c21ac1c2ced6c5087d49d01582708b52022ac8fd0`.
+Three additional corpus battles arrived between observations. The global
+numerator change is not a claim that the approved verdict added Full Truth.
+Production source at this observation is `335aa057f5b1e6db198c6a2ff8881f66e223088a`;
+this campaign performed no deployment.
+
+The deployed adjudication projector replaces native numeric sides with reviewed
+`gold`/`blue` labels, so `25782` is result-known but Workshop roster-incomplete.
+The branch correction retains native sides only after an exact complete frozen
+and current Steam/name/slot/team bijection, distinct uniform sides and complete
+winning-side agreement. Missing, duplicate, changed or ambiguous bindings and
+manual regroupings keep the existing named-side projection. Repeated projection
+preserves original parser provenance. The actual accepted `192` fixture passes
+the unchanged Workshop rule locally; this code is undeployed, so the current
+production Full Truth addition from `25782` remains **zero**.
+
+All **99** remaining logical battles have fresh SHA-verified final archives,
+current pass-10 parser evidence, exact Steam/slot/name bindings and adjudication
+history inspection. Each has one distinct final replay hash; different nonfinal
+uploads supply no result authority. The earlier 50 remaining Zodiac byte audits
+also match the current canonical team bindings. Immutable complete ledger:
+`22e17d482c8ee14521f1cd9571f374c2d586a997e9a024bcfefb03972000f828`;
+its case index is [`three-account-current-99-2026-10-07.json`](replay-receipts/three-account-current-99-2026-10-07.json).
+The primary blockers are 57 without serialized result packets, 17 disconnect
+resignations, 13 partial voluntary sides, 3 resignation identity ambiguities,
+3 unproven chapter terminal states, and 6 other distinct side/identity/inference
+blockers. None currently passes automatic or human-packet promotion.
+
+One of those six is `25620`: Zodiac/PKNT/Brian_de_Bois form a complete
+voluntarily resigned side by `22600ms`, but opposing Monty_Python and
+`[Thee]DavidJosephs88` also voluntarily resigned earlier. The exact current parse
+and independent rescan agree on all five packets. The strict archive proposal
+guard rejects this nomination with `proposal_complete_losing_side_not_proven`;
+partial opposing resignations, action order and the last remaining player do not
+establish a verdict under that contract. The 23-second early-exit exclusion
+remains intact. Research receipt
+`cd657aaddff5ff09a243c5d3b888558ebc7d6c5e149117ffccadb802e5104711`
+and rejection receipt
+`64115b3f73a2b64960dc79125b4363ac456a4345dd50e77cc225cda0cdcaa795`
+grant no authority; no additional Commissioner approval is requested prematurely.
+
+The generalized native decoder now binds complete 2/4/6/8 slot observations to
+closed modern known-control manifests, exact process/helper/archive identities,
+same-world progress and the observed finalizer transition. Adversarial controls
+reject stale, mixed, partial and early terminal evidence. Actual unchanged
+`32388` observations through sample `616` are independently rejected as
+preterminal; receipt
+`6c42e635d8985aabb57f6dd8c4ec2f60993e59879ed1b3fafc3d3be56bde7748`.
+That historical attempt has parser pass 8, so no modern pass-10 manifest was
+fabricated for it; generalized manifest controls are separately tested fixtures.
+Native result authority, engine EOF, instruction-boundary proof and unknown
+execution remain false. The next bounded experiment observes the native logical
+replay cursor and extent; an OS read-ahead position is insufficient.
