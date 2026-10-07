@@ -1807,6 +1807,31 @@ export default function RadioWoloBuilder() {
                   </span>
                 </>
               ) : null}
+
+              {duplicateChainCount > 0 ? (
+                <>
+                  <span>·</span>
+                  <button
+                    type="button"
+                    disabled={
+                      selectedProgramIsOnAir
+                    }
+                    onClick={
+                      cleanDuplicateChain
+                    }
+                    className="font-bold text-rose-200/80 underline decoration-rose-200/30 underline-offset-4 transition hover:text-rose-100 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    clean {duplicateChainCount.toLocaleString()} duplicate{duplicateChainCount === 1 ? "" : "s"}
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span>·</span>
+                  <span className="text-emerald-300/55">
+                    unique tracks
+                  </span>
+                </>
+              )}
             </div>
           </section>
 
@@ -1823,7 +1848,7 @@ export default function RadioWoloBuilder() {
                       type="button"
                       disabled={
                         selectedProgramIsOnAir ||
-                        visibleAssets.length ===
+                        addableVisibleAssets.length ===
                           0 ||
                         builtDurationMs >=
                           targetDurationMs ||
@@ -1843,10 +1868,10 @@ export default function RadioWoloBuilder() {
                       type="button"
                       disabled={
                         selectedProgramIsOnAir ||
-                        visibleAssets.length ===
+                        addableVisibleAssets.length ===
                           0 ||
                         chain.length +
-                          visibleAssets.length >
+                          addableVisibleAssets.length >
                           RADIO_PROGRAM_MAX_ITEMS
                       }
                       onClick={
@@ -1856,7 +1881,9 @@ export default function RadioWoloBuilder() {
                       title="Add every track matching the current Vault search"
                     >
                       <Plus size={12} />
-                      Add filtered · {visibleAssets.length}
+                      {addableVisibleAssets.length
+                        ? `Add filtered · ${addableVisibleAssets.length}`
+                        : "All filtered added"}
                     </button>
                   </div>
                 </div>
@@ -1898,12 +1925,19 @@ export default function RadioWoloBuilder() {
                         }
                         type="button"
                         disabled={
-                          selectedProgramIsOnAir
+                          selectedProgramIsOnAir ||
+                          chainAssetIds.has(
+                            asset.id,
+                          )
                         }
                         title={
                           selectedProgramIsOnAir
                             ? "Duplicate the live program to a draft before adding audio."
-                            : "Add to broadcast chain"
+                            : chainAssetIds.has(
+                                  asset.id,
+                                )
+                              ? "Already in broadcast chain"
+                              : "Add to broadcast chain"
                         }
                         onClick={() =>
                           addAsset(
@@ -1913,9 +1947,18 @@ export default function RadioWoloBuilder() {
                         className="group flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left transition hover:bg-fuchsia-100/[0.055] disabled:cursor-not-allowed disabled:opacity-35"
                       >
                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/8 bg-white/[0.025] text-slate-600 transition group-hover:border-fuchsia-100/20 group-hover:text-fuchsia-100">
-                          <Plus
-                            size={14}
-                          />
+                          {chainAssetIds.has(
+                            asset.id,
+                          ) ? (
+                            <Check
+                              size={14}
+                              className="text-emerald-300/70"
+                            />
+                          ) : (
+                            <Plus
+                              size={14}
+                            />
+                          )}
                         </span>
 
                         <span className="min-w-0 flex-1">
@@ -1987,6 +2030,8 @@ export default function RadioWoloBuilder() {
                     disabled={
                       busy ||
                       chain.length ===
+                        0 ||
+                      duplicateChainCount >
                         0 ||
                       selectedProgramIsOnAir
                     }
