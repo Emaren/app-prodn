@@ -26,6 +26,10 @@ import {
   type ChallengeReplayParticipant,
 } from "@/lib/challengeProtocol";
 import {
+  challengePairKey,
+  challengePairQueueLeaders,
+} from "@/lib/challengePairQueue";
+import {
   deriveChallengeLifecycle,
   deriveChallengeMoneyState,
   type ChallengeLifecyclePhase,
@@ -973,10 +977,6 @@ function readSessionStartTime(session: ComparableSession) {
   if (!Number.isFinite(endTime) || endTime <= 0) return null;
   if (session.durationSeconds === null || !Number.isFinite(session.durationSeconds)) return null;
   return endTime - Math.max(0, session.durationSeconds) * 1000;
-}
-
-function openChallengePairKey(row: ScheduledMatchRow) {
-  return [row.challenger.id, row.challenged.id].sort((left, right) => left - right).join(":");
 }
 
 function findLinkedSession(
@@ -2109,7 +2109,9 @@ async function persistScheduledMatchResults(
   if(rows.some(row=>row.protocolVersion===CHAMPIONSHIP_PROTOCOL_VERSION)) await reconcileChampionshipEvidence(prisma);
   const matchedActiveSessionKeys = new Set<string>();
   const matchedCompletedSessionKeys = new Set<string>();
-  const unlinkedFundedOpenPairCounts = new Map<string, number>();
+  const unlinkedFundedOpenPairLeaders =
+    new Map<string, number>();
+
   const needsOpenCorrelationGuard = rows.some(
     (row) =>
       row.timingMode === "open" &&
@@ -2121,25 +2123,58 @@ async function persistScheduledMatchResults(
   );
 
   if (needsOpenCorrelationGuard) {
-    const allUnlinkedFundedOpenChallenges = await prisma.scheduledMatch.findMany({
-      where: {
-        championshipProtocol: null,
-        championshipLeg: null,
-        timingMode: "open",
-        matchTime: null,
-        linkedSessionKey: null,
-        challengerFundedAt: { not: null },
-        challengedFundedAt: { not: null },
-        status: { notIn: [...RESOLVED_SCHEDULED_STATUSES] },
-      },
-      select: { challengerUserId: true, challengedUserId: true },
-    });
+    const allUnlinkedFundedOpenChallenges =
+      await prisma.scheduledMatch.findMany({
+        where: {
+          championshipProtocol:
+            null,
+          championshipLeg:
+            null,
+          timingMode:
+            "open",
+          matchTime:
+            null,
+          linkedSessionKey:
+            null,
+          challengerFundedAt: {
+            not:
+              null,
+          },
+          challengedFundedAt: {
+            not:
+              null,
+          },
+          status: {
+            notIn: [
+              ...RESOLVED_SCHEDULED_STATUSES,
+            ],
+          },
+        },
+        select: {
+          id:
+            true,
+          challengerUserId:
+            true,
+          challengedUserId:
+            true,
+          createdAt:
+            true,
+        },
+      });
 
-    for (const challenge of allUnlinkedFundedOpenChallenges) {
-      const key = [challenge.challengerUserId, challenge.challengedUserId]
-        .sort((left, right) => left - right)
-        .join(":");
-      unlinkedFundedOpenPairCounts.set(key, (unlinkedFundedOpenPairCounts.get(key) ?? 0) + 1);
+    const leaders =
+      challengePairQueueLeaders(
+        allUnlinkedFundedOpenChallenges,
+      );
+
+    for (const [
+      key,
+      leader,
+    ] of leaders) {
+      unlinkedFundedOpenPairLeaders.set(
+        key,
+        leader.id,
+      );
     }
   }
 
@@ -2181,11 +2216,28 @@ async function persistScheduledMatchResults(
       now
     );
     const hasTerms = surface.economy.hasTerms;
-    const openPairIsUnambiguous =
-      row.timingMode === "open" &&
+    /*
+     * Multiple reverse-direction Challenges between the same two warriors are
+     * a queue, not an ambiguity. The oldest unlinked funded Challenge owns the
+     * next verified duel; later Challenges remain open for later battles.
+     *
+     * An already-linked row remains authoritative for its exact session.
+     */
+    const openPairCanClaimNextSession =
+      row.timingMode ===
+        "open" &&
       !row.matchTime &&
-      (Boolean(row.linkedSessionKey) ||
-        unlinkedFundedOpenPairCounts.get(openChallengePairKey(row)) === 1);
+      (
+        Boolean(
+          row.linkedSessionKey,
+        ) ||
+        unlinkedFundedOpenPairLeaders.get(
+          challengePairKey(
+            row.challenger.id,
+            row.challenged.id,
+          ),
+        ) === row.id
+      );
     const canLinkScheduledSession =
       row.timingMode === "scheduled" &&
       Boolean(row.matchTime) &&
@@ -2193,7 +2245,7 @@ async function persistScheduledMatchResults(
         ? surface.displayState === "ready" || row.status === "live_confirmed" || row.status === "completed"
         : row.status === "accepted" || row.status === "completed");
     const canLinkOpenSession =
-      openPairIsUnambiguous &&
+      openPairCanClaimNextSession &&
       Boolean(row.challengerFundedAt && row.challengedFundedAt) &&
       ["funded", "ready", "live"].includes(surface.displayState);
     const canLinkSessions =
@@ -2207,7 +2259,7 @@ async function persistScheduledMatchResults(
         recentlyCompletedSessions,
         row,
         matchedCompletedSessionKeys,
-        { allowOpenPlayAnytimeCorrelation: openPairIsUnambiguous }
+        { allowOpenPlayAnytimeCorrelation: openPairCanClaimNextSession }
       );
 
       if (completedSession) {
@@ -2848,7 +2900,7 @@ async function persistScheduledMatchResults(
       }
 
       const activeSession = findLinkedSession(activeSessions, row, matchedActiveSessionKeys, {
-        allowOpenPlayAnytimeCorrelation: openPairIsUnambiguous,
+        allowOpenPlayAnytimeCorrelation: openPairCanClaimNextSession,
       });
 
       if (activeSession) {
@@ -3542,29 +3594,37 @@ export async function loadScheduledMatchTilesForLiveBoard(
     recentlyCompletedSessions,
     now
   );
-  const recentResolvedTiles = buildComparableChallengeTiles(reconciledRows, now)
-    .filter((tile) => isResolvedChallengeDisplayState(tile.displayState))
-    .filter(
-      (tile) => now.getTime() - new Date(tile.activityAt).getTime() <= CHALLENGE_RECENT_LINGER_MS
-    )
-    .sort(compareHistoryTileOrder);
-  const combinedTiles = [...activeSnapshot.tiles, ...recentResolvedTiles];
-  const { matchedActiveSessionKeys, matchedCompletedSessionKeys } =
-    deriveMatchedSessionKeys(combinedTiles);
+  /*
+   * Live Games owns active Challenge obligations, not Challenge history.
+   * Once watcher truth resolves a Challenge it leaves this rail immediately;
+   * the completed battle can continue through the ordinary recent-result lane
+   * while the Challenge itself remains durable in Challenge Hall/chat history.
+   */
+  const activeTiles =
+    activeSnapshot.tiles;
+
+  const {
+    matchedActiveSessionKeys,
+  } =
+    deriveMatchedSessionKeys(
+      activeTiles,
+    );
 
   return {
-    tiles: combinedTiles,
+    tiles:
+      activeTiles,
     matchedActiveSessionKeys,
-    matchedCompletedSessionKeys,
+    matchedCompletedSessionKeys:
+      new Set<string>(),
   };
 }
 
-export async function loadChallengeThreadTile(
+export async function loadChallengeThreadTiles(
   prisma: PrismaClient,
   viewerUserId: number,
   counterpartUserId: number,
   challengeId?: number | null
-): Promise<ScheduledMatchTile | null> {
+): Promise<ScheduledMatchTile[]> {
   const [rows, sessionSnapshot] = await Promise.all([
     loadScheduledMatchRows(prisma, {
       viewerUserId,
@@ -3582,24 +3642,101 @@ export async function loadChallengeThreadTile(
     sessionSnapshot.recentlyCompletedSessions
   );
 
-  // An embedded Match Room names an exact ledger record, including terminal
-  // matches. Do not let the active-runway filter silently substitute another
-  // challenge from the same pair or hide a resolved one.
+  /*
+   * An embedded Match Room names one exact ledger record, including terminal
+   * matches. Never substitute another reverse-direction Challenge.
+   */
   if (challengeId) {
-    const projections=await loadChampionshipProjectionMap(prisma,[challengeId],viewerUserId);
-    return buildComparableChallengeTiles(reconciledRows).map(tile=>({...tile,championship:projections.get(tile.id)??null})).find(
-      (tile) => tile.id === challengeId
-    ) ?? null;
+    const projections =
+      await loadChampionshipProjectionMap(
+        prisma,
+        [challengeId],
+        viewerUserId,
+      );
+
+    const tile =
+      buildComparableChallengeTiles(
+        reconciledRows,
+      )
+        .map((entry) => ({
+          ...entry,
+          championship:
+            projections.get(
+              entry.id,
+            ) ??
+            null,
+        }))
+        .find(
+          (entry) =>
+            entry.id ===
+            challengeId,
+        );
+
+    return tile
+      ? [tile]
+      : [];
   }
 
-  const { tiles } = deriveScheduledMatchTiles(
-    reconciledRows,
-    sessionSnapshot.activeSessions,
-    sessionSnapshot.recentlyCompletedSessions
-  );
+  const { tiles } =
+    deriveScheduledMatchTiles(
+      reconciledRows,
+      sessionSnapshot.activeSessions,
+      sessionSnapshot.recentlyCompletedSessions
+    );
 
-  const projections=await loadChampionshipProjectionMap(prisma,tiles.map(tile=>tile.id),viewerUserId);
-  return tiles[0] ? {...tiles[0],championship:projections.get(tiles[0].id)??null} : null;
+  const projections =
+    await loadChampionshipProjectionMap(
+      prisma,
+      tiles.map(
+        (tile) =>
+          tile.id,
+      ),
+      viewerUserId,
+    );
+
+  return tiles
+    .map(
+      (tile) => ({
+        ...tile,
+        championship:
+          projections.get(
+            tile.id,
+          ) ??
+          null,
+      }),
+    )
+    .sort(
+      (
+        left,
+        right,
+      ) =>
+        new Date(
+          left.createdAt,
+        ).getTime() -
+          new Date(
+            right.createdAt,
+          ).getTime() ||
+        left.id -
+          right.id,
+    );
+}
+
+export async function loadChallengeThreadTile(
+  prisma: PrismaClient,
+  viewerUserId: number,
+  counterpartUserId: number,
+  challengeId?: number | null
+): Promise<ScheduledMatchTile | null> {
+  const tiles =
+    await loadChallengeThreadTiles(
+      prisma,
+      viewerUserId,
+      counterpartUserId,
+      challengeId,
+    );
+
+  return tiles[0] ??
+    null;
 }
 
 /** Load one exact ledger tile after the caller has enforced participant/admin access. */

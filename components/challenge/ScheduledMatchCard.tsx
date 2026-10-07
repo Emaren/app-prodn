@@ -255,10 +255,10 @@ function accentClasses(displayState: ScheduledMatchTile["displayState"]) {
       };
     case "completed":
       return {
-        shell: "border-sky-300/18 bg-[linear-gradient(180deg,rgba(125,211,252,0.08),rgba(15,23,42,0.48))]",
-        badge: "border-sky-300/25 bg-sky-300/12 text-sky-50",
-        icon: "border-sky-300/20 bg-sky-300/12 text-sky-100",
-        eyebrow: "text-sky-100/75",
+        shell: "border-rose-950/42 bg-[radial-gradient(circle_at_92%_0%,rgba(127,29,29,0.18),transparent_38%),linear-gradient(145deg,rgba(39,39,42,0.88),rgba(15,15,18,0.94))] shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]",
+        badge: "border-rose-900/35 bg-rose-950/20 text-stone-200",
+        icon: "border-rose-900/30 bg-rose-950/20 text-rose-200/70",
+        eyebrow: "text-stone-400",
       };
     case "no_show_left":
     case "no_show_right":
@@ -1209,7 +1209,7 @@ export default function ScheduledMatchCard({
             Open
           </Link>
         </div>
-        {championship ? <div className="mt-2"><ChallengeChampionshipState championship={championship} nowMs={nowMs} defender={championshipParticipant?.side === "defender"} compact /></div> : null}
+        {championship ? <div className="mt-2"><ChallengeChampionshipState championship={championship} nowMs={nowMs} defender={championshipParticipant?.side === "defender"} compact dense={compact && stacked} /></div> : null}
       </div>
     );
   }
