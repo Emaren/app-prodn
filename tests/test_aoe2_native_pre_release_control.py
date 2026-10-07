@@ -86,6 +86,8 @@ class NativePreReleaseControlTests(unittest.TestCase):
         self.assertIn('"wholeInputConsumptionProven": False', source)
         self.assertIn('"unknownGameExecutionEnabled": False', source)
         self.assertIn('"woloWrites": 0', source)
+        self.assertIn('"HOLD_PROBE_INCOMPLETE"', source)
+        self.assertIn('return result, 0 if probe_recorded else 4', source)
 
 
 if __name__ == "__main__":
