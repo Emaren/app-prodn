@@ -117,13 +117,22 @@ def find_tool(name: str) -> Path:
         f"/opt/homebrew/opt/llvm/bin/{name}",
         f"/usr/local/opt/llvm/bin/{name}",
     ]
+    if name == "lld-link":
+        candidates.append(
+            str(
+                Path.home()
+                / ".rustup/toolchains/stable-aarch64-apple-darwin"
+                / "lib/rustlib/aarch64-apple-darwin/bin/gcc-ld/lld-link"
+            )
+        )
     for candidate in candidates:
         if candidate:
             path = Path(candidate).expanduser()
             if path.is_file() and os.access(path, os.X_OK):
                 return path.resolve()
     raise ControlError(
-        f"Required LLVM tool {name!r} was not found. Install Homebrew llvm or expose it on PATH."
+        f"Required LLVM tool {name!r} was not found in PATH, Homebrew LLVM, "
+        "or the reviewed Rust stable toolchain."
     )
 
 
