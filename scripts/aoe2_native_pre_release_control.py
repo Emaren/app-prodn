@@ -384,10 +384,21 @@ def bounded_run(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
                 if path.is_file():
                     probe_files[name] = identity(path)
 
+        probe_recorded = (
+            probe_process.returncode == 0
+            and isinstance(probe_payload, dict)
+            and probe_payload.get("status") == "RECORDED_CANDIDATE_ONLY"
+        )
+        control_status = (
+            "HOLD_PENDING_INDEPENDENT_REVIEW"
+            if probe_recorded
+            else "HOLD_PROBE_INCOMPLETE"
+        )
+
         payload = {
             "schema": "aoe2war-native-pre-release-control/v1",
             "generatedAt": utc_now(),
-            "status": "HOLD_PENDING_INDEPENDENT_REVIEW",
+            "status": control_status,
             "candidateOnly": True,
             "gameStatsId": GAME_ID,
             "replaySha256": REPLAY_SHA256,
@@ -442,6 +453,7 @@ def bounded_run(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
             "runId": run_id,
             "runnerReturnCode": runner_process.returncode,
             "probeReturnCode": probe_process.returncode,
+            "probeRecorded": probe_recorded,
             "attemptDirectory": str(attempt),
             "probeDirectory": str(probe),
             "receipt": str(receipt_path),
@@ -450,7 +462,7 @@ def bounded_run(args: argparse.Namespace) -> tuple[dict[str, Any], int]:
             "wholeInputConsumptionProven": False,
             "unknownGameExecutionEnabled": False,
         }
-        return result, 0
+        return result, 0 if probe_recorded else 4
 
 
 def main(argv: list[str] | None = None) -> int:
