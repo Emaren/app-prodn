@@ -516,3 +516,38 @@ test(
     );
   },
 );
+
+test(
+  "governed manual Challenge result immediately reconciles its Bet book after commit",
+  () => {
+    const route =
+      read(
+        "app/api/challenges/[id]/route.ts",
+      );
+
+    const completionBlock =
+      route.match(
+        /if \(action === "mark_completed"\)[\s\S]*?(?=\n    const commissionerNotice)/,
+      )?.[0] ??
+      "";
+
+    assert.match(
+      completionBlock,
+      /completeChallengeManually/,
+    );
+
+    assert.match(
+      completionBlock,
+      /ensureBetMarketsAfterCommit\(\s*prisma/,
+    );
+
+    assert.ok(
+      completionBlock.indexOf(
+        "completeChallengeManually",
+      ) <
+        completionBlock.indexOf(
+          "ensureBetMarketsAfterCommit",
+        ),
+    );
+  },
+);
