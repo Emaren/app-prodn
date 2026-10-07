@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "33ea3ceea91c2c3876843c043fd19e5acd39f9373b01a6978d17e23bd9a53feb",
+      "sha256": "c4f0ecdafcc8499635e82068c440e3d89b27ba4e24f44d1ba1abf46f156c5f73",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1101,7 +1101,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-07",
       "sensitivity": "restricted",
-      "sha256": "94680dde6dbba0a9213e3fe56809cc241e7ee1b28548c47a4e18fc76d79c1f85",
+      "sha256": "5c12be77c043d887a5e38fd84933fc83f7e3916b0155da1ff5e2d34e63660b22",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2049,7 +2049,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "chatgpt/native-memory-control-ladder-20261007",
-    "commit": "d83c6a8a3849681e9fe85dbb31afdfabb1ad3a0e"
+    "commit": "dd1ff9bd2a9f4308ef249d03faa134c32049afe9"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
