@@ -597,6 +597,42 @@ export default function RadioWoloBuilder() {
       ],
     );
 
+  const chainAssetIds =
+    useMemo(
+      () =>
+        new Set(
+          chain.map(
+            (item) =>
+              item.asset.id,
+          ),
+        ),
+      [chain],
+    );
+
+  const duplicateChainCount =
+    useMemo(
+      () =>
+        countDuplicateChainItems(
+          chain,
+        ),
+      [chain],
+    );
+
+  const addableVisibleAssets =
+    useMemo(
+      () =>
+        visibleAssets.filter(
+          (asset) =>
+            !chainAssetIds.has(
+              asset.id,
+            ),
+        ),
+      [
+        chainAssetIds,
+        visibleAssets,
+      ],
+    );
+
   function updateChain(
     next:
       | ChainItem[]
@@ -616,7 +652,15 @@ export default function RadioWoloBuilder() {
     }
 
     setChain(
-      next,
+      (current) =>
+        dedupeChainItems(
+          typeof next ===
+            "function"
+            ? next(
+                current,
+              )
+            : next,
+        ),
     );
 
     setChainDirty(
@@ -643,25 +687,57 @@ export default function RadioWoloBuilder() {
   function addAsset(
     asset: Asset,
   ) {
+    if (
+      chainAssetIds.has(
+        asset.id,
+      )
+    ) {
+      setError(null);
+      setNotice(
+        `"${asset.title}" is already in this broadcast chain.`,
+      );
+      return;
+    }
+
+    setError(null);
+    setNotice(null);
+
     updateChain(
       (
         current,
-      ) => [
-        ...current,
-        {
-          key:
-            chainKey(
-              `asset-${asset.id}`,
-            ),
-          asset,
-          transition:
-            current.length
-              ? "cut"
-              : "cut",
-          crossfadeMs:
-            0,
-        },
-      ],
+      ) => {
+        if (
+          current.some(
+            (item) =>
+              item.asset.id ===
+              asset.id,
+          )
+        ) {
+          return current;
+        }
+
+        if (
+          current.length >=
+          RADIO_PROGRAM_MAX_ITEMS
+        ) {
+          return current;
+        }
+
+        return [
+          ...current,
+          {
+            key:
+              chainKey(
+                `asset-${asset.id}`,
+              ),
+            asset,
+            transition:
+              "cut",
+            crossfadeMs:
+              0,
+          },
+        ];
+      },
     );
   }
 
@@ -673,8 +749,18 @@ export default function RadioWoloBuilder() {
     }
 
     if (
+      !addableVisibleAssets.length
+    ) {
+      setError(null);
+      setNotice(
+        "Every filtered track is already in this broadcast chain.",
+      );
+      return;
+    }
+
+    if (
       chain.length +
-        visibleAssets.length >
+        addableVisibleAssets.length >
       RADIO_PROGRAM_MAX_ITEMS
     ) {
       setError(
@@ -683,23 +769,66 @@ export default function RadioWoloBuilder() {
       return;
     }
 
+    setError(null);
+    setNotice(
+      `Adding ${addableVisibleAssets.length.toLocaleString()} unique filtered track${addableVisibleAssets.length === 1 ? "" : "s"}.`,
+    );
+
     updateChain(
-      (current) => [
-        ...current,
-        ...visibleAssets.map(
-          (asset) => ({
+      (current) => {
+        const existing =
+          new Set(
+            current.map(
+              (item) =>
+                item.asset.id,
+            ),
+          );
+
+        const additions:
+          ChainItem[] = [];
+
+        for (
+          const asset of
+          visibleAssets
+        ) {
+          if (
+            existing.has(
+              asset.id,
+            )
+          ) {
+            continue;
+          }
+
+          if (
+            current.length +
+              additions.length >=
+            RADIO_PROGRAM_MAX_ITEMS
+          ) {
+            break;
+          }
+
+          existing.add(
+            asset.id,
+          );
+
+          additions.push({
             key:
               chainKey(
                 `asset-${asset.id}`,
               ),
             asset,
             transition:
-              "cut" as const,
+              "cut",
             crossfadeMs:
               0,
-          }),
-        ),
-      ],
+          });
+        }
+
+        return [
+          ...current,
+          ...additions,
+        ];
+      },
     );
   }
 
@@ -721,62 +850,99 @@ export default function RadioWoloBuilder() {
       return;
     }
 
-    let duration =
-      builtDurationMs;
-
-    const additions:
-      ChainItem[] = [];
-
-    for (
-      const asset of
-      visibleAssets
-    ) {
-      if (
-        chain.length +
-          additions.length >=
-        RADIO_PROGRAM_MAX_ITEMS
-      ) {
-        break;
-      }
-
-      additions.push({
-        key:
-          chainKey(
-            `asset-${asset.id}`,
-          ),
-        asset,
-        transition:
-          "cut",
-        crossfadeMs:
-          0,
-      });
-
-      duration +=
-        asset.durationMs;
-
-      if (
-        duration >=
-        targetDurationMs
-      ) {
-        break;
-      }
-    }
-
     if (
-      !additions.length
+      !addableVisibleAssets.length
     ) {
-      setError(
-        "No filtered tracks could be added to this target.",
+      setError(null);
+      setNotice(
+        "Every filtered track is already in this broadcast chain.",
       );
       return;
     }
 
     setError(null);
+    setNotice(null);
 
-    updateChain([
-      ...chain,
-      ...additions,
-    ]);
+    updateChain(
+      (current) => {
+        let duration =
+          calculateRadioProgramDurationMs(
+            current.map(
+              (item) => ({
+                durationMs:
+                  item.asset.durationMs,
+                transition:
+                  item.transition,
+                crossfadeMs:
+                  item.crossfadeMs,
+              }),
+            ),
+          );
+
+        const existing =
+          new Set(
+            current.map(
+              (item) =>
+                item.asset.id,
+            ),
+          );
+
+        const additions:
+          ChainItem[] = [];
+
+        for (
+          const asset of
+          visibleAssets
+        ) {
+          if (
+            existing.has(
+              asset.id,
+            )
+          ) {
+            continue;
+          }
+
+          if (
+            current.length +
+              additions.length >=
+            RADIO_PROGRAM_MAX_ITEMS
+          ) {
+            break;
+          }
+
+          existing.add(
+            asset.id,
+          );
+
+          additions.push({
+            key:
+              chainKey(
+                `asset-${asset.id}`,
+              ),
+            asset,
+            transition:
+              "cut",
+            crossfadeMs:
+              0,
+          });
+
+          duration +=
+            asset.durationMs;
+
+          if (
+            duration >=
+            targetDurationMs
+          ) {
+            break;
+          }
+        }
+
+        return [
+          ...current,
+          ...additions,
+        ];
+      },
+    );
   }
 
   function removeItem(
