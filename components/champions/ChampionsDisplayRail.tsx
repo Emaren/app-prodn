@@ -4,7 +4,49 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect } from "react";
 
-export type ChampionsDisplayMode = "b" | "a" | "e1" | "e2" | "e3";
+export type ChampionsDisplayMode = "b" | "a" | "e1" | "e2" | "e3" | "e4";
+
+const CHAMPIONS_VIEW_ROUTES: Array<{
+  mode: ChampionsDisplayMode;
+  label: string;
+  href: string;
+}> = [
+  { mode: "b", label: "B", href: "/champions/legacy?view=b" },
+  { mode: "a", label: "A", href: "/champions/legacy?view=a" },
+  { mode: "e1", label: "E1", href: "/champions/legacy?view=e" },
+  { mode: "e2", label: "E2", href: "/champions/e2" },
+  { mode: "e3", label: "E3", href: "/champions" },
+  { mode: "e4", label: "E4", href: "/champions/e4" },
+];
+
+export function ChampionsViewCycleButton({
+  active,
+}: {
+  active: ChampionsDisplayMode;
+}) {
+  const currentIndex = CHAMPIONS_VIEW_ROUTES.findIndex((entry) => entry.mode === active);
+  const current = CHAMPIONS_VIEW_ROUTES[currentIndex >= 0 ? currentIndex : 0];
+  const next = CHAMPIONS_VIEW_ROUTES[(currentIndex + 1 + CHAMPIONS_VIEW_ROUTES.length) % CHAMPIONS_VIEW_ROUTES.length];
+
+  return (
+    <Link
+      href={next.href}
+      aria-label={`Champions view ${current.label}. Switch to ${next.label}.`}
+      title={`${current.label} · click for ${next.label}`}
+      className="group inline-flex min-w-[4.4rem] items-center justify-between gap-2 rounded-full border border-amber-100/10 bg-[linear-gradient(180deg,rgba(92,67,39,0.34),rgba(42,31,20,0.56))] px-2.5 py-1.5 text-amber-100/55 shadow-[inset_0_1px_0_rgba(255,255,255,0.035),0_8px_24px_rgba(0,0,0,0.22)] transition hover:border-amber-100/20 hover:text-amber-50"
+    >
+      <span className="text-[7px] font-black uppercase tracking-[0.22em] text-amber-100/32">
+        View
+      </span>
+      <span className="font-mono text-[10px] font-black tracking-[0.12em]">
+        {current.label}
+      </span>
+      <span className="text-[9px] text-amber-100/28 transition group-hover:translate-x-0.5">
+        ›
+      </span>
+    </Link>
+  );
+}
 
 function itemClass(selected: boolean) {
   return `min-w-8 rounded-full px-2.5 py-1 text-center text-[9px] font-black uppercase tracking-[0.16em] transition ${
@@ -29,12 +71,17 @@ export default function ChampionsDisplayRail({
         : requestedLegacy === "a"
           ? "a"
           : "e1"
-      : pathname.includes("/champions/e2")
-        ? "e2"
-        : "e3";
+      : pathname.includes("/champions/e4")
+        ? "e4"
+        : pathname.includes("/champions/e2")
+          ? "e2"
+          : "e3";
   const selectedMode = active ?? inferred;
   const extremeSelected =
-    selectedMode === "e1" || selectedMode === "e2" || selectedMode === "e3";
+    selectedMode === "e1" ||
+    selectedMode === "e2" ||
+    selectedMode === "e3" ||
+    selectedMode === "e4";
 
   useEffect(() => {
     document.documentElement.dataset.championsView =
@@ -108,6 +155,14 @@ export default function ChampionsDisplayRail({
               className={itemClass(selectedMode === "e3")}
             >
               E3
+            </Link>
+            <Link
+              href="/champions/e4"
+              aria-current={selectedMode === "e4" ? "page" : undefined}
+              title="Extreme 4 · hybrid"
+              className={itemClass(selectedMode === "e4")}
+            >
+              E4
             </Link>
           </div>
         </div>

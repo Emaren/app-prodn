@@ -14,7 +14,9 @@ import {
   Users,
 } from "lucide-react";
 
-import ChampionsDisplayRail from "@/components/champions/ChampionsDisplayRail";
+import ChampionsDisplayRail, {
+  ChampionsViewCycleButton,
+} from "@/components/champions/ChampionsDisplayRail";
 import { avatarCardUrlForUser } from "@/lib/avatarAssets";
 import type {
   ChampionsLane,
@@ -494,17 +496,22 @@ export default function ChampionsE3Experience({ state }: { state: ChampionsV2Sta
               The preserved E1 war-table layout, carrying the complete E2 championship ledger.
             </p>
           </div>
-          <div className="grid min-w-[min(100%,22rem)] gap-2 rounded-2xl border border-white/10 bg-black/22 p-4 sm:grid-cols-3 lg:min-w-[28rem]">
-            {[
-              ["Active", state.summary.active],
-              ["Vacant", state.summary.vacant],
-              ["Tribute", `${state.summary.tributePoolWolo} WOLO/day`],
-            ].map(([label, value]) => (
-              <div key={String(label)} className="rounded-xl border border-white/8 bg-white/[0.035] px-3 py-3">
-                <div className="text-[9px] uppercase tracking-[0.2em] text-slate-500">{label}</div>
-                <div className="mt-1 text-lg font-semibold text-amber-50">{value}</div>
-              </div>
-            ))}
+          <div className="space-y-3">
+            <div className="flex justify-end">
+              <ChampionsViewCycleButton active="e3" />
+            </div>
+            <div className="grid min-w-[min(100%,22rem)] gap-2 rounded-2xl border border-white/10 bg-black/22 p-4 sm:grid-cols-3 lg:min-w-[28rem]">
+              {[
+                ["Active", state.summary.active],
+                ["Vacant", state.summary.vacant],
+                ["Tribute", `${state.summary.tributePoolWolo} WOLO/day`],
+              ].map(([label, value]) => (
+                <div key={String(label)} className="rounded-xl border border-white/8 bg-white/[0.035] px-3 py-3">
+                  <div className="text-[9px] uppercase tracking-[0.2em] text-slate-500">{label}</div>
+                  <div className="mt-1 text-lg font-semibold text-amber-50">{value}</div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </section>
