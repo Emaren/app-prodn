@@ -11,7 +11,6 @@ import {
 } from "@/lib/challengeConfig";
 import {
   loadChallengeHubSnapshot,
-  loadChallengeThreadTile,
   normalizeChallengeNote,
   parseScheduledMatchDate,
 } from "@/lib/challenges";
@@ -341,11 +340,6 @@ export async function POST(request: NextRequest) {
       challengedSteamId: challenged.steamId,
     });
 
-    const existingActiveMatch = await loadChallengeThreadTile(prisma, viewer.id, challenged.id);
-    const duplicateWarning = existingActiveMatch
-      ? `You already have another active challenge with ${playerName(challenged)}. Creating this one anyway.`
-      : null;
-
     const challengerName = playerName(viewer);
     const challengedName = playerName(challenged);
     const challengeLabel = buildChallengeLabel({ challengerName, challengedName });
@@ -540,6 +534,111 @@ export async function POST(request: NextRequest) {
 
     try {
       await prisma.$transaction(async (tx) => {
+        /*
+         * Same-direction Challenge creation is single-flight. Reverse
+         * direction remains legal, as does challenging any number of other
+         * warriors. This lock prevents double-click/API races.
+         */
+        await tx.$executeRaw`
+          SELECT pg_advisory_xact_lock(
+            hashtextextended(
+              ${`challenge-direction:${viewer.id}:${challenged.id}`},
+              0
+            )
+          )
+        `;
+
+        const existingDirectional =
+          await tx.scheduledMatch.findFirst({
+            where: {
+              challengerUserId:
+                viewer.id,
+              challengedUserId:
+                challenged.id,
+              championshipLeg:
+                null,
+              resultAt:
+                null,
+              status: {
+                in: [
+                  "pending",
+                  "accepted",
+                  "proposed",
+                  "terms_accepted",
+                  "creator_funded",
+                  "opponent_funded",
+                  "funded",
+                  "left_checked_in",
+                  "right_checked_in",
+                  "ready",
+                  "live_confirmed",
+                  "result_pending",
+                  "desync_review",
+                ],
+              },
+              OR: [
+                {
+                  liveConfirmedAt: {
+                    not:
+                      null,
+                  },
+                },
+                {
+                  playBy: {
+                    gt:
+                      now,
+                  },
+                },
+                {
+                  acceptBy: {
+                    gt:
+                      now,
+                  },
+                },
+                {
+                  AND: [
+                    {
+                      playBy:
+                        null,
+                    },
+                    {
+                      acceptBy:
+                        null,
+                    },
+                    {
+                      scheduledAt: {
+                        gt:
+                          now,
+                      },
+                    },
+                  ],
+                },
+              ],
+            },
+            select: {
+              id:
+                true,
+            },
+            orderBy: [
+              {
+                createdAt:
+                  "asc",
+              },
+              {
+                id:
+                  "asc",
+              },
+            ],
+          });
+
+        if (existingDirectional) {
+          throw new ChallengeProtocolError(
+            "duplicate_directional_challenge",
+            `You already have active challenge #${existingDirectional.id} to ${challengedName}. Finish it or let its 24-hour window expire before issuing another in the same direction.`,
+            409,
+          );
+        }
+
         for (const titleStake of titleStakePlans) {
           const title = titleStake.trophy;
           await tx.$executeRaw`
@@ -836,7 +935,8 @@ export async function POST(request: NextRequest) {
       linkedTrophyChallengeId,
       linkedTrophyChallengeIds,
       titleStakeNames,
-      duplicateWarning,
+      duplicateWarning:
+        null,
     });
   } catch (error) {
     if (error instanceof Error && "status" in error && typeof error.status === "number") return NextResponse.json({detail:error.message}, {status:error.status});
