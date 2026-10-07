@@ -8,7 +8,7 @@ systems: ["app-prodn", "wolochain"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "betting-constitution-ratification-candidate"
-reviewed_at: "2026-09-22"
+reviewed_at: "2026-10-07"
 review_interval_days: 14
 sensitivity: "internal"
 ---
