@@ -82,11 +82,15 @@ That debugger behavior is explicitly disclosed in the receipt. The command does
 not modify the executable or replay on disk and performs no production,
 database, adjudication, betting, settlement or Wolo write.
 
-The command is fail-closed at the research boundary. Its top-level result remains
+The command is fail-closed at the research boundary. A successfully captured
+debugger transcript still returns the top-level state
 `HOLD_PENDING_INDEPENDENT_REVIEW`; it does not infer EOF from stream closure,
 does not claim whole-input consumption, and does not enable unknown-game
-execution. The known-control expansion gate remains closed until the captured
-instruction-boundary evidence independently proves the required semantics.
+execution. If the debugger probe itself is incomplete, the command emits
+`HOLD_PROBE_INCOMPLETE` and returns nonzero while preserving the evidence
+available for diagnosis. The known-control expansion gate remains closed until
+the captured instruction-boundary evidence independently proves the required
+semantics.
 
 This command is the canonical primitive for this workflow. A future Admin
 Dashboard control must call the same governed operation (through a fixed
