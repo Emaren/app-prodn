@@ -80,7 +80,7 @@ test("a hypothetical explicit human short-forfeit verdict grants stats only and 
 
 test("the review surface makes the short-game exclusion visible before loading the draft", () => {
   const ui = readFileSync(new URL("../app/game-stats/[id]/review/ReplayResultReviewWorkspace.tsx", import.meta.url), "utf8");
-  assert.match(ui, /50-second replay is excluded by the parser's early-exit rule/);
+  assert.match(ui, /50-second replay is excluded by the parser early-exit rule/);
   assert.match(ui, /does not establish a Steam-rated result/);
   const route = readFileSync(new URL("../app/api/replay-results/[id]/recovery-proposal/route.ts", import.meta.url), "utf8");
   assert.match(route, /three-account-stats-only-proposals/);

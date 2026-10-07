@@ -75,7 +75,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/radio",
     label: "Radio WOLO",
-    version: "src-6a58574bcf23a6541015",
+    version: "src-a1cca2144bc9aa0b8c50",
   },
   {
     href: "/workshop",
@@ -90,7 +90,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/game-stats",
     label: "Parser Observatory",
-    version: "src-d5fba182b8b872987f8b",
+    version: "src-6a872c5802ce61bf4a7d",
   },
   {
     href: "/traffic",
