@@ -1161,6 +1161,14 @@ def main() -> int:
     )
     native_parser.add_argument("--run-id")
     native_parser.add_argument(
+        "--api-root",
+        type=Path,
+        help=(
+            "optional api-prodn checkout/worktree for the native control; "
+            "defaults to the canonical sibling checkout"
+        ),
+    )
+    native_parser.add_argument(
         "--native-performance-seconds",
         type=int,
         default=240,
@@ -1206,6 +1214,13 @@ def main() -> int:
                     [
                         "--run-id",
                         args.run_id,
+                    ]
+                )
+            if args.api_root is not None:
+                command.extend(
+                    [
+                        "--api-root",
+                        str(args.api_root),
                     ]
                 )
             return subprocess.run(
