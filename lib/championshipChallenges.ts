@@ -26,6 +26,26 @@ export type ChampionshipChallengeProjection = ChampionshipProjection;
 const LOCK_NAMESPACE = 752_017;
 const ACTIVE = ["open", "ready", "defense_in_progress", "default_grace", "commissioner_review"];
 const AUTOMATIC_EVIDENCE = ["open", "ready", "defense_in_progress", "default_grace"];
+
+function compareChampionshipQueueOrder(
+  left: Pick<
+    ChampionshipChallenge,
+    "createdAt" |
+      "scheduledMatchId"
+  >,
+  right: Pick<
+    ChampionshipChallenge,
+    "createdAt" |
+      "scheduledMatchId"
+  >,
+) {
+  return (
+    left.createdAt.getTime() -
+      right.createdAt.getTime() ||
+    left.scheduledMatchId -
+      right.scheduledMatchId
+  );
+}
 export const CHAMPIONSHIP_INCLUDE = { participants: { orderBy: [{ side: "asc" }, { seat: "asc" }] }, legs: true } satisfies Prisma.ChampionshipChallengeInclude;
 const USER_SELECT = { id: true, uid: true, inGameName: true, steamPersonaName: true, steamId: true, walletAddress: true, representedCountry: true, genderDivision: true, isAdmin: true } as const;
 type ProtocolRow = Prisma.ChampionshipChallengeGetPayload<{ include: typeof CHAMPIONSHIP_INCLUDE }>;
@@ -157,6 +177,72 @@ export async function createChampionshipChallenge(prisma: PrismaClient, viewerUs
     await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtextextended(${`championship-create:${requestId}`}, 0))`;
     const repeat=await existingCreation(tx,requestId,creator,payload,wager);
     if(repeat)return repeat;
+
+    /*
+     * Creation is directional. Tony -> Jim may coexist with Jim -> Tony,
+     * while Tony -> Jim cannot be duplicated until its first Challenge is
+     * terminal. Lock the direction so two simultaneous clicks cannot race.
+     */
+    await tx.$executeRaw`
+      SELECT pg_advisory_xact_lock(
+        hashtextextended(
+          ${`championship-direction:${creator.id}:${rival.id}`},
+          0
+        )
+      )
+    `;
+
+    const existingDirectional =
+      await tx.championshipChallenge.findFirst({
+        where: {
+          state: {
+            in:
+              ACTIVE,
+          },
+          scheduledMatch: {
+            is: {
+              challengerUserId:
+                creator.id,
+              challengedUserId:
+                rival.id,
+            },
+          },
+          OR: [
+            {
+              defenseStartedAt: {
+                not:
+                  null,
+              },
+            },
+            {
+              challengeDeadline: {
+                gt:
+                  now,
+              },
+            },
+          ],
+        },
+        select: {
+          scheduledMatchId:
+            true,
+        },
+        orderBy: [
+          {
+            createdAt:
+              "asc",
+          },
+          {
+            scheduledMatchId:
+              "asc",
+          },
+        ],
+      });
+
+    if (existingDirectional) {
+      throw new ChallengeConflictError(
+        `You already have an active Challenge to ${name(rival)} (#${existingDirectional.scheduledMatchId}). Finish it or let its 24-hour window expire before issuing another in the same direction.`,
+      );
+    }
     if(target) {await acquireChampionshipTitleLock(tx,target.id);target=await lockTrophyMoneyState(tx,target.id);}
     const custody = target ? await getChampionshipCustody(tx,target) : null;
     if (target && (!custody || custody.roster.length !== size || !custody.roster.some(p => p.userId === rival.id))) throw new ChallengeConflictError("The rival does not hold the complete challenged championship roster.");
@@ -379,7 +465,9 @@ async function explicitChampionshipSessionClaims(prisma:PrismaClient,session:Liv
     const start=validateChampionshipBattleStart({...row,participants,battle:battleProof(session,row,participants)});
     if(start.ok&&await readinessPrecedesStart(prisma,row,start.startedAt))matches.push(row);
   }
-  return matches;
+  return matches.sort(
+    compareChampionshipQueueOrder,
+  );
 }
 
 async function promoteExplicitChallengeToAmbientTitle(
@@ -565,7 +653,11 @@ export async function materializeSpontaneousChampionshipEncounters(
     if(!startAt)continue;
     if(await prisma.championshipChallenge.findFirst({where:{defenseSessionKey:session.sessionKey},select:{id:true}}))continue;
     const explicitClaims=await explicitChampionshipSessionClaims(prisma,session,steamIds);
-    if(explicitClaims.length>1)continue;
+    /*
+     * Reverse-direction Challenges form a duel queue. The oldest eligible
+     * Challenge owns this watcher encounter; later Challenges remain live for
+     * the next verified battle between the same warriors.
+     */
     const explicitClaim=explicitClaims[0]??null;
     if(explicitClaim?.trophyId)continue;
 
@@ -788,14 +880,23 @@ export async function reconcileChampionshipEvidence(prisma: PrismaClient, option
         const otherStart=validateChampionshipBattleStart({...other,participants:otherParticipants,battle:battleProof(session,other,otherParticipants)});
         if(otherStart.ok&&await readinessPrecedesStart(prisma,other,otherStart.startedAt))eligibleMatches.push(other);
       }
-      if(!row.defenseSessionKey && eligibleMatches.length>1) {
-        await prisma.$transaction(async tx=>{
-          for(const other of [...eligibleMatches].sort((a,b)=>a.scheduledMatchId-b.scheduledMatchId))await acquireChallengeDesyncAdvisoryLock(tx,other.scheduledMatchId);
-          await tx.$queryRaw`SELECT 1::int AS lock_acquired FROM pg_advisory_xact_lock(${session.id})`;
-          await lockChampionships(tx,eligibleMatches);
-          await tx.championshipChallenge.updateMany({where:{id:{in:eligibleMatches.map(other=>other.id)},defenseSessionKey:null,state:{in:["open","ready","default_grace"]}},data:{state:"commissioner_review",reasonCode:"TITLE_ALREADY_COMMITTED"}});
-          await tx.scheduledMatch.updateMany({where:{id:{in:eligibleMatches.map(other=>other.scheduledMatchId)}},data:{status:"result_pending"}});
-        });
+      const queueLeader =
+        [...eligibleMatches].sort(
+          compareChampionshipQueueOrder,
+        )[0] ??
+        null;
+
+      if(
+        !row.defenseSessionKey &&
+        queueLeader &&
+        queueLeader.id !==
+          row.id
+      ) {
+        /*
+         * Another still-open Challenge between this exact roster was issued
+         * first. Do not poison either record into Commissioner review: this
+         * session belongs to that older queue entry.
+         */
         continue;
       }
       const completed=await prisma.$transaction(async tx => {
@@ -812,7 +913,13 @@ export async function reconcileChampionshipEvidence(prisma: PrismaClient, option
         if(!lockedStart.ok||!await readinessPrecedesStart(tx,current,lockedStart.startedAt))return;
         const final=validateChampionshipBattleFinal(currentInput);
         const conflicting = await tx.championshipChallenge.findFirst({where:{defenseSessionKey:session.sessionKey,id:{not:row.id}}});
-        if(conflicting) {await tx.championshipChallenge.update({where:{id:row.id},data:{state:"commissioner_review",reasonCode:"TITLE_ALREADY_COMMITTED"}});return;}
+        if(conflicting) {
+          /*
+           * The session was won by an older queue entry. A later Challenge is
+           * still valid and simply waits for the next duel.
+           */
+          return;
+        }
         if(current.defenseSessionKey && current.defenseSessionKey !== session.sessionKey) return;
         if(current.trophyId) {
           const trophy = await tx.trophy.findUniqueOrThrow({where:{id:current.trophyId}});

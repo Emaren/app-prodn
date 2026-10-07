@@ -150,6 +150,15 @@ export type InboxPayload = {
   summaries: InboxSummary[];
   activeTargetUid: string | null;
   activeCounterpart: InboxCounterpart | null;
+  /**
+   * All active Challenges for the selected warrior pair, oldest/actionable
+   * first. Reverse-direction Challenges legitimately coexist.
+   */
+  activeChallenges: ScheduledMatchTile[];
+  /**
+   * Backward-compatible primary tile for older consumers. New UI should use
+   * activeChallenges so concurrent pair Challenges never overwrite each other.
+   */
   activeChallenge: ScheduledMatchTile | null;
   messages: InboxMessage[];
   messagePage: {
@@ -1954,21 +1963,30 @@ export async function loadInboxPayload(
     });
   }
 
-  const activeChallenge =
+  const activeChallenges =
     !options?.summaryOnly &&
     activeTargetUser &&
     activeTargetUser.id !== viewer.id &&
     activeTargetUser.uid !== AI_CONCIERGE_UID
       ? await (async () => {
-          const { loadChallengeThreadTile } = await import("@/lib/challenges");
-          return loadChallengeThreadTile(
+          const {
+            loadChallengeThreadTiles,
+          } = await import(
+            "@/lib/challenges"
+          );
+
+          return loadChallengeThreadTiles(
             prisma,
             viewer.id,
             activeTargetUser.id,
             options?.challengeId
           );
         })()
-      : null;
+      : [];
+
+  const activeChallenge =
+    activeChallenges[0] ??
+    null;
 
   if (options?.summaryOnly || !activeTargetUser || activeTargetUser.id === viewer.id) {
     return {
@@ -1981,6 +1999,7 @@ export async function loadInboxPayload(
       summaries,
       activeTargetUid: activeTargetUser && activeTargetUser.id !== viewer.id ? activeTargetUser.uid : null,
       activeCounterpart: null,
+      activeChallenges: [],
       activeChallenge: null,
       messages: [],
       messagePage: { hasMore: false, beforeMessageId: null },
@@ -2017,6 +2036,7 @@ export async function loadInboxPayload(
         badges: community.badges,
         giftedWolo: community.giftedWolo,
       },
+      activeChallenges,
       activeChallenge,
       messages: [],
       messagePage: { hasMore: false, beforeMessageId: null },
@@ -2040,6 +2060,7 @@ export async function loadInboxPayload(
     summaries,
     activeTargetUid: activeTargetUser.uid,
     activeCounterpart: activeConversation.counterpart,
+    activeChallenges,
     activeChallenge,
     messages: activeConversation.messages,
     messagePage: activeConversation.messagePage,

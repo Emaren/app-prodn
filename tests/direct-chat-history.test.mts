@@ -41,6 +41,7 @@ function inboxPayload(
     summaries: [],
     activeTargetUid: "player-one",
     activeCounterpart: null,
+    activeChallenges: [],
     activeChallenge: null,
     messages,
     messagePage,
