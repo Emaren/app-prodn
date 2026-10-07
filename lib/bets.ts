@@ -2583,6 +2583,21 @@ function scheduledMatchIntegritySeed(match: ScheduledMatchTile) {
 
 function marketStatusFromScheduledMatch(displayState: ScheduledMatchTile["displayState"]): BetStatus {
   if (displayState === "live") return "live";
+
+  /*
+   * Replay/result review is a liability hold, never a terminal no-winner
+   * settlement. Keep the existing Challenge book attached and closed to new
+   * wagers while canonical winner truth is resolved.
+   */
+  if (
+    displayState ===
+      "result_pending" ||
+    displayState ===
+      "desync_review"
+  ) {
+    return "under_review";
+  }
+
   if (
     [
       "accepted",
@@ -2598,6 +2613,7 @@ function marketStatusFromScheduledMatch(displayState: ScheduledMatchTile["displa
   ) {
     return "closing";
   }
+
   return "settled";
 }
 
@@ -2638,6 +2654,8 @@ function buildChallengeMarketSeeds(scheduledMatches: ScheduledMatchTile[]) {
       "right_checked_in",
       "ready",
       "live",
+      "result_pending",
+      "desync_review",
       "completed",
       "forfeited",
       "declined",
