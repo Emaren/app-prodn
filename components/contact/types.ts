@@ -153,6 +153,7 @@ export type ContactInboxPayload = {
   summaries: ContactInboxSummary[];
   activeTargetUid: string | null;
   activeCounterpart: ContactInboxCounterpart | null;
+  activeChallenges: ScheduledMatchTile[];
   activeChallenge: ScheduledMatchTile | null;
   messages: ContactInboxMessage[];
   messagePage: {
