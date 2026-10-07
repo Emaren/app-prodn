@@ -55,6 +55,11 @@ test("Replay Truth OS exposes the governed native known-control lane", () => {
     python,
     /aoe2_native_pre_release_control\.py/
   );
+
+  assert.match(
+    python,
+    /--api-root/
+  );
 });
 
 test("Replay Truth OS is hard read-only and guards Wolo", () => {
