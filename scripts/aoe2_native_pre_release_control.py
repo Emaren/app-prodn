@@ -98,13 +98,16 @@ def git_state(repo: Path, label: str) -> dict[str, str]:
         ["git", "branch", "--show-current"], cwd=repo, text=True, timeout=10,
     ).strip()
     dirty = subprocess.check_output(
-        ["git", "status", "--porcelain", "--untracked-files=no"],
+        ["git", "status", "--porcelain", "--untracked-files=all"],
         cwd=repo,
         text=True,
         timeout=10,
     ).strip()
     if dirty:
-        raise ControlError(f"{label} has tracked worktree changes; native evidence requires clean source.")
+        raise ControlError(
+            f"{label} worktree is not clean; native evidence requires no tracked "
+            "or untracked source changes."
+        )
     return {"head": head, "branch": branch or "(detached)", "path": str(repo.resolve())}
 
 
