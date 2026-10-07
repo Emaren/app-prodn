@@ -870,9 +870,7 @@ function ChallengeThreadStrip({
   if (
     !challenges.length
   ) {
-    if (
-      mode === "popover"
-    ) {
+    if (mode === "popover") {
       return null;
     }
 
