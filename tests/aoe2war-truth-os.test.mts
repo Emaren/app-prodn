@@ -20,7 +20,7 @@ const remote = await readFile(
 test("AoE2WAR CLI exposes Replay Truth OS", () => {
   assert.match(
     cli,
-    /aoe2war truth <status\|census\|audit\|closure\|target>/
+    /aoe2war truth <status\|census\|audit\|closure\|target\|native-control>/
   );
 
   assert.match(
@@ -38,7 +38,7 @@ test("AoE2WAR CLI exposes Replay Truth OS", () => {
 test("Replay Truth OS exposes the governed native known-control lane", () => {
   assert.match(
     cli,
-    /aoe2war truth <status\\|census\\|audit\\|closure\\|target\\|native-control>/
+    /aoe2war truth <status\|census\|audit\|closure\|target\|native-control>/
   );
 
   assert.match(
