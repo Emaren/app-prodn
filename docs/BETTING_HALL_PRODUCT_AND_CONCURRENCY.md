@@ -8,7 +8,7 @@ systems: ["app-prodn", "aoe2-watcher", "wolochain"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "product-and-concurrency-contract"
-reviewed_at: "2026-09-29"
+reviewed_at: "2026-10-07"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -203,6 +203,11 @@ Current production uses the Betting Fairness V1.2 compatibility bridge:
 
 - scheduled/challenge winner books remain pre-game only and close at their
   authoritative cutoff;
+- a played Challenge whose result is still `result_pending` or
+  `desync_review` keeps its existing market liability in `under_review`;
+  unresolved result truth is never projected as a settled no-winner outcome and
+  never authorizes a refund merely because the sporting Challenge left its
+  active runway;
 - an unscheduled Watcher-discovered winner book accepts fresh bets while its
   canonical market remains `open` or `live`;
 - a Watcher-born Desync proposition uses the same authoritative active window;
