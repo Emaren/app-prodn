@@ -287,7 +287,16 @@ class WorkspaceTests(unittest.TestCase):
                 "exists",
                 lambda self: str(self) == "/canonical",
             ),
-            mock.patch.object(workspace, "run") as run_mock,
+            mock.patch.object(
+                workspace,
+                "run",
+                return_value=(0, ""),
+            ) as run_mock,
+            mock.patch.object(
+                workspace.subprocess,
+                "run",
+                return_value=mock.Mock(returncode=0),
+            ),
         ):
             rows = workspace.worktree_rows(spec)
 
