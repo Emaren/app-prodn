@@ -19,6 +19,31 @@ type DbRow = {
   steamDmRating: number | null;
   steamDmObservedAt: Date | null;
 };
+/**
+ * Both source families are Watcher-qualified before reaching this resolver.
+ * Use game-observation time (never manual upload time), separately per lane.
+ * An invalid/missing timestamp never displaces a dated observation.
+ */
+export function selectLatestSteamObservation(
+  receiptRating: number | null,
+  receiptObservedAt: string | null,
+  signedRating: number | null,
+  signedObservedAt: string | null,
+): { rating: number | null; observedAt: string | null } {
+  const candidates = [
+    { rating: receiptRating, observedAt: receiptObservedAt, rank: 1 },
+    { rating: signedRating, observedAt: signedObservedAt, rank: 0 },
+  ].filter((item) => rating(item.rating) !== null &&
+    item.observedAt !== null &&
+    Number.isFinite(new Date(item.observedAt).getTime()));
+  candidates.sort((a,b) =>
+    new Date(b.observedAt!).getTime() -
+    new Date(a.observedAt!).getTime() || b.rank - a.rank);
+  const result = candidates[0];
+  return result ? { rating: result.rating, observedAt: result.observedAt } :
+    { rating: null, observedAt: null };
+}
+
 const TTL_MS = 120_000;
 let cache: { until: number; value: VerifiedWatcherSteamRating[] } | null = null;
 let active: Promise<VerifiedWatcherSteamRating[]> | null = null;
