@@ -41,7 +41,7 @@ import {
 } from "@/lib/currentWatcherAccountState";
 import { loadPublicPresenceSnapshot } from "@/lib/publicPresence";
 import { loadPublicPlayerDirectoryGeneration } from "@/lib/publicPlayerDirectoryGeneration";
-import { classifyLeaderboardReplayMode } from "@/lib/leaderboardGameMode";
+import { resolveLeaderboardReplayMode } from "@/lib/leaderboardGameMode";
 import type { LeaderboardLane } from "@/lib/leaderboardLane";
 
 export type PublicPlayerReplayEvidence = {
