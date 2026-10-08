@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/leaderboard-finish-eslint-parity-20261008` at `618370765c3fb4e7115dfff668dcc00736faed26`
+Implementation baseline: `fix/leaderboard-v1-full-tracked-history-20261008` at `f2d9c6fd4dec30c28ce66932be24367c4522e223`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
