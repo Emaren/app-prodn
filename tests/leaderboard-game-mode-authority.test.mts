@@ -62,4 +62,11 @@ test("Steam RM rating and Site Elo never sort as if numerically interchangeable"
   assert.ok(compareLeaderboardRatingAuthority(higherCurrent, steam, "asc") > 0);
   assert.ok(compareLeaderboardRatingAuthority(steam, site, "asc") < 0);
   assert.equal(higherCurrent.value, 1700);
+  const unrated = resolveLeaderboardRatingPresentation({
+    lane: "dm", currentRmRating: null, currentDmRating: null,
+    lastKnownRmRating: null, lastKnownDmRating: null,
+    siteElo: 1500, hasTrackedHistory: false,
+  });
+  assert.equal(compareLeaderboardRatingAuthority(unrated, unrated), 0);
+  assert.equal(compareLeaderboardRatingAuthority(unrated, unrated, "asc"), 0);
 });
