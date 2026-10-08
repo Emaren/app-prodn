@@ -478,7 +478,22 @@ def apply_ledger(ledger_path,expected,max_objects=250):
             print('ALREADY_EXPIRED',row['generation'],'RECEIPT',
                   ledger_path.parent/(row['generation']+'.expired.json'),flush=True)
             continue
-        apply_one(ledger_path,expected,row['generation'])
+        command=[
+            '/usr/local/sbin/aoe2war-maintenance-run',
+            'storage-runtime-expiry','--',
+            'python3',str(Path(__file__)),
+            'apply-one',str(ledger_path),expected,row['generation'],
+        ]
+        completed=subprocess.run(command,check=False)
+        if completed.returncode:
+            raise RuntimeError(
+                f"apply-one failed rc={completed.returncode} "
+                f"generation={row['generation']}"
+            )
+        if completed_expiry_receipt(ledger_path,expected,row) is None:
+            raise RuntimeError(
+                f"missing sealed receipt after expiry: {row['generation']}"
+            )
         applied+=1
     print('BATCH_COMPLETE','APPLIED',applied,'ALREADY',already,
           'ELIGIBLE',len(rows),'MAX',max_objects,flush=True)
@@ -504,7 +519,7 @@ def main():
                 f'assert hashlib.sha256(p.read_bytes()).hexdigest()=={sha!r}\n'
                 f'args={sys.argv[1:]!r}\n'
                 'cmd=["python3",str(p),*args]\n'
-                'if args[0]!="inventory": cmd=["/usr/local/sbin/aoe2war-maintenance-run","storage-runtime-expiry","--",*cmd]\n'
+                'if args[0] not in {"inventory","apply-ledger"}: cmd=["/usr/local/sbin/aoe2war-maintenance-run","storage-runtime-expiry","--",*cmd]\n'
                 'raise SystemExit(subprocess.run(cmd).returncode)\n')
         raise SystemExit(subprocess.run(['ssh','-o','BatchMode=yes','root@hel1','python3','-'],input=remote,text=True).returncode)
     if args.command=='inventory': print(json.dumps(inspect_inventory(),sort_keys=True))
