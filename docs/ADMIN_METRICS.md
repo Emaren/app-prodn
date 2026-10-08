@@ -8,12 +8,18 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "implementation-contract"
-reviewed_at: "2026-08-08"
+reviewed_at: "2026-10-08"
 review_interval_days: 60
 sensitivity: "internal"
 ---
 
 # Admin Metrics
+
+A read-only source review on 2026-10-08 checked `lib/watcherFunnel.ts`,
+`lib/watcherDownloads.ts`, `lib/adminJourneyIntelligence.ts`,
+`components/admin/command-tower/`, `app/api/admin/users/[uid]/community/route.ts`,
+and `app/api/statistics/route.ts`. Dated observatory totals below remain
+historical evidence and were not re-queried.
 
 ## Watcher funnel reconciliation
 
@@ -44,13 +50,20 @@ Forum effective defaults are Extreme. The July 2 launch migration writes that
 selection once for each visiting user; subsequent user changes remain ordinary
 saved preferences and must be reflected by the live admin refresh.
 
-The Honors panel owns badge add/remove controls and Phase 3A typed honors. Existing `add_badge` and `remove_badge` behavior stays unchanged. Belts, Artifacts, and Designations use admin-only `grant_honor` / `remove_honor` actions and are stored in `user_badges` as accepted rows with typed labels:
+The Honors panel owns badge add/remove controls and typed honors. Existing
+`add_badge` and `remove_badge` behavior stays unchanged. Belt grants resolve a
+registered Trophy and use Trophy Command's `assign_holder` action with
+`eligibilityOverride: false`. A badge label never creates a championship title
+or its authoritative holder; belt removal also belongs to Trophy Command.
+Artifacts and Designations use admin-only `grant_honor` / `remove_honor`
+actions and remain accepted `user_badges` rows with typed labels:
 
-- `Belt: <title>`
 - `Artifact: <title>`
 - `Designation: <title>`
 
-No new DB migration was added for Phase 3A. The storage limitation is that there is no per-user managed-media foreign key yet; the admin UI offers title registry options plus free text, and public display can only use the existing badge-pill rail when `display_on_profile` is true. Phase 3B should add a real honor record or extend the existing model with `kind`, asset/media reference, status/revocation fields, audit metadata, and richer public profile rendering for belts and artifacts.
+Artifact and Designation labels have no per-user managed-media foreign key;
+their public display uses the badge-pill rail when `display_on_profile` is
+true. This label storage limitation does not redefine championship custody.
 
 ### Journey Intelligence
 

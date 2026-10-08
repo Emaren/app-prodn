@@ -175,9 +175,9 @@
       "owner": "aoe2war-web",
       "path": "docs/ADMIN_METRICS.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-08-08",
+      "reviewed_at": "2026-10-08",
       "sensitivity": "internal",
-      "sha256": "522f48351eaa23c541f24e48990618a86cd056bdaaa9f4f3f9cb974ad4a8c640",
+      "sha256": "faa41e9289a7bd3478f7bc27200a295f9470a7cc0a9c6e737bf1f5fbf9a1d281",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0ca0cd17a3f60cabc569934333d471a5ead342d23dcd68aa495377da985552a7",
+      "sha256": "da7671fe435509614adfd6398fd50ef2350c1cb31ae8419347ea3836877b78bb",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1856,9 +1856,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WOLOCHAIN_CIVIC_RAIL_HANDOFF_PROMPT.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-07",
+      "reviewed_at": "2026-10-08",
       "sensitivity": "internal",
-      "sha256": "781f0ab21d509efcdf740eaaba233301ce8c96a0db14dd5c23cf0fdeb03dd90f",
+      "sha256": "68bea109901cfab60c9e4c40d7eb0fd864fb11ca60046a2a23ff6159cabe9aa4",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2049,7 +2049,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/player-first-truth-current-rating-20261005",
-    "commit": "f48682befe5cb5402c55e04dc978543df1ce6f8d"
+    "commit": "b5b0440c8516c7ca8155f884d1d8ecc34fd3b5e1"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

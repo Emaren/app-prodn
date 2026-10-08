@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/player-first-truth-current-rating-20261005` at `f48682befe5cb5402c55e04dc978543df1ce6f8d`
+Implementation baseline: `fix/player-first-truth-current-rating-20261005` at `b5b0440c8516c7ca8155f884d1d8ecc34fd3b5e1`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
