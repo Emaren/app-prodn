@@ -515,6 +515,103 @@ class StorageOSTests(unittest.TestCase):
         self.assertEqual(payload["summary"]["cold_archive_count"], 3)
         self.assertEqual(payload["summary"]["context_archive_retention_debt"], 3)
 
+    def test_deep_census_is_read_only_across_all_three_planes(self):
+        local = {
+            "filesystem": {
+                "used_percent": 90.0,
+                "free_bytes": 10,
+            },
+            "rows": [],
+            "mutation_allowed": False,
+        }
+        root = {
+            "filesystem": {
+                "used_percent": 80.0,
+                "available_bytes": 20,
+            },
+            "rows": [],
+            "disabled_snap_bytes": 0,
+            "mutation_allowed": False,
+        }
+        volume = {
+            "used_percent": 70.0,
+            "available_bytes": 30,
+        }
+        with (
+            mock.patch.object(
+                MODULE,
+                "local_deep_storage_census",
+                return_value=local,
+            ),
+            mock.patch.object(
+                MODULE,
+                "root_deep_storage_census",
+                return_value=root,
+            ),
+            mock.patch.object(
+                MODULE,
+                "snapshot",
+                return_value=volume,
+            ),
+        ):
+            payload = MODULE.deep_storage_census()
+
+        self.assertFalse(payload["mutation_allowed"])
+        self.assertIs(payload["local"], local)
+        self.assertIs(payload["root"], root)
+        self.assertIs(payload["volume"], volume)
+
+    def test_root_deep_census_has_named_classes_and_no_mutation_commands(self):
+        source = MODULE.REMOTE_ROOT_DEEP_CENSUS
+
+        for required in (
+            "PROTECTED_ACTIVE_RUNTIME",
+            "RECEIPT_GATED_STAGED_REVIEW",
+            "DURABLE_PROOF_GATED_FAST_ROLLBACK",
+            "BOUNDED_RECOVERY_EXISTING",
+            "UNPROVEN_RECLAIM",
+            "disabled_snap_bytes",
+            '"mutation_allowed": False',
+        ):
+            self.assertIn(required, source)
+
+        for forbidden in (
+            "shutil.rmtree",
+            ".unlink(",
+            '["rm"',
+            '["snap", "remove"',
+            "docker system prune",
+            "apt-get clean",
+            "journalctl --vacuum",
+        ):
+            self.assertNotIn(forbidden, source)
+
+    def test_local_deep_census_never_promotes_review_paths_to_mutation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = pathlib.Path(directory)
+            review = home / MODULE.LOCAL_REVIEW_PATHS[0][1]
+            review.mkdir(parents=True)
+            (review / "payload.bin").write_bytes(b"x" * 1024)
+
+            payload = MODULE.local_deep_storage_census(home=home)
+
+        row = next(
+            item
+            for item in payload["rows"]
+            if item["name"] == MODULE.LOCAL_REVIEW_PATHS[0][0]
+        )
+        self.assertGreater(row["allocated_bytes"], 0)
+        self.assertEqual(row["mutation_authority"], "NONE")
+        self.assertFalse(payload["mutation_allowed"])
+
+    def test_local_deep_census_names_are_unique(self):
+        names = [
+            name
+            for name, _relative, _classification
+            in MODULE.LOCAL_REVIEW_PATHS
+        ]
+        self.assertEqual(len(names), len(set(names)))
+
 
 if __name__ == "__main__":
     unittest.main()
