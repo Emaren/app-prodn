@@ -43,6 +43,7 @@ export function LeaderboardWatcherCard({
           <Image
             src="/watcher/aoe2hd-watcher-logo.webp"
             alt="AoE2HD Watcher"
+            unoptimized
             fill
             sizes={
               bare

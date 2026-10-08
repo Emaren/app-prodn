@@ -218,7 +218,11 @@ function getPrimaryRatingValue(entry: EnrichedLeaderboardEntry, lane: Leaderboar
     return Math.round(laneRating);
   }
 
-  if (lane === "dm" || !hasTrackedHistory(entry)) {
+  // Official RM/DM snapshots remain first-class authority. When a warrior has
+  // replay-backed battle history but no current official lane snapshot, keep
+  // the ranked board usable with the site-native Elo rather than presenting
+  // a ranked row as permanently "Pending".
+  if (!hasTrackedHistory(entry)) {
     return null;
   }
 
@@ -1203,10 +1207,6 @@ function buildPrimaryRatingLabel(entry: EnrichedLeaderboardEntry, lane: Leaderbo
 function buildPrimaryRatingSourceLabel(entry: EnrichedLeaderboardEntry, lane: LeaderboardLane) {
   if (hasLaneRating(entry, lane)) {
     return lane === "dm" ? "DM Rating" : "RM Rating";
-  }
-
-  if (lane === "dm") {
-    return hasTrackedHistory(entry) ? "DM Rating" : "Profile";
   }
 
   return hasTrackedHistory(entry) ? "Site Elo" : "Profile";
