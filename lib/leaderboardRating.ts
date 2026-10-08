@@ -166,7 +166,11 @@ export function compareLeaderboardRatingAuthority(
         : 2;
   const tierDelta = tier(left.source) - tier(right.source);
   if (tierDelta !== 0) return tierDelta;
+  // Two unrated profiles must compare equal, not produce NaN from infinities.
+  if (left.value === null && right.value === null) return 0;
+  if (left.value === null) return 1;
+  if (right.value === null) return -1;
   return direction === "asc"
-    ? (left.value ?? Number.POSITIVE_INFINITY) - (right.value ?? Number.POSITIVE_INFINITY)
-    : (right.value ?? Number.NEGATIVE_INFINITY) - (left.value ?? Number.NEGATIVE_INFINITY);
+    ? left.value - right.value
+    : right.value - left.value;
 }
