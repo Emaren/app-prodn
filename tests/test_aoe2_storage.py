@@ -645,6 +645,48 @@ class StorageOSTests(unittest.TestCase):
             timeout=300,
         )
 
+    def test_local_deep_census_reports_probe_failure_without_aborting(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = pathlib.Path(directory)
+            review = home / MODULE.LOCAL_REVIEW_PATHS[0][1]
+            review.mkdir(parents=True)
+
+            original_run = MODULE.subprocess.run
+
+            def fake_run(args, **kwargs):
+                if args[:2] == ["du", "-skx"] and args[-1] == str(review):
+                    raise subprocess.TimeoutExpired(args, timeout=120)
+                return original_run(args, **kwargs)
+
+            with mock.patch.object(
+                MODULE.subprocess,
+                "run",
+                side_effect=fake_run,
+            ):
+                payload = MODULE.local_deep_storage_census(home=home)
+
+        row = next(
+            item
+            for item in payload["rows"]
+            if item["name"] == MODULE.LOCAL_REVIEW_PATHS[0][0]
+        )
+        self.assertFalse(row["probe_ok"])
+        self.assertEqual(row["allocated_bytes"], 0)
+        self.assertFalse(payload["mutation_allowed"])
+
+    def test_bounded_local_size_probe_refuses_symlink_without_following_it(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = pathlib.Path(directory)
+            target = home / "target"
+            target.mkdir()
+            link = home / "link"
+            link.symlink_to(target, target_is_directory=True)
+
+            size, ok = MODULE._bounded_allocated_bytes(link)
+
+        self.assertEqual(size, 0)
+        self.assertTrue(ok)
+
 
 if __name__ == "__main__":
     unittest.main()
