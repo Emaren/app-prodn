@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "bce7c605f12b71d7407d0986f627172301824f28050a8ebe6e1fdfefd2d93f88",
+      "sha256": "9c22b8a8ab7b60b689723697f1a504e0d1c6e94e7ee9d633e77d5c1f1f27e10f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1672,7 +1672,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-19",
       "sensitivity": "internal",
-      "sha256": "f112a36bc135b7e43d8b5bf3065a228672ea10639426d47d34607f40c3e16d72",
+      "sha256": "e8b09f141c5d05fe930ee070be4c9af8bb81c247dd8f193d7fc8e4654e3d8c87",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2048,8 +2048,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/storage-os-three-plane-hardening-20261008",
-    "commit": "c2fe027209e0e03f3989ba0ddffa80de90f1e6b9"
+    "branch": "feature/storage-os-deep-census-20261008",
+    "commit": "98a6b67e40df605efa57be7e63139915a06ef6ee"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

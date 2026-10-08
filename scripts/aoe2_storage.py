@@ -32,6 +32,27 @@ LOCAL_PROTECTED_PATHS = (
     ("mobile_sync", Path("Library/Application Support/MobileSync")),
 )
 
+# Read-only census only. None of these paths are promoted to deletion authority.
+# They are named explicitly so Storage OS can find the large development/runtime
+# buckets without crawling or publishing arbitrary operator-home contents.
+LOCAL_REVIEW_PATHS = (
+    ("app_node_modules", Path("projects/AoE2HDBets/app-prodn/node_modules"), "ACTIVE_DEV_REBUILDABLE_REVIEW"),
+    ("app_next", Path("projects/AoE2HDBets/app-prodn/.next"), "ACTIVE_DEV_REBUILDABLE_REVIEW"),
+    ("app_direnv", Path("projects/AoE2HDBets/app-prodn/.direnv"), "ACTIVE_DEV_ENV_REVIEW"),
+    ("api_direnv", Path("projects/AoE2HDBets/api-prodn/.direnv"), "ACTIVE_DEV_ENV_REVIEW"),
+    ("watcher_node_modules", Path("projects/AoE2HDBets/aoe2-watcher/node_modules"), "ACTIVE_DEV_REBUILDABLE_REVIEW"),
+    ("npm_cache", Path(".npm"), "REGENERABLE_REVIEW"),
+    ("generic_cache", Path(".cache"), "REGENERABLE_REVIEW"),
+    ("cargo_registry", Path(".cargo/registry"), "REGENERABLE_REVIEW"),
+    ("rustup_toolchains", Path(".rustup"), "TOOLCHAIN_REVIEW"),
+    ("pyenv", Path(".pyenv"), "TOOLCHAIN_REVIEW"),
+    ("go_module_cache", Path("go/pkg/mod"), "REGENERABLE_REVIEW"),
+    ("xcode_derived_data", Path("Library/Developer/Xcode/DerivedData"), "REGENERABLE_REVIEW"),
+    ("xcode_archives", Path("Library/Developer/Xcode/Archives"), "DEVELOPER_ARTIFACT_REVIEW"),
+    ("homebrew_cache", Path("Library/Caches/Homebrew"), "REGENERABLE_REVIEW"),
+    ("pip_cache", Path("Library/Caches/pip"), "REGENERABLE_REVIEW"),
+)
+
 GENERATION_RE = re.compile(r"^activate-\d{8}T\d{6}Z-[0-9a-f]{12}$")
 BUILD_RE = re.compile(r"^[A-Za-z0-9_-]{1,256}$")
 
@@ -395,6 +416,44 @@ def remote_json(script: str, p: dict[str, Any], *args: str, timeout: int = 90) -
     return payload
 
 
+def remote_root_json(
+    script: str,
+    p: dict[str, Any],
+    *args: str,
+    timeout: int = 90,
+) -> dict[str, Any]:
+    """Run an explicitly read-only storage census under root maintenance authority."""
+    encoded = base64.urlsafe_b64encode(
+        json.dumps(p, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).decode("ascii")
+    cmd = [
+        "ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8",
+        p["root_maintenance_host"], "python3", "-", encoded, *args,
+    ]
+    proc = subprocess.run(
+        cmd,
+        input=script,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=timeout,
+        check=False,
+    )
+    if proc.returncode != 0:
+        raise StorageError(
+            (proc.stderr or proc.stdout or "privileged read-only probe failed").strip()
+        )
+    try:
+        payload = json.loads(proc.stdout)
+    except json.JSONDecodeError as exc:
+        raise StorageError(
+            f"privileged read-only probe returned invalid JSON: {proc.stdout[-4000:]}"
+        ) from exc
+    if not isinstance(payload, dict):
+        raise StorageError("privileged read-only probe returned a non-object")
+    return payload
+
+
 def snapshot(*, measure: bool = False) -> dict[str, Any]:
     p = policy()
     payload = remote_json(REMOTE_PROBE, p, "1" if measure else "0")
@@ -427,6 +486,29 @@ def _allocated_bytes(path: Path) -> int:
         return int(out.split()[0]) * 1024
     except (IndexError, ValueError):
         return 0
+
+
+def _bounded_allocated_bytes(path: Path, *, timeout: int = 45) -> tuple[int, bool]:
+    """Measure one named local bucket without letting it abort the whole census."""
+    if not path.exists() or path.is_symlink():
+        return 0, True
+    try:
+        proc = subprocess.run(
+            ["du", "-skx", str(path)],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            timeout=timeout,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return 0, False
+    if proc.returncode != 0:
+        return 0, False
+    try:
+        return int(proc.stdout.split()[0]) * 1024, True
+    except (IndexError, ValueError):
+        return 0, False
 
 
 def _filesystem_usage(path: Path) -> dict[str, Any]:
@@ -536,6 +618,292 @@ print(json.dumps({
 
 def root_storage_snapshot() -> dict[str, Any]:
     return remote_json(REMOTE_ROOT_PROBE, policy(), timeout=45)
+
+
+REMOTE_ROOT_DEEP_CENSUS = r'''from __future__ import annotations
+import json, os, re, subprocess, sys
+from pathlib import Path
+
+p = json.loads(__import__("base64").urlsafe_b64decode(sys.argv[1].encode("ascii")))
+repo = Path(p["production_repo"])
+
+def allocated(path):
+    path = Path(path)
+    row = {
+        "path": str(path),
+        "exists": path.exists(),
+        "symlink": path.is_symlink(),
+        "allocated_bytes": 0,
+        "probe_ok": True,
+    }
+    if not row["exists"] or row["symlink"]:
+        return row
+    try:
+        proc = subprocess.run(
+            ["du", "-skx", str(path)],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            check=False,
+            timeout=20,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        row["probe_ok"] = False
+        return row
+    row["probe_ok"] = proc.returncode == 0
+    if proc.returncode == 0:
+        try:
+            row["allocated_bytes"] = int(proc.stdout.split()[0]) * 1024
+        except (IndexError, ValueError):
+            row["probe_ok"] = False
+    return row
+
+rows = []
+def add(name, path, classification):
+    row = allocated(path)
+    row.update(
+        name=name,
+        classification=classification,
+        mutation_authority="NONE",
+    )
+    rows.append(row)
+
+add("active_next", repo / ".next", "PROTECTED_ACTIVE_RUNTIME")
+add("active_node_modules", repo / "node_modules", "PROTECTED_ACTIVE_RUNTIME")
+add("staged_next", repo / ".next-release", "RECEIPT_GATED_STAGED_REVIEW")
+add("staged_node_modules", repo / ".node_modules-release", "RECEIPT_GATED_STAGED_REVIEW")
+
+fast_bytes = 0
+fast_paths = []
+fast_probe_ok = True
+for pattern in (".next-rollback-activate-*", ".node_modules-rollback-activate-*"):
+    for path in sorted(repo.glob(pattern)):
+        row = allocated(path)
+        fast_bytes += int(row["allocated_bytes"])
+        fast_paths.append(row["path"])
+        fast_probe_ok = fast_probe_ok and bool(row["probe_ok"])
+rows.append({
+    "name": "fast_rollback_pairs",
+    "path": str(repo),
+    "exists": bool(fast_paths),
+    "symlink": False,
+    "allocated_bytes": fast_bytes,
+    "probe_ok": fast_probe_ok,
+    "paths": fast_paths,
+    "classification": "DURABLE_PROOF_GATED_FAST_ROLLBACK",
+    "mutation_authority": "NONE",
+})
+
+for name, path, classification in (
+    ("apt_archives", "/var/cache/apt/archives", "BOUNDED_RECOVERY_EXISTING"),
+    ("systemd_journal", "/var/log/journal", "BOUNDED_RECOVERY_EXISTING"),
+    ("nginx_logs", "/var/log/nginx", "LIVE_LOGS_REVIEW"),
+    ("snap_store", "/var/lib/snapd/snaps", "MIXED_SNAP_STORE"),
+    ("snap_download_cache", "/var/lib/snapd/cache", "UNPROVEN_RECLAIM"),
+    ("docker_store", "/var/lib/docker", "UNPROVEN_RECLAIM"),
+    ("root_cache", "/root/.cache", "REVIEW_ONLY"),
+    ("operator_cache", "/home/tony/.cache", "REVIEW_ONLY"),
+    ("tmp", "/tmp", "REVIEW_ONLY"),
+    ("var_tmp", "/var/tmp", "REVIEW_ONLY"),
+):
+    add(name, path, classification)
+
+disabled = []
+snap = None
+try:
+    snap = subprocess.run(
+        ["snap", "list", "--all"],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+        timeout=30,
+    )
+except (OSError, subprocess.TimeoutExpired):
+    snap = None
+
+if snap is not None and snap.returncode == 0:
+    for line in snap.stdout.splitlines()[1:]:
+        parts = line.split()
+        if len(parts) < 3 or "disabled" not in parts[3:]:
+            continue
+        name, rev = parts[0], parts[2]
+        if not re.fullmatch(r"[A-Za-z0-9.+_-]+", name):
+            continue
+        if not re.fullmatch(r"[0-9]+", rev):
+            continue
+        path = Path("/var/lib/snapd/snaps") / f"{name}_{rev}.snap"
+        try:
+            st = path.stat()
+        except OSError:
+            continue
+        disabled.append({
+            "name": name,
+            "revision": rev,
+            "path": str(path),
+            "allocated_bytes": st.st_blocks * 512,
+        })
+
+v = os.statvfs("/")
+block = v.f_frsize or v.f_bsize
+total = v.f_blocks * block
+available = v.f_bavail * block
+used = max(0, total - (v.f_bfree * block))
+den = used + available
+
+print(json.dumps({
+    "schema": 1,
+    "kind": "aoe2war-root-deep-storage-census",
+    "filesystem": {
+        "total_bytes": total,
+        "available_bytes": available,
+        "used_percent": round(used * 100.0 / den, 2) if den else 100.0,
+    },
+    "rows": sorted(rows, key=lambda row: int(row["allocated_bytes"]), reverse=True),
+    "disabled_snaps": disabled,
+    "disabled_snap_bytes": sum(int(row["allocated_bytes"]) for row in disabled),
+    "snap_probe_ok": snap is not None and snap.returncode == 0,
+    "mutation_allowed": False,
+}, sort_keys=True))
+'''
+
+
+def root_deep_storage_census() -> dict[str, Any]:
+    return remote_root_json(REMOTE_ROOT_DEEP_CENSUS, policy(), timeout=300)
+
+
+def local_deep_storage_census(*, home: Path | None = None) -> dict[str, Any]:
+    operator_home = (home or Path.home()).resolve()
+    rows = []
+    allowlisted = {str(relative) for _, relative in LOCAL_REGENERABLE_PATHS}
+    for name, relative, classification in LOCAL_REVIEW_PATHS:
+        path = operator_home / relative
+        allocated_bytes, probe_ok = _bounded_allocated_bytes(path)
+        rows.append(
+            {
+                "name": name,
+                "path": str(path),
+                "exists": path.exists(),
+                "symlink": path.is_symlink(),
+                "allocated_bytes": allocated_bytes,
+                "probe_ok": probe_ok,
+                "classification": classification,
+                "mutation_authority": "NONE",
+                "already_allowlisted": str(relative) in allowlisted,
+            }
+        )
+
+    # Include the existing strict allowlist and protected buckets using the same
+    # bounded probe so one slow local tree cannot abort the whole census.
+    for name, relative in LOCAL_REGENERABLE_PATHS:
+        path = operator_home / relative
+        allocated_bytes, probe_ok = _bounded_allocated_bytes(path)
+        rows.append(
+            {
+                "name": name,
+                "path": str(path),
+                "exists": path.exists(),
+                "symlink": path.is_symlink(),
+                "allocated_bytes": allocated_bytes,
+                "probe_ok": probe_ok,
+                "classification": "PROVEN_REGENERABLE_ALLOWLIST",
+                "mutation_authority": "LOCAL_MAINTAIN_ONLY",
+                "already_allowlisted": True,
+            }
+        )
+    for name, relative in LOCAL_PROTECTED_PATHS:
+        path = operator_home / relative
+        allocated_bytes, probe_ok = _bounded_allocated_bytes(path)
+        rows.append(
+            {
+                "name": name,
+                "path": str(path),
+                "exists": path.exists(),
+                "symlink": path.is_symlink(),
+                "allocated_bytes": allocated_bytes,
+                "probe_ok": probe_ok,
+                "classification": "PROTECTED",
+                "mutation_authority": "NONE",
+                "already_allowlisted": False,
+            }
+        )
+
+    return {
+        "schema": 1,
+        "kind": "aoe2war-local-deep-storage-census",
+        "filesystem": _filesystem_usage(operator_home),
+        "rows": sorted(
+            rows,
+            key=lambda row: int(row["allocated_bytes"]),
+            reverse=True,
+        ),
+        "mutation_allowed": False,
+    }
+
+
+def deep_storage_census(*, home: Path | None = None) -> dict[str, Any]:
+    return {
+        "schema": 1,
+        "kind": "aoe2war-three-plane-deep-storage-census",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "local": local_deep_storage_census(home=home),
+        "root": root_deep_storage_census(),
+        "volume": snapshot(measure=True),
+        "mutation_allowed": False,
+    }
+
+
+def print_deep_storage_census(payload: dict[str, Any]) -> None:
+    local = payload["local"]
+    root = payload["root"]
+    volume = payload["volume"]
+    print("⚔️  AOE2WAR DEEP STORAGE CENSUS")
+    print()
+    print(
+        f"Mac:        {local['filesystem']['used_percent']:.2f}% used · "
+        f"{gib(local['filesystem']['free_bytes'])} free"
+    )
+    for row in local["rows"]:
+        if not row.get("probe_ok", True):
+            print(
+                f"  {'PROBE?':>10}  "
+                f"{row['name']:<24} {row['classification']}"
+            )
+            continue
+        if int(row["allocated_bytes"]) <= 0:
+            continue
+        print(
+            f"  {gib(row['allocated_bytes']):>10}  "
+            f"{row['name']:<24} {row['classification']}"
+        )
+    print()
+    print(
+        f"VPS root:   {root['filesystem']['used_percent']:.2f}% used · "
+        f"{gib(root['filesystem']['available_bytes'])} available"
+    )
+    for row in root["rows"]:
+        if not row.get("probe_ok", True):
+            print(
+                f"  {'PROBE?':>10}  "
+                f"{row['name']:<24} {row['classification']}"
+            )
+            continue
+        if int(row["allocated_bytes"]) <= 0:
+            continue
+        print(
+            f"  {gib(row['allocated_bytes']):>10}  "
+            f"{row['name']:<24} {row['classification']}"
+        )
+    print(
+        f"  {gib(root['disabled_snap_bytes']):>10}  "
+        "disabled_snaps           PROVEN_RECOVERY_CLASS"
+    )
+    print()
+    print(
+        f"VPS volume: {volume['used_percent']:.2f}% used · "
+        f"{gib(volume['available_bytes'])} available"
+    )
+    print("Mutation:   NONE — census only; classifications do not grant deletion authority.")
 
 
 def estate_snapshot(*, measure: bool = False) -> dict[str, Any]:
@@ -926,6 +1294,8 @@ def parser() -> argparse.ArgumentParser:
     q = sub.add_parser("local-maintain")
     q.add_argument("--apply", action="store_true")
     q.add_argument("--json", action="store_true")
+    q = sub.add_parser("deep-census")
+    q.add_argument("--json", action="store_true")
     q = sub.add_parser("maintain")
     q.add_argument("--apply", action="store_true")
     q.add_argument("--until-target", action="store_true")
@@ -968,6 +1338,13 @@ def main() -> int:
         return 0
     if args.command == "local-maintain":
         return local_maintain(apply=args.apply, json_mode=args.json)
+    if args.command == "deep-census":
+        payload = deep_storage_census()
+        if args.json:
+            print(json.dumps(payload, indent=2, sort_keys=True))
+        else:
+            print_deep_storage_census(payload)
+        return 0
     if args.command == "maintain":
         return maintain(apply=args.apply, until_target=args.until_target, max_generations=args.max_generations, force=args.force)
     if args.command == "verify":

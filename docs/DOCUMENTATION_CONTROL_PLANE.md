@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/storage-os-three-plane-hardening-20261008` at `c2fe027209e0e03f3989ba0ddffa80de90f1e6b9`
+Implementation baseline: `feature/storage-os-deep-census-20261008` at `98a6b67e40df605efa57be7e63139915a06ef6ee`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
