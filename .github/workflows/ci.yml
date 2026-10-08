@@ -76,6 +76,35 @@ jobs:
         run: npx prisma generate
       - name: Typecheck
         run: npx tsc --noEmit --pretty false
+      - name: Lint changed sources (Finish release-gate parity)
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PUSH_BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          import subprocess
+
+          base = os.environ.get("PR_BASE_SHA") or os.environ.get("PUSH_BEFORE_SHA")
+          if not base or base == "0" * 40:
+              raise SystemExit("Cannot prove changed-file ESLint without a Git base SHA")
+
+          changes = subprocess.check_output(
+              ["git", "diff", "--name-only", "--diff-filter=ACMR", base, "HEAD", "--"],
+              text=True,
+          ).splitlines()
+          extensions = {".ts", ".tsx", ".js", ".jsx", ".mts", ".mjs"}
+          lintable = sorted(set(
+              path for path in changes
+              if Path(path).suffix.lower() in extensions and Path(path).is_file()
+          ))
+          if lintable:
+              print(f"Checking {len(lintable)} changed JS/TS files with ESLint", flush=True)
+              subprocess.run(["npx", "eslint", *lintable], check=True)
+          else:
+              print("No changed JS/TS files to lint", flush=True)
+          PY
       - name: Run active Node contract inventory
         run: python3 scripts/run_test_contract.py
       - name: Build production application
