@@ -440,7 +440,7 @@ test("24-hour movement is unavailable without durable lane snapshots", async () 
   );
 });
 
-test("Steam-only pages rank rated warriors and keep unobserved profiles unranked", async () => {
+test("Steam-only pagination keeps unrated claimed identities visible after rated warriors", async () => {
   const firstPage =
     await loadLobbyLeaderboard(
       prisma as never,
@@ -466,13 +466,13 @@ test("Steam-only pages rank rated warriors and keep unobserved profiles unranked
       },
     );
 
-  assert.equal(firstPage.entries.length, 5);
+  assert.equal(firstPage.entries.length, 50);
   assert.deepEqual(
     firstPage.entries.map(
       (entry) => entry.rank,
     ),
     Array.from(
-      { length: 5 },
+      { length: 50 },
       (_, index) => index + 1,
     ),
   );
@@ -481,11 +481,11 @@ test("Steam-only pages rank rated warriors and keep unobserved profiles unranked
       (entry) => entry.rank,
     ),
     Array.from(
-      { length: 0 },
+      { length: 15 },
       (_, index) => index + 51,
     ),
   );
-  assert.equal(firstPage.trackedPlayers, 5);
+  assert.equal(firstPage.trackedPlayers, 65);
   assert.equal(
     new Set(
       [
@@ -493,7 +493,7 @@ test("Steam-only pages rank rated warriors and keep unobserved profiles unranked
         ...secondPage.entries,
       ].map((entry) => entry.key),
     ).size,
-    5,
+    65,
   );
 });
 
@@ -539,7 +539,7 @@ test("claimed scope is contiguous and excludes reserved systems by UID, not name
   );
 
   assert.equal(leaderboard.scope, "claimed");
-  assert.equal(leaderboard.trackedPlayers, 1);
+  assert.equal(leaderboard.trackedPlayers, 61);
   assert.equal(leaderboard.claimedIdentityRows, 61);
   assert.equal(leaderboard.identityRows, 65);
   assert.equal(
@@ -553,7 +553,7 @@ test("claimed scope is contiguous and excludes reserved systems by UID, not name
       (entry) => entry.rank,
     ),
     Array.from(
-      { length: 1 },
+      { length: 61 },
       (_, index) => index + 1,
     ),
   );
