@@ -50,8 +50,11 @@ function game(
     is_final: true,
     createdAt: new Date(playedAt),
     event_types: ["resign"],
-    game_type: id === 1 ? "RM" : "DM",
+    game_type: id === 1
+      ? "(<Version.HD: 19>, 'VER 9.4', 12.5, 4, None)"
+      : "DM",
     key_events: {
+      settings: { type: id === 1 ? "RM" : "DM" },
       completed: true,
       postgame_available: true,
       has_scores: true,
