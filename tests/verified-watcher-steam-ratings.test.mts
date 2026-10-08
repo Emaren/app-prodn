@@ -34,6 +34,7 @@ test("manual and batch uploads cannot create or override the signed Watcher rati
   assert.match(source, /ingestion_provenance.*'live_monitor'/);
   assert.match(source, /server_sha256/);
   assert.match(source, /g\.played_on IS NOT NULL/);
+  assert.match(source, /identity_count = 1/);
   assert.match(source, /ORDER BY steam_id, played_on DESC, timestamp DESC NULLS LAST, id DESC/);
   assert.doesNotMatch(source, /parse_source IN \('watcher_live','watcher_final','file_upload'\)/);
   assert.doesNotMatch(source, /rate_snapshot\s+AS\s+(?:rm|dm)/i);
@@ -75,4 +76,21 @@ test("signed watcher SQL projection preserves independently observed RM/DM value
   assert.match(sql, /provenance_signature_verified/);
   assert.match(sql, /g\.parse_source IN \('watcher_live','watcher_final'\)/);
   invalidateVerifiedWatcherSteamRatingsCache();
+});
+
+test("unavailable signed-history SQL fails closed without taking down a public leaderboard", async () => {
+  const { loadVerifiedWatcherSteamRatings, invalidateVerifiedWatcherSteamRatingsCache } =
+    await import("../lib/verifiedWatcherSteamRatings.ts");
+  invalidateVerifiedWatcherSteamRatingsCache();
+  const originalWarn = console.warn;
+  console.warn = () => {};
+  try {
+    const result = await loadVerifiedWatcherSteamRatings({
+      $queryRaw: async () => { throw new Error("optional rating rail unavailable"); },
+    } as never);
+    assert.deepEqual(result, []);
+  } finally {
+    console.warn = originalWarn;
+    invalidateVerifiedWatcherSteamRatingsCache();
+  }
 });
