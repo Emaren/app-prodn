@@ -476,11 +476,11 @@ test("default pages stay strict and sequential even when off-page profiles are f
       (entry) => entry.rank,
     ),
     Array.from(
-      { length: 14 },
+      { length: 15 },
       (_, index) => index + 51,
     ),
   );
-  assert.equal(firstPage.trackedPlayers, 64);
+  assert.equal(firstPage.trackedPlayers, 65);
   assert.equal(
     new Set(
       [
@@ -488,7 +488,7 @@ test("default pages stay strict and sequential even when off-page profiles are f
         ...secondPage.entries,
       ].map((entry) => entry.key),
     ).size,
-    64,
+    65,
   );
 });
 
