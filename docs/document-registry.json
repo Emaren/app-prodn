@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0297bf18ca80bd01de5d603f23e239e28fa90b01c8fd6dde31fae0069c10f90a",
+      "sha256": "f75c882696a636e02abf8b1f7dcd07ce490386337af22000157244f0b8fa9380",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2048,8 +2048,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/leaderboard-lane-truth-20261008",
-    "commit": "92d26b5fa8e00c28341f97c82a76480ce9d06216"
+    "branch": "fix/leaderboard-finish-eslint-parity-20261008",
+    "commit": "618370765c3fb4e7115dfff668dcc00736faed26"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
