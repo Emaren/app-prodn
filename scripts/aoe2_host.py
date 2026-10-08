@@ -423,6 +423,14 @@ def main() -> int:
             if args.apply:
                 print(f"Reset:              {payload.get('reset_transients', 0)}")
                 print(f"Traffic rearmed:    {payload.get('timer_rearmed', False)}")
+                if payload.get("error"):
+                    error_lines = [
+                        line.strip()
+                        for line in str(payload["error"]).splitlines()
+                        if line.strip()
+                    ]
+                    if error_lines:
+                        print(f"Failure:            {error_lines[-1][:500]}")
                 print(f"Receipt:            {payload.get('receipt_path', '—')}")
             else:
                 print(
