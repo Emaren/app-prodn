@@ -191,12 +191,23 @@ never manufacture game history. The UI visibly says `Stats · All modes`,
 with column tooltips explaining the scope. These columns must never claim
 to represent RM-only or DM-only competition.
 
-When no authoritative Steam lane rating is known, the fallback Site Elo is
-reconstructed from the same accepted *all-mode* resolved replay corpus and
-explicitly labeled `Site Elo · All`. It stays a **lower, separate source
-tier** from Steam ratings in rank comparison; the two scales are never
-numerically mixed. Unknown-lane Steam ratings are not invented. Profiles
-without Steam ratings and without replay history stay unrated.
+Version 1 **never substitutes Site Elo**, including when Steam ratings are
+missing. An unrated account shows an unavailable Steam Elo, not a synthesized
+number. Source priority is per-lane, per-exact-Steam-ID: immutable qualified
+current-account receipt, signed Watcher observation in GameStats, and dated
+HD-header replay history. Among the two Watcher rails, the most recent *game
+observation time* wins each lane independently, not the time an old replay was
+uploaded. Manual, batch and file-upload rows cannot enter the signed Watcher
+rating rail, even if imported later. This is display-only authority: no Watcher
+observation can create a user identity, battle, win, loss or bet result.
+
+The signed-Watcher compatibility reader requires server-verified live-monitor
+provenance, matching client/server SHA-256, a valid Watcher file role, a valid
+17-digit Steam ID, explicit numeric RM/DM fields and a game clock. It does not
+upgrade unmarked raw values to `hd_header`; immutable receipt authority remains
+separate. It has bounded stale-while-refresh caching to protect render latency.
+Site Elo computation remains internal for later Version 2 work but must not be
+displayed or used as a sort/rank tie-breaker on RM/DM V1 boards.
 
 The source retains a conservative `GameStats.game_type` /
 `key_events.settings.type` resolver on each canonical accepted replay-player
