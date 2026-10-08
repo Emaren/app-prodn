@@ -488,7 +488,7 @@ def _allocated_bytes(path: Path) -> int:
         return 0
 
 
-def _bounded_allocated_bytes(path: Path, *, timeout: int = 120) -> tuple[int, bool]:
+def _bounded_allocated_bytes(path: Path, *, timeout: int = 45) -> tuple[int, bool]:
     """Measure one named local bucket without letting it abort the whole census."""
     if not path.exists() or path.is_symlink():
         return 0, True
@@ -645,7 +645,7 @@ def allocated(path):
             stdout=subprocess.PIPE,
             stderr=subprocess.DEVNULL,
             check=False,
-            timeout=120,
+            timeout=20,
         )
     except (OSError, subprocess.TimeoutExpired):
         row["probe_ok"] = False
