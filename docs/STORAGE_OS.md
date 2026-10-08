@@ -622,3 +622,32 @@ Wolo-progress and per-object receipt gates remain unchanged.
 This is orchestration hardening, not broader deletion authority. Database
 snapshot deletion and automatic threshold-triggered expiry remain separate
 future contracts.
+
+
+## Deep three-plane census
+
+`aoe2war storage deep-census` is deliberately read-only. It exists because the
+fast estate view can tell us that the Mac or VPS root is full without explaining
+where the unclassified bytes live.
+
+The deep census measures only named storage classes. It does not crawl or publish
+arbitrary operator-home paths and it grants no new deletion authority.
+
+Mac rows cover the existing strict regenerable allowlist, protected recovery /
+Codex / CrossOver / MobileSync paths, and named developer/runtime buckets such as
+active AoE2WAR dependency/build environments, package/toolchain caches, and Xcode
+artifacts. Review-only rows remain `mutation_authority=NONE`.
+
+The VPS-root census runs under the configured root maintenance identity because
+an unprivileged filesystem walk cannot accurately size root-owned Docker, Snap,
+journal, or root-cache storage. The embedded probe performs no mutation. It
+classifies active runtime trees as protected, staged release trees as
+receipt-gated review, fast rollback pairs as durable-proof-gated, previously
+proven bounded recovery classes separately, and unproven pools such as Docker
+and the Snap download cache as review-only. Disabled Snap revisions are measured
+separately because that reclaim class already has observed release-recovery
+evidence.
+
+The mounted evidence volume is included using the normal Storage OS snapshot so
+one report covers all three planes. Classification is evidence for the next
+planning step, not permission to delete.
