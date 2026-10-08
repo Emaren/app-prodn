@@ -488,6 +488,29 @@ def _allocated_bytes(path: Path) -> int:
         return 0
 
 
+def _bounded_allocated_bytes(path: Path, *, timeout: int = 120) -> tuple[int, bool]:
+    """Measure one named local bucket without letting it abort the whole census."""
+    if not path.exists() or path.is_symlink():
+        return 0, True
+    try:
+        proc = subprocess.run(
+            ["du", "-skx", str(path)],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            timeout=timeout,
+            check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return 0, False
+    if proc.returncode != 0:
+        return 0, False
+    try:
+        return int(proc.stdout.split()[0]) * 1024, True
+    except (IndexError, ValueError):
+        return 0, False
+
+
 def _filesystem_usage(path: Path) -> dict[str, Any]:
     usage = shutil.disk_usage(path)
     used_percent = round(usage.used * 100.0 / usage.total, 2) if usage.total else 100.0
@@ -752,13 +775,15 @@ def local_deep_storage_census(*, home: Path | None = None) -> dict[str, Any]:
     allowlisted = {str(relative) for _, relative in LOCAL_REGENERABLE_PATHS}
     for name, relative, classification in LOCAL_REVIEW_PATHS:
         path = operator_home / relative
+        allocated_bytes, probe_ok = _bounded_allocated_bytes(path)
         rows.append(
             {
                 "name": name,
                 "path": str(path),
                 "exists": path.exists(),
                 "symlink": path.is_symlink(),
-                "allocated_bytes": _allocated_bytes(path),
+                "allocated_bytes": allocated_bytes,
+                "probe_ok": probe_ok,
                 "classification": classification,
                 "mutation_authority": "NONE",
                 "already_allowlisted": str(relative) in allowlisted,
@@ -766,16 +791,18 @@ def local_deep_storage_census(*, home: Path | None = None) -> dict[str, Any]:
         )
 
     # Include the existing strict allowlist and protected buckets using the same
-    # size probe so one report explains both known-safe and keep-only storage.
+    # bounded probe so one slow local tree cannot abort the whole census.
     for name, relative in LOCAL_REGENERABLE_PATHS:
         path = operator_home / relative
+        allocated_bytes, probe_ok = _bounded_allocated_bytes(path)
         rows.append(
             {
                 "name": name,
                 "path": str(path),
                 "exists": path.exists(),
                 "symlink": path.is_symlink(),
-                "allocated_bytes": _allocated_bytes(path),
+                "allocated_bytes": allocated_bytes,
+                "probe_ok": probe_ok,
                 "classification": "PROVEN_REGENERABLE_ALLOWLIST",
                 "mutation_authority": "LOCAL_MAINTAIN_ONLY",
                 "already_allowlisted": True,
@@ -783,13 +810,15 @@ def local_deep_storage_census(*, home: Path | None = None) -> dict[str, Any]:
         )
     for name, relative in LOCAL_PROTECTED_PATHS:
         path = operator_home / relative
+        allocated_bytes, probe_ok = _bounded_allocated_bytes(path)
         rows.append(
             {
                 "name": name,
                 "path": str(path),
                 "exists": path.exists(),
                 "symlink": path.is_symlink(),
-                "allocated_bytes": _allocated_bytes(path),
+                "allocated_bytes": allocated_bytes,
+                "probe_ok": probe_ok,
                 "classification": "PROTECTED",
                 "mutation_authority": "NONE",
                 "already_allowlisted": False,
@@ -832,6 +861,12 @@ def print_deep_storage_census(payload: dict[str, Any]) -> None:
         f"{gib(local['filesystem']['free_bytes'])} free"
     )
     for row in local["rows"]:
+        if not row.get("probe_ok", True):
+            print(
+                f"  {'PROBE?':>10}  "
+                f"{row['name']:<24} {row['classification']}"
+            )
+            continue
         if int(row["allocated_bytes"]) <= 0:
             continue
         print(
@@ -844,6 +879,12 @@ def print_deep_storage_census(payload: dict[str, Any]) -> None:
         f"{gib(root['filesystem']['available_bytes'])} available"
     )
     for row in root["rows"]:
+        if not row.get("probe_ok", True):
+            print(
+                f"  {'PROBE?':>10}  "
+                f"{row['name']:<24} {row['classification']}"
+            )
+            continue
         if int(row["allocated_bytes"]) <= 0:
             continue
         print(
