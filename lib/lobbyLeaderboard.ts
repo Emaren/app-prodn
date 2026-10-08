@@ -399,10 +399,10 @@ function compareRequestedLeaderboardSort(
       break;
 
     case "rating":
-      comparison = compareNullableSortNumber(
-        getPrimaryRatingValue(left, lane),
-        getPrimaryRatingValue(right, lane),
-        direction
+      comparison = compareLeaderboardRatingAuthority(
+        ratingPresentation(left, lane),
+        ratingPresentation(right, lane),
+        direction,
       );
       break;
 
