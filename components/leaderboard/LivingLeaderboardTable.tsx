@@ -231,6 +231,7 @@ function WinRateMeter({
 
 function SortHeader({
   label,
+  tooltip,
   column,
   sortKey,
   sortDirection,
@@ -239,6 +240,7 @@ function SortHeader({
   className = "",
 }: {
   label: string;
+  tooltip?: string;
   column: LeaderboardSortKey;
   sortKey: LeaderboardSortKey | null;
   sortDirection:
@@ -268,7 +270,7 @@ function SortHeader({
       <button
         type="button"
         onClick={() => onSort(column)}
-        title={`Sort by ${label}`}
+        title={tooltip ?? `Sort by ${label}`}
         className={`group flex w-full cursor-pointer items-center gap-1.5 px-3 py-3.5 text-[10px] font-black uppercase tracking-[0.19em] text-amber-100/80 transition hover:bg-amber-200/[0.045] hover:text-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-200/40 ${
           align === "right"
             ? "justify-end text-right"
@@ -302,15 +304,18 @@ function SortHeader({
 
 function StaticHeader({
   children,
+  tooltip,
   align = "left",
   className = "",
 }: {
   children: React.ReactNode;
+  tooltip?: string;
   align?: "left" | "right";
   className?: string;
 }) {
   return (
     <th
+      title={tooltip}
       className={`${className} px-3 py-3.5 text-[10px] font-black uppercase tracking-[0.19em] text-amber-100/80 ${
         align === "right"
           ? "text-right"
@@ -1157,6 +1162,7 @@ export function LivingLeaderboardTable({
                 className={`${columnClass(
                   "last10",
                 )} w-48`}
+                tooltip="Last 10 accepted observed replay results, across all modes."
               >
                 Last 10
               </StaticHeader>
@@ -1166,6 +1172,7 @@ export function LivingLeaderboardTable({
                 className={`${columnClass(
                   "last30",
                 )} w-28`}
+                tooltip="Last 30 days of accepted observed replay results, across all modes."
               >
                 30d W–L
               </StaticHeader>
@@ -1186,6 +1193,7 @@ export function LivingLeaderboardTable({
 
               <SortHeader
                 label="Win %"
+                tooltip="Sort by win percentage across all accepted replay modes."
                 column="win_rate"
                 sortKey={sortKey}
                 sortDirection={
@@ -1202,12 +1210,14 @@ export function LivingLeaderboardTable({
                 className={`${columnClass(
                   "record",
                 )} w-20`}
+                tooltip="Accepted observed win-loss record across all replay modes, not just this Steam rating lane."
               >
                 W–L
               </StaticHeader>
 
               <SortHeader
                 label="Games"
+                tooltip="Sort by all accepted observed replay games, including RM, DM and other modes."
                 column="games"
                 sortKey={sortKey}
                 sortDirection={
@@ -1222,6 +1232,7 @@ export function LivingLeaderboardTable({
 
               <SortHeader
                 label="Streak"
+                tooltip="Sort by current streak across accepted observed replay modes."
                 column="streak"
                 sortKey={sortKey}
                 sortDirection={

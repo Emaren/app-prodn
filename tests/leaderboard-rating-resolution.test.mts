@@ -23,7 +23,7 @@ test("current receipt-backed Steam rating outranks historical and Site Elo", () 
       value: 2011,
       source: "current_steam",
       sourceLabel: "RM Rating",
-      secondaryLabel: "Site 1888",
+      secondaryLabel: "Site 1888 · All",
     },
   );
 });
@@ -43,7 +43,7 @@ test("last-known accepted Steam snapshot outranks Site Elo without becoming curr
       value: 2314,
       source: "last_known_steam",
       sourceLabel: "Last DM",
-      secondaryLabel: "Site 1760",
+      secondaryLabel: "Site 1760 · All",
     },
   );
 });
@@ -62,7 +62,7 @@ test("Site Elo is only the third presentation tier for replay-backed warriors", 
     {
       value: 1655,
       source: "site_elo",
-      sourceLabel: "Site Elo",
+      sourceLabel: "Site Elo · All",
       secondaryLabel: null,
     },
   );

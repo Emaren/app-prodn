@@ -67,12 +67,12 @@ test(
   () => {
     assert.match(
       loader,
-      /if \(requestedSortKey === "streak"\) \{[\s\S]*populateLeaderboardStreaks\(\s*candidates,\s*laneRecentGames\s*\)/,
+      /if \(requestedSortKey === "streak"\) \{[\s\S]*populateLeaderboardStreaks\(\s*candidates,\s*recentGames\s*\)/,
     );
 
     assert.match(
       loader,
-      /if \(requestedSortKey !== "streak"\) \{[\s\S]*populateLeaderboardStreaks\(\s*selectedEntries,\s*laneRecentGames\s*\)/,
+      /if \(requestedSortKey !== "streak"\) \{[\s\S]*populateLeaderboardStreaks\(\s*selectedEntries,\s*recentGames\s*\)/,
     );
 
     assert.doesNotMatch(

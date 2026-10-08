@@ -172,43 +172,43 @@ The folded row reports cumulative totals across those names. A
 `gameStatsId + identity key` guard prevents the same replay from contributing
 twice to one row. Name-history ordering is newest observation first.
 
-## RM/DM competitive evidence boundary
+## RM/DM rating lanes and all-mode Version 1 statistics
 
-The RM and DM boards are **independent competitive projections**, not two
-sorting views over one all-modes record. The bounded public game corpus carries
-the parser's `GameStats.game_type` and `key_events.settings.type` evidence.
-Explicit `RM` / `Random Map` / `Ranked Match` and `DM` /
-`Death Match` values enter their respective lanes. For a missing, Unknown,
-or historically malformed HD version-tuple `game_type`, an explicit
-recognized mode in the independent `key_events.settings.type` (or historical
-`key_events.type`) can recover that lane **at read time only**. Conflicting
-mode labels fail closed. TurboRandom9, real custom modes, unspecified HD
-numeric-type labels and genuinely unknown evidence remain outside both lanes;
-no database rewrite or adjudication occurs.
+**Version 1 intentionally optimizes for comprehensive, truthful visibility.**
+RM and DM select the **Steam ladder rating** (current Watcher account state
+first, then provenance-qualified historical HD replay header). The Watcher may
+capture *both* RM and DM ratings while observing a game in only one mode;
+a displayed Steam RM rating does **not** prove this site has ingested a
+classified RM replay for that warrior.
 
+The main leaderboard's Games, W–L, win percentage, last 10, rolling 30-day
+record, streak and last played are the **accepted all-mode AoE2WAR replay
+history**, identically sourced on both boards. Valid RM, DM, TurboRandom9
+and unknown/custom modes all contribute when their public replay-player
+projections pass the existing accepted/unsuperseded/result authority rules.
+An accepted game contributes only to its actual identified players; ratings
+never manufacture game history. The UI visibly says `Stats · All modes`,
+with column tooltips explaining the scope. These columns must never claim
+to represent RM-only or DM-only competition.
 
-The 2026-10-08 live `aoe2hd_db` **final-record** census found 5,702
-nonsuperseded rows: 1,503 with top-level DM and 718 with top-level RM. The
-older parser's HD version tuple mistakenly occupied `game_type` in 998 rows,
-but the embedded setting in the displayed production breakdown explicitly
-identified at least 887 RM, 2 DM and 107 TurboRandom9 (two malformed rows
-outside the displayed top-35 cohorts still require proof). Recovering the 889
-explicit additional RM/DM modes gives 3,110 classifiable *final records*
-before deduplication. These are **not** accepted public leaderboard game totals.
-This counts only classification availability, not trusted outcome eligibility.
+When no authoritative Steam lane rating is known, the fallback Site Elo is
+reconstructed from the same accepted *all-mode* resolved replay corpus and
+explicitly labeled `Site Elo · All`. It stays a **lower, separate source
+tier** from Steam ratings in rank comparison; the two scales are never
+numerically mixed. Unknown-lane Steam ratings are not invented. Profiles
+without Steam ratings and without replay history stay unrated.
 
-Per-lane replay evidence exclusively determines wins, losses, unresolved counts,
-game totals, last-10 results, 30-day results, last played, streaks and a
-separately reconstructed Site Elo. This is a presentation/read-model change:
-the canonical global player directory, replay adjudication, settlement evidence,
-and financial authority remain unchanged. Steam RM/DM account ratings come
-from current receipt-backed observations or dated historical HD headers and may
-be present even when the replay evidence for a particular match lane is absent.
+The source retains a conservative `GameStats.game_type` /
+`key_events.settings.type` resolver on each canonical accepted replay-player
+observation for a later **opt-in, mode-only** statistics view. The 2026-10-08
+production audit found 5,702 nonsuperseded final replay records, including
+2,097 TurboRandom9 and 998 historical malformed HD version-label rows.
+Within the top cohorts, 889 malformed rows had explicit RM/DM mode evidence,
+but mode classification covers only part of the corpus. That is why strict
+mode-only statistics must not silently replace the Version 1 all-mode table.
 
-**Steam rating numbers and Site Elo are not comparable units.** Ranking places
-Steam-rated warriors on the Steam scale first (current and explicitly
-historical values retain source labels); Site-Elo-only warriors occupy a distinct
-lower source tier, ranked within Site Elo. Profile-only rows remain unranked.
+No database mutation, replay adjudication, financial authority, or Wolo
+operation is involved in this choice.
 
 ## 24-hour rank change
 

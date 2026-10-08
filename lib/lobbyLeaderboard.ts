@@ -30,10 +30,6 @@ import {
   compareLeaderboardRatingAuthority,
 } from "@/lib/leaderboardRating";
 import {
-  resolveLeaderboardReplayMode,
-  summarizeLeaderboardLaneEvidence,
-} from "@/lib/leaderboardGameMode";
-import {
   normalizeLeaderboardScope,
   type LeaderboardScope,
 } from "@/lib/leaderboardScope";
@@ -217,31 +213,6 @@ function buildEnrichedEntry(entry: PublicPlayerDirectoryEntry): EnrichedLeaderbo
       entry.totalMatches > 0
         ? "new"
         : "unranked",
-  };
-}
-
-function projectEnrichedLeaderboardLane(
-  entry: EnrichedLeaderboardEntry,
-  lane: LeaderboardLane,
-): EnrichedLeaderboardEntry {
-  const laneTruth = summarizeLeaderboardLaneEvidence(entry.replayEvidence, lane);
-  return {
-    ...entry,
-    replayEvidence: laneTruth.evidence,
-    evidenceGameIds: new Set(laneTruth.evidence.map((row) => row.gameStatsId)),
-    totalMatches: laneTruth.totalMatches,
-    wins: laneTruth.wins,
-    losses: laneTruth.losses,
-    unknowns: laneTruth.unknowns,
-    resolvedMatches: laneTruth.wins + laneTruth.losses,
-    winRate: laneTruth.wins + laneTruth.losses > 0
-      ? laneTruth.wins / (laneTruth.wins + laneTruth.losses)
-      : 0,
-    lastPlayedAt: laneTruth.lastPlayedAt,
-    lastPlayedAtMs: laneTruth.lastPlayedAt ? Date.parse(laneTruth.lastPlayedAt) : 0,
-    arenaElo: BASE_ARENA_ELO,
-    streakLabel: null,
-    streakScore: 0,
   };
 }
 
@@ -1357,35 +1328,30 @@ async function loadLobbyLeaderboardFresh(
     const playedAtMs = playedAt ? new Date(playedAt).getTime() : 0;
     return Number.isFinite(playedAtMs) && playedAtMs >= dayStartMs;
   };
-  const gamesForLane = (target: LeaderboardLane) =>
-    (game: { game_type: string | null; key_events?: unknown }) =>
-      resolveLeaderboardReplayMode(game) === target;
-  const matchesToday = resolvedGames.filter(gamesForLane(lane)).filter(isToday).length;
-  const uniqueReplaysToday = uniqueGames.filter(gamesForLane(lane)).filter(isToday).length;
+  // Version 1: the RM/DM toggle selects which independently observed Steam
+  // rating ranks the warriors, not which accepted replay records disappear.
+  // A recorded Steam RM rating can be observed during a DM/Turbo game.
+  // Preserve all accepted public replay evidence for every player's visible
+  // game counts, results, streaks, recent form and fallback *all-mode* Site Elo.
+  // The explicit per-replay gameMode remains available in the canonical
+  // directory for a later opt-in mode-only statistics view.
+  const matchesToday = resolvedGames.filter(isToday).length;
+  const uniqueReplaysToday = uniqueGames.filter(isToday).length;
   const needsReviewToday = Math.max(0, uniqueReplaysToday - matchesToday);
 
-  const allIdentityEntries = directory.allEntries
+  const candidates = directory.allEntries
     .filter((entry) =>
       !isLeaderboardExcludedSystemUid(entry.uid) &&
       (entry.totalMatches > 0 || entry.claimed)
     )
     .map(buildEnrichedEntry);
 
-  // Both views derive independently from the same canonical identity evidence,
-  // never from the other lane's already-filtered entries or game results.
-  const rmEntries = allIdentityEntries.map((entry) => projectEnrichedLeaderboardLane(entry, "rm"));
-  const dmEntries = allIdentityEntries.map((entry) => projectEnrichedLeaderboardLane(entry, "dm"));
-  const rmGames = preparedGames.filter(gamesForLane("rm"));
-  const dmGames = preparedGames.filter(gamesForLane("dm"));
-  buildArenaElo(rmEntries, rmGames);
-  buildArenaElo(dmEntries, dmGames);
-  const candidates = lane === "rm" ? rmEntries : dmEntries;
-  const laneRecentGames = recentGames.filter(gamesForLane(lane));
+  buildArenaElo(candidates, preparedGames);
 
   const visibleScope = (entry: EnrichedLeaderboardEntry) =>
     scope !== "claimed" || entry.claimed;
-  const featuredRmRankByKey = buildCanonicalRankMap(rmEntries.filter(visibleScope), "rm");
-  const featuredDmRankByKey = buildCanonicalRankMap(dmEntries.filter(visibleScope), "dm");
+  const featuredRmRankByKey = buildCanonicalRankMap(candidates.filter(visibleScope), "rm");
+  const featuredDmRankByKey = buildCanonicalRankMap(candidates.filter(visibleScope), "dm");
   const rankDeltaWindow = populateRankDelta24h(candidates, rankDeltaAsOf);
 
   const identityRows =
@@ -1438,7 +1404,7 @@ async function loadLobbyLeaderboardFresh(
   if (requestedSortKey === "streak") {
     populateLeaderboardStreaks(
       candidates,
-      laneRecentGames
+      recentGames
     );
   }
 
@@ -1455,7 +1421,7 @@ async function loadLobbyLeaderboardFresh(
   if (requestedSortKey !== "streak") {
     populateLeaderboardStreaks(
       selectedEntries,
-      laneRecentGames
+      recentGames
     );
   }
 

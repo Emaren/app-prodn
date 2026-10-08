@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "f75c882696a636e02abf8b1f7dcd07ce490386337af22000157244f0b8fa9380",
+      "sha256": "4b59688ff7527a54c8ee3ced3a027934fceb13dd7e754f5458a56931326ccd3a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -961,7 +961,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-07-28",
       "sensitivity": "internal",
-      "sha256": "b5c8cc353e09beb7bbb94e53611aff9f8a71b454f15630dd43b56e6fe8a27a19",
+      "sha256": "bb8dd4f6ba7e5a975463084438bd497fd00912c894800c6ab378be119ba86f29",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2048,8 +2048,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/leaderboard-finish-eslint-parity-20261008",
-    "commit": "618370765c3fb4e7115dfff668dcc00736faed26"
+    "branch": "fix/leaderboard-v1-full-tracked-history-20261008",
+    "commit": "5a04346b104d5ddb2fc84647fe85b304f654a7c9"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
