@@ -492,19 +492,24 @@ test("default pages stay strict and sequential even when off-page profiles are f
   );
 });
 
-test("RM and DM never share game counts or results", async () => {
+test("Version 1 shows every accepted all-mode game on both Steam rating boards", async () => {
   const rm = await loadLobbyLeaderboard(prisma as never, { lane: "rm", limit: 20 });
   const dm = await loadLobbyLeaderboard(prisma as never, { lane: "dm", limit: 20 });
   const rmAlpha = rm.entries.find((entry) => entry.steamId === STEAM_ALPHA);
   const dmAlpha = dm.entries.find((entry) => entry.steamId === STEAM_ALPHA);
   assert.ok(rmAlpha);
   assert.ok(dmAlpha);
-  assert.deepEqual([rmAlpha.totalMatches, rmAlpha.wins, rmAlpha.losses], [1, 1, 0]);
-  assert.deepEqual([dmAlpha.totalMatches, dmAlpha.wins, dmAlpha.losses], [1, 0, 1]);
-  assert.deepEqual(rmAlpha.last10Results, ["W"]);
-  assert.deepEqual(dmAlpha.last10Results, ["L"]);
-  assert.notEqual(rmAlpha.lastPlayedAt, dmAlpha.lastPlayedAt);
-  assert.equal(dmAlpha.rankDelta24hState, "unavailable");
+  // One explicit HD RM match and one DM match; neither gets discarded.
+  for (const entry of [rmAlpha, dmAlpha]) {
+    assert.deepEqual([entry.totalMatches, entry.wins, entry.losses], [2, 1, 1]);
+    assert.deepEqual(entry.last10Results, ["W", "L"]);
+    assert.equal(entry.rankDelta24hState, "unavailable");
+  }
+  assert.equal(rmAlpha.lastPlayedAt, dmAlpha.lastPlayedAt);
+  assert.equal(rmAlpha.arenaElo, dmAlpha.arenaElo);
+  // RM/DM retains its independent rating authority even though stats agree.
+  assert.equal(rmAlpha.primaryRatingSourceLabel, "Last RM");
+  assert.equal(dmAlpha.primaryRatingSourceLabel, "Site Elo · All");
 });
 
 test("claimed scope is contiguous and excludes reserved systems by UID, not name", async () => {
