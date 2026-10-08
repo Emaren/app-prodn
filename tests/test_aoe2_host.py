@@ -1,4 +1,5 @@
 import unittest
+import tempfile
 from unittest.mock import patch
 from pathlib import Path
 
@@ -118,20 +119,24 @@ class HostTests(unittest.TestCase):
 
     def test_tidy_failed_result_retains_remote_error(self):
         before = {"failed_transient": 1}
-        with (
-            patch.object(host, "snapshot", return_value=before),
-            patch.object(
-                host,
-                "ssh_script",
-                return_value=(21, "detail\nSTOP: timer proof failed"),
-            ),
-            patch.object(host.RECEIPT_DIR, "mkdir"),
-            patch.object(Path, "write_text"),
-        ):
-            payload = host.tidy(
-                apply=True,
-                transients_only=False,
-            )
+        with tempfile.TemporaryDirectory() as d:
+            with (
+                patch.object(host, "snapshot", return_value=before),
+                patch.object(
+                    host,
+                    "ssh_script",
+                    return_value=(21, "detail\nSTOP: timer proof failed"),
+                ),
+                patch.object(
+                    host,
+                    "RECEIPT_DIR",
+                    Path(d),
+                ),
+            ):
+                payload = host.tidy(
+                    apply=True,
+                    transients_only=False,
+                )
 
         self.assertEqual(payload["status"], "FAILED")
         self.assertIn(
