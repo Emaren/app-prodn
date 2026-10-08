@@ -114,22 +114,22 @@ test(
 
     assert.match(
       source,
-      /if \(!state\) \{\s*return entry;/,
+      /if \(!state && !signed\) \{\s*return entry;/,
     );
 
     assert.match(
       source,
-      /entry\.steamRmRating\s*=\s*state\.steamRmRating/,
+      /selectLatestSteamObservation\(/,
     );
 
     assert.match(
       source,
-      /entry\.steamDmRating\s*=\s*state\.steamDmRating/,
+      /signedWatcherByKey\.get\(entry\.key\)/,
     );
 
     assert.match(
       source,
-      /entry\.ratingLastSeenAt\s*=\s*state\.ratingObservedAt/,
+      /entry\.ratingLastSeenAt\s*=\s*\[rm\.observedAt, dm\.observedAt\]/,
     );
 
     assert.doesNotMatch(
