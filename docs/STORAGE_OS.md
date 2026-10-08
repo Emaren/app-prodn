@@ -593,3 +593,30 @@ production plan is reviewed, every candidate is informational only.
 - Missing/inconsistent evidence fails closed.
 - Deploy receipts remain protected evidence.
 \n
+
+
+## 2026-10-08 three-plane hardening
+
+Operational pressure on the Mac, VPS root, and evidence volume exposed three
+control-plane gaps:
+
+- Workspace OS now treats a Git-registered worktree whose directory/gitdir has
+  disappeared as `STALE_GIT_WORKTREE_METADATA`. `workspace clean --apply`
+  runs `git worktree prune --verbose`, then recomputes cleanup candidates and
+  stale AoE2WAR registry metadata before removing ordinary worktrees.
+- Lean Runtime Expiry adds `storage expiry apply-ledger <ledger> <sha256>
+  [--max-objects N]`. The coordinator consumes only sealed `EXPIRE` rows and
+  launches every generation through its own existing bounded
+  `storage-runtime-expiry` maintenance transaction.
+- Ledger batch resume is fail-closed: a row is skipped only when a sealed
+  `.expired.json` receipt matches the exact ledger hash, generation and path,
+  and the target remains absent. An orphan intent, receipt mismatch, reappeared
+  target, runtime drift, lock failure or Wolo proof failure stops the batch.
+
+The batch cap is explicit (1-1000, default 250). Existing hot/cold checkpoint,
+runtime identity, archive/tree-content proof, release/storage/archive lock,
+Wolo-progress and per-object receipt gates remain unchanged.
+
+This is orchestration hardening, not broader deletion authority. Database
+snapshot deletion and automatic threshold-triggered expiry remain separate
+future contracts.
