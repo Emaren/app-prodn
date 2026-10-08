@@ -595,8 +595,21 @@ user-owned; replay names remain history. API historical ingestion cannot rename
 the registered account or grant verification from a name-only match.
 
 Existing naked legacy Watcher rows are not backfilled into current authority.
-Missing modern evidence renders the current rating pending/null. Deploy the API
-producer before relying on the web reader. This changes no historical rating
-observations, accepted W/L, Site Elo, result or financial authority. The tested
-implementation and deployment status are recorded in
+Missing modern evidence renders the **current official rating field**
+pending/null. Deploy the API producer before relying on the web reader. This
+changes no historical rating observations, accepted W/L, Site Elo, result or
+financial authority.
+
+The public ranked leaderboard may separately use the newest dated rating already
+present in its accepted replay-player corpus as **historical presentation** when
+that current field is null. Such a value is labeled `Last RM` / `Last DM`,
+never `RM Rating` / `DM Rating`; it cannot enter current-account state,
+rename/verify an identity, or outrank a newer immutable lane receipt. If neither
+current nor historical Steam lane evidence exists, presentation may fall back to
+Site Elo. This distinction preserves strict current authority without making the
+young leaderboard discard truthful Steam rating evidence accumulated before the
+receipt cutover.
+
+The tested implementation and deployment status of the current-account receipt
+cutover are recorded in
 `replay-receipts/player-first-2026-10-06-report.json`.

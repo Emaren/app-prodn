@@ -277,3 +277,21 @@ current Steam RM/DM rating.
 
 Player profiles, player directory, and leaderboard surfaces consume the same
 chronology-aware current-rating authority.
+
+### Leaderboard rating presentation order
+
+The ranked board keeps **current authority** and **useful historical
+presentation** separate. Its lane value resolves in this order:
+
+1. current immutable Watcher receipt-backed Steam RM/DM rating;
+2. newest dated accepted replay-player HD-header snapshot for that exact Steam
+   identity, rendered explicitly as `Last RM` / `Last DM`;
+3. reconstructed `Site Elo` when no Steam lane snapshot is available;
+4. unrated/profile state when there is no replay-backed history.
+
+The second tier is historical presentation, not current-account authority. It
+cannot populate `CurrentWatcherAccountState`, rename or verify an account,
+supersede a newer receipt-backed lane, or gain result/financial authority.
+Non-positive legacy rating sentinels are unavailable. Historical Steam fallback
+chronology uses replay `played_on` only; ingestion/acceptance time does not make
+an older embedded rating newer.

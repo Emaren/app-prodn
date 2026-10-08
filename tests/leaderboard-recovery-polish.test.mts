@@ -9,25 +9,26 @@ function source(path: string) {
   return readFileSync(join(root, path), "utf8");
 }
 
-test("DM ranked rows fall back to site Elo instead of permanent Pending", () => {
+test("ranked rows prefer truthful Steam rating presentation before Site Elo", () => {
   const leaderboard = source("lib/lobbyLeaderboard.ts");
 
-  const primaryStart = leaderboard.indexOf("function getPrimaryRatingValue");
-  const primaryEnd = leaderboard.indexOf("function compareLeaderboardEntries", primaryStart);
-  const primary = leaderboard.slice(primaryStart, primaryEnd);
-
-  assert.match(primary, /if \(!hasTrackedHistory\(entry\)\) \{\s*return null;/);
-  assert.match(primary, /return entry\.arenaElo;/);
-  assert.doesNotMatch(primary, /lane === "dm"[\s\S]*return null/);
-
-  const sourceLabelStart = leaderboard.indexOf("function buildPrimaryRatingSourceLabel");
-  const sourceLabelEnd = leaderboard.indexOf("function buildSecondaryRatingLabel", sourceLabelStart);
-  const sourceLabel = leaderboard.slice(sourceLabelStart, sourceLabelEnd);
-
-  assert.match(sourceLabel, /hasLaneRating\(entry, lane\)/);
-  assert.match(sourceLabel, /return hasTrackedHistory\(entry\) \? "Site Elo" : "Profile";/);
+  assert.match(
+    leaderboard,
+    /resolveLeaderboardRatingPresentation/,
+  );
+  assert.match(
+    leaderboard,
+    /lastKnownSteamRmRating/,
+  );
+  assert.match(
+    leaderboard,
+    /lastKnownSteamDmRating/,
+  );
+  assert.match(
+    leaderboard,
+    /latestHistoricalSteamLaneRating/,
+  );
 });
-
 test("Columns command only highlights while its popover is open", () => {
   const living = source("components/leaderboard/LivingLeaderboard.tsx");
 

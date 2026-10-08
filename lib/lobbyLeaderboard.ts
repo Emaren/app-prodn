@@ -26,6 +26,10 @@ import {
   type LeaderboardLane,
 } from "@/lib/leaderboardLane";
 import {
+  latestHistoricalSteamLaneRating,
+  resolveLeaderboardRatingPresentation,
+} from "@/lib/leaderboardRating";
+import {
   normalizeLeaderboardScope,
   type LeaderboardScope,
 } from "@/lib/leaderboardScope";
@@ -147,6 +151,8 @@ type EnrichedLeaderboardEntry =
   winRate: number;
   lastPlayedAtMs: number;
   arenaElo: number;
+  lastKnownSteamRmRating: number | null;
+  lastKnownSteamDmRating: number | null;
   pendingWoloClaimCount: number;
   pendingWoloClaimAmount: number;
   streakLabel: string | null;
@@ -186,6 +192,16 @@ function buildEnrichedEntry(entry: PublicPlayerDirectoryEntry): EnrichedLeaderbo
     winRate: resolvedMatches > 0 ? entry.wins / resolvedMatches : 0,
     lastPlayedAtMs: entry.lastPlayedAt ? new Date(entry.lastPlayedAt).getTime() : 0,
     arenaElo: BASE_ARENA_ELO,
+    lastKnownSteamRmRating:
+      latestHistoricalSteamLaneRating(
+        entry.replayEvidence,
+        "rm",
+      ),
+    lastKnownSteamDmRating:
+      latestHistoricalSteamLaneRating(
+        entry.replayEvidence,
+        "dm",
+      ),
     pendingWoloClaimCount: entry.pendingWoloClaimCount || 0,
     pendingWoloClaimAmount: entry.pendingWoloClaimAmount || 0,
     streakLabel: null,
@@ -205,28 +221,45 @@ function hasTrackedHistory(entry: EnrichedLeaderboardEntry) {
 
 function getLaneRating(entry: EnrichedLeaderboardEntry, lane: LeaderboardLane) {
   const rating = lane === "dm" ? entry.steamDmRating : entry.steamRmRating;
-  return typeof rating === "number" && Number.isFinite(rating) ? rating : null;
+  return (
+    typeof rating === "number" &&
+    Number.isFinite(rating) &&
+    rating > 0
+  )
+    ? rating
+    : null;
 }
 
 function hasLaneRating(entry: EnrichedLeaderboardEntry, lane: LeaderboardLane) {
   return getLaneRating(entry, lane) !== null;
 }
 
+function ratingPresentation(
+  entry: EnrichedLeaderboardEntry,
+  lane: LeaderboardLane,
+) {
+  return resolveLeaderboardRatingPresentation({
+    lane,
+    currentRmRating:
+      entry.steamRmRating,
+    currentDmRating:
+      entry.steamDmRating,
+    lastKnownRmRating:
+      entry.lastKnownSteamRmRating,
+    lastKnownDmRating:
+      entry.lastKnownSteamDmRating,
+    siteElo:
+      entry.arenaElo,
+    hasTrackedHistory:
+      hasTrackedHistory(entry),
+  });
+}
+
 function getPrimaryRatingValue(entry: EnrichedLeaderboardEntry, lane: LeaderboardLane) {
-  const laneRating = getLaneRating(entry, lane);
-  if (laneRating !== null) {
-    return Math.round(laneRating);
-  }
-
-  // Official RM/DM snapshots remain first-class authority. When a warrior has
-  // replay-backed battle history but no current official lane snapshot, keep
-  // the ranked board usable with the site-native Elo rather than presenting
-  // a ranked row as permanently "Pending".
-  if (!hasTrackedHistory(entry)) {
-    return null;
-  }
-
-  return entry.arenaElo;
+  return ratingPresentation(
+    entry,
+    lane,
+  ).value;
 }
 
 function compareLeaderboardEntries(
@@ -931,27 +964,6 @@ function evidenceAcceptedAtMs(
     : null;
 }
 
-function latestEvidenceRating(
-  evidence: PublicPlayerReplayEvidence[],
-  lane: "rm" | "dm",
-) {
-  for (const item of evidence) {
-    const rating =
-      lane === "dm"
-        ? item.steamDmRating
-        : item.steamRmRating;
-
-    if (
-      typeof rating === "number" &&
-      Number.isFinite(rating)
-    ) {
-      return rating;
-    }
-  }
-
-  return null;
-}
-
 function buildHistoricalLeaderboardEntry(
   entry: EnrichedLeaderboardEntry,
   cutoffMs: number,
@@ -1016,12 +1028,12 @@ function buildHistoricalLeaderboardEntry(
       latestRatingEvidence
         ?.observedAt ?? null,
     steamRmRating:
-      latestEvidenceRating(
+      latestHistoricalSteamLaneRating(
         replayEvidence,
         "rm",
       ),
     steamDmRating:
-      latestEvidenceRating(
+      latestHistoricalSteamLaneRating(
         replayEvidence,
         "dm",
       ),
@@ -1060,6 +1072,16 @@ function buildHistoricalLeaderboardEntry(
           ).getTime()
         : 0,
     arenaElo: BASE_ARENA_ELO,
+    lastKnownSteamRmRating:
+      latestHistoricalSteamLaneRating(
+        replayEvidence,
+        "rm",
+      ),
+    lastKnownSteamDmRating:
+      latestHistoricalSteamLaneRating(
+        replayEvidence,
+        "dm",
+      ),
     streakLabel: null,
     streakScore: 0,
     rank24hAgo: null,
@@ -1205,19 +1227,17 @@ function buildPrimaryRatingLabel(entry: EnrichedLeaderboardEntry, lane: Leaderbo
 }
 
 function buildPrimaryRatingSourceLabel(entry: EnrichedLeaderboardEntry, lane: LeaderboardLane) {
-  if (hasLaneRating(entry, lane)) {
-    return lane === "dm" ? "DM Rating" : "RM Rating";
-  }
-
-  return hasTrackedHistory(entry) ? "Site Elo" : "Profile";
+  return ratingPresentation(
+    entry,
+    lane,
+  ).sourceLabel;
 }
 
 function buildSecondaryRatingLabel(entry: EnrichedLeaderboardEntry, lane: LeaderboardLane) {
-  if (!hasLaneRating(entry, lane) || !hasTrackedHistory(entry)) {
-    return null;
-  }
-
-  return `Site ${Math.round(entry.arenaElo)}`;
+  return ratingPresentation(
+    entry,
+    lane,
+  ).secondaryLabel;
 }
 
 function buildLast10Results(
