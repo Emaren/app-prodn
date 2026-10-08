@@ -259,6 +259,6 @@ test("leaderboard has no raw discovered-name escape hatch", () => {
   );
   assert.match(
     leaderboardSource,
-    /classifyLeaderboardReplayMode/,
+    /resolveLeaderboardReplayMode/,
   );
 });
