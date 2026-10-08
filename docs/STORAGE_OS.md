@@ -605,8 +605,10 @@ control-plane gaps:
   runs `git worktree prune --verbose`, then recomputes cleanup candidates and
   stale AoE2WAR registry metadata before removing ordinary worktrees.
 - Lean Runtime Expiry adds `storage expiry apply-ledger <ledger> <sha256>
-  [--max-objects N]`. The coordinator consumes only sealed `EXPIRE` rows and
-  launches every generation through its own existing bounded
+  [--max-objects N]`. The coordinator consumes only sealed `EXPIRE` rows,
+  requires the executing expiry tool SHA-256 to equal the ledger's sealed
+  `tool_sha256`, takes a non-blocking campaign coordinator lock, and launches
+  every generation through its own existing bounded
   `storage-runtime-expiry` maintenance transaction.
 - Ledger batch resume is fail-closed: a row is skipped only when a sealed
   `.expired.json` receipt matches the exact ledger hash, generation and path,
