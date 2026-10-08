@@ -6,6 +6,7 @@ const page = fs.readFileSync("app/champions/page.tsx", "utf8");
 const experience = fs.readFileSync("components/champions/ChampionsV2Experience.tsx", "utf8");
 const e3Experience = fs.readFileSync("components/champions/ChampionsE3Experience.tsx", "utf8");
 const e2Page = fs.readFileSync("app/champions/e2/page.tsx", "utf8");
+const e4Page = fs.readFileSync("app/champions/e4/page.tsx", "utf8");
 const displayRail = fs.readFileSync("components/champions/ChampionsDisplayRail.tsx", "utf8");
 const legacyPage = fs.readFileSync("app/champions/legacy/page.tsx", "utf8");
 const directory = fs.readFileSync("lib/publicPlayerDirectory.ts", "utf8");
@@ -18,19 +19,27 @@ const trophyService = fs.readFileSync("lib/trophies/service.ts", "utf8");
 const shell = fs.readFileSync("app/AppShell.tsx", "utf8");
 const globalCss = fs.readFileSync("app/globals.css", "utf8");
 
-test("Champions E3 is current while E1 and E2 remain explicit provenance views", () => {
+test("Champions E3 remains current while E4 is an explicit hybrid view", () => {
   assert.match(page, /ChampionsE3Experience/);
   assert.match(page, /loadChampionsV2State/);
   assert.match(e2Page, /ChampionsV2Experience/);
   assert.match(e2Page, /loadChampionsV2State/);
+  assert.match(e4Page, /ChampionsV2Experience/);
+  assert.match(e4Page, /variant="e4"/);
+  assert.match(e4Page, /loadChampionsV2State/);
   assert.match(legacyPage, /LegacyChampionsPage/);
   assert.match(legacyPage, /champions-page-shell/);
   assert.match(legacyPage, /ChampionsDisplayRail/);
+  assert.match(legacyPage, /ChampionsViewCycleButton/);
+  assert.match(legacyPage, /legacyDisplayMode/);
   assert.match(displayRail, /\/champions\/legacy\?view=b/);
   assert.match(displayRail, /\/champions\/legacy\?view=a/);
   assert.match(displayRail, /\/champions\/legacy\?view=e/);
   assert.match(displayRail, /\/champions\/e2/);
   assert.match(displayRail, /selectedMode === "e3"/);
+  assert.match(displayRail, /selectedMode === "e4"/);
+  assert.match(displayRail, /\/champions\/e4/);
+  assert.match(displayRail, /ChampionsViewCycleButton/);
   assert.match(displayRail, /champions-extreme-group/);
   assert.match(displayRail, /champions-extreme-menu/);
   assert.doesNotMatch(displayRail, /group-hover\/extreme/);
@@ -43,6 +52,7 @@ test("Champions E3 is current while E1 and E2 remain explicit provenance views",
   assert.match(displayRail, /E1/);
   assert.match(displayRail, /E2/);
   assert.match(displayRail, /E3/);
+  assert.match(displayRail, /E4/);
 });
 
 test("E3 carries the complete E2 championship ledger inside the E1 war-table layout", () => {
@@ -61,6 +71,30 @@ test("E3 carries the complete E2 championship ledger inside the E1 war-table lay
   assert.match(e3Experience, /state\.elo\[lane\]\.map/);
   assert.match(e3Experience, /state\.designationTitles\.map/);
   assert.match(e3Experience, /ChampionsDisplayRail active="e3"/);
+});
+
+test("E4 combines the E3 throne room with E2 rails, RM-first teams, Both mode, and holder challenges", () => {
+  assert.match(experience, /variant = "e2"/);
+  assert.match(experience, /const e4 = variant === "e4"/);
+  assert.match(experience, /E4PodiumCard/);
+  assert.match(experience, /ChampionsViewCycleButton active="e4"/);
+  assert.match(experience, /TeamChampionshipView = ChampionsLane \| "both"/);
+  assert.match(experience, /useState<TeamChampionshipView>\("rm"\)/);
+  assert.match(experience, /E4_TEAM_VIEW_STORAGE_KEY/);
+  assert.match(experience, /TeamViewSwitch/);
+  assert.match(experience, /teamView === "both"/);
+  assert.match(experience, /\["rm", "dm"\]/);
+  assert.match(experience, /ChallengeHolderButton/);
+  assert.match(experience, /\/challenge\?/);
+  assert.match(experience, /opponentUid/);
+  assert.doesNotMatch(experience, /if \(!opponentUid\) return null/);
+  assert.match(experience, /enableChallenges=\{e4\}/);
+  assert.match(experience, /enableChallenges/);
+  assert.match(experience, /NationalBeltCard/);
+  assert.match(experience, /belt\.scope === "regional" \? "regional" : "national"/);
+  assert.match(experience, /EloCard/);
+  assert.match(experience, /nationalRailRef/);
+  assert.match(experience, /eloLaneOrder/);
 });
 
 test("World and UK are explicitly vacant public titles", () => {

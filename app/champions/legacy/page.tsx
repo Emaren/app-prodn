@@ -39,7 +39,10 @@ import {
 import {
   managedMediaPublicUrl,
 } from "@/lib/managedMediaAssets";
-import ChampionsDisplayRail from "@/components/champions/ChampionsDisplayRail";
+import ChampionsDisplayRail, {
+  ChampionsViewCycleButton,
+  type ChampionsDisplayMode,
+} from "@/components/champions/ChampionsDisplayRail";
 
 export const metadata: Metadata = {
   title: "Championship Belts · Legacy",
@@ -723,7 +726,14 @@ function HeroRosterBackdrop() {
   );
 }
 
-export default async function LegacyChampionsPage() {
+export default async function LegacyChampionsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: string }>;
+}) {
+  const { view } = await searchParams;
+  const legacyDisplayMode: ChampionsDisplayMode =
+    view === "b" ? "b" : view === "a" ? "a" : "e1";
   const state = await loadChampionTitleEconomyState(getPrisma());
   const world = getTitleState(state, podiumTitles[0]);
   const chaos = getTitleState(state, podiumTitles[1]);
@@ -759,10 +769,15 @@ export default async function LegacyChampionsPage() {
             </p>
           </div>
 
-          <div className="champions-hero-stats grid min-w-[min(100%,22rem)] gap-2 rounded-2xl border border-white/10 bg-black/22 p-4 sm:grid-cols-3 lg:min-w-[28rem]">
-            <HeroStat label="Active" value={String(activeTitleCount)} />
-            <HeroStat label="Vacant" value={String(vacantTitleCount)} />
-            <HeroStat label="Tribute pool" value={`${budget} WOLO/day`} />
+          <div className="space-y-3">
+            <div className="flex justify-end">
+              <ChampionsViewCycleButton active={legacyDisplayMode} />
+            </div>
+            <div className="champions-hero-stats grid min-w-[min(100%,22rem)] gap-2 rounded-2xl border border-white/10 bg-black/22 p-4 sm:grid-cols-3 lg:min-w-[28rem]">
+              <HeroStat label="Active" value={String(activeTitleCount)} />
+              <HeroStat label="Vacant" value={String(vacantTitleCount)} />
+              <HeroStat label="Tribute pool" value={`${budget} WOLO/day`} />
+            </div>
           </div>
         </div>
       </section>
