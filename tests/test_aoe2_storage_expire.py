@@ -182,6 +182,7 @@ class ExpiryTest(unittest.TestCase):
             ledger={
                 'schema':1,
                 'kind':'aoe2war-lean-retention-ledger',
+                'tool_sha256':M.digest(M.__file__),
                 'rows':[row],
                 'runtime':{},
                 'protected_hot':[],
@@ -199,6 +200,7 @@ class ExpiryTest(unittest.TestCase):
                     'generation':row['generation'],
                     'path':str(target),
                     'ledger_sha256':expected,
+                    'wolo_mutated':False,
                 },
             )
             with (
@@ -225,6 +227,7 @@ class ExpiryTest(unittest.TestCase):
             ledger={
                 'schema':1,
                 'kind':'aoe2war-lean-retention-ledger',
+                'tool_sha256':M.digest(M.__file__),
                 'rows':[row],
                 'runtime':{},
                 'protected_hot':[],
@@ -248,6 +251,34 @@ class ExpiryTest(unittest.TestCase):
     def test_batch_apply_enforces_bounded_object_count(self):
         with self.assertRaises(RuntimeError):
             M.apply_ledger('/nope','0'*64,0)
+
+    def test_batch_apply_refuses_ledger_from_different_tool(self):
+        with tempfile.TemporaryDirectory() as d:
+            base=Path(d)
+            exp=base/'expiry'
+            campaign=exp/'campaign'
+            exp.mkdir()
+            campaign.mkdir()
+            ledger={
+                'schema':1,
+                'kind':'aoe2war-lean-retention-ledger',
+                'tool_sha256':'0'*64,
+                'rows':[{
+                    'generation':'activate-20260918T000000Z-aaaaaaaaaaaa',
+                    'path':str(base/'gone'),
+                    'kind':'archive',
+                    'action':'EXPIRE',
+                }],
+            }
+            lp=campaign/'ledger.json'
+            M.seal(lp,ledger)
+            expected=M.digest(lp)
+            with mock.patch.multiple(M,EXPIRY=exp):
+                with self.assertRaisesRegex(
+                    RuntimeError,
+                    'expiry tool differs from ledger',
+                ):
+                    M.apply_ledger(lp,expected,250)
 
 
     def test_release_gate_admits_storage_expiry_as_infrastructure(self):
