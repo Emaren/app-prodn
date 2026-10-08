@@ -165,6 +165,90 @@ class ExpiryTest(unittest.TestCase):
                 ledger=json.loads((second/'ledger.json').read_text())
                 self.assertEqual(ledger['rows'][0]['content_proof']['mode'],'fresh_hash')
 
+    def test_batch_apply_resumes_past_exact_completed_receipt(self):
+        with tempfile.TemporaryDirectory() as d:
+            base=Path(d)
+            exp=base/'expiry'
+            campaign=exp/'campaign'
+            target=base/'gone'
+            exp.mkdir()
+            campaign.mkdir()
+            row={
+                'generation':'activate-20260918T000000Z-aaaaaaaaaaaa',
+                'path':str(target),
+                'kind':'archive',
+                'action':'EXPIRE',
+            }
+            ledger={
+                'schema':1,
+                'kind':'aoe2war-lean-retention-ledger',
+                'rows':[row],
+                'runtime':{},
+                'protected_hot':[],
+                'protected_cold':[],
+            }
+            lp=campaign/'ledger.json'
+            M.seal(lp,ledger)
+            expected=M.digest(lp)
+            M.seal(
+                campaign/(row['generation']+'.expired.json'),
+                {
+                    'schema':1,
+                    'kind':'aoe2war-runtime-expiry',
+                    'status':'EXPIRED_SUPERSEDED_RUNTIME',
+                    'generation':row['generation'],
+                    'path':str(target),
+                    'ledger_sha256':expected,
+                },
+            )
+            with (
+                mock.patch.multiple(M,EXPIRY=exp),
+                mock.patch.object(M,'apply_one') as apply,
+            ):
+                M.apply_ledger(lp,expected,250)
+            apply.assert_not_called()
+
+    def test_batch_apply_stops_on_orphan_intent(self):
+        with tempfile.TemporaryDirectory() as d:
+            base=Path(d)
+            exp=base/'expiry'
+            campaign=exp/'campaign'
+            target=base/'gone'
+            exp.mkdir()
+            campaign.mkdir()
+            row={
+                'generation':'activate-20260918T000000Z-aaaaaaaaaaaa',
+                'path':str(target),
+                'kind':'archive',
+                'action':'EXPIRE',
+            }
+            ledger={
+                'schema':1,
+                'kind':'aoe2war-lean-retention-ledger',
+                'rows':[row],
+                'runtime':{},
+                'protected_hot':[],
+                'protected_cold':[],
+            }
+            lp=campaign/'ledger.json'
+            M.seal(lp,ledger)
+            expected=M.digest(lp)
+            M.seal(
+                campaign/(row['generation']+'.intent.json'),
+                {'status':'VERIFIED_DELETE_INTENT'},
+            )
+            with (
+                mock.patch.multiple(M,EXPIRY=exp),
+                mock.patch.object(M,'apply_one') as apply,
+            ):
+                with self.assertRaises(RuntimeError):
+                    M.apply_ledger(lp,expected,250)
+            apply.assert_not_called()
+
+    def test_batch_apply_enforces_bounded_object_count(self):
+        with self.assertRaises(RuntimeError):
+            M.apply_ledger('/nope','0'*64,0)
+
 
     def test_release_gate_admits_storage_expiry_as_infrastructure(self):
         gate_spec=importlib.util.spec_from_file_location(
