@@ -72,7 +72,7 @@ export function resolveLeaderboardReplayMode(game: {
 
   // A valid non-ladder mode is authoritative negative evidence, not a
   // license to fall back to whichever other field says RM.
-  const malformedHdVersion = /^\\(?<Version\\.HD(?::|\\s)/i.test(raw);
+  const malformedHdVersion = /^\(?<Version\.HD(?::|\s)/i.test(raw);
   if (raw && !isUnknown(raw) && !malformedHdVersion) return null;
 
   return embeddedLane;
