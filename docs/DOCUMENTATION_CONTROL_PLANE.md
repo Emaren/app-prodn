@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/leaderboard-v1-full-tracked-history-20261008` at `5a04346b104d5ddb2fc84647fe85b304f654a7c9`
+Implementation baseline: `fix/v1-steam-ratings-watcher-authority-20261008` at `cd53855e7ed9e6f3bf40daa9d63ee9f5d6e6d580`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
