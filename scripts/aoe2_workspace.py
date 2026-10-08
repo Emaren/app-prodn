@@ -245,6 +245,35 @@ def worktree_rows(spec: dict[str, Any]) -> list[dict[str, Any]]:
             if branch_raw
             else "DETACHED"
         )
+        is_canonical = path == canonical
+        prunable_reason = fields.get("prunable")
+        path_missing = not path.exists()
+
+        # A worktree can remain registered after its directory/gitdir is gone.
+        # Treat that as stale Git metadata instead of trying to chdir into a
+        # non-existent path and crashing the whole workspace census.
+        if not is_canonical and (path_missing or prunable_reason):
+            rows.append(
+                {
+                    "repo_id": spec["repo_id"],
+                    "path": str(path),
+                    "head": head,
+                    "branch": branch,
+                    "detached": detached,
+                    "dirty": False,
+                    "merged_into_canonical": False,
+                    "canonical": False,
+                    "stale_git_metadata": True,
+                    "prunable_reason": (
+                        str(prunable_reason)
+                        if prunable_reason
+                        else "registered worktree path is missing"
+                    ),
+                    "classification": "STALE_GIT_WORKTREE_METADATA",
+                }
+            )
+            continue
+
         rc, dirty_out = run(
             ["git", "status", "--porcelain", "--untracked-files=all"],
             cwd=path,
@@ -262,7 +291,6 @@ def worktree_rows(spec: dict[str, Any]) -> list[dict[str, Any]]:
                 ).returncode
                 == 0
             )
-        is_canonical = path == canonical
         rows.append(
             {
                 "repo_id": spec["repo_id"],
@@ -375,6 +403,11 @@ def snapshot() -> dict[str, Any]:
         if item["classification"]
         in {"CLEANUP_CANDIDATE", "CLEANUP_CANDIDATE_DETACHED", "AGENT_RETIREABLE"}
     ]
+    stale_git_worktrees = [
+        item
+        for item in worktrees
+        if item["classification"] == "STALE_GIT_WORKTREE_METADATA"
+    ]
     canonical_drift = [
         item
         for item in canonical
@@ -388,6 +421,8 @@ def snapshot() -> dict[str, Any]:
         "canonical_drift_count": len(canonical_drift),
         "worktrees": worktrees,
         "cleanup_candidates": cleanup,
+        "stale_git_worktrees": stale_git_worktrees,
+        "stale_git_worktree_count": len(stale_git_worktrees),
         "dirty_agent_count": sum(
             item["classification"] == "AGENT_ACTIVE_DIRTY"
             for item in worktrees
@@ -652,9 +687,41 @@ def clean(*, apply: bool) -> dict[str, Any]:
         "candidates": candidates,
         "removed": [],
         "failed": [],
+        "pruned_stale_git_metadata": [],
+        "stale_git_metadata_candidates": before["stale_git_worktrees"],
         "stale_metadata_untouched": before["stale_metadata"],
     }
     if apply:
+        stale_repo_ids = sorted(
+            {
+                str(item["repo_id"])
+                for item in before["stale_git_worktrees"]
+            }
+        )
+        for repo_id in stale_repo_ids:
+            spec = repo_spec(repo_id)
+            rc, out = run(
+                ["git", "worktree", "prune", "--verbose"],
+                cwd=Path(spec["path"]),
+            )
+            if rc == 0:
+                result["pruned_stale_git_metadata"].append(
+                    {"repo_id": repo_id, "output": out}
+                )
+            else:
+                result["failed"].append(
+                    {
+                        "repo_id": repo_id,
+                        "classification": "STALE_GIT_WORKTREE_METADATA",
+                        "error": out or "git worktree prune failed",
+                    }
+                )
+
+        # Recompute after metadata repair so deletion candidates are based on
+        # Git's current registry, not the stale pre-mutation snapshot.
+        candidates = snapshot()["cleanup_candidates"]
+        result["candidates"] = candidates
+
         for item in candidates:
             if item.get("agent_workspace") and item.get("workspace_id"):
                 try:
@@ -805,7 +872,11 @@ def main() -> int:
                 print(f"Removed:    {len(payload['removed'])}")
                 print(f"Failed:     {len(payload['failed'])}")
                 print(
-                    f"Stale meta: {len(payload['stale_metadata_untouched'])} untouched"
+                    f"Git meta:   {len(payload['stale_git_metadata_candidates'])} stale · "
+                    f"{len(payload['pruned_stale_git_metadata'])} repo prune(s)"
+                )
+                print(
+                    f"Registry:   {len(payload['stale_metadata_untouched'])} stale meta untouched"
                 )
                 if not args.apply:
                     print(
