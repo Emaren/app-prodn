@@ -31,7 +31,7 @@ import {
   compareLeaderboardRatingAuthority,
 } from "@/lib/leaderboardRating";
 import {
-  classifyLeaderboardReplayMode,
+  resolveLeaderboardReplayMode,
   summarizeLeaderboardLaneEvidence,
 } from "@/lib/leaderboardGameMode";
 import {
