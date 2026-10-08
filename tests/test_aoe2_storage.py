@@ -571,6 +571,8 @@ class StorageOSTests(unittest.TestCase):
             "BOUNDED_RECOVERY_EXISTING",
             "UNPROVEN_RECLAIM",
             "disabled_snap_bytes",
+            "probe_ok",
+            "subprocess.TimeoutExpired",
             '"mutation_allowed": False',
         ):
             self.assertIn(required, source)
