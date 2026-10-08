@@ -2422,12 +2422,13 @@ export function LivingLeaderboard({
           ) : null}
 
           <CommandButton
-            active={
-              columnsOpen ||
+            active={columnsOpen}
+            label={
               preferences.columnMode ===
-                "custom"
+              "custom"
+                ? "Columns · custom"
+                : "Columns"
             }
-            label="Columns"
             onClick={() => {
               setColumnsOpen(
                 !columnsOpen,
