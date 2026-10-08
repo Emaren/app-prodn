@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/leaderboard-online-command-polish-20261008` at `626dbb6441c0a7b0389cb4384803c5bc353646c0`
+Implementation baseline: `fix/leaderboard-authoritative-ratings-20261008` at `be6acacaf73c6d65c4e80a774b2e1b44fd10440e`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

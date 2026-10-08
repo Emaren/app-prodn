@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e11ad40a1e4a1f8b3c263fa033c20630dfc143d851182ae0c09e8870915d17c8",
+      "sha256": "d05e19a42d27deffc7b45b56baaf374804a618ca9aea1266980c4243308c0101",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -961,7 +961,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-07-28",
       "sensitivity": "internal",
-      "sha256": "862d9f59b09c3cd4e672baf5dfa570e5e872aaefca4201a350043c8d4d4271da",
+      "sha256": "92f447f791d90b4c0cb914922bfc9e4307ce1e3075dc42c3a3032090dafd7ab9",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1396,7 +1396,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-06",
       "sensitivity": "internal",
-      "sha256": "55f7b19f207e1a15dbc90ad7eab86d3089ccc98fd6ff1040ce8d3b72381a1a01",
+      "sha256": "8f21af1c35f913a1e85480ce728c5320f02b0559fd8cf9e022f58c74713724d5",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2048,8 +2048,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/leaderboard-online-command-polish-20261008",
-    "commit": "626dbb6441c0a7b0389cb4384803c5bc353646c0"
+    "branch": "fix/leaderboard-authoritative-ratings-20261008",
+    "commit": "be6acacaf73c6d65c4e80a774b2e1b44fd10440e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
