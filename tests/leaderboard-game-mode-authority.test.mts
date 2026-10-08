@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   classifyLeaderboardReplayMode,
+  resolveLeaderboardReplayMode,
   summarizeLeaderboardLaneEvidence,
 } from "../lib/leaderboardGameMode.ts";
 import {
