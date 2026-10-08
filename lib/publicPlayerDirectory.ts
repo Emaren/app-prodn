@@ -891,7 +891,7 @@ export async function loadPublicPlayerDirectoryFresh(
     entry.replayEvidence.push({
       gameStatsId:
         snapshot.gameStatsId,
-      gameMode: classifyLeaderboardReplayMode(game.game_type),
+      gameMode: resolveLeaderboardReplayMode(game),
       observedName: replayName,
       normalizedName,
       observedAt,
