@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "70e6ae78cd9c379b8b9f66bd0f24db625caf9f7a2ab58971ebc1ed2d09f752eb",
+      "sha256": "d064245cb99402161a544afe8d4ec2559467a55e00d8c1eb9836511070bf6d04",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2049,7 +2049,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/v1-steam-ratings-watcher-authority-20261008",
-    "commit": "06aeff4b8c02e75ec619f214e179dc2c4bb59128"
+    "commit": "58b41038e3daf9c59ca11124aaded437af8786ba"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
