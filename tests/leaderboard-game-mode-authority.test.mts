@@ -59,5 +59,7 @@ test("Steam RM rating and Site Elo never sort as if numerically interchangeable"
     siteElo: null, hasTrackedHistory: false,
   });
   assert.ok(compareLeaderboardRatingAuthority(higherCurrent, steam) < 0);
+  assert.ok(compareLeaderboardRatingAuthority(higherCurrent, steam, "asc") > 0);
+  assert.ok(compareLeaderboardRatingAuthority(steam, site, "asc") < 0);
   assert.equal(higherCurrent.value, 1700);
 });
