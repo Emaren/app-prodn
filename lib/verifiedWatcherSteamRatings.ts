@@ -80,6 +80,7 @@ async function readFresh(prisma: PrismaClient): Promise<VerifiedWatcherSteamRati
     ),
     observations AS (
       SELECT game.id, game.played_on, game.timestamp, p->>'steam_id' AS steam_id,
+        COUNT(*) OVER (PARTITION BY game.id, p->>'steam_id') AS identity_count,
         CASE WHEN jsonb_typeof(p->'steam_rm_rating') = 'number'
             AND p->>'steam_rm_rating' ~ '^[0-9]{1,5}$'
             AND (p->>'steam_rm_rating')::integer BETWEEN 1 AND 5000
@@ -101,12 +102,12 @@ async function readFresh(prisma: PrismaClient): Promise<VerifiedWatcherSteamRati
     ),
     rm AS (
       SELECT DISTINCT ON (steam_id) steam_id, rm AS value, played_on
-      FROM observations WHERE rm IS NOT NULL
+      FROM observations WHERE rm IS NOT NULL AND identity_count = 1
       ORDER BY steam_id, played_on DESC, timestamp DESC NULLS LAST, id DESC
     ),
     dm AS (
       SELECT DISTINCT ON (steam_id) steam_id, dm AS value, played_on
-      FROM observations WHERE dm IS NOT NULL
+      FROM observations WHERE dm IS NOT NULL AND identity_count = 1
       ORDER BY steam_id, played_on DESC, timestamp DESC NULLS LAST, id DESC
     ),
     ids AS (SELECT steam_id FROM rm UNION SELECT steam_id FROM dm)
@@ -154,7 +155,12 @@ export async function loadVerifiedWatcherSteamRatings(prisma: PrismaClient) {
     }
     return cache.value;
   }
-  return refresh(prisma);
+  return refresh(prisma).catch((error) => {
+    // An unavailable optional rating rail must never break the whole
+    // public leaderboard; the immutable receipt and replay history remain.
+    console.warn("Verified Watcher Steam rating cold load failed:", error);
+    return [];
+  });
 }
 
 export function invalidateVerifiedWatcherSteamRatingsCache() {
