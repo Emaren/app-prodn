@@ -172,47 +172,58 @@ The folded row reports cumulative totals across those names. A
 `gameStatsId + identity key` guard prevents the same replay from contributing
 twice to one row. Name-history ordering is newest observation first.
 
+## RM/DM competitive evidence boundary
+
+The RM and DM boards are **independent competitive projections**, not two
+sorting views over one all-modes record. The bounded public game corpus carries
+the parser's `GameStats.game_type` and `key_events.settings.type` evidence.
+Explicit `RM` / `Random Map` / `Ranked Match` and `DM` /
+`Death Match` values enter their respective lanes. For a missing, Unknown,
+or historically malformed HD version-tuple `game_type`, an explicit
+recognized mode in the independent `key_events.settings.type` (or historical
+`key_events.type`) can recover that lane **at read time only**. Conflicting
+mode labels fail closed. TurboRandom9, real custom modes, unspecified HD
+numeric-type labels and genuinely unknown evidence remain outside both lanes;
+no database rewrite or adjudication occurs.
+
+
+The 2026-10-08 live `aoe2hd_db` **final-record** census found 5,702
+nonsuperseded rows: 1,503 with top-level DM and 718 with top-level RM. The
+older parser's HD version tuple mistakenly occupied `game_type` in 998 rows,
+but the embedded setting in the displayed production breakdown explicitly
+identified at least 887 RM, 2 DM and 107 TurboRandom9 (two malformed rows
+outside the displayed top-35 cohorts still require proof). Recovering the 889
+explicit additional RM/DM modes gives 3,110 classifiable *final records*
+before deduplication. These are **not** accepted public leaderboard game totals.
+This counts only classification availability, not trusted outcome eligibility.
+
+Per-lane replay evidence exclusively determines wins, losses, unresolved counts,
+game totals, last-10 results, 30-day results, last played, streaks and a
+separately reconstructed Site Elo. This is a presentation/read-model change:
+the canonical global player directory, replay adjudication, settlement evidence,
+and financial authority remain unchanged. Steam RM/DM account ratings come
+from current receipt-backed observations or dated historical HD headers and may
+be present even when the replay evidence for a particular match lane is absent.
+
+**Steam rating numbers and Site Elo are not comparable units.** Ranking places
+Steam-rated warriors on the Steam scale first (current and explicitly
+historical values retain source labels); Site-Elo-only warriors occupy a distinct
+lower source tier, ranked within Site Elo. Profile-only rows remain unranked.
+
 ## 24-hour rank change
 
-One leaderboard response captures:
+The previous `reconstructed_current_corpus` delta compared the currently
+accepted replay corpus against itself with a 24-hour ingestion-time cutoff.
+Bulk late replay ingestion could make a warrior appear to jump thousands of
+positions despite no corresponding 24-hour competitive change.
 
-- `rankDelta24hAsOf`: the current comparison instant;
-- `rankDelta24hCutoff`: exactly 24 hours before that instant.
-
-The baseline is rebuilt from accepted, current public-battle replay evidence
-whose `ReplayPlayerSnapshot.createdAt`—exposed as `acceptedAt`—is on or before
-the cutoff. Match observation time still orders display-name history and rating
-evidence, but it does not decide when evidence entered the rank comparison.
-This means an old battle newly accepted today can move the 24-hour board today.
-The calculation recomputes each identity’s then-known RM/DM rating plus the same
-chronological Site Elo comparator, then ranks with the same deterministic
-policy and identity-key final tie-breaker as the current board. Both the current
-and baseline candidate sets are filtered to the active scope before ranking;
-the claimed view therefore reports claimed-board 24-hour movement rather than
-reusing full-board positions.
-
-This is explicitly `reconstructed_current_corpus`: it uses the current accepted,
-unsuperseded evidence set and is not an immutable rank snapshot persisted 24
-hours earlier. A future rank-snapshot ledger can replace this reconstruction
-without changing the displayed delta sign contract.
-
-```text
-rankDelta24h = rank24hAgo - currentRank
-```
-
-Per-row fields are `rank24hAgo`, `rankDelta24h`, and
-`rankDelta24hState`:
-
-- positive / `up`: moved toward rank 1;
-- negative / `down`: moved away from rank 1;
-- zero / `unchanged`: same rank;
-- `new`: currently ranked with no baseline row;
-- `unranked`: no current replay-backed rank.
-
-Unavailable comparison evidence renders `—`, never a fabricated zero. The
-column may invite players to run Watchers because more prompt replay evidence
-improves leaderboard freshness. It must not claim that a Watcher heartbeat
-proves replay-monitor attachment or global capture completeness.
+Until AoE2WAR persists comparable **immutable per-lane rank snapshots**, 24H
+movement is intentionally **unavailable**, never fabricated. The response
+retains observation/cutoff timestamps for client compatibility and reports
+`rankDelta24hMethod = unavailable_pending_rank_snapshots`, each entry's
+`rank24hAgo = null`, `rankDelta24h = null` and
+`rankDelta24hState = unavailable`; the UI renders `—` with an explanatory
+title. No reconstructed value is presented as observed 24-hour movement.
 
 `lib/ogBoard.ts` is a presentation projection, not replay truth. It passes game rows through `cleanPublicGameRows`, uses the existing winner/finality rules, and resolves player URLs with the shared public-player helpers. Raw player JSON, key events, parser diagnostics, and internal failure details never enter the browser payload.
 
@@ -286,7 +297,7 @@ presentation** separate. Its lane value resolves in this order:
 1. current immutable Watcher receipt-backed Steam RM/DM rating;
 2. newest dated accepted replay-player HD-header snapshot for that exact Steam
    identity, rendered explicitly as `Last RM` / `Last DM`;
-3. reconstructed `Site Elo` when no Steam lane snapshot is available;
+3. reconstructed **lane-specific** `Site Elo` when no Steam lane snapshot is available;
 4. unrated/profile state when there is no replay-backed history.
 
 The second tier is historical presentation, not current-account authority. It

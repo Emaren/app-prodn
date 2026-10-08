@@ -50,7 +50,11 @@ function game(
     is_final: true,
     createdAt: new Date(playedAt),
     event_types: ["resign"],
+    game_type: id === 1
+      ? "(<Version.HD: 19>, 'VER 9.4', 12.5, 4, None)"
+      : "DM",
     key_events: {
+      settings: { type: id === 1 ? "RM" : "DM" },
       completed: true,
       postgame_available: true,
       has_scores: true,
@@ -391,12 +395,12 @@ test("directory folds aliases only within one exact Steam account", async () => 
   );
 });
 
-test("24-hour baseline uses evidence acceptance time, not old match time", async () => {
+test("24-hour movement is unavailable without durable lane snapshots", async () => {
   const leaderboard =
     await loadLobbyLeaderboard(
       prisma as never,
       {
-        lane: "rm",
+        lane: "dm",
         offset: 0,
         limit: 20,
         includePendingClaimed: false,
@@ -417,7 +421,7 @@ test("24-hour baseline uses evidence acceptance time, not old match time", async
     assert.ok(entry);
     assert.equal(
       entry.rankDelta24hState,
-      "new",
+      "unavailable",
     );
     assert.equal(
       entry.rank24hAgo,
@@ -427,7 +431,7 @@ test("24-hour baseline uses evidence acceptance time, not old match time", async
 
   assert.equal(
     leaderboard.rankDelta24hMethod,
-    "reconstructed_current_corpus",
+    "unavailable_pending_rank_snapshots",
   );
 });
 
@@ -472,11 +476,11 @@ test("default pages stay strict and sequential even when off-page profiles are f
       (entry) => entry.rank,
     ),
     Array.from(
-      { length: 15 },
+      { length: 14 },
       (_, index) => index + 51,
     ),
   );
-  assert.equal(firstPage.trackedPlayers, 65);
+  assert.equal(firstPage.trackedPlayers, 64);
   assert.equal(
     new Set(
       [
@@ -484,8 +488,23 @@ test("default pages stay strict and sequential even when off-page profiles are f
         ...secondPage.entries,
       ].map((entry) => entry.key),
     ).size,
-    65,
+    64,
   );
+});
+
+test("RM and DM never share game counts or results", async () => {
+  const rm = await loadLobbyLeaderboard(prisma as never, { lane: "rm", limit: 20 });
+  const dm = await loadLobbyLeaderboard(prisma as never, { lane: "dm", limit: 20 });
+  const rmAlpha = rm.entries.find((entry) => entry.steamId === STEAM_ALPHA);
+  const dmAlpha = dm.entries.find((entry) => entry.steamId === STEAM_ALPHA);
+  assert.ok(rmAlpha);
+  assert.ok(dmAlpha);
+  assert.deepEqual([rmAlpha.totalMatches, rmAlpha.wins, rmAlpha.losses], [1, 1, 0]);
+  assert.deepEqual([dmAlpha.totalMatches, dmAlpha.wins, dmAlpha.losses], [1, 0, 1]);
+  assert.deepEqual(rmAlpha.last10Results, ["W"]);
+  assert.deepEqual(dmAlpha.last10Results, ["L"]);
+  assert.notEqual(rmAlpha.lastPlayedAt, dmAlpha.lastPlayedAt);
+  assert.equal(dmAlpha.rankDelta24hState, "unavailable");
 });
 
 test("claimed scope is contiguous and excludes reserved systems by UID, not name", async () => {

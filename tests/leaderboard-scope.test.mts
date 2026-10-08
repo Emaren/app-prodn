@@ -227,9 +227,9 @@ test("client and server caches isolate lane plus scope", () => {
 test("system accounts are removed before census and selection", () => {
   const exclusionPosition =
     loader.indexOf(
-      "isLeaderboardExcludedSystemUid",
+      "!isLeaderboardExcludedSystemUid",
       loader.indexOf(
-        "const candidates",
+        "const allIdentityEntries",
       ),
     );
   const censusPosition =

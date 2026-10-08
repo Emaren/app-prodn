@@ -149,3 +149,28 @@ export function resolveLeaderboardRatingPresentation(
     secondaryLabel: null,
   };
 }
+
+/**
+ * Site Elo is a distinct AoE2WAR measure, not a Steam ladder rating. Compare
+ * numbers only within the same authority family. Current and dated historical
+ * Steam ratings share the Steam scale but retain their different source labels.
+ */
+export function compareLeaderboardRatingAuthority(
+  left: LeaderboardRatingPresentation,
+  right: LeaderboardRatingPresentation,
+  direction: "asc" | "desc" = "desc",
+): number {
+  const tier = (source: LeaderboardRatingSource) =>
+    source === "current_steam" || source === "last_known_steam" ? 0
+      : source === "site_elo" ? 1
+        : 2;
+  const tierDelta = tier(left.source) - tier(right.source);
+  if (tierDelta !== 0) return tierDelta;
+  // Two unrated profiles must compare equal, not produce NaN from infinities.
+  if (left.value === null && right.value === null) return 0;
+  if (left.value === null) return 1;
+  if (right.value === null) return -1;
+  return direction === "asc"
+    ? left.value - right.value
+    : right.value - left.value;
+}

@@ -179,7 +179,9 @@ function RankMovement({
   return (
     <span
       className="text-slate-700"
-      title="No comparable rank 24 hours ago"
+      title={entry.rankDelta24hState === "unavailable"
+        ? "24-hour movement unavailable until comparable historical rank snapshots exist"
+        : "No comparable rank 24 hours ago"}
     >
       —
     </span>

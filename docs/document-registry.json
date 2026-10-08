@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "3457fc39d8636b3764504840173b36ddb5017542033b3db68e780fe5c93b0525",
+      "sha256": "0297bf18ca80bd01de5d603f23e239e28fa90b01c8fd6dde31fae0069c10f90a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -961,7 +961,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-07-28",
       "sensitivity": "internal",
-      "sha256": "c4eb43846560a339e44b3ca8da8fc75bb4265c4c61cc3f13a39d3010d173136b",
+      "sha256": "b5c8cc353e09beb7bbb94e53611aff9f8a71b454f15630dd43b56e6fe8a27a19",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2048,8 +2048,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/storage-deep-census-macos-test-fixture-20261008",
-    "commit": "24d0aa476269ce54dddf3f7c6dfeca1554d99853"
+    "branch": "fix/leaderboard-lane-truth-20261008",
+    "commit": "92d26b5fa8e00c28341f97c82a76480ce9d06216"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

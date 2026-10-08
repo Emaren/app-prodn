@@ -34,7 +34,8 @@ export type LeaderboardRankDelta24hState =
   | "down"
   | "unchanged"
   | "new"
-  | "unranked";
+  | "unranked"
+  | "unavailable";
 
 export type LeaderboardRankDelta24h = {
   rank24hAgo: number | null;

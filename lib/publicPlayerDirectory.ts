@@ -41,9 +41,12 @@ import {
 } from "@/lib/currentWatcherAccountState";
 import { loadPublicPresenceSnapshot } from "@/lib/publicPresence";
 import { loadPublicPlayerDirectoryGeneration } from "@/lib/publicPlayerDirectoryGeneration";
+import { resolveLeaderboardReplayMode } from "@/lib/leaderboardGameMode";
+import type { LeaderboardLane } from "@/lib/leaderboardLane";
 
 export type PublicPlayerReplayEvidence = {
   gameStatsId: number;
+  gameMode: LeaderboardLane | null;
   observedName: string;
   normalizedName: string;
   observedAt: string | null;
@@ -103,6 +106,7 @@ export type PublicPlayerDirectory = {
 type CandidateGameRow = {
   createdAt: Date;
   event_types: unknown;
+  game_type: string | null;
   id: number;
   is_final: boolean;
   key_events: unknown;
@@ -887,6 +891,7 @@ export async function loadPublicPlayerDirectoryFresh(
     entry.replayEvidence.push({
       gameStatsId:
         snapshot.gameStatsId,
+      gameMode: resolveLeaderboardReplayMode(game),
       observedName: replayName,
       normalizedName,
       observedAt,
