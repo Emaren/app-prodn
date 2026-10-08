@@ -176,10 +176,26 @@ twice to one row. Name-history ordering is newest observation first.
 
 The RM and DM boards are **independent competitive projections**, not two
 sorting views over one all-modes record. The bounded public game corpus carries
-the parser's `GameStats.game_type` explicitly. Only recognized `RM` /
-`Random Map` / `Ranked Match` and `DM` / `Death Match` values enter the
-respective lane; missing, unknown, TurboRandom9 and custom modes remain
-unclassified and contribute to neither lane's competitive results.
+the parser's `GameStats.game_type` and `key_events.settings.type` evidence.
+Explicit `RM` / `Random Map` / `Ranked Match` and `DM` /
+`Death Match` values enter their respective lanes. For a missing, Unknown,
+or historically malformed HD version-tuple `game_type`, an explicit
+recognized mode in the independent `key_events.settings.type` (or historical
+`key_events.type`) can recover that lane **at read time only**. Conflicting
+mode labels fail closed. TurboRandom9, real custom modes, unspecified HD
+numeric-type labels and genuinely unknown evidence remain outside both lanes;
+no database rewrite or adjudication occurs.
+
+
+The 2026-10-08 live `aoe2hd_db` **final-record** census found 5,702
+nonsuperseded rows: 1,503 with top-level DM and 718 with top-level RM. The
+older parser's HD version tuple mistakenly occupied `game_type` in 998 rows,
+but the embedded setting in the displayed production breakdown explicitly
+identified at least 887 RM, 2 DM and 107 TurboRandom9 (two malformed rows
+outside the displayed top-35 cohorts still require proof). Recovering the 889
+explicit additional RM/DM modes gives 3,110 classifiable *final records*
+before deduplication. These are **not** accepted public leaderboard game totals.
+This counts only classification availability, not trusted outcome eligibility.
 
 Per-lane replay evidence exclusively determines wins, losses, unresolved counts,
 game totals, last-10 results, 30-day results, last played, streaks and a
