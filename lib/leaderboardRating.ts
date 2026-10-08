@@ -101,7 +101,7 @@ export function resolveLeaderboardRatingPresentation(
   const steamSecondary =
     input.hasTrackedHistory &&
     siteElo !== null
-      ? `Site ${Math.round(siteElo)}`
+      ? `Site ${Math.round(siteElo)} · All`
       : null;
 
   if (currentRating !== null) {
@@ -137,7 +137,7 @@ export function resolveLeaderboardRatingPresentation(
     return {
       value: Math.round(siteElo),
       source: "site_elo",
-      sourceLabel: "Site Elo",
+      sourceLabel: "Site Elo · All",
       secondaryLabel: null,
     };
   }
