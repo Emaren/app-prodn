@@ -179,6 +179,27 @@ function toIso(
     : null;
 }
 
+function hasHdHeaderRatingSource(
+  player: Record<string, unknown>,
+  lane: "steam_rm_rating" | "steam_dm_rating",
+) {
+  const rawSources =
+    player.steam_rating_sources;
+
+  if (
+    !rawSources ||
+    typeof rawSources !== "object" ||
+    Array.isArray(rawSources)
+  ) {
+    return false;
+  }
+
+  return (
+    (rawSources as Record<string, unknown>)[lane] ===
+    "hd_header"
+  );
+}
+
 function resultFromSnapshot(
   snapshot: CanonicalPlayerSnapshot,
 ): LeaderboardReplayResult {
@@ -829,16 +850,26 @@ export async function loadPublicPlayerDirectoryFresh(
         game,
         snapshot,
       );
-    const steamRmRating = player
-      ? readPlayerSteamRmRating(
-          player,
-        )
-      : null;
-    const steamDmRating = player
-      ? readPlayerSteamDmRating(
-          player,
-        )
-      : null;
+    const steamRmRating =
+      player &&
+      hasHdHeaderRatingSource(
+        player,
+        "steam_rm_rating",
+      )
+        ? readPlayerSteamRmRating(
+            player,
+          )
+        : null;
+    const steamDmRating =
+      player &&
+      hasHdHeaderRatingSource(
+        player,
+        "steam_dm_rating",
+      )
+        ? readPlayerSteamDmRating(
+            player,
+          )
+        : null;
 
     if (isSafePublicReplayObservedName(replayName)) {
       pushAlias(entry, replayName);

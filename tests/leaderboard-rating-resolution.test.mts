@@ -168,3 +168,27 @@ test("display/history timestamps cannot substitute for explicit rating played_on
     1777,
   );
 });
+
+test("historical Steam fallback requires explicit HD-header provenance", () => {
+  const directorySource =
+    readFileSync(
+      join(
+        process.cwd(),
+        "lib/publicPlayerDirectory.ts",
+      ),
+      "utf8",
+    );
+
+  assert.match(
+    directorySource,
+    /hasHdHeaderRatingSource\([\s\S]*?"steam_rm_rating"/,
+  );
+  assert.match(
+    directorySource,
+    /hasHdHeaderRatingSource\([\s\S]*?"steam_dm_rating"/,
+  );
+  assert.match(
+    directorySource,
+    /===\s*"hd_header"/,
+  );
+});
