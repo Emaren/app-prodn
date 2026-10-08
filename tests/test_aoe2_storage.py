@@ -687,6 +687,13 @@ class StorageOSTests(unittest.TestCase):
         self.assertEqual(size, 0)
         self.assertTrue(ok)
 
+    def test_remote_root_deep_census_embedded_python_compiles(self):
+        compile(
+            MODULE.REMOTE_ROOT_DEEP_CENSUS,
+            "<aoe2war-root-deep-storage-census>",
+            "exec",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
