@@ -1359,7 +1359,7 @@ async function loadLobbyLeaderboardFresh(
     return Number.isFinite(playedAtMs) && playedAtMs >= dayStartMs;
   };
   const gamesForLane = (target: LeaderboardLane) =>
-    (game: { game_type: string | null; key_events: unknown }) =>
+    (game: { game_type: string | null; key_events?: unknown }) =>
       resolveLeaderboardReplayMode(game) === target;
   const matchesToday = resolvedGames.filter(gamesForLane(lane)).filter(isToday).length;
   const uniqueReplaysToday = uniqueGames.filter(gamesForLane(lane)).filter(isToday).length;
