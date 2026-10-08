@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "4bbc6f8fdaee3763b444904a6d627f6bd9ea18db37927a43f812604c3d358e94",
+      "sha256": "61e0bf51021e836a7f49b96cfeb68b595710ee3cb75873d19e0f2c016712b55b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2049,7 +2049,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/storage-os-three-plane-hardening-20261008",
-    "commit": "555d6c3eb2f4d10daa1104fefca0262e79eec77c"
+    "commit": "20285569e26462124f2b6e5b61ed9f7db06553c2"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
