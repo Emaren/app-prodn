@@ -263,6 +263,95 @@ class WorkspaceTests(unittest.TestCase):
         self.assertFalse(plan["safe"])
         self.assertIn("not proven pushed", plan["reason"])
 
+    def test_missing_registered_worktree_is_stale_metadata_not_chdir_failure(self):
+        raw = (
+            "worktree /canonical\n"
+            "HEAD aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n"
+            "branch refs/heads/main\n"
+            "\n"
+            "worktree /definitely/missing/aoe2war-worktree\n"
+            "HEAD bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\n"
+            "branch refs/heads/fix/missing\n"
+            "prunable gitdir file points to non-existent location\n"
+        )
+        spec = {
+            "repo_id": "app-prodn",
+            "path": Path("/canonical"),
+            "branch": "main",
+        }
+        with (
+            mock.patch.object(workspace, "git", side_effect=["a" * 40, raw]),
+            mock.patch.object(Path, "resolve", lambda self: self),
+            mock.patch.object(
+                Path,
+                "exists",
+                lambda self: str(self) == "/canonical",
+            ),
+            mock.patch.object(workspace, "run") as run_mock,
+        ):
+            rows = workspace.worktree_rows(spec)
+
+        stale = next(
+            row for row in rows
+            if row["path"].endswith("aoe2war-worktree")
+        )
+        self.assertEqual(
+            stale["classification"],
+            "STALE_GIT_WORKTREE_METADATA",
+        )
+        self.assertTrue(stale["stale_git_metadata"])
+        run_mock.assert_called_once()
+
+    def test_clean_prunes_stale_git_metadata_before_removal_candidates(self):
+        before = {
+            "cleanup_candidates": [],
+            "stale_git_worktrees": [
+                {
+                    "repo_id": "app-prodn",
+                    "classification": "STALE_GIT_WORKTREE_METADATA",
+                }
+            ],
+            "stale_metadata": [],
+        }
+        after = {
+            "cleanup_candidates": [],
+            "stale_git_worktrees": [],
+            "stale_metadata": [],
+        }
+        with (
+            mock.patch.object(
+                workspace,
+                "snapshot",
+                side_effect=[before, after],
+            ),
+            mock.patch.object(
+                workspace,
+                "repo_spec",
+                return_value={
+                    "repo_id": "app-prodn",
+                    "path": Path("/repo"),
+                    "branch": "main",
+                },
+            ),
+            mock.patch.object(
+                workspace,
+                "run",
+                return_value=(0, "Removing stale worktree"),
+            ),
+            mock.patch.object(
+                workspace,
+                "write_json_receipt",
+                return_value="/receipt.json",
+            ),
+        ):
+            result = workspace.clean(apply=True)
+
+        self.assertEqual(
+            len(result["pruned_stale_git_metadata"]),
+            1,
+        )
+        self.assertEqual(result["failed"], [])
+
 
 if __name__ == "__main__":
     unittest.main()
