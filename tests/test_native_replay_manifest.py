@@ -270,6 +270,23 @@ class BridgeWorkerManifestTests(unittest.TestCase):
                 WORKER.run_native_attempt(args)
             runtime.assert_not_called()
 
+    def test_bare_32388_is_rejected_before_any_runtime_work(self):
+        args = argparse.Namespace(
+            run_id="bare-32388", game_stats_id=32388,
+            replay_sha256="02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b",
+            roster_slot=[1, 2, 3, 4], native_performance_seconds=240,
+            timeout_seconds=300, url="https://example.invalid", manifest_json=None,
+        )
+        with patch.object(WORKER, "require_runtime") as runtime, \
+             patch.object(WORKER, "prepare_memory_control_runtime") as prepare, \
+             patch.object(WORKER, "materialize_replay") as materialize, \
+             patch.object(WORKER, "load_token") as token, \
+             patch.object(WORKER.subprocess, "run") as run:
+            with self.assertRaisesRegex(WORKER.WorkerError, "Immutable known-control manifest is required"):
+                WORKER.run_native_attempt(args)
+            for boundary in (runtime, prepare, materialize, token, run):
+                boundary.assert_not_called()
+
     def test_worker_rejects_duplicate_execution_attempt(self):
         value = manifest_fixture()
         args = argparse.Namespace(run_id="same-attempt", game_stats_id=123, replay_sha256=value["replaySha256"],
@@ -302,6 +319,169 @@ class BridgeWorkerManifestTests(unittest.TestCase):
             self.assertEqual(root, common.resolve().parent / "instance/native-replay-worker/attempts")
             self.assertEqual(git.call_args.kwargs["cwd"], source)
             self.assertNotIn("--output", BRIDGE.command_for_run({"id": "control", "action": "replay_native_run", "parameters": envelope(manifest_fixture())}))
+
+    def test_memory_control_preflight_builds_two_identical_helper_sets(self):
+        value = manifest_fixture()
+        with tempfile.TemporaryDirectory() as temp, \
+             patch.object(WORKER, "EVIDENCE_ROOT", Path(temp) / "attempts"), \
+             patch.object(WORKER, "git_head", return_value="1" * 40):
+            root = Path(temp)
+            clang = root / "clang"
+            lld = root / "lld-link"
+            clang.write_bytes(b"clang")
+            lld.write_bytes(b"lld")
+            calls = []
+
+            def build(builder, executable, target, tools):
+                calls.append((builder, executable, target))
+                target.mkdir(parents=True)
+                binary = target / executable
+                binary.write_bytes(("stable-" + executable).encode())
+                return WORKER.file_identity(binary)
+
+            with patch.object(WORKER, "fixed_native_tools", return_value={"clang": clang, "lld_link": lld}), \
+                 patch.object(WORKER, "build_native_helper", side_effect=build):
+                prepared = WORKER.prepare_memory_control_runtime("known-control-123", value)
+
+            self.assertEqual(len(calls), 4)
+            self.assertEqual(prepared["manifest"]["sha256"], hashlib.sha256(
+                (canonical_json(value) + "\n").encode()
+            ).hexdigest())
+            self.assertEqual(prepared["observer"]["sha256"], WORKER.sha256_file(Path(prepared["observer"]["path"])))
+            self.assertEqual(prepared["controller"]["sha256"], WORKER.sha256_file(Path(prepared["controller"]["path"])))
+            receipt = json.loads(Path(prepared["preflight"]["path"]).read_text())
+            self.assertTrue(receipt["reproducible"])
+            self.assertFalse(receipt["writesTargetMemory"])
+            self.assertFalse(receipt["resultAuthority"])
+            self.assertFalse(receipt["promotionAuthority"])
+
+    def test_memory_control_preflight_rejects_nonreproducible_helper(self):
+        value = manifest_fixture()
+        with tempfile.TemporaryDirectory() as temp, \
+             patch.object(WORKER, "EVIDENCE_ROOT", Path(temp) / "attempts"), \
+             patch.object(WORKER, "git_head", return_value="1" * 40):
+            root = Path(temp)
+            clang = root / "clang"
+            lld = root / "lld-link"
+            clang.write_bytes(b"clang")
+            lld.write_bytes(b"lld")
+            counter = {"observer": 0, "controller": 0}
+
+            def build(builder, executable, target, tools):
+                role = "observer" if "observer" in executable else "controller"
+                counter[role] += 1
+                target.mkdir(parents=True)
+                binary = target / executable
+                binary.write_bytes(f"{role}-{counter[role]}".encode())
+                return WORKER.file_identity(binary)
+
+            with patch.object(WORKER, "fixed_native_tools", return_value={"clang": clang, "lld_link": lld}), \
+                 patch.object(WORKER, "build_native_helper", side_effect=build), \
+                 self.assertRaisesRegex(WORKER.WorkerError, "did not reproduce byte-for-byte"):
+                WORKER.prepare_memory_control_runtime("known-control-mismatch", value)
+
+    def test_result_payload_surfaces_memory_terminal_candidate_without_authority(self):
+        with tempfile.TemporaryDirectory() as temp:
+            output = Path(temp)
+            memory = {"proven": True, "match": {"winning_slots": [1, 2], "losing_slots": [3, 4]}}
+            fixtures = {
+                "attempt.json": {"run_id": "native-run", "cleanup_complete": True},
+                "receipt.json": {"observations": {
+                    "loaded": True, "terminal_outcome_proven": True,
+                    "result": {"outcome": "decisive", "winning_slots": [1, 2], "losing_slots": [3, 4]},
+                }},
+                "validation.json": {"status": "recorded_terminal_witness"},
+                "observation.json": {
+                    "native_memory_terminal_candidate": memory,
+                    "native_game_over_result_candidate": None,
+                    "terminal_evidence_kind": "native_memory_terminal",
+                    "native_performance_load_witness": {"proven": True},
+                },
+                "invocation.json": {},
+                "events.jsonl": {},
+            }
+            for name, value_json in fixtures.items():
+                (output / name).write_text(json.dumps(value_json) + "\n")
+            payload, code = WORKER.result_payload(
+                game_stats_id=123, replay_sha256="a" * 64, output=output, runner_returncode=2,
+            )
+            self.assertEqual(code, 0)
+            self.assertEqual(payload["nativeObservation"]["memoryTerminalCandidate"], memory)
+            self.assertEqual(payload["nativeObservation"]["terminalEvidenceKind"], "native_memory_terminal")
+            self.assertFalse(payload["authority"]["replayTruthPromoted"])
+            self.assertFalse(payload["authority"]["bettingMutated"])
+            self.assertFalse(payload["authority"]["woloMutated"])
+
+    def test_worker_forwards_memory_runtime_hashes_and_manifest_to_api_runner(self):
+        for game_stats_id in (123, 32388):
+            with self.subTest(game_stats_id=game_stats_id):
+                self.assert_worker_forwards_memory_runtime(game_stats_id)
+
+    def assert_worker_forwards_memory_runtime(self, game_stats_id):
+        value = manifest_fixture()
+        value.update(gameStatsId=game_stats_id, sourceGameStatsIds=[game_stats_id])
+        reseal(value)
+        args = argparse.Namespace(
+            run_id="memory-forwarding-control",
+            game_stats_id=value["gameStatsId"],
+            replay_sha256=value["replaySha256"],
+            roster_slot=[row["slot"] for row in value["roster"]],
+            native_performance_seconds=240,
+            timeout_seconds=300,
+            url="https://example.invalid",
+            manifest_json=canonical_json(value),
+        )
+        with tempfile.TemporaryDirectory() as temp:
+            base = Path(temp)
+            attempts = base / "attempts"
+            memory_runtime = {
+                "observer": {"path": str(base / "observer.exe"), "sha256": "1" * 64},
+                "controller": {"path": str(base / "controller.exe"), "sha256": "2" * 64},
+                "manifest": {"path": str(base / "control-manifest.json"), "sha256": "3" * 64},
+                "preflight": {"path": str(base / "preflight.json"), "sha256": "4" * 64},
+            }
+            captured = {}
+
+            def materialize(**kwargs):
+                artifact = Path(kwargs["destination_dir"]) / value["archive"]["objectKey"]
+                artifact.write_bytes(b"synthetic replay bytes; runner never executes")
+                return artifact, artifact.stat().st_size, "unit_test"
+
+            def run(command, **kwargs):
+                captured["command"] = list(command)
+                captured["kwargs"] = kwargs
+                return type("Completed", (), {"returncode": 1, "stdout": "fixture runner stop"})()
+
+            with patch.object(WORKER, "EVIDENCE_ROOT", attempts), \
+                 patch.object(WORKER, "require_runtime", return_value={"appHead": "1" * 40}), \
+                 patch.object(WORKER, "load_token", return_value="unused"), \
+                 patch.object(WORKER, "prepare_memory_control_runtime", return_value=memory_runtime) as prepare, \
+                 patch.object(WORKER, "materialize_replay", side_effect=materialize), \
+                 patch.object(WORKER.subprocess, "run", side_effect=run), \
+                 patch.object(WORKER, "record_runner_failure", return_value={"status": "fixture-stop"}):
+                code = WORKER.run_native_attempt(args)
+
+            self.assertEqual(code, 2)
+            prepare.assert_called_once_with(args.run_id, value)
+            command = captured["command"]
+            self.assertIn("--native-fast-replay", command)
+            expected = {
+                "--memory-observer": memory_runtime["observer"]["path"],
+                "--expected-memory-observer-sha256": memory_runtime["observer"]["sha256"],
+                "--playback-controller": memory_runtime["controller"]["path"],
+                "--expected-playback-controller-sha256": memory_runtime["controller"]["sha256"],
+                "--control-manifest": memory_runtime["manifest"]["path"],
+                "--expected-control-manifest-sha256": memory_runtime["manifest"]["sha256"],
+            }
+            for flag, expected_value in expected.items():
+                self.assertEqual(command[command.index(flag) + 1], expected_value)
+            self.assertEqual(
+                [command[index + 1] for index, token in enumerate(command) if token == "--roster-slot"],
+                [str(row["slot"]) for row in value["roster"]],
+            )
+            self.assertEqual(captured["kwargs"]["cwd"], str(WORKER.API_ROOT))
+            self.assertEqual(captured["kwargs"]["env"]["PYTHONDONTWRITEBYTECODE"], "1")
+            self.assertEqual(captured["kwargs"]["env"]["PYTHONUNBUFFERED"], "1")
 
     def test_download_revalidates_server_manifest_byte_count_and_hash(self):
         data = b"exact native replay bytes"
@@ -408,6 +588,7 @@ class NativeWitnessByteIntegrationTests(unittest.TestCase):
         witness.write_new_json(output / "invocation.json", invocation)
         (output / "events.jsonl").write_text('{"kind":"fixture-never-launched"}\n')
         observation = {
+            "terminal_evidence_kind": "native_ailog",
             "native_performance_outputs": [witness.file_identity(performance)],
             "native_logs_before": {source_path: {"path": source_path, "byte_size": len(prefix), "sha256": hashlib.sha256(prefix).hexdigest()}},
             "native_logs_after": {source_path: source},
@@ -458,6 +639,82 @@ class NativeWitnessByteIntegrationTests(unittest.TestCase):
         attempt = json.loads((output / "attempt.json").read_text())
         attempt["artifacts"] = [witness.file_identity(path) for path in sorted(output.iterdir()) if path.name != "attempt.json"]
         (output / "attempt.json").write_bytes(witness.canonical(attempt))
+
+    def test_independent_memory_terminal_referee_recomputes_bound_raw_capture(self):
+        with tempfile.TemporaryDirectory() as temp:
+            output, value, witness, exe_sha, data_sha = self.make_evidence(Path(temp))
+            slots = [row["slot"] for row in value["roster"]]
+            winners = list(value["result"]["winningSlots"])
+            losers = [slot for slot in slots if slot not in winners]
+            memory_path = output / "memory-observer.jsonl"
+            memory_path.write_text('{"kind":"synthetic-memory-capture"}\n', encoding="utf-8")
+            runtime_path = output / "runtime.json"
+            runtime_path.write_text('{"kind":"synthetic-runtime"}\n', encoding="utf-8")
+            observer_path = output / "replay-memory-observer.exe"
+            observer_path.write_bytes(b"synthetic observer bytes, never executed")
+            candidate = {
+                "proven": True,
+                "match": {
+                    "roster_slots": slots,
+                    "winning_slots": winners,
+                    "losing_slots": losers,
+                },
+            }
+
+            observation = json.loads((output / "observation.json").read_text())
+            observation["terminal_evidence_kind"] = "native_memory_terminal"
+            observation["native_memory_terminal_candidate"] = candidate
+            (output / "observation.json").write_bytes(witness.canonical(observation))
+
+            invocation = json.loads((output / "invocation.json").read_text())
+            invocation["memory_observer"] = {"staged_identity": witness.file_identity(observer_path)}
+            invocation["executable_windows_path"] = r"C:\\Program Files (x86)\\Steam\\steamapps\\common\\Age2HD\\AoK HD.exe"
+            (output / "invocation.json").write_bytes(witness.canonical(invocation))
+
+            receipt = json.loads((output / "receipt.json").read_text())
+            receipt["observations"]["terminal_evidence_refs"] = [memory_path.name]
+            receipt["observations"]["result"]["evidence_refs"] = [memory_path.name]
+            receipt["evidence"].append(
+                witness.evidence_file(memory_path, evidence_id=memory_path.name, kind="log")
+            )
+            (output / "receipt.json").write_bytes(witness.canonical(receipt))
+            self.refresh_integrity(output, witness)
+
+            parser_calls = []
+
+            def fake_parser(path, **kwargs):
+                parser_calls.append((Path(path), kwargs))
+                return candidate
+
+            real_spec_from_file = importlib.util.spec_from_file_location
+
+            class MemoryLoader:
+                def create_module(self, spec):
+                    return None
+
+                def exec_module(self, module):
+                    module.parse_memory_terminal_candidate = fake_parser
+
+            def controlled_spec(name, location, *args, **kwargs):
+                if Path(location).name == "replay_engine_memory.py":
+                    return importlib.util.spec_from_loader(name, MemoryLoader())
+                return real_spec_from_file(name, location, *args, **kwargs)
+
+            with patch.object(WORKER, "EXPECTED_EXECUTABLE_SHA256", exe_sha), \
+                 patch.object(WORKER, "EXPECTED_DATA_SHA256", data_sha), \
+                 patch.object(WORKER.importlib.util, "spec_from_file_location", side_effect=controlled_spec):
+                result = WORKER.independently_revalidate_control_evidence(output, value)
+
+            self.assertEqual(result["status"], "PASS")
+            self.assertEqual(result["winningSlots"], winners)
+            self.assertEqual(len(parser_calls), 1)
+            called_path, called = parser_calls[0]
+            self.assertEqual(called_path, memory_path)
+            self.assertEqual(called["game_id"], value["gameStatsId"])
+            self.assertEqual(called["replay_sha256"], value["replaySha256"])
+            self.assertEqual(called["capture_sha256"], WORKER.sha256_file(memory_path))
+            self.assertEqual(called["control_manifest"], value)
+            self.assertEqual(called["expected_replay_bytes"], value["archive"]["byteSize"])
 
     def test_real_witness_referee_accepts_synthetic_1v1_team_and_4v4_bytes(self):
         for count in (2, 6, 8):

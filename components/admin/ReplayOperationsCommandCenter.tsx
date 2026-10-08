@@ -40,6 +40,14 @@ type BusyKey =
   | "review"
   | "receipts";
 
+const NATIVE_RESULT_CONTROL_LADDER = [
+  { gameStatsId: 32388, label: "Positive", detail: "trusted winner slots 1, 2" },
+  { gameStatsId: 4896, label: "Disconnect", detail: "disconnect-only control" },
+  { gameStatsId: 11403, label: "Resignation", detail: "partial-resignation / identity control" },
+  { gameStatsId: 19082, label: "Conflict", detail: "accepted-vs-inherited conflict control" },
+  { gameStatsId: 32173, label: "Negative", detail: "activity / final-conversion negative control" },
+] as const;
+
 const numberFormat = new Intl.NumberFormat("en-US");
 
 function formatNumber(value: number) {
@@ -593,30 +601,50 @@ export default function ReplayOperationsCommandCenter() {
             create a job receipt or invoke Python.
           </p>
           <div className="mt-4 rounded-xl border border-violet-300/14 bg-violet-400/[0.045] px-3 py-3">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <div className="text-[9px] font-bold uppercase tracking-[0.17em] text-violet-200/65">
-                  Native HD positive control
-                </div>
-                <div className="mt-1 text-xs leading-5 text-slate-300">
-                  Game #32388 · exact historical control · trusted winner slots 1, 2.
-                  Run this before widening native execution.
-                </div>
+            <div>
+              <div className="text-[9px] font-bold uppercase tracking-[0.17em] text-violet-200/65">
+                Native HD result control ladder
               </div>
-              <button
-                type="button"
-                disabled={busy.native}
-                onClick={() => void runNativeReplay(32388)}
-                className="inline-flex min-h-9 shrink-0 items-center justify-center gap-2 rounded-full border border-violet-300/20 bg-violet-400/[0.09] px-3.5 py-2 text-xs font-semibold text-violet-50 transition hover:bg-violet-400/[0.15] disabled:cursor-wait disabled:opacity-50"
-              >
-                {busy.native ? (
-                  <LoaderCircle className="h-3.5 w-3.5 animate-spin" />
-                ) : (
-                  <PlayCircle className="h-3.5 w-3.5" />
-                )}
-                Run trusted control
-              </button>
+              <div className="mt-1 text-xs leading-5 text-slate-300">
+                Five known-result replays exercise different terminal edge cases through the
+                same candidate-only native memory lane. Run one at a time; none can publish
+                a winner, mutate stats, touch a wager, or move WOLO.
+              </div>
             </div>
+            <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-5">
+              {NATIVE_RESULT_CONTROL_LADDER.map((control) => (
+                <button
+                  key={control.gameStatsId}
+                  type="button"
+                  disabled={busy.native}
+                  onClick={() => void runNativeReplay(control.gameStatsId)}
+                  className="group rounded-xl border border-violet-300/15 bg-slate-950/55 px-3 py-3 text-left transition hover:border-violet-200/30 hover:bg-violet-400/[0.08] disabled:cursor-wait disabled:opacity-45"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-violet-200/70">
+                      {control.label}
+                    </span>
+                    {busy.native ? (
+                      <LoaderCircle className="h-3.5 w-3.5 animate-spin text-violet-100/70" />
+                    ) : (
+                      <PlayCircle className="h-3.5 w-3.5 text-violet-100/55 transition group-hover:text-violet-50" />
+                    )}
+                  </div>
+                  <div className="mt-1 font-mono text-sm font-semibold text-white">
+                    #{control.gameStatsId}
+                  </div>
+                  <div className="mt-1 text-[10px] leading-4 text-slate-500">
+                    {control.detail}
+                  </div>
+                </button>
+              ))}
+            </div>
+            {nativeMessage ? (
+              <div className="mt-3 rounded-lg border border-violet-300/10 bg-black/20 px-3 py-2 font-mono text-[10px] leading-5 text-violet-100/75">
+                {nativeMessage}
+              </div>
+            ) : null}
+            {errors.native ? <PanelError>{errors.native}</PanelError> : null}
           </div>
 
           <div className="mt-4 grid gap-2 sm:grid-cols-[1fr_7rem]">
@@ -773,14 +801,8 @@ export default function ReplayOperationsCommandCenter() {
               ) : null}
             </div>
           ) : null}
-          {nativeMessage ? (
-            <div className="mt-3 rounded-xl border border-violet-300/15 bg-violet-400/[0.06] px-3 py-2.5 text-xs leading-5 text-violet-100">
-              {nativeMessage}
-            </div>
-          ) : null}
           {errors.plan ? <PanelError>{errors.plan}</PanelError> : null}
           {errors.run ? <PanelError>{errors.run}</PanelError> : null}
-          {errors.native ? <PanelError>{errors.native}</PanelError> : null}
         </article>
 
         <article className="bg-slate-950/80 p-5 sm:p-6">
