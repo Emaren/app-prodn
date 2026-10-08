@@ -1,7 +1,7 @@
 import type { LeaderboardLane } from "@/lib/leaderboardLane";
 
 export type HistoricalSteamRatingEvidence = {
-  observedAt: string | null;
+  ratingObservedAt?: string | null;
   steamRmRating: number | null;
   steamDmRating: number | null;
 };
@@ -45,12 +45,17 @@ export function latestHistoricalSteamLaneRating(
         : item.steamRmRating,
     );
 
-    if (rating === null || !item.observedAt) {
+    if (
+      rating === null ||
+      !item.ratingObservedAt
+    ) {
       continue;
     }
 
     const observedAtMs =
-      new Date(item.observedAt).getTime();
+      new Date(
+        item.ratingObservedAt,
+      ).getTime();
 
     if (
       !Number.isFinite(observedAtMs) ||

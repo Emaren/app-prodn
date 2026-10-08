@@ -105,22 +105,22 @@ test("non-positive Steam sentinels are unavailable", () => {
 test("last-known Steam rating follows actual observed replay chronology", () => {
   const evidence = [
     {
-      observedAt: "2026-10-01T10:00:00.000Z",
+      ratingObservedAt: "2026-10-01T10:00:00.000Z",
       steamRmRating: 1810,
       steamDmRating: 2200,
     },
     {
-      observedAt: "2026-10-03T10:00:00.000Z",
+      ratingObservedAt: "2026-10-03T10:00:00.000Z",
       steamRmRating: 1855,
       steamDmRating: null,
     },
     {
-      observedAt: "not-a-date",
+      ratingObservedAt: "not-a-date",
       steamRmRating: 9999,
       steamDmRating: 9999,
     },
     {
-      observedAt: null,
+      ratingObservedAt: null,
       steamRmRating: 7777,
       steamDmRating: 7777,
     },
@@ -139,5 +139,32 @@ test("last-known Steam rating follows actual observed replay chronology", () => 
       "dm",
     ),
     2200,
+  );
+});
+
+test("display/history timestamps cannot substitute for explicit rating played_on", () => {
+  const evidence = [
+    {
+      // General replay display chronology may have a created_at/timestamp
+      // fallback, but rating chronology intentionally has none.
+      observedAt: "2026-10-08T12:00:00.000Z",
+      ratingObservedAt: null,
+      steamRmRating: 9999,
+      steamDmRating: 9999,
+    },
+    {
+      observedAt: "2026-10-01T12:00:00.000Z",
+      ratingObservedAt: "2026-10-01T12:00:00.000Z",
+      steamRmRating: 1777,
+      steamDmRating: 2222,
+    },
+  ];
+
+  assert.equal(
+    latestHistoricalSteamLaneRating(
+      evidence,
+      "rm",
+    ),
+    1777,
   );
 });

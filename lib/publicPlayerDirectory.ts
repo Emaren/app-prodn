@@ -47,6 +47,13 @@ export type PublicPlayerReplayEvidence = {
   observedName: string;
   normalizedName: string;
   observedAt: string | null;
+  /**
+   * Rating chronology is deliberately narrower than the general replay display
+   * clock. Only an explicit GameStats.played_on may order embedded Steam
+   * ratings; created_at/timestamp fallbacks must never make an old replay look
+   * like a newer account observation.
+   */
+  ratingObservedAt: string | null;
   acceptedAt: string;
   result: LeaderboardReplayResult;
   steamRmRating: number | null;
@@ -852,6 +859,8 @@ export async function loadPublicPlayerDirectoryFresh(
       observedName: replayName,
       normalizedName,
       observedAt,
+      ratingObservedAt:
+        toIso(game.played_on),
       acceptedAt:
         snapshot.createdAt.toISOString(),
       result,
