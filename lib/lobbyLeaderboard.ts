@@ -28,7 +28,12 @@ import {
 import {
   latestHistoricalSteamLaneRating,
   resolveLeaderboardRatingPresentation,
+  compareLeaderboardRatingAuthority,
 } from "@/lib/leaderboardRating";
+import {
+  classifyLeaderboardReplayMode,
+  summarizeLeaderboardLaneEvidence,
+} from "@/lib/leaderboardGameMode";
 import {
   normalizeLeaderboardScope,
   type LeaderboardScope,
@@ -50,7 +55,6 @@ import {
 import {
   normalizeLeaderboardSteamId,
   readLeaderboardSteamId,
-  resolveRankDelta24h,
   type LeaderboardRankDelta24h,
 } from "@/lib/leaderboardIdentity";
 import { isLeaderboardExcludedSystemUid } from "@/lib/internalSystemAccounts";
@@ -128,6 +132,7 @@ type PreparedLeaderboardGame = Omit<
 type CandidateLeaderboardGame = {
   createdAt: Date;
   event_types: unknown;
+  game_type: string | null;
   id: number;
   is_final: boolean;
   key_events: unknown;
@@ -215,6 +220,31 @@ function buildEnrichedEntry(entry: PublicPlayerDirectoryEntry): EnrichedLeaderbo
   };
 }
 
+function projectEnrichedLeaderboardLane(
+  entry: EnrichedLeaderboardEntry,
+  lane: LeaderboardLane,
+): EnrichedLeaderboardEntry {
+  const laneTruth = summarizeLeaderboardLaneEvidence(entry.replayEvidence, lane);
+  return {
+    ...entry,
+    replayEvidence: laneTruth.evidence,
+    evidenceGameIds: new Set(laneTruth.evidence.map((row) => row.gameStatsId)),
+    totalMatches: laneTruth.totalMatches,
+    wins: laneTruth.wins,
+    losses: laneTruth.losses,
+    unknowns: laneTruth.unknowns,
+    resolvedMatches: laneTruth.wins + laneTruth.losses,
+    winRate: laneTruth.wins + laneTruth.losses > 0
+      ? laneTruth.wins / (laneTruth.wins + laneTruth.losses)
+      : 0,
+    lastPlayedAt: laneTruth.lastPlayedAt,
+    lastPlayedAtMs: laneTruth.lastPlayedAt ? Date.parse(laneTruth.lastPlayedAt) : 0,
+    arenaElo: BASE_ARENA_ELO,
+    streakLabel: null,
+    streakScore: 0,
+  };
+}
+
 function hasTrackedHistory(entry: EnrichedLeaderboardEntry) {
   return entry.totalMatches > 0;
 }
@@ -267,12 +297,11 @@ function compareLeaderboardEntries(
   right: EnrichedLeaderboardEntry,
   lane: LeaderboardLane
 ) {
-  const leftPrimaryRating = getPrimaryRatingValue(left, lane);
-  const rightPrimaryRating = getPrimaryRatingValue(right, lane);
-
-  if (leftPrimaryRating !== rightPrimaryRating) {
-    return (rightPrimaryRating ?? Number.NEGATIVE_INFINITY) - (leftPrimaryRating ?? Number.NEGATIVE_INFINITY);
-  }
+  const ratingComparison = compareLeaderboardRatingAuthority(
+    ratingPresentation(left, lane),
+    ratingPresentation(right, lane),
+  );
+  if (ratingComparison !== 0) return ratingComparison;
 
   if (hasLaneRating(left, lane) !== hasLaneRating(right, lane)) {
     return Number(hasLaneRating(right, lane)) - Number(hasLaneRating(left, lane));
@@ -474,7 +503,7 @@ function buildLeaderboardSelection(
     );
 
   const rankedEntries = scopedEntries
-    .filter((entry) => entry.totalMatches > 0)
+    .filter((entry) => canRankLeaderboardLane(entry, lane))
     .sort((left, right) =>
       compareLeaderboardEntries(left, right, lane)
     );
@@ -483,7 +512,7 @@ function buildLeaderboardSelection(
     .filter(
       (entry) =>
         entry.claimed &&
-        entry.totalMatches === 0
+        !canRankLeaderboardLane(entry, lane)
     )
     .sort((left, right) => {
       // Presence is a request-time overlay, not ranking authority. Keeping it
@@ -951,273 +980,21 @@ function populateLeaderboardStreaks(
   }
 }
 
-function evidenceAcceptedAtMs(
-  evidence: PublicPlayerReplayEvidence,
-) {
-  const parsed =
-    new Date(
-      evidence.acceptedAt,
-    ).getTime();
-
-  return Number.isFinite(parsed)
-    ? parsed
-    : null;
-}
-
-function buildHistoricalLeaderboardEntry(
-  entry: EnrichedLeaderboardEntry,
-  cutoffMs: number,
-): EnrichedLeaderboardEntry {
-  const replayEvidence =
-    entry.replayEvidence.filter(
-      (evidence) => {
-        const acceptedAtMs =
-          evidenceAcceptedAtMs(
-            evidence,
-          );
-
-        return (
-          acceptedAtMs !== null &&
-          acceptedAtMs <= cutoffMs
-        );
-      },
-    );
-  const latestEvidence =
-    replayEvidence[0] ?? null;
-  const wins =
-    replayEvidence.filter(
-      (evidence) =>
-        evidence.result === "win",
-    ).length;
-  const losses =
-    replayEvidence.filter(
-      (evidence) =>
-        evidence.result === "loss",
-    ).length;
-  const unknowns =
-    replayEvidence.length -
-    wins -
-    losses;
-  const resolvedMatches =
-    wins + losses;
-  const latestRatingEvidence =
-    replayEvidence.find(
-      (evidence) =>
-        evidence.steamRmRating !==
-          null ||
-        evidence.steamDmRating !==
-          null,
-    ) ?? null;
-  const historical: PublicPlayerDirectoryEntry = {
-    ...entry,
-    name:
-      latestEvidence?.observedName ??
-      entry.name,
-    latestObservedName:
-      latestEvidence?.observedName ??
-      entry.latestObservedName,
-    totalMatches:
-      replayEvidence.length,
-    wins,
-    losses,
-    unknowns,
-    lastPlayedAt:
-      latestEvidence?.observedAt ??
-      null,
-    ratingLastSeenAt:
-      latestRatingEvidence
-        ?.observedAt ?? null,
-    steamRmRating:
-      latestHistoricalSteamLaneRating(
-        replayEvidence,
-        "rm",
-      ),
-    steamDmRating:
-      latestHistoricalSteamLaneRating(
-        replayEvidence,
-        "dm",
-      ),
-    aliases: Array.from(
-      new Set(
-        replayEvidence
-          .map(
-            (evidence) =>
-              evidence.observedName,
-          )
-          .filter(Boolean),
-      ),
-    ),
-    replayEvidence,
-  };
-
-  return {
-    ...historical,
-    aliasKeys:
-      buildAliasKeys(historical),
-    evidenceGameIds: new Set(
-      replayEvidence.map(
-        (evidence) =>
-          evidence.gameStatsId,
-      ),
-    ),
-    resolvedMatches,
-    winRate:
-      resolvedMatches > 0
-        ? wins / resolvedMatches
-        : 0,
-    lastPlayedAtMs:
-      latestEvidence?.observedAt
-        ? new Date(
-            latestEvidence.observedAt,
-          ).getTime()
-        : 0,
-    arenaElo: BASE_ARENA_ELO,
-    lastKnownSteamRmRating:
-      latestHistoricalSteamLaneRating(
-        replayEvidence,
-        "rm",
-      ),
-    lastKnownSteamDmRating:
-      latestHistoricalSteamLaneRating(
-        replayEvidence,
-        "dm",
-      ),
-    streakLabel: null,
-    streakScore: 0,
-    rank24hAgo: null,
-    rankDelta24h: null,
-    rankDelta24hState:
-      replayEvidence.length > 0
-        ? "unchanged"
-        : "unranked",
-  };
-}
-
-function buildCanonicalRankMap(
-  entries: EnrichedLeaderboardEntry[],
-  lane: LeaderboardLane,
-) {
-  const rankByKey =
-    new Map<string, number>();
-
-  entries
-    .filter(
-      (entry) =>
-        entry.totalMatches > 0,
-    )
-    .sort((left, right) =>
-      compareLeaderboardEntries(
-        left,
-        right,
-        lane,
-      ),
-    )
-    .forEach((entry, index) => {
-      rankByKey.set(
-        entry.key,
-        index + 1,
-      );
-    });
-
-  return rankByKey;
-}
-
+// A 24-hour position cannot be reconstructed honestly from today's mutable
+// replay corpus: newly imported old games make thousands of false rank jumps.
+// Until immutable comparable per-lane snapshots exist, mark movement unavailable.
 function populateRankDelta24h(
   entries: EnrichedLeaderboardEntry[],
-  games: PreparedLeaderboardGame[],
-  lane: LeaderboardLane,
-  scope: LeaderboardScope,
   asOf: Date,
 ) {
-  const cutoff =
-    new Date(
-      asOf.getTime() -
-        24 * 60 * 60 * 1000,
-    );
-  const historicalEntries =
-    entries.map((entry) =>
-      buildHistoricalLeaderboardEntry(
-        entry,
-        cutoff.getTime(),
-      ),
-    );
-  const historicalGameIds =
-    new Set(
-      historicalEntries.flatMap(
-        (entry) =>
-          Array.from(
-            entry.evidenceGameIds,
-          ),
-      ),
-    );
-  const historicalGames =
-    games.filter((game) =>
-      historicalGameIds.has(
-        game.id,
-      ),
-    );
-
-  buildArenaElo(
-    historicalEntries,
-    historicalGames,
-  );
-
-  const currentRankByKey =
-    buildCanonicalRankMap(
-      scope === "claimed"
-        ? entries.filter(
-            (entry) =>
-              entry.claimed,
-          )
-        : entries,
-      lane,
-    );
-  const historicalRankByKey =
-    buildCanonicalRankMap(
-      scope === "claimed"
-        ? historicalEntries.filter(
-            (entry) =>
-              entry.claimed,
-          )
-        : historicalEntries,
-      lane,
-    );
-
   for (const entry of entries) {
-    const inScope =
-      scope === "all" ||
-      entry.claimed;
-
-    Object.assign(
-      entry,
-      resolveRankDelta24h({
-        currentRank:
-          inScope
-            ? currentRankByKey.get(
-                entry.key,
-              ) ?? null
-            : null,
-        previousRank:
-          inScope
-            ? historicalRankByKey.get(
-                entry.key,
-              ) ?? null
-            : null,
-        currentlyRanked:
-          inScope &&
-          entry.totalMatches > 0,
-        previouslyRanked:
-          inScope &&
-          historicalRankByKey.has(
-            entry.key,
-          ),
-      }),
-    );
+    entry.rank24hAgo = null;
+    entry.rankDelta24h = null;
+    entry.rankDelta24hState = "unavailable";
   }
-
   return {
     asOf: asOf.toISOString(),
-    cutoff: cutoff.toISOString(),
+    cutoff: new Date(asOf.getTime() - 24 * 60 * 60 * 1000).toISOString(),
   };
 }
 
@@ -1562,48 +1339,36 @@ async function loadLobbyLeaderboardFresh(
     const playedAtMs = playedAt ? new Date(playedAt).getTime() : 0;
     return Number.isFinite(playedAtMs) && playedAtMs >= dayStartMs;
   };
-  const matchesToday = resolvedGames.filter(isToday).length;
-  const uniqueReplaysToday = uniqueGames.filter(isToday).length;
+  const gamesForLane = (target: LeaderboardLane) =>
+    (game: { game_type: string | null }) =>
+      classifyLeaderboardReplayMode(game.game_type) === target;
+  const matchesToday = resolvedGames.filter(gamesForLane(lane)).filter(isToday).length;
+  const uniqueReplaysToday = uniqueGames.filter(gamesForLane(lane)).filter(isToday).length;
   const needsReviewToday = Math.max(0, uniqueReplaysToday - matchesToday);
 
-  const candidates = directory.allEntries
-    .filter(
-      (entry) =>
-        (entry.totalMatches > 0 ||
-          entry.claimed) &&
-        !isLeaderboardExcludedSystemUid(
-          entry.uid,
-        ),
+  const allIdentityEntries = directory.allEntries
+    .filter((entry) =>
+      !isLeaderboardExcludedSystemUid(entry.uid) &&
+      (entry.totalMatches > 0 || entry.claimed)
     )
     .map(buildEnrichedEntry);
 
-  buildArenaElo(candidates, preparedGames);
+  // Both views derive independently from the same canonical identity evidence,
+  // never from the other lane's already-filtered entries or game results.
+  const rmEntries = allIdentityEntries.map((entry) => projectEnrichedLeaderboardLane(entry, "rm"));
+  const dmEntries = allIdentityEntries.map((entry) => projectEnrichedLeaderboardLane(entry, "dm"));
+  const rmGames = preparedGames.filter(gamesForLane("rm"));
+  const dmGames = preparedGames.filter(gamesForLane("dm"));
+  buildArenaElo(rmEntries, rmGames);
+  buildArenaElo(dmEntries, dmGames);
+  const candidates = lane === "rm" ? rmEntries : dmEntries;
+  const laneRecentGames = recentGames.filter(gamesForLane(lane));
 
-  const featuredRankCandidates =
-    scope === "claimed"
-      ? candidates.filter(
-          (entry) => entry.claimed
-        )
-      : candidates;
-  const featuredRmRankByKey =
-    buildCanonicalRankMap(
-      featuredRankCandidates,
-      "rm"
-    );
-  const featuredDmRankByKey =
-    buildCanonicalRankMap(
-      featuredRankCandidates,
-      "dm"
-    );
-
-  const rankDeltaWindow =
-    populateRankDelta24h(
-      candidates,
-      preparedGames,
-      lane,
-      scope,
-      rankDeltaAsOf,
-    );
+  const visibleScope = (entry: EnrichedLeaderboardEntry) =>
+    scope !== "claimed" || entry.claimed;
+  const featuredRmRankByKey = buildCanonicalRankMap(rmEntries.filter(visibleScope), "rm");
+  const featuredDmRankByKey = buildCanonicalRankMap(dmEntries.filter(visibleScope), "dm");
+  const rankDeltaWindow = populateRankDelta24h(candidates, rankDeltaAsOf);
 
   const identityRows =
     candidates.length;
@@ -1655,7 +1420,7 @@ async function loadLobbyLeaderboardFresh(
   if (requestedSortKey === "streak") {
     populateLeaderboardStreaks(
       candidates,
-      recentGames
+      laneRecentGames
     );
   }
 
@@ -1672,7 +1437,7 @@ async function loadLobbyLeaderboardFresh(
   if (requestedSortKey !== "streak") {
     populateLeaderboardStreaks(
       selectedEntries,
-      recentGames
+      laneRecentGames
     );
   }
 
@@ -1719,7 +1484,7 @@ async function loadLobbyLeaderboardFresh(
     rankDelta24hCutoff:
       rankDeltaWindow.cutoff,
     rankDelta24hMethod:
-      "reconstructed_current_corpus",
+      "unavailable_pending_rank_snapshots",
   };
 }
 
