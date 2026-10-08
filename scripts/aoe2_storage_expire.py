@@ -431,6 +431,11 @@ def load_ledger(ledger_path, expected):
         raise RuntimeError('ledger JSON invalid')
     if ledger.get('schema')!=1 or ledger.get('kind')!='aoe2war-lean-retention-ledger':
         raise RuntimeError('ledger contract mismatch')
+    tool_sha=str(ledger.get('tool_sha256') or '')
+    if not re.fullmatch(r'[0-9a-f]{64}',tool_sha):
+        raise RuntimeError('ledger tool identity missing')
+    if digest(__file__)!=tool_sha:
+        raise RuntimeError('expiry tool differs from ledger')
     return ledger_path,ledger
 
 def completed_expiry_receipt(ledger_path, expected, row):
@@ -449,10 +454,12 @@ def completed_expiry_receipt(ledger_path, expected, row):
         receipt=json.loads(data)
     except (json.JSONDecodeError,UnicodeDecodeError):
         raise RuntimeError(f'expiry receipt JSON invalid: {out}')
-    if (receipt.get('status')!='EXPIRED_SUPERSEDED_RUNTIME'
+    if (receipt.get('kind')!='aoe2war-runtime-expiry'
+            or receipt.get('status')!='EXPIRED_SUPERSEDED_RUNTIME'
             or receipt.get('generation')!=row['generation']
             or receipt.get('ledger_sha256')!=expected
-            or receipt.get('path')!=row['path']):
+            or receipt.get('path')!=row['path']
+            or receipt.get('wolo_mutated') is not False):
         raise RuntimeError(f'expiry receipt contract mismatch: {out}')
     p=Path(row['path'])
     if p.exists() or p.is_symlink():
@@ -467,34 +474,46 @@ def apply_ledger(ledger_path,expected,max_objects=250):
           if isinstance(r,dict) and r.get('action')=='EXPIRE']
     if not rows:
         raise RuntimeError('ledger contains no expiry candidates')
+
+    coordinator_path=ledger_path.parent/'.apply-ledger.lock'
+    coordinator=coordinator_path.open('a+')
+    try:
+        fcntl.flock(coordinator,fcntl.LOCK_EX|fcntl.LOCK_NB)
+    except BlockingIOError as exc:
+        coordinator.close()
+        raise RuntimeError('another ledger batch coordinator is active') from exc
+
     applied=0
     already=0
-    for row in rows:
-        if applied>=max_objects:
-            break
-        receipt=completed_expiry_receipt(ledger_path,expected,row)
-        if receipt is not None:
-            already+=1
-            print('ALREADY_EXPIRED',row['generation'],'RECEIPT',
-                  ledger_path.parent/(row['generation']+'.expired.json'),flush=True)
-            continue
-        command=[
-            '/usr/local/sbin/aoe2war-maintenance-run',
-            'storage-runtime-expiry','--',
-            'python3',str(Path(__file__)),
-            'apply-one',str(ledger_path),expected,row['generation'],
-        ]
-        completed=subprocess.run(command,check=False)
-        if completed.returncode:
-            raise RuntimeError(
-                f"apply-one failed rc={completed.returncode} "
-                f"generation={row['generation']}"
-            )
-        if completed_expiry_receipt(ledger_path,expected,row) is None:
-            raise RuntimeError(
-                f"missing sealed receipt after expiry: {row['generation']}"
-            )
-        applied+=1
+    try:
+        for row in rows:
+            if applied>=max_objects:
+                break
+            receipt=completed_expiry_receipt(ledger_path,expected,row)
+            if receipt is not None:
+                already+=1
+                print('ALREADY_EXPIRED',row['generation'],'RECEIPT',
+                      ledger_path.parent/(row['generation']+'.expired.json'),flush=True)
+                continue
+            command=[
+                '/usr/local/sbin/aoe2war-maintenance-run',
+                'storage-runtime-expiry','--',
+                'python3',str(Path(__file__)),
+                'apply-one',str(ledger_path),expected,row['generation'],
+            ]
+            completed=subprocess.run(command,check=False)
+            if completed.returncode:
+                raise RuntimeError(
+                    f"apply-one failed rc={completed.returncode} "
+                    f"generation={row['generation']}"
+                )
+            if completed_expiry_receipt(ledger_path,expected,row) is None:
+                raise RuntimeError(
+                    f"missing sealed receipt after expiry: {row['generation']}"
+                )
+            applied+=1
+    finally:
+        coordinator.close()
     print('BATCH_COMPLETE','APPLIED',applied,'ALREADY',already,
           'ELIGIBLE',len(rows),'MAX',max_objects,flush=True)
 
