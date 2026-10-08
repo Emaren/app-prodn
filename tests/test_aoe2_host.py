@@ -116,6 +116,29 @@ class HostTests(unittest.TestCase):
         self.assertTrue(payload["updates_probe_ok"])
         self.assertEqual(payload["updates_phased_names"], ["dnsmasq-base"])
 
+    def test_tidy_failed_result_retains_remote_error(self):
+        before = {"failed_transient": 1}
+        with (
+            patch.object(host, "snapshot", return_value=before),
+            patch.object(
+                host,
+                "ssh_script",
+                return_value=(21, "detail\nSTOP: timer proof failed"),
+            ),
+            patch.object(host.RECEIPT_DIR, "mkdir"),
+            patch.object(Path, "write_text"),
+        ):
+            payload = host.tidy(
+                apply=True,
+                transients_only=False,
+            )
+
+        self.assertEqual(payload["status"], "FAILED")
+        self.assertIn(
+            "STOP: timer proof failed",
+            payload["error"],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
