@@ -640,7 +640,10 @@ artifacts. Review-only rows remain `mutation_authority=NONE`.
 
 The VPS-root census runs under the configured root maintenance identity because
 an unprivileged filesystem walk cannot accurately size root-owned Docker, Snap,
-journal, or root-cache storage. The embedded probe performs no mutation. It
+journal, or root-cache storage. The embedded probe performs no mutation. Each
+named size probe has its own short timeout and reports `probe_ok`; a slow or
+unreadable bucket becomes `PROBE?` instead of aborting the complete census.
+The local named buckets use the same fail-soft bounded-size rule. The root census
 classifies active runtime trees as protected, staged release trees as
 receipt-gated review, fast rollback pairs as durable-proof-gated, previously
 proven bounded recovery classes separately, and unproven pools such as Docker
