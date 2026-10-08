@@ -648,7 +648,10 @@ class StorageOSTests(unittest.TestCase):
     def test_local_deep_census_reports_probe_failure_without_aborting(self):
         with tempfile.TemporaryDirectory() as directory:
             home = pathlib.Path(directory)
-            review = home / MODULE.LOCAL_REVIEW_PATHS[0][1]
+            # The census resolves home before constructing du paths. On macOS,
+            # /var/folders may resolve to /private/var/folders. Match the
+            # normalized path used by the real probe.
+            review = home.resolve() / MODULE.LOCAL_REVIEW_PATHS[0][1]
             review.mkdir(parents=True)
 
             original_run = MODULE.subprocess.run

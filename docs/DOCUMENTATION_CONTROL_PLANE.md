@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/storage-os-deep-census-20261008` at `98a6b67e40df605efa57be7e63139915a06ef6ee`
+Implementation baseline: `fix/storage-deep-census-macos-test-fixture-20261008` at `24d0aa476269ce54dddf3f7c6dfeca1554d99853`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
