@@ -717,10 +717,13 @@ def clean(*, apply: bool) -> dict[str, Any]:
                     }
                 )
 
-        # Recompute after metadata repair so deletion candidates are based on
-        # Git's current registry, not the stale pre-mutation snapshot.
-        candidates = snapshot()["cleanup_candidates"]
+        # Recompute after metadata repair so deletion candidates and stale
+        # AoE2WAR registry metadata reflect Git's current registry, not the
+        # stale pre-mutation snapshot.
+        after_repair = snapshot()
+        candidates = after_repair["cleanup_candidates"]
         result["candidates"] = candidates
+        result["stale_metadata_untouched"] = after_repair["stale_metadata"]
 
         for item in candidates:
             if item.get("agent_workspace") and item.get("workspace_id"):
