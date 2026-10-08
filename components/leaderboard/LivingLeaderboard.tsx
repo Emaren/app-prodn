@@ -2135,6 +2135,10 @@ export function LivingLeaderboard({
                 : "Warriors"}
             </span>
 
+            <span className="rounded-full border border-cyan-200/14 bg-cyan-300/[0.035] px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.18em] text-cyan-100/70" title="RM/DM selects the Steam rating used to rank; Games, W–L, win rate, form and streak include all accepted replay modes observed by AoE2WAR.">
+              Stats · All modes
+            </span>
+
             <span className="rounded-full border border-white/[0.055] bg-black/15 px-3 py-1.5 text-[9px] font-black uppercase tracking-[0.18em] text-slate-600">
               {entries.length} loaded
             </span>
