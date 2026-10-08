@@ -677,15 +677,20 @@ for name, path, classification in (
     add(name, path, classification)
 
 disabled = []
-snap = subprocess.run(
-    ["snap", "list", "--all"],
-    text=True,
-    stdout=subprocess.PIPE,
-    stderr=subprocess.PIPE,
-    check=False,
-    timeout=30,
-)
-if snap.returncode == 0:
+snap = None
+try:
+    snap = subprocess.run(
+        ["snap", "list", "--all"],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        check=False,
+        timeout=30,
+    )
+except (OSError, subprocess.TimeoutExpired):
+    snap = None
+
+if snap is not None and snap.returncode == 0:
     for line in snap.stdout.splitlines()[1:]:
         parts = line.split()
         if len(parts) < 3 or "disabled" not in parts[3:]:
@@ -725,7 +730,7 @@ print(json.dumps({
     "rows": sorted(rows, key=lambda row: int(row["allocated_bytes"]), reverse=True),
     "disabled_snaps": disabled,
     "disabled_snap_bytes": sum(int(row["allocated_bytes"]) for row in disabled),
-    "snap_probe_ok": snap.returncode == 0,
+    "snap_probe_ok": snap is not None and snap.returncode == 0,
     "mutation_allowed": False,
 }, sort_keys=True))
 '''
