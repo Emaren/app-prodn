@@ -166,6 +166,7 @@ export function compareLeaderboardRatingAuthority(
         : 2;
   const tierDelta = tier(left.source) - tier(right.source);
   if (tierDelta !== 0) return tierDelta;
-  return (right.value ?? Number.NEGATIVE_INFINITY) -
-    (left.value ?? Number.NEGATIVE_INFINITY);
+  return direction === "asc"
+    ? (left.value ?? Number.POSITIVE_INFINITY) - (right.value ?? Number.POSITIVE_INFINITY)
+    : (right.value ?? Number.NEGATIVE_INFINITY) - (left.value ?? Number.NEGATIVE_INFINITY);
 }
