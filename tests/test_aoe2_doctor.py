@@ -215,6 +215,7 @@ class DoctorTests(unittest.TestCase):
             patch.object(MODULE, "check_host_and_server_bridge", side_effect=add_marker("host")),
             patch.object(MODULE, "check_maintenance_safety", side_effect=add_marker("maintenance")),
             patch.object(MODULE, "check_toolchain", side_effect=add_marker("toolchain", "Toolchain")),
+            patch.object(MODULE, "check_supply_chain", side_effect=add_marker("supply-chain", "Supply Chain")),
             patch.object(MODULE, "check_architecture", side_effect=add_marker("architecture", "Architecture")),
             patch.object(MODULE, "check_disaster_recovery", side_effect=add_marker("recovery", "Disaster Recovery")),
         ):
@@ -232,6 +233,7 @@ class DoctorTests(unittest.TestCase):
                 "host",
                 "maintenance",
                 "toolchain",
+                "supply-chain",
                 "architecture",
                 "recovery",
             ],
