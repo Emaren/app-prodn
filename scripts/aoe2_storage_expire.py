@@ -417,12 +417,79 @@ def apply_one(ledger_path, expected, generation):
         seal(RECEIPTS/(generation+'.expired.json'),receipt)
     print('EXPIRED',generation,'BYTES',r['allocated_bytes'],'RECEIPT',out,flush=True)
 
+def load_ledger(ledger_path, expected):
+    ledger_path=Path(ledger_path)
+    if (ledger_path.parent.parent!=EXPIRY or ledger_path.name!='ledger.json'
+            or digest(ledger_path)!=expected):
+        raise RuntimeError('ledger identity mismatch')
+    data=_sealed_regular(ledger_path,64*1024*1024)
+    if data is None:
+        raise RuntimeError('ledger must be sealed immutable evidence')
+    try:
+        ledger=json.loads(data)
+    except (json.JSONDecodeError,UnicodeDecodeError):
+        raise RuntimeError('ledger JSON invalid')
+    if ledger.get('schema')!=1 or ledger.get('kind')!='aoe2war-lean-retention-ledger':
+        raise RuntimeError('ledger contract mismatch')
+    return ledger_path,ledger
+
+def completed_expiry_receipt(ledger_path, expected, row):
+    out=ledger_path.parent/(row['generation']+'.expired.json')
+    intent=ledger_path.parent/(row['generation']+'.intent.json')
+    if not out.exists():
+        if intent.exists():
+            raise RuntimeError(
+                f"existing transaction needs receipt review: {row['generation']}"
+            )
+        return None
+    data=_sealed_regular(out,16*1024*1024)
+    if data is None:
+        raise RuntimeError(f'expiry receipt is not sealed: {out}')
+    try:
+        receipt=json.loads(data)
+    except (json.JSONDecodeError,UnicodeDecodeError):
+        raise RuntimeError(f'expiry receipt JSON invalid: {out}')
+    if (receipt.get('status')!='EXPIRED_SUPERSEDED_RUNTIME'
+            or receipt.get('generation')!=row['generation']
+            or receipt.get('ledger_sha256')!=expected
+            or receipt.get('path')!=row['path']):
+        raise RuntimeError(f'expiry receipt contract mismatch: {out}')
+    p=Path(row['path'])
+    if p.exists() or p.is_symlink():
+        raise RuntimeError(f'expired target reappeared: {p}')
+    return receipt
+
+def apply_ledger(ledger_path,expected,max_objects=250):
+    if max_objects<1 or max_objects>1000:
+        raise RuntimeError('max objects must be between 1 and 1000')
+    ledger_path,ledger=load_ledger(ledger_path,expected)
+    rows=[r for r in ledger.get('rows',[])
+          if isinstance(r,dict) and r.get('action')=='EXPIRE']
+    if not rows:
+        raise RuntimeError('ledger contains no expiry candidates')
+    applied=0
+    already=0
+    for row in rows:
+        if applied>=max_objects:
+            break
+        receipt=completed_expiry_receipt(ledger_path,expected,row)
+        if receipt is not None:
+            already+=1
+            print('ALREADY_EXPIRED',row['generation'],'RECEIPT',
+                  ledger_path.parent/(row['generation']+'.expired.json'),flush=True)
+            continue
+        apply_one(ledger_path,expected,row['generation'])
+        applied+=1
+    print('BATCH_COMPLETE','APPLIED',applied,'ALREADY',already,
+          'ELIGIBLE',len(rows),'MAX',max_objects,flush=True)
+
 def main():
     p=argparse.ArgumentParser(description=__doc__)
     sub=p.add_subparsers(dest='command',required=True)
     sub.add_parser('inventory')
     q=sub.add_parser('prepare');q.add_argument('directory')
     q=sub.add_parser('apply-one');q.add_argument('ledger');q.add_argument('sha256');q.add_argument('generation')
+    q=sub.add_parser('apply-ledger');q.add_argument('ledger');q.add_argument('sha256');q.add_argument('--max-objects',type=int,default=250)
     args=p.parse_args()
     if sys.platform == 'darwin':
         import aoe2_storage
@@ -442,7 +509,8 @@ def main():
         raise SystemExit(subprocess.run(['ssh','-o','BatchMode=yes','root@hel1','python3','-'],input=remote,text=True).returncode)
     if args.command=='inventory': print(json.dumps(inspect_inventory(),sort_keys=True))
     elif args.command=='prepare': prepare(args.directory)
-    else: apply_one(args.ledger,args.sha256,args.generation)
+    elif args.command=='apply-one': apply_one(args.ledger,args.sha256,args.generation)
+    else: apply_ledger(args.ledger,args.sha256,args.max_objects)
 
 if __name__=='__main__':
     try: main()
