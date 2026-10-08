@@ -32,6 +32,11 @@ function player(
     name,
     steam_id: steamId,
     steam_rm_rating: rating,
+    steam_dm_rating: rating + 150,
+    steam_rating_sources: {
+      steam_rm_rating: "hd_header",
+      steam_dm_rating: "hd_header",
+    },
     winner,
     number,
   };
@@ -510,8 +515,8 @@ test("Version 1 shows every accepted all-mode game on both Steam rating boards",
   // RM/DM retains its independent rating authority even though stats agree.
   assert.equal(rm.lane, "rm");
   assert.equal(dm.lane, "dm");
-  assert.equal(rmAlpha.primaryRatingSourceLabel, "Site Elo · All");
-  assert.equal(dmAlpha.primaryRatingSourceLabel, "Site Elo · All");
+  assert.equal(rmAlpha.primaryRatingSourceLabel, "Last RM");
+  assert.equal(dmAlpha.primaryRatingSourceLabel, "Last DM");
 });
 
 test("claimed scope is contiguous and excludes reserved systems by UID, not name", async () => {
