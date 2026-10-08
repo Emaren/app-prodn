@@ -278,10 +278,6 @@ function compareLeaderboardEntries(
     return Number(hasLaneRating(right, lane)) - Number(hasLaneRating(left, lane));
   }
 
-  if (left.arenaElo !== right.arenaElo) {
-    return right.arenaElo - left.arenaElo;
-  }
-
   if (left.winRate !== right.winRate) {
     return right.winRate - left.winRate;
   }
@@ -989,7 +985,7 @@ function populateRankDelta24h(
 
 function buildPrimaryRatingLabel(entry: EnrichedLeaderboardEntry, lane: LeaderboardLane) {
   const value = getPrimaryRatingValue(entry, lane);
-  return value === null ? "Pending" : String(Math.round(value));
+  return value === null ? "—" : String(Math.round(value));
 }
 
 function buildPrimaryRatingSourceLabel(entry: EnrichedLeaderboardEntry, lane: LeaderboardLane) {
