@@ -675,17 +675,20 @@ add("staged_node_modules", repo / ".node_modules-release", "RECEIPT_GATED_STAGED
 
 fast_bytes = 0
 fast_paths = []
+fast_probe_ok = True
 for pattern in (".next-rollback-activate-*", ".node_modules-rollback-activate-*"):
     for path in sorted(repo.glob(pattern)):
         row = allocated(path)
         fast_bytes += int(row["allocated_bytes"])
         fast_paths.append(row["path"])
+        fast_probe_ok = fast_probe_ok and bool(row["probe_ok"])
 rows.append({
     "name": "fast_rollback_pairs",
     "path": str(repo),
     "exists": bool(fast_paths),
     "symlink": False,
     "allocated_bytes": fast_bytes,
+    "probe_ok": fast_probe_ok,
     "paths": fast_paths,
     "classification": "DURABLE_PROOF_GATED_FAST_ROLLBACK",
     "mutation_authority": "NONE",
