@@ -611,22 +611,28 @@ def allocated(path):
         "exists": path.exists(),
         "symlink": path.is_symlink(),
         "allocated_bytes": 0,
+        "probe_ok": True,
     }
     if not row["exists"] or row["symlink"]:
         return row
-    proc = subprocess.run(
-        ["du", "-skx", str(path)],
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.DEVNULL,
-        check=False,
-        timeout=120,
-    )
+    try:
+        proc = subprocess.run(
+            ["du", "-skx", str(path)],
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            check=False,
+            timeout=120,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        row["probe_ok"] = False
+        return row
+    row["probe_ok"] = proc.returncode == 0
     if proc.returncode == 0:
         try:
             row["allocated_bytes"] = int(proc.stdout.split()[0]) * 1024
         except (IndexError, ValueError):
-            pass
+            row["probe_ok"] = False
     return row
 
 rows = []
