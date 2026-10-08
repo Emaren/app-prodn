@@ -71,3 +71,31 @@ test("Steam RM rating and Site Elo never sort as if numerically interchangeable"
   assert.equal(compareLeaderboardRatingAuthority(unrated, unrated), 0);
   assert.equal(compareLeaderboardRatingAuthority(unrated, unrated, "asc"), 0);
 });
+
+test("malformed HD game type recovers explicit embedded mode only", () => {
+  const malformed = "(<Version.HD: 19>, 'VER 9.4', 12.5, 4, None)";
+  const row = (type: string) => ({
+    game_type: malformed, key_events: { settings: { type } },
+  });
+  assert.equal(resolveLeaderboardReplayMode(row("RM")), "rm");
+  assert.equal(resolveLeaderboardReplayMode(row("DM")), "dm");
+  assert.equal(resolveLeaderboardReplayMode(row("TurboRandom9")), null);
+  assert.equal(resolveLeaderboardReplayMode(row("Unknown")), null);
+  assert.equal(resolveLeaderboardReplayMode({
+    game_type: "Unknown", key_events: { settings: { type: "RM" } },
+  }), "rm");
+});
+
+test("explicit custom or contradictory types cannot be reassigned", () => {
+  for (const raw of ["TurboRandom9", "Regicide", "Scenario", "HD game type 8"]) {
+    assert.equal(resolveLeaderboardReplayMode({
+      game_type: raw, key_events: { settings: { type: "RM" } },
+    }), null);
+  }
+  assert.equal(resolveLeaderboardReplayMode({
+    game_type: "RM", key_events: { settings: { type: "DM" } },
+  }), null);
+  assert.equal(resolveLeaderboardReplayMode({
+    game_type: "Unknown", key_events: { settings: { type: "DM" }, type: "RM" },
+  }), null);
+});
