@@ -9,7 +9,6 @@ import {
 import {
   loadPublicPlayerDirectory,
   type PublicPlayerDirectoryEntry,
-  type PublicPlayerReplayEvidence,
 } from "@/lib/publicPlayerDirectory";
 import { loadPublicPlayerDirectoryGeneration } from "@/lib/publicPlayerDirectoryGeneration";
 import { loadPublicPresenceSnapshot } from "@/lib/publicPresence";
