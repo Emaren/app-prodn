@@ -612,6 +612,37 @@ class StorageOSTests(unittest.TestCase):
         ]
         self.assertEqual(len(names), len(set(names)))
 
+    def test_root_deep_census_uses_explicit_root_read_authority(self):
+        expected = {
+            "schema": 1,
+            "kind": "aoe2war-root-deep-storage-census",
+        }
+        contract = {
+            "root_maintenance_host": "root@hel1",
+        }
+        with (
+            mock.patch.object(
+                MODULE,
+                "policy",
+                return_value=contract,
+            ),
+            mock.patch.object(
+                MODULE,
+                "remote_root_json",
+                return_value=expected,
+            ) as probe,
+        ):
+            self.assertIs(
+                MODULE.root_deep_storage_census(),
+                expected,
+            )
+
+        probe.assert_called_once_with(
+            MODULE.REMOTE_ROOT_DEEP_CENSUS,
+            contract,
+            timeout=300,
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
