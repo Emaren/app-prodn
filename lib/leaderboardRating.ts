@@ -158,6 +158,7 @@ export function resolveLeaderboardRatingPresentation(
 export function compareLeaderboardRatingAuthority(
   left: LeaderboardRatingPresentation,
   right: LeaderboardRatingPresentation,
+  direction: "asc" | "desc" = "desc",
 ): number {
   const tier = (source: LeaderboardRatingSource) =>
     source === "current_steam" || source === "last_known_steam" ? 0
