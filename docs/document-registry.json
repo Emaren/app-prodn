@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "25e28bf2c4c687cc32262b14ef3e8be9c2baa95abb49b1fc6011439cdfc8afde",
+      "sha256": "6dee2472d415c50b0c2a150e19366b4d6b628d453f260ddeee8ce8638c9584bf",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1672,7 +1672,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-19",
       "sensitivity": "internal",
-      "sha256": "8d3609142fa800d5d68861b9d29b94d3af2c7fecf05b024778e9bf01e18c18f5",
+      "sha256": "e8b09f141c5d05fe930ee070be4c9af8bb81c247dd8f193d7fc8e4654e3d8c87",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2049,7 +2049,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/storage-os-deep-census-20261008",
-    "commit": "6d897d67072aef2c235f9096fed21e4b05d23843"
+    "commit": "91c49e9295e781230148bbeb32bcf35281343fff"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
