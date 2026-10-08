@@ -127,6 +127,7 @@ type PreparedLeaderboardGame = Omit<
   id: number;
   players: ReturnType<typeof parsePlayers>;
   playedAtMs: number;
+  game_type: string | null;
 };
 
 type CandidateLeaderboardGame = {
@@ -978,6 +979,24 @@ function populateLeaderboardStreaks(
     entry.streakScore =
       streakSortScore(entry.streakLabel);
   }
+}
+
+function canRankLeaderboardLane(entry: EnrichedLeaderboardEntry, lane: LeaderboardLane) {
+  return getPrimaryRatingValue(entry, lane) !== null;
+}
+
+function buildCanonicalRankMap(
+  entries: EnrichedLeaderboardEntry[],
+  lane: LeaderboardLane,
+) {
+  const rankByKey = new Map<string, number>();
+  entries
+    .filter((entry) => canRankLeaderboardLane(entry, lane))
+    .sort((left, right) => compareLeaderboardEntries(left, right, lane))
+    .forEach((entry, index) => {
+      rankByKey.set(entry.key, index + 1);
+    });
+  return rankByKey;
 }
 
 // A 24-hour position cannot be reconstructed honestly from today's mutable
