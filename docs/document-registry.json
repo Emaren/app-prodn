@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b7e8594be10369ebda75b2876da4e43bce024b20730f4bc856388a59e66b0b4f",
+      "sha256": "bce7c605f12b71d7407d0986f627172301824f28050a8ebe6e1fdfefd2d93f88",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -824,7 +824,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-14",
       "sensitivity": "internal",
-      "sha256": "3885ecdce12af1213d3a9f302f77635f98d0c20d86241e14bc3eff2f61447669",
+      "sha256": "9792efee9028bc9786953b20d602d70aee299cbca6f3a18ad56ed4744338ce5e",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1672,7 +1672,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-19",
       "sensitivity": "internal",
-      "sha256": "9281f346df7ba8474a9bf0b26d0fff9df5cbf8ec717308e84f635997bb97ebc4",
+      "sha256": "f112a36bc135b7e43d8b5bf3065a228672ea10639426d47d34607f40c3e16d72",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2048,8 +2048,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/leaderboard-authoritative-ratings-20261008",
-    "commit": "fbdeffc8abf79e1f343b5de6f0c0ca3c294464ff"
+    "branch": "fix/storage-os-three-plane-hardening-20261008",
+    "commit": "c2fe027209e0e03f3989ba0ddffa80de90f1e6b9"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

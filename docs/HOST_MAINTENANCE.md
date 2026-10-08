@@ -315,3 +315,12 @@ visible through VPSSentry itself but do not become Doctor blockers automatically
 This rule exists because ordinary service, package, release, and capacity health
 can all be green while a security IOC is active. Never weaken or bypass this
 security authority merely to restore a 100/100 score.
+
+
+### Tidy failure visibility
+
+`aoe2war host tidy --apply` already records bounded remote command output in
+its receipt. The human terminal view now also prints the final non-empty failure
+line, bounded to 500 characters, when the operation returns `FAILED`. This
+does not retry, bypass, or weaken any host, service, timer, listener, recovery or
+Wolo proof; it only makes the existing fail-closed reason immediately visible.

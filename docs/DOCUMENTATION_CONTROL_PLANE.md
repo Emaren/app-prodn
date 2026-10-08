@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/leaderboard-authoritative-ratings-20261008` at `fbdeffc8abf79e1f343b5de6f0c0ca3c294464ff`
+Implementation baseline: `fix/storage-os-three-plane-hardening-20261008` at `c2fe027209e0e03f3989ba0ddffa80de90f1e6b9`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
