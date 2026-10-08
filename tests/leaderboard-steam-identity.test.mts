@@ -247,11 +247,11 @@ test("leaderboard has no raw discovered-name escape hatch", () => {
   );
   assert.match(
     leaderboardSource,
-    /new Date\(\s*evidence\.acceptedAt/,
+    /projectEnrichedLeaderboardLane/,
   );
   assert.match(
     leaderboardSource,
-    /rankDelta24hMethod:\s*"reconstructed_current_corpus"/,
+    /rankDelta24hMethod:\s*"unavailable_pending_rank_snapshots"/,
   );
   assert.doesNotMatch(
     leaderboardSource,
@@ -259,6 +259,6 @@ test("leaderboard has no raw discovered-name escape hatch", () => {
   );
   assert.match(
     leaderboardSource,
-    /rankDelta24h\s*=\s*input\.previousRank\s*-\s*input\.currentRank|resolveRankDelta24h/,
+    /classifyLeaderboardReplayMode/,
   );
 });
