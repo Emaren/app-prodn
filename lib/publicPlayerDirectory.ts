@@ -47,6 +47,13 @@ export type PublicPlayerReplayEvidence = {
   observedName: string;
   normalizedName: string;
   observedAt: string | null;
+  /**
+   * Rating chronology is deliberately narrower than the general replay display
+   * clock. Only an explicit GameStats.played_on may order embedded Steam
+   * ratings; created_at/timestamp fallbacks must never make an old replay look
+   * like a newer account observation.
+   */
+  ratingObservedAt: string | null;
   acceptedAt: string;
   result: LeaderboardReplayResult;
   steamRmRating: number | null;
@@ -170,6 +177,27 @@ function toIso(
   return Number.isFinite(parsed.getTime())
     ? parsed.toISOString()
     : null;
+}
+
+function hasHdHeaderRatingSource(
+  player: Record<string, unknown>,
+  lane: "steam_rm_rating" | "steam_dm_rating",
+) {
+  const rawSources =
+    player.steam_rating_sources;
+
+  if (
+    !rawSources ||
+    typeof rawSources !== "object" ||
+    Array.isArray(rawSources)
+  ) {
+    return false;
+  }
+
+  return (
+    (rawSources as Record<string, unknown>)[lane] ===
+    "hd_header"
+  );
 }
 
 function resultFromSnapshot(
@@ -822,16 +850,26 @@ export async function loadPublicPlayerDirectoryFresh(
         game,
         snapshot,
       );
-    const steamRmRating = player
-      ? readPlayerSteamRmRating(
-          player,
-        )
-      : null;
-    const steamDmRating = player
-      ? readPlayerSteamDmRating(
-          player,
-        )
-      : null;
+    const steamRmRating =
+      player &&
+      hasHdHeaderRatingSource(
+        player,
+        "steam_rm_rating",
+      )
+        ? readPlayerSteamRmRating(
+            player,
+          )
+        : null;
+    const steamDmRating =
+      player &&
+      hasHdHeaderRatingSource(
+        player,
+        "steam_dm_rating",
+      )
+        ? readPlayerSteamDmRating(
+            player,
+          )
+        : null;
 
     if (isSafePublicReplayObservedName(replayName)) {
       pushAlias(entry, replayName);
@@ -852,6 +890,8 @@ export async function loadPublicPlayerDirectoryFresh(
       observedName: replayName,
       normalizedName,
       observedAt,
+      ratingObservedAt:
+        toIso(game.played_on),
       acceptedAt:
         snapshot.createdAt.toISOString(),
       result,
