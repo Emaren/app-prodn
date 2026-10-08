@@ -397,7 +397,7 @@ test("24-hour movement is unavailable without durable lane snapshots", async () 
     await loadLobbyLeaderboard(
       prisma as never,
       {
-        lane: "rm",
+        lane: "dm",
         offset: 0,
         limit: 20,
         includePendingClaimed: false,
@@ -500,7 +500,7 @@ test("RM and DM never share game counts or results", async () => {
   assert.deepEqual([dmAlpha.totalMatches, dmAlpha.wins, dmAlpha.losses], [1, 0, 1]);
   assert.deepEqual(rmAlpha.last10Results, ["W"]);
   assert.deepEqual(dmAlpha.last10Results, ["L"]);
-  assert.notEqual(rmAlpha.secondaryRatingLabel, dmAlpha.secondaryRatingLabel);
+  assert.notEqual(rmAlpha.lastPlayedAt, dmAlpha.lastPlayedAt);
   assert.equal(dmAlpha.rankDelta24hState, "unavailable");
 });
 
