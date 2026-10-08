@@ -416,6 +416,44 @@ def remote_json(script: str, p: dict[str, Any], *args: str, timeout: int = 90) -
     return payload
 
 
+def remote_root_json(
+    script: str,
+    p: dict[str, Any],
+    *args: str,
+    timeout: int = 90,
+) -> dict[str, Any]:
+    """Run an explicitly read-only storage census under root maintenance authority."""
+    encoded = base64.urlsafe_b64encode(
+        json.dumps(p, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).decode("ascii")
+    cmd = [
+        "ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=8",
+        p["root_maintenance_host"], "python3", "-", encoded, *args,
+    ]
+    proc = subprocess.run(
+        cmd,
+        input=script,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        timeout=timeout,
+        check=False,
+    )
+    if proc.returncode != 0:
+        raise StorageError(
+            (proc.stderr or proc.stdout or "privileged read-only probe failed").strip()
+        )
+    try:
+        payload = json.loads(proc.stdout)
+    except json.JSONDecodeError as exc:
+        raise StorageError(
+            f"privileged read-only probe returned invalid JSON: {proc.stdout[-4000:]}"
+        ) from exc
+    if not isinstance(payload, dict):
+        raise StorageError("privileged read-only probe returned a non-object")
+    return payload
+
+
 def snapshot(*, measure: bool = False) -> dict[str, Any]:
     p = policy()
     payload = remote_json(REMOTE_PROBE, p, "1" if measure else "0")
@@ -694,14 +732,14 @@ print(json.dumps({
 
 
 def root_deep_storage_census() -> dict[str, Any]:
-    return remote_json(REMOTE_ROOT_DEEP_CENSUS, policy(), timeout=300)
+    return remote_root_json(REMOTE_ROOT_DEEP_CENSUS, policy(), timeout=300)
 
 
 def local_deep_storage_census(*, home: Path | None = None) -> dict[str, Any]:
     operator_home = (home or Path.home()).resolve()
     rows = []
     allowlisted = {str(relative) for _, relative in LOCAL_REGENERABLE_PATHS}
-    for name, relative in LOCAL_REVIEW_PATHS:
+    for name, relative, classification in LOCAL_REVIEW_PATHS:
         path = operator_home / relative
         rows.append(
             {
@@ -710,11 +748,7 @@ def local_deep_storage_census(*, home: Path | None = None) -> dict[str, Any]:
                 "exists": path.exists(),
                 "symlink": path.is_symlink(),
                 "allocated_bytes": _allocated_bytes(path),
-                "classification": next(
-                    classification
-                    for candidate_name, candidate_relative, classification in LOCAL_REVIEW_PATHS
-                    if candidate_name == name and candidate_relative == relative
-                ),
+                "classification": classification,
                 "mutation_authority": "NONE",
                 "already_allowlisted": str(relative) in allowlisted,
             }
