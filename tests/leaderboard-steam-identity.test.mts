@@ -247,7 +247,7 @@ test("leaderboard has no raw discovered-name escape hatch", () => {
   );
   assert.match(
     leaderboardSource,
-    /projectEnrichedLeaderboardLane/,
+    /buildArenaElo\(candidates, preparedGames\)/,
   );
   assert.match(
     leaderboardSource,
@@ -259,6 +259,6 @@ test("leaderboard has no raw discovered-name escape hatch", () => {
   );
   assert.match(
     leaderboardSource,
-    /resolveLeaderboardReplayMode/,
+    /directory\.allEntries/,
   );
 });
