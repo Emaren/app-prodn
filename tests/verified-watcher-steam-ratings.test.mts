@@ -73,6 +73,6 @@ test("signed watcher SQL projection preserves independently observed RM/DM value
   assert.equal(result[0].steamRmRating, 1077);
   assert.equal(result[0].steamDmRating, 1538);
   assert.match(sql, /provenance_signature_verified/);
-  assert.match(sql, /g\\.parse_source IN \\('watcher_live','watcher_final'\\)/);
+  assert.match(sql, /g\.parse_source IN \('watcher_live','watcher_final'\)/);
   invalidateVerifiedWatcherSteamRatingsCache();
 });
