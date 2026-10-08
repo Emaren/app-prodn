@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "43f67e24513d710d8f90b103e6e11bbc83e33ebf4fecf16f2c0ac3566b5c36af",
+      "sha256": "31a1ee87626d1f60f855310cd7fe1c2b3f2b4d4ff89732bf347a23969083c9a7",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -961,7 +961,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-07-28",
       "sensitivity": "internal",
-      "sha256": "a7ff9fb91d0bc09490639fb5ee0a79b2672001bfd12e12fe3d53e5c31b074480",
+      "sha256": "b5c8cc353e09beb7bbb94e53611aff9f8a71b454f15630dd43b56e6fe8a27a19",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2049,7 +2049,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/leaderboard-lane-truth-20261008",
-    "commit": "a5b82544b06af84a67d73f6f1160329b5271b396"
+    "commit": "2c8fbd7e8540c4da699a6b220a49a8d31cb69fbc"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
