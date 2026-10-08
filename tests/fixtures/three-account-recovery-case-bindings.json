@@ -1,0 +1,917 @@
+{
+  "25782": {
+    "game": {
+      "canonicalRoster": [
+        {
+          "achievements": null,
+          "aliases": [],
+          "civilizationId": 15,
+          "civilizationName": "Aztecs",
+          "color": 0,
+          "eapm": 34,
+          "name": "mYsTikaL_VeGeTa",
+          "normalizedName": "mystikal_vegeta",
+          "playerNumber": 1,
+          "position": [
+            129,
+            47
+          ],
+          "ratingSnapshot": 1614,
+          "stablePlayerKey": "steam:76561199849204394",
+          "steamId": "76561199849204394",
+          "teamId": "0",
+          "totalScore": null,
+          "winner": null
+        },
+        {
+          "achievements": null,
+          "aliases": [],
+          "civilizationId": 14,
+          "civilizationName": "Spanish",
+          "color": 1,
+          "eapm": 45,
+          "name": "somniosator",
+          "normalizedName": "somniosator",
+          "playerNumber": 2,
+          "position": [
+            23,
+            106
+          ],
+          "ratingSnapshot": 1599,
+          "stablePlayerKey": "steam:76561198257849801",
+          "steamId": "76561198257849801",
+          "teamId": "1",
+          "totalScore": null,
+          "winner": null
+        },
+        {
+          "achievements": null,
+          "aliases": [],
+          "civilizationId": 17,
+          "civilizationName": "Huns",
+          "color": 4,
+          "eapm": 1,
+          "name": "mYsTikaL_TrUnKs",
+          "normalizedName": "mystikal_trunks",
+          "playerNumber": 3,
+          "position": [
+            105,
+            124
+          ],
+          "ratingSnapshot": 1350,
+          "stablePlayerKey": "steam:76561198250132680",
+          "steamId": "76561198250132680",
+          "teamId": "0",
+          "totalScore": null,
+          "winner": null
+        },
+        {
+          "achievements": null,
+          "aliases": [],
+          "civilizationId": 5,
+          "civilizationName": "Japanese",
+          "color": 3,
+          "eapm": 52,
+          "name": "TheGoat_Nicky",
+          "normalizedName": "thegoat_nicky",
+          "playerNumber": 4,
+          "position": [
+            38,
+            23
+          ],
+          "ratingSnapshot": 1536,
+          "stablePlayerKey": "steam:76561199703054938",
+          "steamId": "76561199703054938",
+          "teamId": "1",
+          "totalScore": null,
+          "winner": null
+        }
+      ],
+      "createdAt": "2026-08-20T16:20:30.296Z",
+      "disconnect_detected": true,
+      "duration": 50,
+      "event_types": [
+        "de_queue",
+        "build",
+        "order",
+        "gather_point",
+        "move",
+        "stance",
+        "resign"
+      ],
+      "game_duration": 50,
+      "game_type": "DM",
+      "game_version": "Version.HD",
+      "id": 25782,
+      "is_final": true,
+      "key_events": {
+        "achievement_player_count": 0,
+        "achievement_shell_count": 4,
+        "chat_count": 50,
+        "chat_preview": [
+          {
+            "audience": "all",
+            "message": "it shows mine wrong too",
+            "origination": "lobby",
+            "player_number": 1,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "message": "yea",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "message": "hmmm",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "message": "hf",
+            "origination": "lobby",
+            "player_number": 1,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "message": "=]",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null,
+            "type": "message"
+          }
+        ],
+        "chat_transcript": [
+          {
+            "audience": "all",
+            "line_no": 1,
+            "message": "does Gold Sheep tell you that he is 15 years ol",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 2,
+            "message": "1",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 3,
+            "message": "like..",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 4,
+            "message": "He's never told me his ag",
+            "origination": "lobby",
+            "player_number": 1,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 5,
+            "message": "he keeps saying hes 1",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 6,
+            "message": "who know",
+            "origination": "lobby",
+            "player_number": 1,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 7,
+            "message": "bc ive asked him to add me on stea",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 8,
+            "message": "he wouldnt even give me his email to send him the civ guid",
+            "origination": "lobby",
+            "player_number": 1,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 9,
+            "message": "ye",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 10,
+            "message": "ended up making a spare one to get i",
+            "origination": "lobby",
+            "player_number": 1,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 11,
+            "message": "so od",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 12,
+            "message": "anywa",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 13,
+            "message": "questio",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 14,
+            "message": "ur ina  1v",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 15,
+            "message": "u have turk",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 16,
+            "message": "and ur opponnet is saracen",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 17,
+            "message": "how do u win",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 18,
+            "message": "what do u usualy do",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 19,
+            "message": "I would push forward and make it as ugly as possible and not let the saracen mas",
+            "origination": "lobby",
+            "player_number": 1,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 20,
+            "message": "thats a tough match up th",
+            "origination": "lobby",
+            "player_number": 1,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 21,
+            "message": "ye",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 22,
+            "message": "i just did one agasint War and Peac",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 23,
+            "message": "and he beat m",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 24,
+            "message": "it was sa",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 25,
+            "message": "hah",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 26,
+            "message": "he beat you as turks",
+            "origination": "lobby",
+            "player_number": 1,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 27,
+            "message": "or with saracen",
+            "origination": "lobby",
+            "player_number": 1,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 28,
+            "message": "he beat me as sar",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 29,
+            "message": "i was turk",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 30,
+            "message": "i couldnt do shi",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 31,
+            "message": "would me and nicky wi",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 32,
+            "message": "vs u and bozkurt",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 33,
+            "message": "hah",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 34,
+            "message": "I would hope s",
+            "origination": "lobby",
+            "player_number": 1,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 35,
+            "message": "1",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 36,
+            "message": "maybe trunk",
+            "origination": "lobby",
+            "player_number": 1,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 37,
+            "message": "trunks comin",
+            "origination": "lobby",
+            "player_number": 1,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 38,
+            "message": "bozkurt, you're a bit too low for this. sorr",
+            "origination": "lobby",
+            "player_number": 1,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 39,
+            "message": "lets teach Bo",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 40,
+            "message": "oh nv",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 41,
+            "message": "trunks coming 1 mi",
+            "origination": "lobby",
+            "player_number": 1,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 42,
+            "message": "ok coo",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 43,
+            "message": null,
+            "origination": "lobby",
+            "player_number": 1,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 44,
+            "message": "im rated as 1722 on the aoe2war.com leader boar",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 45,
+            "message": "it will updat",
+            "origination": "lobby",
+            "player_number": 1,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 46,
+            "message": "it shows mine wrong too",
+            "origination": "lobby",
+            "player_number": 1,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 47,
+            "message": "yea",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 48,
+            "message": "hmmm",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 49,
+            "message": "hf",
+            "origination": "lobby",
+            "player_number": 1,
+            "timestamp_seconds": null,
+            "type": "message"
+          },
+          {
+            "audience": "all",
+            "line_no": 50,
+            "message": "=]",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null,
+            "type": "message"
+          }
+        ],
+        "chat_transcript_count": 50,
+        "chat_transcript_truncated": false,
+        "completed": false,
+        "completion_source": "complete_team_resignation",
+        "duration_source": "mgz_summary_ms_normalized",
+        "early_exit_seconds": 50,
+        "early_exit_under_60s": true,
+        "has_achievement_shell": true,
+        "has_achievements": false,
+        "has_scores": false,
+        "lobby_name": "AOE2WAR.COM",
+        "no_rated_result": true,
+        "owner_player_name": "mYsTikaL_VeGeTa",
+        "owner_player_number": 1,
+        "platform_id": "hd",
+        "platform_match_id": "d710e383-ec04-4e45-a531-4f0e4e9b0b5d",
+        "platform_ratings": {
+          "TheGoat_Nicky": 1536,
+          "mYsTikaL_TrUnKs": 1350,
+          "mYsTikaL_VeGeTa": 1614,
+          "somniosator": 1599
+        },
+        "player_score_count": 0,
+        "postgame_available": false,
+        "rated": true,
+        "raw_duration_ms": 49834,
+        "raw_mgz_completed_signal": false,
+        "resignation_proves_team_completion": true,
+        "resigned_player_names": [
+          "mYsTikaL_VeGeTa",
+          "mYsTikaL_TrUnKs"
+        ],
+        "resigned_player_numbers": [
+          1,
+          3
+        ],
+        "restored": false,
+        "result_resolution": {
+          "result_confidence": "high",
+          "result_evidence": {
+            "complete_losing_team_resignation": true,
+            "fully_resigned_team_ids": [
+              0
+            ],
+            "partially_resigned_team_ids": [],
+            "postgame_available": false,
+            "resignation_counts_by_team": [
+              {
+                "player_count": 2,
+                "resigned_player_count": 2,
+                "team_id": 0
+              },
+              {
+                "player_count": 2,
+                "resigned_player_count": 0,
+                "team_id": 1
+              }
+            ],
+            "resignation_derived_winning_team_id": 1,
+            "resignation_result_conflict": false,
+            "resignation_state": "exactly_one_complete_team",
+            "scoreboard_available": false,
+            "single_team_winner_flag_team_id": null,
+            "sources": [
+              "complete_losing_team_resignation"
+            ],
+            "team_completion_from_resignations": true,
+            "winner_flag_team_id": null,
+            "winner_flags_coherent": false,
+            "winner_flags_single_team": false
+          },
+          "result_provenance": "complete_losing_team_resignation",
+          "result_status": "resolved",
+          "result_trusted": true,
+          "winning_player_keys": [
+            "steam:76561198257849801",
+            "steam:76561199703054938"
+          ],
+          "winning_player_names": [
+            "somniosator",
+            "TheGoat_Nicky"
+          ],
+          "winning_team_id": 1
+        },
+        "settings": {
+          "cheats": false,
+          "difficulty": "easiest",
+          "lock_teams": true,
+          "map_reveal_choice": "explored",
+          "population_limit": 300,
+          "speed": "fast",
+          "type": "DM"
+        },
+        "suppressed_winner": "TheGoat_Nicky",
+        "team_resolution": {
+          "confidence": "high",
+          "format": "2v2",
+          "player_count": 4,
+          "provenance": "explicit_final_team_ids",
+          "reason_codes": [],
+          "result_confidence": "high",
+          "result_evidence": {
+            "complete_losing_team_resignation": true,
+            "fully_resigned_team_ids": [
+              0
+            ],
+            "partially_resigned_team_ids": [],
+            "postgame_available": false,
+            "resignation_counts_by_team": [
+              {
+                "player_count": 2,
+                "resigned_player_count": 2,
+                "team_id": 0
+              },
+              {
+                "player_count": 2,
+                "resigned_player_count": 0,
+                "team_id": 1
+              }
+            ],
+            "resignation_derived_winning_team_id": 1,
+            "resignation_result_conflict": false,
+            "resignation_state": "exactly_one_complete_team",
+            "scoreboard_available": false,
+            "single_team_winner_flag_team_id": null,
+            "sources": [
+              "complete_losing_team_resignation"
+            ],
+            "team_completion_from_resignations": true,
+            "winner_flag_team_id": null,
+            "winner_flags_coherent": false,
+            "winner_flags_single_team": false
+          },
+          "result_provenance": "complete_losing_team_resignation",
+          "result_status": "resolved",
+          "result_trusted": true,
+          "status": "resolved",
+          "team_count": 2,
+          "teams": [
+            {
+              "player_keys": [
+                "steam:76561198250132680",
+                "steam:76561199849204394"
+              ],
+              "players": [
+                "mYsTikaL_TrUnKs",
+                "mYsTikaL_VeGeTa"
+              ],
+              "team_id": 0
+            },
+            {
+              "player_keys": [
+                "steam:76561198257849801",
+                "steam:76561199703054938"
+              ],
+              "players": [
+                "somniosator",
+                "TheGoat_Nicky"
+              ],
+              "team_id": 1
+            }
+          ],
+          "winning_player_keys": [
+            "steam:76561198257849801",
+            "steam:76561199703054938"
+          ],
+          "winning_player_names": [
+            "somniosator",
+            "TheGoat_Nicky"
+          ],
+          "winning_team_id": 1
+        },
+        "watcher_upload": {
+          "checkpoint_final_rejected": false,
+          "file_mtime_ms": 1787242803387,
+          "file_role": "final_recording",
+          "file_role_source": "extension_inferred",
+          "file_size_bytes": 141433,
+          "final_candidate": true,
+          "replay_fingerprint": "141433:1787242803387",
+          "server_sha256": "3591e140b5f12f6ba06e4341a7adb0b16f1b8d02ea3d7042f6748be8d6397dda",
+          "watcher_id": "watcher_864694e1a7a046c2a3176416622ce7fc",
+          "watcher_session_id": "session_7481683a355c47e3a4e03e3834db5d89"
+        }
+      },
+      "map": {
+        "name": "GA DM no cliffs",
+        "size": "small"
+      },
+      "original_filename": "MP Replay v5.8 @2026.08.20 121908 (1).aoe2record",
+      "parse_iteration": 2,
+      "parse_reason": "hd_early_exit_under_60s",
+      "parse_source": "watcher_final",
+      "played_on": "2026-08-20T16:20:29.462Z",
+      "players": [
+        {
+          "achievements": null,
+          "cheater": false,
+          "civilization": 15,
+          "civilization_name": "Aztecs",
+          "color_id": 0,
+          "eapm": 34,
+          "human": true,
+          "mvp": null,
+          "name": "mYsTikaL_VeGeTa",
+          "number": 1,
+          "position": [
+            129,
+            47
+          ],
+          "prefer_random": null,
+          "rate_snapshot": 1614,
+          "score": null,
+          "steam_dm_rating": 2341,
+          "steam_id": "76561199849204394",
+          "steam_rm_rating": 1614,
+          "team_id": 0,
+          "user_id": "76561199849204394",
+          "winner": null
+        },
+        {
+          "achievements": null,
+          "cheater": false,
+          "civilization": 14,
+          "civilization_name": "Spanish",
+          "color_id": 1,
+          "eapm": 45,
+          "human": true,
+          "mvp": null,
+          "name": "somniosator",
+          "number": 2,
+          "position": [
+            23,
+            106
+          ],
+          "prefer_random": null,
+          "rate_snapshot": 1599,
+          "score": null,
+          "steam_dm_rating": 1756,
+          "steam_id": "76561198257849801",
+          "steam_rm_rating": 1599,
+          "team_id": 1,
+          "user_id": "76561198257849801",
+          "winner": null
+        },
+        {
+          "achievements": null,
+          "cheater": false,
+          "civilization": 17,
+          "civilization_name": "Huns",
+          "color_id": 4,
+          "eapm": 1,
+          "human": true,
+          "mvp": null,
+          "name": "mYsTikaL_TrUnKs",
+          "number": 3,
+          "position": [
+            105,
+            124
+          ],
+          "prefer_random": null,
+          "rate_snapshot": 1350,
+          "score": null,
+          "steam_dm_rating": 1741,
+          "steam_id": "76561198250132680",
+          "steam_rm_rating": 1350,
+          "team_id": 0,
+          "user_id": "76561198250132680",
+          "winner": null
+        },
+        {
+          "achievements": null,
+          "cheater": false,
+          "civilization": 5,
+          "civilization_name": "Japanese",
+          "color_id": 3,
+          "eapm": 52,
+          "human": true,
+          "mvp": null,
+          "name": "TheGoat_Nicky",
+          "number": 4,
+          "position": [
+            38,
+            23
+          ],
+          "prefer_random": null,
+          "rate_snapshot": 1536,
+          "score": null,
+          "steam_dm_rating": 2057,
+          "steam_id": "76561199703054938",
+          "steam_rm_rating": 1536,
+          "team_id": 1,
+          "user_id": "76561199703054938",
+          "winner": null
+        }
+      ],
+      "replayHash": "3591e140b5f12f6ba06e4341a7adb0b16f1b8d02ea3d7042f6748be8d6397dda",
+      "replay_file": "MP Replay v5.8 @2026.08.20 121908 (1).aoe2record",
+      "sourceRosterHash": "3c778cba9b61b96b8e5e2189f93406bc491bf8dd6f9c0c886b3f70060733608c",
+      "timestamp": "2026-08-20T16:20:30.296Z",
+      "userUid": "u_06c16d39d25c476fac2c86fee7b4d189",
+      "winner": "Unknown"
+    },
+    "adjudications": [],
+    "desyncOccurred": false,
+    "linkedMarkets": [],
+    "financialSnapshot": {
+      "capturedAt": "2026-10-07T01:20:49.897Z",
+      "claims": [],
+      "markets": []
+    }
+  }
+}

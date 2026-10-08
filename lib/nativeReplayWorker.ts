@@ -6,6 +6,11 @@ import { extname, join, relative, resolve } from "node:path";
 
 import { getPrisma } from "@/lib/prisma";
 import { normalizeReplayPlayers } from "@/lib/teamResolution";
+import { cleanPublicGameRows, publicReplayIdentity, publicReplayWinnerTruth } from "@/lib/publicReplayTruth";
+import { applyReplayAdjudicationToGameStats, EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION } from "@/lib/replayAdjudications";
+import { resolveReplayResultForPlayer } from "@/lib/replayPlayerResult";
+import { HD_REPLAY_PARSER_CONTRACT } from "@/lib/replayEngineRoom";
+import { nativeRosterFromSource, nativeSnapshotDigest, sealNativeReplayManifest, validateNativeReplayManifest, type NativeReplayManifest } from "@/lib/nativeReplayManifest";
 
 export const NATIVE_REPLAY_CONFIRMATION = "RUN NATIVE REPLAY";
 export const NATIVE_REPLAY_MAX_BYTES = 64 * 1024 * 1024;
@@ -37,6 +42,7 @@ export type NativeReplayRunParameters = {
   candidateOnly: true;
   nativePerformanceSeconds: number;
   timeoutSeconds: number;
+  manifest?: NativeReplayManifest;
 };
 
 function boundedPositiveInteger(
@@ -69,12 +75,17 @@ export function parseNativeReplayRunParameters(
       ? (value as Record<string, unknown>)
       : {};
 
+  if (Object.keys(source).some(key => !["gameStatsId", "replaySha256", "rosterSlots", "candidateOnly", "nativePerformanceSeconds", "timeoutSeconds", "manifest"].includes(key))) {
+    throw Error("Unexpected native replay parameters; arbitrary paths, hashes and commands are not accepted.");
+  }
+
   const gameStatsId = boundedPositiveInteger(
     source.gameStatsId,
     "gameStatsId",
     Number.MAX_SAFE_INTEGER
   );
-  if (!NATIVE_REPLAY_CANARY_GAME_IDS.has(gameStatsId)) {
+  const manifest = source.manifest === undefined ? undefined : validateNativeReplayManifest(source.manifest);
+  if (!manifest && !NATIVE_REPLAY_CANARY_GAME_IDS.has(gameStatsId)) {
     throw new Error(
       "Native HD execution is still locked to trusted control GameStats #32388."
     );
@@ -88,7 +99,7 @@ export function parseNativeReplayRunParameters(
     throw new Error("replaySha256 must be a complete lowercase SHA-256 digest.");
   }
   const canarySha256 = NATIVE_REPLAY_CANARY_SHA256_BY_GAME_ID.get(gameStatsId);
-  if (!canarySha256 || replaySha256 !== canarySha256) {
+  if (manifest ? manifest.gameStatsId !== gameStatsId || manifest.replaySha256 !== replaySha256 : !canarySha256 || replaySha256 !== canarySha256) {
     throw new Error(
       "Native HD canary replay SHA-256 does not match the trusted GameStats #32388 control."
     );
@@ -111,6 +122,7 @@ export function parseNativeReplayRunParameters(
     ),
   ].sort((left, right) => left - right);
   if (
+    rosterSlots.length !== source.rosterSlots.length ||
     rosterSlots.length < 2 ||
     rosterSlots.length > 8 ||
     rosterSlots.some(
@@ -120,7 +132,7 @@ export function parseNativeReplayRunParameters(
     throw new Error("rosterSlots must contain 2-8 unique AoE2 player slots from 1 through 8.");
   }
 
-  const trustedRoster = NATIVE_REPLAY_CANARY_ROSTER_BY_GAME_ID.get(gameStatsId);
+  const trustedRoster = manifest?.roster.map(p => p.slot) ?? NATIVE_REPLAY_CANARY_ROSTER_BY_GAME_ID.get(gameStatsId);
   if (
     !trustedRoster ||
     rosterSlots.length !== trustedRoster.length ||
@@ -159,6 +171,7 @@ export function parseNativeReplayRunParameters(
     candidateOnly: true,
     nativePerformanceSeconds,
     timeoutSeconds,
+    ...(manifest ? { manifest } : {}),
   };
 }
 
@@ -170,6 +183,10 @@ export async function buildNativeReplayRunParameters(
     "gameStatsId",
     Number.MAX_SAFE_INTEGER
   );
+  if (!NATIVE_REPLAY_CANARY_GAME_IDS.has(gameStatsId)) {
+    const manifest = await buildNativeControlManifest(gameStatsId);
+    return parseNativeReplayRunParameters({ gameStatsId, replaySha256: manifest.replaySha256, rosterSlots: manifest.roster.map(p => p.slot), candidateOnly: true, manifest });
+  }
   const game = await getPrisma().gameStats.findUnique({
     where: { id: gameStatsId },
     select: {
@@ -243,6 +260,60 @@ async function locateArchiveReplay(replaySha256: string) {
   return join(directory, candidate.name);
 }
 
+/** Known controls only. Unknown admission requires a separately reviewed green ladder. */
+export async function buildNativeControlManifest(gameStatsId: number): Promise<NativeReplayManifest> {
+  return getPrisma().$transaction(async tx => {
+    const all = await tx.gameStats.findMany({ where: { is_final: true }, orderBy: { id: "asc" }, include: { replayResultAdjudications: EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION } });
+    const source = all.find(g => g.id === gameStatsId);
+    if (!source || !SHA256_RE.test(source.replayHash)) throw Error("Canonical final replay required.");
+    const logicalBattleId = publicReplayIdentity(source);
+    const finalGroup = all.filter(g => publicReplayIdentity(g) === logicalBattleId || g.replayHash === source.replayHash);
+    const nonfinal = await tx.gameStats.findMany({ where: { is_final: false, replayHash: { in: [...new Set(finalGroup.map(g => g.replayHash))] } }, orderBy: { id: "asc" }, include: { replayResultAdjudications: EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION } });
+    const group = [...finalGroup, ...nonfinal];
+    const effective = cleanPublicGameRows(finalGroup.map(applyReplayAdjudicationToGameStats), { includeReview: true, includeLive: false });
+    if (effective.length !== 1 || !publicReplayWinnerTruth(effective[0]).winner || effective[0].disconnect_detected) throw Error("Unknown, conflicting or disconnected results cannot be native controls.");
+    const game = effective[0];
+    if (game.replayHash !== source.replayHash || publicReplayIdentity(game) !== logicalBattleId) throw Error("Selected control ID is not bound to the canonical exact artifact.");
+    const normalized = normalizeReplayPlayers(game.players);
+    const roster = nativeRosterFromSource(game.players);
+    if (roster.length !== normalized.length) throw Error("Raw native roster cannot merge participant identities.");
+    const results = normalized.map(p => ({ slot: p.playerNumber, result: resolveReplayResultForPlayer(game, v => v.stablePlayerKey === p.stablePlayerKey) }));
+    if (results.some(p => p.result === "unknown") || !results.some(p => p.result === "loss")) throw Error("Independent complete participant result required.");
+    const ids = group.map(g => g.id).sort((a, b) => a - b);
+    const keys = [...new Set(group.flatMap(g => {
+      const k = (typeof g.key_events === "string" ? JSON.parse(g.key_events) : g.key_events) as Record<string, unknown> | null;
+      const u = k?.watcher_upload as Record<string, unknown> | undefined;
+      return [publicReplayIdentity(g), g.original_filename, g.replay_file, u?.watcher_session_id, k?.platform_match_id].filter((v): v is string => typeof v === "string" && Boolean(v.trim())).map(v => v.trim());
+    }))];
+    const markets = await tx.betMarket.findMany({ where: { OR: [{ linkedGameStatsId: { in: ids } }, { lateFinalGameStatsId: { in: ids } }, { linkedSessionKey: { in: keys } }, { battle: { identityKey: { in: keys } } }] }, select: { id: true, settlementStatus: true, settledAt: true, settlementRunId: true, _count: { select: { wagers: true } } } });
+    const claims = await tx.pendingWoloClaim.count({ where: { sourceGameStatsId: { in: ids } } });
+    const scheduled = await tx.scheduledMatch.findMany({ where: { OR: [{ linkedSessionKey: { in: keys } }, { replayClaims: { some: { gameStatsId: { in: ids } } } }] }, select: { id: true, _count: { select: { settlements: true } } } });
+    const trophies = await tx.trophyChallenge.count({ where: { OR: [{ replayId: { in: ids } }, { scheduledMatchId: { in: scheduled.map(m => m.id) } }, { watcherSessionId: { in: keys } }] } });
+    const desyncs = await tx.replayDesyncIncident.count({ where: { gameStatsId: { in: ids } } });
+    if (desyncs) throw Error("Desync/review evidence cannot be a trusted native control.");
+    const financialExposure = { markets: markets.length, wagers: markets.reduce((n, m) => n + m._count.wagers, 0), claims: claims + scheduled.length + trophies, settlements: markets.filter(m => m.settledAt || m.settlementRunId || (m.settlementStatus && m.settlementStatus !== "not_started")).length + scheduled.reduce((n, c) => n + c._count.settlements, 0) };
+    if (Object.values(financialExposure).some(n => n !== 0)) throw Error("Financially linked replay requires commissioner review and cannot execute in this control lane.");
+    const run = await tx.replayParseRun.findFirst({ where: { inputHash: source.replayHash, artifact: { sha256: source.replayHash }, candidateOnly: true, affectsPublicAggregates: false, ...HD_REPLAY_PARSER_CONTRACT, status: { in: ["completed", "recovered"] } }, orderBy: { id: "desc" } });
+    if (!run) throw Error("Current parser contract has not completed this exact archive.");
+    const path = await locateArchiveReplay(source.replayHash);
+    if (await fs.realpath(path) !== path) throw Error("Native archive symlink rejected.");
+    const metadata = await fs.lstat(path);
+    if (!metadata.isFile() || metadata.size < 1 || metadata.size > NATIVE_REPLAY_MAX_BYTES) throw Error("Native archive size/type rejected.");
+    const bytes = await fs.readFile(path);
+    if (createHash("sha256").update(bytes).digest("hex") !== source.replayHash) throw Error("Native archive hash mismatch.");
+    const snapshot = JSON.parse(JSON.stringify({ group, game, run }, (_, v) => typeof v === "bigint" ? String(v) : v));
+    const accepted = source.replayResultAdjudications.find(a => a.affectsStats && !a.affectsBets);
+    return sealNativeReplayManifest({
+      schema: "aoe2war-native-replay-manifest/v2", gameStatsId, replaySha256: source.replayHash, logicalBattleId,
+      sourceGameStatsIds: ids, sourceSnapshotSha256: nativeSnapshotDigest(snapshot),
+      archive: { objectKey: `${source.replayHash}.aoe2record`, sha256: source.replayHash, byteSize: bytes.length }, roster,
+      parser: { ...HD_REPLAY_PARSER_CONTRACT, status: run.status },
+      result: { known: true, winningSlots: results.filter(p => p.result === "win").map(p => p.slot as number).sort((a, b) => a - b), provenance: accepted ? `acceptedadjudication:${accepted.id}` : `public_result:${String(game.parse_source ?? "historical").replace(/[^A-Za-z0-9_.:+-]/g, "_")}` },
+      financialExposure, candidateOnly: true, authority: { stats: false, bets: false, settlement: false, wolo: false }, executionKind: "control",
+    });
+  }, { isolationLevel: "RepeatableRead", timeout: 30000 });
+}
+
 export async function loadNativeReplayArtifact(
   value: unknown
 ): Promise<{
@@ -252,6 +323,10 @@ export async function loadNativeReplayArtifact(
   byteSize: number;
 }> {
   const parameters = parseNativeReplayRunParameters(value);
+  if (parameters.manifest) {
+    const current = await buildNativeControlManifest(parameters.gameStatsId);
+    if (current.manifestSha256 !== parameters.manifest.manifestSha256) throw Error("Native source snapshot, roster, result or financial exposure moved after queueing.");
+  }
   const game = await getPrisma().gameStats.findUnique({
     where: { id: parameters.gameStatsId },
     select: {

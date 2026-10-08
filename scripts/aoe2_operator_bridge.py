@@ -18,6 +18,13 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+from scripts.native_replay_contract import (
+    NativeReplayContractError,
+    canonical_json,
+    validate_native_manifest,
+)
 CLI = ROOT / "bin" / "aoe2war"
 NATIVE_REPLAY_WORKER = ROOT / "scripts" / "aoe2_native_replay_worker.py"
 FINISH_LOCK = ROOT / ".aoe2war-release" / "finish.lock"
@@ -30,7 +37,7 @@ DEFAULT_TOKEN_FILE = Path(
     )
 ).expanduser()
 
-VERSION = "1.4.2"
+VERSION = "1.5.0"
 NATIVE_REPLAY_CANARY_SHA256 = {32388: "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b"}
 NATIVE_REPLAY_CANARY_GAME_IDS = set(NATIVE_REPLAY_CANARY_SHA256)
 NATIVE_REPLAY_CANARY_ROSTER = {32388: [1, 2, 3, 4]}
@@ -222,6 +229,17 @@ def command_for_run(
             raise BridgeError("Native replay run is missing immutable parameters.")
         if parameters.get("candidateOnly") is not True:
             raise BridgeError("Native replay run must remain candidate-only.")
+        manifest = None
+        if "manifest" in parameters:
+            try:
+                manifest = validate_native_manifest(parameters["manifest"])
+            except NativeReplayContractError as exc:
+                raise BridgeError(str(exc)) from exc
+            if set(parameters) != {
+                "gameStatsId", "replaySha256", "rosterSlots", "candidateOnly",
+                "nativePerformanceSeconds", "timeoutSeconds", "manifest",
+            }:
+                raise BridgeError("Native manifest envelope has invalid fields.")
         game_stats_id = parameters.get("gameStatsId")
         replay_sha256 = str(parameters.get("replaySha256") or "").strip().lower()
         roster_slots = parameters.get("rosterSlots")
@@ -233,13 +251,13 @@ def command_for_run(
             or game_stats_id < 1
         ):
             raise BridgeError("Native replay run has invalid GameStats identity.")
-        if game_stats_id not in NATIVE_REPLAY_CANARY_GAME_IDS:
+        if manifest is None and game_stats_id not in NATIVE_REPLAY_CANARY_GAME_IDS:
             raise BridgeError(
                 "Native replay execution is still locked to trusted control GameStats #32388."
             )
         if __import__("re").fullmatch(r"[0-9a-f]{64}", replay_sha256) is None:
             raise BridgeError("Native replay run has invalid replay SHA-256.")
-        if replay_sha256 != NATIVE_REPLAY_CANARY_SHA256[game_stats_id]:
+        if manifest is None and replay_sha256 != NATIVE_REPLAY_CANARY_SHA256[game_stats_id]:
             raise BridgeError(
                 "Native replay SHA-256 does not match the trusted 32388 canary."
             )
@@ -257,10 +275,16 @@ def command_for_run(
             or len(set(roster_slots)) != len(roster_slots)
         ):
             raise BridgeError("Native replay run has invalid roster slots.")
-        if roster_slots != NATIVE_REPLAY_CANARY_ROSTER[game_stats_id]:
+        if manifest is None and roster_slots != NATIVE_REPLAY_CANARY_ROSTER[game_stats_id]:
             raise BridgeError(
                 "Native replay roster does not match trusted 32388 slots 1,2,3,4."
             )
+        if manifest is not None and (
+            game_stats_id != manifest["gameStatsId"]
+            or parameters.get("replaySha256") != manifest["replaySha256"]
+            or roster_slots != [player["slot"] for player in manifest["roster"]]
+        ):
+            raise BridgeError("Native envelope identity differs from the immutable manifest.")
         if (
             not isinstance(performance_seconds, int)
             or isinstance(performance_seconds, bool)
@@ -292,6 +316,8 @@ def command_for_run(
         ]
         for slot in roster_slots:
             command.extend(["--roster-slot", str(slot)])
+        if manifest is not None:
+            command.extend(["--manifest-json", canonical_json(manifest)])
         return command
     if action == "rollback_preview":
         return [str(CLI), "rollback", "--dry-run", "--json"]

@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","auditors","ai-agents"]
 source_of_truth: "git"
 authority: "architecture-contract"
-reviewed_at: "2026-09-22"
+reviewed_at: "2026-10-06"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -575,35 +575,28 @@ Pre-Game, Opening Minute, and Late Book economics.
 
 ### Current Steam rating authority
 
-The HD Leaderboard's current official Steam rating is Watcher-observed truth.
+Current official Steam RM/DM ratings use immutable server-owned
+`ReplayParseAttempt.evidence.current_account_observation` v1 receipts. A
+`watcher_live` / `watcher_final` source label alone is insufficient. The producer
+must bind authenticated live-monitor acquisition, verified client/server/archive
+SHA-256, the outer attempt identity and microsecond timestamps, exact Steam
+participants and explicit HD header rating provenance. Generic summary rating
+fallback cannot establish a DM observation.
 
-Only `watcher_live` and `watcher_final` replay observations may advance the
-current leaderboard Steam rating. Manual uploads, browser uploads, file
-uploads, backfills, and newly parsed historical material remain valid replay
-history but cannot redefine the current rating.
+The reader freezes the reviewed v1 Pass10 parser contract. It preserves the first
+valid account receipt for each exact Steam identity and artifact, then selects
+the newest actual observed game independently for RM and DM. Re-upload, reparse,
+parser acceptance time, refreshed GameStats metadata and bulk historical imports
+cannot rewrite an existing receipt or rebase its chronology. A newly observed
+eligible live artifact may advance the appropriate lane.
 
-Among eligible Watcher observations, replay `played_on` is the chronology
-authority. Upload time, parse time, and database creation time do not outrank
-the actual battle date.
+Profile and performance views share this reader. Registered current names remain
+user-owned; replay names remain history. API historical ingestion cannot rename
+the registered account or grant verification from a name-only match.
 
-### Current Watcher account-state rail
-
-Historical replay truth and current account truth are separate projections.
-
-Historical W/L, replay counts, result evidence, and name history continue to
-use accepted public replay projections.
-
-Current exact-Steam account presentation uses the newest dated
-`watcher_live` / `watcher_final` observations directly from `game_stats`.
-Current name, RM, and DM are selected by exact SteamID64 and actual
-`played_on` chronology.
-
-`watcher_live` may therefore update current account state without becoming
-historical W/L truth.
-
-Upload time, parse time, acceptance time, database creation time, manual
-uploads, browser uploads, file uploads, batch imports, and undated replay
-observations cannot establish or replace current account rating.
-
-Current-state telemetry may enrich an already accepted exact-Steam public
-identity but does not create a new public identity by itself.
+Existing naked legacy Watcher rows are not backfilled into current authority.
+Missing modern evidence renders the current rating pending/null. Deploy the API
+producer before relying on the web reader. This changes no historical rating
+observations, accepted W/L, Site Elo, result or financial authority. The tested
+implementation and deployment status are recorded in
+`replay-receipts/player-first-2026-10-06-report.json`.

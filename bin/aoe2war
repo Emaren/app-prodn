@@ -135,6 +135,7 @@ Usage:
   aoe2war facts [--json]
   aoe2war dev <status|prepare|refresh|serve|new> [options]
   aoe2war truth <status|census|audit|closure|target> [options]
+  aoe2war truth native-control <prepare|run|verify> --run-id LABEL [options]
   aoe2war code-health [--json] [--no-receipt] [--require-clean-worktree]
   aoe2war deps
   aoe2war deps-security [--json]
@@ -335,6 +336,11 @@ ADMIN UI / OPERATOR BRIDGE
 
   aoe2war bridge --once
       Heartbeat, claim at most one queued Admin action, then exit.
+
+  aoe2war truth native-control <prepare|run|verify> --run-id LABEL
+      Prepare, run, or independently verify the bounded #32388 pre-release
+      observation through the shared API primitive. Candidate evidence only;
+      this does not query the census or grant result or financial authority.
 
 PRODUCTION WRITE
 

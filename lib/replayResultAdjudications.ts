@@ -577,11 +577,60 @@ function adjudicationTeams(value: unknown) {
     .filter((team): team is CanonicalReplayResultTeam => Boolean(team));
 }
 
+function boundNumericSourceTeams(
+  assignments: unknown,
+  players: Record<string, unknown>[],
+  canonical: Array<CanonicalReplayPlayer | null>
+) {
+  if (!Array.isArray(assignments) || assignments.length !== 2 || players.length !== canonical.length) return null;
+  const sourceByKey = new Map<string, { player: CanonicalReplayPlayer; teamId: string }>();
+  const sourceSlots = new Set<number>();
+  for (let index = 0; index < players.length; index++) {
+    const player = canonical[index];
+    if (!player?.steamId || !/^\d{17}$/.test(player.steamId) || player.stablePlayerKey !== `steam:${player.steamId}` || sourceByKey.has(player.stablePlayerKey)) return null;
+    if (player.playerNumber === null || !Number.isSafeInteger(player.playerNumber) || player.playerNumber < 1 || player.playerNumber > 8 || sourceSlots.has(player.playerNumber)) return null;
+    sourceSlots.add(player.playerNumber);
+    const identities = ["steam_id", "steamId", "user_id"].map(key => players[index][key]).filter(value => value !== null && value !== undefined);
+    if (!identities.length || identities.some(value => value !== player.steamId)) return null;
+    const slots = ["player_number", "playerNumber", "number"].map(key => players[index][key]).filter(value => value !== null && value !== undefined);
+    if (!slots.length || slots.some(value => !((typeof value === "number" || typeof value === "string" && /^\d+$/.test(value)) && Number.isSafeInteger(Number(value)) && Number(value) >= 1 && Number(value) <= 8 && Number(value) === player.playerNumber))) return null;
+    const rawIds = ["team_id", "teamId", "team_number", "teamNumber", "team"].map(key => players[index][key]).filter(value => value !== null && value !== undefined);
+    if (!rawIds.length || rawIds.some(value => !((typeof value === "number" || typeof value === "string" && /^\d+$/.test(value)) && Number.isSafeInteger(Number(value)) && Number(value) >= 0 && Number(value) <= 8))) return null;
+    const ids = new Set(rawIds.map(Number));
+    if (ids.size !== 1) return null;
+    const teamId = String([...ids][0]);
+    if (player.teamId !== teamId) return null;
+    sourceByKey.set(player.stablePlayerKey, { player, teamId });
+  }
+  const assigned = new Set<string>(), teamKeys = new Set<string>(), numericSides = new Set<string>();
+  const result = new Map<string, string>();
+  for (const entry of assignments) {
+    const team = record(entry);
+    if (!team || typeof team.teamKey !== "string" || !team.teamKey.trim() || teamKeys.has(team.teamKey) || !Array.isArray(team.players) || !team.players.length) return null;
+    teamKeys.add(team.teamKey);
+    const sideIds = new Set<string>();
+    for (const value of team.players) {
+      const frozen = record(value);
+      const source = typeof frozen?.stablePlayerKey === "string" ? sourceByKey.get(frozen.stablePlayerKey) : null;
+      if (!frozen || !source || assigned.has(source.player.stablePlayerKey) || frozen.steamId !== source.player.steamId || frozen.name !== source.player.name || frozen.normalizedName !== source.player.normalizedName || frozen.playerNumber !== source.player.playerNumber || frozen.sourceTeamId !== source.teamId) return null;
+      assigned.add(source.player.stablePlayerKey);
+      sideIds.add(source.teamId);
+      result.set(source.player.stablePlayerKey, source.teamId);
+    }
+    if (sideIds.size !== 1) return null;
+    numericSides.add([...sideIds][0]);
+  }
+  return assigned.size === sourceByKey.size && numericSides.size === 2 ? result : null;
+}
+
 export function applyReplayResultAdjudication<T extends object>(
   row: T,
   adjudication: EffectiveReplayResultAdjudication | null | undefined
 ): T {
   if (!adjudication || adjudication.decisionStatus !== REPLAY_RESULT_ACCEPTED) return row;
+  // A historical accepted inference remains in the ledger, but retired
+  // recorder-exit/action-order policies cannot manufacture public truth.
+  if (isRetiredAutomaticReplayResultAdjudication(adjudication)) return row;
 
   const source = row as Record<string, unknown>;
   const currentReplayHash = cleanText(source.replayHash ?? source.replay_hash, 64).toLowerCase();
@@ -631,10 +680,17 @@ export function applyReplayResultAdjudication<T extends object>(
   ) {
     return row;
   }
+  // Keep an already bound native topology when the reviewed sides are exactly
+  // that topology. A manual regrouping still projects its reviewed named sides.
+  const winningTeam = teams.find(team => team.teamKey === adjudication.winningTeamKey);
+  const completeWinningSide = winningTeam && winningTeam.players.length === winningPlayerKeys.size &&
+    winningTeam.players.every(player => winningPlayerKeys.has(player.stablePlayerKey));
+  const numericSourceTeams = completeWinningSide ? boundNumericSourceTeams(adjudication.teamAssignments, players, canonicalCurrentPlayers) : null;
+  const projectedWinningTeamKey = numericSourceTeams?.get([...winningPlayerKeys][0]) ?? adjudication.winningTeamKey;
   const projectedPlayers = players.map((player) => {
     const canonical = normalizeReplayPlayer(player);
     if (!canonical || !teamByPlayerKey.has(canonical.stablePlayerKey)) return player;
-    const teamKey = teamByPlayerKey.get(canonical.stablePlayerKey) as string;
+    const teamKey = numericSourceTeams?.get(canonical.stablePlayerKey) ?? teamByPlayerKey.get(canonical.stablePlayerKey) as string;
     return {
       ...player,
       team_id: teamKey,
@@ -647,9 +703,14 @@ export function applyReplayResultAdjudication<T extends object>(
     .filter((name): name is string => Boolean(name));
   if (winningNames.length === 0) return row;
 
-  const originalWinner = source.winner ?? null;
-  const originalParseReason = source.parse_reason ?? source.parseReason ?? null;
-  const originalParseSource = source.parse_source ?? source.parseSource ?? null;
+  const prior = jsonRecord(source.replayResultAdjudication);
+  const sameProjection = source.winnerProof === "replay_result_adjudication" &&
+    prior.adjudication_id === adjudication.id && prior.idempotency_key === adjudication.idempotencyKey &&
+    prior.source_replay_hash === adjudication.sourceReplayHash && prior.source_roster_hash === adjudication.sourceRosterHash &&
+    prior.source_parse_iteration === adjudication.sourceParseIteration;
+  const originalWinner = sameProjection ? prior.original_winner ?? null : source.winner ?? null;
+  const originalParseReason = sameProjection ? prior.original_parse_reason ?? null : source.parse_reason ?? source.parseReason ?? null;
+  const originalParseSource = sameProjection ? prior.original_parse_source ?? null : source.parse_source ?? source.parseSource ?? null;
   const manualEvidence = {
     adjudication_id: adjudication.id,
     idempotency_key: adjudication.idempotencyKey,
@@ -697,7 +758,7 @@ export function applyReplayResultAdjudication<T extends object>(
     winner: winningNames.join(" / "),
     winnerPlayers: winningNames,
     winningPlayerKeys: [...winningPlayerKeys],
-    winningTeamKey: adjudication.winningTeamKey,
+    winningTeamKey: projectedWinningTeamKey,
     winnerProof: "replay_result_adjudication",
     reviewNeeded: false,
     players: projectedPlayers,
@@ -718,7 +779,7 @@ export function applyReplayResultAdjudication<T extends object>(
   } as T;
 }
 
-async function buildMarketSnapshot(
+export async function buildMarketSnapshot(
   prisma: MarketSnapshotPrisma,
   gameStatsId: number,
   linkedSessionKeys: Array<string | null | undefined> = []
@@ -1105,7 +1166,8 @@ export async function loadReplayResultReviewState(
     adjudications.find(
       (entry) =>
         entry.decisionStatus ===
-        REPLAY_RESULT_ACCEPTED
+        REPLAY_RESULT_ACCEPTED &&
+        !isRetiredAutomaticReplayResultAdjudication(entry)
     ) ?? null;
 
   const effectiveGame =
@@ -1367,6 +1429,16 @@ export const WATCHER_TERMINAL_ACTION_TAIL_RESULT_AUTHORITY =
   false as const;
 
 /*
+ * Team action ordering is diagnostic evidence too. Game 25892 can satisfy
+ * V4 after an exact roster repair while only one of two opposing players
+ * resigned. A later-active side does not prove a winner.
+ * Keep the evaluator and historical append-only rows; never append a new
+ * accepted result from this candidate reason alone.
+ */
+export const WATCHER_TEAM_TERMINAL_ACTION_TAIL_RESULT_AUTHORITY =
+  false as const;
+
+/*
  * Recorder shutdown is not result authority.
  *
  * Production game 32173 proved the missing counterexample: the authenticated
@@ -1405,6 +1477,38 @@ export function isProvisionalWatcherRecorderExitAdjudication(
       value.decisionStatus === REPLAY_RESULT_ACCEPTED &&
       value.affectsStats === true &&
       value.affectsBets === false
+  );
+}
+
+// Exact historical versions observed in the ledger. Keep the public query and
+// in-memory projection on the same fence; a later human verdict remains eligible.
+export const RETIRED_AUTOMATIC_REPLAY_RESULT_POLICY_VERSIONS = [
+  "replay-terminal-recorder-exit-v1",
+  WATCHER_TERMINAL_RECORDER_EXIT_POLICY_VERSION,
+  WATCHER_TERMINAL_OWNER_LOSS_POLICY_VERSION,
+  "replay-team-terminal-action-tail-v2",
+  "replay-team-terminal-action-tail-v3",
+  WATCHER_TEAM_TERMINAL_POLICY_VERSION,
+] as const;
+
+export function isRetiredAutomaticReplayResultAdjudication(
+  value:
+    | {
+        idempotencyKey?: unknown;
+        decisionStatus?: unknown;
+        affectsStats?: unknown;
+        affectsBets?: unknown;
+      }
+    | null
+    | undefined
+) {
+  if (isProvisionalWatcherRecorderExitAdjudication(value)) return true;
+  const idempotencyKey = value?.idempotencyKey;
+  return Boolean(
+    value &&
+      value.decisionStatus === REPLAY_RESULT_ACCEPTED &&
+      typeof idempotencyKey === "string" &&
+      RETIRED_AUTOMATIC_REPLAY_RESULT_POLICY_VERSIONS.some((policy) => idempotencyKey.startsWith(`evidence:auto:${policy}:`))
   );
 }
 
@@ -4122,6 +4226,18 @@ export async function reconcileAutomaticWatcherTerminalResults(
             gameStatsId,
             outcome: "skipped" as const,
             detail: evaluation.reason,
+            adjudicationId: null,
+          };
+        }
+
+        if (
+          evaluation.reason === "decisive_team_terminal_action_tail" &&
+          !WATCHER_TEAM_TERMINAL_ACTION_TAIL_RESULT_AUTHORITY
+        ) {
+          return {
+            gameStatsId,
+            outcome: "skipped" as const,
+            detail: "team_terminal_action_tail_is_not_result_authority",
             adjudicationId: null,
           };
         }

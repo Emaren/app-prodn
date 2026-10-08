@@ -1,0 +1,433 @@
+{
+  "schema": 1,
+  "startingZodiacUnknown": 52,
+  "proposals": [
+    {
+      "schema": "aoe2war-zodiac-commissioner-proposal/v1",
+      "gameStatsId": 27269,
+      "zodiacSteamId": "76561198103810510",
+      "observedAt": "2026-10-06T18:52:51.055Z",
+      "status": "requires_commissioner_approval",
+      "affectsStatsRequested": true,
+      "affectsStats": false,
+      "affectsBets": false,
+      "settlementAuthority": false,
+      "woloAuthority": false,
+      "financialDisposition": "none",
+      "sourceGameStateSha256": "98135cb7409e8dedfdaa2a64a41b70ebc450e521e3c8b8df48537e08ccdbf105",
+      "canonicalRoster": [
+        {
+          "stablePlayerKey": "steam:76561198103810510",
+          "name": "Zodiac",
+          "steamId": "76561198103810510",
+          "playerNumber": 1,
+          "teamId": "0"
+        },
+        {
+          "stablePlayerKey": "steam:76561198127861941",
+          "name": "Praxes",
+          "steamId": "76561198127861941",
+          "playerNumber": 2,
+          "teamId": "0"
+        },
+        {
+          "stablePlayerKey": "steam:76561198052015177",
+          "name": "PKNT",
+          "steamId": "76561198052015177",
+          "playerNumber": 3,
+          "teamId": "1"
+        },
+        {
+          "stablePlayerKey": "steam:76561198853096271",
+          "name": "Monty_Python",
+          "steamId": "76561198853096271",
+          "playerNumber": 4,
+          "teamId": "1"
+        },
+        {
+          "stablePlayerKey": "steam:76561198106036840",
+          "name": "Trickster",
+          "steamId": "76561198106036840",
+          "playerNumber": 5,
+          "teamId": "1"
+        }
+      ],
+      "winnerNames": [
+        "PKNT",
+        "Monty_Python",
+        "Trickster"
+      ],
+      "payload": {
+        "idempotencyKey": "zodiac-serialized:27269:3d58079b06f22313cd99edfb2d975a57",
+        "sourceReplayHash": "ecf9d1e8302493f8aab1114873c6e4114128a9bdf592f89b903c891e4157afc7",
+        "sourceParseIteration": 1,
+        "sourceRosterHash": "60e79f2b3e3c3f21b00cd4fed9098e5a6eca16cc8138e1f5bd752a6ea89afe81",
+        "teams": [
+          {
+            "teamKey": "gold",
+            "playerKeys": [
+              "steam:76561198103810510",
+              "steam:76561198127861941"
+            ]
+          },
+          {
+            "teamKey": "blue",
+            "playerKeys": [
+              "steam:76561198052015177",
+              "steam:76561198106036840",
+              "steam:76561198853096271"
+            ]
+          }
+        ],
+        "winningTeamKey": "blue",
+        "reason": "Exact archived HD replay: PKNT, Monty_Python, Trickster won. The entire opposing side voluntarily resigned; strict packet framing and slot/Steam/team mapping independently agree. Commissioner approval; stats only.",
+        "evidence": {
+          "kind": "serialized-complete-team-voluntary-resignation",
+          "submittedVia": "zodiac_recovery_commissioner_proposal",
+          "requiresCommissionerApproval": true,
+          "affectsStatsRequested": true,
+          "affectsBets": false,
+          "financialAuthority": false,
+          "woloAuthority": false,
+          "automaticPromotionAllowed": false,
+          "parser": {
+            "implementation": "aoe2war.mgz_hd",
+            "implementation_version": "1.8.51",
+            "options": {
+              "apply_hd_early_exit_rules": true
+            },
+            "pass_name": "hd_deterministic_evidence",
+            "pass_version": "10",
+            "schema_version": "2026-07-25.1"
+          },
+          "parserSourceSha256": "349f66ecd37057d044c3e22899ba8e0eda4dbf9361c0691bd572f821869be5c4",
+          "teamContractSourceSha256": "3c89275d803a5e6505fd57f2d8b0ac43e0ba00e206b9b6a6d8571623906d035e",
+          "apiImplementationCommit": "2db3efdbb81f87c55a35ec5879aba00b5a3e0884",
+          "storedRunIds": [
+            9061,
+            6451
+          ],
+          "candidateReceiptSha256": "324805bf0ca8ae1678c83c831adc897a4b06f361bc06ecfeb713845db54976c1",
+          "independentReceiptSha256": "cffce342070f6e293d5e852fba88881fcc8cf64ead25c9525d39d7bdf747a216",
+          "archiveSha256": "ecf9d1e8302493f8aab1114873c6e4114128a9bdf592f89b903c891e4157afc7",
+          "archiveByteSize": 795424,
+          "rosterBindingSource": "exact_canonical_game_roster_and_current_HD_parser",
+          "topologySource": "explicit_final_team_ids",
+          "canonicalReplayTeams": [
+            {
+              "player_keys": [
+                "steam:76561198103810510",
+                "steam:76561198127861941"
+              ],
+              "players": [
+                "Zodiac",
+                "Praxes"
+              ],
+              "team_id": 0
+            },
+            {
+              "player_keys": [
+                "steam:76561198052015177",
+                "steam:76561198106036840",
+                "steam:76561198853096271"
+              ],
+              "players": [
+                "PKNT",
+                "Trickster",
+                "Monty_Python"
+              ],
+              "team_id": 1
+            }
+          ],
+          "terminalFraming": {
+            "complete": true,
+            "body_start_offset": 156753,
+            "last_consumed_offset": 795424,
+            "end_timestamp_ms": 1645630,
+            "framed_packets_sha256": "3ae5049f43e8fb4a46699cfbbfed2692d009bd9384cc260d1098a8b2dd3ea73f"
+          },
+          "resignations": [
+            {
+              "disconnected": false,
+              "flags_complete": true,
+              "identity_complete": true,
+              "packet": {
+                "action_id": 11,
+                "byte_size": 16,
+                "offset": 793184,
+                "operation_id": 1,
+                "sha256": "08267b7306ce8c8214ce647f41d75009e818690d00cbf5e4b48e126cbae9e2b6",
+                "timestamp_ms": 1638928,
+                "type": "resign"
+              },
+              "payload_hex": "020200",
+              "player_id": 2,
+              "player_num": 2
+            },
+            {
+              "disconnected": false,
+              "flags_complete": true,
+              "identity_complete": true,
+              "packet": {
+                "action_id": 11,
+                "byte_size": 16,
+                "offset": 795408,
+                "operation_id": 1,
+                "sha256": "069295f854d20f667b3eb49b4d2aef58403fe440d21f270ee6abaabeebaa733c",
+                "timestamp_ms": 1645630,
+                "type": "resign"
+              },
+              "payload_hex": "010100",
+              "player_id": 1,
+              "player_num": 1
+            }
+          ],
+          "independentTerminalResult": {
+            "blockers": [],
+            "proof": {
+              "artifact_sha256": "ecf9d1e8302493f8aab1114873c6e4114128a9bdf592f89b903c891e4157afc7",
+              "packets": [
+                {
+                  "action_id": 11,
+                  "byte_size": 16,
+                  "offset": 793184,
+                  "operation_id": 1,
+                  "sha256": "08267b7306ce8c8214ce647f41d75009e818690d00cbf5e4b48e126cbae9e2b6",
+                  "timestamp_ms": 1638928,
+                  "type": "resign"
+                },
+                {
+                  "action_id": 11,
+                  "byte_size": 16,
+                  "offset": 795408,
+                  "operation_id": 1,
+                  "sha256": "069295f854d20f667b3eb49b4d2aef58403fe440d21f270ee6abaabeebaa733c",
+                  "timestamp_ms": 1645630,
+                  "type": "resign"
+                }
+              ],
+              "parser": {
+                "implementation": "aoe2war.mgz_hd",
+                "implementation_version": "1.8.51",
+                "options": {
+                  "apply_hd_early_exit_rules": true
+                },
+                "pass_name": "hd_deterministic_evidence",
+                "pass_version": "10",
+                "schema_version": "2026-07-25.1"
+              },
+              "terminal_schema_version": "hd-terminal-evidence-v2"
+            },
+            "source": "complete_team_voluntary_resignation",
+            "status": "deterministic_candidate",
+            "winning_player_numbers": [
+              3,
+              4,
+              5
+            ]
+          },
+          "financialSnapshot": {
+            "linkedMarkets": [],
+            "sourceObservationTimestamp": "2026-10-06T18:52:51.055Z",
+            "markets": [],
+            "claims": [],
+            "obligationsObservedAt": "2026-10-06T19:08:46.366Z",
+            "obligationsReceiptSha256": "e8dcf01a11041f8455c3265fbb62915a0133b0b77e593bfe0d08860907fec4ff"
+          },
+          "sourceCaseObservationSha256": "65cb61701d9c1f1b89ae9ed64517584c9311d40edeb78307f2b8de0246a81e14"
+        },
+        "supersedesId": null
+      },
+      "packetSha256": "fc3db7cfc66a2e32f8646f423161f43d7bf878dcfe427e23d9887ce7469bcab9"
+    },
+    {
+      "schema": "aoe2war-zodiac-commissioner-proposal/v1",
+      "gameStatsId": 44670,
+      "zodiacSteamId": "76561198103810510",
+      "observedAt": "2026-10-06T18:52:51.055Z",
+      "status": "requires_commissioner_approval",
+      "affectsStatsRequested": true,
+      "affectsStats": false,
+      "affectsBets": false,
+      "settlementAuthority": false,
+      "woloAuthority": false,
+      "financialDisposition": "none",
+      "sourceGameStateSha256": "b2044474de6631cfc71518f34627d4ce7ddb24640c9ac0a223d8c7dbd82371e8",
+      "canonicalRoster": [
+        {
+          "stablePlayerKey": "steam:76561198166409520",
+          "name": "Jim",
+          "steamId": "76561198166409520",
+          "playerNumber": 1,
+          "teamId": "0"
+        },
+        {
+          "stablePlayerKey": "steam:76561198103810510",
+          "name": "Zodiac",
+          "steamId": "76561198103810510",
+          "playerNumber": 2,
+          "teamId": null
+        },
+        {
+          "stablePlayerKey": "steam:76561198065420384",
+          "name": "Emaren",
+          "steamId": "76561198065420384",
+          "playerNumber": 3,
+          "teamId": "0"
+        }
+      ],
+      "winnerNames": [
+        "Jim",
+        "Emaren"
+      ],
+      "payload": {
+        "idempotencyKey": "zodiac-serialized:44670:919b90b4d91478abba3007ffbdffa8ed",
+        "sourceReplayHash": "ff606a01553c1063ca2ea5ce1cc7e89d97c2a247021fa1fa9bf330adfa1cb406",
+        "sourceParseIteration": 26,
+        "sourceRosterHash": "4c5fd49aa745754d7a18b3125e2b7881c32beadf4a05231e803615431e0813bf",
+        "teams": [
+          {
+            "teamKey": "gold",
+            "playerKeys": [
+              "steam:76561198065420384",
+              "steam:76561198166409520"
+            ]
+          },
+          {
+            "teamKey": "blue",
+            "playerKeys": [
+              "steam:76561198103810510"
+            ]
+          }
+        ],
+        "winningTeamKey": "gold",
+        "reason": "Exact archived HD replay: Jim, Emaren won. The entire opposing side voluntarily resigned; strict packet framing and slot/Steam/team mapping independently agree. Commissioner approval; stats only.",
+        "evidence": {
+          "kind": "serialized-complete-team-voluntary-resignation",
+          "submittedVia": "zodiac_recovery_commissioner_proposal",
+          "requiresCommissionerApproval": true,
+          "affectsStatsRequested": true,
+          "affectsBets": false,
+          "financialAuthority": false,
+          "woloAuthority": false,
+          "automaticPromotionAllowed": false,
+          "parser": {
+            "implementation": "aoe2war.mgz_hd",
+            "implementation_version": "1.8.51",
+            "options": {
+              "apply_hd_early_exit_rules": true
+            },
+            "pass_name": "hd_deterministic_evidence",
+            "pass_version": "10",
+            "schema_version": "2026-07-25.1"
+          },
+          "parserSourceSha256": "349f66ecd37057d044c3e22899ba8e0eda4dbf9361c0691bd572f821869be5c4",
+          "teamContractSourceSha256": "3c89275d803a5e6505fd57f2d8b0ac43e0ba00e206b9b6a6d8571623906d035e",
+          "apiImplementationCommit": "2db3efdbb81f87c55a35ec5879aba00b5a3e0884",
+          "storedRunIds": [
+            7638
+          ],
+          "candidateReceiptSha256": "d44a6473520be6fb60092a1ef891a6069ea3ad43d039cfae2baa0f55129a3d8f",
+          "independentReceiptSha256": "dc858526f618660eb6a5ba982e8cef1cc5cd0c3497f3c0aedfc1be4055018d23",
+          "archiveSha256": "ff606a01553c1063ca2ea5ce1cc7e89d97c2a247021fa1fa9bf330adfa1cb406",
+          "archiveByteSize": 648823,
+          "rosterBindingSource": "exact_canonical_game_roster_and_current_HD_parser",
+          "topologySource": "explicit_final_team_ids",
+          "canonicalReplayTeams": [
+            {
+              "player_keys": [
+                "steam:76561198065420384",
+                "steam:76561198166409520"
+              ],
+              "players": [
+                "Emaren",
+                "Jim"
+              ],
+              "team_id": 0
+            },
+            {
+              "player_keys": [
+                "steam:76561198103810510"
+              ],
+              "players": [
+                "Zodiac"
+              ],
+              "team_id": "solo:steam:76561198103810510"
+            }
+          ],
+          "terminalFraming": {
+            "complete": true,
+            "body_start_offset": 275058,
+            "last_consumed_offset": 648823,
+            "end_timestamp_ms": 1532440,
+            "framed_packets_sha256": "cc2c65c4a34861a877af78d76c01d0aa25457c953ec707e9547df851cf3db9f8"
+          },
+          "resignations": [
+            {
+              "disconnected": false,
+              "flags_complete": true,
+              "identity_complete": true,
+              "packet": {
+                "action_id": 11,
+                "byte_size": 16,
+                "offset": 648807,
+                "operation_id": 1,
+                "sha256": "e81f749e1e1a38f13ac586ea2cfb2d1bda3a91eacd7aa9c9ba15757a342aa9f8",
+                "timestamp_ms": 1532440,
+                "type": "resign"
+              },
+              "payload_hex": "020200",
+              "player_id": 2,
+              "player_num": 2
+            }
+          ],
+          "independentTerminalResult": {
+            "blockers": [],
+            "proof": {
+              "artifact_sha256": "ff606a01553c1063ca2ea5ce1cc7e89d97c2a247021fa1fa9bf330adfa1cb406",
+              "packets": [
+                {
+                  "action_id": 11,
+                  "byte_size": 16,
+                  "offset": 648807,
+                  "operation_id": 1,
+                  "sha256": "e81f749e1e1a38f13ac586ea2cfb2d1bda3a91eacd7aa9c9ba15757a342aa9f8",
+                  "timestamp_ms": 1532440,
+                  "type": "resign"
+                }
+              ],
+              "parser": {
+                "implementation": "aoe2war.mgz_hd",
+                "implementation_version": "1.8.51",
+                "options": {
+                  "apply_hd_early_exit_rules": true
+                },
+                "pass_name": "hd_deterministic_evidence",
+                "pass_version": "10",
+                "schema_version": "2026-07-25.1"
+              },
+              "terminal_schema_version": "hd-terminal-evidence-v2"
+            },
+            "source": "complete_team_voluntary_resignation",
+            "status": "deterministic_candidate",
+            "winning_player_numbers": [
+              1,
+              3
+            ]
+          },
+          "financialSnapshot": {
+            "linkedMarkets": [],
+            "sourceObservationTimestamp": "2026-10-06T18:52:51.055Z",
+            "markets": [],
+            "claims": [],
+            "obligationsObservedAt": "2026-10-06T19:08:46.366Z",
+            "obligationsReceiptSha256": "e8dcf01a11041f8455c3265fbb62915a0133b0b77e593bfe0d08860907fec4ff"
+          },
+          "sourceCaseObservationSha256": "65cb61701d9c1f1b89ae9ed64517584c9311d40edeb78307f2b8de0246a81e14"
+        },
+        "supersedesId": null
+      },
+      "packetSha256": "2c526b9ef893cbfba0954767c9913a12989c019acf3b4eb1ef4446f8dcfca199"
+    }
+  ]
+}

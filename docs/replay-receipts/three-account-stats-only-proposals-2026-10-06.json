@@ -1,0 +1,323 @@
+{
+  "schema": "aoe2war-player-first-commissioner-proposal-index/v1",
+  "proposals": [
+    {
+      "schema": "aoe2war-player-first-commissioner-proposal/v1",
+      "gameStatsId": 25782,
+      "targetSteamId": "76561199849204394",
+      "observedAt": "2026-10-07T01:20:49.904Z",
+      "status": "requires_commissioner_approval",
+      "affectsStatsRequested": true,
+      "affectsStats": false,
+      "affectsBets": false,
+      "settlementAuthority": false,
+      "woloAuthority": false,
+      "financialDisposition": "none",
+      "sourceGameStateSha256": "2c07e960d4faf4fdf280b225d5d2ccdbbaf3689774da0bd90289f40fb59e8e3b",
+      "canonicalRoster": [
+        {
+          "stablePlayerKey": "steam:76561199849204394",
+          "name": "mYsTikaL_VeGeTa",
+          "steamId": "76561199849204394",
+          "playerNumber": 1,
+          "teamId": "0"
+        },
+        {
+          "stablePlayerKey": "steam:76561198257849801",
+          "name": "somniosator",
+          "steamId": "76561198257849801",
+          "playerNumber": 2,
+          "teamId": "1"
+        },
+        {
+          "stablePlayerKey": "steam:76561198250132680",
+          "name": "mYsTikaL_TrUnKs",
+          "steamId": "76561198250132680",
+          "playerNumber": 3,
+          "teamId": "0"
+        },
+        {
+          "stablePlayerKey": "steam:76561199703054938",
+          "name": "TheGoat_Nicky",
+          "steamId": "76561199703054938",
+          "playerNumber": 4,
+          "teamId": "1"
+        }
+      ],
+      "winnerNames": [
+        "somniosator",
+        "TheGoat_Nicky"
+      ],
+      "shortForfeitReview": {
+        "noRatedResult": true,
+        "completed": false,
+        "disconnectDetected": true,
+        "terminalTimestampMs": 49834,
+        "acknowledgesNotRatedResult": true
+      },
+      "payload": {
+        "idempotencyKey": "player-first-short-forfeit:25782:3591e140b5f12f6ba06e4341a7adb0b16",
+        "sourceReplayHash": "3591e140b5f12f6ba06e4341a7adb0b16f1b8d02ea3d7042f6748be8d6397dda",
+        "sourceParseIteration": 2,
+        "sourceRosterHash": "3c778cba9b61b96b8e5e2189f93406bc491bf8dd6f9c0c886b3f70060733608c",
+        "teams": [
+          {
+            "teamKey": "gold",
+            "playerKeys": [
+              "steam:76561199849204394",
+              "steam:76561198250132680"
+            ]
+          },
+          {
+            "teamKey": "blue",
+            "playerKeys": [
+              "steam:76561198257849801",
+              "steam:76561199703054938"
+            ]
+          }
+        ],
+        "winningTeamKey": "blue",
+        "reason": "Exact archived HD replay proves both mYsTikaL_VeGeTa and mYsTikaL_TrUnKs voluntarily resigned; somniosator and TheGoat_Nicky remained. This50-second short forfeit is excluded by the unchanged parser early-exit rule and does not prove a Steam-rated outcome. Explicit human Commissioner decision requested for stats only; no bets, claims, settlement or Wolo authority.",
+        "evidence": {
+          "kind": "commissioner_complete_side_short_forfeit_candidate",
+          "submittedVia": "review_result_workspace",
+          "requiresCommissionerApproval": true,
+          "affectsStatsRequested": true,
+          "affectsBets": false,
+          "financialAuthority": false,
+          "woloAuthority": false,
+          "automaticPromotionAllowed": false,
+          "parser": {
+            "implementation": "aoe2war.mgz_hd",
+            "implementation_version": "1.8.51",
+            "options": {
+              "apply_hd_early_exit_rules": true
+            },
+            "pass_name": "hd_deterministic_evidence",
+            "pass_version": "10",
+            "schema_version": "2026-07-25.1"
+          },
+          "parserSourceSha256": "349f66ecd37057d044c3e22899ba8e0eda4dbf9361c0691bd572f821869be5c4",
+          "teamContractSourceSha256": "3c89275d803a5e6505fd57f2d8b0ac43e0ba00e206b9b6a6d8571623906d035e",
+          "apiImplementationCommit": "b19adf0b15aa1273c218163b6f9c07cab1157c1a",
+          "storedRunIds": [
+            7853
+          ],
+          "candidateReceiptSha256": "8dae4eb9c1abefdb42cef6df9e696b5755663d3e87f3fec6092f6df4e30254c9",
+          "independentReceiptSha256": "f0ff88a5af6d9936d96a0357240e20cf468e7176a6b399f044f57bac3ce32a37",
+          "archiveSha256": "3591e140b5f12f6ba06e4341a7adb0b16f1b8d02ea3d7042f6748be8d6397dda",
+          "archiveByteSize": 141433,
+          "rosterBindingSource": "Exact final archived HD header; canonical source GameStats25782 Steam/slot roster agrees. The nonfinal watcher_live source25781 is counterevidence, never result authority.",
+          "topologySource": "Explicit canonical HD team IDs0/1 in same final archive; no ordering inference.",
+          "canonicalReplayTeams": {
+            "confidence": "high",
+            "format": "2v2",
+            "player_count": 4,
+            "provenance": "explicit_replay_team_ids",
+            "reason_codes": [],
+            "result_confidence": "high",
+            "result_evidence": {
+              "complete_losing_team_resignation": true,
+              "fully_resigned_team_ids": [
+                0
+              ],
+              "partially_resigned_team_ids": [],
+              "postgame_available": false,
+              "resignation_counts_by_team": [
+                {
+                  "player_count": 2,
+                  "resigned_player_count": 2,
+                  "team_id": 0
+                },
+                {
+                  "player_count": 2,
+                  "resigned_player_count": 0,
+                  "team_id": 1
+                }
+              ],
+              "resignation_derived_winning_team_id": 1,
+              "resignation_result_conflict": false,
+              "resignation_state": "exactly_one_complete_team",
+              "scoreboard_available": false,
+              "single_team_winner_flag_team_id": null,
+              "sources": [
+                "complete_losing_team_resignation"
+              ],
+              "team_completion_from_resignations": true,
+              "winner_flag_team_id": null,
+              "winner_flags_coherent": false,
+              "winner_flags_single_team": false
+            },
+            "result_provenance": "complete_losing_team_resignation",
+            "result_status": "resolved",
+            "result_trusted": true,
+            "status": "resolved",
+            "team_count": 2,
+            "teams": [
+              {
+                "player_keys": [
+                  "steam:76561198250132680",
+                  "steam:76561199849204394"
+                ],
+                "players": [
+                  "mYsTikaL_TrUnKs",
+                  "mYsTikaL_VeGeTa"
+                ],
+                "team_id": 0
+              },
+              {
+                "player_keys": [
+                  "steam:76561198257849801",
+                  "steam:76561199703054938"
+                ],
+                "players": [
+                  "somniosator",
+                  "TheGoat_Nicky"
+                ],
+                "team_id": 1
+              }
+            ],
+            "winning_player_keys": [
+              "steam:76561198257849801",
+              "steam:76561199703054938"
+            ],
+            "winning_player_names": [
+              "somniosator",
+              "TheGoat_Nicky"
+            ],
+            "winning_team_id": 1
+          },
+          "terminalFraming": {
+            "complete": true,
+            "body_start_offset": 125840,
+            "last_consumed_offset": 141433,
+            "end_timestamp_ms": 49834,
+            "framed_packets_sha256": "2fb3a8b953f18f6457041be72fdb9d52b10baa6f965c19bfdc728bb6404e2b2f"
+          },
+          "resignations": [
+            {
+              "disconnected": false,
+              "flags_complete": true,
+              "identity_complete": true,
+              "packet": {
+                "action_id": 11,
+                "byte_size": 16,
+                "offset": 135497,
+                "operation_id": 1,
+                "sha256": "d8003fe9532cc1c74e895dd4bc36be181f7dd957dec69b52a5016e7f4bf29327",
+                "timestamp_ms": 29414,
+                "type": "resign"
+              },
+              "payload_hex": "030300",
+              "player_id": 3,
+              "player_num": 3
+            },
+            {
+              "disconnected": false,
+              "flags_complete": true,
+              "identity_complete": true,
+              "packet": {
+                "action_id": 11,
+                "byte_size": 16,
+                "offset": 141417,
+                "operation_id": 1,
+                "sha256": "4868cb02c26fd90d2442926fd342f50c1602894c62fc7c8aaa9dcb93895dcb24",
+                "timestamp_ms": 49834,
+                "type": "resign"
+              },
+              "payload_hex": "010100",
+              "player_id": 1,
+              "player_num": 1
+            }
+          ],
+          "independentTerminalResult": {
+            "blockers": [],
+            "proof": {
+              "artifact_sha256": "3591e140b5f12f6ba06e4341a7adb0b16f1b8d02ea3d7042f6748be8d6397dda",
+              "packets": [
+                {
+                  "action_id": 11,
+                  "byte_size": 16,
+                  "offset": 135497,
+                  "operation_id": 1,
+                  "sha256": "d8003fe9532cc1c74e895dd4bc36be181f7dd957dec69b52a5016e7f4bf29327",
+                  "timestamp_ms": 29414,
+                  "type": "resign"
+                },
+                {
+                  "action_id": 11,
+                  "byte_size": 16,
+                  "offset": 141417,
+                  "operation_id": 1,
+                  "sha256": "4868cb02c26fd90d2442926fd342f50c1602894c62fc7c8aaa9dcb93895dcb24",
+                  "timestamp_ms": 49834,
+                  "type": "resign"
+                }
+              ],
+              "parser": {
+                "implementation": "aoe2war.mgz_hd",
+                "implementation_version": "1.8.51",
+                "options": {
+                  "apply_hd_early_exit_rules": true
+                },
+                "pass_name": "hd_deterministic_evidence",
+                "pass_version": "10",
+                "schema_version": "2026-07-25.1"
+              },
+              "terminal_schema_version": "hd-terminal-evidence-v2"
+            },
+            "source": "complete_team_voluntary_resignation",
+            "status": "deterministic_candidate",
+            "winning_player_numbers": [
+              2,
+              4
+            ]
+          },
+          "financialSnapshot": {
+            "linkedMarkets": [],
+            "capturedAt": "2026-10-07T01:20:49.897Z",
+            "claims": [],
+            "markets": [],
+            "obligationsReceiptSha256": "5c6f36aaef0eca5a7deb13e8d236e3d5118b536d6477d2eb06a51fa11a77ed42"
+          },
+          "sourceCaseObservationSha256": "5c6f36aaef0eca5a7deb13e8d236e3d5118b536d6477d2eb06a51fa11a77ed42",
+          "sourceInventorySha256": "d1835f3da4245f6aaf485881a0f4a9d7fb573cac2479f7b0836ee4906230cb94",
+          "logicalBattleId": "platform:d710e383-ec04-4e45-a531-4f0e4e9b0b5d",
+          "sourceIdentitySnapshots": [
+            {
+              "gameStatsId": 25782,
+              "replayHash": "3591e140b5f12f6ba06e4341a7adb0b16f1b8d02ea3d7042f6748be8d6397dda",
+              "isFinal": true,
+              "parseIteration": 2,
+              "sourceStateSha256": "2c07e960d4faf4fdf280b225d5d2ccdbbaf3689774da0bd90289f40fb59e8e3b"
+            },
+            {
+              "gameStatsId": 25781,
+              "replayHash": "8211bfe7dced9085b199a7c707c466764673721676d4800c112db12054ad2719",
+              "isFinal": false,
+              "parseIteration": 1,
+              "sourceStateSha256": "03c7cfd7a520fcb961bba41d983d50795bfe2ffe47b27b61debb2c5fd379b9de"
+            }
+          ],
+          "counterevidence": {
+            "completed": false,
+            "currentParseReason": "hd_early_exit_under_60s",
+            "disconnectDetected": true,
+            "doNotChangeParserPolicy": true,
+            "doesNotProveSteamRatedOutcome": true,
+            "durationSeconds": 50,
+            "gameDurationSeconds": 50,
+            "noRatedResult": true,
+            "postgameAvailable": false,
+            "protectedEarlyExitPolicy": "_apply_hd_early_exit_rules suppresses rated outcomes below60seconds",
+            "rawWinner": "Unknown"
+          },
+          "researchReceiptSha256": "65d5e91a11a6c6fa16a319eec6f8db3242198df46b88c2b74d3e14947458edd4",
+          "nonfinalSourceCounterevidenceReceiptSha256": "35186dcf0f17ae2b55cf192cf595a6fd20be0ded33cda60ef38fe2a149b23f83"
+        },
+        "supersedesId": null
+      },
+      "packetSha256": "a836876ca6190cd08b1befe372f3edd2a3a0b017406594dca9243e8df0600283"
+    }
+  ]
+}

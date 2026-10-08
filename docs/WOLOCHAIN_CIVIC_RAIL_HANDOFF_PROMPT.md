@@ -8,7 +8,7 @@ systems: ["app-prodn","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "cross-repository-handoff"
-reviewed_at: "2026-09-07"
+reviewed_at: "2026-10-08"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -16,6 +16,9 @@ sensitivity: "internal"
 # WoloChain Civic Rail Handoff Prompt
 
 Paste the following into a separate Codex task rooted in WoloChain.
+
+Reviewed against the owning source on 2026-10-08. This is a future local/test
+handoff, not proof that Oracle or Forge funding has been implemented or activated.
 
 ```text
 Work only in `/Users/tonyblum/projects/WoloChain-wolo-1`.
@@ -58,10 +61,11 @@ Immutable ownership boundaries
 
 Production safety boundary
 
-- The Wolo source checkout is currently based on
-  `d5dea8d6f1a2b0b57489a5e468dd21e34246891e`.
-- Consensus deliberately runs the preserved pre-upgrade binary commit
-  `d3bd62414a047a492a3814b7d3baa2717d64db2e` through a node-binary override.
+- Read the generated current-state blocks in the canonical system maps and
+  Wolo-owned service documentation, then independently observe the exact source,
+  running binary, override configuration, chain state, and services before work.
+  A historical checkout or binary seal does not establish current runtime truth.
+  Never normalize consensus from Git parity alone.
 - Existing Bet and Founder settlement services use their established binary and
   listen on loopback ports 8092 and 8093.
 - Do not replace, restart, rebuild, relink, or normalize the production consensus

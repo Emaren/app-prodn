@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import argparse
+import fcntl
 import hashlib
+import importlib.util
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -14,9 +17,48 @@ import urllib.parse
 import urllib.request
 from pathlib import Path
 from typing import Any
+from contextlib import contextmanager
 
 ROOT = Path(__file__).resolve().parents[1]
-API_ROOT = ROOT.parent / "api-prodn"
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+from scripts.native_replay_contract import (
+    NativeReplayContractError,
+    build_stats_only_review_evidence,
+    canonical_json,
+    load_manifest_json,
+    validate_control_observations,
+    validate_native_manifest,
+)
+
+
+def canonical_checkout_root(repository: Path) -> Path:
+    """Resolve the owning checkout without taking a user-supplied filesystem path."""
+    common = subprocess.check_output(
+        ["git", "rev-parse", "--git-common-dir"], cwd=repository, text=True, timeout=10,
+    ).strip()
+    common_path = Path(common)
+    if not common_path.is_absolute():
+        common_path = repository / common_path
+    return common_path.resolve().parent
+
+
+def canonical_api_root() -> Path:
+    """Resolve the governed sibling API from the app Git common checkout."""
+    return canonical_checkout_root(ROOT).parent / "api-prodn"
+
+
+def native_evidence_root(api_source: Path) -> Path:
+    # Source may be a governed API worktree. Durable runtime files stay at the
+    # canonical checkout so its retirement cannot lose receipts or exceed the
+    # native engine's Windows path bound. There is no CLI output-root override.
+    return canonical_checkout_root(api_source) / "instance/native-replay-worker/attempts"
+
+
+API_ROOT = canonical_api_root()
+# Importing app-owned contracts does not require the sibling native runtime.
+# Resolve and cache its canonical durable root only when execution starts.
+EVIDENCE_ROOT: Path | None = None
 RUNNER = API_ROOT / "scripts" / "replay_engine_runner.py"
 RUNNER_IMPL = API_ROOT / "utils" / "replay_engine_runner.py"
 TERMINAL_CONTROL_VALIDATOR = (
@@ -65,6 +107,36 @@ SHA256_RE = __import__("re").compile(r"^[0-9a-f]{64}$")
 
 class WorkerError(RuntimeError):
     pass
+
+
+def worker_evidence_root() -> Path:
+    global EVIDENCE_ROOT
+    if EVIDENCE_ROOT is None:
+        try:
+            EVIDENCE_ROOT = native_evidence_root(API_ROOT)
+        except (OSError, subprocess.SubprocessError) as exc:
+            raise WorkerError("The governed sibling api-prodn checkout is unavailable for native execution.") from exc
+    return EVIDENCE_ROOT
+
+
+@contextmanager
+def native_execution_lock():
+    """One game process at a time across bridge and direct worker invocations."""
+    directory = worker_evidence_root().parent
+    directory.mkdir(parents=True, exist_ok=True)
+    if directory.is_symlink():
+        raise WorkerError("Native worker lock directory cannot be a symlink.")
+    lock_path = directory / "execution.lock"
+    descriptor = os.open(lock_path, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
+    with os.fdopen(descriptor, "a+") as handle:
+        try:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise WorkerError("Another native replay worker owns the serial execution lock.") from exc
+        try:
+            yield
+        finally:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
 
 def load_token() -> str:
@@ -190,6 +262,7 @@ def download_replay(
     expected_game_stats_id: int,
     expected_sha256: str,
     destination_dir: Path,
+    manifest: dict[str, Any] | None = None,
 ) -> tuple[Path, int]:
     query = urllib.parse.urlencode({"runId": run_id})
     request = urllib.request.Request(
@@ -202,6 +275,10 @@ def download_replay(
     )
     try:
         with urllib.request.urlopen(request, timeout=60) as response:
+            if manifest is not None:
+                validate_native_manifest(manifest)
+                if response.headers.get("X-AoE2WAR-Manifest-SHA256", "") != manifest["manifestSha256"]:
+                    raise WorkerError("Server manifest identity does not match the queued native control.")
             advertised = response.headers.get("X-AoE2WAR-Replay-SHA256", "").strip()
             if advertised != expected_sha256:
                 raise WorkerError(
@@ -256,6 +333,8 @@ def download_replay(
         raise WorkerError(
             f"Downloaded replay failed SHA-256 validation: {observed}"
         )
+    if manifest is not None and total != manifest["archive"]["byteSize"]:
+        raise WorkerError("Downloaded replay byte size differs from the immutable manifest.")
     destination.chmod(0o400)
     return destination, total
 
@@ -268,9 +347,12 @@ def materialize_replay(
     token: str,
     run_id: str,
     destination_dir: Path,
+    manifest: dict[str, Any] | None = None,
 ) -> tuple[Path, int, str]:
+    # General controls must obtain a fresh server-fenced artifact. The legacy
+    # exact canary retains its existing independently hashed local fallback.
     local_control = TRUSTED_LOCAL_CONTROLS.get(game_stats_id)
-    if local_control is not None and local_control.exists():
+    if manifest is None and local_control is not None and local_control.exists():
         if local_control.is_symlink() or not local_control.is_file():
             raise WorkerError("Trusted local control must be one regular file.")
         size = local_control.stat().st_size
@@ -306,6 +388,7 @@ def materialize_replay(
         expected_game_stats_id=game_stats_id,
         expected_sha256=replay_sha256,
         destination_dir=destination_dir,
+        **({"manifest": manifest} if manifest is not None else {}),
     )
     return artifact, byte_size, "server_archive"
 
@@ -318,6 +401,33 @@ def read_json(path: Path) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise WorkerError(f"Native evidence object is invalid: {path.name}")
     return value
+
+
+def record_runner_failure(
+    *, output: Path, game_stats_id: int, replay_sha256: str, runner_returncode: int,
+    runner_output: str, token: str, manifest: dict[str, Any] | None,
+) -> dict[str, Any]:
+    """Preserve prelaunch errors even when the runner never creates its receipt."""
+    tail = runner_output[-8000:]
+    if token:
+        tail = tail.replace(token, "[redacted bridge credential]")
+    payload = {
+        "kind": "aoe2war-native-replay-candidate", "schema": 1,
+        "status": "native_runner_failed_before_receipt", "candidateOnly": True,
+        "gameStatsId": game_stats_id, "replaySha256": replay_sha256,
+        "manifestSha256": manifest["manifestSha256"] if manifest else None,
+        "runnerReturnCode": runner_returncode, "runnerOutputTail": tail,
+        "loaded": False, "terminalOutcomeProven": False, "cleanupComplete": None,
+        "authority": {
+            "replayTruthPromoted": False, "productionResultsMutated": False,
+            "bettingMutated": False, "woloMutated": False, "settlementMutated": False,
+        },
+    }
+    failure_path = output.parent / (output.name + ".worker-failure.json")
+    with failure_path.open("xb") as handle:
+        handle.write((canonical_json(payload) + "\n").encode("utf-8"))
+    failure_path.chmod(0o400)
+    return {**payload, "failureReceiptPath": str(failure_path), "failureReceiptSha256": sha256_file(failure_path)}
 
 
 def result_payload(
@@ -456,6 +566,182 @@ def apply_trusted_control_validation(
     return payload, 0
 
 
+def independently_revalidate_control_evidence(
+    output: Path, manifest: dict[str, Any],
+) -> dict[str, Any]:
+    """Rehash the witness and recompute terminal bytes before control comparison."""
+    manifest = validate_native_manifest(manifest)
+    if output.is_symlink() or not output.is_dir():
+        raise WorkerError("Native evidence directory must be one real directory.")
+    root = output.resolve(strict=True)
+
+    def bound_file(path_value: str) -> Path:
+        path = Path(path_value)
+        if path.is_symlink() or path.resolve(strict=True).parent != root or not path.is_file():
+            raise WorkerError("Native evidence file escaped the immutable attempt directory.")
+        return path
+
+    for name in ("attempt.json", "plan.json", "receipt.json", "validation.json", "observation.json", "invocation.json"):
+        bound_file(str(output / name))
+    attempt = read_json(output / "attempt.json")
+    plan = read_json(output / "plan.json")
+    receipt = read_json(output / "receipt.json")
+    validation = read_json(output / "validation.json")
+    observation = read_json(output / "observation.json")
+    invocation = read_json(output / "invocation.json")
+    artifact = plan.get("artifact", {})
+    expected_slots = [player["slot"] for player in manifest["roster"]]
+    if (
+        artifact.get("sha256") != manifest["replaySha256"]
+        or artifact.get("byte_size") != manifest["archive"]["byteSize"]
+        or plan.get("expected_roster_slots") != expected_slots
+    ):
+        raise WorkerError("Native witness plan differs from the immutable manifest.")
+    artifact_path = bound_file(str(artifact.get("path", "")))
+    if artifact_path.name != manifest["archive"]["objectKey"]:
+        raise WorkerError("Native replay archive object identity differs from the manifest.")
+    runtime = plan.get("runtime", {})
+    if runtime.get("executable", {}).get("sha256") != EXPECTED_EXECUTABLE_SHA256 or not any(
+        row.get("sha256") == EXPECTED_DATA_SHA256 for row in runtime.get("data_files", [])
+    ):
+        raise WorkerError("Native witness runtime differs from the governed executable/data.")
+
+    # Reuse the existing independent byte/schema referee. It rehashes the replay,
+    # fixed engine runtime and every receipt evidence file; stored JSON flags are
+    # insufficient. Loading this exact sibling source does not execute playback.
+    witness_path = API_ROOT / "utils/replay_engine_witness.py"
+    spec = importlib.util.spec_from_file_location("aoe2war_native_witness_referee", witness_path)
+    if spec is None or spec.loader is None:
+        raise WorkerError("Native witness referee is unavailable.")
+    witness = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(witness)
+    recomputed = witness.validate_receipt(plan, receipt)
+    if any(validation.get(key) != recomputed.get(key) for key in (
+        "status", "plan_sha256", "receipt_sha256", "file_integrity_verified",
+        "observation_semantics_independently_verified", "automatic_promotion_allowed", "settlement_authority",
+    )):
+        raise WorkerError("Native receipt validation changed during independent revalidation.")
+    if not isinstance(attempt.get("artifacts"), list):
+        raise WorkerError("Native attempt has no immutable evidence inventory.")
+    evidence_names: set[str] = set()
+    for identity in attempt["artifacts"]:
+        path = bound_file(str(identity.get("path", "")))
+        if path.name in evidence_names or path.stat().st_size != identity.get("byte_size") or sha256_file(path) != identity.get("sha256"):
+            raise WorkerError("Native attempt evidence hash or size mismatch.")
+        evidence_names.add(path.name)
+    if not {"plan.json", "receipt.json", "validation.json", "observation.json", "invocation.json", "events.jsonl"}.issubset(evidence_names):
+        raise WorkerError("Native attempt evidence inventory is incomplete.")
+
+    requested_path = "Z:" + str(artifact_path).replace("/", "\\")
+    if invocation.get("replay_selection", {}).get("requested_path") != requested_path or invocation.get("steam_app_context") is not True:
+        raise WorkerError("Native invocation did not bind the exact Steam-context replay.")
+    performance_matches = 0
+    for identity in observation.get("native_performance_outputs", []):
+        path = bound_file(str(identity.get("path", "")))
+        if path.name not in evidence_names or sha256_file(path) != identity.get("sha256"):
+            raise WorkerError("Native load evidence hash mismatch.")
+        text = path.read_text(encoding="utf-8").replace("\r\n", "\n")
+        record = text[text.find(requested_path):] if text.count(requested_path) == 1 else ""
+        metrics = [
+            re.search(rf"{title}\n\tAverage: [0-9]+(?:\.[0-9]+)?ms\n\tLow: [0-9]+(?:\.[0-9]+)?ms\n\tHigh: [0-9]+(?:\.[0-9]+)?ms\n\tSpike: [0-9]+(?:\.[0-9]+)?ms", record)
+            for title in ("Update", "Render")
+        ]
+        metrics.append(re.search(r"FPS\n\tAverage: [0-9]+(?:\.[0-9]+)?fps\n\tLow: [0-9]+(?:\.[0-9]+)?fps\n\tHigh: [0-9]+(?:\.[0-9]+)?fps", record))
+        if text.count(requested_path) == 1 and text.lower().count(".aoe2record") == 1 and all(metrics):
+            performance_matches += 1
+    if performance_matches != 1:
+        raise WorkerError("Independent exact native replay load is not proven.")
+
+    terminal_partitions = []
+    native_before = observation.get("native_logs_before")
+    native_after = observation.get("native_logs_after")
+    if type(native_before) is not dict or type(native_after) is not dict:
+        raise WorkerError("Native terminal evidence lacks before/after log inventories.")
+    for row in observation.get("copied_native_logs", []):
+        delta = row.get("delta_copy")
+        source = row.get("source", {})
+        source_path = source.get("path", "")
+        if Path(source_path).parent.name.lower() != "ailog":
+            continue
+        if native_after.get(source_path) != source:
+            raise WorkerError("Native full log does not bind the after-snapshot identity.")
+        if source.get("byte_size") == 0 and row.get("copy") is None and delta is None:
+            continue
+        copied = row.get("copy")
+        if type(copied) is not dict or type(delta) is not dict or row.get("delta_reason") is not None:
+            raise WorkerError("Native terminal log does not prove an append-safe copy.")
+        full_path = bound_file(str(copied.get("path", "")))
+        full_bytes = full_path.read_bytes()
+        if (
+            full_path.name not in evidence_names
+            or len(full_bytes) != copied.get("byte_size")
+            or hashlib.sha256(full_bytes).hexdigest() != copied.get("sha256")
+            or copied.get("sha256") != source.get("sha256")
+            or copied.get("byte_size") != source.get("byte_size")
+        ):
+            raise WorkerError("Native full log copy differs from the after-snapshot bytes.")
+        prior = native_before.get(source_path)
+        prior_size = 0
+        if prior is not None:
+            if type(prior) is not dict or prior.get("path") != source_path or type(prior.get("byte_size")) is not int:
+                raise WorkerError("Native before-snapshot identity is invalid.")
+            prior_size = prior["byte_size"]
+            if prior_size < 0 or prior_size > len(full_bytes) or hashlib.sha256(full_bytes[:prior_size]).hexdigest() != prior.get("sha256"):
+                raise WorkerError("Native prior-prefix bytes do not match the before-snapshot hash/size.")
+        if type(row.get("delta_start")) is not int or row["delta_start"] != prior_size:
+            raise WorkerError("Native delta boundary differs from the independently derived prior prefix.")
+        path = bound_file(str(delta.get("path", "")))
+        if path.name not in evidence_names or sha256_file(path) != delta.get("sha256") or path.stat().st_size != delta.get("byte_size"):
+            raise WorkerError("Native terminal evidence hash mismatch.")
+        if path.read_bytes() != full_bytes[prior_size:]:
+            raise WorkerError("Native terminal delta is not the exact attempt-new full-log suffix.")
+        if not delta.get("byte_size"):
+            continue
+        text = path.read_text(encoding="utf-8").replace("\r\n", "\n")
+        if text.count("GAME OVER!") != 1:
+            continue
+        blocks = re.findall(r"GAME OVER!\n((?:  Player #[0-9]+ (?:Won|Lost)\.\n)+)", text)
+        if len(blocks) != 1:
+            continue
+        outcomes = [(int(slot), outcome) for slot, outcome in re.findall(r"  Player #([0-9]+) (Won|Lost)\.", blocks[0])]
+        slots = [slot for slot, _ in outcomes]
+        winners = sorted(slot for slot, outcome in outcomes if outcome == "Won")
+        losers = sorted(slot for slot, outcome in outcomes if outcome == "Lost")
+        if sorted(slots) == expected_slots and len(set(slots)) == len(slots) and winners and losers:
+            terminal_partitions.append((winners, losers))
+    result = receipt.get("observations", {}).get("result", {})
+    if len(terminal_partitions) != 1 or terminal_partitions[0] != (
+        sorted(result.get("winning_slots", [])), sorted(result.get("losing_slots", [])),
+    ):
+        raise WorkerError("Independent native GAME OVER partition is absent, ambiguous or changed.")
+    return validate_control_observations(manifest, attempt, receipt, validation, independently_verified=True)
+
+
+def apply_manifest_control_validation(
+    *, manifest: dict[str, Any], output: Path, payload: dict[str, Any], candidate_exit_code: int,
+) -> tuple[dict[str, Any], int]:
+    payload["manifestSha256"] = manifest["manifestSha256"]
+    payload["sourceSnapshotSha256"] = manifest["sourceSnapshotSha256"]
+    if payload.get("status") != "candidate_terminal_witness":
+        payload["trustedControlValidation"] = {"status": "not_run", "reason": "native terminal witness is not available"}
+        return payload, candidate_exit_code
+    try:
+        control = independently_revalidate_control_evidence(output, manifest)
+    except (OSError, ValueError, WorkerError) as exc:
+        payload["status"] = "trusted_control_failed"
+        payload["trustedControlValidation"] = {"status": "FAIL", "detail": str(exc)}
+        return payload, 7
+    control_path = output / "trusted-control-validation.json"
+    with control_path.open("xb") as handle:
+        handle.write((canonical_json(control) + "\n").encode("utf-8"))
+    control_path.chmod(0o400)
+    payload["status"] = "candidate_terminal_witness_control_pass"
+    payload["trustedControlValidation"] = control
+    payload["statsOnlyReviewEvidence"] = build_stats_only_review_evidence(manifest, control)
+    payload["evidenceSha256"]["trusted-control-validation.json"] = sha256_file(control_path)
+    return payload, 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--run-id", required=True)
@@ -465,28 +751,41 @@ def main() -> int:
     parser.add_argument("--native-performance-seconds", type=int, default=240)
     parser.add_argument("--timeout-seconds", type=int, default=300)
     parser.add_argument("--url", default=DEFAULT_URL)
+    parser.add_argument("--manifest-json")
     args = parser.parse_args()
+
+    with native_execution_lock():
+        return run_native_attempt(args)
+
+
+def run_native_attempt(args: argparse.Namespace) -> int:
+    manifest = load_manifest_json(args.manifest_json) if args.manifest_json is not None else None
 
     if not __import__("re").fullmatch(r"[A-Za-z0-9-]{1,100}", args.run_id):
         raise WorkerError("Invalid AoE2WAR OS run id.")
-    if args.game_stats_id not in TRUSTED_CONTROL_GAME_IDS:
+    if manifest is None and args.game_stats_id not in TRUSTED_CONTROL_GAME_IDS:
         raise WorkerError(
             "Native replay execution is still locked to trusted control GameStats #32388."
         )
     replay_sha256 = args.replay_sha256.strip().lower()
     if not SHA256_RE.fullmatch(replay_sha256):
         raise WorkerError("Invalid replay SHA-256.")
-    if replay_sha256 != TRUSTED_CONTROL_SHA256[args.game_stats_id]:
+    if manifest is None and replay_sha256 != TRUSTED_CONTROL_SHA256[args.game_stats_id]:
         raise WorkerError(
             "Replay SHA-256 does not match the trusted GameStats #32388 control."
         )
     slots = sorted(set(args.roster_slot))
     if len(slots) < 2 or len(slots) > 8 or any(slot < 1 or slot > 8 for slot in slots):
         raise WorkerError("Native replay worker requires 2-8 unique roster slots 1-8.")
-    if slots != TRUSTED_CONTROL_ROSTER[args.game_stats_id]:
+    if manifest is None and slots != TRUSTED_CONTROL_ROSTER[args.game_stats_id]:
         raise WorkerError(
             "Native replay roster does not match trusted GameStats #32388 slots 1,2,3,4."
         )
+    if manifest is not None and (
+        args.game_stats_id != manifest["gameStatsId"] or args.replay_sha256 != manifest["replaySha256"]
+        or args.roster_slot != [player["slot"] for player in manifest["roster"]]
+    ):
+        raise WorkerError("Worker command identity differs from the immutable manifest.")
     if not 1 <= args.native_performance_seconds <= 240:
         raise WorkerError("native-performance-seconds is outside the governed bound.")
     if not args.native_performance_seconds + 15 <= args.timeout_seconds <= 300:
@@ -494,8 +793,8 @@ def main() -> int:
 
     source_identity = require_runtime()
     token = load_token()
-    output = API_ROOT / "instance/native-replay-worker/attempts" / args.run_id
-    if output.exists():
+    output = worker_evidence_root() / args.run_id
+    if output.exists() or output.is_symlink() or (output.parent / (output.name + ".worker-failure.json")).exists():
         raise WorkerError(f"Native attempt directory already exists: {output}")
     output.parent.mkdir(parents=True, exist_ok=True)
 
@@ -507,6 +806,7 @@ def main() -> int:
             token=token,
             run_id=args.run_id,
             destination_dir=Path(temp_dir),
+            **({"manifest": manifest} if manifest is not None else {}),
         )
 
         command = [
@@ -556,6 +856,16 @@ def main() -> int:
             },
         )
 
+    if not all((output / name).is_file() for name in (
+        "attempt.json", "receipt.json", "validation.json", "observation.json",
+    )):
+        failure = record_runner_failure(
+            output=output, game_stats_id=args.game_stats_id, replay_sha256=replay_sha256,
+            runner_returncode=process.returncode, runner_output=process.stdout or "",
+            token=token, manifest=manifest,
+        )
+        print(json.dumps(failure, sort_keys=True))
+        return 2
     payload, exit_code = result_payload(
         game_stats_id=args.game_stats_id,
         replay_sha256=replay_sha256,
@@ -565,12 +875,22 @@ def main() -> int:
     payload["artifactByteSize"] = byte_size
     payload["artifactSource"] = artifact_source
     payload["sourceIdentity"] = source_identity
-    payload, exit_code = apply_trusted_control_validation(
-        game_stats_id=args.game_stats_id,
-        output=output,
-        payload=payload,
-        candidate_exit_code=exit_code,
-    )
+    if manifest is not None:
+        manifest_path = output / "native-manifest.json"
+        with manifest_path.open("xb") as handle:
+            handle.write((canonical_json(manifest) + "\n").encode("utf-8"))
+        manifest_path.chmod(0o400)
+        payload["evidenceSha256"]["native-manifest.json"] = sha256_file(manifest_path)
+        payload, exit_code = apply_manifest_control_validation(
+            manifest=manifest, output=output, payload=payload, candidate_exit_code=exit_code,
+        )
+    else:
+        payload, exit_code = apply_trusted_control_validation(
+            game_stats_id=args.game_stats_id,
+            output=output,
+            payload=payload,
+            candidate_exit_code=exit_code,
+        )
     print(json.dumps(payload, sort_keys=True))
     return exit_code
 
@@ -578,7 +898,7 @@ def main() -> int:
 if __name__ == "__main__":
     try:
         raise SystemExit(main())
-    except (OSError, WorkerError, subprocess.SubprocessError) as exc:
+    except (OSError, WorkerError, NativeReplayContractError, subprocess.SubprocessError) as exc:
         print(
             json.dumps(
                 {

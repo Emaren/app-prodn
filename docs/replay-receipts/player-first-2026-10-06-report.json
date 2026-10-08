@@ -1,0 +1,2486 @@
+{
+  "authority": {
+    "adjudicationsWritten": 0,
+    "bettingWrites": 0,
+    "claimWrites": 0,
+    "deploymentPerformed": false,
+    "parserRowsWritten": 0,
+    "productionWrites": 0,
+    "resultPromotions": 0,
+    "settlementWrites": 0,
+    "woloWrites": 0
+  },
+  "caseIndex": [
+    {
+      "blockers": [
+        "canonical_roster_slot_team_binding_incomplete",
+        "financial_exposure_requires_commissioner_review",
+        "stale_or_missing_current_parser",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 9159,
+      "logicalBattleIds": [
+        "platform:4cec6983-21f8-f843-995b-384f50d7285d"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "bd3fcc8cd5ee1b81d606fa4d0bdeedfaccd547cb62e3b8ce284e5e34938ebb95",
+      "sourceGameStatsIds": [
+        9153,
+        9159
+      ],
+      "sourceHashes": [
+        "bd3fcc8cd5ee1b81d606fa4d0bdeedfaccd547cb62e3b8ce284e5e34938ebb95"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "canonical_roster_slot_team_binding_incomplete",
+        "financial_exposure_requires_commissioner_review",
+        "stale_or_missing_current_parser",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 9235,
+      "logicalBattleIds": [
+        "platform:d42d5a5f-07ed-c64a-b7ad-bf46abfd20b5"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "b6687b8ce62b1bf107c29ed83d90f7fe9eab42b8ee77e0b2a06b441f350832cc",
+      "sourceGameStatsIds": [
+        9235
+      ],
+      "sourceHashes": [
+        "b6687b8ce62b1bf107c29ed83d90f7fe9eab42b8ee77e0b2a06b441f350832cc"
+      ],
+      "targetSteamIds": [
+        "76561198754754435"
+      ]
+    },
+    {
+      "blockers": [
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 21018,
+      "logicalBattleIds": [
+        "platform:6a4e75c7-0ffe-bc4d-ae9d-ff8717d0eda8"
+      ],
+      "nativeStructurallyEligible": true,
+      "primaryRoute": "native_replay_eligible",
+      "replaySha256": "6419acec4ac591bf78ef34f8e59f8ab389b1c8525f6bb82e26971042e12406db",
+      "sourceGameStatsIds": [
+        21018
+      ],
+      "sourceHashes": [
+        "6419acec4ac591bf78ef34f8e59f8ab389b1c8525f6bb82e26971042e12406db"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "canonical_roster_slot_team_binding_incomplete",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 21046,
+      "logicalBattleIds": [
+        "platform:6e51f54c-76e4-554d-94fc-12c1109c855b"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "parser_research_required",
+      "replaySha256": "3cf39d1165255c06d06a496b56970ff14e368e615f30830a14c89b5a57616438",
+      "sourceGameStatsIds": [
+        21046
+      ],
+      "sourceHashes": [
+        "3cf39d1165255c06d06a496b56970ff14e368e615f30830a14c89b5a57616438"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 23073,
+      "logicalBattleIds": [
+        "platform:108fa91c-725d-404f-9b18-76a874eb991e"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "d3c8b23fd22828203e23ec9847b307e4f209414c96824f35220d03b1ecd6ebec",
+      "sourceGameStatsIds": [
+        23056,
+        23073
+      ],
+      "sourceHashes": [
+        "d3c8b23fd22828203e23ec9847b307e4f209414c96824f35220d03b1ecd6ebec"
+      ],
+      "targetSteamIds": [
+        "76561199849204394"
+      ]
+    },
+    {
+      "blockers": [
+        "canonical_roster_slot_team_binding_incomplete",
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 23097,
+      "logicalBattleIds": [
+        "platform:bbbcdad8-6592-e54a-a511-c14a8cb1bbb9"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "992d8d8a4041245e8fbac88c599005a8369ea67cfdfdc6b502d6637e1d03dc06",
+      "sourceGameStatsIds": [
+        23085,
+        23097
+      ],
+      "sourceHashes": [
+        "992d8d8a4041245e8fbac88c599005a8369ea67cfdfdc6b502d6637e1d03dc06"
+      ],
+      "targetSteamIds": [
+        "76561199849204394"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 23124,
+      "logicalBattleIds": [
+        "platform:33ab39c2-f5c7-c444-870e-0edb06fbc499"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "d80e0b9f1e0d5a3b2a3032431dbbed332db4a0192eae02c41de6d8b358a3c52b",
+      "sourceGameStatsIds": [
+        23111,
+        23124
+      ],
+      "sourceHashes": [
+        "d80e0b9f1e0d5a3b2a3032431dbbed332db4a0192eae02c41de6d8b358a3c52b"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 23841,
+      "logicalBattleIds": [
+        "platform:50950e0d-8c86-014e-8a36-89d8f8787f1a"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "462de54699f17560bd2b698214747e183a1e5fd7e951caad8e7ea5ec36b58b75",
+      "sourceGameStatsIds": [
+        23817,
+        23841
+      ],
+      "sourceHashes": [
+        "462de54699f17560bd2b698214747e183a1e5fd7e951caad8e7ea5ec36b58b75"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 23922,
+      "logicalBattleIds": [
+        "platform:44fce6c5-bf4c-5745-8a02-315e64ece511"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "2c8e82c637fbfdd7b1bd15769ce5e4efbc8da30376453cc3b5f9b23d3c914495",
+      "sourceGameStatsIds": [
+        23922
+      ],
+      "sourceHashes": [
+        "2c8e82c637fbfdd7b1bd15769ce5e4efbc8da30376453cc3b5f9b23d3c914495"
+      ],
+      "targetSteamIds": [
+        "76561198754754435"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 24232,
+      "logicalBattleIds": [
+        "platform:3b4d7658-ccd8-3b45-a3cc-844a8c41d943"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "bb0e6826101ffbf980eac39dd405d759a941dbaf15ffa96de6a16e224e8a5e44",
+      "sourceGameStatsIds": [
+        24216,
+        24232
+      ],
+      "sourceHashes": [
+        "bb0e6826101ffbf980eac39dd405d759a941dbaf15ffa96de6a16e224e8a5e44"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 24276,
+      "logicalBattleIds": [
+        "platform:cec179f8-005d-8c42-8164-52a082aebec2"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "11f69d7979f495e59038ca77664aefe7500230d6af1459cddf490d03c89a7f32",
+      "sourceGameStatsIds": [
+        24258,
+        24276
+      ],
+      "sourceHashes": [
+        "11f69d7979f495e59038ca77664aefe7500230d6af1459cddf490d03c89a7f32"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "canonical_roster_slot_team_binding_incomplete",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 24306,
+      "logicalBattleIds": [
+        "platform:9f862c50-5990-8b4a-aa88-b3bb2b1a8d64"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "parser_research_required",
+      "replaySha256": "47d7e3f34a3e7a3841291b4c4e65b7fa7062d46b1691290f6a00a8a66157a793",
+      "sourceGameStatsIds": [
+        24306
+      ],
+      "sourceHashes": [
+        "47d7e3f34a3e7a3841291b4c4e65b7fa7062d46b1691290f6a00a8a66157a793"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 24654,
+      "logicalBattleIds": [
+        "platform:0bba4248-5ac0-3a4e-bd92-af8f370117bb"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "c88784fc4e4d212e885194c4463c19598d6fbd8e1e7258d1696ac108f3fcab74",
+      "sourceGameStatsIds": [
+        24631,
+        24654
+      ],
+      "sourceHashes": [
+        "c88784fc4e4d212e885194c4463c19598d6fbd8e1e7258d1696ac108f3fcab74"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 24693,
+      "logicalBattleIds": [
+        "platform:01eaf3b3-e827-ce41-9013-458bdd0d542e"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "e0b66bc9b3fd0d3ccd3593053d7110a32a93a979e7583fa6cc1e4a9d79486eed",
+      "sourceGameStatsIds": [
+        24663,
+        24693
+      ],
+      "sourceHashes": [
+        "e0b66bc9b3fd0d3ccd3593053d7110a32a93a979e7583fa6cc1e4a9d79486eed"
+      ],
+      "targetSteamIds": [
+        "76561198754754435"
+      ]
+    },
+    {
+      "blockers": [
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 24699,
+      "logicalBattleIds": [
+        "platform:26a76260-d5f7-9b4b-ad67-b44916776d20"
+      ],
+      "nativeStructurallyEligible": true,
+      "primaryRoute": "native_replay_eligible",
+      "replaySha256": "e6b76ab2651a39f17377fa8164c8448ff55984c9c2acdccadb49ccaf93bbc52e",
+      "sourceGameStatsIds": [
+        24699
+      ],
+      "sourceHashes": [
+        "e6b76ab2651a39f17377fa8164c8448ff55984c9c2acdccadb49ccaf93bbc52e"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 24954,
+      "logicalBattleIds": [
+        "platform:d0ab393c-48b4-b449-80a0-d381e8a131b9"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "7c9d0fc972ff2b2c34b8df726571fddf38af3a303266ad78763b95cbc4fb13ea",
+      "sourceGameStatsIds": [
+        24939,
+        24954
+      ],
+      "sourceHashes": [
+        "7c9d0fc972ff2b2c34b8df726571fddf38af3a303266ad78763b95cbc4fb13ea"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "disconnect_detected",
+        "unknown_result",
+        "workshop_roster_incomplete"
+      ],
+      "canonicalGameStatsId": 24972,
+      "logicalBattleIds": [
+        "platform:e42fc692-0880-0c42-b5da-a04b45957716"
+      ],
+      "nativeStructurallyEligible": true,
+      "primaryRoute": "native_replay_eligible",
+      "replaySha256": "971f80151432c9a91c2a65ac11566be2d0dc7bfb0563fa156e7b68bd4696a823",
+      "sourceGameStatsIds": [
+        24972
+      ],
+      "sourceHashes": [
+        "971f80151432c9a91c2a65ac11566be2d0dc7bfb0563fa156e7b68bd4696a823"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 24975,
+      "logicalBattleIds": [
+        "platform:17eadee4-4626-b84d-9dfa-39d42b6e2f13"
+      ],
+      "nativeStructurallyEligible": true,
+      "primaryRoute": "native_replay_eligible",
+      "replaySha256": "538cf387005461ae80ded0a7ad94db181b81224fc23ba31b8a54a69d0a8d3904",
+      "sourceGameStatsIds": [
+        24975
+      ],
+      "sourceHashes": [
+        "538cf387005461ae80ded0a7ad94db181b81224fc23ba31b8a54a69d0a8d3904"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 24982,
+      "logicalBattleIds": [
+        "platform:b3e0ab93-8b18-b44a-98c9-ab199f4a07e3"
+      ],
+      "nativeStructurallyEligible": true,
+      "primaryRoute": "native_replay_eligible",
+      "replaySha256": "abe43752dd1efb024f36154237bf9eb8540cefb9fbdf121dac47a64fc92cb5f0",
+      "sourceGameStatsIds": [
+        24982
+      ],
+      "sourceHashes": [
+        "abe43752dd1efb024f36154237bf9eb8540cefb9fbdf121dac47a64fc92cb5f0"
+      ],
+      "targetSteamIds": [
+        "76561199849204394"
+      ]
+    },
+    {
+      "blockers": [
+        "canonical_roster_slot_team_binding_incomplete",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 25006,
+      "logicalBattleIds": [
+        "platform:7c55b1a3-15f1-5f46-b9e5-c9fc27937e72"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "parser_research_required",
+      "replaySha256": "e4c16886b1cff7e1e95de9bb411eba1fdd391639b7cd57326b397c2b704efca3",
+      "sourceGameStatsIds": [
+        25006
+      ],
+      "sourceHashes": [
+        "e4c16886b1cff7e1e95de9bb411eba1fdd391639b7cd57326b397c2b704efca3"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 25324,
+      "logicalBattleIds": [
+        "platform:e4c6e4a4-ca43-de43-9985-df76928f0262"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "89bdfe12025b67bb72014e00d30fa255509ff61c8e6d942d0e21e8a4316504bc",
+      "sourceGameStatsIds": [
+        25323,
+        25324
+      ],
+      "sourceHashes": [
+        "89bdfe12025b67bb72014e00d30fa255509ff61c8e6d942d0e21e8a4316504bc"
+      ],
+      "targetSteamIds": [
+        "76561198754754435"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 25532,
+      "logicalBattleIds": [
+        "platform:d4d9f710-ce44-a846-8ae9-ae8880719e62"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "06a01fc8c5a1afd64b43647c58d63eaf6e04e91a8198e53cc160d08d3eaecaa0",
+      "sourceGameStatsIds": [
+        25519,
+        25532
+      ],
+      "sourceHashes": [
+        "06a01fc8c5a1afd64b43647c58d63eaf6e04e91a8198e53cc160d08d3eaecaa0"
+      ],
+      "targetSteamIds": [
+        "76561198754754435"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 25551,
+      "logicalBattleIds": [
+        "platform:13bc1d96-1f75-e14c-868c-13f055abeb58"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "309a835e4309af00d9de1c8ee22bdf3a101e5cf129230a72116e97e7c740f87f",
+      "sourceGameStatsIds": [
+        25533,
+        25551
+      ],
+      "sourceHashes": [
+        "309a835e4309af00d9de1c8ee22bdf3a101e5cf129230a72116e97e7c740f87f"
+      ],
+      "targetSteamIds": [
+        "76561198754754435"
+      ]
+    },
+    {
+      "blockers": [
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 25574,
+      "logicalBattleIds": [
+        "platform:6c64fd51-fdd7-8347-9c96-6af10e2eef18"
+      ],
+      "nativeStructurallyEligible": true,
+      "primaryRoute": "native_replay_eligible",
+      "replaySha256": "fcad2cedea0366c96a09db4f4d247c7dc4f58ea6bf225560f00989e07d141ac5",
+      "sourceGameStatsIds": [
+        25574
+      ],
+      "sourceHashes": [
+        "fcad2cedea0366c96a09db4f4d247c7dc4f58ea6bf225560f00989e07d141ac5"
+      ],
+      "targetSteamIds": [
+        "76561198754754435"
+      ]
+    },
+    {
+      "blockers": [
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 25577,
+      "logicalBattleIds": [
+        "platform:65a36611-75a5-7742-9eec-bbd42b6dd2a3"
+      ],
+      "nativeStructurallyEligible": true,
+      "primaryRoute": "native_replay_eligible",
+      "replaySha256": "d10a4e9e9c1e7d3da8a52bb542f296bf858b1a4afd15f04c723a6d81e2599a66",
+      "sourceGameStatsIds": [
+        25577
+      ],
+      "sourceHashes": [
+        "d10a4e9e9c1e7d3da8a52bb542f296bf858b1a4afd15f04c723a6d81e2599a66"
+      ],
+      "targetSteamIds": [
+        "76561198754754435"
+      ]
+    },
+    {
+      "blockers": [
+        "canonical_roster_slot_team_binding_incomplete",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 25578,
+      "logicalBattleIds": [
+        "platform:3c2f61b8-2e28-ed47-961a-98ee07886eb3"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "parser_research_required",
+      "replaySha256": "67b77acb73eae0cdea793fba30d53bdabfbdc8aedc3aae3612aeaf1269867c68",
+      "sourceGameStatsIds": [
+        25578
+      ],
+      "sourceHashes": [
+        "67b77acb73eae0cdea793fba30d53bdabfbdc8aedc3aae3612aeaf1269867c68"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 25583,
+      "logicalBattleIds": [
+        "platform:0129a56f-b68b-de43-ab1a-93bc60494dee"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "8573c30b06fcc3b9dda26446127e7247b72441c985134de0b850156fa21f3f10",
+      "sourceGameStatsIds": [
+        25525,
+        25583
+      ],
+      "sourceHashes": [
+        "8573c30b06fcc3b9dda26446127e7247b72441c985134de0b850156fa21f3f10"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 25590,
+      "logicalBattleIds": [
+        "platform:023ae091-36e1-e645-889d-a423a83ff0a7"
+      ],
+      "nativeStructurallyEligible": true,
+      "primaryRoute": "native_replay_eligible",
+      "replaySha256": "06e3d445571e32419f910482b93adce93024c26968eec6cc3060c9999580a09e",
+      "sourceGameStatsIds": [
+        25590
+      ],
+      "sourceHashes": [
+        "06e3d445571e32419f910482b93adce93024c26968eec6cc3060c9999580a09e"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 25601,
+      "logicalBattleIds": [
+        "platform:b68818cc-7884-8845-8e2d-e5e8fd0cc339"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "dc2867ab0e092d75c4c64c063135ffb19000dabf22af974c9067fca3d9a40f6a",
+      "sourceGameStatsIds": [
+        25524,
+        25601
+      ],
+      "sourceHashes": [
+        "dc2867ab0e092d75c4c64c063135ffb19000dabf22af974c9067fca3d9a40f6a"
+      ],
+      "targetSteamIds": [
+        "76561198754754435"
+      ]
+    },
+    {
+      "blockers": [
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 25620,
+      "logicalBattleIds": [
+        "platform:8ba25217-1ed0-b94c-bc11-e0edb6be32a1"
+      ],
+      "nativeStructurallyEligible": true,
+      "primaryRoute": "native_replay_eligible",
+      "replaySha256": "416b8ce86aedea3869dacbd83ab6953848532f33c7b19a6bd315521d832b6814",
+      "sourceGameStatsIds": [
+        25608,
+        25620
+      ],
+      "sourceHashes": [
+        "416b8ce86aedea3869dacbd83ab6953848532f33c7b19a6bd315521d832b6814"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 25627,
+      "logicalBattleIds": [
+        "platform:4db7724e-7ee1-654a-b229-417d24701acb"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "7dcf5f63baad58ec47f6696862531a22514139fd0abedecf65bfa7f5212c825c",
+      "sourceGameStatsIds": [
+        25621,
+        25627
+      ],
+      "sourceHashes": [
+        "7dcf5f63baad58ec47f6696862531a22514139fd0abedecf65bfa7f5212c825c"
+      ],
+      "targetSteamIds": [
+        "76561199849204394"
+      ]
+    },
+    {
+      "blockers": [
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 25634,
+      "logicalBattleIds": [
+        "platform:677b8fcf-6ef9-894e-bff4-e9f4eea150ee"
+      ],
+      "nativeStructurallyEligible": true,
+      "primaryRoute": "native_replay_eligible",
+      "replaySha256": "032e3937d3b51a524ec07b17b8523fe84a77d034f14658588b08261ee6fe405f",
+      "sourceGameStatsIds": [
+        25613,
+        25634
+      ],
+      "sourceHashes": [
+        "032e3937d3b51a524ec07b17b8523fe84a77d034f14658588b08261ee6fe405f"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 25671,
+      "logicalBattleIds": [
+        "platform:7ab94f93-776e-cb4c-9fd3-d6a9173fcf69"
+      ],
+      "nativeStructurallyEligible": true,
+      "primaryRoute": "native_replay_eligible",
+      "replaySha256": "6f62aa3d6a3daf905f35642ed4d534f0bb8bbdacb855d0cf31d7d1ca6686f33f",
+      "sourceGameStatsIds": [
+        25671
+      ],
+      "sourceHashes": [
+        "6f62aa3d6a3daf905f35642ed4d534f0bb8bbdacb855d0cf31d7d1ca6686f33f"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 25683,
+      "logicalBattleIds": [
+        "platform:54aef3e4-8589-0a4e-a10c-fa25572e58bd"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "887581127fe0b1571a3befc7d448fab3b43ff86e1dded619b8fbf6eb91b5d5b3",
+      "sourceGameStatsIds": [
+        25642,
+        25683
+      ],
+      "sourceHashes": [
+        "887581127fe0b1571a3befc7d448fab3b43ff86e1dded619b8fbf6eb91b5d5b3"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 25693,
+      "logicalBattleIds": [
+        "platform:fc4da8f6-7f2d-6442-afca-b30ebf4f5631"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "613238f1e19fe332ffe094bdbaf306eb35796042b476b3722b0c23e02c65a3cb",
+      "sourceGameStatsIds": [
+        25609,
+        25693
+      ],
+      "sourceHashes": [
+        "613238f1e19fe332ffe094bdbaf306eb35796042b476b3722b0c23e02c65a3cb"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 25717,
+      "logicalBattleIds": [
+        "platform:f80cd1ba-644e-fc4d-9961-b79d8bf90141"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "0c4abdb44f7002e96163f43919e9de59d3e84568b41040d8aaeb7d652ad9bb58",
+      "sourceGameStatsIds": [
+        25705,
+        25717
+      ],
+      "sourceHashes": [
+        "0c4abdb44f7002e96163f43919e9de59d3e84568b41040d8aaeb7d652ad9bb58"
+      ],
+      "targetSteamIds": [
+        "76561199849204394"
+      ]
+    },
+    {
+      "blockers": [
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 25755,
+      "logicalBattleIds": [
+        "platform:36033ed7-fa75-384e-abb0-467b604522d6"
+      ],
+      "nativeStructurallyEligible": true,
+      "primaryRoute": "native_replay_eligible",
+      "replaySha256": "dc040ff9462cb2bc152abfad82d2ea000cde5bef8a7632d6f22b34d35316901d",
+      "sourceGameStatsIds": [
+        25755
+      ],
+      "sourceHashes": [
+        "dc040ff9462cb2bc152abfad82d2ea000cde5bef8a7632d6f22b34d35316901d"
+      ],
+      "targetSteamIds": [
+        "76561198754754435"
+      ]
+    },
+    {
+      "blockers": [
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 25782,
+      "logicalBattleIds": [
+        "platform:d710e383-ec04-4e45-a531-4f0e4e9b0b5d"
+      ],
+      "nativeStructurallyEligible": true,
+      "primaryRoute": "native_replay_eligible",
+      "replaySha256": "3591e140b5f12f6ba06e4341a7adb0b16f1b8d02ea3d7042f6748be8d6397dda",
+      "sourceGameStatsIds": [
+        25782
+      ],
+      "sourceHashes": [
+        "3591e140b5f12f6ba06e4341a7adb0b16f1b8d02ea3d7042f6748be8d6397dda"
+      ],
+      "targetSteamIds": [
+        "76561199849204394"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 25872,
+      "logicalBattleIds": [
+        "platform:97e92ce0-ce1b-2c4a-af15-59385e0f85ad"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "e124c688b9634008602411c9b92c8ad6835f8eb104666855f94d3fa0b6d2a1a9",
+      "sourceGameStatsIds": [
+        25853,
+        25872
+      ],
+      "sourceHashes": [
+        "e124c688b9634008602411c9b92c8ad6835f8eb104666855f94d3fa0b6d2a1a9"
+      ],
+      "targetSteamIds": [
+        "76561199849204394"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 25882,
+      "logicalBattleIds": [
+        "platform:2d9c20db-3715-0b41-9f6b-d24de8ae735f"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "943a1bf63266c368b449a15fba479693f585e59af3a709edfbb33f2a4322c4eb",
+      "sourceGameStatsIds": [
+        25840,
+        25882
+      ],
+      "sourceHashes": [
+        "943a1bf63266c368b449a15fba479693f585e59af3a709edfbb33f2a4322c4eb"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "unknown_result",
+        "workshop_roster_incomplete"
+      ],
+      "canonicalGameStatsId": 25892,
+      "logicalBattleIds": [
+        "platform:2fde8b5b-1941-2c47-aa33-699236502f8c"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "roster_recovery_eligible",
+      "replaySha256": "fb273754e8d31c458b6696508a2562edb90ab961072c34f7b3951a34745491d4",
+      "sourceGameStatsIds": [
+        25854,
+        25892
+      ],
+      "sourceHashes": [
+        "fb273754e8d31c458b6696508a2562edb90ab961072c34f7b3951a34745491d4"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 25907,
+      "logicalBattleIds": [
+        "platform:5e710637-ecc6-6f40-b014-c9ab46c6c86f"
+      ],
+      "nativeStructurallyEligible": true,
+      "primaryRoute": "native_replay_eligible",
+      "replaySha256": "60440a17490b05a0f9ccd690eaec5f83620e32fa1a3716fe98682bf740d562c9",
+      "sourceGameStatsIds": [
+        25907
+      ],
+      "sourceHashes": [
+        "60440a17490b05a0f9ccd690eaec5f83620e32fa1a3716fe98682bf740d562c9"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 25965,
+      "logicalBattleIds": [
+        "platform:09d427d3-c985-c344-9505-65513aeb9bb9"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "3a2b252ce8b3180ba37e25a33a9cd7bea9549fe20bb94c8692148078a2eda885",
+      "sourceGameStatsIds": [
+        25951,
+        25965
+      ],
+      "sourceHashes": [
+        "3a2b252ce8b3180ba37e25a33a9cd7bea9549fe20bb94c8692148078a2eda885"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 25974,
+      "logicalBattleIds": [
+        "platform:7ec5fa4c-7f6f-4d48-afcf-f88b7cd9caa9"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "8f6f05495d5d6b3222425c3d468f50025f460dd51b7a7f8e2781653a3831295d",
+      "sourceGameStatsIds": [
+        25958,
+        25974
+      ],
+      "sourceHashes": [
+        "8f6f05495d5d6b3222425c3d468f50025f460dd51b7a7f8e2781653a3831295d"
+      ],
+      "targetSteamIds": [
+        "76561198754754435"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "workshop_roster_incomplete"
+      ],
+      "canonicalGameStatsId": 25985,
+      "logicalBattleIds": [
+        "platform:e17c5e79-74d8-9542-97fe-06330b6d9706"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "451ac8b4712a7a0d05daabb42dfd946014084698ef04781d4822d5e8c1681320",
+      "sourceGameStatsIds": [
+        25954,
+        25985
+      ],
+      "sourceHashes": [
+        "451ac8b4712a7a0d05daabb42dfd946014084698ef04781d4822d5e8c1681320"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 26003,
+      "logicalBattleIds": [
+        "platform:246ddfa2-3409-bb43-ab89-3836799bb3a2"
+      ],
+      "nativeStructurallyEligible": true,
+      "primaryRoute": "native_replay_eligible",
+      "replaySha256": "122fef8ea8439bb8191366ba9e69e437f9ef2b2a56f2c022578ca4199a5ab73b",
+      "sourceGameStatsIds": [
+        26003
+      ],
+      "sourceHashes": [
+        "122fef8ea8439bb8191366ba9e69e437f9ef2b2a56f2c022578ca4199a5ab73b"
+      ],
+      "targetSteamIds": [
+        "76561198754754435"
+      ]
+    },
+    {
+      "blockers": [
+        "canonical_roster_slot_team_binding_incomplete",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 26028,
+      "logicalBattleIds": [
+        "platform:4dd4105a-06b0-f149-a8b8-5024498e241c"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "parser_research_required",
+      "replaySha256": "fcdb0845164b3eab505b888ab68d104e2cdbbf0ba16dff1d18a5ae935a1509af",
+      "sourceGameStatsIds": [
+        26028
+      ],
+      "sourceHashes": [
+        "fcdb0845164b3eab505b888ab68d104e2cdbbf0ba16dff1d18a5ae935a1509af"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 26044,
+      "logicalBattleIds": [
+        "platform:8fed8321-5022-5c43-bd1f-0fefa898482b"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "d839dd41f0270f1cd8b4a75b16f88ffb505ca4a8e7a306a4c1a15fc721a7ff74",
+      "sourceGameStatsIds": [
+        25997,
+        26044
+      ],
+      "sourceHashes": [
+        "d839dd41f0270f1cd8b4a75b16f88ffb505ca4a8e7a306a4c1a15fc721a7ff74"
+      ],
+      "targetSteamIds": [
+        "76561198754754435"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 27235,
+      "logicalBattleIds": [
+        "platform:5221413c-aca2-e74c-95bd-b7aa6972acf1"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "9508a785d113226ac8a8a7ae9bd9ddfb402ede9c7c9a34def2c39198bb18ede9",
+      "sourceGameStatsIds": [
+        27209,
+        27235
+      ],
+      "sourceHashes": [
+        "9508a785d113226ac8a8a7ae9bd9ddfb402ede9c7c9a34def2c39198bb18ede9"
+      ],
+      "targetSteamIds": [
+        "76561199849204394"
+      ]
+    },
+    {
+      "blockers": [
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 27239,
+      "logicalBattleIds": [
+        "platform:39908e19-6c4b-4b44-82ea-07d83ab2ee32"
+      ],
+      "nativeStructurallyEligible": true,
+      "primaryRoute": "native_replay_eligible",
+      "replaySha256": "a7ac5f71734cf58d239e474a022f95649447d2da97e525ae2733c1d95bb59312",
+      "sourceGameStatsIds": [
+        27203,
+        27239
+      ],
+      "sourceHashes": [
+        "a7ac5f71734cf58d239e474a022f95649447d2da97e525ae2733c1d95bb59312"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 27252,
+      "logicalBattleIds": [
+        "platform:3dae24fc-9327-7f42-add2-e490fb81287f"
+      ],
+      "nativeStructurallyEligible": true,
+      "primaryRoute": "native_replay_eligible",
+      "replaySha256": "a51fddd9316ff5beda523171df6ef1ef61a95250925d6b3aa531209451c6280c",
+      "sourceGameStatsIds": [
+        27252
+      ],
+      "sourceHashes": [
+        "a51fddd9316ff5beda523171df6ef1ef61a95250925d6b3aa531209451c6280c"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "unknown_result",
+        "workshop_roster_incomplete"
+      ],
+      "canonicalGameStatsId": 27269,
+      "logicalBattleIds": [
+        "platform:3125e6e2-ec9d-014e-8a22-e5410d7caf49"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "roster_recovery_eligible",
+      "replaySha256": "ecf9d1e8302493f8aab1114873c6e4114128a9bdf592f89b903c891e4157afc7",
+      "sourceGameStatsIds": [
+        27269
+      ],
+      "sourceHashes": [
+        "ecf9d1e8302493f8aab1114873c6e4114128a9bdf592f89b903c891e4157afc7"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "canonical_roster_slot_team_binding_incomplete",
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 28453,
+      "logicalBattleIds": [
+        "platform:fa26b4cb-8dfc-d84a-b16b-28362d35a50d"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "6d7e2a41bb36fcfc036703bd58828aa7214b4a4cf6d62bb62ab5d5ac7a4bc2a1",
+      "sourceGameStatsIds": [
+        28440,
+        28453
+      ],
+      "sourceHashes": [
+        "6d7e2a41bb36fcfc036703bd58828aa7214b4a4cf6d62bb62ab5d5ac7a4bc2a1"
+      ],
+      "targetSteamIds": [
+        "76561199849204394"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 28510,
+      "logicalBattleIds": [
+        "platform:d67d396a-6cf8-ad49-9569-34a7835f485a"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "7dff48bb97413fc05384fa66653d88ed9a6de4330080b48066cc2a117c92f896",
+      "sourceGameStatsIds": [
+        28438,
+        28510
+      ],
+      "sourceHashes": [
+        "7dff48bb97413fc05384fa66653d88ed9a6de4330080b48066cc2a117c92f896"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "canonical_roster_slot_team_binding_incomplete",
+        "projection:missing_or_conflicting_player_name:name:newhand",
+        "projection:missing_or_conflicting_player_number:name:newhand",
+        "projection:missing_or_conflicting_steam_id:name:newhand",
+        "projection:non_steam_player_key:name:newhand",
+        "projection:player_number_sequence:1,3,4,5,6,7,8",
+        "projection:projected_player_count:7",
+        "workshop_roster_incomplete"
+      ],
+      "canonicalGameStatsId": 29063,
+      "logicalBattleIds": [
+        "platform:227de71d-1a57-4149-890b-707a47fd161c"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "parser_research_required",
+      "replaySha256": "eee264c28d4a6cccc487580c0721d38c6661151e564b40adff144ad75a73b437",
+      "sourceGameStatsIds": [
+        29018,
+        29063
+      ],
+      "sourceHashes": [
+        "eee264c28d4a6cccc487580c0721d38c6661151e564b40adff144ad75a73b437"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 29155,
+      "logicalBattleIds": [
+        "platform:688e4425-7c14-3a4d-b061-18e7ed08d674"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "24d100ee02e32eda617f05a30844e363f68084152b98610fe5d9b97f7b0a3ed7",
+      "sourceGameStatsIds": [
+        29134,
+        29155
+      ],
+      "sourceHashes": [
+        "24d100ee02e32eda617f05a30844e363f68084152b98610fe5d9b97f7b0a3ed7"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 29434,
+      "logicalBattleIds": [
+        "platform:8cc8a86b-820c-ce40-8657-92f1ecb0a879"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "cfe8ff1eaf954c157502eef76f7da9a11c5a918a752cf77e92e387978c73c580",
+      "sourceGameStatsIds": [
+        29424,
+        29434
+      ],
+      "sourceHashes": [
+        "cfe8ff1eaf954c157502eef76f7da9a11c5a918a752cf77e92e387978c73c580"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 29440,
+      "logicalBattleIds": [
+        "platform:de5a0851-a404-bf4b-9bb4-789184940f82"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "6db087011179e6cc3fe1681e3d7c814c84ef2270ded5c579667b4aba10344732",
+      "sourceGameStatsIds": [
+        29433,
+        29440
+      ],
+      "sourceHashes": [
+        "6db087011179e6cc3fe1681e3d7c814c84ef2270ded5c579667b4aba10344732"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 29949,
+      "logicalBattleIds": [
+        "platform:b8323236-056c-6a49-b284-c14562ce27db"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "f66c9c5d5ed66d6c7423636b85756f560109d50a20ab658e57eb06e5baf18856",
+      "sourceGameStatsIds": [
+        29949
+      ],
+      "sourceHashes": [
+        "f66c9c5d5ed66d6c7423636b85756f560109d50a20ab658e57eb06e5baf18856"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 30062,
+      "logicalBattleIds": [
+        "platform:f87df286-9e45-2345-ae16-7a519418dd76"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "208bd773b83c13bbca38d1b9d33c6e448b68d5310821931dd764a8dd028e0292",
+      "sourceGameStatsIds": [
+        30040,
+        30062
+      ],
+      "sourceHashes": [
+        "208bd773b83c13bbca38d1b9d33c6e448b68d5310821931dd764a8dd028e0292"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 30071,
+      "logicalBattleIds": [
+        "platform:e8cbf0d0-351d-ac4a-ad35-90075ba21491"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "b0e465bf0401006305526222d953702e48b82bece54b0a44499757e8448dcfe8",
+      "sourceGameStatsIds": [
+        30048,
+        30071
+      ],
+      "sourceHashes": [
+        "b0e465bf0401006305526222d953702e48b82bece54b0a44499757e8448dcfe8"
+      ],
+      "targetSteamIds": [
+        "76561199849204394"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 30078,
+      "logicalBattleIds": [
+        "platform:7d7324c7-6942-6747-9ac9-3027140b7410"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "1778e0ba246be18a22850e25a1ad5ccabcc14fc72306038704f0a1e59f85189e",
+      "sourceGameStatsIds": [
+        30056,
+        30078
+      ],
+      "sourceHashes": [
+        "1778e0ba246be18a22850e25a1ad5ccabcc14fc72306038704f0a1e59f85189e"
+      ],
+      "targetSteamIds": [
+        "76561199849204394"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 30111,
+      "logicalBattleIds": [
+        "platform:61e9ae30-c559-4243-9acf-6acdc55427fc"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "7e6d3eb226ab92276ad4c48a0f594697049dff4e07bf227105ed3cbc653cc9e5",
+      "sourceGameStatsIds": [
+        30041,
+        30111
+      ],
+      "sourceHashes": [
+        "7e6d3eb226ab92276ad4c48a0f594697049dff4e07bf227105ed3cbc653cc9e5"
+      ],
+      "targetSteamIds": [
+        "76561199849204394"
+      ]
+    },
+    {
+      "blockers": [
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 30112,
+      "logicalBattleIds": [
+        "platform:8c4dd4e9-8414-794c-a44d-545f8ea8dbc0"
+      ],
+      "nativeStructurallyEligible": true,
+      "primaryRoute": "native_replay_eligible",
+      "replaySha256": "6c48cda7fb7776df3b6ef3fbf26a37ba3b11388930da0de31a027ee10c75a95c",
+      "sourceGameStatsIds": [
+        30112
+      ],
+      "sourceHashes": [
+        "6c48cda7fb7776df3b6ef3fbf26a37ba3b11388930da0de31a027ee10c75a95c"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 30125,
+      "logicalBattleIds": [
+        "platform:2f2936eb-8434-c643-b6e4-4894178ddff7"
+      ],
+      "nativeStructurallyEligible": true,
+      "primaryRoute": "native_replay_eligible",
+      "replaySha256": "4d4cec4a5a5a24e223ed5e625ee938a8be1048877fe96c70186d58ff6cd34738",
+      "sourceGameStatsIds": [
+        30125
+      ],
+      "sourceHashes": [
+        "4d4cec4a5a5a24e223ed5e625ee938a8be1048877fe96c70186d58ff6cd34738"
+      ],
+      "targetSteamIds": [
+        "76561198754754435"
+      ]
+    },
+    {
+      "blockers": [
+        "canonical_roster_slot_team_binding_incomplete",
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 31588,
+      "logicalBattleIds": [
+        "platform:dce3ff17-be05-9146-a485-787d48b15a5c"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "4d4f87af5f6408364f1be50fb83a8986b8138a6db2340c244430e8972a49ae9f",
+      "sourceGameStatsIds": [
+        31588
+      ],
+      "sourceHashes": [
+        "4d4f87af5f6408364f1be50fb83a8986b8138a6db2340c244430e8972a49ae9f"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 32354,
+      "logicalBattleIds": [
+        "platform:c547b246-40fe-6d42-adf2-5e3134c44e0e"
+      ],
+      "nativeStructurallyEligible": true,
+      "primaryRoute": "native_replay_eligible",
+      "replaySha256": "e4e81e82caf99c9e4f9b3ff3dd14a0dda0e5656be4833959aa4fb83a206fa5a8",
+      "sourceGameStatsIds": [
+        32354
+      ],
+      "sourceHashes": [
+        "e4e81e82caf99c9e4f9b3ff3dd14a0dda0e5656be4833959aa4fb83a206fa5a8"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 32379,
+      "logicalBattleIds": [
+        "platform:e13bf64f-c36b-704b-a18d-8bb322040c8d"
+      ],
+      "nativeStructurallyEligible": true,
+      "primaryRoute": "native_replay_eligible",
+      "replaySha256": "0c8cb8ffc4316fcc40fb423b6a583af06091ad20d2abf269799cf0476dc27c37",
+      "sourceGameStatsIds": [
+        32379
+      ],
+      "sourceHashes": [
+        "0c8cb8ffc4316fcc40fb423b6a583af06091ad20d2abf269799cf0476dc27c37"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 32390,
+      "logicalBattleIds": [
+        "platform:9cf5f49f-384d-4642-8035-127c217ac66d"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "0afd66fcbeedc17ea35fa7580093e0baf10b8098df1ca08fbcab170f8ba5efab",
+      "sourceGameStatsIds": [
+        32390
+      ],
+      "sourceHashes": [
+        "0afd66fcbeedc17ea35fa7580093e0baf10b8098df1ca08fbcab170f8ba5efab"
+      ],
+      "targetSteamIds": [
+        "76561198754754435"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 33373,
+      "logicalBattleIds": [
+        "platform:c91ff89b-e12c-dd41-9f98-b281b764767d"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "33a470cd9426c67a0973672689e8a4d6af0424e088a8e2e4170db23efebda9df",
+      "sourceGameStatsIds": [
+        33355,
+        33373
+      ],
+      "sourceHashes": [
+        "33a470cd9426c67a0973672689e8a4d6af0424e088a8e2e4170db23efebda9df"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "canonical_roster_slot_team_binding_incomplete",
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 33376,
+      "logicalBattleIds": [
+        "platform:d82c832b-f594-2e4d-be2f-847b2c00bbc8"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "36da92cedb809f10799841507501193de7edbaf210592f9ea795ee767adc8979",
+      "sourceGameStatsIds": [
+        33364,
+        33376
+      ],
+      "sourceHashes": [
+        "36da92cedb809f10799841507501193de7edbaf210592f9ea795ee767adc8979"
+      ],
+      "targetSteamIds": [
+        "76561198754754435"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 33386,
+      "logicalBattleIds": [
+        "platform:f66e1131-aeaa-c24e-b0a2-43258703545e"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "8a00e9929dd0b97c8412ece162303193c3bfb0c9eb27cee4a40c69c6bef40814",
+      "sourceGameStatsIds": [
+        33357,
+        33386
+      ],
+      "sourceHashes": [
+        "8a00e9929dd0b97c8412ece162303193c3bfb0c9eb27cee4a40c69c6bef40814"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "canonical_roster_slot_team_binding_incomplete",
+        "disconnect_detected",
+        "projection:invalid_team_sizes:",
+        "projection:team_count:0",
+        "projection:teams_resolution_status:conflicting",
+        "projection:unsupported_format:unknown",
+        "projection:unsupported_provenance:unresolved",
+        "unknown_result",
+        "workshop_roster_incomplete"
+      ],
+      "canonicalGameStatsId": 35629,
+      "logicalBattleIds": [
+        "platform:5781a531-e20e-0946-898f-7f005f31be27"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "parser_research_required",
+      "replaySha256": "4dd92a85d65f24c36d42ba9b95879ecff72a93aaa82e615806a0a3eb530b877d",
+      "sourceGameStatsIds": [
+        35610,
+        35629
+      ],
+      "sourceHashes": [
+        "4dd92a85d65f24c36d42ba9b95879ecff72a93aaa82e615806a0a3eb530b877d"
+      ],
+      "targetSteamIds": [
+        "76561199849204394"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 35635,
+      "logicalBattleIds": [
+        "platform:e8f87637-090a-d849-8e4d-9154f1e08b08"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "2581a310544bab1353265eaacaacd150393588cd434155e39e565a717e7df4ff",
+      "sourceGameStatsIds": [
+        35612,
+        35635
+      ],
+      "sourceHashes": [
+        "2581a310544bab1353265eaacaacd150393588cd434155e39e565a717e7df4ff"
+      ],
+      "targetSteamIds": [
+        "76561198754754435"
+      ]
+    },
+    {
+      "blockers": [
+        "canonical_roster_slot_team_binding_incomplete",
+        "disconnect_detected",
+        "projection:invalid_team_sizes:",
+        "projection:team_count:0",
+        "projection:teams_resolution_status:conflicting",
+        "projection:unsupported_format:unknown",
+        "projection:unsupported_provenance:unresolved",
+        "unknown_result",
+        "workshop_roster_incomplete"
+      ],
+      "canonicalGameStatsId": 35636,
+      "logicalBattleIds": [
+        "platform:6cc83ad4-90af-c642-b090-079fcc07b620"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "parser_research_required",
+      "replaySha256": "9adaba4a3535fd9410346f991d55d2d45519ab5cb7b6b0a4e8aeecde29af354a",
+      "sourceGameStatsIds": [
+        35623,
+        35636
+      ],
+      "sourceHashes": [
+        "9adaba4a3535fd9410346f991d55d2d45519ab5cb7b6b0a4e8aeecde29af354a"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "canonical_roster_slot_team_binding_incomplete",
+        "disconnect_detected",
+        "projection:invalid_team_sizes:",
+        "projection:team_count:0",
+        "projection:teams_resolution_status:conflicting",
+        "projection:unsupported_format:unknown",
+        "projection:unsupported_provenance:unresolved",
+        "unknown_result",
+        "workshop_roster_incomplete"
+      ],
+      "canonicalGameStatsId": 35637,
+      "logicalBattleIds": [
+        "platform:79a65f80-3cb2-0140-b543-83a3df8eca45"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "parser_research_required",
+      "replaySha256": "cd7f5dc222f5247b13b8c0d96f949689fdca7105f77f912ab574f6aea6ce650c",
+      "sourceGameStatsIds": [
+        35611,
+        35637
+      ],
+      "sourceHashes": [
+        "cd7f5dc222f5247b13b8c0d96f949689fdca7105f77f912ab574f6aea6ce650c"
+      ],
+      "targetSteamIds": [
+        "76561199849204394"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 35649,
+      "logicalBattleIds": [
+        "platform:594b4202-f10e-674d-bc76-d0916e24c192"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "75982d6bacb5bc5e72a3cc541e30e9097108c290120ad2875f821e13fb51d15c",
+      "sourceGameStatsIds": [
+        35622,
+        35649
+      ],
+      "sourceHashes": [
+        "75982d6bacb5bc5e72a3cc541e30e9097108c290120ad2875f821e13fb51d15c"
+      ],
+      "targetSteamIds": [
+        "76561199849204394"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 40899,
+      "logicalBattleIds": [
+        "platform:4788b07e-715b-6d43-830c-bd78cde59cca"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "69d5149dd6ceee0f3bdbc14a4d80236c5d7fcc59b66ef2ed6b50c5f6d1f61829",
+      "sourceGameStatsIds": [
+        40899
+      ],
+      "sourceHashes": [
+        "69d5149dd6ceee0f3bdbc14a4d80236c5d7fcc59b66ef2ed6b50c5f6d1f61829"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "canonical_roster_slot_team_binding_incomplete",
+        "disconnect_detected",
+        "financial_exposure_requires_commissioner_review",
+        "linked_markets:2",
+        "projection:missing_or_conflicting_player_name:name:promisory [ai 2]",
+        "projection:missing_or_conflicting_player_number:name:promisory [ai 2]",
+        "projection:missing_or_conflicting_steam_id:name:promisory [ai 2]",
+        "projection:non_steam_player_key:name:promisory [ai 2]",
+        "projection:player_number_sequence:1",
+        "projection:projected_player_count:1",
+        "projection:team_observation_mismatch:steam:76561198103810510:1:steam:76561198103810510",
+        "projection:unsupported_format:1v1",
+        "projection:unsupported_provenance:one_vs_one_roster",
+        "unknown_result",
+        "workshop_roster_incomplete"
+      ],
+      "canonicalGameStatsId": 41017,
+      "logicalBattleIds": [
+        "platform:29cf936d-1889-c248-ba97-4fa2fa1bd6a1"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "9811138bdcbf3e02007a1a0550ab80e14841a21b324086b6a081e812f1555916",
+      "sourceGameStatsIds": [
+        40995,
+        41017
+      ],
+      "sourceHashes": [
+        "9811138bdcbf3e02007a1a0550ab80e14841a21b324086b6a081e812f1555916"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 41039,
+      "logicalBattleIds": [
+        "platform:576b5daf-431e-7041-90d3-8e0507614f1a"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "ec16eb90ad6d944090295ffdcb3e2760e76b2525d661fcc1e051f5e285e246f6",
+      "sourceGameStatsIds": [
+        41034,
+        41039
+      ],
+      "sourceHashes": [
+        "ec16eb90ad6d944090295ffdcb3e2760e76b2525d661fcc1e051f5e285e246f6"
+      ],
+      "targetSteamIds": [
+        "76561199849204394"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "workshop_roster_incomplete"
+      ],
+      "canonicalGameStatsId": 41041,
+      "logicalBattleIds": [
+        "platform:683e976c-b0ed-f44c-a59a-af26015c503a"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "5a16af83553846ea9cf2ef81c458532930c09b382fa0415ed8801b0249de4968",
+      "sourceGameStatsIds": [
+        41030,
+        41041
+      ],
+      "sourceHashes": [
+        "5a16af83553846ea9cf2ef81c458532930c09b382fa0415ed8801b0249de4968"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "canonical_roster_slot_team_binding_incomplete",
+        "projection:invalid_team_sizes:",
+        "projection:team_count:0",
+        "projection:teams_resolution_status:incomplete",
+        "projection:unsupported_format:unknown",
+        "projection:unsupported_provenance:unresolved",
+        "unknown_result",
+        "workshop_roster_incomplete"
+      ],
+      "canonicalGameStatsId": 44670,
+      "logicalBattleIds": [
+        "platform:88e59fb8-74ce-9343-ab7e-24cfc1835467"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "parser_research_required",
+      "replaySha256": "ff606a01553c1063ca2ea5ce1cc7e89d97c2a247021fa1fa9bf330adfa1cb406",
+      "sourceGameStatsIds": [
+        44670
+      ],
+      "sourceHashes": [
+        "ff606a01553c1063ca2ea5ce1cc7e89d97c2a247021fa1fa9bf330adfa1cb406"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "unknown_result",
+        "workshop_roster_incomplete"
+      ],
+      "canonicalGameStatsId": 44862,
+      "logicalBattleIds": [
+        "platform:c00df2fb-0de9-f842-ace6-088a5826e585"
+      ],
+      "nativeStructurallyEligible": true,
+      "primaryRoute": "native_replay_eligible",
+      "replaySha256": "04879f22e2ced71c779255ec5166977cd16b84dd223220efa79d55e92f80408d",
+      "sourceGameStatsIds": [
+        44862
+      ],
+      "sourceHashes": [
+        "04879f22e2ced71c779255ec5166977cd16b84dd223220efa79d55e92f80408d"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 45871,
+      "logicalBattleIds": [
+        "platform:f34350bf-f5fc-e449-9c66-e99e4f513b96"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "cba241ff3f0caa4da52465ad640c80f64977d3fc3df81864c59ef687da443306",
+      "sourceGameStatsIds": [
+        45861,
+        45871
+      ],
+      "sourceHashes": [
+        "cba241ff3f0caa4da52465ad640c80f64977d3fc3df81864c59ef687da443306"
+      ],
+      "targetSteamIds": [
+        "76561198754754435"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 46546,
+      "logicalBattleIds": [
+        "platform:1311122e-68ee-2946-9e2b-57bb1996029d"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "56243cb0e6aca0433d9d2c263c91873cb2fbe3f5e3b81abf8e1e44dd2cd2d088",
+      "sourceGameStatsIds": [
+        46546,
+        46547
+      ],
+      "sourceHashes": [
+        "56243cb0e6aca0433d9d2c263c91873cb2fbe3f5e3b81abf8e1e44dd2cd2d088"
+      ],
+      "targetSteamIds": [
+        "76561198754754435"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 46552,
+      "logicalBattleIds": [
+        "platform:7b72f74a-62be-1d4f-ac24-791dbd29dcdf"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "632869cb185def240caa0072c56c33de90bfe6ba1fcc8c5473fd8117e9d375e8",
+      "sourceGameStatsIds": [
+        46552
+      ],
+      "sourceHashes": [
+        "632869cb185def240caa0072c56c33de90bfe6ba1fcc8c5473fd8117e9d375e8"
+      ],
+      "targetSteamIds": [
+        "76561198754754435"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 46620,
+      "logicalBattleIds": [
+        "platform:f330a986-85cf-a94f-a57e-7a62d3942312"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "b817ea7634dfe0fbdc42fa6d76b46e2fc20c9350479b3ef66fa821eb46b85bbe",
+      "sourceGameStatsIds": [
+        46615,
+        46620
+      ],
+      "sourceHashes": [
+        "b817ea7634dfe0fbdc42fa6d76b46e2fc20c9350479b3ef66fa821eb46b85bbe"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 46624,
+      "logicalBattleIds": [
+        "platform:7cbbbc9e-9161-894b-a9c1-fe7405f5b6d9"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "78ba0fa9cd14987cd2dba9cab9bd6a6d2f9735e89a3b4e16b52006cd4997abfd",
+      "sourceGameStatsIds": [
+        46610,
+        46624
+      ],
+      "sourceHashes": [
+        "78ba0fa9cd14987cd2dba9cab9bd6a6d2f9735e89a3b4e16b52006cd4997abfd"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 48787,
+      "logicalBattleIds": [
+        "platform:a0b55cf9-472f-b041-b894-244f0e6026ff"
+      ],
+      "nativeStructurallyEligible": true,
+      "primaryRoute": "native_replay_eligible",
+      "replaySha256": "eda5b7aa97f5d64c0ba4a2b7cebafa7da6e3d07a146673646dd55f781a554e95",
+      "sourceGameStatsIds": [
+        48763,
+        48787
+      ],
+      "sourceHashes": [
+        "eda5b7aa97f5d64c0ba4a2b7cebafa7da6e3d07a146673646dd55f781a554e95"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 48790,
+      "logicalBattleIds": [
+        "platform:68670b3f-0c91-a243-8c6a-2cb4d6970bc7"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "5e3b67aeef70527bedbd8d1e1338ed740b4c930c6d800172fc17b513b2f54ab8",
+      "sourceGameStatsIds": [
+        48775,
+        48790
+      ],
+      "sourceHashes": [
+        "5e3b67aeef70527bedbd8d1e1338ed740b4c930c6d800172fc17b513b2f54ab8"
+      ],
+      "targetSteamIds": [
+        "76561199849204394"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 48793,
+      "logicalBattleIds": [
+        "platform:8c22302a-34c5-f047-b4fb-4549c64456fc"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "c344a870256591a7fa0309d3ba35034abc8b3547e2426772fa2a0c8a4114dbf1",
+      "sourceGameStatsIds": [
+        48769,
+        48793
+      ],
+      "sourceHashes": [
+        "c344a870256591a7fa0309d3ba35034abc8b3547e2426772fa2a0c8a4114dbf1"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 48811,
+      "logicalBattleIds": [
+        "platform:0abfbf56-807a-3a4f-a836-8d4b662f3fdc"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "1bb62fd43421cc9caf387639d46dff6c0a5622e278739712c89de5bfbbf620a8",
+      "sourceGameStatsIds": [
+        48766,
+        48811
+      ],
+      "sourceHashes": [
+        "1bb62fd43421cc9caf387639d46dff6c0a5622e278739712c89de5bfbbf620a8"
+      ],
+      "targetSteamIds": [
+        "76561198103810510"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 50564,
+      "logicalBattleIds": [
+        "platform:b44ba7ef-75ac-d048-bbde-648001cf7b2f"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "992edebcf07e54902a250afffce529da306469460f0af49d24b1b98340212856",
+      "sourceGameStatsIds": [
+        50564
+      ],
+      "sourceHashes": [
+        "992edebcf07e54902a250afffce529da306469460f0af49d24b1b98340212856"
+      ],
+      "targetSteamIds": [
+        "76561198754754435"
+      ]
+    },
+    {
+      "blockers": [
+        "financial_exposure_requires_commissioner_review",
+        "unknown_result"
+      ],
+      "canonicalGameStatsId": 50810,
+      "logicalBattleIds": [
+        "platform:049a354b-6832-b543-8678-9296cfffaff6"
+      ],
+      "nativeStructurallyEligible": false,
+      "primaryRoute": "human_review_only",
+      "replaySha256": "53b456a2c263af2323eafcce0142d98b9e005c80ae24582d563a2eb6493b96c3",
+      "sourceGameStatsIds": [
+        50800,
+        50810
+      ],
+      "sourceHashes": [
+        "53b456a2c263af2323eafcce0142d98b9e005c80ae24582d563a2eb6493b96c3"
+      ],
+      "targetSteamIds": [
+        "76561198754754435"
+      ]
+    }
+  ],
+  "controlLadder": {
+    "1v1": "not_run_first_control_terminal_gate_incomplete",
+    "32388": {
+      "cleanupComplete": true,
+      "loaded": true,
+      "status": "loaded_without_terminal",
+      "terminal": false,
+      "wallSeconds": 263.3472
+    },
+    "4v4": "not_run_first_control_terminal_gate_incomplete",
+    "green": false,
+    "team": "not_run_first_control_terminal_gate_incomplete"
+  },
+  "counts": {
+    "artifactPresent": 94,
+    "distinctLogicalBattles": 94,
+    "distinctReplayJobs": 94,
+    "humanReview": 59,
+    "irrecoverableProven": 0,
+    "nativeReplayEligible": 23,
+    "parserRecoverable": 2,
+    "recoveredDuringCampaign": 0,
+    "sourceMissing": 0,
+    "unknownPlayerCount": 94,
+    "unknownResultPlayerCount": 91
+  },
+  "currentFullBattleTruth": {
+    "denominator": 5396,
+    "finalRowCount": 5633,
+    "fullBattleTruthNumerator": 3670,
+    "percentage": 68.01334321719793
+  },
+  "evidenceReceipts": {
+    "census": {
+      "bytes": 133977971,
+      "path": "/Users/tonyblum/projects/AoE2HDBets/app-prodn/.aoe2war-release/truth-receipts/player-first-baseline-21fd5bc42e5d15613939782fd743325a664685f701df1b009c0cd8631b3250fe.json",
+      "sha256": "21fd5bc42e5d15613939782fd743325a664685f701df1b009c0cd8631b3250fe"
+    },
+    "evidence": {
+      "bytes": 2808598,
+      "path": "/Users/tonyblum/projects/AoE2HDBets/app-prodn/.aoe2war-release/truth-receipts/player-first-evidence-9ea0c959571744ae680ffda7c65d56c7f24351c1bfe224e27b63f78487e6f103.json",
+      "sha256": "9ea0c959571744ae680ffda7c65d56c7f24351c1bfe224e27b63f78487e6f103"
+    },
+    "plan": {
+      "bytes": 432152,
+      "path": "/Users/tonyblum/projects/AoE2HDBets/app-prodn/.aoe2war-release/truth-receipts/player-first-plan-5c4c895a690930bc3a0f9a26a8cfba1419d890af75e0fa946777482aba7262c6.json",
+      "sha256": "5c4c895a690930bc3a0f9a26a8cfba1419d890af75e0fa946777482aba7262c6"
+    }
+  },
+  "existingMechanisms": {
+    "acceptedKnownResultsWithDisplayCompletenessCorrection": [
+      25985,
+      41041
+    ],
+    "currentParserCandidateFilesVerified": 92,
+    "newWinnersRecovered": 0,
+    "offlineCurrentParserCanaries": [
+      9159,
+      9235
+    ],
+    "sameParserExactBytesRerunRequired": false,
+    "targetedRosterOnlyApplied": false,
+    "targetedRosterOnlyEligibleIds": [
+      25892,
+      27269
+    ],
+    "workshopGainFromThoseRosterPlans": 0
+  },
+  "grain": "canonical public archive logical battles; player unknown Full Truth and unknown result are separate; execution deduplicated by immutable replay SHA",
+  "immutableReport": {
+    "bytes": 1434206,
+    "path": "/Users/tonyblum/projects/AoE2HDBets/app-prodn/.aoe2war-release/truth-receipts/player-first-campaign-report-83255c74debb1195d9f6542a50f47ed533a32487f4ca5ced520aa2fbfb7c4552.json",
+    "sha256": "83255c74debb1195d9f6542a50f47ed533a32487f4ca5ced520aa2fbfb7c4552"
+  },
+  "implementation": {
+    "apiBranch": "fix/historical-upload-identity-authority-20261005",
+    "apiChangedFiles": [
+      "routes/replay_routes_async.py",
+      "tests/fixtures/current-account-observation-v1.json",
+      "tests/test_replay_current_account_observation.py",
+      "tests/test_replay_current_identity_authority.py",
+      "tests/test_replay_engine_runner.py",
+      "utils/replay_current_account_observation.py",
+      "utils/replay_engine_runner.py",
+      "utils/replay_parser.py"
+    ],
+    "apiHead": "cba42deb50fd500a72583b91719efb2c6ff5715a",
+    "apiPr": "https://github.com/Emaren/api-prodn/pull/39",
+    "appBranch": "fix/player-first-truth-current-rating-20261005",
+    "appChangedFiles": [
+      "app/api/admin/replay-operations/player-recovery/route.ts",
+      "app/api/internal/aoe2war-os/native-replay/artifact/route.ts",
+      "components/admin/PlayerResultRecovery.tsx",
+      "components/admin/ReplayOperationsCommandCenter.tsx",
+      "config/replay-truth-player-first-20261005.json",
+      "docs/replay-receipts/player-first-2026-10-06-baseline.json",
+      "lib/aoe2Os.ts",
+      "lib/currentWatcherAccountState.ts",
+      "lib/nativeReplayManifest.ts",
+      "lib/nativeReplayWorker.ts",
+      "lib/pageChangeManifest.generated.ts",
+      "lib/playerPerformance.ts",
+      "lib/playerProfile.ts",
+      "lib/playerResultRecovery.ts",
+      "lib/publicReplayRosterV2.ts",
+      "scripts/aoe2_native_replay_worker.py",
+      "scripts/aoe2_operator_bridge.py",
+      "scripts/native_replay_contract.py",
+      "scripts/player-replay-truth.py",
+      "scripts/player_replay_evidence_remote.mjs",
+      "scripts/player_replay_truth_remote.mjs",
+      "tests/current-watcher-account-state.test.mts",
+      "tests/current-watcher-rating-postgres.test.mts",
+      "tests/fixtures/current-account-observation-v1.json",
+      "tests/fixtures/native-replay-manifest-v2.json",
+      "tests/native-replay-manifest.test.mts",
+      "tests/player-current-rating-authority.test.mts",
+      "tests/player-rating-recency.test.mts",
+      "tests/player-result-recovery.test.mts",
+      "tests/public-replay-roster-display-team-keys.test.mts",
+      "tests/test_aoe2_native_replay_worker.py",
+      "tests/test_native_replay_manifest.py",
+      "tests/test_player_replay_truth_cli.py"
+    ],
+    "appHead": "b847854dd1cbb52f3f1e1ce57af9deccabc5be67",
+    "appPr": "https://github.com/Emaren/app-prodn/pull/403"
+  },
+  "localOnlyProjectedDisplayFix": {
+    "deployed": false,
+    "fullCorpusNotRecomputedWithNewResolver": true,
+    "gameStatsIds": [
+      25985,
+      41041
+    ],
+    "globalDenominator": 5396,
+    "globalNumerator": 3672,
+    "globalProjectionKind": "scoped_minimum_from_two_inspected_fixes_only",
+    "newWinnerCount": 0,
+    "note": "Only the two inspected Zodiac display corrections are counted; additional global effects were not audited or claimed.",
+    "percentage": 68.05040770941439,
+    "player": "Zodiac",
+    "unknownFullTruth": 53,
+    "unknownResults": 52
+  },
+  "nativeControlReceipt": {
+    "path": "/Users/tonyblum/projects/AoE2HDBets/app-prodn/.aoe2war-release/truth-receipts/native-control-canonical-stage-4fdde140b647eddaeb7902e7cd482d9a585215204d92f91fb988d50d947c838a.json",
+    "sha256": "4fdde140b647eddaeb7902e7cd482d9a585215204d92f91fb988d50d947c838a"
+  },
+  "nextAction": "Prove deterministic accelerated terminal arrival on exact control 32388 without UI interaction, then validate trusted 1v1/team/4v4 controls. Keep unknown execution disabled. Refresh the fixed-Steam plan before any bounded campaign.",
+  "observationTimestamp": "2026-10-06T13:10:15.554Z",
+  "planTimestamp": "2026-10-06T13:30:11.759Z",
+  "players": [
+    {
+      "key": "zodiac",
+      "name": "Zodiac",
+      "nativeStructuralCandidateIds": [
+        21018,
+        24699,
+        24972,
+        24975,
+        25590,
+        25620,
+        25634,
+        25671,
+        25907,
+        27239,
+        27252,
+        30112,
+        32354,
+        32379,
+        44862,
+        48787
+      ],
+      "steamId": "76561198103810510",
+      "totalBattles": 761,
+      "unknownAfterProduction": 55,
+      "unknownBefore": 55,
+      "unknownFullTruth": 55,
+      "unknownResults": 52,
+      "unknownResultsAfterProduction": 52,
+      "unknownResultsBefore": 52
+    },
+    {
+      "key": "vegeta",
+      "name": "mYsTikaL_VeGeTa",
+      "nativeStructuralCandidateIds": [
+        24982,
+        25782
+      ],
+      "steamId": "76561199849204394",
+      "totalBattles": 356,
+      "unknownAfterProduction": 17,
+      "unknownBefore": 17,
+      "unknownFullTruth": 17,
+      "unknownResults": 17,
+      "unknownResultsAfterProduction": 17,
+      "unknownResultsBefore": 17
+    },
+    {
+      "key": "jiren",
+      "name": "mYsTikaL JiReN",
+      "nativeStructuralCandidateIds": [
+        25574,
+        25577,
+        25755,
+        26003,
+        30125
+      ],
+      "steamId": "76561198754754435",
+      "totalBattles": 255,
+      "unknownAfterProduction": 22,
+      "unknownBefore": 22,
+      "unknownFullTruth": 22,
+      "unknownResults": 22,
+      "unknownResultsAfterProduction": 22,
+      "unknownResultsBefore": 22
+    }
+  ],
+  "primaryRouteCounts": {
+    "already_resolvable": 0,
+    "current_parser_reparse_eligible": 0,
+    "human_review_only": 59,
+    "native_replay_eligible": 23,
+    "parser_research_required": 10,
+    "result_evidence_required": 0,
+    "roster_recovery_eligible": 2,
+    "source_artifact_missing": 0
+  },
+  "productionSource": "55a3af1e6c42fa9e65260261ca9b8044ba2ca77e",
+  "rawBlockerCounts": {
+    "canonical_roster_slot_team_binding_incomplete": 17,
+    "disconnect_detected": 5,
+    "financial_exposure_requires_commissioner_review": 59,
+    "linked_markets:2": 1,
+    "projection:invalid_team_sizes:": 4,
+    "projection:missing_or_conflicting_player_name:name:newhand": 1,
+    "projection:missing_or_conflicting_player_name:name:promisory [ai 2]": 1,
+    "projection:missing_or_conflicting_player_number:name:newhand": 1,
+    "projection:missing_or_conflicting_player_number:name:promisory [ai 2]": 1,
+    "projection:missing_or_conflicting_steam_id:name:newhand": 1,
+    "projection:missing_or_conflicting_steam_id:name:promisory [ai 2]": 1,
+    "projection:non_steam_player_key:name:newhand": 1,
+    "projection:non_steam_player_key:name:promisory [ai 2]": 1,
+    "projection:player_number_sequence:1": 1,
+    "projection:player_number_sequence:1,3,4,5,6,7,8": 1,
+    "projection:projected_player_count:1": 1,
+    "projection:projected_player_count:7": 1,
+    "projection:team_count:0": 4,
+    "projection:team_observation_mismatch:steam:76561198103810510:1:steam:76561198103810510": 1,
+    "projection:teams_resolution_status:conflicting": 3,
+    "projection:teams_resolution_status:incomplete": 1,
+    "projection:unsupported_format:1v1": 1,
+    "projection:unsupported_format:unknown": 4,
+    "projection:unsupported_provenance:one_vs_one_roster": 1,
+    "projection:unsupported_provenance:unresolved": 4,
+    "stale_or_missing_current_parser": 2,
+    "unknown_result": 91,
+    "workshop_roster_incomplete": 12
+  },
+  "recoveryBounds": {
+    "nativeCandidatesAlreadyWorkshopComplete": 21,
+    "nativeStructuralCandidatesAfterControlAndPolicyGates": 23,
+    "note": "Archive existence is not terminal result proof. 23 is an admission count, not yield. No evidence supports a promise of resolving all 94.",
+    "provenAdditionalWinners": 0,
+    "recoverableWinnerMaximumNotEstablished": true,
+    "unknownResultsWithExistingArchives": 91
+  },
+  "remainingBlockers": [
+    "No native terminal control PASS.",
+    "Unknown manifests and batch execution are disabled; resumable unknown controller is not enabled in this tranche.",
+    "59 financial-linked cases require existing commissioner review.",
+    "10 parser-research cases need additional validated decoding/binding.",
+    "No current evidence proves additional winners.",
+    "No automatic native result promotion exists; drafts require existing commissioner adjudication and fresh source/roster/iteration checks."
+  ],
+  "schema": "aoe2war-player-first-recovery-report/v2",
+  "scope": [
+    {
+      "name": "Zodiac",
+      "steamId": "76561198103810510",
+      "uid": "u_06c16d39d25c476fac2c86fee7b4d189"
+    },
+    {
+      "name": "mYsTikaL_VeGeTa",
+      "steamId": "76561199849204394",
+      "uid": null
+    },
+    {
+      "name": "mYsTikaL JiReN",
+      "steamId": "76561198754754435",
+      "uid": null
+    }
+  ],
+  "staleOrMissingCurrentParserCount": 2,
+  "supersedesAuditSha256": "f5973c10f02cfe32b421c526f9e2ee307f838428744872af9005cc62a0e671d2",
+  "tests": {
+    "apiCurrentRatingAndIngestionTests": 99,
+    "apiNativeRunnerTests": 93,
+    "appCurrentRatingTests": 29,
+    "appFullBuild": "passed",
+    "appManifestTests": 25,
+    "appNativeBridgeAndCliPythonTests": 66,
+    "appPlannerTests": 18,
+    "appTypeScript": "passed",
+    "crosslanguageImmutableAccountFixture": "passed",
+    "crosslanguageNativeManifestFixture": "passed",
+    "isolatedPostgresRatingControls": 13,
+    "syntheticNativeWinnerControls": "passed; not live ladder passes"
+  }
+}

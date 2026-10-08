@@ -10,6 +10,31 @@ LAUNCHER = ROOT / "bin" / "aoe2war"
 
 
 class AoE2WarLauncherTests(unittest.TestCase):
+    def test_native_control_uses_canonical_truth_dispatch_and_preserves_arguments(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            fake_bin = Path(tmp) / "bin"
+            fake_bin.mkdir()
+            pinned_python = fake_bin / "python3.13"
+            pinned_python.write_text(
+                "#!/usr/bin/env bash\n"
+                "printf '%s\\n' \"$@\"\n"
+            )
+            pinned_python.chmod(0o755)
+            env = os.environ.copy()
+            env["PATH"] = f"{fake_bin}:/usr/bin:/bin"
+            arguments = [
+                "truth", "native-control", "verify", "--run-id", "control-32388-fixture",
+                "--api-source", "/governed/API source",
+            ]
+            result = subprocess.run(
+                [str(LAUNCHER), *arguments], cwd=ROOT, env=env, text=True,
+                stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False, timeout=10,
+            )
+            self.assertEqual(result.returncode, 0, result.stdout)
+            observed = result.stdout.splitlines()
+            self.assertEqual(Path(observed[0]).resolve(), ROOT / "scripts/aoe2_truth.py")
+            self.assertEqual(observed[1:], arguments[1:])
+
     def test_uses_tracked_python_major_minor_instead_of_generic_python3(self):
         with tempfile.TemporaryDirectory() as tmp:
             tmp_path = Path(tmp)

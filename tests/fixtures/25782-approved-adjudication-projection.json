@@ -1,0 +1,68 @@
+{
+  "sourceReceiptFile": "player-first-25782-approved-apply-42df389af7359d5ed9b460ff855583cc69d0b6d37033b6db4ad3788fc59d68ad.json",
+  "sourceReceiptSha256": "42df389af7359d5ed9b460ff855583cc69d0b6d37033b6db4ad3788fc59d68ad",
+  "adjudication": {
+    "id": 192,
+    "idempotencyKey": "player-first-short-forfeit:25782:3591e140b5f12f6ba06e4341a7adb0b16",
+    "decisionStatus": "accepted",
+    "affectsStats": true,
+    "affectsBets": false,
+    "actorDisplayNameSnapshot": "Emaren",
+    "actorRole": "site_admin",
+    "teamAssignments": [
+      {
+        "players": [
+          {
+            "name": "somniosator",
+            "normalizedName": "somniosator",
+            "playerNumber": 2,
+            "sourceTeamId": "1",
+            "stablePlayerKey": "steam:76561198257849801",
+            "steamId": "76561198257849801"
+          },
+          {
+            "name": "TheGoat_Nicky",
+            "normalizedName": "thegoat_nicky",
+            "playerNumber": 4,
+            "sourceTeamId": "1",
+            "stablePlayerKey": "steam:76561199703054938",
+            "steamId": "76561199703054938"
+          }
+        ],
+        "teamKey": "blue"
+      },
+      {
+        "players": [
+          {
+            "name": "mYsTikaL_TrUnKs",
+            "normalizedName": "mystikal_trunks",
+            "playerNumber": 3,
+            "sourceTeamId": "0",
+            "stablePlayerKey": "steam:76561198250132680",
+            "steamId": "76561198250132680"
+          },
+          {
+            "name": "mYsTikaL_VeGeTa",
+            "normalizedName": "mystikal_vegeta",
+            "playerNumber": 1,
+            "sourceTeamId": "0",
+            "stablePlayerKey": "steam:76561199849204394",
+            "steamId": "76561199849204394"
+          }
+        ],
+        "teamKey": "gold"
+      }
+    ],
+    "winningTeamKey": "blue",
+    "winningPlayerKeys": [
+      "steam:76561198257849801",
+      "steam:76561199703054938"
+    ],
+    "reason": "Exact archived HD replay proves both mYsTikaL_VeGeTa and mYsTikaL_TrUnKs voluntarily resigned; somniosator and TheGoat_Nicky remained. This50-second short forfeit is excluded by the unchanged parser early-exit rule and does not prove a Steam-rated outcome. Explicit human Commissioner decision requested for stats only; no bets, claims, settlement or Wolo authority.",
+    "sourceReplayHash": "3591e140b5f12f6ba06e4341a7adb0b16f1b8d02ea3d7042f6748be8d6397dda",
+    "sourceParseIteration": 2,
+    "sourceRosterHash": "3c778cba9b61b96b8e5e2189f93406bc491bf8dd6f9c0c886b3f70060733608c",
+    "sourcePropositionHash": "ea0bdc6c28900648d34a30418109b4009b22860a1d60d0c29fc98b062e46b399",
+    "createdAt": "2026-10-07T03:48:51.506Z"
+  }
+}

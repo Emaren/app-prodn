@@ -5,6 +5,7 @@ import type {
 } from "./generated/prisma/index.js";
 import {
   applyReplayResultAdjudication,
+  RETIRED_AUTOMATIC_REPLAY_RESULT_POLICY_VERSIONS,
   type EffectiveReplayResultAdjudication,
 } from "./replayResultAdjudications.ts";
 
@@ -48,9 +49,7 @@ const REPLAY_ADJUDICATIONS: ReplayAdjudication[] = [
   },
 ];
 
-const DISABLED_RESULT_ADJUDICATION_PREFIXES = [
-  "evidence:auto:replay-terminal-recorder-exit-v2:",
-] as const;
+const DISABLED_RESULT_ADJUDICATION_PREFIXES = RETIRED_AUTOMATIC_REPLAY_RESULT_POLICY_VERSIONS.map(policy => `evidence:auto:${policy}:`);
 
 export const EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION = {
   where: {

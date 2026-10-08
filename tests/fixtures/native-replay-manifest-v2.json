@@ -1,0 +1,73 @@
+{
+  "archive": {
+    "byteSize": 42,
+    "objectKey": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.aoe2record",
+    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "authority": {
+    "bets": false,
+    "settlement": false,
+    "stats": false,
+    "wolo": false
+  },
+  "candidateOnly": true,
+  "executionKind": "control",
+  "financialExposure": {
+    "claims": 0,
+    "markets": 0,
+    "settlements": 0,
+    "wagers": 0
+  },
+  "gameStatsId": 123,
+  "logicalBattleId": "hd-platform-match:123",
+  "manifestSha256": "aee7fa9435deeac8d32d3a24895e32df63249ffb9bb01b429ba2b5b82a2e2af7",
+  "parser": {
+    "parserName": "aoe2war.mgz_hd",
+    "parserVersion": "1.8.51",
+    "passName": "hd_deterministic_evidence",
+    "passVersion": "10",
+    "schemaVersion": "2026-07-25.1",
+    "status": "completed"
+  },
+  "replaySha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "result": {
+    "known": true,
+    "provenance": "acceptedadjudication:12",
+    "winningSlots": [
+      1,
+      2
+    ]
+  },
+  "roster": [
+    {
+      "name": "Zodíac 🐉",
+      "slot": 1,
+      "steamId": "76561198100000001",
+      "teamId": 0
+    },
+    {
+      "name": "Player 2",
+      "slot": 2,
+      "steamId": "76561198100000002",
+      "teamId": 0
+    },
+    {
+      "name": "Player 3",
+      "slot": 3,
+      "steamId": "76561198100000003",
+      "teamId": 1
+    },
+    {
+      "name": "Player 4",
+      "slot": 4,
+      "steamId": "76561198100000004",
+      "teamId": 1
+    }
+  ],
+  "schema": "aoe2war-native-replay-manifest/v2",
+  "sourceGameStatsIds": [
+    123,
+    124
+  ],
+  "sourceSnapshotSha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+}

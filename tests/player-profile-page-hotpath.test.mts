@@ -54,14 +54,14 @@ test("the player directory preserves its generation-before-corpus watermark", ()
   assert.doesNotMatch(directoryPage, /loadPublicPlayerDirectoryFresh/);
 });
 
-test("full exact-Steam profile overlaps replay watermark and snapshot-index reads", () => {
+test("full exact-Steam profile overlaps replay watermark, snapshot index and current account reads", () => {
   const start = profile.indexOf("async function buildProfileFromPlayer(");
   const end = profile.indexOf("\nexport async function loadClaimedPlayerPreview(", start);
   const loader = profile.slice(start, end);
 
   assert.match(
     loader,
-    /const \[matchFeedGeneration, exactSteamIndex\] = await Promise\.all\(\[[\s\S]*?loadPublicReplayGeneration\(prisma\)[\s\S]*?loadExactSteamCandidateIndex/,
+    /const \[matchFeedGeneration, exactSteamIndex, currentAccountStates\] = await Promise\.all\(\[[\s\S]*?loadPublicReplayGeneration\(prisma\)[\s\S]*?loadExactSteamCandidateIndex[\s\S]*?loadCurrentWatcherAccountStates\(prisma\)/,
   );
   assert.ok(
     loader.indexOf("Promise.all([") < loader.indexOf("loadCandidateFinalGames("),

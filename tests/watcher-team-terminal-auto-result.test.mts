@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   reconcileAutomaticWatcherTerminalResults,
+  WATCHER_TEAM_TERMINAL_ACTION_TAIL_RESULT_AUTHORITY,
 } from "../lib/replayResultAdjudications.ts";
 
 import {
@@ -13,11 +14,6 @@ import {
   WATCHER_TEAM_TERMINAL_POLICY_VERSION,
   type WatcherTeamTerminalInput,
 } from "../lib/watcherTeamTerminalResult.ts";
-
-import {
-  buildRosterHash,
-  normalizeReplayPlayers,
-} from "../lib/teamResolution.ts";
 
 import {
   stableReplayRosterV2Hash,
@@ -811,10 +807,71 @@ function teamInput2v1():
   };
 }
 
+function teamInput25892(): WatcherTeamTerminalInput {
+  // Reduced from the Oct. 6 immutable Zodiac case receipt. Topology/counts
+  // are the exact repaired contract; the historical scalar remains rejected.
+  const input = teamInput2v1();
+  const hash = "fb273754e8d31c458b6696508a2562edb90ab961072c34f7b3951a34745491d4";
+  const keyEvents = input.keyEvents as Record<string, unknown>;
+  const resultResolution = keyEvents.result_resolution as Record<string, unknown>;
+  return {
+    ...input,
+    id: 25892,
+    replayHash: hash,
+    parseIteration: 2,
+    winner: "Zodiac",
+    durationSeconds: 1365,
+    uploaderSteamId: "76561198103810510",
+    uploaderUid: "u_06c16d39d25c476fac2c86fee7b4d189",
+    uploaderUserId: 124585,
+    players: [
+      { name: "Zodiac", steam_id: "76561198103810510", number: 1, team_id: 0, winner: null },
+      { name: "malcschembri", steam_id: "76561199260180702", number: 2, team_id: 1, winner: null },
+      { name: "Der König", steam_id: "76561199095351784", number: 3, team_id: 1, winner: null },
+    ],
+    keyEvents: {
+      ...keyEvents,
+      rated: true,
+      watcher_upload: {
+        ...(keyEvents.watcher_upload as Record<string, unknown>),
+        server_sha256: hash,
+      },
+      team_resolution: {
+        format: "1v2", status: "resolved", confidence: "high",
+        provenance: "explicit_final_team_ids",
+        teams: [
+          { team_id: 0, player_keys: ["steam:76561198103810510"] },
+          { team_id: 1, player_keys: ["steam:76561199095351784", "steam:76561199260180702"] },
+        ],
+      },
+      result_resolution: {
+        ...resultResolution,
+        result_evidence: {
+          ...(resultResolution.result_evidence as Record<string, unknown>),
+          resignation_counts_by_team: [
+            { team_id: 0, player_count: 1, resigned_player_count: 0 },
+            { team_id: 1, player_count: 2, resigned_player_count: 1 },
+          ],
+        },
+      },
+      resigned_player_numbers: [2],
+      resigned_player_names: ["malcschembri"],
+    },
+    rawActivityByPlayer: [
+      { player_number: 1, player_name: "Zodiac", action_packet_count: 481, first_action_ms: 2280, last_action_ms: 1361272 },
+      // Synthetic resigned-slot row: it satisfies the complete activity map
+      // and cannot affect either side's surviving-player action ordering.
+      { player_number: 2, player_name: "malcschembri", action_packet_count: 1, first_action_ms: 1000, last_action_ms: 1000 },
+      { player_number: 3, player_name: "Der König", action_packet_count: 371, first_action_ms: 13696, last_action_ms: 1343934 },
+    ],
+  };
+}
+
 
 test(
-  "team policy uses strict stats-only terminal thresholds",
+  "team action-tail diagnostics retain strict thresholds without result authority",
   () => {
+    assert.equal(WATCHER_TEAM_TERMINAL_ACTION_TAIL_RESULT_AUTHORITY, false);
     assert.equal(
       WATCHER_TEAM_TERMINAL_POLICY_VERSION,
       "replay-team-terminal-action-tail-v4"
@@ -1323,10 +1380,22 @@ test(
 );
 
 test(
-  "automatic reconciliation writes a canonical stats-only team verdict",
+  "automatic reconciliation refuses direct team action-tail candidates and preserves historical ledger rows",
   async () => {
-    const input =
-      teamInput21197();
+    for (const input of [teamInput21197(), teamInput25892()]) {
+
+    const diagnostic = evaluateWatcherTeamTerminalResult(input);
+    assert.equal(diagnostic.eligible, true, diagnostic.reason);
+    assert.equal(diagnostic.reason, "decisive_team_terminal_action_tail");
+    if (input.id === 25892 && diagnostic.eligible) {
+      const resignationState = diagnostic.evidence.resignationState as Record<string, unknown>;
+      assert.equal(diagnostic.losingTeam.players.length, 2);
+      assert.equal(resignationState.losingTeamResignations, 1);
+      assert.equal(diagnostic.evidence.serializedResultAbsent, true);
+    }
+
+    let existingIdempotent = false;
+    let historicalAdjudication = false;
 
     let createdData:
       | Record<string, unknown>
@@ -1414,11 +1483,11 @@ test(
         {
           findUnique:
             async () =>
-              null,
+              existingIdempotent ? { id: 9100 } : null,
 
           findFirst:
             async () =>
-              null,
+              historicalAdjudication ? { id: 9101 } : null,
 
           create:
             async (
@@ -1519,75 +1588,46 @@ test(
         [input.id]
       );
 
-    const expectedRosterHash =
-      buildRosterHash(
-        normalizeReplayPlayers(
-          input.players
-        )
-      );
-
     assert.equal(
       report.createdCount,
-      1
+      0
     );
 
     assert.equal(
       report.skippedCount,
-      0
+      1
     );
 
     assert.equal(
       report.outcomes[0]
         ?.detail,
-      "decisive_team_terminal_action_tail"
+      "team_terminal_action_tail_is_not_result_authority"
     );
 
-    assert.equal(
-      createdData
-        ?.sourceRosterHash,
-      expectedRosterHash
-    );
+    assert.equal(createdData, null);
 
-    assert.equal(
-      createdData
-        ?.affectsStats,
-      true
-    );
+    existingIdempotent = true;
+    const existingReport = await reconcileAutomaticWatcherTerminalResults(prisma as never, [input.id]);
+    assert.equal(existingReport.createdCount, 0);
+    assert.equal(existingReport.existingCount, 1);
+    assert.equal(existingReport.outcomes[0]?.adjudicationId, 9100);
+    assert.equal(existingReport.outcomes[0]?.detail, "idempotent_adjudication_exists");
+    assert.equal(createdData, null);
 
-    assert.equal(
-      createdData
-        ?.affectsBets,
-      false
-    );
-
-    assert.equal(
-      createdData
-        ?.winningTeamKey,
-      "team:1"
-    );
-
-    assert.deepEqual(
-      createdData
-        ?.winningPlayerKeys,
-      [
-        "steam:76561198059195082",
-        "steam:76561198080966717",
-        "steam:76561198216610161",
-        "steam:76561198718527778",
-      ]
-    );
-
-    assert.match(
-      String(
-        createdData?.reason
-      ),
-      /YODA.*Wok_Dias.*Rick.*Mt\. Bison/
-    );
+    existingIdempotent = false;
+    historicalAdjudication = true;
+    const historicalReport = await reconcileAutomaticWatcherTerminalResults(prisma as never, [input.id]);
+    assert.equal(historicalReport.createdCount, 0);
+    assert.equal(historicalReport.skippedCount, 1);
+    assert.equal(historicalReport.outcomes[0]?.adjudicationId, 9101);
+    assert.equal(historicalReport.outcomes[0]?.detail, "adjudication_history_exists");
+    assert.equal(createdData, null);
+    }
   }
 );
 
 test(
-  "automatic reconciliation may consume exact V3 promoted topology without rewriting legacy key events",
+  "exact V3 promoted topology and counts cannot turn action-tail diagnostics into automatic result authority",
   async () => {
     const input =
       teamInput2v1();
@@ -2134,84 +2174,21 @@ test(
 
     assert.equal(
       report.createdCount,
-      1
+      0
     );
 
     assert.equal(
       report.skippedCount,
-      0
+      1
     );
 
     assert.equal(
       report.outcomes[0]
         ?.detail,
-      "decisive_team_terminal_action_tail"
+      "team_terminal_action_tail_is_not_result_authority"
     );
 
-    assert.equal(
-      createdData
-        ?.affectsStats,
-      true
-    );
-
-    assert.equal(
-      createdData
-        ?.affectsBets,
-      false
-    );
-
-    assert.equal(
-      createdData
-        ?.winningTeamKey,
-      "team:2"
-    );
-
-    const evidence =
-      createdData
-        ?.evidence as
-        | {
-            parseRun?: {
-              promotedRosterTopology?: {
-                rosterPromotionId?: unknown;
-                rosterObservationId?: unknown;
-                rosterPolicyVersion?: unknown;
-                resignationCountsPolicyVersion?: unknown;
-              };
-            };
-          }
-        | undefined;
-
-    assert.equal(
-      evidence
-        ?.parseRun
-        ?.promotedRosterTopology
-        ?.rosterPromotionId,
-      126
-    );
-
-    assert.equal(
-      evidence
-        ?.parseRun
-        ?.promotedRosterTopology
-        ?.rosterObservationId,
-      7999
-    );
-
-    assert.equal(
-      evidence
-        ?.parseRun
-        ?.promotedRosterTopology
-        ?.rosterPolicyVersion,
-      "public_replay_roster_v3"
-    );
-
-    assert.equal(
-      evidence
-        ?.parseRun
-        ?.promotedRosterTopology
-        ?.resignationCountsPolicyVersion,
-      "watcher-team-promoted-resignation-counts-v1"
-    );
+    assert.equal(createdData, null);
 
     /*
      * Break only the promoted parser-count shape. The topology remains exact,

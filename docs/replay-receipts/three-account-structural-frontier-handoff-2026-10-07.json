@@ -1,0 +1,307 @@
+{
+  "authorityThisContinuation": {
+    "additionalNativeControlsRun": 0,
+    "adjudicationCreates": 0,
+    "bettingCorrections": 0,
+    "candidateOnly": true,
+    "deployments": 0,
+    "productionWrites": 0,
+    "resultPromotions": 0,
+    "settlementWrites": 0,
+    "unknownNativeGamesRun": 0,
+    "woloMutations": 0
+  },
+  "census": {
+    "admissible": {
+      "combined": 99,
+      "fullBattleTruth": {
+        "denominator": 5453,
+        "finalRowCount": 5690,
+        "fullBattleTruthNumerator": 3696,
+        "percentage": 67.77920410783055
+      },
+      "receiptSha256": "a14d846e6a31f3236f45f772c3888b62c33f48d7bc144431b58f258723ade45d",
+      "unknownResults": [
+        {
+          "name": "Zodiac",
+          "rosterIncomplete": 8,
+          "steamIds": [
+            "76561198103810510"
+          ],
+          "total": 781,
+          "unknownResults": 57
+        },
+        {
+          "name": "mYsTikaL_VeGeTa",
+          "rosterIncomplete": 3,
+          "steamIds": [
+            "76561199849204394"
+          ],
+          "total": 369,
+          "unknownResults": 20
+        },
+        {
+          "name": "mYsTikaL JiReN",
+          "rosterIncomplete": 0,
+          "steamIds": [
+            "76561198754754435"
+          ],
+          "total": 269,
+          "unknownResults": 22
+        }
+      ]
+    },
+    "eligibleRemainingCases": 0,
+    "masterLedgerSha256": "22e17d482c8ee14521f1cd9571f374c2d586a997e9a024bcfefb03972000f828",
+    "publishedObservation": {
+      "combinedResultUnknowns": 93,
+      "fullBattleTruth": {
+        "denominator": 5453,
+        "finalRowCount": 5690,
+        "fullBattleTruthNumerator": 3719,
+        "percentage": 68.2009902805795
+      },
+      "receiptSha256": "f00266e3eaa012e7bebfbc9c21ac1c2ced6c5087d49d01582708b52022ac8fd0",
+      "retiredResultFenceDeployed": false
+    },
+    "refreshedAfterCursorFrontier": false,
+    "remainingPrimaryDispositionCounts": {
+      "both_sides_voluntarily_resigned": 1,
+      "disconnect_marked_resignation": 17,
+      "embedded_chapter_terminal_state_unproven": 3,
+      "legacy_provisional_inference_rejected": 1,
+      "no_serialized_result_packet": 57,
+      "opposing_voluntary_resignation_semantics_unproven": 1,
+      "partial_voluntary_side": 13,
+      "resignation_identity_ambiguity": 3,
+      "roster_ai_side_ambiguity": 1,
+      "side_and_identity_ambiguity": 1,
+      "side_topology_ambiguity": 1
+    },
+    "sourceObservationTimestamp": "2026-10-07T03:49:43.772Z"
+  },
+  "native": {
+    "aggregateReceipt": {
+      "byteSize": 18222,
+      "path": "/Users/tonyblum/projects/AoE2HDBets/app-prodn/.aoe2war-release/truth-receipts/native-logical-cursor-control-c7844f7c041f0b26f8940d184bbd9bc490605755af80216a2534581a90e4e421.json",
+      "sha256": "c7844f7c041f0b26f8940d184bbd9bc490605755af80216a2534581a90e4e421"
+    },
+    "archiveBytes": 665734,
+    "boundFilesHashVerified": 44,
+    "candidatePartitionRefereeStatus": "PASS",
+    "cleanup": {
+      "complete": true,
+      "protectedSteamAfter": "84197 84197 /Applications/CrossOver.app/Contents/SharedSupport/CrossOver/lib/wine/x86_64-windows/winewrapper.exe --run -- C:\\Program Files (x86)\\Steam\\steam.exe -silent \n84224 84224 C:\\Program Files (x86)\\Steam\\steam.exe -silent",
+      "remainingGameProcesses": 0
+    },
+    "coherentTerminalSnapshots": 444,
+    "currentIndependentReferee": {
+      "byteSize": 930450,
+      "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/player-first-three-account-20261006/final-seal-20261007/aoe2war-cursor-current-referee.json",
+      "sha256": "43a84d77dc01d484f7c6d1d0cd6e078b730c24c75ba86ff9cafed050dcdeb90d"
+    },
+    "cursorSummary": {
+      "engine_eof_observed": false,
+      "expected_replay_bytes": 665734,
+      "extent_mismatch_sample_count": 0,
+      "failed_read_count": 493,
+      "incoherent_sample_count": 96,
+      "out_of_bounds_sample_count": 0,
+      "successful_read_sample_count": 526,
+      "valid_sample_count": 430,
+      "whole_input_extent_consumed_observed": false
+    },
+    "engineEOFObserved": false,
+    "firstTerminal": {
+      "elapsed_ms": 142897,
+      "finalizer_marker": 1,
+      "finalizer_marker_after": 1,
+      "game": 87834808,
+      "replay_active": 0,
+      "replay_config": 89268104,
+      "replay_stream": 0,
+      "replay_stream_after": 0,
+      "sample": 554,
+      "simulation_ms": 1485022,
+      "state": 1,
+      "stream_cursor_high": 0,
+      "stream_cursor_low": 0,
+      "stream_cursor_low_after": 0,
+      "stream_cursor_read_ok": false,
+      "stream_error_code": 0,
+      "stream_error_previous": 0,
+      "stream_extent_high": 0,
+      "stream_extent_low": 0,
+      "stream_handle": 0,
+      "stream_mode": 0,
+      "stream_os_error": 0,
+      "stream_vtable": 0,
+      "world": 150503160
+    },
+    "gameStatsId": 32388,
+    "instructionBoundaryProven": false,
+    "lastActive": {
+      "elapsed_ms": 142644,
+      "finalizer_marker": 0,
+      "finalizer_marker_after": 0,
+      "game": 87834808,
+      "replay_active": 1,
+      "replay_config": 89268104,
+      "replay_stream": 154399416,
+      "replay_stream_after": 154399416,
+      "sample": 553,
+      "simulation_ms": 1483432,
+      "state": 0,
+      "stream_cursor_high": 0,
+      "stream_cursor_low": 664789,
+      "stream_cursor_low_after": 664789,
+      "stream_cursor_read_ok": true,
+      "stream_error_code": 0,
+      "stream_error_previous": 0,
+      "stream_extent_high": 0,
+      "stream_extent_low": 665734,
+      "stream_handle": 464,
+      "stream_mode": 0,
+      "stream_os_error": 0,
+      "stream_vtable": 10373032,
+      "world": 150503160
+    },
+    "negativeRevalidations": [
+      {
+        "accepted": false,
+        "capture": "unchanged original prefix through sample553",
+        "reason": "raw memory capture does not prove terminal outcome"
+      },
+      {
+        "accepted": false,
+        "capture": "altered whole-input consumption claim",
+        "reason": "stored memory candidate differs from recomputed capture or provenance"
+      }
+    ],
+    "remainingUnobservedBytes": 945,
+    "replaySha256": "02a7bca0ae47d7177e970769b474de353ad76afd896c551ad3862e3f5112954b",
+    "runId": "b27ac5b3-ffe7-4296-830c-4bca35d609b7",
+    "runLabel": "cursor-32388-20261007T040353Z",
+    "strengthenedEOFControlPassed": false,
+    "wholeInputExtentConsumedObserved": false
+  },
+  "nextHighestROIExperiment": {
+    "expansionGate": "Only after the strengthened known-result control passes may independently known 1v1/team/4v4 controls, an appropriate ambiguous control and the three-account census expand.",
+    "gameStatsId": 32388,
+    "instruction": "0x5a6e99",
+    "readSet": "ESI=R; F=DWORD[ESI+0x14] before mov; process/world/attempt and exact instruction bytes; caller return address[ESP+4]; F cursor/extent/mode/current/previous/OS error before release",
+    "requiredInterpretation": "independently distinguish natural fully consumed input from early close, finalization, seek/error or teardown; stream closure alone is not EOF",
+    "scope": "conditional pre-release observation in a normal Steam-created process"
+  },
+  "preservedAcceptedVerdict": {
+    "adjudicationId": 192,
+    "applyReceiptSha256": "42df389af7359d5ed9b460ff855583cc69d0b6d37033b6db4ad3788fc59d68ad",
+    "bettingAuthority": false,
+    "deployedByCampaign": false,
+    "gameStatsId": 25782,
+    "numericProjectionFix": "complete frozen/current Steam/name/slot/numeric-side bijection only; manual regrouping and ambiguous bindings retain named-side projection",
+    "productionFullTruthAdditionsClaimed": 0,
+    "projectionImplementationCommits": [
+      "4970612d8e05212fee0c8fdff272f46114ad5748",
+      "7456b53d91c0f9f8b6b9a47aba0ec463c4103ddc"
+    ],
+    "reappliedInThisContinuation": false,
+    "statisticsAuthority": true
+  },
+  "rejectedProposal": {
+    "gameStatsId": 25620,
+    "promotionEligible": false,
+    "rejectionReceiptSha256": "64115b3f73a2b64960dc79125b4363ac456a4345dd50e77cc225cda0cdcaa795",
+    "strictReason": "proposal_complete_losing_side_not_proven"
+  },
+  "remainingBlocker": "The stream disappears between the last bound active read and terminal observation, leaving 945 bytes without an observed consumed-input proof. Shared stream closure has unvalidated EOF semantics.",
+  "schema": "aoe2war-three-account-structural-frontier-handoff/v1",
+  "scope": "candidate-only structural frontier and documentation seal; no additional live run or census refresh in this continuation",
+  "sealedAt": "2026-10-07T11:03:06.029152+00:00",
+  "supersedes": {
+    "path": "/Users/tonyblum/projects/AoE2HDBets/app-prodn/.aoe2war-release/truth-receipts/player-first-three-account-structural-frontier-handoff-ec88227fad50482b50e2f2d48e3e1e23c78eae76d2f6bc6ccf56f22052189019.json",
+    "reason": "Preserve the already verified CI logs and current independent referee in durable campaign evidence instead of temporary transport locations.",
+    "sha256": "ec88227fad50482b50e2f2d48e3e1e23c78eae76d2f6bc6ccf56f22052189019"
+  },
+  "tests": {
+    "api": {
+      "owningSuite": "python -m pytest tests -q",
+      "passed": 1518,
+      "skipped": 97,
+      "warnings": 1
+    },
+    "appNode": {
+      "activeFiles": 401,
+      "exitCode": 0,
+      "observedDotReporterResults": 2711,
+      "passed": 2711,
+      "quarantinedFiles": 0
+    },
+    "appPython": {
+      "files": 53,
+      "passed": 979
+    },
+    "focusedNativePassed": 610,
+    "logs": [
+      {
+        "byteSize": 2909,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/player-first-three-account-20261006/final-merged-node.log",
+        "sha256": "9964d303332434ecf607af29323cd601f53cb86ee104d55c7be19fc073d8f98e"
+      },
+      {
+        "byteSize": 19854,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/player-first-three-account-20261006/final-merged-python.log",
+        "sha256": "781a4a7e414f00185a52a5fb2dd2f9161a69c570e6d2acda3a23905108d3ccd1"
+      },
+      {
+        "byteSize": 59125,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/player-first-three-account-20261006/final-merged-build.log",
+        "sha256": "9c5c1048d3ab829a692ad92f2b697e98b1047e09b617980956e617e1080587d2"
+      },
+      {
+        "byteSize": 309080,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/player-first-three-account-20261006/final-seal-20261007/aoe2war-app-current-ci.log",
+        "sha256": "366e76111aca69b744c58b72ea7b3975a8b23e189301811e0b247764601566ac"
+      },
+      {
+        "byteSize": 81400,
+        "path": "/Users/tonyblum/projects/AoE2HDBets/api-prodn/instance/player-first-three-account-20261006/final-seal-20261007/aoe2war-api-current-ci.log",
+        "sha256": "b7a0a6866a0e81b63908f3f503eb42ce4cd4f30ab84bcfb894348be6a30dcdce"
+      }
+    ],
+    "otherPassed": [
+      "Prisma generation",
+      "TypeScript",
+      "app production build",
+      "API exact runtime lock",
+      "Python compilation",
+      "dependency security",
+      "tracked-secret scans",
+      "Code Health",
+      "Documentation OS",
+      "Node inventory",
+      "Next build performance census"
+    ]
+  },
+  "validatedSourceHeads": {
+    "api": {
+      "branch": "fix/historical-upload-identity-authority-20261005",
+      "ci": "https://github.com/Emaren/api-prodn/actions/runs/37610035806",
+      "ciConclusion": "success",
+      "draft": true,
+      "head": "26bb4d8d5f717ef279e2da8419a3a74b897834fb",
+      "implementationBaseline": "9a4c0ba6e08b0791fde55e3f93bef26847727e13",
+      "pr": "https://github.com/Emaren/api-prodn/pull/39"
+    },
+    "app": {
+      "branch": "fix/player-first-truth-current-rating-20261005",
+      "ci": "https://github.com/Emaren/app-prodn/actions/runs/37610023396",
+      "ciConclusion": "success",
+      "draft": true,
+      "head": "56caf33181283c85a7a1570d0bcfd45c616ac55a",
+      "implementationBaseline": "66cbc536bc21088179830cc001810cecf7c1e018",
+      "pr": "https://github.com/Emaren/app-prodn/pull/403"
+    },
+    "note": "These are tested pre-seal heads. Documentation-only seal commits follow; inspect PR/origin for their final exact heads."
+  }
+}

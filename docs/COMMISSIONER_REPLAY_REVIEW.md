@@ -350,6 +350,59 @@ These are separate provenance facts.
 
 A `ReplayResultAdjudication` represents an explicit human decision.
 
+The bounded Zodiac packets for 27269 and 44670 were approved explicitly on
+2026-10-06 and appended through the existing writer as adjudications 189/190.
+Both affect statistics only. The immutable evidence binds each losing-side
+voluntary resignation to exact archived bytes, canonical slots, Steam identities
+and sides; neither relies on recorder exit, raw winner flags or action ordering.
+The accepted tranche and independent post-apply referee are indexed in
+[`zodiac-tranche-a-2026-10-06.json`](replay-receipts/zodiac-tranche-a-2026-10-06.json).
+
+The admin Review Desk's **Load evidence-backed draft** path is read-only. Its
+fixed packet reader independently checks the live source snapshot, raw slot/team
+aliases, current parser contract and inner proof, full financial obligations,
+actual archive hash and serialized losing-side resignation bytes. Changed source,
+review history or financial evidence rejects the draft. Loading never writes a
+result; **Lock Verdict** is the explicit human step through the existing ledger.
+Editing the sides, winner or reason detaches the immutable proposal proof.
+Accepted packets no longer appear as pending drafts. Financial snapshots support
+review and grant no betting, settlement, claim or Wolo authority.
+
+The three-account draft schema binds one of the three exact target Steam IDs
+to exactly one canonical participant; the accounts' histories and ratings stay
+separate. Game `25782` additionally requires the checked 50-second early-exit
+counterevidence and an explicit acknowledgement that the proposed short forfeit
+does not establish a Steam-rated result. Tony approved somniosator/TheGoat_Nicky
+over mYsTikaL_VeGeTa/mYsTikaL_TrUnKs for statistics only. The governed writer
+independently revalidated current source, archive, review history and full
+financial obligations before appending accepted adjudication `192`. Its
+application receipt is
+`42df389af7359d5ed9b460ff855583cc69d0b6d37033b6db4ad3788fc59d68ad`.
+The original frozen packet remains a proposal receipt. Raw parser rows and
+financial state are unchanged; no Steam-rated outcome or betting authority is
+declared.
+
+Accepted projections preserve native numeric sides only when all frozen and
+current Steam identities, names, unique slots and strict team IDs form exactly
+the same two complete sides. A manual regrouping or ambiguous binding retains
+the reviewed named sides. This corrects roster presentation without changing
+result eligibility, relaxing Workshop completeness or manufacturing team IDs.
+Original parser provenance survives repeated projection.
+
+The complete-side candidate for `25620` also contains prior voluntary
+resignations by two players on the opposing side. Its actual five serialized
+packets fail the existing strict losing-side archive contract. It remains
+research, not a loadable eligible draft; neither the final remaining recorder
+nor packet order may supply the missing authority. Those semantics require
+independent control validation before any narrow human approval request.
+
+The shared public query and in-memory projector exclude the exact historical
+recorder-exit v1/v2, action-tail v3, and team-action-tail v2/v3/v4 policies.
+The historical rows remain inspectable. They cannot supply a current verdict,
+including when their stored flags or roster happen to match current evidence.
+An independently accepted human verdict remains eligible under its normal
+source and roster fences.
+
 Human-uploaded postgame screenshots represent deliberate human contribution to the evidence chain, but do not themselves constitute an adjudication.
 
 The UI therefore distinguishes:

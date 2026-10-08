@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `main` at `b0715c8738db2e316ee68e3c3ee465a240f48523`
+Implementation baseline: `fix/player-first-truth-current-rating-20261005` at `b5b0440c8516c7ca8155f884d1d8ecc34fd3b5e1`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **88**
+- Authoritative repository documents: **89**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -37,12 +37,12 @@ This page is generated from the validated front matter in this repository. Cross
 - `generated`: 1
 - `historical`: 12
 - `reference`: 54
-- `runbook`: 15
+- `runbook`: 16
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 72
+- `active`: 73
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -97,6 +97,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Local Development](LOCAL_DEVELOPMENT.md) | `runbook` | `active` | `operator-contract` |
 | [Marketplace Business V1](MARKETPLACE_BUSINESS.md) | `reference` | `active` | `financial-domain-contract` |
 | [Team Market Integrity](MARKET_TEAM_INTEGRITY.md) | `reference` | `active` | `financial-domain-contract` |
+| [Native Replay Control](NATIVE_REPLAY_CONTROL.md) | `runbook` | `active` | `operational-procedure` |
 | [AoE2WAR Operator Start Here](OPERATOR_START_HERE.md) | `runbook` | `active` | `operational-procedure` |
 | [Page Change Notices](PAGE_CHANGE_NOTICES.md) | `reference` | `active` | `product-contract` |
 | [Page Hero CMS](PAGE_HERO_CMS.md) | `reference` | `active` | `product-contract` |

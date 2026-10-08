@@ -17,6 +17,44 @@ SPEC.loader.exec_module(MODULE)
 
 
 class NativeReplayWorkerTests(unittest.TestCase):
+    def test_import_does_not_require_sibling_api_checkout(self):
+        with tempfile.TemporaryDirectory() as temp:
+            app_common = Path(temp) / "app-prodn/.git"
+
+            def app_git_only(*args, **kwargs):
+                if Path(kwargs["cwd"]) != MODULE.ROOT:
+                    raise FileNotFoundError("sibling API checkout is absent")
+                return str(app_common)
+
+            spec = importlib.util.spec_from_file_location("worker_without_sibling_api", SCRIPT)
+            fresh = importlib.util.module_from_spec(spec)
+            with patch.dict(sys.modules, {spec.name: fresh}), patch.object(
+                MODULE.subprocess, "check_output", side_effect=app_git_only,
+            ) as git:
+                spec.loader.exec_module(fresh)
+            self.assertEqual(fresh.API_ROOT, Path(temp).resolve() / "api-prodn")
+            self.assertIsNone(fresh.EVIDENCE_ROOT)
+            git.assert_called_once()
+
+    def test_missing_sibling_api_fails_before_lock_directory_mutation(self):
+        with patch.object(MODULE, "EVIDENCE_ROOT", None), patch.object(
+            MODULE.subprocess, "check_output", side_effect=FileNotFoundError("missing api-prodn"),
+        ), patch.object(Path, "mkdir") as mkdir:
+            with self.assertRaisesRegex(MODULE.WorkerError, "sibling api-prodn checkout is unavailable"):
+                with MODULE.native_execution_lock():
+                    self.fail("native execution cannot start without its governed API checkout")
+            self.assertIsNone(MODULE.EVIDENCE_ROOT)
+            mkdir.assert_not_called()
+
+    def test_lazy_root_is_cached_for_the_same_lock_and_attempt_path(self):
+        root = Path("/canonical/api-prodn/instance/native-replay-worker/attempts")
+        with patch.object(MODULE, "EVIDENCE_ROOT", None), patch.object(
+            MODULE, "native_evidence_root", return_value=root,
+        ) as resolve:
+            self.assertEqual(MODULE.worker_evidence_root(), root)
+            self.assertEqual(MODULE.worker_evidence_root(), root)
+            resolve.assert_called_once_with(MODULE.API_ROOT)
+
     def test_clean_git_repo_returns_head(self):
         with patch.object(
             MODULE.subprocess,
@@ -204,6 +242,9 @@ class NativeReplayWorkerTests(unittest.TestCase):
                 "candidate_terminal_witness_control_pass",
             )
             self.assertTrue(result["trustedControlValidation"]["control_passed"])
+            # The legacy canary has no v2 snapshot/Steam manifest. A legacy
+            # PASS cannot manufacture a modern stats-only review proposal.
+            self.assertNotIn("statsOnlyReviewEvidence", result)
             self.assertRegex(
                 result["evidenceSha256"]["trusted-control-validation.json"],
                 r"^[0-9a-f]{64}$",

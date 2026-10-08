@@ -1,0 +1,52 @@
+{
+  "archive_verified": true,
+  "candidate_result_authority": false,
+  "captured_at": "2026-01-01T01:03:04.567890Z",
+  "observed_game_at": "2026-01-01T01:02:03.456789Z",
+  "parse_source": "watcher_final",
+  "parser": {
+    "name": "aoe2war.mgz_hd",
+    "options": {
+      "apply_hd_early_exit_rules": true
+    },
+    "pass_name": "hd_deterministic_evidence",
+    "pass_version": "10",
+    "schema_version": "2026-07-25.1",
+    "version": "1.8.51"
+  },
+  "players": [
+    {
+      "name": "Exact Steam alias",
+      "steam_dm_rating": null,
+      "steam_id": "76561198000000001",
+      "steam_rating_sources": {
+        "steam_dm_rating": null,
+        "steam_rm_rating": "hd_header"
+      },
+      "steam_rm_rating": 2100
+    },
+    {
+      "name": "Other",
+      "steam_dm_rating": 1300,
+      "steam_id": "76561198000000002",
+      "steam_rating_sources": {
+        "steam_dm_rating": "hd_header",
+        "steam_rm_rating": "hd_header"
+      },
+      "steam_rm_rating": 1400
+    }
+  ],
+  "provenance": {
+    "client_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "client_sha256_verified": true,
+    "file_role": "final_recording",
+    "ingestion_provenance": "live_monitor",
+    "provenance_signature_verified": true,
+    "server_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "replay_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "result_authority": false,
+  "schema": "aoe2war-current-account-observation/v1",
+  "upload_mode": "watcher",
+  "uploader_uid": "u_live"
+}

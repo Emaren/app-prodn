@@ -81,6 +81,7 @@ export async function GET(request: NextRequest) {
           artifact.fileName.lastIndexOf(".")
         ),
         "X-AoE2WAR-Game-Stats-ID": String(parameters.gameStatsId),
+        ...(parameters.manifest ? { "X-AoE2WAR-Manifest-SHA256": parameters.manifest.manifestSha256 } : {}),
         "X-Content-Type-Options": "nosniff",
       },
     });

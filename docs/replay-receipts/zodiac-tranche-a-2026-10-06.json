@@ -1,0 +1,209 @@
+{
+  "schema": 2,
+  "campaignScope": "The sealed Oct6 761 logical Zodiac battles; no corpus expansion or repeated census.",
+  "metrics": {
+    "commissionerReady": 0,
+    "fullTruthIncompleteAfter": 55,
+    "fullTruthIncompleteBefore": 55,
+    "fullTruthProjectionReason": "Existing Workshop roster completeness supports 2/4/6/8 exact participants. Both proposed battles have odd canonical participant counts (5/3), so result recovery does not satisfy that separate rule.",
+    "projectedFullTruthAdditions": 0,
+    "resultUnknownAfter": 50,
+    "resultUnknownBefore": 52,
+    "resultsRecovered": 2,
+    "zodiacLogicalBattles": 761,
+    "commissionerProposalsPrepared": 2,
+    "commissionerProposalsApproved": 2
+  },
+  "receipt": {
+    "path": "/Users/tonyblum/projects/AoE2HDBets/app-prodn/.aoe2war-release/truth-receipts/player-first-zodiac-tranche-a-verified-826066125585ded32cee398a5da4b1ce629c8f44ee6e1bff805a2727f4adb086.json",
+    "sha256": "826066125585ded32cee398a5da4b1ce629c8f44ee6e1bff805a2727f4adb086",
+    "bytes": 45454
+  },
+  "supersedesReceiptSha256": "9045e89eea16b4e785454876865ef15c4bd3ff1383b113a4812f860a2396265f",
+  "cases": [
+    {
+      "gameStatsId": 25892,
+      "primaryDisposition": "partial_voluntary_side",
+      "reason": "Only malcschembri (slot2) resigned; Der König (slot3) did not. Partial-team action ordering and legacy flags are rejected.",
+      "resultApplied": false,
+      "proposedPacketSha256": null
+    },
+    {
+      "gameStatsId": 27269,
+      "primaryDisposition": "recovered_stats_only_commissioner",
+      "reason": "Exact canonical slots1/2 (Zodiac/Praxes) both voluntarily resigned. Independent full byte framing and final resignation at EOF prove complete losing side.",
+      "resultApplied": true,
+      "proposedPacketSha256": "fc3db7cfc66a2e32f8646f423161f43d7bf878dcfe427e23d9887ce7469bcab9"
+    },
+    {
+      "gameStatsId": 21046,
+      "primaryDisposition": "no_serialized_result_packet",
+      "reason": "Current exact canonical parse has no serialized resignation/postgame winner. Historical recorder-exit adjudication is retired inference and remains non-authoritative.",
+      "resultApplied": false,
+      "proposedPacketSha256": null
+    },
+    {
+      "gameStatsId": 24306,
+      "primaryDisposition": "no_serialized_result_packet",
+      "reason": "Current exact canonical parse has no serialized resignation/postgame winner. Historical recorder-exit adjudication is retired inference and remains non-authoritative.",
+      "resultApplied": false,
+      "proposedPacketSha256": null
+    },
+    {
+      "gameStatsId": 25006,
+      "primaryDisposition": "no_serialized_result_packet",
+      "reason": "Current exact canonical parse has no serialized resignation/postgame winner. Historical recorder-exit adjudication is retired inference and remains non-authoritative.",
+      "resultApplied": false,
+      "proposedPacketSha256": null
+    },
+    {
+      "gameStatsId": 25578,
+      "primaryDisposition": "no_serialized_result_packet",
+      "reason": "Current exact canonical parse has no serialized resignation/postgame winner. Historical recorder-exit adjudication is retired inference and remains non-authoritative.",
+      "resultApplied": false,
+      "proposedPacketSha256": null
+    },
+    {
+      "gameStatsId": 26028,
+      "primaryDisposition": "no_serialized_result_packet",
+      "reason": "Current exact canonical parse has no serialized resignation/postgame winner. Historical recorder-exit adjudication is retired inference and remains non-authoritative.",
+      "resultApplied": false,
+      "proposedPacketSha256": null
+    },
+    {
+      "gameStatsId": 35636,
+      "primaryDisposition": "side_and_identity_ambiguity",
+      "reason": "Metadata fragment lists Zodiac and seven AI slots with a single team. No serialized result or proven opposing topology; disconnect-marked source.",
+      "resultApplied": false,
+      "proposedPacketSha256": null
+    },
+    {
+      "gameStatsId": 44670,
+      "primaryDisposition": "recovered_stats_only_commissioner",
+      "reason": "Slot2 Zodiac voluntarily resigned at EOF. Canonical contract binds the lone unteamed opponent against the explicit Jim/Emaren side. Independent full byte framing agrees.",
+      "resultApplied": true,
+      "proposedPacketSha256": "2c526b9ef893cbfba0954767c9913a12989c019acf3b4eb1ef4446f8dcfca199"
+    }
+  ],
+  "approvedAdjudications": [
+    {
+      "gameStatsId": 27269,
+      "adjudicationId": 189,
+      "packetSha256": "fc3db7cfc66a2e32f8646f423161f43d7bf878dcfe427e23d9887ce7469bcab9",
+      "winner": "PKNT / Trickster / Monty_Python",
+      "participants": [
+        {
+          "name": "Zodiac",
+          "steamId": "76561198103810510",
+          "result": "loss"
+        },
+        {
+          "name": "Praxes",
+          "steamId": "76561198127861941",
+          "result": "loss"
+        },
+        {
+          "name": "PKNT",
+          "steamId": "76561198052015177",
+          "result": "win"
+        },
+        {
+          "name": "Monty_Python",
+          "steamId": "76561198853096271",
+          "result": "win"
+        },
+        {
+          "name": "Trickster",
+          "steamId": "76561198106036840",
+          "result": "win"
+        }
+      ],
+      "affectsStats": true,
+      "affectsBets": false
+    },
+    {
+      "gameStatsId": 44670,
+      "adjudicationId": 190,
+      "packetSha256": "2c526b9ef893cbfba0954767c9913a12989c019acf3b4eb1ef4446f8dcfca199",
+      "winner": "Emaren / Jim",
+      "participants": [
+        {
+          "name": "Jim",
+          "steamId": "76561198166409520",
+          "result": "win"
+        },
+        {
+          "name": "Zodiac",
+          "steamId": "76561198103810510",
+          "result": "loss"
+        },
+        {
+          "name": "Emaren",
+          "steamId": "76561198065420384",
+          "result": "win"
+        }
+      ],
+      "affectsStats": true,
+      "affectsBets": false
+    }
+  ],
+  "resultApplyReceipt": {
+    "path": "/Users/tonyblum/projects/AoE2HDBets/app-prodn/.aoe2war-release/truth-receipts/player-first-zodiac-approved-results-cd24c8d5367c117cc9f4b98e1a6a59866336295c92efaa04daa5f7f8163a6567.json",
+    "sha256": "cd24c8d5367c117cc9f4b98e1a6a59866336295c92efaa04daa5f7f8163a6567",
+    "bytes": 67829
+  },
+  "independentPostApplyRefereeReceipt": {
+    "path": "/Users/tonyblum/projects/AoE2HDBets/app-prodn/.aoe2war-release/truth-receipts/player-first-zodiac-approved-referee-b70f35092f39f4021666fe0e34a12c206b2a4661ad7ee0d2611123fbce9686ac.json",
+    "sha256": "b70f35092f39f4021666fe0e34a12c206b2a4661ad7ee0d2611123fbce9686ac",
+    "bytes": 7247
+  },
+  "financialTriage": {
+    "cases": 29,
+    "newReady": 0,
+    "triageSha256": "da40553c3158d73c7c315be80ba38df0653a17b08fe628359a15b42010c10f2f",
+    "unknown": 27
+  },
+  "nativeControl": {
+    "fullTextGatePass": false,
+    "memoryTerminalReceiptSha256": "4bc3c840c633a864f30aed11a25d1ed41e3c93b5ba640625f2aab6387c5729d7",
+    "remainingBlocker": "No GAME OVER!/Won-Lost text and independent natural EOF proof.",
+    "unknownExecutionAllowed": false,
+    "diagnosticReceiptSha256": "13e0a3ffbd3a9681ebeb40dc28c2663e1d42118b3e9796726d7b70b2cf4d1fa0",
+    "memoryControlPasses": 2,
+    "fullControlsPassed": 0,
+    "logger": {
+      "successfulReads": 1027,
+      "failedReads": 0,
+      "gateValue": 0,
+      "handleValue": 0
+    },
+    "nextObservation": "Read-only post-finalizer boundary 0x739618; do not enable unknown cohort before complete EOF/result witness and control ladder."
+  },
+  "rosterApplyReceiptSha256": "a4f0ffa078634c5754d97753358663ff849bc18fae33512940d6278ee0e2b1f7",
+  "productionResultAdjudicationWrites": 2,
+  "financialWrites": 0,
+  "claimWrites": 0,
+  "woloWrites": 0,
+  "verification": {
+    "apiFocusedTests": 307,
+    "appBuild": "passed",
+    "focusedAppTests": 95,
+    "nativeUnknownExecution": false,
+    "postApplyReadOnlyReferee": "PASS",
+    "typeScript": "PASS",
+    "appBuildAtCommit": "b8c98df37c78bd8e6675df2843f33a46f2825a80",
+    "postResultUiTypeScript": "PASS"
+  },
+  "implementation": {
+    "apiCommit": "129e5c0bda3df85013e3f0ddfd86b133a7f8bf74",
+    "appCommit": "42b5979cdd005c089f11a40ebd9aeb085eaed80b",
+    "codeDeployed": false,
+    "productionSourceUnchanged": true
+  },
+  "remainingUnknownRoutes": {
+    "native_control_ladder_blocked": 16,
+    "parser_result_evidence_missing": 6,
+    "partial_roster_resignation": 1,
+    "financial_result_evidence_missing": 27
+  }
+}

@@ -18,6 +18,7 @@ import {
 } from "react";
 
 import TimeDisplayText from "@/components/time/TimeDisplayText";
+import PlayerResultRecovery from "@/components/admin/PlayerResultRecovery";
 import type {
   ReplayCandidateExecutionReport,
   ReplayCandidatePlan,
@@ -463,6 +464,8 @@ export default function ReplayOperationsCommandCenter() {
           </div>
         </div>
       </div>
+
+      <PlayerResultRecovery />
 
       <div className="grid gap-px bg-white/[0.06] xl:grid-cols-2">
         <article className="bg-slate-950/80 p-5 sm:p-6">

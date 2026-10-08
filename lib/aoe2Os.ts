@@ -170,6 +170,7 @@ export type Aoe2OsRun = {
     candidateOnly?: true;
     nativePerformanceSeconds?: number;
     timeoutSeconds?: number;
+    manifest?: import("./nativeReplayManifest").NativeReplayManifest;
   } | null;
   bridgeId: string | null;
   requestedAt: string;

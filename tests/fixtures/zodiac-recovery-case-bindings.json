@@ -1,0 +1,1221 @@
+{
+  "27269": {
+    "game": {
+      "id": 27269,
+      "replayHash": "ecf9d1e8302493f8aab1114873c6e4114128a9bdf592f89b903c891e4157afc7",
+      "parse_iteration": 1,
+      "is_final": true,
+      "disconnect_detected": false,
+      "parse_source": "watcher_final",
+      "parse_reason": "team_resignation_not_complete",
+      "winner": "Unknown",
+      "players": [
+        {
+          "eapm": null,
+          "name": "Zodiac",
+          "human": true,
+          "score": null,
+          "number": 1,
+          "winner": null,
+          "team_id": 0,
+          "user_id": "76561198103810510",
+          "color_id": 0,
+          "position": [
+            136,
+            120
+          ],
+          "steam_id": "76561198103810510",
+          "header_only": true,
+          "achievements": null,
+          "civilization": 16,
+          "rate_snapshot": null,
+          "roster_source": "public_replay_roster_v3",
+          "team_id_source": "public_replay_roster_v3",
+          "steam_dm_rating": 2306,
+          "steam_rm_rating": 1683,
+          "roster_recovered": true,
+          "civilization_name": "Mayans",
+          "roster_parse_run_id": 9061
+        },
+        {
+          "eapm": null,
+          "name": "Praxes",
+          "human": true,
+          "score": null,
+          "number": 2,
+          "winner": null,
+          "team_id": 0,
+          "user_id": "76561198127861941",
+          "color_id": 1,
+          "position": [
+            76,
+            129
+          ],
+          "steam_id": "76561198127861941",
+          "header_only": true,
+          "achievements": null,
+          "civilization": 12,
+          "rate_snapshot": null,
+          "roster_source": "public_replay_roster_v3",
+          "team_id_source": "public_replay_roster_v3",
+          "steam_dm_rating": 1871,
+          "steam_rm_rating": 1600,
+          "roster_recovered": true,
+          "civilization_name": "Mongols",
+          "roster_parse_run_id": 9061
+        },
+        {
+          "eapm": null,
+          "name": "PKNT",
+          "human": true,
+          "score": null,
+          "number": 3,
+          "winner": null,
+          "team_id": 1,
+          "user_id": "76561198052015177",
+          "color_id": 4,
+          "position": [
+            63,
+            14
+          ],
+          "steam_id": "76561198052015177",
+          "header_only": true,
+          "achievements": null,
+          "civilization": 18,
+          "rate_snapshot": null,
+          "roster_source": "public_replay_roster_v3",
+          "team_id_source": "public_replay_roster_v3",
+          "steam_dm_rating": 1688,
+          "steam_rm_rating": 1545,
+          "roster_recovered": true,
+          "civilization_name": "Koreans",
+          "roster_parse_run_id": 9061
+        },
+        {
+          "eapm": null,
+          "name": "Monty_Python",
+          "human": true,
+          "score": null,
+          "number": 4,
+          "winner": null,
+          "team_id": 1,
+          "user_id": "76561198853096271",
+          "color_id": 7,
+          "position": [
+            126,
+            38
+          ],
+          "steam_id": "76561198853096271",
+          "header_only": true,
+          "achievements": null,
+          "civilization": 2,
+          "rate_snapshot": null,
+          "roster_source": "public_replay_roster_v3",
+          "team_id_source": "public_replay_roster_v3",
+          "steam_dm_rating": 1853,
+          "steam_rm_rating": 1383,
+          "roster_recovered": true,
+          "civilization_name": "Franks",
+          "roster_parse_run_id": 9061
+        },
+        {
+          "eapm": null,
+          "name": "Trickster",
+          "human": true,
+          "score": null,
+          "number": 5,
+          "winner": null,
+          "team_id": 1,
+          "user_id": "76561198106036840",
+          "color_id": 5,
+          "position": [
+            11,
+            90
+          ],
+          "steam_id": "76561198106036840",
+          "header_only": true,
+          "achievements": null,
+          "civilization": 1,
+          "rate_snapshot": null,
+          "roster_source": "public_replay_roster_v3",
+          "team_id_source": "public_replay_roster_v3",
+          "steam_dm_rating": 1685,
+          "steam_rm_rating": 1434,
+          "roster_recovered": true,
+          "civilization_name": "Britons",
+          "roster_parse_run_id": 9061
+        }
+      ],
+      "key_events": {
+        "rated": true,
+        "restored": false,
+        "settings": {
+          "type": "DM",
+          "lock_teams": true,
+          "treaty_length": null,
+          "population_limit": 300
+        },
+        "completed": false,
+        "diplomacy": {
+          "type": "TG",
+          "teams": [
+            {
+              "players": [
+                "Zodiac",
+                "Praxes"
+              ],
+              "team_id": 0,
+              "player_numbers": [
+                1,
+                2
+              ]
+            },
+            {
+              "players": [
+                "PKNT",
+                "Monty_Python",
+                "Trickster"
+              ],
+              "team_id": 1,
+              "player_numbers": [
+                3,
+                4,
+                5
+              ]
+            }
+          ],
+          "source": "hd_platform_metadata",
+          "coherent": true,
+          "team_size": "2v3"
+        },
+        "has_scores": false,
+        "platform_id": "hd",
+        "team_source": "hd_lobby_team_array",
+        "body_byte_size": 638699,
+        "watcher_upload": {
+          "file_role": "final_recording",
+          "watcher_id": "watcher_864694e1a7a046c2a3176416622ce7fc",
+          "file_mtime_ms": 1742667424080,
+          "server_sha256": "ecf9d1e8302493f8aab1114873c6e4114128a9bdf592f89b903c891e4157afc7",
+          "file_size_bytes": 795424,
+          "final_candidate": true,
+          "file_role_source": "extension_inferred",
+          "replay_fingerprint": "795424:1742667424080",
+          "watcher_session_id": "session_0e1e5bc389bb47aaa33f02090d222179",
+          "checkpoint_final_rejected": false
+        },
+        "duration_source": "mgz.fast.body.sync_accumulation",
+        "restore_time_ms": 0,
+        "team_resolution": {
+          "teams": [],
+          "format": "unknown",
+          "status": "unsupported",
+          "confidence": "low",
+          "provenance": "unresolved",
+          "team_count": 0,
+          "player_count": 5,
+          "reason_codes": [
+            "unsupported_team_format"
+          ],
+          "result_status": "review_required",
+          "result_trusted": false,
+          "result_evidence": {
+            "sources": [],
+            "resignation_state": "no_complete_team",
+            "postgame_available": false,
+            "winner_flag_team_id": null,
+            "scoreboard_available": false,
+            "winner_flags_coherent": false,
+            "fully_resigned_team_ids": [],
+            "winner_flags_single_team": false,
+            "resignation_counts_by_team": [],
+            "partially_resigned_team_ids": [],
+            "resignation_result_conflict": false,
+            "single_team_winner_flag_team_id": null,
+            "complete_losing_team_resignation": false,
+            "team_completion_from_resignations": false,
+            "resignation_derived_winning_team_id": null
+          },
+          "winning_team_id": null,
+          "result_confidence": "review",
+          "result_provenance": "insufficient_result_evidence",
+          "winning_player_keys": [],
+          "winning_player_names": []
+        },
+        "has_achievements": false,
+        "completion_source": "team_resignation_review_required",
+        "platform_match_id": "3125e6e2-ec9d-014e-8a22-e5410d7caf49",
+        "result_resolution": {
+          "result_status": "review_required",
+          "result_trusted": false,
+          "result_evidence": {
+            "sources": [],
+            "resignation_state": "no_complete_team",
+            "postgame_available": false,
+            "winner_flag_team_id": null,
+            "scoreboard_available": false,
+            "winner_flags_coherent": false,
+            "fully_resigned_team_ids": [],
+            "winner_flags_single_team": false,
+            "resignation_counts_by_team": [],
+            "partially_resigned_team_ids": [],
+            "resignation_result_conflict": false,
+            "single_team_winner_flag_team_id": null,
+            "complete_losing_team_resignation": false,
+            "team_completion_from_resignations": false,
+            "resignation_derived_winning_team_id": null
+          },
+          "winning_team_id": null,
+          "result_confidence": "review",
+          "result_provenance": "insufficient_result_evidence",
+          "winning_player_keys": [],
+          "winning_player_names": []
+        },
+        "player_score_count": 0,
+        "postgame_available": false,
+        "body_operation_count": 36800,
+        "body_stream_complete": true,
+        "body_stream_recovery": true,
+        "has_achievement_shell": false,
+        "resigned_player_names": [
+          "Zodiac",
+          "Praxes"
+        ],
+        "header_framing_anomaly": "extra_length_prefixed_lobby_chat_after_declared_count",
+        "trailing_header_sha256": "65d212ccf44622b9d0fa0f95572a31c31149ea278c859a4fe02ba542164cb9a4",
+        "achievement_shell_count": 0,
+        "postgame_packet_present": false,
+        "resigned_player_numbers": [
+          1,
+          2
+        ],
+        "achievement_player_count": 0,
+        "header_failure_signature": "header:truncated_or_incomplete:terminated_error:5b5568b2c8d628b9",
+        "header_fragment_boundary": "after_complete_lobby_before_termination",
+        "raw_mgz_completed_signal": true,
+        "trailing_header_byte_size": 23,
+        "header_trailing_bytes_recovery": true,
+        "resignation_proves_team_completion": false,
+        "recovered_trailing_lobby_chat_count": 1
+      },
+      "event_types": [
+        "add_waypoint",
+        "back_to_work",
+        "build",
+        "buy",
+        "de_attack_move",
+        "de_queue",
+        "delete",
+        "flare",
+        "formation",
+        "gather_point",
+        "move",
+        "order",
+        "patrol",
+        "resign",
+        "sell",
+        "special",
+        "stance",
+        "stop",
+        "tribute",
+        "ungarrison",
+        "wall"
+      ]
+    },
+    "adjudications": [],
+    "desyncOccurred": false,
+    "linkedMarkets": [],
+    "financialSnapshot": {
+      "markets": [],
+      "claims": []
+    }
+  },
+  "44670": {
+    "game": {
+      "id": 44670,
+      "replayHash": "ff606a01553c1063ca2ea5ce1cc7e89d97c2a247021fa1fa9bf330adfa1cb406",
+      "parse_iteration": 26,
+      "is_final": true,
+      "disconnect_detected": false,
+      "parse_source": "watcher_final",
+      "parse_reason": "team_resignation_not_complete",
+      "winner": "Emaren",
+      "players": [
+        {
+          "mvp": null,
+          "eapm": 6,
+          "name": "Jim",
+          "human": true,
+          "score": null,
+          "number": 1,
+          "winner": true,
+          "cheater": false,
+          "team_id": 0,
+          "user_id": "76561198166409520",
+          "color_id": 0,
+          "position": [
+            73,
+            85
+          ],
+          "steam_id": "76561198166409520",
+          "achievements": null,
+          "civilization": 2,
+          "prefer_random": null,
+          "rate_snapshot": null,
+          "steam_dm_rating": 1676,
+          "steam_rm_rating": 980,
+          "civilization_name": "Franks"
+        },
+        {
+          "mvp": null,
+          "eapm": 8,
+          "name": "Zodiac",
+          "human": true,
+          "score": null,
+          "number": 2,
+          "winner": false,
+          "cheater": false,
+          "team_id": null,
+          "user_id": "76561198103810510",
+          "color_id": 1,
+          "position": [
+            83,
+            73
+          ],
+          "steam_id": "76561198103810510",
+          "achievements": null,
+          "civilization": 14,
+          "prefer_random": null,
+          "rate_snapshot": null,
+          "steam_dm_rating": 2400,
+          "steam_rm_rating": 1652,
+          "civilization_name": "Spanish"
+        },
+        {
+          "mvp": null,
+          "eapm": 4,
+          "name": "Emaren",
+          "human": true,
+          "score": null,
+          "number": 3,
+          "winner": true,
+          "cheater": false,
+          "team_id": 0,
+          "user_id": "76561198065420384",
+          "color_id": 2,
+          "position": [
+            95,
+            90
+          ],
+          "steam_id": "76561198065420384",
+          "achievements": null,
+          "civilization": 16,
+          "prefer_random": null,
+          "rate_snapshot": null,
+          "steam_dm_rating": 1549,
+          "steam_rm_rating": 1071,
+          "civilization_name": "Mayans"
+        }
+      ],
+      "key_events": {
+        "rated": true,
+        "restored": false,
+        "settings": {
+          "type": "TurboRandom9",
+          "speed": "fast",
+          "cheats": false,
+          "difficulty": "standard",
+          "lock_teams": true,
+          "population_limit": 500,
+          "map_reveal_choice": "normal"
+        },
+        "completed": false,
+        "chat_count": 68,
+        "has_scores": false,
+        "lobby_name": "Jim's Game",
+        "platform_id": "hd",
+        "chat_preview": [
+          {
+            "type": "message",
+            "message": "this is incredible",
+            "audience": "team",
+            "origination": "game",
+            "player_number": 3,
+            "timestamp_seconds": 1218
+          },
+          {
+            "type": "message",
+            "message": "shoot him!!",
+            "audience": "team",
+            "origination": "game",
+            "player_number": 3,
+            "timestamp_seconds": 1239
+          },
+          {
+            "type": "message",
+            "message": "my castles an hour away about",
+            "audience": "team",
+            "origination": "game",
+            "player_number": 3,
+            "timestamp_seconds": 1261
+          },
+          {
+            "type": "message",
+            "message": "fuck!",
+            "audience": "team",
+            "origination": "game",
+            "player_number": 3,
+            "timestamp_seconds": 1273
+          },
+          {
+            "type": "message",
+            "message": "gg...",
+            "audience": "all",
+            "origination": "game",
+            "player_number": 2,
+            "timestamp_seconds": 1521
+          }
+        ],
+        "watcher_upload": {
+          "file_role": "final_recording",
+          "watcher_id": "watcher_96c99134ede14ccea59aa11f4c175f33",
+          "client_sha256": "ff606a01553c1063ca2ea5ce1cc7e89d97c2a247021fa1fa9bf330adfa1cb406",
+          "file_mtime_ms": 1790294561517,
+          "server_sha256": "ff606a01553c1063ca2ea5ce1cc7e89d97c2a247021fa1fa9bf330adfa1cb406",
+          "file_size_bytes": 648823,
+          "final_candidate": true,
+          "file_role_source": "extension_inferred",
+          "replay_fingerprint": "648823:1790294561517",
+          "watcher_session_id": "session_91025376841b4a9190082f0dc60f001b",
+          "ingestion_provenance": "live_monitor",
+          "client_sha256_verified": true,
+          "checkpoint_final_rejected": false,
+          "provenance_signature_verified": false
+        },
+        "chat_transcript": [
+          {
+            "type": "message",
+            "line_no": 1,
+            "message": "trying to get emaren back online",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 1,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 2,
+            "message": "he's on his way",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 1,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 3,
+            "message": "it's over",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 3,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 4,
+            "message": "what is this map?",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 5,
+            "message": "a min or 2 after start we can bet if you want",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 1,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 6,
+            "message": "sure",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 3,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 7,
+            "message": "forest nothing 5x5",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 1,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 8,
+            "message": "what is that?",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 9,
+            "message": "do you want dm instead",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 1,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 10,
+            "message": "rm is fine, but i dont know what this map is",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 11,
+            "message": "forest nothing, just trees",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 1,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 12,
+            "message": "even better",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 3,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 13,
+            "message": "so no gold?",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 14,
+            "message": "lol",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 3,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 15,
+            "message": "is that even a thing?",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 3,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 16,
+            "message": "you can trade with you ai teammate",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 1,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 17,
+            "message": "can we play a normal map? I dont want to chop wood for 20 minutes to fight celts",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 18,
+            "message": "hahah",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 3,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 19,
+            "message": "wild maps",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 3,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 20,
+            "message": "i've only ever played 1",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 3,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 21,
+            "message": "yuca for life lol",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 3,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 22,
+            "message": "whatever",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 23,
+            "message": "hf",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 24,
+            "message": "boom time",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 3,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 25,
+            "message": "here, well be right next to each other",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 1,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 26,
+            "message": "forest fuckery love it",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 3,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 27,
+            "message": "only 2 or 4 trees away from enemy",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 1,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 28,
+            "message": "lol",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 3,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 29,
+            "message": "11",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 3,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 30,
+            "message": "this'll be a news story...",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 3,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 31,
+            "message": "zod gonna hurt =real bad",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 3,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 32,
+            "message": "comin for ya bro",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 3,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 33,
+            "message": "rush time",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 3,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 34,
+            "message": "i'm pretty sure he'll kill us easy on this",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 1,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 35,
+            "message": "11",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 1,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 36,
+            "message": "viking style",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 3,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 37,
+            "message": "k",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 2,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 38,
+            "message": "11",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 3,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 39,
+            "message": "JIM",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 3,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 40,
+            "message": "i'll tax him if he does",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 3,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 41,
+            "message": "11",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 1,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 42,
+            "message": "17",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 3,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 43,
+            "message": "\\11",
+            "audience": "all",
+            "origination": "lobby",
+            "player_number": 3,
+            "timestamp_seconds": null
+          },
+          {
+            "type": "message",
+            "line_no": 44,
+            "message": "wtf is this",
+            "audience": "all",
+            "origination": "game",
+            "player_number": 2,
+            "timestamp_seconds": 54
+          },
+          {
+            "type": "message",
+            "line_no": 45,
+            "message": "lol",
+            "audience": "team",
+            "origination": "game",
+            "player_number": 3,
+            "timestamp_seconds": 60
+          },
+          {
+            "type": "message",
+            "line_no": 46,
+            "message": "thisa is where you die",
+            "audience": "team",
+            "origination": "game",
+            "player_number": 3,
+            "timestamp_seconds": 81
+          },
+          {
+            "type": "message",
+            "line_no": 47,
+            "message": "get him jim",
+            "audience": "team",
+            "origination": "game",
+            "player_number": 3,
+            "timestamp_seconds": 97
+          },
+          {
+            "type": "message",
+            "line_no": 48,
+            "message": "i cant even build castles yet what is this",
+            "audience": "team",
+            "origination": "game",
+            "player_number": 3,
+            "timestamp_seconds": 153
+          },
+          {
+            "type": "message",
+            "line_no": 49,
+            "message": "you're dark age, what caslte",
+            "audience": "team",
+            "origination": "game",
+            "player_number": 1,
+            "timestamp_seconds": 184
+          },
+          {
+            "type": "message",
+            "line_no": 50,
+            "message": "marco",
+            "audience": "all",
+            "origination": "game",
+            "player_number": 2,
+            "timestamp_seconds": 214
+          },
+          {
+            "type": "message",
+            "line_no": 51,
+            "message": "dm'ers love their earl castles",
+            "audience": "team",
+            "origination": "game",
+            "player_number": 3,
+            "timestamp_seconds": 222
+          },
+          {
+            "type": "message",
+            "line_no": 52,
+            "message": "polo",
+            "audience": "all",
+            "origination": "game",
+            "player_number": 2,
+            "timestamp_seconds": 223
+          },
+          {
+            "type": "message",
+            "line_no": 53,
+            "message": "zod im comin for ya",
+            "audience": "team",
+            "origination": "game",
+            "player_number": 3,
+            "timestamp_seconds": 290
+          },
+          {
+            "type": "message",
+            "line_no": 54,
+            "message": "lol i love these maps",
+            "audience": "team",
+            "origination": "game",
+            "player_number": 3,
+            "timestamp_seconds": 395
+          },
+          {
+            "type": "message",
+            "line_no": 55,
+            "message": "what up!  i can't bet on game",
+            "audience": "team",
+            "origination": "game",
+            "player_number": 1,
+            "timestamp_seconds": 419
+          },
+          {
+            "type": "message",
+            "line_no": 56,
+            "message": "it shows game live but not in bet tab",
+            "audience": "team",
+            "origination": "game",
+            "player_number": 1,
+            "timestamp_seconds": 446
+          },
+          {
+            "type": "message",
+            "line_no": 57,
+            "message": "thats messed up",
+            "audience": "team",
+            "origination": "game",
+            "player_number": 3,
+            "timestamp_seconds": 457
+          },
+          {
+            "type": "message",
+            "line_no": 58,
+            "message": "i see it too!",
+            "audience": "team",
+            "origination": "game",
+            "player_number": 3,
+            "timestamp_seconds": 463
+          },
+          {
+            "type": "message",
+            "line_no": 59,
+            "message": "will fix!",
+            "audience": "team",
+            "origination": "game",
+            "player_number": 3,
+            "timestamp_seconds": 471
+          },
+          {
+            "type": "message",
+            "line_no": 60,
+            "message": "16",
+            "audience": "team",
+            "origination": "game",
+            "player_number": 1,
+            "timestamp_seconds": 558
+          },
+          {
+            "type": "message",
+            "line_no": 61,
+            "message": "zod chill",
+            "audience": "team",
+            "origination": "game",
+            "player_number": 3,
+            "timestamp_seconds": 583
+          },
+          {
+            "type": "message",
+            "line_no": 62,
+            "message": "nice Jim",
+            "audience": "team",
+            "origination": "game",
+            "player_number": 3,
+            "timestamp_seconds": 1205
+          },
+          {
+            "type": "message",
+            "line_no": 63,
+            "message": "lol",
+            "audience": "team",
+            "origination": "game",
+            "player_number": 3,
+            "timestamp_seconds": 1209
+          },
+          {
+            "type": "message",
+            "line_no": 64,
+            "message": "this is incredible",
+            "audience": "team",
+            "origination": "game",
+            "player_number": 3,
+            "timestamp_seconds": 1218
+          },
+          {
+            "type": "message",
+            "line_no": 65,
+            "message": "shoot him!!",
+            "audience": "team",
+            "origination": "game",
+            "player_number": 3,
+            "timestamp_seconds": 1239
+          },
+          {
+            "type": "message",
+            "line_no": 66,
+            "message": "my castles an hour away about",
+            "audience": "team",
+            "origination": "game",
+            "player_number": 3,
+            "timestamp_seconds": 1261
+          },
+          {
+            "type": "message",
+            "line_no": 67,
+            "message": "fuck!",
+            "audience": "team",
+            "origination": "game",
+            "player_number": 3,
+            "timestamp_seconds": 1273
+          },
+          {
+            "type": "message",
+            "line_no": 68,
+            "message": "gg...",
+            "audience": "all",
+            "origination": "game",
+            "player_number": 2,
+            "timestamp_seconds": 1521
+          }
+        ],
+        "duration_source": "mgz_summary_ms_normalized",
+        "raw_duration_ms": 1532440,
+        "team_resolution": {
+          "teams": [],
+          "format": "unknown",
+          "status": "unsupported",
+          "confidence": "low",
+          "provenance": "unresolved",
+          "team_count": 0,
+          "player_count": 3,
+          "reason_codes": [
+            "unsupported_team_format"
+          ],
+          "result_status": "review_required",
+          "result_trusted": false,
+          "result_evidence": {
+            "sources": [],
+            "resignation_state": "no_complete_team",
+            "postgame_available": false,
+            "winner_flag_team_id": null,
+            "scoreboard_available": false,
+            "winner_flags_coherent": false,
+            "fully_resigned_team_ids": [],
+            "winner_flags_single_team": false,
+            "resignation_counts_by_team": [],
+            "partially_resigned_team_ids": [],
+            "resignation_result_conflict": false,
+            "single_team_winner_flag_team_id": null,
+            "complete_losing_team_resignation": false,
+            "team_completion_from_resignations": false,
+            "resignation_derived_winning_team_id": null
+          },
+          "winning_team_id": null,
+          "result_confidence": "review",
+          "result_provenance": "insufficient_result_evidence",
+          "winning_player_keys": [],
+          "winning_player_names": []
+        },
+        "has_achievements": false,
+        "completion_source": "team_resignation_review_required",
+        "owner_player_name": "Jim",
+        "platform_match_id": "88e59fb8-74ce-9343-ab7e-24cfc1835467",
+        "result_resolution": {
+          "result_status": "review_required",
+          "result_trusted": false,
+          "result_evidence": {
+            "sources": [],
+            "resignation_state": "no_complete_team",
+            "postgame_available": false,
+            "winner_flag_team_id": null,
+            "scoreboard_available": false,
+            "winner_flags_coherent": false,
+            "fully_resigned_team_ids": [],
+            "winner_flags_single_team": false,
+            "resignation_counts_by_team": [],
+            "partially_resigned_team_ids": [],
+            "resignation_result_conflict": false,
+            "single_team_winner_flag_team_id": null,
+            "complete_losing_team_resignation": false,
+            "team_completion_from_resignations": false,
+            "resignation_derived_winning_team_id": null
+          },
+          "winning_team_id": null,
+          "result_confidence": "review",
+          "result_provenance": "insufficient_result_evidence",
+          "winning_player_keys": [],
+          "winning_player_names": []
+        },
+        "player_score_count": 0,
+        "postgame_available": false,
+        "owner_player_number": 1,
+        "chat_transcript_count": 68,
+        "has_achievement_shell": true,
+        "resigned_player_names": [
+          "Zodiac"
+        ],
+        "achievement_shell_count": 3,
+        "resigned_player_numbers": [
+          2
+        ],
+        "achievement_player_count": 0,
+        "raw_mgz_completed_signal": true,
+        "chat_transcript_truncated": false,
+        "resignation_proves_team_completion": false
+      },
+      "event_types": [
+        "research",
+        "de_queue",
+        "gather_point",
+        "order",
+        "move",
+        "build",
+        "special",
+        "ungarrison",
+        "game",
+        "flare",
+        "delete",
+        "sell",
+        "buy",
+        "back_to_work",
+        "town_bell",
+        "resign"
+      ]
+    },
+    "adjudications": [],
+    "desyncOccurred": false,
+    "linkedMarkets": [],
+    "financialSnapshot": {
+      "markets": [],
+      "claims": []
+    }
+  }
+}
