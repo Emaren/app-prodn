@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/leaderboard-lane-truth-20261008` at `189f56ab625981718182d800599dc43569c3cb51`
+Implementation baseline: `fix/leaderboard-lane-truth-20261008` at `a5b82544b06af84a67d73f6f1160329b5271b396`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
