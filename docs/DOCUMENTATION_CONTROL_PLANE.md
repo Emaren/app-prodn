@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `chatgpt/native-memory-control-ladder-20261007` at `dd1ff9bd2a9f4308ef249d03faa134c32049afe9`
+Implementation baseline: `chatgpt/native-memory-control-ladder-20261007` at `8093b74bd2dfdd8b56b4e13a474e987403daaf36`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

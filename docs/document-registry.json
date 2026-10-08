@@ -85,7 +85,7 @@
       "review_interval_days": 60,
       "reviewed_at": "2026-10-04",
       "sensitivity": "internal",
-      "sha256": "cb80e5fcb71ab955a6d3e56cea296ec21ebae815d8deb1b5d8f5105d46723e4b",
+      "sha256": "13a6a028e5e452b4333bc30f37eb4a23e23c31328b9a0b0e892a8d89c1e8b135",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -175,9 +175,9 @@
       "owner": "aoe2war-web",
       "path": "docs/ADMIN_METRICS.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-08-08",
+      "reviewed_at": "2026-10-08",
       "sensitivity": "internal",
-      "sha256": "522f48351eaa23c541f24e48990618a86cd056bdaaa9f4f3f9cb974ad4a8c640",
+      "sha256": "faa41e9289a7bd3478f7bc27200a295f9470a7cc0a9c6e737bf1f5fbf9a1d281",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -479,9 +479,9 @@
       "owner": "aoe2war-web",
       "path": "docs/CHAMPIONS_TITLE_ECONOMY.md",
       "review_interval_days": 90,
-      "reviewed_at": "2026-10-04",
+      "reviewed_at": "2026-10-07",
       "sensitivity": "internal",
-      "sha256": "21fde34da0a7ff98f814167ccecfe890b57238ddbdb23cd96b05000c82cf36e9",
+      "sha256": "a78baf842911e4189504153ab659b3d63eaeb03473a2dd672212f923ecb2f80d",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c4f0ecdafcc8499635e82068c440e3d89b27ba4e24f44d1ba1abf46f156c5f73",
+      "sha256": "e62c7a0f48e2f42dfc543f6f93fa9dfadacaa243f75a84d2337d3c8a92df2913",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1856,9 +1856,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WOLOCHAIN_CIVIC_RAIL_HANDOFF_PROMPT.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-07",
+      "reviewed_at": "2026-10-08",
       "sensitivity": "internal",
-      "sha256": "781f0ab21d509efcdf740eaaba233301ce8c96a0db14dd5c23cf0fdeb03dd90f",
+      "sha256": "68bea109901cfab60c9e4c40d7eb0fd864fb11ca60046a2a23ff6159cabe9aa4",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2049,7 +2049,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "chatgpt/native-memory-control-ladder-20261007",
-    "commit": "dd1ff9bd2a9f4308ef249d03faa134c32049afe9"
+    "commit": "8093b74bd2dfdd8b56b4e13a474e987403daaf36"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
