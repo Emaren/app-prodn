@@ -47,3 +47,32 @@ test("the canonical directory never creates a user or match count from live rati
   assert.match(source, /if \(!state && !signed\)/);
   assert.doesNotMatch(source, /updateLastPlayedAt\([\s\S]{0,120}signed\.steamRmObservedAt/);
 });
+
+// A bounded SQL-result integration seam: PostgreSQL already applies signature,
+// chronology and source predicates; the JavaScript adapter must preserve
+// per-lane values without applying Site Elo or name-based identity fallbacks.
+test("signed watcher SQL projection preserves independently observed RM/DM values", async () => {
+  const { loadVerifiedWatcherSteamRatings, invalidateVerifiedWatcherSteamRatingsCache } =
+    await import("../lib/verifiedWatcherSteamRatings.ts");
+  invalidateVerifiedWatcherSteamRatingsCache();
+  let sql = "";
+  const prisma = {
+    $queryRaw: async (statement: { sql: string }) => {
+      sql = statement.sql;
+      return [{
+        steamId: "76561198000000001",
+        steamRmRating: 1077,
+        steamRmObservedAt: new Date("2026-10-07T01:18:12.950Z"),
+        steamDmRating: 1538,
+        steamDmObservedAt: new Date("2026-10-07T01:18:12.950Z"),
+      }];
+    },
+  };
+  const result = await loadVerifiedWatcherSteamRatings(prisma as never);
+  assert.equal(result.length, 1);
+  assert.equal(result[0].steamRmRating, 1077);
+  assert.equal(result[0].steamDmRating, 1538);
+  assert.match(sql, /provenance_signature_verified/);
+  assert.match(sql, /g\\.parse_source IN \\('watcher_live','watcher_final'\\)/);
+  invalidateVerifiedWatcherSteamRatingsCache();
+});
