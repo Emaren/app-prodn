@@ -8,6 +8,7 @@ import { loadPublicReplayGeneration } from "@/lib/publicReplayGeneration";
 export type PublicLeaderboardRawGame = {
   createdAt: Date;
   event_types: unknown;
+  game_type: string | null;
   id: number;
   is_final: boolean;
   key_events: unknown;
@@ -129,6 +130,7 @@ async function loadPublicLeaderboardRawGamePage(
     select: {
       createdAt: true,
       event_types: true,
+      game_type: true,
       id: true,
       is_final: true,
       key_events: true,
