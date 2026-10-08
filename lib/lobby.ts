@@ -228,7 +228,7 @@ export type LobbyLeaderboardSummary = {
   minimumMatches: number;
   rankDelta24hAsOf: string | null;
   rankDelta24hCutoff: string | null;
-  rankDelta24hMethod: "reconstructed_current_corpus";
+  rankDelta24hMethod: "reconstructed_current_corpus" | "unavailable_pending_rank_snapshots";
 };
 
 export type LobbyWoloAccount = {
