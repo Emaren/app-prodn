@@ -375,6 +375,38 @@ A six-file sample is a **feasibility gate only**, not a mass recovery
 run or proof of completeness. Older replay headers remain
 historical-display candidates, not signed Watcher current account state.
 
+The first archived replay-header canary **passed in production at
+2026-10-09T03:24:00Z** (production app source
+`d8caa41357011cb4bb878b73b3fd845a9753a1e7`, installed API
+parser `c0f737a6088a2892f2a6da996195d42fc688be03`).
+Six independently SHA-verified archived replays successfully reparsed,
+all six contained exactly the intended Steam identity, both RM and DM
+had explicit `hd_header` rating origin, and **all twelve** parsed
+ratings reproduced the legacy unmarked stored numeric values. There
+were no observed parse failures, timeouts, SHA mismatches or writes.
+This is a six-artifact method validation, **not** evidence that all
+1,678 located archival paths are correct or the broader 1,893
+numeric-pair candidate directory is publishable. That broader number
+omits some stricter provenance funnel checks.
+
+The next validation stage runs independently selected 24-file waves:
+```bash
+python3 -m unittest discover -s tests -p 'test_leaderboard_steam_archive_parser_cli.py'
+python3 scripts/leaderboard_steam_archive_parser.py --wave 1
+```
+Wave zero retains the certified six-file canary. Wave one starts at
+the next 24 deterministic exact-Steam identity positions; subsequent
+waves use nonoverlapping identity positions. Each run caps accepted
+sample hashes at 24 distinct artifacts, bounds each replay file at
+12 MiB, applies a 12.5-second process timeout and stops requesting
+new files after approximately 125 seconds. Any shortfall is reported,
+not disguised as successful verification. Every wave remains
+database-read-only and never promotes a parsed result to leaderboard
+authority. Future recovery requires a separate immutable historical
+artifact receipt, accepted exact-Steam identity, real game clock,
+parser version and source-lane evidence and a tested chronological
+precedence resolver against current signed Watcher readings.
+
 The observer now also includes `blockedDetails` for each lane: mutually
 exclusive per-identity reasons for the provenance, clock, and source
 failures. Its provenance categories distinguish a missing `watcher_upload`
