@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0641cbd62f650fb420e54ba2e85e18c7fe70c8e57a939b7ec5848570439169bb",
+      "sha256": "7d9cc3bba98ba7ccc94ac1b6270cfe1693567d1c122d7f9c474d21b25a26ecfb",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -961,7 +961,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-07-28",
       "sensitivity": "internal",
-      "sha256": "1400f540ff487a0c406ad51f47a452401626534736bce5fe325ce36432375991",
+      "sha256": "aee06169cf13b31f37ec8c170307c32d4a5fc9f9f707a712474a8273a6d3ef13",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2048,8 +2048,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/steam-elo-release-gate-whitespace-20261009",
-    "commit": "785c3bcef0c55c0e93c0b8cc2c629e4f2d8a12c4"
+    "branch": "fix/leaderboard-complete-public-roster-20261009",
+    "commit": "b1702680e2fa265c358f6c0669999db336842e11"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
