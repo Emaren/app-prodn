@@ -242,6 +242,49 @@ mode-only statistics must not silently replace the Version 1 all-mode table.
 No database mutation, replay adjudication, financial authority, or Wolo
 operation is involved in this choice.
 
+## Steam RM/DM evidence coverage and missing-rating triage
+
+The public player directory is an **identity and replay-history roster**. The
+competitive RM board admits only qualifying Steam RM ratings; the competitive
+DM board admits only qualifying Steam DM ratings. A player with a rating on
+one lane is not automatically qualified for the other. A registered/claimed
+profile alone is not competitive rating authority; any legacy pending-claimed
+display exceptions must be removed in a separately tested presentation change.
+No default 1600 or other inferred Steam number may enter either board.
+
+Before changing ranking eligibility, run the non-mutating source audit from the
+canonical Mac checkout:
+
+```bash
+python3 -m unittest tests/test_leaderboard_steam_coverage_cli.py
+python3 scripts/leaderboard_steam_coverage.py
+```
+
+The command streams `scripts/leaderboard_steam_coverage_remote.mjs` through
+the protected read-only production truth observer. It returns both-lane,
+RM-only, DM-only, and neither-observed counts, plus exact Steam identity counts.
+It separately detects raw numeric RM/DM values in Watcher and non-Watcher
+uploads that **do not qualify** as official current-rating authority. The full
+case queue remains in a locally restricted receipt, not a public API or GitHub
+issue. Do not publish the case-level names/Steam IDs.
+
+**A missing qualifying rating is not evidence that the Steam account is
+actually unrated.** Each unresolved lane must be classified against preserved
+source bytes, known parser mapping, exact SteamID64, header/value presence,
+signature/receipt provenance, timestamp, and observational freshness. Mixed
+identity, unsupported replay header, omitted terminal state, and rejected
+signature are different failure classes. Manual and batch uploads may improve
+historical game statistics but can never overwrite a more authoritative
+Watcher rating by arrival time.
+
+Rate coverage and result-resolution coverage are independent. An accepted
+replay with no provable winner can still contain a genuine historical rating;
+a replay with a reliable winner can still lack trustworthy rating evidence.
+The Engine Room should improve each independently, recording exact parser
+versions and evidence hashes. Only after every supported recovery pass has
+failed may an unresolved case be designated source-limited; it must never be
+silently fabricated, discarded, or treated as financial settlement proof.
+
 ## 24-hour rank change
 
 The previous `reconstructed_current_corpus` delta compared the currently
@@ -329,8 +372,8 @@ presentation** separate. Its lane value resolves in this order:
 1. current immutable Watcher receipt-backed Steam RM/DM rating;
 2. newest dated accepted replay-player HD-header snapshot for that exact Steam
    identity, rendered explicitly as `Last RM` / `Last DM`;
-3. reconstructed **lane-specific** `Site Elo` when no Steam lane snapshot is available;
-4. unrated/profile state when there is no replay-backed history.
+3. unavailable Steam Elo when neither lane-specific source qualifies. Site Elo
+   never appears on Version 1 competitive RM/DM boards.
 
 The second tier is historical presentation, not current-account authority. It
 cannot populate `CurrentWatcherAccountState`, rename or verify an account,
