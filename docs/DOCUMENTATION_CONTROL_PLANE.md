@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/library-live-ledger-20261009` at `fff9e0f8046bffb0514c3899fd854af8296890a2`
+Implementation baseline: `feature/library-historical-provenance-20261009` at `066999e38a68678d77739be53a215a62c2309115`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
