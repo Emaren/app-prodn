@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/leaderboard-complete-public-roster-20261009` at `00c0ae331c36da97cc6c1bf58b1be2f16160fe65`
+Implementation baseline: `fix/doctor-next-toolchain-contract-20261009` at `052af6af81a4fd730e2eea99ea7639568a0c4a81`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
