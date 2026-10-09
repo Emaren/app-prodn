@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/v1-steam-ratings-watcher-authority-20261008` at `c87197756ceb3a8a7aa262494876a97e5e164de9`
+Implementation baseline: `fix/steam-elo-release-gate-whitespace-20261009` at `785c3bcef0c55c0e93c0b8cc2c629e4f2d8a12c4`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
