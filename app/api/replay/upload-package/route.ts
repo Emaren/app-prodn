@@ -407,7 +407,7 @@ export async function POST(request: NextRequest) {
             const id = result.stages.gameId;
             const parsed = typeof id === "number"
               ? id
-              : typeof id === "string" && /^\\d+$/.test(id)
+              : typeof id === "string" && /^[0-9]+$/.test(id)
                 ? Number(id) : null;
             return parsed !== null && Number.isSafeInteger(parsed) && parsed > 0
               ? [parsed] : [];
