@@ -104,6 +104,8 @@ class ArchiveParserCanaryTests(unittest.TestCase):
         self.assertIn("PYTHONDONTWRITEBYTECODE: \"1\"", source)
         self.assertIn("sha256", source)
         self.assertIn("filePath", source)
+        self.assertIn("sampledHashes.has(c.hash)", source)
+        self.assertIn("sampledHashes.add(c.hash)", source)
         self.assertIn('apiGit(["rev-parse","HEAD"])', source)
         self.assertIn("from utils.replay_parser import _parse_sync_bytes", source)
         self.assertNotIn("UPDATE game_stats", source)
