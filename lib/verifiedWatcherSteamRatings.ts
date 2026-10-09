@@ -1,9 +1,14 @@
 import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
 import { normalizeLeaderboardSteamId } from "@/lib/leaderboardIdentity";
 
-/** Read-only legacy compatibility lane for independently signed Watcher uploads.
- * Never accepts manual/batch/file uploads or uses replay results as rating truth.
- * Raw observed ratings are NOT equivalent to immutable HD-header receipts.
+/** Display-only compatibility for exact-Steam ratings parsed from authenticated
+ * Watcher upload routes. Signed uploads qualify; old Watcher clients that
+ * supplied NO signature qualify only when the server confirmed the replay
+ * hashes, live-monitor provenance, and authenticated Watcher metadata.
+ * A supplied-but-invalid signature NEVER qualifies.
+ *
+ * This weaker legacy rail is NOT immutable receipt, replay-result, settlement,
+ * or financial authority. Manual/file/batch uploads never qualify.
  */
 export type VerifiedWatcherSteamRating = {
   steamId: string;
@@ -64,7 +69,22 @@ async function readFresh(prisma: PrismaClient): Promise<VerifiedWatcherSteamRati
         AND g.user_uid <> 'system'
         AND LOWER(g.replay_hash) ~ '^[a-f0-9]{64}$'
         AND g.key_events::jsonb #>> '{watcher_upload,ingestion_provenance}' = 'live_monitor'
-        AND g.key_events::jsonb #> '{watcher_upload,provenance_signature_verified}' = 'true'::jsonb
+        AND (
+          g.key_events::jsonb #>
+            '{watcher_upload,provenance_signature_verified}' = 'true'::jsonb
+          OR (
+            g.key_events::jsonb #>
+              '{watcher_upload,provenance_signature_verified}' = 'false'::jsonb
+            AND g.key_events::jsonb #>
+              '{watcher_upload,provenance_signature_supplied}' = 'false'::jsonb
+            AND NULLIF(BTRIM(g.key_events::jsonb #>>
+              '{watcher_upload,watcher_id}'), '') IS NOT NULL
+            AND NULLIF(BTRIM(g.key_events::jsonb #>>
+              '{watcher_upload,watcher_session_id}'), '') IS NOT NULL
+            AND NULLIF(BTRIM(g.key_events::jsonb #>>
+              '{watcher_upload,replay_fingerprint}'), '') IS NOT NULL
+          )
+        )
         AND g.key_events::jsonb #> '{watcher_upload,client_sha256_verified}' = 'true'::jsonb
         AND LOWER(g.key_events::jsonb #>> '{watcher_upload,server_sha256}') = LOWER(g.replay_hash)
         AND LOWER(g.key_events::jsonb #>> '{watcher_upload,client_sha256}') = LOWER(g.replay_hash)
