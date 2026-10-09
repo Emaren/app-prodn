@@ -404,7 +404,7 @@ try {
     throw Error("parser canary conservation failed");
   process.stdout.write(JSON.stringify({
     kind:"aoe2war-archived-hd-rating-parser-canary",
-    schemaVersion:1, observedAt:new Date().toISOString(),
+    schemaVersion:2, observedAt:new Date().toISOString(),
     productionSource:process.env.AOE2WAR_TRUTH_PRODUCTION_SOURCE??null,
     databaseReadOnly:proof,
     summary, cohortFingerprint, sampleEvidence,
