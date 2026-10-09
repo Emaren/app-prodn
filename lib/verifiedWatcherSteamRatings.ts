@@ -64,6 +64,12 @@ async function readFresh(prisma: PrismaClient): Promise<VerifiedWatcherSteamRati
       SELECT g.id, g.played_on, g.timestamp, g.players::jsonb AS players
       FROM game_stats g
       WHERE g.parse_source IN ('watcher_live','watcher_final')
+        -- Historical backfills can retain a watcher_final parse_source;
+        -- their manual result/metadata repair is never rating authority.
+        AND COALESCE(g.parse_reason, '') NOT IN (
+          'manual_backfill', 'manual_override',
+          'engine_room_structural_projection'
+        )
         AND g.played_on IS NOT NULL
         AND g.played_on <= NOW() + INTERVAL '5 minutes'
         AND g.user_uid IS NOT NULL AND BTRIM(g.user_uid) <> ''
