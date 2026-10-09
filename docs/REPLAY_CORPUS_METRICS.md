@@ -165,6 +165,50 @@ physical archived files. The Workshop and War Vault retain their own
 separate numerators and contract. No ledger view can certify a result,
 authorize a bet, promote Steam ratings, or move WoloChain funds.
 
+## Historical Library provenance and player census (2026-10-09)
+
+`/library` V2.1 scans the complete current `GameStats.is_final = true`
+corpus into a bounded, coalesced read-only in-process snapshot for public
+intake presentation. The source tabs now filter the full ledger **before**
+48-entry ID cursor pagination; unlike the first V2 implementation, a manual
+or ZIP record that is outside the latest unfiltered 48 entries remains
+discoverable immediately. Each numbered row retains its all-record ordinal.
+
+Source classification uses an evidence ladder, without changing or asserting
+replay winner/Steam/Wolo authority:
+
+1. Explicit recorded Watcher `ingestion_provenance=live_monitor` or
+   `historical_import` yields the corresponding live or batch label.
+2. Historical legacy Watcher uploads can be labeled batch when an existing
+   `batch_upload_file_succeeded` receipt agrees on **uploader UID,
+   immutable replay hash, and a bounded timestamp**. This is telemetry-based
+   intake evidence, not a replacement for a signed live attestation.
+3. New manual ZIP receipts with `metadata.gameIds` agree on exact game ID and
+   uploader. Old ZIP receipts can be correlated only when a *single*
+   filename+uploader+nearby-time GameStats record is uniquely supported by a
+   *single* ZIP receipt. Those rows prominently show `INFERRED`. Repeated
+   filenames, conflicting candidate rows or competing receipts are excluded.
+4. All remaining file-upload records are manual single/unspecified; old
+   Watcher rows without a source marker remain legacy; unsupported sources
+   remain unclassified. No historical row is rewritten.
+
+The claimed-account uploader census groups by **GameStats.user_uid**. A person
+appearing as an opponent in someone else's recording receives no upload
+credit. Named claimed site accounts are shown even if they have zero final
+replay rows, with a breakdown of Watcher live, Watcher batch, manual single,
+manual ZIP, legacy Watcher and unclassified origins. Within each bucket,
+`unknown` counts non-checkpoint final records without a trusted,
+stats-eligible result from the existing public replay-winner resolver;
+saved .aoe2mpgame checkpoints count separately and are not called unknown
+completed battles. These are intake/read-only analytics, not War Vault
+deduplicated battles or financial settlement proof.
+
+Origin and winner confidence remain visibly separate from upload counts.
+The census and intake both use the same normalized source snapshot; cache
+refresh is bounded to avoid launching a complete history scan with every
+five-second browser poll. No writes, schema migrations, financial mutation,
+or historic replay-content modifications are involved.
+
 ## Grain definitions
 
 ### Physical archive file
