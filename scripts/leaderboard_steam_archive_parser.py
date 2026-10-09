@@ -2,6 +2,7 @@
 """Protected read-only canary: SHA-verified archived HD header reparse."""
 from __future__ import annotations
 
+import argparse
 import importlib.util
 import json
 from pathlib import Path
@@ -10,7 +11,7 @@ ROOT = Path(__file__).resolve().parents[1]
 REMOTE = ROOT / "scripts" / "leaderboard_steam_archive_parser_remote.mjs"
 
 
-def validate(payload: object) -> dict:
+def validate(payload: object, expected_wave: int = 0) -> dict:
     if not isinstance(payload, dict) or payload.get("kind") != (
         "aoe2war-archived-hd-rating-parser-canary"
     ) or payload.get("schemaVersion") != 1:
@@ -49,11 +50,24 @@ def validate(payload: object) -> dict:
     for name in nums:
         if type(data.get(name)) is not int or data[name] < 0:
             raise RuntimeError(f"invalid canary counter: {name}")
+    for name in ("sampleWave", "sampleOffsetIdentities"):
+        if type(data.get(name)) is not int or data[name] < 0:
+            raise RuntimeError("invalid archive parser sample wave")
+    if type(data.get("deadlineReached")) is not bool:
+        raise RuntimeError("invalid archive parser deadline status")
+    if type(expected_wave) is not int or not 0 <= expected_wave <= 78:
+        raise RuntimeError("requested archive parser wave unsafe")
+    expected_limit = 6 if expected_wave == 0 else 24
+    expected_offset = 0 if expected_wave == 0 else 6 + (expected_wave - 1) * 24
+    if (data["sampleWave"] != expected_wave or
+        data["sampleOffsetIdentities"] != expected_offset or
+        data["selectedSampleLimit"] != expected_limit):
+        raise RuntimeError("archive parser sample wave does not match request")
     for name in ("apiPythonAvailable", "archiveAccessible"):
         if type(data.get(name)) is not bool:
             raise RuntimeError("canary environment proof malformed")
     total = data["sampleHashesVerified"]
-    if (not 0 <= total <= data["selectedSampleLimit"] <= 6 or
+    if (not 0 <= total <= data["selectedSampleLimit"] <= 24 or
         data["parserParsed"] + data["parserNoProjection"] +
         data["parserTimeout"] + data["parserError"] +
         data["invalidParserOutput"] < total or
@@ -70,7 +84,7 @@ def validate(payload: object) -> dict:
     return data
 
 
-def main() -> None:
+def main(wave: int = 0) -> None:
     spec = importlib.util.spec_from_file_location(
         "aoe2war_truth", ROOT / "scripts" / "aoe2_truth.py"
     )
@@ -79,9 +93,13 @@ def main() -> None:
     truth = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(truth)
     truth.REMOTE_PROGRAM = REMOTE
-    payload = truth.run_remote("census")
-    summary = validate(payload)
-    receipt = truth.write_receipt("leaderboard-steam-archive-parser", payload)
+    if type(wave) is not int or not 0 <= wave <= 78:
+        raise RuntimeError("archive parser wave outside safety ceiling")
+    payload = truth.run_remote("census", wave)
+    summary = validate(payload, expected_wave=wave)
+    receipt = truth.write_receipt(
+        f"leaderboard-steam-archive-parser-wave-{wave}", payload
+    )
     receipt.chmod(0o600)
     print(json.dumps({
         "observedAt": payload.get("observedAt"),
@@ -95,4 +113,11 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(
+        description="Read-only sample of SHA-verified historic Steam header ratings"
+    )
+    parser.add_argument(
+        "--wave", type=int, default=0, choices=range(79),
+        help="0: original six-file canary; 1-78: separate 24-file wave"
+    )
+    main(parser.parse_args().wave)
