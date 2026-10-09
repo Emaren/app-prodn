@@ -193,21 +193,36 @@ to represent RM-only or DM-only competition.
 
 Version 1 **never substitutes Site Elo**, including when Steam ratings are
 missing. An unrated account shows an unavailable Steam Elo, not a synthesized
-number. Source priority is per-lane, per-exact-Steam-ID: immutable qualified
-current-account receipt, signed Watcher observation in GameStats, and dated
-HD-header replay history. Among the two Watcher rails, the most recent *game
-observation time* wins each lane independently, not the time an old replay was
-uploaded. Manual, batch and file-upload rows cannot enter the signed Watcher
-rating rail, even if imported later. This is display-only authority: no Watcher
-observation can create a user identity, battle, win, loss or bet result.
+number. Ratings are keyed by exact Steam ID and selected independently for RM
+and DM: a newer qualified Watcher account observation takes precedence over an
+older one, using the actual *played_on* game clock rather than replay upload or
+import time. Immutable current-account receipts and read-only Watcher-upload
+observations can each supply a dated lane observation. A dated historical
+HD-header replay is the remaining fallback. Manual and batch file uploads do
+not enter the Watcher-upload rating rail and cannot displace its later values.
 
-The signed-Watcher compatibility reader requires server-verified live-monitor
-provenance, matching client/server SHA-256, a valid Watcher file role, a valid
-17-digit Steam ID, explicit numeric RM/DM fields and a game clock. It does not
-upgrade unmarked raw values to `hd_header`; immutable receipt authority remains
-separate. It has bounded stale-while-refresh caching to protect render latency.
-Site Elo computation remains internal for later Version 2 work but must not be
-displayed or used as a sort/rank tie-breaker on RM/DM V1 boards.
+**October 2026 legacy compatibility:** All 4,314 sampled recent production
+Watcher game rows carried server/client replay hash matches, file roles, and
+`live_monitor` transport metadata, but **none** had a verified provenance
+signature. The display-only compatibility reader therefore accepts an
+authenticated Watcher ingest with a *missing* signature only when the API's
+server-owned metadata explicitly records both
+`provenance_signature_verified=false` **and**
+`provenance_signature_supplied=false`, identifies a Watcher/session/replay
+fingerprint, and confirms matching client/server SHA-256, live-monitor
+provenance, role/finality, a valid Steam ID, numeric lane ratings and game
+observation time. A **supplied but invalid** signature is never accepted.
+Such an unsigned legacy observation is weaker than a frozen cryptographic
+receipt and **must not** be represented as signed evidence or used for results,
+identity creation, battle counts, adjudication, payments or betting authority.
+No legacy row is re-labeled `hd_header` or cryptographically re-signed.
+
+The source maintains bounded stale-while-refresh caching to protect render
+latency. Site Elo computation remains internal for later Version 2 work but
+must not be displayed or used as a sort/rank tie-breaker on RM/DM V1 boards.
+Long term, Watcher clients should emit the established HMAC provenance header
+so new observations can use the immutable account receipt pathway, and the
+temporary compatibility reader can be retired after coverage is measured.
 
 The source retains a conservative `GameStats.game_type` /
 `key_events.settings.type` resolver on each canonical accepted replay-player
