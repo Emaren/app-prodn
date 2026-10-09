@@ -315,6 +315,28 @@ Current Watcher account observations remain higher authority than any
 last-known accepted replay-header fallback. Rating selection remains
 per Steam ID, per lane, ordered by real game time, never ingest time.
 
+The historical-header source census on 2026-10-09T03:11:55Z showed
+**1,716/1,716** missing-cohort Steam identities have unmarked numeric
+RM/DM values in stored `game_stats`, **0/1,716** have an explicit
+`hd_header` source marker, **1,714/1,716** have an accepted
+public player replay linked to at least one same game, and **1,716/1,716**
+have a replay-file *name/reference*. These facts explain the exclusion:
+unmarked historic numeric fields are not accepted `hd_header`
+evidence. Do not relabel them without verifying actual replay content.
+
+The subsequent non-mutating `archiveProbe` reconstructs the API's
+content-addressed storage path from a 64-hex-character replay SHA and
+a strictly allowlisted extension, and checks only a bounded set of
+historic candidate files per exact Steam identity. It SHA-256 verifies
+a small, capped file sample. An original uploaded filename never
+becomes a filesystem path. Presence alone is weaker than hash
+verification, and even hash verification alone does not establish a
+correct HD-header rating parse or authentic Watcher live observation.
+If the web runtime cannot access the archive root, this is an
+*inconclusive mount visibility issue*, not evidence that archives
+were destroyed. Do not modify archive bytes, release metadata,
+database, rankings, or settlement during this probe.
+
 The observer now also includes `blockedDetails` for each lane: mutually
 exclusive per-identity reasons for the provenance, clock, and source
 failures. Its provenance categories distinguish a missing `watcher_upload`
