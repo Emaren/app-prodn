@@ -272,7 +272,7 @@ test("personal hiding does not rewrite rank values", () => {
 
   assert.match(
     table,
-    /#\{entry\.rank\}/,
+    /entry\.primaryRating === null \? "—" : `#\$\{entry\.rank\}`/,
   );
 
   assert.doesNotMatch(
