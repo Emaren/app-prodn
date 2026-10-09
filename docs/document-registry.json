@@ -2048,8 +2048,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "main",
-    "commit": "df41e2685f9fb3d31cdac4a93559b75e8f175991"
+    "branch": "audit/steam-history-private-certificate-20261009",
+    "commit": "95033a691b4ad2a35d3c6f6b824db3b5b623da06"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
