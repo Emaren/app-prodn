@@ -616,6 +616,35 @@ The per-candidate comparisons are saved to a separate `0600`
 local-only exclusive-create receipt, not to GitHub or any public
 API. Raw Steam IDs are never included in the comparison report.
 
+### Wave 4 actual Watcher-positive overlap — 2026-10-09T10:35:01Z
+
+The Mac operator completed the first production read-only
+Watcher-positive overlap from the existing schema-v3 archive receipt.
+**69 focused Steam contract tests PASS**, including direct CLI startup.
+All **18** source-byte-backed historical candidates (36 independent
+RM/DM lanes) were successfully evaluated. **Zero positive Watcher
+display lanes overlapped** this deliberately unrated cohort, so
+**all 36 lanes remain `watcher_absence_not_proven`**. No matching or
+differing Watcher values were measured; it would be misleading to
+call these 36 ratings confirmed missing. Zero recovered ratings
+were published, zero Watcher current statuses invented, and no
+database or WOLO mutation occurred.
+
+The current display-overlap rail is *positive-only* and therefore
+cannot certify complete signed/qualified authority history for a
+Steam identity. The original production observer completed with
+`sourceCompletenessProven=false`, `absenceIsNotEvidence=true`,
+and `labelsAreAllSigned=false`. The frozen old Watcher
+display-compatibility cohort must not be labeled signed. The
+follow-up draft-only diagnostic additionally intercepts the
+optional Watcher display reader's known cold-load warning so that
+a silently swallowed database-read failure becomes an explicit
+observer failure instead of pretending the source returned zero
+players. Subsequent output includes **aggregate Watcher source-row
+counts** so an empty *join* can be distinguished from an empty
+*source*. The absence/completeness flags remain false regardless
+of source counts.
+
 Critically, the Watcher display helper can fall back to an empty
 array on data-read failure. Consequently this observer makes
 `sourceCompletenessProven=false` and `absenceIsNotEvidence=true`
