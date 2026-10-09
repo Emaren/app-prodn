@@ -1,14 +1,15 @@
 import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
 import { normalizeLeaderboardSteamId } from "@/lib/leaderboardIdentity";
 
-/** Display-only compatibility for exact-Steam ratings parsed from authenticated
- * Watcher upload routes. Signed uploads qualify; old Watcher clients that
- * supplied NO signature qualify only when the server confirmed the replay
- * hashes, live-monitor provenance, and authenticated Watcher metadata.
- * A supplied-but-invalid signature NEVER qualifies.
- *
- * This weaker legacy rail is NOT immutable receipt, replay-result, settlement,
- * or financial authority. Manual/file/batch uploads never qualify.
+/** Steam RM/DM display-only observations for exact Steam IDs.
+ * Fully verified signed Watcher rows qualify. An immutable pre-fix cohort
+ * (ingested AND played before 2026-10-09 UTC) also qualifies from the normal
+ * authenticated Watcher upload route, with exact client/server replay hashes
+ * and live-monitor/role checks. HMAC for that older cohort cannot be recovered
+ * retroactively: those observations MUST NOT be labeled signed or treated as
+ * receipt, identity, result, betting, or financial authority.
+ * New uploads with supplied-invalid signatures NEVER qualify. File/manual
+ * and batch-upload sources NEVER qualify regardless of game clock.
  */
 export type VerifiedWatcherSteamRating = {
   steamId: string;
@@ -73,16 +74,15 @@ async function readFresh(prisma: PrismaClient): Promise<VerifiedWatcherSteamRati
           g.key_events::jsonb #>
             '{watcher_upload,provenance_signature_verified}' = 'true'::jsonb
           OR (
-            g.key_events::jsonb #>
-              '{watcher_upload,provenance_signature_verified}' = 'false'::jsonb
+            -- Frozen, display-only compatibility window for Watcher rows
+            -- ingested before the corrected signed-UID API/proxy contract.
+            -- The old verifier rejected all known live-monitor signatures
+            -- because it used the account UID, not the Watcher's signed UID.
+            -- No future reupload can enter this window by backdating replay.
+            g.created_at < TIMESTAMP '2026-10-09 00:00:00'
+            AND g.played_on < TIMESTAMP '2026-10-09 00:00:00'
             AND g.key_events::jsonb #>
-              '{watcher_upload,provenance_signature_supplied}' = 'false'::jsonb
-            AND NULLIF(BTRIM(g.key_events::jsonb #>>
-              '{watcher_upload,watcher_id}'), '') IS NOT NULL
-            AND NULLIF(BTRIM(g.key_events::jsonb #>>
-              '{watcher_upload,watcher_session_id}'), '') IS NOT NULL
-            AND NULLIF(BTRIM(g.key_events::jsonb #>>
-              '{watcher_upload,replay_fingerprint}'), '') IS NOT NULL
+              '{watcher_upload,provenance_signature_verified}' = 'false'::jsonb
           )
         )
         AND g.key_events::jsonb #> '{watcher_upload,client_sha256_verified}' = 'true'::jsonb
