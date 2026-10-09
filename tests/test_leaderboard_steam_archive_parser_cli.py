@@ -49,6 +49,8 @@ def fixture():
             "identitiesWithoutLocatedFile": 0,
             "identitiesWithOversizeOnly": 0,
             "identitiesWithVerifiedFile": 6,
+            "missingArchiveCandidatePaths": 0,
+            "alreadySampledHashCandidateSkips": 0,
             "sampleHashesVerified": 6,
             "sampleHashMismatch": 0,
             "sampleTooLarge": 0,
@@ -140,6 +142,18 @@ class ArchiveParserCanaryTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "no-projection"):
             module.validate(data)
 
+    def test_new_archive_counters_required_and_nonnegative(self):
+        for counter in ("missingArchiveCandidatePaths", "alreadySampledHashCandidateSkips"):
+            with self.subTest(counter=counter):
+                data = fixture()
+                data["summary"].pop(counter)
+                with self.assertRaisesRegex(RuntimeError, f"invalid canary counter: {counter}"):
+                    module.validate(data)
+                data = fixture()
+                data["summary"][counter] = -1
+                with self.assertRaisesRegex(RuntimeError, f"invalid canary counter: {counter}"):
+                    module.validate(data)
+
     def test_private_manifest_rejects_duplicate_file(self):
         data = fixture()
         data["sampleEvidence"][1]["replaySha256"] = (
@@ -208,7 +222,7 @@ class ArchiveParserCanaryTests(unittest.TestCase):
     def test_no_excessive_sample(self):
         data = fixture()
         data["summary"]["sampleHashesVerified"] = 7
-        with self.assertRaisesRegex(RuntimeError, "conservation"):
+        with self.assertRaisesRegex(RuntimeError, "manifest|conservation"):
             module.validate(data)
 
     def test_sample_rate_differences_conserved(self):
