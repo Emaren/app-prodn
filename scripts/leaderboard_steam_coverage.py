@@ -23,8 +23,16 @@ def main() -> None:
 
     if payload.get("kind") != "aoe2war-steam-rating-coverage-census":
         raise RuntimeError("unexpected rating census payload")
-    modes = payload.get("databaseReadOnly", {})
-    if modes.get("transaction_mode") != "on" or modes.get("default_mode") != "on":
+    # Prisma $queryRaw returns a row array, even for a one-row SELECT.
+    modes = payload.get("databaseReadOnly")
+    if (
+        not isinstance(modes, list)
+        or len(modes) != 1
+        or not isinstance(modes[0], dict)
+    ):
+        raise RuntimeError("database read-only proof missing or malformed")
+    mode = modes[0]
+    if mode.get("transaction_mode") != "on" or mode.get("default_mode") != "on":
         raise RuntimeError("database read-only proof missing")
     expected = {
         "production": 0, "parserRows": 0, "identityRows": 0,
