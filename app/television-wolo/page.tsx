@@ -8,6 +8,8 @@ import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import { loadChaosium } from "@/lib/champions/chaosium";
 import { loadPublicLiveGamesSnapshot } from "@/lib/liveGamesPublicSnapshot";
 import { getPrisma } from "@/lib/prisma";
+import { resolveReplayTeams, type CanonicalReplayPlayer } from "@/lib/teamResolution";
+import type { TelevisionStage } from "@/lib/televisionDirection";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -33,6 +35,48 @@ function playerNames(value: unknown) {
       cleanText(row.player_name);
     return name && name.toLowerCase() !== "unknown" ? [name] : [];
   });
+}
+
+function buildStage(row: Record<string, unknown>, isFinal: boolean): TelevisionStage {
+  const players = Array.isArray(row.players) ? row.players : [];
+  const prior = row.teamResolution;
+  const resolution = prior && typeof prior === "object" && !Array.isArray(prior)
+    ? prior as ReturnType<typeof resolveReplayTeams>
+    : resolveReplayTeams(players, { final: isFinal });
+  const makePlayer = (player: CanonicalReplayPlayer, index: number) => ({
+    key: player.stablePlayerKey || `player-${index}`,
+    name: player.name,
+    steamId: player.steamId,
+    civilization: player.civilizationName,
+  });
+  if (
+    resolution.status === "resolved" &&
+    resolution.teams.length === 2 &&
+    resolution.teams.every(team => team.players.length >= 1) &&
+    resolution.teams.reduce((total, team) => total + team.players.length, 0) <= 8
+  ) {
+    return {
+      confirmedTeams: true,
+      format: resolution.format,
+      teams: resolution.teams.map((team, index) => ({
+        key: team.teamKey,
+        label: `TEAM ${index + 1}`,
+        players: team.players.map(makePlayer),
+      })),
+    };
+  }
+  // Never invent team identity, including FFA and incomplete rosters.
+  const valid = players.flatMap((raw, index) => {
+    if (!raw || typeof raw !== "object" || Array.isArray(raw)) return [];
+    const player = raw as Record<string, unknown>;
+    const name = cleanText(player.name || player.playerName || player.player_name);
+    if (!name || name.toLowerCase() === "unknown") return [];
+    return [{ key: `unverified-${index}`, name,
+      steamId: typeof player.steamId === "string" ? player.steamId : null,
+      civilization: null }];
+  }).slice(0, 8);
+  return { confirmedTeams: false, format: "Teams unverified",
+    teams: [{ key: "unresolved", label: "PARTICIPANTS · TEAM UNKNOWN", players: valid }] };
 }
 
 function mapName(row: Record<string, unknown>) {
@@ -62,11 +106,14 @@ function toBattle(
   if (!sessionKey) return null;
 
   const names = playerNames(row.players);
+  const stage = buildStage(row, source !== "live");
   const fallbackId =
     typeof row.id === "number" && Number.isFinite(row.id)
       ? "Battle #" + row.id
       : "Battle";
-  const title = names.length >= 2 ? names.slice(0, 4).join(" vs ") : fallbackId;
+  const title = stage.confirmedTeams
+    ? stage.teams.map(team => team.players.map(player => player.name).join(" + ")).join(" vs ")
+    : names.length >= 2 ? names.slice(0, 8).join(" · ") : fallbackId;
   const streams = Array.isArray(row.streams) ? row.streams : [];
 
   return {
@@ -75,6 +122,7 @@ function toBattle(
     source,
     title,
     playerNames: names,
+    stage,
     mapName: mapName(row),
     winner: cleanText(row.winner) || null,
     occurredAt: timestamp(row),

@@ -26,6 +26,8 @@ export type WatchStreamPayload = {
   playbackUrl: string | null;
   embedId: string | null;
   playerLabel: string | null;
+  /** Server-linked account Steam ID for POV presentation only; not result authority. */
+  ownerSteamId?: string | null;
   thumbnailUrl: string | null;
   mediaMimeType: string | null;
   isPrimary: boolean;
@@ -243,6 +245,7 @@ export function toWatchStreamPayload(row: {
   playbackUrl?: string | null;
   embedId: string | null;
   playerLabel: string | null;
+  user?: { steamId: string | null } | null;
   thumbnailUrl?: string | null;
   mediaMimeType?: string | null;
   isPrimary: boolean;
@@ -269,6 +272,7 @@ export function toWatchStreamPayload(row: {
     playbackUrl: row.playbackUrl ?? null,
     embedId: row.embedId,
     playerLabel: row.playerLabel,
+    ownerSteamId: row.user?.steamId ?? null,
     thumbnailUrl: row.thumbnailUrl ?? null,
     mediaMimeType: row.mediaMimeType ?? null,
     isPrimary: row.isPrimary,

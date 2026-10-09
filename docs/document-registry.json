@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "bf3ba417e6e59a42d088a01e429b20fff180df97146e60275ebef1af7c36b58b",
+      "sha256": "7886bb488fe44a719a15936f98dfc5bb5b71fe800f67341e4a70063df2ae6e42",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1695,9 +1695,9 @@
       "owner": "aoe2war-web",
       "path": "docs/TELEVISION_WOLO.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-30",
+      "reviewed_at": "2026-10-09",
       "sensitivity": "internal",
-      "sha256": "b1c89689d688d2889ae90119f6608beaf77e0e963f12c5d7f416253fd53964f1",
+      "sha256": "c20b398bcbf792ba5256680a3edfed0c9d44e9e4dd8e9238665e1c81c9b8a0d4",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2048,8 +2048,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/library-historical-provenance-20261009",
-    "commit": "62842124d82c73e8cea9f6c7e6633a706eb99023"
+    "branch": "feature/television-v1-director-multicam-20261009",
+    "commit": "e0997be54fdc2ee577f6834eb4ae5c99c6e311fb"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

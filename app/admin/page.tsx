@@ -587,6 +587,12 @@ export default function AdminPage() {
                 Hero Studio
               </Link>
               <Link
+                href="/admin/video-vault"
+                className="inline-flex rounded-full border border-cyan-200/25 bg-cyan-300/10 px-5 py-3 text-sm text-cyan-100 transition hover:bg-cyan-300/20"
+              >
+                Wolo TV · Video Vault
+              </Link>
+              <Link
                 href="/admin/events"
                 className="inline-flex rounded-full border border-amber-200/18 bg-amber-300/10 px-5 py-3 text-sm text-amber-100 transition hover:border-amber-200/36 hover:bg-amber-300/16"
               >

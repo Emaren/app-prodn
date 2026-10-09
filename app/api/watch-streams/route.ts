@@ -75,6 +75,7 @@ export async function GET(request: NextRequest) {
           not: "removed",
         },
       },
+      include: { user: { select: { steamId: true } } },
       orderBy: [{ isPrimary: "desc" }, { createdAt: "asc" }, { id: "asc" }],
     })
     .catch((error) => {
