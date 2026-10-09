@@ -157,11 +157,13 @@ def execute_batch(
         after = verified_inventory(directory)
         if wave not in after["waves"]:
             raise RuntimeError("STOP: observer returned without a valid private receipt")
-        done.append({
+        result = {
             "wave": wave,
             "sourceBytesShaVerified": after["waves"][wave]["summary"]["sampleHashesVerified"],
             "historicalCandidates": len(after["waves"][wave]["privateHistoricalCandidates"]),
-        })
+        }
+        done.append(result)
+        print(json.dumps({"completedReadOnlyWave": result}), flush=True)
     final = verified_inventory(directory)
     return {
         "completedThisInvocation": done,
