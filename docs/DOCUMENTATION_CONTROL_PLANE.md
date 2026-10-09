@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `audit/steam-rating-evidence-census-20261008` at `ba94d47d79a25de2414dd0ef69607c51e34af5a2`
+Implementation baseline: `main` at `ba94d47d79a25de2414dd0ef69607c51e34af5a2`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
