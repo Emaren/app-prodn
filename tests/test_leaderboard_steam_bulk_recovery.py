@@ -50,6 +50,9 @@ class BulkRecoveryTests(unittest.TestCase):
     def test_strict_interval_limit_and_default_readonly(self):
         empty = {
             "waves": {}, "verifiedIdentityCount": 0,
+            "verifiedArtifactCount": 0,
+            "sharedReplayIdentityChecks": 0,
+            "sharedReplayArtifactHashes": 0,
             "historicalCandidateCount": 0,
             "untrackedLegacyReceiptFiles": 0,
         }
@@ -93,15 +96,47 @@ class BulkRecoveryTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 bulk.verified_inventory(Path(root))
 
-    def test_cross_wave_sha_or_identity_overlap_is_rejected(self):
+    def test_cross_wave_sha_may_belong_to_different_players(self):
         with tempfile.TemporaryDirectory() as root:
             save(root, 4, make_payload(4))
             save(root, 5, make_payload(5))
-            self.assertEqual(bulk.verified_inventory(Path(root))["verifiedIdentityCount"], 12)
-            broken = make_payload(6)
-            broken["sampleEvidence"][1]["replaySha256"] = make_payload(5)["sampleEvidence"][1]["replaySha256"]
-            save(root, 6, broken)
-            with self.assertRaisesRegex(RuntimeError, "overlapping replay"):
+            another_player = make_payload(6)
+            # Two players in one replay have distinct Steam fingerprints
+            # but may use the same SHA-256 original multiplayer recording.
+            reused_sha = make_payload(5)["sampleEvidence"][1]["replaySha256"]
+            another_player["sampleEvidence"][1]["replaySha256"] = reused_sha
+            save(root, 6, another_player)
+            inventory = bulk.verified_inventory(Path(root))
+            self.assertEqual(inventory["verifiedIdentityCount"], 18)
+            self.assertEqual(inventory["verifiedArtifactCount"], 17)
+            self.assertEqual(inventory["sharedReplayIdentityChecks"], 1)
+            self.assertEqual(inventory["sharedReplayArtifactHashes"], 1)
+            plan = bulk.selection_plan(inventory, 5, 6)
+            self.assertEqual(plan["remainingWaves"], [])
+            self.assertEqual(plan["distinctVerifiedReplayArtifactsToDate"], 17)
+            self.assertEqual(plan["sharedReplayIdentityChecksToDate"], 1)
+
+    def test_duplicate_steam_identity_across_waves_still_fails_closed(self):
+        with tempfile.TemporaryDirectory() as root:
+            save(root, 4, make_payload(4))
+            save(root, 5, make_payload(5))
+            bad = make_payload(6)
+            bad["sampleEvidence"][1]["identityFingerprint"] = (
+                make_payload(5)["sampleEvidence"][1]["identityFingerprint"]
+            )
+            save(root, 6, bad)
+            with self.assertRaisesRegex(RuntimeError, "overlapping Steam identity"):
+                bulk.verified_inventory(Path(root))
+
+    def test_duplicate_sha_within_same_wave_remains_invalid(self):
+        with tempfile.TemporaryDirectory() as root:
+            save(root, 4, make_payload(4))
+            bad = make_payload(5)
+            bad["sampleEvidence"][1]["replaySha256"] = (
+                bad["sampleEvidence"][2]["replaySha256"]
+            )
+            save(root, 5, bad)
+            with self.assertRaisesRegex(RuntimeError, "manifest duplication"):
                 bulk.verified_inventory(Path(root))
 
     def test_population_drift_stops_without_inflating_counts(self):
