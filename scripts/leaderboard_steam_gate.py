@@ -51,7 +51,7 @@ def main() -> None:
         if rated + missing != total or sum(histogram.values()) + no_id != missing:
             raise RuntimeError("gate histogram conservation failed")
 
-    if payload.get("schemaVersion") != 4:
+    if payload.get("schemaVersion") != 5:
         raise RuntimeError("unexpected blocked-detail schema version")
     details = payload.get("blockedDetails")
     if not isinstance(details, dict):
@@ -122,6 +122,30 @@ def main() -> None:
     ):
         raise RuntimeError("parse-attempt receipt flag conservation failed")
 
+    historical = payload.get("historicalHeaderCandidates")
+    expected = {
+        "parserHdHeaderPresent", "onlyUnmarkedSource", "onlyNonHeaderSource",
+        "replayFileReferencePresent", "acceptedPublicReplayOnSameGame",
+        "hdHeaderAndAcceptedReplayOnSameGame",
+    }
+    if not isinstance(historical, dict):
+        raise RuntimeError("missing historical header source audit")
+    for lane in ("rm", "dm"):
+        raw = historical.get(lane)
+        if not isinstance(raw, dict) or set(raw) != expected:
+            raise RuntimeError("historical header bucket malformed")
+        if any(type(n) is not int or not 0 <= n <= stages[lane][
+            "missing_live_monitor_provenance"
+        ] for n in raw.values()):
+            raise RuntimeError("historical header count invalid")
+        if sum(raw[x] for x in (
+            "parserHdHeaderPresent", "onlyUnmarkedSource", "onlyNonHeaderSource"
+        )) != stages[lane]["missing_live_monitor_provenance"]:
+            raise RuntimeError("historical header count conservation failed")
+        if (raw["hdHeaderAndAcceptedReplayOnSameGame"] >
+                raw["acceptedPublicReplayOnSameGame"]):
+            raise RuntimeError("historical accepted replay conservation failed")
+
     receipt = truth.write_receipt("leaderboard-steam-gate-funnel", payload)
     receipt.chmod(0o600)
     print(json.dumps({
@@ -131,6 +155,7 @@ def main() -> None:
         "histogram": stages,
         "blockedDetails": details,
         "receiptCorrelation": receipt_match,
+        "historicalHeaderCandidates": historical,
         "receipt": str(receipt),
         "readOnly": True,
         "productionMutated": False,
