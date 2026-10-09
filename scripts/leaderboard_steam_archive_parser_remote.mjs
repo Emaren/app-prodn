@@ -199,6 +199,8 @@ try {
     sampleFilesLocated: 0, sampleHashesVerified: 0,
     identitiesWithoutLocatedFile: 0, identitiesWithOversizeOnly: 0,
     identitiesWithVerifiedFile: 0,
+    missingArchiveCandidatePaths: 0,
+    alreadySampledHashCandidateSkips: 0,
     sampleHashMismatch: 0, sampleTooLarge: 0,
     parserParsed: 0, parserNoProjection: 0,
     parserTimeout: 0, parserError: 0, invalidParserOutput: 0,
@@ -246,7 +248,10 @@ try {
         break;
       }
       if (summary.sampleHashesVerified >= SAMPLE_LIMIT) break;
-      if (sampledHashes.has(c.hash)) continue;
+      if (sampledHashes.has(c.hash)) {
+        summary.alreadySampledHashCandidateSkips++;
+        continue;
+      }
       const filePath = join(archiveRoot, c.hash.slice(0,2),
         c.hash.slice(2,4), c.hash+c.suffix);
       let size;
@@ -254,7 +259,10 @@ try {
         const meta = await stat(filePath);
         if (!meta.isFile()) continue;
         size = meta.size;
-      } catch { continue; }
+      } catch {
+        summary.missingArchiveCandidatePaths++;
+        continue;
+      }
       summary.sampleFilesLocated++;
       locatedForIdentity = true;
       if (size <= 0 || size > MAX_FILE_SIZE) {
