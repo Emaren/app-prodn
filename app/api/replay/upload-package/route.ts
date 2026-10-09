@@ -401,6 +401,17 @@ export async function POST(request: NextRequest) {
         label: `Replay pack: ${resultReady.length} result ready`,
         metadata: {
           packageUpload: true,
+          // Exact durable game IDs permit a future public intake ledger to
+          // attribute ZIP provenance without filename/time guessing.
+          gameIds: [...new Set(received.flatMap((result) => {
+            const id = result.stages.gameId;
+            const parsed = typeof id === "number"
+              ? id
+              : typeof id === "string" && /^\\d+$/.test(id)
+                ? Number(id) : null;
+            return parsed !== null && Number.isSafeInteger(parsed) && parsed > 0
+              ? [parsed] : [];
+          }))],
           archiveFilename: archiveName,
           receivedCount: received.length,
           uploadedCount: uploaded.length,
