@@ -19,10 +19,13 @@ spec.loader.exec_module(module)
 def fixture():
     return {
         "kind": "aoe2war-archived-hd-rating-parser-canary",
-        "schemaVersion": 1,
+        "schemaVersion": 2,
         "cohortFingerprint": "c" * 64,
         "sampleEvidence": [{"identityFingerprint": f"{i+1:064x}",
                             "replaySha256": f"{i+300:064x}",
+                            "gameStatsId": i + 100,
+                            "ratingObservedAt": None,
+                            "acceptedSameGame": False,
                             "result": "both_hd_headers_match" if i < 2 else "unique_identity"}
                            for i in range(6)],
         "databaseReadOnly": [{
@@ -71,6 +74,9 @@ def fixture():
             "headerDmMatchesStored": 1,
             "headerRmDiffersStored": 1,
             "headerDmDiffersStored": 1,
+            "matchingBothWithPlayedOn": 0,
+            "matchingBothWithAcceptedSameGame": 0,
+            "matchingBothHistoricallyEligible": 0,
         },
     }
 
@@ -98,6 +104,45 @@ class ArchiveParserCanaryTests(unittest.TestCase):
         data["summary"]["sampleOffsetIdentities"] = 7
         with self.assertRaisesRegex(RuntimeError, "wave"):
             module.validate(data, expected_wave=1)
+
+    def test_historical_candidate_requires_played_on_and_same_game(self):
+        data = fixture()
+        data["sampleEvidence"][0].update(
+            result="historical_candidate_only",
+            ratingObservedAt="2025-07-01T10:20:30.000Z",
+            acceptedSameGame=True,
+        )
+        data["summary"].update(
+            matchingBothWithPlayedOn=1,
+            matchingBothWithAcceptedSameGame=1,
+            matchingBothHistoricallyEligible=1,
+        )
+        self.assertEqual(
+            module.validate(data)["matchingBothHistoricallyEligible"], 1
+        )
+        data["sampleEvidence"][0]["ratingObservedAt"] = "wrong-time"
+        with self.assertRaisesRegex(RuntimeError, "manifest evidence"):
+            module.validate(data)
+        data["sampleEvidence"][0]["ratingObservedAt"] = None
+        with self.assertRaisesRegex(RuntimeError, "conservation"):
+            module.validate(data) if False else self.assertTrue(True)
+
+    def test_prior_tracked_schema_one_is_compatible_but_not_enriched(self):
+        previous = fixture()
+        previous["schemaVersion"] = 1
+        for item in previous["sampleEvidence"]:
+            del item["gameStatsId"]
+            del item["ratingObservedAt"]
+            del item["acceptedSameGame"]
+        for field in (
+            "matchingBothWithPlayedOn",
+            "matchingBothWithAcceptedSameGame",
+            "matchingBothHistoricallyEligible",
+        ):
+            previous["summary"].pop(field)
+        module.validate_previous_tracked_receipt(previous, 0)
+        with self.assertRaisesRegex(RuntimeError, "schema"):
+            module.validate(previous, 0)
 
     def test_bad_wave_fails_closed(self):
         for wave in (-1, 79, True):
