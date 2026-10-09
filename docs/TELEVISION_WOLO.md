@@ -84,3 +84,58 @@ second implementation.
 The V1 contract test verifies canonical data composition, user-triggered
 playback, the non-binding Chaos boundary, and the account-menu route.
 TypeScript and targeted ESLint must remain clean before release.
+
+## V1.1 director implementation (2026-10-09 candidate)
+
+Development branch: `feature/television-v1-director-multicam-20261009`.
+This section describes *source implementation*, not a certified installed Watcher or
+live two-player capture canary.
+
+- Team-aware camera slots are projected from the canonical public replay team
+  resolution. Only a resolved two-side roster receives directional team labels;
+  incomplete, multi-side, or conflicting rosters retain explicitly unverified
+  positions. No video labels may repair or create replay team authority.
+- First-party Watcher video is assigned to a participant only when the
+  registered stream owner's server-linked Steam ID exactly matches a unique
+  replay participant Steam ID. Client-supplied `playerLabel` is never first-party
+  POV identity. Admin-curated external embeds may be shown with a conspicuous
+  *unverified external label* warning, and unmatched feeds stay in an
+  Unassigned/Observer rail.
+- The director has one focal video and participant position cards. Default
+  director mode mounts only the focal feed; explicitly enabled multi-view can
+  mount up to three additional compact first-party videos. The page starts no
+  video until Play, and only refreshes stream discovery after viewer activation.
+  Team composition defines positions, not the count of concurrent captured POVs.
+- Captured display video faithfully reflects the broadcasting player's view.
+  Fog of war and game-camera movement cannot be removed from encoded footage.
+  Observer/fogless rendering requires a distinct lawful gameplay render source.
+- `/admin/video-vault` and `/api/admin/video-vault` are admin-only read
+  inventory surfaces showing actual chunk sizes for the latest sixty streams.
+  This is a **bounded recent sample**, *not* authoritative total vault usage;
+  old/orphan files are explicitly excluded. The guarded delete action is
+  same-origin and requires an ended/failed, nonretained first-party stream.
+  It removes only that stream's media chunks, then marks its stream registry
+  removed. Active streams and retained demonstrations are protected.
+- The existing Chaos Vote Lab remains explicitly browser-local and
+  **non-binding**. A durable audited post-match spectator ballot, anti-abuse
+  policy, and separate championship commission are future independent gates.
+  A TV poll must never automatically transfer the Chaos Championship.
+- No video upload ceiling or retention default is raised by this slice.
+  Present defaults are 512 MiB/4,000 slices per stream, six-hour transient
+  removal, and one explicitly pinned bounded demonstration. The real long-match
+  recording quota, full-storage accounting, cross-stream concurrency admission,
+  improved incremental playback, and packaged Windows/macOS canaries remain
+  blocking V1 release gates.
+
+### Release and canary requirements
+
+Do not label the feature "two-player broadcast certified" until both Jim and
+Zodiac (or two other authorized users) establish: distinct authenticated
+owners, identical authoritative battle session identity, correct two-team
+placement, playable video for both, replay-upload preemption, reliable
+shutdown and content retention, and bounded CPU, memory, egress and storage.
+
+Watcher 1.6.4 automatic capture is still **opt-in and unreleased**; do not bump
+its package/version or publication workflow merely to activate this web branch.
+The application feature must pass GitHub CI and protected production `finish`
+before public release.
