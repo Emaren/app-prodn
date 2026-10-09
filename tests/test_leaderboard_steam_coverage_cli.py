@@ -19,9 +19,10 @@ spec.loader.exec_module(census)
 def payload(*, readonly="on", both=3, rm=1, dm=2, missing=4):
     return {
         "kind": "aoe2war-steam-rating-coverage-census",
-        "databaseReadOnly": {
+        # SQL SELECT returns one row in a list, never a plain dict.
+        "databaseReadOnly": [{
             "transaction_mode": readonly, "default_mode": readonly,
-        },
+        }],
         "mutations": {
             "production": 0, "parserRows": 0, "identityRows": 0,
             "currentRatingRows": 0, "wolo": 0,
@@ -85,6 +86,17 @@ class CensusCliTests(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "read-only proof"):
                 self.invoke(payload(readonly="off"))
             self.assertFalse(self.path.exists())
+
+    def test_refuses_missing_or_malformed_readonly_result(self):
+        for malformed in [None, [], {}, [None], [{}, {}],
+                          [{"transaction_mode": "on", "default_mode": "on"}, {}]]:
+            with self.subTest(malformed=malformed), tempfile.TemporaryDirectory() as directory:
+                self.path = Path(directory) / "should-not-exist.json"
+                broken = payload()
+                broken["databaseReadOnly"] = malformed
+                with self.assertRaisesRegex(RuntimeError, "read-only proof"):
+                    self.invoke(broken)
+                self.assertFalse(self.path.exists())
 
     def test_refuses_inconsistent_identity_counts(self):
         with tempfile.TemporaryDirectory() as directory:
