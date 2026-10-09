@@ -1,5 +1,6 @@
 """Archive parser canary must reject fabricated evidence and writes."""
 from contextlib import redirect_stdout
+import hashlib
 import importlib.util
 import io
 from pathlib import Path
@@ -19,7 +20,8 @@ spec.loader.exec_module(module)
 def fixture():
     return {
         "kind": "aoe2war-archived-hd-rating-parser-canary",
-        "schemaVersion": 2,
+        "schemaVersion": 3,
+        "privateHistoricalCandidates": [],
         "cohortFingerprint": "c" * 64,
         "sampleEvidence": [{"identityFingerprint": f"{i+1:064x}",
                             "replaySha256": f"{i+300:064x}",
@@ -81,6 +83,39 @@ def fixture():
     }
 
 
+
+def historical_fixture():
+    data = fixture()
+    steam_id = "76561197960265730"
+    manifest = data["sampleEvidence"][0]
+    manifest["identityFingerprint"] = hashlib.sha256(
+        ("aoe2war-archived-identity-v1:" + steam_id).encode()
+    ).hexdigest()
+    manifest.update(
+        result="historical_candidate_only",
+        ratingObservedAt="2025-07-01T10:20:30.000Z",
+        acceptedSameGame=True,
+    )
+    data["summary"].update(
+        matchingBothWithPlayedOn=1,
+        matchingBothWithAcceptedSameGame=1,
+        matchingBothHistoricallyEligible=1,
+    )
+    data["privateHistoricalCandidates"] = [{
+        "steamId": steam_id,
+        "gameStatsId": manifest["gameStatsId"],
+        "replaySha256": manifest["replaySha256"],
+        "apiParserSource": "a" * 40,
+        "ratingObservedAt": manifest["ratingObservedAt"],
+        "steamRmRating": 1520,
+        "steamDmRating": 1615,
+        "steamRmSource": "hd_header",
+        "steamDmSource": "hd_header",
+        "observationAuthority": "historical_candidate_only",
+    }]
+    return data
+
+
 class ArchiveParserCanaryTests(unittest.TestCase):
     def test_good_contract(self):
         self.assertEqual(module.validate(fixture())["headerBothPresent"], 2)
@@ -106,30 +141,50 @@ class ArchiveParserCanaryTests(unittest.TestCase):
             module.validate(data, expected_wave=1)
 
     def test_historical_candidate_requires_played_on_and_same_game(self):
-        data = fixture()
-        data["sampleEvidence"][0].update(
-            result="historical_candidate_only",
-            ratingObservedAt="2025-07-01T10:20:30.000Z",
-            acceptedSameGame=True,
-        )
-        data["summary"].update(
-            matchingBothWithPlayedOn=1,
-            matchingBothWithAcceptedSameGame=1,
-            matchingBothHistoricallyEligible=1,
-        )
+        data = historical_fixture()
         self.assertEqual(
             module.validate(data)["matchingBothHistoricallyEligible"], 1
         )
-        data["sampleEvidence"][0]["ratingObservedAt"] = "wrong-time"
-        with self.assertRaisesRegex(RuntimeError, "manifest evidence"):
-            module.validate(data)
         data["sampleEvidence"][0]["ratingObservedAt"] = None
         with self.assertRaisesRegex(RuntimeError, "chronological"):
             module.validate(data)
 
+    def test_historical_ledger_values_and_identity_are_sha_bound(self):
+        data = historical_fixture()
+        self.assertEqual(len(data["privateHistoricalCandidates"]), 1)
+        item = data["privateHistoricalCandidates"][0]
+        item["steamId"] = "76561197960265731"
+        with self.assertRaisesRegex(RuntimeError, "matching archive proof"):
+            module.validate(data)
+        item["steamId"] = "76561197960265730"
+        item["steamRmSource"] = "unmarked"
+        with self.assertRaisesRegex(RuntimeError, "not independently qualified"):
+            module.validate(data)
+        item["steamRmSource"] = "hd_header"
+        item["steamDmRating"] = 0
+        with self.assertRaisesRegex(RuntimeError, "not independently qualified"):
+            module.validate(data)
+
+    def test_historical_ledger_missing_case_fails_closed(self):
+        data = historical_fixture()
+        data["privateHistoricalCandidates"] = []
+        with self.assertRaisesRegex(RuntimeError, "conservation"):
+            module.validate(data)
+
+    def test_historical_v2_preview_cannot_invent_rating_ledger(self):
+        data = historical_fixture()
+        data["schemaVersion"] = 2
+        data.pop("privateHistoricalCandidates")
+        self.assertEqual(data["summary"]["matchingBothHistoricallyEligible"], 1)
+        module.validate_previous_tracked_receipt(data, 0)
+        self.assertEqual(data["summary"]["matchingBothHistoricallyEligible"], 1)
+        with self.assertRaisesRegex(RuntimeError, "unexpected archive parser"):
+            module.validate(data, 0)
+
     def test_prior_tracked_schema_one_is_compatible_but_not_enriched(self):
         previous = fixture()
         previous["schemaVersion"] = 1
+        previous.pop("privateHistoricalCandidates")
         for item in previous["sampleEvidence"]:
             del item["gameStatsId"]
             del item["ratingObservedAt"]
@@ -294,6 +349,7 @@ class ArchiveParserCanaryTests(unittest.TestCase):
         self.assertIn("from utils.replay_parser import _parse_sync_bytes_with_diagnostics", source)
         self.assertIn("order.slice(SAMPLE_OFFSET, SAMPLE_OFFSET + SAMPLE_LIMIT)", source)
         self.assertIn("noProjectionByErrorCategory", source)
+        self.assertIn("privateHistoricalCandidates", source)
         self.assertIn("identityFingerprint", source)
         self.assertIn("cohortFingerprint", source)
         self.assertIn("identitiesWithoutLocatedFile", source)
@@ -306,7 +362,7 @@ class ArchiveParserCanaryTests(unittest.TestCase):
             receipt = Path(root, "result.json")
             receipt.write_text("{}")
             truth = SimpleNamespace(
-                run_remote=lambda command, wave: fixture(),
+                run_remote=lambda command, wave: historical_fixture(),
                 write_receipt=lambda _title, _payload: receipt,
                 RECEIPT_DIR=Path(root),
             )
@@ -320,6 +376,8 @@ class ArchiveParserCanaryTests(unittest.TestCase):
             ), redirect_stdout(io.StringIO()) as output:
                 module.main()
             self.assertIn('"readOnly": true', output.getvalue())
+            self.assertNotIn("76561197960265730", output.getvalue())
+            self.assertNotIn("1520", output.getvalue())
             self.assertEqual(receipt.stat().st_mode & 0o777, 0o600)
 
 
