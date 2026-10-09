@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "runtime-evidence"
 authority: "metric-contract"
-reviewed_at: "2026-09-22"
+reviewed_at: "2026-10-09"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -128,6 +128,42 @@ Every indexed artifact had a completed latest run at the snapshot:
 “Full,” “fragment,” and “checkpoint” describe evidence depth. They do not by
 themselves prove a winner, resolved teams, a completed match, public archive
 eligibility, or settlement eligibility.
+
+## Library intake ledger (2026-10-09)
+
+`/library` is a live chronological **final replay-ingestion record** ledger,
+not an equivalent of the deduplicated public War Vault. Each numbered row
+corresponds to one persisted `GameStats` row with `is_final = true`. It
+includes final records that require parser review and saved checkpoints;
+those are labeled rather than silently converted into completed battles or
+financially eligible results. A duplicate or retry can remain a durable
+upload activity event without minting a second `GameStats` ID.
+
+The server pages final replay rows by descending primary key at 48 per page.
+Older pages use the strict `id < before` cursor (never offset); the
+five-second foreground refresh uses ascending `id > after` batches so
+multiple new arrivals do not silently skip the middle of a burst. Client rows
+are window-rendered at constant height, so the browser does not mount
+thousands of DOM nodes while visitors scroll the full history. When a
+visitor is reading older records, new entries wait in a visible arrival
+banner rather than replacing their scroll position.
+
+Public provenance labels are descriptive, not attestation or custody:
+`watcher-live` requires explicit `watcher_upload.ingestion_provenance =
+live_monitor`; `watcher-batch` requires `historical_import`; a Watcher
+without that field is marked legacy. Manual single-file imports use
+`parse_source=file_upload`. **Manual ZIP** is claimed only when the
+durable package activity receipt explicitly names the exact `GameStats`
+ID under `metadata.gameIds`, added for new ZIP receipts by this change.
+Older ZIPs with filename-only receipts are intentionally not guessed into
+the ZIP cohort. Source filters apply to records loaded so far. The public
+JSON never exposes private replay hashes, source filenames, internal
+telemetry, or custody evidence.
+
+Totals are labeled **final replay records**, not unique matches or
+physical archived files. The Workshop and War Vault retain their own
+separate numerators and contract. No ledger view can certify a result,
+authorize a bet, promote Steam ratings, or move WoloChain funds.
 
 ## Grain definitions
 
