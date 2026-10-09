@@ -15,6 +15,11 @@ import hashlib
 import json
 from pathlib import Path
 import re
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from scripts import leaderboard_steam_bulk_recovery as bulk
 
