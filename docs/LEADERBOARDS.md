@@ -728,11 +728,34 @@ The batch controller:
   as an anchored candidate cohort;
 - verifies all existing private schema-v3 receipts before progress;
 - deduplicates repeated exact same-wave evidence, refusing
-  contradictory reruns and cross-wave Steam identity/replay SHA overlap;
+  contradictory reruns and cross-wave Steam identity overlap;
 - stops if the live cohort fingerprint changes, if any SHA-verified
   input disagrees, or if any wave fails its source/read-only contract;
+- treats the same SHA-256 replay appearing in separate waves for
+  *different* Steam IDs as legitimate multiplayer evidence, not a
+  corrupt duplicate. It counts unique Steam identity checks and distinct
+  replay artifacts **separately**, recording repeated-artifact identity
+  checks and shared replay hashes as aggregate metadata;
+- still rejects any Steam identity fingerprint appearing in multiple
+  waves, and preserves original SHA-byte, intended-player, accepted
+  same-game and historical source validations for **each** identity;
 - resumes at unfinished wave boundaries without repeating completed
   evidence, and prints aggregate-only progress after each success.
+
+On October 9, the first `--execute --start 5 --stop 12` run
+successfully completed waves 5, 6 and 7: 23, 20, and 22 SHA-verified
+per-player replay checks and 19, 17, and 19 historically eligible
+rating-pair candidates, respectively (**65 replay verification
+observations, 55 historical rating-pair candidates**). A subsequent
+private receipt inventory correctly caught reuse of a replay SHA
+across waves, but its original global-artifact uniqueness assumption
+was overly strict: a multiplayer game can supply verified evidence
+for multiple *different* Steam identities. The run stopped before
+printing wave 8; its receipt may already be present. The revised
+aggregator preserves and checks any such receipt offline, avoids
+resampling completed waves, and counts unique replay files separately
+from distinct Steam identity proofs. This exception does not permit
+identity duplicates, missing source provenance or corrupt replay bytes.
 
 Earlier schema-v1/v2 receipts are **not** silently upgraded to
 candidate-value evidence or counted as distinct globally verified
