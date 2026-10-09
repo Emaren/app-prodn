@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/television-v1-director-multicam-20261009` at `1930f0b357525e4807ecf2f6d47d17df2181c981`
+Implementation baseline: `feature/television-v1-director-multicam-20261009` at `e0997be54fdc2ee577f6834eb4ae5c99c6e311fb`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
