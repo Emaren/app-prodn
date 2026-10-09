@@ -1695,9 +1695,9 @@
       "owner": "aoe2war-web",
       "path": "docs/TELEVISION_WOLO.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-30",
+      "reviewed_at": "2026-10-09",
       "sensitivity": "internal",
-      "sha256": "b1c89689d688d2889ae90119f6608beaf77e0e963f12c5d7f416253fd53964f1",
+      "sha256": "81979c2edb3a42de020be80a37a94be29c620a5616956952fae9ad2dc7d6311a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
