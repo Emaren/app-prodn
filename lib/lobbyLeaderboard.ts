@@ -460,15 +460,6 @@ function buildLeaderboardSelection(
         )
       : entries;
 
-  const eligibleEntries = scopedEntries
-    .filter(
-      (entry) =>
-        entry.totalMatches >= LOBBY_LEADERBOARD_MIN_MATCHES
-    )
-    .sort((left, right) =>
-      compareLeaderboardEntries(left, right, lane)
-    );
-
   const rankedEntries = scopedEntries
     .filter((entry) => canRankLeaderboardLane(entry, lane))
     .sort((left, right) =>
@@ -634,7 +625,7 @@ function buildLeaderboardSelection(
   }
 
   return {
-    eligibleEntries,
+    ratedCount: rankedEntries.length,
     selectedEntries:
       Array.from(selectedByKey.values()),
     rankByKey,
@@ -1414,7 +1405,7 @@ async function loadLobbyLeaderboardFresh(
   }
 
   const {
-    eligibleEntries,
+    ratedCount,
     selectedEntries,
     rankByKey,
     fullEntryCount,
@@ -1466,11 +1457,8 @@ async function loadLobbyLeaderboardFresh(
     claimedIdentityRows,
     claimedProfileOnlyRows,
     accountsWithAliasHistory,
-    // These are actually rated identities in this RM/DM lane,
-    // not everyone with >= 3 accepted replay matches.
-    rankedPlayers: candidates.filter(
-      (entry) => canRankLeaderboardLane(entry, lane)
-    ).length,
+    // Rated players in the active RM/DM and Warriors/Kingdom scope.
+    rankedPlayers: ratedCount,
     minimumMatches: LOBBY_LEADERBOARD_MIN_MATCHES,
     rankDelta24hAsOf:
       rankDeltaWindow.asOf,
