@@ -21,11 +21,15 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
+import LibraryPlayerCensus from "@/components/library/LibraryPlayerCensus";
 import type { LibraryOrigin } from "@/lib/libraryLedger";
 
 type GameStage = "checkpoint" | "review" | "recorded";
 type GameItem = {
   id: number;
+  ordinal: number;
+  evidence: string;
+  unknownOutcome: boolean;
   occurredAt: string;
   uploader: string;
   kind: LibraryOrigin;
@@ -37,6 +41,7 @@ type GameItem = {
 type PageResult = {
   ok: boolean;
   total: number;
+  filterTotal: number;
   last24h: number;
   generatedAt: string;
   items: GameItem[];
@@ -127,13 +132,6 @@ const tones: Record<LibraryOrigin, {
   },
 };
 
-function isInFilter(game: GameItem, filter: Filter) {
-  if (filter === "all") return true;
-  if (filter === "other") {
-    return game.kind === "watcher-legacy" || game.kind === "unclassified";
-  }
-  return game.kind === filter;
-}
 function compactCount(n: number) {
   return Math.max(0, n).toLocaleString("en-US");
 }
@@ -202,6 +200,9 @@ function LedgerRow({
             <span className={`hidden shrink-0 rounded-full border px-2 py-1 font-mono text-[9px] font-bold tracking-[0.1em] sm:inline-flex ${tone.chip}`}>
               {tone.label}
             </span>
+            {game.evidence === "zip-legacy-correlation" ? (
+              <span className="shrink-0 rounded-full border border-amber-300/25 px-2 py-0.5 font-mono text-[9px] text-amber-200" title="Older ZIP receipt uniquely correlates by uploader, filename and timing; not exact game-ID proof">INFERRED</span>
+            ) : null}
           </div>
           <div className="mt-1.5 truncate text-xs text-slate-300/85 sm:text-sm">
             {game.mapName ?? (game.stage === "checkpoint" ? "Saved checkpoint" : "Battlefield pending")}
@@ -221,7 +222,7 @@ function LedgerRow({
             {receivedAt(game.occurredAt)}
           </span>
           <span className="flex items-center gap-2 font-mono text-[10px] text-slate-500">
-            {game.stage === "review" ? "Parse pending / review" :
+            {game.stage === "review" ? "Outcome unknown / review" :
               game.stage === "checkpoint" ? "Checkpoint evidence" : age(game.occurredAt)}
             <ExternalLink className="h-3 w-3 opacity-0 transition group-hover:opacity-90" />
           </span>
@@ -254,7 +255,7 @@ export default function LibraryActivityBoard() {
   const pendingRef = useRef<GameItem[]>([]);
   const [filter, setFilter] = useState<Filter>("all");
   const [total, setTotal] = useState(0);
-  const [visibleTotal, setVisibleTotal] = useState(0);
+  const [filterTotal, setFilterTotal] = useState(0);
   const [last24h, setLast24h] = useState(0);
   const [ops, setOps] = useState<OpsPayload>(emptyOps);
   const [showOperations, setShowOperations] = useState(false);
@@ -270,16 +271,17 @@ export default function LibraryActivityBoard() {
   const moreRef = useRef(false);
   const olderBusyRef = useRef(false);
   const pollBusyRef = useRef(false);
+  const filterEpochRef = useRef(0);
 
   const requestPage = useCallback(async (query = ""): Promise<PageResult> => {
-    const response = await fetch(`/api/library/games${query}`, { cache: "no-store" });
+    const response = await fetch(`/api/library/games${query}${query ? "&" : "?"}origin=${encodeURIComponent(filter)}`, { cache: "no-store" });
     if (!response.ok) throw new Error("Library ledger unavailable");
     const data = await response.json() as PageResult;
     if (!data.ok || !Array.isArray(data.items) || !Number.isInteger(data.total)) {
       throw new Error("Invalid Library ledger");
     }
     return data;
-  }, []);
+  }, [filter]);
 
   const refreshOperations = useCallback(async () => {
     try {
@@ -293,11 +295,14 @@ export default function LibraryActivityBoard() {
   }, []);
 
   const firstPage = useCallback(async () => {
+    const epoch = ++filterEpochRef.current;
+    setLoading(true);
     try {
       const data = await requestPage();
+      if (epoch !== filterEpochRef.current) return;
       setItems(data.items);
       setTotal(data.total);
-      setVisibleTotal(data.total);
+      setFilterTotal(data.filterTotal);
       setLast24h(data.last24h);
       pendingRef.current = [];
       setPending([]);
@@ -306,20 +311,24 @@ export default function LibraryActivityBoard() {
       moreRef.current = data.hasMore;
       setHasMore(data.hasMore);
       setFailed(false);
+      setScrollTop(0);
+      scrollRef.current?.scrollTo({ top: 0 });
     } catch {
-      setFailed(true);
+      if (epoch === filterEpochRef.current) setFailed(true);
     } finally {
-      setLoading(false);
+      if (epoch === filterEpochRef.current) setLoading(false);
     }
   }, [requestPage]);
 
   const loadOlder = useCallback(async () => {
     const cursor = olderRef.current;
     if (olderBusyRef.current || !moreRef.current || cursor === null) return;
+    const epoch = filterEpochRef.current;
     olderBusyRef.current = true;
     setLoadingOlder(true);
     try {
       const data = await requestPage(`?before=${cursor}`);
+      if (epoch !== filterEpochRef.current) return;
       setItems((current) => {
         const known = new Set(current.map((item) => item.id));
         return [...current, ...data.items.filter((item) => !known.has(item.id))];
@@ -329,7 +338,7 @@ export default function LibraryActivityBoard() {
       setHasMore(data.hasMore);
       setFailed(false);
     } catch {
-      setFailed(true);
+      if (epoch === filterEpochRef.current) setFailed(true);
     } finally {
       olderBusyRef.current = false;
       setLoadingOlder(false);
@@ -337,6 +346,7 @@ export default function LibraryActivityBoard() {
   }, [requestPage]);
 
   const poll = useCallback(async () => {
+    const epoch = filterEpochRef.current;
     if (pollBusyRef.current) return;
     if (headRef.current === 0) {
       await firstPage();
@@ -348,7 +358,9 @@ export default function LibraryActivityBoard() {
       // jump over more than one page of newly created record IDs.
       for (let page = 0; page < 5; page++) {
         const data = await requestPage(`?after=${headRef.current}`);
+        if (epoch !== filterEpochRef.current) return;
         setTotal(data.total);
+        setFilterTotal(data.filterTotal);
         setLast24h(data.last24h);
         if (data.items.length === 0) break;
         headRef.current = Math.max(headRef.current, ...data.items.map((item) => item.id));
@@ -362,7 +374,7 @@ export default function LibraryActivityBoard() {
             return [...arrivals.filter((item) => !known.has(item.id)), ...current]
               .sort((a, b) => b.id - a.id);
           });
-          setVisibleTotal(data.total);
+
         } else {
           const known = new Set(pendingRef.current.map((item) => item.id));
           pendingRef.current = [...data.items.filter((item) => !known.has(item.id)), ...pendingRef.current]
@@ -389,11 +401,11 @@ export default function LibraryActivityBoard() {
           .sort((a, b) => b.id - a.id);
       });
       setPending([]);
-      setVisibleTotal(total);
+
     }
     setFilter("all");
     scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-  }, [pending, total]);
+  }, []);
 
   useEffect(() => {
     void firstPage();
@@ -420,9 +432,8 @@ export default function LibraryActivityBoard() {
   }, []);
 
   const visible = useMemo(
-    () => items.map((item, index) => ({ item, ordinal: visibleTotal - index }))
-      .filter(({ item }) => isInFilter(item, filter)),
-    [items, filter, visibleTotal],
+    () => items.map((item) => ({ item, ordinal: item.ordinal })),
+    [items],
   );
   const start = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - VIEW_BUFFER);
   const end = Math.min(visible.length,
@@ -545,7 +556,10 @@ export default function LibraryActivityBoard() {
               <button key={value} type="button"
                 aria-pressed={filter === value}
                 onClick={() => {
+                  filterEpochRef.current++;
                   setFilter(value);
+                  setItems([]);
+                  setLoading(true);
                   scrollRef.current?.scrollTo({ top: 0 });
                   setScrollTop(0);
                 }}
@@ -563,7 +577,7 @@ export default function LibraryActivityBoard() {
             </button>
           ) : null}
           <div className="flex items-center justify-between border-b border-white/[0.05] bg-black/25 px-4 py-2 font-mono text-[10px] text-slate-500 sm:px-6">
-            <span>{compactCount(visible.length)} loaded in view · newest first</span>
+            <span>{compactCount(visible.length)} loaded of {compactCount(filterTotal)} matching records · newest first</span>
             <span>SCROLL ↓ FOR HISTORY</span>
           </div>
           <div
@@ -600,13 +614,9 @@ export default function LibraryActivityBoard() {
                 <div className="text-sm text-slate-400">
                   {loading ? "Loading the kingdom's replay history…" :
                     failed ? "The intake ledger is temporarily unavailable." :
-                    filter !== "all" ? "No matching records in loaded history." :
+                    filter !== "all" ? "No records of this source in the complete historical ledger." :
                     "No final replay records yet."}
                 </div>
-                {filter !== "all" && hasMore ? (
-                  <button type="button" onClick={() => void loadOlder()}
-                    className="text-xs font-bold text-amber-200 hover:underline">Search further back ↓</button>
-                ) : null}
               </div>
             )}
             {loadingOlder && (
@@ -618,8 +628,8 @@ export default function LibraryActivityBoard() {
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-white/[0.08] px-4 py-3 sm:px-6">
             <div className="flex items-center gap-2 text-xs text-slate-500">
               <Signal className="h-3.5 w-3.5 text-emerald-300" />
-              {hasMore ? "More preserved history available" : "End of currently indexed replay history"}
-              {filter !== "all" ? " · Source filters apply to loaded records" : ""}
+              {hasMore ? "More preserved history available" : "End of indexed source history"}
+              {filter !== "all" ? " · Full-history source filter active" : ""}
             </div>
             {hasMore ? (
               <button type="button" disabled={loadingOlder} onClick={() => void loadOlder()}
@@ -672,6 +682,7 @@ export default function LibraryActivityBoard() {
             </div>
           ) : null}
         </section>
+        <LibraryPlayerCensus />
         <p className="text-center font-mono text-[10px] leading-relaxed text-slate-600">
           INTAKE LEDGER ≠ DEDUPLICATED WAR VAULT · FINAL REPLAY EVIDENCE ≠ VERIFIED VICTORY OR BETTING AUTHORITY
           <br />
