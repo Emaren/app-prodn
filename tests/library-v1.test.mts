@@ -76,8 +76,8 @@ test("Library source filters query complete history before paging", () => {
   assert.match(gameRoute, /selectLibraryHistoryPage/);
   assert.match(gameRoute, /LIBRARY_ORIGIN_FILTERS/);
   assert.match(index, /is_final: true/);
-  assert.match(index, /id > options.after/);
-  assert.match(index, /id < options.before/);
+  assert.match(index, /id > after/);
+  assert.match(index, /id < before/);
   assert.match(index, /filterTotal: eligible.length/);
   assert.match(origin, /zip-legacy-correlation/);
   assert.ok(board.includes("origin=${encodeURIComponent(filter)}"));
