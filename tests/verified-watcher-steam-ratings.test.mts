@@ -6,7 +6,7 @@ import {
   selectLatestSteamObservation,
 } from "../lib/verifiedWatcherSteamRatings.ts";
 
-test("latest signed Watcher observation wins by game time, independently per Steam lane", () => {
+test("latest authenticated Watcher observation wins by game time, independently per Steam lane", () => {
   const earlier = "2026-10-06T22:00:00.000Z";
   const later = "2026-10-07T01:18:12.950Z";
   assert.deepEqual(selectLatestSteamObservation(1055, earlier, 1077, later), {
@@ -26,10 +26,17 @@ test("latest signed Watcher observation wins by game time, independently per Ste
   });
 });
 
-test("manual and batch uploads cannot create or override the signed Watcher rating stream", () => {
+test("manual and batch uploads cannot create or override the Watcher-only rating stream", () => {
   const source = readFileSync(new URL("../lib/verifiedWatcherSteamRatings.ts", import.meta.url), "utf8");
   assert.match(source, /g\.parse_source IN \('watcher_live','watcher_final'\)/);
   assert.match(source, /provenance_signature_verified/);
+  // Strictly permit older clients only if they supplied no signature.
+  // Signatures that were supplied but failed verification stay rejected.
+  assert.match(source, /provenance_signature_supplied/);
+  assert.match(source, /\{watcher_upload,provenance_signature_supplied\}' = 'false'::jsonb/);
+  assert.match(source, /\{watcher_upload,provenance_signature_verified\}' = 'false'::jsonb/);
+  assert.match(source, /\{watcher_upload,watcher_session_id\}/);
+  assert.match(source, /\{watcher_upload,replay_fingerprint\}/);
   assert.match(source, /client_sha256_verified/);
   assert.match(source, /ingestion_provenance.*'live_monitor'/);
   assert.match(source, /server_sha256/);
@@ -49,10 +56,10 @@ test("the canonical directory never creates a user or match count from live rati
   assert.doesNotMatch(source, /updateLastPlayedAt\([\s\S]{0,120}signed\.steamRmObservedAt/);
 });
 
-// A bounded SQL-result integration seam: PostgreSQL already applies signature,
+// A bounded SQL-result integration seam: PostgreSQL applies Watcher provenance,
 // chronology and source predicates; the JavaScript adapter must preserve
 // per-lane values without applying Site Elo or name-based identity fallbacks.
-test("signed watcher SQL projection preserves independently observed RM/DM values", async () => {
+test("Watcher-only SQL projection preserves independently observed RM/DM values", async () => {
   const { loadVerifiedWatcherSteamRatings, invalidateVerifiedWatcherSteamRatingsCache } =
     await import("../lib/verifiedWatcherSteamRatings.ts");
   invalidateVerifiedWatcherSteamRatingsCache();
@@ -78,7 +85,7 @@ test("signed watcher SQL projection preserves independently observed RM/DM value
   invalidateVerifiedWatcherSteamRatingsCache();
 });
 
-test("unavailable signed-history SQL fails closed without taking down a public leaderboard", async () => {
+test("unavailable Watcher-rating SQL fails closed without taking down a public leaderboard", async () => {
   const { loadVerifiedWatcherSteamRatings, invalidateVerifiedWatcherSteamRatingsCache } =
     await import("../lib/verifiedWatcherSteamRatings.ts");
   invalidateVerifiedWatcherSteamRatingsCache();
