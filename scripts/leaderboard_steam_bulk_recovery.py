@@ -203,6 +203,9 @@ def main() -> int:
                        help="explicitly start bounded protected remote reads")
     args = parser.parse_args()
     selection_plan({"waves": {}, "verifiedIdentityCount": 0,
+                    "verifiedArtifactCount": 0,
+                    "sharedReplayIdentityChecks": 0,
+                    "sharedReplayArtifactHashes": 0,
                     "historicalCandidateCount": 0,
                     "untrackedLegacyReceiptFiles": 0}, args.start, args.stop)
     truth = load_truth()
