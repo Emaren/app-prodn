@@ -25,11 +25,29 @@ try {
       proof[0].transaction_mode !== "on" || proof[0].default_mode !== "on")
     throw Error("STOP: absent read-only database proof");
 
-  // Existing display rails, no new qualification or mutable rating writes.
-  const [receiptRows, verifiedDisplayRows] = await Promise.all([
-    loadCurrentWatcherAccountStates(prisma),
-    loadVerifiedWatcherSteamRatings(prisma),
-  ]);
+  // This is a fresh, isolated Node observer process. Its first
+  // qualified-display read may swallow a DB error and return [].
+  // Fail shut on that specific diagnostic: [] must not hide a read failure.
+  // Restore console.warn immediately; do not alter the live service process.
+  const originalWarn = console.warn;
+  let optionalDisplayReadFailed = false;
+  console.warn = (...args) => {
+    if (typeof args[0] === "string" &&
+        args[0].startsWith("Verified Watcher Steam rating cold load failed:"))
+      optionalDisplayReadFailed = true;
+    originalWarn(...args);
+  };
+  let receiptRows, verifiedDisplayRows;
+  try {
+    [receiptRows, verifiedDisplayRows] = await Promise.all([
+      loadCurrentWatcherAccountStates(prisma),
+      loadVerifiedWatcherSteamRatings(prisma),
+    ]);
+  } finally {
+    console.warn = originalWarn;
+  }
+  if (optionalDisplayReadFailed)
+    throw Error("STOP: optional Watcher display source query failed");
   if (!Array.isArray(receiptRows) || !Array.isArray(verifiedDisplayRows))
     throw Error("STOP: invalid qualified display snapshot");
 
