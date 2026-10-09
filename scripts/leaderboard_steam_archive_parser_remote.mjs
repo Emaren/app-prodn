@@ -198,6 +198,7 @@ try {
     (a,b) => sha("aoe2war-replay-canary-v1:"+a).localeCompare(
       sha("aoe2war-replay-canary-v1:"+b)),
   );
+  const sampledHashes = new Set();
   for (const id of order) {
     if (summary.sampleHashesVerified >= SAMPLE_LIMIT ||
         !archiveAccessible || !interpreter) break;
@@ -205,6 +206,7 @@ try {
       (a, b) => Number(b.isFinal) - Number(a.isFinal)
     )) {
       if (summary.sampleHashesVerified >= SAMPLE_LIMIT) break;
+      if (sampledHashes.has(c.hash)) continue;
       const filePath = join(archiveRoot, c.hash.slice(0,2),
         c.hash.slice(2,4), c.hash+c.suffix);
       let size;
@@ -222,6 +224,7 @@ try {
       try { digest = await hashFile(filePath); }
       catch { summary.parserError++; continue; }
       if (digest !== c.hash) { summary.sampleHashMismatch++; continue; }
+      sampledHashes.add(c.hash);
       summary.sampleHashesVerified++;
       const p = parseInIsolatedSubprocess(interpreter, filePath, c.isFinal);
       if (p.status !== "parsed") {
