@@ -51,6 +51,44 @@ def main() -> None:
         if rated + missing != total or sum(histogram.values()) + no_id != missing:
             raise RuntimeError("gate histogram conservation failed")
 
+    if payload.get("schemaVersion") != 3:
+        raise RuntimeError("unexpected blocked-detail schema version")
+    details = payload.get("blockedDetails")
+    if not isinstance(details, dict):
+        raise RuntimeError("blocked gate details are missing")
+    stages_to_detail = {
+        "source": "nonqualifying_parse_source_only",
+        "clock": "invalid_clock_uploader_or_hash",
+        "provenance": "missing_live_monitor_provenance",
+    }
+    for lane in ("rm", "dm"):
+        detail = details.get(lane)
+        if not isinstance(detail, dict):
+            raise RuntimeError("missing lane blocked-detail counts")
+        for kind, stage_name in stages_to_detail.items():
+            bucket = detail.get(kind)
+            if not isinstance(bucket, dict) or any(
+                not isinstance(key, str) or type(value) is not int or value < 0
+                for key, value in bucket.items()
+            ):
+                raise RuntimeError("malformed blocked-detail bucket")
+            if sum(bucket.values()) != stages[lane].get(stage_name):
+                raise RuntimeError("blocked-detail conservation failed")
+        flags = detail.get("stage3Context")
+        required_flags = {
+            "signatureVerifiedTrue", "signatureVerifiedFalse",
+            "checksumVerifiedTrue", "hashesMatchReplay",
+            "fileRolePresent", "beforeFrozenCutoff",
+        }
+        if not isinstance(flags, dict) or set(flags) != required_flags:
+            raise RuntimeError("blocked-detail context invalid")
+        for key in required_flags:
+            value = flags[key]
+            if type(value) is not int or not 0 <= value <= stages[lane][
+                "missing_live_monitor_provenance"
+            ]:
+                raise RuntimeError("blocked-detail context inconsistent")
+
     receipt = truth.write_receipt("leaderboard-steam-gate-funnel", payload)
     receipt.chmod(0o600)
     print(json.dumps({
@@ -58,6 +96,7 @@ def main() -> None:
         "productionSource": payload.get("productionSource"),
         "counts": counts,
         "histogram": stages,
+        "blockedDetails": details,
         "receipt": str(receipt),
         "readOnly": True,
         "productionMutated": False,
