@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
+import re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -28,6 +29,37 @@ def validate(payload: object, expected_wave: int = 0) -> dict:
     }
     if payload.get("mutations") != expected:
         raise RuntimeError("production mutation assertion failed")
+    cohort_fingerprint = payload.get("cohortFingerprint")
+    if not isinstance(cohort_fingerprint, str) or not re.fullmatch(
+        r"[a-f0-9]{64}", cohort_fingerprint
+    ):
+        raise RuntimeError("archive cohort digest invalid")
+    sample_evidence = payload.get("sampleEvidence")
+    if not isinstance(sample_evidence, list):
+        raise RuntimeError("private sample manifest is missing")
+    identity_fps = set()
+    archive_hashes = set()
+    for item in sample_evidence:
+        if not isinstance(item, dict) or set(item) != {
+            "identityFingerprint", "replaySha256", "result"
+        }:
+            raise RuntimeError("private sample manifest shape invalid")
+        identity = item["identityFingerprint"]
+        replay = item["replaySha256"]
+        if (not isinstance(identity, str) or
+            not re.fullmatch(r"[a-f0-9]{64}", identity) or
+            not isinstance(replay, str) or
+            not re.fullmatch(r"[a-f0-9]{64}", replay) or
+            item["result"] not in {
+                "parsed", "no_projection", "timeout", "parser_error",
+                "invalid_parser_output", "unique_identity",
+                "both_hd_headers_match",
+            }):
+            raise RuntimeError("private sample manifest evidence invalid")
+        if identity in identity_fps or replay in archive_hashes:
+            raise RuntimeError("private sample manifest duplication")
+        identity_fps.add(identity)
+        archive_hashes.add(replay)
     data = payload.get("summary")
     if not isinstance(data, dict):
         raise RuntimeError("missing canary summary")
@@ -40,6 +72,8 @@ def validate(payload: object, expected_wave: int = 0) -> dict:
         "publicUnratedExactSteamIds", "unmarkedWatchersWithBothNumbers",
         "scannedGameRows", "scanBatches", "selectedSampleLimit",
         "sampleFilesLocated", "sampleHashesVerified", "sampleHashMismatch",
+        "identitiesWithoutLocatedFile", "identitiesWithOversizeOnly",
+        "identitiesWithVerifiedFile",
         "sampleTooLarge", "parserParsed", "parserNoProjection",
         "parserTimeout", "parserError", "invalidParserOutput",
         "sameSteamIdentityPresent", "uniquelyBoundSteamIdentity",
@@ -66,6 +100,14 @@ def validate(payload: object, expected_wave: int = 0) -> dict:
             raise RuntimeError(f"invalid parser no-projection evidence: {name}")
         if sum(counts.values()) != data["parserNoProjection"]:
             raise RuntimeError("parser no-projection conservation failed")
+    if (len(sample_evidence) != data["sampleHashesVerified"] or
+        data["identitiesWithVerifiedFile"] != data["sampleHashesVerified"] or
+        data["identitiesWithVerifiedFile"] +
+            data["identitiesWithoutLocatedFile"] >
+            data.get("sampleIdentityWindow", -1) or
+        data["identitiesWithOversizeOnly"] >
+            data.get("sampleIdentityWindow", -1)):
+        raise RuntimeError("private sample manifest count mismatch")
     if type(data.get("sampleIdentityWindow")) is not int or not (
         0 <= data["sampleIdentityWindow"] <= 24
     ):
@@ -105,6 +147,65 @@ def validate(payload: object, expected_wave: int = 0) -> dict:
     return data
 
 
+def analyze_private_history(payload: dict, receipt_dir: Path) -> dict:
+    """Track cross-wave evidence reuse without publishing Steam IDs or SHAs."""
+    sample = payload["sampleEvidence"]
+    new_identities = {entry["identityFingerprint"] for entry in sample}
+    new_archives = {entry["replaySha256"] for entry in sample}
+    wave = payload["summary"]["sampleWave"]
+    prior_identity_fps = set()
+    prior_archive_hashes = set()
+    prior_cohort_fps = set()
+    reviewed = 0
+    legacy_untracked = 0
+    same_wave_receipts = 0
+    # Old wave 0-2 receipts predate private sample fingerprints.
+    # Treat their deduplication as UNKNOWN, not as distinct evidence.
+    for path in sorted(
+        receipt_dir.glob("*-leaderboard-steam-archive-parser-wave-*.json")
+    ):
+        envelope = json.loads(path.read_text(encoding="utf-8"))
+        prior = envelope.get("payload")
+        if not isinstance(prior, dict) or prior.get("kind") != payload["kind"]:
+            raise RuntimeError("unexpected archived Steam recovery receipt")
+        prior_wave = prior.get("summary", {}).get("sampleWave")
+        if type(prior_wave) is not int:
+            raise RuntimeError("previous recovery receipt missing wave")
+        if prior_wave == wave:
+            same_wave_receipts += 1
+            continue
+        old_sample = prior.get("sampleEvidence")
+        old_cohort = prior.get("cohortFingerprint")
+        if old_sample is None or old_cohort is None:
+            legacy_untracked += 1
+            continue
+        validate(prior, prior_wave)
+        prior_cohort_fps.add(old_cohort)
+        reviewed += 1
+        prior_identity_fps.update(
+            item["identityFingerprint"] for item in old_sample
+        )
+        prior_archive_hashes.update(
+            item["replaySha256"] for item in old_sample
+        )
+    return {
+        "priorTrackedWaveReceipts": reviewed,
+        "priorUntrackedWaveReceipts": legacy_untracked,
+        "sameWaveReceiptsExcluded": same_wave_receipts,
+        "crossWaveIdentityOverlap": len(new_identities & prior_identity_fps),
+        "crossWaveArtifactOverlap": len(new_archives & prior_archive_hashes),
+        "cohortFingerprintsDiffer": len(
+            prior_cohort_fps - {payload["cohortFingerprint"]}
+        ),
+        "newUniqueIdentityProofsVsTracked": len(
+            new_identities - prior_identity_fps
+        ),
+        "newUniqueArtifactProofsVsTracked": len(
+            new_archives - prior_archive_hashes
+        ),
+    }
+
+
 def main(wave: int = 0) -> None:
     spec = importlib.util.spec_from_file_location(
         "aoe2war_truth", ROOT / "scripts" / "aoe2_truth.py"
@@ -118,6 +219,7 @@ def main(wave: int = 0) -> None:
         raise RuntimeError("archive parser wave outside safety ceiling")
     payload = truth.run_remote("census", wave)
     summary = validate(payload, expected_wave=wave)
+    overlap = analyze_private_history(payload, truth.RECEIPT_DIR)
     receipt = truth.write_receipt(
         f"leaderboard-steam-archive-parser-wave-{wave}", payload
     )
@@ -126,6 +228,7 @@ def main(wave: int = 0) -> None:
         "observedAt": payload.get("observedAt"),
         "productionSource": payload.get("productionSource"),
         "summary": summary,
+        "evidenceCoverage": overlap,
         "receipt": str(receipt),
         "readOnly": True,
         "productionMutated": False,
