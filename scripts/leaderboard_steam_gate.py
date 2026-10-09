@@ -51,7 +51,7 @@ def main() -> None:
         if rated + missing != total or sum(histogram.values()) + no_id != missing:
             raise RuntimeError("gate histogram conservation failed")
 
-    if payload.get("schemaVersion") != 5:
+    if payload.get("schemaVersion") != 6:
         raise RuntimeError("unexpected blocked-detail schema version")
     details = payload.get("blockedDetails")
     if not isinstance(details, dict):
@@ -146,6 +146,33 @@ def main() -> None:
                 raw["acceptedPublicReplayOnSameGame"]):
             raise RuntimeError("historical accepted replay conservation failed")
 
+    archive = payload.get("archiveProbe")
+    if not isinstance(archive, dict):
+        raise RuntimeError("missing archive diagnostic")
+    integer_keys = (
+        "selectedExactSteamIds", "maxCandidatesPerIdentity",
+        "maxShaSampleFiles", "maxShaSampleSizeBytes", "candidateIds",
+        "candidatePathsProbed", "idsWithExistingArchiveFile",
+        "idsWithoutExistingArchiveAmongSample", "idsWithHashVerifiedSample",
+        "idsWithHashMismatchSample", "sampleHashFileCount",
+        "sampleHashByteCount", "fileReadErrors",
+    )
+    for key in integer_keys:
+        if type(archive.get(key)) is not int or archive[key] < 0:
+            raise RuntimeError("malformed archive diagnostic counters")
+    if type(archive.get("archiveRootAccessible")) is not bool:
+        raise RuntimeError("malformed archive accessibility")
+    if archive["selectedExactSteamIds"] != targets or archive["candidateIds"] != targets:
+        raise RuntimeError("archive identity conservation failed")
+    if (archive["idsWithExistingArchiveFile"] +
+            archive["idsWithoutExistingArchiveAmongSample"] != targets):
+        raise RuntimeError("archive existence conservation failed")
+    if not 0 <= archive["sampleHashFileCount"] <= archive["maxShaSampleFiles"]:
+        raise RuntimeError("archive SHA sample cap violated")
+    if (archive["idsWithHashVerifiedSample"] +
+            archive["idsWithHashMismatchSample"] > archive["sampleHashFileCount"]):
+        raise RuntimeError("archive sample SHA identity mismatch")
+
     receipt = truth.write_receipt("leaderboard-steam-gate-funnel", payload)
     receipt.chmod(0o600)
     print(json.dumps({
@@ -156,6 +183,7 @@ def main() -> None:
         "blockedDetails": details,
         "receiptCorrelation": receipt_match,
         "historicalHeaderCandidates": historical,
+        "archiveProbe": archive,
         "receipt": str(receipt),
         "readOnly": True,
         "productionMutated": False,
