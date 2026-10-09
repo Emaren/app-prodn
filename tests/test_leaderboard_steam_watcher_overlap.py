@@ -75,6 +75,20 @@ class WatcherOverlapTests(unittest.TestCase):
         self.assertEqual(s["publishedLastKnownSteamRatings"], 0)
         self.assertEqual(report["records"][0]["lanes"]["rm"]["displayDecision"], 1780)
         self.assertFalse(report["sourceCompletenessProven"])
+        self.assertEqual(report["sourceCounts"]["positiveDisplayIdentities"], 1)
+
+    def test_remote_source_read_failure_is_explicitly_fatal(self):
+        root = Path(__file__).resolve().parents[1]
+        remote = (root / "scripts" /
+                  "leaderboard_steam_watcher_overlap_remote.mjs").read_text()
+        self.assertIn(
+            "Verified Watcher Steam rating cold load failed:", remote
+        )
+        self.assertIn(
+            'throw Error("STOP: optional Watcher display source query failed")',
+            remote
+        )
+        self.assertIn("console.warn = originalWarn", remote)
 
     def test_missing_positive_is_unknown_not_authorized_fallback(self):
         report = reconcile(historical_fixture(), overlay(include=False))
