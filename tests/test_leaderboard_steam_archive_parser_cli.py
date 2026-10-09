@@ -20,6 +20,11 @@ def fixture():
     return {
         "kind": "aoe2war-archived-hd-rating-parser-canary",
         "schemaVersion": 1,
+        "cohortFingerprint": "c" * 64,
+        "sampleEvidence": [{"identityFingerprint": f"{i+1:064x}",
+                            "replaySha256": f"{i+300:064x}",
+                            "result": "both_hd_headers_match" if i < 2 else "unique_identity"}
+                           for i in range(6)],
         "databaseReadOnly": [{
             "transaction_mode": "on", "default_mode": "on",
         }],
@@ -41,6 +46,9 @@ def fixture():
             "sampleIdentityWindow": 6,
             "deadlineReached": False,
             "sampleFilesLocated": 6,
+            "identitiesWithoutLocatedFile": 0,
+            "identitiesWithOversizeOnly": 0,
+            "identitiesWithVerifiedFile": 6,
             "sampleHashesVerified": 6,
             "sampleHashMismatch": 0,
             "sampleTooLarge": 0,
@@ -101,7 +109,7 @@ class ArchiveParserCanaryTests(unittest.TestCase):
             sampleWave=1, sampleOffsetIdentities=6,
             selectedSampleLimit=24, sampleHashesVerified=25
         )
-        with self.assertRaisesRegex(RuntimeError, "conservation"):
+        with self.assertRaisesRegex(RuntimeError, "manifest|conservation"):
             module.validate(data, expected_wave=1)
 
     def test_missing_projection_failure_is_classified_without_identity(self):
@@ -116,6 +124,7 @@ class ArchiveParserCanaryTests(unittest.TestCase):
         data["summary"]["noProjectionByErrorCategory"] = {
             "truncated_or_incomplete": 1
         }
+        data["sampleEvidence"][-1]["result"] = "no_projection"
         self.assertEqual(
             module.validate(data)["noProjectionByMode"]["mgz_failed"], 1
         )
@@ -130,6 +139,50 @@ class ArchiveParserCanaryTests(unittest.TestCase):
         }
         with self.assertRaisesRegex(RuntimeError, "no-projection"):
             module.validate(data)
+
+    def test_private_manifest_rejects_duplicate_file(self):
+        data = fixture()
+        data["sampleEvidence"][1]["replaySha256"] = (
+            data["sampleEvidence"][0]["replaySha256"]
+        )
+        with self.assertRaisesRegex(RuntimeError, "manifest duplication"):
+            module.validate(data)
+
+    def test_history_classifies_cohort_drift_and_repeated_artifacts(self):
+        with tempfile.TemporaryDirectory() as root:
+            earlier = fixture()
+            earlier["summary"].update(
+                sampleWave=1, sampleOffsetIdentities=6, selectedSampleLimit=24
+            )
+            Path(
+                root, "20261009T040000Z-leaderboard-steam-archive-parser-wave-1.json"
+            ).write_text(__import__("json").dumps({"payload": earlier}))
+            later = fixture()
+            later["summary"].update(
+                sampleWave=2, sampleOffsetIdentities=30, selectedSampleLimit=24
+            )
+            later["cohortFingerprint"] = "d" * 64
+            info = module.analyze_private_history(later, Path(root))
+            self.assertEqual(info["priorTrackedWaveReceipts"], 1)
+            self.assertEqual(info["cohortFingerprintsDiffer"], 1)
+            self.assertEqual(info["crossWaveIdentityOverlap"], 6)
+            self.assertEqual(info["crossWaveArtifactOverlap"], 6)
+
+    def test_untracked_legacy_waves_are_not_certified_unique(self):
+        with tempfile.TemporaryDirectory() as root:
+            earlier = fixture()
+            earlier.pop("sampleEvidence")
+            earlier.pop("cohortFingerprint")
+            Path(
+                root, "20261009T030000Z-leaderboard-steam-archive-parser-wave-0.json"
+            ).write_text(__import__("json").dumps({"payload": earlier}))
+            later = fixture()
+            later["summary"].update(
+                sampleWave=1, sampleOffsetIdentities=6, selectedSampleLimit=24
+            )
+            info = module.analyze_private_history(later, Path(root))
+            self.assertEqual(info["priorUntrackedWaveReceipts"], 1)
+            self.assertEqual(info["crossWaveIdentityOverlap"], 0)
 
     def test_fail_closed_bad_readonly(self):
         for proof in (None, [], [{}], [{"transaction_mode": "off",
@@ -182,6 +235,9 @@ class ArchiveParserCanaryTests(unittest.TestCase):
         self.assertIn("from utils.replay_parser import _parse_sync_bytes_with_diagnostics", source)
         self.assertIn("order.slice(SAMPLE_OFFSET, SAMPLE_OFFSET + SAMPLE_LIMIT)", source)
         self.assertIn("noProjectionByErrorCategory", source)
+        self.assertIn("identityFingerprint", source)
+        self.assertIn("cohortFingerprint", source)
+        self.assertIn("identitiesWithoutLocatedFile", source)
         self.assertNotIn("UPDATE game_stats", source)
         self.assertNotIn("INSERT INTO", source)
         self.assertNotIn("SET statement_timeout", source)
@@ -193,6 +249,7 @@ class ArchiveParserCanaryTests(unittest.TestCase):
             truth = SimpleNamespace(
                 run_remote=lambda command, wave: fixture(),
                 write_receipt=lambda _title, _payload: receipt,
+                RECEIPT_DIR=Path(root),
             )
             fake_spec = SimpleNamespace(
                 loader=SimpleNamespace(exec_module=lambda module: None)
