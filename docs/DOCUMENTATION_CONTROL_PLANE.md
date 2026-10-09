@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/v1-steam-ratings-watcher-authority-20261008` at `518bceb9c65de9108fea49ef362632e33383cf97`
+Implementation baseline: `fix/v1-steam-ratings-watcher-authority-20261008` at `fcc55f2f29666dfb7126db28ba12eeff0cbf8e32`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
