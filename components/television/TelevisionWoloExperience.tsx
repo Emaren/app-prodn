@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
   Crown,
@@ -99,6 +100,7 @@ export default function TelevisionWoloExperience({
   archiveTotal,
   chaos,
 }: Props) {
+  const router = useRouter();
   const initialBattle =
     battles.find((battle) => battle.source === "live") ?? battles[0] ?? null;
   const [selectedKey, setSelectedKey] = useState(initialBattle?.sessionKey ?? "");
@@ -130,6 +132,22 @@ export default function TelevisionWoloExperience({
   useEffect(() => {
     setBrowserHost(window.location.hostname);
   }, []);
+  // Refresh the battle roster even when the viewer is not playing video.
+  // Unlike stream playback this is a lightweight RSC refresh, and is suspended
+  // while the browser tab is hidden. Never auto-switch an active camera.
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === "visible") router.refresh();
+    }, 20_000);
+    return () => window.clearInterval(timer);
+  }, [router]);
+
+  useEffect(() => {
+    if (selectedKey && !battles.some(battle => battle.sessionKey === selectedKey)) {
+      setSelectedKey(initialBattle?.sessionKey ?? "");
+    }
+  }, [selectedKey, battles, initialBattle]);
+
 
   useEffect(() => {
     setPlayingKey(null);
