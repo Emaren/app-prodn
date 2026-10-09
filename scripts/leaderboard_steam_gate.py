@@ -51,7 +51,7 @@ def main() -> None:
         if rated + missing != total or sum(histogram.values()) + no_id != missing:
             raise RuntimeError("gate histogram conservation failed")
 
-    if payload.get("schemaVersion") != 3:
+    if payload.get("schemaVersion") != 4:
         raise RuntimeError("unexpected blocked-detail schema version")
     details = payload.get("blockedDetails")
     if not isinstance(details, dict):
@@ -89,6 +89,39 @@ def main() -> None:
             ]:
                 raise RuntimeError("blocked-detail context inconsistent")
 
+    receipt_match = payload.get("receiptCorrelation")
+    if not isinstance(receipt_match, dict):
+        raise RuntimeError("missing parse-attempt receipt correlation")
+    targets = receipt_match.get("targetSteamIdentities")
+    rm_targets = stages["rm"]["missing_live_monitor_provenance"]
+    dm_targets = stages["dm"]["missing_live_monitor_provenance"]
+    if type(targets) is not int or not max(rm_targets, dm_targets) <= targets <= (
+        rm_targets + dm_targets
+    ):
+        raise RuntimeError("invalid parse-attempt receipt target conservation")
+    for name in ("candidateReplayHashes", "scannedAttemptRows", "attemptBatches"):
+        value = receipt_match.get(name)
+        if type(value) is not int or value < 0:
+            raise RuntimeError("invalid parse-attempt scan quantity")
+    for name in (
+        "matchingAttempt", "watcherAttempt", "currentObservationPresent",
+        "observationBindsIdentity", "observationHasLaneNumeric",
+        "observationLiveAndSigned", "observationHasVerifiedSha",
+        "observationArchiveVerified",
+    ):
+        value = receipt_match.get(name)
+        if type(value) is not int or not 0 <= value <= targets:
+            raise RuntimeError("invalid parse-attempt receipt flag")
+    if not (
+        receipt_match["watcherAttempt"] <= receipt_match["matchingAttempt"] and
+        receipt_match["observationBindsIdentity"] <= receipt_match["currentObservationPresent"] and
+        receipt_match["observationHasLaneNumeric"] <= receipt_match["observationBindsIdentity"] and
+        receipt_match["observationLiveAndSigned"] <= receipt_match["observationBindsIdentity"] and
+        receipt_match["observationHasVerifiedSha"] <= receipt_match["observationBindsIdentity"] and
+        receipt_match["observationArchiveVerified"] <= receipt_match["observationBindsIdentity"]
+    ):
+        raise RuntimeError("parse-attempt receipt flag conservation failed")
+
     receipt = truth.write_receipt("leaderboard-steam-gate-funnel", payload)
     receipt.chmod(0o600)
     print(json.dumps({
@@ -97,6 +130,7 @@ def main() -> None:
         "counts": counts,
         "histogram": stages,
         "blockedDetails": details,
+        "receiptCorrelation": receipt_match,
         "receipt": str(receipt),
         "readOnly": True,
         "productionMutated": False,
