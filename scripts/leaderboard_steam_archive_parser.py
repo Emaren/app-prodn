@@ -50,6 +50,26 @@ def validate(payload: object, expected_wave: int = 0) -> dict:
     for name in nums:
         if type(data.get(name)) is not int or data[name] < 0:
             raise RuntimeError(f"invalid canary counter: {name}")
+    count_fields = (
+        "noProjectionByMode", "noProjectionByErrorStage",
+        "noProjectionByErrorCategory",
+    )
+    for name in count_fields:
+        counts = data.get(name)
+        if not isinstance(counts, dict) or any(
+            not isinstance(label, str) or
+            not label.replace("_", "").isalnum() or
+            not label[0].isalpha() or len(label) > 64 or
+            type(count) is not int or count < 0
+            for label, count in counts.items()
+        ):
+            raise RuntimeError(f"invalid parser no-projection evidence: {name}")
+        if sum(counts.values()) != data["parserNoProjection"]:
+            raise RuntimeError("parser no-projection conservation failed")
+    if type(data.get("sampleIdentityWindow")) is not int or not (
+        0 <= data["sampleIdentityWindow"] <= 24
+    ):
+        raise RuntimeError("unsafe parser sample identity window")
     for name in ("sampleWave", "sampleOffsetIdentities"):
         if type(data.get(name)) is not int or data[name] < 0:
             raise RuntimeError("invalid archive parser sample wave")
@@ -67,7 +87,8 @@ def validate(payload: object, expected_wave: int = 0) -> dict:
         if type(data.get(name)) is not bool:
             raise RuntimeError("canary environment proof malformed")
     total = data["sampleHashesVerified"]
-    if (not 0 <= total <= data["selectedSampleLimit"] <= 24 or
+    if (not 0 <= total <= data["sampleIdentityWindow"] <=
+            data["selectedSampleLimit"] <= 24 or
         data["parserParsed"] + data["parserNoProjection"] +
         data["parserTimeout"] + data["parserError"] +
         data["invalidParserOutput"] < total or
