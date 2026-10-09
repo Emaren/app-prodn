@@ -260,6 +260,27 @@ python3 -m unittest tests/test_leaderboard_steam_coverage_cli.py
 python3 scripts/leaderboard_steam_coverage.py
 ```
 
+For missing numeric Watcher cases, a second read-only diagnostic can locate
+the *furthest individual observation gate* passed, without treating numeric
+source fields as proof of qualified Steam authority:
+
+```bash
+python3 -m unittest discover -s tests -p 'test_leaderboard_steam_gate_cli.py'
+python3 scripts/leaderboard_steam_gate.py
+```
+
+The nine-stage funnel distinguishes raw value absence, source restrictions,
+timestamp/uploader/replay-hash integrity, live-monitor provenance, HMAC or
+legacy-window qualification, matching client/server hashes, valid file roles,
+and lane-specific rating-field provenance plus unique Steam identity.
+The maximum stage is computed **per exact Steam ID from a single observation**
+at a time; flags from unrelated games must never be assembled into a
+synthetic qualified upload. The diagnostic prints only aggregate counts, never
+names or private Steam-ID review queues. A raw row passing every historical
+mutable-game gate while the public rating remains unavailable is an
+**investigate-current-overlay-or-cache** signal, not authorization to change
+ranking or financial authority.
+
 The command streams `scripts/leaderboard_steam_coverage_remote.mjs` through
 the protected read-only production truth observer. It returns both-lane,
 RM-only, DM-only, and neither-observed counts, plus exact Steam identity counts.
