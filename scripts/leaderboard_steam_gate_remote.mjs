@@ -155,10 +155,12 @@ try {
     'parse_reason AS "parseReason", is_final AS "isFinal", ' +
     'played_on AS "playedOn", created_at AS "createdAt", ' +
     'user_uid AS "userUid", replay_hash AS "replayHash", ' +
-    'key_events::jsonb AS "events", players::jsonb AS players ' +
+    'key_events::jsonb AS "events", players::jsonb AS players, ' +
+    'replay_file AS "replayFile", original_filename AS "originalFilename" ' +
     'FROM game_stats WHERE id > $1 ORDER BY id ASC LIMIT $2';
   const observations = new Map();
   const stage3HashesBySteamId = new Map();
+  const stage3HistoricalById = new Map();
   let cursor = 0;
   let batches = 0;
   let scannedRows = 0;
@@ -194,6 +196,27 @@ try {
 
 
         if (rmStage === 3 || dmStage === 3) {
+          // Historical-HD-header candidacy is a DIFFERENT, lower
+          // authority rail. These flags never authenticate a Watcher upload.
+          const historical = stage3HistoricalById.get(p.steam_id) ?? {
+            rm: { header: new Set(), unmarked: new Set(), other: new Set(),
+              withReplayFile: new Set() },
+            dm: { header: new Set(), unmarked: new Set(), other: new Set(),
+              withReplayFile: new Set() },
+          };
+          for (const [lane, stage] of [["rm", rmStage], ["dm", dmStage]]) {
+            if (stage !== 3) continue;
+            const sourceKey = lane === "rm" ? "steam_rm_rating" : "steam_dm_rating";
+            const value = p.steam_rating_sources?.[sourceKey];
+            const dest = value === "hd_header" ? "header" :
+              (value === undefined || value === null) ? "unmarked" : "other";
+            historical[lane][dest].add(game.id);
+            if (typeof game.replayFile === "string" &&
+                game.replayFile.trim().length > 0)
+              historical[lane].withReplayFile.add(game.id);
+          }
+          stage3HistoricalById.set(p.steam_id, historical);
+
           const hash = game.replayHash?.toLowerCase();
           if (/^[a-f0-9]{64}$/.test(hash ?? "")) {
             const hashes = stage3HashesBySteamId.get(p.steam_id) ?? new Set();
@@ -258,6 +281,16 @@ try {
     scanBatches: batches, scannedGameRows: scannedRows,
   };
   const stage3Missing = new Set();
+  const historicalHeaderCandidates = {
+    rm: { parserHdHeaderPresent: 0, onlyUnmarkedSource: 0,
+      onlyNonHeaderSource: 0, replayFileReferencePresent: 0,
+      acceptedPublicReplayOnSameGame: 0,
+      hdHeaderAndAcceptedReplayOnSameGame: 0 },
+    dm: { parserHdHeaderPresent: 0, onlyUnmarkedSource: 0,
+      onlyNonHeaderSource: 0, replayFileReferencePresent: 0,
+      acceptedPublicReplayOnSameGame: 0,
+      hdHeaderAndAcceptedReplayOnSameGame: 0 },
+  };
   for (const e of eligible) {
     const rm = positive(e.steamRmRating) ||
       positive(latestHistoricalSteamLaneRating(e.replayEvidence, "rm"));
@@ -275,7 +308,25 @@ try {
     const state = observations.get(e.steamId);
     if ((!rm && state?.rmStage === 3) || (!dm && state?.dmStage === 3))
       stage3Missing.add(e.steamId);
+    const acceptedGameIds = new Set(e.replayEvidence.map(item => item.gameStatsId));
     for (const [lane, rated] of [["rm", rm], ["dm", dm]]) {
+      if (!rated && state?.[lane + "Stage"] === 3) {
+        const observation = stage3HistoricalById.get(e.steamId)?.[lane];
+        if (!observation) throw Error("missing stage-3 raw source evidence");
+        const bucket = historicalHeaderCandidates[lane];
+        if (observation.header.size > 0) bucket.parserHdHeaderPresent++;
+        else if (observation.unmarked.size > 0) bucket.onlyUnmarkedSource++;
+        else bucket.onlyNonHeaderSource++;
+        if (observation.withReplayFile.size > 0)
+          bucket.replayFileReferencePresent++;
+        const any = [
+          ...observation.header, ...observation.unmarked, ...observation.other,
+        ];
+        if (any.some(id => acceptedGameIds.has(id)))
+          bucket.acceptedPublicReplayOnSameGame++;
+        if ([...observation.header].some(id => acceptedGameIds.has(id)))
+          bucket.hdHeaderAndAcceptedReplayOnSameGame++;
+      }
       if (rated) continue;
       const stage = state?.[lane + "Stage"] ?? 0;
       histogram[lane][stages[stage]]++;
@@ -423,14 +474,28 @@ try {
         receiptCorrelation[key] > stage3Missing.size)
       throw Error("receipt correlation out of bounds");
   }
+  for (const lane of ["rm", "dm"]) {
+    const values = historicalHeaderCandidates[lane];
+    if (values.parserHdHeaderPresent + values.onlyUnmarkedSource +
+        values.onlyNonHeaderSource !==
+        histogram[lane].missing_live_monitor_provenance ||
+        values.hdHeaderAndAcceptedReplayOnSameGame >
+          values.acceptedPublicReplayOnSameGame ||
+        values.acceptedPublicReplayOnSameGame >
+          histogram[lane].missing_live_monitor_provenance ||
+        values.replayFileReferencePresent >
+          histogram[lane].missing_live_monitor_provenance)
+      throw Error("historical header candidate conservation failed");
+  }
   process.stdout.write(JSON.stringify({
     kind: "aoe2war-steam-rating-gate-funnel",
-    schemaVersion: 4,
+    schemaVersion: 5,
     observedAt: new Date().toISOString(),
     productionSource: process.env.AOE2WAR_TRUTH_PRODUCTION_SOURCE ?? null,
     databaseReadOnly: proof,
     explanation: "Highest gate passed by any ONE numeric observation per Steam ID, source-display diagnostic only. Historical/current authority is unchanged.",
     counts, histogram, blockedDetails: details, receiptCorrelation,
+    historicalHeaderCandidates,
     mutations: {
       production: 0, parserRows: 0, identityRows: 0,
       currentRatingRows: 0, wolo: 0,
