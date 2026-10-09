@@ -197,6 +197,8 @@ try {
     sampleWave: wave, sampleOffsetIdentities: SAMPLE_OFFSET,
     deadlineReached: false,
     sampleFilesLocated: 0, sampleHashesVerified: 0,
+    identitiesWithoutLocatedFile: 0, identitiesWithOversizeOnly: 0,
+    identitiesWithVerifiedFile: 0,
     sampleHashMismatch: 0, sampleTooLarge: 0,
     parserParsed: 0, parserNoProjection: 0,
     parserTimeout: 0, parserError: 0, invalidParserOutput: 0,
@@ -214,11 +216,22 @@ try {
     (a,b) => sha("aoe2war-replay-canary-v1:"+a).localeCompare(
       sha("aoe2war-replay-canary-v1:"+b)),
   );
+  // The live eligible universe can change between waves. These
+  // fingerprints allow the private operator receipts to identify drift
+  // and overlap. Neither raw Steam IDs nor parsed rating values leave
+  // the audited subprocess JSON response.
+  const sampleEvidence = [];
+  const cohortFingerprint = sha(
+    "aoe2war-archived-header-cohort-v1:" + order.join(","),
+  );
   const sampledHashes = new Set();
   const deadline = Date.now() + DEADLINE_MS;
   const sampleWindow = order.slice(SAMPLE_OFFSET, SAMPLE_OFFSET + SAMPLE_LIMIT);
   summary.sampleIdentityWindow = sampleWindow.length;
   for (const id of sampleWindow) {
+    let locatedForIdentity = false;
+    let verifiedForIdentity = false;
+    let oversizeForIdentity = false;
     if (Date.now() > deadline) {
       summary.deadlineReached = true;
       break;
@@ -243,8 +256,10 @@ try {
         size = meta.size;
       } catch { continue; }
       summary.sampleFilesLocated++;
+      locatedForIdentity = true;
       if (size <= 0 || size > MAX_FILE_SIZE) {
         summary.sampleTooLarge++;
+        oversizeForIdentity = true;
         continue;
       }
       let digest;
@@ -252,8 +267,14 @@ try {
       catch { summary.parserError++; continue; }
       if (digest !== c.hash) { summary.sampleHashMismatch++; continue; }
       sampledHashes.add(c.hash);
+      verifiedForIdentity = true;
       summary.sampleHashesVerified++;
+      const fingerprint = sha("aoe2war-archived-identity-v1:" + id);
+      const evidence = { identityFingerprint: fingerprint,
+        replaySha256: c.hash, result: "not_parsed" };
+      sampleEvidence.push(evidence);
       const p = parseInIsolatedSubprocess(interpreter, filePath, c.isFinal);
+      evidence.result = p.status;
       if (p.status !== "parsed") {
         const key = ({
           no_projection:"parserNoProjection",timeout:"parserTimeout",
@@ -281,12 +302,16 @@ try {
       if (matches.length > 0) summary.sameSteamIdentityPresent++;
       if (matches.length !== 1) break;
       summary.uniquelyBoundSteamIdentity++;
+      evidence.result = "unique_identity";
       const player = matches[0];
       const rm = player.rmSource === "hd_header" && numeric(player.rm);
       const dm = player.dmSource === "hd_header" && numeric(player.dm);
       if (rm) summary.headerRmPresent++;
       if (dm) summary.headerDmPresent++;
       if (rm && dm) summary.headerBothPresent++;
+      if (rm && dm &&
+          player.rm === c.observedRm && player.dm === c.observedDm)
+        evidence.result = "both_hd_headers_match";
       if (rm) {
         if (player.rm === c.observedRm) summary.headerRmMatchesStored++;
         else summary.headerRmDiffersStored++;
@@ -297,6 +322,10 @@ try {
       }
       break;
     }
+    if (!locatedForIdentity) summary.identitiesWithoutLocatedFile++;
+    if (verifiedForIdentity) summary.identitiesWithVerifiedFile++;
+    if (oversizeForIdentity && !verifiedForIdentity)
+      summary.identitiesWithOversizeOnly++;
   }
   if (apiGit(["rev-parse","HEAD"]) !== apiRevision ||
       apiGit(["status","--porcelain","--untracked-files=all"]) !== "")
@@ -311,6 +340,17 @@ try {
       summary.sampleIdentityWindow > SAMPLE_LIMIT ||
       summary.sampleHashesVerified > summary.sampleIdentityWindow ||
       summary.sampleHashesVerified > SAMPLE_LIMIT ||
+      sampleEvidence.length !== summary.sampleHashesVerified ||
+      new Set(sampleEvidence.map(e=>e.identityFingerprint)).size !==
+        sampleEvidence.length ||
+      new Set(sampleEvidence.map(e=>e.replaySha256)).size !==
+        sampleEvidence.length ||
+      summary.identitiesWithVerifiedFile !== summary.sampleHashesVerified ||
+      summary.identitiesWithoutLocatedFile +
+        summary.identitiesWithVerifiedFile > summary.sampleIdentityWindow ||
+      summary.identitiesWithOversizeOnly >
+        summary.sampleIdentityWindow ||
+
       summary.sampleWave !== wave ||
       summary.sampleOffsetIdentities !== SAMPLE_OFFSET ||
       summary.parserParsed + summary.parserNoProjection +
@@ -325,7 +365,7 @@ try {
     schemaVersion:1, observedAt:new Date().toISOString(),
     productionSource:process.env.AOE2WAR_TRUTH_PRODUCTION_SOURCE??null,
     databaseReadOnly:proof,
-    summary,
+    summary, cohortFingerprint, sampleEvidence,
     limitations:"Bounded revision-pinned, SHA-verified separate-wave header sample. Selection limited to candidates with both raw lanes; no population extrapolation or rating promotion.",
     mutations:{production:0,parserRows:0,identityRows:0,
       currentRatingRows:0,wolo:0},
