@@ -58,8 +58,8 @@ function emptyCounts(): LibraryPlayerOriginCounts {
   return { count: 0, unknown: 0, checkpoints: 0, inferred: 0 };
 }
 function emptyOrigins(): Record<LibraryOrigin, LibraryPlayerOriginCounts> {
-  return Object.fromEntries(ORIGINS.map(origin => [origin, emptyCounts()]))
-    as Record<LibraryOrigin, LibraryPlayerOriginCounts>;
+  return Object.fromEntries(ORIGINS.map(origin => [origin, emptyCounts()])) as
+    Record<LibraryOrigin, LibraryPlayerOriginCounts>;
 }
 
 export function selectLibraryHistoryPage(
