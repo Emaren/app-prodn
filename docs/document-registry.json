@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "8fe0f78fe9b1a42559f5a3627cedd7b77e94f365a50aedfc9b40dd2cb211f6b1",
+      "sha256": "da2cebc116b8b35e6c19f167469434529ad40459cbafb182c76fb0aae6dbf612",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2048,7 +2048,7 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "audit/steam-rating-evidence-census-20261008",
+    "branch": "main",
     "commit": "ba94d47d79a25de2414dd0ef69607c51e34af5a2"
   },
   "owner": "aoe2war-web",
