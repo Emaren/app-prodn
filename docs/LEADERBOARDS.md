@@ -498,6 +498,65 @@ Existing wave-3 schema-v1 receipts retain their original limited
 proof and are *not* upgraded into game-clock or accepted-game
 proof by merely passing receipt-compatibility checks.
 
+### 2026-10-09 — wave 4 historical-recovery source-byte pilot
+
+Operator ran 20/20 local archive observer tests successfully, then
+read-only wave 4 at 2026-10-09T04:17:51Z. Of 24 selected exact-Steam
+candidate identities, 23 had archived replay bytes independently
+verified against SHA-256 and **all 23** produced uniquely bound Steam
+RM+DM `hd_header` values with **46/46 numeric matches** to stored
+unmarked numbers. One ID had no located candidate path among three
+tested; this is NOT evidence of missing data across all backups.
+**20/23** had trustworthy `game_stats.played_on`, **21/23** had an
+accepted same-game public-player projection, and **18/23** satisfied
+the combined historical display-only candidate gates (including final
+recording role). No parser, hash, rating, or runtime mismatch; no DB
+or WOLO mutations. The tracked, SHA-fingerprinted wave-3 and wave-4
+receipts have **23 distinct identity/replay-artifact samples each**
+and no overlap between them, making **46 tracked distinct file checks**.
+The preceding first three waves remain untracked for cross-wave
+uniqueness. Across waves 0–4, 98 SHA file checks and 96 parser
+successes yielded 192 matching lane values, NOT 96 certified unique
+recoverable accounts.
+
+### Local-only historical ledger candidate receipts
+
+Preview schema **v3** adds `privateHistoricalCandidates` for the
+subset satisfying every v2 historical eligibility gate. A private
+candidate bundles the exact 17-digit Steam ID, original
+`game_stats.id`, content-addressed replay SHA-256, clean installed
+API parser Git revision, explicit `game_stats.played_on` observation
+time, RM+DM numeric values independently extracted from original HD
+headers, explicit `hd_header` sources, and authority
+`historical_candidate_only`. The CLI verifies each candidate's
+Steam ID hash against its independently SHA-checked sample manifest,
+exact same-game ID, identical clock, eligible acceptance flag, and
+strict source/value types. Older v1/v2 receipts remain usable for
+sampling-overlap counts, but CANNOT be promoted into v3 candidate
+ratings because they did not preserve the extracted numeric values.
+
+Case-level Steam IDs and actual rating numbers are transmitted only
+through the protected read-only operator SSH result and saved in the
+**local private receipt**, not printed or checked into the repo.
+The new receipt writer uses a content-digest filename, file mode
+`0600` on creation with `O_EXCL` to prohibit overwriting any
+existing receipt, and `fsync` before reporting success. This is
+an append-only-by-convention local evidence record, **not** a
+cryptographically signed observation or immutable VPS database
+attestation. The public console reports only counts and the local
+private path. Only run this observer from the restricted Mac audit
+worktree; never publish receipts to GitHub or user-facing APIs.
+
+These records are **proposals**, not production authority. Before
+any public historical Steam Elo fallback can use them, implement a
+separately audited read store and per-lane chronology resolver:
+existing verified current Watcher account observations remain
+authoritative; a later accepted archive `played_on` may improve a
+*last-known historical* RM or DM lane but never create signed current
+status. Conflicts on the same Steam ID/lane/time or mismatched replay
+SHA must quarantine, never auto-publish. The read store must not touch
+raw `game_stats` provenance, match winners, settlement or WOLO.
+
 The observer now also includes `blockedDetails` for each lane: mutually
 exclusive per-identity reasons for the provenance, clock, and source
 failures. Its provenance categories distinguish a missing `watcher_upload`
