@@ -78,6 +78,10 @@ def validate(payload: object, expected_wave: int = 0) -> dict:
                 "both_hd_headers_match", "historical_candidate_only",
             }):
             raise RuntimeError("private sample manifest evidence invalid")
+        if item["result"] == "historical_candidate_only" and (
+            observed is None or item["acceptedSameGame"] is not True
+        ):
+            raise RuntimeError("historical candidate lacks chronological canonical proof")
         if identity in identity_fps or replay in archive_hashes:
             raise RuntimeError("private sample manifest duplication")
         identity_fps.add(identity)
