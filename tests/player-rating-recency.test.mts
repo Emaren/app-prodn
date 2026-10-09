@@ -301,7 +301,7 @@ test(
 
     assert.match(
       directory,
-      /entry\.ratingLastSeenAt\s*=\s*state\.ratingObservedAt/,
+      /entry\.ratingLastSeenAt\s*=\s*\[rm\.observedAt,\s*dm\.observedAt\]/,
     );
 
     assert.match(
