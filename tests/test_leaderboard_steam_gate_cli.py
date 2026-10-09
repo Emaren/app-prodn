@@ -19,7 +19,7 @@ spec.loader.exec_module(gate)
 def fixture():
     return {
         "kind": "aoe2war-steam-rating-gate-funnel",
-        "schemaVersion": 5,
+        "schemaVersion": 6,
         "databaseReadOnly": [{"transaction_mode": "on", "default_mode": "on"}],
         "counts": {"publicIdentityRows": 5, "rmRated": 1, "dmRated": 1,
                    "rmMissing": 4, "dmMissing": 4, "noExactSteamIdentity": 2},
@@ -74,6 +74,23 @@ def fixture():
                 "hdHeaderAndAcceptedReplayOnSameGame": 0,
             } for lane in ("rm", "dm")
         },
+        "archiveProbe": {
+            "source": "api-prodn content-addressed archive layout",
+            "selectedExactSteamIds": 1,
+            "maxCandidatesPerIdentity": 6,
+            "maxShaSampleFiles": 12,
+            "maxShaSampleSizeBytes": 33554432,
+            "archiveRootAccessible": True,
+            "candidateIds": 1,
+            "candidatePathsProbed": 1,
+            "idsWithExistingArchiveFile": 1,
+            "idsWithoutExistingArchiveAmongSample": 0,
+            "idsWithHashVerifiedSample": 1,
+            "idsWithHashMismatchSample": 0,
+            "sampleHashFileCount": 1,
+            "sampleHashByteCount": 1024,
+            "fileReadErrors": 0,
+        },
         "mutations": {"production": 0, "parserRows": 0, "identityRows": 0,
                       "currentRatingRows": 0, "wolo": 0},
     }
@@ -115,6 +132,10 @@ class GateCliTests(unittest.TestCase):
         self.assertIn("historicalHeaderCandidates", remote)
         self.assertIn("acceptedGameIds", remote)
         self.assertIn("parserHdHeaderPresent", remote)
+        self.assertIn("createReadStream(filePath)", remote)
+        self.assertIn("candidate.hash.slice(0, 2)", remote)
+        self.assertIn("idsWithExistingArchiveFile", remote)
+        self.assertIn("sampleHashFileCount", remote)
         self.assertNotIn("SET statement_timeout", remote)
         self.assertNotIn("UPDATE game_stats", remote)
         self.assertNotIn("INSERT INTO", remote)
@@ -170,6 +191,24 @@ class GateCliTests(unittest.TestCase):
             data = fixture()
             data["historicalHeaderCandidates"]["dm"]["hdHeaderAndAcceptedReplayOnSameGame"] = 1
             with self.assertRaisesRegex(RuntimeError, "historical accepted replay"):
+                self.run_with(data)
+            self.assertFalse(self.path.exists())
+
+    def test_archive_diagnostic_rejects_conservation_break(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.path = Path(d) / "none.json"
+            data = fixture()
+            data["archiveProbe"]["idsWithExistingArchiveFile"] = 0
+            with self.assertRaisesRegex(RuntimeError, "archive existence"):
+                self.run_with(data)
+            self.assertFalse(self.path.exists())
+
+    def test_archive_diagnostic_rejects_excessive_sha_samples(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.path = Path(d) / "none.json"
+            data = fixture()
+            data["archiveProbe"]["sampleHashFileCount"] = 13
+            with self.assertRaisesRegex(RuntimeError, "SHA sample cap"):
                 self.run_with(data)
             self.assertFalse(self.path.exists())
 
