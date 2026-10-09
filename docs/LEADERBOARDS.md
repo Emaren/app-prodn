@@ -337,6 +337,44 @@ If the web runtime cannot access the archive root, this is an
 were destroyed. Do not modify archive bytes, release metadata,
 database, rankings, or settlement during this probe.
 
+The 2026-10-09T03:16:24Z **read-only physical archive probe**
+located matching archive paths for **1,678 of 1,716** missing-rating
+Steam identities, with 38 not found among the six-per-identity
+candidate paths checked. The web runtime could access the actual
+content-addressed replay directory. Of the first 12 sampled archive
+files (20,000,326 total bytes), all 12 independently SHA-256 matched
+their replay hashes, with zero read errors or hash mismatches.
+This is **strong evidence of historical file survival**, not proof
+that all 1,678 existing files are uncorrupted or have authentic RM/DM
+rating header fields. Nor does absence in a bounded path sample prove
+the remaining 38 underlying replays were lost.
+
+To verify **what the original replays actually say**, run a separate
+read-only *six-file canary*, with the production web observer and its
+clean Git checkout guard intact:
+
+```bash
+python3 -m unittest discover -s tests -p 'test_leaderboard_steam_archive_parser_cli.py'
+python3 scripts/leaderboard_steam_archive_parser.py
+```
+
+The canary selects six reproducible, spread-out, eligible exact-Steam
+identities with Watcher-replay numeric RM/DM fields but no qualified
+Steam Elo. It prefers final recording artifacts, verifies the
+content-addressed archived file's SHA-256 in the observer, then invokes
+the **installed, revision-pinned API parser** on the original file in
+an isolated process with a 12.5-second per-file timeout and a 12-MiB
+size cap. Python bytecode writes are disabled, the parser checkout
+must be clean before and after, and database credentials are not passed
+to the parser child process. It aggregates whether the reparse yields
+an exact unique Steam ID, whether RM/DM have explicit `hd_header`
+provenance, and whether those actual header numbers agree with
+earlier unmarked stored values. The private receipt contains counts,
+never the selected Steam IDs or the parsed ratings themselves.
+A six-file sample is a **feasibility gate only**, not a mass recovery
+run or proof of completeness. Older replay headers remain
+historical-display candidates, not signed Watcher current account state.
+
 The observer now also includes `blockedDetails` for each lane: mutually
 exclusive per-identity reasons for the provenance, clock, and source
 failures. Its provenance categories distinguish a missing `watcher_upload`
