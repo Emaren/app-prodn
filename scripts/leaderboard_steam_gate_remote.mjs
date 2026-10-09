@@ -35,6 +35,56 @@ const total = (values) =>
   Object.values(values).reduce((sum, value) => sum + value, 0);
 const validSteam = (s) => typeof s === "string" && /^\d{17}$/.test(s);
 
+// Bucket only metadata *already present* on the same raw numeric observation.
+// Never infer a missing HMAC, change provenance, or trust bare parse_source.
+function blockedDetail(game, stage) {
+  if (stage === 3) {
+    const upload = game.events?.watcher_upload;
+    if (!upload || typeof upload !== "object" || Array.isArray(upload))
+      return "watcher_upload_object_absent";
+    const value = upload.ingestion_provenance;
+    if (value === null || value === undefined || value === "")
+      return "ingestion_provenance_field_absent";
+    if (value === "historical_import") return "explicit_historical_import";
+    return "other_non_live_monitor_value";
+  }
+  if (stage === 2) {
+    const playedAt = stamp(game.playedOn);
+    if (playedAt === null) return "game_played_on_absent_or_invalid";
+    if (playedAt > Date.now() + 5 * 60_000)
+      return "future_game_played_on";
+    if (!game.userUid?.trim()) return "uploader_uid_absent";
+    if (game.userUid === "system") return "system_uploader";
+    return "invalid_replay_hash";
+  }
+  if (stage === 1) {
+    return ["manual_backfill", "manual_override", "engine_room_structural_projection"]
+      .includes(game.parseReason ?? "") ? "mutated_or_backfilled_reason" :
+      "not_watcher_parse_source";
+  }
+  return null;
+}
+
+function stageContext(game, stage) {
+  if (stage !== 3) return null;
+  const upload = game.events?.watcher_upload;
+  const hash = typeof game.replayHash === "string" ?
+    game.replayHash.toLowerCase() : "";
+  return {
+    signatureVerifiedTrue: upload?.provenance_signature_verified === true,
+    signatureVerifiedFalse: upload?.provenance_signature_verified === false,
+    checksumVerifiedTrue: upload?.client_sha256_verified === true,
+    hashesMatchReplay: typeof upload?.client_sha256 === "string" &&
+      typeof upload?.server_sha256 === "string" &&
+      upload.client_sha256.toLowerCase() === hash &&
+      upload.server_sha256.toLowerCase() === hash,
+    fileRolePresent: typeof upload?.file_role === "string",
+    beforeFrozenCutoff: (stamp(game.createdAt) ?? Infinity) <
+      FROZEN_CUTOFF_MS && (stamp(game.playedOn) ?? Infinity) <
+      FROZEN_CUTOFF_MS,
+  };
+}
+
 function evidenceStage(game, p, lane, occurrences, nowMs) {
   const value = p?.[lane === "rm" ? "steam_rm_rating" : "steam_dm_rating"];
   if (!numeric(value)) return null;
@@ -140,8 +190,23 @@ try {
         const dmStage = evidenceStage(
           game, p, "dm", occurrences.get(p.steam_id), nowMs,
         );
-        if (rmStage !== null) state.rmStage = Math.max(state.rmStage, rmStage);
-        if (dmStage !== null) state.dmStage = Math.max(state.dmStage, dmStage);
+
+        // The highest gate must come from a single observed game, not from
+        // mixing signature/hash/role attributes across unrelated files.
+        // For ties, select the newest playable game clock for diagnostics.
+        for (const [lane, stage] of [["rm", rmStage], ["dm", dmStage]]) {
+          if (stage === null) continue;
+          const field = lane + "Stage";
+          const timeField = lane + "StageClock";
+          const currentTime = stamp(game.playedOn) ?? -Infinity;
+          if (stage > state[field] || (stage === state[field] &&
+              currentTime > (state[timeField] ?? -Infinity))) {
+            state[field] = stage;
+            state[timeField] = currentTime;
+            state[lane + "Detail"] = blockedDetail(game, stage);
+            state[lane + "Context"] = stageContext(game, stage);
+          }
+        }
         observations.set(p.steam_id, state);
       }
       cursor = game.id;
@@ -161,6 +226,18 @@ try {
   const histogram = {
     rm: Object.fromEntries(stages.map((key) => [key, 0])),
     dm: Object.fromEntries(stages.map((key) => [key, 0])),
+  };
+  const details = {
+    rm: { provenance: {}, clock: {}, source: {}, stage3Context: {
+      signatureVerifiedTrue: 0, signatureVerifiedFalse: 0,
+      checksumVerifiedTrue: 0, hashesMatchReplay: 0,
+      fileRolePresent: 0, beforeFrozenCutoff: 0,
+    } },
+    dm: { provenance: {}, clock: {}, source: {}, stage3Context: {
+      signatureVerifiedTrue: 0, signatureVerifiedFalse: 0,
+      checksumVerifiedTrue: 0, hashesMatchReplay: 0,
+      fileRolePresent: 0, beforeFrozenCutoff: 0,
+    } },
   };
   const counts = {
     publicIdentityRows: eligible.length,
@@ -184,8 +261,23 @@ try {
     }
     if (!rm || !dm) counts.exactSteamIdsInMissingSet++;
     const state = observations.get(e.steamId);
-    if (!rm) histogram.rm[stages[state?.rmStage ?? 0]]++;
-    if (!dm) histogram.dm[stages[state?.dmStage ?? 0]]++;
+    for (const [lane, rated] of [["rm", rm], ["dm", dm]]) {
+      if (rated) continue;
+      const stage = state?.[lane + "Stage"] ?? 0;
+      histogram[lane][stages[stage]]++;
+      if (stage >= 1 && stage <= 3) {
+        const kind = stage === 3 ? "provenance" :
+          stage === 2 ? "clock" : "source";
+        const name = state?.[lane + "Detail"] ?? "missing_detail";
+        details[lane][kind][name] = (details[lane][kind][name] ?? 0) + 1;
+        if (stage === 3) {
+          const context = state?.[lane + "Context"];
+          if (!context) throw Error("missing same-observation context");
+          for (const flag of Object.keys(details[lane].stage3Context))
+            if (context[flag]) details[lane].stage3Context[flag]++;
+        }
+      }
+    }
   }
   if (
     counts.rmRated + counts.rmMissing !== counts.publicIdentityRows ||
@@ -194,14 +286,23 @@ try {
     total(histogram.dm) + counts.noExactSteamIdentity !== counts.dmMissing
   ) throw Error("rating gate cohort conservation failed");
 
+  for (const lane of ["rm", "dm"]) {
+    if (total(details[lane].provenance) !==
+          histogram[lane].missing_live_monitor_provenance ||
+        total(details[lane].clock) !==
+          histogram[lane].invalid_clock_uploader_or_hash ||
+        total(details[lane].source) !==
+          histogram[lane].nonqualifying_parse_source_only)
+      throw Error("blocked provenance detail conservation failed");
+  }
   process.stdout.write(JSON.stringify({
     kind: "aoe2war-steam-rating-gate-funnel",
-    schemaVersion: 2,
+    schemaVersion: 3,
     observedAt: new Date().toISOString(),
     productionSource: process.env.AOE2WAR_TRUTH_PRODUCTION_SOURCE ?? null,
     databaseReadOnly: proof,
     explanation: "Highest gate passed by any ONE numeric observation per Steam ID, source-display diagnostic only. Historical/current authority is unchanged.",
-    counts, histogram,
+    counts, histogram, blockedDetails: details,
     mutations: {
       production: 0, parserRows: 0, identityRows: 0,
       currentRatingRows: 0, wolo: 0,
