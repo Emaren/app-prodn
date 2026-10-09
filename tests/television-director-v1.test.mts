@@ -28,6 +28,13 @@ test("two team positions and single opponent are preserved without phantom feeds
   ]);
   assert.equal(o.unassigned.length,0);
 });
+test("a restarted live Watcher displaces older ended video for the same account",()=>{
+  const ended={...video(1,"76561190000001","Watcher"),status:"ended",chunkCount:600};
+  const live={...video(2,"76561190000001","Watcher"),status:"live",chunkCount:3};
+  const o=assignTelevisionCameras(stage,[ended,live]);
+  assert.equal(o.cameras[0].stream?.id,2);
+  assert.deepEqual(o.unassigned.map(s=>s.id),[1]);
+});
 test("forged first-party user label cannot claim someone else's camera",()=>{
   const o=assignTelevisionCameras(stage,[video(1,"76561190000099","Jim")]);
   assert.equal(o.cameras[0].stream,null);
