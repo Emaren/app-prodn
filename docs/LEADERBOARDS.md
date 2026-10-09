@@ -27,6 +27,42 @@ AoE2WAR has two first-class HD leaderboard routes backed by current production d
 
 The homepage leaderboard chrome and the shared Kingdom menu open the modern board. Both leaderboard pages link directly to the other view.
 
+## Complete RM/DM roster contract (October 2026 draft)
+
+The RM and DM views must include **every eligible public identity** from the
+canonical directory, not just the already-rated or claimed subset. A player's
+identity and replay history are not deleted when its Steam rating is unknown.
+
+- An exact SteamID64 is ONE player record across all historical aliases. The
+  October 9 protected read-only census observed **3,916 exact-Steam accounts**
+  and **844 provisional name/site identities**, for **4,760 public identity
+  records** in total (excluding five ineligible/internal directory rows).
+- In the same census, **1,162** had qualifying RM and DM ratings; **2,754**
+  exact Steam accounts lacked both, plus the 844 provisional identities.
+  These are point-in-time observations, not permanent population totals.
+- Main RM and DM lists contain the entire public identity set for their scope:
+  rated entries first by actual Steam rating; unrated exact Steam identities
+  next, followed by name-only and claimed site-profile records. The 844
+  provisional records may represent aliases or profiles and must NEVER be
+  advertised as 844 additional confirmed Steam IDs.
+- Unrated rows display `—` for the rating and rank badge; their internal
+  numeric *roster positions* support stable pagination, search, bookmarks and
+  spotlight, but are NOT competitive rank numbers. No synthetic 1500 rating
+  or Site Elo is permitted on these Steam RM/DM leaderboards.
+- `trackedPlayers` is the entire active-scope public roster size; the
+  `rankedPlayers` field is the number with a qualifying rating in the active
+  Steam lane, not a count of profiles with three replay matches. The
+  Warriors/Kingdom scope still applies before pagination and searching.
+- An actual certified current or last-known Steam RM/DM rating uses the same
+  public-facing `RM Rating` or `DM Rating` label. Internal provenance
+  remains distinct, and a future newer authenticated game observation may
+  advance a lane independently. Missing sources stay explicitly unknown.
+- The leaderboard population change is a **display-only draft**: it does not
+  lift authority criteria, backfill GameStats or current Watcher states,
+  authenticate old manual uploads, change game results, or move WOLO.
+  Historical source-byte rating extraction remains a separate evidence
+  recovery effort.
+
 ## Data boundaries
 
 `lib/lobbyLeaderboard.ts` remains the ranking system of record. The dedicated page does not create a second rating or streak interpretation.
@@ -242,6 +278,555 @@ mode-only statistics must not silently replace the Version 1 all-mode table.
 No database mutation, replay adjudication, financial authority, or Wolo
 operation is involved in this choice.
 
+## Steam RM/DM evidence coverage and missing-rating triage
+
+The public player directory is an **identity and replay-history roster**. The
+competitive RM board admits only qualifying Steam RM ratings; the competitive
+DM board admits only qualifying Steam DM ratings. A player with a rating on
+one lane is not automatically qualified for the other. A registered/claimed
+profile alone is not competitive rating authority; any legacy pending-claimed
+display exceptions must be removed in a separately tested presentation change.
+No default 1600 or other inferred Steam number may enter either board.
+
+Before changing ranking eligibility, run the non-mutating source audit from the
+canonical Mac checkout:
+
+```bash
+python3 -m unittest tests/test_leaderboard_steam_coverage_cli.py
+python3 scripts/leaderboard_steam_coverage.py
+```
+
+For missing numeric Watcher cases, a second read-only diagnostic can locate
+the *furthest individual observation gate* passed, without treating numeric
+source fields as proof of qualified Steam authority:
+
+```bash
+python3 -m unittest discover -s tests -p 'test_leaderboard_steam_gate_cli.py'
+python3 scripts/leaderboard_steam_gate.py
+```
+
+The audit scans `game_stats` in bounded, primary-key-ordered batches
+(maximum 512 rows per database statement, with an explicit batch ceiling).
+This is intentional: a previous corpus-wide JSON window query exceeded the
+production 20-second PostgreSQL statement timeout (`SQLSTATE 57014`).
+Never bypass the read-only/session timeout safety rails merely to force a
+single enormous census. If the full observer reaches its overall protected
+runtime limit, reduce batch size or create resumable immutable receipts
+without changing production timeout or database state.
+
+The 2026-10-09 production gate baseline read 51,342 `game_stats` rows
+across 101 bounded requests. It found 4,756 public-eligible identities:
+1,157 with eligible RM+DM, 844 without exact Steam IDs, and 3,599 missing
+both rating lanes. Among the 2,755 missing exact-ID players, **1,716 were
+blocked at the `live_monitor` provenance gate**, 97 at basic
+clock/uploader/hash verification, 94 at nonqualifying source, and four
+had no numeric value in stored `game_stats` records. These are **first
+failing gate classes**; they do not prove the remaining downstream
+requirements would pass, or that a stored raw rating can be promoted.
+
+The 2026-10-09 production follow-up found 1,597 provenance fields absent, 94 entire Watcher-upload objects absent, and 25 explicit historical imports among the 1,716 provenance-blocked IDs. None of the selected source observations contained an affirmative verified signature; 27 had client SHA verification and matching replay hashes. These figures cannot be used to elevate old raw values into current ratings.
+
+The subsequent read-only `receiptCorrelation` census scans append-only replay-parse attempts in bounded ID order. It correlates exact replay SHA and exact Steam participant identity with stored current-account observations, separately counting signed/live flags, hash parity and archival evidence. Every correlation field is diagnostic rather than a new source of rating authority.
+
+The 2026-10-09T03:06Z append-only receipt cross-check scanned **80,480**
+parse-attempt rows in 158 bounded chunks and correlated **17,600 candidate
+replay hashes** for the 1,716 missing-rating exact Steam identities.
+Every target had a matching parse attempt and a Watcher-mode attempt;
+**zero** matching attempts carried an
+`evidence.current_account_observation` object. No currently available
+immutable account-observation receipt can be linked to those replay hashes
+to recover ratings. This does not establish that the original archived
+replays are gone, or that an authentic replay HD header is unparseable.
+
+The additional `historicalHeaderCandidates` audit therefore asks a
+separate, explicitly non-Watcher-authenticating question: how many missing
+exact-Steam player identities have historical raw numeric values explicitly
+marked `steam_rating_sources.* = hd_header`, rather than unmarked or
+nonheader sources? It also checks whether any such specific replay game is
+represented in that exact player's accepted public replay evidence. A
+`replay_file` reference is counted for locating possible archived files
+but is **not** evidence of actual file existence, parser validity, or
+independent provenance. No raw value is promoted by this audit.
+Current Watcher account observations remain higher authority than any
+last-known accepted replay-header fallback. Rating selection remains
+per Steam ID, per lane, ordered by real game time, never ingest time.
+
+The historical-header source census on 2026-10-09T03:11:55Z showed
+**1,716/1,716** missing-cohort Steam identities have unmarked numeric
+RM/DM values in stored `game_stats`, **0/1,716** have an explicit
+`hd_header` source marker, **1,714/1,716** have an accepted
+public player replay linked to at least one same game, and **1,716/1,716**
+have a replay-file *name/reference*. These facts explain the exclusion:
+unmarked historic numeric fields are not accepted `hd_header`
+evidence. Do not relabel them without verifying actual replay content.
+
+The subsequent non-mutating `archiveProbe` reconstructs the API's
+content-addressed storage path from a 64-hex-character replay SHA and
+a strictly allowlisted extension, and checks only a bounded set of
+historic candidate files per exact Steam identity. It SHA-256 verifies
+a small, capped file sample. An original uploaded filename never
+becomes a filesystem path. Presence alone is weaker than hash
+verification, and even hash verification alone does not establish a
+correct HD-header rating parse or authentic Watcher live observation.
+If the web runtime cannot access the archive root, this is an
+*inconclusive mount visibility issue*, not evidence that archives
+were destroyed. Do not modify archive bytes, release metadata,
+database, rankings, or settlement during this probe.
+
+The 2026-10-09T03:16:24Z **read-only physical archive probe**
+located matching archive paths for **1,678 of 1,716** missing-rating
+Steam identities, with 38 not found among the six-per-identity
+candidate paths checked. The web runtime could access the actual
+content-addressed replay directory. Of the first 12 sampled archive
+files (20,000,326 total bytes), all 12 independently SHA-256 matched
+their replay hashes, with zero read errors or hash mismatches.
+This is **strong evidence of historical file survival**, not proof
+that all 1,678 existing files are uncorrupted or have authentic RM/DM
+rating header fields. Nor does absence in a bounded path sample prove
+the remaining 38 underlying replays were lost.
+
+To verify **what the original replays actually say**, run a separate
+read-only *six-file canary*, with the production web observer and its
+clean Git checkout guard intact:
+
+```bash
+python3 -m unittest discover -s tests -p 'test_leaderboard_steam_archive_parser_cli.py'
+python3 scripts/leaderboard_steam_archive_parser.py
+```
+
+The canary selects six reproducible, spread-out, eligible exact-Steam
+identities with Watcher-replay numeric RM/DM fields but no qualified
+Steam Elo. It prefers final recording artifacts, verifies the
+content-addressed archived file's SHA-256 in the observer, then invokes
+the **installed, revision-pinned API parser** on the original file in
+an isolated process with a 12.5-second per-file timeout and a 12-MiB
+size cap. Python bytecode writes are disabled, the parser checkout
+must be clean before and after, and database credentials are not passed
+to the parser child process. It aggregates whether the reparse yields
+an exact unique Steam ID, whether RM/DM have explicit `hd_header`
+provenance, and whether those actual header numbers agree with
+earlier unmarked stored values. The private receipt contains counts,
+never the selected Steam IDs or the parsed ratings themselves.
+A six-file sample is a **feasibility gate only**, not a mass recovery
+run or proof of completeness. Older replay headers remain
+historical-display candidates, not signed Watcher current account state.
+
+The first archived replay-header canary **passed in production at
+2026-10-09T03:24:00Z** (production app source
+`d8caa41357011cb4bb878b73b3fd845a9753a1e7`, installed API
+parser `c0f737a6088a2892f2a6da996195d42fc688be03`).
+Six independently SHA-verified archived replays successfully reparsed,
+all six contained exactly the intended Steam identity, both RM and DM
+had explicit `hd_header` rating origin, and **all twelve** parsed
+ratings reproduced the legacy unmarked stored numeric values. There
+were no observed parse failures, timeouts, SHA mismatches or writes.
+This is a six-artifact method validation, **not** evidence that all
+1,678 located archival paths are correct or the broader 1,893
+numeric-pair candidate directory is publishable. That broader number
+omits some stricter provenance funnel checks.
+
+The next validation stage runs independently selected 24-file waves:
+```bash
+python3 -m unittest discover -s tests -p 'test_leaderboard_steam_archive_parser_cli.py'
+python3 scripts/leaderboard_steam_archive_parser.py --wave 1
+```
+Wave zero retains the certified six-file canary. Wave one starts at
+the next 24 deterministic exact-Steam identity positions; subsequent
+waves use nonoverlapping identity positions. Each run caps accepted
+sample hashes at 24 distinct artifacts, bounds each replay file at
+12 MiB, applies a 12.5-second process timeout and stops requesting
+new files after approximately 125 seconds. Any shortfall is reported,
+not disguised as successful verification. Every wave remains
+database-read-only and never promotes a parsed result to leaderboard
+authority. Future recovery requires a separate immutable historical
+artifact receipt, accepted exact-Steam identity, real game clock,
+parser version and source-lane evidence and a tested chronological
+precedence resolver against current signed Watcher readings.
+
+The 2026-10-09T03:30:19Z production wave 1 completed **24/24
+independent archive SHA verifications**, **23/24** successful installed
+API parser projections, **23/24** exact uniquely matched Steam identities,
+**23/24** explicit HD-header ratings for both RM/DM, and **46/46**
+matching historical unmarked numeric values. One archive SHA matched but
+the parser returned no projection; there were zero timeouts or parser
+exceptions. Combined with the initial six-file canary, **30/30** archive
+hashes matched, **29/30** parser projections succeeded, and **58/58**
+recovered source-header rating values agreed with stored numeric values.
+These figures describe the checked samples, not the whole archive.
+
+The follow-up audit has fixed-size, non-borrowing sample windows
+**within each contemporaneous identity census**: wave 0 inspects the
+first six positions, wave 1 the next 24, wave 2 the following 24,
+and so forth. This is NOT an immutable cohort: changes to eligible
+Steam identities can shift those positions. The first three wave receipts
+do not record per-file hash fingerprints, so their combined totals
+cannot be certified as cross-wave unique. Future private receipts
+include SHA-derived exact-identity fingerprints and replay SHA-256s
+for checking reuse against *tracked* past waves, plus a fingerprint of
+the then-current eligible identity universe; cohort drift is reported
+rather than ignored. Raw player identities and actual rating values
+are never printed. The local receipt is written with restrictive
+permissions at file creation, and legacy pre-fingerprint receipts are
+marked untracked rather than incorrectly certified distinct.
+
+The 2026-10-09T03:54:17Z production wave 2 had **22 of 24** selected
+identities with SHA-verified archive files, **21** complete parser
+projections with exactly matching Steam identities and both explicitly
+sourced RM+DM header values, and **42/42** values identical to the
+old raw numeric data. One SHA-valid artifact again failed in the
+header at `mgz_failed / truncated_or_incomplete`; two selected
+identities had no file located in the bounded sampled archive paths,
+which does not prove their recordings are absent globally. A changing
+production roster reduced exact-Steam missing accounts from 2,755
+to 2,754 and broad unmarked numeric-pair candidates from 1,893 to
+1,892, demonstrating the dynamic-cohort limitation in practice.
+The three waves jointly produced **52 successful SHA file checks,
+50 complete two-lane parser observations and 100/100 matching numeric
+header comparisons**. They do NOT yet prove 50 globally distinct
+recoverable accounts.
+
+Parser-failure histograms remain sanitized by parse mode, diagnostic
+stage, and error category (never private paths, raw IDs, or unverified
+Steam values). An archival SHA match alone does not prove that the
+installed parser supports its file format. Both incomplete-header
+artifacts remain quarantined; their source or alternative recordings
+must be investigated separately from recoverable display-only ratings.
+
+The 2026-10-09T04:08:18Z wave 3 on the updated private SHA
+manifest schema succeeded: **18/18 operator regression tests** passed,
+23/24 selected exact-Steam candidates had physically located
+and independently SHA-256-verified replay bytes, **23/23** reparsed
+with exactly the intended Steam ID, explicit HD-header RM+DM rating
+sources, and **46/46** numeric RM/DM values matching their historical
+stored numbers. One identity had no located candidate archive file,
+not a rating discrepancy. Zero SHA mismatches, parser no-projections,
+timeouts or parser errors. The wave-3 manifest records 23 distinct
+identity fingerprints and 23 distinct replay SHAs *within this
+wave*. Four earlier local receipts are acknowledged as untracked for
+cross-wave uniqueness; do not misstate zero overlap against the
+untracked data as proof of globally disjoint files.
+
+Across the four selected wave executions (excluding the redundant
+wave-1 diagnosis rerun), the operational totals are **75 successful
+SHA file checks, 73 dual-lane parse successes and 146/146 independently
+recovered historical RM/DM values agreeing with their original
+unmarked database counterparts**. Because the older three waves
+lack per-file manifests and the live eligible cohort has changed,
+these are verified observations, **not** a certified count of unique
+accounts or a population-wide recovery rate.
+
+The **next preview-only proof schema v2** additionally captures each
+selected archive candidate's original `game_stats.id`, validated
+`game_stats.played_on`, whether the same game has a canonical
+accepted public player snapshot for that exact Steam ID, and final
+recording role. A record can be labeled
+`historical_candidate_only` only when its verified archived bytes
+yield both independently parsed `hd_header` Steam lanes, both values
+match that original game's unmarked historic numbers, the played-on
+clock is valid, the same-game player projection was accepted, and the
+recording is final (not an `.aoe2mpgame` checkpoint).
+The per-file game IDs and dates stay exclusively in `0600`
+operator receipts; stdout shows only counts. This is still
+**read-only eligibility reconnaissance**. It does not install a
+recovered rating on the public site, create a signed live Watcher
+observation, or authorize changes to bets, winners or WOLO.
+Existing wave-3 schema-v1 receipts retain their original limited
+proof and are *not* upgraded into game-clock or accepted-game
+proof by merely passing receipt-compatibility checks.
+
+### 2026-10-09 — wave 4 historical-recovery source-byte pilot
+
+Operator ran 20/20 local archive observer tests successfully, then
+read-only wave 4 at 2026-10-09T04:17:51Z. Of 24 selected exact-Steam
+candidate identities, 23 had archived replay bytes independently
+verified against SHA-256 and **all 23** produced uniquely bound Steam
+RM+DM `hd_header` values with **46/46 numeric matches** to stored
+unmarked numbers. One ID had no located candidate path among three
+tested; this is NOT evidence of missing data across all backups.
+**20/23** had trustworthy `game_stats.played_on`, **21/23** had an
+accepted same-game public-player projection, and **18/23** satisfied
+the combined historical display-only candidate gates (including final
+recording role). No parser, hash, rating, or runtime mismatch; no DB
+or WOLO mutations. The tracked, SHA-fingerprinted wave-3 and wave-4
+receipts have **23 distinct identity/replay-artifact samples each**
+and no overlap between them, making **46 tracked distinct file checks**.
+The preceding first three waves remain untracked for cross-wave
+uniqueness. Across waves 0–4, 98 SHA file checks and 96 parser
+successes yielded 192 matching lane values, NOT 96 certified unique
+recoverable accounts.
+
+### Local-only historical ledger candidate receipts
+
+Preview schema **v3** adds `privateHistoricalCandidates` for the
+subset satisfying every v2 historical eligibility gate. A private
+candidate bundles the exact 17-digit Steam ID, original
+`game_stats.id`, content-addressed replay SHA-256, clean installed
+API parser Git revision, explicit `game_stats.played_on` observation
+time, RM+DM numeric values independently extracted from original HD
+headers, explicit `hd_header` sources, and authority
+`historical_candidate_only`. The CLI verifies each candidate's
+Steam ID hash against its independently SHA-checked sample manifest,
+exact same-game ID, identical clock, eligible acceptance flag, and
+strict source/value types. Older v1/v2 receipts remain usable for
+sampling-overlap counts, but CANNOT be promoted into v3 candidate
+ratings because they did not preserve the extracted numeric values.
+
+Case-level Steam IDs and actual rating numbers are transmitted only
+through the protected read-only operator SSH result and saved in the
+**local private receipt**, not printed or checked into the repo.
+The new receipt writer uses a content-digest filename, file mode
+`0600` on creation with `O_EXCL` to prohibit overwriting any
+existing receipt, and `fsync` before reporting success. This is
+an append-only-by-convention local evidence record, **not** a
+cryptographically signed observation or immutable VPS database
+attestation. The public console reports only counts and the local
+private path. Only run this observer from the restricted Mac audit
+worktree; never publish receipts to GitHub or user-facing APIs.
+
+### Offline per-lane rating authority pilot (unpublished)
+
+`scripts/leaderboard_steam_history_policy.py` is a side-effect-free
+historical rating chronology policy, **not** the live leaderboard
+resolver. It accepts only schema-v3 case-level receipts that pass the
+source-byte-backed observer's independent payload validator; schema
+v1/v2 aggregates cannot fabricate numeric rating candidates. Duplicate
+runs of exactly the same original Steam ID, game ID and replay SHA are
+deduplicated only if their full retained proof agrees. Conflicting
+duplicate records fail closed.
+
+For each exact 17-digit Steam ID and requested lane (`rm` or `dm`),
+the policy selects the latest explicitly dated `played_on` HD-header
+rating, not upload or parser execution time. If two sources at the
+newest timestamp disagree about that lane's numeric rating, the lane
+is quarantined rather than arbitrarily ranked. Agreeing sources
+at the same time do not manufacture extra ratings. Invalid values,
+unmarked sources, invalid timestamps or invalid proof are quarantined.
+RM and DM are always resolved **independently**.
+
+An already-qualified current Watcher display observation
+takes precedence for its specific lane, **even when** an archived
+record has a newer claimed `played_on`. Invalid supplied Watcher state
+is quarantined instead of quietly replaced by an old header value.
+The offline policy does NOT verify Watcher HMAC, claim current Watcher
+status, or have access to the current account state: its caller must
+perform that separate current-authority verification first. Watcher
+pre-fix legacy compatibility remains display-only and must never be
+retroactively described as cryptographically signed.
+
+This pilot performs no filesystem, network, database or UI operations.
+It does not install these results on public RM/DM boards, alter
+`CurrentWatcherAccountState`, backdate signing proofs, relabel
+`game_stats`, overwrite newer verified observations, adjudicate
+match winners, or settle WOLO. Preview unit tests cover Watcher
+precedence, per-lane separation, same-time contradiction, latest
+historical selection, duplicate SHA conflicts, invalid timestamps,
+invalid provenance, and schema-v1/v2 exclusion. A later, separately
+reviewed adapter must be authorized and certified before any
+production display-only integration.
+
+### Positive-only Watcher overlap (private audit, not a release gate)
+
+The draft-only `scripts/leaderboard_steam_watcher_overlap_remote.mjs`
+uses the unchanged, production-authorized
+`loadCurrentWatcherAccountStates` and
+`loadVerifiedWatcherSteamRatings` presentation rails under the
+protected read-only observer to capture **positive** Watcher display
+rating observations. It reconciles the two sources for RM and DM
+separately through the existing `selectLatestSteamObservation`
+function, returning only SHA-derived Steam identity fingerprints,
+numeric lane values and original observation timestamps. It does
+not alter the production display resolver or query for signature
+details. The second rail includes a frozen pre-fix UNSIGNED display
+compatibility cohort; the audit never calls these records universally
+signed or upgrades them to account, result or financial authority.
+
+`scripts/leaderboard_steam_watcher_overlap.py --wave 4` reads the
+latest restricted schema-v3 archive candidate receipt for that wave,
+validates it, then invokes the read-only Watcher-positive observer.
+For each independently qualified historical Steam RM/DM lane, a
+positive Watcher display observation takes priority even when the
+replay-header rating has a newer purported played-on time. The CLI
+prints **aggregate-only** positive-overlap counts, matching/differing
+numbers, and counts of lanes whose Watcher **absence is unknown**.
+The per-candidate comparisons are saved to a separate `0600`
+local-only exclusive-create receipt, not to GitHub or any public
+API. Raw Steam IDs are never included in the comparison report.
+
+### Wave 4 actual Watcher-positive overlap — 2026-10-09T10:35:01Z
+
+The Mac operator completed the first production read-only
+Watcher-positive overlap from the existing schema-v3 archive receipt.
+**69 focused Steam contract tests PASS**, including direct CLI startup.
+All **18** source-byte-backed historical candidates (36 independent
+RM/DM lanes) were successfully evaluated. **Zero positive Watcher
+display lanes overlapped** this deliberately unrated cohort, so
+**all 36 lanes remain `watcher_absence_not_proven`**. No matching or
+differing Watcher values were measured; it would be misleading to
+call these 36 ratings confirmed missing. Zero recovered ratings
+were published, zero Watcher current statuses invented, and no
+database or WOLO mutation occurred.
+
+The current display-overlap rail is *positive-only* and therefore
+cannot certify complete signed/qualified authority history for a
+Steam identity. The original production observer completed with
+`sourceCompletenessProven=false`, `absenceIsNotEvidence=true`,
+and `labelsAreAllSigned=false`. The frozen old Watcher
+display-compatibility cohort must not be labeled signed. The
+follow-up draft-only diagnostic additionally intercepts the
+optional Watcher display reader's known cold-load warning so that
+a silently swallowed database-read failure becomes an explicit
+observer failure instead of pretending the source returned zero
+players. Subsequent output includes **aggregate Watcher source-row
+counts** so an empty *join* can be distinguished from an empty
+*source*. The absence/completeness flags remain false regardless
+of source counts.
+
+Critically, the Watcher display helper can fall back to an empty
+array on data-read failure. Consequently this observer makes
+`sourceCompletenessProven=false` and `absenceIsNotEvidence=true`
+hard validation invariants. **No missing positive display row
+qualifies a previously unrated player for public historical
+promotion.** It remains `watcher_absence_not_proven` until a
+separately certified complete authority snapshot is available.
+A Watcher/display value match does not make the historical
+observation signed. There is **no** release or backfill path in
+this audit tool, and no production DB/WOLO/winner mutation.
+
+The original wave-4 cohort was selected because both qualified
+current lanes appeared missing in the earlier leaderboard
+directory projection. Therefore discovering few positive Watcher
+overlaps would be unsurprising, but it is not evidence of either
+complete observation coverage or final publishability. The
+reconciliation is a controlled diagnostic to establish safe
+precedence and provenance gaps, not a publication trigger.
+
+### Bounded resumable historical header recovery (October 9)
+
+The existing protected read-only SHA/file/API-header parser supports
+78 consecutive 24-identity windows after the initial six-identity canary,
+covering up to **1,878** deterministic source-candidate positions.
+The October 9 point-in-time candidate cohort comprised approximately
+**1,812** exact Steam identities with Watcher-labelled numeric RM+DM
+signals. This candidate count is not a guaranteed recoverable/unique
+rating count and can shift as live replay ingestion continues.
+
+The audit-only operator command
+`python3 scripts/leaderboard_steam_bulk_recovery.py --start 5 --stop 12`
+performs an **offline PLAN** (zero SSH, zero production reads). Once
+the plan has checked existing mode-0600 private receipts, the matching
+command with `--execute` runs only the missing waves, one at a time.
+The maximum per invocation is **eight waves / 192 new identity
+positions**; each wave still uses the original independently bounded
+read-only production observer, installed clean API parser, SHA-256
+archive-byte verification, canonical accepted same-game identity and
+original replay `played_on` chronology. It stores raw IDs and
+source-extracted RM/DM values only in the local private exclusive-create
+receipts, never in stdout or the repo.
+
+The batch controller:
+- requires a previously validated schema-v3 wave-4 private receipt
+  as an anchored candidate cohort;
+- verifies all existing private schema-v3 receipts before progress;
+- deduplicates repeated exact same-wave evidence, refusing
+  contradictory reruns and cross-wave Steam identity overlap;
+- stops if the live cohort fingerprint changes, if any SHA-verified
+  input disagrees, or if any wave fails its source/read-only contract;
+- treats the same SHA-256 replay appearing in separate waves for
+  *different* Steam IDs as legitimate multiplayer evidence, not a
+  corrupt duplicate. It counts unique Steam identity checks and distinct
+  replay artifacts **separately**, recording repeated-artifact identity
+  checks and shared replay hashes as aggregate metadata;
+- still rejects any Steam identity fingerprint appearing in multiple
+  waves, and preserves original SHA-byte, intended-player, accepted
+  same-game and historical source validations for **each** identity;
+- resumes at unfinished wave boundaries without repeating completed
+  evidence, and prints aggregate-only progress after each success.
+
+On October 9, the first `--execute --start 5 --stop 12` run
+successfully completed waves 5, 6 and 7: 23, 20, and 22 SHA-verified
+per-player replay checks and 19, 17, and 19 historically eligible
+rating-pair candidates, respectively (**65 replay verification
+observations, 55 historical rating-pair candidates**). A subsequent
+private receipt inventory correctly caught reuse of a replay SHA
+across waves, but its original global-artifact uniqueness assumption
+was overly strict: a multiplayer game can supply verified evidence
+for multiple *different* Steam identities. The run stopped before
+printing wave 8; its receipt may already be present. The revised
+aggregator preserves and checks any such receipt offline, avoids
+resampling completed waves, and counts unique replay files separately
+from distinct Steam identity proofs. This exception does not permit
+identity duplicates, missing source provenance or corrupt replay bytes.
+
+Earlier schema-v1/v2 receipts are **not** silently upgraded to
+candidate-value evidence or counted as distinct globally verified
+accounts. Bulk sampling does **not** itself publish any ratings,
+backfill database rows, change GameStats, grant current Watcher
+authority, modify bets or WOLO, or authorize historical-header rating
+publication. This source-evidence campaign is separate from
+fast-track roster visibility PR #434: the roster should be complete
+even when some ratings are genuinely unknown.
+
+These records are **proposals**, not production authority. Before
+any public historical Steam Elo fallback can use them, implement a
+separately audited read store and per-lane chronology resolver:
+existing verified current Watcher account observations remain
+authoritative; a later accepted archive `played_on` may improve a
+*last-known historical* RM or DM lane but never create signed current
+status. Conflicts on the same Steam ID/lane/time or mismatched replay
+SHA must quarantine, never auto-publish. The read store must not touch
+raw `game_stats` provenance, match winners, settlement or WOLO.
+
+The observer now also includes `blockedDetails` for each lane: mutually
+exclusive per-identity reasons for the provenance, clock, and source
+failures. Its provenance categories distinguish a missing `watcher_upload`
+object, a missing `ingestion_provenance` field, explicit
+`historical_import`, and other non-live-monitor values. Independent
+`stage3Context` counters indicate whether the **same selected
+observation** carried a verified signature flag, checksum, both matching
+hashes, file role, and pre-cutoff clocks. Each subset must be interpreted
+without changing the immutable Watcher/account receipt authority.
+Neither raw `game_stats` rows nor a label alone can establish lost
+signature proof; investigate preserved parse-attempt receipts or archived
+replay bytes before considering any source repair. Missing signatures
+must never be backfilled as verified or synthesized from uploader identity.
+
+The nine-stage funnel distinguishes raw value absence, source restrictions,
+timestamp/uploader/replay-hash integrity, live-monitor provenance, HMAC or
+legacy-window qualification, matching client/server hashes, valid file roles,
+and lane-specific rating-field provenance plus unique Steam identity.
+The maximum stage is computed **per exact Steam ID from a single observation**
+at a time; flags from unrelated games must never be assembled into a
+synthetic qualified upload. The diagnostic prints only aggregate counts, never
+names or private Steam-ID review queues. A raw row passing every historical
+mutable-game gate while the public rating remains unavailable is an
+**investigate-current-overlay-or-cache** signal, not authorization to change
+ranking or financial authority.
+
+The command streams `scripts/leaderboard_steam_coverage_remote.mjs` through
+the protected read-only production truth observer. It returns both-lane,
+RM-only, DM-only, and neither-observed counts, plus exact Steam identity counts.
+It separately detects raw numeric RM/DM values in Watcher and non-Watcher
+uploads that **do not qualify** as official current-rating authority. The full
+case queue remains in a locally restricted receipt, not a public API or GitHub
+issue. Do not publish the case-level names/Steam IDs.
+
+**A missing qualifying rating is not evidence that the Steam account is
+actually unrated.** Each unresolved lane must be classified against preserved
+source bytes, known parser mapping, exact SteamID64, header/value presence,
+signature/receipt provenance, timestamp, and observational freshness. Mixed
+identity, unsupported replay header, omitted terminal state, and rejected
+signature are different failure classes. Manual and batch uploads may improve
+historical game statistics but can never overwrite a more authoritative
+Watcher rating by arrival time.
+
+Rate coverage and result-resolution coverage are independent. An accepted
+replay with no provable winner can still contain a genuine historical rating;
+a replay with a reliable winner can still lack trustworthy rating evidence.
+The Engine Room should improve each independently, recording exact parser
+versions and evidence hashes. Only after every supported recovery pass has
+failed may an unresolved case be designated source-limited; it must never be
+silently fabricated, discarded, or treated as financial settlement proof.
+
 ## 24-hour rank change
 
 The previous `reconstructed_current_corpus` delta compared the currently
@@ -329,8 +914,8 @@ presentation** separate. Its lane value resolves in this order:
 1. current immutable Watcher receipt-backed Steam RM/DM rating;
 2. newest dated accepted replay-player HD-header snapshot for that exact Steam
    identity, rendered explicitly as `Last RM` / `Last DM`;
-3. reconstructed **lane-specific** `Site Elo` when no Steam lane snapshot is available;
-4. unrated/profile state when there is no replay-backed history.
+3. unavailable Steam Elo when neither lane-specific source qualifies. Site Elo
+   never appears on Version 1 competitive RM/DM boards.
 
 The second tier is historical presentation, not current-account authority. It
 cannot populate `CurrentWatcherAccountState`, rename or verify an account,

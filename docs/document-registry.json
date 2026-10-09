@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0641cbd62f650fb420e54ba2e85e18c7fe70c8e57a939b7ec5848570439169bb",
+      "sha256": "52c67bebc9af3fe3a8f97a7f848978c18ff6d094634949273dad33ca9f891e95",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -961,7 +961,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-07-28",
       "sensitivity": "internal",
-      "sha256": "1400f540ff487a0c406ad51f47a452401626534736bce5fe325ce36432375991",
+      "sha256": "75a90b468372ba683f8d20097f3696a0da9719cb9d6ab1f06f7d9b7657bee995",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2048,8 +2048,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/steam-elo-release-gate-whitespace-20261009",
-    "commit": "785c3bcef0c55c0e93c0b8cc2c629e4f2d8a12c4"
+    "branch": "main",
+    "commit": "df41e2685f9fb3d31cdac4a93559b75e8f175991"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

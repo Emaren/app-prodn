@@ -1,0 +1,425 @@
+#!/usr/bin/env python3
+"""Protected read-only canary: SHA-verified archived HD header reparse."""
+from __future__ import annotations
+
+import argparse
+import copy
+import hashlib
+from datetime import datetime, timezone
+import importlib.util
+import json
+import os
+import re
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+REMOTE = ROOT / "scripts" / "leaderboard_steam_archive_parser_remote.mjs"
+
+
+def validate(payload: object, expected_wave: int = 0) -> dict:
+    if not isinstance(payload, dict) or payload.get("kind") != (
+        "aoe2war-archived-hd-rating-parser-canary"
+    ) or payload.get("schemaVersion") != 3:
+        raise RuntimeError("unexpected archive parser canary response")
+    ro = payload.get("databaseReadOnly")
+    if (not isinstance(ro, list) or len(ro) != 1 or
+        not isinstance(ro[0], dict) or
+        ro[0].get("transaction_mode") != "on" or
+        ro[0].get("default_mode") != "on"):
+        raise RuntimeError("read-only database proof failed")
+    expected = {
+        "production": 0, "parserRows": 0, "identityRows": 0,
+        "currentRatingRows": 0, "wolo": 0,
+    }
+    if payload.get("mutations") != expected:
+        raise RuntimeError("production mutation assertion failed")
+    cohort_fingerprint = payload.get("cohortFingerprint")
+    if not isinstance(cohort_fingerprint, str) or not re.fullmatch(
+        r"[a-f0-9]{64}", cohort_fingerprint
+    ):
+        raise RuntimeError("archive cohort digest invalid")
+    sample_evidence = payload.get("sampleEvidence")
+    if not isinstance(sample_evidence, list):
+        raise RuntimeError("private sample manifest is missing")
+    identity_fps = set()
+    archive_hashes = set()
+    for item in sample_evidence:
+        if not isinstance(item, dict) or set(item) != {
+            "identityFingerprint", "replaySha256", "result",
+            "gameStatsId", "ratingObservedAt", "acceptedSameGame"
+        }:
+            raise RuntimeError("private sample manifest shape invalid")
+        identity = item["identityFingerprint"]
+        replay = item["replaySha256"]
+        observed = item["ratingObservedAt"]
+        try:
+            observed_valid = (
+                observed is None or
+                (
+                    isinstance(observed, str) and
+                    observed.endswith("Z") and
+                    datetime.fromisoformat(
+                        observed.replace("Z", "+00:00")
+                    ).tzinfo is not None
+                )
+            )
+        except ValueError:
+            observed_valid = False
+        if (type(item["gameStatsId"]) is not int or
+            item["gameStatsId"] <= 0 or
+            type(item["acceptedSameGame"]) is not bool or
+            not observed_valid or
+            not isinstance(identity, str) or
+            not re.fullmatch(r"[a-f0-9]{64}", identity) or
+            not isinstance(replay, str) or
+            not re.fullmatch(r"[a-f0-9]{64}", replay) or
+            item["result"] not in {
+                "parsed", "no_projection", "timeout", "parser_error",
+                "invalid_parser_output", "unique_identity",
+                "both_hd_headers_match", "historical_candidate_only",
+            }):
+            raise RuntimeError("private sample manifest evidence invalid")
+        if item["result"] == "historical_candidate_only" and (
+            observed is None or item["acceptedSameGame"] is not True
+        ):
+            raise RuntimeError("historical candidate lacks chronological canonical proof")
+        if identity in identity_fps or replay in archive_hashes:
+            raise RuntimeError("private sample manifest duplication")
+        identity_fps.add(identity)
+        archive_hashes.add(replay)
+    data = payload.get("summary")
+    if not isinstance(data, dict):
+        raise RuntimeError("missing canary summary")
+    # The case-level historical records are restricted to the local 0600
+    # receipt. Validate each against the independently SHA-checked sample.
+    private_candidates = payload.get("privateHistoricalCandidates")
+    if not isinstance(private_candidates, list):
+        raise RuntimeError("private historical candidate ledger missing")
+    verified_samples = {
+        (item["identityFingerprint"], item["replaySha256"],
+         item["gameStatsId"]): item for item in sample_evidence
+    }
+    seen_private_ids = set()
+    required_fields = {
+        "steamId", "gameStatsId", "replaySha256", "apiParserSource",
+        "ratingObservedAt", "steamRmRating", "steamDmRating",
+        "steamRmSource", "steamDmSource", "observationAuthority",
+    }
+    for candidate in private_candidates:
+        if not isinstance(candidate, dict) or set(candidate) != required_fields:
+            raise RuntimeError("invalid private historical candidate shape")
+        steam_id = candidate["steamId"]
+        played_on = candidate["ratingObservedAt"]
+        if (not isinstance(steam_id, str) or
+            not re.fullmatch(r"\d{17}", steam_id) or
+            steam_id in seen_private_ids or
+            type(candidate["gameStatsId"]) is not int or
+            candidate["gameStatsId"] <= 0 or
+            not isinstance(candidate["replaySha256"], str) or
+            not re.fullmatch(r"[a-f0-9]{64}", candidate["replaySha256"]) or
+            candidate["apiParserSource"] != data.get("apiParserSource") or
+            candidate["steamRmSource"] != "hd_header" or
+            candidate["steamDmSource"] != "hd_header" or
+            candidate["observationAuthority"] != "historical_candidate_only" or
+            not isinstance(played_on, str) or
+            type(candidate["steamRmRating"]) is not int or
+            type(candidate["steamDmRating"]) is not int or
+            not 0 < candidate["steamRmRating"] <= 5000 or
+            not 0 < candidate["steamDmRating"] <= 5000):
+            raise RuntimeError("historical candidate not independently qualified")
+        fp = hashlib.sha256(
+            ("aoe2war-archived-identity-v1:" + steam_id).encode("utf-8")
+        ).hexdigest()
+        manifest = verified_samples.get((
+            fp, candidate["replaySha256"], candidate["gameStatsId"]
+        ))
+        if (manifest is None or
+            manifest["result"] != "historical_candidate_only" or
+            manifest["acceptedSameGame"] is not True or
+            manifest["ratingObservedAt"] != played_on):
+            raise RuntimeError("historical candidate lacks matching archive proof")
+        seen_private_ids.add(steam_id)
+
+    parser_source = data.get("apiParserSource")
+    if not isinstance(parser_source, str) or len(parser_source) != 40 or any(
+        char not in "0123456789abcdef" for char in parser_source
+    ):
+        raise RuntimeError("invalid installed API parser revision")
+    nums = (
+        "publicUnratedExactSteamIds", "unmarkedWatchersWithBothNumbers",
+        "scannedGameRows", "scanBatches", "selectedSampleLimit",
+        "sampleFilesLocated", "sampleHashesVerified", "sampleHashMismatch",
+        "identitiesWithoutLocatedFile", "identitiesWithOversizeOnly",
+        "identitiesWithVerifiedFile", "missingArchiveCandidatePaths",
+        "alreadySampledHashCandidateSkips",
+        "sampleTooLarge", "parserParsed", "parserNoProjection",
+        "parserTimeout", "parserError", "invalidParserOutput",
+        "sameSteamIdentityPresent", "uniquelyBoundSteamIdentity",
+        "headerRmPresent", "headerDmPresent", "headerBothPresent",
+        "headerRmMatchesStored", "headerDmMatchesStored",
+        "headerRmDiffersStored", "headerDmDiffersStored",
+        "matchingBothWithPlayedOn",
+        "matchingBothWithAcceptedSameGame",
+        "matchingBothHistoricallyEligible",
+    )
+    for name in nums:
+        if type(data.get(name)) is not int or data[name] < 0:
+            raise RuntimeError(f"invalid canary counter: {name}")
+    count_fields = (
+        "noProjectionByMode", "noProjectionByErrorStage",
+        "noProjectionByErrorCategory",
+    )
+    for name in count_fields:
+        counts = data.get(name)
+        if not isinstance(counts, dict) or any(
+            not isinstance(label, str) or
+            not label.replace("_", "").isalnum() or
+            not label[0].isalpha() or len(label) > 64 or
+            type(count) is not int or count < 0
+            for label, count in counts.items()
+        ):
+            raise RuntimeError(f"invalid parser no-projection evidence: {name}")
+        if sum(counts.values()) != data["parserNoProjection"]:
+            raise RuntimeError("parser no-projection conservation failed")
+    if (len(sample_evidence) != data["sampleHashesVerified"] or
+        data["identitiesWithVerifiedFile"] != data["sampleHashesVerified"] or
+        data["identitiesWithVerifiedFile"] +
+            data["identitiesWithoutLocatedFile"] >
+            data.get("sampleIdentityWindow", -1) or
+        data["identitiesWithOversizeOnly"] >
+            data.get("sampleIdentityWindow", -1)):
+        raise RuntimeError("private sample manifest count mismatch")
+    if type(data.get("sampleIdentityWindow")) is not int or not (
+        0 <= data["sampleIdentityWindow"] <= 24
+    ):
+        raise RuntimeError("unsafe parser sample identity window")
+    for name in ("sampleWave", "sampleOffsetIdentities"):
+        if type(data.get(name)) is not int or data[name] < 0:
+            raise RuntimeError("invalid archive parser sample wave")
+    if type(data.get("deadlineReached")) is not bool:
+        raise RuntimeError("invalid archive parser deadline status")
+    if type(expected_wave) is not int or not 0 <= expected_wave <= 78:
+        raise RuntimeError("requested archive parser wave unsafe")
+    expected_limit = 6 if expected_wave == 0 else 24
+    expected_offset = 0 if expected_wave == 0 else 6 + (expected_wave - 1) * 24
+    if (data["sampleWave"] != expected_wave or
+        data["sampleOffsetIdentities"] != expected_offset or
+        data["selectedSampleLimit"] != expected_limit):
+        raise RuntimeError("archive parser sample wave does not match request")
+    for name in ("apiPythonAvailable", "archiveAccessible"):
+        if type(data.get(name)) is not bool:
+            raise RuntimeError("canary environment proof malformed")
+    total = data["sampleHashesVerified"]
+    if (not 0 <= total <= data["sampleIdentityWindow"] <=
+            data["selectedSampleLimit"] <= 24 or
+        data["parserParsed"] + data["parserNoProjection"] +
+        data["parserTimeout"] + data["parserError"] +
+        data["invalidParserOutput"] < total or
+        data["uniquelyBoundSteamIdentity"] > data["parserParsed"] or
+        data["headerRmPresent"] > data["uniquelyBoundSteamIdentity"] or
+        data["headerDmPresent"] > data["uniquelyBoundSteamIdentity"] or
+        data["headerBothPresent"] > min(
+            data["headerRmPresent"], data["headerDmPresent"]) or
+        data["headerRmMatchesStored"] + data["headerRmDiffersStored"] !=
+            data["headerRmPresent"] or
+        data["headerDmMatchesStored"] + data["headerDmDiffersStored"] !=
+            data["headerDmPresent"] or
+        data["matchingBothWithPlayedOn"] > data["headerBothPresent"] or
+        data["matchingBothWithAcceptedSameGame"] > data["headerBothPresent"] or
+        data["matchingBothHistoricallyEligible"] > min(
+            data["matchingBothWithPlayedOn"],
+            data["matchingBothWithAcceptedSameGame"]
+        ) or
+        sum(x["result"] == "historical_candidate_only"
+            for x in sample_evidence) !=
+            data["matchingBothHistoricallyEligible"] or
+        len(private_candidates) != data["matchingBothHistoricallyEligible"]):
+
+        raise RuntimeError("replay parser canary conservation failure")
+    return data
+
+
+def validate_previous_tracked_receipt(payload: dict, wave: int) -> None:
+    """Validate older tracked schema 1 without inventing its unobserved facts.
+
+    A v1 sample manifest proves only identity fingerprint + replay SHA
+    attribution and the parser result category. It did NOT record
+    gameStatsId, accepted canonical replay, or played-on time.
+    """
+    version = payload.get("schemaVersion")
+    if version == 3:
+        validate(payload, wave)
+        return
+    if version not in (1, 2):
+        raise RuntimeError("unsupported historic tracked receipt schema")
+    converted = copy.deepcopy(payload)
+    converted["schemaVersion"] = 3
+    summary = converted.get("summary")
+    if not isinstance(summary, dict):
+        raise RuntimeError("invalid prior tracked summary")
+    if version == 1:
+        summary["matchingBothWithPlayedOn"] = 0
+        summary["matchingBothWithAcceptedSameGame"] = 0
+        summary["matchingBothHistoricallyEligible"] = 0
+    else:
+        # A v2 qualifying flag lacked actual independently parsed values.
+        # It cannot be upgraded to a v3 historical ledger candidate.
+        summary["matchingBothHistoricallyEligible"] = 0
+    converted["privateHistoricalCandidates"] = []
+    for item in converted.get("sampleEvidence", []):
+        if not isinstance(item, dict):
+            raise RuntimeError("invalid historic tracked manifest")
+        if version == 1:
+            item["gameStatsId"] = 1  # validation placeholder, NOT proof
+            item["ratingObservedAt"] = None
+            item["acceptedSameGame"] = False
+        if item.get("result") == "historical_candidate_only":
+            item["result"] = "both_hd_headers_match"
+    validate(converted, wave)
+
+
+def analyze_private_history(payload: dict, receipt_dir: Path) -> dict:
+    """Track cross-wave evidence reuse without publishing Steam IDs or SHAs."""
+    sample = payload["sampleEvidence"]
+    new_identities = {entry["identityFingerprint"] for entry in sample}
+    new_archives = {entry["replaySha256"] for entry in sample}
+    wave = payload["summary"]["sampleWave"]
+    prior_identity_fps = set()
+    prior_archive_hashes = set()
+    prior_cohort_fps = set()
+    reviewed = 0
+    legacy_untracked = 0
+    same_wave_receipts = 0
+    # Old wave 0-2 receipts predate private sample fingerprints.
+    # Treat their deduplication as UNKNOWN, not as distinct evidence.
+    for path in sorted(
+        receipt_dir.glob("*-leaderboard-steam-archive-parser*.json")
+    ):
+        envelope = json.loads(path.read_text(encoding="utf-8"))
+        prior = envelope.get("payload")
+        if not isinstance(prior, dict) or prior.get("kind") != payload["kind"]:
+            raise RuntimeError("unexpected archived Steam recovery receipt")
+        prior_wave = prior.get("summary", {}).get("sampleWave")
+        if type(prior_wave) is not int:
+            if path.name.endswith("-leaderboard-steam-archive-parser.json"):
+                legacy_untracked += 1
+                continue
+            raise RuntimeError("previous recovery receipt missing wave")
+        if prior_wave == wave:
+            same_wave_receipts += 1
+            continue
+        old_sample = prior.get("sampleEvidence")
+        old_cohort = prior.get("cohortFingerprint")
+        if old_sample is None or old_cohort is None:
+            legacy_untracked += 1
+            continue
+        validate_previous_tracked_receipt(prior, prior_wave)
+        prior_cohort_fps.add(old_cohort)
+        reviewed += 1
+        prior_identity_fps.update(
+            item["identityFingerprint"] for item in old_sample
+        )
+        prior_archive_hashes.update(
+            item["replaySha256"] for item in old_sample
+        )
+    return {
+        "priorTrackedWaveReceipts": reviewed,
+        "priorUntrackedWaveReceipts": legacy_untracked,
+        "sameWaveReceiptsExcluded": same_wave_receipts,
+        "crossWaveIdentityOverlap": len(new_identities & prior_identity_fps),
+        "crossWaveArtifactOverlap": len(new_archives & prior_archive_hashes),
+        "cohortFingerprintsDiffer": len(
+            prior_cohort_fps - {payload["cohortFingerprint"]}
+        ),
+        "newUniqueIdentityProofsVsTracked": len(
+            new_identities - prior_identity_fps
+        ),
+        "newUniqueArtifactProofsVsTracked": len(
+            new_archives - prior_archive_hashes
+        ),
+    }
+
+
+def write_private_candidate_receipt(
+    truth: object, wave: int, payload: dict
+) -> Path:
+    """Create a case-level local evidence receipt without overwriting one.
+
+    0600 and O_EXCL apply from file creation. This is append-only-by-
+    convention local storage, NOT a signed Watcher receipt or immutable
+    remote attestation. Do not publish it or commit it to Git.
+    """
+    directory = truth.RECEIPT_DIR
+    directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+    now = datetime.now(timezone.utc)
+    stamp = now.strftime("%Y%m%dT%H%M%SZ")
+    serialized = json.dumps(
+        payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True
+    )
+    digest = hashlib.sha256(serialized.encode("utf-8")).hexdigest()[:16]
+    name = (
+        f"{stamp}-{digest}-leaderboard-steam-archive-parser-wave-{wave}.json"
+    )
+    destination = directory / name
+    envelope = {
+        "schema": 1,
+        "kind": "aoe2war-truth-receipt",
+        "generated_at": now.isoformat(),
+        "command": f"leaderboard-steam-archive-parser-wave-{wave}",
+        "ssh_target": truth.SSH_TARGET,
+        "runtime_mutated": False,
+        "database_mutated": False,
+        "wolo_mutated": False,
+        "payload": payload,
+    }
+    fd = os.open(
+        destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600
+    )
+    with os.fdopen(fd, "w", encoding="utf-8") as stream:
+        json.dump(envelope, stream, indent=2, sort_keys=True)
+        stream.write("\n")
+        stream.flush()
+        os.fsync(stream.fileno())
+    return destination
+
+
+def main(wave: int = 0) -> None:
+    spec = importlib.util.spec_from_file_location(
+        "aoe2war_truth", ROOT / "scripts" / "aoe2_truth.py"
+    )
+    if spec is None or spec.loader is None:
+        raise RuntimeError("protected truth observer unavailable")
+    truth = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(truth)
+    truth.REMOTE_PROGRAM = REMOTE
+    if type(wave) is not int or not 0 <= wave <= 78:
+        raise RuntimeError("archive parser wave outside safety ceiling")
+    payload = truth.run_remote("census", wave)
+    summary = validate(payload, expected_wave=wave)
+    overlap = analyze_private_history(payload, truth.RECEIPT_DIR)
+    previous_umask = os.umask(0o077)
+    try:
+        receipt = write_private_candidate_receipt(truth, wave, payload)
+    finally:
+        os.umask(previous_umask)
+    print(json.dumps({
+        "observedAt": payload.get("observedAt"),
+        "productionSource": payload.get("productionSource"),
+        "summary": summary,
+        "evidenceCoverage": overlap,
+        "receipt": str(receipt),
+        "readOnly": True,
+        "productionMutated": False,
+        "woloMutated": False,
+    }, indent=2))
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(
+        description="Read-only sample of SHA-verified historic Steam header ratings"
+    )
+    parser.add_argument(
+        "--wave", type=int, default=0, choices=range(79),
+        help="0: original six-file canary; 1-78: separate 24-file wave"
+    )
+    main(parser.parse_args().wave)

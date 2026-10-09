@@ -42,7 +42,7 @@ test("last-known accepted Steam snapshot outranks Site Elo without becoming curr
     {
       value: 2314,
       source: "last_known_steam",
-      sourceLabel: "Last DM",
+      sourceLabel: "DM Rating",
       secondaryLabel: null,
     },
   );

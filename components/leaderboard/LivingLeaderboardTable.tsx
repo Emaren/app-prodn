@@ -529,7 +529,7 @@ function WarriorExpansion({
             Rank
           </div>
           <div className="mt-1 text-xl font-black tabular-nums text-white">
-            #{entry.rank}
+            {entry.primaryRating === null ? "—" : `#${entry.rank}`}
           </div>
         </div>
 
@@ -799,7 +799,7 @@ function DesktopWarriorInspector({
               entry.rank,
             )}`}
           >
-            #{entry.rank}
+            {entry.primaryRating === null ? "—" : `#${entry.rank}`}
           </div>
 
           <div className="min-w-0 w-[15rem] shrink-0">
@@ -1409,7 +1409,7 @@ export function LivingLeaderboardTable({
                               />
                             )}
 
-                            #{entry.rank}
+                            {entry.primaryRating === null ? "—" : `#${entry.rank}`}
                           </div>
                         </div>
                       </td>
@@ -1700,7 +1700,7 @@ export function LivingLeaderboardTable({
                     entry.rank,
                   )}`}
                 >
-                  #{entry.rank}
+                  {entry.primaryRating === null ? "—" : `#${entry.rank}`}
                 </button>
 
                 <div className="min-w-0 flex-1">
