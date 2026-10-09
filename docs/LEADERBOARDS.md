@@ -700,6 +700,49 @@ complete observation coverage or final publishability. The
 reconciliation is a controlled diagnostic to establish safe
 precedence and provenance gaps, not a publication trigger.
 
+### Bounded resumable historical header recovery (October 9)
+
+The existing protected read-only SHA/file/API-header parser supports
+78 consecutive 24-identity windows after the initial six-identity canary,
+covering up to **1,878** deterministic source-candidate positions.
+The October 9 point-in-time candidate cohort comprised approximately
+**1,812** exact Steam identities with Watcher-labelled numeric RM+DM
+signals. This candidate count is not a guaranteed recoverable/unique
+rating count and can shift as live replay ingestion continues.
+
+The audit-only operator command
+`python3 scripts/leaderboard_steam_bulk_recovery.py --start 5 --stop 12`
+performs an **offline PLAN** (zero SSH, zero production reads). Once
+the plan has checked existing mode-0600 private receipts, the matching
+command with `--execute` runs only the missing waves, one at a time.
+The maximum per invocation is **eight waves / 192 new identity
+positions**; each wave still uses the original independently bounded
+read-only production observer, installed clean API parser, SHA-256
+archive-byte verification, canonical accepted same-game identity and
+original replay `played_on` chronology. It stores raw IDs and
+source-extracted RM/DM values only in the local private exclusive-create
+receipts, never in stdout or the repo.
+
+The batch controller:
+- requires a previously validated schema-v3 wave-4 private receipt
+  as an anchored candidate cohort;
+- verifies all existing private schema-v3 receipts before progress;
+- deduplicates repeated exact same-wave evidence, refusing
+  contradictory reruns and cross-wave Steam identity/replay SHA overlap;
+- stops if the live cohort fingerprint changes, if any SHA-verified
+  input disagrees, or if any wave fails its source/read-only contract;
+- resumes at unfinished wave boundaries without repeating completed
+  evidence, and prints aggregate-only progress after each success.
+
+Earlier schema-v1/v2 receipts are **not** silently upgraded to
+candidate-value evidence or counted as distinct globally verified
+accounts. Bulk sampling does **not** itself publish any ratings,
+backfill database rows, change GameStats, grant current Watcher
+authority, modify bets or WOLO, or authorize historical-header rating
+publication. This source-evidence campaign is separate from
+fast-track roster visibility PR #434: the roster should be complete
+even when some ratings are genuinely unknown.
+
 These records are **proposals**, not production authority. Before
 any public historical Steam Elo fallback can use them, implement a
 separately audited read store and per-lane chronology resolver:
