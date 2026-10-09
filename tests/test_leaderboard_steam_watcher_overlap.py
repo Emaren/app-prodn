@@ -135,6 +135,10 @@ class WatcherOverlapTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             directory = Path(tmp)
             p = historical_fixture()
+            p["summary"].update(
+                sampleWave=4, sampleOffsetIdentities=78,
+                selectedSampleLimit=24
+            )
             envelope = {"payload": p}
             filename = directory / (
                 "20261009T045000Z-1234-leaderboard-steam-archive-parser-wave-4.json"
