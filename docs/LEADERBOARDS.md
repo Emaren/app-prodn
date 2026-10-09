@@ -278,6 +278,30 @@ single enormous census. If the full observer reaches its overall protected
 runtime limit, reduce batch size or create resumable immutable receipts
 without changing production timeout or database state.
 
+The 2026-10-09 production gate baseline read 51,342 `game_stats` rows
+across 101 bounded requests. It found 4,756 public-eligible identities:
+1,157 with eligible RM+DM, 844 without exact Steam IDs, and 3,599 missing
+both rating lanes. Among the 2,755 missing exact-ID players, **1,716 were
+blocked at the `live_monitor` provenance gate**, 97 at basic
+clock/uploader/hash verification, 94 at nonqualifying source, and four
+had no numeric value in stored `game_stats` records. These are **first
+failing gate classes**; they do not prove the remaining downstream
+requirements would pass, or that a stored raw rating can be promoted.
+
+The observer now also includes `blockedDetails` for each lane: mutually
+exclusive per-identity reasons for the provenance, clock, and source
+failures. Its provenance categories distinguish a missing `watcher_upload`
+object, a missing `ingestion_provenance` field, explicit
+`historical_import`, and other non-live-monitor values. Independent
+`stage3Context` counters indicate whether the **same selected
+observation** carried a verified signature flag, checksum, both matching
+hashes, file role, and pre-cutoff clocks. Each subset must be interpreted
+without changing the immutable Watcher/account receipt authority.
+Neither raw `game_stats` rows nor a label alone can establish lost
+signature proof; investigate preserved parse-attempt receipts or archived
+replay bytes before considering any source repair. Missing signatures
+must never be backfilled as verified or synthesized from uploader identity.
+
 The nine-stage funnel distinguishes raw value absence, source restrictions,
 timestamp/uploader/replay-hash integrity, live-monitor provenance, HMAC or
 legacy-window qualification, matching client/server hashes, valid file roles,
