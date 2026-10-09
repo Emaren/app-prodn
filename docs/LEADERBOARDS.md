@@ -547,6 +547,47 @@ attestation. The public console reports only counts and the local
 private path. Only run this observer from the restricted Mac audit
 worktree; never publish receipts to GitHub or user-facing APIs.
 
+### Offline per-lane rating authority pilot (unpublished)
+
+`scripts/leaderboard_steam_history_policy.py` is a side-effect-free
+historical rating chronology policy, **not** the live leaderboard
+resolver. It accepts only schema-v3 case-level receipts that pass the
+source-byte-backed observer's independent payload validator; schema
+v1/v2 aggregates cannot fabricate numeric rating candidates. Duplicate
+runs of exactly the same original Steam ID, game ID and replay SHA are
+deduplicated only if their full retained proof agrees. Conflicting
+duplicate records fail closed.
+
+For each exact 17-digit Steam ID and requested lane (`rm` or `dm`),
+the policy selects the latest explicitly dated `played_on` HD-header
+rating, not upload or parser execution time. If two sources at the
+newest timestamp disagree about that lane's numeric rating, the lane
+is quarantined rather than arbitrarily ranked. Agreeing sources
+at the same time do not manufacture extra ratings. Invalid values,
+unmarked sources, invalid timestamps or invalid proof are quarantined.
+RM and DM are always resolved **independently**.
+
+An already-qualified current Watcher display observation
+takes precedence for its specific lane, **even when** an archived
+record has a newer claimed `played_on`. Invalid supplied Watcher state
+is quarantined instead of quietly replaced by an old header value.
+The offline policy does NOT verify Watcher HMAC, claim current Watcher
+status, or have access to the current account state: its caller must
+perform that separate current-authority verification first. Watcher
+pre-fix legacy compatibility remains display-only and must never be
+retroactively described as cryptographically signed.
+
+This pilot performs no filesystem, network, database or UI operations.
+It does not install these results on public RM/DM boards, alter
+`CurrentWatcherAccountState`, backdate signing proofs, relabel
+`game_stats`, overwrite newer verified observations, adjudicate
+match winners, or settle WOLO. Preview unit tests cover Watcher
+precedence, per-lane separation, same-time contradiction, latest
+historical selection, duplicate SHA conflicts, invalid timestamps,
+invalid provenance, and schema-v1/v2 exclusion. A later, separately
+reviewed adapter must be authorized and certified before any
+production display-only integration.
+
 These records are **proposals**, not production authority. Before
 any public historical Steam Elo fallback can use them, implement a
 separately audited read store and per-lane chronology resolver:
