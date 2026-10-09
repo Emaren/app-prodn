@@ -460,27 +460,30 @@ function buildLeaderboardSelection(
         )
       : entries;
 
-  const eligibleEntries = scopedEntries
-    .filter(
-      (entry) =>
-        entry.totalMatches >= LOBBY_LEADERBOARD_MIN_MATCHES
-    )
-    .sort((left, right) =>
-      compareLeaderboardEntries(left, right, lane)
-    );
-
   const rankedEntries = scopedEntries
     .filter((entry) => canRankLeaderboardLane(entry, lane))
     .sort((left, right) =>
       compareLeaderboardEntries(left, right, lane)
     );
 
-  const pendingClaimedEntries = scopedEntries
-    .filter(
-      (entry) =>
-        entry.claimed &&
-        !canRankLeaderboardLane(entry, lane)
-    )
+  const unratedEntries = scopedEntries
+    .filter((entry) => !canRankLeaderboardLane(entry, lane))
+    .sort((left, right) => {
+      // Full public roster: exact Steam identities first, unresolved
+      // historical names second, profile-only entries last.
+      // None of these entries obtains a Steam rating by being listed.
+      const kindRank = (entry: EnrichedLeaderboardEntry) =>
+        entry.identityKind === "steam" ? 0 :
+        entry.identityKind === "name" ? 1 : 2;
+      const kindDelta = kindRank(left) - kindRank(right);
+      if (kindDelta !== 0) return kindDelta;
+      return left.name.localeCompare(right.name, undefined, {
+        numeric: true, sensitivity: "base",
+      }) || left.key.localeCompare(right.key);
+    });
+
+  const pendingClaimedEntries = unratedEntries
+    .filter((entry) => entry.claimed)
     .sort((left, right) => {
       // Presence is a request-time overlay, not ranking authority. Keeping it
       // out of the expensive projection lets heartbeat churn stay off the
@@ -515,13 +518,10 @@ function buildLeaderboardSelection(
     rankByKey.set(entry.key, index + 1);
   });
 
-  pendingClaimedEntries.forEach((entry, index) => {
-    if (!rankByKey.has(entry.key)) {
-      rankByKey.set(
-        entry.key,
-        rankedEntries.length + index + 1
-      );
-    }
+  // Full-table position is retained for navigation/Spotlight. An
+  // unrated row has NO numerical rating rank: UI displays '—'.
+  unratedEntries.forEach((entry, index) => {
+    rankByKey.set(entry.key, rankedEntries.length + index + 1);
   });
 
   const safeOffset = Math.max(
@@ -547,7 +547,7 @@ function buildLeaderboardSelection(
 
   const defaultOrderedEntries = [
     ...rankedEntries,
-    ...pendingClaimedEntries,
+    ...unratedEntries,
   ];
 
   const normalizedQuery =
@@ -625,7 +625,7 @@ function buildLeaderboardSelection(
   }
 
   return {
-    eligibleEntries,
+    ratedCount: rankedEntries.length,
     selectedEntries:
       Array.from(selectedByKey.values()),
     rankByKey,
@@ -1405,7 +1405,7 @@ async function loadLobbyLeaderboardFresh(
   }
 
   const {
-    eligibleEntries,
+    ratedCount,
     selectedEntries,
     rankByKey,
     fullEntryCount,
@@ -1457,7 +1457,8 @@ async function loadLobbyLeaderboardFresh(
     claimedIdentityRows,
     claimedProfileOnlyRows,
     accountsWithAliasHistory,
-    rankedPlayers: eligibleEntries.length,
+    // Rated players in the active RM/DM and Warriors/Kingdom scope.
+    rankedPlayers: ratedCount,
     minimumMatches: LOBBY_LEADERBOARD_MIN_MATCHES,
     rankDelta24hAsOf:
       rankDeltaWindow.asOf,
