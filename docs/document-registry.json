@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "52c67bebc9af3fe3a8f97a7f848978c18ff6d094634949273dad33ca9f891e95",
+      "sha256": "e299cf4bee6b45bd06cf11dfd382cdde652fb7bca43abe1f34b8e4e50c3d8d9d",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2048,8 +2048,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "main",
-    "commit": "df41e2685f9fb3d31cdac4a93559b75e8f175991"
+    "branch": "audit/steam-history-private-certificate-20261009",
+    "commit": "95033a691b4ad2a35d3c6f6b824db3b5b623da06"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
