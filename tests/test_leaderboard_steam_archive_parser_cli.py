@@ -359,12 +359,10 @@ class ArchiveParserCanaryTests(unittest.TestCase):
 
     def test_private_receipt(self):
         with tempfile.TemporaryDirectory() as root:
-            receipt = Path(root, "result.json")
-            receipt.write_text("{}")
             truth = SimpleNamespace(
                 run_remote=lambda command, wave: historical_fixture(),
-                write_receipt=lambda _title, _payload: receipt,
                 RECEIPT_DIR=Path(root),
+                SSH_TARGET="unit-test-host",
             )
             fake_spec = SimpleNamespace(
                 loader=SimpleNamespace(exec_module=lambda module: None)
@@ -375,10 +373,28 @@ class ArchiveParserCanaryTests(unittest.TestCase):
                 return_value=truth
             ), redirect_stdout(io.StringIO()) as output:
                 module.main()
+            files = list(Path(root).glob("*-leaderboard-steam-archive-parser-wave-0.json"))
+            self.assertEqual(len(files), 1)
+            self.assertEqual(files[0].stat().st_mode & 0o777, 0o600)
+            saved = __import__("json").loads(files[0].read_text())
+            self.assertEqual(saved["payload"]["privateHistoricalCandidates"][0]["steamRmRating"], 1520)
+            self.assertEqual(saved["payload"]["privateHistoricalCandidates"][0]["steamId"], "76561197960265730")
+            self.assertEqual(saved["ssh_target"], "unit-test-host")
             self.assertIn('"readOnly": true', output.getvalue())
             self.assertNotIn("76561197960265730", output.getvalue())
             self.assertNotIn("1520", output.getvalue())
-            self.assertEqual(receipt.stat().st_mode & 0o777, 0o600)
+
+    def test_private_candidate_receipt_fails_closed_on_same_content_collision(self):
+        with tempfile.TemporaryDirectory() as root:
+            truth = SimpleNamespace(
+                RECEIPT_DIR=Path(root), SSH_TARGET="unit-test-host"
+            )
+            payload = historical_fixture()
+            first = module.write_private_candidate_receipt(truth, 4, payload)
+            self.assertEqual(first.stat().st_mode & 0o777, 0o600)
+            with self.assertRaises(FileExistsError):
+                module.write_private_candidate_receipt(truth, 4, payload)
+            self.assertEqual(len(list(Path(root).glob("*.json"))), 1)
 
 
 if __name__ == "__main__":
