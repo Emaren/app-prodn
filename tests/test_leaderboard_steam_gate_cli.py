@@ -52,6 +52,18 @@ class GateCliTests(unittest.TestCase):
             self.assertIn('"readOnly": true', output)
             self.assertEqual(self.path.stat().st_mode & 0o777, 0o600)
 
+    def test_remote_observer_scans_indexed_bounded_chunks_without_timeout_override(self):
+        remote = (ROOT / "scripts" / "leaderboard_steam_gate_remote.mjs").read_text()
+        self.assertIn("WHERE id > $1 ORDER BY id ASC LIMIT $2", remote)
+        self.assertIn("const BATCH_LIMIT = 512;", remote)
+        self.assertIn("batches < MAX_BATCHES", remote)
+        self.assertIn("game.id <= cursor", remote)
+        self.assertIn("evidenceStage(", remote)
+        self.assertNotIn("COUNT(*) OVER", remote)
+        self.assertNotIn("SET statement_timeout", remote)
+        self.assertNotIn("UPDATE game_stats", remote)
+        self.assertNotIn("INSERT INTO", remote)
+
     def test_denies_bad_readonly_proof(self):
         for proof in [{}, [], None, [{"transaction_mode": "off", "default_mode": "on"}]]:
             with self.subTest(proof=proof), tempfile.TemporaryDirectory() as d:
