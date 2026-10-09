@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `audit/steam-history-private-certificate-20261009` at `95033a691b4ad2a35d3c6f6b824db3b5b623da06`
+Implementation baseline: `audit/steam-history-public-overlap-20261009` at `badb6a5fffceebec184b1ff552cff35b929811da`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
