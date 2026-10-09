@@ -22,7 +22,7 @@ test("Library owns a live replay intake command surface", () => {
   assert.match(board, /ROW_HEIGHT = 108/);
   assert.match(board, /hasMore/);
   assert.match(board, /scrollRef/);
-  assert.match(board, /Source filters apply to loaded records/);
+  assert.match(board, /Full-history source filter active/);
   assert.match(board, /SpeedReadyMarker route="\/library"/);
 });
 
