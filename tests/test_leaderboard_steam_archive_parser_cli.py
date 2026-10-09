@@ -28,6 +28,7 @@ def fixture():
             "currentRatingRows": 0, "wolo": 0,
         },
         "summary": {
+            "apiParserSource": "a" * 40,
             "publicUnratedExactSteamIds": 2755,
             "unmarkedWatchersWithBothNumbers": 1716,
             "scannedGameRows": 51342,
@@ -102,8 +103,8 @@ class ArchiveParserCanaryTests(unittest.TestCase):
         self.assertIn('const PARSER_TIMEOUT_MS = 12500;', source)
         self.assertIn("PYTHONDONTWRITEBYTECODE: \"1\"", source)
         self.assertIn("sha256", source)
-        self.assertIn("candidate.hash", source) if False else None
         self.assertIn("filePath", source)
+        self.assertIn('apiGit(["rev-parse","HEAD"])', source)
         self.assertIn("from utils.replay_parser import _parse_sync_bytes", source)
         self.assertNotIn("UPDATE game_stats", source)
         self.assertNotIn("INSERT INTO", source)
