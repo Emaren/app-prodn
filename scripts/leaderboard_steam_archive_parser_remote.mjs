@@ -14,7 +14,15 @@ import { isLeaderboardExcludedSystemUid } from "@/lib/internalSystemAccounts";
 const prisma = getPrisma();
 const BATCH = 512;
 const MAX_BATCHES = 1000;
-const SAMPLE_LIMIT = 6;
+// Wave 0 retains the already certified six-file canary. Later waves
+// inspect 24 additional deterministic identity positions per run.
+const rawWave = process.env.AOE2WAR_TRUTH_GAME_ID ?? "0";
+const wave = Number(rawWave);
+if (!Number.isSafeInteger(wave) || wave < 0 || wave > 78)
+  throw Error("archive parser sample wave outside protected range");
+const SAMPLE_LIMIT = wave === 0 ? 6 : 24;
+const SAMPLE_OFFSET = wave === 0 ? 0 : 6 + (wave - 1) * 24;
+const DEADLINE_MS = wave === 0 ? 95000 : 125000;
 const MAX_FILE_SIZE = 12 * 1024 * 1024;
 const PARSER_TIMEOUT_MS = 12500;
 const MAX_PER_STEAM_ID = 3;
@@ -182,6 +190,8 @@ try {
     scannedGameRows: scannedRows, scanBatches: batches,
     apiPythonAvailable: Boolean(interpreter), archiveAccessible,
     selectedSampleLimit: SAMPLE_LIMIT,
+    sampleWave: wave, sampleOffsetIdentities: SAMPLE_OFFSET,
+    deadlineReached: false,
     sampleFilesLocated: 0, sampleHashesVerified: 0,
     sampleHashMismatch: 0, sampleTooLarge: 0,
     parserParsed: 0, parserNoProjection: 0,
@@ -199,12 +209,21 @@ try {
       sha("aoe2war-replay-canary-v1:"+b)),
   );
   const sampledHashes = new Set();
-  for (const id of order) {
+  const deadline = Date.now() + DEADLINE_MS;
+  for (const id of order.slice(SAMPLE_OFFSET)) {
+    if (Date.now() > deadline) {
+      summary.deadlineReached = true;
+      break;
+    }
     if (summary.sampleHashesVerified >= SAMPLE_LIMIT ||
         !archiveAccessible || !interpreter) break;
     for (const c of [...(candidates.get(id) ?? [])].sort(
       (a, b) => Number(b.isFinal) - Number(a.isFinal)
     )) {
+      if (Date.now() > deadline) {
+        summary.deadlineReached = true;
+        break;
+      }
       if (summary.sampleHashesVerified >= SAMPLE_LIMIT) break;
       if (sampledHashes.has(c.hash)) continue;
       const filePath = join(archiveRoot, c.hash.slice(0,2),
@@ -263,6 +282,8 @@ try {
       apiGit(["status","--porcelain","--untracked-files=all"]) !== "")
     throw Error("STOP: API parser worktree or revision changed during audit");
   if (summary.sampleHashesVerified > SAMPLE_LIMIT ||
+      summary.sampleWave !== wave ||
+      summary.sampleOffsetIdentities !== SAMPLE_OFFSET ||
       summary.parserParsed + summary.parserNoProjection +
         summary.parserTimeout + summary.parserError +
         summary.invalidParserOutput < summary.sampleHashesVerified ||
@@ -276,7 +297,7 @@ try {
     productionSource:process.env.AOE2WAR_TRUTH_PRODUCTION_SOURCE??null,
     databaseReadOnly:proof,
     summary,
-    limitations:"Small nonrandomly-available SHA-verified sample; no population extrapolation or rating promotion.",
+    limitations:"Bounded revision-pinned, SHA-verified separate-wave header sample. Selection limited to candidates with both raw lanes; no population extrapolation or rating promotion.",
     mutations:{production:0,parserRows:0,identityRows:0,
       currentRatingRows:0,wolo:0},
   }));
