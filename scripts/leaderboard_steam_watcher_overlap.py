@@ -13,8 +13,15 @@ import importlib.util
 import json
 import os
 import re
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
+
+# Direct `python3 scripts/...` execution sets sys.path[0] to scripts/,
+# unlike unittest discovery. Add this repository root before project imports.
+ROOT = Path(__file__).resolve().parents[1]
+if __package__ in (None, "") and str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
 from scripts.leaderboard_steam_archive_parser import validate as validate_archive
 from scripts.leaderboard_steam_history_policy import (
@@ -22,7 +29,6 @@ from scripts.leaderboard_steam_history_policy import (
     resolve_historical_lane,
 )
 
-ROOT = Path(__file__).resolve().parents[1]
 REMOTE = ROOT / "scripts" / "leaderboard_steam_watcher_overlap_remote.mjs"
 FINGERPRINT = re.compile(r"[a-f0-9]{64}\Z")
 
