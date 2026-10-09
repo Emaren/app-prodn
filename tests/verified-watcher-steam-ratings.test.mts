@@ -30,13 +30,13 @@ test("manual and batch uploads cannot create or override the Watcher-only rating
   const source = readFileSync(new URL("../lib/verifiedWatcherSteamRatings.ts", import.meta.url), "utf8");
   assert.match(source, /g\.parse_source IN \('watcher_live','watcher_final'\)/);
   assert.match(source, /provenance_signature_verified/);
-  // Strictly permit older clients only if they supplied no signature.
-  // Signatures that were supplied but failed verification stay rejected.
-  assert.match(source, /provenance_signature_supplied/);
-  assert.match(source, /\{watcher_upload,provenance_signature_supplied\}' = 'false'::jsonb/);
+  // Historical rows were ingested before the Watcher client-UID HMAC fix.
+  // A double cutoff prevents newly uploaded old games from winning.
+  assert.match(source, /g\.created_at < TIMESTAMP '2026-10-09 00:00:00'/);
+  assert.match(source, /g\.played_on < TIMESTAMP '2026-10-09 00:00:00'/);
   assert.match(source, /\{watcher_upload,provenance_signature_verified\}' = 'false'::jsonb/);
-  assert.match(source, /\{watcher_upload,watcher_session_id\}/);
-  assert.match(source, /\{watcher_upload,replay_fingerprint\}/);
+  assert.match(source, /\{watcher_upload,provenance_signature_verified\}' = 'true'::jsonb/);
+  assert.doesNotMatch(source, /\{watcher_upload,provenance_signature_supplied\}' = 'false'::jsonb/);
   assert.match(source, /client_sha256_verified/);
   assert.match(source, /ingestion_provenance.*'live_monitor'/);
   assert.match(source, /server_sha256/);
