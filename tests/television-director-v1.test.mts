@@ -54,6 +54,8 @@ test("Television front end keeps lazy viewing, a single director and optional ca
   assert.match(page,/buildStage\(row, source !== "live"\)/);
   assert.match(page,/resolution.status === "resolved"/);
   assert.match(client,/Play selected battle/);
+  assert.match(client,/router.refresh\(\)/);
+  assert.match(client,/document.visibilityState === "visible"/);
   assert.match(client,/Multi-view OFF/);
   assert.match(client,/findIndex\(item => item.stream\?\.id === feed.id\) < 3/);
   assert.match(client,/No camera is invented/i);
