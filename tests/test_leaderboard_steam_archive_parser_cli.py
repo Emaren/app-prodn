@@ -390,10 +390,16 @@ class ArchiveParserCanaryTests(unittest.TestCase):
                 RECEIPT_DIR=Path(root), SSH_TARGET="unit-test-host"
             )
             payload = historical_fixture()
-            first = module.write_private_candidate_receipt(truth, 4, payload)
-            self.assertEqual(first.stat().st_mode & 0o777, 0o600)
-            with self.assertRaises(FileExistsError):
-                module.write_private_candidate_receipt(truth, 4, payload)
+            # Freeze the clock: the overwrite check must not depend on
+            # whether the test straddles a wall-clock second boundary.
+            from datetime import datetime, timezone
+            fixed_now = datetime(2026, 10, 9, 4, 18, tzinfo=timezone.utc)
+            with patch.object(module, "datetime") as clock:
+                clock.now.return_value = fixed_now
+                first = module.write_private_candidate_receipt(truth, 4, payload)
+                self.assertEqual(first.stat().st_mode & 0o777, 0o600)
+                with self.assertRaises(FileExistsError):
+                    module.write_private_candidate_receipt(truth, 4, payload)
             self.assertEqual(len(list(Path(root).glob("*.json"))), 1)
 
 
