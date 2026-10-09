@@ -292,6 +292,29 @@ The 2026-10-09 production follow-up found 1,597 provenance fields absent, 94 ent
 
 The subsequent read-only `receiptCorrelation` census scans append-only replay-parse attempts in bounded ID order. It correlates exact replay SHA and exact Steam participant identity with stored current-account observations, separately counting signed/live flags, hash parity and archival evidence. Every correlation field is diagnostic rather than a new source of rating authority.
 
+The 2026-10-09T03:06Z append-only receipt cross-check scanned **80,480**
+parse-attempt rows in 158 bounded chunks and correlated **17,600 candidate
+replay hashes** for the 1,716 missing-rating exact Steam identities.
+Every target had a matching parse attempt and a Watcher-mode attempt;
+**zero** matching attempts carried an
+`evidence.current_account_observation` object. No currently available
+immutable account-observation receipt can be linked to those replay hashes
+to recover ratings. This does not establish that the original archived
+replays are gone, or that an authentic replay HD header is unparseable.
+
+The additional `historicalHeaderCandidates` audit therefore asks a
+separate, explicitly non-Watcher-authenticating question: how many missing
+exact-Steam player identities have historical raw numeric values explicitly
+marked `steam_rating_sources.* = hd_header`, rather than unmarked or
+nonheader sources? It also checks whether any such specific replay game is
+represented in that exact player's accepted public replay evidence. A
+`replay_file` reference is counted for locating possible archived files
+but is **not** evidence of actual file existence, parser validity, or
+independent provenance. No raw value is promoted by this audit.
+Current Watcher account observations remain higher authority than any
+last-known accepted replay-header fallback. Rating selection remains
+per Steam ID, per lane, ordered by real game time, never ingest time.
+
 The observer now also includes `blockedDetails` for each lane: mutually
 exclusive per-identity reasons for the provenance, clock, and source
 failures. Its provenance categories distinguish a missing `watcher_upload`
