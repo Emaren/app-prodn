@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
+import os
 import re
 from pathlib import Path
 
@@ -73,7 +74,8 @@ def validate(payload: object, expected_wave: int = 0) -> dict:
         "scannedGameRows", "scanBatches", "selectedSampleLimit",
         "sampleFilesLocated", "sampleHashesVerified", "sampleHashMismatch",
         "identitiesWithoutLocatedFile", "identitiesWithOversizeOnly",
-        "identitiesWithVerifiedFile",
+        "identitiesWithVerifiedFile", "missingArchiveCandidatePaths",
+        "alreadySampledHashCandidateSkips",
         "sampleTooLarge", "parserParsed", "parserNoProjection",
         "parserTimeout", "parserError", "invalidParserOutput",
         "sameSteamIdentityPresent", "uniquelyBoundSteamIdentity",
@@ -162,7 +164,7 @@ def analyze_private_history(payload: dict, receipt_dir: Path) -> dict:
     # Old wave 0-2 receipts predate private sample fingerprints.
     # Treat their deduplication as UNKNOWN, not as distinct evidence.
     for path in sorted(
-        receipt_dir.glob("*-leaderboard-steam-archive-parser-wave-*.json")
+        receipt_dir.glob("*-leaderboard-steam-archive-parser*.json")
     ):
         envelope = json.loads(path.read_text(encoding="utf-8"))
         prior = envelope.get("payload")
@@ -170,6 +172,9 @@ def analyze_private_history(payload: dict, receipt_dir: Path) -> dict:
             raise RuntimeError("unexpected archived Steam recovery receipt")
         prior_wave = prior.get("summary", {}).get("sampleWave")
         if type(prior_wave) is not int:
+            if path.name.endswith("-leaderboard-steam-archive-parser.json"):
+                legacy_untracked += 1
+                continue
             raise RuntimeError("previous recovery receipt missing wave")
         if prior_wave == wave:
             same_wave_receipts += 1
@@ -220,10 +225,14 @@ def main(wave: int = 0) -> None:
     payload = truth.run_remote("census", wave)
     summary = validate(payload, expected_wave=wave)
     overlap = analyze_private_history(payload, truth.RECEIPT_DIR)
-    receipt = truth.write_receipt(
-        f"leaderboard-steam-archive-parser-wave-{wave}", payload
-    )
-    receipt.chmod(0o600)
+    previous_umask = os.umask(0o077)
+    try:
+        receipt = truth.write_receipt(
+            f"leaderboard-steam-archive-parser-wave-{wave}", payload
+        )
+        receipt.chmod(0o600)
+    finally:
+        os.umask(previous_umask)
     print(json.dumps({
         "observedAt": payload.get("observedAt"),
         "productionSource": payload.get("productionSource"),
