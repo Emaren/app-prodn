@@ -93,7 +93,7 @@ export function resolveLeaderboardRatingPresentation(
         ? input.lastKnownDmRating
         : input.lastKnownRmRating,
     );
- 
+
   if (currentRating !== null) {
     return {
       value: Math.round(currentRating),

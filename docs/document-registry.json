@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "192aa0a2a2b93a0d8df84095ac90d9e50d8e082a5036dae8adf5a270861111d4",
+      "sha256": "0641cbd62f650fb420e54ba2e85e18c7fe70c8e57a939b7ec5848570439169bb",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2048,8 +2048,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/v1-steam-ratings-watcher-authority-20261008",
-    "commit": "c87197756ceb3a8a7aa262494876a97e5e164de9"
+    "branch": "fix/steam-elo-release-gate-whitespace-20261009",
+    "commit": "785c3bcef0c55c0e93c0b8cc2c629e4f2d8a12c4"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
