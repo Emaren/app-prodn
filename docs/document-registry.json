@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "22936997217c294eb0ad1af55a2f491a57ea6e755a7909760f8fe6f8dfdb6e8b",
+      "sha256": "bb986d637f9d941288cf3014e2e675e3f78ae4e3bf866f6e333a3e40c4289b65",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2048,8 +2048,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/leaderboard-complete-public-roster-20261009",
-    "commit": "00c0ae331c36da97cc6c1bf58b1be2f16160fe65"
+    "branch": "fix/doctor-next-toolchain-contract-20261009",
+    "commit": "052af6af81a4fd730e2eea99ea7639568a0c4a81"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
