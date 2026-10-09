@@ -38,6 +38,7 @@ def fixture():
             "selectedSampleLimit": 6,
             "sampleWave": 0,
             "sampleOffsetIdentities": 0,
+            "sampleIdentityWindow": 6,
             "deadlineReached": False,
             "sampleFilesLocated": 6,
             "sampleHashesVerified": 6,
@@ -45,6 +46,9 @@ def fixture():
             "sampleTooLarge": 0,
             "parserParsed": 6,
             "parserNoProjection": 0,
+            "noProjectionByMode": {},
+            "noProjectionByErrorStage": {},
+            "noProjectionByErrorCategory": {},
             "parserTimeout": 0,
             "parserError": 0,
             "invalidParserOutput": 0,
@@ -100,6 +104,33 @@ class ArchiveParserCanaryTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "conservation"):
             module.validate(data, expected_wave=1)
 
+    def test_missing_projection_failure_is_classified_without_identity(self):
+        data = fixture()
+        data["summary"].update(
+            sampleHashesVerified=6, parserParsed=5, parserNoProjection=1,
+            sameSteamIdentityPresent=5, uniquelyBoundSteamIdentity=5,
+            headerRmPresent=4, headerDmPresent=2, headerBothPresent=2,
+        )
+        data["summary"]["noProjectionByMode"] = {"mgz_failed": 1}
+        data["summary"]["noProjectionByErrorStage"] = {"summary": 1}
+        data["summary"]["noProjectionByErrorCategory"] = {
+            "truncated_or_incomplete": 1
+        }
+        self.assertEqual(
+            module.validate(data)["noProjectionByMode"]["mgz_failed"], 1
+        )
+        data["summary"]["noProjectionByMode"] = {"mgz_failed": 2}
+        with self.assertRaisesRegex(RuntimeError, "no-projection"):
+            module.validate(data)
+
+    def test_failure_reason_keys_are_sanitized(self):
+        data = fixture()
+        data["summary"]["noProjectionByErrorCategory"] = {
+            "../../etc/passwd": 0
+        }
+        with self.assertRaisesRegex(RuntimeError, "no-projection"):
+            module.validate(data)
+
     def test_fail_closed_bad_readonly(self):
         for proof in (None, [], [{}], [{"transaction_mode": "off",
                                        "default_mode": "on"}]):
@@ -148,7 +179,9 @@ class ArchiveParserCanaryTests(unittest.TestCase):
         self.assertIn("sampledHashes.has(c.hash)", source)
         self.assertIn("sampledHashes.add(c.hash)", source)
         self.assertIn('apiGit(["rev-parse","HEAD"])', source)
-        self.assertIn("from utils.replay_parser import _parse_sync_bytes", source)
+        self.assertIn("from utils.replay_parser import _parse_sync_bytes_with_diagnostics", source)
+        self.assertIn("order.slice(SAMPLE_OFFSET, SAMPLE_OFFSET + SAMPLE_LIMIT)", source)
+        self.assertIn("noProjectionByErrorCategory", source)
         self.assertNotIn("UPDATE game_stats", source)
         self.assertNotIn("INSERT INTO", source)
         self.assertNotIn("SET statement_timeout", source)
