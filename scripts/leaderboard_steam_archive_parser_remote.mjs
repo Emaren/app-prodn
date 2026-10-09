@@ -45,9 +45,9 @@ const PYTHON = [
   "path=Path(sys.argv[1])",
   "final=sys.argv[2]=='1'",
   "with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):",
-  "    from utils.replay_parser import _parse_sync_bytes",
+  "    from utils.replay_parser import _parse_sync_bytes_with_diagnostics",
   "    data=path.read_bytes()",
-  "    parsed=_parse_sync_bytes(str(path),data,apply_hd_early_exit_rules=final)",
+  "    parsed,diag,mode=_parse_sync_bytes_with_diagnostics(str(path),data,apply_hd_early_exit_rules=final)",
   "players=parsed.get('players') if isinstance(parsed,dict) else None",
   "if not isinstance(players,list): players=[]",
   "output=[]",
@@ -60,7 +60,9 @@ const PYTHON = [
   "    output.append({'steamId':sid,'rm':p.get('steam_rm_rating'),",
   "       'dm':p.get('steam_dm_rating'),'rmSource':src.get('steam_rm_rating'),",
   "       'dmSource':src.get('steam_dm_rating')})",
-  "print(json.dumps({'parsed':isinstance(parsed,dict),'players':output},separators=(',',':')))",
+  "print(json.dumps({'parsed':isinstance(parsed,dict),'players':output,",
+  " 'mode':mode,'errorStage':diag.get('stage') if isinstance(diag,dict) else None,",
+  " 'errorCategory':diag.get('category') if isinstance(diag,dict) else None},separators=(',',':')))",
 ].join("\n");
 async function hashFile(file) {
   const h = createHash("sha256");
@@ -95,7 +97,9 @@ function parseInIsolatedSubprocess(interpreter, filePath, isFinal) {
     if (typeof payload.parsed !== "boolean" || !Array.isArray(payload.players))
       return { status: "invalid_parser_output" };
     return { status: payload.parsed ? "parsed" : "no_projection",
-      players: payload.players };
+      players: payload.players,
+      mode: payload.mode, errorStage: payload.errorStage,
+      errorCategory: payload.errorCategory };
   } catch {
     return { status: "invalid_parser_output" };
   }
@@ -196,6 +200,8 @@ try {
     sampleHashMismatch: 0, sampleTooLarge: 0,
     parserParsed: 0, parserNoProjection: 0,
     parserTimeout: 0, parserError: 0, invalidParserOutput: 0,
+    noProjectionByMode: {}, noProjectionByErrorStage: {},
+    noProjectionByErrorCategory: {},
     sameSteamIdentityPresent: 0, uniquelyBoundSteamIdentity: 0,
     headerRmPresent: 0, headerDmPresent: 0,
     headerBothPresent: 0, headerRmMatchesStored: 0,
@@ -210,7 +216,9 @@ try {
   );
   const sampledHashes = new Set();
   const deadline = Date.now() + DEADLINE_MS;
-  for (const id of order.slice(SAMPLE_OFFSET)) {
+  const sampleWindow = order.slice(SAMPLE_OFFSET, SAMPLE_OFFSET + SAMPLE_LIMIT);
+  summary.sampleIdentityWindow = sampleWindow.length;
+  for (const id of sampleWindow) {
     if (Date.now() > deadline) {
       summary.deadlineReached = true;
       break;
@@ -254,6 +262,18 @@ try {
         })[p.status];
         if (!key) throw Error("unexpected parser status");
         summary[key]++;
+        if (p.status === "no_projection") {
+          const safe = x => typeof x === "string" &&
+            /^[a-z][a-z0-9_]{0,63}$/.test(x) ? x : "unknown";
+          for (const [field, value] of [
+            ["noProjectionByMode", p.mode],
+            ["noProjectionByErrorStage", p.errorStage],
+            ["noProjectionByErrorCategory", p.errorCategory],
+          ]) {
+            const label = safe(value);
+            summary[field][label] = (summary[field][label] ?? 0) + 1;
+          }
+        }
         break;
       }
       summary.parserParsed++;
@@ -281,7 +301,16 @@ try {
   if (apiGit(["rev-parse","HEAD"]) !== apiRevision ||
       apiGit(["status","--porcelain","--untracked-files=all"]) !== "")
     throw Error("STOP: API parser worktree or revision changed during audit");
-  if (summary.sampleHashesVerified > SAMPLE_LIMIT ||
+  const countBuckets = object => Object.values(object).reduce(
+    (sum, value) => sum + value, 0,
+  );
+  if (
+      countBuckets(summary.noProjectionByMode) !== summary.parserNoProjection ||
+      countBuckets(summary.noProjectionByErrorStage) !== summary.parserNoProjection ||
+      countBuckets(summary.noProjectionByErrorCategory) !== summary.parserNoProjection ||
+      summary.sampleIdentityWindow > SAMPLE_LIMIT ||
+      summary.sampleHashesVerified > summary.sampleIdentityWindow ||
+      summary.sampleHashesVerified > SAMPLE_LIMIT ||
       summary.sampleWave !== wave ||
       summary.sampleOffsetIdentities !== SAMPLE_OFFSET ||
       summary.parserParsed + summary.parserNoProjection +
