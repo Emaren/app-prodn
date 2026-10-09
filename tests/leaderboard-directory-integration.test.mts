@@ -515,8 +515,8 @@ test("Version 1 shows every accepted all-mode game on both Steam rating boards",
   // RM/DM retains its independent rating authority even though stats agree.
   assert.equal(rm.lane, "rm");
   assert.equal(dm.lane, "dm");
-  assert.equal(rmAlpha.primaryRatingSourceLabel, "Last RM");
-  assert.equal(dmAlpha.primaryRatingSourceLabel, "Last DM");
+  assert.equal(rmAlpha.primaryRatingSourceLabel, "RM Rating");
+  assert.equal(dmAlpha.primaryRatingSourceLabel, "DM Rating");
 });
 
 test("claimed scope is contiguous and excludes reserved systems by UID, not name", async () => {
