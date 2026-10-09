@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d5d8304ddf08e6b2289b1d4be05799ecee5f7a0e4bac938f490d82b7556b88f4",
+      "sha256": "7886bb488fe44a719a15936f98dfc5bb5b71fe800f67341e4a70063df2ae6e42",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2049,7 +2049,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/television-v1-director-multicam-20261009",
-    "commit": "1930f0b357525e4807ecf2f6d47d17df2181c981"
+    "commit": "e0997be54fdc2ee577f6834eb4ae5c99c6e311fb"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
