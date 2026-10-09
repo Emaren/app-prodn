@@ -115,7 +115,7 @@ try {
   const directory = await loadPublicPlayerDirectory(
     prisma, null, { includePresence: false, includeCurrentWatcherState: true },
   );
-  const target = new Set(directory.allEntries.filter(
+  const eligibleEntries = directory.allEntries.filter(
     e => !isLeaderboardExcludedSystemUid(e.uid) &&
       (e.totalMatches > 0 || e.claimed) && validId(e.steamId) &&
       !(
@@ -125,7 +125,12 @@ try {
         hasRating(e.steamDmRating) ||
         hasRating(latestHistoricalSteamLaneRating(e.replayEvidence, "dm"))
       ),
-  ).map(e => e.steamId));
+  );
+  const target = new Set(eligibleEntries.map(e => e.steamId));
+  const publicEvidenceGamesById = new Map(
+    eligibleEntries.map(e => [e.steamId,
+      new Set(e.replayEvidence.map(x => x.gameStatsId))]),
+  );
   const candidates = new Map();
   let cursor = 0;
   let batches = 0;
@@ -133,6 +138,7 @@ try {
   const query =
     'SELECT id, parse_source AS "source", is_final AS "isFinal", ' +
     'replay_hash AS "hash", original_filename AS "name", ' +
+    'played_on AS "playedOn", ' +
     'players::jsonb AS players, key_events::jsonb AS "events" ' +
     'FROM game_stats WHERE id > $1 ORDER BY id ASC LIMIT $2';
   while (batches < MAX_BATCHES) {
@@ -161,8 +167,16 @@ try {
           continue;
         const list = candidates.get(p.steam_id) ?? [];
         if (!list.some(x => x.hash === hash)) {
+          const playedOnMs = row.playedOn instanceof Date ?
+            row.playedOn.getTime() : Date.parse(String(row.playedOn ?? ""));
+          const playedOnValid = Number.isFinite(playedOnMs) &&
+            playedOnMs > Date.UTC(2000, 0, 1) &&
+            playedOnMs < Date.now() + 86400000;
           list.push({
             hash, suffix: normalizedSuffix, isFinal: row.isFinal === true,
+            gameStatsId: row.id,
+            playedOn: playedOnValid ? new Date(playedOnMs).toISOString() : null,
+            acceptedSameGame: publicEvidenceGamesById.get(p.steam_id)?.has(row.id) === true,
             observedRm: p.steam_rm_rating, observedDm: p.steam_dm_rating,
           });
           if (list.length > MAX_PER_STEAM_ID) list.shift();
@@ -211,6 +225,9 @@ try {
     headerBothPresent: 0, headerRmMatchesStored: 0,
     headerDmMatchesStored: 0, headerRmDiffersStored: 0,
     headerDmDiffersStored: 0,
+    matchingBothWithPlayedOn: 0,
+    matchingBothWithAcceptedSameGame: 0,
+    matchingBothHistoricallyEligible: 0,
   };
   // Deterministic pseudorandom distribution; no observer-selected names
   // or public Steam identifiers in stdout or the local operator receipt.
@@ -279,7 +296,11 @@ try {
       summary.sampleHashesVerified++;
       const fingerprint = sha("aoe2war-archived-identity-v1:" + id);
       const evidence = { identityFingerprint: fingerprint,
-        replaySha256: c.hash, result: "not_parsed" };
+        replaySha256: c.hash, result: "not_parsed",
+        gameStatsId: c.gameStatsId,
+        ratingObservedAt: c.playedOn,
+        acceptedSameGame: c.acceptedSameGame,
+      };
       sampleEvidence.push(evidence);
       const p = parseInIsolatedSubprocess(interpreter, filePath, c.isFinal);
       evidence.result = p.status;
@@ -318,8 +339,16 @@ try {
       if (dm) summary.headerDmPresent++;
       if (rm && dm) summary.headerBothPresent++;
       if (rm && dm &&
-          player.rm === c.observedRm && player.dm === c.observedDm)
+          player.rm === c.observedRm && player.dm === c.observedDm) {
         evidence.result = "both_hd_headers_match";
+        if (c.playedOn !== null) summary.matchingBothWithPlayedOn++;
+        if (c.acceptedSameGame) summary.matchingBothWithAcceptedSameGame++;
+        if (c.playedOn !== null && c.acceptedSameGame &&
+            c.isFinal && c.suffix !== ".aoe2mpgame") {
+          summary.matchingBothHistoricallyEligible++;
+          evidence.result = "historical_candidate_only";
+        }
+      }
       if (rm) {
         if (player.rm === c.observedRm) summary.headerRmMatchesStored++;
         else summary.headerRmDiffersStored++;
@@ -358,6 +387,11 @@ try {
         summary.identitiesWithVerifiedFile > summary.sampleIdentityWindow ||
       summary.identitiesWithOversizeOnly >
         summary.sampleIdentityWindow ||
+      summary.matchingBothWithPlayedOn > summary.headerBothPresent ||
+      summary.matchingBothWithAcceptedSameGame > summary.headerBothPresent ||
+      summary.matchingBothHistoricallyEligible >
+        Math.min(summary.matchingBothWithPlayedOn,
+          summary.matchingBothWithAcceptedSameGame) ||
 
       summary.sampleWave !== wave ||
       summary.sampleOffsetIdentities !== SAMPLE_OFFSET ||
