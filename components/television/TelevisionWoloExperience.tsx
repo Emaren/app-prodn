@@ -12,10 +12,13 @@ import {
   ShieldCheck,
   Sparkles,
   Tv,
+  LayoutGrid,
+  VideoOff,
 } from "lucide-react";
 
 import LiveStreamFrame from "@/components/streaming/LiveStreamFrame";
 import type { WatchStreamPayload } from "@/lib/watchStreams";
+import { assignTelevisionCameras, type TelevisionStage, type TelevisionCamera } from "@/lib/televisionDirection";
 
 export type TelevisionBattle = {
   id: number | null;
@@ -23,6 +26,7 @@ export type TelevisionBattle = {
   source: "live" | "recent" | "archive";
   title: string;
   playerNames: string[];
+  stage: TelevisionStage;
   mapName: string;
   winner: string | null;
   occurredAt: string | null;
@@ -105,18 +109,22 @@ export default function TelevisionWoloExperience({
   const [streamError, setStreamError] = useState<string | null>(null);
   const [browserHost, setBrowserHost] = useState("");
   const [chaosPick, setChaosPick] = useState<string | null>(null);
+  const [multiview, setMultiview] = useState(false);
   const selectedBattle = useMemo(
     () => battles.find((battle) => battle.sessionKey === selectedKey) ?? initialBattle,
     [battles, initialBattle, selectedKey],
   );
 
+  const director = useMemo(
+    () => assignTelevisionCameras(selectedBattle?.stage ??
+      { confirmedTeams: false, format: "Pending", teams: [] }, streams),
+    [selectedBattle, streams],
+  );
   const activeStream = useMemo(
-    () =>
-      streams.find((stream) => stream.id === activeStreamId) ??
-      streams.find((stream) => stream.isPrimary) ??
-      streams[0] ??
-      null,
-    [activeStreamId, streams],
+    () => streams.find(stream => stream.id === activeStreamId) ??
+      director.cameras.find(camera => camera.stream)?.stream ??
+      streams.find(stream => stream.isPrimary) ?? streams[0] ?? null,
+    [activeStreamId, director, streams],
   );
 
   useEffect(() => {
@@ -129,6 +137,7 @@ export default function TelevisionWoloExperience({
     setActiveStreamId(null);
     setStreamError(null);
     setChaosPick(null);
+    setMultiview(false);
   }, [selectedKey]);
 
   async function playBattle() {
@@ -147,8 +156,10 @@ export default function TelevisionWoloExperience({
       if (!response.ok) throw new Error(payload.error || "Could not load television feeds.");
       const nextStreams = payload.streams ?? [];
       setStreams(nextStreams);
+      const matched = assignTelevisionCameras(selectedBattle.stage, nextStreams);
       setActiveStreamId(
-        nextStreams.find((stream) => stream.isPrimary)?.id ?? nextStreams[0]?.id ?? null,
+        matched.cameras.find(camera => camera.stream)?.stream?.id ??
+        nextStreams.find(stream => stream.isPrimary)?.id ?? nextStreams[0]?.id ?? null,
       );
       setPlayingKey(selectedBattle.sessionKey);
     } catch (error) {
@@ -158,6 +169,25 @@ export default function TelevisionWoloExperience({
       setLoadingStreams(false);
     }
   }
+
+  // Only poll after explicit viewer action; idle Television incurs no video/API polling.
+  useEffect(() => {
+    if (!playingKey) return;
+    let cancelled = false;
+    const reload = async () => {
+      try {
+        const response = await fetch(
+          "/api/watch-streams?sessionKey=" + encodeURIComponent(playingKey),
+          { cache: "no-store" },
+        );
+        if (!response.ok) return;
+        const result = await response.json() as { streams?: WatchStreamPayload[] };
+        if (!cancelled) setStreams(result.streams ?? []);
+      } catch { /* Retain last known display; viewer can retry. */ }
+    };
+    const timer = window.setInterval(() => void reload(), 12_000);
+    return () => { cancelled = true; window.clearInterval(timer); };
+  }, [playingKey]);
 
   const liveBattles = battles.filter((battle) => battle.source === "live");
   const replayBattles = battles.filter((battle) => battle.source !== "live");
@@ -252,6 +282,99 @@ export default function TelevisionWoloExperience({
               </div>
             )}
           </div>
+
+          {selectedBattle ? (
+            <div className="border-t border-white/8 p-4 sm:p-5">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.17em] text-cyan-100/75">
+                  <LayoutGrid className="h-4 w-4" />
+                  <span>{selectedBattle.stage.confirmedTeams ? selectedBattle.stage.format : "Teams unverified"} · CAMERA DIRECTOR</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMultiview(value => !value)}
+                  aria-pressed={multiview}
+                  className={"rounded-full border px-3 py-2 text-xs font-bold transition " +
+                    (multiview ? "border-cyan-200/50 bg-cyan-300/15 text-cyan-50" :
+                      "border-white/15 text-slate-300 hover:border-cyan-200/30")}
+                >
+                  {multiview ? "Multi-view ON · extra bandwidth" : "Multi-view OFF · director mode"}
+                </button>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                {selectedBattle.stage.teams.map((team, teamIndex) => (
+                  <div key={team.key} className={
+                    "rounded-2xl border p-3 " +
+                    (teamIndex === 0 ? "border-cyan-300/20 bg-cyan-950/15" :
+                      "border-violet-300/20 bg-violet-950/10")
+                  }>
+                    <div className="mb-3 flex items-center justify-between text-[10px] font-black tracking-[0.18em] text-slate-300">
+                      <span>{team.label}</span><span>{team.players.length} PLAYERS</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      {team.players.map(player => {
+                        const camera = director.cameras.find(item => item.player.key === player.key && item.teamKey === team.key);
+                        const feed = camera?.stream ?? null;
+                        const selected = Boolean(feed && activeStream?.id === feed.id);
+                        const canPreview = playing && multiview && feed && !selected &&
+                          feed.provider === "aoe2war" &&
+                          director.cameras.filter(item => item.stream && item.stream.id !== activeStream?.id &&
+                            item.stream.provider === "aoe2war").findIndex(item => item.stream?.id === feed.id) < 3;
+                        return (
+                          <button key={player.key} type="button" disabled={!feed || !playing}
+                            onClick={() => setActiveStreamId(feed?.id ?? null)}
+                            aria-label={`Select ${player.name} camera`}
+                            aria-pressed={selected}
+                            className={"min-w-0 overflow-hidden rounded-xl border text-left transition " +
+                              (selected ? "border-cyan-200/75 bg-cyan-300/10" :
+                                "border-white/10 bg-slate-950/65 hover:border-white/25")}>
+                            <div className="relative aspect-video overflow-hidden bg-[radial-gradient(circle,rgba(22,78,99,0.25),#020617_75%)]">
+                              {canPreview ? (
+                                <LiveStreamFrame stream={feed} title={player.name + " POV"} compact
+                                  className="absolute inset-0 h-full min-h-0 rounded-none border-0" />
+                              ) : feed?.thumbnailUrl ? (
+                                <Image src={feed.thumbnailUrl} alt="" fill unoptimized sizes="(max-width:768px) 40vw, 20vw" className="object-cover opacity-75" />
+                              ) : (
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  {feed ? <MonitorPlay className="h-6 w-6 text-cyan-200/65" /> :
+                                    <VideoOff className="h-6 w-6 text-slate-600" />}
+                                </div>
+                              )}
+                              <span className={"absolute bottom-1 left-1 rounded px-1.5 py-0.5 text-[9px] font-bold " +
+                                (feed ? "bg-emerald-950/90 text-emerald-200" : "bg-black/80 text-slate-400")}>
+                                {feed ? selected ? "ON AIR · MAIN" : "CAMERA READY" : "NO CAMERA"}
+                              </span>
+                            </div>
+                            <div className="truncate px-2 pt-2 text-xs font-bold text-white">{player.name}</div>
+                            <div className="truncate px-2 pb-2 text-[10px] text-slate-400">
+                              {player.civilization ?? "Civilization pending"} · {camera?.identity === "steam-account"
+                                ? "Linked POV" : camera?.identity === "unverified-external-label" ? "Unverified external" : "Standby"}
+                            </div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {playing && director.unassigned.length > 0 ? (
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Unassigned / Observer</span>
+                  {director.unassigned.map(stream => (
+                    <button key={stream.id} type="button" onClick={() => setActiveStreamId(stream.id)}
+                      className="rounded-full border border-white/15 px-3 py-1.5 text-xs text-slate-300 hover:text-white">
+                      {streamRoleLabel(stream)} {activeStream?.id === stream.id ? "· MAIN" : ""}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+              <p className="mt-3 text-[11px] leading-5 text-slate-500">
+                Each position follows replay team evidence. Unlinked Watcher feeds stay unassigned; no camera is invented.
+                Director mode plays one feed. Multi-view enables up to three extra compact first-party videos.
+                Fog of war remains what the player captured.
+              </p>
+            </div>
+          ) : null}
 
           <div className="border-t border-white/8 p-4 sm:p-5">
             {streamError ? (
