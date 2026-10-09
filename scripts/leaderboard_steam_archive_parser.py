@@ -30,6 +30,11 @@ def validate(payload: object) -> dict:
     data = payload.get("summary")
     if not isinstance(data, dict):
         raise RuntimeError("missing canary summary")
+    parser_source = data.get("apiParserSource")
+    if not isinstance(parser_source, str) or len(parser_source) != 40 or any(
+        char not in "0123456789abcdef" for char in parser_source
+    ):
+        raise RuntimeError("invalid installed API parser revision")
     nums = (
         "publicUnratedExactSteamIds", "unmarkedWatchersWithBothNumbers",
         "scannedGameRows", "scanBatches", "selectedSampleLimit",
