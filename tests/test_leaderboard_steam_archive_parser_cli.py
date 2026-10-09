@@ -36,6 +36,9 @@ def fixture():
             "apiPythonAvailable": True,
             "archiveAccessible": True,
             "selectedSampleLimit": 6,
+            "sampleWave": 0,
+            "sampleOffsetIdentities": 0,
+            "deadlineReached": False,
             "sampleFilesLocated": 6,
             "sampleHashesVerified": 6,
             "sampleHashMismatch": 0,
@@ -61,6 +64,41 @@ def fixture():
 class ArchiveParserCanaryTests(unittest.TestCase):
     def test_good_contract(self):
         self.assertEqual(module.validate(fixture())["headerBothPresent"], 2)
+
+    def test_expansion_wave_1_accepts_separate_sample(self):
+        data = fixture()
+        data["summary"].update(
+            sampleWave=1, sampleOffsetIdentities=6, selectedSampleLimit=24
+        )
+        self.assertEqual(
+            module.validate(data, expected_wave=1)["sampleWave"], 1
+        )
+
+    def test_expansion_wave_rejects_wrong_offset_or_tier(self):
+        data = fixture()
+        data["summary"].update(
+            sampleWave=1, sampleOffsetIdentities=6, selectedSampleLimit=24
+        )
+        with self.assertRaisesRegex(RuntimeError, "wave"):
+            module.validate(data, expected_wave=2)
+        data["summary"]["sampleOffsetIdentities"] = 7
+        with self.assertRaisesRegex(RuntimeError, "wave"):
+            module.validate(data, expected_wave=1)
+
+    def test_bad_wave_fails_closed(self):
+        for wave in (-1, 79, True):
+            with self.subTest(wave=wave):
+                with self.assertRaisesRegex(RuntimeError, "wave"):
+                    module.validate(fixture(), expected_wave=wave)
+
+    def test_bounded_expansion_cannot_report_more_than_24(self):
+        data = fixture()
+        data["summary"].update(
+            sampleWave=1, sampleOffsetIdentities=6,
+            selectedSampleLimit=24, sampleHashesVerified=25
+        )
+        with self.assertRaisesRegex(RuntimeError, "conservation"):
+            module.validate(data, expected_wave=1)
 
     def test_fail_closed_bad_readonly(self):
         for proof in (None, [], [{}], [{"transaction_mode": "off",
@@ -98,7 +136,10 @@ class ArchiveParserCanaryTests(unittest.TestCase):
     def test_only_guarded_opaque_python_parser_and_bounded_file_reads(self):
         source = (ROOT / "scripts" /
                   "leaderboard_steam_archive_parser_remote.mjs").read_text()
-        self.assertIn('const SAMPLE_LIMIT = 6;', source)
+        self.assertIn('const SAMPLE_LIMIT = wave === 0 ? 6 : 24;', source)
+        self.assertIn("const SAMPLE_OFFSET = wave === 0", source)
+        self.assertIn("const DEADLINE_MS = wave === 0", source)
+        self.assertIn("summary.deadlineReached = true;", source)
         self.assertIn('const MAX_FILE_SIZE = 12 * 1024 * 1024;', source)
         self.assertIn('const PARSER_TIMEOUT_MS = 12500;', source)
         self.assertIn("PYTHONDONTWRITEBYTECODE: \"1\"", source)
