@@ -141,7 +141,7 @@ class ArchiveParserCanaryTests(unittest.TestCase):
         ):
             previous["summary"].pop(field)
         module.validate_previous_tracked_receipt(previous, 0)
-        with self.assertRaisesRegex(RuntimeError, "schema"):
+        with self.assertRaisesRegex(RuntimeError, "unexpected archive parser canary response"):
             module.validate(previous, 0)
 
     def test_bad_wave_fails_closed(self):
