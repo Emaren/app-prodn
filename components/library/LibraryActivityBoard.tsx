@@ -7,7 +7,6 @@ import {
   ArrowDown,
   ArrowUp,
   ChevronDown,
-  Clock3,
   Database,
   ExternalLink,
   Gauge,
@@ -168,11 +167,11 @@ function sourceIcon(source: LibraryOrigin) {
 function LedgerRow({
   game,
   index,
-  total,
+  ordinal,
 }: {
   game: GameItem;
   index: number;
-  total: number;
+  ordinal: number;
 }) {
   const tone = tones[game.kind];
   const Icon = sourceIcon(game.kind);
@@ -192,7 +191,7 @@ function LedgerRow({
           className="w-12 shrink-0 text-right font-mono text-[10px] font-bold tabular-nums tracking-tight text-slate-600 sm:w-16 sm:text-[12px]"
           title="Final-replay record ordinal, newest first"
         >
-          #{compactCount(Math.max(1, total - index))}
+          #{compactCount(Math.max(1, ordinal))}
         </div>
         <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/[0.08] bg-black/25 ${tone.light}`}>
           <Icon className="h-5 w-5" />
@@ -252,6 +251,7 @@ function Metric({ icon: Icon, caption, value, accent }: {
 export default function LibraryActivityBoard() {
   const [items, setItems] = useState<GameItem[]>([]);
   const [pending, setPending] = useState<GameItem[]>([]);
+  const pendingRef = useRef<GameItem[]>([]);
   const [filter, setFilter] = useState<Filter>("all");
   const [total, setTotal] = useState(0);
   const [visibleTotal, setVisibleTotal] = useState(0);
@@ -299,6 +299,7 @@ export default function LibraryActivityBoard() {
       setTotal(data.total);
       setVisibleTotal(data.total);
       setLast24h(data.last24h);
+      pendingRef.current = [];
       setPending([]);
       headRef.current = data.latestId ?? 0;
       olderRef.current = data.nextBefore;
@@ -353,16 +354,20 @@ export default function LibraryActivityBoard() {
         headRef.current = Math.max(headRef.current, ...data.items.map((item) => item.id));
 
         if ((scrollRef.current?.scrollTop ?? 0) < 100) {
+          const arrivals = [...data.items, ...pendingRef.current];
+          pendingRef.current = [];
+          setPending([]);
           setItems((current) => {
             const known = new Set(current.map((item) => item.id));
-            return [...data.items.filter((item) => !known.has(item.id)), ...current];
+            return [...arrivals.filter((item) => !known.has(item.id)), ...current]
+              .sort((a, b) => b.id - a.id);
           });
           setVisibleTotal(data.total);
         } else {
-          setPending((current) => {
-            const known = new Set(current.map((item) => item.id));
-            return [...data.items.filter((item) => !known.has(item.id)), ...current];
-          });
+          const known = new Set(pendingRef.current.map((item) => item.id));
+          pendingRef.current = [...data.items.filter((item) => !known.has(item.id)), ...pendingRef.current]
+            .sort((a, b) => b.id - a.id);
+          setPending(pendingRef.current);
         }
         if (!data.hasMore) break;
       }
@@ -375,10 +380,13 @@ export default function LibraryActivityBoard() {
   }, [firstPage, requestPage]);
 
   const jumpToNewest = useCallback(() => {
-    if (pending.length) {
+    if (pendingRef.current.length) {
+      const arrivals = pendingRef.current;
+      pendingRef.current = [];
       setItems((current) => {
         const known = new Set(current.map((item) => item.id));
-        return [...pending.filter((item) => !known.has(item.id)), ...current];
+        return [...arrivals.filter((item) => !known.has(item.id)), ...current]
+          .sort((a, b) => b.id - a.id);
       });
       setPending([]);
       setVisibleTotal(total);
@@ -412,8 +420,9 @@ export default function LibraryActivityBoard() {
   }, []);
 
   const visible = useMemo(
-    () => items.filter((item) => isInFilter(item, filter)),
-    [items, filter],
+    () => items.map((item, index) => ({ item, ordinal: visibleTotal - index }))
+      .filter(({ item }) => isInFilter(item, filter)),
+    [items, filter, visibleTotal],
   );
   const start = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - VIEW_BUFFER);
   const end = Math.min(visible.length,
@@ -575,12 +584,12 @@ export default function LibraryActivityBoard() {
             {visible.length ? (
               <>
                 <div style={{ height: start * ROW_HEIGHT }} aria-hidden="true" />
-                {windowed.map((game, index) => (
+                {windowed.map(({ item, ordinal }, index) => (
                   <LedgerRow
-                    key={game.id}
-                    game={game}
+                    key={item.id}
+                    game={item}
                     index={start + index}
-                    total={visibleTotal}
+                    ordinal={ordinal}
                   />
                 ))}
                 <div style={{ height: Math.max(0, visible.length - end) * ROW_HEIGHT }} aria-hidden="true" />
