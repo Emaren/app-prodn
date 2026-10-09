@@ -19,7 +19,7 @@ spec.loader.exec_module(gate)
 def fixture():
     return {
         "kind": "aoe2war-steam-rating-gate-funnel",
-        "schemaVersion": 3,
+        "schemaVersion": 4,
         "databaseReadOnly": [{"transaction_mode": "on", "default_mode": "on"}],
         "counts": {"publicIdentityRows": 5, "rmRated": 1, "dmRated": 1,
                    "rmMissing": 4, "dmMissing": 4, "noExactSteamIdentity": 2},
@@ -50,6 +50,20 @@ def fixture():
                 "fileRolePresent", "beforeFrozenCutoff",
             )},
         } for lane in ("rm", "dm")},
+        "receiptCorrelation": {
+            "targetSteamIdentities": 1,
+            "candidateReplayHashes": 4,
+            "scannedAttemptRows": 10,
+            "attemptBatches": 1,
+            "matchingAttempt": 1,
+            "watcherAttempt": 1,
+            "currentObservationPresent": 1,
+            "observationBindsIdentity": 1,
+            "observationHasLaneNumeric": 1,
+            "observationLiveAndSigned": 0,
+            "observationHasVerifiedSha": 0,
+            "observationArchiveVerified": 0,
+        },
         "mutations": {"production": 0, "parserRows": 0, "identityRows": 0,
                       "currentRatingRows": 0, "wolo": 0},
     }
@@ -86,6 +100,8 @@ class GateCliTests(unittest.TestCase):
         self.assertIn("game.id <= cursor", remote)
         self.assertIn("evidenceStage(", remote)
         self.assertNotIn("COUNT(*) OVER", remote)
+        self.assertIn("FROM replay_parse_attempts WHERE id > $1 ORDER BY id ASC LIMIT $2", remote)
+        self.assertIn("obsPlayers.some(p => p?.steam_id === id)", remote)
         self.assertNotIn("SET statement_timeout", remote)
         self.assertNotIn("UPDATE game_stats", remote)
         self.assertNotIn("INSERT INTO", remote)
@@ -105,6 +121,24 @@ class GateCliTests(unittest.TestCase):
             data = fixture()
             data["blockedDetails"]["dm"]["stage3Context"]["hashesMatchReplay"] = 2
             with self.assertRaisesRegex(RuntimeError, "blocked-detail"):
+                self.run_with(data)
+            self.assertFalse(self.path.exists())
+
+    def test_receipt_correlation_rejects_unearned_authority(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.path = Path(d) / "none.json"
+            data = fixture()
+            data["receiptCorrelation"]["observationLiveAndSigned"] = 2
+            with self.assertRaisesRegex(RuntimeError, "parse-attempt receipt"):
+                self.run_with(data)
+            self.assertFalse(self.path.exists())
+
+    def test_receipt_correlation_conserves_target_ids(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.path = Path(d) / "none.json"
+            data = fixture()
+            data["receiptCorrelation"]["targetSteamIdentities"] = 0
+            with self.assertRaisesRegex(RuntimeError, "target conservation"):
                 self.run_with(data)
             self.assertFalse(self.path.exists())
 
