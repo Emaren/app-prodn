@@ -191,12 +191,44 @@ never manufacture game history. The UI visibly says `Stats · All modes`,
 with column tooltips explaining the scope. These columns must never claim
 to represent RM-only or DM-only competition.
 
-When no authoritative Steam lane rating is known, the fallback Site Elo is
-reconstructed from the same accepted *all-mode* resolved replay corpus and
-explicitly labeled `Site Elo · All`. It stays a **lower, separate source
-tier** from Steam ratings in rank comparison; the two scales are never
-numerically mixed. Unknown-lane Steam ratings are not invented. Profiles
-without Steam ratings and without replay history stay unrated.
+Version 1 **never substitutes Site Elo**, including when Steam ratings are
+missing. An unrated account shows an unavailable Steam Elo, not a synthesized
+number. Ratings are keyed by exact Steam ID and selected independently for RM
+and DM: a newer qualified Watcher account observation takes precedence over an
+older one, using the actual *played_on* game clock rather than replay upload or
+import time. Immutable current-account receipts and read-only Watcher-upload
+observations can each supply a dated lane observation. A dated historical
+HD-header replay is the remaining fallback. Manual and batch file uploads do
+not enter the Watcher-upload rating rail and cannot displace its later values.
+
+**October 2026 legacy compatibility:** Production evidence found 4,314
+recent Watcher replay rows with matching client/server SHA-256, file roles,
+and `live_monitor` provenance, but 0 rows with a verified HMAC. The Watcher
+was signing a machine-local sender UID; the API was verifying the API-key
+owner's Steam-account UID instead. The signed sender is now carried separately
+by the web proxy and verified by the API. Account ownership is still established
+solely through the authenticated Watcher API key, never a caller-supplied UID.
+
+The old signatures were not preserved in the stored replay rows and **cannot
+be retrospectively verified**. A strictly time-frozen, read-only compatibility
+cohort therefore supplies *display-only* Steam ratings from watcher_live/final
+rows both **played and originally ingested before 2026-10-09 00:00 UTC**,
+subject to live-monitor provenance, verified client hash, matching server and
+client SHA-256, valid file role/finality, unique 17-digit Steam participant
+identity, and numeric RM/DM values. This old cohort is **not signed evidence**.
+After this cutoff only an HMAC-verified upload can enter the display-rating
+rail. Invalid newly supplied signatures never qualify. Manual, batch and
+file uploads never qualify in either era. These readings cannot establish
+game results, payments, verified aliases or account identity, and are never
+relabeled `hd_header`. Source-based legacy compatibility must be retired
+when fresh immutable current-account receipt coverage is demonstrably healthy.
+
+The source maintains bounded stale-while-refresh caching to protect render
+latency. Site Elo computation remains internal for later Version 2 work but
+must not be displayed or used as a sort/rank tie-breaker on RM/DM V1 boards.
+Long term, Watcher clients should emit the established HMAC provenance header
+so new observations can use the immutable account receipt pathway, and the
+temporary compatibility reader can be retired after coverage is measured.
 
 The source retains a conservative `GameStats.game_type` /
 `key_events.settings.type` resolver on each canonical accepted replay-player

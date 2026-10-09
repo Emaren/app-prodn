@@ -39,6 +39,10 @@ import {
 import {
   loadCurrentWatcherAccountStates,
 } from "@/lib/currentWatcherAccountState";
+import {
+  loadVerifiedWatcherSteamRatings,
+  selectLatestSteamObservation,
+} from "@/lib/verifiedWatcherSteamRatings";
 import { loadPublicPresenceSnapshot } from "@/lib/publicPresence";
 import { loadPublicPlayerDirectoryGeneration } from "@/lib/publicPlayerDirectoryGeneration";
 import { resolveLeaderboardReplayMode } from "@/lib/leaderboardGameMode";
@@ -1110,12 +1114,18 @@ async function overlayPublicPlayerDirectoryLiveState(
   const [
     presence,
     currentWatcherAccountStates,
+    signedWatcherRatings,
   ] = await Promise.all([
     options.includePresence
       ? loadPublicPresenceSnapshot(prisma)
       : Promise.resolve(null),
     options.includeCurrentWatcherState
       ? loadCurrentWatcherAccountStates(
+          prisma,
+        )
+      : Promise.resolve([]),
+    options.includeCurrentWatcherState
+      ? loadVerifiedWatcherSteamRatings(
           prisma,
         )
       : Promise.resolve([]),
@@ -1139,6 +1149,14 @@ async function overlayPublicPlayerDirectoryLiveState(
       ),
     );
 
+  const signedWatcherByKey =
+    new Map(
+      signedWatcherRatings.map((state) => [
+        `steam:${state.steamId}`,
+        state,
+      ]),
+    );
+
   const overlayEntry = (
     source: PublicPlayerDirectoryEntry,
   ): PublicPlayerDirectoryEntry => {
@@ -1157,12 +1175,10 @@ async function overlayPublicPlayerDirectoryLiveState(
             )
           : source.isOnline,
     };
-    const state =
-      watcherByKey.get(
-        entry.key,
-      );
+    const state = watcherByKey.get(entry.key);
+    const signed = signedWatcherByKey.get(entry.key);
 
-    if (!state) {
+    if (!state && !signed) {
       return entry;
     }
 
@@ -1173,7 +1189,7 @@ async function overlayPublicPlayerDirectoryLiveState(
      */
     const currentName =
       normalizeLeaderboardDisplayName(
-        state.latestObservedName,
+        state?.latestObservedName,
       );
 
     if (
@@ -1199,22 +1215,27 @@ async function overlayPublicPlayerDirectoryLiveState(
       }
     }
 
-    if (
-      state.steamRmRating !== null
-    ) {
-      entry.steamRmRating =
-        state.steamRmRating;
-    }
-
-    if (
-      state.steamDmRating !== null
-    ) {
-      entry.steamDmRating =
-        state.steamDmRating;
-    }
-
-    entry.ratingLastSeenAt =
-      state.ratingObservedAt;
+    // Receipt authority and signed Watcher history are selected per
+    // Steam lane by observed game clock. Manual/batch imports are never
+    // consulted here, regardless of their arrival or file timestamps.
+    const rm = selectLatestSteamObservation(
+      state?.steamRmRating ?? null,
+      state?.steamRmObservedAt ?? null,
+      signed?.steamRmRating ?? null,
+      signed?.steamRmObservedAt ?? null,
+    );
+    const dm = selectLatestSteamObservation(
+      state?.steamDmRating ?? null,
+      state?.steamDmObservedAt ?? null,
+      signed?.steamDmRating ?? null,
+      signed?.steamDmObservedAt ?? null,
+    );
+    if (rm.rating !== null) entry.steamRmRating = rm.rating;
+    if (dm.rating !== null) entry.steamDmRating = dm.rating;
+    entry.ratingLastSeenAt = [rm.observedAt, dm.observedAt]
+      .filter((value): value is string => Boolean(value))
+      .sort()
+      .at(-1) ?? null;
 
     /*
      * Do not project current Watcher chronology into historical lastPlayedAt.

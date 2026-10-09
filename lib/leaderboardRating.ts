@@ -9,7 +9,6 @@ export type HistoricalSteamRatingEvidence = {
 export type LeaderboardRatingSource =
   | "current_steam"
   | "last_known_steam"
-  | "site_elo"
   | "profile";
 
 export type LeaderboardRatingPresentation = {
@@ -94,16 +93,7 @@ export function resolveLeaderboardRatingPresentation(
         ? input.lastKnownDmRating
         : input.lastKnownRmRating,
     );
-  const siteElo =
-    positiveFiniteRating(
-      input.siteElo,
-    );
-  const steamSecondary =
-    input.hasTrackedHistory &&
-    siteElo !== null
-      ? `Site ${Math.round(siteElo)} · All`
-      : null;
-
+ 
   if (currentRating !== null) {
     return {
       value: Math.round(currentRating),
@@ -112,8 +102,7 @@ export function resolveLeaderboardRatingPresentation(
         input.lane === "dm"
           ? "DM Rating"
           : "RM Rating",
-      secondaryLabel:
-        steamSecondary,
+      secondaryLabel: null,
     };
   }
 
@@ -125,35 +114,21 @@ export function resolveLeaderboardRatingPresentation(
         input.lane === "dm"
           ? "Last DM"
           : "Last RM",
-      secondaryLabel:
-        steamSecondary,
-    };
-  }
-
-  if (
-    input.hasTrackedHistory &&
-    siteElo !== null
-  ) {
-    return {
-      value: Math.round(siteElo),
-      source: "site_elo",
-      sourceLabel: "Site Elo · All",
       secondaryLabel: null,
     };
   }
 
-  return {
+   return {
     value: null,
     source: "profile",
-    sourceLabel: "Profile",
+    sourceLabel: "Steam Elo unavailable",
     secondaryLabel: null,
   };
 }
 
 /**
- * Site Elo is a distinct AoE2WAR measure, not a Steam ladder rating. Compare
- * numbers only within the same authority family. Current and dated historical
- * Steam ratings share the Steam scale but retain their different source labels.
+ * Version 1 compares only actual Steam RM/DM ratings; Site Elo is a future
+ * product and must never silently become a Steam leaderboard number.
  */
 export function compareLeaderboardRatingAuthority(
   left: LeaderboardRatingPresentation,
@@ -161,9 +136,7 @@ export function compareLeaderboardRatingAuthority(
   direction: "asc" | "desc" = "desc",
 ): number {
   const tier = (source: LeaderboardRatingSource) =>
-    source === "current_steam" || source === "last_known_steam" ? 0
-      : source === "site_elo" ? 1
-        : 2;
+    source === "current_steam" || source === "last_known_steam" ? 0 : 1;
   const tierDelta = tier(left.source) - tier(right.source);
   if (tierDelta !== 0) return tierDelta;
   // Two unrated profiles must compare equal, not produce NaN from infinities.

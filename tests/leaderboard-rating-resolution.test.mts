@@ -23,7 +23,7 @@ test("current receipt-backed Steam rating outranks historical and Site Elo", () 
       value: 2011,
       source: "current_steam",
       sourceLabel: "RM Rating",
-      secondaryLabel: "Site 1888 · All",
+      secondaryLabel: null,
     },
   );
 });
@@ -43,12 +43,12 @@ test("last-known accepted Steam snapshot outranks Site Elo without becoming curr
       value: 2314,
       source: "last_known_steam",
       sourceLabel: "Last DM",
-      secondaryLabel: "Site 1760 · All",
+      secondaryLabel: null,
     },
   );
 });
 
-test("Site Elo is only the third presentation tier for replay-backed warriors", () => {
+test("Site Elo can never masquerade as a Steam Elo on V1, even with history", () => {
   assert.deepEqual(
     resolveLeaderboardRatingPresentation({
       lane: "rm",
@@ -60,9 +60,9 @@ test("Site Elo is only the third presentation tier for replay-backed warriors", 
       hasTrackedHistory: true,
     }),
     {
-      value: 1655,
-      source: "site_elo",
-      sourceLabel: "Site Elo · All",
+      value: null,
+      source: "profile",
+      sourceLabel: "Steam Elo unavailable",
       secondaryLabel: null,
     },
   );
@@ -82,7 +82,7 @@ test("profile-only identities remain unrated", () => {
     {
       value: null,
       source: "profile",
-      sourceLabel: "Profile",
+      sourceLabel: "Steam Elo unavailable",
       secondaryLabel: null,
     },
   );
@@ -100,8 +100,8 @@ test("non-positive Steam sentinels are unavailable", () => {
       hasTrackedHistory: true,
     });
 
-  assert.equal(resolved.source, "site_elo");
-  assert.equal(resolved.value, 1507);
+  assert.equal(resolved.source, "profile");
+  assert.equal(resolved.value, null);
 });
 
 test("last-known Steam rating follows actual observed replay chronology", () => {
@@ -193,4 +193,28 @@ test("historical Steam fallback requires explicit HD-header provenance", () => {
     directorySource,
     /===\s*"hd_header"/,
   );
+});
+
+test("Emaren shows actual Steam RM 1077 and DM 1538, never Site Elo 1716", () => {
+  const input = {
+    currentRmRating: 1077,
+    currentDmRating: 1538,
+    lastKnownRmRating: 1045,
+    lastKnownDmRating: 1510,
+    siteElo: 1716,
+    hasTrackedHistory: true,
+  };
+  const rm = resolveLeaderboardRatingPresentation({ ...input, lane: "rm" });
+  const dm = resolveLeaderboardRatingPresentation({ ...input, lane: "dm" });
+  assert.equal(rm.value, 1077);
+  assert.equal(dm.value, 1538);
+  assert.equal(rm.secondaryLabel, null);
+  assert.equal(dm.secondaryLabel, null);
+  for (const lane of ["rm","dm"] as const) {
+    const unknown = resolveLeaderboardRatingPresentation({
+      ...input, lane, currentRmRating: null, currentDmRating: null,
+      lastKnownRmRating: null, lastKnownDmRating: null,
+    });
+    assert.equal(unknown.value, null, "Site Elo must never fill an unknown Steam Elo");
+  }
 });

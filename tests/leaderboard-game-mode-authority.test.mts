@@ -50,7 +50,8 @@ test("Steam RM rating and Site Elo never sort as if numerically interchangeable"
     siteElo: 2100, hasTrackedHistory: true,
   });
   assert.equal(steam.source, "last_known_steam");
-  assert.equal(site.source, "site_elo");
+  assert.equal(site.source, "profile");
+  assert.equal(site.value, null);
   assert.ok(compareLeaderboardRatingAuthority(steam, site) < 0);
   assert.ok(compareLeaderboardRatingAuthority(site, steam) > 0);
 
