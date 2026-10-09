@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import argparse
+import copy
+from datetime import datetime, timezone
 import importlib.util
 import json
 import os
@@ -16,7 +18,7 @@ REMOTE = ROOT / "scripts" / "leaderboard_steam_archive_parser_remote.mjs"
 def validate(payload: object, expected_wave: int = 0) -> dict:
     if not isinstance(payload, dict) or payload.get("kind") != (
         "aoe2war-archived-hd-rating-parser-canary"
-    ) or payload.get("schemaVersion") != 1:
+    ) or payload.get("schemaVersion") != 2:
         raise RuntimeError("unexpected archive parser canary response")
     ro = payload.get("databaseReadOnly")
     if (not isinstance(ro, list) or len(ro) != 1 or
@@ -42,19 +44,38 @@ def validate(payload: object, expected_wave: int = 0) -> dict:
     archive_hashes = set()
     for item in sample_evidence:
         if not isinstance(item, dict) or set(item) != {
-            "identityFingerprint", "replaySha256", "result"
+            "identityFingerprint", "replaySha256", "result",
+            "gameStatsId", "ratingObservedAt", "acceptedSameGame"
         }:
             raise RuntimeError("private sample manifest shape invalid")
         identity = item["identityFingerprint"]
         replay = item["replaySha256"]
-        if (not isinstance(identity, str) or
+        observed = item["ratingObservedAt"]
+        try:
+            observed_valid = (
+                observed is None or
+                (
+                    isinstance(observed, str) and
+                    observed.endswith("Z") and
+                    datetime.fromisoformat(
+                        observed.replace("Z", "+00:00")
+                    ).tzinfo is not None
+                )
+            )
+        except ValueError:
+            observed_valid = False
+        if (type(item["gameStatsId"]) is not int or
+            item["gameStatsId"] <= 0 or
+            type(item["acceptedSameGame"]) is not bool or
+            not observed_valid or
+            not isinstance(identity, str) or
             not re.fullmatch(r"[a-f0-9]{64}", identity) or
             not isinstance(replay, str) or
             not re.fullmatch(r"[a-f0-9]{64}", replay) or
             item["result"] not in {
                 "parsed", "no_projection", "timeout", "parser_error",
                 "invalid_parser_output", "unique_identity",
-                "both_hd_headers_match",
+                "both_hd_headers_match", "historical_candidate_only",
             }):
             raise RuntimeError("private sample manifest evidence invalid")
         if identity in identity_fps or replay in archive_hashes:
@@ -82,6 +103,9 @@ def validate(payload: object, expected_wave: int = 0) -> dict:
         "headerRmPresent", "headerDmPresent", "headerBothPresent",
         "headerRmMatchesStored", "headerDmMatchesStored",
         "headerRmDiffersStored", "headerDmDiffersStored",
+        "matchingBothWithPlayedOn",
+        "matchingBothWithAcceptedSameGame",
+        "matchingBothHistoricallyEligible",
     )
     for name in nums:
         if type(data.get(name)) is not int or data[name] < 0:
@@ -144,9 +168,48 @@ def validate(payload: object, expected_wave: int = 0) -> dict:
         data["headerRmMatchesStored"] + data["headerRmDiffersStored"] !=
             data["headerRmPresent"] or
         data["headerDmMatchesStored"] + data["headerDmDiffersStored"] !=
-            data["headerDmPresent"]):
+            data["headerDmPresent"] or
+        data["matchingBothWithPlayedOn"] > data["headerBothPresent"] or
+        data["matchingBothWithAcceptedSameGame"] > data["headerBothPresent"] or
+        data["matchingBothHistoricallyEligible"] > min(
+            data["matchingBothWithPlayedOn"],
+            data["matchingBothWithAcceptedSameGame"]
+        ) or
+        sum(x["result"] == "historical_candidate_only"
+            for x in sample_evidence) !=
+            data["matchingBothHistoricallyEligible"]):
+
         raise RuntimeError("replay parser canary conservation failure")
     return data
+
+
+def validate_previous_tracked_receipt(payload: dict, wave: int) -> None:
+    """Validate older tracked schema 1 without inventing its unobserved facts.
+
+    A v1 sample manifest proves only identity fingerprint + replay SHA
+    attribution and the parser result category. It did NOT record
+    gameStatsId, accepted canonical replay, or played-on time.
+    """
+    if payload.get("schemaVersion") == 2:
+        validate(payload, wave)
+        return
+    if payload.get("schemaVersion") != 1:
+        raise RuntimeError("unsupported historic tracked receipt schema")
+    converted = copy.deepcopy(payload)
+    converted["schemaVersion"] = 2
+    summary = converted.get("summary")
+    if not isinstance(summary, dict):
+        raise RuntimeError("invalid prior tracked summary")
+    summary["matchingBothWithPlayedOn"] = 0
+    summary["matchingBothWithAcceptedSameGame"] = 0
+    summary["matchingBothHistoricallyEligible"] = 0
+    for item in converted.get("sampleEvidence", []):
+        if not isinstance(item, dict):
+            raise RuntimeError("invalid historic tracked manifest")
+        item["gameStatsId"] = 1  # compatibility placeholder; not evidence
+        item["ratingObservedAt"] = None
+        item["acceptedSameGame"] = False
+    validate(converted, wave)
 
 
 def analyze_private_history(payload: dict, receipt_dir: Path) -> dict:
@@ -184,7 +247,7 @@ def analyze_private_history(payload: dict, receipt_dir: Path) -> dict:
         if old_sample is None or old_cohort is None:
             legacy_untracked += 1
             continue
-        validate(prior, prior_wave)
+        validate_previous_tracked_receipt(prior, prior_wave)
         prior_cohort_fps.add(old_cohort)
         reviewed += 1
         prior_identity_fps.update(
