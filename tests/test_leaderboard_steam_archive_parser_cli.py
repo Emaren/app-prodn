@@ -158,7 +158,7 @@ class ArchiveParserCanaryTests(unittest.TestCase):
             receipt = Path(root, "result.json")
             receipt.write_text("{}")
             truth = SimpleNamespace(
-                run_remote=lambda command: fixture(),
+                run_remote=lambda command, wave: fixture(),
                 write_receipt=lambda _title, _payload: receipt,
             )
             fake_spec = SimpleNamespace(
