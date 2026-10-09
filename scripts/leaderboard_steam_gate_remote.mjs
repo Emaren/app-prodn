@@ -158,6 +158,7 @@ try {
     'key_events::jsonb AS "events", players::jsonb AS players ' +
     'FROM game_stats WHERE id > $1 ORDER BY id ASC LIMIT $2';
   const observations = new Map();
+  const stage3HashesBySteamId = new Map();
   let cursor = 0;
   let batches = 0;
   let scannedRows = 0;
@@ -190,6 +191,16 @@ try {
         const dmStage = evidenceStage(
           game, p, "dm", occurrences.get(p.steam_id), nowMs,
         );
+
+
+        if (rmStage === 3 || dmStage === 3) {
+          const hash = game.replayHash?.toLowerCase();
+          if (/^[a-f0-9]{64}$/.test(hash ?? "")) {
+            const hashes = stage3HashesBySteamId.get(p.steam_id) ?? new Set();
+            hashes.add(hash);
+            stage3HashesBySteamId.set(p.steam_id, hashes);
+          }
+        }
 
         // The highest gate must come from a single observed game, not from
         // mixing signature/hash/role attributes across unrelated files.
@@ -246,6 +257,7 @@ try {
     exactSteamIdsInMissingSet: 0,
     scanBatches: batches, scannedGameRows: scannedRows,
   };
+  const stage3Missing = new Set();
   for (const e of eligible) {
     const rm = positive(e.steamRmRating) ||
       positive(latestHistoricalSteamLaneRating(e.replayEvidence, "rm"));
@@ -261,6 +273,8 @@ try {
     }
     if (!rm || !dm) counts.exactSteamIdsInMissingSet++;
     const state = observations.get(e.steamId);
+    if ((!rm && state?.rmStage === 3) || (!dm && state?.dmStage === 3))
+      stage3Missing.add(e.steamId);
     for (const [lane, rated] of [["rm", rm], ["dm", dm]]) {
       if (rated) continue;
       const stage = state?.[lane + "Stage"] ?? 0;
@@ -295,14 +309,128 @@ try {
           histogram[lane].nonqualifying_parse_source_only)
       throw Error("blocked provenance detail conservation failed");
   }
+  // Read-only correlation: indexed hash is used only as a candidate JOIN key.
+  // The receipt's own embedded participant must independently match exact
+  // SteamID64 before counting identity-bound evidence. No rating is promoted.
+  const wantedByHash = new Map();
+  for (const steamId of stage3Missing) {
+    for (const replayHash of stage3HashesBySteamId.get(steamId) ?? []) {
+      const candidates = wantedByHash.get(replayHash) ?? new Set();
+      candidates.add(steamId);
+      wantedByHash.set(replayHash, candidates);
+    }
+  }
+  const flags = new Map([...stage3Missing].map(id => [id, {
+    matchingAttempt: false,
+    watcherAttempt: false,
+    currentObservationPresent: false,
+    observationBindsIdentity: false,
+    observationHasLaneNumeric: false,
+    observationLiveAndSigned: false,
+    observationHasVerifiedSha: false,
+    observationArchiveVerified: false,
+  }]));
+  let attemptCursor = 0;
+  let attemptBatches = 0;
+  let scannedAttemptRows = 0;
+  const acceptedStatuses = new Set([
+    "stored", "duplicate_final", "duplicate_final_refreshed",
+    "duplicate_live", "live_placeholder_refreshed",
+    "duplicate_reviewed_match", "reviewed_match_refreshed",
+    "reviewed_match_artifact_advanced",
+  ]);
+  const receiptSql =
+    'SELECT id, replay_hash AS "replayHash", ' +
+    'upload_mode AS "uploadMode", parse_source AS "parseSource", ' +
+    'status, evidence::jsonb AS evidence ' +
+    'FROM replay_parse_attempts WHERE id > $1 ORDER BY id ASC LIMIT $2';
+  while (attemptBatches < MAX_BATCHES) {
+    const rows = await prisma.$queryRawUnsafe(
+      receiptSql, attemptCursor, BATCH_LIMIT,
+    );
+    if (!Array.isArray(rows)) throw Error("invalid parse-attempt batch");
+    if (!rows.length) break;
+    attemptBatches++;
+    scannedAttemptRows += rows.length;
+    for (const attempt of rows) {
+      if (!Number.isSafeInteger(attempt.id) || attempt.id <= attemptCursor)
+        throw Error("non-monotonic parse-attempt ID cursor");
+      attemptCursor = attempt.id;
+      const hash = typeof attempt.replayHash === "string" ?
+        attempt.replayHash.toLowerCase() : "";
+      const targets = wantedByHash.get(hash);
+      if (!targets) continue;
+      const isWatcher = attempt.uploadMode === "watcher" &&
+        ["watcher_live", "watcher_final"].includes(attempt.parseSource) &&
+        acceptedStatuses.has(attempt.status);
+      const obs = attempt.evidence?.current_account_observation;
+      const obsPlayers = Array.isArray(obs?.players) ? obs.players : [];
+      const attached = obs?.replay_sha256?.toLowerCase?.() === hash;
+      for (const id of targets) {
+        const state = flags.get(id);
+        state.matchingAttempt = true;
+        if (isWatcher) state.watcherAttempt = true;
+        if (obs && typeof obs === "object") {
+          state.currentObservationPresent = true;
+          if (attached && obsPlayers.some(p => p?.steam_id === id)) {
+            state.observationBindsIdentity = true;
+            if (obsPlayers.some(p => p?.steam_id === id &&
+                (numeric(p.steam_rm_rating) || numeric(p.steam_dm_rating))))
+              state.observationHasLaneNumeric = true;
+            if (isWatcher &&
+                obs.provenance?.ingestion_provenance === "live_monitor" &&
+                obs.provenance?.provenance_signature_verified === true)
+              state.observationLiveAndSigned = true;
+            if (isWatcher &&
+                obs.provenance?.client_sha256_verified === true &&
+                obs.provenance?.client_sha256?.toLowerCase?.() === hash &&
+                obs.provenance?.server_sha256?.toLowerCase?.() === hash)
+              state.observationHasVerifiedSha = true;
+            if (isWatcher && obs.archive_verified === true)
+              state.observationArchiveVerified = true;
+          }
+        }
+      }
+    }
+    if (rows.length < BATCH_LIMIT) break;
+  }
+  if (attemptBatches >= MAX_BATCHES)
+    throw Error("safety limit: scan of parse-attempt receipts incomplete");
+  const receiptCorrelation = {
+    targetSteamIdentities: stage3Missing.size,
+    candidateReplayHashes: wantedByHash.size,
+    scannedAttemptRows, attemptBatches,
+    ...Object.fromEntries(
+      Object.keys(flags.values().next().value ?? {}).map(flag => [
+        flag,
+        [...flags.values()].filter(value => value[flag] === true).length,
+      ]),
+    ),
+  };
+  if (receiptCorrelation.targetSteamIdentities !==
+      histogram.rm.missing_live_monitor_provenance ||
+      receiptCorrelation.targetSteamIdentities !==
+      histogram.dm.missing_live_monitor_provenance)
+    throw Error("receipt join target cohort diverges between RM and DM");
+  for (const key of [
+    "matchingAttempt", "watcherAttempt", "currentObservationPresent",
+    "observationBindsIdentity", "observationHasLaneNumeric",
+    "observationLiveAndSigned", "observationHasVerifiedSha",
+    "observationArchiveVerified",
+  ]) {
+    if (!Number.isInteger(receiptCorrelation[key]) ||
+        receiptCorrelation[key] < 0 ||
+        receiptCorrelation[key] > stage3Missing.size)
+      throw Error("receipt correlation out of bounds");
+  }
   process.stdout.write(JSON.stringify({
     kind: "aoe2war-steam-rating-gate-funnel",
-    schemaVersion: 3,
+    schemaVersion: 4,
     observedAt: new Date().toISOString(),
     productionSource: process.env.AOE2WAR_TRUTH_PRODUCTION_SOURCE ?? null,
     databaseReadOnly: proof,
     explanation: "Highest gate passed by any ONE numeric observation per Steam ID, source-display diagnostic only. Historical/current authority is unchanged.",
-    counts, histogram, blockedDetails: details,
+    counts, histogram, blockedDetails: details, receiptCorrelation,
     mutations: {
       production: 0, parserRows: 0, identityRows: 0,
       currentRatingRows: 0, wolo: 0,
