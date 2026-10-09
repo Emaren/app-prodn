@@ -30,7 +30,18 @@ export function assignTelevisionCameras(stage: TelevisionStage, streams: WatchSt
     identity: "offline" as TelevisionCamera["identity"],
   })));
   const used = new Set<number>();
-  const eligible = streams.filter(stream => stream.status !== "removed");
+  // A user can have a recently ended recorder and a restarted live recorder
+  // attached to the same battle. Never let stale history occupy the live POV.
+  const rank = (stream: WatchStreamPayload) =>
+    stream.status === "live" && stream.chunkCount > 0 ? 5 :
+    stream.status === "starting" && stream.chunkCount > 0 ? 4 :
+    stream.status === "ended" && stream.chunkCount > 0 ? 3 :
+    stream.status === "live" ? 2 :
+    stream.status === "starting" ? 1 : 0;
+  const eligible = streams.filter(stream => stream.status !== "removed")
+    .sort((left, right) => rank(right) - rank(left) ||
+      new Date(right.updatedAt).getTime() - new Date(left.updatedAt).getTime() ||
+      right.id - left.id);
   const normalized = (s: string | null | undefined) => (s || "").trim().toLowerCase();
   for (const camera of cameras) {
     const steam = normalized(camera.player.steamId);
