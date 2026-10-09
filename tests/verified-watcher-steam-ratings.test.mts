@@ -44,6 +44,8 @@ test("manual and batch uploads cannot create or override the Watcher-only rating
   assert.match(source, /identity_count = 1/);
   assert.match(source, /ORDER BY steam_id, played_on DESC, timestamp DESC NULLS LAST, id DESC/);
   assert.doesNotMatch(source, /parse_source IN \('watcher_live','watcher_final','file_upload'\)/);
+  assert.match(source, /'manual_backfill', 'manual_override'/);
+  assert.match(source, /'engine_room_structural_projection'/);
   assert.doesNotMatch(source, /rate_snapshot\s+AS\s+(?:rm|dm)/i);
 });
 
