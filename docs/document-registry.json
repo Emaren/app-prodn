@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "7d9cc3bba98ba7ccc94ac1b6270cfe1693567d1c122d7f9c474d21b25a26ecfb",
+      "sha256": "22936997217c294eb0ad1af55a2f491a57ea6e755a7909760f8fe6f8dfdb6e8b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2049,7 +2049,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/leaderboard-complete-public-roster-20261009",
-    "commit": "b1702680e2fa265c358f6c0669999db336842e11"
+    "commit": "00c0ae331c36da97cc6c1bf58b1be2f16160fe65"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
