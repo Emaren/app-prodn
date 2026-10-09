@@ -150,6 +150,13 @@ export async function POST(request: NextRequest) {
   }
   if (isWatcherProxyUpload && suppliedApiKey) {
     headers.set("x-api-key", suppliedApiKey);
+    // A Watcher signs its machine-local x-user-uid, which is not necessarily
+    // the Steam-account UID authenticated by this proxy. Keep that original
+    // signed field separate; x-user-uid above remains server-authoritative.
+    const originalSignedUid = readHeader(request, "x-user-uid");
+    if (originalSignedUid) {
+      headers.set("x-watcher-client-uid", originalSignedUid);
+    }
     for (const headerName of [
       "x-parse-iteration",
       "x-is-final",
