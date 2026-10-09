@@ -49,7 +49,7 @@ def extract_candidate_evidence(payloads: Sequence[dict]) -> list[dict]:
         from leaderboard_steam_archive_parser import validate
 
     accumulated: list[dict] = []
-    seen = set()
+    seen: dict[tuple[str, int, str], dict] = {}
     for payload in payloads:
         summary = payload.get("summary") if isinstance(payload, dict) else None
         if not isinstance(summary, dict):
@@ -61,8 +61,10 @@ def extract_candidate_evidence(payloads: Sequence[dict]) -> list[dict]:
         for record in payload["privateHistoricalCandidates"]:
             key = (record["steamId"], record["gameStatsId"], record["replaySha256"])
             if key in seen:
-                continue  # Re-reading an identical candidate is not new evidence.
-            seen.add(key)
+                if seen[key] != record:
+                    raise ValueError("conflicting duplicate historical archive receipt")
+                continue  # Exact duplicate run is not new evidence.
+            seen[key] = dict(record)
             accumulated.append(dict(record))
     return accumulated
 
@@ -97,6 +99,11 @@ def resolve_historical_lane(
     # A supplied-but-invalid trusted observation fails closed: it must
     # not be silently downgraded to the historical fallback.
     if qualified_watcher is not None:
+        if not isinstance(qualified_watcher, Mapping):
+            return {
+                **unavailable, "source": "quarantined",
+                "reason": "invalid_qualified_watcher_input",
+            }
         wr = qualified_watcher.get("rating")
         wt = qualified_watcher.get("observedAt")
         wid = qualified_watcher.get("steamId")
