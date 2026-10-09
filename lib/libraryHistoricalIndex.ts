@@ -249,7 +249,17 @@ export async function loadLibraryHistoricalSnapshot(
   prisma: PrismaClient,
 ): Promise<LibraryHistoricalSnapshot> {
   if (snapshotCache && Date.now() - snapshotCache.at < SNAPSHOT_TTL_MS) {
-    return snapshotCache.value;
+    // Indexed 5-second foreground polling should not wait 20 seconds for
+    // a newly final replay. This single-row probe is cheap on the PK and
+    // rebuilds the source index only if a new final row has appeared.
+    const latest = await prisma.gameStats.findFirst({
+      where: { is_final: true },
+      orderBy: { id: "desc" },
+      select: { id: true },
+    });
+    if ((latest?.id ?? 0) === (snapshotCache.value.entries[0]?.id ?? 0)) {
+      return snapshotCache.value;
+    }
   }
   if (snapshotPromise) return snapshotPromise;
   snapshotPromise = buildSnapshot(prisma);
