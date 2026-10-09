@@ -1,131 +1,212 @@
-// Second-stage read-only funnel: which Watcher evidence gate excludes rated players?
-// Evidence diagnostic only. NEVER promotes raw JSON into Steam rating authority.
+// Protected read-only bounded scan of Steam RM/DM rating-provenance gates.
+// This is DIAGNOSTIC ONLY: no raw rating may be promoted into current authority.
+// Use indexed game_stats.id pagination to respect production 20-second SQL limits.
 import { getPrisma } from "@/lib/prisma";
 import { loadPublicPlayerDirectory } from "@/lib/publicPlayerDirectory";
 import { latestHistoricalSteamLaneRating } from "@/lib/leaderboardRating";
 import { isLeaderboardExcludedSystemUid } from "@/lib/internalSystemAccounts";
 
-const prisma=getPrisma();
-const stages=["no_numeric_rating_in_stored_game_stats",
- "nonqualifying_parse_source_only",
- "invalid_clock_uploader_or_hash",
- "missing_live_monitor_provenance",
- "signature_or_legacy_cohort_unqualified",
- "client_server_hash_proof_unqualified",
- "checkpoint_role_or_finality_unqualified",
- "rating_field_source_or_duplicate_identity",
- "passes_all_watcher_game_stats_gates"];
-const positive=x=>typeof x==="number"&&Number.isFinite(x)&&x>0;
-const total=o=>Object.values(o).reduce((s,v)=>s+v,0);
+const prisma = getPrisma();
+const stages = [
+  "no_numeric_rating_in_stored_game_stats",
+  "nonqualifying_parse_source_only",
+  "invalid_clock_uploader_or_hash",
+  "missing_live_monitor_provenance",
+  "signature_or_legacy_cohort_unqualified",
+  "client_server_hash_proof_unqualified",
+  "checkpoint_role_or_finality_unqualified",
+  "rating_field_source_or_duplicate_identity",
+  "passes_all_watcher_game_stats_gates",
+];
+const BATCH_LIMIT = 512;
+const MAX_BATCHES = 1000;
+const FROZEN_CUTOFF_MS = Date.parse("2026-10-09T00:00:00.000Z");
+const POSITIVE_MAX = 5000;
+const positive = (x) =>
+  typeof x === "number" && Number.isFinite(x) && x > 0;
+const numeric = (x) =>
+  typeof x === "number" && Number.isInteger(x) && x > 0 && x <= POSITIVE_MAX;
+const stamp = (x) => {
+  const ms = x instanceof Date ? x.getTime() :
+    typeof x === "string" ? Date.parse(x) : NaN;
+  return Number.isFinite(ms) ? ms : null;
+};
+const total = (values) =>
+  Object.values(values).reduce((sum, value) => sum + value, 0);
+const validSteam = (s) => typeof s === "string" && /^\d{17}$/.test(s);
+
+function evidenceStage(game, p, lane, occurrences, nowMs) {
+  const value = p?.[lane === "rm" ? "steam_rm_rating" : "steam_dm_rating"];
+  if (!numeric(value)) return null;
+  if (
+    !["watcher_live", "watcher_final"].includes(game.parseSource) ||
+    ["manual_backfill", "manual_override", "engine_room_structural_projection"]
+      .includes(game.parseReason ?? "")
+  ) return 1;
+  const playedAt = stamp(game.playedOn);
+  const ingestedAt = stamp(game.createdAt);
+  const replayHash = typeof game.replayHash === "string" ?
+    game.replayHash.toLowerCase() : "";
+  if (
+    playedAt === null || playedAt > nowMs + 5 * 60_000 ||
+    !game.userUid?.trim() || game.userUid === "system" ||
+    !/^[a-f0-9]{64}$/.test(replayHash)
+  ) return 2;
+  const upload = game.events?.watcher_upload;
+  if (upload?.ingestion_provenance !== "live_monitor") return 3;
+  if (
+    upload.provenance_signature_verified !== true &&
+    !(ingestedAt !== null && ingestedAt < FROZEN_CUTOFF_MS &&
+      playedAt < FROZEN_CUTOFF_MS &&
+      upload.provenance_signature_verified === false)
+  ) return 4;
+  if (
+    upload.client_sha256_verified !== true ||
+    typeof upload.server_sha256 !== "string" ||
+    typeof upload.client_sha256 !== "string" ||
+    upload.server_sha256.toLowerCase() !== replayHash ||
+    upload.client_sha256.toLowerCase() !== replayHash
+  ) return 5;
+  const roleOk =
+    upload.checkpoint_final_rejected === false &&
+    (
+      (game.parseSource === "watcher_live" &&
+        game.isFinal === false && upload.file_role === "live_checkpoint") ||
+      (game.parseSource === "watcher_final" &&
+        game.isFinal === true &&
+        ["final_recording", "legacy_recording"].includes(upload.file_role))
+    );
+  if (!roleOk) return 6;
+  const source = p.steam_rating_sources?.[lane === "rm" ?
+    "steam_rm_rating" : "steam_dm_rating"];
+  if (
+    occurrences !== 1 ||
+    !(source === null || source === undefined ||
+      (lane === "rm" ? ["hd_header", "unmarked"] :
+        ["hd_header", "unmarked", "summary_rate_snapshot"]).includes(source))
+  ) return 7;
+  return 8;
+}
+
 try {
- const proof=await prisma.$queryRawUnsafe("SELECT current_setting('transaction_read_only') AS transaction_mode, current_setting('default_transaction_read_only') AS default_mode");
- if(proof.length!==1||proof[0].transaction_mode!=="on"||proof[0].default_mode!=="on")throw Error("read-only proof required");
- const rows=await prisma.$queryRawUnsafe(String.raw`
- WITH raw AS (
- SELECT g.id,g.parse_source,g.parse_reason,g.is_final,g.played_on,g.created_at,
-        g.user_uid,g.replay_hash,g.key_events::jsonb AS events,p.value AS player,
-        COUNT(*) OVER(PARTITION BY g.id,p.value->>'steam_id') AS id_count
- FROM game_stats g
- CROSS JOIN LATERAL jsonb_array_elements(CASE WHEN jsonb_typeof(g.players::jsonb)='array'
-      THEN g.players::jsonb ELSE '[]'::jsonb END) p(value)
- WHERE p.value->>'steam_id' ~ '^[0-9]{17}$'
- ), flags AS (
- SELECT player->>'steam_id' AS steam_id,
- CASE WHEN jsonb_typeof(player->'steam_rm_rating')='number'
-           AND player->>'steam_rm_rating' ~ '^[0-9]{1,5}$'
-      THEN (player->>'steam_rm_rating')::integer BETWEEN 1 AND 5000
-      ELSE false END AS rm,
- CASE WHEN jsonb_typeof(player->'steam_dm_rating')='number'
-           AND player->>'steam_dm_rating' ~ '^[0-9]{1,5}$'
-      THEN (player->>'steam_dm_rating')::integer BETWEEN 1 AND 5000
-      ELSE false END AS dm,
- (parse_source IN ('watcher_live','watcher_final') AND COALESCE(parse_reason,'') NOT IN
-   ('manual_backfill','manual_override','engine_room_structural_projection')) AS source_ok,
- (played_on IS NOT NULL AND played_on <= NOW()+INTERVAL '5 minutes'
-   AND user_uid IS NOT NULL AND BTRIM(user_uid)<>'' AND user_uid<>'system'
-   AND LOWER(replay_hash) ~ '^[a-f0-9]{64}$') AS clock_id_ok,
- (events #>> '{watcher_upload,ingestion_provenance}'='live_monitor') AS live_ok,
- (events #> '{watcher_upload,provenance_signature_verified}'='true'::jsonb OR
-  (created_at<TIMESTAMP '2026-10-09 00:00:00'
-   AND played_on<TIMESTAMP '2026-10-09 00:00:00'
-   AND events #> '{watcher_upload,provenance_signature_verified}'='false'::jsonb)) AS signed_ok,
- (events #> '{watcher_upload,client_sha256_verified}'='true'::jsonb
-  AND LOWER(events #>> '{watcher_upload,server_sha256}')=LOWER(replay_hash)
-  AND LOWER(events #>> '{watcher_upload,client_sha256}')=LOWER(replay_hash)) AS hash_ok,
- (events #> '{watcher_upload,checkpoint_final_rejected}'='false'::jsonb AND
-  ((parse_source='watcher_live' AND NOT is_final
-    AND events #>> '{watcher_upload,file_role}'='live_checkpoint')
-  OR (parse_source='watcher_final' AND is_final
-    AND events #>> '{watcher_upload,file_role}' IN ('final_recording','legacy_recording')))) AS role_ok,
- (id_count=1 AND COALESCE(player #>> '{steam_rating_sources,steam_rm_rating}','unmarked')
-      IN ('hd_header','unmarked')) AS rm_origin_ok,
- (id_count=1 AND COALESCE(player #>> '{steam_rating_sources,steam_dm_rating}','unmarked')
-      IN ('hd_header','unmarked','summary_rate_snapshot')) AS dm_origin_ok
- FROM raw
- ), staged AS (
- SELECT steam_id,
- CASE WHEN rm THEN CASE
-   WHEN NOT COALESCE(source_ok,false) THEN 1
-   WHEN NOT COALESCE(clock_id_ok,false) THEN 2
-   WHEN NOT COALESCE(live_ok,false) THEN 3
-   WHEN NOT COALESCE(signed_ok,false) THEN 4
-   WHEN NOT COALESCE(hash_ok,false) THEN 5
-   WHEN NOT COALESCE(role_ok,false) THEN 6
-   WHEN NOT COALESCE(rm_origin_ok,false) THEN 7
-   ELSE 8 END END AS rm_stage,
- CASE WHEN dm THEN CASE
-   WHEN NOT COALESCE(source_ok,false) THEN 1
-   WHEN NOT COALESCE(clock_id_ok,false) THEN 2
-   WHEN NOT COALESCE(live_ok,false) THEN 3
-   WHEN NOT COALESCE(signed_ok,false) THEN 4
-   WHEN NOT COALESCE(hash_ok,false) THEN 5
-   WHEN NOT COALESCE(role_ok,false) THEN 6
-   WHEN NOT COALESCE(dm_origin_ok,false) THEN 7
-   ELSE 8 END END AS dm_stage
- FROM flags
- )
- SELECT steam_id AS "steamId", COALESCE(MAX(rm_stage),0)::integer AS "rmStage",
- COALESCE(MAX(dm_stage),0)::integer AS "dmStage"
- FROM staged GROUP BY steam_id
- `);
- const evidence=new Map(rows.map(r=>[r.steamId,r]));
- const directory=await loadPublicPlayerDirectory(prisma,null,
-   {includePresence:false,includeCurrentWatcherState:true});
- const eligible=directory.allEntries.filter(e=>
-   !isLeaderboardExcludedSystemUid(e.uid)&&(e.totalMatches>0||e.claimed));
- const histogram={
-  rm:Object.fromEntries(stages.map(k=>[k,0])),
-  dm:Object.fromEntries(stages.map(k=>[k,0])),
- };
- const counts={publicIdentityRows:eligible.length,rmRated:0,dmRated:0,
-  rmMissing:0,dmMissing:0,neitherRated:0,
-  noExactSteamIdentity:0,exactSteamIdsInMissingSet:0};
- for(const e of eligible){
-   const rm=positive(e.steamRmRating)||positive(latestHistoricalSteamLaneRating(e.replayEvidence,"rm"));
-   const dm=positive(e.steamDmRating)||positive(latestHistoricalSteamLaneRating(e.replayEvidence,"dm"));
-   if(rm)counts.rmRated++;else counts.rmMissing++;
-   if(dm)counts.dmRated++;else counts.dmMissing++;
-   if(!rm&&!dm)counts.neitherRated++;
-   const exact=/^\d{17}$/.test(e.steamId??"");
-   if(!exact)counts.noExactSteamIdentity++;
-   else if(!rm||!dm)counts.exactSteamIdsInMissingSet++;
-   if(!exact)continue;
-   const row=evidence.get(e.steamId);
-   if(!rm)histogram.rm[stages[row?.rmStage??0]]++;
-   if(!dm)histogram.dm[stages[row?.dmStage??0]]++;
- }
- if(counts.rmRated+counts.rmMissing!==counts.publicIdentityRows ||
-    counts.dmRated+counts.dmMissing!==counts.publicIdentityRows ||
-    total(histogram.rm)+counts.noExactSteamIdentity!==counts.rmMissing ||
-    total(histogram.dm)+counts.noExactSteamIdentity!==counts.dmMissing)
-   throw Error("stage cohort conservation failed");
- process.stdout.write(JSON.stringify({
-  kind:"aoe2war-steam-rating-gate-funnel",schemaVersion:1,
-  observedAt:new Date().toISOString(),
-  productionSource:process.env.AOE2WAR_TRUTH_PRODUCTION_SOURCE??null,
-  databaseReadOnly:proof,
-  explanation:"Highest stage reached by any one numeric observation on an exact Steam ID; no rating authority is granted.",
-  counts,histogram,
-  mutations:{production:0,parserRows:0,identityRows:0,currentRatingRows:0,wolo:0}
- }));
-} finally {await prisma.$disconnect();}
+  const proof = await prisma.$queryRawUnsafe(
+    "SELECT current_setting('transaction_read_only') AS transaction_mode, " +
+    "current_setting('default_transaction_read_only') AS default_mode",
+  );
+  if (
+    !Array.isArray(proof) || proof.length !== 1 ||
+    proof[0].transaction_mode !== "on" || proof[0].default_mode !== "on"
+  ) throw Error("STOP: read-only evidence absent");
+
+  // One index-ordered chunk at a time; never a corpus-wide JSON window,
+  // sort, or unbounded materialized CTE. This avoids the previous 57014 timeout.
+  const selectChunk =
+    'SELECT id, parse_source AS "parseSource", ' +
+    'parse_reason AS "parseReason", is_final AS "isFinal", ' +
+    'played_on AS "playedOn", created_at AS "createdAt", ' +
+    'user_uid AS "userUid", replay_hash AS "replayHash", ' +
+    'key_events::jsonb AS "events", players::jsonb AS players ' +
+    'FROM game_stats WHERE id > $1 ORDER BY id ASC LIMIT $2';
+  const observations = new Map();
+  let cursor = 0;
+  let batches = 0;
+  let scannedRows = 0;
+  const nowMs = Date.now();
+
+  while (batches < MAX_BATCHES) {
+    const games = await prisma.$queryRawUnsafe(
+      selectChunk, cursor, BATCH_LIMIT,
+    );
+    if (!Array.isArray(games)) throw Error("invalid database batch result");
+    if (games.length === 0) break;
+    batches++;
+    scannedRows += games.length;
+    for (const game of games) {
+      if (!Number.isSafeInteger(game.id) || game.id <= cursor)
+        throw Error("non-monotonic game_stats.id cursor");
+      const players = Array.isArray(game.players) ? game.players : [];
+      const occurrences = new Map();
+      for (const p of players) {
+        if (p && typeof p === "object" && validSteam(p.steam_id))
+          occurrences.set(p.steam_id, (occurrences.get(p.steam_id) ?? 0) + 1);
+      }
+      for (const p of players) {
+        if (!p || typeof p !== "object" || !validSteam(p.steam_id))
+          continue;
+        const state = observations.get(p.steam_id) ?? { rmStage: 0, dmStage: 0 };
+        const rmStage = evidenceStage(
+          game, p, "rm", occurrences.get(p.steam_id), nowMs,
+        );
+        const dmStage = evidenceStage(
+          game, p, "dm", occurrences.get(p.steam_id), nowMs,
+        );
+        if (rmStage !== null) state.rmStage = Math.max(state.rmStage, rmStage);
+        if (dmStage !== null) state.dmStage = Math.max(state.dmStage, dmStage);
+        observations.set(p.steam_id, state);
+      }
+      cursor = game.id;
+    }
+    if (games.length < BATCH_LIMIT) break;
+  }
+  if (batches >= MAX_BATCHES)
+    throw Error("safety limit: scanned too many game_stats chunks");
+
+  const directory = await loadPublicPlayerDirectory(
+    prisma, null, { includePresence: false, includeCurrentWatcherState: true },
+  );
+  const eligible = directory.allEntries.filter(
+    (e) => !isLeaderboardExcludedSystemUid(e.uid) &&
+      (e.totalMatches > 0 || e.claimed),
+  );
+  const histogram = {
+    rm: Object.fromEntries(stages.map((key) => [key, 0])),
+    dm: Object.fromEntries(stages.map((key) => [key, 0])),
+  };
+  const counts = {
+    publicIdentityRows: eligible.length,
+    rmRated: 0, dmRated: 0, rmMissing: 0, dmMissing: 0,
+    neitherRated: 0, noExactSteamIdentity: 0,
+    exactSteamIdsInMissingSet: 0,
+    scanBatches: batches, scannedGameRows: scannedRows,
+  };
+  for (const e of eligible) {
+    const rm = positive(e.steamRmRating) ||
+      positive(latestHistoricalSteamLaneRating(e.replayEvidence, "rm"));
+    const dm = positive(e.steamDmRating) ||
+      positive(latestHistoricalSteamLaneRating(e.replayEvidence, "dm"));
+    if (rm) counts.rmRated++; else counts.rmMissing++;
+    if (dm) counts.dmRated++; else counts.dmMissing++;
+    if (!rm && !dm) counts.neitherRated++;
+    if (!validSteam(e.steamId)) {
+      counts.noExactSteamIdentity++;
+      if (rm || dm) throw Error("rated identity without exact Steam ID");
+      continue;
+    }
+    if (!rm || !dm) counts.exactSteamIdsInMissingSet++;
+    const state = observations.get(e.steamId);
+    if (!rm) histogram.rm[stages[state?.rmStage ?? 0]]++;
+    if (!dm) histogram.dm[stages[state?.dmStage ?? 0]]++;
+  }
+  if (
+    counts.rmRated + counts.rmMissing !== counts.publicIdentityRows ||
+    counts.dmRated + counts.dmMissing !== counts.publicIdentityRows ||
+    total(histogram.rm) + counts.noExactSteamIdentity !== counts.rmMissing ||
+    total(histogram.dm) + counts.noExactSteamIdentity !== counts.dmMissing
+  ) throw Error("rating gate cohort conservation failed");
+
+  process.stdout.write(JSON.stringify({
+    kind: "aoe2war-steam-rating-gate-funnel",
+    schemaVersion: 2,
+    observedAt: new Date().toISOString(),
+    productionSource: process.env.AOE2WAR_TRUTH_PRODUCTION_SOURCE ?? null,
+    databaseReadOnly: proof,
+    explanation: "Highest gate passed by any ONE numeric observation per Steam ID, source-display diagnostic only. Historical/current authority is unchanged.",
+    counts, histogram,
+    mutations: {
+      production: 0, parserRows: 0, identityRows: 0,
+      currentRatingRows: 0, wolo: 0,
+    },
+  }));
+} finally {
+  await prisma.$disconnect();
+}
