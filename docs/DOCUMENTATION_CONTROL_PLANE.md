@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/doctor-next-toolchain-contract-20261009` at `052af6af81a4fd730e2eea99ea7639568a0c4a81`
+Implementation baseline: `feature/library-live-ledger-20261009` at `fff9e0f8046bffb0514c3899fd854af8296890a2`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
