@@ -288,6 +288,10 @@ had no numeric value in stored `game_stats` records. These are **first
 failing gate classes**; they do not prove the remaining downstream
 requirements would pass, or that a stored raw rating can be promoted.
 
+The 2026-10-09 production follow-up found 1,597 provenance fields absent, 94 entire Watcher-upload objects absent, and 25 explicit historical imports among the 1,716 provenance-blocked IDs. None of the selected source observations contained an affirmative verified signature; 27 had client SHA verification and matching replay hashes. These figures cannot be used to elevate old raw values into current ratings.
+
+The subsequent read-only `receiptCorrelation` census scans append-only replay-parse attempts in bounded ID order. It correlates exact replay SHA and exact Steam participant identity with stored current-account observations, separately counting signed/live flags, hash parity and archival evidence. Every correlation field is diagnostic rather than a new source of rating authority.
+
 The observer now also includes `blockedDetails` for each lane: mutually
 exclusive per-identity reasons for the provenance, clock, and source
 failures. Its provenance categories distinguish a missing `watcher_upload`
