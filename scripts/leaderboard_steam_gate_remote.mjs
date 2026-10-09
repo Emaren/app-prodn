@@ -1,6 +1,10 @@
 // Protected read-only bounded scan of Steam RM/DM rating-provenance gates.
 // This is DIAGNOSTIC ONLY: no raw rating may be promoted into current authority.
 // Use indexed game_stats.id pagination to respect production 20-second SQL limits.
+import { createReadStream } from "node:fs";
+import { stat } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { resolve, join, extname } from "node:path";
 import { getPrisma } from "@/lib/prisma";
 import { loadPublicPlayerDirectory } from "@/lib/publicPlayerDirectory";
 import { latestHistoricalSteamLaneRating } from "@/lib/leaderboardRating";
@@ -161,6 +165,7 @@ try {
   const observations = new Map();
   const stage3HashesBySteamId = new Map();
   const stage3HistoricalById = new Map();
+  const stage3ArchiveCandidatesById = new Map();
   let cursor = 0;
   let batches = 0;
   let scannedRows = 0;
@@ -216,6 +221,26 @@ try {
               historical[lane].withReplayFile.add(game.id);
           }
           stage3HistoricalById.set(p.steam_id, historical);
+          const replayHash = typeof game.replayHash === "string" ?
+            game.replayHash.toLowerCase() : "";
+          if (/^[a-f0-9]{64}$/.test(replayHash)) {
+            const sourceName = game.originalFilename ?? game.replayFile ?? "";
+            const ext = extname(String(sourceName)).toLowerCase();
+            const validSuffixes = new Set([
+              ".aoe2record", ".aoe2mpgame", ".mgz", ".mgx", ".mgl",
+            ]);
+            const suffix = validSuffixes.has(ext) ? ext : ".aoe2record";
+            const candidates = stage3ArchiveCandidatesById.get(p.steam_id) ??
+              new Map();
+            const key = replayHash + suffix;
+            const existing = candidates.get(key);
+            const created = stamp(game.playedOn) ?? -Infinity;
+            if (!existing || created > existing.playedOn) candidates.set(key, {
+              hash: replayHash, suffix, playedOn: created,
+              final: game.isFinal === true,
+            });
+            stage3ArchiveCandidatesById.set(p.steam_id, candidates);
+          }
 
           const hash = game.replayHash?.toLowerCase();
           if (/^[a-f0-9]{64}$/.test(hash ?? "")) {
@@ -487,15 +512,98 @@ try {
           histogram[lane].missing_live_monitor_provenance)
       throw Error("historical header candidate conservation failed");
   }
+  // Read-only filesystem check of the API's content-addressed archive
+  // layout. Ignore database replay_file basenames for path construction.
+  // They are original upload names, *not* trusted archive paths.
+  const archiveRoot = resolve(
+    process.env.REPLAY_ARCHIVE_DIR ||
+    "/mnt/HC_Volume_105319120/aoe2-replay-archive",
+  );
+  const archiveProbe = {
+    source: "api-prodn content-addressed archive layout",
+    selectedExactSteamIds: stage3Missing.size,
+    maxCandidatesPerIdentity: 6,
+    maxShaSampleFiles: 12,
+    maxShaSampleSizeBytes: 32 * 1024 * 1024,
+    archiveRootAccessible: false,
+    candidateIds: 0,
+    candidatePathsProbed: 0,
+    idsWithExistingArchiveFile: 0,
+    idsWithoutExistingArchiveAmongSample: 0,
+    idsWithHashVerifiedSample: 0,
+    idsWithHashMismatchSample: 0,
+    sampleHashFileCount: 0,
+    sampleHashByteCount: 0,
+    fileReadErrors: 0,
+  };
+  try {
+    archiveProbe.archiveRootAccessible = (await stat(archiveRoot)).isDirectory();
+  } catch {
+    // A different storage mount may be used by the API. An inaccessible
+    // mount must not be interpreted as evidence that the archive was deleted.
+  }
+  const observedHashes = new Set();
+  for (const steamId of stage3Missing) {
+    const candidates = [...(stage3ArchiveCandidatesById.get(steamId)?.values() ?? [])]
+      .sort((a, b) =>
+        Number(b.final) - Number(a.final) ||
+        b.playedOn - a.playedOn ||
+        a.hash.localeCompare(b.hash),
+      )
+      .slice(0, archiveProbe.maxCandidatesPerIdentity);
+    if (candidates.length) archiveProbe.candidateIds++;
+    let existsForId = false;
+    let hashVerifiedForId = false;
+    let hashMismatchForId = false;
+    for (const candidate of candidates) {
+      archiveProbe.candidatePathsProbed++;
+      const filePath = join(archiveRoot,
+        candidate.hash.slice(0, 2), candidate.hash.slice(2, 4),
+        candidate.hash + candidate.suffix);
+      let info;
+      try { info = await stat(filePath); } catch { continue; }
+      if (!info.isFile()) continue;
+      existsForId = true;
+      if (
+        !observedHashes.has(filePath) &&
+        archiveProbe.sampleHashFileCount < archiveProbe.maxShaSampleFiles &&
+        info.size > 0 && info.size <= archiveProbe.maxShaSampleSizeBytes
+      ) {
+        observedHashes.add(filePath);
+        archiveProbe.sampleHashFileCount++;
+        archiveProbe.sampleHashByteCount += info.size;
+        try {
+          const hash = createHash("sha256");
+          for await (const chunk of createReadStream(filePath)) hash.update(chunk);
+          if (hash.digest("hex") === candidate.hash) hashVerifiedForId = true;
+          else hashMismatchForId = true;
+        } catch {
+          archiveProbe.fileReadErrors++;
+        }
+      }
+      break;
+    }
+    if (existsForId) archiveProbe.idsWithExistingArchiveFile++;
+    else archiveProbe.idsWithoutExistingArchiveAmongSample++;
+    if (hashVerifiedForId) archiveProbe.idsWithHashVerifiedSample++;
+    if (hashMismatchForId) archiveProbe.idsWithHashMismatchSample++;
+  }
+  if (archiveProbe.candidateIds !== stage3Missing.size ||
+      archiveProbe.idsWithExistingArchiveFile +
+        archiveProbe.idsWithoutExistingArchiveAmongSample !== stage3Missing.size ||
+      archiveProbe.sampleHashFileCount > archiveProbe.maxShaSampleFiles ||
+      archiveProbe.idsWithHashVerifiedSample +
+        archiveProbe.idsWithHashMismatchSample > archiveProbe.sampleHashFileCount)
+    throw Error("archive diagnostic conservation failed");
   process.stdout.write(JSON.stringify({
     kind: "aoe2war-steam-rating-gate-funnel",
-    schemaVersion: 5,
+    schemaVersion: 6,
     observedAt: new Date().toISOString(),
     productionSource: process.env.AOE2WAR_TRUTH_PRODUCTION_SOURCE ?? null,
     databaseReadOnly: proof,
     explanation: "Highest gate passed by any ONE numeric observation per Steam ID, source-display diagnostic only. Historical/current authority is unchanged.",
     counts, histogram, blockedDetails: details, receiptCorrelation,
-    historicalHeaderCandidates,
+    historicalHeaderCandidates, archiveProbe,
     mutations: {
       production: 0, parserRows: 0, identityRows: 0,
       currentRatingRows: 0, wolo: 0,
