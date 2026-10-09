@@ -240,6 +240,9 @@ try {
   // and overlap. Neither raw Steam IDs nor parsed rating values leave
   // the audited subprocess JSON response.
   const sampleEvidence = [];
+  // Private local-only candidate record, not signed Watcher truth.
+  // Never print or publish this case-level list.
+  const privateHistoricalCandidates = [];
   const cohortFingerprint = sha(
     "aoe2war-archived-header-cohort-v1:" + order.join(","),
   );
@@ -347,6 +350,18 @@ try {
             c.isFinal && c.suffix !== ".aoe2mpgame") {
           summary.matchingBothHistoricallyEligible++;
           evidence.result = "historical_candidate_only";
+          privateHistoricalCandidates.push({
+            steamId: id,
+            gameStatsId: c.gameStatsId,
+            replaySha256: c.hash,
+            apiParserSource: apiRevision,
+            ratingObservedAt: c.playedOn,
+            steamRmRating: player.rm,
+            steamDmRating: player.dm,
+            steamRmSource: "hd_header",
+            steamDmSource: "hd_header",
+            observationAuthority: "historical_candidate_only",
+          });
         }
       }
       if (rm) {
@@ -392,6 +407,10 @@ try {
       summary.matchingBothHistoricallyEligible >
         Math.min(summary.matchingBothWithPlayedOn,
           summary.matchingBothWithAcceptedSameGame) ||
+      privateHistoricalCandidates.length !==
+        summary.matchingBothHistoricallyEligible ||
+      new Set(privateHistoricalCandidates.map(c => c.steamId)).size !==
+        privateHistoricalCandidates.length ||
 
       summary.sampleWave !== wave ||
       summary.sampleOffsetIdentities !== SAMPLE_OFFSET ||
@@ -404,10 +423,11 @@ try {
     throw Error("parser canary conservation failed");
   process.stdout.write(JSON.stringify({
     kind:"aoe2war-archived-hd-rating-parser-canary",
-    schemaVersion:2, observedAt:new Date().toISOString(),
+    schemaVersion:3, observedAt:new Date().toISOString(),
     productionSource:process.env.AOE2WAR_TRUTH_PRODUCTION_SOURCE??null,
     databaseReadOnly:proof,
     summary, cohortFingerprint, sampleEvidence,
+    privateHistoricalCandidates,
     limitations:"Bounded revision-pinned, SHA-verified separate-wave header sample. Selection limited to candidates with both raw lanes; no population extrapolation or rating promotion.",
     mutations:{production:0,parserRows:0,identityRows:0,
       currentRatingRows:0,wolo:0},
