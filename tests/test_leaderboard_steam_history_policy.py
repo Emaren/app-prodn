@@ -162,6 +162,21 @@ class HistoricalPolicyTests(unittest.TestCase):
             1520,
         )
 
+    def test_duplicate_same_sha_conflicting_values_fail_closed(self):
+        first = historical_fixture()
+        second = copy.deepcopy(first)
+        second["privateHistoricalCandidates"][0]["steamRmRating"] = 1700
+        # Each receipt's internal archive binding still matches its
+        # independent manifest; cross-receipt source disagreement is forbidden.
+        with self.assertRaisesRegex(ValueError, "conflicting duplicate"):
+            extract_candidate_evidence([first, second])
+
+    def test_non_mapping_watcher_input_quarantined(self):
+        x = resolve_historical_lane(
+            STEAM, "rm", [candidate()], qualified_watcher="signed"
+        )
+        self.assertEqual(x["source"], "quarantined")
+
     def test_tampered_rating_source_fails_full_receipt_validation(self):
         payload = historical_fixture()
         payload["privateHistoricalCandidates"][0]["steamRmSource"] = "unmarked"
