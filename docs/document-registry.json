@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "bb986d637f9d941288cf3014e2e675e3f78ae4e3bf866f6e333a3e40c4289b65",
+      "sha256": "ca3280aa4ccace89e2b5ce09aff0d1819354a3fc28ba7243fa2ac24aacc8df9a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1486,9 +1486,9 @@
       "owner": "aoe2war-web",
       "path": "docs/REPLAY_CORPUS_METRICS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-22",
+      "reviewed_at": "2026-10-09",
       "sensitivity": "internal",
-      "sha256": "4422289fd14e15fa58a289e67cf405f0156769c250e54556dc4c6e717395f3ae",
+      "sha256": "623ccc496bdbbedb1b97ac44a290d6b6ff8065a18536df6a6bceb6a5ca9e4d2b",
       "source_of_truth": "runtime-evidence",
       "status": "active",
       "systems": [
@@ -2048,8 +2048,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/doctor-next-toolchain-contract-20261009",
-    "commit": "052af6af81a4fd730e2eea99ea7639568a0c4a81"
+    "branch": "feature/library-live-ledger-20261009",
+    "commit": "fff9e0f8046bffb0514c3899fd854af8296890a2"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
