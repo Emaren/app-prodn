@@ -110,10 +110,12 @@ export function resolveLeaderboardRatingPresentation(
     return {
       value: Math.round(lastKnownRating),
       source: "last_known_steam",
+      // Provenance is retained internally; the public RM/DM columns
+      // show the latest available trusted Steam rating without an age badge.
       sourceLabel:
         input.lane === "dm"
-          ? "Last DM"
-          : "Last RM",
+          ? "DM Rating"
+          : "RM Rating",
       secondaryLabel: null,
     };
   }
