@@ -407,6 +407,29 @@ artifact receipt, accepted exact-Steam identity, real game clock,
 parser version and source-lane evidence and a tested chronological
 precedence resolver against current signed Watcher readings.
 
+The 2026-10-09T03:30:19Z production wave 1 completed **24/24
+independent archive SHA verifications**, **23/24** successful installed
+API parser projections, **23/24** exact uniquely matched Steam identities,
+**23/24** explicit HD-header ratings for both RM/DM, and **46/46**
+matching historical unmarked numeric values. One archive SHA matched but
+the parser returned no projection; there were zero timeouts or parser
+exceptions. Combined with the initial six-file canary, **30/30** archive
+hashes matched, **29/30** parser projections succeeded, and **58/58**
+recovered source-header rating values agreed with stored numeric values.
+These figures describe the checked samples, not the whole archive.
+
+The follow-up audit keeps per-wave windows **nonoverlapping by Steam
+identity position**: wave 0 inspects six candidates, wave 1 the next
+24, wave 2 the 24 after that, and so forth. It no longer fills a wave's
+failed/missing file candidates by borrowing IDs from the next wave.
+Wave receipts expose the bounded identity window and distinguish
+`parserNoProjection` cases by sanitized parser mode, diagnostic stage,
+and error category (never private paths, raw IDs, or unverified Steam
+values). Rerun wave 1 to explain the single rejected replay, then
+investigate parser support and historical provenance without modifying
+any replay or live rating. A successful SHA verification does **not**
+imply the installed parser supports that file format.
+
 The observer now also includes `blockedDetails` for each lane: mutually
 exclusive per-identity reasons for the provenance, clock, and source
 failures. Its provenance categories distinguish a missing `watcher_upload`
