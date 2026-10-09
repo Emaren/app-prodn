@@ -73,9 +73,11 @@ export function selectLibraryHistoryPage(
 ) {
   const eligible = snapshot.entries.filter(row =>
     matchesLibraryOriginFilter(row.source.kind, options.filter));
-  const selected = options.after !== null
-    ? eligible.filter(row => row.id > options.after).reverse()
-    : eligible.filter(row => options.before === null || row.id < options.before);
+  const after = options.after;
+  const before = options.before;
+  const selected = after !== null
+    ? eligible.filter(row => row.id > after).reverse()
+    : eligible.filter(row => before === null || row.id < before);
   const hasMore = selected.length > options.limit;
   const chosen = selected.slice(0, options.limit);
   const rows = options.after !== null ? chosen.reverse() : chosen;
