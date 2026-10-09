@@ -340,6 +340,49 @@ def analyze_private_history(payload: dict, receipt_dir: Path) -> dict:
     }
 
 
+def write_private_candidate_receipt(
+    truth: object, wave: int, payload: dict
+) -> Path:
+    """Create a case-level local evidence receipt without overwriting one.
+
+    0600 and O_EXCL apply from file creation. This is append-only-by-
+    convention local storage, NOT a signed Watcher receipt or immutable
+    remote attestation. Do not publish it or commit it to Git.
+    """
+    directory = truth.RECEIPT_DIR
+    directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+    now = datetime.now(timezone.utc)
+    stamp = now.strftime("%Y%m%dT%H%M%SZ")
+    serialized = json.dumps(
+        payload, sort_keys=True, separators=(",", ":"), ensure_ascii=True
+    )
+    digest = hashlib.sha256(serialized.encode("utf-8")).hexdigest()[:16]
+    name = (
+        f"{stamp}-{digest}-leaderboard-steam-archive-parser-wave-{wave}.json"
+    )
+    destination = directory / name
+    envelope = {
+        "schema": 1,
+        "kind": "aoe2war-truth-receipt",
+        "generated_at": now.isoformat(),
+        "command": f"leaderboard-steam-archive-parser-wave-{wave}",
+        "ssh_target": truth.SSH_TARGET,
+        "runtime_mutated": False,
+        "database_mutated": False,
+        "wolo_mutated": False,
+        "payload": payload,
+    }
+    fd = os.open(
+        destination, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600
+    )
+    with os.fdopen(fd, "w", encoding="utf-8") as stream:
+        json.dump(envelope, stream, indent=2, sort_keys=True)
+        stream.write("\n")
+        stream.flush()
+        os.fsync(stream.fileno())
+    return destination
+
+
 def main(wave: int = 0) -> None:
     spec = importlib.util.spec_from_file_location(
         "aoe2war_truth", ROOT / "scripts" / "aoe2_truth.py"
@@ -356,10 +399,7 @@ def main(wave: int = 0) -> None:
     overlap = analyze_private_history(payload, truth.RECEIPT_DIR)
     previous_umask = os.umask(0o077)
     try:
-        receipt = truth.write_receipt(
-            f"leaderboard-steam-archive-parser-wave-{wave}", payload
-        )
-        receipt.chmod(0o600)
+        receipt = write_private_candidate_receipt(truth, wave, payload)
     finally:
         os.umask(previous_umask)
     print(json.dumps({
