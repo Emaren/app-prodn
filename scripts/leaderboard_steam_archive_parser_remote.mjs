@@ -59,6 +59,14 @@ async function hashFile(file) {
   for await (const chunk of createReadStream(file)) h.update(chunk);
   return h.digest("hex");
 }
+function apiGit(args) {
+  const r = spawnSync("git", ["-c", "safe.directory="+apiDir, ...args], {
+    cwd: apiDir, encoding: "utf8", timeout: 6000, maxBuffer: 262144,
+    env: {PATH: process.env.PATH ?? "/usr/bin:/bin", HOME: "/tmp"},
+  });
+  if (r.error || r.status !== 0) return null;
+  return r.stdout.trim();
+}
 function parseInIsolatedSubprocess(interpreter, filePath, isFinal) {
   const response = spawnSync(interpreter, [
     "-B", "-c", PYTHON, filePath, isFinal ? "1" : "0",
@@ -140,11 +148,13 @@ try {
             p.steam_rating_sources?.steam_dm_rating != null)
           continue;
         const list = candidates.get(p.steam_id) ?? [];
-        if (list.length >= MAX_PER_STEAM_ID) continue;
-        if (!list.some(x => x.hash === hash)) list.push({
-          hash, suffix: normalizedSuffix, isFinal: row.isFinal === true,
-          observedRm: p.steam_rm_rating, observedDm: p.steam_dm_rating,
-        });
+        if (!list.some(x => x.hash === hash)) {
+          list.push({
+            hash, suffix: normalizedSuffix, isFinal: row.isFinal === true,
+            observedRm: p.steam_rm_rating, observedDm: p.steam_dm_rating,
+          });
+          if (list.length > MAX_PER_STEAM_ID) list.shift();
+        }
         candidates.set(p.steam_id, list);
       }
     }
@@ -160,7 +170,13 @@ try {
   let archiveAccessible = false;
   try { archiveAccessible = (await stat(archiveRoot)).isDirectory(); }
   catch { /* mount may be inaccessible; never infer missing bytes */ }
+  const apiRevision = apiGit(["rev-parse","HEAD"]);
+  const apiDirtyBefore = apiGit(["status","--porcelain","--untracked-files=all"]);
+  if (!apiRevision || !/^[a-f0-9]{40}$/.test(apiRevision) ||
+      apiDirtyBefore === null || apiDirtyBefore !== "")
+    throw Error("STOP: installed API parser Git provenance unavailable or dirty");
   const summary = {
+    apiParserSource: apiRevision,
     publicUnratedExactSteamIds: target.size,
     unmarkedWatchersWithBothNumbers: candidates.size,
     scannedGameRows: scannedRows, scanBatches: batches,
@@ -185,7 +201,9 @@ try {
   for (const id of order) {
     if (summary.sampleHashesVerified >= SAMPLE_LIMIT ||
         !archiveAccessible || !interpreter) break;
-    for (const c of candidates.get(id) ?? []) {
+    for (const c of [...(candidates.get(id) ?? [])].sort(
+      (a, b) => Number(b.isFinal) - Number(a.isFinal)
+    )) {
       if (summary.sampleHashesVerified >= SAMPLE_LIMIT) break;
       const filePath = join(archiveRoot, c.hash.slice(0,2),
         c.hash.slice(2,4), c.hash+c.suffix);
@@ -238,6 +256,9 @@ try {
       break;
     }
   }
+  if (apiGit(["rev-parse","HEAD"]) !== apiRevision ||
+      apiGit(["status","--porcelain","--untracked-files=all"]) !== "")
+    throw Error("STOP: API parser worktree or revision changed during audit");
   if (summary.sampleHashesVerified > SAMPLE_LIMIT ||
       summary.parserParsed + summary.parserNoProjection +
         summary.parserTimeout + summary.parserError +
