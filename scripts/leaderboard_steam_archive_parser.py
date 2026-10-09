@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import copy
+import hashlib
 from datetime import datetime, timezone
 import importlib.util
 import json
@@ -18,7 +19,7 @@ REMOTE = ROOT / "scripts" / "leaderboard_steam_archive_parser_remote.mjs"
 def validate(payload: object, expected_wave: int = 0) -> dict:
     if not isinstance(payload, dict) or payload.get("kind") != (
         "aoe2war-archived-hd-rating-parser-canary"
-    ) or payload.get("schemaVersion") != 2:
+    ) or payload.get("schemaVersion") != 3:
         raise RuntimeError("unexpected archive parser canary response")
     ro = payload.get("databaseReadOnly")
     if (not isinstance(ro, list) or len(ro) != 1 or
@@ -89,6 +90,56 @@ def validate(payload: object, expected_wave: int = 0) -> dict:
     data = payload.get("summary")
     if not isinstance(data, dict):
         raise RuntimeError("missing canary summary")
+    # The case-level historical records are restricted to the local 0600
+    # receipt. Validate each against the independently SHA-checked sample.
+    private_candidates = payload.get("privateHistoricalCandidates")
+    if not isinstance(private_candidates, list):
+        raise RuntimeError("private historical candidate ledger missing")
+    verified_samples = {
+        (item["identityFingerprint"], item["replaySha256"],
+         item["gameStatsId"]): item for item in sample_evidence
+    }
+    seen_private_ids = set()
+    required_fields = {
+        "steamId", "gameStatsId", "replaySha256", "apiParserSource",
+        "ratingObservedAt", "steamRmRating", "steamDmRating",
+        "steamRmSource", "steamDmSource", "observationAuthority",
+    }
+    for candidate in private_candidates:
+        if not isinstance(candidate, dict) or set(candidate) != required_fields:
+            raise RuntimeError("invalid private historical candidate shape")
+        steam_id = candidate["steamId"]
+        played_on = candidate["ratingObservedAt"]
+        if (not isinstance(steam_id, str) or
+            not re.fullmatch(r"\d{17}", steam_id) or
+            steam_id in seen_private_ids or
+            type(candidate["gameStatsId"]) is not int or
+            candidate["gameStatsId"] <= 0 or
+            not isinstance(candidate["replaySha256"], str) or
+            not re.fullmatch(r"[a-f0-9]{64}", candidate["replaySha256"]) or
+            candidate["apiParserSource"] != data.get("apiParserSource") or
+            candidate["steamRmSource"] != "hd_header" or
+            candidate["steamDmSource"] != "hd_header" or
+            candidate["observationAuthority"] != "historical_candidate_only" or
+            not isinstance(played_on, str) or
+            type(candidate["steamRmRating"]) is not int or
+            type(candidate["steamDmRating"]) is not int or
+            not 0 < candidate["steamRmRating"] <= 5000 or
+            not 0 < candidate["steamDmRating"] <= 5000):
+            raise RuntimeError("historical candidate not independently qualified")
+        fp = hashlib.sha256(
+            ("aoe2war-archived-identity-v1:" + steam_id).encode("utf-8")
+        ).hexdigest()
+        manifest = verified_samples.get((
+            fp, candidate["replaySha256"], candidate["gameStatsId"]
+        ))
+        if (manifest is None or
+            manifest["result"] != "historical_candidate_only" or
+            manifest["acceptedSameGame"] is not True or
+            manifest["ratingObservedAt"] != played_on):
+            raise RuntimeError("historical candidate lacks matching archive proof")
+        seen_private_ids.add(steam_id)
+
     parser_source = data.get("apiParserSource")
     if not isinstance(parser_source, str) or len(parser_source) != 40 or any(
         char not in "0123456789abcdef" for char in parser_source
@@ -181,7 +232,8 @@ def validate(payload: object, expected_wave: int = 0) -> dict:
         ) or
         sum(x["result"] == "historical_candidate_only"
             for x in sample_evidence) !=
-            data["matchingBothHistoricallyEligible"]):
+            data["matchingBothHistoricallyEligible"] or
+        len(private_candidates) != data["matchingBothHistoricallyEligible"]):
 
         raise RuntimeError("replay parser canary conservation failure")
     return data
@@ -194,25 +246,35 @@ def validate_previous_tracked_receipt(payload: dict, wave: int) -> None:
     attribution and the parser result category. It did NOT record
     gameStatsId, accepted canonical replay, or played-on time.
     """
-    if payload.get("schemaVersion") == 2:
+    version = payload.get("schemaVersion")
+    if version == 3:
         validate(payload, wave)
         return
-    if payload.get("schemaVersion") != 1:
+    if version not in (1, 2):
         raise RuntimeError("unsupported historic tracked receipt schema")
     converted = copy.deepcopy(payload)
-    converted["schemaVersion"] = 2
+    converted["schemaVersion"] = 3
     summary = converted.get("summary")
     if not isinstance(summary, dict):
         raise RuntimeError("invalid prior tracked summary")
-    summary["matchingBothWithPlayedOn"] = 0
-    summary["matchingBothWithAcceptedSameGame"] = 0
-    summary["matchingBothHistoricallyEligible"] = 0
+    if version == 1:
+        summary["matchingBothWithPlayedOn"] = 0
+        summary["matchingBothWithAcceptedSameGame"] = 0
+        summary["matchingBothHistoricallyEligible"] = 0
+    else:
+        # A v2 qualifying flag lacked actual independently parsed values.
+        # It cannot be upgraded to a v3 historical ledger candidate.
+        summary["matchingBothHistoricallyEligible"] = 0
+    converted["privateHistoricalCandidates"] = []
     for item in converted.get("sampleEvidence", []):
         if not isinstance(item, dict):
             raise RuntimeError("invalid historic tracked manifest")
-        item["gameStatsId"] = 1  # compatibility placeholder; not evidence
-        item["ratingObservedAt"] = None
-        item["acceptedSameGame"] = False
+        if version == 1:
+            item["gameStatsId"] = 1  # validation placeholder, NOT proof
+            item["ratingObservedAt"] = None
+            item["acceptedSameGame"] = False
+        if item.get("result") == "historical_candidate_only":
+            item["result"] = "both_hd_headers_match"
     validate(converted, wave)
 
 
