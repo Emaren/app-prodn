@@ -124,8 +124,8 @@ class ArchiveParserCanaryTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "manifest evidence"):
             module.validate(data)
         data["sampleEvidence"][0]["ratingObservedAt"] = None
-        with self.assertRaisesRegex(RuntimeError, "conservation"):
-            module.validate(data) if False else self.assertTrue(True)
+        with self.assertRaisesRegex(RuntimeError, "chronological"):
+            module.validate(data)
 
     def test_prior_tracked_schema_one_is_compatible_but_not_enriched(self):
         previous = fixture()
