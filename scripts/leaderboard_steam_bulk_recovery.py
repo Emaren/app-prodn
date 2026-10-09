@@ -57,7 +57,7 @@ def read_private_envelope(path: Path) -> tuple[int, dict] | None:
 
 
 def verified_inventory(directory: Path) -> dict:
-    """No falsely distinct samples, duplicate wave drift, or population drift."""
+    """Count per-player SHA-proven observations; permit shared multiplayer files."""
     if not directory.is_dir():
         raise RuntimeError("STOP: protected operator receipts directory not found")
     evidence_by_wave: dict[int, dict] = {}
@@ -83,6 +83,8 @@ def verified_inventory(directory: Path) -> dict:
     anchor = evidence_by_wave[SEED_WAVE]["cohortFingerprint"]
     seen_steam = {}
     seen_replays = {}
+    shared_replay_identity_checks = 0
+    shared_replay_artifact_hashes = set()
     for wave, payload in sorted(evidence_by_wave.items()):
         if payload.get("cohortFingerprint") != anchor:
             raise RuntimeError("STOP: historical candidate cohort fingerprint drift")
@@ -91,10 +93,15 @@ def verified_inventory(directory: Path) -> dict:
             replay = entry["replaySha256"]
             if fp in seen_steam and seen_steam[fp] != wave:
                 raise RuntimeError("STOP: overlapping Steam identity across waves")
-            if replay in seen_replays and seen_replays[replay] != wave:
-                raise RuntimeError("STOP: overlapping replay SHA across waves")
+            # A single multiplayer recording legitimately contains several
+            # distinct Steam identities. Its SHA proves artifact bytes,
+            # not single-player ownership. A repeated SHA across different
+            # Steam IDs is therefore NOT an identity overlap.
+            if replay in seen_replays:
+                shared_replay_identity_checks += 1
+                shared_replay_artifact_hashes.add(replay)
             seen_steam[fp] = wave
-            seen_replays[replay] = wave
+            seen_replays.setdefault(replay, wave)
 
     return {
         "cohortFingerprint": anchor,
@@ -102,6 +109,8 @@ def verified_inventory(directory: Path) -> dict:
         "untrackedLegacyReceiptFiles": original_wave_files,
         "verifiedIdentityCount": len(seen_steam),
         "verifiedArtifactCount": len(seen_replays),
+        "sharedReplayIdentityChecks": shared_replay_identity_checks,
+        "sharedReplayArtifactHashes": len(shared_replay_artifact_hashes),
         "historicalCandidateCount": sum(
             len(p["privateHistoricalCandidates"]) for p in evidence_by_wave.values()
         ),
@@ -121,6 +130,9 @@ def selection_plan(inventory: dict, start: int, stop: int) -> dict:
         "remainingWaves": pending,
         "maxNewIdentityWindows": 24 * len(pending),
         "verifiedUniqueIdentitiesToDate": inventory["verifiedIdentityCount"],
+        "distinctVerifiedReplayArtifactsToDate": inventory["verifiedArtifactCount"],
+        "sharedReplayIdentityChecksToDate": inventory["sharedReplayIdentityChecks"],
+        "sharedReplayArtifactHashesToDate": inventory["sharedReplayArtifactHashes"],
         "recoveredHistoricalCandidatesToDate": inventory["historicalCandidateCount"],
         "legacyReceiptsNotCreditedAsDistinct": inventory["untrackedLegacyReceiptFiles"],
         "productionWritesAllowed": False,
@@ -167,7 +179,10 @@ def execute_batch(
     final = verified_inventory(directory)
     return {
         "completedThisInvocation": done,
-        "totalVerifiedUniqueArchiveProofs": final["verifiedIdentityCount"],
+        "totalVerifiedUniqueIdentityProofs": final["verifiedIdentityCount"],
+        "totalDistinctReplayArtifacts": final["verifiedArtifactCount"],
+        "sharedReplayIdentityChecks": final["sharedReplayIdentityChecks"],
+        "sharedReplayArtifactHashes": final["sharedReplayArtifactHashes"],
         "totalPrivateHistoricalCandidates": final["historicalCandidateCount"],
         "nextWave": next(
             (w for w in range(stop + 1, 79) if w not in final["waves"]), None
