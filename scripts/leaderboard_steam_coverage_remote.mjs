@@ -7,8 +7,7 @@ import { isLeaderboardExcludedSystemUid } from "@/lib/internalSystemAccounts";
 
 const prisma = getPrisma();
 const valid = (value) =>
-  typeof value === "number" && Number.isInteger(value) &&
-  value > 0 && value <= 5000;
+  typeof value === "number" && Number.isFinite(value) && value > 0;
 
 const emptyRaw = Object.freeze({
   rawRm: false, rawDm: false,
