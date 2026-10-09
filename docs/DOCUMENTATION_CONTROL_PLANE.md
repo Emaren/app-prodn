@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/library-historical-provenance-20261009` at `83e2985c226d2de5bb6cdcab1bacac160820666a`
+Implementation baseline: `feature/library-historical-provenance-20261009` at `62842124d82c73e8cea9f6c7e6633a706eb99023`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
