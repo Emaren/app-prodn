@@ -588,6 +588,53 @@ invalid provenance, and schema-v1/v2 exclusion. A later, separately
 reviewed adapter must be authorized and certified before any
 production display-only integration.
 
+### Positive-only Watcher overlap (private audit, not a release gate)
+
+The draft-only `scripts/leaderboard_steam_watcher_overlap_remote.mjs`
+uses the unchanged, production-authorized
+`loadCurrentWatcherAccountStates` and
+`loadVerifiedWatcherSteamRatings` presentation rails under the
+protected read-only observer to capture **positive** Watcher display
+rating observations. It reconciles the two sources for RM and DM
+separately through the existing `selectLatestSteamObservation`
+function, returning only SHA-derived Steam identity fingerprints,
+numeric lane values and original observation timestamps. It does
+not alter the production display resolver or query for signature
+details. The second rail includes a frozen pre-fix UNSIGNED display
+compatibility cohort; the audit never calls these records universally
+signed or upgrades them to account, result or financial authority.
+
+`scripts/leaderboard_steam_watcher_overlap.py --wave 4` reads the
+latest restricted schema-v3 archive candidate receipt for that wave,
+validates it, then invokes the read-only Watcher-positive observer.
+For each independently qualified historical Steam RM/DM lane, a
+positive Watcher display observation takes priority even when the
+replay-header rating has a newer purported played-on time. The CLI
+prints **aggregate-only** positive-overlap counts, matching/differing
+numbers, and counts of lanes whose Watcher **absence is unknown**.
+The per-candidate comparisons are saved to a separate `0600`
+local-only exclusive-create receipt, not to GitHub or any public
+API. Raw Steam IDs are never included in the comparison report.
+
+Critically, the Watcher display helper can fall back to an empty
+array on data-read failure. Consequently this observer makes
+`sourceCompletenessProven=false` and `absenceIsNotEvidence=true`
+hard validation invariants. **No missing positive display row
+qualifies a previously unrated player for public historical
+promotion.** It remains `watcher_absence_not_proven` until a
+separately certified complete authority snapshot is available.
+A Watcher/display value match does not make the historical
+observation signed. There is **no** release or backfill path in
+this audit tool, and no production DB/WOLO/winner mutation.
+
+The original wave-4 cohort was selected because both qualified
+current lanes appeared missing in the earlier leaderboard
+directory projection. Therefore discovering few positive Watcher
+overlaps would be unsurprising, but it is not evidence of either
+complete observation coverage or final publishability. The
+reconciliation is a controlled diagnostic to establish safe
+precedence and provenance gaps, not a publication trigger.
+
 These records are **proposals**, not production authority. Before
 any public historical Steam Elo fallback can use them, implement a
 separately audited read store and per-lane chronology resolver:
