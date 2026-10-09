@@ -69,23 +69,29 @@ test("Library sits immediately after Academy and before Marketplace", () => {
 const gameRoute = fs.readFileSync("app/api/library/games/route.ts", "utf8");
 const packageRoute = fs.readFileSync("app/api/replay/upload-package/route.ts", "utf8");
 
-test("Library reads final replay rows from the indexed cursor, not the 48-activity stub", () => {
-  assert.match(gameRoute, /prisma\.gameStats\.findMany/);
-  assert.match(gameRoute, /is_final: true/);
-  assert.match(gameRoute, /id: \{ lt: before \}/);
-  assert.match(gameRoute, /id: \{ gt: after \}/);
-  assert.match(gameRoute, /direction = after !== null \? "asc" : "desc"/);
-  assert.match(gameRoute, /PAGE_SIZE = 48/);
-  assert.doesNotMatch(gameRoute, /skip:/);
-  assert.match(board, /requestPage\(\x60\?before=/);
-  assert.match(board, /requestPage\(\x60\?after=/);
+test("Library source filters query complete history before paging", () => {
+  const index = fs.readFileSync("lib/libraryHistoricalIndex.ts", "utf8");
+  const origin = fs.readFileSync("lib/libraryHistoricalProvenance.ts", "utf8");
+  assert.match(gameRoute, /loadLibraryHistoricalSnapshot/);
+  assert.match(gameRoute, /selectLibraryHistoryPage/);
+  assert.match(gameRoute, /LIBRARY_ORIGIN_FILTERS/);
+  assert.match(index, /is_final: true/);
+  assert.match(index, /id > options.after/);
+  assert.match(index, /id < options.before/);
+  assert.match(index, /filterTotal: eligible.length/);
+  assert.match(origin, /zip-legacy-correlation/);
+  assert.match(board, /origin=\\$\\{encodeURIComponent\\(filter\\)\\}/);
+  assert.match(board, /data-library-scroll/);
+  assert.match(board, /LibraryPlayerCensus/);
 });
 
-test("Library never manufactures ZIP source from old filenames", () => {
-  assert.match(packageRoute, /gameIds: \[\.\.\.new Set/);
-  assert.match(gameRoute, /zipByGameId\.get\(row\.id\)/);
-  assert.match(gameRoute, /row\.key_events/);
-  assert.doesNotMatch(gameRoute, /filenames\.includes/);
+test("Library retains exact ZIP receipts and explicitly inferred legacy provenance", () => {
+  const history = fs.readFileSync("lib/libraryHistoricalProvenance.ts", "utf8");
+  assert.match(packageRoute, /gameIds: \\[\\.\\.\\.new Set/);
+  assert.match(history, /zip-exact-id/);
+  assert.match(history, /zip-legacy-correlation/);
+  assert.match(history, /possibleRows.length !== 1/);
+  assert.doesNotMatch(gameRoute, /filenames\\.includes/);
 });
 
 test("Library public JSON excludes raw replay metadata and keys", () => {
@@ -95,4 +101,11 @@ test("Library public JSON excludes raw replay metadata and keys", () => {
   assert.doesNotMatch(responseSection, /replayFile:/);
   assert.doesNotMatch(responseSection, /key_events:/);
   assert.doesNotMatch(responseSection, /userUid:/);
+});
+
+const censusRoute = fs.readFileSync("app/api/library/census/route.ts", "utf8");
+test("Library breakdown counts only claimed uploader-owned records",()=>{
+  assert.match(censusRoute,/snapshot\\.profiles/);
+  assert.match(censusRoute,/owner: "Authenticated uploader/);
+  assert.match(board,/LibraryPlayerCensus/);
 });
