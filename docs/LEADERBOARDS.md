@@ -418,17 +418,43 @@ hashes matched, **29/30** parser projections succeeded, and **58/58**
 recovered source-header rating values agreed with stored numeric values.
 These figures describe the checked samples, not the whole archive.
 
-The follow-up audit keeps per-wave windows **nonoverlapping by Steam
-identity position**: wave 0 inspects six candidates, wave 1 the next
-24, wave 2 the 24 after that, and so forth. It no longer fills a wave's
-failed/missing file candidates by borrowing IDs from the next wave.
-Wave receipts expose the bounded identity window and distinguish
-`parserNoProjection` cases by sanitized parser mode, diagnostic stage,
-and error category (never private paths, raw IDs, or unverified Steam
-values). Rerun wave 1 to explain the single rejected replay, then
-investigate parser support and historical provenance without modifying
-any replay or live rating. A successful SHA verification does **not**
-imply the installed parser supports that file format.
+The follow-up audit has fixed-size, non-borrowing sample windows
+**within each contemporaneous identity census**: wave 0 inspects the
+first six positions, wave 1 the next 24, wave 2 the following 24,
+and so forth. This is NOT an immutable cohort: changes to eligible
+Steam identities can shift those positions. The first three wave receipts
+do not record per-file hash fingerprints, so their combined totals
+cannot be certified as cross-wave unique. Future private receipts
+include SHA-derived exact-identity fingerprints and replay SHA-256s
+for checking reuse against *tracked* past waves, plus a fingerprint of
+the then-current eligible identity universe; cohort drift is reported
+rather than ignored. Raw player identities and actual rating values
+are never printed. The local receipt is written with restrictive
+permissions at file creation, and legacy pre-fingerprint receipts are
+marked untracked rather than incorrectly certified distinct.
+
+The 2026-10-09T03:54:17Z production wave 2 had **22 of 24** selected
+identities with SHA-verified archive files, **21** complete parser
+projections with exactly matching Steam identities and both explicitly
+sourced RM+DM header values, and **42/42** values identical to the
+old raw numeric data. One SHA-valid artifact again failed in the
+header at `mgz_failed / truncated_or_incomplete`; two selected
+identities had no file located in the bounded sampled archive paths,
+which does not prove their recordings are absent globally. A changing
+production roster reduced exact-Steam missing accounts from 2,755
+to 2,754 and broad unmarked numeric-pair candidates from 1,893 to
+1,892, demonstrating the dynamic-cohort limitation in practice.
+The three waves jointly produced **52 successful SHA file checks,
+50 complete two-lane parser observations and 100/100 matching numeric
+header comparisons**. They do NOT yet prove 50 globally distinct
+recoverable accounts.
+
+Parser-failure histograms remain sanitized by parse mode, diagnostic
+stage, and error category (never private paths, raw IDs, or unverified
+Steam values). An archival SHA match alone does not prove that the
+installed parser supports its file format. Both incomplete-header
+artifacts remain quarantined; their source or alternative recordings
+must be investigated separately from recoverable display-only ratings.
 
 The observer now also includes `blockedDetails` for each lane: mutually
 exclusive per-identity reasons for the provenance, clock, and source
