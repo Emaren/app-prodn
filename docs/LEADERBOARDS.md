@@ -27,6 +27,35 @@ AoE2WAR has two first-class HD leaderboard routes backed by current production d
 
 The homepage leaderboard chrome and the shared Kingdom menu open the modern board. Both leaderboard pages link directly to the other view.
 
+## Full historical RM/DM roster (October 9, 2026)
+
+Both RM and DM present **every eligible public identity**, including
+players whose Steam rating has not been recovered yet. Existing exact
+SteamID64 identity folding remains authoritative for alternate names.
+Unknown ratings display `—`, and the rank badge is `—` rather than
+assigning an unearned numeric rating rank.
+
+Rated Steam identities appear first, ordered by real qualifying Steam
+RM or DM rating. Unrated exact Steam identities follow; then
+provisional name-only and claimed site-account records. These remain
+independently searchable and paginable. `trackedPlayers` is the
+full active-scope identity count; `rankedPlayers` is the count with
+a qualifying lane rating. Internal unrated positions are for page
+navigation only, not Steam rating rank.
+
+The October 9 protected read-only production census measured 4,760
+eligible public directory identities: 3,916 exact Steam IDs and 844
+provisional identities (names/site profiles), with 1,162 currently
+qualifying in each RM/DM lane and 3,598 missing both. **The 844
+provisional entries are not 844 additional confirmed Steam accounts.**
+
+A qualified last-known historical rating and a qualified current rating
+both appear under the normal `RM Rating` or `DM Rating` heading; the
+source provenance remains internal and distinct. Nothing here invents
+Site Elo, authorizes unmarked stored numbers, publishes any old archive
+without certification, or modifies game results, bets, or WOLO.
+Historical rating recovery continues separately under draft audit PR #432.
+
 ## Data boundaries
 
 `lib/lobbyLeaderboard.ts` remains the ranking system of record. The dedicated page does not create a second rating or streak interpretation.
