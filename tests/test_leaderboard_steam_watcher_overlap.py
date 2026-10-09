@@ -4,6 +4,8 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import subprocess
+import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -50,6 +52,20 @@ def overlay(rm=1780, dm=1690, *, include=True):
 
 
 class WatcherOverlapTests(unittest.TestCase):
+    def test_direct_cli_help_starts_in_isolated_python(self):
+        # A direct script launch has different import roots than unittest.
+        # --help does not access production, SSH or private receipts.
+        root = Path(__file__).resolve().parents[1]
+        result = subprocess.run(
+            [sys.executable, "-I",
+             str(root / "scripts" / "leaderboard_steam_watcher_overlap.py"),
+             "--help"],
+            cwd=root, text=True, capture_output=True, timeout=10,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("--wave", result.stdout)
+
     def test_positive_watcher_wins_both_lanes(self):
         report = reconcile(historical_fixture(), overlay())
         s = report["summary"]
