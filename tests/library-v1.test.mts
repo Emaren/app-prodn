@@ -80,18 +80,18 @@ test("Library source filters query complete history before paging", () => {
   assert.match(index, /id < options.before/);
   assert.match(index, /filterTotal: eligible.length/);
   assert.match(origin, /zip-legacy-correlation/);
-  assert.match(board, /origin=\\$\\{encodeURIComponent\\(filter\\)\\}/);
+  assert.ok(board.includes("origin=${encodeURIComponent(filter)}"));
   assert.match(board, /data-library-scroll/);
   assert.match(board, /LibraryPlayerCensus/);
 });
 
 test("Library retains exact ZIP receipts and explicitly inferred legacy provenance", () => {
   const history = fs.readFileSync("lib/libraryHistoricalProvenance.ts", "utf8");
-  assert.match(packageRoute, /gameIds: \\[\\.\\.\\.new Set/);
+  assert.ok(packageRoute.includes("gameIds: [...new Set"));
   assert.match(history, /zip-exact-id/);
   assert.match(history, /zip-legacy-correlation/);
   assert.match(history, /possibleRows.length !== 1/);
-  assert.doesNotMatch(gameRoute, /filenames\\.includes/);
+  assert.ok(!gameRoute.includes("filenames.includes"));
 });
 
 test("Library public JSON excludes raw replay metadata and keys", () => {
@@ -105,7 +105,7 @@ test("Library public JSON excludes raw replay metadata and keys", () => {
 
 const censusRoute = fs.readFileSync("app/api/library/census/route.ts", "utf8");
 test("Library breakdown counts only claimed uploader-owned records",()=>{
-  assert.match(censusRoute,/snapshot\\.profiles/);
+  assert.ok(censusRoute.includes("snapshot.profiles"));
   assert.match(censusRoute,/owner: "Authenticated uploader/);
   assert.match(board,/LibraryPlayerCensus/);
 });
