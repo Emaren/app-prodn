@@ -19,11 +19,37 @@ spec.loader.exec_module(gate)
 def fixture():
     return {
         "kind": "aoe2war-steam-rating-gate-funnel",
+        "schemaVersion": 3,
         "databaseReadOnly": [{"transaction_mode": "on", "default_mode": "on"}],
         "counts": {"publicIdentityRows": 5, "rmRated": 1, "dmRated": 1,
                    "rmMissing": 4, "dmMissing": 4, "noExactSteamIdentity": 2},
-        "histogram": {lane: {f"stage_{i}": 1 if i in (0, 1) else 0
-                            for i in range(9)} for lane in ("rm", "dm")},
+        "histogram": {
+            lane: {
+                **{name: 0 for name in (
+                    "no_numeric_rating_in_stored_game_stats",
+                    "nonqualifying_parse_source_only",
+                    "invalid_clock_uploader_or_hash",
+                    "missing_live_monitor_provenance",
+                    "signature_or_legacy_cohort_unqualified",
+                    "client_server_hash_proof_unqualified",
+                    "checkpoint_role_or_finality_unqualified",
+                    "rating_field_source_or_duplicate_identity",
+                    "passes_all_watcher_game_stats_gates",
+                )},
+                "invalid_clock_uploader_or_hash": 1,
+                "missing_live_monitor_provenance": 1,
+            } for lane in ("rm", "dm")
+        },
+        "blockedDetails": {lane: {
+            "clock": {"game_played_on_absent_or_invalid": 1},
+            "provenance": {"watcher_upload_object_absent": 1},
+            "source": {},
+            "stage3Context": {name: 0 for name in (
+                "signatureVerifiedTrue", "signatureVerifiedFalse",
+                "checksumVerifiedTrue", "hashesMatchReplay",
+                "fileRolePresent", "beforeFrozenCutoff",
+            )},
+        } for lane in ("rm", "dm")},
         "mutations": {"production": 0, "parserRows": 0, "identityRows": 0,
                       "currentRatingRows": 0, "wolo": 0},
     }
@@ -64,6 +90,24 @@ class GateCliTests(unittest.TestCase):
         self.assertNotIn("UPDATE game_stats", remote)
         self.assertNotIn("INSERT INTO", remote)
 
+    def test_missing_provenance_detail_is_not_accepted(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.path = Path(d) / "none.json"
+            data = fixture()
+            data["blockedDetails"]["rm"]["provenance"] = {}
+            with self.assertRaisesRegex(RuntimeError, "blocked-detail"):
+                self.run_with(data)
+            self.assertFalse(self.path.exists())
+
+    def test_stage_context_cannot_exceed_blocked_cohort(self):
+        with tempfile.TemporaryDirectory() as d:
+            self.path = Path(d) / "none.json"
+            data = fixture()
+            data["blockedDetails"]["dm"]["stage3Context"]["hashesMatchReplay"] = 2
+            with self.assertRaisesRegex(RuntimeError, "blocked-detail"):
+                self.run_with(data)
+            self.assertFalse(self.path.exists())
+
     def test_denies_bad_readonly_proof(self):
         for proof in [{}, [], None, [{"transaction_mode": "off", "default_mode": "on"}]]:
             with self.subTest(proof=proof), tempfile.TemporaryDirectory() as d:
@@ -80,7 +124,7 @@ class GateCliTests(unittest.TestCase):
                 self.path = Path(d) / "none.json"
                 data = fixture()
                 if kind == "mismatch":
-                    data["histogram"]["rm"]["stage_4"] = 1
+                    data["histogram"]["rm"]["missing_live_monitor_provenance"] = 2
                     message = "conservation"
                 else:
                     data["mutations"]["wolo"] = 1
