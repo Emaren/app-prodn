@@ -201,21 +201,27 @@ observations can each supply a dated lane observation. A dated historical
 HD-header replay is the remaining fallback. Manual and batch file uploads do
 not enter the Watcher-upload rating rail and cannot displace its later values.
 
-**October 2026 legacy compatibility:** All 4,314 sampled recent production
-Watcher game rows carried server/client replay hash matches, file roles, and
-`live_monitor` transport metadata, but **none** had a verified provenance
-signature. The display-only compatibility reader therefore accepts an
-authenticated Watcher ingest with a *missing* signature only when the API's
-server-owned metadata explicitly records both
-`provenance_signature_verified=false` **and**
-`provenance_signature_supplied=false`, identifies a Watcher/session/replay
-fingerprint, and confirms matching client/server SHA-256, live-monitor
-provenance, role/finality, a valid Steam ID, numeric lane ratings and game
-observation time. A **supplied but invalid** signature is never accepted.
-Such an unsigned legacy observation is weaker than a frozen cryptographic
-receipt and **must not** be represented as signed evidence or used for results,
-identity creation, battle counts, adjudication, payments or betting authority.
-No legacy row is re-labeled `hd_header` or cryptographically re-signed.
+**October 2026 legacy compatibility:** Production evidence found 4,314
+recent Watcher replay rows with matching client/server SHA-256, file roles,
+and `live_monitor` provenance, but 0 rows with a verified HMAC. The Watcher
+was signing a machine-local sender UID; the API was verifying the API-key
+owner's Steam-account UID instead. The signed sender is now carried separately
+by the web proxy and verified by the API. Account ownership is still established
+solely through the authenticated Watcher API key, never a caller-supplied UID.
+
+The old signatures were not preserved in the stored replay rows and **cannot
+be retrospectively verified**. A strictly time-frozen, read-only compatibility
+cohort therefore supplies *display-only* Steam ratings from watcher_live/final
+rows both **played and originally ingested before 2026-10-09 00:00 UTC**,
+subject to live-monitor provenance, verified client hash, matching server and
+client SHA-256, valid file role/finality, unique 17-digit Steam participant
+identity, and numeric RM/DM values. This old cohort is **not signed evidence**.
+After this cutoff only an HMAC-verified upload can enter the display-rating
+rail. Invalid newly supplied signatures never qualify. Manual, batch and
+file uploads never qualify in either era. These readings cannot establish
+game results, payments, verified aliases or account identity, and are never
+relabeled `hd_header`. Source-based legacy compatibility must be retired
+when fresh immutable current-account receipt coverage is demonstrably healthy.
 
 The source maintains bounded stale-while-refresh caching to protect render
 latency. Site Elo computation remains internal for later Version 2 work but
