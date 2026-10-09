@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ca3280aa4ccace89e2b5ce09aff0d1819354a3fc28ba7243fa2ac24aacc8df9a",
+      "sha256": "e59cf3b66dc9d018630d17fff6f0ced2d9173f27dd26a3f2907b5f78b1d4e269",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1488,7 +1488,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-09",
       "sensitivity": "internal",
-      "sha256": "623ccc496bdbbedb1b97ac44a290d6b6ff8065a18536df6a6bceb6a5ca9e4d2b",
+      "sha256": "9fa97e82eab2113da88a1280aaed7ababdbea46c6c8aa8b51b3c931f4325d99d",
       "source_of_truth": "runtime-evidence",
       "status": "active",
       "systems": [
@@ -2048,8 +2048,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/library-live-ledger-20261009",
-    "commit": "fff9e0f8046bffb0514c3899fd854af8296890a2"
+    "branch": "feature/library-historical-provenance-20261009",
+    "commit": "066999e38a68678d77739be53a215a62c2309115"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
