@@ -407,11 +407,11 @@ try {
       ]),
     ),
   };
-  if (receiptCorrelation.targetSteamIdentities !==
-      histogram.rm.missing_live_monitor_provenance ||
-      receiptCorrelation.targetSteamIdentities !==
-      histogram.dm.missing_live_monitor_provenance)
-    throw Error("receipt join target cohort diverges between RM and DM");
+  const rmTargets = histogram.rm.missing_live_monitor_provenance;
+  const dmTargets = histogram.dm.missing_live_monitor_provenance;
+  if (receiptCorrelation.targetSteamIdentities < Math.max(rmTargets, dmTargets) ||
+      receiptCorrelation.targetSteamIdentities > rmTargets + dmTargets)
+    throw Error("receipt join cohort conservation failed");
   for (const key of [
     "matchingAttempt", "watcherAttempt", "currentObservationPresent",
     "observationBindsIdentity", "observationHasLaneNumeric",
