@@ -456,6 +456,48 @@ installed parser supports its file format. Both incomplete-header
 artifacts remain quarantined; their source or alternative recordings
 must be investigated separately from recoverable display-only ratings.
 
+The 2026-10-09T04:08:18Z wave 3 on the updated private SHA
+manifest schema succeeded: **18/18 operator regression tests** passed,
+23/24 selected exact-Steam candidates had physically located
+and independently SHA-256-verified replay bytes, **23/23** reparsed
+with exactly the intended Steam ID, explicit HD-header RM+DM rating
+sources, and **46/46** numeric RM/DM values matching their historical
+stored numbers. One identity had no located candidate archive file,
+not a rating discrepancy. Zero SHA mismatches, parser no-projections,
+timeouts or parser errors. The wave-3 manifest records 23 distinct
+identity fingerprints and 23 distinct replay SHAs *within this
+wave*. Four earlier local receipts are acknowledged as untracked for
+cross-wave uniqueness; do not misstate zero overlap against the
+untracked data as proof of globally disjoint files.
+
+Across the four selected wave executions (excluding the redundant
+wave-1 diagnosis rerun), the operational totals are **75 successful
+SHA file checks, 73 dual-lane parse successes and 146/146 independently
+recovered historical RM/DM values agreeing with their original
+unmarked database counterparts**. Because the older three waves
+lack per-file manifests and the live eligible cohort has changed,
+these are verified observations, **not** a certified count of unique
+accounts or a population-wide recovery rate.
+
+The **next preview-only proof schema v2** additionally captures each
+selected archive candidate's original `game_stats.id`, validated
+`game_stats.played_on`, whether the same game has a canonical
+accepted public player snapshot for that exact Steam ID, and final
+recording role. A record can be labeled
+`historical_candidate_only` only when its verified archived bytes
+yield both independently parsed `hd_header` Steam lanes, both values
+match that original game's unmarked historic numbers, the played-on
+clock is valid, the same-game player projection was accepted, and the
+recording is final (not an `.aoe2mpgame` checkpoint).
+The per-file game IDs and dates stay exclusively in `0600`
+operator receipts; stdout shows only counts. This is still
+**read-only eligibility reconnaissance**. It does not install a
+recovered rating on the public site, create a signed live Watcher
+observation, or authorize changes to bets, winners or WOLO.
+Existing wave-3 schema-v1 receipts retain their original limited
+proof and are *not* upgraded into game-clock or accepted-game
+proof by merely passing receipt-compatibility checks.
+
 The observer now also includes `blockedDetails` for each lane: mutually
 exclusive per-identity reasons for the provenance, clock, and source
 failures. Its provenance categories distinguish a missing `watcher_upload`
