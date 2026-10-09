@@ -269,6 +269,15 @@ python3 -m unittest discover -s tests -p 'test_leaderboard_steam_gate_cli.py'
 python3 scripts/leaderboard_steam_gate.py
 ```
 
+The audit scans `game_stats` in bounded, primary-key-ordered batches
+(maximum 512 rows per database statement, with an explicit batch ceiling).
+This is intentional: a previous corpus-wide JSON window query exceeded the
+production 20-second PostgreSQL statement timeout (`SQLSTATE 57014`).
+Never bypass the read-only/session timeout safety rails merely to force a
+single enormous census. If the full observer reaches its overall protected
+runtime limit, reduce batch size or create resumable immutable receipts
+without changing production timeout or database state.
+
 The nine-stage funnel distinguishes raw value absence, source restrictions,
 timestamp/uploader/replay-hash integrity, live-monitor provenance, HMAC or
 legacy-window qualification, matching client/server hashes, valid file roles,
