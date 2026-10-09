@@ -27,6 +27,42 @@ AoE2WAR has two first-class HD leaderboard routes backed by current production d
 
 The homepage leaderboard chrome and the shared Kingdom menu open the modern board. Both leaderboard pages link directly to the other view.
 
+## Complete RM/DM roster contract (October 2026 draft)
+
+The RM and DM views must include **every eligible public identity** from the
+canonical directory, not just the already-rated or claimed subset. A player's
+identity and replay history are not deleted when its Steam rating is unknown.
+
+- An exact SteamID64 is ONE player record across all historical aliases. The
+  October 9 protected read-only census observed **3,916 exact-Steam accounts**
+  and **844 provisional name/site identities**, for **4,760 public identity
+  records** in total (excluding five ineligible/internal directory rows).
+- In the same census, **1,162** had qualifying RM and DM ratings; **2,754**
+  exact Steam accounts lacked both, plus the 844 provisional identities.
+  These are point-in-time observations, not permanent population totals.
+- Main RM and DM lists contain the entire public identity set for their scope:
+  rated entries first by actual Steam rating; unrated exact Steam identities
+  next, followed by name-only and claimed site-profile records. The 844
+  provisional records may represent aliases or profiles and must NEVER be
+  advertised as 844 additional confirmed Steam IDs.
+- Unrated rows display `—` for the rating and rank badge; their internal
+  numeric *roster positions* support stable pagination, search, bookmarks and
+  spotlight, but are NOT competitive rank numbers. No synthetic 1500 rating
+  or Site Elo is permitted on these Steam RM/DM leaderboards.
+- `trackedPlayers` is the entire active-scope public roster size; the
+  `rankedPlayers` field is the number with a qualifying rating in the active
+  Steam lane, not a count of profiles with three replay matches. The
+  Warriors/Kingdom scope still applies before pagination and searching.
+- An actual certified current or last-known Steam RM/DM rating uses the same
+  public-facing `RM Rating` or `DM Rating` label. Internal provenance
+  remains distinct, and a future newer authenticated game observation may
+  advance a lane independently. Missing sources stay explicitly unknown.
+- The leaderboard population change is a **display-only draft**: it does not
+  lift authority criteria, backfill GameStats or current Watcher states,
+  authenticate old manual uploads, change game results, or move WOLO.
+  Historical source-byte rating extraction remains a separate evidence
+  recovery effort.
+
 ## Data boundaries
 
 `lib/lobbyLeaderboard.ts` remains the ranking system of record. The dedicated page does not create a second rating or streak interpretation.
