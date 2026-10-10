@@ -100,9 +100,9 @@ export default function TelevisionReadinessPanel() {
     </div>
     <div className="mt-7 border-t border-cyan-100/10 pt-6">
       <div className="text-[10px] font-black uppercase tracking-[.22em] text-amber-300">Storage governance · preview only</div>
-      <h3 className="mt-2 text-xl font-bold text-white">Last Two Battles · Complete-Camera Candidates</h3>
+      <h3 className="mt-2 text-xl font-bold text-white">Latest Recorded Battles · Multi-Camera Candidates</h3>
       <p className="mt-2 text-xs leading-6 text-slate-400">
-        Shows only canonically associated ended Watcher feeds, never a guess from game titles.
+        Shows up to two recent completed battles with authenticated, ended Watcher footage—never a guess from game titles.
         It does not protect or delete recordings yet. The existing six-hour cleanup remains authoritative.
       </p>
       <div className="mt-3 grid gap-3 md:grid-cols-2">
