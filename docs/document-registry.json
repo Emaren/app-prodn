@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a8d0431f862d574310ba8a6878f221a52c1aa5c83e6c611ce681f5dd4f05453f",
+      "sha256": "9f0b4d5726938379c2b770444e8be554e607f246e61a6fc91b7f0ec3fe349cb9",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2049,7 +2049,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/television-v1-terminal-stream-contract-20261009",
-    "commit": "5ceed6615159a2d944ffba138ab736624013c15d"
+    "commit": "196dc77b9f16f265115ab0cfc4be844554ace334"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
