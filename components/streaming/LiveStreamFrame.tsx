@@ -218,6 +218,8 @@ function BrowserChunkPlayer({
     const abortVideoRequests = () => {
       for (const controller of activeVideoRequests) controller.abort();
     };
+    // Read visibility afresh across awaits. No stale TypeScript flow narrowing.
+    const videoTabHidden = () => document.visibilityState !== "visible";
     const liveLagSeconds = compact ? 0.9 : 1.8;
     const windowChunks = compact ? ROLLING_COMPACT_WINDOW_CHUNKS : ROLLING_WINDOW_CHUNKS;
     const refreshAdvance = compact ? ROLLING_COMPACT_REFRESH_ADVANCE : ROLLING_REFRESH_ADVANCE;
@@ -298,7 +300,7 @@ function BrowserChunkPlayer({
         );
         // Visibility may change while the network request is awaiting its body.
         // Re-read through a function to avoid TS's stale control-flow narrowing.
-        if (cancelled || (() => document.visibilityState === "hidden")()) return;
+        if (cancelled || videoTabHidden()) return;
         const availableMediaSeqs = (manifest.availableMediaSeqs ?? []).filter((sequence) => sequence > 0);
         const newestAvailableSeq =
           availableMediaSeqs[availableMediaSeqs.length - 1] ??
