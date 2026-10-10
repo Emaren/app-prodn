@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d04c20f6f492af09ee609807a17afc6f75986e15c98f7e64b1cb6292b952fad5",
+      "sha256": "046bf8677d1c8e0e20010f694ec88b22852f738621e61bd676dc79351a174d6e",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1697,7 +1697,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-09",
       "sensitivity": "internal",
-      "sha256": "9777d8e835ca4f155809db34365efc7ebe387ef3d0e2279072e328ad910a59ff",
+      "sha256": "48bb4a998228e2b266fc463bbb40f387c88b255884ae8126519fda6df82e9ead",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2048,8 +2048,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/television-v1-proof-backed-camera-aliases-20261009",
-    "commit": "b9d83b062e10f328985ddf668166e210f56a2d45"
+    "branch": "feature/television-v1-hidden-tab-playback-20261009",
+    "commit": "e0b466ce4e83cd88d6a8378d436ac1bfe4ed3190"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
