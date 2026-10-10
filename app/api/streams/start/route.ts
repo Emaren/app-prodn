@@ -100,13 +100,17 @@ export async function POST(request: NextRequest) {
   // Reserve a full per-POV quota for this admission check; concurrent cameras
   // still require independent total-volume and runtime backpressure limits.
   let writableVideoBytes: number | null = null;
+  let mountedSeparately = false;
   try {
-    writableVideoBytes = (await getStreamVolumeHeadroom()).writableVideoBytes;
+    const volume = await getStreamVolumeHeadroom();
+    writableVideoBytes = volume.writableVideoBytes;
+    mountedSeparately = volume.mountedSeparately;
   } catch {
     // Missing/unmounted directory or unavailable statfs must fail closed for
     // video only. The separate replay monitoring pipeline is untouched.
   }
-  if (writableVideoBytes === null || writableVideoBytes < MAX_STREAM_BYTES) {
+  if (writableVideoBytes === null || writableVideoBytes < MAX_STREAM_BYTES ||
+      (process.env.NODE_ENV === "production" && !mountedSeparately)) {
     return NextResponse.json({
       detail: "Video storage is not ready. The operator must verify the mounted media volume; normal replay watching is unaffected.",
       code: "STREAM_VIDEO_VOLUME_NOT_READY",
