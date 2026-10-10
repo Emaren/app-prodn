@@ -14,7 +14,7 @@ type VideoVaultResponse={
  rows:VideoVaultRow[];totalCount:number;scanned:number;recentBytes:number;
  issuesSampled:number;
  complete:boolean;limits:{perStreamBytes:number;perStreamChunks:number};note:string;
- volume:{freeBytes:number|null;reserveBytes:number;writableVideoBytes:number|null};
+ volume:{freeBytes:number|null;reserveBytes:number;writableVideoBytes:number|null;mountedSeparately:boolean|null};
  recordingBudget:{configured:boolean;profiles:Array<{key:string;label:string;estimatedMinutes:number;limitingFactor:string;twoHourCandidate:boolean;estimatedBytesForTwoHours:number}>};
 };
 const bytes=(value:number|null)=>value===null?"Unavailable":
@@ -86,6 +86,10 @@ export default function VideoVaultDashboard(){
         Verified video-volume free: {data?bytes(data.volume.freeBytes):"—"} · reserved:
         {" "}{data?bytes(data.volume.reserveBytes):"—"} · writable above floor:
         {" "}{data?bytes(data.volume.writableVideoBytes):"—"}
+      </div>
+      <div className={"mt-2 font-semibold " + (data?.volume.mountedSeparately===true?"text-emerald-200":"text-rose-200")}>
+        Capture filesystem: {data?.volume.mountedSeparately===true?"Verified separate media volume":data?.volume.mountedSeparately===false?"UNSAFE — on application root filesystem":"Not verified"}.
+        {" "}Production streaming admission requires a separate volume and room for one complete per-camera quota above reserve.
       </div>
       {data?.volume.writableVideoBytes===null ? <div className="mt-2 text-rose-200">
         Volume headroom unavailable: new video media writes fail safely until storage is verified.
