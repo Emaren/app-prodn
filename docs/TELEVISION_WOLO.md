@@ -723,3 +723,25 @@ was empty. This does not authorize autoplay or network video downloads:
 the viewer still presses Play. Its selected key is then consistent with
 the late broadcaster's directory-refresh loop; a stale empty key can no
 longer prevent new POVs from appearing after the viewer has pressed Play.
+
+### Bounded fan-out sequence-index cache (V3 development)
+
+First-party stream manifests and rolling-WebM routes previously enumerated
+and sorted the complete per-camera directory for every spectator request.
+For 8 simultaneous two-hour POVs, this creates redundant VPS directory
+work even though most viewers ask for the same final few seconds.
+
+`listStreamChunkSequences` now shares an in-process index for at most **128
+camera directories**, storing up to the **latest 512 numeric chunk sequences**
+per camera. A sequence snapshot expires after **850 ms**, pending concurrent
+readers share one directory scan, and successful local WebM writes and
+recording deletion invalidate their local entry. Other web workers cannot
+invalidate this process synchronously, so the short TTL is the maximum
+expected caching freshness lag during a healthy clock; a missing/failed
+directory read is not cached as indefinitely empty.
+
+This is an **I/O fan-out and memory-bounding optimization**, not a
+distributed cache, end-to-end first-frame latency certificate or guarantee
+about eight two-hour recordings. Filesystem test coverage verifies
+concurrent lookups, external writes after expiry, and delete invalidation.
+The byte/segment and actual storage-capacity limits remain unchanged.
