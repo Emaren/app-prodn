@@ -157,9 +157,28 @@ test("Watcher v1.6.4 sync validator requires correct native Mac ZIP manifest sha
   await validateWatcherReleaseBundle(dist, "9.9.9");
   const m = path.join(dist, "latest-mac.yml");
   const original = fs.readFileSync(m, "utf8");
-  fs.writeFileSync(m, original.replace("sha512: ", "sha512: wrong-", 1));
+  const receiptPath = path.join(dist, "SHA256SUMS-9.9.9.txt");
+  const manifestPath = path.join(dist, "watcher-release-manifest-9.9.9.json");
+  const receiptOriginal = fs.readFileSync(receiptPath, "utf8");
+  const manifestOriginal = fs.readFileSync(manifestPath, "utf8");
+  const damaged = original.replace("sha512: ", "sha512: wrong-", 1);
+  const damagedSha = sha256(damaged);
+  // Re-seal outer SHA256 receipts so the native SHA512 validator is actually
+  // reached; a plain in-place tamper correctly fails the earlier size gate.
+  const manifest = JSON.parse(manifestOriginal);
+  const row = manifest.files.find((entry: {filename: string}) => entry.filename === "latest-mac.yml");
+  assert.ok(row);
+  row.bytes = Buffer.byteLength(damaged);
+  row.sha256 = damagedSha;
+  fs.writeFileSync(m, damaged);
+  fs.writeFileSync(manifestPath, JSON.stringify(manifest));
+  fs.writeFileSync(receiptPath, receiptOriginal.split("\n").map((line) =>
+    line.endsWith("  latest-mac.yml") ? `${damagedSha}  latest-mac.yml` : line
+  ).join("\n"));
   await assert.rejects(validateWatcherReleaseBundle(dist, "9.9.9"), /SHA-512/);
   fs.writeFileSync(m, original);
+  fs.writeFileSync(manifestPath, manifestOriginal);
+  fs.writeFileSync(receiptPath, receiptOriginal);
   const zip = path.join(dist, "AoE2HDBets Watcher-9.9.9-arm64-mac.zip");
   fs.unlinkSync(zip);
   await assert.rejects(validateWatcherReleaseBundle(dist, "9.9.9"));
