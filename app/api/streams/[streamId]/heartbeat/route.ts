@@ -58,23 +58,6 @@ async function resolvePlatformSessionKeyForReplay(
 }
 
 
-async function resolveRecentReplaySessionKeyForWatcher(
-  prisma: ReturnType<typeof getPrisma>,
-  userId: number
-) {
-  const rows = await prisma.$queryRaw<Array<{ replay_file: string | null }>>`
-    select replay_file
-    from watcher_client_events
-    where user_id = ${userId}
-      and coalesce(replay_file, '') <> ''
-      and created_at >= now() - interval '4 hours'
-    order by created_at desc
-    limit 1
-  `;
-
-  return cleanText(rows[0]?.replay_file, 255) || null;
-}
-
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ streamId: string }> }
@@ -147,17 +130,23 @@ export async function POST(
     );
   }
 
-  const replayBackedSessionKey =
-    stream.provider === "aoe2war" &&
-    stream.sourceType === "watcher_native" &&
-    (stream.sessionKey.startsWith("watcher:session_") || stream.sessionKey.startsWith("free:"))
-      ? (await resolveRecentReplaySessionKeyForWatcher(prisma, actor.user.id)) ?? stream.sessionKey
-      : stream.sessionKey;
-
+  // A broadcaster started before replay discovery may send a stronger
+  // current-replay claim later. Only an exact replay/platform record owned by
+  // the authenticated account can promote weak stream identity. Recency,
+  // player names, source window labels and filenames without proof cannot.
+  const claimedSessionKey = cleanText(body.sessionKey, 255);
+  const weakStreamKey =
+    stream.sessionKey.startsWith("watcher:") || stream.sessionKey.startsWith("free:");
+  const safeExactClaim = claimedSessionKey &&
+    !claimedSessionKey.startsWith("watcher:") &&
+    !claimedSessionKey.startsWith("free:") &&
+    !/^(?:[a-z]:[\\/]|[/\\]{2}|[/]|file:\/\/)/i.test(claimedSessionKey);
+  const replayBackedSessionKey = weakStreamKey && safeExactClaim
+    ? claimedSessionKey
+    : stream.sessionKey;
   const platformSessionKey =
     stream.provider === "aoe2war" && stream.sourceType === "watcher_native"
-      ? (await resolvePlatformSessionKeyForReplay(prisma, actor.user.uid, replayBackedSessionKey)) ??
-        (replayBackedSessionKey !== stream.sessionKey ? replayBackedSessionKey : null)
+      ? await resolvePlatformSessionKeyForReplay(prisma, actor.user.uid, replayBackedSessionKey)
       : null;
 
   const updated = await prisma.gameWatchStream.update({
