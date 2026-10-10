@@ -111,6 +111,72 @@ export type StreamStorageUsage = {
 
 const streamWriteTails = new Map<string, Promise<void>>();
 
+// The authoritative on-disk census is expensive for long matches. Cache only
+// the latest VALIDATED per-stream usage, fenced by directory identity/mtime,
+// and force a full reconciliation at least every five minutes. No sidecar
+// files, database migration, or unbounded cache growth are introduced.
+const WRITE_USAGE_RECONCILE_MS = 5 * 60 * 1000;
+const MAX_WRITE_USAGE_CACHE_STREAMS = 128;
+type CachedStreamWriteUsage = {
+  usage: StreamStorageUsage;
+  fingerprint: string;
+  reconciledAt: number;
+};
+const streamWriteUsageCache = new Map<string, CachedStreamWriteUsage>();
+
+async function streamDirectoryFingerprint(dir: string) {
+  const stat = await fs.stat(dir, { bigint: true });
+  return [stat.dev,stat.ino,stat.mtimeNs,stat.ctimeNs].join(":");
+}
+function rememberStreamWriteUsage(key:string, entry:CachedStreamWriteUsage) {
+  streamWriteUsageCache.delete(key);
+  streamWriteUsageCache.set(key,entry);
+  while (streamWriteUsageCache.size > MAX_WRITE_USAGE_CACHE_STREAMS) {
+    const oldest=streamWriteUsageCache.keys().next().value;
+    if (oldest === undefined) break;
+    streamWriteUsageCache.delete(oldest);
+  }
+}
+async function usageBeforeStreamWrite(streamId:number|string, dir:string):Promise<StreamStorageUsage> {
+  const key=safeStreamId(streamId);
+  const fingerprint=await streamDirectoryFingerprint(dir);
+  const cached=streamWriteUsageCache.get(key);
+  const now=Date.now();
+  if (cached && cached.fingerprint === fingerprint &&
+      now - cached.reconciledAt < WRITE_USAGE_RECONCILE_MS) {
+    return {...cached.usage};
+  }
+  // Another process, an admin action, an app restart, or our periodic
+  // reconciliation must reconstruct the REAL filesystem accounting.
+  let exact=await getStreamStorageUsage(streamId);
+  const after=await streamDirectoryFingerprint(dir);
+  if (fingerprint !== after) {
+    exact=await getStreamStorageUsage(streamId);
+    const resampled=await streamDirectoryFingerprint(dir);
+    if (after !== resampled) {
+      streamWriteUsageCache.delete(key);
+      return exact; // Unstable directory: never cache inconsistent evidence.
+    }
+    rememberStreamWriteUsage(key,{usage:exact,fingerprint:resampled,reconciledAt:now});
+  } else {
+    rememberStreamWriteUsage(key,{usage:exact,fingerprint:after,reconciledAt:now});
+  }
+  return {...exact};
+}
+async function rememberSuccessfulStreamWrite(
+  streamId:number|string, dir:string, usage:StreamStorageUsage,
+) {
+  const key=safeStreamId(streamId);
+  try {
+    const fingerprint=await streamDirectoryFingerprint(dir);
+    const reconciledAt=streamWriteUsageCache.get(key)?.reconciledAt??Date.now();
+    rememberStreamWriteUsage(key,{usage,fingerprint,reconciledAt});
+  } catch {
+    streamWriteUsageCache.delete(key);
+  }
+}
+
+
 async function withStreamWriteLock<T>(streamId: number | string, operation: () => Promise<T>) {
   const key = safeStreamId(streamId);
   const prior = streamWriteTails.get(key) || Promise.resolve();
@@ -190,11 +256,11 @@ export async function writeStreamChunk(
       return {
         filePath,
         created: false,
-        usage: await getStreamStorageUsage(streamId),
+        usage: await usageBeforeStreamWrite(streamId, dir),
       };
     }
 
-    const usage = await getStreamStorageUsage(streamId);
+    const usage = await usageBeforeStreamWrite(streamId, dir);
     if (usage.chunkCount >= MAX_STREAM_CHUNKS) {
       throw new StreamStorageLimitError(
         `Stream reached the ${MAX_STREAM_CHUNKS}-chunk safety limit.`,
@@ -243,7 +309,7 @@ export async function writeStreamChunk(
         return {
           filePath,
           created: false,
-          usage: await getStreamStorageUsage(streamId),
+          usage: await usageBeforeStreamWrite(streamId, dir),
         };
       }
     } catch (error) {
@@ -260,15 +326,15 @@ export async function writeStreamChunk(
       await fs.unlink(temporaryPath).catch(() => undefined);
     }
 
-    return {
-      filePath,
-      created: true,
-      usage: {
-        chunkCount: usage.chunkCount + 1,
-        totalBytes: usage.totalBytes + data.byteLength,
-        latestSequence: Math.max(usage.latestSequence, safeSeq),
-      } satisfies StreamStorageUsage,
-    };
+    const updatedUsage = {
+      chunkCount: usage.chunkCount + 1,
+      totalBytes: usage.totalBytes + data.byteLength,
+      latestSequence: Math.max(usage.latestSequence, safeSeq),
+    } satisfies StreamStorageUsage;
+    // This runs after the temporary upload link has been unlinked. The
+    // directory fingerprint reflects the final authoritative chunk set.
+    await rememberSuccessfulStreamWrite(streamId, dir, updatedUsage);
+    return {filePath,created:true,usage:updatedUsage};
   });
 }
 
@@ -339,5 +405,7 @@ export async function readStreamChunksBounded(
 }
 
 export async function removeStreamChunks(streamId: number | string) {
+  const key=safeStreamId(streamId);
+  streamWriteUsageCache.delete(key);
   await fs.rm(streamChunkDir(streamId), { recursive: true, force: true });
 }
