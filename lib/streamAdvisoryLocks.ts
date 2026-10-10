@@ -40,3 +40,22 @@ export async function lockVideoSessionPrimary(
   `;
   if (rows.length !== 1) throw new Error("Video session lock unavailable.");
 }
+
+/**
+ * One Postgres cross-worker writer per stream, held through its disk write and
+ * database acknowledgement. Unlike the Node Map lock, this protects quota
+ * accounting when two Next.js workers receive different chunk sequences.
+ */
+export async function lockVideoChunkWriter(
+  tx: Prisma.TransactionClient,
+  streamId: number,
+) {
+  if (!Number.isSafeInteger(streamId) || streamId <= 0 || streamId > 2_147_483_647) {
+    throw new Error("Invalid video stream lock identity.");
+  }
+  const rows = await tx.$queryRaw<Array<{ locked: number }>>`
+    SELECT 1::integer AS locked
+    FROM pg_advisory_xact_lock(${734102}, ${streamId})
+  `;
+  if (rows.length !== 1) throw new Error("Video writer lock unavailable.");
+}
