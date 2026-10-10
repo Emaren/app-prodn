@@ -20,6 +20,7 @@ type RetentionCandidate={
   recordingCount:number;teamsProven:boolean;strongBattleIdentity:boolean;
   candidateStatus:"complete_candidate"|"incomplete_candidate"|"unverified_identity";
   warning:string;
+  mediaSamples:Array<{streamId:number;status:string;initPresent:boolean;tailPresent:boolean;note:string}>;
 };
 type Payload = {checkedAt:string;activeBattleCount:number;examinedBattles:number;
   battles:Battle[];notes:string[];
@@ -117,6 +118,16 @@ export default function TelevisionReadinessPanel() {
           <div className="mt-1 break-all text-[10px] text-slate-500">{game.battleKey}</div>
           <div className="mt-3 text-xs text-cyan-100">{game.recordedPlayers}/{game.rosterSize} player POVs · {game.recordingCount} recordings</div>
           <div className="mt-2 text-xs text-slate-400">Stream IDs: {game.cameraStreamIds.length?game.cameraStreamIds.join(", "):"None"}</div>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {game.mediaSamples.map(sample=><span key={sample.streamId}
+              title={sample.note}
+              className={"rounded-md border px-2 py-1 text-[10px] " +
+                (sample.status==="samples_present"
+                  ?"border-emerald-300/25 text-emerald-200"
+                  :"border-amber-300/25 text-amber-200")}>
+              #{sample.streamId} · {sample.status.replaceAll("_"," ")}
+            </span>)}
+          </div>
           {game.missingPlayers.length?<div className="mt-2 text-xs text-amber-200">
             Missing: {game.missingPlayers.join(", ")}
           </div>:null}
@@ -126,7 +137,7 @@ export default function TelevisionReadinessPanel() {
           No eligible completed battle snapshots yet; no retention recommendation has been made.
         </div>:null}
       </div>
-      <p className="mt-3 text-[11px] text-amber-200">Retention automation: DISABLED. Preview candidates do not prove files still exist on disk or decode in a browser.</p>
+      <p className="mt-3 text-[11px] text-amber-200">Retention automation: DISABLED. Two sampled files can establish partial on-disk presence only; complete continuity and browser playback remain unverified.</p>
     </div>
     <p className="mt-4 text-xs leading-6 text-slate-500">Recent chunk + heartbeat proof is not a guarantee of successful browser playback. This panel cannot remotely control, view or change a player’s desktop. See the Video Vault inventory below for recording fault codes.</p>
     <Link href="/television-wolo" className="mt-4 inline-flex rounded-full border border-cyan-200/30 px-4 py-2 text-xs font-semibold text-cyan-100">Open Television WOLO →</Link>
