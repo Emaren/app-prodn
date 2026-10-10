@@ -249,7 +249,7 @@ class WatcherReleasePolicyTests(unittest.TestCase):
                 plan = MODULE.build_plan(root, "9.9.9", policy)
 
         MODULE.verify_plan(plan)
-        self.assertEqual(plan["public_release"]["asset_count"], 11)
+        self.assertEqual(plan["public_release"]["asset_count"], 12)
         self.assertEqual(
             plan["promotion_order"],
             MODULE.promotion_order("9.9.9"),
