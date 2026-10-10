@@ -54,6 +54,8 @@ test("server is signed-in, same-origin, roster-validated, one ballot/account wit
   assert.match(route,/error\.code==="P2002"/);
   assert.match(schema,/@@unique\(\[gameStatsId, userId\]/);
   assert.match(sql,/CREATE UNIQUE INDEX "uq_television_chaos_ballot_user"/);
+  assert.match(sql,/ON DELETE CASCADE ON UPDATE NO ACTION/);
+  assert.match(schema,/onDelete: Cascade, onUpdate: NoAction/);
   assert.match(ui,/Chaos of the Match/);
   assert.match(ui,/Your ballot is recorded/);
   assert.doesNotMatch(ui,/candidateNames\.slice\(0,4\)/);
