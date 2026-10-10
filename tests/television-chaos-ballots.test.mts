@@ -70,3 +70,12 @@ test("spectator tallies refresh only in visible tabs and reject stale response r
   assert.match(ui,/document.removeEventListener\("visibilitychange",onVisible\)/);
   assert.match(ui,/setRefreshKey\(n=>n\+1\)/);
 });
+
+test("lobby/archive row IDs are never interpreted as final replay GameStats ballot IDs",()=>{
+  const page=readFileSync("app/television-wolo/page.tsx","utf8");
+  const ui=readFileSync("components/television/TelevisionWoloExperience.tsx","utf8");
+  assert.match(page,/ballotGameId: source === "recent"/);
+  assert.match(ui,/battle\?\.ballotGameId/);
+  assert.match(ui,/Lobby\/archive IDs are not necessarily GameStats IDs/);
+  assert.doesNotMatch(ui,/const gameId=typeof battle\?\.id/);
+});
