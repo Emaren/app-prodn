@@ -12,7 +12,7 @@ import {
 } from "@/lib/streamMedia";
 import { toWatchStreamPayload } from "@/lib/watchStreams";
 import { getStreamVolumeHeadroom, MAX_STREAM_BYTES } from "@/lib/streamStorage";
-import { lockVideoBroadcaster, lockVideoSessionPrimary } from "@/lib/streamAdvisoryLocks";
+import { lockVideoBroadcaster, lockVideoSessionPrimary, lockVideoChunkWriter } from "@/lib/streamAdvisoryLocks";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -158,6 +158,17 @@ export async function POST(request: NextRequest) {
   const updated = await prisma.$transaction(async (tx) => {
     await lockVideoBroadcaster(tx, user.id);
     await lockVideoSessionPrimary(tx, sessionKey);
+    // Finish any accepted chunks for the old broadcaster before declaring
+    // that camera ended. Locks are taken in stable ID order.
+    const previous = await tx.gameWatchStream.findMany({
+      where: {
+        userId: user.id, provider: "aoe2war",
+        sourceType: { in: [...AOE2WAR_STREAM_SOURCE_TYPES] },
+        status: { in: ["starting", "live"] },
+      },
+      select: { id: true }, orderBy: { id: "asc" },
+    });
+    for (const old of previous) await lockVideoChunkWriter(tx, old.id);
     const now = new Date();
     await tx.gameWatchStream.updateMany({
       where: {
