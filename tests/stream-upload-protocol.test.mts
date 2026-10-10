@@ -4,6 +4,8 @@ import {readFileSync} from "node:fs";
 import {
   parseStreamChunkSequence,
   isAdmissibleStreamChunkContentLength,
+  readBoundedStreamChunkBody,
+  StreamChunkBodyLimitError,
 } from "../lib/streamUploadProtocol.ts";
 
 test("missing, empty, noncanonical and contradictory chunk sequence must fail closed",()=>{
@@ -30,7 +32,7 @@ test("native and browser chunk API still bounds actual body after optional lengt
   const route=readFileSync("app/api/streams/[streamId]/chunks/route.ts","utf8");
   assert.match(route,/parseStreamChunkSequence/);
   assert.match(route,/isAdmissibleStreamChunkContentLength/);
-  assert.match(route,/arrayBuffer\.byteLength <= 0 \|\| arrayBuffer\.byteLength > MAX_CHUNK_BYTES/);
+  assert.match(route,/readBoundedStreamChunkBody\(request.body, MAX_CHUNK_BYTES\)/);
   assert.match(route,/resolveStreamRequestActor/);
   assert.match(route,/isAoE2WarManagedStream/);
 });
@@ -45,4 +47,24 @@ test("oversize and unsupported codec are terminal video-only rejections",()=>{
   assert.match(route,/failed to mark refused video ended/);
   assert.match(route,/resolveStreamRequestActor/);
   assert.doesNotMatch(route,/transferWolo|betWager.update|winnerProof.*update/);
+});
+
+test("streamed upload body accepts exact byte-limit frames without giant allocation",async()=>{
+  const body=new ReadableStream<Uint8Array>({start(c){
+    c.enqueue(new Uint8Array([1,2,3]));
+    c.enqueue(new Uint8Array([4,5]));
+    c.close();
+  }});
+  assert.deepEqual([...await readBoundedStreamChunkBody(body,5)],[1,2,3,4,5]);
+});
+test("oversize or empty streams reject while receiving, not after whole-body buffering",async()=>{
+  const oversized=new ReadableStream<Uint8Array>({start(c){
+    c.enqueue(new Uint8Array(4));
+    c.enqueue(new Uint8Array(4));
+    c.close();
+  }});
+  await assert.rejects(()=>readBoundedStreamChunkBody(oversized,7),StreamChunkBodyLimitError);
+  const empty=new ReadableStream<Uint8Array>({start(c){c.close()}});
+  await assert.rejects(()=>readBoundedStreamChunkBody(empty,7),StreamChunkBodyLimitError);
+  assert.equal(readFileSync("app/api/streams/[streamId]/chunks/route.ts","utf8").includes("request.arrayBuffer()"),false);
 });
