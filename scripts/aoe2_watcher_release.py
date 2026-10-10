@@ -18,6 +18,7 @@ import sys
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import unquote
 from typing import Any, Iterator
 
 CANONICAL_PRODUCTION_REPO = "/var/www/AoE2HDBets/app-prodn"
@@ -89,6 +90,11 @@ def canonical_files(version: str) -> list[str]:
         f"AoE2HDBets Watcher {version}.exe",
         f"AoE2HDBets Watcher-{version}-arm64.dmg",
         "aoe2hdbets-watcher-direct.zip",
+        *(
+            [f"AoE2HDBets Watcher-{version}-arm64-mac.zip"]
+            if tuple(map(int, version.split("."))) >= (1, 6, 4)
+            else []
+        ),
         f"AoE2HDBets Watcher-{version}.AppImage",
         f"AoE2HDBets Watcher-{version}-arm64.dmg.blockmap",
         "latest.yml",
@@ -110,7 +116,8 @@ def all_release_files(version: str) -> list[str]:
 
 def promotion_order(version: str) -> list[str]:
     files = canonical_files(version)
-    return files[:6] + receipt_files(version) + files[6:]
+    pointer_start = files.index("latest.yml")
+    return files[:pointer_start] + receipt_files(version) + files[pointer_start:]
 
 
 def load_contract(path: Path = CONTRACT_PATH) -> dict[str, Any]:
@@ -267,6 +274,69 @@ def require_regular_file(path: Path, label: str) -> os.stat_result:
     return info
 
 
+def verify_macos_native_updater(root: Path, version: str) -> None:
+    """Fail closed unless the native ZIP is bound by SHA512 to latest-mac.yml."""
+    if tuple(map(int, version.split("."))) < (1, 6, 4):
+        return
+    name = f"AoE2HDBets Watcher-{version}-arm64-mac.zip"
+    path = root / name
+    require_regular_file(path, "macOS updater-native ZIP")
+    digest = hashlib.sha512()
+    with path.open("rb") as stream:
+        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+            digest.update(chunk)
+    wanted = base64.b64encode(digest.digest()).decode("ascii")
+    text = (root / "latest-mac.yml").read_text(encoding="utf-8")
+    lines = text.splitlines()
+    root_path = re.findall(r"^path:\s*(.+?)\s*$", text, re.M)
+    root_sha = re.findall(r"^sha512:\s*(\S+)\s*$", text, re.M)
+    if len(root_path) != 1 or len(root_sha) != 1:
+        raise WatcherReleasePromotionError(
+            "macOS updater metadata has missing/ambiguous default path or SHA512"
+        )
+
+    def decode_name(value: str) -> str:
+        raw = value.strip().strip("\"'")
+        result = unquote(raw)
+        if not result or "/" in result or "\\" in result or result in (".", ".."):
+            raise WatcherReleasePromotionError(
+                "macOS updater manifest references a non-flat artifact"
+            )
+        return result
+
+    if decode_name(root_path[0]) != name or root_sha[0] != wanted:
+        raise WatcherReleasePromotionError(
+            "macOS updater default path or SHA512 does not match native ZIP"
+        )
+    matches = []
+    for i, line in enumerate(lines):
+        match = re.fullmatch(r"\s+-\s+url:\s*(.+?)\s*", line)
+        if not match:
+            continue
+        file_name = decode_name(match.group(1))
+        if file_name == "aoe2hdbets-watcher-direct.zip":
+            raise WatcherReleasePromotionError(
+                "manual macOS ZIP cannot appear in updater manifest"
+            )
+        if file_name != name:
+            continue
+        signature = None
+        for detail in lines[i + 1 :]:
+            if re.match(r"\s+-\s+url:", detail) or (
+                detail and not detail[0].isspace()
+            ):
+                break
+            digest_row = re.fullmatch(r"\s+sha512:\s*(\S+)\s*", detail)
+            if digest_row:
+                signature = digest_row.group(1)
+                break
+        matches.append(signature)
+    if matches != [wanted]:
+        raise WatcherReleasePromotionError(
+            "macOS updater manifest files entry does not bind native ZIP SHA512"
+        )
+
+
 def validate_bundle(root: Path, version: str) -> list[dict[str, Any]]:
     if not VERSION_RE.fullmatch(version):
         raise WatcherReleasePromotionError(
@@ -358,7 +428,11 @@ def validate_bundle(root: Path, version: str) -> list[dict[str, Any]]:
 
     rules = {
         "latest.yml": f"AoE2HDBets Watcher Setup {version}.exe",
-        "latest-mac.yml": f"AoE2HDBets Watcher-{version}-arm64.dmg",
+        "latest-mac.yml": (
+            f"AoE2HDBets Watcher-{version}-arm64-mac.zip"
+            if tuple(map(int, version.split("."))) >= (1, 6, 4)
+            else f"AoE2HDBets Watcher-{version}-arm64.dmg"
+        ),
         "latest-linux.yml": f"AoE2HDBets Watcher-{version}.AppImage",
     }
     for name, expected_path in rules.items():
@@ -371,6 +445,8 @@ def validate_bundle(root: Path, version: str) -> list[dict[str, Any]]:
             raise WatcherReleasePromotionError(
                 f"Watcher updater path mismatch: {name}"
             )
+
+    verify_macos_native_updater(root, version)
 
     for name in receipts:
         file_path = root / name
