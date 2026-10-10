@@ -1294,3 +1294,39 @@ signed platform release bytes, hashes, protected site/API compatibility,
 governed promotion and physical installation canaries. See issue #464 and
 Watcher PR #32.
 
+## Watcher 1.6.4 community download policy (no Apple Developer membership)
+
+The existing public 1.6.3 model already offers **unsigned macOS DMG and
+manual direct ZIP**, with an explicit Gatekeeper fallback on the website.
+The operator confirms there is no paid Apple Developer Program membership
+or Developer ID Application certificate, and does not authorize purchasing
+one as a prerequisite for this release. Watcher 1.6.4 retains **two signed,
+timestamped Windows executables; an unsigned manual macOS DMG + direct ZIP;
+and a Linux AppImage**. An updater-native macOS ZIP remains an integrity-bound
+artifact in the bundle but is **not an approved unsigned self-update channel**:
+the Watcher checks a real signed/notarized running application before
+enabling native macOS auto-update. Do not advertise Mac auto-updating or
+pretend the fallback command provides signing/notarization assurance.
+
+For this specific release, \`scripts/assemble_watcher_164_community.py\`
+accepts the exact successful GitHub signing run 38087777891 and CI run
+38087519262, both bound to source commit
+\`a223ad41c1a877e30e6f532c915aa40499d2c746\`. It refuses mismatched
+workflow status/identity, duplicate artifacts, unsigned Windows checksums,
+or an incomplete payload. The resulting 12-file immutable bundle contains
+Windows-signed, Mac-manual-unsigned and Linux-AppImage policy labels; the
+Windows \`latest.yml\` binds to the *signed* installer bytes. The production
+\`validate_bundle()\` then verifies exact SHA256 inventory/receipts and
+Mac native-ZIP SHA512 evidence. This is **local assembly only**, not a
+public publication, compatible backend, or installed-upgrade certificate.
+
+Publication still runs through the governed Watcher promotion, real public
+GitHub asset digest match, exact production source and volume/Wolo
+continuity, and verified web download routes. Old public 1.6.3 must remain
+available as the previous generation. Stacked Television V3 backend
+migration, storage, installed upgrade and real multi-POV acceptance remain
+separate gates. The unsigned Mac bundle is only offered through explicit
+manual install; a user-directed \`xattr -dr com.apple.quarantine\` removes
+Apple's downloaded-app quarantine protection and must never be silently
+executed by the app or installer.
+
