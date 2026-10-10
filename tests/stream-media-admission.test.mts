@@ -85,7 +85,7 @@ test("native chunk route sheds before body read and records server-owned telemet
     "utf8",
   );
   const admissionOffset = route.indexOf("currentStreamMediaAdmission(");
-  const bodyOffset = route.indexOf("request.arrayBuffer()");
+  const bodyOffset = route.indexOf("readBoundedStreamChunkBody(request.body, MAX_CHUNK_BYTES)");
   assert.ok(admissionOffset >= 0 && admissionOffset < bodyOffset);
   assert.match(route, /stream\.sourceType === "watcher_native"/);
   assert.match(route, /x-aoe2war-stream-capabilities/);
