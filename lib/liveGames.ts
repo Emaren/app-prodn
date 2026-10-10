@@ -871,6 +871,7 @@ async function loadStreamsBySession(prisma: PrismaClient, sessionKeys: string[])
           not: "removed",
         },
       },
+      include: { user: { select: { steamId: true } } },
       orderBy: [
         { isPrimary: "desc" },
         { lastHeartbeatAt: "desc" },
@@ -1597,6 +1598,7 @@ export async function loadStandaloneLiveStreamSessions(
           },
         ],
       },
+      include: { user: { select: { steamId: true } } },
       orderBy: [
         { isPrimary: "desc" },
         { lastHeartbeatAt: "desc" },
