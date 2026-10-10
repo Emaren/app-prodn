@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/television-v1-proof-backed-camera-aliases-20261009` at `29ef4f3dcfc6470121a98883b28db98c099d7204`
+Implementation baseline: `feature/television-v1-proof-backed-camera-aliases-20261009` at `893e66eebfd46492e44af3a7b22d1dd020e198aa`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
