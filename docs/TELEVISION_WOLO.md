@@ -200,6 +200,13 @@ arrivals while its viewer-initiated stream polling handles exact session keys.
 The stream and team positions refresh independently: a player without video
 still occupies the correct game position, if roster/team evidence exists.
 
+The participant tiles deliberately report the actual media lifecycle:
+`CONNECTING` before the first successful chunk, `VIDEO LIVE` only when
+the authenticated first-party stream has recent heartbeat/chunk evidence,
+`SIGNAL STALE` for an old transport, and `RECORDING ENDED` or `NO VIDEO`
+after end. A bare database stream row can never claim to be broadcasting
+successfully. Historical recordings are not relabeled as live.
+
 This source implementation has not been validated with two physical Windows
 recorders. Packaging, filesystem limits, actual network buffering,
 source-window privacy and live simultaneous pairing remain explicit canary
