@@ -1365,4 +1365,3 @@ GitHub v1.6.4 published with exact certified digests, governed VPS download
 promotion with Wolo/runtime continuity, and committed web download metadata
 matching the hosted hashes. The native ZIP is retained for integrity but Mac
 unsigned manual installations do not claim signed self-update support.
-
