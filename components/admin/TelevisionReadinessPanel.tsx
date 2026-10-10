@@ -14,7 +14,16 @@ type Battle = {
   unassignedStreams:Array<{id:number;sourceType:string;status:string}>;
   message:string;
 };
+type MediaProbe={
+  streamId:number;status:"candidate_bytes_present"|"missing_directory"|"missing_init"|
+    "incomplete_sequences"|"invalid_init"|"unavailable";
+  observedChunkCount:number|null;expectedChunkCount:number;
+  observedLatestSequence:number|null;initBytes:number|null;lastChunkBytes:number|null;
+  hasContinuousSequence:boolean|null;playbackCertified:false;
+};
 type RetentionCandidate={
+  archiveReadiness:"media_bytes_present_playback_unverified"|"needs_evidence_or_recovery";
+  diskEvidence:MediaProbe[];
   battleKey:string;completedAt:string;gameId:number;rosterSize:number;
   recordedPlayers:number;missingPlayers:string[];cameraStreamIds:number[];
   recordingCount:number;teamsProven:boolean;strongBattleIdentity:boolean;
@@ -23,7 +32,8 @@ type RetentionCandidate={
 };
 type Payload = {checkedAt:string;activeBattleCount:number;examinedBattles:number;
   battles:Battle[];notes:string[];
-  retentionPreview:{games:RetentionCandidate[];examined:number;unverified:number;retentionEnabled:false};
+  retentionPreview:{games:RetentionCandidate[];examined:number;unverified:number;retentionEnabled:false;
+    diskProbesChecked:number;diskAuditTruncated:boolean};
 };
 
 export default function TelevisionReadinessPanel() {
@@ -120,13 +130,26 @@ export default function TelevisionReadinessPanel() {
           {game.missingPlayers.length?<div className="mt-2 text-xs text-amber-200">
             Missing: {game.missingPlayers.join(", ")}
           </div>:null}
+          <div className={"mt-3 text-xs font-semibold " +
+            (game.archiveReadiness==="media_bytes_present_playback_unverified"?
+              "text-emerald-200":"text-amber-200")}>
+            {game.archiveReadiness==="media_bytes_present_playback_unverified"
+              ?"Filesystem evidence present · playback NOT certified"
+              :"Recording incomplete, missing or not verified on disk"}
+          </div>
+          {game.diskEvidence.map(probe=><div key={probe.streamId}
+            className="mt-2 flex flex-wrap justify-between gap-2 rounded-lg border border-white/10 px-2.5 py-2 text-[11px] text-slate-400">
+            <span>Camera #{probe.streamId} · {probe.status.replaceAll("_"," ")}</span>
+            <span>{probe.observedChunkCount??"?"}/{probe.expectedChunkCount} chunks ·
+              init {probe.initBytes??"?"} B · last {probe.lastChunkBytes??"?"} B</span>
+          </div>)}
           <p className="mt-3 text-[11px] leading-5 text-slate-400">{game.warning}</p>
         </div>)}
         {value && !value.retentionPreview.games.length?<div className="rounded-xl border border-white/10 p-4 text-xs text-slate-400">
           No eligible completed battle snapshots yet; no retention recommendation has been made.
         </div>:null}
       </div>
-      <p className="mt-3 text-[11px] text-amber-200">Retention automation: DISABLED. Preview candidates do not prove files still exist on disk or decode in a browser.</p>
+      <p className="mt-3 text-[11px] text-amber-200">Retention automation: DISABLED. Filesystem inspection is bounded and read-only; observed chunks do not prove continuous playable video. {value?.retentionPreview.diskAuditTruncated?"Camera audit truncated at its safe inspection cap.":""}</p>
     </div>
     <p className="mt-4 text-xs leading-6 text-slate-500">Recent chunk + heartbeat proof is not a guarantee of successful browser playback. This panel cannot remotely control, view or change a player’s desktop. See the Video Vault inventory below for recording fault codes.</p>
     <Link href="/television-wolo" className="mt-4 inline-flex rounded-full border border-cyan-200/30 px-4 py-2 text-xs font-semibold text-cyan-100">Open Television WOLO →</Link>
