@@ -335,3 +335,15 @@ sequence conflict and video reserve controls remain in force.
 Boundary tests exercise valid/invalid headers, both sequence transports,
 disagreements and the existing post-read byte fence. No replay or financial
 authority is affected. Windows game/installed-client canary remains required.
+
+### Invalid first-party video segment failover
+
+In addition to video quota/volume terminal signals, WebM chunk upload
+rejects explicitly oversized/malformed media bodies with HTTP 413
+`STREAM_CHUNK_TOO_LARGE` and unsupported `Content-Type` with HTTP 415
+`STREAM_FORMAT_UNSUPPORTED`; both mark `terminal: true`. The server
+best-effort ends the refused video session, preserves previous chunks, and
+still sends a terminal media signal if that status write fails. The
+unreleased 1.6.4 Watcher stops only video and explains to the player that
+replay/game monitoring continues. There is no silent upload retry loop
+for payloads that cannot become valid by retrying unchanged bytes.
