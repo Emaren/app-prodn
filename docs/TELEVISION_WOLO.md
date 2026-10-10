@@ -170,3 +170,37 @@ database/report is still a future separate audit/retention gate.
 Neither the page nor API treats these features as a packaged two-Windows-player
 certification. Long-game full-disk quotas, streaming duration, adaptive
 quality, and end-to-end viewer/capture telemetry remain unproven.
+
+## Canonical battle-to-camera alias recovery (stacked development)
+
+The live-game snapshot already groups replay identities with verified
+`identityAliases`, original replay filenames and Watcher upload provenance.
+Exact `/api/watch-streams?sessionKey=X` queries can miss another legitimate
+player's video when their stream was originally started under a different
+per-uploader replay key and the session was subsequently promoted to a
+`platform:<match-id>` canonical identity.
+
+The television page now carries the backend's **already-attached streams**
+from `loadLiveGamesSnapshot` into the battle shelf. The
+`loadStreamsBySession` and standalone-stream projections include a
+server-selected owner Steam ID. The client merges those proven camera
+attachments with periodic exact-session refreshes, deduplicated by numeric
+stream ID, rather than inventing cross-match joins from streamer titles,
+display-name similarity or arbitrary client-supplied aliases.
+
+This is presentation authority only; it does not infer a winner, transfer a
+championship, certify a replay hash, or grant betting eligibility.
+The normal live-session grouping engine remains the sole authority for alias
+membership. Old videos and removed streams remain subject to its existing
+visibility/freshness rules. If no authoritative association is available,
+the camera stays unavailable; never fabricate a participant's POV.
+
+The frontend reuses its regular RSC battle-shelf refresh to discover late
+arrivals while its viewer-initiated stream polling handles exact session keys.
+The stream and team positions refresh independently: a player without video
+still occupies the correct game position, if roster/team evidence exists.
+
+This source implementation has not been validated with two physical Windows
+recorders. Packaging, filesystem limits, actual network buffering,
+source-window privacy and live simultaneous pairing remain explicit canary
+requirements.
