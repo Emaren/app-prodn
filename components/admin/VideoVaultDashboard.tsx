@@ -15,6 +15,7 @@ type VideoVaultResponse={
  issuesSampled:number;
  complete:boolean;limits:{perStreamBytes:number;perStreamChunks:number};note:string;
  volume:{freeBytes:number|null;reserveBytes:number;writableVideoBytes:number|null};
+ recordingBudget:{configured:boolean;profiles:Array<{key:string;label:string;estimatedMinutes:number;limitingFactor:string;twoHourCandidate:boolean;estimatedBytesForTwoHours:number}>};
 };
 const bytes=(value:number|null)=>value===null?"Unavailable":
   value<1048576?(value/1024).toFixed(1)+" KiB":(value/1073741824).toFixed(2)+" GiB";
@@ -91,6 +92,28 @@ export default function VideoVaultDashboard(){
       </div> : null}
       {" "}Diagnostics show the most recent incident among {data?.issuesSampled??0} bounded events; an old incident does not mean the camera is presently broken.
     </div>
+    <section className="rounded-[1.5rem] border border-cyan-300/15 bg-slate-950/65 p-5">
+      <p className="text-[10px] font-black uppercase tracking-[.22em] text-cyan-200">Watcher 1.6.4 development · recording budget estimator</p>
+      <h2 className="mt-2 text-xl font-bold text-white">How long can each camera record?</h2>
+      <p className="mt-2 text-xs leading-5 text-slate-400">
+        Estimated from configured server byte/chunk caps and the unreleased Watcher mode bitrates,
+        with 12% container overhead allowance. Actual encoding, upload loss, and capture duration
+        are not guaranteed; verify with an installed Windows canary.
+      </p>
+      <div className="mt-4 grid gap-3 md:grid-cols-3">
+        {(data?.recordingBudget.profiles??[]).map(mode=><div key={mode.key}
+          className="rounded-xl border border-white/10 bg-white/[.025] p-4">
+          <div className="text-xs font-bold text-white">{mode.label}</div>
+          <div className="mt-2 text-2xl font-black text-cyan-100">{mode.estimatedMinutes} <span className="text-xs font-semibold text-slate-400">min</span></div>
+          <div className="mt-2 text-[11px] text-slate-400">2-hour projected bytes: {bytes(mode.estimatedBytesForTwoHours)}</div>
+          <div className={"mt-2 text-xs font-semibold " + (mode.twoHourCandidate?"text-emerald-200":"text-amber-200")}>
+            {mode.twoHourCandidate?"2-hour estimate fits configured caps":"2-hour estimate exceeds configured cap"}
+          </div>
+          <div className="mt-1 text-[10px] text-slate-500">Limited by {mode.limitingFactor}</div>
+        </div>)}
+      </div>
+      <p className="mt-3 text-[11px] text-amber-100">Plan is advisory only. Mount, actual disk capacity, network throughput, WebM decodability and viewer latency must still be verified.</p>
+    </section>
     <section className="overflow-hidden rounded-[1.6rem] border border-white/10 bg-slate-950/70">
       <div className="border-b border-white/10 p-5 text-sm font-bold text-white">Recent first-party recordings · newest first</div>
       <div className="overflow-x-auto">

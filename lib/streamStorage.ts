@@ -11,8 +11,8 @@ const STREAM_STORAGE_ROOT =
     ? path.join(process.env.AOE2_VIDEO_CAPTURE_DIR, "live")
     : path.join(process.cwd(), "storage", "live-streams"));
 
-const DEFAULT_MAX_STREAM_BYTES = 512 * 1024 * 1024;
-const DEFAULT_MAX_STREAM_CHUNKS = 4_000;
+const DEFAULT_MAX_STREAM_BYTES = 2 * 1024 * 1024 * 1024;
+const DEFAULT_MAX_STREAM_CHUNKS = 12_000;
 
 function boundedPositiveInteger(
   value: string | undefined,

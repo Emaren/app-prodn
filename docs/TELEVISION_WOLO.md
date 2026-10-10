@@ -121,7 +121,7 @@ live two-player capture canary.
   policy, and separate championship commission are future independent gates.
   A TV poll must never automatically transfer the Chaos Championship.
 - No video upload ceiling or retention default is raised by this slice.
-  Present defaults are 512 MiB/4,000 slices per stream, six-hour transient
+  Earlier development defaults were 512 MiB/4,000 slices per stream; the current\n   *development branch* uses 2 GiB/12,000 slices, with six-hour transient
   removal, and one explicitly pinned bounded demonstration. The real long-match
   recording quota, full-storage accounting, cross-stream concurrency admission,
   improved incremental playback, and packaged Windows/macOS canaries remain
@@ -285,7 +285,7 @@ the next guarded production capacity preflight before video activation.
 Server video writes are now admitted only when `statfs` verifies that
 the **actual configured video-chunk filesystem** will retain the configured
 free-space reserve *after* the next chunk. This is independent of the
-per-stream 512 MiB / 4,000-chunk default caps, and supports concurrent
+per-stream byte/chunk limits (now 2 GiB / 12,000 by default in the\n  *unreleased long-match development branch*), and supports concurrent
 recorder sessions on the same volume. A failed capacity probe is treated
 as video-only rejection, never permission to fill an unknown disk.
 
@@ -411,3 +411,33 @@ The preview uses the existing transient recently-completed game window, NOT a
 historical inventory of all battles. Last-two-game automatic preservation
 remains DISABLED until durable canonical cohort identity, disk budget,
 groupwise custody, and actual Windows playback canary have been proven.
+
+## Two-hour recording capacity contract (unreleased development)
+
+The first-party native Watcher development branch currently records
+one-second WebM chunks. Its reviewed quality presets are Stable 720p
+15 fps at 1.4 Mbps, Full Screen 720p 18 fps at 1.8 Mbps and Sharp
+720p 24 fps at 2.6 Mbps. The prior server defaults (512 MiB and
+4,000 chunks) could cut off Stable mode at under an hour.
+
+In this development branch, default per-stream admission is raised to
+**2 GiB and 12,000 chunks** (roughly 3h20m by chunk count), retaining
+the existing configurable server-side caps, the 6 GiB media-volume free
+reserve, 8 MiB maximum per HTTP chunk and six-hour unprotected retention.
+This change does not expand the hard per-stream 2 GiB maximum, automatically
+delete any videos, or alter existing deployed limits until a guarded release.
+
+The authenticated Video Vault's capacity planner reports safe estimated
+minutes and two-hour projected bytes for each Watcher mode, using a
+**12% media-container overhead allowance**. Stable and Full Screen
+have estimates above two hours at the new defaults; Sharp does NOT.
+These are planning calculations rather than promises of WebM output
+quality or a long-running captured game. The selected preset, CPU/GPU
+encoding, actual chunk size, host write speed, upload retry backlog,
+and network throughput still require a real Windows canary.
+
+Do not activate longer capture unless the runtime video directory resolves
+to the intended spacious mounted volume, not the small VPS root partition.
+If media bytes exhaust any quota or the volume reserve, only video ends;
+replay monitoring, betting eligibility, wallet balances and game result
+authority remain unchanged.
