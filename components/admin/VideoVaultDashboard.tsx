@@ -6,7 +6,7 @@ type VideoVaultRow={
  id:number;sessionKey:string;sourceType:string;status:string;
  chunkCount:number;actualChunkCount:number|null;bytes:number|null;lastSeq:number;
  player:string;startedAt:string|null;endedAt:string|null;updatedAt:string;
- retained:boolean;retainedUntil:string|null;
+ retained:boolean;retainedUntil:string|null;postgameProtected:boolean;postgameUntil:string|null;
  lastHeartbeatAgeSeconds:number|null;
  latestIssue:{eventType:string;reason:string|null;at:string;appVersion:string|null;platform:string|null}|null;
 };
@@ -37,7 +37,7 @@ export default function VideoVaultDashboard(){
   },[]);
   useEffect(()=>{void load()},[load]);
   const remove=async(row:VideoVaultRow)=>{
-    if(row.retained||!["ended","failed"].includes(row.status))return;
+    if(row.retained||row.postgameProtected||!["ended","failed"].includes(row.status))return;
     if(!window.confirm("Permanently delete only video chunks for #"+row.id+" ("+row.player+")? This cannot be undone. The replay and game statistics are preserved."))return;
     setDeleting(row.id);
     try{
@@ -133,6 +133,7 @@ export default function VideoVaultDashboard(){
             <td className="max-w-[210px] break-all px-4 py-4 text-slate-300">{row.sessionKey}</td>
             <td className="px-4 py-4"><div className={["live","starting"].includes(row.status)?"text-emerald-300":"text-slate-300"}>{row.status}</div>
             {row.retained?<div className="mt-1 text-amber-200">Protected demo</div>:null}
+            {row.postgameProtected?<div className="mt-1 font-semibold text-cyan-200">Postgame protected until {date(row.postgameUntil)}</div>:null}
             {row.lastHeartbeatAgeSeconds!==null?
               <div className="mt-1 text-slate-500">Heartbeat {row.lastHeartbeatAgeSeconds}s ago</div>:null}
             {["starting","live"].includes(row.status) && row.lastHeartbeatAgeSeconds!==null && row.lastHeartbeatAgeSeconds>120?
@@ -146,7 +147,7 @@ export default function VideoVaultDashboard(){
             <td className="px-4 py-4 text-slate-200">{bytes(row.bytes)}<div className="text-slate-500">{row.actualChunkCount??"?"} verified chunks</div></td>
             <td className="px-4 py-4 text-slate-400">{date(row.startedAt)}</td>
             <td className="px-4 py-4">
-            {["ended","failed"].includes(row.status)&&!row.retained?
+            {["ended","failed"].includes(row.status)&&!row.retained&&!row.postgameProtected?
               <button type="button" disabled={deleting!==null} onClick={()=>void remove(row)}
                 className="inline-flex items-center gap-1 rounded-lg border border-rose-300/25 px-3 py-2 text-rose-200 hover:bg-rose-500/10 disabled:opacity-50">
                 <Trash2 className="h-3.5 w-3.5"/>{deleting===row.id?"Deleting…":"Delete video"}
