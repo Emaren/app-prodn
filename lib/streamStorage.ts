@@ -240,6 +240,22 @@ export function streamChunkPath(streamId: number | string, sequence: number | st
   return path.join(streamChunkDir(streamId), `${safeSequence(sequence)}.webm`);
 }
 
+/**
+ * Init segment 0 must be checked independently of the sliding sequence
+ * index. A 7,200-chunk recording has lost segment 0 from its newest-512
+ * index even though the physical header still exists and is required for
+ * late-joining WebM decoders.
+ */
+export async function streamInitChunkExists(streamId: number | string) {
+  try {
+    const stat = await fs.stat(streamChunkPath(streamId, 0));
+    return stat.isFile() && stat.size > 0;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
+    throw error;
+  }
+}
+
 export async function ensureStreamChunkDir(streamId: number | string) {
   // Be deliberately explicit: create the root first, then the stream dir.
   // This prevents per-stream mkdir from depending on an already-existing parent.
