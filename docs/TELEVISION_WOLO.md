@@ -384,3 +384,30 @@ unchanged. Actual last-two-complete-games preservation still requires a durable
 canonical battle identity on every camera, on-disk byte/sequence proof,
 a total-volume budget, transactional cohort lifecycle, and restart canaries.
 Never discard one player's viewpoint while claiming to have kept a game.
+
+## Bounded local media-byte verification (development, read-only)
+
+The admin Broadcast Readiness endpoint can now inspect **only the stream IDs
+already linked to the two recent completed battle candidates by the canonical
+replay grouping engine**. A hard limit of 16 distinct streams caps disk
+inspection; the UI explicitly flags an incomplete audit if more would require
+scanning. No storage-directory discovery or fuzzy stream-to-battle matching.
+
+For each selected stream it obtains one directory listing, validates the
+numeric chunk sequence range and contiguity from `0.webm`, stats only the
+initial and latest WebM files, and reads at most four bytes to check the
+WebM/EBML initialization signature. It returns a path-redacted,
+`playbackCertified: false` result with observed chunk counts, expected
+database count, first/last byte sizes and one of:
+`candidate_bytes_present`, `missing_directory`, `missing_init`,
+`incomplete_sequences`, `invalid_init`, `unavailable`.
+
+This is stronger than trusting database packet counts but is **not**
+cryptographic file integrity, exhaustive content decoding, guaranteed continuous
+video timing, viewer playback certification or disk-space reservation.
+Successful group status is therefore only
+`media_bytes_present_playback_unverified`. The check cannot delete,
+retain, rename or move footage, and is accessible only after the existing
+administrator authentication. The ordinary six-hour age-based media cleanup
+continues unchanged. Future complete-game retention still requires durable
+canonical cohort evidence plus browser decoding and crash/restart tests.
