@@ -111,6 +111,7 @@ export default function TelevisionWoloExperience({
   const [activeStreamId, setActiveStreamId] = useState<number | null>(null);
   const [loadingStreams, setLoadingStreams] = useState(false);
   const [streamError, setStreamError] = useState<string | null>(null);
+  const [lastDirectoryCheck, setLastDirectoryCheck] = useState<string | null>(null);
   const [browserHost, setBrowserHost] = useState("");
   const [multiview, setMultiview] = useState(false);
   const selectedBattle = useMemo(
@@ -167,6 +168,7 @@ export default function TelevisionWoloExperience({
     setStreams([]);
     setActiveStreamId(null);
     setStreamError(null);
+    setLastDirectoryCheck(null);
     setMultiview(false);
   }, [selectedKey]);
 
@@ -188,6 +190,7 @@ export default function TelevisionWoloExperience({
         selectedBattle.initialStreams, payload.streams ?? [],
       );
       setStreams(nextStreams);
+      setLastDirectoryCheck(new Date().toISOString());
       const matched = assignTelevisionCameras(selectedBattle.stage, nextStreams);
       setActiveStreamId(
         matched.cameras.find(camera => camera.stream)?.stream?.id ??
@@ -209,24 +212,43 @@ export default function TelevisionWoloExperience({
     }
   }
 
-  // Only poll after explicit viewer action; idle Television incurs no video/API polling.
+  // Poll only after explicit viewer activation. A hidden TV tab must not
+  // generate continuous directory traffic, and prior requests must never
+  // overwrite a newer perspective after the viewer changes battles.
   useEffect(() => {
-    if (!playingKey) return;
+    if (!playingKey || playingKey !== selectedKey) return;
     let cancelled = false;
+    let inFlight = false;
+    const abort = new AbortController();
     const reload = async () => {
+      if (cancelled || document.hidden || inFlight) return;
+      inFlight = true;
       try {
         const response = await fetch(
           "/api/watch-streams?sessionKey=" + encodeURIComponent(playingKey),
-          { cache: "no-store" },
+          { cache: "no-store", signal: abort.signal },
         );
-        if (!response.ok) return;
-        const result = await response.json() as { streams?: WatchStreamPayload[] };
-        if (!cancelled) setStreams(result.streams ?? []);
-      } catch { /* Retain last known display; viewer can retry. */ }
+        const payload = await response.json().catch(() => ({})) as {
+          streams?: WatchStreamPayload[];
+          error?: string;
+        };
+        if (!response.ok) throw new Error(payload.error || "Feed registry temporarily unavailable.");
+        if (cancelled) return;
+        const next = Array.isArray(payload.streams) ? payload.streams : [];
+        setStreams(next);
+        setLastDirectoryCheck(new Date().toISOString());
+        setStreamError(null);
+      } catch (error) {
+        if (!cancelled && !(error instanceof Error && error.name === "AbortError")) {
+          setStreamError("Feed registry temporarily unavailable. Keeping known cameras; retrying.");
+        }
+      } finally {
+        inFlight = false;
+      }
     };
-    const timer = window.setInterval(() => void reload(), 12_000);
-    return () => { cancelled = true; window.clearInterval(timer); };
-  }, [playingKey]);
+    const timer = window.setInterval(() => { void reload(); }, 12_000);
+    return () => { cancelled = true; abort.abort(); window.clearInterval(timer); };
+  }, [playingKey, selectedKey]);
 
   const liveBattles = battles.filter((battle) => battle.source === "live");
   const replayBattles = battles.filter((battle) => battle.source !== "live");
