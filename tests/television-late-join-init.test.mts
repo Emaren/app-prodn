@@ -40,3 +40,12 @@ test("manifest and rolling WebM routes check physical init instead of sliding se
   assert.match(rolling,/chunkSequences = hasInit \? \[0, \.\.\.mediaRun\] : mediaRun/);
   assert.doesNotMatch(rolling,/availableSeqs\.includes\(0\)/);
 });
+
+test("viewer refuses costly rolling WebM downloads until physical initialization is present", () => {
+  const viewer = readFileSync("components/streaming/LiveStreamFrame.tsx","utf8");
+  const guard = viewer.indexOf("if (manifest.initSeq !== 0 && newestAvailableSeq >= 1)");
+  const rolling = viewer.indexOf("await loadRollingWindow(newestAvailableSeq)");
+  assert.ok(guard > 0 && rolling > guard, "header guard precedes media egress");
+  assert.match(viewer, /setSignalLabel\("Waiting for video initialization"\)/);
+  assert.match(viewer, /if \(manifest\.initSeq !== 0 && newestAvailableSeq >= 1\) \{\s*setWarming\(true\)/);
+});
