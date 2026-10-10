@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/television-v1-ebml-preflight-gate-20261009` at `ff09dc1d1ceb3540ebcc84c07eca16c799878023`
+Implementation baseline: `feature/television-v1-ingest-cost-control-20261009` at `9ef7cb3bed7421627e5666519a1019ab642e0d8e`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

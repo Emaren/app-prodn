@@ -550,3 +550,42 @@ Physical Windows two-broadcaster WebM and browser playback canaries
 remain the release evidence requirement. This addendum supersedes
 the earlier statement that the physical media inspector reads no WebM
 payload bytes: it now reads only the four-byte initialization prefix.
+
+## Long-match ingestion cost control (development, code review gate)
+
+The video upload writer previously called an exact, serial, whole-directory
+`getStreamStorageUsage` on **every** one-second Watcher chunk. For a
+7,200-chunk game, that repeats filesystem metadata work roughly
+proportional to the square of the stream duration and can affect
+replay-priority scheduling on a small VPS.
+
+The new normal write path uses an in-process stream-usage cache bounded
+to **128 stream IDs**, containing only the last filesystem-validated count,
+byte total and latest chunk sequence. On every new write it compares the
+video directory's device/inode and nanosecond mtime/ctime. The first
+write after process restart, unexpected directory mutation, or at least
+five minutes since the last full check performs a fresh authoritative
+filesystem reconciliation. Manual admin deletion invalidates the
+corresponding cache. Normal writes still enforce the configured per-stream
+byte/chunk caps and perform a fresh mounted-volume free-space check
+**on every admitted chunk**. Persistent video data remains unchanged.
+
+Exact reconciliation now processes file stats in batches of at most 64
+instead of serial individual awaits. We retain hard-link-only immutable
+sequence admission and conflict detection, and do not add sidecar indexes,
+database migration, local file paths in public responses, or arbitrary
+remote administration.
+
+**Boundaries:** this is an amortized within-process optimization, not a
+cross-process transactional storage ledger. Independent Next.js workers
+writing concurrently to the *same* stream could race between a directory
+check and publication, as under the previous filesystem implementation.
+The directory fingerprint and periodic rescan detect and correct later
+changes, but do not replace a distributed lock or a durable database
+per-chunk manifest. Before scaled multi-worker production we need an
+explicit cross-process concurrency canary, and if necessary a
+transactional server-side accounting authority. The current deployment
+must also demonstrate an actual mounted video volume with enough free
+space above the 6-GiB reserve, two Windows Watchers, no replay-upload
+regression, and measured upload p95/CPU/IO before this optimization is
+considered performance certified.
