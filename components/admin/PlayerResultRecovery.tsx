@@ -5,6 +5,8 @@ import Link from "next/link";
 import { ClipboardCheck, LoaderCircle, ShieldCheck } from "lucide-react";
 import TimeDisplayText from "@/components/time/TimeDisplayText";
 import type { PlayerResultRecoveryPlan, PlayerResultRecoveryTarget } from "@/lib/playerResultRecovery";
+import type { buildZodiacRatingAudit } from "@/lib/zodiacRatingAudit";
+type ZodiacRatingAudit = ReturnType<typeof buildZodiacRatingAudit>;
 
 const targets: Array<{ key: PlayerResultRecoveryTarget; name: string }> = [
   { key: "all", name: "All three players" }, { key: "zodiac", name: "Zodiac" },
@@ -17,6 +19,9 @@ export default function PlayerResultRecovery() {
   const [plan, setPlan] = useState<PlayerResultRecoveryPlan | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [ratingAudit, setRatingAudit] = useState<ZodiacRatingAudit | null>(null);
+  const [ratingAuditLoading, setRatingAuditLoading] = useState(false);
+  const [ratingAuditError, setRatingAuditError] = useState<string | null>(null);
   const [controlId, setControlId] = useState("32388");
   const [controlBusy, setControlBusy] = useState(false);
   const [controlMessage, setControlMessage] = useState<string | null>(null);
@@ -36,6 +41,23 @@ export default function PlayerResultRecovery() {
     } catch (failure) {
       setPlan(null); setError(failure instanceof Error ? failure.message : "Player recovery unavailable.");
     } finally { setBusy(false); }
+  }
+
+  async function loadRatingAudit() {
+    setRatingAuditLoading(true);
+    setRatingAuditError(null);
+    try {
+      const response = await fetch("/api/admin/replay-operations/zodiac-rating-audit", {
+        cache: "no-store",
+      });
+      const body = await response.json() as ZodiacRatingAudit & { detail?: string };
+      if (!response.ok) throw new Error(body.detail ?? "Rating evidence unavailable.");
+      setRatingAudit(body);
+    } catch (error) {
+      setRatingAuditError(error instanceof Error ? error.message : "Audit failed.");
+    } finally {
+      setRatingAuditLoading(false);
+    }
   }
 
   async function runKnownControl() {
@@ -82,6 +104,48 @@ export default function PlayerResultRecovery() {
       </div>
       <button type="button" onClick={() => void refresh()} disabled={busy} className="inline-flex min-h-9 items-center gap-2 rounded-full border border-cyan-300/20 bg-cyan-400/[0.08] px-4 py-2 text-xs font-semibold text-cyan-50 disabled:opacity-50">{busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <ClipboardCheck className="h-4 w-4" />} Build dry-run plan</button>
     </div>
+    <section className="mt-4 rounded-xl border border-cyan-300/20 bg-cyan-300/[0.035] p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <p className="text-xs font-bold text-cyan-100">Zodiac trio · Steam rating evidence</p>
+          <p className="mt-1 max-w-2xl text-[11px] leading-5 text-slate-400">
+            Compare three independent Steam IDs, Watcher ratings by actual game time,
+            accepted HD-header fallbacks and unresolved battle totals. Read-only; no Elo,
+            replay adjudication or WOLO settlement changes.
+          </p>
+        </div>
+        <button type="button" disabled={ratingAuditLoading} onClick={() => void loadRatingAudit()}
+          className="rounded-full border border-cyan-300/30 px-4 py-2 text-xs font-bold text-cyan-100 disabled:opacity-50">
+          {ratingAuditLoading ? "Checking evidence…" : "Audit Zodiac ratings"}
+        </button>
+      </div>
+      {ratingAuditError ? <p role="alert" className="mt-3 text-xs text-rose-200">{ratingAuditError}</p> : null}
+      {ratingAudit ? <div className="mt-4 grid gap-3 lg:grid-cols-3">
+        {ratingAudit.players.map(player => <article key={player.steamId}
+          className="rounded-lg border border-white/10 bg-slate-950/70 p-3 text-xs">
+          <p className="font-bold text-white">{player.displayedName ?? player.expectedName}</p>
+          <p className="mt-1 font-mono text-[10px] text-slate-400">Steam {player.steamId}</p>
+          <p className="mt-2 text-slate-300">
+            {player.counts.total ?? "?"} accepted games · {player.counts.wins ?? "?"} W /
+            {" "}{player.counts.losses ?? "?"} L · {player.counts.unresolved ?? "?"} unresolved
+          </p>
+          {([["DM", player.dm], ["RM", player.rm]] as const).map(([lane, rating]) =>
+            <div key={lane} className="mt-3 rounded-md bg-white/[0.035] px-3 py-2">
+              <p className="font-semibold text-cyan-100">{lane}: {rating.rating ?? "unavailable"}</p>
+              <p className="mt-1 text-[10px] text-slate-400">{rating.source.replaceAll("_", " ")}</p>
+              <p className="mt-1 text-[10px] text-slate-400">Observed {rating.observedAt ? new Date(rating.observedAt).toLocaleString() : "unknown"}</p>
+              {rating.differsFromDirectory ? <p className="mt-1 text-amber-200">Directory mismatch — investigate source ordering</p> : null}
+              <p className="mt-1 text-[10px] text-slate-500">
+                Receipt {rating.currentReceipt.rating ?? "—"} · qualified upload {rating.qualifiedWatcherUpload.rating ?? "—"} · HD fallback {rating.historicalHeader.rating ?? "—"}
+              </p>
+            </div>)}
+          <p className="mt-2 text-[10px] text-slate-400">Names on this Steam ID: {player.aliases.length ? player.aliases.join(" · ") : "No history"}</p>
+          <p className="mt-1 text-[10px] text-slate-500">Latest accepted battle: {player.lastAcceptedBattleAt ? new Date(player.lastAcceptedBattleAt).toLocaleString() : "none"}</p>
+          <p className="mt-1 text-[10px] text-slate-500">Watcher last seen: {player.latestWatcherAccountObservationAt ? new Date(player.latestWatcherAccountObservationAt).toLocaleString() : "no qualified current receipt"}</p>
+          <p className="mt-2 break-words text-[10px] text-slate-500">Unresolved examples: {player.counts.sampleUnresolvedGameIds.join(", ") || "none"}</p>
+        </article>)}
+      </div> : null}
+    </section>
     <div className="mt-4 rounded-xl border border-white/[0.07] bg-white/[0.025] p-3">
       <p className="text-xs font-semibold text-slate-200">Known-result control ladder</p>
       <p className="mt-1 text-[11px] leading-5 text-slate-500">Run 32388 first, then trusted 1v1, team and 4v4 controls. The server resolves the exact archive, roster and expected outcome. Unknown results and financial exposure fail closed.</p>
