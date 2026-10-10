@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "4f8b02ea2063be1d8b56a5866859d6547461a6a5cc5ecb4dacaba0da56c9211c",
+      "sha256": "e5e9ec2e2c2f5ac66642d22b97ec6dd2f6e8ee3840c1362bd927704457d47cd4",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1697,7 +1697,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-09",
       "sensitivity": "internal",
-      "sha256": "4e46b97ccc95e47b22e25d3cf2c7688f4196113f5bb411ecbb77ed6387c9cf8f",
+      "sha256": "eebb74ddcab07b836aa85103a8d841d9d7a8af3d6512239668f9596dafb18dfe",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2049,7 +2049,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/television-v1-full-roster-chaos-lab-20261009",
-    "commit": "9cf9182e824c8b03dd27db5ab654530a64905b39"
+    "commit": "58700385efa018c3852e59fb6117d684aa8352f3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
