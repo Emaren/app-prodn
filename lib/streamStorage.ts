@@ -88,10 +88,18 @@ export class StreamChunkConflictError extends Error {
   }
 }
 
+export type StreamCapacityDenialReason =
+  | "stream_max_chunks"
+  | "stream_max_bytes"
+  | "volume_reserved_floor"
+  | "capacity_unverified";
+
 export class StreamStorageLimitError extends Error {
-  constructor(message: string) {
+  readonly reason: StreamCapacityDenialReason;
+  constructor(message: string, reason: StreamCapacityDenialReason = "capacity_unverified") {
     super(message);
     this.name = "StreamStorageLimitError";
+    this.reason = reason;
   }
 }
 
@@ -190,11 +198,13 @@ export async function writeStreamChunk(
     if (usage.chunkCount >= MAX_STREAM_CHUNKS) {
       throw new StreamStorageLimitError(
         `Stream reached the ${MAX_STREAM_CHUNKS}-chunk safety limit.`,
+        "stream_max_chunks",
       );
     }
     if (usage.totalBytes + data.byteLength > MAX_STREAM_BYTES) {
       throw new StreamStorageLimitError(
         `Stream reached the ${MAX_STREAM_BYTES}-byte storage safety limit.`,
+        "stream_max_bytes",
       );
     }
 
@@ -209,6 +219,7 @@ export async function writeStreamChunk(
     if (!capacity.allowed) {
       throw new StreamStorageLimitError(
         "Video paused to preserve the mounted filesystem free-space reserve.",
+        "volume_reserved_floor",
       );
     }
 
