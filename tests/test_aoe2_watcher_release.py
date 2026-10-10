@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import importlib.util
+import base64
+import hashlib
 import json
 import pathlib
 import shutil
@@ -21,11 +23,13 @@ SPEC.loader.exec_module(MODULE)
 
 def fake_bundle(root: pathlib.Path, version: str = "9.9.9"):
     canonical = MODULE.canonical_files(version)
+    native_sha = base64.b64encode(hashlib.sha512(b"updater-native").digest()).decode("ascii")
     payloads: dict[str, bytes] = {
         f"AoE2HDBets Watcher Setup {version}.exe": b"installer",
         f"AoE2HDBets Watcher {version}.exe": b"portable",
         f"AoE2HDBets Watcher-{version}-arm64.dmg": b"dmg",
         "aoe2hdbets-watcher-direct.zip": b"direct",
+        f"AoE2HDBets Watcher-{version}-arm64-mac.zip": b"updater-native",
         f"AoE2HDBets Watcher-{version}.AppImage": b"appimage",
         f"AoE2HDBets Watcher-{version}-arm64.dmg.blockmap": b"blockmap",
         "latest.yml": (
@@ -34,7 +38,11 @@ def fake_bundle(root: pathlib.Path, version: str = "9.9.9"):
         ).encode(),
         "latest-mac.yml": (
             f"version: {version}\n"
-            f"path: AoE2HDBets Watcher-{version}-arm64.dmg\n"
+            "files:\n"
+            f"  - url: AoE2HDBets Watcher-{version}-arm64-mac.zip\n"
+            f"    sha512: {native_sha}\n"
+            f"path: AoE2HDBets Watcher-{version}-arm64-mac.zip\n"
+            f"sha512: {native_sha}\n"
         ).encode(),
         "latest-linux.yml": (
             f"version: {version}\n"
@@ -101,8 +109,8 @@ class WatcherReleaseBundleTests(unittest.TestCase):
             )
 
         self.assertEqual(proof["tag_name"], "v9.9.9")
-        self.assertEqual(proof["asset_count"], 11)
-        self.assertEqual(proof["digest_matched_files"], 11)
+        self.assertEqual(proof["asset_count"], 12)
+        self.assertEqual(proof["digest_matched_files"], 12)
 
     def test_public_release_digest_multiset_must_match_exactly(self):
         with tempfile.TemporaryDirectory() as temp:
@@ -138,6 +146,54 @@ class WatcherReleaseBundleTests(unittest.TestCase):
                 "checksum and release manifest disagree",
             ):
                 MODULE.validate_bundle(root, "9.9.9")
+
+    def test_macos_updater_zip_must_precede_metadata_publication(self):
+        files = MODULE.canonical_files("1.6.4")
+        self.assertIn("AoE2HDBets Watcher-1.6.4-arm64-mac.zip", files)
+        self.assertNotIn("AoE2HDBets Watcher-1.6.3-arm64-mac.zip",
+                         MODULE.canonical_files("1.6.3"))
+        order = MODULE.promotion_order("1.6.4")
+        self.assertLess(
+            order.index("AoE2HDBets Watcher-1.6.4-arm64-mac.zip"),
+            order.index("latest-mac.yml"),
+        )
+        self.assertLess(
+            order.index("watcher-release-manifest-1.6.4.json"),
+            order.index("latest-mac.yml"),
+        )
+
+    def test_macos_updater_metadata_refuses_manual_or_corrupt_zip(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            fake_bundle(root)
+            manifest = root / "latest-mac.yml"
+            original = manifest.read_text()
+            native = root / "AoE2HDBets Watcher-9.9.9-arm64-mac.zip"
+            self.assertIsNone(MODULE.verify_macos_native_updater(root, "9.9.9"))
+            cases = (
+                original.replace("path: AoE2HDBets Watcher-9.9.9-arm64-mac.zip",
+                                 "path: aoe2hdbets-watcher-direct.zip"),
+                original.replace("sha512: ", "sha512: tampered", 1),
+                original.replace("  - url: AoE2HDBets Watcher-9.9.9-arm64-mac.zip",
+                                 "  - url: aoe2hdbets-watcher-direct.zip"),
+                original.replace("files:\n", "files:\n"
+                                 "  - url: AoE2HDBets Watcher-9.9.9-arm64-mac.zip\n"
+                                 "    sha512: bad\n"),
+            )
+            for changed in cases:
+                with self.subTest(changed=changed[:50]):
+                    manifest.write_text(changed)
+                    with self.assertRaises(MODULE.WatcherReleasePromotionError):
+                        MODULE.verify_macos_native_updater(root, "9.9.9")
+            manifest.write_text(original)
+            native.write_bytes(b"tampered")
+            with self.assertRaisesRegex(
+                MODULE.WatcherReleasePromotionError, "SHA512"
+            ):
+                MODULE.verify_macos_native_updater(root, "9.9.9")
+            native.unlink()
+            with self.assertRaises(MODULE.WatcherReleasePromotionError):
+                MODULE.verify_macos_native_updater(root, "9.9.9")
 
     def test_promotion_order_keeps_updater_pointers_last(self):
         order = MODULE.promotion_order("1.6.0")
