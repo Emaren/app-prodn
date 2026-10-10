@@ -697,3 +697,19 @@ This gate does not certify real-time discovery or cross-worker atomic
 rebinding. A physical two-client test must prove start-before-replay,
 late identity promotion, matched POV owner, and absence of last-game
 cross-contamination.
+
+### Browser playback deadline and hidden-tab egress (V3 development)
+
+The public first-party WebM player now gives each manifest read a bounded
+eight-second network/body deadline and each rolling WebM download a
+fifteen-second network/body deadline. A timed-out, stalled response returns
+control to the existing signal recovery loop; it cannot hold
+`pollInFlight` indefinitely after HTTP headers are received. The player
+aborts outstanding media reads when the browser tab is hidden or a selected
+camera is unmounted, and declines late-arriving bodies after either event.
+A hidden tab does not silently keep downloading video.
+
+These are client-side failure bounds, not claims about delivery latency,
+video quality, frame drops, network load-balancer failover or an end-to-end
+Windows two-broadcaster canary. Real first-frame timing, continuous decode
+and reconnection remain field certification gates.
