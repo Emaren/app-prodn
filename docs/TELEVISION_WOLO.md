@@ -835,3 +835,27 @@ rechecks its heartbeat/active status **inside** a transaction before
 ending a recording. An in-flight or newly recovered camera is not
 terminated based on the older initial cleanup query result. Cleanup
 work is bounded to 100 stale candidates, in groups of eight.
+
+### Late-game WebM header correctness (V3 development)
+
+A two-hour native recording contains thousands of WebM slices, and the
+normal live sequence directory index intentionally stores **only the most
+recent 512 sequences**. Previously the manifest and rolling video routes
+looked for initialization segment `0.webm` *inside that recent index*.
+Once it fell out of view, later spectators could receive media slices
+without the still-existing WebM header, potentially preventing decoding.
+
+`streamInitChunkExists()` now checks the actual physical initialization
+file independently of the recent-sequence cache. The manifest presents
+`initSeq: 0` when the real header exists, and every rolling-video
+response can prepend the same actual init file even after 7,200+ slices.
+A real-filesystem regression writes **540 WebM-named chunks**, proves the
+header is absent from the newest 260 index entries but present on disk,
+and verifies both routes use the independent existence check. The absence
+of `0.webm` is never reported as a present header.
+
+This corrects one important long-match decoder prerequisite, **not**
+the entire recorded-playback experience. The spectator UI still uses
+short rolling windows, so selectable full-match chapter playback and
+real browser decoding remain explicit acceptance gates; retaining two
+hours of disk bytes alone does not satisfy them.
