@@ -309,12 +309,18 @@ from pathlib import Path
 
 root = Path(sys.argv[1])
 version = sys.argv[2]
+native_mac_zip = tuple(map(int, version.split("."))) >= (1, 6, 4)
 
 expected = [
     f"AoE2HDBets Watcher Setup {{version}}.exe",
     f"AoE2HDBets Watcher {{version}}.exe",
     f"AoE2HDBets Watcher-{{version}}-arm64.dmg",
     "aoe2hdbets-watcher-direct.zip",
+    *(
+        [f"AoE2HDBets Watcher-{{version}}-arm64-mac.zip"]
+        if native_mac_zip
+        else []
+    ),
     f"AoE2HDBets Watcher-{{version}}.AppImage",
     f"AoE2HDBets Watcher-{{version}}-arm64.dmg.blockmap",
     "latest.yml",
@@ -386,7 +392,11 @@ for name in expected:
 
 manifest_rules = {{
     "latest.yml": f"path: AoE2HDBets Watcher Setup {{version}}.exe",
-    "latest-mac.yml": f"path: AoE2HDBets Watcher-{{version}}-arm64.dmg",
+    "latest-mac.yml": (
+        f"path: AoE2HDBets Watcher-{{version}}-arm64-mac.zip"
+        if native_mac_zip
+        else f"path: AoE2HDBets Watcher-{{version}}-arm64.dmg"
+    ),
     "latest-linux.yml": f"path: AoE2HDBets Watcher-{{version}}.AppImage",
 }}
 for name, path_line in manifest_rules.items():
