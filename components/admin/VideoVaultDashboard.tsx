@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
 import { Activity, HardDrive, Radio, ShieldCheck, Trash2, RefreshCcw } from "lucide-react";
+import {videoCapacityForecast} from "@/lib/televisionCapacityForecast";
 
 type VideoVaultRow={
  id:number;sessionKey:string;sourceType:string;status:string;
@@ -51,6 +52,11 @@ export default function VideoVaultDashboard(){
   };
   const live=data?.rows.filter(row=>["starting","live"].includes(row.status)).length??0;
   const recent=data?.rows.filter(row=>row.bytes!==null && row.bytes>0).length??0;
+  const capacity = data ? videoCapacityForecast({
+    perStreamLimitBytes:data.limits.perStreamBytes,
+    writableVolumeBytes:data.volume.writableVideoBytes,
+    cameraCount:2,targetMinutes:120,
+  }) : null;
   const metrics=[
     {label:"Active captures",value:live,Icon:Radio},
     {label:"Recent recordings with bytes",value:recent,Icon:Activity},
@@ -91,6 +97,31 @@ export default function VideoVaultDashboard(){
       </div> : null}
       {" "}Diagnostics show the most recent incident among {data?.issuesSampled??0} bounded events; an old incident does not mean the camera is presently broken.
     </div>
+    <section className="rounded-2xl border border-cyan-300/20 bg-slate-950/70 p-5">
+      <div className="text-[10px] font-black uppercase tracking-[.22em] text-cyan-300">Long-game preflight · capacity estimate</div>
+      <h2 className="mt-2 text-lg font-bold text-white">Two players · 120-minute match</h2>
+      <p className="mt-2 text-xs leading-5 text-slate-400">
+        Illustrative 1.4 Mbps per camera plus 15% safety margin. Actual game capture
+        may use more or less bitrate; this is not a bandwidth or playback certification.
+      </p>
+      <div className="mt-4 grid gap-3 sm:grid-cols-3">
+        <div><div className="text-sm font-bold text-white">{capacity?bytes(capacity.estimatedPerCameraBytes):"—"}</div>
+          <div className="text-xs text-slate-500">Expected per camera</div></div>
+        <div><div className="text-sm font-bold text-white">{capacity?bytes(capacity.estimatedTotalBytes):"—"}</div>
+          <div className="text-xs text-slate-500">Two cameras combined</div></div>
+        <div><div className="text-sm font-bold text-white">{capacity?capacity.maxPerCameraMinutes+" min":"—"}</div>
+          <div className="text-xs text-slate-500">Estimated current per-stream limit</div></div>
+      </div>
+      <p className={"mt-4 rounded-lg border p-3 text-xs font-semibold " +
+        (capacity?.readyToPlan?"border-emerald-300/20 bg-emerald-300/5 text-emerald-200":
+          "border-amber-300/25 bg-amber-300/5 text-amber-200")}>
+        {capacity?capacity.warning:"Awaiting live video-storage configuration."}
+      </p>
+      <p className="mt-2 text-[11px] text-slate-400">
+        A passed estimate is not authorization to raise quotas automatically, fill the VPS
+        or ship a Watcher. Verify the mounted media volume and real encoder settings first.
+      </p>
+    </section>
     <section className="overflow-hidden rounded-[1.6rem] border border-white/10 bg-slate-950/70">
       <div className="border-b border-white/10 p-5 text-sm font-bold text-white">Recent first-party recordings · newest first</div>
       <div className="overflow-x-auto">
