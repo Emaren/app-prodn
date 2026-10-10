@@ -40,6 +40,47 @@ export const MAX_STREAM_CHUNKS = boundedPositiveInteger(
   20_000,
 );
 
+export const STREAM_MIN_FREE_BYTES = boundedPositiveInteger(
+  process.env.AOE2_STREAM_MIN_FREE_BYTES,
+  6 * 1024 * 1024 * 1024,
+  1024 * 1024 * 1024,
+  40 * 1024 * 1024 * 1024,
+);
+
+export function streamCapacityAdmission(
+  availableBytes: number,
+  incomingBytes: number,
+  reserveBytes = STREAM_MIN_FREE_BYTES,
+) {
+  if (!Number.isSafeInteger(availableBytes) || availableBytes < 0 ||
+      !Number.isSafeInteger(incomingBytes) || incomingBytes < 0 ||
+      !Number.isSafeInteger(reserveBytes) || reserveBytes < 0) {
+    return { allowed: false, reason: "capacity_unverified" as const };
+  }
+  return availableBytes - incomingBytes >= reserveBytes
+    ? { allowed: true, reason: "sufficient_headroom" as const }
+    : { allowed: false, reason: "volume_reserved_floor" as const };
+}
+
+/**
+ * Observe the filesystem hosting actual video chunks, not the unrelated
+ * process root filesystem when the videos are on a mounted media volume.
+ * Failure to read free space is a video-only fail-closed condition.
+ */
+export async function getStreamVolumeHeadroom() {
+  const stats = await fs.statfs(STREAM_STORAGE_ROOT);
+  const freeBytes = Number(stats.bavail) * Number(stats.bsize);
+  if (!Number.isSafeInteger(freeBytes) || freeBytes < 0) {
+    throw new StreamStorageLimitError("Video volume free space could not be verified.");
+  }
+  return {
+    freeBytes,
+    reserveBytes: STREAM_MIN_FREE_BYTES,
+    writableVideoBytes: Math.max(0, freeBytes - STREAM_MIN_FREE_BYTES),
+  };
+}
+
+
 export class StreamChunkConflictError extends Error {
   constructor() {
     super("A different stream chunk already exists at this sequence.");
@@ -154,6 +195,20 @@ export async function writeStreamChunk(
     if (usage.totalBytes + data.byteLength > MAX_STREAM_BYTES) {
       throw new StreamStorageLimitError(
         `Stream reached the ${MAX_STREAM_BYTES}-byte storage safety limit.`,
+      );
+    }
+
+    let freeBytes: number;
+    try {
+      freeBytes = (await getStreamVolumeHeadroom()).freeBytes;
+    } catch (error) {
+      if (error instanceof StreamStorageLimitError) throw error;
+      throw new StreamStorageLimitError("Video storage capacity could not be verified.");
+    }
+    const capacity = streamCapacityAdmission(freeBytes, data.byteLength);
+    if (!capacity.allowed) {
+      throw new StreamStorageLimitError(
+        "Video paused to preserve the mounted filesystem free-space reserve.",
       );
     }
 
