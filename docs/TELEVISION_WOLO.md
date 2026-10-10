@@ -713,3 +713,13 @@ These are client-side failure bounds, not claims about delivery latency,
 video quality, frame drops, network load-balancer failover or an end-to-end
 Windows two-broadcaster canary. Real first-frame timing, continuous decode
 and reconnection remain field certification gates.
+
+### Empty-to-live Television discovery (V3 development)
+
+A viewer may visit the theatre before any canonical live session exists.
+Foreground-only server snapshot refresh discovers a later match, and the
+new first battle is **selected** even when the previous session selection
+was empty. This does not authorize autoplay or network video downloads:
+the viewer still presses Play. Its selected key is then consistent with
+the late broadcaster's directory-refresh loop; a stale empty key can no
+longer prevent new POVs from appearing after the viewer has pressed Play.
