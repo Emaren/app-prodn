@@ -123,8 +123,10 @@ export default function TelevisionWoloExperience({
   // queried by /api/watch-streams is an older recording filename.
   const availableStreams = useMemo(
     () => mergeTelevisionStreamEvidence(
-      playingKey === selectedBattle?.sessionKey ? selectedBattle.initialStreams : [],
-      streams,
+      // Safe public snapshot metadata can populate camera labels while video
+      // stays asleep. Never carry previously played game's poll results.
+      selectedBattle?.initialStreams ?? [],
+      playingKey === selectedBattle?.sessionKey ? streams : [],
     ),
     [selectedBattle, streams, playingKey],
   );
@@ -423,7 +425,7 @@ export default function TelevisionWoloExperience({
             ) : null}
             <div className="flex flex-wrap gap-2">
               {playing && availableStreams.length > 0 ? (
-                streams.map((stream) => (
+                availableStreams.map((stream) => (
                   <button
                     key={stream.id}
                     type="button"
