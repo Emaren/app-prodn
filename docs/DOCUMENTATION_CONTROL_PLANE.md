@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/television-v1-canonical-retention-preview-20261009` at `59e7d0cea67d9cc1371d2c4295c2045cf9a48cc4`
+Implementation baseline: `feature/television-v1-sampled-media-proof-20261009` at `01e996205321c926282979b18f509d44fd49e28c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
