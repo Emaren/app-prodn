@@ -197,6 +197,27 @@ function BrowserChunkPlayer({
     let pollInFlight = false;
     let pendingRefresh = false;
     let durationProbePending = false;
+    // Include response-body consumption in the deadline: fetch() can resolve
+    // headers while a rolling WebM download hangs indefinitely.
+    const activeVideoRequests = new Set<AbortController>();
+    const fetchWithDeadline = async <T,>(
+      url: string, decode: (response: Response) => Promise<T>, deadlineMs: number,
+    ): Promise<T> => {
+      const controller = new AbortController();
+      activeVideoRequests.add(controller);
+      const timeout = window.setTimeout(() => controller.abort(), deadlineMs);
+      try {
+        const response = await fetch(url, { cache: "no-store", signal: controller.signal });
+        if (!response.ok) throw new Error("Video signal temporarily unavailable.");
+        return await decode(response);
+      } finally {
+        window.clearTimeout(timeout);
+        activeVideoRequests.delete(controller);
+      }
+    };
+    const abortVideoRequests = () => {
+      for (const controller of activeVideoRequests) controller.abort();
+    };
     const liveLagSeconds = compact ? 0.9 : 1.8;
     const windowChunks = compact ? ROLLING_COMPACT_WINDOW_CHUNKS : ROLLING_WINDOW_CHUNKS;
     const refreshAdvance = compact ? ROLLING_COMPACT_REFRESH_ADVANCE : ROLLING_REFRESH_ADVANCE;
@@ -245,12 +266,9 @@ function BrowserChunkPlayer({
 
     const loadRollingWindow = async (endSeq: number) => {
       const rollingUrl = `/api/streams/${stream.id}/rolling-webm?end=${endSeq}&window=${windowChunks}&v=${Date.now()}`;
-      const response = await fetch(rollingUrl, { cache: "no-store" });
-      if (!response.ok) {
-        throw new Error("Rolling stream slice unavailable.");
-      }
-
-      const blob = await response.blob();
+      const blob = await fetchWithDeadline(rollingUrl, (response) => response.blob(), 15_000);
+      // A late response must never re-arm a hidden or replaced camera.
+      if (cancelled || document.visibilityState === "hidden") return;
       if (blob.size <= 0) {
         throw new Error("Rolling stream slice is empty.");
       }
@@ -274,14 +292,11 @@ function BrowserChunkPlayer({
 
       pollInFlight = true;
       try {
-        const response = await fetch(`/api/streams/${stream.id}/manifest`, {
-          cache: "no-store",
-        });
-        if (!response.ok) {
-          return;
-        }
-
-        const manifest = (await response.json()) as StreamManifest;
+        const manifest = await fetchWithDeadline(
+          `/api/streams/${stream.id}/manifest`,
+          (response) => response.json() as Promise<StreamManifest>, 8_000,
+        );
+        if (cancelled || document.visibilityState === "hidden") return;
         const availableMediaSeqs = (manifest.availableMediaSeqs ?? []).filter((sequence) => sequence > 0);
         const newestAvailableSeq =
           availableMediaSeqs[availableMediaSeqs.length - 1] ??
@@ -352,6 +367,7 @@ function BrowserChunkPlayer({
         // Stop decoding locally AND stop manifest / overlapping window
         // requests. Hidden tabs must never silently consume stream egress.
         video.pause();
+        abortVideoRequests();
       } else {
         // Resume only the viewer's already explicitly activated video.
         void poll();
@@ -365,6 +381,7 @@ function BrowserChunkPlayer({
 
     return () => {
       cancelled = true;
+      abortVideoRequests();
       document.removeEventListener("visibilitychange", onVisibilityChange);
       window.clearInterval(interval);
       video.removeEventListener("loadedmetadata", handleLoadedMetadata);
