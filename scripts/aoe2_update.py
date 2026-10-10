@@ -1536,6 +1536,40 @@ def reconcile_taxonomy(
     return taxonomy, changes
 
 
+def preflight_central_governed_documents(
+    taxonomy_path: Path,
+    sources: dict[str, Path],
+) -> None:
+    """Reject source registry removals before the central generator touches disk.
+
+    A development checkout on the wrong branch may be clean and its local docs
+    valid while removing a document already governed by the central taxonomy.
+    Validate against the local source registries first; do not leave partially
+    regenerated central registries behind when that happens.
+    """
+    taxonomy = json.loads(taxonomy_path.read_text(encoding="utf-8"))
+    registries: dict[str, dict[str, Any]] = {}
+    for repo_id, repo in sorted(sources.items()):
+        path = repo / "docs" / "document-registry.json"
+        try:
+            registry = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            raise UpdateError(
+                f"{repo_id} source documentation registry unavailable: {path}: {exc}"
+            ) from exc
+        if (
+            not isinstance(registry, dict)
+            or registry.get("repo") != repo_id
+            or not isinstance(registry.get("documents"), list)
+        ):
+            raise UpdateError(f"{repo_id} source documentation registry is invalid: {path}")
+        registries[repo_id] = registry
+
+    # Run the existing removal/duplicate-ID governance contract in memory.
+    # The central files are still byte-for-byte unchanged if this raises.
+    reconcile_taxonomy(taxonomy, registries)
+
+
 def central_sync(
     progress: Progress | None = None,
 ) -> dict[str, Any]:
@@ -1544,6 +1578,11 @@ def central_sync(
     venv_python = DOCS / ".venv-docs" / "bin" / "python"
     if not venv_python.is_file():
         raise UpdateError(f"central documentation venv missing: {venv_python}")
+
+    # Preflight governed source membership before sync_workspace writes files.
+    preflight_central_governed_documents(
+        DOCS / "catalog" / "document-taxonomy.json", SOURCES
+    )
 
     if progress:
         progress.start("Synchronizing five repository registries...")
