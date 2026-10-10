@@ -1,4 +1,4 @@
-import { promises as fs } from "node:fs";
+import { promises as fs, type Dirent } from "node:fs";
 import path from "node:path";
 import { streamChunkDir } from "./streamStorage";
 
@@ -51,9 +51,9 @@ export async function inspectOneVideoStream(expected: ExpectedStream): Promise<V
     return limited(expected.id, expected, "unreadable_media");
   }
   const dir = streamChunkDir(expected.id);
-  let entries: Awaited<ReturnType<typeof fs.readdir>>;
+  let entries: Dirent[];
   try {
-    entries = await fs.readdir(dir, { withFileTypes: true }) as unknown as typeof entries;
+    entries = await fs.readdir(dir, { withFileTypes: true });
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === "ENOENT") {
       return { ...limited(expected.id, expected, "missing_media"), actualChunks: 0, actualBytes: 0 };
