@@ -1330,3 +1330,14 @@ manual install; a user-directed \`xattr -dr com.apple.quarantine\` removes
 Apple's downloaded-app quarantine protection and must never be silently
 executed by the app or installer.
 
+The matching-source Mac DMG/direct ZIP/native ZIP and the DMG blockmap are
+built on the operator's own macOS machine from an exact clean Watcher source
+tree at the same SHA, with \`CSC_IDENTITY_AUTO_DISCOVERY=false\` and no
+Developer ID credentials. This keeps the genuine builder-generated blockmap.
+The Linux CI intentionally uploaded only its exact-source AppImage, not a
+release-channel updater pointer: the assembler derives \`latest-linux.yml\`
+from the real AppImage byte SHA-512 and version. No sidecar hash is guessed.
+The local assembly requires the Mac source tree commit and status to pass
+before reading its artifacts, verifies the signed Windows inventory from
+downloaded bytes, and refuses a pre-existing output path.
+
