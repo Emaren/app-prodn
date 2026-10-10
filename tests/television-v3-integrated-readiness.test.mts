@@ -93,3 +93,15 @@ test("native video battle identity is never guessed from an unrelated recent rep
   assert.match(heartbeat, /resolvePlatformSessionKeyForReplay\(prisma, actor.user.uid, replayBackedSessionKey\)/);
   assert.doesNotMatch(start, /requestedSessionKey,\s*replaySessionKey,\s*platformSessionKey/);
 });
+
+test("live WebM playback cannot remain stuck behind an indefinite manifest or body download", () => {
+  const source = readFileSync("components/streaming/LiveStreamFrame.tsx", "utf8");
+  assert.match(source, /const activeVideoRequests = new Set<AbortController>\(\)/);
+  assert.match(source, /window.setTimeout\(\(\) => controller.abort\(\), deadlineMs\)/);
+  assert.match(source, /return await decode\(response\)/);
+  assert.match(source, /fetchWithDeadline\(rollingUrl, \(response\) => response.blob\(\), 15_000\)/);
+  assert.match(source, /\(response\) => response.json\(\) as Promise<StreamManifest>, 8_000/);
+  assert.match(source, /if \(cancelled \|\| document.visibilityState === "hidden"\) return/);
+  assert.match(source, /video.pause\(\);\s*abortVideoRequests\(\)/);
+  assert.match(source, /cancelled = true;\s*abortVideoRequests\(\)/);
+});
