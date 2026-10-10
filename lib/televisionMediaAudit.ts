@@ -1,6 +1,6 @@
 import { promises as fs, type Dirent } from "node:fs";
 import path from "node:path";
-import { streamChunkDir } from "./streamStorage";
+import { streamChunkDir } from "./streamStorage.ts";
 
 const MAX_INSPECTED_CHUNKS = 5_000;
 const MAX_STREAM_PROBES = 16;
