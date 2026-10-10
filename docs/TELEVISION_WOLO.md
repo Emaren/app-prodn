@@ -122,7 +122,7 @@ live two-player capture canary.
   A TV poll must never automatically transfer the Chaos Championship.
 - No video upload ceiling or retention default is raised by this slice.
   Earlier development defaults were 512 MiB/4,000 slices per stream; the current
-   *development branch* uses 2 GiB/12,000 slices, with six-hour transient
+   *development branch* uses 3 GiB/12,000 slices, with six-hour transient
   removal, and one explicitly pinned bounded demonstration. The real long-match
   recording quota, full-storage accounting, cross-stream concurrency admission,
   improved incremental playback, and packaged Windows/macOS canaries remain
@@ -286,7 +286,7 @@ the next guarded production capacity preflight before video activation.
 Server video writes are now admitted only when `statfs` verifies that
 the **actual configured video-chunk filesystem** will retain the configured
 free-space reserve *after* the next chunk. This is independent of the
-per-stream byte/chunk limits (now 2 GiB / 12,000 by default in the
+per-stream byte/chunk limits (now 3 GiB / 12,000 by default in the
   *unreleased long-match development branch*), and supports concurrent
 recorder sessions on the same volume. A failed capacity probe is treated
 as video-only rejection, never permission to fill an unknown disk.
@@ -423,16 +423,19 @@ one-second WebM chunks. Its reviewed quality presets are Stable 720p
 4,000 chunks) could cut off Stable mode at under an hour.
 
 In this development branch, default per-stream admission is raised to
-**2 GiB and 12,000 chunks** (roughly 3h20m by chunk count), retaining
+**3 GiB and 12,000 chunks** (roughly 3h20m by chunk count), retaining
 the existing configurable server-side caps, the 6 GiB media-volume free
 reserve, 8 MiB maximum per HTTP chunk and six-hour unprotected retention.
-This change does not expand the hard per-stream 2 GiB maximum, automatically
-delete any videos, or alter existing deployed limits until a guarded release.
+The application now enforces a configurable hard per-stream maximum of **4 GiB**
+(default **3 GiB**), without automatically deleting videos or changing deployed
+limits until a guarded release. A larger per-POV cap is never a total-volume
+reservation: concurrent cameras remain subject to the verified free-space floor.
 
 The authenticated Video Vault's capacity planner reports safe estimated
 minutes and two-hour projected bytes for each Watcher mode, using a
-**12% media-container overhead allowance**. Stable and Full Screen
-have estimates above two hours at the new defaults; Sharp does NOT.
+**12% media-container overhead allowance**. All three modes have
+*estimated* per-stream capacity above two hours at the new 3 GiB default,
+including Sharp. No captured, decoded two-hour Windows run is yet certified.
 These are planning calculations rather than promises of WebM output
 quality or a long-running captured game. The selected preset, CPU/GPU
 encoding, actual chunk size, host write speed, upload retry backlog,
@@ -589,3 +592,30 @@ must also demonstrate an actual mounted video volume with enough free
 space above the 6-GiB reserve, two Windows Watchers, no replay-upload
 regression, and measured upload p95/CPU/IO before this optimization is
 considered performance certified.
+
+## Integrated V3 resilience candidate (2026-10-10)
+
+Unreleased integration branch: `feature/television-v3-integrated-hardening-20261010`.
+The native Watcher branch is reviewed separately; neither web source nor
+Watcher UI work grants a production release or a measured quality score.
+
+- Public feed-directory database failure is **503**, never a false empty camera
+  inventory. The Television page can retain authoritative snapshot-linked
+  cameras while the directory is unavailable.
+- Once the viewer presses Play, the directory refreshes every 12 seconds while
+  the browser tab is visible. Requests are serialized, abortable and invalidated
+  when the viewer changes battles; a transient failure preserves the last
+  cameras. The manual refresh does not change the selected perspective.
+- Read-only public video diagnostics show bounded server-owned stream metadata;
+  a recorded chunk or recent heartbeat proves neither successful browser decode
+  nor low presentation latency. Full incident detail and controls remain admin.
+- The adjusted 3 GiB/12,000-slice default (4 GiB configurable maximum)
+  protects two-hour Sharp budget estimates while retaining the **6 GiB actual
+  media-volume free-space reserve**. This does not guarantee eight concurrent
+  perspectives, 2-hour real encoded file sizes or non-root storage until a
+  mounted-path verification and multi-camera canary succeed.
+- The source gate remains: real paired Windows broadcasters, verified two-side
+  replay identity, safe update/relaunch, replay-upload priority, observed
+  sustained bitrate/CPU/IO/latency, full WebM playback and explicit cleanup.
+- Chaos ballots remain non-binding with protected migration; comments and
+  Commissioner title awards require their own audited authority.
