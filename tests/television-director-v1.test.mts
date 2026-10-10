@@ -111,3 +111,12 @@ test("camera statuses distinguish actual frames from startup, ending and stale t
   assert.equal(televisionCameraStatus({...base,status:"ended",chunkCount:0},now),"NO VIDEO");
   assert.equal(televisionCameraStatus(null,now),"NO CAMERA");
 });
+
+test("changing the selected battle cannot leak old camera polling results into its director",()=>{
+  const source=readFileSync("components/television/TelevisionWoloExperience.tsx","utf8");
+  assert.match(source,/selectedBattle\?\.initialStreams \?\? \[\]/);
+  assert.match(source,/playingKey === selectedBattle\?\.sessionKey \? streams : \[\]/);
+  assert.match(source,/availableStreams\.map\(\(stream\)/);
+  assert.match(source,/Video stays asleep until you press play/);
+  assert.match(source,/playing && availableStreams\.length > 0/);
+});
