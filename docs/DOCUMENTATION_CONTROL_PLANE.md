@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/television-v1-volume-safety-20261009` at `560a6ecfa510f35453b979a8be5af3c923050545`
+Implementation baseline: `feature/television-v1-upload-protocol-20261009` at `2097542b70096a219390c05493f2b984908ecabe`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

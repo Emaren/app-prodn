@@ -106,7 +106,7 @@ test("native upload handlers authenticate before ownership and storage mutation"
   );
   const actorOffset = chunkRoute.indexOf("resolveStreamRequestActor");
   const ownershipOffset = chunkRoute.indexOf("isAoE2WarManagedStream(stream, actor.user.id)");
-  const bodyOffset = chunkRoute.indexOf("request.arrayBuffer()");
+  const bodyOffset = chunkRoute.indexOf("readBoundedStreamChunkBody(request.body, MAX_CHUNK_BYTES)");
   const writeOffset = chunkRoute.indexOf("writeStreamChunk(id, sequence");
 
   assert.ok(actorOffset >= 0 && actorOffset < ownershipOffset);

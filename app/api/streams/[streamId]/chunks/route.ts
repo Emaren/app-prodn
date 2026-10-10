@@ -6,6 +6,7 @@ import {
   resolveStreamRequestActor,
 } from "@/lib/streamRequestAuth";
 import { normalizeStreamMediaMimeType } from "@/lib/streamMedia";
+import {parseStreamChunkSequence, isAdmissibleStreamChunkContentLength, readBoundedStreamChunkBody, StreamChunkBodyLimitError} from "@/lib/streamUploadProtocol";
 import { currentStreamMediaAdmission } from "@/lib/streamMediaAdmission";
 import {
   StreamChunkConflictError,
@@ -26,13 +27,25 @@ const NO_STORE_HEADERS = {
 const MAX_CHUNK_BYTES = 8 * 1024 * 1024;
 
 function readSequence(request: NextRequest) {
-  const queryValue = request.nextUrl.searchParams.get("sequence");
-  const headerValue = request.headers.get("x-stream-sequence");
-  const sequence = Number(queryValue ?? headerValue);
-  if (!Number.isInteger(sequence) || sequence < 0 || sequence > 2_000_000) {
-    return null;
+  return parseStreamChunkSequence(
+    request.nextUrl.searchParams.get("sequence"),
+    request.headers.get("x-stream-sequence"),
+  );
+}
+
+async function endRejectedVideo(prisma: ReturnType<typeof getPrisma>, id: number) {
+  try {
+    await prisma.gameWatchStream.updateMany({
+      where: { id, status: { in: ["starting", "live"] } },
+      data: { status: "ended", endedAt: new Date(), isPrimary: false },
+    });
+  } catch (error) {
+    // Even a database outage must not convert terminal media refusal into
+    // endless client retries. Never stop the separate replay monitoring path.
+    console.warn("[streams/chunks] failed to mark refused video ended", {
+      streamId: id, error,
+    });
   }
-  return sequence;
 }
 
 export async function POST(
@@ -84,10 +97,14 @@ export async function POST(
     );
   }
 
-  const contentLength = Number(request.headers.get("content-length"));
-  if (Number.isFinite(contentLength) && (contentLength <= 0 || contentLength > MAX_CHUNK_BYTES)) {
+  // A missing Content-Length is legal for chunked uploads. We still enforce
+  // the hard byte limit after reading; explicit malformed lengths fail closed.
+  if (!isAdmissibleStreamChunkContentLength(
+    request.headers.get("content-length"), MAX_CHUNK_BYTES,
+  )) {
+    await endRejectedVideo(prisma, id);
     return NextResponse.json(
-      { detail: "Stream chunk size is invalid." },
+      { detail: "Stream chunk size is invalid.", code: "STREAM_CHUNK_TOO_LARGE", terminal: true },
       { status: 413, headers: NO_STORE_HEADERS }
     );
   }
@@ -96,8 +113,9 @@ export async function POST(
     request.headers.get("content-type") || stream.mediaMimeType
   );
   if (!mediaMimeType) {
+    await endRejectedVideo(prisma, id);
     return NextResponse.json(
-      { detail: "Only WebM stream media is accepted." },
+      { detail: "Only WebM stream media is accepted.", code: "STREAM_FORMAT_UNSUPPORTED", terminal: true },
       { status: 415, headers: NO_STORE_HEADERS }
     );
   }
@@ -166,17 +184,27 @@ export async function POST(
     }
   }
 
-  const arrayBuffer = await request.arrayBuffer();
-  if (arrayBuffer.byteLength <= 0 || arrayBuffer.byteLength > MAX_CHUNK_BYTES) {
+  let mediaBytes: Uint8Array;
+  try {
+    mediaBytes = await readBoundedStreamChunkBody(request.body, MAX_CHUNK_BYTES);
+  } catch (error) {
+    if (error instanceof StreamChunkBodyLimitError) {
+      await endRejectedVideo(prisma, id);
+      return NextResponse.json(
+        { detail: error.message, code: "STREAM_CHUNK_TOO_LARGE", terminal: true },
+        { status: 413, headers: NO_STORE_HEADERS }
+      );
+    }
+    console.warn("[streams/chunks] video body transport interrupted", { streamId: id, error });
     return NextResponse.json(
-      { detail: "Stream chunk size is invalid." },
-      { status: 413, headers: NO_STORE_HEADERS }
+      { detail: "Video body upload interrupted." },
+      { status: 503, headers: NO_STORE_HEADERS }
     );
   }
 
   let stored;
   try {
-    stored = await writeStreamChunk(id, sequence, Buffer.from(arrayBuffer));
+    stored = await writeStreamChunk(id, sequence, Buffer.from(mediaBytes));
   } catch (error) {
     if (error instanceof StreamChunkConflictError) {
       return NextResponse.json(
@@ -187,10 +215,7 @@ export async function POST(
     if (error instanceof StreamStorageLimitError) {
       // The recorder must not remain "live" after a terminal quota / volume
       // rejection. Preserve its previously uploaded chunks for normal review.
-      await prisma.gameWatchStream.updateMany({
-        where: { id, status: { in: ["starting", "live"] } },
-        data: { status: "ended", endedAt: new Date(), isPrimary: false },
-      });
+      await endRejectedVideo(prisma, id);
       return NextResponse.json(
         { detail: error.message, code: "STREAM_STORAGE_LIMIT",
           reason: error.reason, terminal: true },

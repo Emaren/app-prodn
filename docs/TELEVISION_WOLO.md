@@ -315,3 +315,51 @@ services and parallel server processes. Before a public rollout, prove
 mounted-volume settings, I/O load, disk-full handling, bounded retention,
 and total multi-camera/long-game resource use in production-like canaries.
 No automatic deletion of captures, replays or DB snapshots is authorized.
+
+## Correct wire parsing for binary chunk uploads (development pass)
+
+The native/browser WebM chunk endpoint now treats a missing HTTP
+`Content-Length` as valid for a streamed/chunked request. An explicitly
+malformed, zero, fractional or too-large declared length is rejected; the
+actual request body remains bounded to 8 MiB whether the header exists or
+not. This avoids phantom HTTP 413 errors from valid transfer encodings.
+
+Every chunk now **requires an explicit, canonical decimal sequence** in
+either `sequence` query string or `x-stream-sequence` header. Missing,
+empty, negative, exponent, noncanonical or mismatched query/header
+sequences fail closed with HTTP 400. In particular, absent sequence
+may **never** be confused with zero, the WebM initialization segment.
+The existing authenticated stream owner, status, MIME validation, immutable
+sequence conflict and video reserve controls remain in force.
+
+Boundary tests exercise valid/invalid headers, both sequence transports,
+disagreements and the existing post-read byte fence. No replay or financial
+authority is affected. Windows game/installed-client canary remains required.
+
+### Invalid first-party video segment failover
+
+In addition to video quota/volume terminal signals, WebM chunk upload
+rejects explicitly oversized/malformed media bodies with HTTP 413
+`STREAM_CHUNK_TOO_LARGE` and unsupported `Content-Type` with HTTP 415
+`STREAM_FORMAT_UNSUPPORTED`; both mark `terminal: true`. The server
+best-effort ends the refused video session, preserves previous chunks, and
+still sends a terminal media signal if that status write fails. The
+unreleased 1.6.4 Watcher stops only video and explains to the player that
+replay/game monitoring continues. There is no silent upload retry loop
+for payloads that cannot become valid by retrying unchanged bytes.
+
+### Streaming reader memory ceiling
+
+The chunk endpoint no longer calls `Request.arrayBuffer()` on an
+untrusted transfer before size verification. Instead it iterates the
+WHATWG request body with a bounded reader and aborts at the first
+byte past the 8 MiB frame limit. Empty requests reject; valid transfers
+without `Content-Length` are still accepted; the exact raw body cap
+is enforced regardless of the declared length. Temporary transport
+interruptions return a retryable 503 distinct from the terminal
+`STREAM_CHUNK_TOO_LARGE` 413. Previously committed media chunks are not
+modified or removed by either case.
+
+This is *per request*, not a complete VPS-wide CPU/egress concurrency
+budget. Multi-camera load testing and site-level video admission remain
+separate certification requirements.
