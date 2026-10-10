@@ -53,3 +53,35 @@ test("a different account's same-named final replay cannot stop this recording",
   assert.match(sentinel, /and gs\.user_uid = \$\{owner\.uid\}/);
   assert.match(sentinel, /where gs\.is_final = true/);
 });
+
+test("all chunk write and terminal paths serialize with the same transaction-scoped camera lock", () => {
+  const chunks = read("app/api/streams/[streamId]/chunks/route.ts");
+  const end = read("app/api/streams/[streamId]/end/route.ts");
+  const writeLock = "await lockVideoChunkWriter(tx, id)";
+  const writer = chunks.indexOf(writeLock);
+  const physical = chunks.indexOf("await writeStreamChunk(id, sequence");
+  const receipt = chunks.indexOf("await tx.gameWatchStream.updateMany(", physical);
+  const count = chunks.indexOf("return updated ? { stored, updated } : null");
+  assert.ok(writer > 0 && physical > writer && receipt > physical && count > receipt);
+  assert.match(chunks, /prisma\.\$transaction\(async \(tx\)/);
+  assert.match(chunks, /maxWait: 4_000, timeout: 20_000/);
+  assert.match(chunks, /chunkCreated: accepted\.stored\.created/);
+  assert.match(chunks, /if \(!current \|\| !isAoE2WarManagedStream\(current, actor\.user\.id\)/);
+  assert.match(chunks, /where: \{ id, status: \{ in: \["starting", "live"\] \} \}/);
+  assert.match(end, /await lockVideoChunkWriter\(tx, id\)/);
+  assert.match(end, /status: \{ in: \["starting", "live"\] \}/);
+  assert.match(sentinel, /await lockVideoChunkWriter\(tx, stream\.id\)/);
+  assert.match(start, /for \(const old of previous\) await lockVideoChunkWriter\(tx, old\.id\)/);
+  assert.match(locks, /pg_advisory_xact_lock\(\$\{734102\}, \$\{streamId\}\)/);
+  assert.doesNotMatch(locks, /pg_advisory_unlock\(/);
+});
+
+test("WebM storage remains atomic on disk and restart-reconcilable if DB acknowledgement rolls back", () => {
+  const storage = read("lib/streamStorage.ts");
+  assert.match(storage, /await fs\.open\(temporaryPath, "wx", 0o600\)/);
+  assert.match(storage, /await handle\.sync\(\)/);
+  assert.match(storage, /await fs\.link\(temporaryPath, filePath\)/);
+  assert.match(storage, /const raced = await fs\.readFile\(filePath\)/);
+  assert.match(storage, /await fs\.unlink\(temporaryPath\)\.catch\(\(\) => undefined\)/);
+  assert.match(storage, /getStreamStorageUsage\(streamId\)/);
+});
