@@ -102,11 +102,11 @@ class AssembleCommunityReleaseTests(unittest.TestCase):
             def response(stdout):
                 return SimpleNamespace(returncode=0, stdout=stdout)
             with patch.object(assembler.subprocess, "run", side_effect=[
-                response(assembler.SOURCE_SHA + "\\n"), response("")
+                response(assembler.SOURCE_SHA + "\n"), response("")
             ]):
                 assembler.require_local_mac_build(dist)
             with patch.object(assembler.subprocess, "run", return_value=response(
-                "0" * 40 + "\\n"
+                "0" * 40 + "\n"
             )):
                 with self.assertRaisesRegex(assembler.BundleAssemblyError, "source"):
                     assembler.require_local_mac_build(dist)
