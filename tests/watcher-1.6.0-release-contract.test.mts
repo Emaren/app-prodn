@@ -184,10 +184,10 @@ test("Watcher v1.6.4 sync validator requires correct native Mac ZIP manifest sha
   await assert.rejects(validateWatcherReleaseBundle(dist, "9.9.9"));
 });
 
-test("Watcher 1.6.3 public release identity is exact", () => {
-  assert.match(release, /version: "1\.6\.3"/);
-  assert.match(release, /previousVersion: "1\.6\.2"/);
-  assert.match(release, /releasedOn: "Oct 2, 2026"/);
+test("Watcher 1.6.4 public release identity is exact", () => {
+  assert.match(release, /version: "1\.6\.4"/);
+  assert.match(release, /previousVersion: "1\.6\.3"/);
+  assert.match(release, /releasedOn: "Oct 10, 2026"/);
   assert.match(release, /Active replay-folder recovery/);
   assert.match(release, /Fresh replay adoption after restart/);
   assert.match(release, /Localized out-of-sync MP save support/);
@@ -207,6 +207,31 @@ test("Watcher 1.6.3 public release identity is exact", () => {
   assert.match(release, /Bounded historical Watcher state/);
   assert.doesNotMatch(release, /version: "1\.5\.13"/);
   assert.doesNotMatch(release, /version: "1\.5\.9"/);
+});
+
+test("Watcher 1.6.4 site metadata lists five certified download URLs", () => {
+  assert.ok(release.includes("unsigned manual macOS downloads"));
+  const binaries = [
+    "AoE2HDBets Watcher Setup 1.6.4.exe",
+    "AoE2HDBets Watcher 1.6.4.exe",
+    "AoE2HDBets Watcher-1.6.4-arm64.dmg",
+    "aoe2hdbets-watcher-direct.zip",
+    "AoE2HDBets Watcher-1.6.4.AppImage",
+  ];
+  const paths = [
+    "/downloads/AoE2HDBets%20Watcher%20Setup%201.6.4.exe",
+    "/downloads/AoE2HDBets%20Watcher%201.6.4.exe",
+    "/downloads/AoE2HDBets%20Watcher-1.6.4-arm64.dmg",
+    "/downloads/aoe2hdbets-watcher-direct.zip",
+    "/downloads/AoE2HDBets%20Watcher-1.6.4.AppImage",
+  ];
+  for (const filename of binaries) {
+    assert.ok(release.includes('filename: "' + filename + '"'), filename);
+  }
+  for (const downloadPath of paths) {
+    assert.ok(release.includes('downloadPath: "' + downloadPath + '"'), downloadPath);
+  }
+  assert.doesNotMatch(release, /version: "1\\.6\\.2"/);
 });
 
 test("Watcher release sync transaction commits certified bytes before metadata", async (t) => {
