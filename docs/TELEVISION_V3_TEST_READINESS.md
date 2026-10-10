@@ -13,7 +13,7 @@ review_interval_days: 14
 sensitivity: "internal"
 ---
 
-# Television WOLO V3 — field-readiness candidate
+# Television WOLO V3 Field Readiness
 
 This is a test-readiness checkpoint, **not** a certified V3 video release or
 a claim that video is reliable on unseen Windows machines. The 0–100 video
