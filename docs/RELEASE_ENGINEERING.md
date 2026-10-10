@@ -1341,3 +1341,28 @@ The local assembly requires the Mac source tree commit and status to pass
 before reading its artifacts, verifies the signed Windows inventory from
 downloaded bytes, and refuses a pre-existing output path.
 
+## Watcher 1.6.4 draft GitHub receipt gate and website sync parity
+
+After producing the local complete and validated twelve-file release bundle,
+the operator staged private GitHub draft \`v1.6.4\` on 2026-10-10. GitHub
+normalized spaces in some release-asset names to dots; do not infer corrupt
+bytes or rename the *canonical* local files from this presentation difference.
+\`scripts/verify_watcher_164_github_draft.py\` read-only checks the
+authenticated draft release, exact tag and target source SHA, and verifies
+the **SHA-256 + byte count multiset** of all twelve hosted assets against
+the full locally revalidated bundle. Missing SHA digests, a mismatched file,
+duplicate asset names, public/prerelease state or wrong source fail closed.
+
+The site-side \`scripts/sync-watcher-release.mjs\` now shares the protected
+Python promoter's v1.6.4 native-Mac updater ZIP requirement and validates its
+exact \`latest-mac.yml\` default and files-entry SHA-512 against ZIP bytes.
+The legacy v1.6.3 layout remains accepted for a previous-generation rollback.
+This code is a *source safety upgrade*; do not invoke the older site sync
+workflow against live \`public/downloads\` before a governed release.
+
+The public site remains on v1.6.3 until three independent facts are proven:
+GitHub v1.6.4 published with exact certified digests, governed VPS download
+promotion with Wolo/runtime continuity, and committed web download metadata
+matching the hosted hashes. The native ZIP is retained for integrity but Mac
+unsigned manual installations do not claim signed self-update support.
+
