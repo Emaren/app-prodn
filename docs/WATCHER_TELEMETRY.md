@@ -8,14 +8,36 @@ systems: ["app-prodn","api-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "telemetry-contract"
-reviewed_at: "2026-10-02"
+reviewed_at: "2026-10-10"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
 
 # Watcher Telemetry
 
-## Production release identity — 2026-10-02
+## Production release identity — 2026-10-10
+
+**Public release: Watcher v1.6.4. Previous retained generation: v1.6.3.**
+The immutable [GitHub v1.6.4 release](https://github.com/Emaren/aoe2-watcher/releases/tag/v1.6.4) was published 2026-10-10 after both app-prodn PR #473 CI jobs succeeded. The certified bundle contains 12 canonical objects, including five player downloads (signed Windows NSIS + portable, unsigned manual Apple Silicon DMG + direct ZIP, Linux AppImage), the native macOS updater integrity ZIP and DMG blockmap, three updater manifests, and two checksum receipts. The native macOS ZIP is an integrity-bound source artifact; **unsigned Mac builds are manual-only** and are not advertised as Developer ID notarized or supported for automatic update.
+
+Release identity and immutable evidence:
+
+- Watcher runtime and builder source: `a223ad41c1a877e30e6f532c915aa40499d2c746`;
+- Windows Azure signed and timestamped run: `38087777891`;
+- installer SHA-256: `1b26ff51e5c1b3fc6d7dfde2fe7ea1eb62e0f6d636c98caa9237de15378f554d`;
+- portable EXE SHA-256: `ff00e37669f3aa97d360071f463201fb616aa7653bf2bd8e46bbb7ae59ca18da`;
+- non-Windows source CI run: `38087519262` (Mac built locally at the exact clean source; Linux AppImage from CI);
+- GitHub release ID: `409232785`, with all **12/12** asset SHA-256 hashes and byte lengths independently matched to the local source-bound certified bundle;
+- app release-controller candidate: PR #473; CI run `38091715964`, both jobs **SUCCESS**;
+- protected download-vault promotion: **PROMOTED** with bundle digest `501fac7b59c0a220f3c1beb5c39d40dc08cb79b1270e4f4b230c7b333ec00a47`;
+- durable production receipt: `/mnt/HC_Volume_105319120/aoe2war/os-control/watcher-release-promotion-receipts/watcher-release-20261010T224600572882Z-1.6.4-501fac7b59c0/result.json`;
+- protected promotion returned `Runtime: UNCHANGED`, `Wolo: UNCHANGED`, exit code `0`.
+
+The protected vault promotion is distinct from the app runtime rollout. The site's `lib/watcherRelease.ts` must be deliberately committed and deployed with version 1.6.4, previousVersion 1.6.3, and the five matching URLs **only after** the certified files have landed in the production vault. Verify the public `/api/watcher/release`, five `/download/watcher/*` routes and expected exact bytes after governed `aoe2war finish`. Real installed Windows upgrade/relaunch and long-duration Television V3 capture remain physical/stack certification tasks; `autoStreamMatches` defaults off so releasing the basic Watcher does not automatically enroll existing players in streaming.
+
+The v1.6.3 release receipts remain historical evidence and a viable previous-generation fallback.
+
+## Historical release identity — 2026-10-02
 
 Watcher 1.6.3 is the current public release. It preserves the 1.6.2 low-footprint lifecycle while tightening replay terminal truth, duplicate-monitor ownership, bounded background update discovery, and manual-update handoff. The terminal-state correction is deliberately semantic rather than more aggressive polling: durable replay storage is no longer mislabeled as a settled competitive result when winner authority is still unresolved.
 
