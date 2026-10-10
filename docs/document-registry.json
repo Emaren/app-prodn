@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "330d8c552b1cce49e07eb8898caaa648667d3d1ec5d711e508d82f85dd18dcd0",
+      "sha256": "7f1ceeb92d929a6c5cb4443412a248e6485afdb6eec0b2cde9366faa79b78bf5",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1697,7 +1697,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-09",
       "sensitivity": "internal",
-      "sha256": "6ccf563f27a031b97233104f8408cef70ca9e95e709083e1611ca3ee1a5976fc",
+      "sha256": "f78eac884916197a188074275e4079f466a8f262b3616e66bbd947d4bfd4b950",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2048,8 +2048,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/television-v1-operator-readiness-20261009",
-    "commit": "8c0f37a377080fd05c8fc538dca55ed4f761fada"
+    "branch": "feature/television-v1-volume-safety-20261009",
+    "commit": "560a6ecfa510f35453b979a8be5af3c923050545"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

@@ -14,6 +14,7 @@ type VideoVaultResponse={
  rows:VideoVaultRow[];totalCount:number;scanned:number;recentBytes:number;
  issuesSampled:number;
  complete:boolean;limits:{perStreamBytes:number;perStreamChunks:number};note:string;
+ volume:{freeBytes:number|null;reserveBytes:number;writableVideoBytes:number|null};
 };
 const bytes=(value:number|null)=>value===null?"Unavailable":
   value<1048576?(value/1024).toFixed(1)+" KiB":(value/1073741824).toFixed(2)+" GiB";
@@ -80,6 +81,14 @@ export default function VideoVaultDashboard(){
       {data?.complete?" This inventory covers all registered first-party sessions.":" Older recordings and orphan files are not included in the subtotal."}
       {" "}The streaming budget and automatic global retention controls need separate release certification before wide capture.
       Existing caps: {data?bytes(data.limits.perStreamBytes):"—"} per stream / {data?.limits.perStreamChunks??"—"} chunks.
+      <div className="mt-2 font-bold text-cyan-100">
+        Verified video-volume free: {data?bytes(data.volume.freeBytes):"—"} · reserved:
+        {" "}{data?bytes(data.volume.reserveBytes):"—"} · writable above floor:
+        {" "}{data?bytes(data.volume.writableVideoBytes):"—"}
+      </div>
+      {data?.volume.writableVideoBytes===null ? <div className="mt-2 text-rose-200">
+        Volume headroom unavailable: new video media writes fail safely until storage is verified.
+      </div> : null}
       {" "}Diagnostics show the most recent incident among {data?.issuesSampled??0} bounded events; an old incident does not mean the camera is presently broken.
     </div>
     <section className="overflow-hidden rounded-[1.6rem] border border-white/10 bg-slate-950/70">
