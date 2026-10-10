@@ -121,7 +121,8 @@ live two-player capture canary.
   policy, and separate championship commission are future independent gates.
   A TV poll must never automatically transfer the Chaos Championship.
 - No video upload ceiling or retention default is raised by this slice.
-  Earlier development defaults were 512 MiB/4,000 slices per stream; the current\n   *development branch* uses 2 GiB/12,000 slices, with six-hour transient
+  Earlier development defaults were 512 MiB/4,000 slices per stream; the current
+   *development branch* uses 2 GiB/12,000 slices, with six-hour transient
   removal, and one explicitly pinned bounded demonstration. The real long-match
   recording quota, full-storage accounting, cross-stream concurrency admission,
   improved incremental playback, and packaged Windows/macOS canaries remain
@@ -285,7 +286,8 @@ the next guarded production capacity preflight before video activation.
 Server video writes are now admitted only when `statfs` verifies that
 the **actual configured video-chunk filesystem** will retain the configured
 free-space reserve *after* the next chunk. This is independent of the
-per-stream byte/chunk limits (now 2 GiB / 12,000 by default in the\n  *unreleased long-match development branch*), and supports concurrent
+per-stream byte/chunk limits (now 2 GiB / 12,000 by default in the
+  *unreleased long-match development branch*), and supports concurrent
 recorder sessions on the same volume. A failed capacity probe is treated
 as video-only rejection, never permission to fill an unknown disk.
 
@@ -462,7 +464,9 @@ video decode, replay result or spectator voting authority.
 The prior Television Vote Lab was only browser-local. The new draft
 `/api/television/chaos-ballots` GET/POST contract records a non-binding
 popularity vote against a **final GameStats ID and its roster hash**.
-The ballot's two foreign keys delete only the associated ballots when an\naccount is erased or its replay record is legitimately deleted, rather than\nblocking erasure or replay cleanup. The dedicated `television_chaos_ballots` table has a unique
+The ballot's two foreign keys delete only the associated ballots when an
+account is erased or its replay record is legitimately deleted, rather than
+blocking erasure or replay cleanup. The dedicated `television_chaos_ballots` table has a unique
 (game_stats_id, user_id) constraint and a stable nominee key; it has no
 relation to trophy events, commissioner permissions, title payouts,
 WOLO wallets, betting settlement or replay winner adjudication.
