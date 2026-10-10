@@ -7,7 +7,7 @@ import { readFileSync } from "node:fs";
 
 const root = await fs.mkdtemp(path.join(os.tmpdir(), "aoe2war-television-media-audit-"));
 process.env.AOE2_STREAM_STORAGE_DIR = root;
-const { inspectOneVideoStream, inspectTelevisionMediaInventory } =
+const { inspectOneVideoStream, inspectTelevisionMediaInventory, evaluateVideoSequenceEvidence } =
   await import("../lib/televisionMediaAudit.ts");
 
 async function record(id:number, seqs:number[]) {
@@ -67,11 +67,25 @@ test("multi-POV audit is deduplicated, bounded and never certifies playback",asy
   assert.equal(result.completeSequences,1);
   assert.equal(result.allPlaybackProven,false);
 });
+test("long two-hour recording checks every sequence without thousands of per-chunk stats",()=>{
+  const twoHours = Array.from({length:7200},(_,i)=>i);
+  const exact=evaluateVideoSequenceEvidence(twoHours,7200,7199);
+  assert.deepEqual(exact,{gaps:0,last:7199,complete:true});
+  const bad=twoHours.filter(x=>x!==4200);
+  const incomplete=evaluateVideoSequenceEvidence(bad,7200,7199);
+  assert.equal(incomplete.complete,false);
+  assert.equal(incomplete.gaps,1);
+  assert.equal(evaluateVideoSequenceEvidence(twoHours,7300,7199).complete,false);
+  assert.equal(evaluateVideoSequenceEvidence([0],1,0).complete,false);
+});
 test("admin audit is bounded, authorization-gated and incapable of deleting video",()=>{
   const source=readFileSync("lib/televisionMediaAudit.ts","utf8");
   const api=readFileSync("app/api/admin/television-readiness/route.ts","utf8");
   const ui=readFileSync("components/admin/TelevisionReadinessPanel.tsx","utf8");
   assert.match(source,/MAX_INSPECTED_CHUNKS = 5_000/);
+  assert.match(source,/MAX_LISTED_CHUNKS = 20_000/);
+  assert.match(source,/sampled \? "sequence_sampled" : "sequence_complete"/);
+  assert.match(source,/actualBytes: sampled \? null : bytes/);
   assert.match(source,/WEBM_EBML_HEADER/);
   assert.match(source,/Buffer.alloc\(WEBM_EBML_HEADER.length\)/);
   assert.match(source,/MAX_STREAM_PROBES = 16/);
