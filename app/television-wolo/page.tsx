@@ -10,6 +10,7 @@ import { loadPublicLiveGamesSnapshot } from "@/lib/liveGamesPublicSnapshot";
 import { getPrisma } from "@/lib/prisma";
 import { resolveReplayTeams, type CanonicalReplayPlayer } from "@/lib/teamResolution";
 import type { TelevisionStage } from "@/lib/televisionDirection";
+import type { WatchStreamPayload } from "@/lib/watchStreams";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -114,7 +115,15 @@ function toBattle(
   const title = stage.confirmedTeams
     ? stage.teams.map(team => team.players.map(player => player.name).join(" + ")).join(" vs ")
     : names.length >= 2 ? names.slice(0, 8).join(" · ") : fallbackId;
-  const streams = Array.isArray(row.streams) ? row.streams : [];
+  // Streams attached by the canonical live-session aggregator carry proven
+  // replay/watcher identity aliases. Never guess matches from player names.
+  const streams = (Array.isArray(row.streams) ? row.streams : []).filter(
+    (value): value is WatchStreamPayload => Boolean(
+      value && typeof value === "object" &&
+      Number.isSafeInteger((value as WatchStreamPayload).id) &&
+      typeof (value as WatchStreamPayload).sessionKey === "string"
+    ),
+  ).slice(0, 24);
 
   return {
     id: typeof row.id === "number" ? row.id : null,
@@ -128,6 +137,7 @@ function toBattle(
     occurredAt: timestamp(row),
     watchHref: "/watch/" + encodeURIComponent(sessionKey),
     initialStreamCount: streams.length,
+    initialStreams: streams,
   };
 }
 
