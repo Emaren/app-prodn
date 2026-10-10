@@ -787,3 +787,21 @@ Source checks and synthetic lost-mount tests are not substitute evidence
 for two-worker PostgreSQL contention tests and live 1v1–4v4 camera canaries.
 Those remain pre-publication gates alongside bounded CPU, media decode,
 real mounted-volume observability, security and replay-result priority.
+
+### Independent PostgreSQL concurrency gate (V3 development)
+
+CI now includes a **separate disposable PostgreSQL 16 container** for
+cross-worker lock contention, rather than relying only on static source
+assertions. `scripts/verify_video_postgres_locks.mjs` opens three concurrent
+database connections and proves, for each domain, that the same
+broadcaster account, battle-primary session, or physical stream writer
+**blocks a competing connection** until the first transaction exits.
+It also proves different keys remain independently available and rollback
+releases the transaction-scoped lock. The probe hard-restricts its connection
+string to the localhost `ci/aoe2war_ci` database and touches **no application
+tables or production services**.
+
+This is a real SQL transaction contention gate, not an end-to-end test
+of Prisma transaction interleavings, simultaneous mounted-volume writes,
+Windows capture, or 8-viewer media decode. The physical canary and replay
+priority stress tests remain necessary before public video certification.
