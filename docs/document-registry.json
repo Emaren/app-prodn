@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ce120db30d7240a820b41e268466da23baa5746dcf4f30bf0b603187d17139ea",
+      "sha256": "673a6084b70dd0828f492f890eeb6122ccd78155ee0171b316d25f9e7ba4afb1",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1697,7 +1697,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-09",
       "sensitivity": "internal",
-      "sha256": "d5e92a260fbfe001cf966e3c9a40cc5c94330c350481e783110ae2925ca468ee",
+      "sha256": "6f13f32d4645221f44c6c46d6641ae7de59321e5a45d69b2a099133ef82420e7",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2048,8 +2048,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/television-v1-camera-switch-isolation-20261009",
-    "commit": "a062f657b153c5adf3734ce465250c6718b0e956"
+    "branch": "feature/television-v1-chaos-ballots-20261009",
+    "commit": "e8f511a834ea96d542b4de2b30035f6b1c78df62"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
