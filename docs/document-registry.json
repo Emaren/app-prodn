@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "bf3ba417e6e59a42d088a01e429b20fff180df97146e60275ebef1af7c36b58b",
+      "sha256": "a7d2611caff9be0f2b14bbef22ea5714b246c3f4be1e82d96d3c207b8e96da73",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2048,8 +2048,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/library-historical-provenance-20261009",
-    "commit": "62842124d82c73e8cea9f6c7e6633a706eb99023"
+    "branch": "feature/update-preflight-no-dirty-taxonomy-20261010",
+    "commit": "7d3c106731e43568fbbb5412526a2c33164486be"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
