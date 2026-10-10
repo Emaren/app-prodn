@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9a65b8129c6fccf135cc4e24a4697770a1fdf5b89c0319189d18c5527ec14a2f",
+      "sha256": "2acca0b661993f92517dc9552bad594bd8242b8f86490d8de25d0b70362f4430",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -961,7 +961,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-07-28",
       "sensitivity": "internal",
-      "sha256": "aee06169cf13b31f37ec8c170307c32d4a5fc9f9f707a712474a8273a6d3ef13",
+      "sha256": "abe485182388a7bb07c4a4db5a3a6a02b130272ab75019678bb2931c5918546c",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2048,8 +2048,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/television-v3-integrated-hardening-20261010",
-    "commit": "7aea127c95a00ccafac73f9c70f4049d33c6d98a"
+    "branch": "feature/television-v3-zodiac-unified-20261010",
+    "commit": "32b4dc134a00e79996d13e609668095783f668e3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
