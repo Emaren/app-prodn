@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/update-preflight-no-dirty-taxonomy-20261010` at `add9b62e5bc76e6857a5bb6033003ff9e0689a03`
+Implementation baseline: `feature/watcher-1.6.4-native-mac-release-promotion-20261010` at `add9b62e5bc76e6857a5bb6033003ff9e0689a03`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
