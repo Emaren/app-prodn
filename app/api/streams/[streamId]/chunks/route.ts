@@ -88,7 +88,7 @@ export async function POST(
     request.headers.get("content-length"), MAX_CHUNK_BYTES,
   )) {
     return NextResponse.json(
-      { detail: "Stream chunk size is invalid." },
+      { detail: "Stream chunk size is invalid.", code: "STREAM_CHUNK_TOO_LARGE", terminal: true },
       { status: 413, headers: NO_STORE_HEADERS }
     );
   }
@@ -98,7 +98,7 @@ export async function POST(
   );
   if (!mediaMimeType) {
     return NextResponse.json(
-      { detail: "Only WebM stream media is accepted." },
+      { detail: "Only WebM stream media is accepted.", code: "STREAM_FORMAT_UNSUPPORTED", terminal: true },
       { status: 415, headers: NO_STORE_HEADERS }
     );
   }
@@ -170,7 +170,7 @@ export async function POST(
   const arrayBuffer = await request.arrayBuffer();
   if (arrayBuffer.byteLength <= 0 || arrayBuffer.byteLength > MAX_CHUNK_BYTES) {
     return NextResponse.json(
-      { detail: "Stream chunk size is invalid." },
+      { detail: "Stream chunk size is invalid.", code: "STREAM_CHUNK_TOO_LARGE", terminal: true },
       { status: 413, headers: NO_STORE_HEADERS }
     );
   }
