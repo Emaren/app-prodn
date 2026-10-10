@@ -64,8 +64,12 @@ export async function GET(request: NextRequest) {
     })
     .catch((error) => {
       console.warn("Failed to load retained Watch demo:", error);
-      return [];
+      return null;
     });
+  if (retainedRows === null) {
+    return NextResponse.json({ error: "Feed registry temporarily unavailable." },
+      { status: 503, headers: NO_STORE_HEADERS });
+  }
   const retainedStreamIds = new Set(retainedRows.map((row) => row.streamId));
   const streams = await prisma.gameWatchStream
     .findMany({
@@ -80,9 +84,13 @@ export async function GET(request: NextRequest) {
     })
     .catch((error) => {
       console.warn("Failed to load watch streams:", error);
-      return [];
+      return null;
     });
 
+  if (streams === null) {
+    return NextResponse.json({ error: "Feed registry temporarily unavailable." },
+      { status: 503, headers: NO_STORE_HEADERS });
+  }
   const visibleStreams = streams
     .map(toWatchStreamPayload)
     .filter((stream) => isVisibleStream(stream, retainedStreamIds));
