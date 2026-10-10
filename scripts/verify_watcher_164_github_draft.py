@@ -26,14 +26,32 @@ class DraftProofError(RuntimeError):
 
 
 def fetch_draft() -> dict:
+    # GET /releases/tags/{tag} may return 404 for an unpublished draft.
+    # The authenticated collection endpoint includes drafts for repo writers.
     result = subprocess.run([
-        "gh", "api", f"repos/{REPO}/releases/tags/v{VERSION}",
+        "gh", "api", "-X", "GET", f"repos/{REPO}/releases?per_page=100",
     ], capture_output=True, text=True, check=False, timeout=35)
     if result.returncode != 0:
-        raise DraftProofError("STOP: cannot read authenticated GitHub draft release")
-    value = json.loads(result.stdout)
-    if (not isinstance(value, dict) or value.get("tag_name") != f"v{VERSION}"
-        or value.get("draft") is not True
+        raise DraftProofError(
+            "STOP: cannot list authenticated GitHub releases: "
+            + (result.stderr or "").strip()[:250]
+        )
+    try:
+        releases = json.loads(result.stdout)
+    except json.JSONDecodeError as exc:
+        raise DraftProofError("STOP: malformed GitHub release list") from exc
+    if not isinstance(releases, list):
+        raise DraftProofError("STOP: GitHub releases response is not a list")
+    matches = [
+        release for release in releases
+        if isinstance(release, dict) and release.get("tag_name") == f"v{VERSION}"
+    ]
+    if len(matches) != 1:
+        raise DraftProofError(
+            f"STOP: expected exactly one authenticated v{VERSION} draft, found {len(matches)}"
+        )
+    value = matches[0]
+    if (value.get("draft") is not True
         or value.get("prerelease") is True
         or value.get("target_commitish") != SOURCE_SHA):
         raise DraftProofError("STOP: release is not a private draft bound to the expected source")
