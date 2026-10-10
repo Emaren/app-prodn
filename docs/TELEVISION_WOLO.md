@@ -384,3 +384,23 @@ unchanged. Actual last-two-complete-games preservation still requires a durable
 canonical battle identity on every camera, on-disk byte/sequence proof,
 a total-volume budget, transactional cohort lifecycle, and restart canaries.
 Never discard one player's viewpoint while claiming to have kept a game.
+
+## Bounded on-disk WebM sampling (read-only admin audit)
+
+Building on the canonical completed-battle retention preview, the admin
+readiness endpoint now checks up to 32 associated native Watcher video
+streams across the two latest candidate battles. Each inspection performs
+at most two file metadata checks and reads exactly four bytes of the first
+segment, verifying the expected EBML magic for a WebM initialization
+segment. It reports samples_present, missing_samples, invalid_webm_header,
+invalid_metadata or probe_error for each exact stream ID. Errors never
+expose private absolute filesystem paths in the JSON response.
+
+This is deliberately partial evidence: successful checks cannot prove
+all intervening chunks exist, form one playable media timeline, have
+correct timestamps or remain available after future retention cleanup.
+No video decode, full video reads, recursive directory scan, media
+restoration, file deletion or remote workstation inspection occurs.
+The existing storage guards, automatic pruning and one-demo slot remain
+unchanged. A durable complete-game media archive still requires a
+governed per-battle storage model and integrated long-match playback canaries.
