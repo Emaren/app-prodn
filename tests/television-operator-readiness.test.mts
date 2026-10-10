@@ -19,7 +19,7 @@ test("operator view does not invent game teams, players or stream matches",()=>{
   assert.match(route,/A VIDEO LIVE marker proves recent chunks\/heartbeat/);
 });
 test("live readiness refreshes only while admin browser is visible",()=>{
-  assert.match(panel,/document.visibilityState === "hidden"/);
+  assert.match(panel,/document\.visibilityState\s*===\s*"hidden"/);
   assert.match(panel,/document.addEventListener\("visibilitychange",onVisible\)/);
   assert.match(panel,/clearInterval\(timer\)/);
   assert.match(panel,/No registered POV/);
