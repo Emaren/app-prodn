@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/television-v1-terminal-stream-contract-20261009` at `196dc77b9f16f265115ab0cfc4be844554ace334`
+Implementation baseline: `feature/television-v1-proof-backed-camera-aliases-20261009` at `b9d83b062e10f328985ddf668166e210f56a2d45`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
