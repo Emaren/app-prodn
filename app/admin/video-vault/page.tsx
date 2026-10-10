@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireServerAdmin } from "@/lib/adminSession";
 import VideoVaultDashboard from "@/components/admin/VideoVaultDashboard";
+import TelevisionReadinessPanel from "@/components/admin/TelevisionReadinessPanel";
 export const dynamic="force-dynamic";
 export default async function VideoVaultPage() {
   await requireServerAdmin();
@@ -9,6 +10,7 @@ export default async function VideoVaultPage() {
       <Link href="/admin" className="rounded-full border border-white/15 px-4 py-2 text-sm text-slate-300">← Admin</Link>
       <Link href="/television-wolo" className="rounded-full border border-cyan-300/30 px-4 py-2 text-sm text-cyan-100">Television WOLO ↗</Link>
     </div>
+    <TelevisionReadinessPanel />
     <VideoVaultDashboard />
   </main>;
 }
