@@ -12,6 +12,7 @@ import {
 } from "@/lib/streamMedia";
 import { toWatchStreamPayload } from "@/lib/watchStreams";
 import { getStreamVolumeHeadroom, MAX_STREAM_BYTES } from "@/lib/streamStorage";
+import { lockVideoBroadcaster, lockVideoSessionPrimary } from "@/lib/streamAdvisoryLocks";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -155,6 +156,8 @@ export async function POST(request: NextRequest) {
   // public manifest identity commit together. Any write failure rolls back
   // the entire replacement, preserving the previous live recorder record.
   const updated = await prisma.$transaction(async (tx) => {
+    await lockVideoBroadcaster(tx, user.id);
+    await lockVideoSessionPrimary(tx, sessionKey);
     const now = new Date();
     await tx.gameWatchStream.updateMany({
       where: {
@@ -231,7 +234,7 @@ export async function POST(request: NextRequest) {
     }
 
     return updated;
-  });
+  }, { maxWait: 4_000, timeout: 12_000 });
 
   return NextResponse.json(
     {
