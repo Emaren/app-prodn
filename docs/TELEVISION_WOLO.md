@@ -384,3 +384,30 @@ unchanged. Actual last-two-complete-games preservation still requires a durable
 canonical battle identity on every camera, on-disk byte/sequence proof,
 a total-volume budget, transactional cohort lifecycle, and restart canaries.
 Never discard one player's viewpoint while claiming to have kept a game.
+
+## Last-two-cohort physical video inventory (read-only)
+
+The authenticated Admin Video Vault readiness endpoint now performs a bounded
+on-disk audit of the canonical battle/POV candidates identified above.
+It reads only chunk directory entries and filesystem stat metadata, never
+video payload bytes or replay contents, and makes no filesystem/database writes.
+Per POV it reports actual chunk count, bytes, initial/last sequence,
+missing sequence count and server registry count/last sequence.
+
+Only contiguous, nonempty segments numbered 0 through the final sequence
+with matching registry counters receive sequence_complete. Missing initial
+segments, gaps, empty/missing directories, zero-size chunks, unreadable entries
+and overlarge scans report distinct fail-closed states. This NEVER proves that
+WebM decodes, the entire match was recorded, who won, or that a complete archive
+has been safely retained.
+
+The audit is bounded to 16 streams, 5,000 filenames per stream, two concurrent
+stream scans and 64 concurrent file-stat operations per stream. Results are
+cached for 60 seconds and can lag cleanup; missing/omitted streams remain
+explicit. The existing six-hour age-prune, independent retained demo,
+and admin deletion behavior are unchanged.
+
+The preview uses the existing transient recently-completed game window, NOT a
+historical inventory of all battles. Last-two-game automatic preservation
+remains DISABLED until durable canonical cohort identity, disk budget,
+groupwise custody, and actual Windows playback canary have been proven.
