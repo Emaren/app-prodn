@@ -313,6 +313,15 @@ function BrowserChunkPlayer({
           return;
         }
 
+        // WebM media clusters without the physical segment-zero header are
+        // not a playable stream. Do not repeatedly transfer expensive 20 MB
+        // windows that no browser decoder can initialize.
+        if (manifest.initSeq !== 0 && newestAvailableSeq >= 1) {
+          setWarming(true);
+          setSignalLabel("Waiting for video initialization");
+          return;
+        }
+
         if (manifest.latestSeq < 0 || newestAvailableSeq < 1) {
           setWarming(true);
           setSignalLabel(stream.status === "ended" ? "Replay warming" : "Signal warming");
