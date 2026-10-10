@@ -366,19 +366,32 @@ export async function getStreamStorageUsage(
   let totalBytes = 0;
   let chunkCount = 0;
   let latestSequence = -1;
+  const filenames = entries.filter(entry => entry.isFile())
+    .map(entry => {
+      const match = /^(\d+)\.webm$/.exec(entry.name);
+      if (!match) return null;
+      const sequence = Number(match[1]);
+      return Number.isSafeInteger(sequence) && sequence >= 0
+        ? {name:entry.name,sequence} : null;
+    })
+    .filter((entry): entry is {name:string;sequence:number} => entry !== null);
 
-  for (const entry of entries) {
-    if (!entry.isFile()) continue;
-    const match = /^(\d+)\.webm$/.exec(entry.name);
-    if (!match) continue;
-    const sequence = Number(match[1]);
-    const stat = await fs.stat(path.join(dir, entry.name));
-    totalBytes += stat.size;
-    chunkCount += 1;
-    latestSequence = Math.max(latestSequence, sequence);
+  // Exact reconciliation remains necessary after restart/foreign writes.
+  // Batch independent stat calls instead of 12,000 serial I/O roundtrips.
+  for (let i=0;i<filenames.length;i+=64) {
+    const group=filenames.slice(i,i+64);
+    const stats=await Promise.all(group.map(entry=>fs.stat(path.join(dir,entry.name))));
+    for (let j=0;j<group.length;j++) {
+      if (!stats[j].isFile() || !Number.isSafeInteger(stats[j].size) || stats[j].size < 0) {
+        throw new Error("Stream storage accounting encountered invalid media bytes.");
+      }
+      totalBytes+=stats[j].size;
+      if (!Number.isSafeInteger(totalBytes)) throw new Error("Stream storage accounting overflow.");
+      chunkCount+=1;
+      latestSequence=Math.max(latestSequence,group[j].sequence);
+    }
   }
-
-  return { chunkCount, totalBytes, latestSequence };
+  return {chunkCount,totalBytes,latestSequence};
 }
 
 export async function readStreamChunksBounded(
