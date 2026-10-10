@@ -1,4 +1,4 @@
-import { watchStreamHasProvenLiveVideo, type WatchStreamPayload } from "./watchStreams";
+import { watchStreamHasProvenLiveVideo, type WatchStreamPayload } from "./watchStreams.ts";
 
 export type TelevisionStagePlayer = {
   key: string;
