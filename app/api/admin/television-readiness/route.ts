@@ -84,7 +84,8 @@ export async function GET(request: NextRequest) {
   // or infer additional video/battle relationships from filenames or labels.
   const MAX_DISK_PROBES = 16;
   const requested = retentionPlan.games.flatMap(game => game.cameraStreamIds);
-  const ids = [...new Set(requested)].slice(0, MAX_DISK_PROBES);
+  const uniqueRequested = [...new Set(requested)];
+  const ids = uniqueRequested.slice(0, MAX_DISK_PROBES);
   const streamMeta = new Map<number, number>();
   for (const game of retentionPlan.games) {
     const session = snapshot.recentlyCompletedSessions.find(s => s.sessionKey === game.battleKey);
@@ -112,7 +113,7 @@ export async function GET(request: NextRequest) {
   const retentionPreview = {
     ...retentionPlan,
     diskProbesChecked: diskProbes.length,
-    diskAuditTruncated: ids.length < requested.length,
+    diskAuditTruncated: ids.length < uniqueRequested.length,
     games: retentionPlan.games.map(game => {
       const diskEvidence = game.cameraStreamIds.map(streamId =>
         byStreamId.get(streamId) ?? {
