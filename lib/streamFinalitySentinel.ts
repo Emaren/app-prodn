@@ -6,6 +6,7 @@ const MANAGED_SOURCE_TYPES = new Set<string>(AOE2WAR_STREAM_SOURCE_TYPES);
 
 type StreamCandidate = {
   id: number;
+  userId?: number | null;
   sessionKey: string;
   provider: string;
   sourceType?: string | null;
@@ -38,6 +39,13 @@ function unique(values: string[]) {
 }
 
 async function findFinalReplayForStream(prisma: PrismaClient, stream: StreamCandidate) {
+  // GameStats filenames are only unique within the broadcaster's account.
+  // A different player's finalized match must never terminate this camera.
+  if (!stream.userId) return null;
+  const owner = await prisma.user.findUnique({
+    where: { id: stream.userId }, select: { uid: true },
+  });
+  if (!owner?.uid) return null;
   const sessionKey = clean(stream.sessionKey);
   if (!sessionKey) return null;
 
@@ -55,6 +63,7 @@ async function findFinalReplayForStream(prisma: PrismaClient, stream: StreamCand
     select gs.id, gs.created_at
     from game_stats gs
     where gs.is_final = true
+      and gs.user_uid = ${owner.uid}
       and nullif(trim(coalesce(gs.winner, '')), '') is not null
       and coalesce(gs.winner, '') <> 'Unknown'
       and (
