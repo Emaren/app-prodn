@@ -1,5 +1,5 @@
 import { promises as fs } from "node:fs";
-import { streamChunkPath } from "./streamStorage";
+import { streamChunkPath } from "./streamStorage.ts";
 
 export type TelevisionMediaProbeStatus =
   | "samples_present"
