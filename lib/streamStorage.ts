@@ -72,13 +72,21 @@ export function streamCapacityAdmission(
  * Failure to read free space is a video-only fail-closed condition.
  */
 export async function getStreamVolumeHeadroom() {
-  const stats = await fs.statfs(STREAM_STORAGE_ROOT);
+  const [stats, captureDir, hostRoot] = await Promise.all([
+    fs.statfs(STREAM_STORAGE_ROOT),
+    fs.stat(STREAM_STORAGE_ROOT),
+    fs.stat(path.parse(STREAM_STORAGE_ROOT).root || "/"),
+  ]);
+  // A directory on the server root is not an independent video volume.
+  // This is an observation, not proof of total retention or free-space reservations.
+  const mountedSeparately = captureDir.dev !== hostRoot.dev;
   const freeBytes = Number(stats.bavail) * Number(stats.bsize);
   if (!Number.isSafeInteger(freeBytes) || freeBytes < 0) {
     throw new StreamStorageLimitError("Video volume free space could not be verified.");
   }
   return {
     freeBytes,
+    mountedSeparately,
     reserveBytes: STREAM_MIN_FREE_BYTES,
     writableVideoBytes: Math.max(0, freeBytes - STREAM_MIN_FREE_BYTES),
   };
