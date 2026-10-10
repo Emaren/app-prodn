@@ -6,7 +6,7 @@ import {
   type AoE2WarStreamSourceType,
 } from "@/lib/streamRequestAuth";
 import { normalizeStreamMediaMimeType } from "@/lib/streamMedia";
-import { listStreamChunkSequences } from "@/lib/streamStorage";
+import { listStreamChunkSequences, streamInitChunkExists } from "@/lib/streamStorage";
 import { toWatchStreamPayload } from "@/lib/watchStreams";
 
 export const runtime = "nodejs";
@@ -55,6 +55,7 @@ export async function GET(
   const latestSeq = stream.latestChunkSeq ?? -1;
   const availableSeqs = latestSeq >= 0 ? await listStreamChunkSequences(stream.id) : [];
   const availableMediaSeqs = availableSeqs.filter((sequence) => sequence > 0);
+  const hasInit = await streamInitChunkExists(stream.id);
   const newestAvailableSeq = availableSeqs.length ? availableSeqs[availableSeqs.length - 1] : latestSeq;
   const recommendedStartSeq = newestAvailableSeq > 10 ? newestAvailableSeq - 10 : 0;
 
@@ -68,9 +69,9 @@ export async function GET(
       latestSeq,
       newestAvailableSeq,
       chunkCount: stream.chunkCount,
-      initSeq: availableSeqs.includes(0) ? 0 : null,
+      initSeq: hasInit ? 0 : null,
       recommendedStartSeq: latestSeq >= 0 ? recommendedStartSeq : null,
-      availableSeqs,
+      availableSeqs: hasInit ? [0, ...availableMediaSeqs] : availableMediaSeqs,
       availableMediaSeqs,
       chunkUrlTemplate: `/api/streams/${stream.id}/chunks/{sequence}`,
       generatedAt: new Date().toISOString(),
