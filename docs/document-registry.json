@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a7d2611caff9be0f2b14bbef22ea5714b246c3f4be1e82d96d3c207b8e96da73",
+      "sha256": "a4bc73a6d73663b70343f1f45ef8399104ddd54a3b6dab1fda3a2c66db164c91",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1420,7 +1420,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-29",
       "sensitivity": "internal",
-      "sha256": "241e768647a8bae68d8d79cf67963920e5e8c07e6d4065f5513ba333b7d8ef4e",
+      "sha256": "fd22c0dabf73ff1e1ceaecac019b0518c33c4e11a4ee21421fa22eaa64d02466",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2048,8 +2048,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/update-preflight-no-dirty-taxonomy-20261010",
-    "commit": "7d3c106731e43568fbbb5412526a2c33164486be"
+    "branch": "feature/watcher-1.6.4-native-mac-release-promotion-20261010",
+    "commit": "cee6c9e35fdf8ad5e05720fb1b62a39b32db5459"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
