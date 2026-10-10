@@ -27,7 +27,32 @@ class WatcherDraftProofTests(unittest.TestCase):
             {**good, "prerelease": True},
         ):
             with patch.object(verifier.subprocess, "run", return_value=SimpleNamespace(
-                returncode=0, stdout=json.dumps(invalid)
+                returncode=0, stdout=json.dumps([invalid])
+            )):
+                with self.assertRaises(verifier.DraftProofError):
+                    verifier.fetch_draft()
+
+    def test_uses_authenticated_list_not_tag_endpoint_for_drafts(self):
+        expected = {
+            "tag_name": "v1.6.4",
+            "target_commitish": verifier.SOURCE_SHA,
+            "draft": True,
+            "prerelease": False,
+            "assets": [],
+        }
+        with patch.object(verifier.subprocess, "run", return_value=SimpleNamespace(
+            returncode=0, stdout=json.dumps([
+                {"tag_name": "v1.6.3", "draft": False},
+                expected,
+            ])
+        )) as mocked:
+            self.assertEqual(verifier.fetch_draft(), expected)
+            cmd = mocked.call_args.args[0]
+            self.assertIn("releases?per_page=100", cmd[-1])
+            self.assertNotIn("/tags/", cmd[-1])
+        for releases in ([], [expected, expected], {"tag_name": "v1.6.4"}):
+            with patch.object(verifier.subprocess, "run", return_value=SimpleNamespace(
+                returncode=0, stdout=json.dumps(releases)
             )):
                 with self.assertRaises(verifier.DraftProofError):
                     verifier.fetch_draft()
