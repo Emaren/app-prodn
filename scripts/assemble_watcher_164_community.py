@@ -85,14 +85,14 @@ def build_bundle(windows: Path, mac: Path, linux: Path, output: Path) -> list[di
         raise BundleAssemblyError("STOP: output must be a new, nonexisting directory")
     verify_windows(windows)
     files = canonical_files(VERSION)
-    generated = "latest.yml"
+    generated = {"latest.yml", "latest-linux.yml"}
     try:
         output.mkdir(parents=True)
         for name in files:
-            if name == generated:
+            if name in generated:
                 continue
             root = windows if name in SIGNED_WINDOWS else (
-                linux if name.endswith(".AppImage") or name == "latest-linux.yml" else mac
+                linux if name.endswith(".AppImage") else mac
             )
             source = unique_file(root, name)
             shutil.copyfile(source, output / name)
@@ -100,7 +100,7 @@ def build_bundle(windows: Path, mac: Path, linux: Path, output: Path) -> list[di
         installer = (output / "AoE2HDBets Watcher Setup 1.6.4.exe").read_bytes()
         sha512 = base64.b64encode(hashlib.sha512(installer).digest()).decode()
         timestamp = dt.datetime.now(dt.timezone.utc).isoformat().replace("+00:00", "Z")
-        (output / generated).write_text(
+        (output / "latest.yml").write_text(
             f"version: {VERSION}\n"
             "files:\n"
             f"  - url: AoE2HDBets%20Watcher%20Setup%20{VERSION}.exe\n"
@@ -108,6 +108,19 @@ def build_bundle(windows: Path, mac: Path, linux: Path, output: Path) -> list[di
             f"    size: {len(installer)}\n"
             f"path: AoE2HDBets Watcher Setup {VERSION}.exe\n"
             f"sha512: {sha512}\n"
+            f"releaseDate: '{timestamp}'\n", encoding="utf-8",
+        )
+        appimage = output / f"AoE2HDBets Watcher-{VERSION}.AppImage"
+        linux_bytes = appimage.read_bytes()
+        linux_sha = base64.b64encode(hashlib.sha512(linux_bytes).digest()).decode()
+        (output / "latest-linux.yml").write_text(
+            f"version: {VERSION}\n"
+            "files:\n"
+            f"  - url: AoE2HDBets Watcher-{VERSION}.AppImage\n"
+            f"    sha512: {linux_sha}\n"
+            f"    size: {len(linux_bytes)}\n"
+            f"path: AoE2HDBets Watcher-{VERSION}.AppImage\n"
+            f"sha512: {linux_sha}\n"
             f"releaseDate: '{timestamp}'\n", encoding="utf-8",
         )
         rows = []
@@ -126,6 +139,7 @@ def build_bundle(windows: Path, mac: Path, linux: Path, output: Path) -> list[di
             "build_source_sha": SOURCE_SHA,
             "windows_signing_run_id": WINDOWS_RUN,
             "nonwindows_build_run_id": CI_RUN,
+            "macos_build_authority": "local-clean-exact-source-unsigned-manual",
             "distribution_policy": {
                 "windows": "azure-artifact-signed-rfc3161",
                 "macos": "unsigned-manual-only-no-autoupdate",
@@ -147,6 +161,25 @@ def build_bundle(windows: Path, mac: Path, linux: Path, output: Path) -> list[di
         raise
 
 
+def require_local_mac_build(root: Path) -> None:
+    """Require the local macOS build to come from the exact clean watcher tree."""
+    if root.name != "dist":
+        raise BundleAssemblyError("STOP: macOS input must be the Watcher dist directory")
+    watcher = root.parent
+    def git(*args: str) -> str:
+        result = subprocess.run(
+            ["git", "-C", str(watcher), *args],
+            text=True, capture_output=True, timeout=20, check=False,
+        )
+        if result.returncode:
+            raise BundleAssemblyError("STOP: cannot establish local macOS source")
+        return result.stdout.strip()
+    if git("rev-parse", "HEAD") != SOURCE_SHA:
+        raise BundleAssemblyError("STOP: local Mac build source is not the signed 1.6.4 SHA")
+    if git("status", "--porcelain"):
+        raise BundleAssemblyError("STOP: Watcher worktree changed during local Mac build")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--windows", type=Path, required=True)
@@ -155,9 +188,10 @@ def main() -> None:
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     require_run(WINDOWS_RUN, "Sign Windows Watcher", "workflow_dispatch")
+    require_local_mac_build(args.macos)
     require_run(CI_RUN, "Watcher CI", "pull_request")
     result = build_bundle(args.windows, args.macos, args.linux, args.output)
-    print("PASS: 1.6.4 community bundle sealed (Windows signed, Mac manual unsigned, Linux unsigned)")
+    print("PASS: 1.6.4 community bundle sealed (Windows signed, local Mac manual unsigned, Linux unsigned)")
     print("Files:", len(result), "including both immutable receipts")
     print("Bundle:", args.output)
     print("NO PUBLICATION OR PRODUCTION MUTATION WAS PERFORMED.")
