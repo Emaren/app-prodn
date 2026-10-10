@@ -19,9 +19,9 @@ CREATE INDEX "ix_television_chaos_ballot_game_roster"
 ALTER TABLE "television_chaos_ballots"
   ADD CONSTRAINT "television_chaos_ballots_game_stats_id_fkey"
   FOREIGN KEY ("game_stats_id") REFERENCES "game_stats"("id")
-  ON DELETE RESTRICT ON UPDATE NO ACTION;
+  ON DELETE CASCADE ON UPDATE NO ACTION;
 
 ALTER TABLE "television_chaos_ballots"
   ADD CONSTRAINT "television_chaos_ballots_user_id_fkey"
   FOREIGN KEY ("user_id") REFERENCES "users"("id")
-  ON DELETE RESTRICT ON UPDATE NO ACTION;
+  ON DELETE CASCADE ON UPDATE NO ACTION;
