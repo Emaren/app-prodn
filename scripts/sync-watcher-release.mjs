@@ -253,14 +253,14 @@ async function verifyNativeMacUpdater(root, version) {
   await regularFile(filePath, filename);
   const hash = createHash("sha512").update(await fs.readFile(filePath)).digest("base64");
   const metadata = await fs.readFile(path.join(root, "latest-mac.yml"), "utf8");
-  const rootPath = metadata.match(/^path:\s*(.+?)\s*$/gm) || [];
-  const rootSha = metadata.match(/^sha512:\s*(\S+)\s*$/gm) || [];
+  const rootPath = metadata.match(/^path:[ \t]*[^\r\n]+$/gm) || [];
+  const rootSha = metadata.match(/^sha512:[ \t]*[A-Za-z0-9+/=]+$/gm) || [];
   if (rootPath.length !== 1 || rootSha.length !== 1 ||
       rootPath[0] !== `path: ${filename}` || rootSha[0] !== `sha512: ${hash}`) {
     throw new Error("Watcher native Mac updater default path/SHA-512 mismatch");
   }
-  const urls = [...metadata.matchAll(/^\s+-\s+url:\s*(.+?)\s*$/gm)];
-  const digests = [...metadata.matchAll(/^\s+sha512:\s*(\S+)\s*$/gm)];
+  const urls = [...metadata.matchAll(/^[ \t]+-[ \t]+url:[ \t]*([^\r\n]+)$/gm)];
+  const digests = [...metadata.matchAll(/^[ \t]+sha512:[ \t]*([A-Za-z0-9+/=]+)$/gm)];
   if (urls.length !== 1 || digests.length !== 1 ||
       urls[0][1] !== filename || digests[0][1] !== hash) {
     throw new Error("Watcher native Mac updater files-entry SHA-512 mismatch");
