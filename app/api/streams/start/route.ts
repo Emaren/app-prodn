@@ -11,6 +11,7 @@ import {
   normalizeStreamThumbnailUrl,
 } from "@/lib/streamMedia";
 import { toWatchStreamPayload } from "@/lib/watchStreams";
+import { getStreamVolumeHeadroom, MAX_STREAM_BYTES } from "@/lib/streamStorage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -93,6 +94,25 @@ export async function POST(request: NextRequest) {
     body.sourceType,
     actor.authMode === "watcher_key" ? "watcher_native" : "browser"
   );
+  // Verify the *actual* capture filesystem before ending any prior stream
+  // or creating a phantom "starting" session. Installed Watchers otherwise
+  // capture the desktop only to hit a media-volume 413 on the first chunk.
+  // Reserve a full per-POV quota for this admission check; concurrent cameras
+  // still require independent total-volume and runtime backpressure limits.
+  let writableVideoBytes: number | null = null;
+  try {
+    writableVideoBytes = (await getStreamVolumeHeadroom()).writableVideoBytes;
+  } catch {
+    // Missing/unmounted directory or unavailable statfs must fail closed for
+    // video only. The separate replay monitoring pipeline is untouched.
+  }
+  if (writableVideoBytes === null || writableVideoBytes < MAX_STREAM_BYTES) {
+    return NextResponse.json({
+      detail: "Video storage is not ready. The operator must verify the mounted media volume; normal replay watching is unaffected.",
+      code: "STREAM_VIDEO_VOLUME_NOT_READY",
+      terminal: true,
+    }, { status: 503, headers: NO_STORE_HEADERS });
+  }
   const user = actor.user;
 
   let sessionKey = requestedSessionKey || `free:${user.uid}`;
