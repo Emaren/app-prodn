@@ -6,6 +6,7 @@ import {
   resolveStreamRequestActor,
 } from "@/lib/streamRequestAuth";
 import { normalizeStreamMediaMimeType } from "@/lib/streamMedia";
+import {parseStreamChunkSequence, isAdmissibleStreamChunkContentLength} from "@/lib/streamUploadProtocol";
 import { currentStreamMediaAdmission } from "@/lib/streamMediaAdmission";
 import {
   StreamChunkConflictError,
@@ -26,13 +27,10 @@ const NO_STORE_HEADERS = {
 const MAX_CHUNK_BYTES = 8 * 1024 * 1024;
 
 function readSequence(request: NextRequest) {
-  const queryValue = request.nextUrl.searchParams.get("sequence");
-  const headerValue = request.headers.get("x-stream-sequence");
-  const sequence = Number(queryValue ?? headerValue);
-  if (!Number.isInteger(sequence) || sequence < 0 || sequence > 2_000_000) {
-    return null;
-  }
-  return sequence;
+  return parseStreamChunkSequence(
+    request.nextUrl.searchParams.get("sequence"),
+    request.headers.get("x-stream-sequence"),
+  );
 }
 
 export async function POST(
@@ -84,8 +82,11 @@ export async function POST(
     );
   }
 
-  const contentLength = Number(request.headers.get("content-length"));
-  if (Number.isFinite(contentLength) && (contentLength <= 0 || contentLength > MAX_CHUNK_BYTES)) {
+  // A missing Content-Length is legal for chunked uploads. We still enforce
+  // the hard byte limit after reading; explicit malformed lengths fail closed.
+  if (!isAdmissibleStreamChunkContentLength(
+    request.headers.get("content-length"), MAX_CHUNK_BYTES,
+  )) {
     return NextResponse.json(
       { detail: "Stream chunk size is invalid." },
       { status: 413, headers: NO_STORE_HEADERS }
