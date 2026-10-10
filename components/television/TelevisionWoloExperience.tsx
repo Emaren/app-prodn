@@ -329,7 +329,7 @@ export default function TelevisionWoloExperience({
             ) : (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-8 text-center">
                 <MonitorPlay className="h-12 w-12 text-slate-500" />
-                <div className="text-2xl font-semibold">No registered feed on this battle</div>
+                <div className="text-2xl font-semibold">{streamError ? "Feed registry temporarily unavailable" : "No registered feed on this battle"}</div>
                 <p className="max-w-xl text-sm leading-6 text-slate-400">
                   The canonical battle still exists. Open the full Watch theatre for retained
                   media, hosted loops, and any archive fallback attached outside the stream registry.
@@ -444,6 +444,15 @@ export default function TelevisionWoloExperience({
                 {streamError}
               </div>
             ) : null}
+            {playing ? (
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
+                <span aria-live="polite">{streamError ? "Directory connection: retrying" : lastDirectoryCheck ? "Directory connection: healthy" : "Directory connection: pending"}</span>
+                <button type="button" disabled={loadingStreams} onClick={() => void playBattle()}
+                  className="rounded-full border border-cyan-200/25 px-3 py-1.5 font-semibold text-cyan-100 hover:border-cyan-200/40 disabled:opacity-50">
+                  {loadingStreams ? "Checking feeds…" : "Check feeds now"}
+                </button>
+              </div>
+            ) : null}
             <div className="flex flex-wrap gap-2">
               {playing && availableStreams.length > 0 ? (
                 availableStreams.map((stream) => (
@@ -467,6 +476,22 @@ export default function TelevisionWoloExperience({
                 </span>
               )}
             </div>
+            {playing ? (
+              <details className="mt-4 rounded-xl border border-white/10 bg-white/[0.025] px-4 py-3 text-xs text-slate-300">
+                <summary className="cursor-pointer font-semibold text-cyan-100">Video diagnostics</summary>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  <div>Directory: {streamError ? "Retrying after error" : lastDirectoryCheck ? "Connected" : "Checking"}</div>
+                  <div>Registered feeds: {availableStreams.length}</div>
+                  <div>Focal camera: {activeStream ? streamRoleLabel(activeStream) : "Awaiting broadcaster"}</div>
+                  <div>Provider: {activeStream?.provider || "Unavailable"}</div>
+                  <div>Capture state: {activeStream?.status || "Not registered"}</div>
+                  <div>Received chunks: {activeStream?.chunkCount ?? "Unknown"}</div>
+                  <div>Last heartbeat: {activeStream?.lastHeartbeatAt ? relativeLabel(activeStream.lastHeartbeatAt) : "Not reported"}</div>
+                  <div>Media: {activeStream?.mediaMimeType || "Not reported"}</div>
+                </div>
+                <p className="mt-3 text-slate-500">Public feed metadata, not a browser decode or latency guarantee. No private keys or local desktop paths are exposed.</p>
+              </details>
+            ) : null}
           </div>
         </div>
 
