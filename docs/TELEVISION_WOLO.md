@@ -372,7 +372,7 @@ canonical replay session grouping. The server counts only videos already
 attached to that battle and account-linked to an exact roster Steam ID.
 No name, map, filename or timestamp similarity matching is introduced.
 
-Each of the two newest distinct completed battles shows expected players,
+Each of up to two newest distinct completed battles with authenticated ended Watcher footage shows expected players,
 recorded POVs, exact stream IDs, missing perspectives and match/team proof.
 A complete_candidate means the projected battle has all expected POV records;
 it does NOT establish actual on-disk video bytes, playback, or stable retention.
