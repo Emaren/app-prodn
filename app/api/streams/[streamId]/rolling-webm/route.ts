@@ -8,6 +8,7 @@ import {
 import { streamMediaResponseHeaders } from "@/lib/streamMedia";
 import {
   listStreamChunkSequences,
+  streamInitChunkExists,
   readStreamChunksBounded,
   StreamStorageLimitError,
 } from "@/lib/streamStorage";
@@ -113,7 +114,10 @@ export async function GET(
     );
   }
 
-  const chunkSequences = availableSeqs.includes(0) ? [0, ...mediaRun] : mediaRun;
+  // Segment zero is not in the newest-260 sliding sequence index after a
+  // long battle. Read the actual on-disk init presence for each video window.
+  const hasInit = await streamInitChunkExists(stream.id);
+  const chunkSequences = hasInit ? [0, ...mediaRun] : mediaRun;
   try {
     const { chunks, totalBytes } = await readStreamChunksBounded(
       stream.id,
