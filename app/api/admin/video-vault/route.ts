@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminSession";
 import { getStreamStorageUsage, getStreamVolumeHeadroom, STREAM_MIN_FREE_BYTES, removeStreamChunks, MAX_STREAM_BYTES, MAX_STREAM_CHUNKS } from "@/lib/streamStorage";
 import { estimateTelevisionRecordingBudget } from "@/lib/televisionCapacityPlan";
+import { postgameMediaProtected, MIN_POSTGAME_MEDIA_MS } from "@/lib/streamPostgameRetention";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -124,13 +125,20 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({detail:"Invalid stream ID."},{status:400,headers:NO_STORE});
   }
   const stream=await gate.prisma.gameWatchStream.findUnique({where:{id:streamId},
-    select:{id:true,provider:true,status:true,retainedDemo:{select:{slot:true}}}});
+    select:{id:true,provider:true,status:true,endedAt:true,updatedAt:true,retainedDemo:{select:{slot:true}}}});
   if (!stream || stream.provider!=="aoe2war") {
     return NextResponse.json({detail:"Recording not found."},{status:404,headers:NO_STORE});
   }
   if (stream.retainedDemo || !["ended","failed"].includes(stream.status)) {
     return NextResponse.json({detail:"Live, protected or retained recordings cannot be deleted here."},
       {status:409,headers:NO_STORE});
+  }
+  if (postgameMediaProtected(stream.endedAt ?? stream.updatedAt)) {
+    return NextResponse.json({
+      detail:"Recording is protected during the postgame viewing period.",
+      code:"STREAM_POSTGAME_MEDIA_PROTECTED",
+      minPostgameMs:MIN_POSTGAME_MEDIA_MS,
+    }, { status:409,headers:NO_STORE });
   }
   try {
     await removeStreamChunks(streamId);
