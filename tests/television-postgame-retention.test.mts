@@ -35,3 +35,26 @@ test("scheduled cleanup and both operator deletion paths share the same enforcem
   assert.match(retainedApi,/error instanceof PostgameMediaProtectedError/);
   assert.match(retainedApi,/STREAM_POSTGAME_MEDIA_PROTECTED/);
 });
+
+test("operator receives an explicit protection deadline; UI cannot present an enabled delete button early", () => {
+  const vaultApi = readFileSync("app/api/admin/video-vault/route.ts","utf8");
+  const dashboard = readFileSync("components/admin/VideoVaultDashboard.tsx","utf8");
+  assert.match(vaultApi,/postgameProtected: \["ended", "failed"\]/);
+  assert.match(vaultApi,/postgameUntil: \["ended", "failed"\]/);
+  assert.match(vaultApi,/MIN_POSTGAME_MEDIA_MS/);
+  assert.match(dashboard,/row\.postgameProtected/);
+  assert.match(dashboard,/Postgame protected until/);
+  assert.match(dashboard,/&& !row\.retained && !row\.postgameProtected|&&!row\.retained&&!row\.postgameProtected/);
+  assert.match(dashboard,/if\(row\.retained\|\|row\.postgameProtected\|\|/);
+});
+
+test("stale cleanup rechecks heartbeat and video writer state instead of ending recovered cameras", () => {
+  const cleanup = readFileSync("lib/streamCleanup.ts","utf8");
+  const lock = cleanup.indexOf("await lockVideoChunkWriter(tx, stream.id)");
+  const conditional = cleanup.indexOf("lastHeartbeatAt: { lt: staleBefore }",lock);
+  const update = cleanup.indexOf("await tx.gameWatchStream.updateMany(",lock);
+  assert.ok(lock>0 && update>lock && conditional>update);
+  assert.match(cleanup,/status: \{ in: \["starting", "live"\] \}/);
+  assert.match(cleanup,/batch = staleStreams\.slice\(offset, offset \+ 8\)/);
+  assert.match(cleanup,/ended: endedStaleCount/);
+});
