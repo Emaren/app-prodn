@@ -65,6 +65,13 @@ class AssembleCommunityReleaseTests(unittest.TestCase):
             with patch.dict(assembler.SIGNED_WINDOWS, digests, clear=True):
                 result = assembler.build_bundle(windows, mac, linux, root / "assembled")
             self.assertEqual(len(result), 12)
+            appimage = linux / "AoE2HDBets Watcher-1.6.4.AppImage"
+            expected_linux_sha = base64.b64encode(
+                hashlib.sha512(appimage.read_bytes()).digest()
+            ).decode()
+            linux_pointer = (root / "assembled" / "latest-linux.yml").read_text()
+            self.assertIn(expected_linux_sha, linux_pointer)
+            self.assertIn("path: AoE2HDBets Watcher-1.6.4.AppImage", linux_pointer)
             manifest = json.loads((root / "assembled" / "watcher-release-manifest-1.6.4.json").read_text())
             self.assertEqual(manifest["distribution_policy"]["macos"], "unsigned-manual-only-no-autoupdate")
             self.assertEqual(manifest["windows_signing_run_id"], assembler.WINDOWS_RUN)
@@ -87,6 +94,22 @@ class AssembleCommunityReleaseTests(unittest.TestCase):
             with patch.dict(assembler.SIGNED_WINDOWS, digests, clear=True):
                 with self.assertRaisesRegex(assembler.BundleAssemblyError, "expected one copy"):
                     assembler.build_bundle(windows, mac, linux, root / "assembled")
+
+    def test_local_mac_requires_matching_git_source_and_clean_tree(self):
+        with tempfile.TemporaryDirectory() as temp:
+            dist = Path(temp) / "dist"
+            dist.mkdir()
+            def response(stdout):
+                return SimpleNamespace(returncode=0, stdout=stdout)
+            with patch.object(assembler.subprocess, "run", side_effect=[
+                response(assembler.SOURCE_SHA + "\\n"), response("")
+            ]):
+                assembler.require_local_mac_build(dist)
+            with patch.object(assembler.subprocess, "run", return_value=response(
+                "0" * 40 + "\\n"
+            )):
+                with self.assertRaisesRegex(assembler.BundleAssemblyError, "source"):
+                    assembler.require_local_mac_build(dist)
 
     def test_github_runs_must_be_exact_sha_success_and_workflow(self):
         correct = {
