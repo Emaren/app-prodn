@@ -50,6 +50,12 @@ function fakeCanonicalFiles(version: string) {
     `AoE2HDBets Watcher ${version}.exe`,
     `AoE2HDBets Watcher-${version}-arm64.dmg`,
     "aoe2hdbets-watcher-direct.zip",
+    ...((() => {
+      const [major, minor, patch] = version.split(".").map(Number);
+      return major > 1 || (major === 1 && (minor > 6 || (minor === 6 && patch >= 4)));
+    })()
+      ? [`AoE2HDBets Watcher-${version}-arm64-mac.zip`]
+      : []),
     `AoE2HDBets Watcher-${version}.AppImage`,
     `AoE2HDBets Watcher-${version}-arm64.dmg.blockmap`,
     "latest.yml",
@@ -65,11 +71,14 @@ function writeFakeCertifiedBundle(
 ) {
   fs.mkdirSync(dist, { recursive: true });
 
+  const nativeZip = Buffer.from("native-mac-updater");
+  const nativeSha512 = createHash("sha512").update(nativeZip).digest("base64");
   const contents = new Map<string, Buffer>([
     [`AoE2HDBets Watcher Setup ${version}.exe`, Buffer.from("installer")],
     [`AoE2HDBets Watcher ${version}.exe`, Buffer.from("portable")],
     [`AoE2HDBets Watcher-${version}-arm64.dmg`, Buffer.from("dmg")],
     ["aoe2hdbets-watcher-direct.zip", Buffer.from("direct-zip")],
+    [`AoE2HDBets Watcher-${version}-arm64-mac.zip`, nativeZip],
     [`AoE2HDBets Watcher-${version}.AppImage`, Buffer.from("appimage")],
     [`AoE2HDBets Watcher-${version}-arm64.dmg.blockmap`, Buffer.from("blockmap")],
     [
@@ -81,7 +90,7 @@ function writeFakeCertifiedBundle(
     [
       "latest-mac.yml",
       Buffer.from(
-        `version: ${version}\npath: AoE2HDBets Watcher-${version}-arm64.dmg\n`,
+        `version: ${version}\nfiles:\n  - url: AoE2HDBets Watcher-${version}-arm64-mac.zip\n    sha512: ${nativeSha512}\npath: AoE2HDBets Watcher-${version}-arm64-mac.zip\nsha512: ${nativeSha512}\n`,
       ),
     ],
     [
@@ -140,6 +149,21 @@ function makeFakeWatcher(root: string, version: string, options = {}) {
   writeFakeCertifiedBundle(dist, version, options);
   return { watcherDir, dist };
 }
+
+test("Watcher v1.6.4 sync validator requires correct native Mac ZIP manifest sha512", async (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "watcher-sync-native-"));
+  t.after(() => fs.rmSync(root, { recursive: true, force: true }));
+  const { dist } = makeFakeWatcher(root, "9.9.9");
+  await validateWatcherReleaseBundle(dist, "9.9.9");
+  const m = path.join(dist, "latest-mac.yml");
+  const original = fs.readFileSync(m, "utf8");
+  fs.writeFileSync(m, original.replace("sha512: ", "sha512: wrong-", 1));
+  await assert.rejects(validateWatcherReleaseBundle(dist, "9.9.9"), /SHA-512/);
+  fs.writeFileSync(m, original);
+  const zip = path.join(dist, "AoE2HDBets Watcher-9.9.9-arm64-mac.zip");
+  fs.unlinkSync(zip);
+  await assert.rejects(validateWatcherReleaseBundle(dist, "9.9.9"));
+});
 
 test("Watcher 1.6.3 public release identity is exact", () => {
   assert.match(release, /version: "1\.6\.3"/);
