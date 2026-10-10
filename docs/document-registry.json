@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0856ffaa8cd400b6c479f90427a9c0fec68bb0ff4f889f0f67f5a3031f9a1bde",
+      "sha256": "330d8c552b1cce49e07eb8898caaa648667d3d1ec5d711e508d82f85dd18dcd0",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2049,7 +2049,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/television-v1-operator-readiness-20261009",
-    "commit": "7c7b635a55033de8d5cbc021bb44bd36d6ac20f4"
+    "commit": "8c0f37a377080fd05c8fc538dca55ed4f761fada"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
