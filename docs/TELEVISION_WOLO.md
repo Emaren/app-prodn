@@ -511,3 +511,42 @@ application code. No automatic production migration, title transaction,
 and no changes to installed Watchers are authorized by this draft PR.
 Test finality boundaries, duplicate and concurrent votes, forged nominees,
 identity/roster changes and a real account canary before opening voting.
+
+## WebM initialization and long-match byte auditing (development gate)
+
+The reviewed on-disk inspector `lib/televisionMediaAudit.ts` now
+reads the first **four bytes** of sequence-zero `0.webm` only when
+all expected numeric sequence filenames are present, to confirm the
+WebM EBML initialization signature `1A 45 DF A3`. A sequence that
+has perfect file numbering but a non-WebM initial segment is
+`invalid_webm_header`, **not** `sequence_complete`. An archive
+containing only the first initialization segment is insufficient
+evidence of video. This test never decodes or republishes player video.
+
+The earlier detailed audit scanned and stat-ed at most **5,000 files**
+per POV. With the unreleased 1.6.4 Watcher's approximately one-second
+media slices, two-hour matches can contain about **7,200 chunks**.
+The scanner now separates two policies:
+
+- **Up to 5,000** video slices: detailed bounded file-size accounting,
+  exact DB-vs-files count and sequence checks, and WebM initialization
+  verification.
+- **5,001–20,000** slices: check all numeric sequence names for gaps,
+  compare last sequence and count with the stream registry, inspect
+  only the first and last file metadata and first four header bytes,
+  and report `sequence_sampled`. Actual total bytes remain **unknown**
+  in this mode, not misleadingly calculated from two sampled chunks.
+
+More than 20,000 media files results in an explicit `scan_limited`
+status. All modes remain administrator-only, read-only, 60-second
+in-process cached, with at most sixteen unique cameras and two
+concurrent inspector calls. A passing sequence/header inspection
+proves neither playable video, continuous capture, reliable timing,
+integrity of every chunk, nor a saved whole battle. No video files,
+gameplay identity, results, championship custody, user desktop or
+WOLO accounting are changed by this check.
+
+Physical Windows two-broadcaster WebM and browser playback canaries
+remain the release evidence requirement. This addendum supersedes
+the earlier statement that the physical media inspector reads no WebM
+payload bytes: it now reads only the four-byte initialization prefix.
