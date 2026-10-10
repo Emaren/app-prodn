@@ -121,7 +121,8 @@ live two-player capture canary.
   policy, and separate championship commission are future independent gates.
   A TV poll must never automatically transfer the Chaos Championship.
 - No video upload ceiling or retention default is raised by this slice.
-  Earlier development defaults were 512 MiB/4,000 slices per stream; the current\n   *development branch* uses 2 GiB/12,000 slices, with six-hour transient
+  Earlier development defaults were 512 MiB/4,000 slices per stream; the current
+   *development branch* uses 2 GiB/12,000 slices, with six-hour transient
   removal, and one explicitly pinned bounded demonstration. The real long-match
   recording quota, full-storage accounting, cross-stream concurrency admission,
   improved incremental playback, and packaged Windows/macOS canaries remain
@@ -285,7 +286,8 @@ the next guarded production capacity preflight before video activation.
 Server video writes are now admitted only when `statfs` verifies that
 the **actual configured video-chunk filesystem** will retain the configured
 free-space reserve *after* the next chunk. This is independent of the
-per-stream byte/chunk limits (now 2 GiB / 12,000 by default in the\n  *unreleased long-match development branch*), and supports concurrent
+per-stream byte/chunk limits (now 2 GiB / 12,000 by default in the
+  *unreleased long-match development branch*), and supports concurrent
 recorder sessions on the same volume. A failed capacity probe is treated
 as video-only rejection, never permission to fill an unknown disk.
 
@@ -456,3 +458,56 @@ as the selected game and preserves late-arriving alias-matched player POVs.
 
 This is a frontend ownership/read-model fix, not independent gameplay,
 video decode, replay result or spectator voting authority.
+
+## Chaos of the Match — durable spectator ballots (unreleased migration)
+
+The prior Television Vote Lab was only browser-local. The new draft
+`/api/television/chaos-ballots` GET/POST contract records a non-binding
+popularity vote against a **final GameStats ID and its roster hash**.
+The ballot's two foreign keys delete only the associated ballots when an
+account is erased or its replay record is legitimately deleted, rather than
+blocking erasure or replay cleanup. The dedicated `television_chaos_ballots` table has a unique
+(game_stats_id, user_id) constraint and a stable nominee key; it has no
+relation to trophy events, commissioner permissions, title payouts,
+WOLO wallets, betting settlement or replay winner adjudication.
+
+Only the canonical recently-completed session shelf may supply a GameStats
+ballot ID. Older lobby/archive tiles use IDs from other sources and must
+not be substituted for final replay IDs; until a durable replay linkage
+is independently proven those tiles remain watch-only, not voteable.
+
+Eligibility is server-decided: replay marked final, an authentic
+watcher-source parse, valid 64-hex replay hash, two to eight distinct
+players with resolved replay team evidence, and a recorded game time
+within a provisional **72-hour postgame voting window**. This initial
+window is a product policy subject to review before launch. Closed
+polls remain readable and preserve their tallies; no late submissions.
+Anonymous visitors may view candidate tallies but must sign in to vote.
+
+POST requires a signed session, same-origin browser request, JSON
+content type, 2 KiB bounded body, and exact nominee stable key belonging
+to the current authoritative roster. First successful ballot wins; a
+repeat with the same nominee returns idempotent confirmation, a different
+choice receives HTTP 409. Concurrent double submissions are rejected by
+the database unique constraint. Changes to roster proof cannot silently
+reassign votes: counting is scoped to the saved roster hash, so older
+ballots with obsolete roster hashes remain in storage but do not count
+under a changed roster.
+
+The Television page no longer implies fake click votes are recorded.
+For live or roster-incomplete games it explains why ballots are not
+open. Vote tallies refresh every twenty seconds while the spectator's tab is
+visible; hidden tabs do not poll, and out-of-order replies cannot replace
+newer results. For eligible completed games it shows current counts and the
+signed-in account's recorded choice. Every result remains explicitly
+NON-BINDING and cannot automatically confer the Chaos Championship.
+
+**Deployment governance:** this feature introduces a Prisma schema
+migration. Do not deploy it piecemeal: the protected release process must
+first validate and apply migration
+`20261009190000_television_chaos_ballots` using its existing documented
+DB-migration procedure, confirm backup/rollback readiness, then activate
+application code. No automatic production migration, title transaction,
+and no changes to installed Watchers are authorized by this draft PR.
+Test finality boundaries, duplicate and concurrent votes, forged nominees,
+identity/roster changes and a real account canary before opening voting.

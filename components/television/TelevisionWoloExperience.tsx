@@ -23,6 +23,7 @@ import { assignTelevisionCameras, mergeTelevisionStreamEvidence, televisionCamer
 
 export type TelevisionBattle = {
   id: number | null;
+  ballotGameId: number | null;
   sessionKey: string;
   source: "live" | "recent" | "archive";
   title: string;
@@ -111,7 +112,6 @@ export default function TelevisionWoloExperience({
   const [loadingStreams, setLoadingStreams] = useState(false);
   const [streamError, setStreamError] = useState<string | null>(null);
   const [browserHost, setBrowserHost] = useState("");
-  const [chaosPick, setChaosPick] = useState<string | null>(null);
   const [multiview, setMultiview] = useState(false);
   const selectedBattle = useMemo(
     () => battles.find((battle) => battle.sessionKey === selectedKey) ?? initialBattle,
@@ -167,7 +167,6 @@ export default function TelevisionWoloExperience({
     setStreams([]);
     setActiveStreamId(null);
     setStreamError(null);
-    setChaosPick(null);
     setMultiview(false);
   }, [selectedKey]);
 
@@ -449,7 +448,7 @@ export default function TelevisionWoloExperience({
           </div>
         </div>
 
-        <ChaosVoteLab chaos={chaos} battle={selectedBattle} pick={chaosPick} onPick={setChaosPick} />
+        <ChaosVoteLab chaos={chaos} battle={selectedBattle} />
       </section>
 
       <BattleShelf
@@ -600,26 +599,81 @@ function BattleShelf({
   );
 }
 
-function ChaosVoteLab({
-  chaos,
-  battle,
-  pick,
-  onPick,
-}: {
-  chaos: TelevisionChaosCard | null;
-  battle: TelevisionBattle | null;
-  pick: string | null;
-  onPick: (name: string | null) => void;
+
+type ChaosBallotResponse = {
+  gameId:number;eligible:boolean;reason:string;closesAt:string|null;
+  signedIn:boolean;myVote:string|null;voteCount:number;nonBinding:true;
+  candidates:Array<{key:string;name:string;teamId:string|null;votes:number}>;
+};
+
+function ChaosVoteLab({chaos,battle}:{
+  chaos:TelevisionChaosCard|null;
+  battle:TelevisionBattle|null;
 }) {
-  const candidates = battle?.playerNames.slice(0, 4) ?? [];
+  const [ballot,setBallot]=useState<ChaosBallotResponse|null>(null);
+  const [pending,setPending]=useState(false);
+  const [ballotError,setBallotError]=useState<string|null>(null);
+  const [refreshKey,setRefreshKey]=useState(0);
+  // Lobby/archive IDs are not necessarily GameStats IDs. Only canonical
+  // completed replay sessions may hand their stable GameStats ID to ballots.
+  const gameId=typeof battle?.ballotGameId==="number" && Number.isSafeInteger(battle.ballotGameId) && battle.ballotGameId>0
+    ?battle.ballotGameId:null;
+  const completed=Boolean(gameId && battle?.source!=="live");
+
+  useEffect(()=>{
+    if(!completed || !gameId) return;
+    let cancelled=false;
+    let requestNumber=0;
+    setBallotError(null);
+    const reload=async()=>{
+      if(document.visibilityState==="hidden") return;
+      const current=++requestNumber;
+      try {
+        const response=await fetch(
+          "/api/television/chaos-ballots?gameId="+gameId,{cache:"no-store"},
+        );
+        const data=await response.json().catch(()=>({})) as ChaosBallotResponse & {detail?:string};
+        if(!response.ok)throw new Error(data.detail||"Ballot status unavailable.");
+        if(!cancelled && current===requestNumber) {
+          setBallot(data);
+          setBallotError(null);
+        }
+      } catch(error) {
+        if(!cancelled && current===requestNumber)
+          setBallotError(error instanceof Error?error.message:"Could not load votes.");
+      }
+    };
+    void reload();
+    const timer=window.setInterval(()=>void reload(),20_000);
+    const onVisible=()=>{if(document.visibilityState==="visible")void reload()};
+    document.addEventListener("visibilitychange",onVisible);
+    return()=>{cancelled=true;window.clearInterval(timer);
+      document.removeEventListener("visibilitychange",onVisible)};
+  },[gameId,completed,refreshKey]);
+
+  const shown=ballot?.gameId===gameId && completed ? ballot:null;
+  async function castVote(nomineeKey:string) {
+    if(!shown?.eligible || !shown.signedIn || shown.myVote || !gameId || pending)return;
+    setPending(true);setBallotError(null);
+    try {
+      const response=await fetch("/api/television/chaos-ballots",{
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({gameId,nomineeKey}),
+      });
+      const data=await response.json().catch(()=>({})) as {detail?:string};
+      if(!response.ok)throw new Error(data.detail||"Vote not recorded.");
+      setRefreshKey(n=>n+1);
+    } catch(error) {
+      setBallotError(error instanceof Error?error.message:"Could not record vote.");
+    } finally {setPending(false)}
+  }
 
   return (
     <aside className="rounded-[2.2rem] border border-violet-200/14 bg-[radial-gradient(circle_at_50%_0%,rgba(168,85,247,0.18),transparent_35%),linear-gradient(180deg,rgba(20,8,32,0.95),rgba(5,6,16,0.98))] p-5 shadow-[0_28px_100px_rgba(0,0,0,0.35)]">
       <div className="flex items-center gap-2 text-violet-100/65">
         <Crown className="h-4 w-4" />
-        <span className="text-[10px] font-black uppercase tracking-[0.28em]">Chaos Vote Lab</span>
+        <span className="text-[10px] font-black uppercase tracking-[0.28em]">Chaos of the Match</span>
       </div>
-
       {chaos ? (
         <div className="mt-5 overflow-hidden rounded-[1.45rem] border border-white/9 bg-black/25">
           <div className="relative h-48">
@@ -644,41 +698,60 @@ function ChaosVoteLab({
           </div>
         </div>
       ) : null}
-
       <div className="mt-5 rounded-[1.35rem] border border-amber-200/14 bg-amber-300/[0.045] p-4">
         <div className="flex items-center gap-2 text-amber-100">
           <ShieldCheck className="h-4 w-4" />
-          <span className="text-xs font-black uppercase tracking-[0.18em]">Non-binding sandbox</span>
+          <span className="text-xs font-black uppercase tracking-[0.18em]">
+            One account · One ballot · No belt transfer
+          </span>
         </div>
         <p className="mt-2 text-xs leading-5 text-slate-400">
-          Chaos requires dedicated popular-vote authority. These buttons test the TV experience only:
-          nothing is written, no ballot is counted, and title custody cannot change.
+          Spectator votes are saved against a finalized replay and its roster.
+          This poll is popularity-only; voting cannot award or move the Chaos Championship.
         </p>
       </div>
-
+      {ballotError?<div role="alert" className="mt-3 rounded-lg border border-rose-400/20 p-3 text-xs text-rose-200">
+        {ballotError}
+        <button type="button" onClick={()=>setRefreshKey(n=>n+1)}
+          className="ml-3 font-semibold underline">Retry</button>
+      </div>:null}
       <div className="mt-5">
-        <div className="text-xs font-semibold text-slate-300">Nominate from the selected battle</div>
-        {candidates.length ? (
-          <div className="mt-3 grid gap-2">
-            {candidates.map((name) => (
-              <button
-                key={name}
-                type="button"
-                onClick={() => onPick(pick === name ? null : name)}
-                className={
-                  "flex items-center justify-between rounded-xl border px-3 py-3 text-left text-sm transition " +
-                  (pick === name
-                    ? "border-violet-200/35 bg-violet-300/12 text-violet-50"
-                    : "border-white/8 bg-white/[0.025] text-slate-300 hover:border-white/18")
-                }
-              >
-                <span>{name}</span>
-                {pick === name ? <Sparkles className="h-4 w-4" /> : <Radio className="h-4 w-4 opacity-45" />}
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div className="mt-3 text-sm text-slate-500">Select a battle with named players.</div>
+        <div className="flex items-center justify-between gap-3">
+          <div className="text-xs font-semibold text-slate-300">Who brought the chaos?</div>
+          <div className="text-[11px] text-violet-200">{shown?shown.voteCount+" votes":"—"}</div>
+        </div>
+        {!completed?<p className="mt-3 text-xs text-slate-400">
+          Ballots open after a recorded game finishes and its actual player roster is verified.
+        </p>:!shown?<p className="mt-3 text-xs text-slate-400">
+          Checking finalized match and ballot status…
+        </p>:(
+          <>
+            <div className="mt-3 text-[11px] leading-5 text-slate-400">
+              {shown.eligible
+                ?shown.signedIn?"Select one participant. Your choice is permanent.":"Sign in to cast one ballot."
+                :shown.reason==="outside_window"?"Voting has closed. Historical tallies remain visible."
+                :"Voting is unavailable until this replay's roster and finality are confirmed."}
+              {shown.closesAt?" · Closes "+new Date(shown.closesAt).toLocaleString():""}
+            </div>
+            <div className="mt-3 grid gap-2">
+              {shown.candidates.map(candidate=>(
+                <button key={candidate.key} type="button"
+                  onClick={()=>void castVote(candidate.key)}
+                  disabled={!shown.eligible||!shown.signedIn||Boolean(shown.myVote)||pending}
+                  aria-pressed={shown.myVote===candidate.key}
+                  className={"flex items-center justify-between rounded-xl border px-3 py-3 text-left text-sm transition disabled:cursor-default " +
+                    (shown.myVote===candidate.key?"border-violet-200/45 bg-violet-300/15 text-violet-50":
+                      "border-white/8 bg-white/[0.025] text-slate-300 hover:border-white/18")}>
+                  <span>{candidate.name}</span>
+                  <span className="flex items-center gap-2 text-xs">
+                    {candidate.votes}
+                    {shown.myVote===candidate.key?<Sparkles className="h-4 w-4" />:<Radio className="h-4 w-4 opacity-45" />}
+                  </span>
+                </button>
+              ))}
+            </div>
+            {shown.myVote?<p className="mt-3 text-xs font-semibold text-emerald-200">Your ballot is recorded.</p>:null}
+          </>
         )}
       </div>
     </aside>

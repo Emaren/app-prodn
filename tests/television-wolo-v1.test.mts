@@ -31,12 +31,15 @@ test("Television WOLO keeps playback user-triggered", async () => {
   assert.match(client, /Video stays asleep until you press play/);
 });
 
-test("Chaos Vote Lab cannot claim title authority", async () => {
+test("persisted Chaos popularity voting still cannot claim championship authority", async () => {
   const client = await readFile(clientPath, "utf8");
-  assert.match(client, /Chaos Vote Lab/);
-  assert.match(client, /Non-binding sandbox/);
-  assert.match(client, /nothing is written, no ballot is counted/);
-  assert.doesNotMatch(client, /fetch\([^\n]*chaos/i);
+  const route = await readFile(new URL("../app/api/television/chaos-ballots/route.ts", import.meta.url), "utf8");
+  assert.match(client, /Chaos of the Match/);
+  assert.match(client, /one ballot/i);
+  assert.match(client, /voting cannot award or move the Chaos Championship/);
+  assert.match(route, /nonBinding:true/);
+  assert.match(route, /getSessionUid\(request\)/);
+  assert.doesNotMatch(route, /trophy\.update|betWager|transferWolo|settleMarket/);
 });
 
 test("account dropdown exposes Television WOLO", async () => {

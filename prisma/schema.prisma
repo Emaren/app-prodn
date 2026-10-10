@@ -63,6 +63,7 @@ model User {
   watcherDownloadEvents          WatcherDownloadEvent[]
   watcherClientEvents            WatcherClientEvent[]
   gameWatchStreams               GameWatchStream[]               @relation("GameWatchStreamOwner")
+  televisionChaosBallots          TelevisionChaosBallot[]
   retainedStreamDemos            GameWatchRetainedDemo[]          @relation("GameWatchRetainedDemoActor")
   betWagers                      BetWager[]
   betStakeIntents                BetStakeIntent[]
@@ -215,6 +216,7 @@ model GameStats {
   trophyEvents                TrophyEvent[]
   trophyChallenges            TrophyChallenge[]
   replayRosterPromotions      ReplayRosterPromotion[]       @relation("ReplayRosterPromotionGameStats")
+  televisionChaosBallots     TelevisionChaosBallot[]
   warGraphWatcherAttestations WarGraphWatcherAttestation[]
   warGraphContest             WarGraphContest?
 
@@ -5241,4 +5243,21 @@ model ChampionshipTitleDispute {
   @@unique([trophyId,custodyEpoch])
   @@index([status,createdAt])
   @@map("championship_title_disputes")
+}
+
+/** Non-binding spectator popularity votes. Never authorizes trophy custody. */
+model TelevisionChaosBallot {
+  id          Int      @id @default(autoincrement())
+  gameStatsId Int      @map("game_stats_id")
+  userId      Int      @map("user_id")
+  nomineeKey  String   @map("nominee_key") @db.VarChar(128)
+  rosterHash  String   @map("roster_hash") @db.VarChar(64)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  game GameStats @relation(fields: [gameStatsId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([gameStatsId, userId], map: "uq_television_chaos_ballot_user")
+  @@index([gameStatsId, rosterHash], map: "ix_television_chaos_ballot_game_roster")
+  @@map("television_chaos_ballots")
 }
