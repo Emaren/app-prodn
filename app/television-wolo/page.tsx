@@ -127,6 +127,7 @@ function toBattle(
 
   return {
     id: typeof row.id === "number" ? row.id : null,
+    ballotGameId: source === "recent" && typeof row.id === "number" && Number.isSafeInteger(row.id) && row.id > 0 ? row.id : null,
     sessionKey,
     source,
     title,
