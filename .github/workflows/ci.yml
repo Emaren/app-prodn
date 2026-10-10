@@ -111,3 +111,36 @@ jobs:
         run: yarn build
       - name: Census Next build performance
         run: python3 scripts/aoe2_speed_build.py --no-receipt --require-build
+
+  video-locks:
+    name: Real PostgreSQL video-lock contention
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: aoe2war_ci
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ci -d aoe2war_ci"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      VIDEO_LOCK_TEST_DATABASE_URL: postgresql://ci:ci@127.0.0.1:5432/aoe2war_ci
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.22.0
+          cache: yarn
+      - name: Enable pinned package manager
+        run: corepack enable
+      - name: Install frozen dependencies
+        run: yarn install --frozen-lockfile --ignore-scripts --non-interactive
+      - name: Verify three video lock namespaces against a disposable PostgreSQL server
+        run: node scripts/verify_video_postgres_locks.mjs
