@@ -185,8 +185,15 @@ export async function POST(
       );
     }
     if (error instanceof StreamStorageLimitError) {
+      // The recorder must not remain "live" after a terminal quota / volume
+      // rejection. Preserve its previously uploaded chunks for normal review.
+      await prisma.gameWatchStream.updateMany({
+        where: { id, status: { in: ["starting", "live"] } },
+        data: { status: "ended", endedAt: new Date(), isPrimary: false },
+      });
       return NextResponse.json(
-        { detail: error.message, code: "STREAM_STORAGE_LIMIT", terminal: true },
+        { detail: error.message, code: "STREAM_STORAGE_LIMIT",
+          reason: error.reason, terminal: true },
         { status: 413, headers: NO_STORE_HEADERS }
       );
     }
