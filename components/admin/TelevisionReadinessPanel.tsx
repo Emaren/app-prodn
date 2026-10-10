@@ -14,8 +14,17 @@ type Battle = {
   unassignedStreams:Array<{id:number;sourceType:string;status:string}>;
   message:string;
 };
+type RetentionCandidate={
+  battleKey:string;completedAt:string;gameId:number;rosterSize:number;
+  recordedPlayers:number;missingPlayers:string[];cameraStreamIds:number[];
+  recordingCount:number;teamsProven:boolean;strongBattleIdentity:boolean;
+  candidateStatus:"complete_candidate"|"incomplete_candidate"|"unverified_identity";
+  warning:string;
+};
 type Payload = {checkedAt:string;activeBattleCount:number;examinedBattles:number;
-  battles:Battle[];notes:string[]};
+  battles:Battle[];notes:string[];
+  retentionPreview:{games:RetentionCandidate[];examined:number;unverified:number;retentionEnabled:false};
+};
 
 export default function TelevisionReadinessPanel() {
   const [value,setValue]=useState<Payload|null>(null);
@@ -88,6 +97,36 @@ export default function TelevisionReadinessPanel() {
         {battle.unassignedStreams.length>0?<p className="mt-3 text-xs text-amber-200">{battle.unassignedStreams.length} video feed(s) not attributable to a proven player position; available as observer/unassigned</p>:null}
       </div>)}
       {value && value.battles.length===0?<div className="rounded-xl border border-white/10 p-6 text-sm text-slate-400">No active games currently recorded. The detector will refresh when new games appear.</div>:null}
+    </div>
+    <div className="mt-7 border-t border-cyan-100/10 pt-6">
+      <div className="text-[10px] font-black uppercase tracking-[.22em] text-amber-300">Storage governance · preview only</div>
+      <h3 className="mt-2 text-xl font-bold text-white">Last Two Battles · Complete-Camera Candidates</h3>
+      <p className="mt-2 text-xs leading-6 text-slate-400">
+        Shows only canonically associated ended Watcher feeds, never a guess from game titles.
+        It does not protect or delete recordings yet. The existing six-hour cleanup remains authoritative.
+      </p>
+      <div className="mt-3 grid gap-3 md:grid-cols-2">
+        {(value?.retentionPreview.games??[]).map(game=><div key={game.battleKey}
+          className="rounded-xl border border-white/10 bg-black/25 p-4">
+          <div className="flex flex-wrap justify-between gap-2">
+            <div className="text-sm font-semibold text-white">Battle #{game.gameId}</div>
+            <span className={"text-[10px] font-bold " + (game.candidateStatus==="complete_candidate"?"text-emerald-200":"text-amber-200")}>
+              {game.candidateStatus.replaceAll("_"," ").toUpperCase()}
+            </span>
+          </div>
+          <div className="mt-1 break-all text-[10px] text-slate-500">{game.battleKey}</div>
+          <div className="mt-3 text-xs text-cyan-100">{game.recordedPlayers}/{game.rosterSize} player POVs · {game.recordingCount} recordings</div>
+          <div className="mt-2 text-xs text-slate-400">Stream IDs: {game.cameraStreamIds.length?game.cameraStreamIds.join(", "):"None"}</div>
+          {game.missingPlayers.length?<div className="mt-2 text-xs text-amber-200">
+            Missing: {game.missingPlayers.join(", ")}
+          </div>:null}
+          <p className="mt-3 text-[11px] leading-5 text-slate-400">{game.warning}</p>
+        </div>)}
+        {value && !value.retentionPreview.games.length?<div className="rounded-xl border border-white/10 p-4 text-xs text-slate-400">
+          No eligible completed battle snapshots yet; no retention recommendation has been made.
+        </div>:null}
+      </div>
+      <p className="mt-3 text-[11px] text-amber-200">Retention automation: DISABLED. Preview candidates do not prove files still exist on disk or decode in a browser.</p>
     </div>
     <p className="mt-4 text-xs leading-6 text-slate-500">Recent chunk + heartbeat proof is not a guarantee of successful browser playback. This panel cannot remotely control, view or change a player’s desktop. See the Video Vault inventory below for recording fault codes.</p>
     <Link href="/television-wolo" className="mt-4 inline-flex rounded-full border border-cyan-200/30 px-4 py-2 text-xs font-semibold text-cyan-100">Open Television WOLO →</Link>
