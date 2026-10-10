@@ -7,6 +7,7 @@ import {
 } from "@/lib/televisionDirection";
 import type { WatchStreamPayload } from "@/lib/watchStreams";
 import { previewLastTwoTelevisionBattles } from "@/lib/televisionRetentionPlan";
+import { probeTelevisionMediaSamples } from "@/lib/televisionMediaProbe";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -78,12 +79,38 @@ export async function GET(request: NextRequest) {
         : "No proven live camera yet; check opt-in and capture health.",
     };
   });
+  const retentionPreview = previewLastTwoTelevisionBattles(snapshot.recentlyCompletedSessions);
+  // The preview provides IDs, not permission to retain or delete. Sample at
+  // most 32 already-attached ended Watcher streams across two recent battles.
+  // Each probe performs at most two metadata stats and a 4-byte EBML read.
+  const totalSampleLimit = 32;
+  let sampled = 0;
+  const mediaGames = await Promise.all(retentionPreview.games.map(async game => {
+    const canonical = snapshot.recentlyCompletedSessions.find(
+      session => session.sessionKey === game.battleKey &&
+        session.state === "completed"
+    );
+    const streams = canonical?.streams ?? [];
+    const byId = new Map(streams.map(stream => [stream.id, stream]));
+    const probes = await Promise.all(game.cameraStreamIds.map(async streamId => {
+      const stream = byId.get(streamId);
+      if (!stream || sampled >= totalSampleLimit) {
+        return { streamId, status:"invalid_metadata" as const,
+          initPresent:false, tailPresent:false,
+          note:"The media sample cap was reached or stream metadata was unavailable." };
+      }
+      sampled += 1;
+      return probeTelevisionMediaSamples(streamId, stream.latestChunkSeq);
+    }));
+    return {...game, mediaSamples: probes};
+  }));
+
   return NextResponse.json({
     checkedAt: new Date().toISOString(),
     activeBattleCount: snapshot.activeSessions.length,
     examinedBattles: battles.length,
     battles,
-    retentionPreview: previewLastTwoTelevisionBattles(snapshot.recentlyCompletedSessions),
+    retentionPreview: {...retentionPreview, games: mediaGames},
     notes: [
       "Read-only canonical replay identities; unverified teams and cameras stay explicit.",
       "Missing POV is not a Watcher failure unless a stream-level diagnostic proves it.",
