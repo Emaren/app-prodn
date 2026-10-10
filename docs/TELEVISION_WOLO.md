@@ -400,3 +400,9 @@ Actual spectators' Chaos ballots require a separate governed,
 account-authenticated one-vote-per-canonical-battle ledger, an authoritative
 closed voting window and audited results. This cosmetic selector alone
 must not be represented as a live popular-vote service.
+
+The non-binding nomination controls are also disabled while the selected
+battle remains in the live lane. They unlock for completed/recent or
+archived battles only, and the interface explains this to viewers.
+Future durable ballots must independently verify finality and an audited
+voting window; frontend disabling is not an authorization control.
