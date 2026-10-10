@@ -149,6 +149,45 @@ class UpdateCommandTests(unittest.TestCase):
             ):
                 MODULE.verify_committed_tree(pathlib.Path("/repo"), expected)
 
+    def test_governed_document_removal_is_rejected_without_writing_central_files(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            taxonomy_path = root / "document-taxonomy.json"
+            taxonomy = {
+                "documents": [
+                    {
+                        "repository": "aoe2-watcher",
+                        "path": "docs/WATCHER_1_6_4_UPDATE_LIFECYCLE.md",
+                        "id": "aoe2war.aoe2-watcher.update-lifecycle",
+                    }
+                ],
+            }
+            original = json.dumps(taxonomy, indent=2) + "\\n"
+            taxonomy_path.write_text(original, encoding="utf-8")
+            watcher = root / "watcher"
+            (watcher / "docs").mkdir(parents=True)
+            (watcher / "docs" / "document-registry.json").write_text(
+                json.dumps({"repo": "aoe2-watcher", "documents": []}),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(
+                MODULE.UpdateError,
+                "removed governed documents",
+            ):
+                MODULE.preflight_central_governed_documents(
+                    taxonomy_path, {"aoe2-watcher": watcher}
+                )
+            self.assertEqual(
+                taxonomy_path.read_text(encoding="utf-8"), original
+            )
+
+    def test_central_registry_membership_preflights_before_generator_writes(self):
+        source = inspect.getsource(MODULE.central_sync)
+        self.assertLess(
+            source.index("preflight_central_governed_documents("),
+            source.index('"scripts/sync_workspace.py"'),
+        )
+
     def test_central_sync_proves_one_validated_tree_instead_of_rebuilding_it(self):
         source = inspect.getsource(MODULE.central_sync)
         self.assertEqual(
