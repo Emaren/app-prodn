@@ -155,6 +155,92 @@ class StageTests(unittest.TestCase):
         self.assertLess(preflight, worktree)
         self.assertLess(preflight, dependency_fetch)
 
+    def test_watcher_distribution_preflight_accepts_versioned_certified_inventory(self):
+        import hashlib
+        import json
+        import subprocess
+        import tempfile
+
+        for version in ("1.6.3", "1.6.4"):
+            with self.subTest(version=version):
+                script = MODULE.remote_stage_script(
+                    release_sha="b" * 40,
+                    previous_sha="a" * 40,
+                    manifest_sha="c" * 64,
+                    gate_sha="d" * 64,
+                    receipt_dir="/mnt/receipt",
+                    watcher_version=version,
+                )
+                marker = (
+                    'python3 - "$WATCHER_DOWNLOAD_ROOT" '
+                    '"$WATCHER_VERSION" <<\'PY\'\\n'
+                )
+                self.assertIn(marker, script)
+                preflight = script.split(marker, 1)[1].split("\\nPY\\n", 1)[0]
+
+                native_zip = version == "1.6.4"
+                files = [
+                    f"AoE2HDBets Watcher Setup {version}.exe",
+                    f"AoE2HDBets Watcher {version}.exe",
+                    f"AoE2HDBets Watcher-{version}-arm64.dmg",
+                    "aoe2hdbets-watcher-direct.zip",
+                    *(
+                        [f"AoE2HDBets Watcher-{version}-arm64-mac.zip"]
+                        if native_zip
+                        else []
+                    ),
+                    f"AoE2HDBets Watcher-{version}.AppImage",
+                    f"AoE2HDBets Watcher-{version}-arm64.dmg.blockmap",
+                    "latest.yml",
+                    "latest-mac.yml",
+                    "latest-linux.yml",
+                ]
+                mac_target = (
+                    f"AoE2HDBets Watcher-{version}-arm64-mac.zip"
+                    if native_zip
+                    else f"AoE2HDBets Watcher-{version}-arm64.dmg"
+                )
+                with tempfile.TemporaryDirectory() as temp_dir:
+                    root = pathlib.Path(temp_dir)
+                    inventory = []
+                    checksums = []
+                    for name in files:
+                        data = (
+                            f"version: {version}\\npath: "
+                            + (
+                                f"AoE2HDBets Watcher Setup {version}.exe"
+                                if name == "latest.yml"
+                                else mac_target if name == "latest-mac.yml"
+                                else f"AoE2HDBets Watcher-{version}.AppImage"
+                            )
+                            + "\\n"
+                        ).encode() if name.startswith("latest") else name.encode()
+                        (root / name).write_bytes(data)
+                        digest = hashlib.sha256(data).hexdigest()
+                        inventory.append({
+                            "filename": name,
+                            "bytes": len(data),
+                            "sha256": digest,
+                        })
+                        checksums.append(f"{digest}  {name}")
+                    (root / f"watcher-release-manifest-{version}.json").write_text(
+                        json.dumps({
+                            "schema": 1,
+                            "version": version,
+                            "files": inventory,
+                        })
+                    )
+                    (root / f"SHA256SUMS-{version}.txt").write_text(
+                        "\\n".join(checksums) + "\\n"
+                    )
+                    result = subprocess.run(
+                        ["python3", "-c", preflight, str(root), version],
+                        capture_output=True,
+                        text=True,
+                        check=False,
+                    )
+                    self.assertEqual(result.returncode, 0, result.stderr)
+
     def test_watcher_stage_result_requires_distribution_receipt_proof(self):
         data, manifest, result = sample()
         manifest["risk_class"] = "WATCHER"
