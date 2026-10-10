@@ -429,3 +429,73 @@ Before any pilot, an operator should use the preflight to review the
 2 GiB upper supported per-stream cap, 6 GiB volume reserve, multi-camera
 footprint and six-hour pruning behavior. No proposed default change is
 automatically deployed.
+
+## Wolo TV V1 two-Windows-player canary gate
+
+**Status: planned, NOT executed or certified.** This is an operator-only
+acceptance runbook for a prearranged Jim/Zodiac/Teki/Scavenger-style game;
+players should not be asked to diagnose developer tools or supply private
+screenshots. Keep Watcher 1.6.3 users undisturbed until the new version has
+passed package signing, dependency security and intentional update gates.
+
+### Hard gates before inviting players
+
+1. Confirm the chosen site release passed protected `finish --dry-run`,
+   `finish`, Doctor and post-deploy audits; verify the deployed commit
+   really contains the camera director, stream endpoints and admin controls.
+2. Confirm an actual **signed and authenticated** Windows 1.6.4 installer
+   and update path is approved. Successful unsigned CI packaging proves
+   contents only; it is not installed-window-capture certification.
+3. Confirm the WebM directory resolves to the intended mounted media volume
+   (not the small application/root filesystem), measure free bytes and leave
+   the configured reserve intact. Review Video Vault's two-hour capacity
+   forecast and adjust operator-owned environment caps only through the
+   protected configuration/release process, never a blind ad-hoc change.
+4. Confirm both users have distinct verified site accounts/Steam ownership
+   and voluntarily enabled game-only video. Do not silently broaden consent
+   to a browser, desktop, audio input or remote-control session.
+5. Confirm Watcher replay upload still has higher scheduling/CPU priority
+   than video and that neither stream changes game-result or betting authority.
+
+### Healthy match acceptance sequence
+
+| Stage | Required observable evidence |
+| --- | --- |
+| Pre-game | Both Watchers online, consent enabled, capture window recognized without desktop fallback; no video begins on a launcher |
+| Start | Exactly one canonical live battle in admin readiness; actual roster/teams shown only when replay authority resolves them |
+| First media | Two distinct server-issued stream IDs, first chunks, recent heartbeat, matching authenticated Steam owners |
+| Playback | Main theatre plays a selected POV in an independent viewer browser, camera switch moves to the other POV, unrelated team tiles do not impersonate cameras |
+| During game | Game remains responsive; record CPU/memory impact, chunk upload latency/retries, viewer delay/buffering, chunk continuity and total bytes |
+| End | Both captures stop from real observed finality, no repeated auto-start for the same game, replay uploads/final result continue independently |
+| After | Video Vault and sample probes distinguish saved/missing footage; no false claim of complete game retention or automatic Chaos title transfer |
+
+### Fail-closed negative controls
+
+- Unrecognized AoE2 window or declined capture permission: video waits,
+  local message is actionable, **no browser or desktop substitute**.
+- One missing/offline player POV: show a waiting/unassigned camera position;
+  the other player's video and replay watcher continue.
+- Bad codec, oversized chunk, per-stream quota, low media-volume headroom:
+  stop **video only** with a precise terminal reason; never retry identical
+  invalid media forever or delete an existing replay.
+- Partial networking failure or offline browser: reconnect/standby without
+  inventing a live signal, cross-attaching another battle, or continually
+  consuming background-tab egress.
+- Unexpected completion/identity conflict: withhold definitive teams,
+  winner, vote result and camera attribution until canonical evidence proves
+  them. Do not use similarity of display names as proof.
+
+### Certification receipt and stop rule
+
+An operator acceptance receipt should record exact site and Watcher SHAs,
+signed package identity, both platforms/OS builds, canonical game key,
+stream IDs and their Steam ownership, capture profile, two-hour capacity
+forecast, measured CPU/RAM, upload/media error codes, viewer buffering,
+replay finality and on-disk media samples. Collect only consented,
+privacy-sanitized diagnostics, never arbitrary game-window images.
+
+**Stop the broadcast canary** on unapproved desktop pixels, replay
+interference, unstable game performance, wrong-player camera attribution,
+uncontrolled server storage or security-gate bypass. Capture metrics and
+return to development; no false 100/100 declaration. The two-user pass
+must be verified on actual Windows hardware and a separate viewer.
