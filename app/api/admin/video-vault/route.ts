@@ -64,8 +64,22 @@ export async function GET(request: NextRequest) {
 
   // Bounded to recent records. Filesystem usage is measured, never guessed from
   // a packet count. All unlisted older recordings are explicitly excluded.
-  const rows = await Promise.all(records.map(async stream => {
-    const usage = await getStreamStorageUsage(stream.id).catch(() => null);
+  // Exact filesystem stats for all 60 records would create tens of thousands
+  // of concurrent I/O operations during a four-versus-four long-game session.
+  // Keep full registry visibility, but bound detailed byte accounting to eight
+  // short/recent captures and two concurrent filesystem scans. Long captures
+  // have their separate bounded on-disk sequence sampling in readiness.
+  const exactCandidates = records.filter(stream => stream.chunkCount <= 5_000).slice(0, 8);
+  const measured = new Map<number, Awaited<ReturnType<typeof getStreamStorageUsage>> | null>();
+  for (let i = 0; i < exactCandidates.length; i += 2) {
+    const group = exactCandidates.slice(i, i + 2);
+    const samples = await Promise.all(group.map(row =>
+      getStreamStorageUsage(row.id).catch(() => null),
+    ));
+    group.forEach((row, index) => measured.set(row.id, samples[index]));
+  }
+  const rows = records.map(stream => {
+    const usage = measured.get(stream.id) ?? null;
     return {
       id:stream.id, sessionKey:stream.sessionKey, sourceType:stream.sourceType,
       status:stream.status, chunkCount:stream.chunkCount,
@@ -82,17 +96,18 @@ export async function GET(request: NextRequest) {
         : null,
       latestIssue: latestIssueByStream.get(stream.id) ?? null,
     };
-  }));
+  });
+  const measuredRows = rows.filter(row => row.bytes !== null).length;
   const recentBytes = rows.reduce((sum,row)=>sum+(row.bytes??0),0);
   const volume = await getStreamVolumeHeadroom().catch(() => null);
   return NextResponse.json({
-    rows, totalCount, scanned:rows.length, recentBytes,
+    rows, totalCount, scanned:rows.length, measuredRows, recentBytes,
     issuesSampled: issueEvents.length,
     complete:rows.length===totalCount && rows.every(row=>row.bytes !== null),
     limits:{perStreamBytes:MAX_STREAM_BYTES,perStreamChunks:MAX_STREAM_CHUNKS},
     recordingBudget:estimateTelevisionRecordingBudget(),
     volume: volume ?? { freeBytes:null, reserveBytes:STREAM_MIN_FREE_BYTES, writableVideoBytes:null, mountedSeparately:null },
-    note:"Sizes are measured for the newest 60 first-party streams only. Older/orphaned files are not in this subtotal.",
+    note:"Byte totals cover at most eight recent recordings with <=5,000 reported chunks, scanned two at a time. Longer, older, and orphaned video files are explicitly excluded; unmeasured is not zero.",
   },{headers:NO_STORE});
 }
 
