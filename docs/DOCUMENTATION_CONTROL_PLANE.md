@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/television-v1-upload-protocol-20261009` at `d7c973a69ccd39be371426941683e796e23b76d9`
+Implementation baseline: `feature/television-v1-upload-protocol-20261009` at `01b794265f24e643b57a6eb81e28c3938686e3c6`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
