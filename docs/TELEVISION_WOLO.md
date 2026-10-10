@@ -315,3 +315,23 @@ services and parallel server processes. Before a public rollout, prove
 mounted-volume settings, I/O load, disk-full handling, bounded retention,
 and total multi-camera/long-game resource use in production-like canaries.
 No automatic deletion of captures, replays or DB snapshots is authorized.
+
+## Correct wire parsing for binary chunk uploads (development pass)
+
+The native/browser WebM chunk endpoint now treats a missing HTTP
+`Content-Length` as valid for a streamed/chunked request. An explicitly
+malformed, zero, fractional or too-large declared length is rejected; the
+actual request body remains bounded to 8 MiB whether the header exists or
+not. This avoids phantom HTTP 413 errors from valid transfer encodings.
+
+Every chunk now **requires an explicit, canonical decimal sequence** in
+either `sequence` query string or `x-stream-sequence` header. Missing,
+empty, negative, exponent, noncanonical or mismatched query/header
+sequences fail closed with HTTP 400. In particular, absent sequence
+may **never** be confused with zero, the WebM initialization segment.
+The existing authenticated stream owner, status, MIME validation, immutable
+sequence conflict and video reserve controls remain in force.
+
+Boundary tests exercise valid/invalid headers, both sequence transports,
+disagreements and the existing post-read byte fence. No replay or financial
+authority is affected. Windows game/installed-client canary remains required.
