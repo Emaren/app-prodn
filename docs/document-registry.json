@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "04871dcaf7f1db89bfe82269e07fd4078caf98f0389b8c634a10d374e5430c94",
+      "sha256": "e97226b9de9c0b74f0d8000556deaffffe04fbc99bf6d86b4491300d3ba6daf6",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2049,7 +2049,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/television-v1-upload-protocol-20261009",
-    "commit": "d7c973a69ccd39be371426941683e796e23b76d9"
+    "commit": "01b794265f24e643b57a6eb81e28c3938686e3c6"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
