@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "48cc28f0409f19fec440018e7cfff734fb3b74e8d5c81ae4fff61aea2e493c54",
+      "sha256": "4f8b02ea2063be1d8b56a5866859d6547461a6a5cc5ecb4dacaba0da56c9211c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1697,7 +1697,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-09",
       "sensitivity": "internal",
-      "sha256": "dd4aea85047c736a02eabd0ac0a4a3340d157fbb6146127830329b9ba4e92a70",
+      "sha256": "4e46b97ccc95e47b22e25d3cf2c7688f4196113f5bb411ecbb77ed6387c9cf8f",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2048,8 +2048,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/television-v1-canonical-retention-preview-20261009",
-    "commit": "01a226f43f610ae4f85302881a251707b0e451e3"
+    "branch": "feature/television-v1-full-roster-chaos-lab-20261009",
+    "commit": "9cf9182e824c8b03dd27db5ab654530a64905b39"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
