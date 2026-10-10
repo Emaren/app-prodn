@@ -66,7 +66,7 @@ function toBattle(
     typeof row.id === "number" && Number.isFinite(row.id)
       ? "Battle #" + row.id
       : "Battle";
-  const title = names.length >= 2 ? names.slice(0, 4).join(" vs ") : fallbackId;
+  const title = names.length >= 2 ? names.join(" · ") : fallbackId;
   const streams = Array.isArray(row.streams) ? row.streams : [];
 
   return {
