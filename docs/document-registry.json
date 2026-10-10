@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "148b221861789e8cad72e1c7b69860a10c7bbb8bf40e52d6023e8977ceae1158",
+      "sha256": "461f9dceb334ca117ce9f2c70ae2f2bbf90fec553a195029e6ccb9e4d5282533",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1697,7 +1697,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-09",
       "sensitivity": "internal",
-      "sha256": "66e2ba1d7827e307d9973a83bb4177c975148a7071c71336c70ef85961324f8b",
+      "sha256": "f9331683e96afc4ca9b888161b1b5f44503b92b381c81a1143798771f0bbb1cf",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2048,8 +2048,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/television-v1-sampled-media-proof-20261009",
-    "commit": "01e996205321c926282979b18f509d44fd49e28c"
+    "branch": "feature/television-v1-long-game-preflight-20261009",
+    "commit": "b7b60d783137d2385ae6f09c9e832b8c8149c8c8"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
