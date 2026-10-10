@@ -19,7 +19,7 @@ test('Video Vault diagnostics use ID joins and only allowlisted reason codes', (
   assert.match(api,/take: 180/);
   assert.match(api,/latestIssueByStream/);
   assert.match(api,/a-zA-Z0-9_-/);
-  assert.match(api,/Never send arbitrary paths/);
+  assert.match(api,/never send arbitrary paths/i);
   assert.match(ui,/Stale signal/);
   assert.match(ui,/row.latestIssue/);
   assert.match(ui,/old incident does not mean/);
