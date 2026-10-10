@@ -26,15 +26,18 @@ export function assessTelevisionChaosBallotGame(game: {
   if (teams.status !== "resolved" || players.length < 2 || players.length > 8 ||
       new Set(players.map(p=>p.stablePlayerKey)).size!==players.length)
     return no("roster_unproven");
-  const when=game.played_on ?? game.createdAt;
-  const eventMs=when.getTime(), nowMs=now.getTime();
-  if (!Number.isFinite(eventMs) || eventMs>nowMs+5*60_000 ||
-      eventMs+BALLOT_WINDOW_MS<nowMs) return no("outside_window");
   const rosterHash=buildRosterHash(players);
   if (!rosterHash) return no("roster_unproven");
+  const when=game.played_on ?? game.createdAt;
+  const eventMs=when.getTime(), nowMs=now.getTime();
+  const withinWindow=Number.isFinite(eventMs) &&
+    eventMs<=nowMs+5*60_000 && eventMs+BALLOT_WINDOW_MS>=nowMs;
+  // Closed polls remain readable with their original roster hash, but never
+  // accept further ballots. Preserve voter choice and historical tallies.
   return {
-    eligible:true,reason:"ready",rosterHash,
-    closesAt:new Date(eventMs+BALLOT_WINDOW_MS).toISOString(),
+    eligible:withinWindow,reason:withinWindow?"ready":"outside_window",rosterHash,
+    closesAt:Number.isFinite(eventMs)
+      ?new Date(eventMs+BALLOT_WINDOW_MS).toISOString():null,
     candidates:players.map(p=>({key:p.stablePlayerKey,name:p.name,teamId:p.teamId})),
   };
 }
