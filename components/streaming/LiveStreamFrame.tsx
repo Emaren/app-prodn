@@ -266,7 +266,8 @@ function BrowserChunkPlayer({
     };
 
     const poll = async () => {
-      if (cancelled || pollInFlight) {
+      if (cancelled || document.visibilityState === "hidden") return;
+      if (pollInFlight) {
         pendingRefresh = true;
         return;
       }
@@ -346,13 +347,25 @@ function BrowserChunkPlayer({
     video.addEventListener("waiting", handleWaiting);
     video.addEventListener("stalled", handleWaiting);
     video.addEventListener("error", handleVideoError);
-    void poll();
+    const onVisibilityChange = () => {
+      if (document.visibilityState === "hidden") {
+        // Stop decoding locally AND stop manifest / overlapping window
+        // requests. Hidden tabs must never silently consume stream egress.
+        video.pause();
+      } else {
+        // Resume only the viewer's already explicitly activated video.
+        void poll();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    if (document.visibilityState === "visible") void poll();
     const interval = window.setInterval(() => {
       void poll();
     }, compact ? 4_000 : 3_000);
 
     return () => {
       cancelled = true;
+      document.removeEventListener("visibilitychange", onVisibilityChange);
       window.clearInterval(interval);
       video.removeEventListener("loadedmetadata", handleLoadedMetadata);
       video.removeEventListener("canplay", handleCanPlay);
