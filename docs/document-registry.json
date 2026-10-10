@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c091e8ed35066297e53cf965aafa8748a3e1fb9da53c2b35f4591aab5c13bf82",
+      "sha256": "295ab562f9ca7cb737314524748a64229611147dd3b1d07c41fecf6600ca3194",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1697,7 +1697,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-09",
       "sensitivity": "internal",
-      "sha256": "fd016ab34436f5b60bb49f254653fb1aaf9992557fb0c3f4d14368b2be616aea",
+      "sha256": "6c220a435b87a04c0a2dd521993a1bb84f5e7958b438abb13410e1edef4527ca",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2049,7 +2049,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/television-v1-chaos-ballots-20261009",
-    "commit": "36d795d443267250df135570e3d0df7f2d9ca7a1"
+    "commit": "565e8ed6f672a5e85d953c94297509b9f510012f"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
