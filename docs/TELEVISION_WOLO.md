@@ -228,3 +228,27 @@ video retention, settlement or championship rules. It does not yet
 solve redundant *foreground* rolling-window downloads, independent
 player-camera synchronization or viewer-side egress accounting.
 Those remain future measured/adaptive transport gates.
+
+## Admin broadcast readiness (stacked development)
+
+The authenticated admin route `/api/admin/television-readiness` combines
+the existing public/canonical live-battle session snapshot with its
+server-proven live-stream attachment and team-resolution evidence. It
+checks up to twelve active games, presents the actual participant and
+camera breakdown, identifies unassigned first-party streams without
+guessing their owners, and distinguishes `VIDEO LIVE` from connecting,
+stale or absent video. Its result is read-only and carries no permissions
+to control user desktops, edit an account, settle a result or award a belt.
+
+The `/admin/video-vault` page now includes a Camera Readiness section
+above its existing measured recording inventory. It polls only when
+the operator's browser tab is visible and shows any missing or
+unverified team/POV association explicitly. A missing player camera
+is **not** automatically a Watcher defect; the person may simply have
+left broadcasting disabled.
+
+`VIDEO LIVE` requires recent stored media and heartbeat evidence, but
+cannot certify live-decoded WebM playback on Jim/Zodiac's actual browsers;
+that remains an interactive Windows player canary. This dashboard does
+not promise arbitrary remote shell/debug access. It uses only already
+authenticated, consent-respecting event data and canonical replay truth.
