@@ -212,6 +212,31 @@ export default function TelevisionWoloExperience({
     }
   }
 
+  async function checkFeedsNow() {
+    if (!selectedBattle || loadingStreams) return;
+    setLoadingStreams(true);
+    try {
+      const response = await fetch(
+        "/api/watch-streams?sessionKey=" + encodeURIComponent(selectedBattle.sessionKey),
+        { cache: "no-store" },
+      );
+      const payload = await response.json().catch(() => ({})) as {
+        streams?: WatchStreamPayload[];
+        error?: string;
+      };
+      if (!response.ok) throw new Error(payload.error || "Feed registry temporarily unavailable.");
+      // Existing director camera remains selected when still registered.
+      // Snapshot-alias linked cameras stay available via availableStreams.
+      setStreams(Array.isArray(payload.streams) ? payload.streams : []);
+      setLastDirectoryCheck(new Date().toISOString());
+      setStreamError(null);
+    } catch (error) {
+      setStreamError(error instanceof Error ? error.message : "Feed refresh unavailable.");
+    } finally {
+      setLoadingStreams(false);
+    }
+  }
+
   // Poll only after explicit viewer activation. A hidden TV tab must not
   // generate continuous directory traffic, and prior requests must never
   // overwrite a newer perspective after the viewer changes battles.
@@ -447,7 +472,7 @@ export default function TelevisionWoloExperience({
             {playing ? (
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
                 <span aria-live="polite">{streamError ? "Directory connection: retrying" : lastDirectoryCheck ? "Directory connection: healthy" : "Directory connection: pending"}</span>
-                <button type="button" disabled={loadingStreams} onClick={() => void playBattle()}
+                <button type="button" disabled={loadingStreams} onClick={() => void checkFeedsNow()}
                   className="rounded-full border border-cyan-200/25 px-3 py-1.5 font-semibold text-cyan-100 hover:border-cyan-200/40 disabled:opacity-50">
                   {loadingStreams ? "Checking feeds…" : "Check feeds now"}
                 </button>
