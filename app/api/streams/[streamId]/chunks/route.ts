@@ -14,6 +14,7 @@ import {
   writeStreamChunk,
 } from "@/lib/streamStorage";
 import { maybeEndFinalizedStream } from "@/lib/streamFinalitySentinel";
+import { lockVideoChunkWriter } from "@/lib/streamAdvisoryLocks";
 import { toWatchStreamPayload } from "@/lib/watchStreams";
 import { recordWatcherClientEvent } from "@/lib/watcherTelemetry";
 
@@ -202,66 +203,67 @@ export async function POST(
     );
   }
 
-  let stored;
+  // A local promise lock is insufficient across multiple Next.js processes.
+  // Hold the same advisory transaction lock for the physical write and DB
+  // acknowledgement. The on-disk temp/link protocol remains idempotent if
+  // a database error forces a retry after bytes reach the mounted volume.
   try {
-    stored = await writeStreamChunk(id, sequence, Buffer.from(mediaBytes));
+    const accepted = await prisma.$transaction(async (tx) => {
+      await lockVideoChunkWriter(tx, id);
+      const current = await tx.gameWatchStream.findUnique({ where: { id } });
+      if (!current || !isAoE2WarManagedStream(current, actor.user.id) ||
+          !["starting", "live"].includes(current.status)) return null;
+
+      const stored = await writeStreamChunk(id, sequence, Buffer.from(mediaBytes));
+      const now = new Date();
+      const result = await tx.gameWatchStream.updateMany({
+        where: { id, status: { in: ["starting", "live"] } },
+        data: {
+          status: "live",
+          latestChunkSeq: stored.usage.latestSequence,
+          chunkCount: stored.usage.chunkCount,
+          mediaMimeType,
+          lastHeartbeatAt: now,
+          startedAt: current.startedAt ?? now,
+        },
+      });
+      if (result.count !== 1) return null;
+      const updated = await tx.gameWatchStream.findUnique({ where: { id } });
+      return updated ? { stored, updated } : null;
+    }, { maxWait: 4_000, timeout: 20_000 });
+
+    if (!accepted) {
+      return NextResponse.json(
+        { detail: "Stream has ended.", code: "STREAM_ALREADY_ENDED", terminal: true },
+        { status: 409, headers: NO_STORE_HEADERS },
+      );
+    }
+    return NextResponse.json(
+      { stream: toWatchStreamPayload(accepted.updated), chunkCreated: accepted.stored.created },
+      { headers: NO_STORE_HEADERS },
+    );
   } catch (error) {
     if (error instanceof StreamChunkConflictError) {
       return NextResponse.json(
         { detail: error.message },
-        { status: 409, headers: NO_STORE_HEADERS }
+        { status: 409, headers: NO_STORE_HEADERS },
       );
     }
     if (error instanceof StreamStorageLimitError) {
-      // The recorder must not remain "live" after a terminal quota / volume
-      // rejection. Preserve its previously uploaded chunks for normal review.
       await endRejectedVideo(prisma, id);
       return NextResponse.json(
         { detail: error.message, code: "STREAM_STORAGE_LIMIT",
           reason: error.reason, terminal: true },
-        { status: 413, headers: NO_STORE_HEADERS }
+        { status: 413, headers: NO_STORE_HEADERS },
       );
     }
-    console.error("[streams/chunks] storage write failed", { streamId: id, sequence, error });
+    console.error("[streams/chunks] media transaction failed", {
+      streamId: id, sequence, error,
+    });
     return NextResponse.json(
       { detail: "Stream chunk could not be stored." },
-      { status: 503, headers: NO_STORE_HEADERS }
+      { status: 503, headers: NO_STORE_HEADERS },
     );
   }
 
-  const now = new Date();
-  const updateResult = await prisma.gameWatchStream.updateMany({
-    where: {
-      id,
-      status: { in: ["starting", "live"] },
-    },
-    data: {
-      status: "live",
-      latestChunkSeq: stored.usage.latestSequence,
-      chunkCount: stored.usage.chunkCount,
-      mediaMimeType,
-      lastHeartbeatAt: now,
-      startedAt: stream.startedAt ?? now,
-    },
-  });
-
-  if (updateResult.count !== 1) {
-    return NextResponse.json(
-      { detail: "Stream has ended.", code: "STREAM_ALREADY_ENDED", terminal: true },
-      { status: 409, headers: NO_STORE_HEADERS }
-    );
-  }
-
-  const updated = await prisma.gameWatchStream.findUnique({ where: { id } });
-  if (!updated) {
-    return NextResponse.json(
-      { detail: "Stream not found." },
-      { status: 404, headers: NO_STORE_HEADERS }
-    );
-  }
-
-  return NextResponse.json(
-    { stream: toWatchStreamPayload(updated), chunkCreated: stored.created },
-    { headers: NO_STORE_HEADERS }
-  );
 }
