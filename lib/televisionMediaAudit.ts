@@ -5,11 +5,12 @@ import { streamChunkDir } from "./streamStorage.ts";
 const MAX_INSPECTED_CHUNKS = 5_000;
 const MAX_STREAM_PROBES = 16;
 const CACHE_MS = 60_000;
+const WEBM_EBML_HEADER = [0x1a, 0x45, 0xdf, 0xa3] as const;
 
 export type VideoMediaInventory = {
   streamId: number;
   state: "sequence_complete" | "missing_media" | "empty_media" |
-    "gapped_media" | "unreadable_media" | "scan_limited" | "not_inspected";
+    "gapped_media" | "invalid_webm_header" | "unreadable_media" | "scan_limited" | "not_inspected";
   actualChunks: number | null;
   actualBytes: number | null;
   firstSequence: number | null;
@@ -42,8 +43,8 @@ function validExpected(input: ExpectedStream): boolean {
 }
 
 /**
- * Bounded, read-only physical media audit. No WebM bytes are loaded; only file
- * names and filesystem metadata are examined. Never treat sequence continuity
+ * Bounded, read-only physical media audit. Only the 4-byte WebM initialization
+ * prefix is sampled; other media payloads remain unread. Never treat sequence continuity
  * as a decoded picture, a complete game, or permission to retain/delete data.
  */
 export async function inspectOneVideoStream(expected: ExpectedStream): Promise<VideoMediaInventory> {
@@ -91,11 +92,30 @@ export async function inspectOneVideoStream(expected: ExpectedStream): Promise<V
     gaps += files[i].sequence - files[i - 1].sequence - 1;
   }
   const last = files[files.length - 1].sequence;
-  const complete = gaps === 0 && expected.chunkCount === files.length &&
+  // A lone initialization segment is not sufficient evidence of actual video.
+  const complete = gaps === 0 && files.length > 1 &&
+    expected.chunkCount === files.length &&
     expected.latestChunkSeq === last;
+  let initMagicOk = false;
+  if (complete) {
+    try {
+      const handle = await fs.open(path.join(dir, "0.webm"), "r");
+      try {
+        const prefix = Buffer.alloc(WEBM_EBML_HEADER.length);
+        const { bytesRead } = await handle.read(prefix, 0, prefix.length, 0);
+        initMagicOk = bytesRead === WEBM_EBML_HEADER.length &&
+          WEBM_EBML_HEADER.every((value, i) => prefix[i] === value);
+      } finally {
+        await handle.close();
+      }
+    } catch {
+      return limited(expected.id, expected, "unreadable_media");
+    }
+  }
   return {
     streamId: expected.id,
-    state: complete ? "sequence_complete" : "gapped_media",
+    state: !complete ? "gapped_media" :
+      initMagicOk ? "sequence_complete" : "invalid_webm_header",
     actualChunks: files.length, actualBytes: bytes,
     firstSequence: files[0].sequence, lastSequence: last,
     missingSequenceCount: gaps,
