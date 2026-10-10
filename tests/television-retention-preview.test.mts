@@ -62,3 +62,14 @@ test("admin preview is never a direct retention writer or destructive cleanup co
   assert.doesNotMatch(fn,/removeStreamChunks|deleteMany|updateMany|\$executeRaw/);
   assert.doesNotMatch(route,/removeStreamChunks|deleteMany|updateMany|\$executeRaw/);
 });
+
+test("two-video-game preview is not displaced by later games with no captured footage",()=>{
+  const withBoth=battle(21,[s(101,"7656119000001"),s(102,"7656119000002")]);
+  const withOne=battle(22,[s(201,"7656119000002")]);
+  const without=battle(23,[]);
+  const result=previewLastTwoTelevisionBattles([withBoth,withOne,without]);
+  assert.deepEqual(result.games.map(game=>game.gameId),[22,21]);
+  assert.equal(result.games[0].recordedPlayers,1);
+  assert.equal(result.games[1].recordedPlayers,2);
+  assert.equal(result.retentionEnabled,false);
+});
