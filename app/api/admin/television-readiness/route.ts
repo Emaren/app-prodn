@@ -7,6 +7,7 @@ import {
 } from "@/lib/televisionDirection";
 import type { WatchStreamPayload } from "@/lib/watchStreams";
 import { previewLastTwoTelevisionBattles } from "@/lib/televisionRetentionPlan";
+import { inspectTelevisionMediaInventory } from "@/lib/televisionMediaAudit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -78,12 +79,22 @@ export async function GET(request: NextRequest) {
         : "No proven live camera yet; check opt-in and capture health.",
     };
   });
+  const retentionPreview = previewLastTwoTelevisionBattles(snapshot.recentlyCompletedSessions);
+  const candidateIds = new Set(retentionPreview.games.flatMap(game => game.cameraStreamIds));
+  const expectedStreams = [...new Map(
+    snapshot.recentlyCompletedSessions.flatMap(session => session.streams)
+      .filter(stream => candidateIds.has(stream.id))
+      .map(stream => [stream.id, {
+        id: stream.id, chunkCount: stream.chunkCount, latestChunkSeq: stream.latestChunkSeq,
+      }] as const),
+  ).values()];
+  const mediaAudit = await inspectTelevisionMediaInventory(expectedStreams);
   return NextResponse.json({
     checkedAt: new Date().toISOString(),
     activeBattleCount: snapshot.activeSessions.length,
     examinedBattles: battles.length,
     battles,
-    retentionPreview: previewLastTwoTelevisionBattles(snapshot.recentlyCompletedSessions),
+    retentionPreview: { ...retentionPreview, mediaAudit },
     notes: [
       "Read-only canonical replay identities; unverified teams and cameras stay explicit.",
       "Missing POV is not a Watcher failure unless a stream-level diagnostic proves it.",
