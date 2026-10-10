@@ -859,3 +859,18 @@ the entire recorded-playback experience. The spectator UI still uses
 short rolling windows, so selectable full-match chapter playback and
 real browser decoding remain explicit acceptance gates; retaining two
 hours of disk bytes alone does not satisfy them.
+
+### Viewer-side no-header bandwidth guard (V3 development)
+
+The manifest provides an explicit `initSeq` when the physical WebM init
+segment is present. If later media chunks have arrived but the on-disk
+header has not, the public first-party viewer now displays **Waiting for
+video initialization** rather than repeatedly downloading expensive
+rolling WebM bodies that cannot start a decoder. Foreground manifest
+polling continues; once the header appears, the viewer can fetch and play
+normally without restarting its selected POV. This does not silently
+invent a header or mark the recording playable prematurely.
+
+A source regression enforces the guard before the rolling-WebM fetch.
+Real Windows startup, header ordering and browser decode remain physical
+release gates.
