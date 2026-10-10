@@ -15,7 +15,7 @@ const release = fs.readFileSync(
 test("Watcher 1.6.4 keeps the existing 1.5.10 Extreme hero artwork", () => {
   assert.match(
     release,
-    /version: "1\.6\.3"/,
+    /version: "1\.6\.4"/,
   );
 
   assert.match(page, /watcher-v1510-desktop\.png/);
@@ -106,11 +106,11 @@ test("Watcher 1.6.4 release advertises recovery, low-footprint lifecycle and med
 
   assert.match(
     release,
-    /AoE2HDBets Watcher Setup 1\.6\.3\.exe/,
+    /AoE2HDBets Watcher Setup 1\.6\.4\.exe/,
   );
 
   assert.match(
     release,
-    /AoE2HDBets Watcher 1\.6\.3\.exe/,
+    /AoE2HDBets Watcher 1\.6\.4\.exe/,
   );
 });
