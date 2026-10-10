@@ -19,7 +19,7 @@ import {
 
 import LiveStreamFrame from "@/components/streaming/LiveStreamFrame";
 import type { WatchStreamPayload } from "@/lib/watchStreams";
-import { assignTelevisionCameras, mergeTelevisionStreamEvidence, type TelevisionStage } from "@/lib/televisionDirection";
+import { assignTelevisionCameras, mergeTelevisionStreamEvidence, televisionCameraStatus, type TelevisionStage } from "@/lib/televisionDirection";
 
 export type TelevisionBattle = {
   id: number | null;
@@ -354,6 +354,7 @@ export default function TelevisionWoloExperience({
                         const camera = director.cameras.find(item => item.player.key === player.key && item.teamKey === team.key);
                         const feed = camera?.stream ?? null;
                         const selected = Boolean(feed && activeStream?.id === feed.id);
+                        const cameraStatus = televisionCameraStatus(feed);
                         const canPreview = playing && multiview && feed && !selected &&
                           feed.provider === "aoe2war" &&
                           director.cameras.filter(item => item.stream && item.stream.id !== activeStream?.id &&
@@ -380,7 +381,7 @@ export default function TelevisionWoloExperience({
                               )}
                               <span className={"absolute bottom-1 left-1 rounded px-1.5 py-0.5 text-[9px] font-bold " +
                                 (feed ? "bg-emerald-950/90 text-emerald-200" : "bg-black/80 text-slate-400")}>
-                                {feed ? selected ? "ON AIR · MAIN" : "CAMERA READY" : "NO CAMERA"}
+                                {selected ? "MAIN · " + cameraStatus : cameraStatus}
                               </span>
                             </div>
                             <div className="truncate px-2 pt-2 text-xs font-bold text-white">{player.name}</div>
