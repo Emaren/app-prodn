@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/television-v1-hidden-tab-playback-20261009` at `e0b466ce4e83cd88d6a8378d436ac1bfe4ed3190`
+Implementation baseline: `feature/television-v1-operator-readiness-20261009` at `7c7b635a55033de8d5cbc021bb44bd36d6ac20f4`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
