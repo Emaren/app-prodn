@@ -105,3 +105,10 @@ test("live WebM playback cannot remain stuck behind an indefinite manifest or bo
   assert.match(source, /video.pause\(\);\s*abortVideoRequests\(\)/);
   assert.match(source, /cancelled = true;\s*abortVideoRequests\(\)/);
 });
+
+test("a Television tab opened before the first live match will select the arriving battle", () => {
+  const source = readFileSync("components/television/TelevisionWoloExperience.tsx","utf8");
+  assert.match(source, /!selectedKey \|\| !battles\.some\(battle => battle\.sessionKey === selectedKey\)/);
+  assert.match(source, /setSelectedKey\(initialBattle\.sessionKey\)/);
+  assert.match(source, /if \(!playingKey \|\| playingKey !== selectedKey\) return/);
+});
