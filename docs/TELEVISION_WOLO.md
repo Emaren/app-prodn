@@ -669,3 +669,31 @@ Even this bounded operator inventory is not a global storage-quota ledger,
 full video retention proof, browser decode certificate, or live-root
 performance measurement. The operator must prove physical IO/p95 video
 latency against concurrent recording and replay traffic in a field canary.
+
+### Exact replay-to-camera attribution (V3 development)
+
+The Watcher now sends an explicit current session/replay claim on capture
+start and heartbeat, and never uses a local absolute SaveGame filepath as a
+public session key. An account's most recent replay **must not** substitute
+for evidence of the game being captured: a previous game can remain recent
+for hours, so recency-based binding risks showing footage against the wrong
+battle, roster, and Chaos ballot.
+
+Native video admission now promotes a client claim to a public session only
+after a server-side `game_stats` lookup proves the exact original replay
+filename, saved replay filename, or platform match ID belongs to the
+**authenticated Watcher account**. A direct `platform:` ID cannot bypass that
+check. Otherwise the stream remains a unique weak `watcher:session_...`
+record with no proven competitive association.
+
+An already-started weak stream can be promoted on heartbeat when a later
+account-owned replay record proves the exact claim; until then it remains
+unassigned, never automatically attached to a named competing roster.
+This may briefly defer camera placement while gameplay/replay evidence arrives;
+it is intentionally safer than false identity claims. Tests forbid the
+previous 45-minute/4-hour "newest replay" fallback.
+
+This gate does not certify real-time discovery or cross-worker atomic
+rebinding. A physical two-client test must prove start-before-replay,
+late identity promotion, matched POV owner, and absence of last-game
+cross-contamination.
