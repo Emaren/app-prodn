@@ -121,48 +121,12 @@ export async function POST(request: NextRequest) {
 
   let sessionKey = requestedSessionKey || `free:${user.uid}`;
 
-  if (
-    sourceType === "watcher_native" &&
-    (!requestedSessionKey ||
-      requestedSessionKey.startsWith("watcher:session_") ||
-      requestedSessionKey.startsWith("free:"))
-  ) {
-    const recentReplayRows = await prisma.$queryRaw<Array<{ replay_file: string | null }>>`
-      select replay_file
-      from watcher_client_events
-      where user_id = ${user.id}
-        and coalesce(replay_file, '') <> ''
-        and created_at >= now() - interval '45 minutes'
-        and (
-          event_type in (
-            'parse_succeeded',
-            'upload_succeeded',
-            'final_candidate_accepted',
-            'final_candidate_ready',
-            'parse_result_unknown_fields'
-          )
-          or parse_source in ('watcher_live', 'watcher_final')
-        )
-      order by
-        case when coalesce(replay_hash, '') <> '' then 0 else 1 end,
-        case
-          when parse_source = 'watcher_live' then 0
-          when parse_source = 'watcher_final' then 1
-          else 2
-        end,
-        created_at desc
-      limit 1
-    `;
-
-    const recentReplayFile = cleanText(recentReplayRows[0]?.replay_file, 255);
-    if (recentReplayFile) {
-      sessionKey = recentReplayFile;
-      console.info("[streams/start] bound watcher stream to recent replay", {
-        userId: user.id,
-        requestedSessionKey,
-        sessionKey,
-      });
-    }
+  // A weak Watcher session is NEVER matched to the most recent replay by time.
+  // A prior game can still be within that window. Preserve the weak stream
+  // identity until the server proves this account's exact replay/platform ID.
+  if (sourceType === "watcher_native" &&
+      /^(?:[a-z]:[\\/]|[/\\]{2}|[/]|file:\/\/)/i.test(sessionKey)) {
+    sessionKey = `watcher:session_${user.id}_${Date.now()}`;
   }
 
   if (sourceType === "watcher_native") {
