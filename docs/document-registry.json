@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9f0b4d5726938379c2b770444e8be554e607f246e61a6fc91b7f0ec3fe349cb9",
+      "sha256": "541218a9aecf4fb9fd9610b20bad5e2815caf04282ed2db0aade19330e68124e",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1697,7 +1697,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-09",
       "sensitivity": "internal",
-      "sha256": "f0899b776889db09c76bc62ac41427687810edd737e711e96d5c60d29f9fb192",
+      "sha256": "9f3c2534f6b1a768ef8b2f19f3820d7eacdf0d5fbc6084d32db70f42146b3e46",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2048,8 +2048,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/television-v1-terminal-stream-contract-20261009",
-    "commit": "196dc77b9f16f265115ab0cfc4be844554ace334"
+    "branch": "feature/television-v1-proof-backed-camera-aliases-20261009",
+    "commit": "29ef4f3dcfc6470121a98883b28db98c099d7204"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
