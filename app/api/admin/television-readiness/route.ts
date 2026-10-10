@@ -7,6 +7,7 @@ import {
 } from "@/lib/televisionDirection";
 import type { WatchStreamPayload } from "@/lib/watchStreams";
 import { previewLastTwoTelevisionBattles } from "@/lib/televisionRetentionPlan";
+import { inspectTelevisionMediaDisk, type TelevisionMediaDiskProbe } from "@/lib/televisionMediaProbe";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -78,12 +79,67 @@ export async function GET(request: NextRequest) {
         : "No proven live camera yet; check opt-in and capture health.",
     };
   });
+  const retentionPlan = previewLastTwoTelevisionBattles(snapshot.recentlyCompletedSessions);
+  // Scan only canonical-aligned stream IDs, never search storage directories
+  // or infer additional video/battle relationships from filenames or labels.
+  const MAX_DISK_PROBES = 16;
+  const requested = retentionPlan.games.flatMap(game => game.cameraStreamIds);
+  const ids = [...new Set(requested)].slice(0, MAX_DISK_PROBES);
+  const streamMeta = new Map<number, number>();
+  for (const game of retentionPlan.games) {
+    const session = snapshot.recentlyCompletedSessions.find(s => s.sessionKey === game.battleKey);
+    for (const stream of session?.streams ?? []) {
+      if (game.cameraStreamIds.includes(stream.id)) {
+        streamMeta.set(stream.id, stream.chunkCount);
+      }
+    }
+  }
+  const diskProbes = await Promise.all(ids.map(async id => {
+    const expectedCount = streamMeta.get(id);
+    if (expectedCount === undefined) {
+      return {
+        streamId:id,status:"unavailable" as const,
+        observedChunkCount:null,observedLatestSequence:null,
+        expectedChunkCount:0,initBytes:null,lastChunkBytes:null,
+        hasContinuousSequence:null,playbackCertified:false as const,
+      };
+    }
+    return inspectTelevisionMediaDisk(id, expectedCount);
+  }));
+  const byStreamId = new Map<number, TelevisionMediaDiskProbe>(
+    diskProbes.map(probe => [probe.streamId, probe])
+  );
+  const retentionPreview = {
+    ...retentionPlan,
+    diskProbesChecked: diskProbes.length,
+    diskAuditTruncated: ids.length < requested.length,
+    games: retentionPlan.games.map(game => {
+      const diskEvidence = game.cameraStreamIds.map(streamId =>
+        byStreamId.get(streamId) ?? {
+          streamId,status:"unavailable" as const,
+          observedChunkCount:null,observedLatestSequence:null,
+          expectedChunkCount:0,initBytes:null,lastChunkBytes:null,
+          hasContinuousSequence:null,playbackCertified:false as const,
+        }
+      );
+      const fullyPresent = game.candidateStatus === "complete_candidate" &&
+        diskEvidence.length > 0 && diskEvidence.every(
+          evidence => evidence.status === "candidate_bytes_present"
+        );
+      return {
+        ...game,diskEvidence,
+        archiveReadiness: fullyPresent
+          ? "media_bytes_present_playback_unverified" as const
+          : "needs_evidence_or_recovery" as const,
+      };
+    }),
+  };
   return NextResponse.json({
     checkedAt: new Date().toISOString(),
     activeBattleCount: snapshot.activeSessions.length,
     examinedBattles: battles.length,
     battles,
-    retentionPreview: previewLastTwoTelevisionBattles(snapshot.recentlyCompletedSessions),
+    retentionPreview,
     notes: [
       "Read-only canonical replay identities; unverified teams and cameras stay explicit.",
       "Missing POV is not a Watcher failure unless a stream-level diagnostic proves it.",
