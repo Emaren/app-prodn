@@ -33,6 +33,21 @@ function readSequence(request: NextRequest) {
   );
 }
 
+async function endRejectedVideo(prisma: ReturnType<typeof getPrisma>, id: number) {
+  try {
+    await prisma.gameWatchStream.updateMany({
+      where: { id, status: { in: ["starting", "live"] } },
+      data: { status: "ended", endedAt: new Date(), isPrimary: false },
+    });
+  } catch (error) {
+    // Even a database outage must not convert terminal media refusal into
+    // endless client retries. Never stop the separate replay monitoring path.
+    console.warn("[streams/chunks] failed to mark refused video ended", {
+      streamId: id, error,
+    });
+  }
+}
+
 export async function POST(
   request: NextRequest,
   context: { params: Promise<{ streamId: string }> }
@@ -87,6 +102,7 @@ export async function POST(
   if (!isAdmissibleStreamChunkContentLength(
     request.headers.get("content-length"), MAX_CHUNK_BYTES,
   )) {
+    await endRejectedVideo(prisma, id);
     return NextResponse.json(
       { detail: "Stream chunk size is invalid.", code: "STREAM_CHUNK_TOO_LARGE", terminal: true },
       { status: 413, headers: NO_STORE_HEADERS }
@@ -97,6 +113,7 @@ export async function POST(
     request.headers.get("content-type") || stream.mediaMimeType
   );
   if (!mediaMimeType) {
+    await endRejectedVideo(prisma, id);
     return NextResponse.json(
       { detail: "Only WebM stream media is accepted.", code: "STREAM_FORMAT_UNSUPPORTED", terminal: true },
       { status: 415, headers: NO_STORE_HEADERS }
@@ -169,6 +186,7 @@ export async function POST(
 
   const arrayBuffer = await request.arrayBuffer();
   if (arrayBuffer.byteLength <= 0 || arrayBuffer.byteLength > MAX_CHUNK_BYTES) {
+    await endRejectedVideo(prisma, id);
     return NextResponse.json(
       { detail: "Stream chunk size is invalid.", code: "STREAM_CHUNK_TOO_LARGE", terminal: true },
       { status: 413, headers: NO_STORE_HEADERS }
@@ -188,10 +206,7 @@ export async function POST(
     if (error instanceof StreamStorageLimitError) {
       // The recorder must not remain "live" after a terminal quota / volume
       // rejection. Preserve its previously uploaded chunks for normal review.
-      await prisma.gameWatchStream.updateMany({
-        where: { id, status: { in: ["starting", "live"] } },
-        data: { status: "ended", endedAt: new Date(), isPrimary: false },
-      });
+      await endRejectedVideo(prisma, id);
       return NextResponse.json(
         { detail: error.message, code: "STREAM_STORAGE_LIMIT",
           reason: error.reason, terminal: true },
