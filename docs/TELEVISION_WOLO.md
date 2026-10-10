@@ -384,3 +384,19 @@ unchanged. Actual last-two-complete-games preservation still requires a durable
 canonical battle identity on every camera, on-disk byte/sequence proof,
 a total-volume budget, transactional cohort lifecycle, and restart canaries.
 Never discard one player's viewpoint while claiming to have kept a game.
+
+## Full-roster Chaos nomination lab (non-binding source candidate)
+
+The Television sandbox now lists up to all sixteen named participants
+instead of dropping everyone after slot four. Four-versus-four and
+uneven eight-versus-one rosters receive a complete selection interface.
+Identical display names are intentionally disabled as ambiguous:
+there is no verified stable-roster identity for binding a binding ballot
+yet. One-selection local React state still serves UX demonstration only;
+no persistent vote rows, signed-in restrictions, championship changes,
+or betting/wallet outcomes are made.
+
+Actual spectators' Chaos ballots require a separate governed,
+account-authenticated one-vote-per-canonical-battle ledger, an authoritative
+closed voting window and audited results. This cosmetic selector alone
+must not be represented as a live popular-vote service.
