@@ -65,3 +65,14 @@ test("first-party video admission checks real mounted-volume headroom before cha
   assert.match(route, /status: 503/);
   assert.match(route, /normal replay watching is unaffected/);
 });
+
+test("failed replacement cannot strand the previous active broadcaster", () => {
+  const source = readFileSync("app/api/streams/start/route.ts", "utf8");
+  const begin = source.indexOf("await prisma.$transaction(async (tx) => {");
+  const endPrior = source.indexOf("await tx.gameWatchStream.updateMany(");
+  const create = source.indexOf("await tx.gameWatchStream.create(");
+  const publish = source.indexOf("await tx.gameWatchStream.update(");
+  const commit = source.indexOf("return updated;", begin);
+  assert.ok(begin > 0 && endPrior > begin && create > endPrior && publish > create && commit > publish);
+  assert.doesNotMatch(source.slice(begin,commit), /await prisma.gameWatchStream/);
+});
