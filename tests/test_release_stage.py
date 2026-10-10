@@ -173,10 +173,10 @@ class StageTests(unittest.TestCase):
                 )
                 marker = (
                     'python3 - "$WATCHER_DOWNLOAD_ROOT" '
-                    '"$WATCHER_VERSION" <<\'PY\'\\n'
+                    '"$WATCHER_VERSION" <<\'PY\'\n'
                 )
                 self.assertIn(marker, script)
-                preflight = script.split(marker, 1)[1].split("\\nPY\\n", 1)[0]
+                preflight = script.split(marker, 1)[1].split("\nPY\n", 1)[0]
 
                 native_zip = version == "1.6.4"
                 files = [
@@ -206,14 +206,14 @@ class StageTests(unittest.TestCase):
                     checksums = []
                     for name in files:
                         data = (
-                            f"version: {version}\\npath: "
+                            f"version: {version}\npath: "
                             + (
                                 f"AoE2HDBets Watcher Setup {version}.exe"
                                 if name == "latest.yml"
                                 else mac_target if name == "latest-mac.yml"
                                 else f"AoE2HDBets Watcher-{version}.AppImage"
                             )
-                            + "\\n"
+                            + "\n"
                         ).encode() if name.startswith("latest") else name.encode()
                         (root / name).write_bytes(data)
                         digest = hashlib.sha256(data).hexdigest()
@@ -231,7 +231,7 @@ class StageTests(unittest.TestCase):
                         })
                     )
                     (root / f"SHA256SUMS-{version}.txt").write_text(
-                        "\\n".join(checksums) + "\\n"
+                        "\n".join(checksums) + "\n"
                     )
                     result = subprocess.run(
                         ["python3", "-c", preflight, str(root), version],
