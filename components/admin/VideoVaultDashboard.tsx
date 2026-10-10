@@ -11,7 +11,7 @@ type VideoVaultRow={
  latestIssue:{eventType:string;reason:string|null;at:string;appVersion:string|null;platform:string|null}|null;
 };
 type VideoVaultResponse={
- rows:VideoVaultRow[];totalCount:number;scanned:number;recentBytes:number;
+ rows:VideoVaultRow[];totalCount:number;scanned:number;measuredRows:number;recentBytes:number;
  issuesSampled:number;
  complete:boolean;limits:{perStreamBytes:number;perStreamChunks:number};note:string;
  volume:{freeBytes:number|null;reserveBytes:number;writableVideoBytes:number|null;mountedSeparately:boolean|null};
@@ -78,8 +78,8 @@ export default function VideoVaultDashboard(){
       </div>)}
     </div>
     <div className="rounded-xl border border-amber-300/20 bg-amber-300/[0.06] p-4 text-xs leading-6 text-amber-100/80">
-      Storage figures are measured from actual WebM chunks for only the {data?.scanned??0} newest first-party sessions.
-      {data?.complete?" This inventory covers all registered first-party sessions.":" Older recordings and orphan files are not included in the subtotal."}
+      Registry rows shown: {data?.scanned??0}. Physical video byte totals verified for {data?.measuredRows??0} bounded recent captures.
+      {data?.complete?" This inventory covers all registered first-party sessions.":" Longer sessions, older recordings and orphan files are excluded from the subtotal, not counted as zero."}
       {" "}The streaming budget and automatic global retention controls need separate release certification before wide capture.
       Existing caps: {data?bytes(data.limits.perStreamBytes):"—"} per stream / {data?.limits.perStreamChunks??"—"} chunks.
       <div className="mt-2 font-bold text-cyan-100">
