@@ -471,6 +471,11 @@ blocking erasure or replay cleanup. The dedicated `television_chaos_ballots` tab
 relation to trophy events, commissioner permissions, title payouts,
 WOLO wallets, betting settlement or replay winner adjudication.
 
+Only the canonical recently-completed session shelf may supply a GameStats
+ballot ID. Older lobby/archive tiles use IDs from other sources and must
+not be substituted for final replay IDs; until a durable replay linkage
+is independently proven those tiles remain watch-only, not voteable.
+
 Eligibility is server-decided: replay marked final, an authentic
 watcher-source parse, valid 64-hex replay hash, two to eight distinct
 players with resolved replay team evidence, and a recorded game time
