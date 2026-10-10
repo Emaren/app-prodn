@@ -139,3 +139,34 @@ Watcher 1.6.4 automatic capture is still **opt-in and unreleased**; do not bump
 its package/version or publication workflow merely to activate this web branch.
 The application feature must pass GitHub CI and protected production `finish`
 before public release.
+
+## Terminal recording and operator diagnostics (stacked development candidate)
+
+Branch: `feature/television-v1-terminal-stream-contract-20261009`
+stacked on the camera-director and Video Vault PR, **not** production.
+
+The first-party video chunk API returns explicit, authenticated terminal
+machine codes for a video reaching its configured per-stream byte/chunk quota
+(`STREAM_STORAGE_LIMIT`, HTTP 413) and for a stream already closed
+(`STREAM_ALREADY_ENDED`, HTTP 409). These responses supplement, rather than
+change, the existing `STREAM_MEDIA_SHED` terminal backpressure contract.
+Existing replay-final responses still signal `finality: replay_final`.
+No video response can award a winner or mutate betting/WOLO settlement.
+
+The matching unreleased Watcher development code reacts by terminating
+**only its video capture** and explaining that normal replay monitoring
+continues. It does not unboundedly retry quota rejections or masquerade as
+a successful video upload.
+
+The admin Video Vault now fetches a bounded recent sample (up to 180) of
+authenticated Watcher stream-issue events scoped to the latest sixty
+stream IDs. It exposes the latest issue's code, time, platform and
+Watcher version, plus heartbeat freshness. Raw OS window titles,
+paths, arbitrary messages and unbounded metadata are **never exported** as
+operator summary fields. An incident is historical evidence, not a claim
+that the stream is still broken. A complete unbounded historical diagnostic
+database/report is still a future separate audit/retention gate.
+
+Neither the page nor API treats these features as a packaged two-Windows-player
+certification. Long-game full-disk quotas, streaming duration, adaptive
+quality, and end-to-end viewer/capture telemetry remain unproven.
