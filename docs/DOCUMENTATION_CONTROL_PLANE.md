@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/television-v1-sampled-media-proof-20261009` at `01e996205321c926282979b18f509d44fd49e28c`
+Implementation baseline: `feature/television-v1-long-game-preflight-20261009` at `b7b60d783137d2385ae6f09c9e832b8c8149c8c8`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
