@@ -7,9 +7,12 @@ type VideoVaultRow={
  chunkCount:number;actualChunkCount:number|null;bytes:number|null;lastSeq:number;
  player:string;startedAt:string|null;endedAt:string|null;updatedAt:string;
  retained:boolean;retainedUntil:string|null;
+ lastHeartbeatAgeSeconds:number|null;
+ latestIssue:{eventType:string;reason:string|null;at:string;appVersion:string|null;platform:string|null}|null;
 };
 type VideoVaultResponse={
  rows:VideoVaultRow[];totalCount:number;scanned:number;recentBytes:number;
+ issuesSampled:number;
  complete:boolean;limits:{perStreamBytes:number;perStreamChunks:number};note:string;
 };
 const bytes=(value:number|null)=>value===null?"Unavailable":
@@ -77,6 +80,7 @@ export default function VideoVaultDashboard(){
       {data?.complete?" This inventory covers all registered first-party sessions.":" Older recordings and orphan files are not included in the subtotal."}
       {" "}The streaming budget and automatic global retention controls need separate release certification before wide capture.
       Existing caps: {data?bytes(data.limits.perStreamBytes):"—"} per stream / {data?.limits.perStreamChunks??"—"} chunks.
+      {" "}Diagnostics show the most recent incident among {data?.issuesSampled??0} bounded events; an old incident does not mean the camera is presently broken.
     </div>
     <section className="overflow-hidden rounded-[1.6rem] border border-white/10 bg-slate-950/70">
       <div className="border-b border-white/10 p-5 text-sm font-bold text-white">Recent first-party recordings · newest first</div>
@@ -92,7 +96,17 @@ export default function VideoVaultDashboard(){
             <td className="px-4 py-4"><div className="font-bold text-white">{row.player}</div><div className="mt-1 text-slate-500">#{row.id} · {row.sourceType}</div></td>
             <td className="max-w-[210px] break-all px-4 py-4 text-slate-300">{row.sessionKey}</td>
             <td className="px-4 py-4"><div className={["live","starting"].includes(row.status)?"text-emerald-300":"text-slate-300"}>{row.status}</div>
-            {row.retained?<div className="mt-1 text-amber-200">Protected demo</div>:null}</td>
+            {row.retained?<div className="mt-1 text-amber-200">Protected demo</div>:null}
+            {row.lastHeartbeatAgeSeconds!==null?
+              <div className="mt-1 text-slate-500">Heartbeat {row.lastHeartbeatAgeSeconds}s ago</div>:null}
+            {["starting","live"].includes(row.status) && row.lastHeartbeatAgeSeconds!==null && row.lastHeartbeatAgeSeconds>120?
+              <div className="mt-1 font-semibold text-amber-300">Stale signal · check player</div>:null}
+            {row.latestIssue?
+              <div className="mt-2 rounded-md border border-amber-300/20 bg-amber-300/[0.04] px-2 py-1.5 text-amber-100">
+                <div className="font-semibold">{row.latestIssue.eventType.replaceAll("_"," ")}</div>
+                {row.latestIssue.reason?<div>{row.latestIssue.reason}</div>:null}
+                <div className="text-[10px] text-slate-400">{date(row.latestIssue.at)} · {row.latestIssue.platform??"?"} · {row.latestIssue.appVersion??"?"}</div>
+              </div>:null}</td>
             <td className="px-4 py-4 text-slate-200">{bytes(row.bytes)}<div className="text-slate-500">{row.actualChunkCount??"?"} verified chunks</div></td>
             <td className="px-4 py-4 text-slate-400">{date(row.startedAt)}</td>
             <td className="px-4 py-4">

@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "7886bb488fe44a719a15936f98dfc5bb5b71fe800f67341e4a70063df2ae6e42",
+      "sha256": "9f0b4d5726938379c2b770444e8be554e607f246e61a6fc91b7f0ec3fe349cb9",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1697,7 +1697,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-09",
       "sensitivity": "internal",
-      "sha256": "c20b398bcbf792ba5256680a3edfed0c9d44e9e4dd8e9238665e1c81c9b8a0d4",
+      "sha256": "f0899b776889db09c76bc62ac41427687810edd737e711e96d5c60d29f9fb192",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2048,8 +2048,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/television-v1-director-multicam-20261009",
-    "commit": "e0997be54fdc2ee577f6834eb4ae5c99c6e311fb"
+    "branch": "feature/television-v1-terminal-stream-contract-20261009",
+    "commit": "196dc77b9f16f265115ab0cfc4be844554ace334"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

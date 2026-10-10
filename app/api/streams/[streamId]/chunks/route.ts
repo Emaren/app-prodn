@@ -71,7 +71,7 @@ export async function POST(
 
   if (stream.status === "ended" || stream.status === "removed") {
     return NextResponse.json(
-      { detail: "Stream has ended." },
+      { detail: "Stream has ended.", code: "STREAM_ALREADY_ENDED", terminal: true },
       { status: 409, headers: NO_STORE_HEADERS }
     );
   }
@@ -186,7 +186,7 @@ export async function POST(
     }
     if (error instanceof StreamStorageLimitError) {
       return NextResponse.json(
-        { detail: error.message },
+        { detail: error.message, code: "STREAM_STORAGE_LIMIT", terminal: true },
         { status: 413, headers: NO_STORE_HEADERS }
       );
     }
@@ -215,7 +215,7 @@ export async function POST(
 
   if (updateResult.count !== 1) {
     return NextResponse.json(
-      { detail: "Stream has ended." },
+      { detail: "Stream has ended.", code: "STREAM_ALREADY_ENDED", terminal: true },
       { status: 409, headers: NO_STORE_HEADERS }
     );
   }
