@@ -296,7 +296,9 @@ function BrowserChunkPlayer({
           `/api/streams/${stream.id}/manifest`,
           (response) => response.json() as Promise<StreamManifest>, 8_000,
         );
-        if (cancelled || document.visibilityState === "hidden") return;
+        // Visibility may change while the network request is awaiting its body.
+        // Re-read through a function to avoid TS's stale control-flow narrowing.
+        if (cancelled || (() => document.visibilityState === "hidden")()) return;
         const availableMediaSeqs = (manifest.availableMediaSeqs ?? []).filter((sequence) => sequence > 0);
         const newestAvailableSeq =
           availableMediaSeqs[availableMediaSeqs.length - 1] ??
