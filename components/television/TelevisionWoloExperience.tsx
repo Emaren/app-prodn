@@ -23,6 +23,7 @@ import { assignTelevisionCameras, mergeTelevisionStreamEvidence, televisionCamer
 
 export type TelevisionBattle = {
   id: number | null;
+  ballotGameId: number | null;
   sessionKey: string;
   source: "live" | "recent" | "archive";
   title: string;
@@ -613,8 +614,10 @@ function ChaosVoteLab({chaos,battle}:{
   const [pending,setPending]=useState(false);
   const [ballotError,setBallotError]=useState<string|null>(null);
   const [refreshKey,setRefreshKey]=useState(0);
-  const gameId=typeof battle?.id==="number" && Number.isSafeInteger(battle.id) && battle.id>0
-    ?battle.id:null;
+  // Lobby/archive IDs are not necessarily GameStats IDs. Only canonical
+  // completed replay sessions may hand their stable GameStats ID to ballots.
+  const gameId=typeof battle?.ballotGameId==="number" && Number.isSafeInteger(battle.ballotGameId) && battle.ballotGameId>0
+    ?battle.ballotGameId:null;
   const completed=Boolean(gameId && battle?.source!=="live");
 
   useEffect(()=>{
