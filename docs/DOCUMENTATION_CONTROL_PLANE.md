@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/zodiac-rating-evidence-20261010` at `63ea66d17b351ae8962b4319704ca6df1ddfa99d`
+Implementation baseline: `feature/zodiac-rating-evidence-20261010` at `1f325d4667faf66c8789598e7988324fea628739`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
