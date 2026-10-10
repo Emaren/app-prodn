@@ -6,6 +6,7 @@ import {
   resolveStreamRequestActor,
 } from "@/lib/streamRequestAuth";
 import { toWatchStreamPayload } from "@/lib/watchStreams";
+import { lockVideoChunkWriter } from "@/lib/streamAdvisoryLocks";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -47,14 +48,29 @@ export async function POST(
     );
   }
 
-  const updated = await prisma.gameWatchStream.update({
-    where: { id },
-    data: {
-      status: "ended",
-      endedAt: new Date(),
-      isPrimary: false,
-    },
-  });
+  // A user Stop request must not race the final accepted WebM write.
+  // The writer and this stop share a PostgreSQL transaction-scoped lock.
+  const updated = await prisma.$transaction(async (tx) => {
+    await lockVideoChunkWriter(tx, id);
+    await tx.gameWatchStream.updateMany({
+      where: {
+        id, userId: actor.user.id,
+        status: { in: ["starting", "live"] },
+      },
+      data: {
+        status: "ended",
+        endedAt: new Date(),
+        isPrimary: false,
+      },
+    });
+    return tx.gameWatchStream.findUnique({ where: { id } });
+  }, { maxWait: 4_000, timeout: 12_000 });
+  if (!updated || !isAoE2WarManagedStream(updated, actor.user.id)) {
+    return NextResponse.json(
+      { detail: "Stream not found." },
+      { status: 404, headers: NO_STORE_HEADERS },
+    );
+  }
 
   return NextResponse.json(
     { stream: toWatchStreamPayload(updated) },
