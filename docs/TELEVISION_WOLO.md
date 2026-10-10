@@ -745,3 +745,45 @@ distributed cache, end-to-end first-frame latency certificate or guarantee
 about eight two-hour recordings. Filesystem test coverage verifies
 concurrent lookups, external writes after expiry, and delete invalidation.
 The byte/segment and actual storage-capacity limits remain unchanged.
+
+### PostgreSQL cross-worker video locks and replay ownership (V3 development)
+
+Independent Next.js workers now coordinate through **transaction-scoped
+PostgreSQL advisory locks**, not only in-process JavaScript promises.
+Starting/replacing a camera acquires broadcaster-account and public-session
+locks in that fixed order before selecting the primary camera or ending the
+previous recording. It also waits for existing active cameras' per-stream
+writer locks before ending them. A late replay-identity heartbeat uses the
+same account/session order, re-reads active state, and cannot reactivate an
+ended stream or displace an existing live primary arbitrarily.
+
+Each incoming WebM chunk holds a **per-stream writer lock** throughout
+filesystem save, disk-usage reconciliation, and its matching database
+acknowledgement. The stop endpoint and final-replay sentinel acquire that
+same lock before marking video ended. This prevents concurrent separate
+workers from simultaneously accepting different chunks based on the same
+stale per-camera quota and prevents a stop/start/finality race from
+overlapping an acknowledged write. Database rollbacks cannot roll back
+filesystem bytes: the existing exclusive temp-file, fsync, hard-link and
+duplicate-equality protocol deliberately makes retry/reconciliation safe.
+Lock acquisition has bounded timeouts; overload fails video transport safely
+rather than blocking replay ingestion. These locks do **not** constitute a
+global reservation of mounted-volume free bytes across distinct cameras.
+
+The final-replay sentinel also restricts the proof to `game_stats.user_uid`
+owned by the recording account. Another player's similarly named replay,
+even if finalized, is not authority to end this stream. A camera without
+a confirmed owner remains unfinalized until authoritative proof arrives.
+
+**Mid-capture mount disappearance:** Production video writes check the
+separate mounted filesystem **before** any recursive directory creation
+and again before accepting the chunk. If the mount is lost, the server
+rejects video-only ingestion, never silently creates an equivalent directory
+on the small VPS root. Admin deletion also refuses when the mount is not
+independently present. A filesystem test simulates both a missing video
+directory and a deceptive same-device fallback directory.
+
+Source checks and synthetic lost-mount tests are not substitute evidence
+for two-worker PostgreSQL contention tests and live 1v1–4v4 camera canaries.
+Those remain pre-publication gates alongside bounded CPU, media decode,
+real mounted-volume observability, security and replay-result priority.
