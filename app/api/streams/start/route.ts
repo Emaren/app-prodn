@@ -183,80 +183,87 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const now = new Date();
-  await prisma.gameWatchStream.updateMany({
-    where: {
-      userId: user.id,
-      provider: "aoe2war",
-      sourceType: {
-        in: [...AOE2WAR_STREAM_SOURCE_TYPES],
-      },
-      status: {
-        in: ["starting", "live"],
-      },
-    },
-    data: {
-      status: "ended",
-      endedAt: now,
-      isPrimary: false,
-    },
-  });
-
-  const existingCount = await prisma.gameWatchStream.count({
-    where: {
-      sessionKey,
-      status: {
-        in: ["starting", "live"],
-      },
-    },
-  });
-
-  const stream = await prisma.gameWatchStream.create({
-    data: {
-      sessionKey,
-      userId: user.id,
-      provider: "aoe2war",
-      sourceType,
-      role: "caster",
-      label,
-      title,
-      url: "aoe2war://stream/starting",
-      embedId: null,
-      playerLabel,
-      thumbnailUrl,
-      mediaMimeType,
-      isPrimary: existingCount === 0,
-      status: "starting",
-      lastHeartbeatAt: now,
-      startedAt: now,
-    },
-  });
-
-  const playbackUrl = `/api/streams/${stream.id}/manifest`;
-  const updated = await prisma.gameWatchStream.update({
-    where: { id: stream.id },
-    data: {
-      url: `aoe2war://stream/${stream.id}`,
-      playbackUrl,
-    },
-  });
-
-  if (updated.isPrimary) {
-    await prisma.gameWatchStream.updateMany({
+  // Do not end an existing broadcaster until the replacement stream and
+  // public manifest identity commit together. Any write failure rolls back
+  // the entire replacement, preserving the previous live recorder record.
+  const updated = await prisma.$transaction(async (tx) => {
+    const now = new Date();
+    await tx.gameWatchStream.updateMany({
       where: {
-        sessionKey,
-        id: {
-          not: updated.id,
+        userId: user.id,
+        provider: "aoe2war",
+        sourceType: {
+          in: [...AOE2WAR_STREAM_SOURCE_TYPES],
         },
         status: {
           in: ["starting", "live"],
         },
       },
       data: {
+        status: "ended",
+        endedAt: now,
         isPrimary: false,
       },
     });
-  }
+
+    const existingCount = await tx.gameWatchStream.count({
+      where: {
+        sessionKey,
+        status: {
+          in: ["starting", "live"],
+        },
+      },
+    });
+
+    const stream = await tx.gameWatchStream.create({
+      data: {
+        sessionKey,
+        userId: user.id,
+        provider: "aoe2war",
+        sourceType,
+        role: "caster",
+        label,
+        title,
+        url: "aoe2war://stream/starting",
+        embedId: null,
+        playerLabel,
+        thumbnailUrl,
+        mediaMimeType,
+        isPrimary: existingCount === 0,
+        status: "starting",
+        lastHeartbeatAt: now,
+        startedAt: now,
+      },
+    });
+
+    const playbackUrl = `/api/streams/${stream.id}/manifest`;
+    const updated = await tx.gameWatchStream.update({
+      where: { id: stream.id },
+      data: {
+        url: `aoe2war://stream/${stream.id}`,
+        playbackUrl,
+      },
+    });
+
+    if (updated.isPrimary) {
+      await tx.gameWatchStream.updateMany({
+        where: {
+          sessionKey,
+          id: {
+            not: updated.id,
+          },
+          status: {
+            in: ["starting", "live"],
+          },
+        },
+        data: {
+          isPrimary: false,
+        },
+      });
+    }
+
+    return updated;
+  });
 
   return NextResponse.json(
     {
