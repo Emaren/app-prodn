@@ -620,18 +620,32 @@ function ChaosVoteLab({chaos,battle}:{
   useEffect(()=>{
     if(!completed || !gameId) return;
     let cancelled=false;
-    setBallot(null);
+    let requestNumber=0;
     setBallotError(null);
-    void fetch("/api/television/chaos-ballots?gameId="+gameId,{cache:"no-store"})
-      .then(async res=>{
-        const data=await res.json().catch(()=>({})) as ChaosBallotResponse & {detail?:string};
-        if(!res.ok)throw new Error(data.detail||"Ballot status unavailable.");
-        if(!cancelled)setBallot(data);
-      })
-      .catch(error=>{
-        if(!cancelled)setBallotError(error instanceof Error?error.message:"Could not load votes.");
-      });
-    return()=>{cancelled=true};
+    const reload=async()=>{
+      if(document.visibilityState==="hidden") return;
+      const current=++requestNumber;
+      try {
+        const response=await fetch(
+          "/api/television/chaos-ballots?gameId="+gameId,{cache:"no-store"},
+        );
+        const data=await response.json().catch(()=>({})) as ChaosBallotResponse & {detail?:string};
+        if(!response.ok)throw new Error(data.detail||"Ballot status unavailable.");
+        if(!cancelled && current===requestNumber) {
+          setBallot(data);
+          setBallotError(null);
+        }
+      } catch(error) {
+        if(!cancelled && current===requestNumber)
+          setBallotError(error instanceof Error?error.message:"Could not load votes.");
+      }
+    };
+    void reload();
+    const timer=window.setInterval(()=>void reload(),20_000);
+    const onVisible=()=>{if(document.visibilityState==="visible")void reload()};
+    document.addEventListener("visibilitychange",onVisible);
+    return()=>{cancelled=true;window.clearInterval(timer);
+      document.removeEventListener("visibilitychange",onVisible)};
   },[gameId,completed,refreshKey]);
 
   const shown=ballot?.gameId===gameId && completed ? ballot:null;
