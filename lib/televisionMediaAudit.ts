@@ -3,13 +3,16 @@ import path from "node:path";
 import { streamChunkDir } from "./streamStorage.ts";
 
 const MAX_INSPECTED_CHUNKS = 5_000;
+const MAX_LISTED_CHUNKS = 20_000;
 const MAX_STREAM_PROBES = 16;
 const CACHE_MS = 60_000;
+const WEBM_EBML_HEADER = [0x1a, 0x45, 0xdf, 0xa3] as const;
 
 export type VideoMediaInventory = {
   streamId: number;
   state: "sequence_complete" | "missing_media" | "empty_media" |
-    "gapped_media" | "unreadable_media" | "scan_limited" | "not_inspected";
+    "gapped_media" | "invalid_webm_header" | "sequence_sampled" |
+    "unreadable_media" | "scan_limited" | "not_inspected";
   actualChunks: number | null;
   actualBytes: number | null;
   firstSequence: number | null;
@@ -41,9 +44,28 @@ function validExpected(input: ExpectedStream): boolean {
     Number.isSafeInteger(input.latestChunkSeq) && input.latestChunkSeq >= -1;
 }
 
+/** Pure sequence/registry correspondence, safe to test with 12,000 virtual chunks. */
+export function evaluateVideoSequenceEvidence(
+  sortedSequences: number[], expectedChunks: number, expectedLastSequence: number,
+) {
+  if (!sortedSequences.length) {
+    return {gaps:0,last:-1,complete:false};
+  }
+  let gaps = sortedSequences[0];
+  for (let i = 1; i < sortedSequences.length; i++) {
+    gaps += sortedSequences[i] - sortedSequences[i - 1] - 1;
+  }
+  const last = sortedSequences[sortedSequences.length - 1];
+  return {
+    gaps,last,
+    complete: gaps === 0 && sortedSequences.length > 1 &&
+      expectedChunks === sortedSequences.length && expectedLastSequence === last,
+  };
+}
+
 /**
- * Bounded, read-only physical media audit. No WebM bytes are loaded; only file
- * names and filesystem metadata are examined. Never treat sequence continuity
+ * Bounded, read-only physical media audit. Only the 4-byte WebM initialization
+ * prefix is sampled; other media payloads remain unread. Never treat sequence continuity
  * as a decoded picture, a complete game, or permission to retain/delete data.
  */
 export async function inspectOneVideoStream(expected: ExpectedStream): Promise<VideoMediaInventory> {
@@ -67,36 +89,65 @@ export async function inspectOneVideoStream(expected: ExpectedStream): Promise<V
   if (files.length === 0) {
     return { ...limited(expected.id, expected, "empty_media"), actualChunks: 0, actualBytes: 0 };
   }
-  if (files.length > MAX_INSPECTED_CHUNKS) {
+  if (files.length > MAX_LISTED_CHUNKS) {
     return limited(expected.id, expected, "scan_limited");
   }
+  const sampled = files.length > MAX_INSPECTED_CHUNKS;
   let bytes = 0;
   try {
-    for (let i = 0; i < files.length; i += 64) {
-      const group = files.slice(i, i + 64);
-      const stats = await Promise.all(group.map(file => fs.stat(path.join(dir, file.name))));
-      for (const stat of stats) {
-        if (!stat.isFile() || stat.size <= 0 || !Number.isSafeInteger(stat.size)) {
-          return limited(expected.id, expected, "unreadable_media");
+    if (sampled) {
+      // A two-hour 1-second WebM recording has ~7,200 files. Check all
+      // names/sequence gaps but stat only the endpoints, not 7,200 files
+      // on every operator poll. Byte totals deliberately remain unknown.
+      const endpoints = await Promise.all([
+        fs.stat(path.join(dir, files[0].name)),
+        fs.stat(path.join(dir, files[files.length - 1].name)),
+      ]);
+      if (endpoints.some(stat => !stat.isFile() || stat.size <= 0)) {
+        return limited(expected.id, expected, "unreadable_media");
+      }
+    } else {
+      for (let i = 0; i < files.length; i += 64) {
+        const group = files.slice(i, i + 64);
+        const stats = await Promise.all(group.map(file => fs.stat(path.join(dir, file.name))));
+        for (const stat of stats) {
+          if (!stat.isFile() || stat.size <= 0 || !Number.isSafeInteger(stat.size)) {
+            return limited(expected.id, expected, "unreadable_media");
+          }
+          bytes += stat.size;
+          if (!Number.isSafeInteger(bytes)) return limited(expected.id, expected, "unreadable_media");
         }
-        bytes += stat.size;
-        if (!Number.isSafeInteger(bytes)) return limited(expected.id, expected, "unreadable_media");
       }
     }
   } catch {
     return limited(expected.id, expected, "unreadable_media");
   }
-  let gaps = files[0].sequence;
-  for (let i = 1; i < files.length; i++) {
-    gaps += files[i].sequence - files[i - 1].sequence - 1;
+  const sequenceEvidence = evaluateVideoSequenceEvidence(
+    files.map(file => file.sequence),expected.chunkCount,expected.latestChunkSeq
+  );
+  const {gaps,last,complete} = sequenceEvidence;
+  let initMagicOk = false;
+  if (complete) {
+    try {
+      const handle = await fs.open(path.join(dir, "0.webm"), "r");
+      try {
+        const prefix = Buffer.alloc(WEBM_EBML_HEADER.length);
+        const { bytesRead } = await handle.read(prefix, 0, prefix.length, 0);
+        initMagicOk = bytesRead === WEBM_EBML_HEADER.length &&
+          WEBM_EBML_HEADER.every((value, i) => prefix[i] === value);
+      } finally {
+        await handle.close();
+      }
+    } catch {
+      return limited(expected.id, expected, "unreadable_media");
+    }
   }
-  const last = files[files.length - 1].sequence;
-  const complete = gaps === 0 && expected.chunkCount === files.length &&
-    expected.latestChunkSeq === last;
   return {
     streamId: expected.id,
-    state: complete ? "sequence_complete" : "gapped_media",
-    actualChunks: files.length, actualBytes: bytes,
+    state: !complete ? "gapped_media" :
+      !initMagicOk ? "invalid_webm_header" :
+      sampled ? "sequence_sampled" : "sequence_complete",
+    actualChunks: files.length, actualBytes: sampled ? null : bytes,
     firstSequence: files[0].sequence, lastSequence: last,
     missingSequenceCount: gaps,
     expectedChunks: expected.chunkCount,

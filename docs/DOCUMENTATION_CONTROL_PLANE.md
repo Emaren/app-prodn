@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/television-v1-chaos-ballots-20261009` at `309160b45b0daced2ac0680a0951fe99473c5f7a`
+Implementation baseline: `feature/television-v1-ebml-preflight-gate-20261009` at `ff09dc1d1ceb3540ebcc84c07eca16c799878023`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
