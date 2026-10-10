@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "7e0b508940f2937775a538c67acd9df6692e953a7c74d37ad0a66afe8a3a8939",
+      "sha256": "6548add1b39dfb4ec0975b357714eef2181687d6c181b42c58ead65eb958ad38",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1697,7 +1697,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-09",
       "sensitivity": "internal",
-      "sha256": "6ed9343e7dc043e33ea1966a2eab33e4531716b96915fdcbba5f176a20050524",
+      "sha256": "01af512b57726f326ceff0e77d790abe927c70842554ff3f32be9c5373d8dd6a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2048,8 +2048,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/television-v1-media-integrity-20261009",
-    "commit": "a2c01323d0c54566c2dbfd534d89f62f257d8d04"
+    "branch": "feature/television-v1-long-match-budget-20261009",
+    "commit": "c6a4df5252f56ca9e4801cf750322b0f69031fab"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
