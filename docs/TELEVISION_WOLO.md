@@ -279,3 +279,39 @@ behavior, not an invitation to disable the guard.
 Do not infer that video files are on the correct mounted volume merely
 from a published path in a document; verify real host configuration during
 the next guarded production capacity preflight before video activation.
+
+## Mounted-volume video free-space reserve (development pass)
+
+Server video writes are now admitted only when `statfs` verifies that
+the **actual configured video-chunk filesystem** will retain the configured
+free-space reserve *after* the next chunk. This is independent of the
+per-stream 512 MiB / 4,000-chunk default caps, and supports concurrent
+recorder sessions on the same volume. A failed capacity probe is treated
+as video-only rejection, never permission to fill an unknown disk.
+
+Configuration: `AOE2_STREAM_MIN_FREE_BYTES`, default **6 GiB** and
+allowed range 1–40 GiB. Production video should live on the dedicated
+mounted media volume using `AOE2_VIDEO_CAPTURE_DIR` (or explicit
+`AOE2_STREAM_STORAGE_DIR`), not the small application root filesystem.
+The operator must verify the effective runtime directory before activation;
+a configured path that resolves to a root partition below reserve will
+refuse new video chunks safely.
+
+On the first terminal quota or free-space refusal, the chunk API ends the
+video recorder row (without deleting previous chunks), responding HTTP 413
+with `code: STREAM_STORAGE_LIMIT`, `terminal: true` and one of the
+machine-readable `reason` values `stream_max_bytes`,
+`stream_max_chunks`, `volume_reserved_floor`, or
+`capacity_unverified`. The matching unreleased Watcher then stops video
+for that game but continues normal replay monitoring. This deliberately
+does **not** confer winner, betting, rating, or Chaos title authority.
+
+The admin `/api/admin/video-vault` response exposes measured free bytes,
+configured reserve, and estimated writable bytes above the floor; unknown
+space displays as unavailable, not as 0 or unlimited. The policy is
+**fail-safe but not a global reservation/quotas engine**: capacity may
+change between its check and write, including writes from unrelated
+services and parallel server processes. Before a public rollout, prove
+mounted-volume settings, I/O load, disk-full handling, bounded retention,
+and total multi-camera/long-game resource use in production-like canaries.
+No automatic deletion of captures, replays or DB snapshots is authorized.
