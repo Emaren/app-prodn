@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6548add1b39dfb4ec0975b357714eef2181687d6c181b42c58ead65eb958ad38",
+      "sha256": "ce120db30d7240a820b41e268466da23baa5746dcf4f30bf0b603187d17139ea",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1697,7 +1697,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-09",
       "sensitivity": "internal",
-      "sha256": "01af512b57726f326ceff0e77d790abe927c70842554ff3f32be9c5373d8dd6a",
+      "sha256": "d5e92a260fbfe001cf966e3c9a40cc5c94330c350481e783110ae2925ca468ee",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2048,8 +2048,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/television-v1-long-match-budget-20261009",
-    "commit": "c6a4df5252f56ca9e4801cf750322b0f69031fab"
+    "branch": "feature/television-v1-camera-switch-isolation-20261009",
+    "commit": "a062f657b153c5adf3734ce465250c6718b0e956"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

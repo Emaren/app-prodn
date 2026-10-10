@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/television-v1-long-match-budget-20261009` at `c6a4df5252f56ca9e4801cf750322b0f69031fab`
+Implementation baseline: `feature/television-v1-camera-switch-isolation-20261009` at `a062f657b153c5adf3734ce465250c6718b0e956`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
