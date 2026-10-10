@@ -252,3 +252,30 @@ cannot certify live-decoded WebM playback on Jim/Zodiac's actual browsers;
 that remains an interactive Windows player canary. This dashboard does
 not promise arbitrary remote shell/debug access. It uses only already
 authenticated, consent-respecting event data and canonical replay truth.
+
+## Mounted video-volume headroom protection (stacked development)
+
+A new video-only admission guard runs immediately before writing each new
+stream chunk, after the existing per-stream byte/chunk limits and before the
+atomic temporary-file/link operation. It checks `statfs` of the ACTUAL
+`STREAM_STORAGE_ROOT` directory, preserving a configurable minimum of
+6 GiB free by default (`AOE2_STREAM_MIN_FREE_BYTES`, validated in the
+1–40 GiB range). If the filesystem cannot be checked or a new chunk would
+breach the reserve, it fails closed as a `StreamStorageLimitError` and
+the API returns the already-defined `STREAM_STORAGE_LIMIT` terminal
+code. The unreleased Watcher honors the video-only stop; replay data
+and financial authority remain separate.
+
+The admin Video Vault exposes verified free bytes, reserved bytes and
+remaining writable headroom for the video mount, explicitly reporting
+unavailable storage telemetry. This does NOT yet enforce a global
+10–12 GiB *total video inventory* quota and does not purge or truncate
+old recordings. That future policy needs distinct retention eligibility,
+cross-process coordination, operator pinning, tested archive manifests
+and real volume-usage reconciliation. Operating below the reserve when
+capture is configured on the small root filesystem is deliberate fail-closed
+behavior, not an invitation to disable the guard.
+
+Do not infer that video files are on the correct mounted volume merely
+from a published path in a document; verify real host configuration during
+the next guarded production capacity preflight before video activation.
