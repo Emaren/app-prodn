@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { assignTelevisionCameras, type TelevisionStage } from "../lib/televisionDirection.ts";
+import { assignTelevisionCameras, mergeTelevisionStreamEvidence, type TelevisionStage } from "../lib/televisionDirection.ts";
 import type { WatchStreamPayload } from "../lib/watchStreams.ts";
 
 const stage: TelevisionStage = {confirmedTeams:true,format:"2v1",teams:[
@@ -67,4 +67,35 @@ test("Television front end keeps lazy viewing, a single director and optional ca
   assert.match(client,/findIndex\(item => item.stream\?\.id === feed.id\) < 3/);
   assert.match(client,/No camera is invented/i);
   assert.match(api,/include: \{ user: \{ select: \{ steamId: true \} \} \}/);
+});
+
+test("canonical alias feeds survive exact-session refresh and link to authenticated POV",()=>{
+  const canonical={...video(11,"76561190000001","Watcher"),sessionKey:"user-a-replay.mg",
+    updatedAt:"2026-10-09T18:00:00Z"};
+  const exact={...video(12,"76561190000003","Watcher"),sessionKey:"platform:123456",
+    updatedAt:"2026-10-09T18:02:00Z"};
+  const merged=mergeTelevisionStreamEvidence([canonical],[exact,exact]);
+  assert.equal(merged.length,2);
+  const director=assignTelevisionCameras(stage,merged);
+  assert.deepEqual(director.cameras.map(camera=>camera.stream?.id??null),[11,null,12]);
+});
+test("latest stream state wins duplicate alias rows and preserves linked owner Steam ID",()=>{
+  const old={...video(11,"76561190000001","Watcher"),status:"starting",
+    updatedAt:"2026-10-09T18:00:00Z"};
+  const current={...old,status:"live",chunkCount:12,ownerSteamId:null,
+    updatedAt:"2026-10-09T18:00:05Z"};
+  const merged=mergeTelevisionStreamEvidence([old],[current]);
+  assert.equal(merged.length,1);
+  assert.equal(merged[0].status,"live");
+  assert.equal(merged[0].ownerSteamId,"76561190000001");
+});
+test("live-session stream projector links account owner identity server-side",()=>{
+  const server=readFileSync("lib/liveGames.ts","utf8");
+  const screen=readFileSync("app/television-wolo/page.tsx","utf8");
+  const client=readFileSync("components/television/TelevisionWoloExperience.tsx","utf8");
+  assert.match(server,/include: \{ user: \{ select: \{ steamId: true \} \} \}/);
+  assert.match(screen,/initialStreams: streams/);
+  assert.match(client,/mergeTelevisionStreamEvidence/);
+  assert.match(client,/selectedBattle\.initialStreams/);
+  assert.doesNotMatch(client,/fuzzyMatch|guessByPlayerName/);
 });
