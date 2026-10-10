@@ -5254,8 +5254,8 @@ model TelevisionChaosBallot {
   rosterHash  String   @map("roster_hash") @db.VarChar(64)
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
 
-  game GameStats @relation(fields: [gameStatsId], references: [id], onDelete: Restrict, onUpdate: NoAction)
-  user User      @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  game GameStats @relation(fields: [gameStatsId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  user User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([gameStatsId, userId], map: "uq_television_chaos_ballot_user")
   @@index([gameStatsId, rosterHash], map: "ix_television_chaos_ballot_game_roster")
