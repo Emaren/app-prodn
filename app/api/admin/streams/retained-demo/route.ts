@@ -10,6 +10,7 @@ import {
   retainSingleStreamDemo,
   RetainedDemoConflictError,
   RetainedDemoStorageError,
+  PostgameMediaProtectedError,
 } from "@/lib/retainedStreamDemo";
 import { getStreamStorageUsage } from "@/lib/streamStorage";
 import { toWatchStreamPayload } from "@/lib/watchStreams";
@@ -171,6 +172,12 @@ export async function DELETE(request: NextRequest) {
     if (error instanceof RetainedDemoConflictError) {
       return NextResponse.json(
         { detail: "The retained demo changed; refresh before deleting it." },
+        { status: 409, headers: NO_STORE_HEADERS },
+      );
+    }
+    if (error instanceof PostgameMediaProtectedError) {
+      return NextResponse.json(
+        { detail: error.message, code: "STREAM_POSTGAME_MEDIA_PROTECTED" },
         { status: 409, headers: NO_STORE_HEADERS },
       );
     }
