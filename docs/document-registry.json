@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a7d2611caff9be0f2b14bbef22ea5714b246c3f4be1e82d96d3c207b8e96da73",
+      "sha256": "bb30ef14a2da8dcf3f82f292b35a12646401a7ae0953b4f7cedf436a2b78ea42",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2048,8 +2048,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/update-preflight-no-dirty-taxonomy-20261010",
-    "commit": "7d3c106731e43568fbbb5412526a2c33164486be"
+    "branch": "feature/general-inspections-evidence-delta-20261010",
+    "commit": "19b73ca0fc2409a47f1e8af01da4e11213438d62"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
