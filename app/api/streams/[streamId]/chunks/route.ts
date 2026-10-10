@@ -6,7 +6,7 @@ import {
   resolveStreamRequestActor,
 } from "@/lib/streamRequestAuth";
 import { normalizeStreamMediaMimeType } from "@/lib/streamMedia";
-import {parseStreamChunkSequence, isAdmissibleStreamChunkContentLength} from "@/lib/streamUploadProtocol";
+import {parseStreamChunkSequence, isAdmissibleStreamChunkContentLength, readBoundedStreamChunkBody, StreamChunkBodyLimitError} from "@/lib/streamUploadProtocol";
 import { currentStreamMediaAdmission } from "@/lib/streamMediaAdmission";
 import {
   StreamChunkConflictError,
@@ -184,18 +184,27 @@ export async function POST(
     }
   }
 
-  const arrayBuffer = await request.arrayBuffer();
-  if (arrayBuffer.byteLength <= 0 || arrayBuffer.byteLength > MAX_CHUNK_BYTES) {
-    await endRejectedVideo(prisma, id);
+  let mediaBytes: Uint8Array;
+  try {
+    mediaBytes = await readBoundedStreamChunkBody(request.body, MAX_CHUNK_BYTES);
+  } catch (error) {
+    if (error instanceof StreamChunkBodyLimitError) {
+      await endRejectedVideo(prisma, id);
+      return NextResponse.json(
+        { detail: error.message, code: "STREAM_CHUNK_TOO_LARGE", terminal: true },
+        { status: 413, headers: NO_STORE_HEADERS }
+      );
+    }
+    console.warn("[streams/chunks] video body transport interrupted", { streamId: id, error });
     return NextResponse.json(
-      { detail: "Stream chunk size is invalid.", code: "STREAM_CHUNK_TOO_LARGE", terminal: true },
-      { status: 413, headers: NO_STORE_HEADERS }
+      { detail: "Video body upload interrupted." },
+      { status: 503, headers: NO_STORE_HEADERS }
     );
   }
 
   let stored;
   try {
-    stored = await writeStreamChunk(id, sequence, Buffer.from(arrayBuffer));
+    stored = await writeStreamChunk(id, sequence, Buffer.from(mediaBytes));
   } catch (error) {
     if (error instanceof StreamChunkConflictError) {
       return NextResponse.json(
