@@ -61,3 +61,12 @@ test("server is signed-in, same-origin, roster-validated, one ballot/account wit
   assert.doesNotMatch(ui,/candidateNames\.slice\(0,4\)/);
   assert.doesNotMatch(route,/trophy\.update|betWager|walletAddress|settleWolo/);
 });
+
+test("spectator tallies refresh only in visible tabs and reject stale response races",()=>{
+  const ui=readFileSync("components/television/TelevisionWoloExperience.tsx","utf8");
+  assert.match(ui,/document.visibilityState==="hidden"/);
+  assert.match(ui,/window.setInterval\(\(\)=>void reload\(\),20_000\)/);
+  assert.match(ui,/current===requestNumber/);
+  assert.match(ui,/document.removeEventListener\("visibilitychange",onVisible\)/);
+  assert.match(ui,/setRefreshKey\(n=>n\+1\)/);
+});
