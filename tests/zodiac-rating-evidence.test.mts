@@ -20,7 +20,7 @@ const directory = {
     key:"steam:"+steamId,steamId,name:["Zodiac","mYsTikaL_VeGeTa","mYsTikaL JiReN"][index],
     nameHistory: index===0 ? [{name:"Zodiac"},{name:"Earlier Zodiac"},{name:"Other Zodiac"}] : [],
     totalMatches:index===0?801:index===1?399:294,
-    wins:100,losses:50,unknowns:index===0?60:23,
+    wins:index===0?560:index===1?275:193,losses:index===0?191:index===1?101:79,unknowns:index===0?50:index===1?23:22,
     lastPlayedAt:"2026-10-09T13:00:00.000Z",
     steamDmRating:index===0?2355:index===1?2328:2244,steamRmRating:null,
     replayEvidence:index===0?gameEvidence:[],
@@ -43,7 +43,10 @@ test("Zodiac trio remains three exact Steam IDs; three names on one Steam accoun
   const audit=buildZodiacRatingAudit(directory,receipt,qualified);
   assert.equal(audit.readOnly,true);
   assert.deepEqual(audit.players.map(x=>x.steamId),ids);
-  assert.deepEqual(audit.players.map(x=>x.counts.unresolved),[60,23,23]);
+  assert.deepEqual(audit.players.map(x=>x.counts.unresolved),[50,23,22]);
+  for (const p of audit.players) {
+    assert.equal(p.counts.total, p.counts.wins!+p.counts.losses!+p.counts.unresolved!, "screenshot W/L+unknown must reconcile");
+  }
   assert.deepEqual(audit.players[0].aliases,["Zodiac","Earlier Zodiac","Other Zodiac"]);
   assert.deepEqual(audit.players[0].counts.sampleUnresolvedGameIds,[9871]);
 });
@@ -62,7 +65,7 @@ test("qualifying uploaded Watcher snapshot wins if it is later than receipt, wit
   assert.equal(p.dm.rating,2390);
   assert.equal(p.dm.source,"watcher_qualified_upload");
   assert.equal(p.dm.differsFromDirectory,true);
-  assert.equal(p.counts.unresolved,60);
+  assert.equal(p.counts.unresolved,50);
 });
 test("missing dated Watcher values fall back to dated HD evidence; missing Steam accounts stay unqualified", () => {
   const audit=buildZodiacRatingAudit(directory,[],[]);
