@@ -189,12 +189,24 @@ function readExistingReleaseMetadata(content) {
   };
 }
 
+function versionAtLeast164(version) {
+  const parts = version.split(".").map(Number);
+  return parts.length === 3 &&
+    parts.every(Number.isSafeInteger) &&
+    (parts[0] > 1 ||
+      (parts[0] === 1 && (parts[1] > 6 ||
+        (parts[1] === 6 && parts[2] >= 4))));
+}
+
 function canonicalReleaseFiles(version) {
   return [
     `AoE2HDBets Watcher Setup ${version}.exe`,
     `AoE2HDBets Watcher ${version}.exe`,
     `AoE2HDBets Watcher-${version}-arm64.dmg`,
     "aoe2hdbets-watcher-direct.zip",
+    ...(versionAtLeast164(version)
+      ? [`AoE2HDBets Watcher-${version}-arm64-mac.zip`]
+      : []),
     `AoE2HDBets Watcher-${version}.AppImage`,
     `AoE2HDBets Watcher-${version}-arm64.dmg.blockmap`,
     "latest.yml",
@@ -213,7 +225,9 @@ function receiptFiles(version) {
 function updaterRules(version) {
   return new Map([
     ["latest.yml", `AoE2HDBets Watcher Setup ${version}.exe`],
-    ["latest-mac.yml", `AoE2HDBets Watcher-${version}-arm64.dmg`],
+    ["latest-mac.yml", versionAtLeast164(version)
+      ? `AoE2HDBets Watcher-${version}-arm64-mac.zip`
+      : `AoE2HDBets Watcher-${version}-arm64.dmg`],
     ["latest-linux.yml", `AoE2HDBets Watcher-${version}.AppImage`],
   ]);
 }
@@ -230,6 +244,27 @@ async function sha256File(filePath) {
   return createHash("sha256")
     .update(await fs.readFile(filePath))
     .digest("hex");
+}
+
+async function verifyNativeMacUpdater(root, version) {
+  if (!versionAtLeast164(version)) return;
+  const filename = `AoE2HDBets Watcher-${version}-arm64-mac.zip`;
+  const filePath = path.join(root, filename);
+  await regularFile(filePath, filename);
+  const hash = createHash("sha512").update(await fs.readFile(filePath)).digest("base64");
+  const metadata = await fs.readFile(path.join(root, "latest-mac.yml"), "utf8");
+  const rootPath = metadata.match(/^path:\s*(.+?)\s*$/gm) || [];
+  const rootSha = metadata.match(/^sha512:\s*(\S+)\s*$/gm) || [];
+  if (rootPath.length !== 1 || rootSha.length !== 1 ||
+      rootPath[0] !== `path: ${filename}` || rootSha[0] !== `sha512: ${hash}`) {
+    throw new Error("Watcher native Mac updater default path/SHA-512 mismatch");
+  }
+  const urls = [...metadata.matchAll(/^\s+-\s+url:\s*(.+?)\s*$/gm)];
+  const digests = [...metadata.matchAll(/^\s+sha512:\s*(\S+)\s*$/gm)];
+  if (urls.length !== 1 || digests.length !== 1 ||
+      urls[0][1] !== filename || digests[0][1] !== hash) {
+    throw new Error("Watcher native Mac updater files-entry SHA-512 mismatch");
+  }
 }
 
 export async function validateWatcherReleaseBundle(root, version) {
@@ -327,6 +362,8 @@ export async function validateWatcherReleaseBundle(root, version) {
       );
     }
   }
+
+  await verifyNativeMacUpdater(root, version);
 
   return {
     version,
