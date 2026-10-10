@@ -64,6 +64,10 @@ export function previewLastTwoTelevisionBattles(
     const teamsProven = session.teamResolution.status === "resolved";
     const cameraStreamIds = [...new Set([...bySteam.values()]
       .flat().map(stream => stream.id))].sort((a,b)=>a-b);
+    // A retention inventory should show the two latest video-bearing battles,
+    // not two ordinary games that happened to finish after a recorded match.
+    // The latter would bury the operator's actual recording candidates.
+    if (cameraStreamIds.length === 0) continue;
     const complete = strongBattleIdentity && !session.finalProofPending &&
       teamsProven && participants.length >= 2 &&
       steamIds.size === participants.length && missingPlayers.length === 0;
