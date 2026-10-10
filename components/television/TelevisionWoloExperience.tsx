@@ -301,10 +301,11 @@ export default function TelevisionWoloExperience({
             ) : (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-8 text-center">
                 <MonitorPlay className="h-12 w-12 text-slate-500" />
-                <div className="text-2xl font-semibold">No registered feed on this battle</div>
+                <div className="text-2xl font-semibold">{streamError ? "Feed directory temporarily unavailable" : "No registered feed on this battle"}</div>
                 <p className="max-w-xl text-sm leading-6 text-slate-400">
-                  The canonical battle still exists. Open the full Watch theatre for retained
-                  media, hosted loops, and any archive fallback attached outside the stream registry.
+                  {streamError
+                    ? "The directory is retrying automatically. The canonical battle still exists; Watch may have a separate replay or fallback."
+                    : "The canonical battle still exists. Open the full Watch theatre for retained media, hosted loops, and any archive fallback attached outside the stream registry."}
                 </p>
                 <Link
                   href={selectedBattle.watchHref}
@@ -360,6 +361,22 @@ export default function TelevisionWoloExperience({
                 </span>
               )}
             </div>
+            {playing ? (
+              <details className="mt-4 rounded-xl border border-white/10 bg-white/[0.025] px-4 py-3 text-xs text-slate-300">
+                <summary className="cursor-pointer font-semibold text-cyan-100">Video diagnostics</summary>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  <div>Directory: {streamError ? "Retrying after error" : lastFeedCheck ? "Connected" : "Checking"}</div>
+                  <div>Registered feeds: {streams.length}</div>
+                  <div>Selected feed: {activeStream ? streamRoleLabel(activeStream) : "Awaiting broadcaster"}</div>
+                  <div>Provider: {activeStream?.provider || "Unavailable"}</div>
+                  <div>Stream state: {activeStream?.status || "Not registered"}</div>
+                  <div>Media chunks: {activeStream?.chunkCount ?? "Unknown"}</div>
+                  <div>Last source heartbeat: {activeStream?.lastHeartbeatAt ? relativeLabel(activeStream.lastHeartbeatAt) : "Not reported"}</div>
+                  <div>Media type: {activeStream?.mediaMimeType || "Not reported"}</div>
+                </div>
+                <p className="mt-3 text-slate-500">These are public stream-directory observations, not proof that video is decoding smoothly on this device. No private Watcher keys, hardware telemetry, or player credentials are shown.</p>
+              </details>
+            ) : null}
           </div>
         </div>
 
