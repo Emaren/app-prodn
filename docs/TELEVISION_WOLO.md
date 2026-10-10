@@ -211,3 +211,20 @@ This source implementation has not been validated with two physical Windows
 recorders. Packaging, filesystem limits, actual network buffering,
 source-window privacy and live simultaneous pairing remain explicit canary
 requirements.
+
+## Spectator bandwidth: hidden-tab suspension (development pass)
+
+The first-party `LiveStreamFrame` rolling-WebM player is activated only
+after the spectator explicitly presses Play. Once activated, it now pauses
+its video element and stops polling both WebM windows and the stream
+manifest whenever the browser document is hidden. It resumes by polling
+the existing selected camera after `visibilitychange` returns visible.
+The effect cleans up the event listener, interval and old browser object
+URLs on unmount, including switching battles or camera identities.
+
+This saves unproductive spectator CPU/network egress; it does **not**
+alter a broadcaster's capture, store, replay priority, match identity,
+video retention, settlement or championship rules. It does not yet
+solve redundant *foreground* rolling-window downloads, independent
+player-camera synchronization or viewer-side egress accounting.
+Those remain future measured/adaptive transport gates.
