@@ -491,7 +491,7 @@ under a changed roster.
 
 The Television page no longer implies fake click votes are recorded.
 For live or roster-incomplete games it explains why ballots are not
-open. For eligible completed games it shows current counts and the
+open. Vote tallies refresh every twenty seconds while the spectator's tab is\nvisible; hidden tabs do not poll, and out-of-order replies cannot replace\nnewer results. For eligible completed games it shows current counts and the
 signed-in account's recorded choice. Every result remains explicitly
 NON-BINDING and cannot automatically confer the Chaos Championship.
 
