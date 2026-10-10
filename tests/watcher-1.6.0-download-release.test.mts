@@ -12,7 +12,7 @@ const release = fs.readFileSync(
   "utf8",
 );
 
-test("Watcher 1.6.3 keeps the existing 1.5.10 Extreme hero artwork", () => {
+test("Watcher 1.6.4 keeps the existing 1.5.10 Extreme hero artwork", () => {
   assert.match(
     release,
     /version: "1\.6\.3"/,
@@ -38,7 +38,7 @@ test("Watcher 1.6.3 keeps the existing 1.5.10 Extreme hero artwork", () => {
   }
 });
 
-test("Watcher 1.6.3 release advertises recovery, low-footprint lifecycle and media shedding", () => {
+test("Watcher 1.6.4 release advertises recovery, low-footprint lifecycle and media shedding", () => {
   assert.match(
     release,
     /Active replay-folder recovery/,
