@@ -462,7 +462,7 @@ video decode, replay result or spectator voting authority.
 The prior Television Vote Lab was only browser-local. The new draft
 `/api/television/chaos-ballots` GET/POST contract records a non-binding
 popularity vote against a **final GameStats ID and its roster hash**.
-The dedicated `television_chaos_ballots` table has a unique
+The ballot's two foreign keys delete only the associated ballots when an\naccount is erased or its replay record is legitimately deleted, rather than\nblocking erasure or replay cleanup. The dedicated `television_chaos_ballots` table has a unique
 (game_stats_id, user_id) constraint and a stable nominee key; it has no
 relation to trophy events, commissioner permissions, title payouts,
 WOLO wallets, betting settlement or replay winner adjudication.
