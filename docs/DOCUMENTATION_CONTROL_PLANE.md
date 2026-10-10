@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/television-v3-test-readiness-20261010` at `2e8e88f8f76bb0ac6ab0e4a34709ff3271e9ab0a`
+Implementation baseline: `feature/television-v3-test-readiness-20261010` at `80bc7598bd13dacd32c3c8e75b644e8d1092efee`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
