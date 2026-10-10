@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "2ab7879e0e18b664db2512e7d5e24668fdff8b3015d51d7eeb928970bc268d36",
+      "sha256": "1afb571118f468ec689f4beac2aff55c0b15971a4d257344fbbfc29d66d0bfc2",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1697,7 +1697,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-09",
       "sensitivity": "internal",
-      "sha256": "a66ea964092ddde15cbebab34fb59c63620733adda985e1de80d982f160f6fa0",
+      "sha256": "bd4fb981a1cefd3fd108d1d9d7d3be38877944e09c27128062bd48da9327c66c",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2048,8 +2048,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/television-v1-ingest-cost-control-20261009",
-    "commit": "9ef7cb3bed7421627e5666519a1019ab642e0d8e"
+    "branch": "feature/television-v3-integrated-hardening-20261010",
+    "commit": "7a6f0952bfdf49848028a1eda5f509d75218ab3b"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
