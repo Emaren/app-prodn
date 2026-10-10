@@ -346,6 +346,7 @@ export async function writeStreamChunk(
     // This runs after the temporary upload link has been unlinked. The
     // directory fingerprint reflects the final authoritative chunk set.
     await rememberSuccessfulStreamWrite(streamId, dir, updatedUsage);
+    invalidateStreamSequenceIndex(streamId);
     return {filePath,created:true,usage:updatedUsage};
   });
 }
@@ -354,17 +355,87 @@ export async function readStreamChunk(streamId: number | string, sequence: numbe
   return fs.readFile(streamChunkPath(streamId, sequence));
 }
 
-export async function listStreamChunkSequences(streamId: number | string, limit = 80) {
+// Share expensive directory enumeration among simultaneous TV spectators.
+// Cache stores at most 512 sequence numbers per stream, at most 128 streams,
+// and expires quickly even when other web workers write to the same volume.
+// Write and delete paths also invalidate the local process immediately.
+const STREAM_SEQUENCE_INDEX_TTL_MS = 850;
+const STREAM_SEQUENCE_INDEX_MAX_STREAMS = 128;
+const STREAM_SEQUENCE_INDEX_MAX_ENTRIES = 512;
+type StreamSequenceIndex = {
+  observedAt: number;
+  sequences: number[];
+  pending?: Promise<number[]>;
+};
+const streamSequenceIndex = new Map<string, StreamSequenceIndex>();
+
+function invalidateStreamSequenceIndex(streamId: number | string) {
+  streamSequenceIndex.delete(safeStreamId(streamId));
+}
+function rememberStreamSequenceIndex(key: string, entry: StreamSequenceIndex) {
+  streamSequenceIndex.delete(key);
+  streamSequenceIndex.set(key, entry);
+  while (streamSequenceIndex.size > STREAM_SEQUENCE_INDEX_MAX_STREAMS) {
+    const oldest = streamSequenceIndex.keys().next().value;
+    if (oldest === undefined) break;
+    streamSequenceIndex.delete(oldest);
+  }
+}
+async function scanStreamSequences(streamId: number | string) {
   const dir = streamChunkDir(streamId);
-  const entries = await fs.readdir(dir).catch(() => []);
+  const entries = await fs.readdir(dir).catch((error: NodeJS.ErrnoException) => {
+    if (error.code === "ENOENT") return [] as string[];
+    throw error;
+  });
   return entries
     .map((entry) => {
       const match = /^(\d+)\.webm$/.exec(entry);
       return match ? Number(match[1]) : null;
     })
-    .filter((sequence): sequence is number => sequence !== null && Number.isInteger(sequence) && sequence >= 0)
+    .filter((sequence): sequence is number => sequence !== null && Number.isSafeInteger(sequence) && sequence >= 0)
     .sort((left, right) => left - right)
-    .slice(-Math.max(1, limit));
+    .slice(-STREAM_SEQUENCE_INDEX_MAX_ENTRIES);
+}
+export async function listStreamChunkSequences(streamId: number | string, limit = 80) {
+  const key = safeStreamId(streamId);
+  const safeLimit = Math.max(1, Number.isSafeInteger(limit) ? limit : 80);
+  // Preserve the full scan contract for rare callers needing >512 sequences.
+  if (safeLimit > STREAM_SEQUENCE_INDEX_MAX_ENTRIES) {
+    const dir = streamChunkDir(streamId);
+    const entries = await fs.readdir(dir).catch((error: NodeJS.ErrnoException) => {
+      if (error.code === "ENOENT") return [] as string[];
+      throw error;
+    });
+    return entries.map(entry => /^(\d+)\.webm$/.exec(entry))
+      .filter((match): match is RegExpExecArray => match !== null)
+      .map(match => Number(match[1]))
+      .filter(Number.isSafeInteger)
+      .sort((a,b) => a-b)
+      .slice(-safeLimit);
+  }
+  const prior = streamSequenceIndex.get(key);
+  if (prior?.pending) return (await prior.pending).slice(-safeLimit);
+  if (prior && Date.now() - prior.observedAt < STREAM_SEQUENCE_INDEX_TTL_MS) {
+    return prior.sequences.slice(-safeLimit);
+  }
+  const pending = scanStreamSequences(streamId);
+  rememberStreamSequenceIndex(key, {
+    observedAt: 0,
+    sequences: prior?.sequences ?? [],
+    pending,
+  });
+  try {
+    const sequences = await pending;
+    if (streamSequenceIndex.get(key)?.pending === pending) {
+      rememberStreamSequenceIndex(key, { observedAt: Date.now(), sequences });
+    }
+    return sequences.slice(-safeLimit);
+  } catch (error) {
+    if (streamSequenceIndex.get(key)?.pending === pending) {
+      streamSequenceIndex.delete(key);
+    }
+    throw error;
+  }
 }
 
 export async function getStreamStorageUsage(
@@ -432,5 +503,6 @@ export async function readStreamChunksBounded(
 export async function removeStreamChunks(streamId: number | string) {
   const key=safeStreamId(streamId);
   streamWriteUsageCache.delete(key);
+  invalidateStreamSequenceIndex(streamId);
   await fs.rm(streamChunkDir(streamId), { recursive: true, force: true });
 }
