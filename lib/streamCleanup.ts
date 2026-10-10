@@ -2,7 +2,7 @@ import type { PrismaClient } from "@/lib/generated/prisma";
 import { expireRetainedDemoIfNeeded } from "@/lib/retainedStreamDemo";
 import { AOE2WAR_STREAM_SOURCE_TYPES } from "@/lib/streamIdentity";
 import { removeStreamChunks } from "@/lib/streamStorage";
-import { effectiveStreamRetentionMs, MIN_POSTGAME_MEDIA_MS, postgameMediaProtected } from "@/lib/streamPostgameRetention";
+import { effectiveStreamRetentionMs, postgameMediaProtected } from "@/lib/streamPostgameRetention";
 
 const CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
 const STALE_STREAM_END_MS = 3 * 60 * 1000;
@@ -146,14 +146,14 @@ export async function cleanupBrowserStreams(prisma: PrismaClient) {
         },
       ],
     },
-    select: { id: true, endedAt: true },
+    select: { id: true, endedAt: true, updatedAt: true },
     take: 100,
   });
 
   // A too-short environment override, a future timestamp, or a partially
   // completed prior write must never prune a video's postgame grace period.
   const eligibleStreams = removableStreams.filter(stream =>
-    !postgameMediaProtected(stream.endedAt, now),
+    !postgameMediaProtected(stream.endedAt ?? stream.updatedAt, now),
   );
   const removalResults = await Promise.allSettled(
     eligibleStreams.map((stream) => removeStreamChunks(stream.id))
