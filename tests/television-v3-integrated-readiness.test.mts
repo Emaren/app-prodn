@@ -76,3 +76,20 @@ test("failed replacement cannot strand the previous active broadcaster", () => {
   assert.ok(begin > 0 && endPrior > begin && create > endPrior && publish > create && commit > publish);
   assert.doesNotMatch(source.slice(begin,commit), /await prisma.gameWatchStream/);
 });
+
+test("native video battle identity is never guessed from an unrelated recent replay", () => {
+  const start = readFileSync("app/api/streams/start/route.ts", "utf8");
+  const heartbeat = readFileSync("app/api/streams/[streamId]/heartbeat/route.ts", "utf8");
+  for (const source of [start,heartbeat]) {
+    assert.doesNotMatch(source, /resolveRecentReplaySessionKeyForWatcher|recentReplayRows/);
+    assert.doesNotMatch(source, /created_at >= now\(\) - interval '(?:45 minutes|4 hours)'/);
+    assert.match(source, /where gs.user_uid = \$\{userUid\}/);
+    assert.match(source, /gs\.original_filename = \$\{replayKey\}/);
+    assert.match(source, /gs\.key_events::jsonb ->> 'platform_match_id'\) = \$\{platformId\}/);
+  }
+  assert.match(start, /if \(verifiedSessionKey\) \{/);
+  assert.match(start, /sessionKey = `watcher:session_\$\{user.id\}_\$\{Date.now\(\)\}`/);
+  assert.match(heartbeat, /weakStreamKey && safeExactClaim/);
+  assert.match(heartbeat, /resolvePlatformSessionKeyForReplay\(prisma, actor.user.uid, replayBackedSessionKey\)/);
+  assert.doesNotMatch(start, /requestedSessionKey,\s*replaySessionKey,\s*platformSessionKey/);
+});
