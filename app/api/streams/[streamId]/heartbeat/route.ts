@@ -11,6 +11,7 @@ import {
 } from "@/lib/streamMedia";
 import { maybeEndFinalizedStream } from "@/lib/streamFinalitySentinel";
 import { toWatchStreamPayload } from "@/lib/watchStreams";
+import { lockVideoBroadcaster, lockVideoSessionPrimary } from "@/lib/streamAdvisoryLocks";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -164,71 +165,98 @@ export async function POST(
       ? await resolvePlatformSessionKeyForReplay(prisma, actor.user.uid, replayBackedSessionKey)
       : null;
 
-  const updated = await prisma.gameWatchStream.update({
-    where: { id },
-    data: {
-      status: status === "live" ? "live" : "starting",
-      lastHeartbeatAt: new Date(),
-      thumbnailUrl,
-      mediaMimeType,
-      ...(platformSessionKey && platformSessionKey !== stream.sessionKey
-        ? {
+  // The original stream may have been replaced/finalized after the first
+  // read. Recheck status under the same account lock used by stream start.
+  // Only an exact owner-proven replay key may trigger session-primary changes.
+  const result = await prisma.$transaction(async (tx) => {
+    await lockVideoBroadcaster(tx, actor.user.id);
+    const current = await tx.gameWatchStream.findUnique({ where: { id } });
+    if (!current || !isAoE2WarManagedStream(current, actor.user.id) ||
+        !["starting", "live"].includes(current.status)) {
+      return { updated: current, rebound: false };
+    }
+    const rebound = Boolean(
+      platformSessionKey &&
+      current.sessionKey !== platformSessionKey &&
+      (current.sessionKey.startsWith("watcher:") ||
+       current.sessionKey.startsWith("free:")),
+    );
+    if (rebound && platformSessionKey) {
+      await lockVideoSessionPrimary(tx, platformSessionKey);
+    }
+    const priorPrimary = rebound && platformSessionKey
+      ? await tx.gameWatchStream.count({
+          where: {
             sessionKey: platformSessionKey,
+            provider: "aoe2war",
+            status: { in: ["starting", "live"] },
             isPrimary: true,
-          }
-        : {}),
-    },
-  });
-
-  if (platformSessionKey && platformSessionKey !== stream.sessionKey) {
-    await prisma.gameWatchStream.updateMany({
-      where: {
-        sessionKey: platformSessionKey,
-        id: {
-          not: updated.id,
-        },
-        provider: "aoe2war",
-        sourceType: {
-          in: ["watcher_native", "browser"],
-        },
-        status: {
-          in: ["starting", "live"],
-        },
-      },
+            id: { not: id },
+          },
+        })
+      : 0;
+    const updatedRows = await tx.gameWatchStream.updateMany({
+      where: { id, status: { in: ["starting", "live"] } },
       data: {
-        isPrimary: false,
+        status: status === "live" ? "live" : "starting",
+        lastHeartbeatAt: new Date(),
+        thumbnailUrl,
+        mediaMimeType,
+        ...(rebound && platformSessionKey
+          ? { sessionKey: platformSessionKey, isPrimary: priorPrimary === 0 }
+          : {}),
       },
     });
+    const updated = await tx.gameWatchStream.findUnique({ where: { id } });
+    if (updatedRows.count !== 1 || !updated ||
+        !["starting", "live"].includes(updated.status)) {
+      return { updated, rebound: false };
+    }
+    if (rebound && platformSessionKey) {
+      if (updated.isPrimary) {
+        await tx.gameWatchStream.updateMany({
+          where: {
+            sessionKey: platformSessionKey, id: { not: updated.id },
+            provider: "aoe2war",
+            status: { in: ["starting", "live"] },
+          },
+          data: { isPrimary: false },
+        });
+      }
+      await tx.gameWatchStream.updateMany({
+        where: {
+          OR: [
+            { sessionKey: platformSessionKey },
+            { sessionKey: replayBackedSessionKey },
+          ],
+          id: { not: updated.id },
+          provider: { not: "aoe2war" },
+          sourceType: "external",
+          chunkCount: 0,
+          status: { in: ["starting", "live"] },
+        },
+        data: { status: "removed", isPrimary: false },
+      });
+    }
+    return { updated, rebound };
+  }, { maxWait: 4_000, timeout: 12_000 });
 
-    await prisma.gameWatchStream.updateMany({
-      where: {
-        OR: [
-          { sessionKey: platformSessionKey },
-          { sessionKey: replayBackedSessionKey },
-        ],
-        id: {
-          not: updated.id,
-        },
-        provider: {
-          not: "aoe2war",
-        },
-        sourceType: "external",
-        chunkCount: 0,
-        status: {
-          in: ["starting", "live"],
-        },
-      },
-      data: {
-        status: "removed",
-        isPrimary: false,
-      },
-    });
-
-    console.info("[streams/heartbeat] rebound watcher stream to platform session", {
-      streamId: updated.id,
-      oldSessionKey: stream.sessionKey,
-      replayBackedSessionKey,
-      platformSessionKey,
+  const updated = result.updated;
+  if (!updated || !isAoE2WarManagedStream(updated, actor.user.id)) {
+    return NextResponse.json(
+      { detail: "Stream not found." },
+      { status: 404, headers: NO_STORE_HEADERS },
+    );
+  }
+  if (!["starting", "live"].includes(updated.status)) {
+    return NextResponse.json(
+      { stream: toWatchStreamPayload(updated) },
+      { status: 409, headers: NO_STORE_HEADERS },
+    );
+  }
+  if (result.rebound) {
+    console.info("[streams/heartbeat] exact account-owned camera promotion", {
+      streamId: updated.id, sessionKey: updated.sessionKey,
     });
   }
 
