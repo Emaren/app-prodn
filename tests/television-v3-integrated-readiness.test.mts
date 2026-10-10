@@ -51,3 +51,14 @@ test("live TV polls only after Play, preserves cameras and aborts stale-session 
   assert.match(tv, /mergeTelevisionStreamEvidence/);
   assert.match(tv, /assignTelevisionCameras/);
 });
+
+test("first-party video admission checks real mounted-volume headroom before changing live streams", () => {
+  const route = readFileSync("app/api/streams/start/route.ts", "utf8");
+  const probeAt = route.indexOf("await getStreamVolumeHeadroom()");
+  const mutationAt = route.indexOf("await prisma.gameWatchStream.updateMany(");
+  assert.ok(probeAt > 0 && mutationAt > probeAt);
+  assert.match(route, /writableVideoBytes < MAX_STREAM_BYTES/);
+  assert.match(route, /STREAM_VIDEO_VOLUME_NOT_READY/);
+  assert.match(route, /status: 503/);
+  assert.match(route, /normal replay watching is unaffected/);
+});
