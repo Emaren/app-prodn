@@ -1274,3 +1274,23 @@ This is an evidence-based rejection of that cache topology, not a relaxation of
 release guarantees. Frozen dependency inputs, candidate-owned Prisma engine
 identity, candidate dependency hashing, cache-free artifact hashing, activation
 certification, rollback evidence, and Wolo protection remain authoritative.
+
+## Watcher 1.6.4 native macOS updater payload release guard
+
+Starting with Watcher 1.6.4, the release promoter requires the distinct
+`AoE2HDBets Watcher-VERSION-arm64-mac.zip` artifact in the immutable
+bundle alongside the human-facing DMG and manual direct ZIP. The promoted
+`latest-mac.yml` must point to that exact native ZIP with matching file
+entry SHA-512 and root SHA-512, checked from the actual on-disk payload.
+The ZIP is transferred and verified before checksum receipts and updater
+manifest publication. Previous v1.6.3 immutable bundle support remains
+unchanged.
+
+The verified Watcher source branch builds the native ZIP in electron-builder
+and checks the metadata hash on a macOS GitHub runner. Its unsigned CI output
+is a packaging proof **only**, not Developer ID signing, notarization, or
+installed client upgrade proof. Publication of 1.6.4 still requires exact
+signed platform release bytes, hashes, protected site/API compatibility,
+governed promotion and physical installation canaries. See issue #464 and
+Watcher PR #32.
+
