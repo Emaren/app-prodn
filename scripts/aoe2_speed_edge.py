@@ -2006,10 +2006,34 @@ def featured_avatar_probe(
         }
 
 
+def require_installed_hero_asset_plan(asset_authority: dict[str, Any]) -> dict[str, Any]:
+    """Preserve the installed hero rule without rediscovering obsolete page markup."""
+    plan = asset_authority.get("asset_plan")
+    if not isinstance(plan, dict):
+        raise EdgeAuditError("installed hero asset authority has no valid plan")
+    source = plan.get("source_path")
+    if not isinstance(source, str) or not re.fullmatch(
+        r"/uploads/managed-assets/background/hero-chain-[A-Za-z0-9_.-]+",
+        source,
+    ):
+        raise EdgeAuditError("installed hero asset authority has invalid source path")
+    widths = plan.get("responsive_widths")
+    if not isinstance(widths, list) or not widths or any(
+        type(width) is not int or width <= 0 for width in widths
+    ):
+        raise EdgeAuditError("installed hero asset authority has invalid widths")
+    if plan.get("quality") != ASSET_QUALITY or plan.get("probe_width") != ASSET_PROBE_WIDTH:
+        raise EdgeAuditError("installed hero asset authority has invalid image parameters")
+    if plan.get("expression") != canonical_asset_expression(source, widths):
+        raise EdgeAuditError("installed hero asset authority expression no longer matches plan")
+    return plan
+
+
 def verify_featured_avatar_cloudflare_apply(
     avatar_plan: dict[str, Any],
     static_plan: dict[str, Any],
     dynamic_plan: dict[str, Any],
+    hero_plan: dict[str, Any],
     *,
     sleep_fn=time.sleep,
 ) -> dict[str, Any]:
@@ -2071,7 +2095,6 @@ def verify_featured_avatar_cloudflare_apply(
         if row["final"].get("cf_cache_status") != "HIT":
             failures.append(f"{route}: dynamic HTML rule lost HIT after featured-avatar apply")
 
-    hero_plan = build_asset_cloudflare_plan()
     hero_attempts: list[dict[str, Any]] = []
     for attempt in range(4):
         hero = asset_probe(str(hero_plan["source_path"]), accept=ASSET_MODERN_ACCEPT)
@@ -2410,13 +2433,14 @@ def main() -> int:
                 )
             static_plan = static_authority.get("plan") or {}
             dynamic_plan = dynamic_authority.get("dynamic_plan") or {}
+            hero_plan = require_installed_hero_asset_plan(asset_authority)
             runtime = require_cloudflare_runtime_exact()
             authority = remote_cloudflare_service("verify")
             authority["runtime_exact"] = runtime["exact"]
             snapshot_result = remote_cloudflare_service("snapshot")
             if args.command == "verify-featured-avatar":
                 verification = verify_featured_avatar_cloudflare_apply(
-                    avatar_plan, static_plan, dynamic_plan
+                    avatar_plan, static_plan, dynamic_plan, hero_plan
                 )
                 receipt_payload = {
                     "schema": 1,
@@ -2476,7 +2500,7 @@ def main() -> int:
             request, plan_sha = stage_featured_avatar_cloudflare_request(avatar_plan)
             applied = remote_cloudflare_service("apply-featured-avatar")
             verification = verify_featured_avatar_cloudflare_apply(
-                avatar_plan, static_plan, dynamic_plan
+                avatar_plan, static_plan, dynamic_plan, hero_plan
             )
             receipt_payload = {
                 "schema": 1,

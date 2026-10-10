@@ -967,9 +967,9 @@ class SpeedEdgeTests(unittest.TestCase):
                 "ok": True,
                 "cf_cache_status": next(hero_statuses),
             }
-            MODULE.build_asset_cloudflare_plan = lambda: {
-                "source_path": "/uploads/managed-assets/background/hero-chain-123-abc.png"
-            }
+            MODULE.build_asset_cloudflare_plan = lambda: self.fail(
+                "featured avatar verification must not discover a live hero"
+            )
             result = MODULE.verify_featured_avatar_cloudflare_apply(
                 {
                     "eligible_exact_paths": [
@@ -979,6 +979,7 @@ class SpeedEdgeTests(unittest.TestCase):
                 },
                 {"eligible_exact_routes": ["/about"]},
                 {"eligible_exact_routes": ["/academy"]},
+                {"source_path": "/uploads/managed-assets/background/hero-chain-123-abc.png"},
                 sleep_fn=lambda _: None,
             )
             self.assertTrue(result["ok"])
@@ -996,6 +997,36 @@ class SpeedEdgeTests(unittest.TestCase):
             MODULE.cache_status_probe = original_cache_probe
             MODULE.asset_probe = original_asset_probe
             MODULE.build_asset_cloudflare_plan = original_build_asset
+
+    def test_installed_hero_asset_plan_is_receipt_bound_and_fails_closed(self):
+        source = "/uploads/managed-assets/background/hero-chain-123-abc.png"
+        widths = [1080, 1920]
+        plan = {
+            "source_path": source,
+            "responsive_widths": widths,
+            "quality": MODULE.ASSET_QUALITY,
+            "probe_width": MODULE.ASSET_PROBE_WIDTH,
+            "expression": MODULE.canonical_asset_expression(source, widths),
+        }
+        self.assertEqual(
+            MODULE.require_installed_hero_asset_plan({"asset_plan": plan}),
+            plan,
+        )
+        for override in (
+            {"quality": 90},
+            {"probe_width": 1080},
+            {"source_path": "/api/secret"},
+            {"source_path": "/uploads/managed-assets/background/hero-chain-other.png"},
+            {"responsive_widths": []},
+            {"responsive_widths": ["1080"]},
+            {"expression": "true"},
+        ):
+            with self.subTest(override=override), self.assertRaises(MODULE.EdgeAuditError):
+                MODULE.require_installed_hero_asset_plan(
+                    {"asset_plan": {**plan, **override}}
+                )
+        with self.assertRaises(MODULE.EdgeAuditError):
+            MODULE.require_installed_hero_asset_plan({})
 
     def test_remote_cloudflare_service_accepts_featured_avatar_commands(self):
         original_run = MODULE.subprocess.run

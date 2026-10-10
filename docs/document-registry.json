@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a7d2611caff9be0f2b14bbef22ea5714b246c3f4be1e82d96d3c207b8e96da73",
+      "sha256": "eaf56681b93705ca4ce05952eb59d4aef07e00c7d867bbacb414a18ce63c33bc",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2048,8 +2048,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/update-preflight-no-dirty-taxonomy-20261010",
-    "commit": "7d3c106731e43568fbbb5412526a2c33164486be"
+    "branch": "feature/speedos-featured-avatar-installed-hero-20261010",
+    "commit": "e237298220218f47933b17e6518e9bac3fe1fc81"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

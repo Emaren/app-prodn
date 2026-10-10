@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/update-preflight-no-dirty-taxonomy-20261010` at `7d3c106731e43568fbbb5412526a2c33164486be`
+Implementation baseline: `feature/speedos-featured-avatar-installed-hero-20261010` at `e237298220218f47933b17e6518e9bac3fe1fc81`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
