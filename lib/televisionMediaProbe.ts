@@ -1,6 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { streamChunkDir } from "./streamStorage";
+import { streamChunkDir } from "./streamStorage.ts";
 
 export type TelevisionMediaDiskStatus =
   | "candidate_bytes_present" | "missing_directory" | "missing_init"
