@@ -34,14 +34,29 @@ async function resolvePlatformSessionKeyForReplay(
   replaySessionKey: string
 ) {
   const replayKey = cleanText(replaySessionKey, 255);
-  if (!replayKey || replayKey.startsWith("platform:")) return null;
+  if (!replayKey || replayKey.startsWith("watcher:") || replayKey.startsWith("free:")) return null;
+  if (replayKey.startsWith("platform:")) {
+    const platformId = replayKey.slice("platform:".length);
+    if (!/^[a-zA-Z0-9_.:-]{1,128}$/.test(platformId)) return null;
+    const rows = await prisma.$queryRaw<Array<{ session_key: string | null }>>`
+      select 'platform:' || (gs.key_events::jsonb ->> 'platform_match_id') as session_key
+      from game_stats gs
+      where gs.user_uid = ${userUid}
+        and gs.key_events is not null
+        and (gs.key_events::jsonb ->> 'platform_match_id') = ${platformId}
+      order by gs.created_at desc, gs.id desc
+      limit 1
+    `;
+    return cleanText(rows[0]?.session_key, 255) || null;
+  }
+  if (/^(?:[a-z]:[\\/]|[/\\]{2}|[/]|file:\/\/)/i.test(replayKey)) return null;
 
   const rows = await prisma.$queryRaw<Array<{ session_key: string | null }>>`
     select
       case
         when gs.key_events::jsonb ? 'platform_match_id'
         then 'platform:' || (gs.key_events::jsonb ->> 'platform_match_id')
-        else null
+        else ${replayKey}
       end as session_key
     from game_stats gs
     where gs.user_uid = ${userUid}
