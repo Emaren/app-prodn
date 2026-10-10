@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/television-v1-ingest-cost-control-20261009` at `9ef7cb3bed7421627e5666519a1019ab642e0d8e`
+Implementation baseline: `feature/television-v3-integrated-hardening-20261010` at `7a6f0952bfdf49848028a1eda5f509d75218ab3b`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
