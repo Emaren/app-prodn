@@ -441,3 +441,18 @@ to the intended spacious mounted volume, not the small VPS root partition.
 If media bytes exhaust any quota or the volume reserve, only video ends;
 replay monitoring, betting eligibility, wallet balances and game result
 authority remain unchanged.
+
+## Camera selector state isolation (development)
+
+Camera tiles can display already-public, server-proven Watcher feed metadata
+before the spectator presses Play; no WebM is downloaded until explicit
+viewer activation. Once a battle is playing, exact-session polling augments
+only that selected game's canonical stream aliases. Switching to another
+battle drops the prior game's poll results from its available camera list
+immediately, without waiting for a React effect. The bottom manual camera
+selector uses this same filtered list instead of an incomplete exact-key
+stream array. This prevents another game's feed from temporarily appearing
+as the selected game and preserves late-arriving alias-matched player POVs.
+
+This is a frontend ownership/read-model fix, not independent gameplay,
+video decode, replay result or spectator voting authority.
