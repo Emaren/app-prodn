@@ -91,7 +91,7 @@ export async function GET(request: NextRequest) {
     complete:rows.length===totalCount && rows.every(row=>row.bytes !== null),
     limits:{perStreamBytes:MAX_STREAM_BYTES,perStreamChunks:MAX_STREAM_CHUNKS},
     recordingBudget:estimateTelevisionRecordingBudget(),
-    volume: volume ?? { freeBytes:null, reserveBytes:STREAM_MIN_FREE_BYTES, writableVideoBytes:null },
+    volume: volume ?? { freeBytes:null, reserveBytes:STREAM_MIN_FREE_BYTES, writableVideoBytes:null, mountedSeparately:null },
     note:"Sizes are measured for the newest 60 first-party streams only. Older/orphaned files are not in this subtotal.",
   },{headers:NO_STORE});
 }
