@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ad2cd2ad11753205fbfd24d0da7053eee788d3c4d6c3c64ea474d14c9608b60c",
+      "sha256": "28f4bcf63099ce128225de9fc3ce2a849ceff32dd8c9af94f5a9b435fd953480",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2048,8 +2048,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/watcher-1.6.4-native-mac-release-promotion-20261010",
-    "commit": "18dee6e1f12ac34ba4705328abce8880ee7815f6"
+    "branch": "feature/watcher-164-stage-native-zip-inventory-20261010",
+    "commit": "b3e721ff5e2504b8fdcc8c2fb1d70fbb58e7daf2"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
