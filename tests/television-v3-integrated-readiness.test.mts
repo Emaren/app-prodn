@@ -58,6 +58,9 @@ test("first-party video admission checks real mounted-volume headroom before cha
   const mutationAt = route.indexOf("await prisma.gameWatchStream.updateMany(");
   assert.ok(probeAt > 0 && mutationAt > probeAt);
   assert.match(route, /writableVideoBytes < MAX_STREAM_BYTES/);
+  assert.match(route, /process.env.NODE_ENV === "production" && !mountedSeparately/);
+  assert.match(readFileSync("lib/streamStorage.ts", "utf8"), /captureDir.dev !== hostRoot.dev/);
+  assert.match(readFileSync("components/admin/VideoVaultDashboard.tsx", "utf8"), /Verified separate media volume/);
   assert.match(route, /STREAM_VIDEO_VOLUME_NOT_READY/);
   assert.match(route, /status: 503/);
   assert.match(route, /normal replay watching is unaffected/);
