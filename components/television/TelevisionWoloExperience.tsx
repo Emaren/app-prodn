@@ -421,7 +421,7 @@ export default function TelevisionWoloExperience({
               </div>
             ) : null}
             <div className="flex flex-wrap gap-2">
-              {playing && streams.length > 0 ? (
+              {playing && availableStreams.length > 0 ? (
                 streams.map((stream) => (
                   <button
                     key={stream.id}
