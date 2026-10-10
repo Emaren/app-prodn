@@ -3,6 +3,7 @@ import { expireRetainedDemoIfNeeded } from "@/lib/retainedStreamDemo";
 import { AOE2WAR_STREAM_SOURCE_TYPES } from "@/lib/streamIdentity";
 import { removeStreamChunks } from "@/lib/streamStorage";
 import { effectiveStreamRetentionMs, postgameMediaProtected } from "@/lib/streamPostgameRetention";
+import { lockVideoChunkWriter } from "@/lib/streamAdvisoryLocks";
 
 const CLEANUP_INTERVAL_MS = 5 * 60 * 1000;
 const STALE_STREAM_END_MS = 3 * 60 * 1000;
@@ -47,21 +48,36 @@ export async function cleanupBrowserStreams(prisma: PrismaClient) {
       ],
     },
     select: { id: true },
+    take: 100,
   });
 
-  if (staleStreams.length > 0) {
-    await prisma.gameWatchStream.updateMany({
-      where: {
-        id: {
-          in: staleStreams.map((stream) => stream.id),
-        },
-      },
-      data: {
-        status: "ended",
-        endedAt: now,
-        isPrimary: false,
-      },
-    });
+  // A stale list is only a candidate snapshot: a heartbeat or chunk may
+  // arrive after it was read. Recheck the stale predicate under the same
+  // cross-worker video writer lock used by ingest and explicit Stop.
+  // Bound cleanup I/O and lock contention to batches of eight.
+  let endedStaleCount = 0;
+  for (let offset = 0; offset < staleStreams.length; offset += 8) {
+    const batch = staleStreams.slice(offset, offset + 8);
+    const results = await Promise.allSettled(batch.map(stream =>
+      prisma.$transaction(async tx => {
+        await lockVideoChunkWriter(tx, stream.id);
+        const changed = await tx.gameWatchStream.updateMany({
+          where: {
+            id: stream.id,
+            status: { in: ["starting", "live"] },
+            OR: [
+              { lastHeartbeatAt: { lt: staleBefore } },
+              { lastHeartbeatAt: null, updatedAt: { lt: staleBefore } },
+            ],
+          },
+          data: { status: "ended", endedAt: now, isPrimary: false },
+        });
+        return changed.count;
+      }, { maxWait: 4_000, timeout: 12_000 }),
+    ));
+    endedStaleCount += results.reduce(
+      (count, result) => count + (result.status === "fulfilled" ? result.value : 0), 0,
+    );
   }
 
   const staleExternalPlaceholders = await prisma.gameWatchStream.findMany({
@@ -119,7 +135,7 @@ export async function cleanupBrowserStreams(prisma: PrismaClient) {
       error,
     });
     return {
-      ended: staleStreams.length,
+      ended: endedStaleCount,
       endedExternalPlaceholders: staleExternalPlaceholders.length,
       pruned: 0,
       pruneFailures: 0,
@@ -170,7 +186,7 @@ export async function cleanupBrowserStreams(prisma: PrismaClient) {
   }
 
   return {
-    ended: staleStreams.length,
+    ended: endedStaleCount,
     endedExternalPlaceholders: staleExternalPlaceholders.length,
     pruned,
     pruneFailures,
