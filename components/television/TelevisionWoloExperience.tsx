@@ -609,7 +609,15 @@ function ChaosVoteLab({
   pick: string | null;
   onPick: (name: string | null) => void;
 }) {
-  const candidates = battle?.playerNames.slice(0, 4) ?? [];
+  // Non-binding presentation only: every participant deserves a slot,
+  // including 4v4 and uneven 8v1 matches. Duplicate display names are
+  // ambiguous until a signed voter / stable-roster-identity ledger exists.
+  const candidates = battle?.playerNames.slice(0, 16) ?? [];
+  const counts = new Map<string, number>();
+  for (const name of candidates) {
+    const identity = name.trim().toLocaleLowerCase();
+    counts.set(identity, (counts.get(identity) ?? 0) + 1);
+  }
 
   return (
     <aside className="rounded-[2.2rem] border border-violet-200/14 bg-[radial-gradient(circle_at_50%_0%,rgba(168,85,247,0.18),transparent_35%),linear-gradient(180deg,rgba(20,8,32,0.95),rgba(5,6,16,0.98))] p-5 shadow-[0_28px_100px_rgba(0,0,0,0.35)]">
@@ -658,10 +666,11 @@ function ChaosVoteLab({
         <div className="text-xs font-semibold text-slate-300">Nominate from the selected battle</div>
         {candidates.length ? (
           <div className="mt-3 grid gap-2">
-            {candidates.map((name) => (
+            {candidates.map((name, index) => (
               <button
-                key={name}
+                key={name + ":" + index}
                 type="button"
+                disabled={(counts.get(name.trim().toLocaleLowerCase()) ?? 0) > 1}
                 onClick={() => onPick(pick === name ? null : name)}
                 className={
                   "flex items-center justify-between rounded-xl border px-3 py-3 text-left text-sm transition " +
@@ -678,6 +687,11 @@ function ChaosVoteLab({
         ) : (
           <div className="mt-3 text-sm text-slate-500">Select a battle with named players.</div>
         )}
+        {candidates.some(name => (counts.get(name.trim().toLocaleLowerCase()) ?? 0) > 1) ? (
+          <p className="mt-3 text-xs text-amber-200">
+            Duplicate display names cannot be nominated safely without verified player identities.
+          </p>
+        ) : null}
       </div>
     </aside>
   );
