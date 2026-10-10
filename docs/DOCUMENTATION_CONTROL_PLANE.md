@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/watcher-1.6.4-native-mac-release-promotion-20261010` at `da1ded989cc4275e43301ed4d6c0ddaed4ec124b`
+Implementation baseline: `feature/watcher-1.6.4-native-mac-release-promotion-20261010` at `0bc4a9fd92901f15e18a923ea69f8d86c7d0e0bf`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
