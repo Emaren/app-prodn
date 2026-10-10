@@ -54,9 +54,10 @@ test("live TV polls only after Play, preserves cameras and aborts stale-session 
 
 test("first-party video admission checks real mounted-volume headroom before changing live streams", () => {
   const route = readFileSync("app/api/streams/start/route.ts", "utf8");
-  const probeAt = route.indexOf("await getStreamVolumeHeadroom()");
-  const mutationAt = route.indexOf("await prisma.gameWatchStream.updateMany(");
-  assert.ok(probeAt > 0 && mutationAt > probeAt);
+  const probeAt = route.indexOf("const volume = await getStreamVolumeHeadroom()");
+  const transactionAt = route.indexOf("await prisma.$transaction(async (tx)");
+  const mutationAt = route.indexOf("await tx.gameWatchStream.updateMany(", transactionAt);
+  assert.ok(probeAt > 0 && transactionAt > probeAt && mutationAt > transactionAt);
   assert.match(route, /writableVideoBytes < MAX_STREAM_BYTES/);
   assert.match(route, /process.env.NODE_ENV === "production" && !mountedSeparately/);
   assert.match(readFileSync("lib/streamStorage.ts", "utf8"), /captureDir.dev !== hostRoot.dev/);
