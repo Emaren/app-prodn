@@ -162,7 +162,7 @@ class UpdateCommandTests(unittest.TestCase):
                     }
                 ],
             }
-            original = json.dumps(taxonomy, indent=2) + "\\n"
+            original = json.dumps(taxonomy, indent=2) + "\n"
             taxonomy_path.write_text(original, encoding="utf-8")
             watcher = root / "watcher"
             (watcher / "docs").mkdir(parents=True)
