@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/television-v1-camera-switch-isolation-20261009` at `a062f657b153c5adf3734ce465250c6718b0e956`
+Implementation baseline: `feature/television-v1-chaos-ballots-20261009` at `e8f511a834ea96d542b4de2b30035f6b1c78df62`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
