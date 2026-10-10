@@ -613,6 +613,7 @@ function ChaosVoteLab({
   // including 4v4 and uneven 8v1 matches. Duplicate display names are
   // ambiguous until a signed voter / stable-roster-identity ledger exists.
   const candidates = battle?.playerNames.slice(0, 16) ?? [];
+  const postgame = Boolean(battle && battle.source !== "live");
   const counts = new Map<string, number>();
   for (const name of candidates) {
     const identity = name.trim().toLocaleLowerCase();
@@ -670,7 +671,7 @@ function ChaosVoteLab({
               <button
                 key={name + ":" + index}
                 type="button"
-                disabled={(counts.get(name.trim().toLocaleLowerCase()) ?? 0) > 1}
+                disabled={!postgame || (counts.get(name.trim().toLocaleLowerCase()) ?? 0) > 1}
                 onClick={() => onPick(pick === name ? null : name)}
                 className={
                   "flex items-center justify-between rounded-xl border px-3 py-3 text-left text-sm transition " +
@@ -687,6 +688,11 @@ function ChaosVoteLab({
         ) : (
           <div className="mt-3 text-sm text-slate-500">Select a battle with named players.</div>
         )}
+        {!postgame && candidates.length ? (
+          <p className="mt-3 text-xs text-amber-200">
+            Spectator nominations unlock after this battle finishes.
+          </p>
+        ) : null}
         {candidates.some(name => (counts.get(name.trim().toLocaleLowerCase()) ?? 0) > 1) ? (
           <p className="mt-3 text-xs text-amber-200">
             Duplicate display names cannot be nominated safely without verified player identities.
