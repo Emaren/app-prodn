@@ -34,3 +34,15 @@ test("native and browser chunk API still bounds actual body after optional lengt
   assert.match(route,/resolveStreamRequestActor/);
   assert.match(route,/isAoE2WarManagedStream/);
 });
+
+test("oversize and unsupported codec are terminal video-only rejections",()=>{
+  const route=readFileSync("app/api/streams/[streamId]/chunks/route.ts","utf8");
+  assert.match(route,/code: "STREAM_CHUNK_TOO_LARGE", terminal: true/);
+  assert.match(route,/code: "STREAM_FORMAT_UNSUPPORTED", terminal: true/);
+  assert.match(route,/status: 415/);
+  assert.match(route,/status: 413/);
+  assert.match(route,/await endRejectedVideo\(prisma, id\)/);
+  assert.match(route,/failed to mark refused video ended/);
+  assert.match(route,/resolveStreamRequestActor/);
+  assert.doesNotMatch(route,/transferWolo|betWager.update|winnerProof.*update/);
+});
