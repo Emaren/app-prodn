@@ -11,7 +11,11 @@ const STREAM_STORAGE_ROOT =
     ? path.join(process.env.AOE2_VIDEO_CAPTURE_DIR, "live")
     : path.join(process.cwd(), "storage", "live-streams"));
 
-const DEFAULT_MAX_STREAM_BYTES = 2 * 1024 * 1024 * 1024;
+// 3 GiB protects a two-hour Sharp 720p / 24 fps capture at the current
+// 2.6 Mbps encoder target with the planner's 12% overhead allowance.
+// Admission still checks the real media filesystem's 6 GiB floor per chunk;
+// a higher stream cap never reserves or guarantees volume capacity.
+const DEFAULT_MAX_STREAM_BYTES = 3 * 1024 * 1024 * 1024;
 const DEFAULT_MAX_STREAM_CHUNKS = 12_000;
 
 function boundedPositiveInteger(
@@ -30,7 +34,7 @@ export const MAX_STREAM_BYTES = boundedPositiveInteger(
   process.env.AOE2_STREAM_MAX_BYTES,
   DEFAULT_MAX_STREAM_BYTES,
   8 * 1024 * 1024,
-  2 * 1024 * 1024 * 1024,
+  4 * 1024 * 1024 * 1024,
 );
 
 export const MAX_STREAM_CHUNKS = boundedPositiveInteger(
