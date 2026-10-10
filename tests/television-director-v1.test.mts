@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { assignTelevisionCameras, mergeTelevisionStreamEvidence, type TelevisionStage } from "../lib/televisionDirection.ts";
+import { assignTelevisionCameras, mergeTelevisionStreamEvidence, televisionCameraStatus, type TelevisionStage } from "../lib/televisionDirection.ts";
 import type { WatchStreamPayload } from "../lib/watchStreams.ts";
 
 const stage: TelevisionStage = {confirmedTeams:true,format:"2v1",teams:[
@@ -98,4 +98,16 @@ test("live-session stream projector links account owner identity server-side",()
   assert.match(client,/mergeTelevisionStreamEvidence/);
   assert.match(client,/selectedBattle\.initialStreams/);
   assert.doesNotMatch(client,/fuzzyMatch|guessByPlayerName/);
+});
+
+test("camera statuses distinguish actual frames from startup, ending and stale transport",()=>{
+  const base={...video(44,"76561190000001","Watcher"),status:"live",chunkCount:20,
+    latestChunkSeq:19,lastHeartbeatAt:"2026-10-09T18:00:00Z"};
+  const now=Date.parse("2026-10-09T18:00:05Z");
+  assert.equal(televisionCameraStatus(base,now),"VIDEO LIVE");
+  assert.equal(televisionCameraStatus({...base,chunkCount:0},now),"CONNECTING");
+  assert.equal(televisionCameraStatus({...base,lastHeartbeatAt:"2026-10-09T17:40:00Z"},now),"SIGNAL STALE");
+  assert.equal(televisionCameraStatus({...base,status:"ended"},now),"RECORDING ENDED");
+  assert.equal(televisionCameraStatus({...base,status:"ended",chunkCount:0},now),"NO VIDEO");
+  assert.equal(televisionCameraStatus(null,now),"NO CAMERA");
 });
