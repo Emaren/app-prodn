@@ -363,3 +363,24 @@ modified or removed by either case.
 This is *per request*, not a complete VPS-wide CPU/egress concurrency
 budget. Multi-camera load testing and site-level video admission remain
 separate certification requirements.
+
+## Battle-cohort retention preview (development, not automatic deletion)
+
+The authenticated Broadcast Readiness endpoint includes a read-only
+last-two-completed-battle camera inventory derived from the existing
+canonical replay session grouping. The server counts only videos already
+attached to that battle and account-linked to an exact roster Steam ID.
+No name, map, filename or timestamp similarity matching is introduced.
+
+Each of up to two newest distinct completed battles with authenticated ended Watcher footage shows expected players,
+recorded POVs, exact stream IDs, missing perspectives and match/team proof.
+A complete_candidate means the projected battle has all expected POV records;
+it does NOT establish actual on-disk video bytes, playback, or stable retention.
+Active, empty, anonymous or external streams do not satisfy completeness.
+
+Retention automation is disabled. Existing six-hour ended-video cleanup, the
+independently protected single-demo slot, and guarded admin deletion remain
+unchanged. Actual last-two-complete-games preservation still requires a durable
+canonical battle identity on every camera, on-disk byte/sequence proof,
+a total-volume budget, transactional cohort lifecycle, and restart canaries.
+Never discard one player's viewpoint while claiming to have kept a game.

@@ -6,6 +6,7 @@ import {
   type TelevisionStage,
 } from "@/lib/televisionDirection";
 import type { WatchStreamPayload } from "@/lib/watchStreams";
+import { previewLastTwoTelevisionBattles } from "@/lib/televisionRetentionPlan";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -82,6 +83,7 @@ export async function GET(request: NextRequest) {
     activeBattleCount: snapshot.activeSessions.length,
     examinedBattles: battles.length,
     battles,
+    retentionPreview: previewLastTwoTelevisionBattles(snapshot.recentlyCompletedSessions),
     notes: [
       "Read-only canonical replay identities; unverified teams and cameras stay explicit.",
       "Missing POV is not a Watcher failure unless a stream-level diagnostic proves it.",
