@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Crown,
   ExternalLink,
@@ -95,6 +96,7 @@ export default function TelevisionWoloExperience({
   archiveTotal,
   chaos,
 }: Props) {
+  const router = useRouter();
   const initialBattle =
     battles.find((battle) => battle.source === "live") ?? battles[0] ?? null;
   const [selectedKey, setSelectedKey] = useState(initialBattle?.sessionKey ?? "");
@@ -103,6 +105,7 @@ export default function TelevisionWoloExperience({
   const [activeStreamId, setActiveStreamId] = useState<number | null>(null);
   const [loadingStreams, setLoadingStreams] = useState(false);
   const [streamError, setStreamError] = useState<string | null>(null);
+  const [lastFeedCheck, setLastFeedCheck] = useState<string | null>(null);
   const [browserHost, setBrowserHost] = useState("");
   const [chaosPick, setChaosPick] = useState<string | null>(null);
   const selectedBattle = useMemo(
@@ -123,11 +126,21 @@ export default function TelevisionWoloExperience({
     setBrowserHost(window.location.hostname);
   }, []);
 
+  // Refresh battle discovery only while this page is visible. This does not
+  // mount media or interrupt a selected perspective during an ordinary refresh.
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (!document.hidden) router.refresh();
+    }, 30_000);
+    return () => window.clearInterval(timer);
+  }, [router]);
+
   useEffect(() => {
     setPlayingKey(null);
     setStreams([]);
     setActiveStreamId(null);
     setStreamError(null);
+    setLastFeedCheck(null);
     setChaosPick(null);
   }, [selectedKey]);
 
@@ -145,11 +158,14 @@ export default function TelevisionWoloExperience({
         error?: string;
       };
       if (!response.ok) throw new Error(payload.error || "Could not load television feeds.");
-      const nextStreams = payload.streams ?? [];
+      const nextStreams = Array.isArray(payload.streams) ? payload.streams : [];
       setStreams(nextStreams);
-      setActiveStreamId(
-        nextStreams.find((stream) => stream.isPrimary)?.id ?? nextStreams[0]?.id ?? null,
+      setActiveStreamId((current) =>
+        nextStreams.some((stream) => stream.id === current)
+          ? current
+          : nextStreams.find((stream) => stream.isPrimary)?.id ?? nextStreams[0]?.id ?? null,
       );
+      setLastFeedCheck(new Date().toISOString());
       setPlayingKey(selectedBattle.sessionKey);
     } catch (error) {
       setStreamError(error instanceof Error ? error.message : "Could not load television feeds.");
@@ -158,6 +174,53 @@ export default function TelevisionWoloExperience({
       setLoadingStreams(false);
     }
   }
+
+  // A broadcaster can join after the viewer presses Play. Recheck the feed
+  // directory without remounting a healthy player or starting media by polling.
+  useEffect(() => {
+    if (!playingKey || playingKey !== selectedKey) return;
+    let disposed = false;
+    let inFlight = false;
+    const controller = new AbortController();
+    const poll = async () => {
+      if (document.hidden || inFlight) return;
+      inFlight = true;
+      try {
+        const response = await fetch(
+          "/api/watch-streams?sessionKey=" + encodeURIComponent(playingKey),
+          { cache: "no-store", signal: controller.signal },
+        );
+        const payload = (await response.json().catch(() => ({}))) as {
+          streams?: WatchStreamPayload[];
+          error?: string;
+        };
+        if (!response.ok) throw new Error(payload.error || "Feed directory unavailable.");
+        if (disposed) return;
+        const nextStreams = Array.isArray(payload.streams) ? payload.streams : [];
+        setStreams(nextStreams);
+        setActiveStreamId((current) =>
+          nextStreams.some((stream) => stream.id === current)
+            ? current
+            : nextStreams.find((stream) => stream.isPrimary)?.id ?? nextStreams[0]?.id ?? null,
+        );
+        setLastFeedCheck(new Date().toISOString());
+        setStreamError(null);
+      } catch (error) {
+        if (!disposed && !(error instanceof Error && error.name === "AbortError")) {
+          // Preserve the last known good feed rather than blanking active media.
+          setStreamError("Feed directory unavailable. Retrying; existing playback is preserved.");
+        }
+      } finally {
+        inFlight = false;
+      }
+    };
+    const timer = window.setInterval(() => { void poll(); }, 15_000);
+    return () => {
+      disposed = true;
+      controller.abort();
+      window.clearInterval(timer);
+    };
+  }, [playingKey, selectedKey]);
 
   const liveBattles = battles.filter((battle) => battle.source === "live");
   const replayBattles = battles.filter((battle) => battle.source !== "live");
@@ -238,10 +301,11 @@ export default function TelevisionWoloExperience({
             ) : (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-8 text-center">
                 <MonitorPlay className="h-12 w-12 text-slate-500" />
-                <div className="text-2xl font-semibold">No registered feed on this battle</div>
+                <div className="text-2xl font-semibold">{streamError ? "Feed directory temporarily unavailable" : "No registered feed on this battle"}</div>
                 <p className="max-w-xl text-sm leading-6 text-slate-400">
-                  The canonical battle still exists. Open the full Watch theatre for retained
-                  media, hosted loops, and any archive fallback attached outside the stream registry.
+                  {streamError
+                    ? "The directory is retrying automatically. The canonical battle still exists; Watch may have a separate replay or fallback."
+                    : "The canonical battle still exists. Open the full Watch theatre for retained media, hosted loops, and any archive fallback attached outside the stream registry."}
                 </p>
                 <Link
                   href={selectedBattle.watchHref}
@@ -259,6 +323,21 @@ export default function TelevisionWoloExperience({
                 {streamError}
               </div>
             ) : null}
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
+              <span aria-live="polite">
+                {playing
+                  ? lastFeedCheck
+                    ? "Feed directory checked · updates every 15 seconds"
+                    : "Checking feeds…"
+                  : "Video and feed discovery are off until Play"}
+              </span>
+              {playing ? (
+                <button type="button" onClick={() => void playBattle()} disabled={loadingStreams}
+                  className="rounded-full border border-cyan-200/20 px-3 py-1.5 text-cyan-100 hover:border-cyan-200/40 disabled:opacity-50">
+                  {loadingStreams ? "Checking…" : "Check feeds now"}
+                </button>
+              ) : null}
+            </div>
             <div className="flex flex-wrap gap-2">
               {playing && streams.length > 0 ? (
                 streams.map((stream) => (
@@ -282,6 +361,22 @@ export default function TelevisionWoloExperience({
                 </span>
               )}
             </div>
+            {playing ? (
+              <details className="mt-4 rounded-xl border border-white/10 bg-white/[0.025] px-4 py-3 text-xs text-slate-300">
+                <summary className="cursor-pointer font-semibold text-cyan-100">Video diagnostics</summary>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  <div>Directory: {streamError ? "Retrying after error" : lastFeedCheck ? "Connected" : "Checking"}</div>
+                  <div>Registered feeds: {streams.length}</div>
+                  <div>Selected feed: {activeStream ? streamRoleLabel(activeStream) : "Awaiting broadcaster"}</div>
+                  <div>Provider: {activeStream?.provider || "Unavailable"}</div>
+                  <div>Stream state: {activeStream?.status || "Not registered"}</div>
+                  <div>Media chunks: {activeStream?.chunkCount ?? "Unknown"}</div>
+                  <div>Last source heartbeat: {activeStream?.lastHeartbeatAt ? relativeLabel(activeStream.lastHeartbeatAt) : "Not reported"}</div>
+                  <div>Media type: {activeStream?.mediaMimeType || "Not reported"}</div>
+                </div>
+                <p className="mt-3 text-slate-500">These are public stream-directory observations, not proof that video is decoding smoothly on this device. No private Watcher keys, hardware telemetry, or player credentials are shown.</p>
+              </details>
+            ) : null}
           </div>
         </div>
 
@@ -447,7 +542,12 @@ function ChaosVoteLab({
   pick: string | null;
   onPick: (name: string | null) => void;
 }) {
-  const candidates = battle?.playerNames.slice(0, 4) ?? [];
+  // A 4v4 can nominate any of eight participants. Keep repeated names
+  // distinct in this non-binding lab; official voting needs stable identities.
+  const candidates = (battle?.playerNames ?? []).map((name, index) => ({
+    key: `${index}:${name}`,
+    name,
+  }));
 
   return (
     <aside className="rounded-[2.2rem] border border-violet-200/14 bg-[radial-gradient(circle_at_50%_0%,rgba(168,85,247,0.18),transparent_35%),linear-gradient(180deg,rgba(20,8,32,0.95),rgba(5,6,16,0.98))] p-5 shadow-[0_28px_100px_rgba(0,0,0,0.35)]">
@@ -496,20 +596,20 @@ function ChaosVoteLab({
         <div className="text-xs font-semibold text-slate-300">Nominate from the selected battle</div>
         {candidates.length ? (
           <div className="mt-3 grid gap-2">
-            {candidates.map((name) => (
+            {candidates.map((candidate) => (
               <button
-                key={name}
+                key={candidate.key}
                 type="button"
-                onClick={() => onPick(pick === name ? null : name)}
+                onClick={() => onPick(pick === candidate.key ? null : candidate.key)}
                 className={
                   "flex items-center justify-between rounded-xl border px-3 py-3 text-left text-sm transition " +
-                  (pick === name
+                  (pick === candidate.key
                     ? "border-violet-200/35 bg-violet-300/12 text-violet-50"
                     : "border-white/8 bg-white/[0.025] text-slate-300 hover:border-white/18")
                 }
               >
-                <span>{name}</span>
-                {pick === name ? <Sparkles className="h-4 w-4" /> : <Radio className="h-4 w-4 opacity-45" />}
+                <span>{candidate.name}</span>
+                {pick === candidate.key ? <Sparkles className="h-4 w-4" /> : <Radio className="h-4 w-4 opacity-45" />}
               </button>
             ))}
           </div>

@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/library-historical-provenance-20261009` at `62842124d82c73e8cea9f6c7e6633a706eb99023`
+Implementation baseline: `feature/television-v3-test-readiness-20261010` at `80bc7598bd13dacd32c3c8e75b644e8d1092efee`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **89**
+- Authoritative repository documents: **90**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -38,11 +38,11 @@ This page is generated from the validated front matter in this repository. Cross
 - `historical`: 12
 - `reference`: 54
 - `runbook`: 16
-- `working`: 1
+- `working`: 2
 
 ### Lifecycle
 
-- `active`: 73
+- `active`: 74
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -123,6 +123,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Site Theme Campaign](SITE_THEME_CAMPAIGN.md) | `reference` | `active` | `presentation-policy` |
 | [Staking Treasury Payouts](STAKING_TREASURY_PAYOUTS.md) | `runbook` | `active` | `operational-procedure` |
 | [AoE2WAR Storage OS](STORAGE_OS.md) | `reference` | `active` | `storage-operating-contract` |
+| [Television WOLO V3 Field Readiness](TELEVISION_V3_TEST_READINESS.md) | `working` | `active` | `engineering-test-plan` |
 | [Television WOLO](TELEVISION_WOLO.md) | `reference` | `active` | `product-contract` |
 | [Universal Translator](UNIVERSAL_TRANSLATOR.md) | `reference` | `active` | `product-contract` |
 | [AoE2WAR WarGraph V1](WARGRAPH_V1.md) | `reference` | `active` | `architecture-contract` |

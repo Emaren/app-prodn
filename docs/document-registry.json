@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "bf3ba417e6e59a42d088a01e429b20fff180df97146e60275ebef1af7c36b58b",
+      "sha256": "49ee465bcf44e3c7abb8f8fb04a4f94e612a2a0442f4aae042d4cca120a570f2",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1690,6 +1690,29 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "engineering-test-plan",
+      "id": "aoe2war.app-prodn.television-v3-test-readiness",
+      "owner": "aoe2war-web",
+      "path": "docs/TELEVISION_V3_TEST_READINESS.md",
+      "review_interval_days": 14,
+      "reviewed_at": "2026-10-10",
+      "sensitivity": "internal",
+      "sha256": "8b5a306ac04d4bad4857033661d5b8398e81c5c18e75c94195379177c8cad22e",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "aoe2-watcher"
+      ],
+      "title": "Television WOLO V3 Field Readiness",
+      "type": "working"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "product-contract",
       "id": "aoe2war.app-prodn.docs-television-wolo",
       "owner": "aoe2war-web",
@@ -2048,8 +2071,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/library-historical-provenance-20261009",
-    "commit": "62842124d82c73e8cea9f6c7e6633a706eb99023"
+    "branch": "feature/television-v3-test-readiness-20261010",
+    "commit": "80bc7598bd13dacd32c3c8e75b644e8d1092efee"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
