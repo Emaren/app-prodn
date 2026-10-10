@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/television-v3-integrated-hardening-20261010` at `c2316dbb76e6b929ccf5334b8bbe7659057dc8cb`
+Implementation baseline: `feature/television-v3-integrated-hardening-20261010` at `bc16267dc15ece5d38b4a41d193de41e9cac27e0`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
