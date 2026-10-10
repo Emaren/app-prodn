@@ -404,3 +404,28 @@ restoration, file deletion or remote workstation inspection occurs.
 The existing storage guards, automatic pruning and one-demo slot remain
 unchanged. A durable complete-game media archive still requires a
 governed per-battle storage model and integrated long-match playback canaries.
+
+## Two-player long-game storage capacity preflight (operator estimate)
+
+The administrator's Video Vault now forecasts a **two-player, 120-minute**
+broadcast using an explicitly illustrative 1.4 Mbps per camera plus a
+15% recording allowance. It compares required per-camera storage with
+the live configured `AOE2_STREAM_MAX_BYTES`, and both-camera storage
+against the actual available bytes above the `AOE2_STREAM_MIN_FREE_BYTES`
+mounted-volume reserve. Unknown capacity fails the readiness estimate.
+
+This deliberately catches a likely first-canary failure: the historic
+512 MiB **per-stream** default may terminate a 120-minute recording long
+before the match finishes, even with a large mounted volume. The current
+configured cap is displayed alongside a conservative estimated duration.
+The forecast is a *plan*, not live quality proof: it does not automatically
+raise limits, write environment configuration, extend retention, measure
+encoder bitrate or authorize concurrent uploads. A green estimate must
+still be paired with proof of the effective media volume, WebM bitrate,
+actual Windows Watcher capture and two browser viewers.
+
+The server's existing quota and free-space reserve remain binding.
+Before any pilot, an operator should use the preflight to review the
+2 GiB upper supported per-stream cap, 6 GiB volume reserve, multi-camera
+footprint and six-hour pruning behavior. No proposed default change is
+automatically deployed.
