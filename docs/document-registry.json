@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9cb4a4e82eae1f2a3be95d0a85b3ef4bcf5058d9d19eea4a60e50c52256b5b49",
+      "sha256": "d04c20f6f492af09ee609807a17afc6f75986e15c98f7e64b1cb6292b952fad5",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2049,7 +2049,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/television-v1-proof-backed-camera-aliases-20261009",
-    "commit": "893e66eebfd46492e44af3a7b22d1dd020e198aa"
+    "commit": "b9d83b062e10f328985ddf668166e210f56a2d45"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
