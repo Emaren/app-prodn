@@ -82,3 +82,35 @@ export function assignTelevisionCameras(stage: TelevisionStage, streams: WatchSt
   }
   return { cameras, unassigned: eligible.filter(stream => !used.has(stream.id)) };
 }
+
+
+/**
+ * Merge canonical-snapshot-aligned camera streams with exact-session API
+ * refreshes. Identity comes only from server projections, never a client
+ * label guess. Prefer newer state while retaining account-linked POV proof.
+ */
+export function mergeTelevisionStreamEvidence(
+  trustedSnapshotStreams: WatchStreamPayload[],
+  exactSessionStreams: WatchStreamPayload[],
+): WatchStreamPayload[] {
+  const byId = new Map<number, WatchStreamPayload>();
+  for (const stream of [...trustedSnapshotStreams, ...exactSessionStreams]) {
+    if (!Number.isSafeInteger(stream.id) || stream.id <= 0 || !stream.sessionKey) continue;
+    const old = byId.get(stream.id);
+    if (!old) { byId.set(stream.id, stream); continue; }
+    const oldTime = new Date(old.updatedAt).getTime();
+    const newTime = new Date(stream.updatedAt).getTime();
+    const winner = (Number.isFinite(newTime) && newTime >= oldTime) ? stream : old;
+    byId.set(stream.id, {
+      ...winner,
+      // These values are injected by the SERVER in both endpoints. This is
+      // display ownership only, not terminal replay/winner authority.
+      ownerSteamId: winner.ownerSteamId || old.ownerSteamId || stream.ownerSteamId || null,
+    });
+  }
+  return [...byId.values()].sort((left, right) => {
+    const a = new Date(left.updatedAt).getTime() || 0;
+    const b = new Date(right.updatedAt).getTime() || 0;
+    return b - a || right.id - left.id;
+  }).slice(0, 24);
+}
