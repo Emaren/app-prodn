@@ -110,8 +110,10 @@ live two-player capture canary.
   Fog of war and game-camera movement cannot be removed from encoded footage.
   Observer/fogless rendering requires a distinct lawful gameplay render source.
 - `/admin/video-vault` and `/api/admin/video-vault` are admin-only read
-  inventory surfaces showing actual chunk sizes for the latest sixty streams.
-  This is a **bounded recent sample**, *not* authoritative total vault usage;
+  inventory surfaces showing metadata for the latest sixty streams. Exact
+  byte sizes are deliberately limited to eight recent smaller streams to avoid
+  overwhelming the VPS during multi-POV capture. This is a **bounded recent
+  sample**, *not* authoritative total vault usage;
   old/orphan files are explicitly excluded. The guarded delete action is
   same-origin and requires an ended/failed, nonretained first-party stream.
   It removes only that stream's media chunks, then marks its stream registry
@@ -651,3 +653,19 @@ back the prior stream's termination rather than stranding the broadcaster.
 This does not yet serialize separate simultaneous start requests from the
 same user across multiple web workers; multi-worker races remain an explicit
 release-canary and database-admission follow-up.
+
+### Bounded operator disk accounting (V3 development)
+
+The 60-row admin Video Vault listing is a **database metadata inventory**,
+not permission to scan 60 long recordings on every dashboard refresh. The
+revised filesystem byte audit selects at most eight newest candidates with
+no more than 5,000 reported media chunks each. Those exact measurements are
+processed at **two concurrent directory scans maximum**. Other streams show
+byte size as **unknown**, not zero; `measuredRows` exposes this distinction.
+The newest-two-battle physical media inspector independently provides
+read-only sequence/EBML sampled evidence for longer streams.
+
+Even this bounded operator inventory is not a global storage-quota ledger,
+full video retention proof, browser decode certificate, or live-root
+performance measurement. The operator must prove physical IO/p95 video
+latency against concurrent recording and replay traffic in a field canary.
