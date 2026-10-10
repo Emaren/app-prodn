@@ -157,8 +157,10 @@ export default function TelevisionWoloExperience({
   }, [router]);
 
   useEffect(() => {
-    if (selectedKey && !battles.some(battle => battle.sessionKey === selectedKey)) {
-      setSelectedKey(initialBattle?.sessionKey ?? "");
+    // A viewer may open an empty TV theatre before the first live battle.
+    // Select that first newly discovered session without ever starting media.
+    if ((!selectedKey || !battles.some(battle => battle.sessionKey === selectedKey)) && initialBattle) {
+      setSelectedKey(initialBattle.sessionKey);
     }
   }, [selectedKey, battles, initialBattle]);
 
