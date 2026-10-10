@@ -367,3 +367,40 @@ supersede a newer receipt-backed lane, or gain result/financial authority.
 Non-positive legacy rating sentinels are unavailable. Historical Steam fallback
 chronology uses replay `played_on` only; ingestion/acceptance time does not make
 an older embedded rating newer.
+
+## Zodiac / Vegeta / Jiren rating-discrepancy triage (October 10, 2026)
+
+The three independently documented exact Steam identities in
+`PLAYER_RESULT_RECOVERY_TARGETS` are Zodiac, mYsTikaL_VeGeTa, and
+mYsTikaL JiReN. A leaderboard row labelled `3 names` counts display-name
+history **on one exact Steam ID**; it does not merge these separate accounts.
+Never repair one account's Steam Elo by copying another account's rating.
+
+The existing **Admin → Replay Operations → Player Result Recovery** panel
+offers an **Audit Zodiac ratings** read-only button backed by
+`GET /api/admin/replay-operations/zodiac-rating-audit`.
+The endpoint is admin-authenticated and returns just the three exact account
+records, including:
+
+- DM and RM independently, with the chosen observed rating, played-on
+  observation timestamp and explicit source (qualified Watcher current
+  receipt, qualified Watcher-upload source, or accepted HD-header fallback);
+- the competing qualified-source values and an indication if the separately
+  projected public directory value is inconsistent with that evidence;
+- SteamID64, observed name history, accepted game counts, wins, losses and
+  unresolved outcomes, last accepted game clock and bounded examples of
+  unresolved GameStats IDs.
+
+The public board's numerical Steam rating is **not** calculated by summing
+the W–L result history. Resolving an unknown winner cannot directly re-rate
+Steam accounts. Replay imports are not qualified Watcher current-state
+observations, and upload time cannot supersede an older game clock.
+A possible discrepancy must be diagnosed by **exact identity, source
+provenance, and game-observation time** before making a corrective change.
+
+This diagnostic does **not** change ratings, alias ownership, GameStats,
+accepted adjudications, market settlement, or WOLO. Its result-recovery
+neighbors remain evidence-gated and dry-run by default. An unreadable
+receipt or rejected upload is reported as unavailable; the UI must not
+invent a "correct" Elo to fill the gap. Manual and batch uploads must not
+gain Watcher authority through this new read-only surface.

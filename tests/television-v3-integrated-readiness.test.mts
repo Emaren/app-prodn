@@ -1,0 +1,115 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { estimateTelevisionRecordingBudget } from "../lib/televisionCapacityPlan.ts";
+import { streamCapacityAdmission, MAX_STREAM_BYTES, MAX_STREAM_CHUNKS, STREAM_MIN_FREE_BYTES } from "../lib/streamStorage.ts";
+
+test("every 1.6.4 video mode has estimated two-hour admission capacity, with storage reserve intact", () => {
+  const plan = estimateTelevisionRecordingBudget();
+  assert.ok(MAX_STREAM_BYTES >= 3 * 1024 ** 3);
+  assert.ok(MAX_STREAM_CHUNKS >= 7200);
+  assert.deepEqual(plan.profiles.map(p => p.key), ["stable", "screen", "sharp"]);
+  for (const mode of plan.profiles) {
+    assert.equal(mode.twoHourCandidate, true, mode.key + " should fit a two-hour estimate");
+    assert.ok(mode.estimatedBytesForTwoHours <= MAX_STREAM_BYTES, mode.key);
+    assert.ok(mode.estimatedMinutes >= 120, mode.key);
+  }
+  assert.ok(STREAM_MIN_FREE_BYTES >= 1024 ** 3);
+  assert.equal(streamCapacityAdmission(STREAM_MIN_FREE_BYTES, 1).allowed, false);
+  assert.equal(estimateTelevisionRecordingBudget(512 * 1024 ** 2, 4000).profiles.at(-1)?.twoHourCandidate, false);
+});
+
+test("physical media limit is bounded, not a blanket VPS disk expansion", () => {
+  const storage = readFileSync("lib/streamStorage.ts", "utf8");
+  assert.match(storage, /3 \* 1024 \* 1024 \* 1024/);
+  assert.match(storage, /4 \* 1024 \* 1024 \* 1024/);
+  assert.match(storage, /await getStreamVolumeHeadroom\(\)/);
+  assert.match(storage, /streamCapacityAdmission\(freeBytes, data.byteLength\)/);
+  assert.match(storage, /STREAM_STORAGE_ROOT/);
+});
+
+test("database failures never announce an empty live feed list", () => {
+  const api = readFileSync("app/api/watch-streams/route.ts", "utf8");
+  assert.match(api, /if \(retainedRows === null\)/);
+  assert.match(api, /if \(streams === null\)/);
+  assert.match(api, /status: 503/);
+  assert.match(api, /no-store/);
+});
+
+test("live TV polls only after Play, preserves cameras and aborts stale-session requests", () => {
+  const tv = readFileSync("components/television/TelevisionWoloExperience.tsx", "utf8");
+  assert.match(tv, /if \(!playingKey \|\| playingKey !== selectedKey\) return/);
+  assert.match(tv, /document.hidden \|\| inFlight/);
+  assert.match(tv, /new AbortController\(\)/);
+  assert.match(tv, /abort.abort\(\)/);
+  assert.match(tv, /lastDirectoryCheck/);
+  assert.match(tv, /async function checkFeedsNow\(\)/);
+  assert.match(tv, /onClick=\{\(\) => void checkFeedsNow\(\)\}/);
+  assert.match(tv, /Video diagnostics/);
+  assert.match(tv, /public/i);
+  assert.match(tv, /Video stays asleep until you press play/);
+  assert.match(tv, /mergeTelevisionStreamEvidence/);
+  assert.match(tv, /assignTelevisionCameras/);
+});
+
+test("first-party video admission checks real mounted-volume headroom before changing live streams", () => {
+  const route = readFileSync("app/api/streams/start/route.ts", "utf8");
+  const probeAt = route.indexOf("const volume = await getStreamVolumeHeadroom()");
+  const transactionAt = route.indexOf("await prisma.$transaction(async (tx)");
+  const mutationAt = route.indexOf("await tx.gameWatchStream.updateMany(", transactionAt);
+  assert.ok(probeAt > 0 && transactionAt > probeAt && mutationAt > transactionAt);
+  assert.match(route, /writableVideoBytes < MAX_STREAM_BYTES/);
+  assert.match(route, /process.env.NODE_ENV === "production" && !mountedSeparately/);
+  assert.match(readFileSync("lib/streamStorage.ts", "utf8"), /captureDir.dev !== hostRoot.dev/);
+  assert.match(readFileSync("components/admin/VideoVaultDashboard.tsx", "utf8"), /Verified separate media volume/);
+  assert.match(route, /STREAM_VIDEO_VOLUME_NOT_READY/);
+  assert.match(route, /status: 503/);
+  assert.match(route, /normal replay watching is unaffected/);
+});
+
+test("failed replacement cannot strand the previous active broadcaster", () => {
+  const source = readFileSync("app/api/streams/start/route.ts", "utf8");
+  const begin = source.indexOf("await prisma.$transaction(async (tx) => {");
+  const endPrior = source.indexOf("await tx.gameWatchStream.updateMany(");
+  const create = source.indexOf("await tx.gameWatchStream.create(");
+  const publish = source.indexOf("await tx.gameWatchStream.update(");
+  const commit = source.indexOf("return updated;", begin);
+  assert.ok(begin > 0 && endPrior > begin && create > endPrior && publish > create && commit > publish);
+  assert.doesNotMatch(source.slice(begin,commit), /await prisma.gameWatchStream/);
+});
+
+test("native video battle identity is never guessed from an unrelated recent replay", () => {
+  const start = readFileSync("app/api/streams/start/route.ts", "utf8");
+  const heartbeat = readFileSync("app/api/streams/[streamId]/heartbeat/route.ts", "utf8");
+  for (const source of [start,heartbeat]) {
+    assert.doesNotMatch(source, /resolveRecentReplaySessionKeyForWatcher|recentReplayRows/);
+    assert.doesNotMatch(source, /created_at >= now\(\) - interval '(?:45 minutes|4 hours)'/);
+    assert.match(source, /where gs.user_uid = \$\{userUid\}/);
+    assert.match(source, /gs\.original_filename = \$\{replayKey\}/);
+    assert.match(source, /gs\.key_events::jsonb ->> 'platform_match_id'\) = \$\{platformId\}/);
+  }
+  assert.match(start, /if \(verifiedSessionKey\) \{/);
+  assert.match(start, /sessionKey = `watcher:session_\$\{user.id\}_\$\{Date.now\(\)\}`/);
+  assert.match(heartbeat, /weakStreamKey && safeExactClaim/);
+  assert.match(heartbeat, /resolvePlatformSessionKeyForReplay\(prisma, actor.user.uid, replayBackedSessionKey\)/);
+  assert.doesNotMatch(start, /requestedSessionKey,\s*replaySessionKey,\s*platformSessionKey/);
+});
+
+test("live WebM playback cannot remain stuck behind an indefinite manifest or body download", () => {
+  const source = readFileSync("components/streaming/LiveStreamFrame.tsx", "utf8");
+  assert.match(source, /const activeVideoRequests = new Set<AbortController>\(\)/);
+  assert.match(source, /window.setTimeout\(\(\) => controller.abort\(\), deadlineMs\)/);
+  assert.match(source, /return await decode\(response\)/);
+  assert.match(source, /fetchWithDeadline\(rollingUrl, \(response\) => response.blob\(\), 15_000\)/);
+  assert.match(source, /\(response\) => response.json\(\) as Promise<StreamManifest>, 8_000/);
+  assert.match(source, /if \(cancelled \|\| document.visibilityState === "hidden"\) return/);
+  assert.match(source, /video.pause\(\);\s*abortVideoRequests\(\)/);
+  assert.match(source, /cancelled = true;\s*abortVideoRequests\(\)/);
+});
+
+test("a Television tab opened before the first live match will select the arriving battle", () => {
+  const source = readFileSync("components/television/TelevisionWoloExperience.tsx","utf8");
+  assert.match(source, /!selectedKey \|\| !battles\.some\(battle => battle\.sessionKey === selectedKey\)/);
+  assert.match(source, /setSelectedKey\(initialBattle\.sessionKey\)/);
+  assert.match(source, /if \(!playingKey \|\| playingKey !== selectedKey\) return/);
+});

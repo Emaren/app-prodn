@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminSession";
 import { getStreamStorageUsage, getStreamVolumeHeadroom, STREAM_MIN_FREE_BYTES, removeStreamChunks, MAX_STREAM_BYTES, MAX_STREAM_CHUNKS } from "@/lib/streamStorage";
 import { estimateTelevisionRecordingBudget } from "@/lib/televisionCapacityPlan";
+import { postgameMediaProtected, MIN_POSTGAME_MEDIA_MS } from "@/lib/streamPostgameRetention";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -64,8 +65,22 @@ export async function GET(request: NextRequest) {
 
   // Bounded to recent records. Filesystem usage is measured, never guessed from
   // a packet count. All unlisted older recordings are explicitly excluded.
-  const rows = await Promise.all(records.map(async stream => {
-    const usage = await getStreamStorageUsage(stream.id).catch(() => null);
+  // Exact filesystem stats for all 60 records would create tens of thousands
+  // of concurrent I/O operations during a four-versus-four long-game session.
+  // Keep full registry visibility, but bound detailed byte accounting to eight
+  // short/recent captures and two concurrent filesystem scans. Long captures
+  // have their separate bounded on-disk sequence sampling in readiness.
+  const exactCandidates = records.filter(stream => stream.chunkCount <= 5_000).slice(0, 8);
+  const measured = new Map<number, Awaited<ReturnType<typeof getStreamStorageUsage>> | null>();
+  for (let i = 0; i < exactCandidates.length; i += 2) {
+    const group = exactCandidates.slice(i, i + 2);
+    const samples = await Promise.all(group.map(row =>
+      getStreamStorageUsage(row.id).catch(() => null),
+    ));
+    group.forEach((row, index) => measured.set(row.id, samples[index]));
+  }
+  const rows = records.map(stream => {
+    const usage = measured.get(stream.id) ?? null;
     return {
       id:stream.id, sessionKey:stream.sessionKey, sourceType:stream.sourceType,
       status:stream.status, chunkCount:stream.chunkCount,
@@ -77,22 +92,28 @@ export async function GET(request: NextRequest) {
       updatedAt:stream.updatedAt.toISOString(),
       retained: Boolean(stream.retainedDemo),
       retainedUntil:stream.retainedDemo?.expiresAt.toISOString() ?? null,
+      postgameProtected: ["ended", "failed"].includes(stream.status) &&
+        postgameMediaProtected(stream.endedAt ?? stream.updatedAt),
+      postgameUntil: ["ended", "failed"].includes(stream.status)
+        ? new Date((stream.endedAt ?? stream.updatedAt).getTime() + MIN_POSTGAME_MEDIA_MS).toISOString()
+        : null,
       lastHeartbeatAgeSeconds: stream.lastHeartbeatAt
         ? Math.max(0, Math.round((Date.now() - stream.lastHeartbeatAt.getTime()) / 1000))
         : null,
       latestIssue: latestIssueByStream.get(stream.id) ?? null,
     };
-  }));
+  });
+  const measuredRows = rows.filter(row => row.bytes !== null).length;
   const recentBytes = rows.reduce((sum,row)=>sum+(row.bytes??0),0);
   const volume = await getStreamVolumeHeadroom().catch(() => null);
   return NextResponse.json({
-    rows, totalCount, scanned:rows.length, recentBytes,
+    rows, totalCount, scanned:rows.length, measuredRows, recentBytes,
     issuesSampled: issueEvents.length,
     complete:rows.length===totalCount && rows.every(row=>row.bytes !== null),
     limits:{perStreamBytes:MAX_STREAM_BYTES,perStreamChunks:MAX_STREAM_CHUNKS},
     recordingBudget:estimateTelevisionRecordingBudget(),
-    volume: volume ?? { freeBytes:null, reserveBytes:STREAM_MIN_FREE_BYTES, writableVideoBytes:null },
-    note:"Sizes are measured for the newest 60 first-party streams only. Older/orphaned files are not in this subtotal.",
+    volume: volume ?? { freeBytes:null, reserveBytes:STREAM_MIN_FREE_BYTES, writableVideoBytes:null, mountedSeparately:null },
+    note:"Byte totals cover at most eight recent recordings with <=5,000 reported chunks, scanned two at a time. Longer, older, and orphaned video files are explicitly excluded; unmeasured is not zero.",
   },{headers:NO_STORE});
 }
 
@@ -109,13 +130,20 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({detail:"Invalid stream ID."},{status:400,headers:NO_STORE});
   }
   const stream=await gate.prisma.gameWatchStream.findUnique({where:{id:streamId},
-    select:{id:true,provider:true,status:true,retainedDemo:{select:{slot:true}}}});
+    select:{id:true,provider:true,status:true,endedAt:true,updatedAt:true,retainedDemo:{select:{slot:true}}}});
   if (!stream || stream.provider!=="aoe2war") {
     return NextResponse.json({detail:"Recording not found."},{status:404,headers:NO_STORE});
   }
   if (stream.retainedDemo || !["ended","failed"].includes(stream.status)) {
     return NextResponse.json({detail:"Live, protected or retained recordings cannot be deleted here."},
       {status:409,headers:NO_STORE});
+  }
+  if (postgameMediaProtected(stream.endedAt ?? stream.updatedAt)) {
+    return NextResponse.json({
+      detail:"Recording is protected during the postgame viewing period.",
+      code:"STREAM_POSTGAME_MEDIA_PROTECTED",
+      minPostgameMs:MIN_POSTGAME_MEDIA_MS,
+    }, { status:409,headers:NO_STORE });
   }
   try {
     await removeStreamChunks(streamId);

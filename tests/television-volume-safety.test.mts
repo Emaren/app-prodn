@@ -29,7 +29,8 @@ test("actual video writer checks mounted filesystem free bytes before creating a
   const cap=writer.indexOf("getStreamVolumeHeadroom()");
   const write=writer.indexOf("fs.open(temporaryPath");
   assert.ok(cap>=0 && write>cap);
-  assert.match(text,/await fs.statfs\(STREAM_STORAGE_ROOT\)/);
+  assert.match(text,/fs.statfs\(STREAM_STORAGE_ROOT\)/);
+  assert.match(text,/captureDir.dev !== hostRoot.dev/);
   assert.match(text,/Video paused to preserve the mounted filesystem free-space reserve/);
   assert.match(text,/Video storage capacity could not be verified/);
   const api=readFileSync("app/api/admin/video-vault/route.ts","utf8");

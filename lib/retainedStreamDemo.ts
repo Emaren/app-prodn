@@ -1,5 +1,6 @@
 import type { PrismaClient } from "@/lib/generated/prisma";
 import { removeStreamChunks, type StreamStorageUsage } from "@/lib/streamStorage";
+import { postgameMediaProtected } from "@/lib/streamPostgameRetention";
 
 export const RETAINED_STREAM_DEMO_SLOT = 1;
 
@@ -64,6 +65,13 @@ export class RetainedDemoStorageError extends Error {
   constructor(message: string, options?: ErrorOptions) {
     super(message, options);
     this.name = "RetainedDemoStorageError";
+  }
+}
+
+export class PostgameMediaProtectedError extends Error {
+  constructor() {
+    super("This recording is still within its mandatory postgame viewing period.");
+    this.name = "PostgameMediaProtectedError";
   }
 }
 
@@ -162,6 +170,13 @@ export async function deleteSingleRetainedDemo(
       if (!current) return null;
       if (expectedStreamId && current.streamId !== expectedStreamId) {
         throw new RetainedDemoConflictError();
+      }
+      const stream = await tx.gameWatchStream.findUnique({
+        where: { id: current.streamId },
+        select: { endedAt: true, updatedAt: true },
+      });
+      if (!stream || postgameMediaProtected(stream.endedAt ?? stream.updatedAt)) {
+        throw new PostgameMediaProtectedError();
       }
 
       try {

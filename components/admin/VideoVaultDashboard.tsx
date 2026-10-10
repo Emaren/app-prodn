@@ -6,15 +6,15 @@ type VideoVaultRow={
  id:number;sessionKey:string;sourceType:string;status:string;
  chunkCount:number;actualChunkCount:number|null;bytes:number|null;lastSeq:number;
  player:string;startedAt:string|null;endedAt:string|null;updatedAt:string;
- retained:boolean;retainedUntil:string|null;
+ retained:boolean;retainedUntil:string|null;postgameProtected:boolean;postgameUntil:string|null;
  lastHeartbeatAgeSeconds:number|null;
  latestIssue:{eventType:string;reason:string|null;at:string;appVersion:string|null;platform:string|null}|null;
 };
 type VideoVaultResponse={
- rows:VideoVaultRow[];totalCount:number;scanned:number;recentBytes:number;
+ rows:VideoVaultRow[];totalCount:number;scanned:number;measuredRows:number;recentBytes:number;
  issuesSampled:number;
  complete:boolean;limits:{perStreamBytes:number;perStreamChunks:number};note:string;
- volume:{freeBytes:number|null;reserveBytes:number;writableVideoBytes:number|null};
+ volume:{freeBytes:number|null;reserveBytes:number;writableVideoBytes:number|null;mountedSeparately:boolean|null};
  recordingBudget:{configured:boolean;profiles:Array<{key:string;label:string;estimatedMinutes:number;limitingFactor:string;twoHourCandidate:boolean;estimatedBytesForTwoHours:number}>};
 };
 const bytes=(value:number|null)=>value===null?"Unavailable":
@@ -37,7 +37,7 @@ export default function VideoVaultDashboard(){
   },[]);
   useEffect(()=>{void load()},[load]);
   const remove=async(row:VideoVaultRow)=>{
-    if(row.retained||!["ended","failed"].includes(row.status))return;
+    if(row.retained||row.postgameProtected||!["ended","failed"].includes(row.status))return;
     if(!window.confirm("Permanently delete only video chunks for #"+row.id+" ("+row.player+")? This cannot be undone. The replay and game statistics are preserved."))return;
     setDeleting(row.id);
     try{
@@ -78,14 +78,18 @@ export default function VideoVaultDashboard(){
       </div>)}
     </div>
     <div className="rounded-xl border border-amber-300/20 bg-amber-300/[0.06] p-4 text-xs leading-6 text-amber-100/80">
-      Storage figures are measured from actual WebM chunks for only the {data?.scanned??0} newest first-party sessions.
-      {data?.complete?" This inventory covers all registered first-party sessions.":" Older recordings and orphan files are not included in the subtotal."}
+      Registry rows shown: {data?.scanned??0}. Physical video byte totals verified for {data?.measuredRows??0} bounded recent captures.
+      {data?.complete?" This inventory covers all registered first-party sessions.":" Longer sessions, older recordings and orphan files are excluded from the subtotal, not counted as zero."}
       {" "}The streaming budget and automatic global retention controls need separate release certification before wide capture.
       Existing caps: {data?bytes(data.limits.perStreamBytes):"—"} per stream / {data?.limits.perStreamChunks??"—"} chunks.
       <div className="mt-2 font-bold text-cyan-100">
         Verified video-volume free: {data?bytes(data.volume.freeBytes):"—"} · reserved:
         {" "}{data?bytes(data.volume.reserveBytes):"—"} · writable above floor:
         {" "}{data?bytes(data.volume.writableVideoBytes):"—"}
+      </div>
+      <div className={"mt-2 font-semibold " + (data?.volume.mountedSeparately===true?"text-emerald-200":"text-rose-200")}>
+        Capture filesystem: {data?.volume.mountedSeparately===true?"Verified separate media volume":data?.volume.mountedSeparately===false?"UNSAFE — on application root filesystem":"Not verified"}.
+        {" "}Production streaming admission requires a separate volume and room for one complete per-camera quota above reserve.
       </div>
       {data?.volume.writableVideoBytes===null ? <div className="mt-2 text-rose-200">
         Volume headroom unavailable: new video media writes fail safely until storage is verified.
@@ -129,6 +133,7 @@ export default function VideoVaultDashboard(){
             <td className="max-w-[210px] break-all px-4 py-4 text-slate-300">{row.sessionKey}</td>
             <td className="px-4 py-4"><div className={["live","starting"].includes(row.status)?"text-emerald-300":"text-slate-300"}>{row.status}</div>
             {row.retained?<div className="mt-1 text-amber-200">Protected demo</div>:null}
+            {row.postgameProtected?<div className="mt-1 font-semibold text-cyan-200">Postgame protected until {date(row.postgameUntil)}</div>:null}
             {row.lastHeartbeatAgeSeconds!==null?
               <div className="mt-1 text-slate-500">Heartbeat {row.lastHeartbeatAgeSeconds}s ago</div>:null}
             {["starting","live"].includes(row.status) && row.lastHeartbeatAgeSeconds!==null && row.lastHeartbeatAgeSeconds>120?
@@ -142,7 +147,7 @@ export default function VideoVaultDashboard(){
             <td className="px-4 py-4 text-slate-200">{bytes(row.bytes)}<div className="text-slate-500">{row.actualChunkCount??"?"} verified chunks</div></td>
             <td className="px-4 py-4 text-slate-400">{date(row.startedAt)}</td>
             <td className="px-4 py-4">
-            {["ended","failed"].includes(row.status)&&!row.retained?
+            {["ended","failed"].includes(row.status)&&!row.retained&&!row.postgameProtected?
               <button type="button" disabled={deleting!==null} onClick={()=>void remove(row)}
                 className="inline-flex items-center gap-1 rounded-lg border border-rose-300/25 px-3 py-2 text-rose-200 hover:bg-rose-500/10 disabled:opacity-50">
                 <Trash2 className="h-3.5 w-3.5"/>{deleting===row.id?"Deleting…":"Delete video"}

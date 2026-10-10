@@ -110,8 +110,10 @@ live two-player capture canary.
   Fog of war and game-camera movement cannot be removed from encoded footage.
   Observer/fogless rendering requires a distinct lawful gameplay render source.
 - `/admin/video-vault` and `/api/admin/video-vault` are admin-only read
-  inventory surfaces showing actual chunk sizes for the latest sixty streams.
-  This is a **bounded recent sample**, *not* authoritative total vault usage;
+  inventory surfaces showing metadata for the latest sixty streams. Exact
+  byte sizes are deliberately limited to eight recent smaller streams to avoid
+  overwhelming the VPS during multi-POV capture. This is a **bounded recent
+  sample**, *not* authoritative total vault usage;
   old/orphan files are explicitly excluded. The guarded delete action is
   same-origin and requires an ended/failed, nonretained first-party stream.
   It removes only that stream's media chunks, then marks its stream registry
@@ -122,7 +124,7 @@ live two-player capture canary.
   A TV poll must never automatically transfer the Chaos Championship.
 - No video upload ceiling or retention default is raised by this slice.
   Earlier development defaults were 512 MiB/4,000 slices per stream; the current
-   *development branch* uses 2 GiB/12,000 slices, with six-hour transient
+   *development branch* uses 3 GiB/12,000 slices, with six-hour transient
   removal, and one explicitly pinned bounded demonstration. The real long-match
   recording quota, full-storage accounting, cross-stream concurrency admission,
   improved incremental playback, and packaged Windows/macOS canaries remain
@@ -286,7 +288,7 @@ the next guarded production capacity preflight before video activation.
 Server video writes are now admitted only when `statfs` verifies that
 the **actual configured video-chunk filesystem** will retain the configured
 free-space reserve *after* the next chunk. This is independent of the
-per-stream byte/chunk limits (now 2 GiB / 12,000 by default in the
+per-stream byte/chunk limits (now 3 GiB / 12,000 by default in the
   *unreleased long-match development branch*), and supports concurrent
 recorder sessions on the same volume. A failed capacity probe is treated
 as video-only rejection, never permission to fill an unknown disk.
@@ -423,16 +425,19 @@ one-second WebM chunks. Its reviewed quality presets are Stable 720p
 4,000 chunks) could cut off Stable mode at under an hour.
 
 In this development branch, default per-stream admission is raised to
-**2 GiB and 12,000 chunks** (roughly 3h20m by chunk count), retaining
+**3 GiB and 12,000 chunks** (roughly 3h20m by chunk count), retaining
 the existing configurable server-side caps, the 6 GiB media-volume free
 reserve, 8 MiB maximum per HTTP chunk and six-hour unprotected retention.
-This change does not expand the hard per-stream 2 GiB maximum, automatically
-delete any videos, or alter existing deployed limits until a guarded release.
+The application now enforces a configurable hard per-stream maximum of **4 GiB**
+(default **3 GiB**), without automatically deleting videos or changing deployed
+limits until a guarded release. A larger per-POV cap is never a total-volume
+reservation: concurrent cameras remain subject to the verified free-space floor.
 
 The authenticated Video Vault's capacity planner reports safe estimated
 minutes and two-hour projected bytes for each Watcher mode, using a
-**12% media-container overhead allowance**. Stable and Full Screen
-have estimates above two hours at the new defaults; Sharp does NOT.
+**12% media-container overhead allowance**. All three modes have
+*estimated* per-stream capacity above two hours at the new 3 GiB default,
+including Sharp. No captured, decoded two-hour Windows run is yet certified.
 These are planning calculations rather than promises of WebM output
 quality or a long-running captured game. The selected preset, CPU/GPU
 encoding, actual chunk size, host write speed, upload retry backlog,
@@ -589,3 +594,283 @@ must also demonstrate an actual mounted video volume with enough free
 space above the 6-GiB reserve, two Windows Watchers, no replay-upload
 regression, and measured upload p95/CPU/IO before this optimization is
 considered performance certified.
+
+## Integrated V3 resilience candidate (2026-10-10)
+
+Unreleased integration branch: `feature/television-v3-integrated-hardening-20261010`.
+The native Watcher branch is reviewed separately; neither web source nor
+Watcher UI work grants a production release or a measured quality score.
+
+- Public feed-directory database failure is **503**, never a false empty camera
+  inventory. The Television page can retain authoritative snapshot-linked
+  cameras while the directory is unavailable.
+- Once the viewer presses Play, the directory refreshes every 12 seconds while
+  the browser tab is visible. Requests are serialized, abortable and invalidated
+  when the viewer changes battles; a transient failure preserves the last
+  cameras. The manual refresh does not change the selected perspective.
+- Read-only public video diagnostics show bounded server-owned stream metadata;
+  a recorded chunk or recent heartbeat proves neither successful browser decode
+  nor low presentation latency. Full incident detail and controls remain admin.
+- The adjusted 3 GiB/12,000-slice default (4 GiB configurable maximum)
+  protects two-hour Sharp budget estimates while retaining the **6 GiB actual
+  media-volume free-space reserve**. This does not guarantee eight concurrent
+  perspectives, 2-hour real encoded file sizes or non-root storage until a
+  mounted-path verification and multi-camera canary succeed.
+- The source gate remains: real paired Windows broadcasters, verified two-side
+  replay identity, safe update/relaunch, replay-upload priority, observed
+  sustained bitrate/CPU/IO/latency, full WebM playback and explicit cleanup.
+- Chaos ballots remain non-binding with protected migration; comments and
+  Commissioner title awards require their own audited authority.
+
+### Pre-start mount and quota admission (V3 development)
+
+Video startup now verifies the **actual configured stream directory** exists,
+can report media-filesystem free space, has headroom for one full configured
+per-POV byte quota *above* the six-GiB reserve, and in production resides
+on a filesystem with a device ID different from the application root. The
+operator must pre-provision the directory on the mounted media volume before
+turning on capture. A stray directory on the small VPS root is **not** an
+acceptable replacement for the mounted volume.
+
+The authenticated stream-start endpoint rejects an unsafe volume with a
+redacted, machine-readable `STREAM_VIDEO_VOLUME_NOT_READY` HTTP 503 **before**
+ending an existing stream or creating a new capture record. This is a
+video-only guard: replay watching, stored gameplay truth, wagers and WOLO
+remain untouched. The admin Video Vault displays verified separate-volume
+status (yes/no/unverified) alongside actual free bytes and cap planning.
+The start-time headroom check is **not** a global reservation or distributed
+admission lock. Live chunks retain the independent per-write free-space guard.
+
+This change needs an actual VPS mount/inode check and a signed Windows canary;
+unit tests cannot establish that the desired host directory is mounted.
+
+### Atomic stream replacement (V3 development)
+
+After mounted-capacity admission, an authorized new stream now completes
+the prior-session end, new registry row, manifest identity and primary-camera
+selection inside **one database transaction**. A failed insert/update rolls
+back the prior stream's termination rather than stranding the broadcaster.
+This does not yet serialize separate simultaneous start requests from the
+same user across multiple web workers; multi-worker races remain an explicit
+release-canary and database-admission follow-up.
+
+### Bounded operator disk accounting (V3 development)
+
+The 60-row admin Video Vault listing is a **database metadata inventory**,
+not permission to scan 60 long recordings on every dashboard refresh. The
+revised filesystem byte audit selects at most eight newest candidates with
+no more than 5,000 reported media chunks each. Those exact measurements are
+processed at **two concurrent directory scans maximum**. Other streams show
+byte size as **unknown**, not zero; `measuredRows` exposes this distinction.
+The newest-two-battle physical media inspector independently provides
+read-only sequence/EBML sampled evidence for longer streams.
+
+Even this bounded operator inventory is not a global storage-quota ledger,
+full video retention proof, browser decode certificate, or live-root
+performance measurement. The operator must prove physical IO/p95 video
+latency against concurrent recording and replay traffic in a field canary.
+
+### Exact replay-to-camera attribution (V3 development)
+
+The Watcher now sends an explicit current session/replay claim on capture
+start and heartbeat, and never uses a local absolute SaveGame filepath as a
+public session key. An account's most recent replay **must not** substitute
+for evidence of the game being captured: a previous game can remain recent
+for hours, so recency-based binding risks showing footage against the wrong
+battle, roster, and Chaos ballot.
+
+Native video admission now promotes a client claim to a public session only
+after a server-side `game_stats` lookup proves the exact original replay
+filename, saved replay filename, or platform match ID belongs to the
+**authenticated Watcher account**. A direct `platform:` ID cannot bypass that
+check. Otherwise the stream remains a unique weak `watcher:session_...`
+record with no proven competitive association.
+
+An already-started weak stream can be promoted on heartbeat when a later
+account-owned replay record proves the exact claim; until then it remains
+unassigned, never automatically attached to a named competing roster.
+This may briefly defer camera placement while gameplay/replay evidence arrives;
+it is intentionally safer than false identity claims. Tests forbid the
+previous 45-minute/4-hour "newest replay" fallback.
+
+This gate does not certify real-time discovery or cross-worker atomic
+rebinding. A physical two-client test must prove start-before-replay,
+late identity promotion, matched POV owner, and absence of last-game
+cross-contamination.
+
+### Browser playback deadline and hidden-tab egress (V3 development)
+
+The public first-party WebM player now gives each manifest read a bounded
+eight-second network/body deadline and each rolling WebM download a
+fifteen-second network/body deadline. A timed-out, stalled response returns
+control to the existing signal recovery loop; it cannot hold
+`pollInFlight` indefinitely after HTTP headers are received. The player
+aborts outstanding media reads when the browser tab is hidden or a selected
+camera is unmounted, and declines late-arriving bodies after either event.
+A hidden tab does not silently keep downloading video.
+
+These are client-side failure bounds, not claims about delivery latency,
+video quality, frame drops, network load-balancer failover or an end-to-end
+Windows two-broadcaster canary. Real first-frame timing, continuous decode
+and reconnection remain field certification gates.
+
+### Empty-to-live Television discovery (V3 development)
+
+A viewer may visit the theatre before any canonical live session exists.
+Foreground-only server snapshot refresh discovers a later match, and the
+new first battle is **selected** even when the previous session selection
+was empty. This does not authorize autoplay or network video downloads:
+the viewer still presses Play. Its selected key is then consistent with
+the late broadcaster's directory-refresh loop; a stale empty key can no
+longer prevent new POVs from appearing after the viewer has pressed Play.
+
+### Bounded fan-out sequence-index cache (V3 development)
+
+First-party stream manifests and rolling-WebM routes previously enumerated
+and sorted the complete per-camera directory for every spectator request.
+For 8 simultaneous two-hour POVs, this creates redundant VPS directory
+work even though most viewers ask for the same final few seconds.
+
+`listStreamChunkSequences` now shares an in-process index for at most **128
+camera directories**, storing up to the **latest 512 numeric chunk sequences**
+per camera. A sequence snapshot expires after **850 ms**, pending concurrent
+readers share one directory scan, and successful local WebM writes and
+recording deletion invalidate their local entry. Other web workers cannot
+invalidate this process synchronously, so the short TTL is the maximum
+expected caching freshness lag during a healthy clock; a missing/failed
+directory read is not cached as indefinitely empty.
+
+This is an **I/O fan-out and memory-bounding optimization**, not a
+distributed cache, end-to-end first-frame latency certificate or guarantee
+about eight two-hour recordings. Filesystem test coverage verifies
+concurrent lookups, external writes after expiry, and delete invalidation.
+The byte/segment and actual storage-capacity limits remain unchanged.
+
+### PostgreSQL cross-worker video locks and replay ownership (V3 development)
+
+Independent Next.js workers now coordinate through **transaction-scoped
+PostgreSQL advisory locks**, not only in-process JavaScript promises.
+Starting/replacing a camera acquires broadcaster-account and public-session
+locks in that fixed order before selecting the primary camera or ending the
+previous recording. It also waits for existing active cameras' per-stream
+writer locks before ending them. A late replay-identity heartbeat uses the
+same account/session order, re-reads active state, and cannot reactivate an
+ended stream or displace an existing live primary arbitrarily.
+
+Each incoming WebM chunk holds a **per-stream writer lock** throughout
+filesystem save, disk-usage reconciliation, and its matching database
+acknowledgement. The stop endpoint and final-replay sentinel acquire that
+same lock before marking video ended. This prevents concurrent separate
+workers from simultaneously accepting different chunks based on the same
+stale per-camera quota and prevents a stop/start/finality race from
+overlapping an acknowledged write. Database rollbacks cannot roll back
+filesystem bytes: the existing exclusive temp-file, fsync, hard-link and
+duplicate-equality protocol deliberately makes retry/reconciliation safe.
+Lock acquisition has bounded timeouts; overload fails video transport safely
+rather than blocking replay ingestion. These locks do **not** constitute a
+global reservation of mounted-volume free bytes across distinct cameras.
+
+The final-replay sentinel also restricts the proof to `game_stats.user_uid`
+owned by the recording account. Another player's similarly named replay,
+even if finalized, is not authority to end this stream. A camera without
+a confirmed owner remains unfinalized until authoritative proof arrives.
+
+**Mid-capture mount disappearance:** Production video writes check the
+separate mounted filesystem **before** any recursive directory creation
+and again before accepting the chunk. If the mount is lost, the server
+rejects video-only ingestion, never silently creates an equivalent directory
+on the small VPS root. Admin deletion also refuses when the mount is not
+independently present. A filesystem test simulates both a missing video
+directory and a deceptive same-device fallback directory.
+
+Source checks and synthetic lost-mount tests are not substitute evidence
+for two-worker PostgreSQL contention tests and live 1v1–4v4 camera canaries.
+Those remain pre-publication gates alongside bounded CPU, media decode,
+real mounted-volume observability, security and replay-result priority.
+
+### Independent PostgreSQL concurrency gate (V3 development)
+
+CI now includes a **separate disposable PostgreSQL 16 container** for
+cross-worker lock contention, rather than relying only on static source
+assertions. `scripts/verify_video_postgres_locks.mjs` opens three concurrent
+database connections and proves, for each domain, that the same
+broadcaster account, battle-primary session, or physical stream writer
+**blocks a competing connection** until the first transaction exits.
+It also proves different keys remain independently available and rollback
+releases the transaction-scoped lock. The probe hard-restricts its connection
+string to the localhost `ci/aoe2war_ci` database and touches **no application
+tables or production services**.
+
+This is a real SQL transaction contention gate, not an end-to-end test
+of Prisma transaction interleavings, simultaneous mounted-volume writes,
+Windows capture, or 8-viewer media decode. The physical canary and replay
+priority stress tests remain necessary before public video certification.
+
+### Enforced postgame video grace and stale-camera race safety (V3)
+
+Every finished video has a **minimum 15-minute grace period** after its
+authoritative end timestamp for spectator review and subsequent voting.
+Normal cleanup defaults to **six hours**, but a malformed or shorter
+`AOE2_STREAM_CHUNK_RETENTION_MS` environment override cannot shorten
+the hard 15-minute minimum. The shared policy rejects missing, invalid
+or future completion timestamps as insufficient proof of expiry.
+
+The automated pruning job, administrator's Video Vault delete endpoint,
+and the separate retained-demo deletion path all apply the minimum.
+The Vault reports per-record `postgameProtected` and `postgameUntil`,
+displays the protection deadline, and hides the delete button until
+expiry. The server independently returns machine-readable
+`STREAM_POSTGAME_MEDIA_PROTECTED` HTTP 409 on premature deletion;
+the user interface is not the security boundary. A retained-demo slot
+may keep material far longer than the minimum.
+
+This protects **media storage**, not yet the full social experience:
+authenticated community comments, moderation, Chaos ballots and the
+end-to-end postgame window still require their own acceptance tests.
+A media file can be unplayable even when preserved, so Windows/browser
+decoder checks remain mandatory.
+
+Stale-stream housekeeping now locks each affected video writer and
+rechecks its heartbeat/active status **inside** a transaction before
+ending a recording. An in-flight or newly recovered camera is not
+terminated based on the older initial cleanup query result. Cleanup
+work is bounded to 100 stale candidates, in groups of eight.
+
+### Late-game WebM header correctness (V3 development)
+
+A two-hour native recording contains thousands of WebM slices, and the
+normal live sequence directory index intentionally stores **only the most
+recent 512 sequences**. Previously the manifest and rolling video routes
+looked for initialization segment `0.webm` *inside that recent index*.
+Once it fell out of view, later spectators could receive media slices
+without the still-existing WebM header, potentially preventing decoding.
+
+`streamInitChunkExists()` now checks the actual physical initialization
+file independently of the recent-sequence cache. The manifest presents
+`initSeq: 0` when the real header exists, and every rolling-video
+response can prepend the same actual init file even after 7,200+ slices.
+A real-filesystem regression writes **540 WebM-named chunks**, proves the
+header is absent from the newest 260 index entries but present on disk,
+and verifies both routes use the independent existence check. The absence
+of `0.webm` is never reported as a present header.
+
+This corrects one important long-match decoder prerequisite, **not**
+the entire recorded-playback experience. The spectator UI still uses
+short rolling windows, so selectable full-match chapter playback and
+real browser decoding remain explicit acceptance gates; retaining two
+hours of disk bytes alone does not satisfy them.
+
+### Viewer-side no-header bandwidth guard (V3 development)
+
+The manifest provides an explicit `initSeq` when the physical WebM init
+segment is present. If later media chunks have arrived but the on-disk
+header has not, the public first-party viewer now displays **Waiting for
+video initialization** rather than repeatedly downloading expensive
+rolling WebM bodies that cannot start a decoder. Foreground manifest
+polling continues; once the header appears, the viewer can fetch and play
+normally without restarting its selected POV. This does not silently
+invent a header or mark the recording playable prematurely.
+
+A source regression enforces the guard before the rolling-WebM fetch.
+Real Windows startup, header ordering and browser decode remain physical
+release gates.

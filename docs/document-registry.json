@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "2ab7879e0e18b664db2512e7d5e24668fdff8b3015d51d7eeb928970bc268d36",
+      "sha256": "2acca0b661993f92517dc9552bad594bd8242b8f86490d8de25d0b70362f4430",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -961,7 +961,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-07-28",
       "sensitivity": "internal",
-      "sha256": "aee06169cf13b31f37ec8c170307c32d4a5fc9f9f707a712474a8273a6d3ef13",
+      "sha256": "abe485182388a7bb07c4a4db5a3a6a02b130272ab75019678bb2931c5918546c",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1697,7 +1697,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-09",
       "sensitivity": "internal",
-      "sha256": "a66ea964092ddde15cbebab34fb59c63620733adda985e1de80d982f160f6fa0",
+      "sha256": "31a0565d465bb24c0d5ff13ca3e26d7ae271baff99b34a070aa51fafdd8464af",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2048,8 +2048,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/television-v1-ingest-cost-control-20261009",
-    "commit": "9ef7cb3bed7421627e5666519a1019ab642e0d8e"
+    "branch": "feature/television-v3-zodiac-unified-20261010",
+    "commit": "32b4dc134a00e79996d13e609668095783f668e3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

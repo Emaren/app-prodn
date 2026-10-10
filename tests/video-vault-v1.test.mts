@@ -14,10 +14,14 @@ test("vault endpoints and page require admin authorization",()=>{
 });
 test("operator inventory only includes server-recorded first-party streams",()=>{
   assert.match(route,/provider:"aoe2war"/);
-  assert.match(route,/getStreamStorageUsage\(stream.id\)/);
+  assert.match(route,/getStreamStorageUsage\(row.id\)/);
+  assert.match(route,/exactCandidates = records.filter\(stream => stream.chunkCount <= 5_000\).slice\(0, 8\)/);
+  assert.match(route,/exactCandidates.slice\(i, i \+ 2\)/);
+  assert.match(route,/measuredRows/);
   assert.match(route,/MAX_ROWS = 60/);
   assert.match(route,/complete:rows.length===totalCount/);
-  assert.match(route,/Older\/orphaned files are not in this subtotal/);
+  assert.match(route,/Longer, older, and orphaned video files are explicitly excluded/);
+  assert.match(dash,/Physical video byte totals verified/);
   assert.doesNotMatch(route,/prisma\.\$executeRaw|DELETE FROM/i);
 });
 test("video deletion is limited to ended nonretained streams and preserves registry on storage error",()=>{

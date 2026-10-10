@@ -111,6 +111,7 @@ export default function TelevisionWoloExperience({
   const [activeStreamId, setActiveStreamId] = useState<number | null>(null);
   const [loadingStreams, setLoadingStreams] = useState(false);
   const [streamError, setStreamError] = useState<string | null>(null);
+  const [lastDirectoryCheck, setLastDirectoryCheck] = useState<string | null>(null);
   const [browserHost, setBrowserHost] = useState("");
   const [multiview, setMultiview] = useState(false);
   const selectedBattle = useMemo(
@@ -156,8 +157,10 @@ export default function TelevisionWoloExperience({
   }, [router]);
 
   useEffect(() => {
-    if (selectedKey && !battles.some(battle => battle.sessionKey === selectedKey)) {
-      setSelectedKey(initialBattle?.sessionKey ?? "");
+    // A viewer may open an empty TV theatre before the first live battle.
+    // Select that first newly discovered session without ever starting media.
+    if ((!selectedKey || !battles.some(battle => battle.sessionKey === selectedKey)) && initialBattle) {
+      setSelectedKey(initialBattle.sessionKey);
     }
   }, [selectedKey, battles, initialBattle]);
 
@@ -167,6 +170,7 @@ export default function TelevisionWoloExperience({
     setStreams([]);
     setActiveStreamId(null);
     setStreamError(null);
+    setLastDirectoryCheck(null);
     setMultiview(false);
   }, [selectedKey]);
 
@@ -188,6 +192,7 @@ export default function TelevisionWoloExperience({
         selectedBattle.initialStreams, payload.streams ?? [],
       );
       setStreams(nextStreams);
+      setLastDirectoryCheck(new Date().toISOString());
       const matched = assignTelevisionCameras(selectedBattle.stage, nextStreams);
       setActiveStreamId(
         matched.cameras.find(camera => camera.stream)?.stream?.id ??
@@ -209,24 +214,68 @@ export default function TelevisionWoloExperience({
     }
   }
 
-  // Only poll after explicit viewer action; idle Television incurs no video/API polling.
+  async function checkFeedsNow() {
+    if (!selectedBattle || loadingStreams) return;
+    setLoadingStreams(true);
+    try {
+      const response = await fetch(
+        "/api/watch-streams?sessionKey=" + encodeURIComponent(selectedBattle.sessionKey),
+        { cache: "no-store" },
+      );
+      const payload = await response.json().catch(() => ({})) as {
+        streams?: WatchStreamPayload[];
+        error?: string;
+      };
+      if (!response.ok) throw new Error(payload.error || "Feed registry temporarily unavailable.");
+      // Existing director camera remains selected when still registered.
+      // Snapshot-alias linked cameras stay available via availableStreams.
+      setStreams(Array.isArray(payload.streams) ? payload.streams : []);
+      setLastDirectoryCheck(new Date().toISOString());
+      setStreamError(null);
+    } catch (error) {
+      setStreamError(error instanceof Error ? error.message : "Feed refresh unavailable.");
+    } finally {
+      setLoadingStreams(false);
+    }
+  }
+
+  // Poll only after explicit viewer activation. A hidden TV tab must not
+  // generate continuous directory traffic, and prior requests must never
+  // overwrite a newer perspective after the viewer changes battles.
   useEffect(() => {
-    if (!playingKey) return;
+    if (!playingKey || playingKey !== selectedKey) return;
     let cancelled = false;
+    let inFlight = false;
+    const abort = new AbortController();
     const reload = async () => {
+      if (cancelled || document.hidden || inFlight) return;
+      inFlight = true;
       try {
         const response = await fetch(
           "/api/watch-streams?sessionKey=" + encodeURIComponent(playingKey),
-          { cache: "no-store" },
+          { cache: "no-store", signal: abort.signal },
         );
-        if (!response.ok) return;
-        const result = await response.json() as { streams?: WatchStreamPayload[] };
-        if (!cancelled) setStreams(result.streams ?? []);
-      } catch { /* Retain last known display; viewer can retry. */ }
+        const payload = await response.json().catch(() => ({})) as {
+          streams?: WatchStreamPayload[];
+          error?: string;
+        };
+        if (!response.ok) throw new Error(payload.error || "Feed registry temporarily unavailable.");
+        if (cancelled) return;
+        const next = Array.isArray(payload.streams) ? payload.streams : [];
+        setStreams(next);
+        setLastDirectoryCheck(new Date().toISOString());
+        setStreamError(null);
+      } catch (error) {
+        if (!cancelled && !(error instanceof Error && error.name === "AbortError")) {
+          setStreamError("Feed registry temporarily unavailable. Keeping known cameras; retrying.");
+        }
+      } finally {
+        inFlight = false;
+      }
     };
-    const timer = window.setInterval(() => void reload(), 12_000);
-    return () => { cancelled = true; window.clearInterval(timer); };
-  }, [playingKey]);
+    const timer = window.setInterval(() => { void reload(); }, 12_000);
+    return () => { cancelled = true; abort.abort(); window.clearInterval(timer); };
+  }, [playingKey, selectedKey]);
 
   const liveBattles = battles.filter((battle) => battle.source === "live");
   const replayBattles = battles.filter((battle) => battle.source !== "live");
@@ -307,7 +356,7 @@ export default function TelevisionWoloExperience({
             ) : (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 p-8 text-center">
                 <MonitorPlay className="h-12 w-12 text-slate-500" />
-                <div className="text-2xl font-semibold">No registered feed on this battle</div>
+                <div className="text-2xl font-semibold">{streamError ? "Feed registry temporarily unavailable" : "No registered feed on this battle"}</div>
                 <p className="max-w-xl text-sm leading-6 text-slate-400">
                   The canonical battle still exists. Open the full Watch theatre for retained
                   media, hosted loops, and any archive fallback attached outside the stream registry.
@@ -422,6 +471,15 @@ export default function TelevisionWoloExperience({
                 {streamError}
               </div>
             ) : null}
+            {playing ? (
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
+                <span aria-live="polite">{streamError ? "Directory connection: retrying" : lastDirectoryCheck ? "Directory connection: healthy" : "Directory connection: pending"}</span>
+                <button type="button" disabled={loadingStreams} onClick={() => void checkFeedsNow()}
+                  className="rounded-full border border-cyan-200/25 px-3 py-1.5 font-semibold text-cyan-100 hover:border-cyan-200/40 disabled:opacity-50">
+                  {loadingStreams ? "Checking feeds…" : "Check feeds now"}
+                </button>
+              </div>
+            ) : null}
             <div className="flex flex-wrap gap-2">
               {playing && availableStreams.length > 0 ? (
                 availableStreams.map((stream) => (
@@ -445,6 +503,22 @@ export default function TelevisionWoloExperience({
                 </span>
               )}
             </div>
+            {playing ? (
+              <details className="mt-4 rounded-xl border border-white/10 bg-white/[0.025] px-4 py-3 text-xs text-slate-300">
+                <summary className="cursor-pointer font-semibold text-cyan-100">Video diagnostics</summary>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  <div>Directory: {streamError ? "Retrying after error" : lastDirectoryCheck ? "Connected" : "Checking"}</div>
+                  <div>Registered feeds: {availableStreams.length}</div>
+                  <div>Focal camera: {activeStream ? streamRoleLabel(activeStream) : "Awaiting broadcaster"}</div>
+                  <div>Provider: {activeStream?.provider || "Unavailable"}</div>
+                  <div>Capture state: {activeStream?.status || "Not registered"}</div>
+                  <div>Received chunks: {activeStream?.chunkCount ?? "Unknown"}</div>
+                  <div>Last heartbeat: {activeStream?.lastHeartbeatAt ? relativeLabel(activeStream.lastHeartbeatAt) : "Not reported"}</div>
+                  <div>Media: {activeStream?.mediaMimeType || "Not reported"}</div>
+                </div>
+                <p className="mt-3 text-slate-500">Public feed metadata, not a browser decode or latency guarantee. No private keys or local desktop paths are exposed.</p>
+              </details>
+            ) : null}
           </div>
         </div>
 

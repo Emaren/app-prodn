@@ -13,12 +13,17 @@ test("reviewed 1.6.4 Stable 720p default supports two hours without exhausting p
   assert.equal(stable?.twoHourCandidate,true);
   assert.ok((stable?.estimatedMinutes??0)>=120);
 });
-test("higher bitrate modes report shorter limits rather than claiming identical long-match capacity",()=>{
+test("two-hour video modes reveal the real byte-versus-chunk limiting factor",()=>{
   const x=estimateTelevisionRecordingBudget();
   const modes=Object.fromEntries(x.profiles.map(p=>[p.key,p]));
-  assert.ok(modes.stable.estimatedMinutes>modes.screen.estimatedMinutes);
-  assert.ok(modes.screen.estimatedMinutes>modes.sharp.estimatedMinutes);
+  // Under the 12,000-slice cap, low-bitrate modes can both hit 200 minutes.
+  // A higher bitrate never improves the recording budget, but a tie is valid.
+  assert.ok(modes.stable.estimatedMinutes>=modes.screen.estimatedMinutes);
+  assert.ok(modes.screen.estimatedMinutes>=modes.sharp.estimatedMinutes);
   assert.ok(modes.sharp.estimatedBytesForTwoHours>modes.stable.estimatedBytesForTwoHours);
+  assert.equal(modes.stable.limitingFactor,"chunks");
+  assert.equal(modes.screen.limitingFactor,"chunks");
+  assert.equal(modes.sharp.limitingFactor,"bytes");
 });
 test("custom small stream limits produce honest insufficient-duration warning",()=>{
   const x=estimateTelevisionRecordingBudget(128*1024*1024,2000);

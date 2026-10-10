@@ -11,7 +11,11 @@ const STREAM_STORAGE_ROOT =
     ? path.join(process.env.AOE2_VIDEO_CAPTURE_DIR, "live")
     : path.join(process.cwd(), "storage", "live-streams"));
 
-const DEFAULT_MAX_STREAM_BYTES = 2 * 1024 * 1024 * 1024;
+// 3 GiB protects a two-hour Sharp 720p / 24 fps capture at the current
+// 2.6 Mbps encoder target with the planner's 12% overhead allowance.
+// Admission still checks the real media filesystem's 6 GiB floor per chunk;
+// a higher stream cap never reserves or guarantees volume capacity.
+const DEFAULT_MAX_STREAM_BYTES = 3 * 1024 * 1024 * 1024;
 const DEFAULT_MAX_STREAM_CHUNKS = 12_000;
 
 function boundedPositiveInteger(
@@ -30,7 +34,7 @@ export const MAX_STREAM_BYTES = boundedPositiveInteger(
   process.env.AOE2_STREAM_MAX_BYTES,
   DEFAULT_MAX_STREAM_BYTES,
   8 * 1024 * 1024,
-  2 * 1024 * 1024 * 1024,
+  4 * 1024 * 1024 * 1024,
 );
 
 export const MAX_STREAM_CHUNKS = boundedPositiveInteger(
@@ -68,13 +72,21 @@ export function streamCapacityAdmission(
  * Failure to read free space is a video-only fail-closed condition.
  */
 export async function getStreamVolumeHeadroom() {
-  const stats = await fs.statfs(STREAM_STORAGE_ROOT);
+  const [stats, captureDir, hostRoot] = await Promise.all([
+    fs.statfs(STREAM_STORAGE_ROOT),
+    fs.stat(STREAM_STORAGE_ROOT),
+    fs.stat(path.parse(STREAM_STORAGE_ROOT).root || "/"),
+  ]);
+  // A directory on the server root is not an independent video volume.
+  // This is an observation, not proof of total retention or free-space reservations.
+  const mountedSeparately = captureDir.dev !== hostRoot.dev;
   const freeBytes = Number(stats.bavail) * Number(stats.bsize);
   if (!Number.isSafeInteger(freeBytes) || freeBytes < 0) {
     throw new StreamStorageLimitError("Video volume free space could not be verified.");
   }
   return {
     freeBytes,
+    mountedSeparately,
     reserveBytes: STREAM_MIN_FREE_BYTES,
     writableVideoBytes: Math.max(0, freeBytes - STREAM_MIN_FREE_BYTES),
   };
@@ -228,6 +240,22 @@ export function streamChunkPath(streamId: number | string, sequence: number | st
   return path.join(streamChunkDir(streamId), `${safeSequence(sequence)}.webm`);
 }
 
+/**
+ * Init segment 0 must be checked independently of the sliding sequence
+ * index. A 7,200-chunk recording has lost segment 0 from its newest-512
+ * index even though the physical header still exists and is required for
+ * late-joining WebM decoders.
+ */
+export async function streamInitChunkExists(streamId: number | string) {
+  try {
+    const stat = await fs.stat(streamChunkPath(streamId, 0));
+    return stat.isFile() && stat.size > 0;
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === "ENOENT") return false;
+    throw error;
+  }
+}
+
 export async function ensureStreamChunkDir(streamId: number | string) {
   // Be deliberately explicit: create the root first, then the stream dir.
   // This prevents per-stream mkdir from depending on an already-existing parent.
@@ -243,6 +271,20 @@ export async function writeStreamChunk(
   data: Buffer
 ) {
   return withStreamWriteLock(streamId, async () => {
+    // Never create a replacement video directory on the application root if
+    // the separately mounted media filesystem disappears mid-broadcast.
+    // This must happen BEFORE ensureStreamChunkDir() calls recursive mkdir.
+    if (process.env.NODE_ENV === "production") {
+      let mounted = false;
+      try { mounted = (await getStreamVolumeHeadroom()).mountedSeparately; }
+      catch { /* A missing volume is not permission to recreate it. */ }
+      if (!mounted) {
+        throw new StreamStorageLimitError(
+          "Video storage volume is not mounted; recording stopped safely.",
+          "capacity_unverified",
+        );
+      }
+    }
     const dir = await ensureStreamChunkDir(streamId);
     const safeSeq = safeSequence(sequence);
     const filePath = path.join(dir, `${safeSeq}.webm`);
@@ -276,7 +318,13 @@ export async function writeStreamChunk(
 
     let freeBytes: number;
     try {
-      freeBytes = (await getStreamVolumeHeadroom()).freeBytes;
+      const headroom = await getStreamVolumeHeadroom();
+      if (process.env.NODE_ENV === "production" && !headroom.mountedSeparately) {
+        throw new StreamStorageLimitError(
+          "Video storage volume disappeared during capture.", "capacity_unverified",
+        );
+      }
+      freeBytes = headroom.freeBytes;
     } catch (error) {
       if (error instanceof StreamStorageLimitError) throw error;
       throw new StreamStorageLimitError("Video storage capacity could not be verified.");
@@ -334,6 +382,7 @@ export async function writeStreamChunk(
     // This runs after the temporary upload link has been unlinked. The
     // directory fingerprint reflects the final authoritative chunk set.
     await rememberSuccessfulStreamWrite(streamId, dir, updatedUsage);
+    invalidateStreamSequenceIndex(streamId);
     return {filePath,created:true,usage:updatedUsage};
   });
 }
@@ -342,17 +391,87 @@ export async function readStreamChunk(streamId: number | string, sequence: numbe
   return fs.readFile(streamChunkPath(streamId, sequence));
 }
 
-export async function listStreamChunkSequences(streamId: number | string, limit = 80) {
+// Share expensive directory enumeration among simultaneous TV spectators.
+// Cache stores at most 512 sequence numbers per stream, at most 128 streams,
+// and expires quickly even when other web workers write to the same volume.
+// Write and delete paths also invalidate the local process immediately.
+const STREAM_SEQUENCE_INDEX_TTL_MS = 850;
+const STREAM_SEQUENCE_INDEX_MAX_STREAMS = 128;
+const STREAM_SEQUENCE_INDEX_MAX_ENTRIES = 512;
+type StreamSequenceIndex = {
+  observedAt: number;
+  sequences: number[];
+  pending?: Promise<number[]>;
+};
+const streamSequenceIndex = new Map<string, StreamSequenceIndex>();
+
+function invalidateStreamSequenceIndex(streamId: number | string) {
+  streamSequenceIndex.delete(safeStreamId(streamId));
+}
+function rememberStreamSequenceIndex(key: string, entry: StreamSequenceIndex) {
+  streamSequenceIndex.delete(key);
+  streamSequenceIndex.set(key, entry);
+  while (streamSequenceIndex.size > STREAM_SEQUENCE_INDEX_MAX_STREAMS) {
+    const oldest = streamSequenceIndex.keys().next().value;
+    if (oldest === undefined) break;
+    streamSequenceIndex.delete(oldest);
+  }
+}
+async function scanStreamSequences(streamId: number | string) {
   const dir = streamChunkDir(streamId);
-  const entries = await fs.readdir(dir).catch(() => []);
+  const entries = await fs.readdir(dir).catch((error: NodeJS.ErrnoException) => {
+    if (error.code === "ENOENT") return [] as string[];
+    throw error;
+  });
   return entries
     .map((entry) => {
       const match = /^(\d+)\.webm$/.exec(entry);
       return match ? Number(match[1]) : null;
     })
-    .filter((sequence): sequence is number => sequence !== null && Number.isInteger(sequence) && sequence >= 0)
+    .filter((sequence): sequence is number => sequence !== null && Number.isSafeInteger(sequence) && sequence >= 0)
     .sort((left, right) => left - right)
-    .slice(-Math.max(1, limit));
+    .slice(-STREAM_SEQUENCE_INDEX_MAX_ENTRIES);
+}
+export async function listStreamChunkSequences(streamId: number | string, limit = 80) {
+  const key = safeStreamId(streamId);
+  const safeLimit = Math.max(1, Number.isSafeInteger(limit) ? limit : 80);
+  // Preserve the full scan contract for rare callers needing >512 sequences.
+  if (safeLimit > STREAM_SEQUENCE_INDEX_MAX_ENTRIES) {
+    const dir = streamChunkDir(streamId);
+    const entries = await fs.readdir(dir).catch((error: NodeJS.ErrnoException) => {
+      if (error.code === "ENOENT") return [] as string[];
+      throw error;
+    });
+    return entries.map(entry => /^(\d+)\.webm$/.exec(entry))
+      .filter((match): match is RegExpExecArray => match !== null)
+      .map(match => Number(match[1]))
+      .filter(Number.isSafeInteger)
+      .sort((a,b) => a-b)
+      .slice(-safeLimit);
+  }
+  const prior = streamSequenceIndex.get(key);
+  if (prior?.pending) return (await prior.pending).slice(-safeLimit);
+  if (prior && Date.now() - prior.observedAt < STREAM_SEQUENCE_INDEX_TTL_MS) {
+    return prior.sequences.slice(-safeLimit);
+  }
+  const pending = scanStreamSequences(streamId);
+  rememberStreamSequenceIndex(key, {
+    observedAt: 0,
+    sequences: prior?.sequences ?? [],
+    pending,
+  });
+  try {
+    const sequences = await pending;
+    if (streamSequenceIndex.get(key)?.pending === pending) {
+      rememberStreamSequenceIndex(key, { observedAt: Date.now(), sequences });
+    }
+    return sequences.slice(-safeLimit);
+  } catch (error) {
+    if (streamSequenceIndex.get(key)?.pending === pending) {
+      streamSequenceIndex.delete(key);
+    }
+    throw error;
+  }
 }
 
 export async function getStreamStorageUsage(
@@ -418,7 +537,17 @@ export async function readStreamChunksBounded(
 }
 
 export async function removeStreamChunks(streamId: number | string) {
+  // Never report a successful removal against an unmounted fallback directory.
+  if (process.env.NODE_ENV === "production") {
+    const observed = await getStreamVolumeHeadroom();
+    if (!observed.mountedSeparately) {
+      throw new StreamStorageLimitError(
+        "Video mount unavailable; removal refused.", "capacity_unverified",
+      );
+    }
+  }
   const key=safeStreamId(streamId);
   streamWriteUsageCache.delete(key);
+  invalidateStreamSequenceIndex(streamId);
   await fs.rm(streamChunkDir(streamId), { recursive: true, force: true });
 }

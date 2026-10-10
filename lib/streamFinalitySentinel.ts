@@ -1,11 +1,13 @@
 import { Prisma, type GameWatchStream, type PrismaClient } from "@/lib/generated/prisma";
 import { AOE2WAR_STREAM_SOURCE_TYPES } from "@/lib/streamIdentity";
+import { lockVideoChunkWriter } from "@/lib/streamAdvisoryLocks";
 
 const ACTIVE_STREAM_STATUSES = ["starting", "live"] as const;
 const MANAGED_SOURCE_TYPES = new Set<string>(AOE2WAR_STREAM_SOURCE_TYPES);
 
 type StreamCandidate = {
   id: number;
+  userId?: number | null;
   sessionKey: string;
   provider: string;
   sourceType?: string | null;
@@ -38,6 +40,13 @@ function unique(values: string[]) {
 }
 
 async function findFinalReplayForStream(prisma: PrismaClient, stream: StreamCandidate) {
+  // GameStats filenames are only unique within the broadcaster's account.
+  // A different player's finalized match must never terminate this camera.
+  if (!stream.userId) return null;
+  const owner = await prisma.user.findUnique({
+    where: { id: stream.userId }, select: { uid: true },
+  });
+  if (!owner?.uid) return null;
   const sessionKey = clean(stream.sessionKey);
   if (!sessionKey) return null;
 
@@ -55,6 +64,7 @@ async function findFinalReplayForStream(prisma: PrismaClient, stream: StreamCand
     select gs.id, gs.created_at
     from game_stats gs
     where gs.is_final = true
+      and gs.user_uid = ${owner.uid}
       and nullif(trim(coalesce(gs.winner, '')), '') is not null
       and coalesce(gs.winner, '') <> 'Unknown'
       and (
@@ -94,25 +104,20 @@ export async function maybeEndFinalizedStream(prisma: PrismaClient, stream: Stre
   const finalReplay = await findFinalReplayForStream(prisma, stream);
   if (!finalReplay) return null;
 
-  const now = new Date();
-
-  await prisma.gameWatchStream.updateMany({
-    where: {
-      id: stream.id,
-      status: {
-        in: [...ACTIVE_STREAM_STATUSES],
+  // Replay finality must not arrive between an accepted chunk's disk write
+  // and its DB receipt. Serialize on the same physical camera writer lock.
+  const updated = await prisma.$transaction(async (tx) => {
+    await lockVideoChunkWriter(tx, stream.id);
+    const now = new Date();
+    await tx.gameWatchStream.updateMany({
+      where: {
+        id: stream.id,
+        status: { in: [...ACTIVE_STREAM_STATUSES] },
       },
-    },
-    data: {
-      status: "ended",
-      endedAt: now,
-      updatedAt: now,
-    },
-  });
-
-  const updated = await prisma.gameWatchStream.findUnique({
-    where: { id: stream.id },
-  });
+      data: { status: "ended", endedAt: now, updatedAt: now },
+    });
+    return tx.gameWatchStream.findUnique({ where: { id: stream.id } });
+  }, { maxWait: 4_000, timeout: 12_000 });
 
   if (updated) {
     console.info("[streams/finality-sentinel] ended stream after final replay", {
