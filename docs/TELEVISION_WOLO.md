@@ -619,3 +619,25 @@ Watcher UI work grants a production release or a measured quality score.
   sustained bitrate/CPU/IO/latency, full WebM playback and explicit cleanup.
 - Chaos ballots remain non-binding with protected migration; comments and
   Commissioner title awards require their own audited authority.
+
+### Pre-start mount and quota admission (V3 development)
+
+Video startup now verifies the **actual configured stream directory** exists,
+can report media-filesystem free space, has headroom for one full configured
+per-POV byte quota *above* the six-GiB reserve, and in production resides
+on a filesystem with a device ID different from the application root. The
+operator must pre-provision the directory on the mounted media volume before
+turning on capture. A stray directory on the small VPS root is **not** an
+acceptable replacement for the mounted volume.
+
+The authenticated stream-start endpoint rejects an unsafe volume with a
+redacted, machine-readable `STREAM_VIDEO_VOLUME_NOT_READY` HTTP 503 **before**
+ending an existing stream or creating a new capture record. This is a
+video-only guard: replay watching, stored gameplay truth, wagers and WOLO
+remain untouched. The admin Video Vault displays verified separate-volume
+status (yes/no/unverified) alongside actual free bytes and cap planning.
+The start-time headroom check is **not** a global reservation or distributed
+admission lock. Live chunks retain the independent per-write free-space guard.
+
+This change needs an actual VPS mount/inode check and a signed Windows canary;
+unit tests cannot establish that the desired host directory is mounted.
