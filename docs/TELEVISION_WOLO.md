@@ -805,3 +805,33 @@ This is a real SQL transaction contention gate, not an end-to-end test
 of Prisma transaction interleavings, simultaneous mounted-volume writes,
 Windows capture, or 8-viewer media decode. The physical canary and replay
 priority stress tests remain necessary before public video certification.
+
+### Enforced postgame video grace and stale-camera race safety (V3)
+
+Every finished video has a **minimum 15-minute grace period** after its
+authoritative end timestamp for spectator review and subsequent voting.
+Normal cleanup defaults to **six hours**, but a malformed or shorter
+`AOE2_STREAM_CHUNK_RETENTION_MS` environment override cannot shorten
+the hard 15-minute minimum. The shared policy rejects missing, invalid
+or future completion timestamps as insufficient proof of expiry.
+
+The automated pruning job, administrator's Video Vault delete endpoint,
+and the separate retained-demo deletion path all apply the minimum.
+The Vault reports per-record `postgameProtected` and `postgameUntil`,
+displays the protection deadline, and hides the delete button until
+expiry. The server independently returns machine-readable
+`STREAM_POSTGAME_MEDIA_PROTECTED` HTTP 409 on premature deletion;
+the user interface is not the security boundary. A retained-demo slot
+may keep material far longer than the minimum.
+
+This protects **media storage**, not yet the full social experience:
+authenticated community comments, moderation, Chaos ballots and the
+end-to-end postgame window still require their own acceptance tests.
+A media file can be unplayable even when preserved, so Windows/browser
+decoder checks remain mandatory.
+
+Stale-stream housekeeping now locks each affected video writer and
+rechecks its heartbeat/active status **inside** a transaction before
+ending a recording. An in-flight or newly recovered camera is not
+terminated based on the older initial cleanup query result. Cleanup
+work is bounded to 100 stale candidates, in groups of eight.
