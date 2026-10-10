@@ -1,4 +1,4 @@
-import type { WatchStreamPayload } from "./watchStreams";
+import { watchStreamHasProvenLiveVideo, type WatchStreamPayload } from "./watchStreams";
 
 export type TelevisionStagePlayer = {
   key: string;
@@ -113,4 +113,16 @@ export function mergeTelevisionStreamEvidence(
     const b = new Date(right.updatedAt).getTime() || 0;
     return b - a || right.id - left.id;
   }).slice(0, 24);
+}
+
+/** A broadcaster can be registered without having supplied a playable frame. */
+export function televisionCameraStatus(stream: WatchStreamPayload | null, nowMs = Date.now()) {
+  if (!stream || stream.status === "removed") return "NO CAMERA";
+  if (stream.provider !== "aoe2war") return stream.status === "live" ? "EXTERNAL FEED" : "EXTERNAL OFFLINE";
+  if (stream.status === "ended") return stream.chunkCount > 0 ? "RECORDING ENDED" : "NO VIDEO";
+  if (stream.status === "failed") return "CAPTURE FAILED";
+  if (stream.status === "starting" || stream.chunkCount <= 0 || stream.latestChunkSeq < 0) {
+    return "CONNECTING";
+  }
+  return watchStreamHasProvenLiveVideo(stream, nowMs) ? "VIDEO LIVE" : "SIGNAL STALE";
 }
