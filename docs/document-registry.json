@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "fe5849de34ad06c5f254c175a09c0e2bb173d6d3f54e137d9f1793f8bc6d01e5",
+      "sha256": "af1cf02b06cbb2def98394eeca5bea954de0c28cd0031d1b340f5c3e5f7fda42",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1834,7 +1834,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-02",
       "sensitivity": "restricted",
-      "sha256": "c1c5d8f9f5fb3c5d33b04d31ff0985e814866b9c80973fc6ab2bf9355aa1db1a",
+      "sha256": "0b5351b6f0587458ed5edf613f15c81d5aa3b9a062870ec51d536d853c0737ad",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2049,7 +2049,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/watcher-1.6.4-native-mac-release-promotion-20261010",
-    "commit": "90b50676446445e9d8f57be068a93db25bf46572"
+    "commit": "da1ded989cc4275e43301ed4d6c0ddaed4ec124b"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
