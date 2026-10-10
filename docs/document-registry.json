@@ -1832,7 +1832,7 @@
       "owner": "aoe2war-web",
       "path": "docs/WATCHER_TELEMETRY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-02",
+      "reviewed_at": "2026-10-10",
       "sensitivity": "restricted",
       "sha256": "0b5351b6f0587458ed5edf613f15c81d5aa3b9a062870ec51d536d853c0737ad",
       "source_of_truth": "git",
