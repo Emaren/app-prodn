@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "bf3ba417e6e59a42d088a01e429b20fff180df97146e60275ebef1af7c36b58b",
+      "sha256": "ca1170325eee8d6e0f721ee0782b6306a5a087e86e13a0578adcd0adaf1e65ee",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -961,7 +961,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-07-28",
       "sensitivity": "internal",
-      "sha256": "aee06169cf13b31f37ec8c170307c32d4a5fc9f9f707a712474a8273a6d3ef13",
+      "sha256": "abe485182388a7bb07c4a4db5a3a6a02b130272ab75019678bb2931c5918546c",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2048,8 +2048,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/library-historical-provenance-20261009",
-    "commit": "62842124d82c73e8cea9f6c7e6633a706eb99023"
+    "branch": "feature/zodiac-rating-evidence-20261010",
+    "commit": "63ea66d17b351ae8962b4319704ca6df1ddfa99d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
