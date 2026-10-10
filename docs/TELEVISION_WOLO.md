@@ -641,3 +641,13 @@ admission lock. Live chunks retain the independent per-write free-space guard.
 
 This change needs an actual VPS mount/inode check and a signed Windows canary;
 unit tests cannot establish that the desired host directory is mounted.
+
+### Atomic stream replacement (V3 development)
+
+After mounted-capacity admission, an authorized new stream now completes
+the prior-session end, new registry row, manifest identity and primary-camera
+selection inside **one database transaction**. A failed insert/update rolls
+back the prior stream's termination rather than stranding the broadcaster.
+This does not yet serialize separate simultaneous start requests from the
+same user across multiple web workers; multi-worker races remain an explicit
+release-canary and database-admission follow-up.
