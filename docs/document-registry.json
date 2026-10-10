@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "046bf8677d1c8e0e20010f694ec88b22852f738621e61bd676dc79351a174d6e",
+      "sha256": "0856ffaa8cd400b6c479f90427a9c0fec68bb0ff4f889f0f67f5a3031f9a1bde",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1697,7 +1697,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-09",
       "sensitivity": "internal",
-      "sha256": "48bb4a998228e2b266fc463bbb40f387c88b255884ae8126519fda6df82e9ead",
+      "sha256": "6ccf563f27a031b97233104f8408cef70ca9e95e709083e1611ca3ee1a5976fc",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2048,8 +2048,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/television-v1-hidden-tab-playback-20261009",
-    "commit": "e0b466ce4e83cd88d6a8378d436ac1bfe4ed3190"
+    "branch": "feature/television-v1-operator-readiness-20261009",
+    "commit": "7c7b635a55033de8d5cbc021bb44bd36d6ac20f4"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
