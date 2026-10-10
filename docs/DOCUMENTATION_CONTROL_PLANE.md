@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/television-v1-media-integrity-20261009` at `a2c01323d0c54566c2dbfd534d89f62f257d8d04`
+Implementation baseline: `feature/television-v1-long-match-budget-20261009` at `c6a4df5252f56ca9e4801cf750322b0f69031fab`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
