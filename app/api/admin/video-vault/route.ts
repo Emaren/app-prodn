@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAdmin } from "@/lib/adminSession";
-import { getStreamStorageUsage, removeStreamChunks, MAX_STREAM_BYTES, MAX_STREAM_CHUNKS } from "@/lib/streamStorage";
+import { getStreamStorageUsage, getStreamVolumeHeadroom, STREAM_MIN_FREE_BYTES, removeStreamChunks, MAX_STREAM_BYTES, MAX_STREAM_CHUNKS } from "@/lib/streamStorage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -83,11 +83,13 @@ export async function GET(request: NextRequest) {
     };
   }));
   const recentBytes = rows.reduce((sum,row)=>sum+(row.bytes??0),0);
+  const volume = await getStreamVolumeHeadroom().catch(() => null);
   return NextResponse.json({
     rows, totalCount, scanned:rows.length, recentBytes,
     issuesSampled: issueEvents.length,
     complete:rows.length===totalCount && rows.every(row=>row.bytes !== null),
     limits:{perStreamBytes:MAX_STREAM_BYTES,perStreamChunks:MAX_STREAM_CHUNKS},
+    volume: volume ?? { freeBytes:null, reserveBytes:STREAM_MIN_FREE_BYTES, writableVideoBytes:null },
     note:"Sizes are measured for the newest 60 first-party streams only. Older/orphaned files are not in this subtotal.",
   },{headers:NO_STORE});
 }
