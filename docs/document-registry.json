@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "82c913747c22a9f72146d61e907d72540174b2c8a40f635274c2200a2c9802c0",
+      "sha256": "9e4583a6cf9ce7d7ace1748f843d99bbee699d1c58ec2cca4a3696e25e0f7e65",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1697,7 +1697,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-09",
       "sensitivity": "internal",
-      "sha256": "19693509f40f69eb406d6180b9657dc2949483ea28a3e54b6938173d2b49e132",
+      "sha256": "f65e785305cb801d20dfaf76caf0b8aca9c1590ea58f708c295ebb5003942e0d",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2049,7 +2049,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/television-v3-integrated-hardening-20261010",
-    "commit": "85a4397b87ad123f076728ff0ab96afdf82b79af"
+    "commit": "e09f0d0cc1242769a9c8ce25cf1036e5541e8295"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
