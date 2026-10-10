@@ -92,6 +92,11 @@ export async function GET(request: NextRequest) {
       updatedAt:stream.updatedAt.toISOString(),
       retained: Boolean(stream.retainedDemo),
       retainedUntil:stream.retainedDemo?.expiresAt.toISOString() ?? null,
+      postgameProtected: ["ended", "failed"].includes(stream.status) &&
+        postgameMediaProtected(stream.endedAt ?? stream.updatedAt),
+      postgameUntil: ["ended", "failed"].includes(stream.status)
+        ? new Date((stream.endedAt ?? stream.updatedAt).getTime() + MIN_POSTGAME_MEDIA_MS).toISOString()
+        : null,
       lastHeartbeatAgeSeconds: stream.lastHeartbeatAt
         ? Math.max(0, Math.round((Date.now() - stream.lastHeartbeatAt.getTime()) / 1000))
         : null,
