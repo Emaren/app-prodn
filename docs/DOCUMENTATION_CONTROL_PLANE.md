@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/update-preflight-no-dirty-taxonomy-20261010` at `7d3c106731e43568fbbb5412526a2c33164486be`
+Implementation baseline: `feature/general-inspections-evidence-delta-20261010` at `19b73ca0fc2409a47f1e8af01da4e11213438d62`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
