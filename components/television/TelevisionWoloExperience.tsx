@@ -19,7 +19,7 @@ import {
 
 import LiveStreamFrame from "@/components/streaming/LiveStreamFrame";
 import type { WatchStreamPayload } from "@/lib/watchStreams";
-import { assignTelevisionCameras, type TelevisionStage, type TelevisionCamera } from "@/lib/televisionDirection";
+import { assignTelevisionCameras, mergeTelevisionStreamEvidence, type TelevisionStage } from "@/lib/televisionDirection";
 
 export type TelevisionBattle = {
   id: number | null;
@@ -33,6 +33,7 @@ export type TelevisionBattle = {
   occurredAt: string | null;
   watchHref: string;
   initialStreamCount: number;
+  initialStreams: WatchStreamPayload[];
 };
 
 export type TelevisionChaosCard = {
@@ -117,16 +118,26 @@ export default function TelevisionWoloExperience({
     [battles, initialBattle, selectedKey],
   );
 
+  // The canonical server-side live-session aggregator already knows proof-
+  // backed replay aliases. Keep its attached feeds even when the exact key
+  // queried by /api/watch-streams is an older recording filename.
+  const availableStreams = useMemo(
+    () => mergeTelevisionStreamEvidence(
+      playingKey === selectedBattle?.sessionKey ? selectedBattle.initialStreams : [],
+      streams,
+    ),
+    [selectedBattle, streams, playingKey],
+  );
   const director = useMemo(
     () => assignTelevisionCameras(selectedBattle?.stage ??
-      { confirmedTeams: false, format: "Pending", teams: [] }, streams),
-    [selectedBattle, streams],
+      { confirmedTeams: false, format: "Pending", teams: [] }, availableStreams),
+    [selectedBattle, availableStreams],
   );
   const activeStream = useMemo(
-    () => streams.find(stream => stream.id === activeStreamId) ??
+    () => availableStreams.find(stream => stream.id === activeStreamId) ??
       director.cameras.find(camera => camera.stream)?.stream ??
-      streams.find(stream => stream.isPrimary) ?? streams[0] ?? null,
-    [activeStreamId, director, streams],
+      availableStreams.find(stream => stream.isPrimary) ?? availableStreams[0] ?? null,
+    [activeStreamId, director, availableStreams],
   );
 
   useEffect(() => {
@@ -172,7 +183,9 @@ export default function TelevisionWoloExperience({
         error?: string;
       };
       if (!response.ok) throw new Error(payload.error || "Could not load television feeds.");
-      const nextStreams = payload.streams ?? [];
+      const nextStreams = mergeTelevisionStreamEvidence(
+        selectedBattle.initialStreams, payload.streams ?? [],
+      );
       setStreams(nextStreams);
       const matched = assignTelevisionCameras(selectedBattle.stage, nextStreams);
       setActiveStreamId(
@@ -181,7 +194,14 @@ export default function TelevisionWoloExperience({
       );
       setPlayingKey(selectedBattle.sessionKey);
     } catch (error) {
-      setStreamError(error instanceof Error ? error.message : "Could not load television feeds.");
+      // Network refresh is not proof that the authoritative snapshot has no
+      // cameras. Start its already-linked feeds while showing the warning.
+      const proofStreams = selectedBattle.initialStreams;
+      setStreams(proofStreams);
+      const fallback = assignTelevisionCameras(selectedBattle.stage, proofStreams);
+      setActiveStreamId(fallback.cameras.find(camera => camera.stream)?.stream?.id ??
+        proofStreams[0]?.id ?? null);
+      setStreamError(error instanceof Error ? error.message : "Feed refresh unavailable.");
       setPlayingKey(selectedBattle.sessionKey);
     } finally {
       setLoadingStreams(false);
