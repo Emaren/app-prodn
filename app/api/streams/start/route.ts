@@ -136,29 +136,18 @@ export async function POST(request: NextRequest) {
 
   let sessionKey = requestedSessionKey || `free:${user.uid}`;
 
-  // A weak Watcher session is NEVER matched to the most recent replay by time.
-  // A prior game can still be within that window. Preserve the weak stream
-  // identity until the server proves this account's exact replay/platform ID.
-  if (sourceType === "watcher_native" &&
-      /^(?:[a-z]:[\\/]|[/\\]{2}|[/]|file:\/\/)/i.test(sessionKey)) {
-    sessionKey = `watcher:session_${user.id}_${Date.now()}`;
-  }
-
+  // A request cannot assign its own public battle: neither a recent replay
+  // guess nor an unverified platform: ID is competitive or video identity.
+  // A Weak Watcher session remains unlinked until exact owner-backed evidence
+  // arrives (including on a later heartbeat).
   if (sourceType === "watcher_native") {
-    const platformSessionKey = await resolvePlatformSessionKeyForReplay(
-      prisma,
-      user.uid,
-      sessionKey
+    const verifiedSessionKey = await resolvePlatformSessionKeyForReplay(
+      prisma, user.uid, sessionKey,
     );
-
-    if (platformSessionKey && platformSessionKey !== sessionKey) {
-      console.info("[streams/start] bound watcher stream to platform session", {
-        userId: user.id,
-        requestedSessionKey,
-        replaySessionKey: sessionKey,
-        platformSessionKey,
-      });
-      sessionKey = platformSessionKey;
+    if (verifiedSessionKey) {
+      sessionKey = verifiedSessionKey;
+    } else {
+      sessionKey = `watcher:session_${user.id}_${Date.now()}`;
     }
   }
 
