@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ca1170325eee8d6e0f721ee0782b6306a5a087e86e13a0578adcd0adaf1e65ee",
+      "sha256": "834c3961c0c701a465fe835c048f4aa370ad8af1ef5577dfb2950087e66dc416",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2049,7 +2049,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/zodiac-rating-evidence-20261010",
-    "commit": "63ea66d17b351ae8962b4319704ca6df1ddfa99d"
+    "commit": "1f325d4667faf66c8789598e7988324fea628739"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
