@@ -255,6 +255,20 @@ export async function writeStreamChunk(
   data: Buffer
 ) {
   return withStreamWriteLock(streamId, async () => {
+    // Never create a replacement video directory on the application root if
+    // the separately mounted media filesystem disappears mid-broadcast.
+    // This must happen BEFORE ensureStreamChunkDir() calls recursive mkdir.
+    if (process.env.NODE_ENV === "production") {
+      let mounted = false;
+      try { mounted = (await getStreamVolumeHeadroom()).mountedSeparately; }
+      catch { /* A missing volume is not permission to recreate it. */ }
+      if (!mounted) {
+        throw new StreamStorageLimitError(
+          "Video storage volume is not mounted; recording stopped safely.",
+          "capacity_unverified",
+        );
+      }
+    }
     const dir = await ensureStreamChunkDir(streamId);
     const safeSeq = safeSequence(sequence);
     const filePath = path.join(dir, `${safeSeq}.webm`);
@@ -288,7 +302,13 @@ export async function writeStreamChunk(
 
     let freeBytes: number;
     try {
-      freeBytes = (await getStreamVolumeHeadroom()).freeBytes;
+      const headroom = await getStreamVolumeHeadroom();
+      if (process.env.NODE_ENV === "production" && !headroom.mountedSeparately) {
+        throw new StreamStorageLimitError(
+          "Video storage volume disappeared during capture.", "capacity_unverified",
+        );
+      }
+      freeBytes = headroom.freeBytes;
     } catch (error) {
       if (error instanceof StreamStorageLimitError) throw error;
       throw new StreamStorageLimitError("Video storage capacity could not be verified.");
@@ -501,6 +521,15 @@ export async function readStreamChunksBounded(
 }
 
 export async function removeStreamChunks(streamId: number | string) {
+  // Never report a successful removal against an unmounted fallback directory.
+  if (process.env.NODE_ENV === "production") {
+    const observed = await getStreamVolumeHeadroom();
+    if (!observed.mountedSeparately) {
+      throw new StreamStorageLimitError(
+        "Video mount unavailable; removal refused.", "capacity_unverified",
+      );
+    }
+  }
   const key=safeStreamId(streamId);
   streamWriteUsageCache.delete(key);
   invalidateStreamSequenceIndex(streamId);
