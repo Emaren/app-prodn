@@ -132,3 +132,16 @@ receipt identity while live. A different battle requires Stop, deliberate
 selection, and a **new** /api/streams/start; silently rebinding existing
 recorded chunks would destroy provenance. A local preview, live heartbeat and
 the correct canonical battle are three separate proofs.
+
+### Broadcast identity is not Player POV
+
+A separate October 10 field screenshot showed the Jim 5v5 theatre labeling
+a browser stream `Emaren POV` while the video depicted a browser desktop,
+not verified Emaren gameplay. The ingest endpoint records browser streams
+with `role: caster` and a separate `playerLabel` naming the broadcaster.
+Television WOLO must render stream **role first**: a named caster becomes
+`Emaren · Main Cast`, never `Emaren POV`. Only streams explicitly registered
+under `role: player_pov` may receive the POV label. This corrects display
+semantics; it does not retroactively reclassify existing media or establish
+which player was controlling a captured window. Future true player-POV
+attestation must be backed by independent watcher/replay identity proof.
