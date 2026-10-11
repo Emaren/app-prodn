@@ -102,19 +102,17 @@ test("admin can accept Clan Alerts, assign managers and crests", () => {
   );
 });
 
-test("clan admins can choose assigned crests from profile", () => {
-  assert.match(
-    crestApi,
-    /Only a clan owner or clan admin/,
-  );
-  assert.match(
-    crestApi,
-    /saveManagedMediaReference/,
-  );
-  assert.match(
-    profile,
-    /ClanCrestManager/,
-  );
+test("clan owner controls live in Clan Command, not player profiles", () => {
+  assert.match(crestApi, /Only a clan owner or clan admin/);
+  assert.match(crestApi, /saveManagedMediaReference/);
+  assert.doesNotMatch(profile, /ClanCrestManager/);
+  assert.match(admin, /setHallDefault/);
+  assert.match(admin, /Hall default chat view/);
+  assert.match(admin, /Upload clan crests/);
+  assert.match(admin, /Appoint clan administration/);
+  assert.match(read("app/admin/layout.tsx"), /requireServerAdmin/);
+  assert.match(read("app/api/admin/clans/route.ts"), /hallSetting:/);
+  assert.match(read("components/clans/ClanDisplayRail.tsx"), /canManage && onDefaultChatViewChange/);
 });
 
 test("managed media includes a dedicated crest kind", () => {

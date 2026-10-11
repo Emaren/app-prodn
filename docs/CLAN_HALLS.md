@@ -112,8 +112,10 @@ Each Hall persists an administrator-owned `defaultChatView` (`v1`-`v5`) in
 the dedicated one-to-one `clan_hall_settings` child table. This keeps Social V1
 inside the protected additive release contract without mutating the pre-existing
 `clans` table and gives future Hall policy its own bounded home. The King/clan
-admins can set the default from Profile Clan Administration or from the
-admin-only control in that Hall's bottom Display rail. Viewer overrides are
+admins can set the default from the Hall's own management controls. Site administrators
+also manage every Hall default from `/admin/clans`, alongside crests, roles,
+founding requests and clan settings; owner-only controls are not mounted on
+`/profile`. Clan-admin self-service remains available inside that Hall's bottom Display rail. Viewer overrides are
 stored locally per Clan rather than globally. Resolution is: per-Clan viewer
 override, then Clan admin default, then V1. Ordinary viewers never see the
 admin-default control.

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { CLAN_CHAT_VIEWS, type ClanChatViewMode } from "@/components/clans/clanChatViewPreference";
 import {
   Check,
   Crown,
@@ -36,6 +37,7 @@ type ClanRow = {
   tagline: string | null;
   description: string | null;
   crestUrl: string | null;
+  defaultChatView: ClanChatViewMode;
   status: string;
   memberCount: number;
   managers: Array<{
@@ -421,6 +423,27 @@ export default function AdminClansPage() {
     }
   }
 
+  async function setHallDefault(clan: ClanRow, defaultChatView: ClanChatViewMode) {
+    setBusy(`hall-default:${clan.id}`);
+    setError(null);
+    setNotice(null);
+    try {
+      const response = await fetch("/api/user/clan-crests", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "set_default_chat_view", clanId: clan.id, defaultChatView }),
+      });
+      const result = (await response.json().catch(() => ({}))) as { detail?: string };
+      if (!response.ok) throw new Error(result.detail || "Could not update the Hall default.");
+      setNotice(`${clan.name} Hall default set to ${defaultChatView.toUpperCase()}.`);
+      await load();
+    } catch (updateError) {
+      setError(updateError instanceof Error ? updateError.message : "Could not update the Hall default.");
+    } finally {
+      setBusy(null);
+    }
+  }
+
   async function selectCurrentCrest(
     clan: ClanRow,
     asset: MediaAsset,
@@ -797,6 +820,24 @@ export default function AdminClansPage() {
                       {clan.status}
                     </span>
                   </div>
+
+                  <section className="mt-5 flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-black/25 px-4 py-3" aria-label={`${clan.name} Hall default chat view`}>
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-100/70">Hall default chat view</span>
+                    <div className="ml-auto flex flex-wrap gap-2">
+                      {CLAN_CHAT_VIEWS.map((view) => (
+                        <button
+                          key={view.key}
+                          type="button"
+                          onClick={() => void setHallDefault(clan, view.key)}
+                          disabled={busy === `hall-default:${clan.id}`}
+                          aria-pressed={clan.defaultChatView === view.key}
+                          className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 ${clan.defaultChatView === view.key ? "border-amber-200/40 bg-amber-300/15 text-amber-100" : "border-white/10 text-stone-400 hover:text-white"}`}
+                        >
+                          {view.version} · {view.label}
+                        </button>
+                      ))}
+                    </div>
+                  </section>
 
                   <div className="mt-5 grid gap-5 lg:grid-cols-2">
                     <section className="rounded-[1.25rem] border border-white/8 bg-black/22 p-4">

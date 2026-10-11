@@ -13,6 +13,7 @@ import {
   slugifyClanHallName,
 } from "@/lib/clanHallRequests";
 import type { PrismaClient } from "@/lib/generated/prisma";
+import { normalizeClanChatViewMode } from "@/lib/clanChatViews";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -54,6 +55,7 @@ async function loadPayload(prisma: PrismaClient) {
       },
     ],
     include: {
+      hallSetting: { select: { defaultChatView: true } },
       members: {
         where: {
           status: "active",
@@ -194,6 +196,7 @@ async function loadPayload(prisma: PrismaClient) {
         tagline: clan.tagline,
         description: clan.description,
         crestUrl: clan.crestUrl,
+        defaultChatView: normalizeClanChatViewMode(clan.hallSetting?.defaultChatView, "v1"),
         status: clan.status,
         memberCount: clan._count.members,
         managers: clan.members.map(

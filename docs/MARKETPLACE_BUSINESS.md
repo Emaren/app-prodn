@@ -77,6 +77,13 @@ Kingdom approval and merchant activation are separate:
    WOLO charge;
 3. the merchant may activate/display the approved business from Profile.
 
+Kingdom-wide Marketplace approval, proprietor reassignment, sponsorship and
+artwork commands live only in `/admin/marketplace` behind the existing server
+admin gate; the player profile mounts only `MarketplaceBusinessCard` for the
+signed-in proprietor's own business, in Basic/Advanced and Extreme layouts.
+The existing `/api/market/admin` authorization remains authoritative. No
+Marketplace ownership, balances, approvals or payment rules change.
+
 Owner controls include business name, offer, image, and display state.
 Authorized Marketplace administration has corresponding approval/override
 controls.

@@ -86,8 +86,12 @@ test("exterior counter opening is native and no longer hydration dependent", () 
   assert.match(inquiryUi, /payWoloOnChain/);
 });
 
-test("owner console mounts in both profile layouts and self-gates by API", () => {
-  const mounts = profile.match(/<MarketplaceOwnerConsole \/>/g) ?? [];
-  assert.equal(mounts.length, 2);
+test("kingdom-wide owner console is admin-only, never mounted in a player profile", () => {
+  const adminPage = fs.readFileSync("app/admin/marketplace/page.tsx", "utf8");
+  const adminLayout = fs.readFileSync("app/admin/layout.tsx", "utf8");
+  assert.doesNotMatch(profile, /MarketplaceOwnerConsole/);
+  assert.match(profile, /<MarketplaceBusinessCard \/>/);
+  assert.match(adminPage, /<MarketplaceOwnerConsole commandMode \/>/);
+  assert.match(adminLayout, /requireServerAdmin/);
   assert.match(ownerUi, /response\.status === 403/);
 });
