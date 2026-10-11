@@ -1,7 +1,3 @@
-export const CHAMPIONS_V2_ACTIVE_COUNT = 4;
-export const CHAMPIONS_V2_VACANT_COUNT = 18;
-export const CHAMPIONS_V2_TRIBUTE_POOL_WOLO = 45;
-
 /*
  * Current live reign-tribute policy.
  *
