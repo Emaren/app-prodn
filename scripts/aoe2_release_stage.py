@@ -75,29 +75,33 @@ def parse_kv(text: str) -> dict[str, str]:
 
 
 def watcher_distribution_version(manifest: dict) -> str:
-    """Return the target Watcher version that must already exist in production."""
-    if manifest.get("risk_class") != "WATCHER":
-        return ""
+    """Require certified vault proof for WATCHER risk or any version transition."""
+    def version_at_commit(sha: str) -> str:
+        if not re.fullmatch(r"[0-9a-f]{40}", sha):
+            raise StageError("WATCHER release manifest has an invalid source SHA")
+        p = run(
+            ["git", "show", f"{sha}:lib/watcherRelease.ts"],
+            timeout=30,
+        )
+        if p.returncode != 0:
+            raise StageError(
+                "WATCHER distribution cannot read exact source-bound release metadata"
+            )
+        matches = WATCHER_VERSION_RE.findall(p.stdout or "")
+        if len(matches) != 1:
+            raise StageError(
+                "WATCHER release must expose exactly one semantic WATCHER_RELEASE version"
+            )
+        return matches[0]
 
-    release_sha = str(manifest.get("release_sha") or "")
-    if not re.fullmatch(r"[0-9a-f]{40}", release_sha):
-        raise StageError("WATCHER release manifest has an invalid release SHA")
+    release_version = version_at_commit(str(manifest.get("release_sha") or ""))
+    if manifest.get("risk_class") == "WATCHER":
+        return release_version
 
-    p = run(
-        ["git", "show", f"{release_sha}:lib/watcherRelease.ts"],
-        timeout=30,
+    previous_version = version_at_commit(
+        str(manifest.get("previous_production_sha") or "")
     )
-    if p.returncode != 0:
-        raise StageError(
-            "WATCHER release cannot read lib/watcherRelease.ts from the exact release commit"
-        )
-
-    matches = WATCHER_VERSION_RE.findall(p.stdout or "")
-    if len(matches) != 1:
-        raise StageError(
-            "WATCHER release must expose exactly one semantic WATCHER_RELEASE version"
-        )
-    return matches[0]
+    return release_version if release_version != previous_version else ""
 
 
 def remote_stage_script(
@@ -921,6 +925,8 @@ def validate_stage_result(
     data: dict,
     manifest: dict,
     result: dict[str, str],
+    *,
+    watcher_version: str = "",
 ) -> list[str]:
     prod = data["production"]
     errors: list[str] = []
@@ -1020,12 +1026,14 @@ def validate_stage_result(
                 "dependency lock-change evidence does not match release manifest"
             )
 
-    if manifest.get("risk_class") == "WATCHER":
+    if manifest.get("risk_class") == "WATCHER" or watcher_version:
         if result.get("watcher_distribution_status") != "PASS":
             errors.append("WATCHER distribution preflight did not report PASS")
         version = result.get("watcher_distribution_version") or ""
         if not re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version):
             errors.append("WATCHER distribution version evidence is invalid")
+        if watcher_version and version != watcher_version:
+            errors.append("WATCHER distribution version does not match exact source")
         for key in (
             "watcher_distribution_checksum_sha256",
             "watcher_distribution_manifest_sha256",
@@ -1283,7 +1291,9 @@ def stage_release(
         and key.endswith("_ms")
         and value.isdigit()
     }
-    result_errors = validate_stage_result(data, manifest, result)
+    result_errors = validate_stage_result(
+        data, manifest, result, watcher_version=watcher_version
+    )
     if result_errors:
         payload = {
             "schema": 1,
