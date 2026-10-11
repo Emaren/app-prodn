@@ -110,6 +110,7 @@ TRUTH_OS="$BIN_DIR/../scripts/aoe2_truth.py"
 CODE_HEALTH="$BIN_DIR/../scripts/aoe2_code_health.py"
 DEPENDENCY_CHECK="$BIN_DIR/../scripts/check_dependency_contract.py"
 DEPENDENCY_SECURITY="$BIN_DIR/../scripts/check_dependency_security.py"
+VIDEO_PREFLIGHT="$BIN_DIR/../scripts/television_video_preflight.mjs"
 
 usage() {
   cat <<'EOF'
@@ -137,6 +138,7 @@ Usage:
   aoe2war truth <status|census|audit|closure|target> [options]
   aoe2war truth native-control <prepare|run|verify> --run-id LABEL [options]
   aoe2war code-health [--json] [--no-receipt] [--require-clean-worktree]
+  aoe2war video <doctor|preflight> (read-only, JSON)
   aoe2war deps
   aoe2war deps-security [--json]
   aoe2war host <status|tidy|maintenance-plan> [options]
@@ -673,6 +675,15 @@ case "$command" in
   truth)
     shift
     exec "$AOE2WAR_PYTHON" "$TRUTH_OS" "$@"
+    ;;
+  video)
+    shift
+    if [[ "${1:-}" != "doctor" && "${1:-}" != "preflight" ]]; then
+      echo "Usage: aoe2war video doctor" >&2
+      exit 2
+    fi
+    shift
+    exec node "$VIDEO_PREFLIGHT" "$@"
     ;;
   code-health)
     shift
