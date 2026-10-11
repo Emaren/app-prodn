@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "3d10699dd746015fb8ecb8101bf2cd2ab4feeda31703fe68b0243762fa6c318d",
+      "sha256": "08d3f52c943f2acec193bd7d847b1f5ba01d1d35a3a002f5fab8f457133aaa10",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2072,7 +2072,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feat/profile-e2-local-design-20261011",
-    "commit": "5e1cff280a0cb346eb79e6691e32dc65dfd529fd"
+    "commit": "76d173646e8c3bd5e8e21143438e9af00a99bfb7"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
