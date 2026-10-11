@@ -77,7 +77,7 @@ export function ChampionsViewCycleButton({ active }: { active: ChampionsDisplayM
       </button>
       <nav
         aria-label="Choose championship layout"
-        className={`absolute right-0 top-full z-50 mt-1 flex min-w-[10.25rem] flex-wrap justify-end gap-1 rounded-xl border border-white/15 bg-slate-950/98 p-2 shadow-2xl backdrop-blur transition duration-150 ${opened ? "opacity-100" : "pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"}`}
+        className={`absolute right-0 top-full z-50 mt-1 flex min-w-[10.25rem] flex-wrap justify-end gap-1 rounded-xl border border-white/15 bg-slate-950/[0.98] p-2 shadow-2xl backdrop-blur transition duration-150 ${opened ? "opacity-100" : "pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"}`}
       >
         {CHAMPIONS_VIEW_ROUTES.map((entry) => (
           <Link
