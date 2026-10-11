@@ -1201,20 +1201,36 @@ export default function ChampionsV2Experience({
   }
 
   const heroStats = (
-    <div className="grid min-w-[min(100%,22rem)] gap-2 rounded-2xl border border-white/10 bg-black/22 p-4 sm:grid-cols-3 lg:min-w-[28rem]">
-      {[
-        ["Active", state.summary.active],
-        ["Vacant", state.summary.vacant],
-        ["Tribute", `${state.summary.tributePoolWolo} WOLO/day`],
-      ].map(([label, value]) => (
+    <div
+      className={`grid min-w-[min(100%,22rem)] gap-2 rounded-2xl border border-white/10 bg-black/22 p-4 ${e5 ? "sm:grid-cols-4 lg:min-w-[39rem]" : "sm:grid-cols-3 lg:min-w-[28rem]"}`}
+      aria-label={`Championship inventory: ${state.summary.active} active and ${state.summary.vacant} vacant of ${state.summary.total} titles`}
+    >
+      {(
+        e5
+          ? [
+              ["Active", state.summary.active, "Current title custody"],
+              ["Vacant", state.summary.vacant, "Unclaimed title positions"],
+              ["Potential daily", `${state.summary.tributePoolWolo} WOLO/day`, "Projection only — payout is not enabled"],
+              ["Bounty growth", `${state.summary.potentialDailyBountyGrowthWolo} WOLO/day`, "Projection only — accrual is not enabled"],
+            ]
+          : [
+              ["Active", state.summary.active, "Current title custody"],
+              ["Vacant", state.summary.vacant, "Unclaimed title positions"],
+              ["Tribute", `${state.summary.tributePoolWolo} WOLO/day`, "Potential amount; not a paid amount"],
+            ]
+      ).map(([label, value, description]) => (
         <div
           key={String(label)}
+          title={String(description)}
           className="rounded-xl border border-white/8 bg-white/[0.035] px-3 py-3"
         >
           <div className="text-[9px] uppercase tracking-[0.2em] text-slate-500">
             {label}
           </div>
           <div className="mt-1 text-lg font-semibold text-amber-50">{value}</div>
+          {e5 && (label === "Potential daily" || label === "Bounty growth") ? (
+            <div className="mt-1 text-[9px] text-slate-500">If enabled · not paid</div>
+          ) : null}
         </div>
       ))}
     </div>
