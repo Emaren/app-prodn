@@ -1,9 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
 
-const root = fileURLToPath(new URL("../", import.meta.url));
 const pagePath = new URL("../app/download/page.tsx", import.meta.url);
 
 async function readImage(name: string, expectedWidth: number, expectedHeight: number) {
