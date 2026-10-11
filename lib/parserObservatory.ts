@@ -51,6 +51,8 @@ function resultTruth(row: GameRow) {
     parseSource: row.parse_source,
     keyEvents: row.key_events,
     eventTypes: row.event_types,
+    isFinal: row.is_final,
+    disconnectDetected: row.disconnect_detected,
   });
 }
 
@@ -165,6 +167,7 @@ async function loadCorpusRows() {
     select: {
       id: true,
       is_final: true,
+      disconnect_detected: true,
       userUid: true,
       replay_file: true,
       original_filename: true,
@@ -797,6 +800,7 @@ export async function loadViewerParserVault(uid: string | null) {
     select: {
       id: true,
       is_final: true,
+      disconnect_detected: true,
       userUid: true,
       replay_file: true,
       original_filename: true,

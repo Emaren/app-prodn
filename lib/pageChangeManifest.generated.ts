@@ -15,7 +15,7 @@ export const PAGE_CHANGE_MANIFEST = [
   {
     href: "/leaderboard",
     label: "Leaderboard",
-    version: "src-92adf8e684a9a7c49785",
+    version: "src-15d1107d32cc940cff3f",
   },
   {
     href: "/champions",
