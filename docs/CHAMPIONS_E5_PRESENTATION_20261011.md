@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.champions-e5-presentation"
+title: "Championship Hall E5 — presentation and release contract"
+type: "reference"
+status: "active"
+owner: "aoe2war-web"
+systems: ["app-prodn"]
+audience: ["developers","operators","ai-agents"]
+source_of_truth: "git"
+authority: "product-presentation-contract"
+reviewed_at: "2026-10-11"
+review_interval_days: 90
+sensitivity: "internal"
+---
+
 # Championship Hall E5 — presentation and release contract
 
 Date: 2026-10-11. Scope: application UI and navigation only. No title custody, eligibility, wagering, or championship ledger changes.
