@@ -874,3 +874,38 @@ invent a header or mark the recording playable prematurely.
 A source regression enforces the guard before the rolling-WebM fetch.
 Real Windows startup, header ordering and browser decode remain physical
 release gates.
+
+## Continuous WebM live-player canary (October 10 field-test follow-up)
+
+The browser broadcast field test authenticated a match-bound stream, uploaded
+290 chunks in 4m55s, played its video in the Watch theatre and in Television
+WOLO. The existing rolling WebM player, however, assigned a new Blob URL to
+`video.src` and called `video.load()` after each 5/6-chunk advancement.
+That approach necessarily discards active decoder continuity and can show
+`Catching live edge` / `Reconnecting live edge` or video ending at the
+current slice boundary even while the broadcaster is alive.
+
+A **candidate only** continuous viewer path now uses browser MediaSource /
+SourceBuffer with the existing authenticated chunk retrieval protocol.
+It appends the real WebM initialization segment (sequence 0) followed by
+ordered, contiguous media clusters. A pure plan determines bounded late-join
+windows, missing-chunk handling, and max catch-up. It never loads the full
+long-game recording to start a new viewer. History trimming keeps at most a
+short rolling playback window instead of an unbounded browser buffer. A hidden
+viewer pauses polling and aborts in-flight requests.
+
+This is **not** a custom encoder or new server storage rail. Codec support is
+checked using `MediaSource.isTypeSupported`. Decoder append failures, large
+catch-up and repeated network failures return viewers to the existing
+rolling-WebM player; compact previews and ended recordings use the previous
+player unchanged. Playback must still be initiated by the spectator via Play.
+
+**Hard gate before promotion:** physical macOS Chrome capture + independent
+second viewer, first-frame decoder receipt, 5/20/60-minute soak, measured
+latency/stalls/CPU/heap/egress, and unsupported-browser fallback. Chrome CI
+and static/pure logic tests alone do **not** certify WebM EBML compatibility,
+MSE timestamps, or usable television quality. Roll back to the prior
+player path if decoded frames or buffer management cannot be proven.
+This branch is stacked on Television V3 integration and should be rebased/
+reconciled with the explicit-battle-binding PR before any protected release.
+See Playback OS #477 and Broadcast OS #478.
