@@ -74,6 +74,8 @@ export default function ContinuousWebmPlayer({
     let initialized = false;
     let finalSeen = false;
     let appendedFrames = false;
+    let decodedFrames = false;
+    let networkFailures = 0;
 
     video.muted = true;
     video.playsInline = true;
@@ -158,6 +160,7 @@ export default function ContinuousWebmPlayer({
           setState("Waiting for broadcaster");
           return;
         }
+        networkFailures = 0;
         if (manifest.initSeq !== 0) {
           setState("Waiting for video initialization");
           return;
@@ -173,7 +176,8 @@ export default function ContinuousWebmPlayer({
           return;
         }
         if (!initialized) {
-          await append(await request(`/api/streams/${stream.id}/chunks/0`, MAX_CHUNK_BYTES));
+          const init = await request(`/api/streams/${stream.id}/chunks/0`, MAX_CHUNK_BYTES);
+          try { await append(init); } catch { fail(); return; }
           initialized = true;
           lastSeq = Math.max(0, manifest.recommendedStartSeq ?? newest - 10);
           lastSeq = Math.min(lastSeq, newest - 1);
@@ -192,17 +196,18 @@ export default function ContinuousWebmPlayer({
             setState("Waiting for missing video chunk");
             return;
           }
-          await append(await request(`/api/streams/${stream.id}/chunks/${seq}`, MAX_CHUNK_BYTES));
+          const segment = await request(`/api/streams/${stream.id}/chunks/${seq}`, MAX_CHUNK_BYTES);
+          try { await append(segment); } catch { fail(); return; }
           lastSeq = seq;
           appendedFrames = true;
           if (seq % 5 === 0) {
-            await trim();
+            try { await trim(); } catch { fail(); return; }
             seekNearEdge(video);
           }
         }
         if (appendedFrames) {
           seekNearEdge(video);
-          setState("Live");
+          if (!decodedFrames) setState("Waiting for first decoded frame");
         }
         if (manifest.status === "ended" && lastSeq === newest && !finalSeen &&
             mediaSource.readyState === "open" && !sourceBuffer?.updating) {
@@ -210,10 +215,12 @@ export default function ContinuousWebmPlayer({
           mediaSource.endOfStream();
         }
       } catch {
-        if (!stopped && document.visibilityState === "visible") {
-          // Network retries are bounded by one in-flight poll. MediaSource
-          // errors trigger explicit fallback rather than a false healthy badge.
-          setState("Recovering live signal");
+        if (!stopped && !failed && document.visibilityState === "visible") {
+          networkFailures += 1;
+          // Three failed pulls are enough to prefer the certified rolling
+          // fallback rather than run indefinite HTTP polling.
+          if (networkFailures >= 3) fail();
+          else setState("Recovering live signal");
         }
       } finally {
         busy = false;
@@ -239,7 +246,7 @@ export default function ContinuousWebmPlayer({
         void poll();
       }
     };
-    const playing = () => setState("Live");
+    const playing = () => { decodedFrames = true; setState("Live"); };
     const waiting = () => { if (!failed) setState("Buffering video"); };
     mediaSource.addEventListener("sourceopen", started, { once: true });
     video.addEventListener("error", decoderFailure);
