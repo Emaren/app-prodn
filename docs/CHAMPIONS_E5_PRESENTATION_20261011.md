@@ -19,7 +19,7 @@ Date: 2026-10-11. Scope: application UI and navigation only. No title custody, e
 
 ## Entry and persistence
 - `/champions` is the canonical E5 presentation for browsers with no explicit choice.
-- An explicit layout choice is stored locally under `aoe2war:champions:preferred-layout:v1`; revisiting `/champions` navigates to that saved choice.
+- The E5 rollout starts every viewer on E5 once by using the new `aoe2war:champions:preferred-layout:v2` preference key; earlier v1 preferences are deliberately not migrated. Subsequent explicit B/A/E1–E5 choices persist locally under v2, and revisiting `/champions` navigates to that choice.
 - B and A retain their `/champions/legacy` routes. E1 remains the legacy extreme; E2, E3, E4, and E5 have separate direct routes.
 - The compact top-right view control is keyboard-focusable, mouse-hoverable, and clickable/tappable. The existing legacy rail remains available on older views.
 
