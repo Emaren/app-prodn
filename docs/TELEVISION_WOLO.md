@@ -909,3 +909,22 @@ player path if decoded frames or buffer management cannot be proven.
 This branch is stacked on Television V3 integration and should be rebased/
 reconciled with the explicit-battle-binding PR before any protected release.
 See Playback OS #477 and Broadcast OS #478.
+
+### Continuous media range: bounded server-side viewer economics
+
+A viewer joining a long match must not issue a database read and filesystem
+read per 1-second media fragment without reason. The canary includes
+`GET /api/streams/{id}/media-range?from=n&through=m`, max 5 contiguous
+**media** chunks and max 12 MiB/response. Stream source admission is identical
+to existing public stream chunks; removed streams return 404, missing media
+ranges return 409, oversize 413, and WebM header sequence 0 is never repeated
+inside the range. MSE fetches the header once and subsequent bounded
+contiguous batches. This is a viewer-only read API; the uploader still owns
+immutable one-second chunks and the original replay service remains separate.
+No route publishes WOLO money, result truth or account secrets.
+
+Verify database round trips, bytes-per-viewer, status/exception overhead,
+two simultaneous viewers, hidden-tab behavior and 1/2-hour retrieval from
+the mounted video volume. A 12 MiB failure must trigger fallback rather
+than partial concatenation. Full release integration depends on the
+existing Television V3 mounted-volume admission and storage contracts.
