@@ -60,10 +60,10 @@ test("MSE is bounded, decoder-first and reverts to existing rolling player", asy
   assert.match(component, /MAX_CATCHUP_CHUNKS = 36/);
   assert.match(component, /KEEP_BEHIND_SECONDS = 45/);
   assert.match(component, /if \(networkFailures >= 3\) fail\(\)/);
-  assert.match(component, /Date\\.now\\(\\) - lastFrameProgressAt > 15_000/);
-  assert.match(component, /video\\.addEventListener\\("timeupdate", timeProgress\\)/);
+  assert.match(component, /Date\.now\(\) - lastFrameProgressAt > 15_000/);
+  assert.match(component, /video\.addEventListener\("timeupdate", timeProgress\)/);
   assert.match(component, /document\.visibilityState !== "visible"/);
-  assert.match(component, /return await response\.arrayBuffer\(\)/);
+  assert.match(component, /const buffer = await response\.arrayBuffer\(\)/);
   assert.doesNotMatch(component, /video\.load\(\);\s*lastSeq =/);
   assert.match(wrapper, /<ContinuousWebmPlayer stream=\{stream\} title=\{title\} onUnsupported=\{disableMse\}/);
   assert.match(wrapper, /<BrowserChunkPlayer stream=\{stream\} title=\{title\} compact=\{compact\}/);
