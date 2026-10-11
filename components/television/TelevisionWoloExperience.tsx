@@ -66,10 +66,15 @@ function sourceLabel(source: TelevisionBattle["source"]) {
 }
 
 function streamRoleLabel(stream: WatchStreamPayload) {
-  if (stream.playerLabel) return stream.playerLabel + " POV";
-  if (stream.role === "caster") return "Main Cast";
+  // Broadcaster identity is not proof of an in-game player POV. Browser
+  // streams are registered as caster; preserve role authority in the UI.
+  if (stream.role === "caster") {
+    return stream.playerLabel ? stream.playerLabel + " · Main Cast" : "Main Cast";
+  }
+  if (stream.role === "player_pov") {
+    return stream.playerLabel ? stream.playerLabel + " POV" : "Player POV";
+  }
   if (stream.role === "observer") return "Observer";
-  if (stream.role === "player_pov") return "Player POV";
   if (stream.role === "team_pov") return "Team POV";
   if (stream.role === "postgame") return "Postgame";
   return stream.label || "Feed";
