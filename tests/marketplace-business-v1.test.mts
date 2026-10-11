@@ -86,9 +86,9 @@ test("100 WOLO is the standard business unit and verified revenue snapshots 10 p
   assert.match(business, /That WOLO payment proof has already been used/);
 });
 
-test("both normal and Extreme profiles mount the merchant control plane and chat renders Marketplace protocol cards", () => {
+test("normal, E1 and E2 profiles mount the merchant control plane and chat renders Marketplace protocol cards", () => {
   const businessMounts = profile.match(/<MarketplaceBusinessCard \/>/g) ?? [];
-  assert.equal(businessMounts.length, 2);
+  assert.equal(businessMounts.length, 3);
   assert.match(
     profile,
     /<AutoBetReserveCard \/>\s*<MarketplaceBusinessCard \/>\s*\{\/\* =+\s*THE ARMORY/
