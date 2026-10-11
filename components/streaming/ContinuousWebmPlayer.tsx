@@ -83,6 +83,8 @@ export default function ContinuousWebmPlayer({
     let networkFailures = 0;
     let lastFrameProgressAt = Date.now();
     let lastVideoTime = 0;
+    let manuallyPaused = false;
+    let pauseForHidden = false;
 
     video.muted = true;
     video.playsInline = true;
@@ -156,6 +158,9 @@ export default function ContinuousWebmPlayer({
 
     const poll = async () => {
       if (stopped || failed || busy || document.visibilityState !== "visible") return;
+      // Respect the spectator's Pause control. The broadcaster keeps running,
+      // but this viewer should not waste bandwidth or force playback.
+      if (manuallyPaused) { setState("Paused"); return; }
       // A decoder can accept clusters without ever producing visible frames.
       // Don't strand the spectator on an infinite "Buffering" badge.
       if (appendedFrames && Date.now() - lastFrameProgressAt > 15_000) {
@@ -257,13 +262,29 @@ export default function ContinuousWebmPlayer({
     const resume = () => {
       if (document.visibilityState === "hidden") {
         for (const controller of failures) controller.abort();
+        pauseForHidden = !video.paused && !manuallyPaused;
         video.pause();
       } else if (!stopped && !failed) {
         lastFrameProgressAt = Date.now();
+        if (pauseForHidden && !manuallyPaused) void video.play().catch(() => undefined);
+        pauseForHidden = false;
         void poll();
       }
     };
-    const playing = () => { decodedFrames = true; lastFrameProgressAt = Date.now(); setState("Live"); };
+    const playing = () => {
+      manuallyPaused = false;
+      decodedFrames = true;
+      lastFrameProgressAt = Date.now();
+      setState("Live");
+      void poll();
+    };
+    const pause = () => {
+      if (!stopped && !failed && document.visibilityState === "visible" &&
+          decodedFrames && !pauseForHidden) {
+        manuallyPaused = true;
+        setState("Paused");
+      }
+    };
     const timeProgress = () => {
       if (video.currentTime > lastVideoTime + 0.05) {
         lastVideoTime = video.currentTime;
@@ -274,6 +295,7 @@ export default function ContinuousWebmPlayer({
     mediaSource.addEventListener("sourceopen", started, { once: true });
     video.addEventListener("error", decoderFailure);
     video.addEventListener("playing", playing);
+    video.addEventListener("pause", pause);
     video.addEventListener("timeupdate", timeProgress);
     video.addEventListener("waiting", waiting);
     document.addEventListener("visibilitychange", resume);
@@ -286,6 +308,7 @@ export default function ContinuousWebmPlayer({
       document.removeEventListener("visibilitychange", resume);
       video.removeEventListener("error", decoderFailure);
       video.removeEventListener("playing", playing);
+      video.removeEventListener("pause", pause);
       video.removeEventListener("timeupdate", timeProgress);
       video.removeEventListener("waiting", waiting);
       mediaSource.removeEventListener("sourceopen", started);
