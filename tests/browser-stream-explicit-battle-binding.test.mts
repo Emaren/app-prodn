@@ -29,3 +29,13 @@ test("battle identity is frozen while publishing", async () => {
   assert.match(source, /disabled=\{busy \|\| isLive\}/);
   assert.match(source, /if \(sessionKey \|\| isLive\) return/);
 });
+
+test("published stream identity remains source-authoritative when dropdown changes", async () => {
+  const source = await readFile(sourcePath, "utf8");
+  assert.match(source, /const streamSessionKey = isLive \? stream\?\.sessionKey \|\| "" : selectedSessionKey \|\| sessionKey \|\| ""/);
+  assert.match(source, /const displayTitle = isLive \? stream\?\.title \|\| activeTitle : activeTitle/);
+  assert.match(source, /value=\{isLive \? streamSessionKey : selectedSessionKey\}/);
+  assert.match(source, /sessionKey: streamRef\.current\?\.sessionKey \|\| selectedSessionKey \|\| sessionKey/);
+  assert.match(source, /title: streamRef\.current\?\.title \|\| activeTitle/);
+  assert.match(source, /<LiveStreamFrame stream=\{stream\} title=\{displayTitle\}/);
+});
