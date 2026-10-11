@@ -188,7 +188,10 @@ export default function BrowserStreamStudio({
   );
   const activeTitle = matchTitle(selectedSuggestion, title);
   const isLive = isActiveStream(stream);
-  const streamSessionKey = selectedSessionKey || stream?.sessionKey || "";
+  // Once /api/streams/start returns, the server stream owns broadcast identity.
+  // Dropdown selections must never relabel an already registered live feed.
+  const streamSessionKey = isLive ? stream?.sessionKey || "" : selectedSessionKey || sessionKey || "";
+  const displayTitle = isLive ? stream?.title || activeTitle : activeTitle;
   const hasWatcherBinding = isWatcherBound(streamSessionKey);
   const uptimeSeconds = secondsSince(stream?.startedAt, now);
   const heartbeatAgeSeconds = secondsSince(stream?.lastHeartbeatAt, now);
@@ -199,7 +202,7 @@ export default function BrowserStreamStudio({
     () => [
       {
         label: "Binding",
-        value: hasWatcherBinding ? "Watcher match" : selectedSessionKey ? "Free stream" : "Auto",
+        value: hasWatcherBinding ? "Watcher match" : isLive || explicitFreeStream ? "Free stream" : "Not selected",
       },
       {
         label: "Signal",
@@ -224,7 +227,7 @@ export default function BrowserStreamStudio({
       captureReady,
       hasWatcherBinding,
       isLive,
-      selectedSessionKey,
+      explicitFreeStream,
       stream?.chunkCount,
       stream?.latestChunkSeq,
       uptimeSeconds,
@@ -378,13 +381,13 @@ export default function BrowserStreamStudio({
         },
         body: JSON.stringify({
           eventType,
-          sessionKey: selectedSessionKey || sessionKey || streamRef.current?.sessionKey || "",
+          sessionKey: streamRef.current?.sessionKey || selectedSessionKey || sessionKey || "",
           streamId: streamRef.current?.id ? String(streamRef.current.id) : "",
           platform: readBrowserPlatform(),
           captureMode,
           mediaMimeType,
           metadata: {
-            title: activeTitle,
+            title: streamRef.current?.title || activeTitle,
             ...metadata,
           },
         }),
@@ -754,7 +757,7 @@ export default function BrowserStreamStudio({
           </div>
           <div className="mt-2 text-lg font-semibold text-white">AoE2WAR Live</div>
           <div className="mt-1 flex min-w-0 flex-wrap items-center gap-2">
-            <span className="truncate text-sm text-slate-300">{activeTitle}</span>
+            <span className="truncate text-sm text-slate-300">{displayTitle}</span>
             {hasWatcherBinding ? (
               <span className="rounded-full border border-sky-300/20 bg-sky-400/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-sky-100">
                 Watcher-linked
@@ -778,7 +781,7 @@ export default function BrowserStreamStudio({
       {!sessionKey ? (
         <div className="mt-4 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
           <select
-            value={selectedSessionKey}
+            value={isLive ? streamSessionKey : selectedSessionKey}
             onChange={(event) => {
               setSelectedSessionKey(event.target.value);
               setExplicitFreeStream(false);
@@ -787,6 +790,9 @@ export default function BrowserStreamStudio({
             className="min-w-0 rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-white outline-none focus:border-sky-300/45"
           >
             <option value="">Select your live battle…</option>
+            {isLive && stream?.sessionKey && !suggestions.some((entry) => entry.sessionKey === stream.sessionKey) ? (
+              <option value={stream.sessionKey}>{stream.title || "Current registered broadcast"}</option>
+            ) : null}
             {suggestions.map((entry) => (
               <option key={entry.sessionKey} value={entry.sessionKey}>
                 {entry.title}
@@ -843,7 +849,7 @@ export default function BrowserStreamStudio({
         {captureReady || isLive ? (
           <div className="overflow-hidden rounded-[1.1rem] border border-white/10 bg-black">
             {isLive && stream ? (
-              <LiveStreamFrame stream={stream} title={activeTitle} compact={compact} />
+              <LiveStreamFrame stream={stream} title={displayTitle} compact={compact} />
             ) : (
               <video
                 ref={previewRef}
