@@ -1740,7 +1740,7 @@ function ProfileModeToggle({
                         disabled={!available}
                         title={!available ? "Reserved for a future edition" : `Select Extreme ${slot.toUpperCase()}`}
                         aria-pressed={selected}
-                        onClick={() => available && onChange("extreme", slot)}
+                        onClick={() => { if (slot === "e1" || slot === "e2") onChange("extreme", slot); }}
                         className={`rounded-lg border px-2 py-2 text-xs font-bold transition ${selected ? "border-amber-200/50 bg-amber-300 text-slate-950" : available ? "border-white/10 text-slate-200 hover:border-amber-200/40 hover:bg-amber-300/10" : "cursor-not-allowed border-white/5 text-slate-600"}`}
                       >
                         {index + 1}
