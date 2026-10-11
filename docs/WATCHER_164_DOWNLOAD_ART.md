@@ -1,3 +1,18 @@
+---
+id: "aoe2war.app-prodn.watcher-164-download-art"
+title: "Watcher 1.6.4 Download Artwork"
+type: "runbook"
+status: "active"
+owner: "aoe2war-web"
+systems: ["app-prodn","aoe2-watcher"]
+audience: ["developers","operators","ai-agents"]
+source_of_truth: "git"
+authority: "release-engineering-contract"
+reviewed_at: "2026-10-10"
+review_interval_days: 30
+sensitivity: "internal"
+---
+
 # Watcher 1.6.4 download artwork and CTA contract
 
 Scope: `/download` extreme presentation only, October 10, 2026
