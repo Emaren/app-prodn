@@ -73,13 +73,15 @@ function sourceLabel(source: TelevisionBattle["source"]) {
 }
 
 function streamRoleLabel(stream: WatchStreamPayload) {
-  if (stream.playerLabel) return stream.playerLabel + " POV";
+  // A broadcaster-supplied label is NOT proof of participation or of their
+  // in-game camera. Until #480 proves source-backed game admission, do not
+  // fabricate "Emaren POV" (or any other player's POV) from free-form text.
   if (stream.role === "caster") return "Main Cast";
   if (stream.role === "observer") return "Observer";
-  if (stream.role === "player_pov") return "Player POV";
-  if (stream.role === "team_pov") return "Team POV";
+  if (stream.role === "player_pov") return "Player camera (unverified)";
+  if (stream.role === "team_pov") return "Team camera (unverified)";
   if (stream.role === "postgame") return "Postgame";
-  return stream.label || "Feed";
+  return stream.provider === "aoe2war" ? "AoE2WAR live camera" : "Watch feed";
 }
 
 function externalEmbedSrc(stream: WatchStreamPayload, browserHost: string) {
@@ -499,7 +501,7 @@ export default function TelevisionWoloExperience({
                 ))
               ) : (
                 <span className="text-xs text-slate-500">
-                  Press play to discover available Main Cast, Observer, Player POV, and Team POV feeds.
+                  Press play to discover available camera feeds. Player and team POV identities require verification.
                 </span>
               )}
             </div>

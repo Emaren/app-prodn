@@ -874,3 +874,108 @@ invent a header or mark the recording playable prematurely.
 A source regression enforces the guard before the rolling-WebM fetch.
 Real Windows startup, header ordering and browser decode remain physical
 release gates.
+
+## Continuous WebM live-player canary (October 10 field-test follow-up)
+
+The browser broadcast field test authenticated a match-bound stream, uploaded
+290 chunks in 4m55s, played its video in the Watch theatre and in Television
+WOLO. The existing rolling WebM player, however, assigned a new Blob URL to
+`video.src` and called `video.load()` after each 5/6-chunk advancement.
+That approach necessarily discards active decoder continuity and can show
+`Catching live edge` / `Reconnecting live edge` or video ending at the
+current slice boundary even while the broadcaster is alive.
+
+A **candidate only** continuous viewer path now uses browser MediaSource /
+SourceBuffer with the existing authenticated chunk retrieval protocol.
+It appends the real WebM initialization segment (sequence 0) followed by
+ordered, contiguous media clusters. A pure plan determines bounded late-join
+windows, missing-chunk handling, and max catch-up. It never loads the full
+long-game recording to start a new viewer. History trimming keeps at most a
+short rolling playback window instead of an unbounded browser buffer. A hidden
+viewer pauses polling and aborts in-flight requests.
+
+This is **not** a custom encoder or new server storage rail. Codec support is
+checked using `MediaSource.isTypeSupported`. Decoder append failures, large
+catch-up and repeated network failures return viewers to the existing
+rolling-WebM player; compact previews and ended recordings use the previous
+player unchanged. Playback must still be initiated by the spectator via Play.
+
+**Hard gate before promotion:** physical macOS Chrome capture + independent
+second viewer, first-frame decoder receipt, 5/20/60-minute soak, measured
+latency/stalls/CPU/heap/egress, and unsupported-browser fallback. Chrome CI
+and static/pure logic tests alone do **not** certify WebM EBML compatibility,
+MSE timestamps, or usable television quality. Roll back to the prior
+player path if decoded frames or buffer management cannot be proven.
+This branch is stacked on Television V3 integration and should be rebased/
+reconciled with the explicit-battle-binding PR before any protected release.
+See Playback OS #477 and Broadcast OS #478.
+
+### Continuous media range: bounded server-side viewer economics
+
+A viewer joining a long match must not issue a database read and filesystem
+read per 1-second media fragment without reason. The canary includes
+`GET /api/streams/{id}/media-range?from=n&through=m`, max 5 contiguous
+**media** chunks and max 12 MiB/response. Stream source admission is identical
+to existing public stream chunks; removed streams return 404, missing media
+ranges return 409, oversize 413, and WebM header sequence 0 is never repeated
+inside the range. MSE fetches the header once and subsequent bounded
+contiguous batches. This is a viewer-only read API; the uploader still owns
+immutable one-second chunks and the original replay service remains separate.
+No route publishes WOLO money, result truth or account secrets.
+
+Verify database round trips, bytes-per-viewer, status/exception overhead,
+two simultaneous viewers, hidden-tab behavior and 1/2-hour retrieval from
+the mounted video volume. A 12 MiB failure must trigger fallback rather
+than partial concatenation. Full release integration depends on the
+existing Television V3 mounted-volume admission and storage contracts.
+
+### Read-only Video OS preflight
+
+`./bin/aoe2war video doctor` (or direct `node scripts/television_video_preflight.mjs`) writes one machine-readable JSON
+observation to stdout. It imports **no app database**, downloads no video,
+does not make capture directories, and performs no mutations. It checks:
+current environment per-stream bytes and chunk limits (clamped by the same
+bounds as the V3 runtime), estimated 2-hour 720p Stable/Full Screen/Sharp
+size at 12% overhead, actual local capture-mount device identity and free
+bytes against the 6 GiB protected reserve. `pass` means *only these checks
+passed*, not that a video codec or viewer has been field certified.
+`unknown` is intentional for absent configuration or unavailable evidence.
+
+Exit codes: 0 capacity/mount checks pass; 1 blocked; 2 unknown. Preserve
+the receipt alongside the tested source SHA in the next governed canary,
+never by copying private environment keys or user filesystem paths into
+public Kingdom Intelligence. Two simultaneous cameras, encoder variations,
+retention and real 1/2-hour consumption require physical receipts beyond
+the one-camera projection. The live mounted volume may differ between
+the local Mac and production VPS: run at the intended machine for the
+corresponding claim.
+
+### Spectator consent and factual camera labels (October 11)
+
+Television WOLO's user first presses **Play** before browser video is
+mounted. During continuous MSE playback, pausing the player's controls
+now pauses that viewer's media polling and does not force autoplay by
+the next live-edge seek. Hidden tabs suspend network pulls; a previously
+playing hidden viewer may resume on visibility. Rejoining after a long
+pause can exceed the bounded 36-chunk catch-up window, in which case
+the legacy rolling player is selected rather than downloading the
+whole archived match. Multi-view remains an explicit spectator choice.
+
+A broadcaster-supplied `playerLabel` is *not* verified player or
+team POV authority, even when it matches a known account name.
+Television no longer displays `<name> POV` from that free-form field;
+unverified player/team roles are explicitly identified as unverified.
+The source-backed role and participant/caster authorization still
+needs server admission gate #480 before any public, multi-user verified
+POV claims. Do not weaken this trust boundary to improve label polish.
+
+### Canary gate for continuous decoding
+
+`NEXT_PUBLIC_AOE2WAR_MSE_LIVE_CANARY=1` at **build time** is required to
+mount `ContinuousWebmPlayer` on ordinary first-party live battle views.
+Default/unset value uses the prior bounded rolling player. Merely merging
+source must not switch all public viewers to an unproven MSE decoder.
+After the real CrossOver native-camera + independent two-viewer 5/20/60-minute
+proof, enable the canary only in an explicitly governed release and verify
+receipt, rollback path and browser compatibility. A user-visible setting is
+not a security boundary; this is a conservative deployment gate.

@@ -1,10 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ExternalLink, Monitor, Play, Radio } from "lucide-react";
 
 import type { WatchStreamPayload } from "@/lib/watchStreams";
 import { BattleLoopPreview } from "@/components/media/BattleLoopPreview";
+import ContinuousWebmPlayer from "@/components/streaming/ContinuousWebmPlayer";
+
+// Unproven MSE decoder path stays opt-in until physical two-viewer canary.
+const MSE_CANARY_ENABLED = process.env.NEXT_PUBLIC_AOE2WAR_MSE_LIVE_CANARY === "1";
 
 type Props = {
   stream?: WatchStreamPayload | null;
@@ -88,7 +92,7 @@ export default function LiveStreamFrame({
       ].join(" ")}
     >
       {isBrowserStream && stream ? (
-        <BrowserChunkPlayer stream={stream} title={title} compact={compact} />
+        <ResilientBrowserPlayer stream={stream} title={title} compact={compact} />
       ) : (
         <BattleLoopPreview
           seed={stream?.id ?? embedSrc ?? title ?? fallbackLabel}
@@ -168,6 +172,21 @@ function StreamPoster({
         </div>
       </div>
     </div>
+  );
+}
+
+// Keep the validated rolling player available for incompatible/invalid media.
+// A decoder failure must never turn the viewer into an endless loading screen.
+function ResilientBrowserPlayer({ stream, title, compact }: {
+  stream: WatchStreamPayload; title: string; compact: boolean;
+}) {
+  const [legacyOnly, setLegacyOnly] = useState(false);
+  const disableMse = useCallback(() => setLegacyOnly(true), []);
+  useEffect(() => { setLegacyOnly(false); }, [stream.id]);
+  return MSE_CANARY_ENABLED && !compact && stream.status === "live" && !legacyOnly ? (
+    <ContinuousWebmPlayer stream={stream} title={title} onUnsupported={disableMse} />
+  ) : (
+    <BrowserChunkPlayer stream={stream} title={title} compact={compact} />
   );
 }
 
