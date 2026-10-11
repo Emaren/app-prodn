@@ -170,6 +170,7 @@ export default function BrowserStreamStudio({
   const [stream, setStream] = useState<WatchStreamPayload | null>(null);
   const [suggestions, setSuggestions] = useState<LiveGamesSuggestion[]>([]);
   const [selectedSessionKey, setSelectedSessionKey] = useState(sessionKey || "");
+  const [explicitFreeStream, setExplicitFreeStream] = useState(false);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
@@ -288,7 +289,7 @@ export default function BrowserStreamStudio({
   }, [sessionKey]);
 
   useEffect(() => {
-    if (sessionKey) return;
+    if (sessionKey || isLive) return;
 
     let cancelled = false;
     async function loadSuggestions() {
@@ -327,17 +328,20 @@ export default function BrowserStreamStudio({
           }));
 
         setSuggestions(rows);
-        setSelectedSessionKey((current) => current || rows[0]?.sessionKey || "");
+        // Never bind a streamer to someone else's first live match. The
+        // source list changes while people join; selection is a user decision.
       } catch {
         setSuggestions([]);
       }
     }
 
     void loadSuggestions();
+    const interval = window.setInterval(() => { void loadSuggestions(); }, ACTIVE_STREAM_REFRESH_MS);
     return () => {
       cancelled = true;
+      window.clearInterval(interval);
     };
-  }, [sessionKey]);
+  }, [sessionKey, isLive]);
 
   useEffect(() => {
     const preview = previewRef.current;
@@ -565,6 +569,9 @@ export default function BrowserStreamStudio({
         throw new Error("Pick the AoE2 window or display first.");
       }
 
+      if (!selectedSessionKey && !sessionKey && !explicitFreeStream) {
+        throw new Error("Choose the matching battle or explicitly select Free Stream before going live.");
+      }
       const effectiveSessionKey = selectedSessionKey || sessionKey || buildFreeSessionKey();
       const thumbnailUrl = captureThumbnail();
       const payload = await fetchJson<{ stream: WatchStreamPayload }>("/api/streams/start", {
@@ -664,6 +671,7 @@ export default function BrowserStreamStudio({
     mediaMimeType,
     playerLabel,
     selectedSessionKey,
+    explicitFreeStream,
     sendHeartbeat,
     sendStreamEvent,
     sessionKey,
@@ -767,13 +775,18 @@ export default function BrowserStreamStudio({
         </span>
       </div>
 
-      {!sessionKey && suggestions.length > 0 ? (
+      {!sessionKey ? (
         <div className="mt-4 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
           <select
             value={selectedSessionKey}
-            onChange={(event) => setSelectedSessionKey(event.target.value)}
+            onChange={(event) => {
+              setSelectedSessionKey(event.target.value);
+              setExplicitFreeStream(false);
+            }}
+            disabled={busy || isLive}
             className="min-w-0 rounded-2xl border border-white/10 bg-slate-950/80 px-4 py-3 text-sm text-white outline-none focus:border-sky-300/45"
           >
+            <option value="">Select your live battle…</option>
             {suggestions.map((entry) => (
               <option key={entry.sessionKey} value={entry.sessionKey}>
                 {entry.title}
@@ -783,10 +796,14 @@ export default function BrowserStreamStudio({
           </select>
           <button
             type="button"
-            onClick={() => setSelectedSessionKey("")}
+            onClick={() => {
+              setSelectedSessionKey("");
+              setExplicitFreeStream(true);
+            }}
+            disabled={busy || isLive}
             className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs text-slate-200 transition hover:border-white/25 hover:text-white"
           >
-            Free Stream
+            {explicitFreeStream ? "Free Stream Selected" : "Free Stream"}
           </button>
         </div>
       ) : null}
