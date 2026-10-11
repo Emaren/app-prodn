@@ -278,7 +278,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "Bet and Replay Reliability Release \u2014 2026-07-29",
+      "title": "Bet and Replay Reliability Release — 2026-07-29",
       "type": "historical"
     },
     {
@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "7b6f7eeebfeae293cdcc63166c5ea1f792a47bd70777d198fdbb556a7f627943",
+      "sha256": "dd2d2f71712b507090636366e14da29851ac6a6c1791bda55d58ec92ced33b86",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1244,7 +1244,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "AoE2WAR Production Performance Audit \u2014 2026-07-18",
+      "title": "AoE2WAR Production Performance Audit — 2026-07-18",
       "type": "historical"
     },
     {
@@ -1266,7 +1266,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "AoE2WAR Production Performance Audit \u2014 2026-08-13",
+      "title": "AoE2WAR Production Performance Audit — 2026-08-13",
       "type": "historical"
     },
     {
@@ -1311,7 +1311,7 @@
         "app-prodn",
         "api-prodn"
       ],
-      "title": "Player Identity Wave 2 \u2014 Deterministic Discovery V2",
+      "title": "Player Identity Wave 2 — Deterministic Discovery V2",
       "type": "reference"
     },
     {
@@ -1358,7 +1358,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "AoE2WAR Production Parity Seal \u2014 2026-07-26",
+      "title": "AoE2WAR Production Parity Seal — 2026-07-26",
       "type": "historical"
     },
     {
@@ -1450,7 +1450,7 @@
         "app-prodn",
         "wolochain"
       ],
-      "title": "AoE2WAR Certified Release Engineering Seal \u2014 2026-08-10",
+      "title": "AoE2WAR Certified Release Engineering Seal — 2026-08-10",
       "type": "historical"
     },
     {
@@ -1520,7 +1520,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "Replay Statistics and Operations Release \u2014 2026-07-25",
+      "title": "Replay Statistics and Operations Release — 2026-07-25",
       "type": "historical"
     },
     {
@@ -1804,6 +1804,29 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "release-engineering-contract",
+      "id": "aoe2war.app-prodn.watcher-164-download-art",
+      "owner": "aoe2war-web",
+      "path": "docs/WATCHER_164_DOWNLOAD_ART.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-10-10",
+      "sensitivity": "internal",
+      "sha256": "52a508aa8505aa7bc36e3b020adb0c17a9d13888d6901fb13a03439c7b7be842",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "aoe2-watcher"
+      ],
+      "title": "Watcher 1.6.4 Download Artwork",
+      "type": "runbook"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "stream-ingest-contract",
       "id": "aoe2war.app-prodn.docs-watcher-native-stream-handoff",
       "owner": "aoe2war-web",
@@ -2020,7 +2043,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "War Room Forum \u2014 Saturday July 4, 2026 Edition",
+      "title": "War Room Forum — Saturday July 4, 2026 Edition",
       "type": "historical"
     },
     {
@@ -2048,8 +2071,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/watcher-164-stage-native-zip-inventory-20261010",
-    "commit": "868e0079146ea02eb83d009cce12197e74eda81c"
+    "branch": "feat/watcher-164-download-hero-20261011",
+    "commit": "36db9d7fe5c175fcd1c3fcb411eb1f8aa83763ca"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

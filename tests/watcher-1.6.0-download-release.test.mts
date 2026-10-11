@@ -12,15 +12,15 @@ const release = fs.readFileSync(
   "utf8",
 );
 
-test("Watcher 1.6.4 keeps the existing 1.5.10 Extreme hero artwork", () => {
+test("Watcher 1.6.4 Extreme hero uses the current responsive release artwork", () => {
   assert.match(
     release,
     /version: "1\.6\.4"/,
   );
 
-  assert.match(page, /watcher-v1510-desktop\.png/);
-  assert.match(page, /watcher-v1510-mobile\.png/);
-  assert.doesNotMatch(page, /watcher-v159-(?:desktop|mobile)\.png/);
+  assert.match(page, /watcher-v164-desktop\.webp/);
+  assert.match(page, /watcher-v164-mobile\.webp/);
+  assert.doesNotMatch(page, /watcher-v1510-(?:desktop|mobile)\.png/);
   assert.match(
     page,
     /<section className=\{extreme \? "hidden" : heroClass\}>/,
@@ -28,11 +28,11 @@ test("Watcher 1.6.4 keeps the existing 1.5.10 Extreme hero artwork", () => {
   assert.match(page, /WATCHER_RELEASE\.label/);
 
   for (const artwork of [
-    "public/watcher/watcher-v1510-desktop.png",
-    "public/watcher/watcher-v1510-mobile.png",
+    "public/watcher/watcher-v164-desktop.webp",
+    "public/watcher/watcher-v164-mobile.webp",
   ]) {
     assert.ok(
-      fs.statSync(new URL("../" + artwork, import.meta.url)).size > 1_000_000,
+      fs.statSync(new URL("../" + artwork, import.meta.url)).size > 150_000,
       artwork + " should be a real release image",
     );
   }
