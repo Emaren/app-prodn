@@ -124,7 +124,9 @@ test("World and UK are explicitly vacant public titles", () => {
 });
 
 test("E5 live summary excludes roadmap nations, keeps actual holders, and never advertises payouts", () => {
-  assert.match(state, /summarizeChampionshipHall\(titleEconomy\.titles\)/);
+  assert.match(state, /summarizeChampionshipHall\(visibleEconomyTitles\)/);
+  assert.match(state, /eloCustody\.get\(title\.id\) \?\? null/);
+  assert.match(state, /status: holder \? "held" : "vacant"/);
   assert.match(state, /active: hallSummary\.active/);
   assert.match(state, /vacant: hallSummary\.vacant/);
   assert.match(state, /potentialDailyBountyGrowthWolo: hallSummary\.potentialDailyBountyGrowthWolo/);
