@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0bb73b2f0d92ecdd2995b248c2e3ce5cac0a5928dceef05f6262fbd9050cab3e",
+      "sha256": "08d3f52c943f2acec193bd7d847b1f5ba01d1d35a3a002f5fab8f457133aaa10",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1031,7 +1031,7 @@
       "review_interval_days": 60,
       "reviewed_at": "2026-10-03",
       "sensitivity": "internal",
-      "sha256": "a5d8a9b4633be0ef1eb730ac382e11cf2c2b84a3e5665598a0aa0a5e83be6694",
+      "sha256": "7feb9365185d5db951a1f82a4d3a37236c24895609718cca28f0cadeb68c9aa5",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2071,8 +2071,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "refactor/profile-owner-controls-admin-only-20261011",
-    "commit": "b2686c010430e8110f79384c6a62bffc9317aeed"
+    "branch": "feat/profile-e2-local-design-20261011",
+    "commit": "76d173646e8c3bd5e8e21143438e9af00a99bfb7"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

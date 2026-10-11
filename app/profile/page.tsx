@@ -163,6 +163,22 @@ type WoloTransactionsResponse = {
 const MONEY_TX_PAGE_SIZE = 20;
 
 type ProfileViewMode = "basic" | "advanced" | "extreme";
+type ExtremeEdition = "e1" | "e2";
+const PROFILE_VIEW_STORAGE_PREFIX = "aoe2war:profile-layout:v1:";
+
+function readProfileSelection(uid: string): { mode: ProfileViewMode; edition: ExtremeEdition } {
+  if (typeof window === "undefined") return { mode: "extreme", edition: "e2" };
+  try {
+    const value = JSON.parse(window.localStorage.getItem(`${PROFILE_VIEW_STORAGE_PREFIX}${uid}`) || "null") as { mode?: string; edition?: string } | null;
+    return {
+      mode: value?.mode === "basic" || value?.mode === "advanced" || value?.mode === "extreme" ? value.mode : "extreme",
+      edition: value?.edition === "e1" ? "e1" : "e2",
+    };
+  } catch {
+    return { mode: "extreme", edition: "e2" };
+  }
+}
+
 
 const PROFILE_VIEW_MODES: Array<{
   key: ProfileViewMode;
@@ -251,7 +267,29 @@ function ProfilePageContent() {
   const [watcherPairRequestStarted, setWatcherPairRequestStarted] = useState(false);
   const [claimingWolo, setClaimingWolo] = useState(false);
   const [status, setStatus] = useState("");
-  const [profileViewMode, setProfileViewMode] = useState<ProfileViewMode>("extreme");
+  const [profileViewMode, setProfileViewModeState] = useState<ProfileViewMode>("extreme");
+  const [extremeEdition, setExtremeEdition] = useState<ExtremeEdition>("e2");
+  const [profileSelectionLoaded, setProfileSelectionLoaded] = useState(false);
+
+  useEffect(() => {
+    if (!isAuthenticated || !uid) return;
+    const selected = readProfileSelection(uid);
+    setProfileViewModeState(selected.mode);
+    setExtremeEdition(selected.edition);
+    setProfileSelectionLoaded(true);
+  }, [isAuthenticated, uid]);
+
+  const setProfileViewMode = useCallback((mode: ProfileViewMode, edition?: ExtremeEdition) => {
+    const nextEdition = edition ?? extremeEdition;
+    setProfileViewModeState(mode);
+    setExtremeEdition(nextEdition);
+    if (!uid || typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(`${PROFILE_VIEW_STORAGE_PREFIX}${uid}`, JSON.stringify({ mode, edition: nextEdition }));
+    } catch {
+      // Storage can be disabled; the current selection still works for this session.
+    }
+  }, [extremeEdition, uid]);
   const [claimSeedApplied, setClaimSeedApplied] = useState(false);
   const {
     themeKey,
@@ -790,19 +828,25 @@ function ProfilePageContent() {
   const canUseApprenticeshipAdmin =
     Boolean((profile as { isAdmin?: boolean } | null)?.isAdmin) || isApprenticeshipAdminName(profileHandle) || isApprenticeshipAdminName(displayName);
   const profileModeLabel =
-    profileViewMode === "basic" ? "Basic profile" : profileViewMode === "advanced" ? "Advanced profile" : "Extreme profile";
+    profileViewMode === "basic" ? "Basic profile" : profileViewMode === "advanced" ? "Advanced profile" : `Extreme profile · ${extremeEdition.toUpperCase()}`;
   const profileDeckMode: "basic" | "advanced" = profileViewMode === "basic" ? "basic" : "advanced";
   const isBasicProfileView = profileDeckMode === "basic";
 
+  if (!profileSelectionLoaded) {
+    return <ProfilePageFallback />;
+  }
+
   if (profileViewMode === "extreme") {
+    const ExtremeEditionView = extremeEdition === "e2" ? ExtremeProfileE2View : ExtremeProfileView;
     return (
       <div className="space-y-6">
-      <ExtremeProfileView
+      <ExtremeEditionView
         profile={profile}
         uid={uid}
         displayName={displayName}
         confirmedName={confirmedName}
         profileViewMode={profileViewMode}
+        extremeEdition={extremeEdition}
         setProfileViewMode={setProfileViewMode}
         avatarUploading={avatarUploading}
         avatarSavingTarget={avatarSavingTarget}
@@ -853,12 +897,12 @@ function ProfilePageContent() {
 
   return (
     <div className={`mx-auto w-full min-w-0 space-y-6 py-8 text-white ${isBasicProfileView ? "max-w-5xl" : "max-w-7xl"}`}>
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-[1.5rem] border border-white/10 bg-slate-950/58 px-4 py-3 shadow-[0_18px_60px_rgba(0,0,0,0.22)] backdrop-blur sm:px-5">
+      <div className="relative z-30 flex flex-wrap items-center justify-between gap-3 rounded-[1.5rem] border border-white/10 bg-slate-950/58 px-4 py-3 shadow-[0_18px_60px_rgba(0,0,0,0.22)] backdrop-blur sm:px-5">
         <div className="min-w-0">
           <div className="text-[10px] uppercase tracking-[0.32em] text-slate-500">Profile view</div>
           <div className="mt-1 text-sm font-semibold text-white">{profileModeLabel}</div>
         </div>
-        <ProfileModeToggle value={profileViewMode} onChange={setProfileViewMode} />
+        <ProfileModeToggle value={profileViewMode} edition={extremeEdition} onChange={setProfileViewMode} />
       </div>
 
 
@@ -1646,28 +1690,68 @@ function IdentityCard({
 
 function ProfileModeToggle({
   value,
+  edition,
   onChange,
 }: {
   value: ProfileViewMode;
-  onChange: (value: ProfileViewMode) => void;
+  edition: ExtremeEdition;
+  onChange: (value: ProfileViewMode, edition?: ExtremeEdition) => void;
 }) {
   return (
-    <div className="grid grid-cols-3 overflow-hidden rounded-full border border-white/10 bg-black/24 p-1">
+    <div className="flex items-center gap-1 rounded-full border border-white/10 bg-black/24 p-1" aria-label="Profile layout">
       {PROFILE_VIEW_MODES.map((mode) => {
         const active = value === mode.key;
+        if (mode.key !== "extreme") {
+          return (
+            <button
+              key={mode.key}
+              type="button"
+              onClick={() => onChange(mode.key)}
+              aria-pressed={active}
+              className={`rounded-full px-3 py-1.5 text-[11px] font-semibold transition ${active ? "bg-amber-300 text-slate-950" : "text-slate-400 hover:bg-white/[0.06] hover:text-white"}`}
+            >
+              {mode.label}
+            </button>
+          );
+        }
         return (
-          <button
-            key={mode.key}
-            type="button"
-            onClick={() => onChange(mode.key)}
-            className={`rounded-full px-3 py-1.5 text-[11px] font-semibold transition ${
-              active
-                ? "bg-amber-300 text-slate-950 shadow-[0_10px_28px_rgba(251,191,36,0.22)]"
-                : "text-slate-400 hover:bg-white/[0.06] hover:text-white"
-            }`}
-          >
-            {mode.label}
-          </button>
+          <div key={mode.key} className="group relative">
+            <button
+              type="button"
+              onClick={() => onChange("extreme")}
+              aria-pressed={active}
+              aria-haspopup="true"
+              aria-label={`Extreme profile, ${edition.toUpperCase()}. Hover or focus to choose edition`}
+              className={`rounded-full px-3 py-1.5 text-[11px] font-semibold transition ${active ? "bg-amber-300 text-slate-950 shadow-[0_10px_28px_rgba(251,191,36,0.22)]" : "text-slate-400 hover:bg-white/[0.06] hover:text-white"}`}
+            >
+              Extreme <span className="ml-1 text-[9px] opacity-75">{edition.toUpperCase()}</span>
+            </button>
+            <div className="invisible absolute right-0 top-full z-50 min-w-48 pt-2 opacity-0 transition-opacity group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+              <div className="rounded-2xl border border-amber-200/20 bg-[#080d18] p-2 shadow-[0_22px_70px_rgba(0,0,0,0.7)]">
+                <div className="px-2 pb-1.5 text-[9px] font-black uppercase tracking-[0.2em] text-amber-100/60">Extreme editions</div>
+                <div className="grid grid-cols-4 gap-1" role="group" aria-label="Extreme edition">
+                  {(["e1", "e2", "e3", "e4"] as const).map((slot, index) => {
+                    const available = slot === "e1" || slot === "e2";
+                    const selected = value === "extreme" && edition === slot;
+                    return (
+                      <button
+                        type="button"
+                        key={slot}
+                        disabled={!available}
+                        title={!available ? "Reserved for a future edition" : `Select Extreme ${slot.toUpperCase()}`}
+                        aria-pressed={selected}
+                        onClick={() => { if (slot === "e1" || slot === "e2") onChange("extreme", slot); }}
+                        className={`rounded-lg border px-2 py-2 text-xs font-bold transition ${selected ? "border-amber-200/50 bg-amber-300 text-slate-950" : available ? "border-white/10 text-slate-200 hover:border-amber-200/40 hover:bg-amber-300/10" : "cursor-not-allowed border-white/5 text-slate-600"}`}
+                      >
+                        {index + 1}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="px-2 pt-2 text-[10px] text-slate-400">E1 original · E2 next generation</div>
+              </div>
+            </div>
+          </div>
         );
       })}
     </div>
@@ -1780,6 +1864,7 @@ function ExtremeProfileView({
   displayName,
   confirmedName,
   profileViewMode,
+  extremeEdition,
   setProfileViewMode,
   avatarUploading,
   avatarSavingTarget,
@@ -1829,9 +1914,8 @@ function ExtremeProfileView({
   displayName: string;
   confirmedName: string;
   profileViewMode: ProfileViewMode;
-  setProfileViewMode: (
-    value: ProfileViewMode
-  ) => void;
+  extremeEdition: ExtremeEdition;
+  setProfileViewMode: (value: ProfileViewMode, edition?: ExtremeEdition) => void;
   avatarUploading: boolean;
   avatarSavingTarget: string | null;
   onPreset: (
@@ -1953,7 +2037,7 @@ function ExtremeProfileView({
           EXTREME PROFILE HEADER
           ===================================================== */}
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] border border-white/10 bg-slate-950/64 px-5 py-4 shadow-[0_18px_70px_rgba(0,0,0,0.24)] backdrop-blur">
+      <div className="relative z-30 flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] border border-white/10 bg-slate-950/64 px-5 py-4 shadow-[0_18px_70px_rgba(0,0,0,0.24)] backdrop-blur">
         <div>
           <div className="text-[9px] font-black uppercase tracking-[0.42em] text-amber-100/55">
             Extreme Profile
@@ -1966,9 +2050,8 @@ function ExtremeProfileView({
 
         <ProfileModeToggle
           value={profileViewMode}
-          onChange={
-            setProfileViewMode
-          }
+          edition={extremeEdition}
+          onChange={setProfileViewMode}
         />
       </div>
 
@@ -2514,6 +2597,750 @@ function ExtremeProfileView({
     </div>
   );
 }
+
+
+// E2 forks the E1 page composition: edit this component independently during the design pass.
+// Low-level display components are deliberately shared, but E1's composition stays frozen.
+function ExtremeProfileE2View({
+  profile,
+  uid,
+  displayName,
+  confirmedName,
+  profileViewMode,
+  extremeEdition,
+  setProfileViewMode,
+  avatarUploading,
+  avatarSavingTarget,
+  onPreset,
+  onUpload,
+  mintingWatcherKey,
+  onPairWatcher,
+  onMintKey,
+  watcherPairIntent,
+  newWatcherKey,
+  latestWatcherKey,
+  canUseApprenticeshipAdmin,
+  status,
+  moneyRows,
+  moneyLoading,
+  moneyHasMore,
+  onMoneyScroll,
+  onLoadMoreMoney,
+  scheduledMatches,
+  serverNow,
+  recentChallengeHistory,
+  challengeStats,
+  representedCountryDraft,
+  setRepresentedCountryDraft,
+  genderDivisionDraft,
+  setGenderDivisionDraft,
+  savingTitleIdentity,
+  onSaveTitleIdentity,
+  emailDraft,
+  setEmailDraft,
+  savingEmail,
+  onSaveEmail,
+  twitchDraft,
+  setTwitchDraft,
+  savingTwitch,
+  onSaveTwitch,
+  streamSessionKey,
+  streamTitle,
+  watcherStreamIntent,
+  claimStatusMessage,
+  claimingWolo,
+  onClaimPending,
+  onLogout,
+}: {
+  profile: ProfileResponse | null;
+  uid?: string | null;
+  displayName: string;
+  confirmedName: string;
+  profileViewMode: ProfileViewMode;
+  extremeEdition: ExtremeEdition;
+  setProfileViewMode: (value: ProfileViewMode, edition?: ExtremeEdition) => void;
+  avatarUploading: boolean;
+  avatarSavingTarget: string | null;
+  onPreset: (
+    target: string
+  ) => void;
+  onUpload: (
+    file: File | null
+  ) => void;
+  mintingWatcherKey: boolean;
+  onPairWatcher: () => void;
+  onMintKey: () => void;
+  watcherPairIntent: boolean;
+  newWatcherKey: string | null;
+  latestWatcherKey: WatcherKeyRow | null;
+  canUseApprenticeshipAdmin: boolean;
+  status: string;
+  moneyRows: WoloTransactionRow[];
+  moneyLoading: boolean;
+  moneyHasMore: boolean;
+  onMoneyScroll: (
+    event: UIEvent<HTMLDivElement>
+  ) => void;
+  onLoadMoreMoney: () => void;
+  scheduledMatches:
+    ChallengeHubSnapshot["scheduledMatches"];
+  serverNow: string | null;
+  recentChallengeHistory:
+    ChallengeHubSnapshot["historyMatches"];
+  challengeStats: Array<{
+    label: string;
+    value: number;
+  }>;
+  representedCountryDraft:
+    | RepresentedCountry
+    | "";
+  setRepresentedCountryDraft: (
+    value:
+      | RepresentedCountry
+      | ""
+  ) => void;
+  genderDivisionDraft:
+    GenderDivision;
+  setGenderDivisionDraft: (
+    value: GenderDivision
+  ) => void;
+  savingTitleIdentity: boolean;
+  onSaveTitleIdentity: () => void;
+  emailDraft: string;
+  setEmailDraft: (
+    value: string
+  ) => void;
+  savingEmail: boolean;
+  onSaveEmail: () => void;
+  twitchDraft: string;
+  setTwitchDraft: (
+    value: string
+  ) => void;
+  savingTwitch: boolean;
+  onSaveTwitch: () => void;
+  streamSessionKey: string;
+  streamTitle: string;
+  watcherStreamIntent: boolean;
+  claimStatusMessage: string;
+  claimingWolo: boolean;
+  onClaimPending: () => void;
+  onLogout: () => void;
+}) {
+  const avatarUrl =
+    profile?.avatarUrl ||
+    "/champions/players/silhouette.webp";
+
+  const avatarOptions =
+    profile?.avatarOptions ??
+    [];
+
+  const visibleOptions =
+    avatarOptions.slice(
+      0,
+      10
+    );
+
+  const verificationLevel =
+    profile?.verificationLevel ??
+    0;
+
+  const earningWoloPerDay =
+    profile?.earningWoloPerDay ??
+    0;
+
+  const featuredBelt =
+    profile?.belts?.[0] ??
+    null;
+
+  const profileTitle =
+    featuredBelt?.shortName ||
+    (
+      earningWoloPerDay > 0
+        ? "Active tribute"
+        : "Unranked"
+    );
+
+  const steamLabel =
+    profile?.steamPersonaName ||
+    (
+      profile?.steamId
+        ? "Linked"
+        : "Not linked"
+    );
+
+  const latestKeyLabel =
+    newWatcherKey ||
+    latestWatcherKey?.prefix ||
+    "Ready";
+
+  return (
+    <div data-profile-edition="e2" className="mx-auto w-full max-w-[96rem] space-y-6 py-6 text-white">
+
+      {/* =====================================================
+          EXTREME PROFILE HEADER
+          ===================================================== */}
+
+      <div className="relative z-30 flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] border border-white/10 bg-slate-950/64 px-5 py-4 shadow-[0_18px_70px_rgba(0,0,0,0.24)] backdrop-blur">
+        <div>
+          <div className="text-[9px] font-black uppercase tracking-[0.42em] text-amber-100/55">
+            Extreme Profile · E2
+          </div>
+
+          <div className="mt-1 text-sm font-semibold text-white">
+            Warrior command center
+          </div>
+        </div>
+
+        <ProfileModeToggle
+          value={profileViewMode}
+          edition={extremeEdition}
+          onChange={setProfileViewMode}
+        />
+      </div>
+
+      {/* =====================================================
+          IDENTITY STAGE
+          ===================================================== */}
+
+      <section className="relative isolate overflow-hidden rounded-[2.8rem] border border-amber-100/16 bg-slate-950 shadow-[0_44px_150px_rgba(0,0,0,0.46)]">
+        <div className="absolute inset-0 -z-20 bg-[radial-gradient(circle_at_8%_0%,rgba(251,191,36,0.17),transparent_29%),radial-gradient(circle_at_91%_2%,rgba(37,99,235,0.16),transparent_32%),linear-gradient(135deg,#11141d_0%,#070b14_53%,#02050c_100%)]" />
+
+        <div className="absolute inset-x-20 top-0 -z-10 h-px bg-gradient-to-r from-transparent via-amber-100/65 to-transparent" />
+
+        <div className="grid min-w-0 xl:grid-cols-[minmax(20rem,0.72fr)_minmax(27rem,1.18fr)_minmax(21rem,0.72fr)]">
+
+          {/* AVATAR */}
+
+          <ExtremeAvatarStage
+            avatarUrl={
+              avatarUrl
+            }
+            displayName={
+              displayName
+            }
+            options={
+              visibleOptions
+            }
+            uploading={
+              avatarUploading
+            }
+            savingTarget={
+              avatarSavingTarget
+            }
+            onPreset={
+              onPreset
+            }
+            onUpload={
+              onUpload
+            }
+          />
+
+          {/* IDENTITY */}
+
+          <div className="flex min-w-0 flex-col border-t border-white/8 p-6 sm:p-8 xl:border-l xl:border-t-0">
+            <div className="flex flex-wrap gap-2">
+              <ExtremeChip
+                icon={
+                  BadgeCheck
+                }
+                label={
+                  profile?.inGameName
+                    ? "Replay verified"
+                    : "Needs replay"
+                }
+                tone="emerald"
+              />
+
+              <ExtremeChip
+                icon={
+                  ShieldCheck
+                }
+                label={`Lv ${verificationLevel}`}
+                tone="blue"
+              />
+
+              <ExtremeChip
+                icon={
+                  Coins
+                }
+                label={`${earningWoloPerDay} WOLO/day`}
+                tone="amber"
+              />
+            </div>
+
+            <h1 className="mt-7 break-words text-5xl font-black tracking-[-0.055em] text-white sm:text-6xl 2xl:text-7xl">
+              {displayName}
+            </h1>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              <span className="rounded-full border border-white/10 bg-white/[0.045] px-3 py-1.5 text-xs font-semibold text-slate-200">
+                {confirmedName}
+              </span>
+
+              <span className="rounded-full border border-white/10 bg-black/24 px-3 py-1.5 font-mono text-[11px] text-slate-400">
+                UID{" "}
+                {uid
+                  ? truncateUid(
+                      uid
+                    )
+                  : "—"}
+              </span>
+            </div>
+
+            <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+              <ExtremeStat
+                icon={Trophy}
+                label="Title"
+                value={
+                  profileTitle
+                }
+              />
+
+              <ExtremeStat
+                icon={Monitor}
+                label="Steam"
+                value={
+                  steamLabel
+                }
+              />
+
+              <ExtremeStat
+                icon={
+                  ShieldCheck
+                }
+                label="Watcher"
+                value={
+                  latestWatcherKey
+                    ? "Paired"
+                    : "Ready"
+                }
+              />
+
+              <ExtremeStat
+                icon={Coins}
+                label="Pending"
+                value={`${profile?.pendingClaimAmountWolo ?? 0} WOLO`}
+              />
+            </div>
+
+            {/* WARRIOR REGISTRY */}
+
+            <div className="mt-auto pt-8">
+              <div className="border-t border-white/8 pt-6">
+                <div className="flex flex-wrap items-end justify-between gap-3">
+                  <div>
+                    <div className="text-[9px] font-black uppercase tracking-[0.3em] text-amber-100/50">
+                      Warrior Registry
+                    </div>
+
+                    <div className="mt-1 text-sm text-slate-500">
+                      Country · division
+                    </div>
+                  </div>
+
+                  <Link
+                    href="/champions"
+                    className="text-xs font-semibold text-amber-100/65 transition hover:text-amber-100"
+                  >
+                    Champions →
+                  </Link>
+                </div>
+
+                <div className="mt-4 grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+                  <select
+                    value={
+                      representedCountryDraft
+                    }
+                    onChange={(
+                      event
+                    ) =>
+                      setRepresentedCountryDraft(
+                        event.target
+                          .value as
+                          | RepresentedCountry
+                          | ""
+                      )
+                    }
+                    className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-sm text-white outline-none transition focus:border-amber-200/35"
+                  >
+                    <option value="">
+                      Country
+                    </option>
+
+                    {REPRESENTED_COUNTRIES.map(
+                      (
+                        country
+                      ) => (
+                        <option
+                          key={
+                            country
+                          }
+                          value={
+                            country
+                          }
+                        >
+                          {
+                            country
+                          }
+                        </option>
+                      )
+                    )}
+                  </select>
+
+                  <div className="grid grid-cols-2 gap-1 rounded-xl border border-white/10 bg-black/30 p-1">
+                    {GENDER_DIVISIONS.map(
+                      (
+                        division
+                      ) => (
+                        <button
+                          key={
+                            division
+                          }
+                          type="button"
+                          onClick={() =>
+                            setGenderDivisionDraft(
+                              division
+                            )
+                          }
+                          className={`rounded-lg px-3 py-2 text-xs font-semibold transition ${
+                            genderDivisionDraft ===
+                            division
+                              ? "bg-amber-300 text-slate-950"
+                              : "text-slate-400 hover:bg-white/[0.06] hover:text-white"
+                          }`}
+                        >
+                          {
+                            division
+                          }
+                        </button>
+                      )
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={
+                      onSaveTitleIdentity
+                    }
+                    disabled={
+                      savingTitleIdentity
+                    }
+                    className="rounded-full bg-amber-300 px-5 py-2.5 text-xs font-bold text-slate-950 transition hover:bg-amber-200 disabled:opacity-50"
+                  >
+                    {savingTitleIdentity
+                      ? "Saving..."
+                      : "Save"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* WATCHER */}
+
+          <aside className="border-t border-white/8 p-6 sm:p-7 xl:border-l xl:border-t-0">
+            <div className="flex min-h-full flex-col rounded-[2rem] border border-sky-100/12 bg-[radial-gradient(circle_at_100%_0%,rgba(56,189,248,0.11),transparent_38%),rgba(2,8,18,0.58)] p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.32em] text-sky-100/55">
+                  <ShieldCheck className="h-4 w-4" />
+                  Watcher
+                </div>
+
+                <span className="rounded-full border border-emerald-200/15 bg-emerald-300/[0.07] px-3 py-1 text-[9px] font-bold uppercase tracking-[0.17em] text-emerald-100">
+                  {latestWatcherKey
+                    ? "Paired"
+                    : "Auto-pair ready"}
+                </span>
+              </div>
+
+              <h2 className="mt-6 font-serif text-3xl text-white">
+                Pair once.
+                <br />
+                Play normally.
+              </h2>
+
+              <p className="mt-4 text-sm leading-6 text-slate-400">
+                Pairing is automatic
+                when possible.
+              </p>
+
+              <div className="mt-5 rounded-2xl border border-white/8 bg-black/24 p-4">
+                <div className="text-[9px] font-black uppercase tracking-[0.23em] text-slate-600">
+                  Watcher Key
+                </div>
+
+                <div className="mt-2 break-all font-mono text-xs text-slate-300">
+                  {
+                    latestKeyLabel
+                  }
+                </div>
+
+                <div className="mt-3 text-[11px] leading-5 text-slate-600">
+                  Manual setup: mint
+                  a key here and paste
+                  it into the Watcher.
+                </div>
+              </div>
+
+              {watcherPairIntent ? (
+                <div className="mt-3 rounded-xl border border-emerald-200/15 bg-emerald-300/[0.06] px-3 py-2 text-xs text-emerald-100">
+                  Pairing request open.
+                </div>
+              ) : null}
+
+              {newWatcherKey ? (
+                <div className="mt-3 rounded-xl border border-amber-200/15 bg-amber-300/[0.06] px-3 py-3">
+                  <div className="text-[9px] uppercase tracking-[0.22em] text-amber-100/55">
+                    Fresh key
+                  </div>
+
+                  <div className="mt-2 break-all font-mono text-xs text-white">
+                    {
+                      newWatcherKey
+                    }
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="mt-6 grid grid-cols-2 gap-2">
+                <ExtremeAction
+                  icon={Link2}
+                  label={
+                    mintingWatcherKey
+                      ? "Pairing"
+                      : "Pair"
+                  }
+                  onClick={
+                    onPairWatcher
+                  }
+                  disabled={
+                    mintingWatcherKey
+                  }
+                  primary
+                />
+
+                <ExtremeAction
+                  icon={
+                    KeyRound
+                  }
+                  label="Mint"
+                  onClick={
+                    onMintKey
+                  }
+                  disabled={
+                    mintingWatcherKey
+                  }
+                />
+
+                <ExtremeAction
+                  icon={
+                    Download
+                  }
+                  label="App"
+                  href="/download"
+                />
+
+                <ExtremeAction
+                  icon={Upload}
+                  label="Replay"
+                  href="/upload"
+                />
+              </div>
+
+              {canUseApprenticeshipAdmin ? (
+                <div className="mt-5 border-t border-white/8 pt-5">
+                  <ApprenticeshipAdminTile
+                    currentAvatarUrl={
+                      avatarUrl
+                    }
+                  />
+                </div>
+              ) : null}
+            </div>
+          </aside>
+        </div>
+
+        {status ? (
+          <div className="border-t border-sky-200/10 bg-sky-300/[0.045] px-6 py-3 text-sm text-sky-100">
+            {status}
+          </div>
+        ) : null}
+      </section>
+
+      <AutoBetReserveCard />
+
+      <MarketplaceBusinessCard />
+
+      {/* =====================================================
+          THE ARMORY
+          ===================================================== */}
+
+      <ExtremeProfileArmory
+        profile={profile}
+        avatarUrl={
+          avatarUrl
+        }
+      />
+
+      {/* =====================================================
+          MONEY + UPCOMING BATTLES
+          ===================================================== */}
+
+      <section className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(24rem,0.75fr)]">
+        <ExtremeProfileLedger
+          rows={
+            moneyRows
+          }
+          loading={
+            moneyLoading
+          }
+          hasMore={
+            moneyHasMore
+          }
+          onScroll={
+            onMoneyScroll
+          }
+          onLoadMore={
+            onLoadMoreMoney
+          }
+        />
+
+        <ExtremeUpcomingBattles
+          matches={
+            scheduledMatches
+          }
+          viewerUid={
+            uid
+          }
+          serverNow={
+            serverNow
+          }
+        />
+      </section>
+
+      {/* =====================================================
+          CAREER
+          ===================================================== */}
+
+      <ExtremeCareerRecord
+        stats={
+          challengeStats
+        }
+        history={
+          recentChallengeHistory
+        }
+        viewerUid={
+          uid
+        }
+      />
+
+      {/* =====================================================
+          YOUR ROOM
+          ===================================================== */}
+
+      <ExtremeProfileRoom
+        emailDraft={
+          emailDraft
+        }
+        setEmailDraft={
+          setEmailDraft
+        }
+        savingEmail={
+          savingEmail
+        }
+        onSaveEmail={
+          onSaveEmail
+        }
+        onLogout={
+          onLogout
+        }
+      />
+
+      {/* =====================================================
+          BROADCAST + CLAIM
+          ===================================================== */}
+
+      <ExtremeBroadcastAndClaim
+        profile={profile}
+        confirmedName={
+          confirmedName
+        }
+        twitchDraft={
+          twitchDraft
+        }
+        setTwitchDraft={
+          setTwitchDraft
+        }
+        savingTwitch={
+          savingTwitch
+        }
+        onSaveTwitch={
+          onSaveTwitch
+        }
+        streamSessionKey={
+          streamSessionKey
+        }
+        streamTitle={
+          streamTitle
+        }
+        watcherStreamIntent={
+          watcherStreamIntent
+        }
+        claimStatusMessage={
+          claimStatusMessage
+        }
+        claimingWolo={
+          claimingWolo
+        }
+        onClaimPending={
+          onClaimPending
+        }
+      />
+
+      {/* =====================================================
+          WALLET RAIL
+          ===================================================== */}
+
+      <section className="rounded-[2rem] border border-white/10 bg-slate-950/72 p-5 sm:p-6">
+        <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[0.32em] text-amber-100/55">
+          <Coins className="h-4 w-4" />
+          Wallet Rail
+        </div>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <ExtremeRailLink
+            href="/wallet"
+            icon={Coins}
+            label="Wallet"
+            value="Open"
+          />
+
+          <ExtremeRailLink
+            href="/staking"
+            icon={Gem}
+            label="Staking"
+            value="Rewards"
+          />
+
+          <ExtremeRailLink
+            href="/war-chest"
+            icon={Trophy}
+            label="War Chest"
+            value="WOLO"
+          />
+
+          <ExtremeRailLink
+            href="/bounties"
+            icon={Crown}
+            label="Bounties"
+            value="Board"
+          />
+        </div>
+      </section>
+    </div>
+  );
+}
+
 
 
 /* ============================================================

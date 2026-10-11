@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `refactor/profile-owner-controls-admin-only-20261011` at `b2686c010430e8110f79384c6a62bffc9317aeed`
+Implementation baseline: `feat/profile-e2-local-design-20261011` at `76d173646e8c3bd5e8e21143438e9af00a99bfb7`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

@@ -73,6 +73,30 @@ Properties:
 A normal server restart reconnects to current production truth. There is no
 snapshot to preserve or refresh.
 
+## Profile Extreme editions (E1 / E2 design branch)
+
+The `/profile` B/A/E selector supports a numbered Extreme submenu on hover
+or keyboard focus. E1 is the previously certified Extreme layout. E2 is a
+separate page composition cloned from E1 so design changes can be isolated.
+Only E1 and E2 are active; E3/E4 are visible reserved placeholders.
+
+The local E2 development branch defaults to E2 for users with no explicit
+profile-view choice. B, A, E1 and E2 choices currently persist in this
+browser's localStorage under the signed-in player's UID. This is **not**
+cross-device account synchronization. The next production release must not
+claim cross-device persistence until an authenticated server preference path
+is implemented and tested.
+
+Stay on the feature branch and use `npm run dev:prod`, then navigate to
+`https://localhost:3000/profile`. The launcher may initially open
+`/app`; that is not the player-profile route. The PWA install badge image
+`/icons/icon-192x192.png` is permitted explicitly by Next image config;
+an unrelated 503 from speed sample writes in hard read-only preview does not
+authorize weakening the database write boundary.
+
+This branch is a **draft design candidate**, not a production release.
+Keep it unmerged until E2 layout and player preference behavior are approved.
+
 ## Lane B — writable local production mirror
 
 Fresh rebuild and launch:
