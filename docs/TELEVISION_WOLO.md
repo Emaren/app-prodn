@@ -931,7 +931,7 @@ existing Television V3 mounted-volume admission and storage contracts.
 
 ### Read-only Video OS preflight
 
-`node scripts/television_video_preflight.mjs` writes one machine-readable JSON
+`./bin/aoe2war video doctor` (or direct `node scripts/television_video_preflight.mjs`) writes one machine-readable JSON
 observation to stdout. It imports **no app database**, downloads no video,
 does not make capture directories, and performs no mutations. It checks:
 current environment per-stream bytes and chunk limits (clamped by the same
