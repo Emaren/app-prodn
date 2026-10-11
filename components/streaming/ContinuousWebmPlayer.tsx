@@ -81,6 +81,8 @@ export default function ContinuousWebmPlayer({
     let appendedFrames = false;
     let decodedFrames = false;
     let networkFailures = 0;
+    let lastFrameProgressAt = Date.now();
+    let lastVideoTime = 0;
 
     video.muted = true;
     video.playsInline = true;
@@ -154,6 +156,12 @@ export default function ContinuousWebmPlayer({
 
     const poll = async () => {
       if (stopped || failed || busy || document.visibilityState !== "visible") return;
+      // A decoder can accept clusters without ever producing visible frames.
+      // Don't strand the spectator on an infinite "Buffering" badge.
+      if (appendedFrames && Date.now() - lastFrameProgressAt > 15_000) {
+        fail();
+        return;
+      }
       busy = true;
       try {
         const manifestBytes = await request(
@@ -243,14 +251,22 @@ export default function ContinuousWebmPlayer({
         for (const controller of failures) controller.abort();
         video.pause();
       } else if (!stopped && !failed) {
+        lastFrameProgressAt = Date.now();
         void poll();
       }
     };
-    const playing = () => { decodedFrames = true; setState("Live"); };
+    const playing = () => { decodedFrames = true; lastFrameProgressAt = Date.now(); setState("Live"); };
+    const timeProgress = () => {
+      if (video.currentTime > lastVideoTime + 0.05) {
+        lastVideoTime = video.currentTime;
+        lastFrameProgressAt = Date.now();
+      }
+    };
     const waiting = () => { if (!failed) setState("Buffering video"); };
     mediaSource.addEventListener("sourceopen", started, { once: true });
     video.addEventListener("error", decoderFailure);
     video.addEventListener("playing", playing);
+    video.addEventListener("timeupdate", timeProgress);
     video.addEventListener("waiting", waiting);
     document.addEventListener("visibilitychange", resume);
     try { video.src = objectUrl; } catch { fail(); }
@@ -262,6 +278,7 @@ export default function ContinuousWebmPlayer({
       document.removeEventListener("visibilitychange", resume);
       video.removeEventListener("error", decoderFailure);
       video.removeEventListener("playing", playing);
+      video.removeEventListener("timeupdate", timeProgress);
       video.removeEventListener("waiting", waiting);
       mediaSource.removeEventListener("sourceopen", started);
       video.pause();
