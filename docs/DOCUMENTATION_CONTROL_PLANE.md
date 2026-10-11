@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/watcher-164-stage-native-zip-inventory-20261010` at `25b18a79bfcd741d29be5e70efda4d9cd1b33db4`
+Implementation baseline: `feature/watcher-164-stage-native-zip-inventory-20261010` at `868e0079146ea02eb83d009cce12197e74eda81c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

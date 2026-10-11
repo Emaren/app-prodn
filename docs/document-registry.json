@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "fe79b2eb03b5989b32bca427dbd7414bbfef3b668f72e9ca8137e9d1574e6fe3",
+      "sha256": "7b6f7eeebfeae293cdcc63166c5ea1f792a47bd70777d198fdbb556a7f627943",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2049,7 +2049,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/watcher-164-stage-native-zip-inventory-20261010",
-    "commit": "25b18a79bfcd741d29be5e70efda4d9cd1b33db4"
+    "commit": "868e0079146ea02eb83d009cce12197e74eda81c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
