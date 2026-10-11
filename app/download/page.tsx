@@ -184,7 +184,7 @@ export default function DownloadPage() {
           aria-label={`AoE2HDBets Watcher ${WATCHER_RELEASE.version}`}
         >
           <h1 className="sr-only">
-            Download it. Pair once. Stay live.
+            Download it. Pair once. Stay ready.
           </h1>
 
           <p className="sr-only">
@@ -203,11 +203,14 @@ export default function DownloadPage() {
           <picture>
             <source
               media="(max-width: 767px)"
-              srcSet="/watcher/watcher-v1510-mobile.png"
+              srcSet="/watcher/watcher-v164-mobile.webp"
+              type="image/webp"
+              width="1024"
+              height="1536"
             />
 
             <img
-              src="/watcher/watcher-v1510-desktop.png"
+              src="/watcher/watcher-v164-desktop.webp"
               alt={`AoE2WAR Watcher ${WATCHER_RELEASE.version} replay companion overview`}
               width="1672"
               height="941"
@@ -222,9 +225,9 @@ export default function DownloadPage() {
             Artwork interactive regions.
 
             Desktop coordinates use the original
-            1672 × 941 artwork. Mobile coordinates use the
-            separate 941 × 1672 portrait artwork. This keeps
-            both painted CTA pairs aligned while responsive.
+            1672 × 941 desktop artwork. Mobile coordinates use the
+            1024 × 1536 portrait artwork. The anchors must track
+            each image's actual painted buttons, not historical versions.
           */}
 
           <a
@@ -233,7 +236,7 @@ export default function DownloadPage() {
             aria-label="Download Windows Installer"
             title="Download Windows Installer"
             data-watcher-hero-hotspot="windows-installer"
-            className="absolute left-[2.15%] top-[34.35%] z-10 hidden h-[6.35%] w-[18.95%] cursor-pointer rounded-[0.8rem] bg-white/0 transition hover:bg-white/[0.055] focus-visible:block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#020711] md:block"
+            className="absolute left-[2.1%] top-[35.45%] z-10 hidden h-[6.1%] w-[19.0%] cursor-pointer rounded-[0.8rem] bg-white/0 transition hover:bg-white/[0.055] focus-visible:block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#020711] md:block"
           >
             <span className="sr-only">
               Download Windows Installer
@@ -245,7 +248,7 @@ export default function DownloadPage() {
             aria-label="Open Profile Pairing"
             title="Open Profile Pairing"
             data-watcher-hero-hotspot="profile-pairing"
-            className="absolute left-[21.55%] top-[34.35%] z-10 hidden h-[6.35%] w-[15.55%] cursor-pointer rounded-[0.8rem] bg-white/0 transition hover:bg-white/[0.055] focus-visible:block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#020711] md:block"
+            className="absolute left-[21.55%] top-[35.45%] z-10 hidden h-[6.1%] w-[16.15%] cursor-pointer rounded-[0.8rem] bg-white/0 transition hover:bg-white/[0.055] focus-visible:block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#020711] md:block"
           >
             <span className="sr-only">
               Open Profile Pairing
@@ -258,7 +261,7 @@ export default function DownloadPage() {
             aria-label="Download Windows Installer"
             title="Download Windows Installer"
             data-watcher-hero-hotspot="mobile-windows-installer"
-            className="absolute left-[9.1%] top-[75.25%] z-10 h-[5.25%] w-[81.0%] cursor-pointer rounded-[0.8rem] bg-white/0 transition hover:bg-white/[0.055] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#020711] md:hidden"
+            className="absolute left-[4.1%] top-[41.15%] z-10 h-[4.25%] w-[58.4%] cursor-pointer rounded-[0.8rem] bg-white/0 transition hover:bg-white/[0.055] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#020711] md:hidden"
           >
             <span className="sr-only">
               Download Windows Installer
@@ -270,7 +273,7 @@ export default function DownloadPage() {
             aria-label="Open Profile Pairing"
             title="Open Profile Pairing"
             data-watcher-hero-hotspot="mobile-profile-pairing"
-            className="absolute left-[9.4%] top-[80.35%] z-10 h-[3.75%] w-[80.2%] cursor-pointer rounded-[0.8rem] bg-white/0 transition hover:bg-white/[0.055] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#020711] md:hidden"
+            className="absolute left-[4.1%] top-[46.1%] z-10 h-[3.55%] w-[58.4%] cursor-pointer rounded-[0.8rem] bg-white/0 transition hover:bg-white/[0.055] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#020711] md:hidden"
           >
             <span className="sr-only">
               Open Profile Pairing
@@ -324,7 +327,7 @@ export default function DownloadPage() {
                     : "text-4xl sm:text-5xl"
               }`}
             >
-              Download it. Pair once. Stay live.
+              Download it. Pair once. Stay ready.
             </h1>
 
             <p
