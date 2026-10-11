@@ -66,6 +66,8 @@ test("MSE is bounded, decoder-first and reverts to existing rolling player", asy
   assert.match(component, /const buffer = await response\.arrayBuffer\(\)/);
   assert.doesNotMatch(component, /video\.load\(\);\s*lastSeq =/);
   assert.match(wrapper, /<ContinuousWebmPlayer stream=\{stream\} title=\{title\} onUnsupported=\{disableMse\}/);
+  assert.match(wrapper, /NEXT_PUBLIC_AOE2WAR_MSE_LIVE_CANARY/);
+  assert.match(wrapper, /MSE_CANARY_ENABLED && !compact && stream.status === "live"/);
   assert.match(wrapper, /<BrowserChunkPlayer stream=\{stream\} title=\{title\} compact=\{compact\}/);
 });
 
