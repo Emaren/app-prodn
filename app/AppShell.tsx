@@ -487,6 +487,7 @@ function HeaderPillLink({
 }) {
   const t = useTranslations("Shell");
   const router = useRouter();
+  const pathname = usePathname();
   const { uid } = useUserAuth();
   const displayLabel =
     href === "/requests"
@@ -524,8 +525,13 @@ function HeaderPillLink({
       }}
       onClick={(event) => {
         if (isModifiedHeaderNavClick(event)) return;
-        onCycleActiveEffect();
-        if (active) event.preventDefault();
+        // Nested player/section pages highlight the destination chip too.
+        // Only the exact current route may consume a click; otherwise allow
+        // Next Link to navigate back to the parent directory.
+        if (pathname === href) {
+          onCycleActiveEffect();
+          event.preventDefault();
+        }
       }}
       aria-current={active ? "page" : undefined}
       className={`relative inline-flex min-h-8 shrink-0 items-center justify-center overflow-visible rounded-full border px-2 py-1 text-[10px] font-semibold tracking-[0.01em] transition duration-200 lg:px-2.5 xl:min-h-9 xl:px-3.5 xl:py-1.5 xl:text-[11px] ${className} ${
