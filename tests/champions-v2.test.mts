@@ -46,6 +46,8 @@ test("E5 is canonical; B, A, and E1–E4 remain selectable and preserved", () =>
   assert.match(displayRail, /CHAMPIONS_VIEW_ROUTES/);
   assert.match(displayRail, /readPreferredChampionsView/);
   assert.match(displayRail, /rememberChampionsView/);
+  assert.match(displayRail, /aoe2war:champions:preferred-layout:v2/);
+  assert.doesNotMatch(displayRail, /const CHAMPIONS_PREFERENCE_KEY = "aoe2war:champions:preferred-layout:v1"/);
   assert.match(displayRail, /\/champions\/e4/);
   assert.match(displayRail, /ChampionsViewCycleButton/);
   assert.match(displayRail, /champions-extreme-group/);
