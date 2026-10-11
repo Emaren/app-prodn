@@ -673,20 +673,22 @@ function ModeChampionCard({
   champion,
   stacked = false,
   enableChallenges = false,
+  challengeVacant = false,
 }: {
   champion: ChampionsV2ModeChampion;
+  challengeVacant?: boolean;
   stacked?: boolean;
   enableChallenges?: boolean;
 }) {
   const holder = champion.holders?.[0] ?? null;
   const titleId =
     champion.lane === "rm" ? "random-map-champion" : "deathmatch-champion";
-  const challenge = enableChallenges && holder ? (
+  const challenge = enableChallenges && (holder || challengeVacant) ? (
     <div className="border-t border-white/8 px-4 pb-3 pt-2">
       <ChallengeHolderButton
         titleId={titleId}
-        holderUid={holder.uid}
-        holderName={holder.name}
+        holderUid={holder?.uid}
+        holderName={holder?.name}
       />
     </div>
   ) : null;
@@ -769,12 +771,16 @@ function TeamTitleCard({
   title,
   lane,
   enableChallenges = false,
+  e5 = false,
 }: {
   title: ChampionsV2TeamTitle;
+  e5?: boolean;
   lane: ChampionsLane;
   enableChallenges?: boolean;
 }) {
   const stageHeight =
+    e5 && title.size === 3 ? "min-h-[14rem] sm:min-h-[18rem]" :
+    e5 && title.size === 4 ? "min-h-[13rem] sm:min-h-[16rem]" :
     title.size === 2
       ? "min-h-[29rem]"
       : title.size === 3
@@ -787,12 +793,14 @@ function TeamTitleCard({
         ? "h-[9.5rem]"
         : "h-36";
   const vacantAvatarScale =
+    e5 ? "scale-[1.0]" :
     title.size === 2
       ? "scale-[1.10]"
       : title.size === 3
         ? "scale-[1.05]"
         : "scale-100";
   const holderAvatarScale =
+    e5 ? "scale-[1.0]" :
     title.size === 2
       ? "scale-[0.96]"
       : title.size === 3
@@ -820,15 +828,15 @@ function TeamTitleCard({
       </div>
 
       <div
-        className="grid gap-2 px-3"
-        style={{
+        className={`grid gap-2 px-3 ${e5 ? "grid-cols-2" : ""}`}
+        style={e5 ? undefined : {
           gridTemplateColumns: `repeat(${title.holderSlots}, minmax(0, 1fr))`,
         }}
       >
         {Array.from({ length: title.holderSlots }, (_, index) => (
           <div
             key={index}
-            className={`relative ${stageHeight} overflow-hidden rounded-[1.25rem] border border-white/[0.065] bg-[radial-gradient(circle_at_50%_18%,rgba(96,165,250,0.09),transparent_46%),rgba(0,0,0,0.18)]`}
+            className={`relative ${stageHeight} ${e5 && title.size === 3 && index === 2 ? "col-span-2 w-[calc(50%-0.25rem)] justify-self-center" : ""} overflow-hidden rounded-[1.25rem] border border-white/[0.065] bg-[radial-gradient(circle_at_50%_18%,rgba(96,165,250,0.09),transparent_46%),rgba(0,0,0,0.18)]`}
           >
             <Image
               src={
@@ -860,12 +868,12 @@ function TeamTitleCard({
         ))}
       </div>
 
-      {enableChallenges && title.holders?.[0] ? (
+      {enableChallenges ? (
         <div className="px-4 pt-3">
           <ChallengeHolderButton
             titleId={`${title.size}v${title.size}-${lane}`}
-            holderUid={title.holders[0].uid}
-            holderName={title.holders[0].name}
+            holderUid={title.holders?.[0]?.uid}
+            holderName={title.holders?.[0]?.name}
           />
         </div>
       ) : null}
@@ -986,11 +994,11 @@ function NationalBeltCard({
           <div className="mt-1 text-sm font-semibold text-white">
             {belt.holder?.name || "Vacant"}
           </div>
-          {enableChallenges && belt.holder ? (
+          {enableChallenges ? (
             <ChallengeHolderButton
               titleId={`${belt.scope === "regional" ? "regional" : "national"}-${belt.slug}`}
-              holderUid={belt.holder.uid}
-              holderName={belt.holder.name}
+              holderUid={belt.holder?.uid}
+              holderName={belt.holder?.name}
               country={belt.scope === "national" ? belt.country : null}
             />
           ) : null}
@@ -1077,11 +1085,11 @@ function EloCard({
           <div className="mt-1 truncate text-xs font-semibold text-slate-200">
             {division.holder?.name || "Vacant"}
           </div>
-          {enableChallenges && division.holder ? (
+          {enableChallenges ? (
             <ChallengeHolderButton
               titleId={eloChallengeTitleId(division, lane)}
-              holderUid={division.holder.uid}
-              holderName={division.holder.name}
+              holderUid={division.holder?.uid}
+              holderName={division.holder?.name}
             />
           ) : null}
         </div>
