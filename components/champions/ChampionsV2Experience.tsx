@@ -1145,9 +1145,11 @@ export default function ChampionsV2Experience({
   state: ChampionsV2State;
   variant?: ChampionsExperienceVariant;
 }) {
-  const e4 = variant === "e4";
+  const e4 = variant !== "e2";
+  const e5 = variant === "e5";
+  const [podiumHaze, setPodiumHaze] = useState<PodiumHaze>("gold");
   const [lane, setLane] = useState<ChampionsLane>("rm");
-  const [teamView, setTeamView] = useState<TeamChampionshipView>("rm");
+  const [teamView, setTeamView] = useState<TeamChampionshipView>(variant === "e5" ? "both" : "rm");
   const [stackModeChampions, setStackModeChampions] = useState(true);
   const [eloFirstLane, setEloFirstLane] = useState<ChampionsLane>("rm");
   const nationalRailRef = useRef<HTMLDivElement>(null);
@@ -1156,11 +1158,26 @@ export default function ChampionsV2Experience({
 
   useEffect(() => {
     if (e4) {
-      setTeamView(readStoredE4TeamView());
+      setTeamView(readStoredE4TeamView(e5));
       return;
     }
     setLane(readStoredLeaderboardLane());
-  }, [e4]);
+  }, [e4, e5]);
+
+  useEffect(() => {
+    if (!e5) return;
+    try {
+      const raw = window.localStorage.getItem(E5_HAZE_KEY);
+      setPodiumHaze(raw === "blue" || raw === "none" ? raw : "gold");
+    } catch {
+      setPodiumHaze("gold");
+    }
+  }, [e5]);
+
+  function choosePodiumHaze(next: PodiumHaze) {
+    setPodiumHaze(next);
+    try { window.localStorage.setItem(E5_HAZE_KEY, next); } catch { /* optional preference */ }
+  }
 
   function chooseLane(next: ChampionsLane) {
     setLane(next);
@@ -1169,7 +1186,7 @@ export default function ChampionsV2Experience({
 
   function chooseTeamView(next: TeamChampionshipView) {
     setTeamView(next);
-    writeStoredE4TeamView(next);
+    writeStoredE4TeamView(next, e5);
   }
 
   function scrollNation(direction: -1 | 1) {
@@ -1213,18 +1230,21 @@ export default function ChampionsV2Experience({
             <div>
               <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.34em] text-amber-100/74">
                 <Crown className="h-4 w-4" />
-                AoE2WAR title economy · E4
+                AoE2WAR title economy · {e5 ? "E5" : "E4"}
               </div>
               <h1 className="mt-4 font-serif text-4xl font-semibold uppercase tracking-[0.08em] text-amber-50 sm:text-6xl">
                 Championship Belts
               </h1>
               <p className="mt-3 max-w-3xl text-sm uppercase tracking-[0.20em] text-slate-300">
-                The E3 throne room above the cleaner E2 championship machine.
+                {e5 ? "The championship hall. Every belt has a challenger." : "The E3 throne room above the cleaner E2 championship machine."}
               </p>
             </div>
             <div className="space-y-3">
               <div className="flex justify-end">
-                <ChampionsViewCycleButton active="e4" />
+                <div className="flex items-center gap-2">
+                  <ChampionsViewCycleButton active={e5 ? "e5" : "e4"} />
+                  {e5 ? <PodiumHazePicker value={podiumHaze} onChange={choosePodiumHaze} /> : null}
+                </div>
               </div>
               {heroStats}
             </div>
@@ -1248,9 +1268,9 @@ export default function ChampionsV2Experience({
 
       {e4 ? (
         <section className="champions-e-breakout grid gap-5 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.18fr)_minmax(0,0.92fr)] xl:items-start">
-          <E4PodiumCard title={state.world} position="center" />
-          <E4PodiumCard title={state.chaos} position="left" />
-          <E4PodiumCard title={state.womens} position="right" />
+          <E4PodiumCard title={state.world} position="center" e5={e5} haze={e5 ? podiumHaze : "gold"} />
+          <E4PodiumCard title={state.chaos} position="left" e5={e5} haze={e5 ? podiumHaze : "gold"} />
+          <E4PodiumCard title={state.womens} position="right" e5={e5} haze={e5 ? podiumHaze : "gold"} />
         </section>
       ) : (
         <section className="space-y-5">
@@ -1273,6 +1293,7 @@ export default function ChampionsV2Experience({
             champion={state.rmChampion}
             stacked={stackModeChampions}
             enableChallenges={e4}
+            challengeVacant={e5}
           />
           <ModeChampionCard
             champion={state.dmChampion}
@@ -1322,6 +1343,7 @@ export default function ChampionsV2Experience({
                           title={title}
                           lane={teamLane}
                           enableChallenges
+                          e5={e5}
                         />
                       ) : null;
                     })}
@@ -1410,7 +1432,7 @@ export default function ChampionsV2Experience({
         </section>
       ) : null}
 
-      <ChampionsDisplayRail active={e4 ? "e4" : "e2"} />
+      {!e5 ? <ChampionsDisplayRail active={e4 ? "e4" : "e2"} /> : null}
     </main>
   );
 }
