@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/profile-e2-local-design-20261011` at `1659f065d487667805227c5e7f5c0896eca515b3`
+Implementation baseline: `feat/profile-e2-local-design-20261011` at `5e1cff280a0cb346eb79e6691e32dc65dfd529fd`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
