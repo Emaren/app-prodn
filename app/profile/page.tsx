@@ -897,7 +897,7 @@ function ProfilePageContent() {
 
   return (
     <div className={`mx-auto w-full min-w-0 space-y-6 py-8 text-white ${isBasicProfileView ? "max-w-5xl" : "max-w-7xl"}`}>
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-[1.5rem] border border-white/10 bg-slate-950/58 px-4 py-3 shadow-[0_18px_60px_rgba(0,0,0,0.22)] backdrop-blur sm:px-5">
+      <div className="relative z-30 flex flex-wrap items-center justify-between gap-3 rounded-[1.5rem] border border-white/10 bg-slate-950/58 px-4 py-3 shadow-[0_18px_60px_rgba(0,0,0,0.22)] backdrop-blur sm:px-5">
         <div className="min-w-0">
           <div className="text-[10px] uppercase tracking-[0.32em] text-slate-500">Profile view</div>
           <div className="mt-1 text-sm font-semibold text-white">{profileModeLabel}</div>
@@ -2037,7 +2037,7 @@ function ExtremeProfileView({
           EXTREME PROFILE HEADER
           ===================================================== */}
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] border border-white/10 bg-slate-950/64 px-5 py-4 shadow-[0_18px_70px_rgba(0,0,0,0.24)] backdrop-blur">
+      <div className="relative z-30 flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] border border-white/10 bg-slate-950/64 px-5 py-4 shadow-[0_18px_70px_rgba(0,0,0,0.24)] backdrop-blur">
         <div>
           <div className="text-[9px] font-black uppercase tracking-[0.42em] text-amber-100/55">
             Extreme Profile
@@ -2780,7 +2780,7 @@ function ExtremeProfileE2View({
           EXTREME PROFILE HEADER
           ===================================================== */}
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] border border-white/10 bg-slate-950/64 px-5 py-4 shadow-[0_18px_70px_rgba(0,0,0,0.24)] backdrop-blur">
+      <div className="relative z-30 flex flex-wrap items-center justify-between gap-3 rounded-[1.7rem] border border-white/10 bg-slate-950/64 px-5 py-4 shadow-[0_18px_70px_rgba(0,0,0,0.24)] backdrop-blur">
         <div>
           <div className="text-[9px] font-black uppercase tracking-[0.42em] text-amber-100/55">
             Extreme Profile · E2
