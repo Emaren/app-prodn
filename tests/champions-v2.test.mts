@@ -280,8 +280,8 @@ test("national belt hall reads represented-country truth for every crown", () =>
 test("E2 restores the premium hero tile while stripping explanatory SaaS copy", () => {
   assert.match(experience, /rounded-\[2\.5rem\]/);
   assert.match(experience, /circle_at_75%_15%/);
-  assert.match(experience, /\["Active", state\.summary\.active\]/);
-  assert.match(experience, /\["Vacant", state\.summary\.vacant\]/);
+  assert.match(experience, /\["Active", state\.summary\.active,/);
+  assert.match(experience, /\["Vacant", state\.summary\.vacant,/);
   assert.match(experience, /\["Tribute",/);
   assert.match(experience, /AoE2WAR title economy/);
   for (const copy of [
