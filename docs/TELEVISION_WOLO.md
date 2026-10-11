@@ -110,3 +110,25 @@ chunk -> Television WOLO Play returns video for the **same canonical battle**.
 If browser stream succeeds but the TV page still has no feed for that battle,
 investigate stream-identity alias binding and active-stream refresh separately;
 do not infer this fix solved that second problem.
+
+### First successful browser-video broadcast: registered to the wrong match
+
+The later October 10 field screenshots prove a **successful** Chrome broadcast
+(40s/39 chunks, then 1m25s/83 chunks, live-edge signal and current heartbeat).
+However, that stream was first started while the browser studio displayed
+Jim/KORO/stoikov/Thun; the user changed the dropdown to Emaren/ufukmaraz37
+**while it was still live**. Television WOLO's Jim card increased from two to
+three known feeds, while the Emaren card remained at one and the main theatre
+showed no registered feed. These are strong indicators that the server stream
+was still keyed to Jim. The screenshots do not prove per-chunk playback in the
+Television theatre or establish an Emaren stream.
+
+The browser studio must show the **server-returned stream's title and
+sessionKey** for any active live broadcast, never relabel it from a subsequently
+changed dropdown or suggestion. Selection is disabled while live, and the
+current registered session remains visible even if it has disappeared from
+live-game suggestions. The browser's support event telemetry uses the server
+receipt identity while live. A different battle requires Stop, deliberate
+selection, and a **new** /api/streams/start; silently rebinding existing
+recorded chunks would destroy provenance. A local preview, live heartbeat and
+the correct canonical battle are three separate proofs.
