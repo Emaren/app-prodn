@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFile } from "node:fs/promises";
 
 import {
   videoCapacityPlan,
@@ -52,4 +53,12 @@ test("missing mount remains blocked; preflight does not create directories", asy
   assert.equal(result.overall, "blocked");
   assert.equal(result.storage.state, "blocked");
   assert.equal(result.checks.find((x) => x.id === "video_volume_mount")?.state, "blocked");
+});
+
+test("operator CLI exposes video doctor without side effects", async () => {
+  const cli = await readFile(new URL("../bin/aoe2war", import.meta.url), "utf8");
+  assert.match(cli, /VIDEO_PREFLIGHT="\$BIN_DIR\/\.\.\/scripts\/television_video_preflight\.mjs"/);
+  assert.match(cli, /aoe2war video <doctor\|preflight>/);
+  assert.match(cli, /video\)\s*shift/);
+  assert.match(cli, /exec node "\$VIDEO_PREFLIGHT"/);
 });
