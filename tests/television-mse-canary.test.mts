@@ -66,3 +66,21 @@ test("MSE is bounded, decoder-first and reverts to existing rolling player", asy
   assert.match(wrapper, /<ContinuousWebmPlayer stream=\{stream\} title=\{title\} onUnsupported=\{disableMse\}/);
   assert.match(wrapper, /<BrowserChunkPlayer stream=\{stream\} title=\{title\} compact=\{compact\}/);
 });
+
+test("live WebM media range is bounded, contiguous, no repeated init, and source-authorized", async () => {
+  const route = await readFile(
+    new URL("../app/api/streams/[streamId]/media-range/route.ts", import.meta.url), "utf8",
+  );
+  const component = await readFile(
+    new URL("../components/streaming/ContinuousWebmPlayer.tsx", import.meta.url), "utf8",
+  );
+  assert.match(route, /MAX_RANGE_CHUNKS = 5/);
+  assert.match(route, /MAX_RANGE_BYTES = 12 \* 1024 \* 1024/);
+  assert.match(route, /AOE2WAR_STREAM_SOURCE_TYPES\.includes/);
+  assert.match(route, /!range\.every\(\(sequence\) => present\.has\(sequence\)\)/);
+  assert.match(route, /readStreamChunksBounded\(/);
+  assert.doesNotMatch(route, /chunkSequences = \[0, /);
+  assert.match(component, /media-range\?from=\$\{from\}&through=\$\{through\}/);
+  assert.match(component, /for \(let from = plan\.from; from <= plan\.through; from \+= 5\)/);
+  assert.match(component, /lastSeq = through/);
+});
