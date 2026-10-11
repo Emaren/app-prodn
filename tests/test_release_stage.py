@@ -90,9 +90,63 @@ class StageTests(unittest.TestCase):
         )
         self.assertEqual(
             MODULE.watcher_distribution_version(
-                {"risk_class": "APPLICATION", "release_sha": head}
+                {
+                    "risk_class": "APPLICATION",
+                    "release_sha": head,
+                    "previous_production_sha": head,
+                }
             ),
             "",
+        )
+
+    def test_infrastructure_watcher_version_transition_requires_vault_proof(self):
+        import subprocess
+        from unittest import mock
+
+        source = 'export const WATCHER_RELEASE = { version: "1.6.4" };'
+        previous = 'export const WATCHER_RELEASE = { version: "1.6.3" };'
+        manifest = {
+            "risk_class": "INFRASTRUCTURE",
+            "release_sha": "b" * 40,
+            "previous_production_sha": "a" * 40,
+        }
+
+        def source_at_sha(args, *, timeout):
+            version_source = source if args[2].startswith("b" * 40) else previous
+            return subprocess.CompletedProcess(args, 0, stdout=version_source)
+
+        with mock.patch.object(MODULE, "run", side_effect=source_at_sha) as runner:
+            self.assertEqual(
+                MODULE.watcher_distribution_version(manifest), "1.6.4"
+            )
+            self.assertEqual(runner.call_count, 2)
+
+        data, result_manifest, result = sample()
+        result_manifest["risk_class"] = "INFRASTRUCTURE"
+        missing = MODULE.validate_stage_result(
+            data, result_manifest, result, watcher_version="1.6.4"
+        )
+        self.assertIn(
+            "WATCHER distribution preflight did not report PASS", missing
+        )
+
+        result.update({
+            "watcher_distribution_status": "PASS",
+            "watcher_distribution_version": "1.6.4",
+            "watcher_distribution_checksum_sha256": "e" * 64,
+            "watcher_distribution_manifest_sha256": "f" * 64,
+        })
+        self.assertEqual(
+            MODULE.validate_stage_result(
+                data, result_manifest, result, watcher_version="1.6.4"
+            ), []
+        )
+        result["watcher_distribution_version"] = "1.6.3"
+        self.assertIn(
+            "WATCHER distribution version does not match exact source",
+            MODULE.validate_stage_result(
+                data, result_manifest, result, watcher_version="1.6.4"
+            ),
         )
 
     def test_watcher_distribution_preflight_precedes_candidate_materialization(self):
