@@ -8,7 +8,7 @@ systems: ["app-prodn","wolochain"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-09-10"
+reviewed_at: "2026-10-10"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
@@ -17,6 +17,14 @@ sensitivity: "restricted"
 
 This is the AoE2HDBets-side runbook only. WoloChain owns the chain service,
 keys, signer funding, and settlement truth.
+
+Review note (2026-10-10): App-side procedural review checked the
+documented separation of WoloChain settlement authority, escrow
+and payout signer roles, health gates, and staking custody safeguards.
+Historical balances and runtime observations remain dated evidence,
+not a certification of current mainnet state. Before any financial
+operation, obtain current chain and service evidence and the required
+separate authorization. This review authorizes no Wolo mutations.
 
 Review note (2026-08-28): the app-side signer-role separation, health gate,
 financial containment, and settlement call paths were re-reviewed against the
