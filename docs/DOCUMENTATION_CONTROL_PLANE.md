@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/watcher-164-download-hero-20261011` at `36db9d7fe5c175fcd1c3fcb411eb1f8aa83763ca`
+Implementation baseline: `refactor/profile-owner-controls-admin-only-20261011` at `d697f5cee86bc1a14bcd66199769c37dd48a7f6c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
