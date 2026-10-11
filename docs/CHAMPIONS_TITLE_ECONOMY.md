@@ -40,7 +40,7 @@ operator intents until a future Warbound chain module exists.
 
 ## Public routes
 
-- `/champions` remains the default Champions E3 hall. E3 intentionally preserves
+- `/champions` now defaults to E5 for users without a persisted view choice (E3 remains at `/champions/e3`). E3 intentionally preserves
   the E1 war-table composition while projecting the complete E2 authority:
   current World/Chaos/Women custody, separate RM and DM solo crowns, every RM/DM
   2v2/3v3/4v4 team title, the complete national/regional catalog, both ELO lanes,
@@ -123,6 +123,8 @@ operator intents until a future Warbound chain module exists.
 - Legacy public spine links should point to `/champions`, not `/belts`, unless
   preserving an intentional redirect.
 
+E5 summary totals come from `lib/champions/championshipSummary.ts`, not the previous static 4/18/45 constants. The 36-title base inventory counts the 3 podium crowns, 2 mode crowns, 6 specific team crowns, 10 ELO crowns, 12 special designation titles and 3 inaugurated national crowns. It excludes the duplicate generic tag-team seed and unawarded national roadmap standards. Newly claimed national crowns expand the inventory, and both WOLO/day projections only use amounts stored against current held titles; no hypothetical economic figure is a payout receipt. The E5-specific details and operational cautions live in [Championship Hall E5](./CHAMPIONS_E5_PRESENTATION_20261011.md).
+
 ## Title classes
 
 The title config lives in `lib/champions/titles.ts`.
@@ -192,7 +194,7 @@ Current-season public policy lives in
 
 - Public counts and daily amounts project current custody and explicitly active
   economics; a dated season summary is not live authority.
-- The four current paying reigns are Chaos, Canada, USA, and Mexico.
+- Only Chaos, Canada, USA, and Mexico are currently on the explicit four-title daily-tribute eligibility allowlist; this does **not** prove the payout executor is running, nor that any particular payment succeeded. E5 shows hypothetical daily reward and bounty growth totals separately, with no payout activation.
 - World and United Kingdom are explicitly vacant public titles. Historical
   Trophy rows may remain auditable, but they do not grant current public
   custody or future daily Tribute.
