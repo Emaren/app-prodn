@@ -33,6 +33,14 @@ Date: 2026-10-11. Scope: application UI and navigation only. No title custody, e
 - Each podium, individual, team, national/regional, and ELO belt has a Challenge navigation link even when vacant. A vacant title carries no fabricated opponent.
 - Challenges navigate to the existing `/challenge?title=...#schedule-game` workflow; link visibility never constitutes custody, eligibility, or settlement authority.
 
+## Championship inventory and hypothetical economics (Oct 11)
+- E5's four summary tiles show **Active**, **Vacant**, **Potential daily**, and **Bounty growth**. Counts and amounts are recomputed from the current public title-economy read model on every server-rendered request; they are not fixed presentation constants.
+- The inventory counts solo crowns, RM/DM ELO lanes, exact-roster team titles, and special designation/artifact titles once each. The obsolete generic tag-team placeholder is excluded. Canada, USA, Mexico are the starting national-title set; other national titles join as current held custody is established. Dormant roadmap countries are not counted as vacant titles. The base inventory is **36 titles** (including **12 artifact designations**, which are not physical championship belts); an additional claimed country can increase the denominator. This is a definition, not a claim that exactly 36 titles are held/available in live production at this instant.
+- A title is active only with public **held** status and a nonempty holder roster; everything else in the included inventory is vacant. Active + Vacant = included total, so title transfer updates the display without a code change.
+- Potential daily is the sum of configured daily WOLO amounts on currently held titles, including designation rewards where configured. Bounty growth is the separately configured sum of `bountyGrowthWolo` on those held titles; missing rates are zero, **never guessed** from the tribute rate. Both amounts are labeled **If enabled · not paid**; no bounty accrual, daily tribute execution, on-chain receipt, or actual transfer is asserted or authorized here.
+- These figures may differ from an operator's handwritten 12/24/73 tally until live title classification/custody and trophy economics are reconciled. The public screen must not substitute target numbers for the authoritative ledger.
+- Source: `lib/champions/championshipSummary.ts`, projected by `loadChampionsV2State()`. Monetary execution remains fenced by `lib/champions/championshipPolicy.ts` and the existing payout/settlement contracts.
+
 ## Verification
 - `node --experimental-strip-types --test tests/champions-v2.test.mts`
 - `npx tsc --noEmit`
