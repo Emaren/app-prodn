@@ -173,7 +173,6 @@ export default function ContinuousWebmPlayer({
           setState("Waiting for broadcaster");
           return;
         }
-        networkFailures = 0;
         if (manifest.initSeq !== 0) {
           setState("Waiting for video initialization");
           return;
@@ -192,6 +191,12 @@ export default function ContinuousWebmPlayer({
         });
         if (plan.kind === "fallback") { fail(); return; }
         if (plan.kind === "wait") {
+          if (initialized && manifest.status === "ended" && lastSeq === newest &&
+              mediaSource.readyState === "open" && !sourceBuffer?.updating) {
+            finalSeen = true;
+            mediaSource.endOfStream();
+            return;
+          }
           setState(plan.reason === "no-media"
             ? "Waiting for first video frame" : "Waiting for pending video chunk");
           return;
@@ -219,6 +224,9 @@ export default function ContinuousWebmPlayer({
           seekNearEdge(video);
           if (!decodedFrames) setState("Waiting for first decoded frame");
         }
+        // Count a poll as healthy only after its required media bytes have
+        // actually reached the decoder, not after the manifest alone succeeds.
+        networkFailures = 0;
         if (manifest.status === "ended" && lastSeq === newest && !finalSeen &&
             mediaSource.readyState === "open" && !sourceBuffer?.updating) {
           finalSeen = true;
