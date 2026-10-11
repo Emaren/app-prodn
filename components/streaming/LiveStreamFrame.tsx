@@ -7,6 +7,9 @@ import type { WatchStreamPayload } from "@/lib/watchStreams";
 import { BattleLoopPreview } from "@/components/media/BattleLoopPreview";
 import ContinuousWebmPlayer from "@/components/streaming/ContinuousWebmPlayer";
 
+// Unproven MSE decoder path stays opt-in until physical two-viewer canary.
+const MSE_CANARY_ENABLED = process.env.NEXT_PUBLIC_AOE2WAR_MSE_LIVE_CANARY === "1";
+
 type Props = {
   stream?: WatchStreamPayload | null;
   title: string;
@@ -180,7 +183,7 @@ function ResilientBrowserPlayer({ stream, title, compact }: {
   const [legacyOnly, setLegacyOnly] = useState(false);
   const disableMse = useCallback(() => setLegacyOnly(true), []);
   useEffect(() => { setLegacyOnly(false); }, [stream.id]);
-  return !compact && stream.status === "live" && !legacyOnly ? (
+  return MSE_CANARY_ENABLED && !compact && stream.status === "live" && !legacyOnly ? (
     <ContinuousWebmPlayer stream={stream} title={title} onUnsupported={disableMse} />
   ) : (
     <BrowserChunkPlayer stream={stream} title={title} compact={compact} />
