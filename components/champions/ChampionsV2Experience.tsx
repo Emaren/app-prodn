@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   ArrowRight,
   Crown,
+  Palette,
   Swords,
   Trophy,
 } from "lucide-react";
@@ -43,25 +44,28 @@ import {
 const MALE_SILHOUETTE = "/champions/players/silhouette.webp";
 const FEMALE_SILHOUETTE = "/champions/players/female_silhouette.webp";
 
-type ChampionsExperienceVariant = "e2" | "e4";
+type ChampionsExperienceVariant = "e2" | "e4" | "e5";
+type PodiumHaze = "gold" | "blue" | "none";
+const E5_HAZE_KEY = "aoe2war:champions:e5:podium-haze";
+const E5_TEAM_VIEW_STORAGE_KEY = "aoe2war:champions:e5:team-view";
 type TeamChampionshipView = ChampionsLane | "both";
 
 const E4_TEAM_VIEW_STORAGE_KEY = "aoe2war:champions:e4:team-view";
 
-function readStoredE4TeamView(): TeamChampionshipView {
-  if (typeof window === "undefined") return "rm";
+function readStoredE4TeamView(e5 = false): TeamChampionshipView {
+  if (typeof window === "undefined") return e5 ? "both" : "rm";
   try {
-    const value = window.localStorage.getItem(E4_TEAM_VIEW_STORAGE_KEY);
-    return value === "dm" || value === "both" ? value : "rm";
+    const value = window.localStorage.getItem(e5 ? E5_TEAM_VIEW_STORAGE_KEY : E4_TEAM_VIEW_STORAGE_KEY);
+    return value === "rm" || value === "dm" || value === "both" ? value : (e5 ? "both" : "rm");
   } catch {
-    return "rm";
+    return e5 ? "both" : "rm";
   }
 }
 
-function writeStoredE4TeamView(view: TeamChampionshipView) {
+function writeStoredE4TeamView(view: TeamChampionshipView, e5 = false) {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(E4_TEAM_VIEW_STORAGE_KEY, view);
+    window.localStorage.setItem(e5 ? E5_TEAM_VIEW_STORAGE_KEY : E4_TEAM_VIEW_STORAGE_KEY, view);
   } catch {
     // Display preference only; storage failure never blocks the championship hall.
   }
@@ -97,6 +101,22 @@ function eloChallengeTitleId(
   return division.id === "elo-challenger"
     ? "dm-contender"
     : division.id.replace(/^elo-/, "dm-");
+}
+
+function PodiumHazePicker({ value, onChange }: { value: PodiumHaze; onChange: (value: PodiumHaze) => void }) {
+  const [opened, setOpened] = useState(false);
+  return (
+    <div className="group relative z-40">
+      <button type="button" onClick={() => setOpened((previous) => !previous)} aria-label={`Podium haze: ${value}. Select a color.`} aria-expanded={opened} aria-haspopup="true" className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-black/30 text-slate-300 transition hover:border-sky-200/30 hover:text-sky-100">
+        <Palette className="h-3.5 w-3.5" />
+      </button>
+      <div role="group" aria-label="Podium haze" className={`absolute right-0 top-full z-50 mt-1 flex gap-1 rounded-xl border border-white/15 bg-slate-950/98 p-2 shadow-2xl backdrop-blur transition ${opened ? "opacity-100" : "pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"}`}>
+        {(["gold", "none", "blue"] as const).map((option) => (
+          <button type="button" key={option} onClick={() => { onChange(option); setOpened(false); }} aria-pressed={value === option} title={`${option} podium haze`} className={`rounded-lg border px-2.5 py-1.5 text-[10px] font-bold capitalize ${value === option ? "border-sky-200/50 bg-sky-200/15 text-white" : "border-white/10 text-slate-300 hover:bg-white/10"}`}>{option}</button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function ChallengeHolderButton({
@@ -420,9 +440,13 @@ function championshipTitleLines(title: ChampionTitleState) {
 function E4PodiumCard({
   title,
   position,
+  haze = "gold",
+  e5 = false,
 }: {
   title: ChampionTitleState;
   position: "left" | "center" | "right";
+  haze?: PodiumHaze;
+  e5?: boolean;
 }) {
   const holder = title.holders[0] ?? null;
   const isCenter = position === "center";
@@ -434,9 +458,15 @@ function E4PodiumCard({
         ? "xl:order-2"
         : "xl:order-3 xl:translate-y-8";
 
+  const podiumTone = haze === "blue"
+    ? "border-sky-200/20 bg-[radial-gradient(circle_at_50%_0%,rgba(56,189,248,0.22),transparent_44%),linear-gradient(180deg,rgba(255,255,255,0.035),rgba(0,0,0,0.30))]"
+    : haze === "none"
+      ? "border-white/10 bg-[linear-gradient(180deg,rgba(13,22,38,0.96),rgba(3,8,18,0.99))]"
+      : "border-amber-200/18 bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.13),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.05),rgba(0,0,0,0.30))]";
+
   return (
     <article
-      className={`relative min-w-0 overflow-hidden rounded-[1.7rem] border border-amber-200/18 bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.13),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.05),rgba(0,0,0,0.30))] p-4 shadow-2xl ${orderClass} ${isCenter ? "xl:-mt-3 xl:p-5" : ""}`}
+      className={`relative min-w-0 overflow-hidden rounded-[1.7rem] border ${podiumTone} p-4 shadow-2xl ${orderClass} ${isCenter ? "xl:-mt-3 xl:p-5" : ""}`}
     >
       <div className="flex items-center justify-between gap-3">
         <div className="text-[9px] font-black uppercase tracking-[0.25em] text-amber-100/58">
@@ -486,11 +516,11 @@ function E4PodiumCard({
           <div className="mt-1 text-sm font-semibold text-white">
             {holder?.name || "Vacant"}
           </div>
-          {holder ? (
+          {holder || e5 ? (
             <ChallengeHolderButton
               titleId={title.id}
-              holderUid={holder.uid}
-              holderName={holder.name}
+              holderUid={holder?.uid}
+              holderName={holder?.name}
               country={title.country}
             />
           ) : null}
@@ -502,13 +532,13 @@ function E4PodiumCard({
               Contenders
             </div>
             <div className="text-[9px] text-slate-600">
-              {Math.min(title.contenders.length, isCenter ? 10 : 6)}/{isCenter ? 10 : 6}
+              {Math.min(title.contenders.length, e5 ? 10 : isCenter ? 10 : 6)}/{e5 ? 10 : isCenter ? 10 : 6}
             </div>
           </div>
           <ContenderRows
             contenders={title.contenders}
-            max={isCenter ? 10 : 6}
-            padTo={title.type === "womens" ? (isCenter ? 10 : 6) : 0}
+            max={e5 ? 10 : isCenter ? 10 : 6}
+            padTo={e5 ? 10 : title.type === "womens" ? (isCenter ? 10 : 6) : 0}
             placeholderLabel="Unclaimed"
           />
         </div>
