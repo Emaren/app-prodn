@@ -13,7 +13,7 @@ review_interval_days: 30
 sensitivity: "internal"
 ---
 
-# Watcher 1.6.4 download artwork and CTA contract
+# Watcher 1.6.4 Download Artwork
 
 Scope: `/download` extreme presentation only, October 10, 2026
 release artwork refresh. Do not change the watcher release manifest,
