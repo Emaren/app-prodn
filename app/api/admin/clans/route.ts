@@ -13,7 +13,7 @@ import {
   slugifyClanHallName,
 } from "@/lib/clanHallRequests";
 import type { PrismaClient } from "@/lib/generated/prisma";
-import { normalizeClanChatViewMode } from "@/components/clans/clanChatViewPreference";
+import { normalizeClanChatViewMode } from "@/lib/clanChatViews";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
