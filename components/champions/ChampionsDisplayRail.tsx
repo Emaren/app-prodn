@@ -20,7 +20,9 @@ export const CHAMPIONS_VIEW_ROUTES: Array<{
   { mode: "e5", label: "E5", href: "/champions/e5" },
 ];
 
-const CHAMPIONS_PREFERENCE_KEY = "aoe2war:champions:preferred-layout:v1";
+// One-time E5 rollout: prior editions used v1; all viewers start on E5
+// until they deliberately choose and persist a layout under v2.
+const CHAMPIONS_PREFERENCE_KEY = "aoe2war:champions:preferred-layout:v2";
 
 export function readPreferredChampionsView(): ChampionsDisplayMode {
   if (typeof window === "undefined") return "e5";
