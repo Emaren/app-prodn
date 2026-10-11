@@ -84,3 +84,29 @@ second implementation.
 The V1 contract test verifies canonical data composition, user-triggered
 playback, the non-binding Chaos boundary, and the account-menu route.
 TypeScript and targeted ESLint must remain clean before release.
+
+## Browser studio battle binding (October 10 field test)
+
+In a macOS field test, Chrome successfully captured the display and showed a
+live local preview, but the studio's session selector displayed another user's
+Jim/KORO/stoikov/Thun match while Television WOLO was showing Emaren versus
+ufukmaraz37. The source picker used to silently select the first live-games
+suggestion, fetched only once on mount. A local preview is **not** a registered
+broadcast: before **Go Live**, the studio correctly reads Ready, uptime 0s,
+chunks 0; the TV surface must not invent a corresponding stream.
+
+The profile browser studio now updates idle session suggestions on a bounded
+12-second interval, presents **Select your live battle** rather than
+auto-selecting someone else's first battle, and requires either an explicit
+matching battle or the **Free Stream** selection before calling
+`/api/streams/start`. Selection is frozen while a broadcast is live. The
+existing server stream protocol, watcher telemetry, replay-finality, and WOLO
+boundaries are unchanged. Selecting Free Stream intentionally creates an
+unlinked stream and is not evidence that a listed match has video.
+
+Field acceptance: browser capture preview -> select exact live battle (or
+explicit Free Stream) -> Go Live -> receive real stream ID -> publish first
+chunk -> Television WOLO Play returns video for the **same canonical battle**.
+If browser stream succeeds but the TV page still has no feed for that battle,
+investigate stream-identity alias binding and active-stream refresh separately;
+do not infer this fix solved that second problem.
