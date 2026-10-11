@@ -190,16 +190,18 @@ export default function ContinuousWebmPlayer({
           initialized = true;
           lastSeq = plan.from - 1;
         }
-        for (let seq = plan.from; seq <= plan.through; seq += 1) {
+        for (let from = plan.from; from <= plan.through; from += 5) {
           if (stopped || failed || document.visibilityState !== "visible") return;
-          const segment = await request(`/api/streams/${stream.id}/chunks/${seq}`, MAX_CHUNK_BYTES);
+          const through = Math.min(plan.through, from + 4);
+          // One validated 12 MiB response contains up to five contiguous
+          // WebM clusters, without repeating the init header each poll.
+          const url = `/api/streams/${stream.id}/media-range?from=${from}&through=${through}`;
+          const segment = await request(url, 12 * 1024 * 1024);
           try { await append(segment); } catch { fail(); return; }
-          lastSeq = seq;
+          lastSeq = through;
           appendedFrames = true;
-          if (seq % 5 === 0) {
-            try { await trim(); } catch { fail(); return; }
-            seekNearEdge(video);
-          }
+          try { await trim(); } catch { fail(); return; }
+          seekNearEdge(video);
         }
         if (appendedFrames) {
           seekNearEdge(video);
