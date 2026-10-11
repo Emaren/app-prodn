@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { WatchStreamPayload } from "@/lib/watchStreams";
+import { planLiveChunkAdvance } from "@/lib/continuousVideoPlan";
 
 // SourceBuffer is bounded independently of the uploader's long-match archive.
 const POLL_MS = 1_500;
@@ -171,31 +172,26 @@ export default function ContinuousWebmPlayer({
           return;
         }
         const newest = manifest.newestAvailableSeq ?? manifest.latestSeq;
-        if (newest < 1) {
-          setState("Waiting for first video frame");
+        const plan = planLiveChunkAdvance({
+          lastSeq, newest,
+          recommendedStartSeq: manifest.recommendedStartSeq,
+          availableMediaSeqs: manifest.availableMediaSeqs || [],
+          maxCatchup: MAX_CATCHUP_CHUNKS,
+        });
+        if (plan.kind === "fallback") { fail(); return; }
+        if (plan.kind === "wait") {
+          setState(plan.reason === "no-media"
+            ? "Waiting for first video frame" : "Waiting for pending video chunk");
           return;
         }
         if (!initialized) {
           const init = await request(`/api/streams/${stream.id}/chunks/0`, MAX_CHUNK_BYTES);
           try { await append(init); } catch { fail(); return; }
           initialized = true;
-          lastSeq = Math.max(0, manifest.recommendedStartSeq ?? newest - 10);
-          lastSeq = Math.min(lastSeq, newest - 1);
+          lastSeq = plan.from - 1;
         }
-        const backlog = newest - lastSeq;
-        if (backlog > MAX_CATCHUP_CHUNKS) {
-          // Can't safely skip clusters in an append-only decoder: recover via
-          // the certified rolling-window player, not an unbounded download.
-          fail();
-          return;
-        }
-        const available = new Set(manifest.availableMediaSeqs || []);
-        for (let seq = lastSeq + 1; seq <= newest; seq += 1) {
+        for (let seq = plan.from; seq <= plan.through; seq += 1) {
           if (stopped || failed || document.visibilityState !== "visible") return;
-          if (!available.has(seq)) {
-            setState("Waiting for missing video chunk");
-            return;
-          }
           const segment = await request(`/api/streams/${stream.id}/chunks/${seq}`, MAX_CHUNK_BYTES);
           try { await append(segment); } catch { fail(); return; }
           lastSeq = seq;
