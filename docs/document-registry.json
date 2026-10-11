@@ -504,7 +504,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-08-22",
       "sensitivity": "internal",
-      "sha256": "fc15aa105b60336408c03849de946292555ba477c11de7af6026e1ca298d60f6",
+      "sha256": "2dd70c6d383eda322feb7e5e1354d3e2f17a4daf5515858ad1da69fa785a3c2a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "dd2d2f71712b507090636366e14da29851ac6a6c1791bda55d58ec92ced33b86",
+      "sha256": "dd02192908f1e8a02ac2dc06ad31663135be0ec7df6880ecb7b4c8661e0c9b37",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1053,7 +1053,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-14",
       "sensitivity": "internal",
-      "sha256": "15bd47868cc3566234a5ab79679a84ffb397d5d2f87eb7d12a56420d9fb6491d",
+      "sha256": "1b4f69321c8af73ab9c2bcb8ff54840dc4d9b706d389ff72c11ad43d8d3cf2ac",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2071,8 +2071,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/watcher-164-download-hero-20261011",
-    "commit": "36db9d7fe5c175fcd1c3fcb411eb1f8aa83763ca"
+    "branch": "refactor/profile-owner-controls-admin-only-20261011",
+    "commit": "d697f5cee86bc1a14bcd66199769c37dd48a7f6c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
