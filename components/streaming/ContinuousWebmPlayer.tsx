@@ -63,6 +63,10 @@ export default function ContinuousWebmPlayer({
   useEffect(() => {
     const video = ref.current;
     if (!video || typeof window === "undefined") return;
+    // Unsupported Safari/WebM combinations must mount the legacy player
+    // without ever constructing a MediaSource or touching screen capture.
+    const mime = stream.mediaMimeType || "video/webm;codecs=vp8,opus";
+    if (!supportsContinuousWebm(mime)) { onUnsupported(); return; }
     const failures = new Set<AbortController>();
     const mediaSource = new MediaSource();
     const objectUrl = URL.createObjectURL(mediaSource);
@@ -228,8 +232,6 @@ export default function ContinuousWebmPlayer({
     const started = () => {
       if (stopped) return;
       try {
-        const mime = stream.mediaMimeType || "video/webm;codecs=vp8,opus";
-        if (!supportsContinuousWebm(mime)) return fail();
         sourceBuffer = mediaSource.addSourceBuffer(mime);
         void poll();
         timer = window.setInterval(() => { void poll(); }, POLL_MS);
@@ -251,7 +253,7 @@ export default function ContinuousWebmPlayer({
     video.addEventListener("playing", playing);
     video.addEventListener("waiting", waiting);
     document.addEventListener("visibilitychange", resume);
-    video.src = objectUrl;
+    try { video.src = objectUrl; } catch { fail(); }
 
     return () => {
       stopped = true;
