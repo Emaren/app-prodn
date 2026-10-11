@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import ChampionsE3Experience from "@/components/champions/ChampionsE3Experience";
 import { loadChampionsV2State } from "@/lib/champions/championsV2";
 import { getPrisma } from "@/lib/prisma";
@@ -12,5 +13,5 @@ export const metadata: Metadata = {
 
 export default async function ChampionsE3Page() {
   const state = await loadChampionsV2State(getPrisma());
-  return <ChampionsE3Experience state={state} />;
+  return <><SpeedReadyMarker route="/champions/e3" /><ChampionsE3Experience state={state} /></>;
 }
