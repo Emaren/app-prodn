@@ -928,3 +928,24 @@ two simultaneous viewers, hidden-tab behavior and 1/2-hour retrieval from
 the mounted video volume. A 12 MiB failure must trigger fallback rather
 than partial concatenation. Full release integration depends on the
 existing Television V3 mounted-volume admission and storage contracts.
+
+### Read-only Video OS preflight
+
+`node scripts/television_video_preflight.mjs` writes one machine-readable JSON
+observation to stdout. It imports **no app database**, downloads no video,
+does not make capture directories, and performs no mutations. It checks:
+current environment per-stream bytes and chunk limits (clamped by the same
+bounds as the V3 runtime), estimated 2-hour 720p Stable/Full Screen/Sharp
+size at 12% overhead, actual local capture-mount device identity and free
+bytes against the 6 GiB protected reserve. `pass` means *only these checks
+passed*, not that a video codec or viewer has been field certified.
+`unknown` is intentional for absent configuration or unavailable evidence.
+
+Exit codes: 0 capacity/mount checks pass; 1 blocked; 2 unknown. Preserve
+the receipt alongside the tested source SHA in the next governed canary,
+never by copying private environment keys or user filesystem paths into
+public Kingdom Intelligence. Two simultaneous cameras, encoder variations,
+retention and real 1/2-hour consumption require physical receipts beyond
+the one-camera projection. The live mounted volume may differ between
+the local Mac and production VPS: run at the intended machine for the
+corresponding claim.
