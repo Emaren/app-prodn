@@ -1,10 +1,6 @@
 import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
 
-import {
-  CHAMPIONS_V2_ACTIVE_COUNT,
-  CHAMPIONS_V2_TRIBUTE_POOL_WOLO,
-  CHAMPIONS_V2_VACANT_COUNT,
-} from "@/lib/champions/championshipPolicy";
+import { summarizeChampionshipHall } from "@/lib/champions/championshipSummary";
 import type { ChampionTitleState } from "@/lib/champions/titleState";
 import { getTitleState, loadChampionTitleEconomyState } from "@/lib/champions/titleState";
 import {
@@ -116,6 +112,8 @@ export type ChampionsV2State = {
     active: number;
     vacant: number;
     tributePoolWolo: number;
+    potentialDailyBountyGrowthWolo: number;
+    total: number;
   };
 };
 
@@ -1034,13 +1032,10 @@ export async function loadChampionsV2State(
     (title) => title.type === "designation",
   );
   const nationals = buildNationalBelts(titleEconomy, directoryEntries);
-  const baselineNationalSlugs = new Set(["canada", "usa", "mexico", "uk"]);
-  const additionalAuthoritativeNationals = nationalTitles.filter(
-    (title) => !baselineNationalSlugs.has(title.slug),
-  );
-  const additionalActiveNationals = additionalAuthoritativeNationals.filter(
-    (title) => nationals.find((belt) => belt.slug === title.slug)?.active,
-  ).length;
+  // Live custody drives active/vacant counts and potential (NOT live) rewards.
+  // Unawarded national roadmap art is excluded; all standalone title classes
+  // including artifacts are counted exactly once.
+  const hallSummary = summarizeChampionshipHall(titleEconomy.titles);
 
   return {
     world,
@@ -1059,12 +1054,11 @@ export async function loadChampionsV2State(
     nationals,
     designationTitles,
     summary: {
-      active: CHAMPIONS_V2_ACTIVE_COUNT + additionalActiveNationals,
-      vacant:
-        CHAMPIONS_V2_VACANT_COUNT +
-        additionalAuthoritativeNationals.length -
-        additionalActiveNationals,
-      tributePoolWolo: CHAMPIONS_V2_TRIBUTE_POOL_WOLO,
+      active: hallSummary.active,
+      vacant: hallSummary.vacant,
+      total: hallSummary.total,
+      tributePoolWolo: hallSummary.potentialDailyRewardWolo,
+      potentialDailyBountyGrowthWolo: hallSummary.potentialDailyBountyGrowthWolo,
     },
   };
 }
