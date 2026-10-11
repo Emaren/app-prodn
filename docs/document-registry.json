@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "f6dd5f65797eb40a46f9720943ca2b8ff5a11080e440bed8d070c199f6f1c2c1",
+      "sha256": "48590f801d121536b05e31db6dfa50a44cbf178044d9a77f2602a44ce2d413b9",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/champions-e5-display-20261011",
-    "commit": "7bbf40d91310cb59ba45c011bb72f4939a624044"
+    "branch": "main",
+    "commit": "e4e21a62090ee9d1bcb76473e0b7f876aaa82c35"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
