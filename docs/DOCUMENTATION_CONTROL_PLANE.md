@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/champions-e5-display-20261011` at `d592907d1132ec2ed4bfd5b8e031671f004000f9`
+Implementation baseline: `feature/champions-e5-display-20261011` at `f910256c92e9f4f5a737ddde29ad4c138f337e9c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
