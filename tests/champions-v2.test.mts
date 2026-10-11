@@ -13,6 +13,7 @@ const displayRail = fs.readFileSync("components/champions/ChampionsDisplayRail.t
 const legacyPage = fs.readFileSync("app/champions/legacy/page.tsx", "utf8");
 const directory = fs.readFileSync("lib/publicPlayerDirectory.ts", "utf8");
 const state = fs.readFileSync("lib/champions/championsV2.ts", "utf8");
+const summary = fs.readFileSync("lib/champions/championshipSummary.ts", "utf8");
 const nationalCatalog = fs.readFileSync("lib/champions/nationalBeltCatalog.ts", "utf8");
 const policy = fs.readFileSync("lib/champions/championshipPolicy.ts", "utf8");
 const titles = fs.readFileSync("lib/champions/titles.ts", "utf8");
@@ -122,10 +123,23 @@ test("World and UK are explicitly vacant public titles", () => {
   assert.match(titleState, /titleIsPubliclyForcedVacant/);
 });
 
-test("current championship summary and tribute rail are exact", () => {
-  assert.match(policy, /CHAMPIONS_V2_ACTIVE_COUNT = 4/);
-  assert.match(policy, /CHAMPIONS_V2_VACANT_COUNT = 18/);
-  assert.match(policy, /CHAMPIONS_V2_TRIBUTE_POOL_WOLO = 45/);
+test("E5 live summary excludes roadmap nations, keeps actual holders, and never advertises payouts", () => {
+  assert.match(state, /summarizeChampionshipHall\(titleEconomy\.titles\)/);
+  assert.match(state, /active: hallSummary\.active/);
+  assert.match(state, /vacant: hallSummary\.vacant/);
+  assert.match(state, /potentialDailyBountyGrowthWolo: hallSummary\.potentialDailyBountyGrowthWolo/);
+  assert.doesNotMatch(state, /CHAMPIONS_V2_ACTIVE_COUNT|CHAMPIONS_V2_VACANT_COUNT|CHAMPIONS_V2_TRIBUTE_POOL_WOLO/);
+  assert.match(summary, /title\.id === "tag-team"/);
+  assert.match(summary, /INAUGURAL_NATIONAL_TITLE_IDS/);
+  assert.match(summary, /title\.status === "held" && title\.holders\.length > 0/);
+  assert.match(summary, /title\.type !== "national"/);
+  assert.match(summary, /inventory\.length - held\.length/);
+  assert.match(summary, /title\.dailyWolo/);
+  assert.match(summary, /title\.bountyGrowthWolo/);
+  assert.match(summary, /validNonnegative\(title\.bountyGrowthWolo\)/);
+  assert.match(experience, /\["Potential daily",/);
+  assert.match(experience, /\["Bounty growth",/);
+  assert.match(experience, /If enabled · not paid/);
   for (const trophyId of ["canada_champion_belt", "usa_champion_belt", "mexico_champion_belt", "chaos_champion"]) {
     assert.ok(policy.includes(trophyId));
   }
@@ -231,8 +245,8 @@ test("France is an authoritative national title with live Trophy custody", () =>
   assert.match(trophyService, /trophyId: "france_champion_belt"/);
   assert.match(trophyService, /title\.country === "France"/);
   assert.match(state, /live\?\.status === "held"/);
-  assert.match(state, /additionalAuthoritativeNationals/);
-  assert.match(state, /additionalActiveNationals/);
+  assert.match(state, /summarizeChampionshipHall/);
+  assert.match(summary, /championshipHasHolder\(title\)/);
 });
 
 test("national champion rail is ordered by live reign age before vacant catalog standards", () => {
