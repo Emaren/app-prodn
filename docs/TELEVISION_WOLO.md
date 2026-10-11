@@ -968,3 +968,14 @@ unverified player/team roles are explicitly identified as unverified.
 The source-backed role and participant/caster authorization still
 needs server admission gate #480 before any public, multi-user verified
 POV claims. Do not weaken this trust boundary to improve label polish.
+
+### Canary gate for continuous decoding
+
+`NEXT_PUBLIC_AOE2WAR_MSE_LIVE_CANARY=1` at **build time** is required to
+mount `ContinuousWebmPlayer` on ordinary first-party live battle views.
+Default/unset value uses the prior bounded rolling player. Merely merging
+source must not switch all public viewers to an unproven MSE decoder.
+After the real CrossOver native-camera + independent two-viewer 5/20/60-minute
+proof, enable the canary only in an explicitly governed release and verify
+receipt, rollback path and browser compatibility. A user-visible setting is
+not a security boundary; this is a conservative deployment gate.
