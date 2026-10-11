@@ -39,6 +39,7 @@ module.exports = {
       { pathname: "/api/media-assets/**" },
       { pathname: "/uploads/managed-assets/**" },
       { pathname: "/champions/**" },
+      { pathname: "/icons/icon-192x192.png" },
       { pathname: "/kingdom/**" },
       { pathname: "/oracle/**" },
       { pathname: "/shorts/**" },
