@@ -64,6 +64,8 @@ class SpeedInventoryTests(unittest.TestCase):
         }
 
         self.assertEqual(by_template["/champions/e2"], "/champions/e2")
+        self.assertEqual(by_template["/champions/e3"], "/champions/e3")
+        self.assertEqual(by_template["/champions/e5"], "/champions/e5")
         self.assertEqual(by_template["/champions/e4"], "/champions/e4")
         self.assertEqual(by_template["/champions/legacy"], "/champions/legacy")
         self.assertEqual(by_template["/champions/[...slug]"], "/champions/world")
@@ -84,6 +86,8 @@ class SpeedInventoryTests(unittest.TestCase):
             ("/game-stats/[id]", "/game-stats/16218"),
             ("/players/[uid]", "/players/u_626ea6497a984dabbc2338ef54c5d333"),
             ("/champions/e2", "/champions/e2"),
+            ("/champions/e3", "/champions/e3"),
+            ("/champions/e5", "/champions/e5"),
             ("/champions/e4", "/champions/e4"),
             ("/champions/legacy", "/champions/legacy"),
         ):
