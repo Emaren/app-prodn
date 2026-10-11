@@ -1081,12 +1081,14 @@ class PerformanceOSTests(unittest.TestCase):
 
     def test_full_speed_cohort_v2_covers_current_world_surfaces(self):
         routes = SPEED_MODULE.route_list(True)
-        self.assertEqual(len(routes), 89)
+        self.assertEqual(len(routes), 91)
         self.assertEqual(len(routes), len(set(routes)))
         for route in (
             "/wargraph",
             "/champions/legacy",
+            "/champions/e3",
             "/champions/e4",
+            "/champions/e5",
             "/national-champions",
             "/chaosium",
             "/olympia",

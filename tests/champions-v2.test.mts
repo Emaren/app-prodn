@@ -7,10 +7,13 @@ const experience = fs.readFileSync("components/champions/ChampionsV2Experience.t
 const e3Experience = fs.readFileSync("components/champions/ChampionsE3Experience.tsx", "utf8");
 const e2Page = fs.readFileSync("app/champions/e2/page.tsx", "utf8");
 const e4Page = fs.readFileSync("app/champions/e4/page.tsx", "utf8");
+const e3Page = fs.readFileSync("app/champions/e3/page.tsx", "utf8");
+const e5Page = fs.readFileSync("app/champions/e5/page.tsx", "utf8");
 const displayRail = fs.readFileSync("components/champions/ChampionsDisplayRail.tsx", "utf8");
 const legacyPage = fs.readFileSync("app/champions/legacy/page.tsx", "utf8");
 const directory = fs.readFileSync("lib/publicPlayerDirectory.ts", "utf8");
 const state = fs.readFileSync("lib/champions/championsV2.ts", "utf8");
+const summary = fs.readFileSync("lib/champions/championshipSummary.ts", "utf8");
 const nationalCatalog = fs.readFileSync("lib/champions/nationalBeltCatalog.ts", "utf8");
 const policy = fs.readFileSync("lib/champions/championshipPolicy.ts", "utf8");
 const titles = fs.readFileSync("lib/champions/titles.ts", "utf8");
@@ -19,8 +22,12 @@ const trophyService = fs.readFileSync("lib/trophies/service.ts", "utf8");
 const shell = fs.readFileSync("app/AppShell.tsx", "utf8");
 const globalCss = fs.readFileSync("app/globals.css", "utf8");
 
-test("Champions E3 remains current while E4 is an explicit hybrid view", () => {
-  assert.match(page, /ChampionsE3Experience/);
+test("E5 is canonical; B, A, and E1–E4 remain selectable and preserved", () => {
+  assert.match(page, /ChampionsV2Experience/);
+  assert.match(page, /variant="e5"/);
+  assert.match(page, /ChampionsPreferredViewRedirect/);
+  assert.match(e3Page, /ChampionsE3Experience/);
+  assert.match(e5Page, /variant="e5"/);
   assert.match(page, /loadChampionsV2State/);
   assert.match(e2Page, /ChampionsV2Experience/);
   assert.match(e2Page, /loadChampionsV2State/);
@@ -36,8 +43,11 @@ test("Champions E3 remains current while E4 is an explicit hybrid view", () => {
   assert.match(displayRail, /\/champions\/legacy\?view=a/);
   assert.match(displayRail, /\/champions\/legacy\?view=e/);
   assert.match(displayRail, /\/champions\/e2/);
-  assert.match(displayRail, /selectedMode === "e3"/);
-  assert.match(displayRail, /selectedMode === "e4"/);
+  assert.match(displayRail, /CHAMPIONS_VIEW_ROUTES/);
+  assert.match(displayRail, /readPreferredChampionsView/);
+  assert.match(displayRail, /rememberChampionsView/);
+  assert.match(displayRail, /aoe2war:champions:preferred-layout:v2/);
+  assert.doesNotMatch(displayRail, /const CHAMPIONS_PREFERENCE_KEY = "aoe2war:champions:preferred-layout:v1"/);
   assert.match(displayRail, /\/champions\/e4/);
   assert.match(displayRail, /ChampionsViewCycleButton/);
   assert.match(displayRail, /champions-extreme-group/);
@@ -53,6 +63,9 @@ test("Champions E3 remains current while E4 is an explicit hybrid view", () => {
   assert.match(displayRail, /E2/);
   assert.match(displayRail, /E3/);
   assert.match(displayRail, /E4/);
+  assert.match(displayRail, /E5/);
+  assert.match(displayRail, /\/champions\/e3/);
+  assert.match(displayRail, /\/champions\/e5/);
 });
 
 test("E3 carries the complete E2 championship ledger inside the E1 war-table layout", () => {
@@ -75,11 +88,12 @@ test("E3 carries the complete E2 championship ledger inside the E1 war-table lay
 
 test("E4 combines the E3 throne room with E2 rails, RM-first teams, Both mode, and holder challenges", () => {
   assert.match(experience, /variant = "e2"/);
-  assert.match(experience, /const e4 = variant === "e4"/);
+  assert.match(experience, /const e4 = variant !== "e2"/);
+  assert.match(experience, /const e5 = variant === "e5"/);
   assert.match(experience, /E4PodiumCard/);
-  assert.match(experience, /ChampionsViewCycleButton active="e4"/);
+  assert.match(experience, /ChampionsViewCycleButton active=\{e5 \? "e5" : "e4"\}/);
   assert.match(experience, /TeamChampionshipView = ChampionsLane \| "both"/);
-  assert.match(experience, /useState<TeamChampionshipView>\("rm"\)/);
+  assert.match(experience, /variant === "e5" \? "both" : "rm"/);
   assert.match(experience, /E4_TEAM_VIEW_STORAGE_KEY/);
   assert.match(experience, /TeamViewSwitch/);
   assert.match(experience, /teamView === "both"/);
@@ -111,10 +125,25 @@ test("World and UK are explicitly vacant public titles", () => {
   assert.match(titleState, /titleIsPubliclyForcedVacant/);
 });
 
-test("current championship summary and tribute rail are exact", () => {
-  assert.match(policy, /CHAMPIONS_V2_ACTIVE_COUNT = 4/);
-  assert.match(policy, /CHAMPIONS_V2_VACANT_COUNT = 18/);
-  assert.match(policy, /CHAMPIONS_V2_TRIBUTE_POOL_WOLO = 45/);
+test("E5 live summary excludes roadmap nations, keeps actual holders, and never advertises payouts", () => {
+  assert.match(state, /summarizeChampionshipHall\(visibleEconomyTitles\)/);
+  assert.match(state, /eloCustody\.get\(title\.id\) \?\? null/);
+  assert.match(state, /status: holder \? "held" : "vacant"/);
+  assert.match(state, /active: hallSummary\.active/);
+  assert.match(state, /vacant: hallSummary\.vacant/);
+  assert.match(state, /potentialDailyBountyGrowthWolo: hallSummary\.potentialDailyBountyGrowthWolo/);
+  assert.doesNotMatch(state, /CHAMPIONS_V2_ACTIVE_COUNT|CHAMPIONS_V2_VACANT_COUNT|CHAMPIONS_V2_TRIBUTE_POOL_WOLO/);
+  assert.match(summary, /title\.id === "tag-team"/);
+  assert.match(summary, /INAUGURAL_NATIONAL_TITLE_IDS/);
+  assert.match(summary, /title\.status === "held" && title\.holders\.length > 0/);
+  assert.match(summary, /title\.type !== "national"/);
+  assert.match(summary, /inventory\.length - held\.length/);
+  assert.match(summary, /title\.dailyWolo/);
+  assert.match(summary, /title\.bountyGrowthWolo/);
+  assert.match(summary, /validNonnegative\(title\.bountyGrowthWolo\)/);
+  assert.match(experience, /\["Potential daily",/);
+  assert.match(experience, /\["Bounty growth",/);
+  assert.match(experience, /If enabled · not paid/);
   for (const trophyId of ["canada_champion_belt", "usa_champion_belt", "mexico_champion_belt", "chaos_champion"]) {
     assert.ok(policy.includes(trophyId));
   }
@@ -156,7 +185,7 @@ test("RM and DM crowns default to on-top presentation with the hidden RM / DM to
 test("Women\'s championship starts with Moose and pads the throne to ten honest seats", () => {
   assert.match(state, /name: "Moose"/);
   assert.match(state, /Invited contender · not yet registered/);
-  assert.match(experience, /title\.type === "womens" \? 10 : 0/);
+  assert.match(experience, /padTo=\{e5 \? 10/);
   assert.match(experience, /placeholderLabel="Unclaimed"/);
 });
 
@@ -220,8 +249,8 @@ test("France is an authoritative national title with live Trophy custody", () =>
   assert.match(trophyService, /trophyId: "france_champion_belt"/);
   assert.match(trophyService, /title\.country === "France"/);
   assert.match(state, /live\?\.status === "held"/);
-  assert.match(state, /additionalAuthoritativeNationals/);
-  assert.match(state, /additionalActiveNationals/);
+  assert.match(state, /summarizeChampionshipHall/);
+  assert.match(summary, /championshipHasHolder\(title\)/);
 });
 
 test("national champion rail is ordered by live reign age before vacant catalog standards", () => {
@@ -253,8 +282,8 @@ test("national belt hall reads represented-country truth for every crown", () =>
 test("E2 restores the premium hero tile while stripping explanatory SaaS copy", () => {
   assert.match(experience, /rounded-\[2\.5rem\]/);
   assert.match(experience, /circle_at_75%_15%/);
-  assert.match(experience, /\["Active", state\.summary\.active\]/);
-  assert.match(experience, /\["Vacant", state\.summary\.vacant\]/);
+  assert.match(experience, /\["Active", state\.summary\.active,/);
+  assert.match(experience, /\["Vacant", state\.summary\.vacant,/);
   assert.match(experience, /\["Tribute",/);
   assert.match(experience, /AoE2WAR title economy/);
   for (const copy of [
@@ -347,4 +376,35 @@ test("E3 defers heavy below-fold championship sections from initial paint", () =
     ),
     /content-visibility:auto/,
   );
+});
+
+test("E5 podium has independently persisted Gold, None and Blue haze", () => {
+  assert.match(experience, /E5_HAZE_KEY/);
+  assert.match(experience, /PodiumHazePicker/);
+  assert.match(experience, /\["gold", "none", "blue"\]/);
+  assert.match(experience, /setPodiumHaze/);
+  assert.match(experience, /localStorage\.setItem\(E5_HAZE_KEY/);
+  assert.match(experience, /haze === "blue"/);
+  assert.match(experience, /haze === "none"/);
+});
+
+test("E5 shows ten honest Chaos and Women's contender places and preserves watcher activity order", () => {
+  assert.match(experience, /max=\{e5 \? 10/);
+  assert.match(experience, /padTo=\{e5 \? 10/);
+  assert.match(state, /Number\(right\.hasWatcher\)\s*-\s*Number\(left\.hasWatcher\)/);
+  assert.match(state, /right\.streamedGames\s*-\s*left\.streamedGames/);
+  assert.match(state, /right\.entry\.totalMatches\s*-\s*left\.entry\.totalMatches/);
+  assert.match(state, /\.slice\(0, 10\)/);
+});
+
+test("E5 team geometry uses two-up one-centered and a two-by-two grid", () => {
+  assert.match(experience, /e5 && title\.size === 3 && index === 2/);
+  assert.match(experience, /col-span-2/);
+  assert.match(experience, /grid-cols-2/);
+  assert.match(experience, /e5 && title\.size === 4/);
+  assert.match(experience, /challengeVacant=\{e5\}/);
+  assert.match(experience, /title\.holders\?\.\[0\] \|\| e5/);
+  assert.match(experience, /belt\.holder \|\| e5/);
+  assert.match(experience, /division\.holder \|\| e5/);
+  assert.match(experience, /e5=\{e5\}/);
 });

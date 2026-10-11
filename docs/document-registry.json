@@ -278,7 +278,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "Bet and Replay Reliability Release — 2026-07-29",
+      "title": "Bet and Replay Reliability Release \u2014 2026-07-29",
       "type": "historical"
     },
     {
@@ -474,6 +474,28 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "product-presentation-contract",
+      "id": "aoe2war.app-prodn.champions-e5-presentation",
+      "owner": "aoe2war-web",
+      "path": "docs/CHAMPIONS_E5_PRESENTATION_20261011.md",
+      "review_interval_days": 90,
+      "reviewed_at": "2026-10-11",
+      "sensitivity": "internal",
+      "sha256": "7129948f9afaa1a0e68d925bf5d7356a8534c39add9b45d94bbc626839634fd5",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn"
+      ],
+      "title": "Championship Hall E5 \u2014 presentation and release contract",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "product-contract",
       "id": "aoe2war.app-prodn.docs-champions-title-economy",
       "owner": "aoe2war-web",
@@ -481,7 +503,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-10-07",
       "sensitivity": "internal",
-      "sha256": "a78baf842911e4189504153ab659b3d63eaeb03473a2dd672212f923ecb2f80d",
+      "sha256": "626ecb611d61739edda36541e3cb1a414ab869558aac0ae5aa0bd19a882e2b66",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -617,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0bb73b2f0d92ecdd2995b248c2e3ce5cac0a5928dceef05f6262fbd9050cab3e",
+      "sha256": "f6dd5f65797eb40a46f9720943ca2b8ff5a11080e440bed8d070c199f6f1c2c1",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1244,7 +1266,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "AoE2WAR Production Performance Audit — 2026-07-18",
+      "title": "AoE2WAR Production Performance Audit \u2014 2026-07-18",
       "type": "historical"
     },
     {
@@ -1266,7 +1288,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "AoE2WAR Production Performance Audit — 2026-08-13",
+      "title": "AoE2WAR Production Performance Audit \u2014 2026-08-13",
       "type": "historical"
     },
     {
@@ -1311,7 +1333,7 @@
         "app-prodn",
         "api-prodn"
       ],
-      "title": "Player Identity Wave 2 — Deterministic Discovery V2",
+      "title": "Player Identity Wave 2 \u2014 Deterministic Discovery V2",
       "type": "reference"
     },
     {
@@ -1358,7 +1380,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "AoE2WAR Production Parity Seal — 2026-07-26",
+      "title": "AoE2WAR Production Parity Seal \u2014 2026-07-26",
       "type": "historical"
     },
     {
@@ -1450,7 +1472,7 @@
         "app-prodn",
         "wolochain"
       ],
-      "title": "AoE2WAR Certified Release Engineering Seal — 2026-08-10",
+      "title": "AoE2WAR Certified Release Engineering Seal \u2014 2026-08-10",
       "type": "historical"
     },
     {
@@ -1520,7 +1542,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "Replay Statistics and Operations Release — 2026-07-25",
+      "title": "Replay Statistics and Operations Release \u2014 2026-07-25",
       "type": "historical"
     },
     {
@@ -2043,7 +2065,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "War Room Forum — Saturday July 4, 2026 Edition",
+      "title": "War Room Forum \u2014 Saturday July 4, 2026 Edition",
       "type": "historical"
     },
     {
@@ -2071,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "refactor/profile-owner-controls-admin-only-20261011",
-    "commit": "b2686c010430e8110f79384c6a62bffc9317aeed"
+    "branch": "feature/champions-e5-display-20261011",
+    "commit": "7bbf40d91310cb59ba45c011bb72f4939a624044"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

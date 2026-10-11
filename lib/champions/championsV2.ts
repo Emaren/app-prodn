@@ -1,10 +1,6 @@
 import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
 
-import {
-  CHAMPIONS_V2_ACTIVE_COUNT,
-  CHAMPIONS_V2_TRIBUTE_POOL_WOLO,
-  CHAMPIONS_V2_VACANT_COUNT,
-} from "@/lib/champions/championshipPolicy";
+import { summarizeChampionshipHall } from "@/lib/champions/championshipSummary";
 import type { ChampionTitleState } from "@/lib/champions/titleState";
 import { getTitleState, loadChampionTitleEconomyState } from "@/lib/champions/titleState";
 import {
@@ -116,6 +112,8 @@ export type ChampionsV2State = {
     active: number;
     vacant: number;
     tributePoolWolo: number;
+    potentialDailyBountyGrowthWolo: number;
+    total: number;
   };
 };
 
@@ -1034,13 +1032,27 @@ export async function loadChampionsV2State(
     (title) => title.type === "designation",
   );
   const nationals = buildNationalBelts(titleEconomy, directoryEntries);
-  const baselineNationalSlugs = new Set(["canada", "usa", "mexico", "uk"]);
-  const additionalAuthoritativeNationals = nationalTitles.filter(
-    (title) => !baselineNationalSlugs.has(title.slug),
-  );
-  const additionalActiveNationals = additionalAuthoritativeNationals.filter(
-    (title) => nationals.find((belt) => belt.slug === title.slug)?.active,
-  ).length;
+  // Use the same normalized ELO Trophy custody resolver as the visual RM/DM
+  // ELO cards. Legacy alias rows can be held even when the raw title projection
+  // lacks that custody. The public summary must agree with the actual belt card.
+  const visibleEconomyTitles = titleEconomy.titles.map((title): ChampionTitleState => {
+    if (title.type !== "elo") return title;
+    const holder = eloCustody.get(title.id) ?? null;
+    return {
+      ...title,
+      status: holder ? "held" : "vacant",
+      holders: holder ? [{
+        name: holder.name,
+        uid: holder.uid ?? undefined,
+        href: holder.href ?? undefined,
+      }] : [],
+    };
+  });
+
+  // Live custody drives active/vacant counts and potential (NOT live) rewards.
+  // Unawarded national roadmap art is excluded; all standalone title classes
+  // including artifacts are counted exactly once.
+  const hallSummary = summarizeChampionshipHall(visibleEconomyTitles);
 
   return {
     world,
@@ -1059,12 +1071,11 @@ export async function loadChampionsV2State(
     nationals,
     designationTitles,
     summary: {
-      active: CHAMPIONS_V2_ACTIVE_COUNT + additionalActiveNationals,
-      vacant:
-        CHAMPIONS_V2_VACANT_COUNT +
-        additionalAuthoritativeNationals.length -
-        additionalActiveNationals,
-      tributePoolWolo: CHAMPIONS_V2_TRIBUTE_POOL_WOLO,
+      active: hallSummary.active,
+      vacant: hallSummary.vacant,
+      total: hallSummary.total,
+      tributePoolWolo: hallSummary.potentialDailyRewardWolo,
+      potentialDailyBountyGrowthWolo: hallSummary.potentialDailyBountyGrowthWolo,
     },
   };
 }

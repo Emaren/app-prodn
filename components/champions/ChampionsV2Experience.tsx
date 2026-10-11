@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   ArrowRight,
   Crown,
+  Palette,
   Swords,
   Trophy,
 } from "lucide-react";
@@ -43,25 +44,28 @@ import {
 const MALE_SILHOUETTE = "/champions/players/silhouette.webp";
 const FEMALE_SILHOUETTE = "/champions/players/female_silhouette.webp";
 
-type ChampionsExperienceVariant = "e2" | "e4";
+type ChampionsExperienceVariant = "e2" | "e4" | "e5";
+type PodiumHaze = "gold" | "blue" | "none";
+const E5_HAZE_KEY = "aoe2war:champions:e5:podium-haze";
+const E5_TEAM_VIEW_STORAGE_KEY = "aoe2war:champions:e5:team-view";
 type TeamChampionshipView = ChampionsLane | "both";
 
 const E4_TEAM_VIEW_STORAGE_KEY = "aoe2war:champions:e4:team-view";
 
-function readStoredE4TeamView(): TeamChampionshipView {
-  if (typeof window === "undefined") return "rm";
+function readStoredE4TeamView(e5 = false): TeamChampionshipView {
+  if (typeof window === "undefined") return e5 ? "both" : "rm";
   try {
-    const value = window.localStorage.getItem(E4_TEAM_VIEW_STORAGE_KEY);
-    return value === "dm" || value === "both" ? value : "rm";
+    const value = window.localStorage.getItem(e5 ? E5_TEAM_VIEW_STORAGE_KEY : E4_TEAM_VIEW_STORAGE_KEY);
+    return value === "rm" || value === "dm" || value === "both" ? value : (e5 ? "both" : "rm");
   } catch {
-    return "rm";
+    return e5 ? "both" : "rm";
   }
 }
 
-function writeStoredE4TeamView(view: TeamChampionshipView) {
+function writeStoredE4TeamView(view: TeamChampionshipView, e5 = false) {
   if (typeof window === "undefined") return;
   try {
-    window.localStorage.setItem(E4_TEAM_VIEW_STORAGE_KEY, view);
+    window.localStorage.setItem(e5 ? E5_TEAM_VIEW_STORAGE_KEY : E4_TEAM_VIEW_STORAGE_KEY, view);
   } catch {
     // Display preference only; storage failure never blocks the championship hall.
   }
@@ -97,6 +101,22 @@ function eloChallengeTitleId(
   return division.id === "elo-challenger"
     ? "dm-contender"
     : division.id.replace(/^elo-/, "dm-");
+}
+
+function PodiumHazePicker({ value, onChange }: { value: PodiumHaze; onChange: (value: PodiumHaze) => void }) {
+  const [opened, setOpened] = useState(false);
+  return (
+    <div className="group relative z-40">
+      <button type="button" onClick={() => setOpened((previous) => !previous)} aria-label={`Podium haze: ${value}. Select a color.`} aria-expanded={opened} aria-haspopup="true" className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-white/10 bg-black/30 text-slate-300 transition hover:border-sky-200/30 hover:text-sky-100">
+        <Palette className="h-3.5 w-3.5" />
+      </button>
+      <div role="group" aria-label="Podium haze" className={`absolute right-0 top-full z-50 mt-1 flex gap-1 rounded-xl border border-white/15 bg-slate-950/98 p-2 shadow-2xl backdrop-blur transition ${opened ? "opacity-100" : "pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"}`}>
+        {(["gold", "none", "blue"] as const).map((option) => (
+          <button type="button" key={option} onClick={() => { onChange(option); setOpened(false); }} aria-pressed={value === option} title={`${option} podium haze`} className={`rounded-lg border px-2.5 py-1.5 text-[10px] font-bold capitalize ${value === option ? "border-sky-200/50 bg-sky-200/15 text-white" : "border-white/10 text-slate-300 hover:bg-white/10"}`}>{option}</button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 function ChallengeHolderButton({
@@ -420,9 +440,13 @@ function championshipTitleLines(title: ChampionTitleState) {
 function E4PodiumCard({
   title,
   position,
+  haze = "gold",
+  e5 = false,
 }: {
   title: ChampionTitleState;
   position: "left" | "center" | "right";
+  haze?: PodiumHaze;
+  e5?: boolean;
 }) {
   const holder = title.holders[0] ?? null;
   const isCenter = position === "center";
@@ -434,9 +458,15 @@ function E4PodiumCard({
         ? "xl:order-2"
         : "xl:order-3 xl:translate-y-8";
 
+  const podiumTone = haze === "blue"
+    ? "border-sky-200/20 bg-[radial-gradient(circle_at_50%_0%,rgba(56,189,248,0.22),transparent_44%),linear-gradient(180deg,rgba(255,255,255,0.035),rgba(0,0,0,0.30))]"
+    : haze === "none"
+      ? "border-white/10 bg-[linear-gradient(180deg,rgba(13,22,38,0.96),rgba(3,8,18,0.99))]"
+      : "border-amber-200/18 bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.13),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.05),rgba(0,0,0,0.30))]";
+
   return (
     <article
-      className={`relative min-w-0 overflow-hidden rounded-[1.7rem] border border-amber-200/18 bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.13),transparent_34%),linear-gradient(180deg,rgba(255,255,255,0.05),rgba(0,0,0,0.30))] p-4 shadow-2xl ${orderClass} ${isCenter ? "xl:-mt-3 xl:p-5" : ""}`}
+      className={`relative min-w-0 overflow-hidden rounded-[1.7rem] border ${podiumTone} p-4 shadow-2xl ${orderClass} ${isCenter ? "xl:-mt-3 xl:p-5" : ""}`}
     >
       <div className="flex items-center justify-between gap-3">
         <div className="text-[9px] font-black uppercase tracking-[0.25em] text-amber-100/58">
@@ -486,11 +516,11 @@ function E4PodiumCard({
           <div className="mt-1 text-sm font-semibold text-white">
             {holder?.name || "Vacant"}
           </div>
-          {holder ? (
+          {holder || e5 ? (
             <ChallengeHolderButton
               titleId={title.id}
-              holderUid={holder.uid}
-              holderName={holder.name}
+              holderUid={holder?.uid}
+              holderName={holder?.name}
               country={title.country}
             />
           ) : null}
@@ -502,13 +532,13 @@ function E4PodiumCard({
               Contenders
             </div>
             <div className="text-[9px] text-slate-600">
-              {Math.min(title.contenders.length, isCenter ? 10 : 6)}/{isCenter ? 10 : 6}
+              {Math.min(title.contenders.length, e5 ? 10 : isCenter ? 10 : 6)}/{e5 ? 10 : isCenter ? 10 : 6}
             </div>
           </div>
           <ContenderRows
             contenders={title.contenders}
-            max={isCenter ? 10 : 6}
-            padTo={title.type === "womens" ? (isCenter ? 10 : 6) : 0}
+            max={e5 ? 10 : isCenter ? 10 : 6}
+            padTo={e5 ? 10 : title.type === "womens" ? (isCenter ? 10 : 6) : 0}
             placeholderLabel="Unclaimed"
           />
         </div>
@@ -643,20 +673,22 @@ function ModeChampionCard({
   champion,
   stacked = false,
   enableChallenges = false,
+  challengeVacant = false,
 }: {
   champion: ChampionsV2ModeChampion;
+  challengeVacant?: boolean;
   stacked?: boolean;
   enableChallenges?: boolean;
 }) {
   const holder = champion.holders?.[0] ?? null;
   const titleId =
     champion.lane === "rm" ? "random-map-champion" : "deathmatch-champion";
-  const challenge = enableChallenges && holder ? (
+  const challenge = enableChallenges && (holder || challengeVacant) ? (
     <div className="border-t border-white/8 px-4 pb-3 pt-2">
       <ChallengeHolderButton
         titleId={titleId}
-        holderUid={holder.uid}
-        holderName={holder.name}
+        holderUid={holder?.uid}
+        holderName={holder?.name}
       />
     </div>
   ) : null;
@@ -739,12 +771,16 @@ function TeamTitleCard({
   title,
   lane,
   enableChallenges = false,
+  e5 = false,
 }: {
   title: ChampionsV2TeamTitle;
+  e5?: boolean;
   lane: ChampionsLane;
   enableChallenges?: boolean;
 }) {
   const stageHeight =
+    e5 && title.size === 3 ? "min-h-[14rem] sm:min-h-[18rem]" :
+    e5 && title.size === 4 ? "min-h-[13rem] sm:min-h-[16rem]" :
     title.size === 2
       ? "min-h-[29rem]"
       : title.size === 3
@@ -757,12 +793,14 @@ function TeamTitleCard({
         ? "h-[9.5rem]"
         : "h-36";
   const vacantAvatarScale =
+    e5 ? "scale-[1.0]" :
     title.size === 2
       ? "scale-[1.10]"
       : title.size === 3
         ? "scale-[1.05]"
         : "scale-100";
   const holderAvatarScale =
+    e5 ? "scale-[1.0]" :
     title.size === 2
       ? "scale-[0.96]"
       : title.size === 3
@@ -790,15 +828,15 @@ function TeamTitleCard({
       </div>
 
       <div
-        className="grid gap-2 px-3"
-        style={{
+        className={`grid gap-2 px-3 ${e5 ? "grid-cols-2" : ""}`}
+        style={e5 ? undefined : {
           gridTemplateColumns: `repeat(${title.holderSlots}, minmax(0, 1fr))`,
         }}
       >
         {Array.from({ length: title.holderSlots }, (_, index) => (
           <div
             key={index}
-            className={`relative ${stageHeight} overflow-hidden rounded-[1.25rem] border border-white/[0.065] bg-[radial-gradient(circle_at_50%_18%,rgba(96,165,250,0.09),transparent_46%),rgba(0,0,0,0.18)]`}
+            className={`relative ${stageHeight} ${e5 && title.size === 3 && index === 2 ? "col-span-2 w-[calc(50%-0.25rem)] justify-self-center" : ""} overflow-hidden rounded-[1.25rem] border border-white/[0.065] bg-[radial-gradient(circle_at_50%_18%,rgba(96,165,250,0.09),transparent_46%),rgba(0,0,0,0.18)]`}
           >
             <Image
               src={
@@ -813,7 +851,7 @@ function TeamTitleCard({
               fill
               unoptimized
               sizes="420px"
-              className={`object-contain object-bottom ${title.holders?.[index] ? `opacity-92 ${holderAvatarScale}` : `opacity-52 ${vacantAvatarScale}`}`}
+              className={`object-contain object-bottom ${e5 && title.size === 2 ? (title.holders?.[index]?.name === "Jim" ? "-translate-y-3" : "translate-y-2") : ""} ${title.holders?.[index] ? `opacity-92 ${holderAvatarScale}` : `opacity-52 ${vacantAvatarScale}`}`}
             />
             <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_40%,rgba(3,7,17,0.10)_60%,#030711_100%)]" />
             <div className={`absolute bottom-0 left-1/2 ${beltHeight} w-full -translate-x-1/2`}>
@@ -830,12 +868,12 @@ function TeamTitleCard({
         ))}
       </div>
 
-      {enableChallenges && title.holders?.[0] ? (
+      {enableChallenges && (title.holders?.[0] || e5) ? (
         <div className="px-4 pt-3">
           <ChallengeHolderButton
             titleId={`${title.size}v${title.size}-${lane}`}
-            holderUid={title.holders[0].uid}
-            holderName={title.holders[0].name}
+            holderUid={title.holders?.[0]?.uid}
+            holderName={title.holders?.[0]?.name}
           />
         </div>
       ) : null}
@@ -857,9 +895,11 @@ function TeamTitleCard({
 function NationalBeltCard({
   belt,
   enableChallenges = false,
+  e5 = false,
 }: {
   belt: ChampionsV2NationalBelt;
   enableChallenges?: boolean;
+  e5?: boolean;
 }) {
   const hasRealHolder = Boolean(belt.holder);
   const holderAvatarUrl = belt.holder
@@ -956,11 +996,11 @@ function NationalBeltCard({
           <div className="mt-1 text-sm font-semibold text-white">
             {belt.holder?.name || "Vacant"}
           </div>
-          {enableChallenges && belt.holder ? (
+          {enableChallenges && (belt.holder || e5) ? (
             <ChallengeHolderButton
               titleId={`${belt.scope === "regional" ? "regional" : "national"}-${belt.slug}`}
-              holderUid={belt.holder.uid}
-              holderName={belt.holder.name}
+              holderUid={belt.holder?.uid}
+              holderName={belt.holder?.name}
               country={belt.scope === "national" ? belt.country : null}
             />
           ) : null}
@@ -997,10 +1037,12 @@ function EloCard({
   division,
   lane,
   enableChallenges = false,
+  e5 = false,
 }: {
   division: ChampionsV2EloDivision;
   lane: ChampionsLane;
   enableChallenges?: boolean;
+  e5?: boolean;
 }) {
   const holderAvatarUrl = division.holder
     ? avatarCardUrlForUser(division.holder.uid, division.holder.name)
@@ -1047,11 +1089,11 @@ function EloCard({
           <div className="mt-1 truncate text-xs font-semibold text-slate-200">
             {division.holder?.name || "Vacant"}
           </div>
-          {enableChallenges && division.holder ? (
+          {enableChallenges && (division.holder || e5) ? (
             <ChallengeHolderButton
               titleId={eloChallengeTitleId(division, lane)}
-              holderUid={division.holder.uid}
-              holderName={division.holder.name}
+              holderUid={division.holder?.uid}
+              holderName={division.holder?.name}
             />
           ) : null}
         </div>
@@ -1107,9 +1149,11 @@ export default function ChampionsV2Experience({
   state: ChampionsV2State;
   variant?: ChampionsExperienceVariant;
 }) {
-  const e4 = variant === "e4";
+  const e4 = variant !== "e2";
+  const e5 = variant === "e5";
+  const [podiumHaze, setPodiumHaze] = useState<PodiumHaze>("gold");
   const [lane, setLane] = useState<ChampionsLane>("rm");
-  const [teamView, setTeamView] = useState<TeamChampionshipView>("rm");
+  const [teamView, setTeamView] = useState<TeamChampionshipView>(variant === "e5" ? "both" : "rm");
   const [stackModeChampions, setStackModeChampions] = useState(true);
   const [eloFirstLane, setEloFirstLane] = useState<ChampionsLane>("rm");
   const nationalRailRef = useRef<HTMLDivElement>(null);
@@ -1118,11 +1162,26 @@ export default function ChampionsV2Experience({
 
   useEffect(() => {
     if (e4) {
-      setTeamView(readStoredE4TeamView());
+      setTeamView(readStoredE4TeamView(e5));
       return;
     }
     setLane(readStoredLeaderboardLane());
-  }, [e4]);
+  }, [e4, e5]);
+
+  useEffect(() => {
+    if (!e5) return;
+    try {
+      const raw = window.localStorage.getItem(E5_HAZE_KEY);
+      setPodiumHaze(raw === "blue" || raw === "none" ? raw : "gold");
+    } catch {
+      setPodiumHaze("gold");
+    }
+  }, [e5]);
+
+  function choosePodiumHaze(next: PodiumHaze) {
+    setPodiumHaze(next);
+    try { window.localStorage.setItem(E5_HAZE_KEY, next); } catch { /* optional preference */ }
+  }
 
   function chooseLane(next: ChampionsLane) {
     setLane(next);
@@ -1131,7 +1190,7 @@ export default function ChampionsV2Experience({
 
   function chooseTeamView(next: TeamChampionshipView) {
     setTeamView(next);
-    writeStoredE4TeamView(next);
+    writeStoredE4TeamView(next, e5);
   }
 
   function scrollNation(direction: -1 | 1) {
@@ -1142,20 +1201,36 @@ export default function ChampionsV2Experience({
   }
 
   const heroStats = (
-    <div className="grid min-w-[min(100%,22rem)] gap-2 rounded-2xl border border-white/10 bg-black/22 p-4 sm:grid-cols-3 lg:min-w-[28rem]">
-      {[
-        ["Active", state.summary.active],
-        ["Vacant", state.summary.vacant],
-        ["Tribute", `${state.summary.tributePoolWolo} WOLO/day`],
-      ].map(([label, value]) => (
+    <div
+      className={`grid min-w-[min(100%,22rem)] gap-2 rounded-2xl border border-white/10 bg-black/22 p-4 ${e5 ? "sm:grid-cols-4 lg:min-w-[39rem]" : "sm:grid-cols-3 lg:min-w-[28rem]"}`}
+      aria-label={`Championship inventory: ${state.summary.active} active and ${state.summary.vacant} vacant of ${state.summary.total} titles`}
+    >
+      {(
+        e5
+          ? [
+              ["Active", state.summary.active, "Current title custody"],
+              ["Vacant", state.summary.vacant, "Unclaimed title positions"],
+              ["Potential daily", `${state.summary.tributePoolWolo} WOLO/day`, "Projection only — payout is not enabled"],
+              ["Bounty growth", `${state.summary.potentialDailyBountyGrowthWolo} WOLO/day`, "Projection only — accrual is not enabled"],
+            ]
+          : [
+              ["Active", state.summary.active, "Current title custody"],
+              ["Vacant", state.summary.vacant, "Unclaimed title positions"],
+              ["Tribute", `${state.summary.tributePoolWolo} WOLO/day`, "Potential amount; not a paid amount"],
+            ]
+      ).map(([label, value, description]) => (
         <div
           key={String(label)}
+          title={String(description)}
           className="rounded-xl border border-white/8 bg-white/[0.035] px-3 py-3"
         >
           <div className="text-[9px] uppercase tracking-[0.2em] text-slate-500">
             {label}
           </div>
           <div className="mt-1 text-lg font-semibold text-amber-50">{value}</div>
+          {e5 && (label === "Potential daily" || label === "Bounty growth") ? (
+            <div className="mt-1 text-[9px] text-slate-500">If enabled · not paid</div>
+          ) : null}
         </div>
       ))}
     </div>
@@ -1170,23 +1245,26 @@ export default function ChampionsV2Experience({
       }
     >
       {e4 ? (
-        <section className="champions-e-breakout relative overflow-hidden rounded-[2rem] border border-amber-200/14 bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.20),transparent_30%),radial-gradient(circle_at_12%_30%,rgba(59,130,246,0.10),transparent_25%),linear-gradient(145deg,#120d08,#07111c_54%,#02040a)] px-5 py-8 shadow-[0_34px_120px_rgba(0,0,0,0.42)] sm:px-8">
+        <section className="champions-e-breakout relative overflow-visible rounded-[2rem] border border-amber-200/14 bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.20),transparent_30%),radial-gradient(circle_at_12%_30%,rgba(59,130,246,0.10),transparent_25%),linear-gradient(145deg,#120d08,#07111c_54%,#02040a)] px-5 py-8 shadow-[0_34px_120px_rgba(0,0,0,0.42)] sm:px-8">
           <div className="relative z-10 grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
             <div>
               <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.34em] text-amber-100/74">
                 <Crown className="h-4 w-4" />
-                AoE2WAR title economy · E4
+                AoE2WAR title economy · {e5 ? "E5" : "E4"}
               </div>
               <h1 className="mt-4 font-serif text-4xl font-semibold uppercase tracking-[0.08em] text-amber-50 sm:text-6xl">
                 Championship Belts
               </h1>
               <p className="mt-3 max-w-3xl text-sm uppercase tracking-[0.20em] text-slate-300">
-                The E3 throne room above the cleaner E2 championship machine.
+                {e5 ? "The championship hall. Every belt has a challenger." : "The E3 throne room above the cleaner E2 championship machine."}
               </p>
             </div>
             <div className="space-y-3">
               <div className="flex justify-end">
-                <ChampionsViewCycleButton active="e4" />
+                <div className="flex items-center gap-2">
+                  <ChampionsViewCycleButton active={e5 ? "e5" : "e4"} />
+                  {e5 ? <PodiumHazePicker value={podiumHaze} onChange={choosePodiumHaze} /> : null}
+                </div>
               </div>
               {heroStats}
             </div>
@@ -1210,9 +1288,9 @@ export default function ChampionsV2Experience({
 
       {e4 ? (
         <section className="champions-e-breakout grid gap-5 xl:grid-cols-[minmax(0,0.92fr)_minmax(0,1.18fr)_minmax(0,0.92fr)] xl:items-start">
-          <E4PodiumCard title={state.world} position="center" />
-          <E4PodiumCard title={state.chaos} position="left" />
-          <E4PodiumCard title={state.womens} position="right" />
+          <E4PodiumCard title={state.world} position="center" e5={e5} haze={e5 ? podiumHaze : "gold"} />
+          <E4PodiumCard title={state.chaos} position="left" e5={e5} haze={e5 ? podiumHaze : "gold"} />
+          <E4PodiumCard title={state.womens} position="right" e5={e5} haze={e5 ? podiumHaze : "gold"} />
         </section>
       ) : (
         <section className="space-y-5">
@@ -1235,11 +1313,13 @@ export default function ChampionsV2Experience({
             champion={state.rmChampion}
             stacked={stackModeChampions}
             enableChallenges={e4}
+            challengeVacant={e5}
           />
           <ModeChampionCard
             champion={state.dmChampion}
             stacked={stackModeChampions}
             enableChallenges={e4}
+            challengeVacant={e5}
           />
         </div>
       </section>
@@ -1284,6 +1364,7 @@ export default function ChampionsV2Experience({
                           title={title}
                           lane={teamLane}
                           enableChallenges
+                          e5={e5}
                         />
                       ) : null;
                     })}
@@ -1314,6 +1395,7 @@ export default function ChampionsV2Experience({
                 key={belt.slug}
                 belt={belt}
                 enableChallenges={e4}
+                e5={e5}
               />
             ))}
           </div>
@@ -1353,6 +1435,7 @@ export default function ChampionsV2Experience({
                     division={division}
                     lane={eloLane}
                     enableChallenges={e4}
+                    e5={e5}
                   />
                 ))}
               </div>
@@ -1372,7 +1455,7 @@ export default function ChampionsV2Experience({
         </section>
       ) : null}
 
-      <ChampionsDisplayRail active={e4 ? "e4" : "e2"} />
+      {!e5 ? <ChampionsDisplayRail active={e4 ? "e4" : "e2"} /> : null}
     </main>
   );
 }

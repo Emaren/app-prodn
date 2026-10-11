@@ -55,10 +55,13 @@ test("normal chip surface and hover survive while active state adds only effect 
     /active \? activeEffectClass : ""/,
   );
 
+  // Highlighting /players/[uid] must not intercept a click back to /players.
+  assert.match(pill, /const pathname = usePathname\(\);/);
   assert.match(
     pill,
-    /onCycleActiveEffect\(\);[\s\S]*if \(active\) event\.preventDefault\(\);/,
+    /if \(pathname === href\) \{\s*onCycleActiveEffect\(\);\s*event\.preventDefault\(\);/,
   );
+  assert.doesNotMatch(pill, /if \(active\) event\.preventDefault\(\);/);
 });
 
 test("desktop and mobile each expose a left and right Kingdom door", () => {

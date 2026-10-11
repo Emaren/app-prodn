@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 
-export type ChampionsDisplayMode = "b" | "a" | "e1" | "e2" | "e3" | "e4";
+export type ChampionsDisplayMode = "b" | "a" | "e1" | "e2" | "e3" | "e4" | "e5";
 
-const CHAMPIONS_VIEW_ROUTES: Array<{
+export const CHAMPIONS_VIEW_ROUTES: Array<{
   mode: ChampionsDisplayMode;
   label: string;
   href: string;
@@ -15,73 +15,113 @@ const CHAMPIONS_VIEW_ROUTES: Array<{
   { mode: "a", label: "A", href: "/champions/legacy?view=a" },
   { mode: "e1", label: "E1", href: "/champions/legacy?view=e" },
   { mode: "e2", label: "E2", href: "/champions/e2" },
-  { mode: "e3", label: "E3", href: "/champions" },
+  { mode: "e3", label: "E3", href: "/champions/e3" },
   { mode: "e4", label: "E4", href: "/champions/e4" },
+  { mode: "e5", label: "E5", href: "/champions/e5" },
 ];
 
-export function ChampionsViewCycleButton({
-  active,
-}: {
-  active: ChampionsDisplayMode;
-}) {
-  const currentIndex = CHAMPIONS_VIEW_ROUTES.findIndex((entry) => entry.mode === active);
-  const current = CHAMPIONS_VIEW_ROUTES[currentIndex >= 0 ? currentIndex : 0];
-  const next = CHAMPIONS_VIEW_ROUTES[(currentIndex + 1 + CHAMPIONS_VIEW_ROUTES.length) % CHAMPIONS_VIEW_ROUTES.length];
+// One-time E5 rollout: prior editions used v1; all viewers start on E5
+// until they deliberately choose and persist a layout under v2.
+const CHAMPIONS_PREFERENCE_KEY = "aoe2war:champions:preferred-layout:v2";
+
+export function readPreferredChampionsView(): ChampionsDisplayMode {
+  if (typeof window === "undefined") return "e5";
+  try {
+    const saved = window.localStorage.getItem(CHAMPIONS_PREFERENCE_KEY);
+    return CHAMPIONS_VIEW_ROUTES.some((entry) => entry.mode === saved)
+      ? saved as ChampionsDisplayMode
+      : "e5";
+  } catch {
+    return "e5";
+  }
+}
+
+export function rememberChampionsView(view: ChampionsDisplayMode) {
+  try {
+    window.localStorage.setItem(CHAMPIONS_PREFERENCE_KEY, view);
+  } catch {
+    // A browser without storage still has fully functional version links.
+  }
+}
+
+/** The canonical /champions entry defaults to E5, respecting explicit choices afterward. */
+export function ChampionsPreferredViewRedirect() {
+  const router = useRouter();
+  useEffect(() => {
+    const preferred = readPreferredChampionsView();
+    if (preferred !== "e5") {
+      const route = CHAMPIONS_VIEW_ROUTES.find((entry) => entry.mode === preferred);
+      if (route) router.replace(route.href);
+    }
+  }, [router]);
+  return null;
+}
+
+/** Top-right compact selector. Hover to inspect; click/tap or keyboard focus to choose. */
+export function ChampionsViewCycleButton({ active }: { active: ChampionsDisplayMode }) {
+  const [opened, setOpened] = useState(false);
+  const current = CHAMPIONS_VIEW_ROUTES.find((entry) => entry.mode === active);
+  const pathname = usePathname();
+  useEffect(() => setOpened(false), [pathname]);
 
   return (
-    <Link
-      href={next.href}
-      aria-label={`Champions view ${current.label}. Switch to ${next.label}.`}
-      title={`${current.label} · click for ${next.label}`}
-      className="group inline-flex min-w-[4.4rem] items-center justify-between gap-2 rounded-full border border-amber-100/10 bg-[linear-gradient(180deg,rgba(92,67,39,0.34),rgba(42,31,20,0.56))] px-2.5 py-1.5 text-amber-100/55 shadow-[inset_0_1px_0_rgba(255,255,255,0.035),0_8px_24px_rgba(0,0,0,0.22)] transition hover:border-amber-100/20 hover:text-amber-50"
-    >
-      <span className="text-[7px] font-black uppercase tracking-[0.22em] text-amber-100/32">
-        View
-      </span>
-      <span className="font-mono text-[10px] font-black tracking-[0.12em]">
-        {current.label}
-      </span>
-      <span className="text-[9px] text-amber-100/28 transition group-hover:translate-x-0.5">
-        ›
-      </span>
-    </Link>
+    <div className="group relative z-40">
+      <button
+        type="button"
+        onClick={() => setOpened((previous) => !previous)}
+        aria-expanded={opened}
+        aria-haspopup="true"
+        aria-label={`Current championship layout ${current?.label ?? active}. Choose a layout.`}
+        className="inline-flex items-center gap-1 rounded-md border border-white/10 bg-black/30 px-2 py-1 font-mono text-[10px] font-black text-slate-200 transition hover:border-sky-200/35 hover:text-white"
+      >
+        {current?.label ?? active.toUpperCase()}
+        <span aria-hidden className="text-slate-500">⌄</span>
+      </button>
+      <nav
+        aria-label="Choose championship layout"
+        className={`absolute right-0 top-full z-50 mt-1 flex min-w-[10.25rem] flex-wrap justify-end gap-1 rounded-xl border border-white/15 bg-slate-950/[0.98] p-2 shadow-2xl backdrop-blur transition duration-150 ${opened ? "opacity-100" : "pointer-events-none opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100"}`}
+      >
+        {CHAMPIONS_VIEW_ROUTES.map((entry) => (
+          <Link
+            key={entry.mode}
+            href={entry.href}
+            onClick={() => {
+              rememberChampionsView(entry.mode);
+              setOpened(false);
+            }}
+            aria-current={entry.mode === active ? "page" : undefined}
+            className={`rounded-md border px-2 py-1.5 font-mono text-[10px] font-bold transition ${entry.mode === active ? "border-sky-200/45 bg-sky-300/20 text-sky-100" : "border-white/10 text-slate-300 hover:border-white/25 hover:bg-white/10 hover:text-white"}`}
+          >
+            {entry.label}
+          </Link>
+        ))}
+      </nav>
+    </div>
   );
 }
 
 function itemClass(selected: boolean) {
   return `min-w-8 rounded-full px-2.5 py-1 text-center text-[9px] font-black uppercase tracking-[0.16em] transition ${
     selected
-      ? "bg-amber-100 text-slate-950 shadow-[0_0_0_1px_rgba(255,255,255,0.26)]"
+      ? "bg-sky-100 text-slate-950 shadow-[0_0_0_1px_rgba(255,255,255,0.26)]"
       : "text-slate-500 hover:bg-white/[0.06] hover:text-slate-200"
   }`;
 }
 
-export default function ChampionsDisplayRail({
-  active,
-}: {
-  active?: ChampionsDisplayMode;
-}) {
+/** Preserved legacy rail; new E5 uses the compact top-right picker. */
+export default function ChampionsDisplayRail({ active }: { active?: ChampionsDisplayMode }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const requestedLegacy = searchParams.get("view");
   const inferred: ChampionsDisplayMode =
     pathname.includes("/champions/legacy")
-      ? requestedLegacy === "b"
-        ? "b"
-        : requestedLegacy === "a"
-          ? "a"
-          : "e1"
-      : pathname.includes("/champions/e4")
-        ? "e4"
-        : pathname.includes("/champions/e2")
-          ? "e2"
-          : "e3";
+      ? requestedLegacy === "b" ? "b" : requestedLegacy === "a" ? "a" : "e1"
+      : pathname.includes("/champions/e2") ? "e2"
+      : pathname.includes("/champions/e3") ? "e3"
+      : pathname.includes("/champions/e4") ? "e4"
+      : "e5";
   const selectedMode = active ?? inferred;
-  const extremeSelected =
-    selectedMode === "e1" ||
-    selectedMode === "e2" ||
-    selectedMode === "e3" ||
-    selectedMode === "e4";
+  const extremeSelected = selectedMode.startsWith("e");
 
   useEffect(() => {
     document.documentElement.dataset.championsView =
@@ -89,82 +129,23 @@ export default function ChampionsDisplayRail({
   }, [extremeSelected, selectedMode]);
 
   return (
-    <section
-      className="flex min-h-10 w-full items-center justify-between gap-3 rounded-2xl border border-white/[0.08] bg-slate-950/70 px-3 py-1.5 shadow-[0_12px_44px_rgba(0,0,0,0.26)] backdrop-blur"
-      aria-label="Championship display settings"
-    >
-      <span className="text-[8px] font-black uppercase tracking-[0.24em] text-slate-600">
-        Layout
-      </span>
-
-      <nav
-        className="flex items-center gap-1 rounded-full border border-white/[0.07] bg-black/25 p-0.5"
-        aria-label="Championship view mode"
-      >
-        <Link
-          href="/champions/legacy?view=b"
-          aria-current={selectedMode === "b" ? "page" : undefined}
-          title="Basic"
-          className={itemClass(selectedMode === "b")}
-        >
-          B
-        </Link>
-        <Link
-          href="/champions/legacy?view=a"
-          aria-current={selectedMode === "a" ? "page" : undefined}
-          title="Advanced"
-          className={itemClass(selectedMode === "a")}
-        >
-          A
-        </Link>
-
-        <div className="champions-extreme-group relative">
-          <Link
-            href="/champions"
-            aria-current={extremeSelected ? "page" : undefined}
-            title="Extreme"
-            className={`block ${itemClass(extremeSelected)}`}
-          >
-            E
+    <section className="flex min-h-10 w-full items-center justify-between gap-3 rounded-2xl border border-white/[0.08] bg-slate-950/70 px-3 py-1.5 shadow-[0_12px_44px_rgba(0,0,0,0.26)] backdrop-blur" aria-label="Championship display settings">
+      <span className="text-[8px] font-black uppercase tracking-[0.24em] text-slate-600">Layout</span>
+      <nav className="flex items-center gap-1 rounded-full border border-white/[0.07] bg-black/25 p-0.5" aria-label="Championship view mode">
+        {CHAMPIONS_VIEW_ROUTES.slice(0, 2).map((entry) => (
+          <Link key={entry.mode} href={entry.href} onClick={() => rememberChampionsView(entry.mode)} aria-current={selectedMode === entry.mode ? "page" : undefined} className={itemClass(selectedMode === entry.mode)}>
+            {entry.label}
           </Link>
-
-          <div
-            className="champions-extreme-menu pointer-events-none absolute bottom-[calc(100%-1px)] right-0 z-50 flex translate-y-1 gap-1 rounded-full border border-white/[0.09] bg-slate-950/95 p-1 opacity-0 shadow-[0_14px_34px_rgba(0,0,0,0.44)] backdrop-blur transition duration-150"
-            aria-label="Extreme Champions versions"
-          >
-            <Link
-              href="/champions/legacy?view=e"
-              aria-current={selectedMode === "e1" ? "page" : undefined}
-              title="Extreme 1 · preserved"
-              className={itemClass(selectedMode === "e1")}
-            >
-              E1
-            </Link>
-            <Link
-              href="/champions/e2"
-              aria-current={selectedMode === "e2" ? "page" : undefined}
-              title="Extreme 2 · preserved"
-              className={itemClass(selectedMode === "e2")}
-            >
-              E2
-            </Link>
-            <Link
-              href="/champions"
-              aria-current={selectedMode === "e3" ? "page" : undefined}
-              title="Extreme 3 · current"
-              className={itemClass(selectedMode === "e3")}
-            >
-              E3
-            </Link>
-            <Link
-              href="/champions/e4"
-              aria-current={selectedMode === "e4" ? "page" : undefined}
-              title="Extreme 4 · hybrid"
-              className={itemClass(selectedMode === "e4")}
-            >
-              E4
-            </Link>
-          </div>
+        ))}
+        <div className="champions-extreme-group group relative">
+          <Link href="/champions/e5" onClick={() => rememberChampionsView("e5")} title="Extreme" className={`block ${itemClass(extremeSelected)}`}>E</Link>
+          <nav aria-label="Extreme championship layouts" className="champions-extreme-menu pointer-events-none absolute bottom-[calc(100%-1px)] right-0 z-50 flex translate-y-1 gap-1 rounded-full border border-white/[0.09] bg-slate-950/95 p-1 opacity-0 shadow-[0_14px_34px_rgba(0,0,0,0.44)] backdrop-blur transition duration-150 group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
+            {CHAMPIONS_VIEW_ROUTES.filter((entry) => entry.mode.startsWith("e")).map((entry) => (
+              <Link key={entry.mode} href={entry.href} onClick={() => rememberChampionsView(entry.mode)} aria-current={selectedMode === entry.mode ? "page" : undefined} className={itemClass(selectedMode === entry.mode)}>
+                {entry.label}
+              </Link>
+            ))}
+          </nav>
         </div>
       </nav>
     </section>

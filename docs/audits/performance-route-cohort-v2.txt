@@ -18,7 +18,9 @@
 /challenge
 /champions
 /champions/e2
+/champions/e3
 /champions/e4
+/champions/e5
 /champions/legacy
 /chaosium
 /clans
