@@ -949,3 +949,22 @@ retention and real 1/2-hour consumption require physical receipts beyond
 the one-camera projection. The live mounted volume may differ between
 the local Mac and production VPS: run at the intended machine for the
 corresponding claim.
+
+### Spectator consent and factual camera labels (October 11)
+
+Television WOLO's user first presses **Play** before browser video is
+mounted. During continuous MSE playback, pausing the player's controls
+now pauses that viewer's media polling and does not force autoplay by
+the next live-edge seek. Hidden tabs suspend network pulls; a previously
+playing hidden viewer may resume on visibility. Rejoining after a long
+pause can exceed the bounded 36-chunk catch-up window, in which case
+the legacy rolling player is selected rather than downloading the
+whole archived match. Multi-view remains an explicit spectator choice.
+
+A broadcaster-supplied `playerLabel` is *not* verified player or
+team POV authority, even when it matches a known account name.
+Television no longer displays `<name> POV` from that free-form field;
+unverified player/team roles are explicitly identified as unverified.
+The source-backed role and participant/caster authorization still
+needs server admission gate #480 before any public, multi-user verified
+POV claims. Do not weaken this trust boundary to improve label polish.
