@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "dd02192908f1e8a02ac2dc06ad31663135be0ec7df6880ecb7b4c8661e0c9b37",
+      "sha256": "0bb73b2f0d92ecdd2995b248c2e3ce5cac0a5928dceef05f6262fbd9050cab3e",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2072,7 +2072,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "refactor/profile-owner-controls-admin-only-20261011",
-    "commit": "d697f5cee86bc1a14bcd66199769c37dd48a7f6c"
+    "commit": "b2686c010430e8110f79384c6a62bffc9317aeed"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
