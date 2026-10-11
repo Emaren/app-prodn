@@ -617,7 +617,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b9973c44c0a0e37805de646bcf2abe1b2e348a995f4dc863b11dc4803732da11",
+      "sha256": "dd2d2f71712b507090636366e14da29851ac6a6c1791bda55d58ec92ced33b86",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2072,7 +2072,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feat/watcher-164-download-hero-20261011",
-    "commit": "9d459272d4dcc879d10d4db5545f6bb5793e4e46"
+    "commit": "36db9d7fe5c175fcd1c3fcb411eb1f8aa83763ca"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
