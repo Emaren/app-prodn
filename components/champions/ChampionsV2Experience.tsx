@@ -868,7 +868,7 @@ function TeamTitleCard({
         ))}
       </div>
 
-      {enableChallenges ? (
+      {enableChallenges && (title.holders?.[0] || e5) ? (
         <div className="px-4 pt-3">
           <ChallengeHolderButton
             titleId={`${title.size}v${title.size}-${lane}`}
@@ -895,9 +895,11 @@ function TeamTitleCard({
 function NationalBeltCard({
   belt,
   enableChallenges = false,
+  e5 = false,
 }: {
   belt: ChampionsV2NationalBelt;
   enableChallenges?: boolean;
+  e5?: boolean;
 }) {
   const hasRealHolder = Boolean(belt.holder);
   const holderAvatarUrl = belt.holder
@@ -994,7 +996,7 @@ function NationalBeltCard({
           <div className="mt-1 text-sm font-semibold text-white">
             {belt.holder?.name || "Vacant"}
           </div>
-          {enableChallenges ? (
+          {enableChallenges && (belt.holder || e5) ? (
             <ChallengeHolderButton
               titleId={`${belt.scope === "regional" ? "regional" : "national"}-${belt.slug}`}
               holderUid={belt.holder?.uid}
@@ -1035,10 +1037,12 @@ function EloCard({
   division,
   lane,
   enableChallenges = false,
+  e5 = false,
 }: {
   division: ChampionsV2EloDivision;
   lane: ChampionsLane;
   enableChallenges?: boolean;
+  e5?: boolean;
 }) {
   const holderAvatarUrl = division.holder
     ? avatarCardUrlForUser(division.holder.uid, division.holder.name)
@@ -1085,7 +1089,7 @@ function EloCard({
           <div className="mt-1 truncate text-xs font-semibold text-slate-200">
             {division.holder?.name || "Vacant"}
           </div>
-          {enableChallenges ? (
+          {enableChallenges && (division.holder || e5) ? (
             <ChallengeHolderButton
               titleId={eloChallengeTitleId(division, lane)}
               holderUid={division.holder?.uid}
@@ -1299,6 +1303,7 @@ export default function ChampionsV2Experience({
             champion={state.dmChampion}
             stacked={stackModeChampions}
             enableChallenges={e4}
+            challengeVacant={e5}
           />
         </div>
       </section>
@@ -1374,6 +1379,7 @@ export default function ChampionsV2Experience({
                 key={belt.slug}
                 belt={belt}
                 enableChallenges={e4}
+                e5={e5}
               />
             ))}
           </div>
@@ -1413,6 +1419,7 @@ export default function ChampionsV2Experience({
                     division={division}
                     lane={eloLane}
                     enableChallenges={e4}
+                    e5={e5}
                   />
                 ))}
               </div>
