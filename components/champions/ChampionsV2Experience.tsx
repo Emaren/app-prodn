@@ -851,7 +851,7 @@ function TeamTitleCard({
               fill
               unoptimized
               sizes="420px"
-              className={`object-contain object-bottom ${title.holders?.[index] ? `opacity-92 ${holderAvatarScale}` : `opacity-52 ${vacantAvatarScale}`}`}
+              className={`object-contain object-bottom ${e5 && title.size === 2 ? (title.holders?.[index]?.name === "Jim" ? "-translate-y-3" : "translate-y-2") : ""} ${title.holders?.[index] ? `opacity-92 ${holderAvatarScale}` : `opacity-52 ${vacantAvatarScale}`}`}
             />
             <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_40%,rgba(3,7,17,0.10)_60%,#030711_100%)]" />
             <div className={`absolute bottom-0 left-1/2 ${beltHeight} w-full -translate-x-1/2`}>
@@ -1229,7 +1229,7 @@ export default function ChampionsV2Experience({
       }
     >
       {e4 ? (
-        <section className="champions-e-breakout relative overflow-hidden rounded-[2rem] border border-amber-200/14 bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.20),transparent_30%),radial-gradient(circle_at_12%_30%,rgba(59,130,246,0.10),transparent_25%),linear-gradient(145deg,#120d08,#07111c_54%,#02040a)] px-5 py-8 shadow-[0_34px_120px_rgba(0,0,0,0.42)] sm:px-8">
+        <section className={`champions-e-breakout relative ${e5 ? "overflow-visible" : "overflow-hidden"} rounded-[2rem] border border-amber-200/14 bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.20),transparent_30%),radial-gradient(circle_at_12%_30%,rgba(59,130,246,0.10),transparent_25%),linear-gradient(145deg,#120d08,#07111c_54%,#02040a)] px-5 py-8 shadow-[0_34px_120px_rgba(0,0,0,0.42)] sm:px-8`}>
           <div className="relative z-10 grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
             <div>
               <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.34em] text-amber-100/74">
