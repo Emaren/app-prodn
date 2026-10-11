@@ -49,3 +49,12 @@ test("account dropdown exposes Television WOLO", async () => {
     /href: "\/television-wolo", label: "Television WOLO"/,
   );
 });
+
+test("Television never promotes unverified broadcaster names into player POV authority", async () => {
+  const client = await readFile(clientPath, "utf8");
+  assert.doesNotMatch(client, /stream\.playerLabel\s*\+\s*" POV"/);
+  assert.match(client, /Player camera \(unverified\)/);
+  assert.match(client, /Team camera \(unverified\)/);
+  assert.match(client, /Until #480 proves source-backed game admission/);
+  assert.match(client, /Player and team POV identities require verification/);
+});
