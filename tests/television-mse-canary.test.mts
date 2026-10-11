@@ -86,3 +86,13 @@ test("live WebM media range is bounded, contiguous, no repeated init, and source
   assert.match(component, /for \(let from = plan\.from; from <= plan\.through; from \+= 5\)/);
   assert.match(component, /lastSeq = through/);
 });
+
+test("MSE respects manual spectator pause without capturing more media", async () => {
+  const player = await readFile(new URL(
+    "../components/streaming/ContinuousWebmPlayer.tsx", import.meta.url), "utf8");
+  assert.match(player, /if \(manuallyPaused\) \{ setState\("Paused"\); return; \}/);
+  assert.match(player, /video\.addEventListener\("pause", pause\)/);
+  assert.match(player, /video\.removeEventListener\("pause", pause\)/);
+  assert.match(player, /pauseForHidden = !video\.paused && !manuallyPaused/);
+  assert.match(player, /if \(pauseForHidden && !manuallyPaused\) void video\.play/);
+});
