@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `refactor/profile-owner-controls-admin-only-20261011` at `b2686c010430e8110f79384c6a62bffc9317aeed`
+Implementation baseline: `feature/champions-e5-display-20261011` at `d592907d1132ec2ed4bfd5b8e031671f004000f9`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **90**
+- Authoritative repository documents: **91**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,13 +36,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 54
+- `reference`: 55
 - `runbook`: 17
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 74
+- `active`: 75
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -71,6 +71,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [Championship Belt Chain Capability Handoff](CHAMPIONSHIP_CHAIN_HANDOFF.md) | `reference` | `active` | `integration-contract` |
 | [Championship Commissioner V1 Runbook](CHAMPIONSHIP_COMMISSIONER_RUNBOOK.md) | `runbook` | `active` | `operational-procedure` |
 | [Championship Challenge V1 Implementation and Release Handoff](CHAMPIONSHIP_IMPLEMENTATION_HANDOFF.md) | `reference` | `active` | `engineering-handoff` |
+| [Championship Hall E5 — presentation and release contract](CHAMPIONS_E5_PRESENTATION_20261011.md) | `reference` | `active` | `product-presentation-contract` |
 | [Championship Title Economy](CHAMPIONS_TITLE_ECONOMY.md) | `reference` | `active` | `product-contract` |
 | [Clan Halls](CLAN_HALLS.md) | `reference` | `active` | `product-contract` |
 | [AoE2WAR Campaign III Final Handoff](CODEX_CAMPAIGN_III_HANDOFF.md) | `historical` | `historical` | `historical-evidence` |
