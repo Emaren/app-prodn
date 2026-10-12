@@ -585,7 +585,10 @@ def local_storage_snapshot(*, measure: bool = False, home: Path | None = None) -
         "regenerable": regenerable,
         "protected": protected,
         "context_retention": _context_retention_snapshot(operator_home),
-        "reclaimable_bytes": sum(int(row.get("allocated_bytes") or 0) for row in regenerable),
+        "reclaimable_bytes": (
+            sum(int(row.get("allocated_bytes") or 0) for row in regenerable)
+            if measure else None
+        ),
     }
 
 
@@ -967,7 +970,10 @@ def print_estate(payload: dict[str, Any]) -> None:
         f"Mac:             {local['filesystem']['used_percent']:.2f}% used · "
         f"{gib(local['filesystem']['free_bytes'])} free"
     )
-    print(f"Mac reclaimable: {gib(local['reclaimable_bytes'])} · strict cache allowlist")
+    if local["reclaimable_bytes"] is None:
+        print("Mac reclaimable: NOT MEASURED · use storage estate --measure")
+    else:
+        print(f"Mac reclaimable: {gib(local['reclaimable_bytes'])} · strict cache allowlist")
     print(
         f"Context debt:    {local['context_retention']['retention_debt']} extra archive(s)"
     )
