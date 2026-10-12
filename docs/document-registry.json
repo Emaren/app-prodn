@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "932e42e1f54278d6b00aa04480e549cf3378a92770b224c9924841b6c957baa6",
+      "sha256": "d67ee34c1ed67ae1e9ed775f9dfb72e941a04b803e163ab731d9f2272871202f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -733,7 +733,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-06",
       "sensitivity": "internal",
-      "sha256": "10c23019d024a9f17378d7b82be95225953289578cd45f1c4d977a2cb6679019",
+      "sha256": "8e3a574ac064b23d50f56584b39d5f432cc2c3d27f2fe193ad3fd7e22d4f2136",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "integration/storage-speedos-proof-20261012",
-    "commit": "e4c80b2c553a733e75228e5bf5a2d7ac4c1c16a1"
+    "branch": "ops/general-inspections-evidence-triage-20261012",
+    "commit": "644b2ab1ffd691228a697c6632554fe50f8d3370"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
