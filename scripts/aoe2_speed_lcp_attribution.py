@@ -174,7 +174,7 @@ def main() -> int:
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
     try:
-        path = args.receipt.expanduser().resolve() if args.receipt else latest_receipt()
+        path = args.receipt.expanduser().absolute() if args.receipt else latest_receipt()
         result = analyze(read_receipt(path), expected_release=args.expected_release)
     except (EvidenceError, OSError) as exc:
         print(f"STOP: {exc}")
