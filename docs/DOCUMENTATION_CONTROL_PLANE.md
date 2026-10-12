@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `main` at `e4e21a62090ee9d1bcb76473e0b7f876aaa82c35`
+Implementation baseline: `fix/speedos-installed-hero-verify-current-20261012` at `5d3a7174be2a859c98c80f06539f48b5bc8a99fa`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
