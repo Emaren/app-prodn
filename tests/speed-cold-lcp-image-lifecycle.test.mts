@@ -228,3 +228,15 @@ test("LCP element identity distinguishes same-URL DOM replacement from cached im
   assert.equal(out.lcpImageLifecycle.firstNativeLoadAtMs, 890);
   assert.equal(out.lcpResourceMatchCount, 1);
 });
+
+test("receipt binds Mac collector source independently of production SHA", () => {
+  const helper = readFileSync(
+    new URL("../scripts/aoe2_speed_cold_lcp.mjs", import.meta.url), "utf8",
+  );
+  const driver = readFileSync(
+    new URL("../scripts/aoe2_speed.py", import.meta.url), "utf8",
+  );
+  assert.match(helper, /collectorSourceSha: collectorSha/);
+  assert.match(driver, /"--collector-sha",\s*str\(identity\.get\("operator_source_sha"\)/);
+  assert.match(helper, /releaseSha,\s*buildVersion,\s*collectorSourceSha:/);
+});
