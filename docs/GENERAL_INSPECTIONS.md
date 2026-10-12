@@ -44,6 +44,13 @@ same-origin public API, save the returned JSON as a file and use
 `./bin/aoe2war inspections --file /path/to/general-inspections.json`.
 The saved file is evidence, not a new score or a substitute for freshness.
 
+After this inspection UI is deployed, its **Copy current inspection evidence**
+control is the preferred path: it copies the already-loaded public snapshot's
+scores, missing checks, receipt times and notes to the clipboard **without any
+additional HTTP request**. The operation is read-only; it neither triggers
+Doctor nor publishes new evidence. If browser clipboard access is unavailable,
+the page retains its normal per-check inspection details.
+
 A certified `aoe2war doctor 100/100` is not a certificate that all seven
 weighted inspections are green. Their proof comes from separate authorities:
 newest sealed VPS activation, periodically published Mac Operator Bridge
