@@ -36,7 +36,13 @@ network access for offline analysis.
 
 The CLI's HTTPS source is pinned to AoE2WAR. If the API is inaccessible, missing
 any of the seven categories, or returns invalid score fields, the command
-reports STOP rather than fabricating a healthy inspection.
+reports STOP rather than fabricating a healthy inspection. In particular,
+a Python HTTP 403 may come from an upstream browser-access policy. Do not
+weaken Cloudflare or production authentication to make the CLI green.
+From an authorized Chrome session on `/general-inspections`, read its
+same-origin public API, save the returned JSON as a file and use
+`./bin/aoe2war inspections --file /path/to/general-inspections.json`.
+The saved file is evidence, not a new score or a substitute for freshness.
 
 A certified `aoe2war doctor 100/100` is not a certificate that all seven
 weighted inspections are green. Their proof comes from separate authorities:
