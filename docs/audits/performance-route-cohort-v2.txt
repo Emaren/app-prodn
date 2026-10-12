@@ -29,6 +29,7 @@
 /download
 /forum
 /game-stats
+/hd-replay-engine
 /general-inspections
 /kingdom
 /kingdom-intelligence

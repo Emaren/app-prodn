@@ -6,7 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Anvil, Archive, BarChart3, Bot, BrainCircuit, Castle, ClipboardCheck, Crown, Eye, Globe2, GraduationCap, Hammer, MessageSquare, Radio, Scale, Store, Target, Trophy, UsersRound, X, Zap } from "lucide-react";
+import { Anvil, Archive, BarChart3, Bot, BrainCircuit, Castle, Cpu, ClipboardCheck, Crown, Eye, Globe2, GraduationCap, Hammer, MessageSquare, Radio, Scale, Store, Target, Trophy, UsersRound, X, Zap } from "lucide-react";
 import { createPortal } from "react-dom";
 import SpeedRuntime from "@/components/speed/SpeedRuntime";
 import SpeedWebVitals from "@/components/speed/SpeedWebVitals";
@@ -143,6 +143,7 @@ const KINGDOM_LINKS = [
   { href: "/radio", label: "Radio WOLO", icon: Radio, body: "Kingdom music and creator submissions" },
   { href: "/workshop", label: "The Workshop", icon: Hammer, body: "Watch the kingdom being forged in public" },
   { href: "/game-stats", label: "Parser Observatory", icon: BarChart3, body: "Replay corpus, coverage, and unknowns" },
+  { href: "/hd-replay-engine", label: "HD Replay Engine", icon: Cpu, body: "Watch the replay evidence machine turn unknowns into verified results" },
   { href: "/traffic", label: "Traffic Observatory", icon: Globe2, body: "Traffic, suspected humans, and confirmed humans" },
   { href: "/kingdom-forge", label: "Kingdom Forge", icon: Anvil, body: "Forge Power, projects, milestones, and deeds" },
   { href: "/round-chamber", label: "The Chamber", icon: Scale, body: "Proposals, civic ballots, and public mandates" },

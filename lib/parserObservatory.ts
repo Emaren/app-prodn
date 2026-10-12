@@ -373,6 +373,7 @@ async function buildPublicParserObservatory() {
   const unknownOwner = new Map<string, number>();
   const unknownRoster = new Map<string, number>();
   const unknownFormat = new Map<string, number>();
+  const unknownMap = new Map<string, number>();
   const unknownReason = new Map<string, number>();
   const confidence = new Map<string, number>();
   const playerNames = new Set<string>();
@@ -384,6 +385,10 @@ async function buildPublicParserObservatory() {
     gameType: string;
     parseReason: string;
     neededEvidence: string[];
+    teamsResolved: boolean;
+    observedPlayers: number;
+    gameVersion: string;
+    playedAt: string | null;
   }> = [];
   const recentDecodes: Array<{
     id: number;
@@ -534,6 +539,7 @@ async function buildPublicParserObservatory() {
       bump(unknownOwner, owner);
       names.forEach((name) => bump(unknownRoster, name));
       bump(unknownFormat, text(row.game_type));
+      bump(unknownMap, readMapName(row.map));
       bump(unknownReason, text(row.parse_reason, "unspecified"));
       if (latestUnknown.length < 24) {
         latestUnknown.push({
@@ -544,6 +550,10 @@ async function buildPublicParserObservatory() {
           gameType: text(row.game_type),
           parseReason: row.parse_reason,
           neededEvidence: result.neededEvidence,
+          teamsResolved: teams.resolved,
+          observedPlayers: names.length,
+          gameVersion: text(row.game_version, "Version unavailable"),
+          playedAt: (row.played_on || row.timestamp || row.createdAt)?.toISOString() ?? null,
         });
       }
     }
@@ -701,6 +711,7 @@ async function buildPublicParserObservatory() {
       byOwner: ranked(unknownOwner),
       byRosterPlayer: ranked(unknownRoster),
       byGameType: ranked(unknownFormat),
+      byMap: ranked(unknownMap),
       byReason: ranked(unknownReason),
       latest: latestUnknown,
     },
