@@ -6,12 +6,12 @@ import {
   ArrowUpRight, Banknote, Check, ChevronDown,
   ChevronRight, Coins, Crown, ExternalLink, Landmark,
   Layers3, LockKeyhole, Radar, RefreshCw, Search, ShieldCheck,
-  ShieldAlert, Wallet, Waves, Zap,
+  Wallet, Waves, Zap,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import {
-  REPORTED_TREASURY_COSTS, TREASURY_FAUCET_INCIDENT,
+  REPORTED_TREASURY_COSTS,
   isPublicTreasuryHolders, isTreasuryNetwork, isTreasuryPool,
   isTreasuryTransfers, observedKingdomOutflows, publicSystemAccounts,
   disclosedKingdomReserveBalance, legacyIdentityMembership,
@@ -62,7 +62,6 @@ export default function KingdomTreasury() {
   const [accountsOpen, setAccountsOpen] = useState(false);
   const [holdersOpen, setHoldersOpen] = useState(false);
   const [costsOpen, setCostsOpen] = useState(false);
-  const [incidentOpen, setIncidentOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
@@ -271,12 +270,6 @@ export default function KingdomTreasury() {
             <div className="shrink-0 text-right"><div className="font-mono text-xs text-[#c8b78c]">{h.classification === "protocol" ? `${h.balanceWoloFormatted} WOLO` : "—"}</div><div className="mt-1 text-[10px] uppercase text-[#8f9c9a]">{h.classification === "protocol" ? "Public protocol" : "Personal balance hidden"}</div></div>
           </div>)}
           {!holders.data && <p className="text-sm text-[#8f9c9a]">Current holder projection unavailable.</p>}</div>}
-          <div className="mt-5 rounded-xl border border-[#a58b61]/20 bg-[#af8748]/[.06] p-4">
-            <div className="flex items-center gap-2 text-xs font-semibold text-[#e2c391]"><ShieldAlert size={15}/> AUG 18 · FAUCET RAID</div>
-            <div className="mt-3 grid grid-cols-3 gap-3"><div><div className="kt-stat-mini">{amount(TREASURY_FAUCET_INCIDENT.successfulClaims)}</div><div className="kt-minilabel">Claims</div></div><div><div className="kt-stat-mini">{amount(TREASURY_FAUCET_INCIDENT.grossOutflowWolo)}</div><div className="kt-minilabel">WOLO sent</div></div><div><div className="kt-stat-mini">{amount(TREASURY_FAUCET_INCIDENT.commonDestinationRecipients)}</div><div className="kt-minilabel">Converged</div></div></div>
-            <button className="kt-inline-link mt-3" type="button" aria-expanded={incidentOpen} onClick={() => setIncidentOpen(!incidentOpen)}>Incident evidence <ChevronDown size={13} className={incidentOpen?"rotate-180":""}/></button>
-            {incidentOpen && <p className="mt-3 text-xs leading-5 text-[#b9b0a2]">653 paid claims at 2 WOLO each. 647 recipient wallets later moved funds; 644 converged on a common destination. Public live unclassified holders are NOT automatically tagged as attackers without an address-level verified incident join.</p>}
-          </div>
           <div className="mt-4 space-y-2">
             <div className="kt-label text-[#a9b6ac]">LEGACY REGISTERED PLAYER WALLETS · NOT EXTRA CURRENT HOLDERS</div>
             {legacyIdentities.map((identity) => <article key={identity.address} className="kt-account flex flex-wrap items-center justify-between gap-3">
@@ -291,7 +284,7 @@ export default function KingdomTreasury() {
         <div className="kt-panel p-5 sm:p-7">
           <PanelHeading index="05" title="Kingdom payment rail" marker="INDEXED BANK SENDS · SOURCE PROOF"/>
           <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-            <div><div className="kt-major-stat !text-3xl">{transfers.data && network.data && holders.data ? amount(outflows.length) : "—"}</div><div className="mt-1 text-xs text-[#909f9d]">Kingdom-origin transfers in latest indexed batch</div></div>
+            <div><div className="kt-major-stat !text-3xl">{transfers.data && network.data && holders.data ? amount(outflows.length) : "—"}</div><div className="mt-1 text-xs text-[#909f9d]">Kingdom-origin bank sends (excluding faucet claims)</div></div>
             <span className="kt-plate"><Led ok={!!transfers.data && !transfers.error}/> READ ONLY · 25-ROW WINDOW</span>
           </div>
           <div className="kt-scroll max-h-[565px] space-y-2 overflow-y-auto pr-1">
@@ -302,10 +295,10 @@ export default function KingdomTreasury() {
               </div>
               <div className="mt-2 truncate font-mono text-[10px] text-[#82918c]">TX: {tx.txHash}</div>
             </article>)}
-            {!outflows.length && <div className="rounded-xl border border-dashed border-[#b4a487]/20 p-8 text-center text-sm text-[#8c9b99]">{transfers.data && network.data && holders.data ? "No system-wallet sends in the latest indexed sample." : "Awaiting chain transfer evidence…"}</div>}
+            {!outflows.length && <div className="rounded-xl border border-dashed border-[#b4a487]/20 p-8 text-center text-sm text-[#8c9b99]">{transfers.data && network.data && holders.data ? "No eligible kingdom sends in the latest indexed sample." : "Awaiting chain transfer evidence…"}</div>}
           </div>
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-[11px] text-[#8d9d99]">
-            <span>Indexed chain bank sends only. Not full history; not proof of payout purpose.</span><Link href="/wolochain" className="kt-inline-link">Network ledger <ArrowUpRight size={13}/></Link>
+            <span>Kingdom bank sends only · faucet claims excluded · payout purpose not yet verified.</span><Link href="/wolochain" className="kt-inline-link">Network ledger <ArrowUpRight size={13}/></Link>
           </div>
           <div className="mt-5 grid grid-cols-2 gap-3">
             <div className="kt-inset"><Crown size={18} className="text-[#dbc28b]"/><div className="mt-3 font-semibold text-[#ebd7a9]">Champion tributes</div><p className="mt-1 text-xs text-[#8c9c9a]">Awaiting verified payout-classification feed</p></div>
