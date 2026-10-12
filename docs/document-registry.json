@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "31fd30295f475c963c043f4402a6a486f8f2baa5b54b9e14ce3c71c4d25d8acb",
+      "sha256": "f65559b4c9bd2dc07349523c6f1c5282fab870bd1da70ba7ef13a49dc60786c3",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2094,7 +2094,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "hardening/inspections-brain-capture-freshness-20261012",
-    "commit": "e132d9abcb2c49baaaad4858bbd1badb05b37b29"
+    "commit": "4593c01fa9f7cdf49c4fd8c2fff2ab73eae8dedd"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
