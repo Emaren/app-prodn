@@ -24,6 +24,31 @@ relying on memory, vibes, or a manually maintained green dashboard.
 The route is /general-inspections. It is the last entry in the Kingdom dropdown, immediately
 after Speed.
 
+## Operator evidence triage (read-only)
+
+Use `./bin/aoe2war inspections` to fetch the existing no-store public
+`/api/general-inspections` evidence ledger and list each category's unearned
+weighted points, missing check ID, detail and timestamp. It does **not**
+rerun Doctor, perform a release, refresh the bridge, touch Cloudflare or write
+any inspection result. `--json` emits the normalized diagnostic.
+`--file SNAPSHOT.json` reads an already-saved public JSON response without
+network access for offline analysis.
+
+The CLI's HTTPS source is pinned to AoE2WAR. If the API is inaccessible, missing
+any of the seven categories, or returns invalid score fields, the command
+reports STOP rather than fabricating a healthy inspection.
+
+A certified `aoe2war doctor 100/100` is not a certificate that all seven
+weighted inspections are green. Their proof comes from separate authorities:
+newest sealed VPS activation, periodically published Mac Operator Bridge
+Kingdom Intelligence, mounted-vault recovery/retention evidence, and
+current-release cold-browser plus edge receipts. Bridge publication has its
+own freshness requirement; a live heartbeat does not establish a fresh
+Brain snapshot. A low Release & Runtime Integrity score after Finish should
+be diagnosed by the *actual* check-level source/build parity, Finish closure,
+and bridge evidence-age fields, not by weakening weights or pretending a
+stale historical receipt proves the current release.
+
 ## Inspection categories
 
 The first version has seven independent 100-point inspections:
