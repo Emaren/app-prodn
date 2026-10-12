@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "7424336d905c16e9b6a688b9b5431e4e18749a65745409c1a28bf81a6f67e8b9",
+      "sha256": "1e803f23b3cf8b030f3e9bb42ec8382347c9b99406aa264e7081be0ff6144ab9",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -940,7 +940,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-06",
       "sensitivity": "internal",
-      "sha256": "009106692854e44ee51529b1bacbdc3e83992a6912c447f29a6e6c8c57dbf6ec",
+      "sha256": "bf703e92c31b4cbb3721d174dd4d95f0181603d7fd9144f4fff01b6708ff0152",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "integration/inspection-speed-preload-20261012",
-    "commit": "3f4de499434d18e9e0d9a4163e00999da3bc757a"
+    "branch": "fix/brain-collection-singleflight-timeout-20261012",
+    "commit": "31de2f828001b33ebf68dbc78f757248b5829ab6"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
