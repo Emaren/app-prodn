@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import {
   ArrowUpRight, Banknote, Check, ChevronDown,
@@ -159,7 +160,7 @@ export default function KingdomTreasury() {
             <div className="kt-gear-outer" aria-hidden/>
             <div className="kt-gear-inner" aria-hidden/>
             <div className="kt-vault-core">
-              <img src="/legacy/wolo-logo-transparent.png" alt="WOLO" className="h-[90px] w-[90px] object-contain opacity-95 drop-shadow-[0_0_24px_rgba(223,172,55,.25)]" />
+              <Image src="/legacy/wolo-logo-transparent.png" width={90} height={90} alt="WOLO" className="h-[90px] w-[90px] object-contain opacity-95 drop-shadow-[0_0_24px_rgba(223,172,55,.25)]" />
               <div className="kt-label mt-3 text-[#d4c6a9]">TREASURY ON CHAIN</div>
               <div className="font-mono text-3xl font-semibold text-[#f4e8bd]">{holders.data ? amount(holders.data.count) : "—"}</div>
               <div className="kt-label text-[#89988e]">CURRENT HOLDERS</div>
