@@ -74,6 +74,7 @@ class CouncilOwnedSubprocessTests(unittest.TestCase):
             value = council.command_json("doctor", "--json", timeout=9)
         self.assertEqual(value["status"], "HEALTHY")
         self.assertEqual(popen.call_args.kwargs["start_new_session"], True)
+        self.assertEqual(popen.call_args.args[0][1:], ["doctor", "--json", "--monitor"])
         self.assertEqual(popen.call_args.kwargs["stdout"], subprocess.PIPE)
         child.communicate.assert_called_once_with(timeout=9)
 
