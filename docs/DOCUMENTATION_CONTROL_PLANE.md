@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/wolochain-directory-treasury-privacy-20261012` at `dd52df8fbe173e83eedcaded3ee1b2496ee83704`
+Implementation baseline: `fix/speedos-fallback-pop-proof-20261012` at `0a76328bd8092ded44c42c30c687b54fba979b15`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
