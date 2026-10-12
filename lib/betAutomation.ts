@@ -331,6 +331,7 @@ export type BetAutoShadowAdmission =
       eligible: false;
       reason:
         | "preset_disabled"
+        | "auto_stake_cap_exceeded"
         | "preset_not_self_only"
         | "finite_plan_exhausted"
         | "owner_uid_missing"
@@ -369,6 +370,17 @@ export function evaluateBetAutoShadowAdmission(input: {
   }
   if (!input.preset.selfOnly) {
     return { eligible: false, reason: "preset_not_self_only" };
+  }
+  const { winnerStakeWolo, desyncSide, desyncStakeWolo } = input.preset;
+  if (
+    !Number.isSafeInteger(winnerStakeWolo) || winnerStakeWolo < 1 ||
+    !Number.isSafeInteger(desyncStakeWolo) || desyncStakeWolo < 0 ||
+    (desyncSide === "none" && desyncStakeWolo !== 0) ||
+    (desyncSide !== "none" && desyncStakeWolo < 1) ||
+    winnerStakeWolo + desyncStakeWolo > BET_AUTOMATION_MAX_PER_GAME_WOLO
+  ) {
+    // Legacy stored presets cannot bypass the newly tightened user-facing limit.
+    return { eligible: false, reason: "auto_stake_cap_exceeded" };
   }
   if (
     !input.preset.untilOut &&
