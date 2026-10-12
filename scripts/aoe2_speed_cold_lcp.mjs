@@ -102,10 +102,18 @@ const INIT_SCRIPT = String.raw`(() => {
       return;
     }
     const layer = node.closest?.("[data-featured-warrior-image-buffer]");
+    // Classes distinguish the rendered Extreme versus Advanced image paths,
+    // without retaining personalized text, names or HTML.
+    const classes = String(node.getAttribute?.("class") || node.className || "");
+    const imageVariant = classes.includes("object-center")
+      ? "extreme"
+      : classes.includes("object-top") ? "advanced" : "unknown";
     state.featuredImageEvents.push({
       phase, atMs: performance.now(), url, nodeId,
       connected: typeof node.isConnected === "boolean" ? node.isConnected : null,
       bufferLayer: layer?.getAttribute?.("data-featured-warrior-image-buffer") ?? null,
+      imageVariant,
+      documentReadyState: String(document.readyState || "unknown"),
       complete: Boolean(node.complete),
       naturalWidth: Number(node.naturalWidth || 0),
       decoding: String(node.decoding || ""),
@@ -458,6 +466,25 @@ async function runOne(index) {
     await sleep(postLoadMs);
     const metrics = await evaluateValue(command, SNAPSHOT_EXPR);
     const routeEvents = events.slice(startIndex);
+    // Only retain a bounded classification and count of React hydration
+    // diagnostics. Never persist arbitrary console text, exception objects,
+    // input data, cookies, user messages or source maps.
+    const hydrationSignalPattern =
+      /hydration|hydrating|server.rendered.html|react(?:\\.dev)?\\/errors\\/(?:418|423|425)|minified.react.error.?#(?:418|423|425)/i;
+    const hydrationSignals = routeEvents.filter((event) => {
+      if (event.method === "Runtime.consoleAPICalled") {
+        return (event.params?.args || []).some((arg) =>
+          hydrationSignalPattern.test(String(arg.value || arg.description || "").slice(0, 2048))
+        );
+      }
+      if (event.method === "Runtime.exceptionThrown") {
+        const detail = event.params?.exceptionDetails || {};
+        return hydrationSignalPattern.test(
+          String(detail.exception?.description || detail.text || "").slice(0, 2048)
+        );
+      }
+      return false;
+    });
     const documentResponse = routeEvents
       .filter((e) => e.method === "Network.responseReceived" && e.params?.type === "Document")
       .map((e) => e.params?.response)
@@ -479,6 +506,11 @@ async function runOne(index) {
       documentFromDiskCache: Boolean(documentResponse?.fromDiskCache),
       documentFromServiceWorker: Boolean(documentResponse?.fromServiceWorker),
       documentTiming: documentResponse?.timing || null,
+      reactHydrationDiagnostic: {
+        detected: hydrationSignals.length > 0,
+        matchingEventCount: Math.min(hydrationSignals.length, 30),
+        countCapped: hydrationSignals.length > 30,
+      },
       metrics,
       failedResources: failed.slice(0, 20),
     };
