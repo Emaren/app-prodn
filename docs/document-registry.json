@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "f65559b4c9bd2dc07349523c6f1c5282fab870bd1da70ba7ef13a49dc60786c3",
+      "sha256": "002afb0bb02c814a2367380d23f492fab57f6a631baaa811dc817fe58bc5590f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -733,7 +733,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-06",
       "sensitivity": "internal",
-      "sha256": "b3a243371d207c73338eb6b4479ef25dfb6e7451f3e6d25f9ac002f99a4d52b1",
+      "sha256": "2fd4f9444b73b6462d1241e03ec838535725ab3862bbc2566a1c596ff25fabed",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -940,7 +940,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-06",
       "sensitivity": "internal",
-      "sha256": "92271db2dd296b54f8ca9879b43c982e3d72506b49365df02fc5530fe08fa03c",
+      "sha256": "557774ac5bffd74cfcda48479bf41410ebbd7b8c3d275821e4915931a334fe21",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2094,7 +2094,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "hardening/inspections-brain-capture-freshness-20261012",
-    "commit": "4593c01fa9f7cdf49c4fd8c2fff2ab73eae8dedd"
+    "commit": "3c25fc392f3578cb6bb94d19f0ba90ced5ee2c0c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
