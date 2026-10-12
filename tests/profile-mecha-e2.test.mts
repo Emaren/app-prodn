@@ -62,6 +62,7 @@ test("Mecha UI shows only server-owned preview status; not an on-chain wallet", 
   assert.match(card, /LOAD SATCHEL/);
   assert.match(card, /WOLO FROM YOUR WALLET/);
   assert.match(card, /LOAD FROM WALLET · COMING SOON/);
+  assert.doesNotMatch(card, /depositAmountValue <= 50_000/);
   assert.match(card, /disabled aria-disabled="true"/);
   assert.match(card, /escrow verification pending/);
   assert.match(card, /satchelVerifiedBalanceWolo: string \| null = null/);
