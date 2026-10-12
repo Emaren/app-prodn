@@ -1,0 +1,72 @@
+/* Kingdom Treasury · Black iron, aged gold and ledger-light instrumentation.
+   Animation is ambient. It never represents an actual payment. */
+.kt-shell{position:relative;isolation:isolate;min-height:100vh;overflow:hidden;color:#f2eadd;background:radial-gradient(ellipse 50% 20% at 78% 0%,rgba(153,103,49,.16),transparent),radial-gradient(ellipse 50% 23% at 0 22%,rgba(41,98,96,.14),transparent),#080c0e;font-feature-settings:"tnum";}
+.kt-background{position:absolute;inset:0;z-index:0;pointer-events:none;opacity:.29;background-image:linear-gradient(rgba(210,180,130,.065) 1px,transparent 1px),linear-gradient(90deg,rgba(210,180,130,.065) 1px,transparent 1px);background-size:46px 46px;mask-image:linear-gradient(black,transparent 94%);}
+.kt-hero,.kt-panel,.kt-value-tile{position:relative;overflow:hidden;border:1px solid rgba(205,167,117,.20);background:linear-gradient(145deg,rgba(26,29,30,.98),rgba(9,17,19,.96) 61%,rgba(16,21,21,.96));box-shadow:inset 0 1px rgba(249,224,172,.08),0 18px 65px rgba(0,0,0,.2);}
+.kt-hero{border-radius:30px;padding:clamp(24px,4vw,48px);background:radial-gradient(ellipse 44% 70% at 78% 49%,rgba(164,107,37,.21),transparent),linear-gradient(130deg,#1b1c1a,#0d1719 58%,#181711);}
+.kt-hero:before,.kt-panel:before{position:absolute;content:"";top:0;left:24px;right:24px;height:1px;background:linear-gradient(90deg,transparent,rgba(237,193,129,.50),transparent);}
+.kt-hero-sheen{position:absolute;inset:-30% auto -30% -30%;width:49%;transform:skewX(-17deg);background:linear-gradient(90deg,transparent,rgba(229,180,106,.03),transparent);animation:kt-sweep 19s ease-in-out infinite alternate;pointer-events:none;}
+.kt-display{font-family:Georgia,"Times New Roman",serif;color:#f7eddb;font-weight:700;text-shadow:0 3px 35px rgba(0,0,0,.35);}
+.kt-display span{color:#d7ae6f;text-shadow:0 1px rgba(255,225,158,.24),0 0 45px rgba(218,151,57,.15);}
+.kt-label,.kt-minilabel{font:650 10px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;letter-spacing:.16em;text-transform:uppercase;}
+.kt-minilabel{font-size:9px;letter-spacing:.09em;color:#9eada6;margin-top:5px;}
+.kt-plate{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border:1px solid rgba(207,163,100,.31);border-radius:7px;background:linear-gradient(135deg,rgba(152,110,54,.2),rgba(130,88,36,.05));color:#e8c892;font:650 10px ui-monospace,monospace;letter-spacing:.09em;}
+.kt-led{display:inline-block;flex:none;width:7px;height:7px;border-radius:50%;background:#81e4b8;box-shadow:0 0 0 4px rgba(105,239,162,.07),0 0 18px rgba(126,235,155,.56);animation:kt-pulse 3.3s ease-in-out infinite;}
+.kt-led-dim{background:#c3a579;box-shadow:0 0 0 3px rgba(211,180,130,.08);animation:none;}
+.kt-action{min-height:38px;display:inline-flex;align-items:center;gap:9px;border-radius:9px;background:linear-gradient(135deg,rgba(192,135,66,.34),rgba(146,93,42,.19));border:1px solid rgba(223,177,104,.45);padding:10px 15px;color:#f8dbb3;font-size:12px;font-weight:650;cursor:pointer;transition:transform .18s,border .18s;}
+.kt-action:hover:not(:disabled){transform:translateY(-1px);border-color:#dcb887;}
+.kt-action:disabled{opacity:.5;cursor:wait;}
+.kt-action-secondary{background:rgba(10,16,16,.4);color:#b1bdb9;border-color:rgba(209,210,203,.15);}
+.kt-vault-assembly{height:310px;width:min(100%,360px);margin:auto;position:relative;display:grid;place-items:center;}
+.kt-gear-outer{position:absolute;inset:0;border-radius:50%;border:1px solid rgba(224,181,103,.24);background:repeating-conic-gradient(from -90deg,rgba(203,158,90,.24) 0deg .5deg,transparent .5deg 7.5deg);mask-image:radial-gradient(transparent 63%,black 64%,black 72%,transparent 73%);animation:kt-rotate 85s linear infinite;}
+.kt-gear-inner{position:absolute;inset:17px;border-radius:50%;border:1px dashed rgba(211,181,137,.3);box-shadow:0 0 0 10px rgba(205,162,89,.025),inset 0 0 60px rgba(0,0,0,.7);animation:kt-reverse 70s linear infinite;}
+.kt-gear-inner:before{content:"";position:absolute;inset:-1px;border:2px solid transparent;border-top-color:rgba(243,199,131,.75);border-left-color:rgba(243,199,131,.18);border-radius:50%;}
+.kt-vault-core{width:65%;aspect-ratio:1;position:relative;border-radius:50%;display:flex;align-items:center;flex-direction:column;justify-content:center;background:radial-gradient(circle at 48% 40%,#31332a,#0c1516 70%);border:1px solid rgba(241,195,118,.3);box-shadow:inset 0 0 28px rgba(0,0,0,.5),0 0 45px rgba(218,152,58,.10);}
+.kt-value-tile{min-height:142px;border-radius:18px;padding:20px 19px;}
+.kt-value-tile:after{content:"";position:absolute;left:18px;right:18px;bottom:0;height:2px;background:linear-gradient(90deg,#bc9355,transparent);}
+.kt-value-tile:nth-child(2):after{background:linear-gradient(90deg,#649da6,transparent)}
+.kt-value-tile:nth-child(3):after{background:linear-gradient(90deg,#5bc2a8,transparent)}
+.kt-value-tile:nth-child(4):after{background:linear-gradient(90deg,#d69b94,transparent)}
+.kt-big-number{margin-top:14px;display:block;font:650 clamp(25px,3.1vw,39px)/1.15 ui-monospace,SFMono-Regular,monospace;letter-spacing:-.065em;overflow-wrap:anywhere;}
+.kt-number-gold{color:#f1d39a}.kt-number-blue{color:#a9d2d8}.kt-number-mint{color:#b1e3cc}.kt-number-rose{color:#e7b1a7}
+.kt-panel{border-radius:23px;}
+.kt-eyelet{display:grid;place-items:center;border:1px solid rgba(211,163,93,.29);border-radius:7px;color:#e6c08a;background:rgba(183,130,65,.14);font:650 10px ui-monospace,monospace;width:29px;height:29px;}
+.kt-primary-tile,.kt-holder-plate,.kt-operating{position:relative;overflow:hidden;padding:25px;border:1px solid rgba(213,181,120,.19);border-radius:16px;background:radial-gradient(circle at 100% 0%,rgba(184,139,77,.13),transparent 55%),linear-gradient(130deg,rgba(26,34,32,.93),rgba(8,15,18,.97));}
+.kt-major-stat{display:block;margin-top:12px;font:650 clamp(31px,4.5vw,55px)/1.1 ui-monospace,monospace;letter-spacing:-.08em;color:#e9d2a4;overflow-wrap:anywhere;}
+.kt-bar-live{background:linear-gradient(90deg,#6e5940,#e2b46b);box-shadow:0 0 14px rgba(239,170,60,.2);}
+.kt-inset{min-width:0;padding:18px 16px;border-radius:13px;background:rgba(0,0,0,.19);border:1px solid rgba(214,193,157,.12);}
+.kt-inset span{display:block;margin-top:6px;font-size:11px;line-height:1.5;color:#97a39f;}
+.kt-inset p{line-height:1.5}
+.kt-small-stat{margin-top:16px;font:650 clamp(21px,2.6vw,33px) ui-monospace,monospace;letter-spacing:-.05em;color:#e8e3d7;}
+.kt-expand{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 16px;border-radius:10px;border:1px solid rgba(208,170,108,.19);color:#d9b883;background:rgba(169,119,57,.07);font-size:12px;font-weight:650;cursor:pointer;transition:background .2s;}
+.kt-expand:hover{background:rgba(169,119,57,.15);}
+.kt-expand>span{display:inline-flex;align-items:center;gap:9px;}
+.kt-account{padding:13px 15px;border-radius:11px;border:1px solid rgba(204,191,172,.11);background:rgba(255,255,255,.025);transition:border-color .18s;}
+.kt-account:hover{border-color:rgba(233,188,125,.28);}
+.kt-scroll{scrollbar-width:thin;scrollbar-color:#745d45 transparent;overscroll-behavior:contain;}
+.kt-search{display:flex;align-items:center;gap:11px;padding:12px 14px;border-radius:9px;border:1px solid rgba(221,179,119,.2);background:rgba(0,0,0,.25);color:#acb2b1;}
+.kt-search:focus-within{border-color:rgba(240,186,109,.65)}
+.kt-search input{flex:1;min-width:0;background:transparent;outline:none;font-size:12px;color:#eee;}
+.kt-search input::placeholder{color:#778687;}
+.kt-liquidity-chamber{position:relative;overflow:hidden;border-radius:16px;border:1px solid rgba(95,180,167,.27);background:radial-gradient(circle at 93% 24%,rgba(55,168,153,.16),transparent 58%),linear-gradient(135deg,#102629,#101517);padding:25px;}
+.kt-liquid-orbit{position:absolute;width:250px;height:250px;right:-105px;top:-100px;border:1px dashed rgba(106,229,209,.2);border-radius:50%;box-shadow:0 0 0 30px rgba(64,164,147,.025),0 0 0 70px rgba(64,164,147,.024);animation:kt-rotate 60s linear infinite;}
+.kt-liquid-slot{padding:16px;border:1px solid rgba(92,175,168,.18);border-radius:10px;background:rgba(0,0,0,.24);min-width:0;}
+.kt-liquid-slot span{display:block;color:#93aaad;font-size:11px;}
+.kt-liquid-slot strong{display:block;margin-top:8px;font:650 clamp(16px,2.6vw,26px) ui-monospace,monospace;letter-spacing:-.045em;color:#bde1d8;overflow-wrap:anywhere;}
+.kt-inline-link{display:inline-flex;align-items:center;gap:6px;color:#e1c38d;font-size:11px;font-weight:650;cursor:pointer;}
+.kt-inline-link:hover{color:#fff;}
+.kt-operating{border-color:rgba(218,146,132,.2);background:radial-gradient(circle at 100% 0%,rgba(192,79,65,.1),transparent),linear-gradient(135deg,#211c1d,#10171a);}
+.kt-cost-stack{height:14px;border-radius:3px;background:linear-gradient(135deg,#815f54,#d59b8b);position:relative;}
+.kt-cost-stack:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.18),transparent);animation:kt-glint 9s linear infinite;background-size:150px 100%;}
+.kt-holder-plate{background:radial-gradient(circle at 100% 0%,rgba(194,150,71,.14),transparent 55%),linear-gradient(135deg,#242015,#111b1b);}
+.kt-stat-mini{font:650 23px ui-monospace,monospace;color:#dfc294;letter-spacing:-.06em;}
+.kt-transfer{padding:14px;border-radius:11px;border:1px solid rgba(216,178,124,.12);background:linear-gradient(135deg,rgba(56,47,35,.31),rgba(20,29,30,.36));}
+.kt-transfer-glyph{display:grid;place-items:center;width:28px;height:28px;flex:none;border:1px solid rgba(229,186,110,.24);border-radius:50%;color:#e6be8f;background:rgba(193,141,69,.09);}
+.kt-tip{display:inline-flex;color:#879c9b;cursor:help;}
+@keyframes kt-rotate{to{transform:rotate(360deg)}}
+@keyframes kt-reverse{to{transform:rotate(-360deg)}}
+@keyframes kt-sweep{from{transform:translateX(-5%) skewX(-17deg)}to{transform:translateX(230%) skewX(-17deg)}}
+@keyframes kt-pulse{0%,100%{opacity:.67;box-shadow:0 0 0 3px rgba(105,239,162,.06)}50%{opacity:1;box-shadow:0 0 0 7px rgba(105,239,162,.05),0 0 20px rgba(126,235,155,.4)}}
+@keyframes kt-glint{to{background-position:250px 0}}
+@media(max-width:520px){.kt-hero{border-radius:19px}.kt-panel{border-radius:17px}.kt-vault-assembly{height:265px;max-width:300px}.kt-inset{padding:13px}.kt-primary-tile{padding:19px}.kt-liquidity-chamber{padding:18px}}
+@media(prefers-reduced-motion:reduce){.kt-gear-outer,.kt-gear-inner,.kt-hero-sheen,.kt-led,.kt-liquid-orbit,.kt-cost-stack:after{animation:none!important}.kt-action,.kt-expand,.kt-account{transition:none}}
