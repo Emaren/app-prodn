@@ -24,6 +24,44 @@ relying on memory, vibes, or a manually maintained green dashboard.
 The route is /general-inspections. It is the last entry in the Kingdom dropdown, immediately
 after Speed.
 
+## Operator evidence triage (read-only)
+
+Use `./bin/aoe2war inspections` to fetch the existing no-store public
+`/api/general-inspections` evidence ledger and list each category's unearned
+weighted points, missing check ID, detail and timestamp. It does **not**
+rerun Doctor, perform a release, refresh the bridge, touch Cloudflare or write
+any inspection result. `--json` emits the normalized diagnostic.
+`--file SNAPSHOT.json` reads an already-saved public JSON response without
+network access for offline analysis.
+
+The CLI's HTTPS source is pinned to AoE2WAR. If the API is inaccessible, missing
+any of the seven categories, or returns invalid score fields, the command
+reports STOP rather than fabricating a healthy inspection. In particular,
+a Python HTTP 403 may come from an upstream browser-access policy. Do not
+weaken Cloudflare or production authentication to make the CLI green.
+From an authorized Chrome session on `/general-inspections`, read its
+same-origin public API, save the returned JSON as a file and use
+`./bin/aoe2war inspections --file /path/to/general-inspections.json`.
+The saved file is evidence, not a new score or a substitute for freshness.
+
+After this inspection UI is deployed, its **Copy current inspection evidence**
+control is the preferred path: it copies the already-loaded public snapshot's
+scores, missing checks, receipt times and notes to the clipboard **without any
+additional HTTP request**. The operation is read-only; it neither triggers
+Doctor nor publishes new evidence. If browser clipboard access is unavailable,
+the page retains its normal per-check inspection details.
+
+A certified `aoe2war doctor 100/100` is not a certificate that all seven
+weighted inspections are green. Their proof comes from separate authorities:
+newest sealed VPS activation, periodically published Mac Operator Bridge
+Kingdom Intelligence, mounted-vault recovery/retention evidence, and
+current-release cold-browser plus edge receipts. Bridge publication has its
+own freshness requirement; a live heartbeat does not establish a fresh
+Brain snapshot. A low Release & Runtime Integrity score after Finish should
+be diagnosed by the *actual* check-level source/build parity, Finish closure,
+and bridge evidence-age fields, not by weakening weights or pretending a
+stale historical receipt proves the current release.
+
 ## Inspection categories
 
 The first version has seven independent 100-point inspections:
