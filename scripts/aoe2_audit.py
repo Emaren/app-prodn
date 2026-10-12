@@ -549,10 +549,10 @@ def certified_central_quality_proof(
     return None
 
 
-def check_central_quality_gates(audit: Audit) -> None:
+def check_central_quality_gates(audit: Audit, monitor: bool = False) -> None:
     if not DOCS.is_dir():
         return
-    if os.getenv("AOE2WAR_KI_CENTRAL_PROOF_REUSE") == "1":
+    if monitor:
         proof = certified_central_quality_proof()
         if proof is not None:
             audit.info["central_quality_gates"] = proof["results"]
@@ -1059,7 +1059,7 @@ def source_repository_check() -> tuple[Audit, dict[str, dict[str, Any]]]:
     return local, snapshots
 
 
-def collect_audit() -> Audit:
+def collect_audit(*, monitor: bool = False) -> Audit:
     # Audit domains are read-only and largely independent. Keep each worker's
     # mutable Audit private, then merge results in the historical serial order
     # so receipts and human diffs remain deterministic. Central repository
@@ -1069,7 +1069,7 @@ def collect_audit() -> Audit:
         source_future = pool.submit(source_repository_check)
         docs_future = pool.submit(run_audit_check, check_source_documentation)
         taxonomy_future = pool.submit(run_audit_check, check_taxonomy)
-        quality_future = pool.submit(run_audit_check, check_central_quality_gates)
+        quality_future = pool.submit(run_audit_check, check_central_quality_gates, monitor)
         maps_future = pool.submit(run_audit_check, check_maps)
         context_future = pool.submit(run_audit_check, check_context_archives)
         production_future = pool.submit(run_audit_check, check_production)
@@ -1153,9 +1153,14 @@ def main() -> int:
         ),
     )
     parser.add_argument("--json", action="store_true")
+    parser.add_argument(
+        "--monitor",
+        action="store_true",
+        help="routine monitoring may reuse a complete certified exact-source docs quality proof",
+    )
     args = parser.parse_args()
 
-    audit = collect_audit()
+    audit = collect_audit(monitor=args.monitor)
 
     if args.json:
         print(json.dumps(audit.payload(), indent=2, sort_keys=True))
