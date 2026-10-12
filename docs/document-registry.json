@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "1e803f23b3cf8b030f3e9bb42ec8382347c9b99406aa264e7081be0ff6144ab9",
+      "sha256": "063ea25dddbefa878023a77042118114b5df466af9190d82029a1cee8ef68a86",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -940,7 +940,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-06",
       "sensitivity": "internal",
-      "sha256": "bf703e92c31b4cbb3721d174dd4d95f0181603d7fd9144f4fff01b6708ff0152",
+      "sha256": "cdde40062abe1187c7db13efcda58f91a3b3de2ee32de9d7cea7516a06c44f46",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2094,7 +2094,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/brain-collection-singleflight-timeout-20261012",
-    "commit": "31de2f828001b33ebf68dbc78f757248b5829ab6"
+    "commit": "df1c6b2c69ed6a4fefaf0ecc4b3a3cf712a37b08"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
