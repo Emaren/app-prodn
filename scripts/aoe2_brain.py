@@ -263,9 +263,24 @@ def latest_cold_lcp(now: datetime) -> dict[str, Any]:
         payload = read_json_object(path)
         if not payload or payload.get("kind") != "aoe2war-cold-process-lcp":
             continue
+
+        # The public inspection's p50/p95 authority is a certified 20-launch
+        # cold-phone cohort, not an arbitrary 1/5/10-launch diagnostic probe.
+        # A later short diagnostic must not replace the last qualifying proof.
+        if payload.get("viewport", "phone" if path.parent.name.endswith("-phone") else None) != "phone":
+            continue
+        if type(payload.get("samples")) is not int or payload["samples"] < 20:
+            continue
         summary = payload.get("summary") or {}
         if not isinstance(summary, dict):
-            summary = {}
+            continue
+        if any(
+            not isinstance(summary.get(metric), dict)
+            or type(summary[metric].get("count")) is not int
+            or summary[metric]["count"] < 20
+            for metric in ("lcpMs", "readyMs", "documentTtfbMs")
+        ):
+            continue
         targets = summary.get("lcpTargets") or []
         top_target_count = 0
         if isinstance(targets, list):
