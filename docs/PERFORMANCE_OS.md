@@ -122,7 +122,13 @@ fallback, so cohort pass rates remain comparable across routes and releases.
 reusing one Chrome process or profile between samples. Every observation launches a
 new headless Chrome process with a fresh profile, installs LCP/long-task/layout-shift
 observers before navigation, disables the browser cache, and records navigation
-phases plus the slowest early resources. This makes cold DNS/TLS/session and
+phases plus the 40 longest-duration early resources. Independently, each sample
+captures `metrics.lcpResourceTiming` for the **exact final LCP URL** from the
+complete retained Performance Resource Timing buffer, with
+`metrics.lcpResourceMatchCount`. This LCP resource is never excluded merely
+because it is not among the 40 longest durations. The record remains `null`
+when no exact timing entry is retained by Chrome; neither zero nor a similarly
+named asset is substituted. This makes cold DNS/TLS/session and
 high-priority-image competition visible instead of hiding it behind a warmed browser.
 
 The command is bound to the currently certified production SHA/build and seals its
