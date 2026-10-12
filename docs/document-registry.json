@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "860e379ff1adf00e1e71e864a8e297c0d5c91a4f3f478e7d6b8af0e67516acec",
+      "sha256": "6dc6984b09dbe27ddd0c74bc5e580657b5edfc29a8d91cdc17aa6fbf0ec3185f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -940,7 +940,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-06",
       "sensitivity": "internal",
-      "sha256": "92271db2dd296b54f8ca9879b43c982e3d72506b49365df02fc5530fe08fa03c",
+      "sha256": "d3a873692828e3a85e6da3375e63b6d23e47f6a9201bbf9f7e9e0b944ade331e",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "integration/brain-reliability-lcp-lifecycle-20261012",
-    "commit": "8668f7f30dc91149962448b2028cab9dc7ffb88e"
+    "branch": "hardening/estate-readonly-git-index-20261012",
+    "commit": "0fc2d3dfc6721a2841e31106f16ca8d56391ad10"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
