@@ -150,11 +150,13 @@ class MonitoringProofIsolationTests(unittest.TestCase):
             "results": {"docs-check": {"rc": 0}, "audit-taxonomy": {"rc": 0}, "strict-build": {"rc": 0}},
             "authority": {"mode": "source-bound-certified-finish-reuse"},
         }
-        with (
-            patch.dict("os.environ", {"AOE2WAR_KI_CENTRAL_PROOF_REUSE": "1"}),
-            patch.object(audit, "certified_central_quality_proof", return_value=proof),
-        ):
-            audit.check_central_quality_gates(instance)
+        with tempfile.TemporaryDirectory() as root:
+            with (
+                patch.dict("os.environ", {"AOE2WAR_KI_CENTRAL_PROOF_REUSE": "1"}),
+                patch.object(audit, "DOCS", pathlib.Path(root)),
+                patch.object(audit, "certified_central_quality_proof", return_value=proof),
+            ):
+                audit.check_central_quality_gates(instance)
         self.assertEqual(instance.info["central_quality_gates"], proof["results"])
         self.assertEqual(instance.info["central_quality_proof"], proof["authority"])
 
