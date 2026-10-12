@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/brain-collection-singleflight-timeout-20261012` at `6cedf2f39024cbba478eddbdfebf9690365fbd6b`
+Implementation baseline: `integration/brain-reliability-lcp-lifecycle-20261012` at `4f8df9432c20218820bbf5c9cd0f2be2c4712719`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
