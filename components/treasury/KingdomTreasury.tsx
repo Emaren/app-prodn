@@ -3,7 +3,7 @@
 import Link from "next/link";
 import {
   ArrowUpRight, Banknote, Check, ChevronDown,
-  ChevronRight, CircleHelp, Coins, Crown, ExternalLink, Landmark,
+  ChevronRight, Coins, Crown, ExternalLink, Landmark,
   Layers3, LockKeyhole, Radar, RefreshCw, Search, ShieldCheck,
   ShieldAlert, Wallet, Waves, Zap,
 } from "lucide-react";
@@ -49,9 +49,6 @@ function Value({ label, value, sub, accent = "gold" }: {
     <div className={`kt-big-number kt-number-${accent}`}>{value}</div>
     <div className="mt-2 text-[11px] leading-5 text-[#8d9a9b]">{sub}</div>
   </div>;
-}
-function TinyInfo({ tip }: { tip: string }) {
-  return <span className="kt-tip" title={tip} tabIndex={0} aria-label={tip}><CircleHelp size={13} /></span>;
 }
 
 export default function KingdomTreasury() {
@@ -121,7 +118,6 @@ export default function KingdomTreasury() {
     (a.label + " " + a.role + " " + a.address).toLowerCase().includes(walletQuery.toLowerCase()));
   const reportedOutlay = reportedMonthlyOutlay();
   const reserveBalance = disclosedKingdomReserveBalance(accounts);
-  const knownBalanceCount = accounts.filter((a) => a.publicBalance !== null).length;
   const selected = accounts.find((a) => a.address === selectedAccount);
   const errors = [holders, network, pool, transfers].filter((s) => s.error).length;
   const liveCount = [holders, network, pool, transfers].filter((s) => s.data).length;
