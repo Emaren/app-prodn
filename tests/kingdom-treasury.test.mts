@@ -162,7 +162,7 @@ test("public site wiring preserves source and performance boundaries", () => {
   assert.match(client,/Personal balance hidden/);
   assert.match(css,/prefers-reduced-motion:reduce/);
   assert.match(shell,/href: "\/kingdom-treasury", label: "Kingdom Treasury"/);
-  assert.match(wolo,/current holders on the Wolo Chain network/);
+  assert.match(wolo,/current holders on the WoloChain network/);
   assert.match(index,/^\/kingdom-treasury$/m);
   for (const name of KINGDOM_RESERVE_LABELS) {
     assert.ok(kingdom.includes(`"${name}"`), `reserve name ${name} must stay canonical`);
