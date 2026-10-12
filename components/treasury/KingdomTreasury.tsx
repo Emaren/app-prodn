@@ -107,7 +107,10 @@ export default function KingdomTreasury() {
     return () => { window.clearInterval(timer); document.removeEventListener("visibilitychange", onVisibility); };
   }, [refresh]);
 
-  const ready = Boolean(holders.data && network.data && pool.data && transfers.data);
+  // The dashboard stays useful when one independent upstream is down.
+  // Require one observed source (or four explicit failures), not all four.
+  const ready = Boolean(holders.data || network.data || pool.data || transfers.data) ||
+    [holders, network, pool, transfers].every((source) => source.error);
   const accounts = useMemo(() =>
     network.data && holders.data ? publicSystemAccounts(network.data, holders.data) : [],
     [network.data, holders.data]);
