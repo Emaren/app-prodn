@@ -179,6 +179,24 @@ cookies or full DOM. The local Mac collector can observe the certified
 production site before any server deployment of these diagnostic changes.
 Do not change image markup until this identity proof narrows the culprit.
 
+Follow-up: October 12 proof on the current production SHA recorded **two distinct
+IMG nodes with the same exact URL and buffer layer 0 in all ten launches**.
+The initial node eventually disconnected; the final LCP node arrived later,
+up to 2,012 ms after navigation. Some earlier remove callbacks were reported
+with `connected=true`, consistent with DOM moves rather than independent
+unmounts. This proves node replacement occurred, not what caused it.
+
+For the next bounded local diagnosis, each image event also records an
+image variant based on non-personal CSS classes (`advanced`, `extreme`
+or `unknown`), plus the document loading phase. The CDP Runtime stream
+reports only a bounded count and boolean of React hydration/error-code
+indicators, **never raw browser console content**. A positive hydration
+indicator may identify a plausible cause; its absence does not exclude an
+SSR/streaming transition. Together these observations distinguish a
+component-mode switch from a same-variant replacement without adding a
+frontend instrument, changing the image buffer, or deploying the site.
+
+
 The command is bound to the currently certified production SHA/build and seals its
 receipt under `.aoe2war-release/performance-cold-lcp/`. It is diagnostic-only:
 `productionMutated`, `databaseMutated`, and `woloMutated` are all false. Use
