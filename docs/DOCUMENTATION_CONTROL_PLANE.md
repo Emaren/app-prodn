@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/treasury-release-gate-unused-selected-20261012` at `68002e9d6e81044f9ba7c4c1adff757394201b43`
+Implementation baseline: `feat/treasury-faucet-public-cleanup-roster-20261012` at `b13ad4e4c04885cc91cf2c247d9a2d396ac557c0`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
