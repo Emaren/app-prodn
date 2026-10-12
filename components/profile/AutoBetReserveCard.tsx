@@ -26,6 +26,7 @@ type AutomationPayload = {
   };
   limits: {
     maxEstimatedReserveWolo: number;
+    maxPerGameWolo: number;
     maxGames: number;
     selfOnly: true;
   };
@@ -175,7 +176,8 @@ export default function AutoBetReserveCard() {
   const estimatedPlanWolo = untilOut
     ? maxReserveWolo
     : perGameWolo * (Number.isFinite(gamesRemaining) ? gamesRemaining : 0);
-  const planOverLimit = estimatedPlanWolo > maxReserveWolo;
+  const maxPerGameWolo = payload?.limits.maxPerGameWolo ?? 1_000;
+  const planOverLimit = estimatedPlanWolo > maxReserveWolo || perGameWolo > maxPerGameWolo;
 
   const planSummary = useMemo(() => {
     const winner = `${Number.isFinite(winnerStakeWolo) ? winnerStakeWolo : "—"} WOLO on your team`;
@@ -243,6 +245,28 @@ export default function AutoBetReserveCard() {
       winnerStakeDraft,
     ]
   );
+
+  const pause = useCallback(async () => {
+    if (!payload || saving) return;
+    setSaving(true);
+    setError("");
+    setNotice("");
+    try {
+      const response = await fetch("/api/user/bet-automation", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "pause", expectedVersion: payload.preset.version }),
+      });
+      const next = (await response.json().catch(() => null)) as (AutomationPayload & { detail?: string }) | null;
+      if (!response.ok || !next?.preset) throw new Error(next?.detail || "Pause rejected.");
+      applyPayload(next);
+      setNotice("Preview plan paused.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Pause rejected.");
+    } finally {
+      setSaving(false);
+    }
+  }, [payload, saving, applyPayload]);
 
   const chooseDesync = (next: DesyncSide) => {
     setDesyncSide(next);
@@ -442,8 +466,8 @@ export default function AutoBetReserveCard() {
               </button>
               <button
                 type="button"
-                onClick={() => void save(!enabled)}
-                disabled={saving || planOverLimit}
+                onClick={() => { if (enabled) void pause(); else void save(true); }}
+                disabled={saving || (!enabled && planOverLimit)}
                 className="inline-flex items-center gap-2 rounded-full border border-white/14 bg-white/[0.04] px-5 py-3 text-sm font-bold text-white transition hover:border-white/28 hover:bg-white/[0.07] disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {enabled ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
