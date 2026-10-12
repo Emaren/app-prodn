@@ -50,4 +50,10 @@ test("Mecha UI shows only server-owned preview status; not an on-chain wallet", 
   assert.match(card, /if \(armed\) void pause\(\)/);
   assert.match(card, /action: "pause"/);
   assert.match(card, /\/api\/user\/bet-automation/);
+  const legacy = readFileSync(new URL("../components/profile/AutoBetReserveCard.tsx", import.meta.url), "utf8");
+  assert.match(legacy, /maxPerGameWolo/);
+  assert.match(legacy, /if \(enabled\) void pause\(\)/);
+  const route = readFileSync(new URL("../app/api/user/bet-automation/route.ts", import.meta.url), "utf8");
+  assert.match(route, /pauseOnly = body\?\.action === "pause"/);
+  assert.match(route, /enabled: false, pausedReason: "user_paused"/);
 });
