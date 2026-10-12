@@ -98,6 +98,8 @@ test("new public route, navigation and presentation are read-only and honest", (
   assert.match(client, /Evidence checkpoints/);
   assert.match(client, /Not a win probability/);
   assert.match(client, /PRIVATE CODEX WORKTREE NOT CONNECTED/);
+  assert.match(client, /SEALED OCT 12 CHECKPOINT · NOT LIVE CODEX/);
+  assert.match(client, /0 new winners/);
   assert.match(client, /aria-expanded/);
   assert.match(css, /prefers-reduced-motion:reduce/);
   assert.match(nav, /href: "\/hd-replay-engine", label: "HD Replay Engine"/);
