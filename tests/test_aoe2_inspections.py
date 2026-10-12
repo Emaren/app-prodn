@@ -5,6 +5,8 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 import unittest
+from unittest.mock import patch
+from urllib.error import HTTPError
 
 FILE = Path(__file__).resolve().parents[1] / "scripts" / "aoe2_inspections.py"
 SPEC = importlib.util.spec_from_file_location("aoe2_inspections", FILE)
@@ -87,6 +89,15 @@ class GeneralInspectionsTriageTests(unittest.TestCase):
     def test_remote_authority_is_pinned_to_public_endpoint(self):
         with self.assertRaises(MODULE.InspectionError):
             MODULE.fetch_public("https://evil.example/metadata")
+
+    def test_upstream_403_is_explained_without_fabricating_scores(self):
+        rejected = HTTPError(MODULE.DEFAULT_URL, 403, "Forbidden", {}, None)
+        with patch.object(MODULE.urllib.request, "urlopen", side_effect=rejected):
+            with self.assertRaises(MODULE.InspectionError) as error:
+                MODULE.fetch_public()
+        self.assertIn("HTTP 403", str(error.exception))
+        self.assertIn("--file", str(error.exception))
+        self.assertIn("No score JSON was received", str(error.exception))
 
 
 if __name__ == "__main__":
