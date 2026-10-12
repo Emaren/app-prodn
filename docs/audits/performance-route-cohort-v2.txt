@@ -33,6 +33,7 @@
 /general-inspections
 /kingdom
 /kingdom-intelligence
+/kingdom-treasury
 /kingdom-forge
 /leaderboard
 /leagues

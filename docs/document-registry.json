@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9043297b5dedc1a882e8b9ec88180fc38e90ef82f0839ca7fc6f7579825be86a",
+      "sha256": "acee0b5857a4856bcf1b5e199a334e0af33574d4be64b92cbae90506995637a6",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -917,7 +917,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-06",
       "sensitivity": "internal",
-      "sha256": "ff3feb20a53617b4cfc5db028dfa4af8f27b6ec4b0ee0a91a61e2da12a816d84",
+      "sha256": "6ff1bd5687ea33b05d165e53595b46c1f3ecf64b5a8adc0cdecac90621b74a0a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/hd-replay-engine-20261012",
-    "commit": "774c80ed0bdbbc1a7b5db3f2431ecc3685038742"
+    "branch": "feat/kingdom-treasury-20261012",
+    "commit": "59aa21a729d032742cf5fc9b9dc2937d6958bb83"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

@@ -44,6 +44,87 @@ These values are source-derived presentation facts. They do not redefine
 WoloChain ownership or make custody balances spendable merely because they are
 presented in the Kingdom ledger.
 
+## Kingdom Treasury — public read-only financial instrument
+
+The `/kingdom-treasury` page is a public, read-only instrument panel. The
+Kingdom dropdown places it beside Kingdom Intelligence. It is not a bank
+ledger, a fund transfer interface, an authorized audit, a payout trigger,
+or a self-reported profitability statement.
+
+### Three independent monetary rails
+
+1. **WoloChain ledger (WOLO, not dollars).** The public
+   `/api/wolo/holders` view is the authority for the **current funded holder
+   census**, including eligible active-stake addresses. It never includes a
+   historical zero-balance address merely to satisfy a claimed target count.
+   Registered system and module accounts are displayed separately from
+   `/api/wolo/network`; those registry rows do **not** inflate the
+   current-holder count. Public non-user network-account bank balances may
+   be displayed, but player balance amounts remain hidden under the existing
+   `protocol_system_only` holder privacy policy. No newly invented
+   balance-disclosure rule.
+2. **Osmosis liquidity (USDC-derived USD estimate).** The source is
+   `/api/wolo/osmosis-pulse` for the configured WOLO/USDC pool. It shows
+   source pool ID, timestamp, reserves and reported `liquidityUsd`.
+   The pool estimate equals twice the USDC reserve as defined by the existing
+   feed; this is *not* audited treasury NAV, realized market revenue, or
+   additive spendable cash in the community reserve. A failed pool request
+   displays unavailable rather than $0 or a manually estimated $44.
+3. **Founder-reported operating expenses (unconfirmed $ currency).** Oct 12
+   estimates: ChatGPT $24.99/month, Hetzner VPS $31.95/month and
+   Microsoft/Azure signing $14.95/month; baseline $71.89 per month.
+   Apple developer program $99 is planned/unpaid with cadence unconfirmed,
+   excluded from the monthly subtotal. Neither CAD/USD currency nor any
+   invoice/payment timestamp is verified. Without verified revenue, actual
+   net profit or loss is **unavailable**; `$71.89` is only the
+   reported monthly break-even floor before other expenses.
+
+The headline **unencumbered Kingdom Wealth** reserves only the eight
+community accounts from `lib/kingdomSummary.ts`. Other registered module,
+staking, bet escrow, founder, and player accounts cannot silently augment
+spendable community wealth. Balance reporting is non-authoritative for
+settlements; this is only a visual projection.
+
+### Transaction flow / payout classification
+
+The page reads the existing public `/api/wolo/mainnet-transfers?limit=25`
+index, which supplies a *bounded sample of 25 indexed successful MsgSend
+rows*, not a complete financial history. A transfer is displayed in the
+kingdom-origin stream only if its sender is an eligible network system account.
+A bank-send event is **not** automatically claimed to be a champion bounty,
+founder bonus, marketplace purchase, or bet payout. Such payment categories
+remain explicitly awaiting dedicated purpose-bound settlement receipts.
+The page sends no transaction, touches no betting or escrow state and uses no
+admin operator API from public clients.
+
+### Faucet raid and wallet provenance
+
+August 18, 2026 security evidence: 653 successful faucet claims at 2 WOLO
+each (1,306 WOLO gross); 647 recipient wallets moved funds onward; 644
+converged on a common destination. These are **incident-level facts**,
+not a claim that arbitrary current unclassified holders are incident wallets.
+Do not assign an attacker identity to any particular address without a
+sealed address-level incident membership proof. The canonical
+`WOLO_MAINNET_NETWORK_ACCOUNTS` registry **already contains two historical
+player addresses**: `[BDB]Pigman` at
+`wolo1ntal93v8c5wryq2d9puhks8l25zedhepyv8n5k`, and `Ra 𓁛𓇳` at
+`wolo198ajhn5atpw65u6z89z5hwfer2vx90u4ydxe7z`. “BDB” is part of
+Pigman's registered tag; “Raw” is not proven to be a separately owned wallet.
+Historical July observations showed both with zero WOLO, but their **present
+membership must always be derived afresh from live holder data**. The
+dashboard displays both with exact addresses and membership badges; they
+never inflate current-funded counts merely because they are registered.
+
+### Design and performance
+
+The design uses graphite, black iron, cold-copper gold, cyan liquidity and
+restrained rust-colored expense components, with CSS-only decorative
+mechanisms and `prefers-reduced-motion` support. Indicators show source
+connection/aging only, not fabricated funds movement. The client polls public
+read models in the foreground at a bounded cadence (no background polling).
+Each source can fail independently without its amounts turning into fake zero.
+The route participates in the mandatory SpeedOS public campaign.
+
 ## Route and API contract
 
 ### Round Chamber
