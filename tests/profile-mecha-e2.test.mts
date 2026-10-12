@@ -30,6 +30,7 @@ test("profile view preferences are account scoped and encoded", () => {
 test("E2 renders on the existing Extreme profile stage and preserves E1", () => {
   const page = readFileSync(new URL("../app/profile/page.tsx", import.meta.url), "utf8");
   assert.match(page, /profileFamily === "extreme"/);
+  assert.equal((page.match(/relative z-40 flex flex-wrap items-center justify-between gap-3/g) || []).length, 2);
   assert.match(page, /profileViewMode === "e2"/);
   assert.match(page, /readProfileViewVariant\(uid\)/);
   assert.match(page, /saveProfileViewVariant\(uid, next\)/);
