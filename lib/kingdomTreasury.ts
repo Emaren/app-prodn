@@ -36,6 +36,7 @@ export type TreasuryNetworkAccount = {
   isRetired: boolean;
   isUserFacing: boolean;
   amountWoloFormatted: string;
+  directAmountWoloFormatted: string;
 };
 export type TreasuryNetwork = {
   chainId: "wolo-1";
@@ -154,7 +155,8 @@ export function isTreasuryNetwork(value: unknown): value is TreasuryNetwork {
     Array.isArray(n.accounts) && n.count === n.accounts.length &&
     n.accounts.every((a) => !!a && typeof a.address === "string" &&
       /^wolo1[0-9a-z]{30,90}$/.test(a.address) && typeof a.label === "string" &&
-      typeof a.role === "string" && typeof a.isModule === "boolean" &&
+      typeof a.role === "string" && typeof a.directAmountWoloFormatted === "string" &&
+      /^\\d[\\d,.]*$/.test(a.directAmountWoloFormatted) && typeof a.isModule === "boolean" &&
       typeof a.isRetired === "boolean" && typeof a.isUserFacing === "boolean");
 }
 
@@ -200,13 +202,15 @@ export function publicSystemAccounts(network: TreasuryNetwork, holders: Treasury
     .filter((h) => h.classification === "protocol")
     .map((h) => [h.address.toLowerCase(), h] as const));
 
-  // Registered infrastructure may have a zero balance and therefore not be a
-  // current holder. Its network count MUST NOT be added to current holders.
+  // Registered infrastructure can be unfunded. Complete network direct-bank
+  // balance may be zero without becoming an additional current holder.
+  // Never publish user/staking personal balances from the network projection.
   const accounts = network.accounts.filter((account) =>
     !account.isRetired && !account.isUserFacing && account.role !== "user"
   ).map((account) => ({
     ...account,
-    publicBalance: currentProtocol.get(account.address.toLowerCase())?.balanceWoloFormatted ?? null,
+    publicBalance: currentProtocol.get(account.address.toLowerCase())?.balanceWoloFormatted ??
+      account.directAmountWoloFormatted,
     currentHolder: currentProtocol.has(account.address.toLowerCase()),
   }));
   return accounts;
