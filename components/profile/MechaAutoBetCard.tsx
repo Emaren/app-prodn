@@ -1,7 +1,10 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ChevronDown, Coins, Crosshair, LockKeyhole, Radar, Settings2, ShieldCheck, X } from "lucide-react";
+import { ChevronDown, Coins, Crosshair, LockKeyhole, Radar, Settings2, ShieldCheck, X, Wallet, ArrowDownToLine } from "lucide-react";
+import { useKeplr } from "@/hooks/use-keplr";
+import { useWoloBalance } from "@/hooks/useWoloBalance";
+import { deriveWoloBalanceReadState, formatMinimalDenomAmount } from "@/lib/woloBalanceRead";
 
 type DS = "none" | "yes" | "no";
 type Preset = { enabled: boolean; winnerStakeWolo: number; desyncSide: DS; desyncStakeWolo: number; untilOut: boolean; gamesRemaining: number | null; version: number };
@@ -26,6 +29,21 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
   const [dsStake, setDsStake] = useState("0");
   const [games, setGames] = useState("1");
   const [untilOut, setUntilOut] = useState(false);
+  const { status: walletStatus, address: walletAddress, connect: connectWallet } = useKeplr();
+  const verifiedWalletBalance = useWoloBalance(walletStatus === "connected" ? walletAddress : undefined);
+  const balanceState = deriveWoloBalanceReadState({
+    connected: walletStatus === "connected" && Boolean(walletAddress),
+    amount: verifiedWalletBalance.data,
+    isLoading: verifiedWalletBalance.isLoading,
+    isFetching: verifiedWalletBalance.isFetching,
+    isError: verifiedWalletBalance.isError,
+  });
+  const walletAmount = balanceState === "success-zero" || balanceState === "success-funded" ||
+    balanceState === "refreshing"
+    ? formatMinimalDenomAmount(verifiedWalletBalance.data) : null;
+  const [satchelOpen, setSatchelOpen] = useState(false);
+  const [depositAmount, setDepositAmount] = useState("100");
+  const [walletConnectError, setWalletConnectError] = useState("");
   const [settings, setSettings] = useState(false);
   const [dsPanel, setDsPanel] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -101,7 +119,7 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
       const next = (await response.json().catch(() => null)) as Payload | null;
       if (!response.ok || !next?.preset) throw new Error(next?.detail || "Command rejected");
       hydrate(next);
-      setNotice(nextEnabled ? "Preview armed" : "Preview paused");
+      setNotice(nextEnabled ? "Preview active" : "Preview paused");
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Command rejected");
     } finally { setSaving(false); }
@@ -131,6 +149,18 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
     server.runtime.mode === "disabled" ? "AUTOMATION OFFLINE" :
     !readiness ? "WAITING FOR WATCHER" : previewOnly ? "SHADOW READY" : "FUNDED READY";
   const mecha = "Mecha " + (displayName.trim().slice(0, 38) || "Warrior");
+  const satchelVerified = false; // No owner-specific chain-reconciled custody ledger exists yet.
+  const depositAmountValue = number(depositAmount);
+  const depositAmountValid = Number.isSafeInteger(depositAmountValue) && depositAmountValue > 0
+    && depositAmountValue <= 50_000;
+  const walletAction = async () => {
+    setWalletConnectError("");
+    try {
+      await connectWallet();
+    } catch (cause) {
+      setWalletConnectError(cause instanceof Error ? cause.message : "Unable to connect Keplr");
+    }
+  };
   const dsSelected = dsSide !== "none";
 
   return (
@@ -144,7 +174,7 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
             <span className={"absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full ring-2 ring-[#060a12] " + (armed ? "bg-emerald-400" : "bg-slate-500")} />
           </div>
           <div className="min-w-0">
-            <div className="text-[9px] font-black uppercase tracking-[.24em] text-amber-200/75">MECHA // NEXT MATCH</div>
+            <div className="text-[9px] font-black uppercase tracking-[.24em] text-amber-200/75">AUTO BETTING // NEXT MATCH</div>
             <h2 className="truncate font-serif text-2xl font-bold text-white sm:text-3xl">{mecha}</h2>
           </div>
         </div>
@@ -159,45 +189,112 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
           <span className={"block h-10 w-10 rounded-full shadow-lg transition-transform " + (armed ? "translate-x-10 bg-amber-300" : "bg-slate-400")} />
         </button>
       </header>
-      <div className="mt-6 flex items-end justify-between gap-3 border-b border-white/10 pb-5">
-        <div>
-          <div className="text-[9px] font-black uppercase tracking-[.25em] text-slate-400">NEXT GAME</div>
-          <div className="mt-1 flex items-baseline gap-2">
-            <span className="text-5xl font-black tracking-tight tabular-nums sm:text-6xl">{Number.isSafeInteger(stake) ? stake.toLocaleString() : "—"}</span>
-            <span className="text-xs font-black tracking-[.14em] text-amber-200">WOLO</span>
+      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
+          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[.18em] text-slate-400">
+            <Wallet className="h-4 w-4 text-sky-200" aria-hidden /> WALLET
           </div>
+          <div className="mt-3 truncate text-2xl font-black tabular-nums text-white" aria-label="Verified connected wallet balance">
+            {walletAmount ?? "—"} <span className="text-xs font-bold text-slate-400">WOLO</span>
+          </div>
+          {walletStatus !== "connected" ? (
+            <button type="button" onClick={() => void walletAction()}
+              className="mt-2 text-xs font-bold text-sky-200 hover:text-sky-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-200">
+              Connect Keplr ↗
+            </button>
+          ) : (
+            <span className="mt-2 block text-[10px] font-semibold text-slate-400">
+              {balanceState === "success-zero" || balanceState === "success-funded" ? "Chain verified" :
+                balanceState === "refreshing" ? "Refreshing chain balance" :
+                balanceState === "loading" ? "Checking chain balance" : "Balance unavailable"}
+            </span>
+          )}
+          {walletConnectError && <p role="alert" className="mt-2 text-xs text-rose-200">{walletConnectError}</p>}
         </div>
-        <button type="button" aria-expanded={settings} aria-label="Configure stake and future games"
-          onClick={() => setSettings((x) => !x)}
-          className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/[.05] px-3 py-3 text-[11px] font-black text-slate-200 hover:border-amber-200/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300">
-          <Settings2 className="h-4 w-4" /><span className="hidden sm:inline">LOADOUT</span><ChevronDown className="h-3 w-3" />
-        </button>
+        <div className="rounded-2xl border border-amber-200/25 bg-amber-200/[.055] p-4">
+          <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[.18em] text-amber-200">
+            <LockKeyhole className="h-4 w-4" aria-hidden /> WAR SATCHEL
+          </div>
+          <div className="mt-3 text-2xl font-black tabular-nums text-white" aria-label="War Satchel verified balance">
+            {satchelVerified ? "0" : "—"} <span className="text-xs font-bold text-slate-400">WOLO</span>
+          </div>
+          <button type="button" onClick={() => setSatchelOpen((value) => !value)}
+            aria-expanded={satchelOpen}
+            className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-amber-200/30 bg-amber-300/10 px-3 py-1.5 text-xs font-black text-amber-100 transition hover:bg-amber-300/20 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300">
+            <ArrowDownToLine className="h-3.5 w-3.5" aria-hidden /> LOAD SATCHEL
+          </button>
+        </div>
+        <div className="rounded-2xl border border-white/10 bg-black/30 p-4">
+          <div className="text-[10px] font-black uppercase tracking-[.18em] text-slate-400">NEXT MATCH BET</div>
+          <div className="mt-3 truncate text-3xl font-black tabular-nums text-white">
+            {Number.isSafeInteger(perGame) ? perGame.toLocaleString() : "—"} <span className="text-xs font-bold text-amber-200">WOLO</span>
+          </div>
+          <button type="button" aria-expanded={settings} aria-label="Open bet plan"
+            onClick={() => setSettings((value) => !value)}
+            className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-slate-200 hover:text-amber-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300">
+            <Settings2 className="h-3.5 w-3.5" aria-hidden /> BET PLAN <ChevronDown className="h-3 w-3" aria-hidden />
+          </button>
+        </div>
       </div>
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-[10px] font-black uppercase tracking-[.17em]">
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-b border-white/10 pb-4 text-[10px] font-black uppercase tracking-[.17em]">
         <div className="inline-flex items-center gap-2 text-amber-100">
           <span className={"h-2.5 w-2.5 rounded-full " + (armed && readiness ? "bg-emerald-300 motion-safe:animate-pulse" : "bg-amber-300/60")} />
-          {status}
+          {status === "SHADOW READY" ? "PREVIEW ACTIVE" : status}
         </div>
-        <div className="text-slate-400">{untilOut ? "UNTIL OUT" : (Number.isFinite(count) ? count : "—") + " GAMES"} · {previewOnly ? "SHADOW" : "FUNDED"}</div>
-      </div>
-      <div className="mt-5 grid grid-cols-[1fr_auto] gap-3">
-        <div className="flex min-w-0 items-center gap-2 rounded-xl border border-white/10 bg-black/25 px-3 py-3">
-          <LockKeyhole className="h-4 w-4 shrink-0 text-amber-200" />
-          <span className="truncate text-[10px] font-black uppercase tracking-[.13em] text-slate-300">WAR SATCHEL</span>
-          <span className="ml-auto shrink-0 text-xs font-bold">0 LOCKED</span>
-        </div>
-        <button type="button" aria-expanded={dsPanel} aria-label="Desync options"
-          onClick={() => { setDsPanel((x) => !x); setSettings(true); }}
-          className={"rounded-xl border px-4 text-xs font-black tracking-[.14em] " +
-            (dsSelected ? "border-sky-300/40 bg-sky-200/15 text-sky-200" : "border-white/15 bg-white/[.05] text-slate-300 hover:bg-white/10")}>
-          DS
+        <div className="text-slate-400">{untilOut ? "UNTIL OUT" : (Number.isFinite(count) ? count : "—") + " GAMES"} · PREVIEW ONLY</div>
+        <button type="button" aria-expanded={dsPanel} aria-label="Desync bet settings"
+          onClick={() => { setDsPanel((value) => !value); setSettings(true); }}
+          className={"rounded-lg border px-3 py-2 text-xs font-black tracking-[.12em] " +
+            (dsSelected ? "border-sky-300/45 bg-sky-200/15 text-sky-200" : "border-white/15 bg-white/[.05] text-slate-300 hover:bg-white/10")}>
+          DESYNC
         </button>
       </div>
+      {satchelOpen && (
+        <div className="mt-4 rounded-2xl border border-amber-200/25 bg-[#0b111b] p-4 sm:p-5" aria-label="Load War Satchel">
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="font-serif text-xl font-bold text-amber-100">Load War Satchel</h3>
+            <button type="button" aria-label="Close War Satchel" onClick={() => setSatchelOpen(false)}
+              className="rounded-lg p-2 text-slate-300 hover:bg-white/10 focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300">
+              <X className="h-4 w-4" aria-hidden />
+            </button>
+          </div>
+          <div className="mt-4 grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
+            <label className="text-[10px] font-black uppercase tracking-[.16em] text-slate-400">
+              WOLO FROM YOUR WALLET
+              <input inputMode="numeric" aria-label="Amount of WOLO to load into War Satchel"
+                value={depositAmount} onChange={(event) => setDepositAmount(event.target.value)}
+                className="mt-2 block w-full rounded-xl border border-white/15 bg-slate-950 px-4 py-3 text-lg font-black text-white outline-none focus:border-amber-300" />
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {[50, 100, 250, 500, 1000].map((amount) => (
+                <button type="button" key={amount} onClick={() => setDepositAmount(String(amount))}
+                  aria-pressed={depositAmountValue === amount}
+                  className={"rounded-lg border px-3 py-2.5 text-xs font-black " +
+                    (depositAmountValue === amount
+                      ? "border-amber-300 bg-amber-300 text-slate-950"
+                      : "border-white/15 bg-white/[.04] text-slate-300 hover:bg-white/10")}>
+                  {amount.toLocaleString()}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+            <span className="text-xs text-amber-200">
+              {depositAmountValid ? "Funding not available yet · escrow verification pending" : "Enter 1–50,000 WOLO"}
+            </span>
+            <button type="button" disabled aria-disabled="true"
+              title="War Satchel funding requires an audited custody ledger and chain receipts"
+              className="rounded-xl border border-amber-200/20 bg-white/[.04] px-4 py-3 text-xs font-black uppercase tracking-[.1em] text-slate-400 opacity-70">
+              LOAD FROM WALLET · COMING SOON
+            </button>
+          </div>
+        </div>
+      )}
       {settings && (
         <div className="mt-4 rounded-2xl border border-amber-200/20 bg-black/45 p-4 sm:p-5">
           <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-[.2em] text-amber-200">
-            LOADOUT
-            <button type="button" aria-label="Close loadout" onClick={() => setSettings(false)} className="rounded-lg p-1 text-slate-400 hover:text-white"><X className="h-4 w-4" /></button>
+            BET PLAN
+            <button type="button" aria-label="Close bet plan" onClick={() => setSettings(false)} className="rounded-lg p-1 text-slate-400 hover:text-white"><X className="h-4 w-4" /></button>
           </div>
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <label className="text-[10px] font-bold uppercase tracking-[.13em] text-slate-400">WINNER WOLO
@@ -236,7 +333,7 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
             </span>
             <button type="button" onClick={() => void save(Boolean(server?.preset.enabled))} disabled={!valid || !server || saving}
               className="rounded-xl bg-amber-300 px-5 py-3 text-[10px] font-black uppercase tracking-[.15em] text-slate-950 hover:bg-amber-200 disabled:opacity-40">
-              {saving ? "SAVING..." : "LOAD PREVIEW"}
+              {saving ? "SAVING..." : armed ? "SAVE BET PLAN" : "ARM PREVIEW"}
             </button>
           </div>
         </div>
