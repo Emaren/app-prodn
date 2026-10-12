@@ -118,7 +118,7 @@ test(
   () => {
     assert.match(
       transparency,
-      /ranked by wallet \+ active stake/,
+      /current holders on the Wolo Chain network/,
     );
 
     assert.match(
