@@ -162,6 +162,29 @@ receipt under `.aoe2war-release/performance-cold-lcp/`. It is diagnostic-only:
 this rail when browser Ready is healthy but visual completion/LCP still has a long
 tail.
 
+### Reuse cold-phone receipts before collecting another cohort
+
+`aoe2war speed lcp-attribution --expected-release <exact-certified-SHA>`
+reads the newest existing cold-phone receipt. Use `--receipt path/to/receipt.json`
+to bind a specific previous run, and `--json` for machine-readable output.
+This command launches **zero** browser processes and makes **zero** network,
+production, Wolo, database, or storage mutations.
+
+It reports the count and p50/p95 of exact final-LCP request start, resource
+response end, resource-response-to-LCP delay, DOM-insertion-to-LCP delay, and
+native-image-load-to-LCP delay, alongside independent Ready and document
+TTFB. Each rail reports its own observation count. Missing or cross-origin
+resource timing never becomes invented zero latency; duplicate exact-resource
+entries are flagged for review, not automatically diagnosed as duplicate
+network fetches. The matching rendered preload-hint count is separate from
+proof that preloading improved LCP. This attribution is diagnostic only: it
+cannot certify speed or amend the weighted inspection score.
+
+Use the existing sealed `20`-sample receipt from the current certified release
+before paying for another cold Chrome cohort. An unproven delay stays unknown,
+and any proposed source optimization requires a new exact-release A/B receipt
+rather than conjecture.
+
 ## Edge Delivery audit rail
 
 `aoe2war speed edge verify-featured-avatar` refreshes the installed edge-delivery
