@@ -123,7 +123,6 @@ export default function KingdomTreasury() {
     (a.label + " " + a.role + " " + a.address).toLowerCase().includes(walletQuery.toLowerCase()));
   const reportedOutlay = reportedMonthlyOutlay();
   const reserveBalance = disclosedKingdomReserveBalance(accounts);
-  const selected = accounts.find((a) => a.address === selectedAccount);
   const errors = [holders, network, pool, transfers].filter((s) => s.error).length;
   const liveCount = [holders, network, pool, transfers].filter((s) => s.data).length;
 
