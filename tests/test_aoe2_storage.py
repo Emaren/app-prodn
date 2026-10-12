@@ -409,6 +409,21 @@ class StorageOSTests(unittest.TestCase):
         self.assertEqual(rc, 0)
         worker.assert_not_called()
 
+    def test_fast_estate_does_not_claim_unmeasured_cache_is_zero(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = pathlib.Path(directory)
+            cache = home / MODULE.LOCAL_REGENERABLE_PATHS[0][1]
+            cache.mkdir(parents=True)
+            (cache / "payload.bin").write_bytes(b"data" * 1024)
+
+            fast = MODULE.local_storage_snapshot(measure=False, home=home)
+            measured = MODULE.local_storage_snapshot(measure=True, home=home)
+
+        self.assertIsNone(fast["reclaimable_bytes"])
+        self.assertNotIn("allocated_bytes", fast["regenerable"][0])
+        self.assertGreater(measured["reclaimable_bytes"], 0)
+        self.assertGreater(measured["regenerable"][0]["allocated_bytes"], 0)
+
     def test_local_maintain_removes_only_allowlisted_regenerable_paths(self):
         with tempfile.TemporaryDirectory() as directory:
             home = pathlib.Path(directory)

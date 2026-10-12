@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `main` at `e4e21a62090ee9d1bcb76473e0b7f876aaa82c35`
+Implementation baseline: `fix/storage-estate-unmeasured-cache-20261012` at `100abf95bf4b1fcff21aeb1b3f994a5fd04b08a0`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "48590f801d121536b05e31db6dfa50a44cbf178044d9a77f2602a44ce2d413b9",
+      "sha256": "7d2b0004a5a31135a830e8a881976bc6502190a20e3794cd2d5fd782b1a3947b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1694,7 +1694,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-19",
       "sensitivity": "internal",
-      "sha256": "e8b09f141c5d05fe930ee070be4c9af8bb81c247dd8f193d7fc8e4654e3d8c87",
+      "sha256": "f0dca5c6030904945e977254ede92fb4ac95d64792c5c3cc20dc71b1dfaafaad",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "main",
-    "commit": "e4e21a62090ee9d1bcb76473e0b7f876aaa82c35"
+    "branch": "fix/storage-estate-unmeasured-cache-20261012",
+    "commit": "100abf95bf4b1fcff21aeb1b3f994a5fd04b08a0"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

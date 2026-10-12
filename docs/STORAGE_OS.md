@@ -57,7 +57,9 @@ primitive and never deletes durable rollback generations.
 operator Mac filesystem, VPS root filesystem, mounted production volume, fast
 rollback count, expanded rollback debt, and cold archive count in one command.
 Pass `--measure` when exact local cache allocation is worth the extra filesystem
-walk. The estate census also measures generated context-camera retention debt:
+walk. Without `--measure`, the fast census reports Mac reclaimable capacity as
+**NOT MEASURED**, never as zero; `local-maintain` always measures its strict
+regenerable allowlist before showing or applying a plan. The estate census also measures generated context-camera retention debt:
 more than one ZIP or TGZ per series is surfaced as structural debt, and the
 canonical audit raises a P1 when a core TGZ series is over-retained.
 
