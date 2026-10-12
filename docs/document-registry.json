@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-12",
       "sensitivity": "internal",
-      "sha256": "5f6312fc2e4a2e3a82d72218f1ac698224de4869e11119687bd84ea2ac2602a4",
+      "sha256": "a22a8d8ba3964f1866a52e48b250e2b58e2afbefddddf8a5411b22916e52c011",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "8e4f7ffc5fa241c4cba6953dc03f63efd2b335780a677392b55cf29f03bf494b",
+      "sha256": "e35da35e34bbfdc20462f4920c970ad650b11f207b056f4c5e89d40ec7bfbf63",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2094,7 +2094,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feat/mecha-auto-bet-e2-20261012",
-    "commit": "b5a4dd75d56f114ab2161d9ef37324354db6f21e"
+    "commit": "fdef7fbfac65127f036648995d5ff77223049fad"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
