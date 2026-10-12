@@ -111,6 +111,24 @@ function evaluate(
   });
 }
 
+test("legacy presets over the combined Mecha limit cannot enter the shadow worker", () => {
+  const oversized = evaluate({
+    preset: { winnerStakeWolo: 1_001, gamesRemaining: 1 },
+  });
+  assert.deepEqual(oversized, { eligible: false, reason: "auto_stake_cap_exceeded" });
+
+  const combined = evaluate({
+    preset: {
+      winnerStakeWolo: 999,
+      desyncSide: "yes",
+      desyncStakeWolo: 2,
+      gamesRemaining: 1,
+    },
+    desyncMarket: desync(),
+  });
+  assert.deepEqual(combined, { eligible: false, reason: "auto_stake_cap_exceeded" });
+});
+
 test("shadow admission selects the exact Steam roster side for the exact uploader", () => {
   const left = evaluate();
   assert.equal(left.eligible, true);
