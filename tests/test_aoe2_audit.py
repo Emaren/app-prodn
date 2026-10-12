@@ -19,6 +19,28 @@ SPEC.loader.exec_module(MODULE)
 
 
 class AuditCommandTests(unittest.TestCase):
+    def test_observational_git_calls_forbid_optional_index_locks(self):
+        with patch.object(MODULE, "run", return_value=(0, "main")) as run:
+            rc, value = MODULE.git(pathlib.Path("/tmp/aoe2war-audit-test"), "status", "--porcelain=v1")
+        self.assertEqual(rc, 0)
+        self.assertEqual(value, "main")
+        run.assert_called_once_with(
+            ["git", "--no-optional-locks", "status", "--porcelain=v1"],
+            cwd=pathlib.Path("/tmp/aoe2war-audit-test"),
+            timeout=30,
+        )
+
+    def test_readonly_git_option_preserves_repository_status_and_never_creates_lock(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = pathlib.Path(tmp)
+            import subprocess
+            subprocess.run(["git", "init", "-q", str(repo)], check=True)
+            (repo / "test.txt").write_text("untracked", encoding="utf-8")
+            rc, result = MODULE.git(repo, "status", "--porcelain=v1", "--untracked-files=all")
+            self.assertEqual(rc, 0, result)
+            self.assertIn("?? test.txt", result)
+            self.assertFalse((repo / ".git" / "index.lock").exists())
+
     def test_audit_exit_zero_when_clean(self):
         audit = MODULE.Audit()
         self.assertEqual(audit.exit_code(), 0)
