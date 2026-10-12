@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/kingdom-treasury-20261012` at `69e73deec41dc447e248673068d18b26461a714b`
+Implementation baseline: `feat/kingdom-treasury-20261012` at `dcd5886d80a9cbb7a4056e7111f9dda941c457b8`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
