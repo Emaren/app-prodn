@@ -113,6 +113,16 @@ def fetch_public(url: str = DEFAULT_URL) -> object:
             raw = response.read(512_001)
             if len(raw) > 512_000:
                 raise InspectionError("Public inspection response exceeds size bound")
+    except urllib.error.HTTPError as exc:
+        if exc.code == 403:
+            raise InspectionError(
+                "Public inspection API returned HTTP 403 for this Python client. "
+                "No score JSON was received. This may be an upstream access rule; "
+                "do not disable security controls. Save the API JSON using an "
+                "authorized browser session, then run: "
+                "./bin/aoe2war inspections --file /path/to/general-inspections.json"
+            ) from exc
+        raise InspectionError(f"Public inspections HTTP {exc.code}") from exc
     except (OSError, urllib.error.URLError) as exc:
         raise InspectionError(f"Public inspections could not be read: {exc}") from exc
     try:
