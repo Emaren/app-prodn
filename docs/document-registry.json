@@ -278,7 +278,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "Bet and Replay Reliability Release \u2014 2026-07-29",
+      "title": "Bet and Replay Reliability Release — 2026-07-29",
       "type": "historical"
     },
     {
@@ -487,7 +487,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "Championship Hall E5 \u2014 presentation and release contract",
+      "title": "Championship Hall E5 — presentation and release contract",
       "type": "reference"
     },
     {
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "860e379ff1adf00e1e71e864a8e297c0d5c91a4f3f478e7d6b8af0e67516acec",
+      "sha256": "4c2b2f7538b324608ccde5b3dc8677efff0b07d7b8c1101b380dc1598e9d857a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -733,7 +733,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-06",
       "sensitivity": "internal",
-      "sha256": "b3a243371d207c73338eb6b4479ef25dfb6e7451f3e6d25f9ac002f99a4d52b1",
+      "sha256": "2fd4f9444b73b6462d1241e03ec838535725ab3862bbc2566a1c596ff25fabed",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -940,7 +940,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-06",
       "sensitivity": "internal",
-      "sha256": "92271db2dd296b54f8ca9879b43c982e3d72506b49365df02fc5530fe08fa03c",
+      "sha256": "5fae870f81ecf4c0420654b53366750bbacee22d8e466921d4391bd594945e9d",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1266,7 +1266,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "AoE2WAR Production Performance Audit \u2014 2026-07-18",
+      "title": "AoE2WAR Production Performance Audit — 2026-07-18",
       "type": "historical"
     },
     {
@@ -1288,7 +1288,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "AoE2WAR Production Performance Audit \u2014 2026-08-13",
+      "title": "AoE2WAR Production Performance Audit — 2026-08-13",
       "type": "historical"
     },
     {
@@ -1304,7 +1304,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-02",
       "sensitivity": "internal",
-      "sha256": "8cf0c734459822a3f8fd1b9c515a2d0313e1bca3e08fa83e67838cae2886a59a",
+      "sha256": "7639b9e7cdd482781c16f440588aa92c8c311f8c970e9699b804ba210e9ad426",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1333,7 +1333,7 @@
         "app-prodn",
         "api-prodn"
       ],
-      "title": "Player Identity Wave 2 \u2014 Deterministic Discovery V2",
+      "title": "Player Identity Wave 2 — Deterministic Discovery V2",
       "type": "reference"
     },
     {
@@ -1380,7 +1380,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "AoE2WAR Production Parity Seal \u2014 2026-07-26",
+      "title": "AoE2WAR Production Parity Seal — 2026-07-26",
       "type": "historical"
     },
     {
@@ -1472,7 +1472,7 @@
         "app-prodn",
         "wolochain"
       ],
-      "title": "AoE2WAR Certified Release Engineering Seal \u2014 2026-08-10",
+      "title": "AoE2WAR Certified Release Engineering Seal — 2026-08-10",
       "type": "historical"
     },
     {
@@ -1542,7 +1542,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "Replay Statistics and Operations Release \u2014 2026-07-25",
+      "title": "Replay Statistics and Operations Release — 2026-07-25",
       "type": "historical"
     },
     {
@@ -2065,7 +2065,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "War Room Forum \u2014 Saturday July 4, 2026 Edition",
+      "title": "War Room Forum — Saturday July 4, 2026 Edition",
       "type": "historical"
     },
     {
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "integration/brain-reliability-lcp-lifecycle-20261012",
-    "commit": "8668f7f30dc91149962448b2028cab9dc7ffb88e"
+    "branch": "integration/kingdom-os-green-readiness-20261012",
+    "commit": "e206eb5867c5b7d2d7bb68e7d4668cbf782131f3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

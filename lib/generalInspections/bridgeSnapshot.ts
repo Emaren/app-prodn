@@ -31,6 +31,11 @@ export type BridgeSnapshotOptions = {
   downloadRoot?: string;
   expiryRoot?: string;
   rootFsPath?: string;
+  // Trusted synthetic filesystem data for deterministic Node regression tests.
+  filesystemEvidence?: {
+    rootFreeGiB: number | null;
+    volumeUsedPercent: number | null;
+  };
   now?: number;
 };
 
@@ -389,11 +394,14 @@ export function buildBridgeGeneralInspectionsSnapshot(
   const buildVersion =
     text(activation.certification.candidate_build_version) ||
     text(activation.stage.candidate_build_version);
-  const bridgeAt =
-    text(envelope.receivedAt) ||
-    text(envelope.generatedAt) ||
-    text(payload.generated_at);
-  const bridgeFresh = freshnessFraction(bridgeAt, 1, 6, now);
+  // Collection freshness and transport freshness are independent authorities.
+  // A healthy Bridge heartbeat (or a delayed resend) cannot renew stale Brain facts.
+  const bridgeAt = text(payload.generated_at);
+  const bridgeReceivedAt = text(envelope.receivedAt);
+  const bridgeFresh = Math.min(
+    freshnessFraction(bridgeAt, 1, 6, now),
+    freshnessFraction(bridgeReceivedAt, 1, 6, now),
+  );
   const gateAt =
     text(activation.gate.generated_at) ||
     text(activation.stage.generated_at) ||
@@ -676,26 +684,36 @@ export function buildBridgeGeneralInspectionsSnapshot(
     ],
   );
 
+  // Local statfs is the VPS capacity authority; a recently published Mac
+  // snapshot must not override fresh free-space proof after Finish reclamation.
+  // Bridge capacity is a labeled, decaying fallback only if statfs is unavailable.
   const rootFs = filesystem(rootFsPath);
   const volumeFs = filesystem(volumeRoot);
-  const rootFreeGiB =
-    numberValue(storage.root_free_bytes) != null
-      ? (numberValue(storage.root_free_bytes) as number) / 1024 ** 3
-      : rootFs.freeGiB;
-  const volumeUsed =
-    numberValue(storage.volume_used_percent) ?? volumeFs.usedPercent;
+  const liveRootFreeGiB = options.filesystemEvidence
+    ? options.filesystemEvidence.rootFreeGiB
+    : rootFs.freeGiB;
+  const liveVolumeUsed = options.filesystemEvidence
+    ? options.filesystemEvidence.volumeUsedPercent
+    : volumeFs.usedPercent;
+  const bridgedRootBytes = numberValue(storage.root_free_bytes);
+  const rootFreeGiB = liveRootFreeGiB ??
+    (bridgeFresh > 0 && bridgedRootBytes != null
+      ? bridgedRootBytes / 1024 ** 3
+      : null);
+  const volumeUsed = liveVolumeUsed ??
+    (bridgeFresh > 0 ? numberValue(storage.volume_used_percent) : null);
   const rootFraction = thresholdFraction(
     rootFreeGiB,
     baseline.policy.rootPreferredGiB,
     baseline.policy.rootHardFloorGiB,
     "gte",
-  );
+  ) * (liveRootFreeGiB == null ? bridgeFresh : 1);
   const volumeFraction = thresholdFraction(
     volumeUsed,
     baseline.policy.volumeHealthyTargetPercent,
     baseline.policy.volumeMaintenancePercent,
     "lte",
-  );
+  ) * (liveVolumeUsed == null ? bridgeFresh : 1);
   const macFreeGiB = numberValue(recovery.operator_free_gib);
   const macFraction = thresholdFraction(macFreeGiB, 50, 35, "gte") * bridgeFresh;
 
@@ -764,7 +782,8 @@ export function buildBridgeGeneralInspectionsSnapshot(
         rootFraction,
         rootFreeGiB == null
           ? "Root capacity unavailable"
-          : rootFreeGiB.toFixed(2) + " GiB free",
+          : rootFreeGiB.toFixed(2) + " GiB free" +
+              (liveRootFreeGiB == null ? " · operator bridge fallback" : " · live VPS"),
       ),
       check(
         "volume-used",
@@ -773,7 +792,8 @@ export function buildBridgeGeneralInspectionsSnapshot(
         volumeFraction,
         volumeUsed == null
           ? "Volume capacity unavailable"
-          : volumeUsed.toFixed(1) + "% used",
+          : volumeUsed.toFixed(1) + "% used" +
+              (liveVolumeUsed == null ? " · operator bridge fallback" : " · live VPS"),
       ),
       check(
         "mac-free",
@@ -1274,7 +1294,8 @@ export function buildBridgeGeneralInspectionsSnapshot(
         rootFraction,
         rootFreeGiB == null
           ? "Root capacity unavailable"
-          : rootFreeGiB.toFixed(2) + " GiB free",
+          : rootFreeGiB.toFixed(2) + " GiB free" +
+              (liveRootFreeGiB == null ? " · operator bridge fallback" : " · live VPS"),
       ),
       check(
         "security-fresh",
@@ -1423,6 +1444,14 @@ export function buildBridgeGeneralInspectionsSnapshot(
   );
 
   const notes: string[] = [];
+  if (bridgeFresh < 1) {
+    notes.push(
+      "Kingdom Intelligence capture or delivery evidence is aging or missing: " +
+        "capture " + ageDetail(bridgeAt, now) +
+        ", delivery " + ageDetail(bridgeReceivedAt, now) +
+        ". Refresh Brain through the governed Operator Bridge; a heartbeat cannot renew old facts.",
+    );
+  }
   if (!expiry.data) {
     notes.push(
       "Storage Expiry proof is still running; cold-checkpoint and reclaim-debt marks remain conservative.",

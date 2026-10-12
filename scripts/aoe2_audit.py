@@ -161,7 +161,11 @@ def run(args: list[str], *, cwd: Path, timeout: int = 120) -> tuple[int, str]:
 
 
 def git(repo: Path, *args: str, timeout: int = 30) -> tuple[int, str]:
-    return run(["git", *args], cwd=repo, timeout=timeout)
+    # Every call through this helper is observational: branch/HEAD/status,
+    # ls-remote, or commit age. Prevent Git's optional status index refresh
+    # from creating .git/index.lock while monitoring/Doctor runs. A timed-out
+    # observer must never leave a stale index lock blocking protected Finish.
+    return run(["git", "--no-optional-locks", *args], cwd=repo, timeout=timeout)
 
 
 def sha256(path: Path) -> str:

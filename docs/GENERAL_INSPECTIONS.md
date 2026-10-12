@@ -182,6 +182,14 @@ different test inventories.
 
 Organization & Storage measures headroom and housekeeping, not raw byte minimization.
 
+For the two VPS-local capacity gauges (root headroom and mounted-volume usage), live `statfs`
+measurements take precedence over an older Mac Operator Bridge payload. This matters after a
+protected Finish reclaims verified runtime bytes **after** the Brain captured a capacity
+snapshot. If the VPS cannot measure a filesystem, a fresh Brain snapshot is a visibly labeled
+fallback and its capacity credit decays with the collection and delivery timestamps. Stale
+fallback figures cannot earn current capacity credit. The Mac operator's own disk headroom
+remains bridge-derived because the VPS cannot directly measure the Mac.
+
 Protected replay evidence, parser evidence, settlement state, financial evidence, and recovery
 proof must never lose marks merely because they consume space. Redundant compiled runtimes,
 stale staging bodies, duplicate downloadable binaries, and regenerable caches should lose marks

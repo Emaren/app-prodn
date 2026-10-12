@@ -228,10 +228,21 @@ export async function loadPublicKingdomIntelligence() {
         .filter((item): item is NonNullable<ReturnType<typeof safeMemorySeal>> => Boolean(item))
     : [];
 
-  const receivedMs = new Date(snapshot.receivedAt).getTime();
-  const ageSeconds = Number.isFinite(receivedMs)
-    ? Math.max(0, Math.floor((Date.now() - receivedMs) / 1000))
-    : null;
+  // Public KI freshness must reflect the age of the facts, not just the
+  // delivery heartbeat. Missing capture provenance is stale, even if the
+  // receiving server wraps the payload in a brand-new envelope.
+  const capturedAt = stringValue(payload.generated_at);
+  const capturedMs = capturedAt ? Date.parse(capturedAt) : Number.NaN;
+  const receivedMs = Date.parse(snapshot.receivedAt);
+  const observedNow = Date.now();
+  const ageSeconds =
+    Number.isFinite(capturedMs) && Number.isFinite(receivedMs)
+      ? Math.max(
+          0,
+          Math.floor((observedNow - capturedMs) / 1000),
+          Math.floor((observedNow - receivedMs) / 1000),
+        )
+      : null;
   const stale = ageSeconds === null || ageSeconds > 15 * 60;
 
   const invariants = Array.isArray(payload.invariants)

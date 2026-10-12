@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { formatInspectionEvidence } from "../lib/generalInspections/evidenceExport.ts";
+import { formatInspectionEvidence, formatInspectionJson } from "../lib/generalInspections/evidenceExport.ts";
 import type { GeneralInspectionsSnapshot } from "../lib/generalInspections/types.ts";
 
 function makeSnapshot(): GeneralInspectionsSnapshot {
@@ -72,4 +72,25 @@ test("UI export copies existing snapshot without additional API calls", async ()
   assert.match(src, /navigator\.clipboard\.writeText\(formatInspectionEvidence\(snapshot\)\)/);
   assert.match(src, /aria-label="Copy current inspection evidence"/);
   assert.match(src, /Inspection evidence copied/);
+});
+
+test("machine-readable export round-trips the exact sanitized snapshot", () => {
+  const snapshot = makeSnapshot();
+  const encoded = formatInspectionJson(snapshot);
+  assert.deepEqual(JSON.parse(encoded), snapshot);
+  assert.match(encoded, /"schema": 1/);
+  assert.match(encoded, /"evidenceAt": "2026-10-12T00:00:00Z"/);
+});
+
+test("UI JSON export uses already-loaded evidence with no second request", async () => {
+  const { readFileSync } = await import("node:fs");
+  const src = readFileSync(
+    new URL("../components/general-inspections/GeneralInspections.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(src, /navigator\.clipboard\.writeText\(formatInspectionJson\(snapshot\)\)/);
+  assert.match(src, /aria-label="Copy current inspection JSON"/);
+  assert.match(src, /Inspection JSON copied/);
+  const copyJson = src.slice(src.indexOf("const copyJson ="), src.indexOf("  return (\n    <main"));
+  assert.doesNotMatch(copyJson, /fetch\(|XMLHttpRequest|load\(/);
 });

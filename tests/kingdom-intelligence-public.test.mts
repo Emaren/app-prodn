@@ -21,6 +21,45 @@ async function withStore(fn: () => Promise<void>) {
   }
 }
 
+test("public Kingdom Intelligence cannot mistake a re-delivered old Brain for fresh facts", async () => {
+  await withStore(async () => {
+    const oldCapture = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    await writeAoe2OsKingdomIntelligence({
+      bridgeId: "stale-bridge",
+      sourceAction: "bridge_periodic",
+      payload: {
+        kind: "aoe2war-kingdom-intelligence",
+        generated_at: oldCapture,
+        operating_state: "HEALTHY",
+        health: { doctor_score: 100 },
+      },
+    });
+    const view = await loadPublicKingdomIntelligence();
+    assert.equal(view.available, true);
+    assert.equal(view.stale, true);
+    assert.ok((view.ageSeconds ?? 0) >= 3500);
+    assert.ok((view.ageSeconds ?? 0) < 3700);
+    assert.equal(view.generatedAt, oldCapture);
+  });
+});
+
+test("public Kingdom Intelligence fails closed when Brain capture timestamp is absent", async () => {
+  await withStore(async () => {
+    await writeAoe2OsKingdomIntelligence({
+      bridgeId: "missing-capture-bridge",
+      sourceAction: "bridge_periodic",
+      payload: {
+        kind: "aoe2war-kingdom-intelligence",
+        operating_state: "HEALTHY",
+      },
+    });
+    const view = await loadPublicKingdomIntelligence();
+    assert.equal(view.available, true);
+    assert.equal(view.stale, true);
+    assert.equal(view.ageSeconds, null);
+  });
+});
+
 test("public Kingdom Intelligence is a bounded sanitized projection", async () => {
   await withStore(async () => {
     await writeAoe2OsKingdomIntelligence({
@@ -177,6 +216,7 @@ test("public Kingdom Intelligence is a bounded sanitized projection", async () =
 
     const publicView = await loadPublicKingdomIntelligence();
     assert.equal(publicView.available, true);
+    assert.equal(publicView.stale, false);
     assert.equal(publicView.warDate, "2026.249.1720Z");
     assert.equal(publicView.source?.productionRelease, "aaaaaaaaaaaa");
     assert.equal(publicView.storageCampaign?.active, true);

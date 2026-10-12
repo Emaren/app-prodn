@@ -63,6 +63,16 @@ V1 combines:
 The command does not mutate source, runtime, database, Wolo, storage, packages
 or host state.
 
+## Read-only Git index discipline
+
+Estate source checks perform branch, HEAD, porcelain-status and remote-reference
+observations without mutating worktrees. The audit's Git helper invokes these
+commands with `git --no-optional-locks`, preventing opportunistic
+`.git/index.lock` creation for index-stat refreshes during routine Doctor /
+Brain snapshots. Full protected Git operations (fetch, fast-forward, Finish)
+retain normal Git lock semantics; this change does not remove a pre-existing
+lock, bypass ownership checks or certify a dirty repository.
+
 ## Collection concurrency and failure containment
 
 Scheduled Operator Bridge refreshes and manually requested Brain refreshes are
@@ -110,6 +120,14 @@ supply-chain and host probes still execute on each Doctor collection.
 ## Freshness is part of truth
 
 Persisted evidence is never presented as silently current.
+
+The public KI view uses the older age of the original `payload.generated_at` Brain
+collection and the server's `receivedAt` delivery envelope. A retransmitted old
+collection cannot appear newly healthy merely because the bridge delivered it again.
+If the Brain capture timestamp is missing, the public result is explicitly stale,
+even when the envelope receipt is fresh. General Inspections applies the same
+two-clock rule to bridge-dependent weighted checks; separately certified activation
+and live VPS filesystem receipts remain independent authorities.
 
 Replay certainty includes receipt age and becomes stale after 24 hours.
 Performance campaign evidence includes age and becomes stale after seven days.
