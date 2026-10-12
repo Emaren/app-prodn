@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "4eba72460b14de80b523f10b380e0a0794bedd71fa417da1f7cf8f7e92a3ac4c",
+      "sha256": "cdb0b66d6403d7834e764ede233d1152f44075040a6e4e1cbf2d47ba251d1160",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1304,7 +1304,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-02",
       "sensitivity": "internal",
-      "sha256": "6f83f55acb5a0028bcf133d1a8ac928de7c0976706922b7dc132386bb557c10f",
+      "sha256": "8cf0c734459822a3f8fd1b9c515a2d0313e1bca3e08fa83e67838cae2886a59a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/brain-collection-singleflight-timeout-20261012",
-    "commit": "6cedf2f39024cbba478eddbdfebf9690365fbd6b"
+    "branch": "integration/brain-reliability-lcp-lifecycle-20261012",
+    "commit": "4f8df9432c20218820bbf5c9cd0f2be2c4712719"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
