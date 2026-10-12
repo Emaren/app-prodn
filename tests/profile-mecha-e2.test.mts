@@ -64,6 +64,10 @@ test("Mecha UI shows only server-owned preview status; not an on-chain wallet", 
   assert.match(card, /LOAD FROM WALLET · COMING SOON/);
   assert.match(card, /disabled aria-disabled="true"/);
   assert.match(card, /escrow verification pending/);
+  assert.match(card, /satchelVerifiedBalanceWolo: string \| null = null/);
+  assert.match(card, /satchelVerifiedBalanceWolo \?\? "—"/);
+  assert.doesNotMatch(card, /0 LOCKED|satchelVerified \? "0"/);
+  assert.match(card, /DESYNC OPTIONS/);
   assert.match(card, /PREVIEW ACTIVE/);
   assert.match(card, /ARM PREVIEW/);
   assert.doesNotMatch(card, /onClick=.*sendTokens|SigningStargateClient|MsgSend/);
