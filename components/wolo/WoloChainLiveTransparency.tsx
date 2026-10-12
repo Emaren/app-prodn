@@ -361,7 +361,7 @@ export default function WoloChainLiveTransparency() {
             <div className="text-[11px] uppercase tracking-[0.34em] text-white/45">WOLO holders</div>
             <div className="mt-2 text-sm text-slate-500">
               {holders
-                ? `${holders.count} current holders · ranked by wallet + active stake.`
+                ? `${holders.count} current holders on the Wolo Chain network.`
                 : "Loading the live denom-owner projection."}
             </div>
           </div>
