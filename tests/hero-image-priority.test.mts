@@ -56,6 +56,16 @@ test("Lobby reserves the critical image lane for the actual hero", () => {
   const eventHero = source("components/lobby/WolomaniaPromoTile.tsx");
 
   assert.match(home, /function BufferedFeaturedWarriorImage/);
+  assert.match(home, /import \{ preload \} from "react-dom"/);
+  assert.match(home, /const openingLineup = curatedFeaturedWarriorOpening\(pool, false\)/);
+  assert.match(home, /openingPreloadSrcRef = useRef<string \| null>\(null\)/);
+  assert.match(home, /openingPreloadSrcRef\.current = featuredWarriorImageSrc\(openingLineup\[0\]\)/);
+  assert.match(
+    home,
+    /preload\(openingPreloadSrcRef\.current, \{ as: "image", fetchPriority: "high" \}\)/,
+  );
+  assert.equal((home.match(/\bpreload\(openingPreloadSrcRef\.current/g) || []).length, 1);
+  assert.doesNotMatch(home, /visibleWarriors\.map\([\s\S]*?\bpreload\(/);
   assert.equal(
     (home.match(/<BufferedFeaturedWarriorImage/g) || []).length,
     2,
