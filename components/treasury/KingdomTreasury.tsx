@@ -13,6 +13,7 @@ import {
   REPORTED_TREASURY_COSTS, TREASURY_FAUCET_INCIDENT,
   isPublicTreasuryHolders, isTreasuryNetwork, isTreasuryPool,
   isTreasuryTransfers, observedKingdomOutflows, publicSystemAccounts,
+  disclosedKingdomReserveBalance,
   reportedMonthlyOutlay,
   type TreasuryHolders, type TreasuryNetwork,
   type TreasuryPool, type TreasuryTransfers,
@@ -119,11 +120,7 @@ export default function KingdomTreasury() {
   const filteredAccounts = accounts.filter((a) =>
     (a.label + " " + a.role + " " + a.address).toLowerCase().includes(walletQuery.toLowerCase()));
   const reportedOutlay = reportedMonthlyOutlay();
-  const knownSystemBalance = accounts.reduce((sum, acc) => {
-    if (acc.publicBalance === null) return sum;
-    const parsed = Number(acc.publicBalance.replace(/,/g, ""));
-    return Number.isFinite(parsed) ? sum + parsed : sum;
-  }, 0);
+  const reserveBalance = disclosedKingdomReserveBalance(accounts);
   const knownBalanceCount = accounts.filter((a) => a.publicBalance !== null).length;
   const selected = accounts.find((a) => a.address === selectedAccount);
   const errors = [holders, network, pool, transfers].filter((s) => s.error).length;
@@ -193,11 +190,11 @@ export default function KingdomTreasury() {
         <PanelHeading index="01" title="The kingdom vault" marker="BALANCE AUTHORITY · WOLO-1"/>
         <div className="grid items-stretch gap-5 lg:grid-cols-[.8fr_1.2fr]">
           <div className="kt-primary-tile">
-            <span className="kt-label text-[#a8ab9a]">DISCLOSED SYSTEM HOLDINGS</span>
-            <div className="kt-major-stat">{network.data && holders.data ? money(knownSystemBalance, 2) : "—"}</div>
-            <span className="font-mono text-xs text-[#cab083]">WOLO · {knownBalanceCount} observed system balances</span>
+            <span className="kt-label text-[#a8ab9a]">UNENCUMBERED KINGDOM WEALTH</span>
+            <div className="kt-major-stat">{reserveBalance === null || !Number.isFinite(reserveBalance) ? "—" : money(reserveBalance, 2)}</div>
+            <span className="font-mono text-xs text-[#cab083]">WOLO · eight governed community reserve accounts</span>
             <div className="mt-6 h-2 overflow-hidden rounded-full bg-black/45"><div className="kt-bar-live h-full rounded-full" style={{width: network.data && holders.data ? "100%" : "0%"}}/></div>
-            <p className="mt-4 text-xs leading-5 text-[#99a4a5]">Sum of published non-user account balances. Excludes private player holdings, unidentified addresses, staking duplications and external Osmosis liquidity. Not total supply.</p>
+            <p className="mt-4 text-xs leading-5 text-[#99a4a5]">Canonical community reserve allowlist, matching the Kingdom Wealth definition. Excludes founder personal funds, escrow, staking custody, player wallets and the Osmosis pool. Not circulating supply.</p>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="kt-inset"><Wallet size={19} className="text-amber-200"/><div className="kt-small-stat">{holders.data ? amount(holders.data.currentNonzeroOwnerCount) : "—"}</div><span>Liquid funded owners</span></div>
@@ -215,7 +212,7 @@ export default function KingdomTreasury() {
             {filteredAccounts.map((a) => <article key={a.address} className="kt-account">
               <button type="button" onClick={() => setSelectedAccount(selectedAccount === a.address ? null : a.address)} aria-expanded={selectedAccount === a.address} className="flex w-full items-center justify-between gap-3 text-left">
                 <span className="min-w-0"><span className="block truncate font-semibold text-[#eee4cd]">{a.label}</span><span className="mt-1 block text-[10px] uppercase tracking-wider text-[#88999b]">{a.role} · {a.isModule ? "module" : a.use}</span></span>
-                <span className="flex shrink-0 items-center gap-3"><span className="font-mono text-xs text-[#cbb68e]">{a.publicBalance !== null ? `${a.publicBalance} WOLO` : "Not a current funded holder"}</span><ChevronRight size={14}/></span>
+                <span className="flex shrink-0 items-center gap-3"><span className="font-mono text-xs text-[#cbb68e]">{a.publicBalance !== null ? `${a.publicBalance} WOLO` : "Balance unavailable"}</span><ChevronRight size={14}/></span>
               </button>
               {selectedAccount === a.address && <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-3"><code className="break-all text-[11px] text-[#9aa8a9]">{a.address}</code><button type="button" onClick={() => void copyAddress(a.address)} className="kt-action !min-h-0 !px-2 !py-1 !text-[10px]">{copied ? <Check size={12}/> : <Wallet size={12}/>} Copy</button></div>}
             </article>)}
