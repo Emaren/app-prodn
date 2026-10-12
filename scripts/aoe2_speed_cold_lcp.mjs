@@ -70,7 +70,61 @@ const INIT_SCRIPT = String.raw`(() => {
     lcp: [],
     longTasks: [],
     layoutShifts: [],
+    // Bounded parser/DOM/native-load evidence for featured LCP images.
+    featuredImageEvents: [],
+    featuredImageEventsCapped: false,
   };
+  const featuredImageSeen = new WeakSet();
+  const recordFeaturedImage = (node, phase) => {
+    if (!node || String(node.tagName || "").toUpperCase() !== "IMG") return;
+    const url = String(node.currentSrc || node.src || "");
+    if (!url.includes("/api/media-assets/avatar/") || !url.includes("-featured")) return;
+    if (phase === "insert") {
+      if (featuredImageSeen.has(node)) return;
+      featuredImageSeen.add(node);
+    }
+    if (state.featuredImageEvents.length >= 96) {
+      state.featuredImageEventsCapped = true;
+      return;
+    }
+    state.featuredImageEvents.push({
+      phase, atMs: performance.now(), url,
+      complete: Boolean(node.complete),
+      naturalWidth: Number(node.naturalWidth || 0),
+      decoding: String(node.decoding || ""),
+      loading: String(node.loading || ""),
+    });
+  };
+  // Observe only added image nodes; do not poll, decode, alter attributes,
+  // prevent default, or hold the browser's image fetch/rendering pipeline.
+  try {
+    new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        if (mutation.type !== "childList") continue;
+        for (const node of mutation.addedNodes) {
+          if (String(node.tagName || "").toUpperCase() === "IMG") {
+            recordFeaturedImage(node, "insert");
+          } else if (typeof node.querySelectorAll === "function") {
+            for (const image of node.querySelectorAll("img")) {
+              recordFeaturedImage(image, "insert");
+            }
+          }
+        }
+      }
+    }).observe(document, { childList: true, subtree: true });
+  } catch {}
+  try {
+    document.addEventListener("load", (event) => {
+      recordFeaturedImage(event.target, "native-load");
+    }, true);
+  } catch {}
+  try {
+    document.addEventListener("DOMContentLoaded", () => {
+      for (const image of document.querySelectorAll("img")) {
+        recordFeaturedImage(image, "dom-content-loaded");
+      }
+    }, { once: true });
+  } catch {}
   const elementLabel = (el) => {
     if (!el) return null;
     const tag = String(el.tagName || "").toLowerCase();
@@ -166,6 +220,22 @@ const SNAPSHOT_EXPR = String.raw`(() => {
       (link) => (link.getAttribute("fetchpriority") || "").toLowerCase() === "high"
     ).length,
   };
+  const featuredImageEvents = Array.isArray(diag.featuredImageEvents)
+    ? diag.featuredImageEvents
+    : [];
+  const exactLcpImageEvents = finalLcp?.url
+    ? featuredImageEvents.filter((event) => event.url === finalLcp.url)
+    : [];
+  const lcpImageLifecycle = {
+    trackedFeaturedEvents: featuredImageEvents.length,
+    capped: Boolean(diag.featuredImageEventsCapped),
+    // Null rather than a fabricated timing when the observer misses an event.
+    firstInsertedAtMs: exactLcpImageEvents.find((event) => event.phase === "insert")?.atMs ?? null,
+    firstNativeLoadAtMs: exactLcpImageEvents.find((event) => event.phase === "native-load")?.atMs ?? null,
+    domContentLoadedObservedAtMs:
+      exactLcpImageEvents.find((event) => event.phase === "dom-content-loaded")?.atMs ?? null,
+    events: exactLcpImageEvents,
+  };
   const resources = allResourceEntries
     .map((e) => ({
       name: e.name,
@@ -209,6 +279,7 @@ const SNAPSHOT_EXPR = String.raw`(() => {
     lcpResourceTiming,
     lcpResourceMatchCount: lcpMatches.length,
     lcpPreloadHint,
+    lcpImageLifecycle,
     longTasks,
     longTaskCount: longTasks.length,
     longTaskTotalMs: longTasks.reduce((sum, e) => sum + e.duration, 0),
