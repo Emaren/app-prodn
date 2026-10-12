@@ -145,8 +145,9 @@ test("LCP element identity distinguishes same-URL DOM replacement from cached im
   const first = {
     tagName: "IMG", src: target, currentSrc: target,
     complete: false, naturalWidth: 0, decoding: "async", loading: "eager",
+    className: "object-contain object-top",
   };
-  const second = { ...first };
+  const second = { ...first, className: "object-contain object-center" };
   let now = 0;
   let onMutation: (events: Array<{ type: string; addedNodes: typeof first[]; removedNodes?: typeof first[] }>) => void = () => {};
   let onLcp: (list: { getEntries: () => unknown[] }) => void = () => {};
@@ -211,6 +212,8 @@ test("LCP element identity distinguishes same-URL DOM replacement from cached im
   assert.equal(rows[0].nodeId, rows[2].nodeId);
   assert.notEqual(rows[0].nodeId, rows[3].nodeId);
   assert.equal(rows[3].nodeId, rows[4].nodeId);
+  assert.equal((rows[0] as typeof rows[0] & { imageVariant: string }).imageVariant, "advanced");
+  assert.equal((rows[3] as typeof rows[0] & { imageVariant: string }).imageVariant, "extreme");
   const out = runInNewContext(snapshot![1], context) as {
     finalLcp: { elementNodeId: number };
     lcpResourceMatchCount: number;
@@ -239,4 +242,17 @@ test("receipt binds Mac collector source independently of production SHA", () =>
   assert.match(helper, /collectorSourceSha: collectorSha/);
   assert.match(driver, /"--collector-sha",\s*str\(identity\.get\("operator_source_sha"\)/);
   assert.match(helper, /releaseSha,\s*buildVersion,\s*collectorSourceSha:/);
+});
+
+test("hydration anomaly probe retains diagnostics without raw console strings", () => {
+  const script = readFileSync(
+    new URL("../scripts/aoe2_speed_cold_lcp.mjs", import.meta.url), "utf8",
+  );
+  assert.match(script, /Runtime\.consoleAPICalled/);
+  assert.match(script, /Runtime\.exceptionThrown/);
+  assert.match(script, /hydrationSignalPattern/);
+  assert.match(script, /reactHydrationDiagnostic:\s*\{/);
+  assert.doesNotMatch(script, /reactHydrationDiagnostic:\s*\{[^}]*?rawMessage/);
+  assert.match(script, /imageVariant/);
+  assert.match(script, /documentReadyState/);
 });
