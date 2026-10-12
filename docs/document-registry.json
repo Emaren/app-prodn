@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "7424336d905c16e9b6a688b9b5431e4e18749a65745409c1a28bf81a6f67e8b9",
+      "sha256": "492ccb432bbbc13e0bb5cc0f8381ea1dc048a3440683191cb77ef5890b3b8f99",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1304,7 +1304,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-02",
       "sensitivity": "internal",
-      "sha256": "6f83f55acb5a0028bcf133d1a8ac928de7c0976706922b7dc132386bb557c10f",
+      "sha256": "8cf0c734459822a3f8fd1b9c515a2d0313e1bca3e08fa83e67838cae2886a59a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "integration/inspection-speed-preload-20261012",
-    "commit": "3f4de499434d18e9e0d9a4163e00999da3bc757a"
+    "branch": "diag/speedos-lcp-image-lifecycle-20261012",
+    "commit": "f4313d874d693070a2a54d642b9b2873b650857f"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
