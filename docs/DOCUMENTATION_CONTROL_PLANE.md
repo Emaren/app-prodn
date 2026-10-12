@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/treasury-faucet-public-cleanup-roster-20261012` at `9c161b36a05b25bc85d07f2c4134b369403b330e`
+Implementation baseline: `feat/treasury-faucet-public-cleanup-roster-20261012` at `86d3e6efb7e0222402784ec571dabed1e5156283`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
