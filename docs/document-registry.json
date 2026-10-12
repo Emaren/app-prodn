@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e96b5d2a6598bc5a3c2b865183d058e40b7bb18454a436e6298a75185d9afa50",
+      "sha256": "153d0f730a03896bf9e368fda68a3be4689a14a62887175a2682aea0bc47e1ad",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2094,7 +2094,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feat/treasury-faucet-public-cleanup-roster-20261012",
-    "commit": "86d3e6efb7e0222402784ec571dabed1e5156283"
+    "commit": "679e30ef01f5350dba2e2de5765b4a3bf9372788"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
