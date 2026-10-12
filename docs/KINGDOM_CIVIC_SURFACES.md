@@ -104,9 +104,16 @@ admin operator API from public clients.
 
 The August 2026 faucet incident remains an **internal security log**, not a
 public Treasury statistic. No claim totals, losses, or suspect counts appear on
-`/kingdom-treasury`. The operator's association of the currently unclassified
-holder rows with the incident is under review; do not attach an adverse
-per-address identity without an exact, audited source/address match.
+`/kingdom-treasury`. The operator's October 12 screenshot identifies eight exact,
+checksum-valid public addresses. WoloChain displays those eight as
+"August 2026 faucet hack" with a visible "Operator-reported · forensic
+match pending" qualifier, not a claim of independently proven attack
+ownership. The classification is address-bound, never rank-bound, and
+requires the holder still be unclassified; source-chain verification of
+their liquid balances is done by the existing public per-address read.
+A future transaction-graph join must independently corroborate or
+correct the incident cohort. Treasury does not publish the incident
+or claim totals and excludes its faucet hot-wallet sends.
 Do not assign an attacker identity to any particular address without a
 sealed address-level incident membership proof. The canonical
 `WOLO_MAINNET_NETWORK_ACCOUNTS` registry **already contains two historical
