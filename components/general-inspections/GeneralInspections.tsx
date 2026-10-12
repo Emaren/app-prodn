@@ -18,7 +18,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
-import { formatInspectionEvidence } from "@/lib/generalInspections/evidenceExport";
+import { formatInspectionEvidence, formatInspectionJson } from "@/lib/generalInspections/evidenceExport";
 import type {
   GeneralInspectionsSnapshot,
   InspectionCategory,
@@ -211,7 +211,7 @@ export default function GeneralInspections() {
   const [selectedId, setSelectedId] = useState("speed");
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
+  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "json" | "failed">("idle");
 
   const load = useCallback(async (manual = false) => {
     if (manual) setRefreshing(true);
@@ -250,6 +250,16 @@ export default function GeneralInspections() {
     try {
       await navigator.clipboard.writeText(formatInspectionEvidence(snapshot));
       setCopyStatus("copied");
+    } catch {
+      setCopyStatus("failed");
+    }
+  }, [snapshot]);
+
+  const copyJson = useCallback(async () => {
+    if (!snapshot) return;
+    try {
+      await navigator.clipboard.writeText(formatInspectionJson(snapshot));
+      setCopyStatus("json");
     } catch {
       setCopyStatus("failed");
     }
@@ -343,6 +353,15 @@ export default function GeneralInspections() {
                     </button>
                     <button
                       type="button"
+                      onClick={() => void copyJson()}
+                      className="flex h-10 min-w-12 items-center justify-center rounded-xl border border-sky-200/10 bg-sky-300/[0.04] px-2 text-[10px] font-black tracking-wider text-sky-200/70 transition hover:bg-sky-300/[0.08]"
+                      title="Copy current inspection JSON"
+                      aria-label="Copy current inspection JSON"
+                    >
+                      JSON
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => void load(true)}
                       disabled={refreshing}
                       className="grid h-10 w-10 place-items-center rounded-xl border border-sky-200/10 bg-sky-300/[0.04] text-sky-200/70 transition hover:bg-sky-300/[0.08] disabled:opacity-50"
@@ -355,6 +374,8 @@ export default function GeneralInspections() {
                 <div role="status" aria-live="polite" className="px-5 text-[10px] text-slate-400">
                   {copyStatus === "copied"
                     ? "Inspection evidence copied"
+                    : copyStatus === "json"
+                      ? "Inspection JSON copied"
                     : copyStatus === "failed"
                       ? "Clipboard unavailable; inspect the visible check rows"
                       : null}
