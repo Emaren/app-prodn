@@ -8,7 +8,7 @@ systems: ["app-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "financial-domain-contract"
-reviewed_at: "2026-09-29"
+reviewed_at: "2026-10-12"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -239,6 +239,91 @@ Watcher identity promotion also fails closed around preview evidence. If two
 game identity, promotion is blocked with `auto_execution_preset_collision`
 and the exact market family is moved to operator review. The reconciler never
 silently merges those preview rows or guesses which one should survive.
+
+## October 12: E2 Mecha command milestone (non-custodial)
+
+The default /profile presentation is E2. The click-or-hover profile selector
+supports B1/B2, A1/A2 and E1/E2. E1 remains the previous full Extreme layout,
+while E2 uses a condensed Mecha command tile. Basic and Advanced variants share
+their existing page content for now. A user choice persists in UID-scoped
+browser storage, not yet as a cross-device account preference. The selector
+supports Escape, keyboard focus and mouse transit across the trigger/popover
+without collapsing prematurely.
+
+The E2 tile prioritizes a next-game stake, ON/OFF preview command, compact
+readiness indicator, War Satchel, D-Sync shortcut, and expandable settings for
+winner stake, D-Sync side/stake, a finite number of games or Until Out. Its
+subtle beacon is CSS-only and respects reduced-motion preferences. No session
+polling loop is introduced. The War Satchel currently displays zero locked;
+there is no deposit, wallet signer or withdrawal control.
+
+Combined winner plus D-Sync stake for an automatic game must be an integer
+from 1 to 1,000 WOLO. The finite-plan upper envelope remains 10,000 WOLO.
+The server validates incoming preset changes, and the Watcher shadow admission
+rejects even old stored presets exceeding the new combined cap. Manual betting
+retains its separately enforced 50,000 WOLO policy. Saving/arming an E2 preset
+is shadow evaluation only. It never means an accepted wager or confirmed
+on-chain locked balance. The OFF switch uses a narrower owner-authenticated,
+optimistic-versioned pause action that leaves all saved stake amounts unchanged
+and succeeds even for legacy over-limit presets or invalid unsaved form edits.
+Both E1 and E2 expose this fail-safe pause, and both validate the same
+1,000-WOLO combined per-match cap in their client loadouts. Only an explicitly
+saved new plan is subject to the tightened amount validator; a user must never
+be locked out of pausing by an input-validation change.
+
+Admin telemetry lives at /admin/auto-bets, linked from the admin hub.
+Its session-gated GET /api/admin/auto-bets is private/no-store, bounded
+to the latest 100 preset rows and 75 execution rows, and provides full
+count metrics and execution-state distribution. It never sends tokens,
+signer authority, raw Watcher sourceEvidence, or session credentials and
+offers no forced execution or user balance mutations.
+
+### Hard gates for future funded Mecha release
+
+A single ordinary Cosmos bank-send signature does not authorize the server
+to silently debit an arbitrary linked wallet in every future match. Either a
+chain-supported, owner-revocable delegated authorization must be proven, or
+a separately audited, pre-funded War Satchel account must be implemented.
+
+Before financial execution can be enabled, require all of the following:
+
+1. Verify exact Wolo chain ID, denom, signer role and sender wallet ownership;
+   a chain-confirmed user transfer to the dedicated custody address is the
+   only authority for crediting a personal War Satchel ledger.
+2. Implement append-only user-credit, available, reserved, accepted-stake,
+   payout/refund-liability, withdrawn and total-custody reconciliations,
+   with immutable chain proof and strict nonnegative concurrency invariants.
+3. Bind owner consent to verified UID + wallet, a revocable finite maximum
+   allocation, a 1,000 WOLO combined per-match cap, per-day exposure ceiling,
+   frozen policy version, pause/cancel propagation and expiry.
+4. Revalidate the exact Watcher/Steam uploader roster, one canonical game
+   identity, frozen verified team proposition, and matching live D-Sync child
+   before any money reservation or spend; never trust raw Watcher telemetry.
+5. Use a serializable/locked reservation transaction and deterministic
+   unique tuple of user, canonical game, policy version and funded ticket.
+   Preserve idempotency across process crashes and repeated retry attempts.
+6. Prove the escrow spend and accept a canonical real BetStakeTicket before
+   recording a financially committed wager or advancing a finite game count.
+   Existing Bet Escrow payout/refund authority must independently accept the
+   funding provenance. Never use an app-only synthetic wager.
+7. Unmatched or void wagers return 100 percent of the unmatched stake;
+   the 2 percent fee applies only under existing matched-settlement policy.
+   Refunded liabilities cannot be withdrawn or spent twice.
+8. Future game-by-game stake sequencing (example: 100, 200, 50, 1,000 WOLO)
+   requires a durable server-side versioned queue, per-item caps, a bounded
+   total, and one ordinal advance per accepted funded ticket. Until Out and
+   skipped/missed matches need explicitly designed accounting. E2 currently
+   supports a uniform per-game preview stake, not a stored variable queue.
+9. Build admin visibility, reason codes, circuit breakers, cancellation,
+   recovery replay, low-balance stop, crash/restart/race tests, a mainnet
+   canary and immutable reconciliation receipts before any live toggle.
+   On the public Bets Hall, a Mecha-agent label is admissible only for an
+   actually accepted funded automatic wager.
+
+The current runtime explicitly sets its live executor availability to false.
+Changing environment variables or clicking ON cannot activate money movement.
+This release milestone contains no new custody, funding, wager, migration or
+withdrawal endpoint, and must not be represented as a live auto-betting release.
 
 ## Runtime gate
 
