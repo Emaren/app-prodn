@@ -185,6 +185,22 @@ receipt under `.aoe2war-release/performance-cold-lcp/`. It is diagnostic-only:
 this rail when browser Ready is healthy but visual completion/LCP still has a long
 tail.
 
+### Browser diagnostic samples versus scoring authority
+
+The Brain and General Inspections select the most recent **complete 20-sample
+cold-phone cohort** to support public LCP p50/p95, readiness, TTFB, target
+stability and browser mutation-boundary scores. A shorter 1/5/10-sample
+diagnostic is still a valuable immutable local receipt but must not displace
+a qualified score receipt. A desktop-only or underfilled 20-declared-sample
+run is ineligible as phone proof. If no qualifying receipt exists, evidence
+remains unavailable rather than gaining points from a conveniently small
+sample. A qualified receipt must still belong to the current certified
+production release and pass its separate freshness checks.
+
+This distinction matters when Mac diagnostic probes are newer than production:
+collector SHA and production SHA remain independent fields. The original
+20-sample cohort is not deleted or overwritten.
+
 ### Reuse cold-phone receipts before collecting another cohort
 
 `aoe2war speed lcp-attribution --expected-release <exact-certified-SHA>`

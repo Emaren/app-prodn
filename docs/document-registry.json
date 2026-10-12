@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a6506b20b4351d7803049cb8630c430bb2084e9124b44a93f0599ef8178ca3e7",
+      "sha256": "3cae32e9659eaf4f51abc04d1cc0e1454158d6648cb896fbe33d91f2f54fa4c0",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1304,7 +1304,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-02",
       "sensitivity": "internal",
-      "sha256": "f5733332f81747b22498fe9b8eff1d111e40afb05a1f2ec3d22bc7236ed76cd7",
+      "sha256": "79da9b5624ee0c972e66a96dad220dee87ef81e89de1817cae95fd7176722418",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "diag/speedos-exact-lcp-dom-identity-20261012",
-    "commit": "28f414c352e5f155e1667f94e5458a160e3f3d53"
+    "branch": "fix/speedos-qualified-cold-receipts-20261012",
+    "commit": "a993e1bb52c38cb9b7ab473e7c9b6afd7b9d304c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

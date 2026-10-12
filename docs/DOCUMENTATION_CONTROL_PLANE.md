@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `diag/speedos-exact-lcp-dom-identity-20261012` at `28f414c352e5f155e1667f94e5458a160e3f3d53`
+Implementation baseline: `fix/speedos-qualified-cold-receipts-20261012` at `a993e1bb52c38cb9b7ab473e7c9b6afd7b9d304c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
