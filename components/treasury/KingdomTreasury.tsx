@@ -14,7 +14,7 @@ import {
   REPORTED_TREASURY_COSTS, TREASURY_FAUCET_INCIDENT,
   isPublicTreasuryHolders, isTreasuryNetwork, isTreasuryPool,
   isTreasuryTransfers, observedKingdomOutflows, publicSystemAccounts,
-  disclosedKingdomReserveBalance,
+  disclosedKingdomReserveBalance, legacyIdentityMembership,
   reportedMonthlyOutlay,
   type TreasuryHolders, type TreasuryNetwork,
   type TreasuryPool, type TreasuryTransfers,
@@ -112,6 +112,7 @@ export default function KingdomTreasury() {
     network.data && holders.data ? publicSystemAccounts(network.data, holders.data) : [],
     [network.data, holders.data]);
   const holderRows = holders.data?.holders ?? [];
+  const legacyIdentities = holders.data ? legacyIdentityMembership(holders.data) : [];
   const outflows = useMemo(() =>
     observedKingdomOutflows(transfers.data?.rows ?? [], accounts),
     [transfers.data, accounts]);
@@ -274,7 +275,15 @@ export default function KingdomTreasury() {
             <button className="kt-inline-link mt-3" type="button" aria-expanded={incidentOpen} onClick={() => setIncidentOpen(!incidentOpen)}>Incident evidence <ChevronDown size={13} className={incidentOpen?"rotate-180":""}/></button>
             {incidentOpen && <p className="mt-3 text-xs leading-5 text-[#b9b0a2]">653 paid claims at 2 WOLO each. 647 recipient wallets later moved funds; 644 converged on a common destination. Public live unclassified holders are NOT automatically tagged as attackers without an address-level verified incident join.</p>}
           </div>
-          <div className="mt-4 text-[11px] leading-5 text-[#8e9898]">Identity follow-up: BDB, Pigmen, Raw. Three reported names; zero additional holders counted without verified wallet matches.</div>
+          <div className="mt-4 space-y-2">
+            <div className="kt-label text-[#a9b6ac]">LEGACY REGISTERED PLAYER WALLETS · NOT EXTRA CURRENT HOLDERS</div>
+            {legacyIdentities.map((identity) => <article key={identity.address} className="kt-account flex flex-wrap items-center justify-between gap-3">
+              <div className="min-w-0"><strong className="block text-xs text-[#e6d7b6]">{identity.label}</strong><div className="mt-1 break-all font-mono text-[10px] text-[#91a29f]">{identity.address}</div></div>
+              <span className={`kt-plate !text-[9px] ${identity.isCurrentHolder ? "!text-emerald-200" : ""}`}>{identity.isCurrentHolder ? "CURRENT FUNDED HOLDER" : "HISTORICAL / NOT CURRENT FUNDED"}</span>
+            </article>)}
+            {!holders.data && <div className="text-xs text-[#8e9898]">Awaiting holder census to check historic account membership.</div>}
+            <p className="text-[11px] leading-5 text-[#8e9898]">[BDB] is Pigman’s recorded clan prefix, not a separately verified account. “Ra 𓁛𓇳” is the registered alias; “Raw” has no separate proven address. Historical accounts add zero to the current-funded count unless live chain evidence includes them.</p>
+          </div>
         </div>
 
         <div className="kt-panel p-5 sm:p-7">
