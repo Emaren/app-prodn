@@ -389,11 +389,14 @@ export function buildBridgeGeneralInspectionsSnapshot(
   const buildVersion =
     text(activation.certification.candidate_build_version) ||
     text(activation.stage.candidate_build_version);
-  const bridgeAt =
-    text(envelope.receivedAt) ||
-    text(envelope.generatedAt) ||
-    text(payload.generated_at);
-  const bridgeFresh = freshnessFraction(bridgeAt, 1, 6, now);
+  // Collection freshness and transport freshness are independent authorities.
+  // A healthy Bridge heartbeat (or a delayed resend) cannot renew stale Brain facts.
+  const bridgeAt = text(payload.generated_at);
+  const bridgeReceivedAt = text(envelope.receivedAt);
+  const bridgeFresh = Math.min(
+    freshnessFraction(bridgeAt, 1, 6, now),
+    freshnessFraction(bridgeReceivedAt, 1, 6, now),
+  );
   const gateAt =
     text(activation.gate.generated_at) ||
     text(activation.stage.generated_at) ||
@@ -1423,6 +1426,14 @@ export function buildBridgeGeneralInspectionsSnapshot(
   );
 
   const notes: string[] = [];
+  if (bridgeFresh < 1) {
+    notes.push(
+      "Kingdom Intelligence capture or delivery evidence is aging or missing: " +
+        "capture " + ageDetail(bridgeAt, now) +
+        ", delivery " + ageDetail(bridgeReceivedAt, now) +
+        ". Refresh Brain through the governed Operator Bridge; a heartbeat cannot renew old facts.",
+    );
+  }
   if (!expiry.data) {
     notes.push(
       "Storage Expiry proof is still running; cold-checkpoint and reclaim-debt marks remain conservative.",
