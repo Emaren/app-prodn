@@ -45,8 +45,28 @@ test("E2 renders on the existing Extreme profile stage and preserves E1", () => 
 test("Mecha UI shows only server-owned preview status; not an on-chain wallet", () => {
   const card = readFileSync(new URL("../components/profile/MechaAutoBetCard.tsx", import.meta.url), "utf8");
   assert.match(card, /role="switch"/);
+  assert.match(card, /AUTO BETTING \/\/ NEXT MATCH/);
   assert.match(card, /WAR SATCHEL/);
+  assert.match(card, /NEXT MATCH BET/);
+  assert.match(card, /BET PLAN/);
+  assert.match(card, /DESYNC/);
+  assert.doesNotMatch(card, /LOADOUT|D-SYNC OPTIONS|>DS</);
   assert.match(card, /NO WOLO MOVED · NO BET PLACED/);
+  assert.match(card, /useKeplr\(\)/);
+  assert.match(card, /useWoloBalance\(/);
+  assert.match(card, /deriveWoloBalanceReadState\(/);
+  assert.match(card, /formatMinimalDenomAmount\(/);
+  assert.match(card, /walletStatus === "connected"/);
+  assert.match(card, /Connect Keplr/);
+  assert.match(card, /Chain verified/);
+  assert.match(card, /LOAD SATCHEL/);
+  assert.match(card, /WOLO FROM YOUR WALLET/);
+  assert.match(card, /LOAD FROM WALLET · COMING SOON/);
+  assert.match(card, /disabled aria-disabled="true"/);
+  assert.match(card, /escrow verification pending/);
+  assert.match(card, /PREVIEW ACTIVE/);
+  assert.match(card, /ARM PREVIEW/);
+  assert.doesNotMatch(card, /onClick=.*sendTokens|SigningStargateClient|MsgSend/);
   assert.match(card, /MAX_AUTO_GAME_WOLO = 1_000/);
   assert.match(card, /expectedVersion: server.preset.version/);
   assert.match(card, /if \(armed\) void pause\(\)/);
