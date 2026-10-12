@@ -104,10 +104,16 @@ each (1,306 WOLO gross); 647 recipient wallets moved funds onward; 644
 converged on a common destination. These are **incident-level facts**,
 not a claim that arbitrary current unclassified holders are incident wallets.
 Do not assign an attacker identity to any particular address without a
-sealed address-level incident membership proof. BDB, Pigmen and Raw are
-**three user-reported missing identity candidates** requiring verified
-on-chain address resolution; none gets a synthetic wallet or additional
-current-holder count until confirmed.
+sealed address-level incident membership proof. The canonical
+`WOLO_MAINNET_NETWORK_ACCOUNTS` registry **already contains two historical
+player addresses**: `[BDB]Pigman` at
+`wolo1ntal93v8c5wryq2d9puhks8l25zedhepyv8n5k`, and `Ra 𓁛𓇳` at
+`wolo198ajhn5atpw65u6z89z5hwfer2vx90u4ydxe7z`. “BDB” is part of
+Pigman's registered tag; “Raw” is not proven to be a separately owned wallet.
+Historical July observations showed both with zero WOLO, but their **present
+membership must always be derived afresh from live holder data**. The
+dashboard displays both with exact addresses and membership badges; they
+never inflate current-funded counts merely because they are registered.
 
 ### Design and performance
 
