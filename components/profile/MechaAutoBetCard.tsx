@@ -9,7 +9,7 @@ type Payload = {
   preset: Preset;
   effectiveEnabled: boolean;
   limits: { maxEstimatedReserveWolo: number; maxGames: number };
-  runtime: { previewOnly: boolean; executionReady: boolean };
+  runtime: { previewOnly: boolean; executionReady: boolean; mode: "disabled" | "shadow" | "live" };
   readiness: { identityReady: boolean; watcherKeyReady: boolean; durableMarketEvaluatorReady: boolean };
   detail?: string;
 };
@@ -108,6 +108,7 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
   }, [server, valid, saving, stake, dsSide, ds, untilOut, count, hydrate]);
 
   const status = !server ? "UNLINKED" : !armed ? "STANDBY" :
+    server.runtime.mode === "disabled" ? "AUTOMATION OFFLINE" :
     !readiness ? "WAITING FOR WATCHER" : previewOnly ? "SHADOW READY" : "FUNDED READY";
   const mecha = "Mecha " + (displayName.trim().slice(0, 38) || "Warrior");
   const dsSelected = dsSide !== "none";
