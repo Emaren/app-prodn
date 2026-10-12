@@ -96,7 +96,7 @@ function captureLifecycle() {
     };
     lcpResourceMatchCount: number;
   };
-  return { output, diag, lcpUrl, image, listeners };
+  return { output, diag, lcpUrl, image, listeners, context };
 }
 
 test("records exact featured LCP insertion, native load and DOMContentLoaded without modifying image", () => {
@@ -116,12 +116,21 @@ test("records exact featured LCP insertion, native load and DOMContentLoaded wit
   assert.equal(output.lcpResourceMatchCount, 1);
 });
 
-test("when the LCP candidate is unrelated, report no exact image lifecycle timestamps", () => {
-  const { diag, output, image, listeners } = captureLifecycle();
-  image.currentSrc = image.src = "https://aoe2war.com/favicon.ico";
-  listeners.load({ target: image });
-  assert.equal(diag.featuredImageEvents.length, 3);
-  assert.equal(output.lcpImageLifecycle.firstInsertedAtMs, 820);
+test("when the final LCP target does not match any featured-image events, no lifecycle time is invented", () => {
+  const { diag, context } = captureLifecycle();
+  diag.lcp[0].url = "https://aoe2war.com/favicon.ico";
+  const unrelated = runInNewContext(snapshot[1], context) as {
+    lcpImageLifecycle: {
+      firstInsertedAtMs: number | null;
+      firstNativeLoadAtMs: number | null;
+      domContentLoadedObservedAtMs: number | null;
+      events: unknown[];
+    };
+  };
+  assert.equal(unrelated.lcpImageLifecycle.firstInsertedAtMs, null);
+  assert.equal(unrelated.lcpImageLifecycle.firstNativeLoadAtMs, null);
+  assert.equal(unrelated.lcpImageLifecycle.domContentLoadedObservedAtMs, null);
+  assert.deepEqual(unrelated.lcpImageLifecycle.events, []);
 });
 
 test("featured event evidence is capped, rather than collecting unbounded per-image logs", () => {
