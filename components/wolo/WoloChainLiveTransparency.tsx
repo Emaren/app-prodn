@@ -428,7 +428,7 @@ export default function WoloChainLiveTransparency() {
 
                 <div className="text-center">
                   {holder.historical ? (
-                    <span className="text-xs text-slate-400">0 WOLO liquid*</span>
+                    <span className="text-xs text-slate-400">0 WOLO liquid</span>
                   ) : holder.classification !== "protocol" || holder.balanceHidden ? (
                     <span className="sr-only">Balance hidden</span>
                   ) : (
@@ -446,7 +446,6 @@ export default function WoloChainLiveTransparency() {
         <div className="relative z-10 mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
           <div>
             Current liquid holders and active stakers.
-            {historicRows.length > 0 ? " *Historical rows are registered but absent from the current funded census." : ""}
           </div>
           <div>Updated: {holders?.updatedAt ? new Date(holders.updatedAt).toLocaleTimeString() : "loading"}</div>
         </div>
