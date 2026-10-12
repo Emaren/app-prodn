@@ -131,6 +131,17 @@ when no exact timing entry is retained by Chrome; neither zero nor a similarly
 named asset is substituted. This makes cold DNS/TLS/session and
 high-priority-image competition visible instead of hiding it behind a warmed browser.
 
+For the single opening-card preload experiment, each sample additionally records
+`metrics.lcpPreloadHint`: total rendered image preload hints, hints whose
+resolved URL matches the **exact final LCP URL**, and high-priority exact
+matches. Pair this with `lcpResourceTiming.initiatorType` and
+`lcpResourceMatchCount` to distinguish a rendered but unused hint, a useful
+preload, and an inadvertent duplicate request. A hint alone does **not**
+prove image download acceleration. Compare a certified 20-sample cohort's
+request-start distribution and p50/p95 LCP to the baseline with the same
+view mode, release route, and sampling policy; discard the experiment if
+it increases duplicate requests, long tasks or critical page competition.
+
 The command is bound to the currently certified production SHA/build and seals its
 receipt under `.aoe2war-release/performance-cold-lcp/`. It is diagnostic-only:
 `productionMutated`, `databaseMutated`, and `woloMutated` are all false. Use
