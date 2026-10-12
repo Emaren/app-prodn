@@ -8,14 +8,14 @@ import {
   woloAddressDirectorySummary,
 } from "../lib/woloHolderDirectory.ts";
 
-const [pigman, ra] = WOLO_HISTORIC_PLAYER_ACCOUNTS;
+const [ra, pigman] = WOLO_HISTORIC_PLAYER_ACCOUNTS;
 
 test("Pigman and Ra are verified address-book records, not invented 37th and 38th current holders", () => {
   assert.equal(WOLO_HISTORIC_PLAYER_ACCOUNTS.length, 2);
   assert.deepEqual(new Set(WOLO_HISTORIC_PLAYER_ACCOUNTS.map(x => x.label)),
     new Set(["[BDB]Pigman", "Ra 𓁛𓇳"]));
-  assert.equal(pigman?.address, "wolo198ajhn5atpw65u6z89z5hwfer2vx90u4ydxe7z");
-  assert.equal(ra?.address, "wolo1ntal93v8c5wryq2d9puhks8l25zedhepyv8n5k");
+  assert.equal(ra?.address, "wolo198ajhn5atpw65u6z89z5hwfer2vx90u4ydxe7z");
+  assert.equal(pigman?.address, "wolo1ntal93v8c5wryq2d9puhks8l25zedhepyv8n5k");
   const mock36 = Array.from({ length: 36 }, (_, i) => ({
     address: `wolo1mock${i.toString().padStart(3, "0")}`,
   }));
