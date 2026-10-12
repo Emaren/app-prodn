@@ -263,7 +263,11 @@ The server validates incoming preset changes, and the Watcher shadow admission
 rejects even old stored presets exceeding the new combined cap. Manual betting
 retains its separately enforced 50,000 WOLO policy. Saving/arming an E2 preset
 is shadow evaluation only. It never means an accepted wager or confirmed
-on-chain locked balance.
+on-chain locked balance. The OFF switch uses a narrower owner-authenticated,
+optimistic-versioned pause action that leaves all saved stake amounts unchanged
+and succeeds even for legacy over-limit presets or invalid unsaved form edits.
+Only an explicitly saved new plan is subject to the tightened amount validator;
+a user must never be locked out of pausing by an input-validation change.
 
 Admin telemetry lives at /admin/auto-bets, linked from the admin hub.
 Its session-gated GET /api/admin/auto-bets is private/no-store, bounded
