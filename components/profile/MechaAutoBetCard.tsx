@@ -107,6 +107,26 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
     } finally { setSaving(false); }
   }, [server, valid, saving, stake, dsSide, ds, untilOut, count, hydrate]);
 
+  // Pause is always available, even if the user has unfinished/invalid edits.
+  // The server's pause-only path preserves the last committed plan unchanged.
+  const pause = useCallback(async () => {
+    if (!server || saving) return;
+    setSaving(true); setError(""); setNotice("");
+    try {
+      const response = await fetch("/api/user/bet-automation", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "pause", expectedVersion: server.preset.version }),
+      });
+      const next = (await response.json().catch(() => null)) as Payload | null;
+      if (!response.ok || !next?.preset) throw new Error(next?.detail || "Pause rejected");
+      hydrate(next);
+      setNotice("Preview paused");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Pause rejected");
+    } finally { setSaving(false); }
+  }, [server, saving, hydrate]);
+
   const status = !server ? "UNLINKED" : !armed ? "STANDBY" :
     server.runtime.mode === "disabled" ? "AUTOMATION OFFLINE" :
     !readiness ? "WAITING FOR WATCHER" : previewOnly ? "SHADOW READY" : "FUNDED READY";
@@ -130,8 +150,8 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
         </div>
         <button
           type="button" role="switch" aria-checked={armed} aria-label="Enable or pause Mecha preview"
-          onClick={() => void save(!Boolean(server?.preset.enabled))}
-          disabled={loading || saving || !server || !valid || dirty}
+          onClick={() => { if (armed) void pause(); else void save(true); }}
+          disabled={loading || saving || !server || (!armed && (!valid || dirty))}
           className={"relative h-12 w-[5.5rem] shrink-0 rounded-full border p-1 transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300 disabled:opacity-40 " +
             (armed ? "border-amber-200/60 bg-amber-300/20" : "border-white/15 bg-white/[.05]")}
         >
