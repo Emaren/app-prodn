@@ -21,6 +21,55 @@ read-only operator control plane.
 Its north star is zero unexplained unknown replay truth. It does not weaken
 evidence rules merely to reduce an unknown counter.
 
+## Public HD Replay Engine (visual read-only machine)
+
+`/hd-replay-engine` sits beside Parser Observatory in the Kingdom dropdown.
+It is a public, visually animated instrument dashboard, not a second parser,
+an adjudicator, or a Codex worktree viewer. Its read-only endpoint
+`GET /api/hd-replay-engine` projects the existing five-minute cached
+`loadPublicParserObservatory()` data through `projectHdReplayEngine()`,
+then supplies a small whitelist: aggregate counts, aggregate unknown
+cohorts (routing reason, owner, player appearance, game type, map), indexed
+parser modes/failure lanes, up to 24 sanitized unknown-case records, and
+up to six public parser job headers. No filenames, original replay bytes,
+source hashes, private runner paths, API credentials, settlement internals,
+or Codex artifacts are included. An unavailable source returns an error:
+neither route invents zero-game success.
+
+The page auto-refreshes at a bounded 120-second foreground-only cadence
+while retaining the underlying five-minute server-side corpus cache. A
+machine pulse or scanning animation means interface activity **only**,
+not a new replay winner or an active Codex job. Parser jobs are labeled as
+recorded parser jobs, never as live Codex execution. Missing current
+measurement is displayed as unavailable or stale. The page can later
+consume an independently authenticated, explicit public Codex receipt
+feed, but V1 makes no such connection or progress claim.
+
+Three distinct metric grains remain explicit:
+
+- **Final replay ingestion records:** all `is_final` GameStats rows,
+  including rehosts/non-public records, with the public result resolver
+  determining resolved versus unresolved.
+- **Logical public battles:** public eligibility and deduplication with
+  complete winner+roster truth measured separately.
+- **Indexed replay artifacts:** latest decoder dispositions, saved-game
+  checkpoints, parser recovery lanes. A successful parse does not
+  independently prove the winner; a saved game is not a final battle.
+
+Every unresolved game tile displays four discrete evidence gates:
+final intake record, two player names observed, two verified replay sides,
+and defensible winner proof. Gate count `0/4` through `4/4` is **not**
+probabilistic confidence or an estimated percentage of remaining work.
+These cases are explicitly unverified, so winner proof remains false.
+The queue is the most recent 24 *final-ingestion* unknowns, not a ranked
+Codex worklist; cohorts are aggregate and player appearances may overlap.
+Do not use any visual meter as betting or settlement authority.
+
+The user-interface design uses graphite, aged copper and low-key cyan,
+with CSS-only reduced-motion-aware mechanical rotation, scanlines and
+status lights. Browsers receive no low-level parser authority. The only
+available per-case action opens the existing read-only game detail.
+
 ## Commands
 
 `aoe2war truth status`
