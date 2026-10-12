@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `ops/general-inspections-evidence-triage-20261012` at `644b2ab1ffd691228a697c6632554fe50f8d3370`
+Implementation baseline: `ops/general-inspections-evidence-triage-20261012` at `9922a021a3c0083372e23b4f6b59640c99321c00`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
