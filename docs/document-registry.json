@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d1702691b994525fc205cc47f6a3c153accbc91618b7630410658ac3f8ec0b0d",
+      "sha256": "a6506b20b4351d7803049cb8630c430bb2084e9124b44a93f0599ef8178ca3e7",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1304,7 +1304,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-02",
       "sensitivity": "internal",
-      "sha256": "e421c61263fcd31a0f7277416113050462709476f23e5844556dddd2c21b6c5e",
+      "sha256": "f5733332f81747b22498fe9b8eff1d111e40afb05a1f2ec3d22bc7236ed76cd7",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2094,7 +2094,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "diag/speedos-exact-lcp-dom-identity-20261012",
-    "commit": "c5365984f68ebc6e66e6bbce1b66305b63464a53"
+    "commit": "28f414c352e5f155e1667f94e5458a160e3f3d53"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
