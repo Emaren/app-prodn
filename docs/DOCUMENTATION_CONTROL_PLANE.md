@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/treasury-release-gate-unused-selected-20261012` at `68002e9d6e81044f9ba7c4c1adff757394201b43`
+Implementation baseline: `fix/wolochain-directory-treasury-privacy-20261012` at `8c44222d1d2786477e32059564ff6dafe7be8d2f`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
