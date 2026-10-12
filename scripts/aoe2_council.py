@@ -22,16 +22,13 @@ def command_json(*args: str, timeout: int = 120) -> dict[str, Any]:
     # Own an isolated process group so timeout cleanup reaches that tree,
     # without ever signalling the Operator Bridge, Codex or another owner.
     command = [str(CLI), *args]
-    # Routine Council/Brain may reuse the exact-source successful central
-    # quality build from a certified Finish. Standalone Doctor, full audit and
-    # Finish are unaffected and always execute the strict documentation gates.
-    env = os.environ.copy()
+    # Request monitoring-proof reuse explicitly; environment inheritance must
+    # never change release-grade full Doctor/Audit/Finish behavior.
     if args[:2] == ("doctor", "--json"):
-        env["AOE2WAR_KI_CENTRAL_PROOF_REUSE"] = "1"
+        command.append("--monitor")
     proc = subprocess.Popen(
         command,
         cwd=ROOT,
-        env=env,
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
