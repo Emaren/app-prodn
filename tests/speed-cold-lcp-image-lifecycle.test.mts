@@ -139,3 +139,91 @@ test("featured event evidence is capped, rather than collecting unbounded per-im
   assert.equal(diag.featuredImageEvents.length, 96);
   assert.equal(diag.featuredImageEventsCapped, true);
 });
+
+test("LCP element identity distinguishes same-URL DOM replacement from cached image load", () => {
+  const target = "https://aoe2war.com/api/media-assets/avatar/test-featured?size=card";
+  const first = {
+    tagName: "IMG", src: target, currentSrc: target,
+    complete: false, naturalWidth: 0, decoding: "async", loading: "eager",
+  };
+  const second = { ...first };
+  let now = 0;
+  let onMutation: (events: Array<{ type: string; addedNodes: typeof first[]; removedNodes?: typeof first[] }>) => void = () => {};
+  let onLcp: (list: { getEntries: () => unknown[] }) => void = () => {};
+  let onNativeLoad: (event: { target: typeof first }) => void = () => {};
+  const doc = {
+    title: "AoE2WAR",
+    addEventListener: (event: string, cb: typeof onNativeLoad) => {
+      if (event === "load") onNativeLoad = cb;
+    },
+    querySelectorAll: () => [second],
+  };
+  const perf = {
+    timeOrigin: 10000,
+    now: () => now,
+    getEntriesByType: (type: string) =>
+      type === "resource" ? [{
+        name: target, initiatorType: "link", startTime: 750,
+        responseStart: 790, responseEnd: 900, duration: 150,
+        transferSize: 85000, encodedBodySize: 85000, decodedBodySize: 85000,
+      }] : [],
+  };
+  const state: Record<string, unknown> = {};
+  const context = {
+    window: state, document: doc, performance: perf,
+    location: { href: "https://aoe2war.com/" },
+    MutationObserver: class {
+      constructor(cb: typeof onMutation) { onMutation = cb; }
+      observe() {}
+    },
+    PerformanceObserver: class {
+      cb: typeof onLcp;
+      constructor(cb: typeof onLcp) { this.cb = cb; }
+      observe(options: { type: string }) {
+        if (options.type === "largest-contentful-paint") onLcp = this.cb;
+      }
+    },
+  };
+
+  runInNewContext(init![1], context);
+  now = 790;
+  onMutation([{ type: "childList", addedNodes: [first] }]);
+  now = 890;
+  first.complete = true; first.naturalWidth = 760;
+  onNativeLoad({ target: first });
+  now = 1490;
+  onMutation([{ type: "childList", addedNodes: [second], removedNodes: [first] }]);
+  now = 1510;
+  second.complete = true; second.naturalWidth = 760;
+  onNativeLoad({ target: second });
+  onLcp({ getEntries: () => [{
+    element: second, url: target, id: "", size: 92232,
+    startTime: 1564, loadTime: 1505, renderTime: 1564,
+  }] });
+  const diag = state.__AOE2WAR_COLD_DIAG__ as {
+    featuredImageEvents: Array<{ phase: string; nodeId: number; atMs: number }>;
+  };
+  const rows = diag.featuredImageEvents;
+  assert.deepEqual(Array.from(rows, (e) => e.phase), [
+    "insert", "native-load", "remove", "insert", "native-load",
+  ]);
+  assert.equal(rows[0].nodeId, rows[1].nodeId);
+  assert.equal(rows[0].nodeId, rows[2].nodeId);
+  assert.notEqual(rows[0].nodeId, rows[3].nodeId);
+  assert.equal(rows[3].nodeId, rows[4].nodeId);
+  const out = runInNewContext(snapshot![1], context) as {
+    finalLcp: { elementNodeId: number };
+    lcpImageLifecycle: {
+      distinctNodeCount: number; finalLcpNodeId: number;
+      matchedNodeInsertionAtMs: number; matchedNodeNativeLoadAtMs: number;
+      firstInsertedAtMs: number; firstNativeLoadAtMs: number;
+    };
+  };
+  assert.equal(out.finalLcp.elementNodeId, rows[3].nodeId);
+  assert.equal(out.lcpImageLifecycle.distinctNodeCount, 2);
+  assert.equal(out.lcpImageLifecycle.matchedNodeInsertionAtMs, 1490);
+  assert.equal(out.lcpImageLifecycle.matchedNodeNativeLoadAtMs, 1510);
+  assert.equal(out.lcpImageLifecycle.firstInsertedAtMs, 790);
+  assert.equal(out.lcpImageLifecycle.firstNativeLoadAtMs, 890);
+  assert.equal(out.lcpResourceMatchCount, 1);
+});
