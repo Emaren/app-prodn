@@ -938,6 +938,138 @@ class SpeedEdgeTests(unittest.TestCase):
             MODULE.require_dynamic_release_identity = original_identity
             MODULE.discover_live_featured_avatar_paths = original_discover
 
+    def test_featured_fallback_same_connection_requires_real_same_pop_hit(self):
+        url = MODULE.PUBLIC_BASE + "/api/media-assets/avatar/user-test-featured?size=card"
+
+        def simulated(outcomes):
+            class Result:
+                returncode = 0
+                stderr = ""
+                stdout = "".join(
+                    "HTTP/2 200\r\n"
+                    f"cf-cache-status: {cache}\r\n"
+                    f"cf-ray: 1234-{pop}\r\n"
+                    f"content-type: {content_type}\r\n"
+                    "vary: Accept\r\n\r\n"
+                    f"__AOE2_FEATURED_FALLBACK__200|{connects}\n"
+                    for pop, cache, connects, content_type in outcomes
+                )
+
+            def fake_run(command, **kwargs):
+                self.assertEqual(command.count(url), 5)
+                self.assertIn(
+                    "Accept: image/png,image/*;q=0.8,*/*;q=0.5",
+                    command,
+                )
+                self.assertEqual(kwargs["timeout"], 145)
+                return Result()
+            return fake_run
+
+        reused = MODULE.probe_featured_avatar_fallback_same_connection(
+            url,
+            run_fn=simulated([
+                ("LHR", "MISS", 1, "image/webp"),
+                ("LHR", "HIT", 0, "image/webp"),
+                ("LHR", "HIT", 0, "image/webp"),
+                ("LHR", "HIT", 0, "image/webp"),
+                ("LHR", "HIT", 0, "image/webp"),
+            ]),
+        )
+        self.assertTrue(reused["ok"])
+        self.assertEqual(reused["status"], "PASS_SAME_POP_HIT")
+        self.assertEqual(reused["proven_pops"], ["LHR"])
+
+        unrelated_pops = MODULE.probe_featured_avatar_fallback_same_connection(
+            url,
+            run_fn=simulated([
+                ("BOS", "MISS", 1, "image/webp"),
+                ("LHR", "MISS", 1, "image/webp"),
+                ("PDX", "MISS", 1, "image/webp"),
+                ("AMS", "MISS", 1, "image/webp"),
+                ("DFW", "MISS", 1, "image/webp"),
+            ]),
+        )
+        self.assertFalse(unrelated_pops["ok"])
+        self.assertEqual(
+            unrelated_pops["status"], "INCONCLUSIVE_POP_DIVERSITY_OR_INVALID_RESPONSE"
+        )
+
+        same_pop_miss = MODULE.probe_featured_avatar_fallback_same_connection(
+            url,
+            run_fn=simulated([
+                ("LHR", "MISS", 1, "image/webp"),
+                ("LHR", "MISS", 0, "image/webp"),
+                ("LHR", "MISS", 0, "image/webp"),
+                ("PDX", "MISS", 1, "image/webp"),
+                ("BOS", "MISS", 1, "image/webp"),
+            ]),
+        )
+        self.assertFalse(same_pop_miss["ok"])
+        self.assertEqual(same_pop_miss["status"], "FAIL_SAME_POP_NO_HIT")
+
+        invalid_content = MODULE.probe_featured_avatar_fallback_same_connection(
+            url,
+            run_fn=simulated([
+                ("LHR", "HIT", 1, "text/html"),
+                ("LHR", "HIT", 0, "text/html"),
+                ("LHR", "HIT", 0, "text/html"),
+                ("LHR", "HIT", 0, "text/html"),
+                ("LHR", "HIT", 0, "text/html"),
+            ]),
+        )
+        self.assertFalse(invalid_content["ok"])
+
+    def test_featured_fallback_miss_can_pass_verified_same_pop_session(self):
+        original_avatar = MODULE.featured_avatar_probe
+        original_session = MODULE.probe_featured_avatar_fallback_same_connection
+        original_cache = MODULE.cache_status_probe
+        original_asset = MODULE.asset_probe
+        try:
+            def avatar_probe(path, *, accept=MODULE.ASSET_MODERN_ACCEPT,
+                             size="card", cache_version=MODULE.FEATURED_AVATAR_CACHE_VERSION):
+                excluded = size != "card" or cache_version != MODULE.FEATURED_AVATAR_CACHE_VERSION
+                return {
+                    "ok": True,
+                    "cf_cache_status": "DYNAMIC" if excluded else (
+                        "MISS" if accept == MODULE.ASSET_FALLBACK_ACCEPT else "HIT"
+                    ),
+                    "url": MODULE.PUBLIC_BASE + path + "?size=card",
+                    "content_type": "image/webp",
+                    "bytes": 173218,
+                    "body_sha256": "b" * 64,
+                }
+
+            MODULE.featured_avatar_probe = avatar_probe
+            MODULE.probe_featured_avatar_fallback_same_connection = lambda url: {
+                "ok": True,
+                "status": "PASS_SAME_POP_HIT",
+                "rows": [{"cf_cache_status": "HIT", "pop": "LHR"}],
+                "proven_pops": ["LHR"],
+            }
+            MODULE.cache_status_probe = lambda path, **kw: {
+                "ok": True,
+                "cf_cache_status": "DYNAMIC" if path == "/api/deployment-version" else "HIT",
+            }
+            MODULE.asset_probe = lambda source_path, *, accept, width=1920, quality=95: {
+                "ok": True, "cf_cache_status": "HIT",
+            }
+            result = MODULE.verify_featured_avatar_cloudflare_apply(
+                {"eligible_exact_paths": ["/api/media-assets/avatar/user-test-featured"]},
+                {"eligible_exact_routes": ["/about"]},
+                {"eligible_exact_routes": ["/academy"]},
+                {"source_path": "/uploads/managed-assets/background/hero-chain-abc.png"},
+                sleep_fn=lambda _: None,
+            )
+            self.assertTrue(result["ok"])
+            self.assertTrue(result["fallback_accept"]["verified"])
+            self.assertEqual(result["fallback_accept"]["attempts"][0]["cf_cache_status"], "MISS")
+            self.assertEqual(result["fallback_accept"]["final"]["cf_cache_status"], "HIT")
+        finally:
+            MODULE.featured_avatar_probe = original_avatar
+            MODULE.probe_featured_avatar_fallback_same_connection = original_session
+            MODULE.cache_status_probe = original_cache
+            MODULE.asset_probe = original_asset
+
     def test_featured_avatar_verifier_proves_hits_exclusions_and_stack_preservation(self):
         original_avatar_probe = MODULE.featured_avatar_probe
         original_cache_probe = MODULE.cache_status_probe

@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "performance-operating-contract"
-reviewed_at: "2026-10-02"
+reviewed_at: "2026-10-12"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -517,6 +517,29 @@ content, verifies a fallback Accept variant, proves `size=thumb` and a wrong cac
 version remain outside the rule, re-proves the hero HIT, re-proves both authoritative
 HTML cohorts, and requires `/api/deployment-version` to remain dynamic. Any failure
 invokes `rollback-featured-avatar`, restoring/removing only this rule.
+
+#### POP-aware fallback cache proof — October 12, 2026
+
+The featured-avatar verifier previously invoked three independent curl processes
+for the fallback \`Accept\` representation. Cloudflare can route each process to
+a different point of presence (POP), so three one-off MISS responses at BOS,
+LHR and PDX were **not** three repeated misses in one cache. The sealed
+same-URL image bytes were identical, and five subsequent fallback requests made
+over one reusable curl connection all returned 200/HIT at LHR.
+
+The verifier now first preserves one full-body fallback hash/type proof. When
+that probe is a cold MISS, a bounded five-request same-connection session
+records only HTTP status, CF-Ray POP suffix, Cloudflare cache status, age,
+Vary, content type and new-connection count. It accepts a 200/HIT only with
+at least one other valid 200 image response at the **same POP**. A cohort
+reaching distinct POPs without same-POP reuse is unproven, not a success.
+Repeated same-POP MISS is a separate explicit failure. Unknown POPs, wrong
+content types and missing Vary: Accept cannot become successful proof.
+The verification retains the existing normal-card exact-roster body-hash,
+hero/static/dynamic cohorts, cache exclusions and API bypass checks; the
+Cloudflare configuration, database, Wolo and deployed app remain untouched.
+The earlier failure receipt remains immutable, and the new proof never
+changes speed thresholds or implies that slow cold-phone LCP was fixed.
 
 ### Workshop navigation hot path
 

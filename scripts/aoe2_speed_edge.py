@@ -2006,6 +2006,94 @@ def featured_avatar_probe(
         }
 
 
+
+def probe_featured_avatar_fallback_same_connection(
+    target: str,
+    *,
+    repeats: int = 5,
+    run_fn=None,
+) -> dict[str, Any]:
+    """Read-only, POP-aware fallback proof using a single reusable curl session.
+
+    Independent curl processes can land in different Cloudflare POPs. Three
+    misses in three locations do not prove that any one location failed to
+    retain the fallback Accept variant.
+    """
+    if not target.startswith(PUBLIC_BASE + "/api/media-assets/avatar/") or repeats != 5:
+        raise EdgeAuditError("invalid bounded featured-avatar fallback probe")
+
+    marker = "__AOE2_FEATURED_FALLBACK__"
+    command = [
+        "curl", "-sS", "--compressed", "--connect-timeout", "10",
+        "--max-time", "25", "-H", f"Accept: {ASSET_FALLBACK_ACCEPT}",
+        "-D", "-", "-o", "/dev/null",
+        "-w", f"\n{marker}%{{http_code}}|%{{num_connects}}\n",
+        *([target] * repeats),
+    ]
+    try:
+        proc = (run_fn or subprocess.run)(
+            command, cwd=ROOT, text=True, stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE, timeout=145, check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return {"ok": False, "status": "PROBE_UNAVAILABLE", "rows": []}
+    if proc.returncode != 0:
+        return {"ok": False, "status": "PROBE_ERROR", "rows": []}
+
+    output = proc.stdout.replace("\r\n", "\n")
+    delimiters = list(re.finditer(re.escape(marker) + r"(\d{3})\|(\d+)\n", output))
+    if len(delimiters) != repeats:
+        return {"ok": False, "status": "INCOMPLETE_PROBE", "rows": []}
+
+    rows: list[dict[str, Any]] = []
+    cursor = 0
+    for event in delimiters:
+        headers = parse_final_header_block(output[cursor:event.start()])
+        cursor = event.end()
+        ray = str(headers.get("cf-ray") or "")
+        pop = ray.rsplit("-", 1)[-1] if "-" in ray else None
+        row = {
+            "http_status": int(event.group(1)),
+            "new_connections": int(event.group(2)),
+            "pop": pop,
+            "cf_cache_status": str(headers.get("cf-cache-status") or "").upper() or None,
+            "content_type": str(headers.get("content-type") or ""),
+            "vary": str(headers.get("vary") or ""),
+            "age": headers.get("age"),
+        }
+        row["valid_image"] = (
+            row["http_status"] == 200
+            and row["content_type"].lower().startswith("image/")
+            and "accept" in row["vary"].lower()
+        )
+        rows.append(row)
+
+    if output[cursor:].strip():
+        return {"ok": False, "status": "TRAILING_PROBE_DATA", "rows": rows}
+
+    by_pop: dict[str, list[dict[str, Any]]] = {}
+    for row in rows:
+        if row["pop"] and row["valid_image"]:
+            by_pop.setdefault(str(row["pop"]), []).append(row)
+    proven_pops = sorted(
+        pop for pop, cohort in by_pop.items()
+        if len(cohort) >= 2
+        and any(row["cf_cache_status"] == "HIT" for row in cohort)
+    )
+    ok = bool(proven_pops)
+    same_pop_seen = any(len(cohort) >= 2 for cohort in by_pop.values())
+    status = (
+        "PASS_SAME_POP_HIT" if ok else
+        "FAIL_SAME_POP_NO_HIT" if same_pop_seen else
+        "INCONCLUSIVE_POP_DIVERSITY_OR_INVALID_RESPONSE"
+    )
+    return {
+        "ok": ok, "status": status,
+        "rows": rows, "proven_pops": proven_pops,
+        "mutation_allowed": False,
+    }
+
+
 def require_installed_hero_asset_plan(asset_authority: dict[str, Any]) -> dict[str, Any]:
     """Verify the installed hero receipt without rediscovering old page markup."""
     plan = asset_authority.get("asset_plan")
@@ -2062,17 +2150,40 @@ def verify_featured_avatar_cloudflare_apply(
             failures.append(f"{path}: featured avatar body is unexpectedly small")
 
     representative = str((avatar_plan.get("eligible_exact_paths") or [""])[0])
-    fallback_attempts = []
-    for attempt in range(3):
-        row = featured_avatar_probe(representative, accept=ASSET_FALLBACK_ACCEPT)
-        fallback_attempts.append(row)
-        if row.get("ok") and row.get("cf_cache_status") == "HIT":
-            break
-        if attempt < 2:
-            sleep_fn(0.5)
-    fallback_final = fallback_attempts[-1]
-    if not fallback_final.get("ok") or fallback_final.get("cf_cache_status") != "HIT":
-        failures.append("featured-avatar fallback Accept variant did not converge to HIT")
+    # First obtain full-body proof. If its POP is cold, collect an independent
+    # same-connection header cohort rather than comparing different POPs.
+    fallback_first = featured_avatar_probe(representative, accept=ASSET_FALLBACK_ACCEPT)
+    fallback_attempts = [fallback_first]
+    fallback_body_ok = (
+        fallback_first.get("ok") is True
+        and str(fallback_first.get("content_type") or "").lower().startswith("image/")
+        and int(fallback_first.get("bytes") or 0) >= 5_000
+        and isinstance(fallback_first.get("body_sha256"), str)
+        and len(fallback_first["body_sha256"]) == 64
+    )
+    fallback_session: dict[str, Any] | None = None
+    fallback_direct_hit = (
+        fallback_body_ok and fallback_first.get("cf_cache_status") == "HIT"
+    )
+    if fallback_body_ok and not fallback_direct_hit:
+        fallback_session = probe_featured_avatar_fallback_same_connection(
+            str(fallback_first["url"])
+        )
+    fallback_verified = fallback_direct_hit or bool(
+        fallback_session and fallback_session.get("ok") is True
+    )
+    fallback_final = (
+        next(
+            row for row in (fallback_session or {}).get("rows", [])
+            if row["cf_cache_status"] == "HIT" and row["pop"] in (fallback_session or {}).get("proven_pops", [])
+        )
+        if fallback_session and fallback_session.get("ok") else fallback_first
+    )
+    if not fallback_verified:
+        reason = (fallback_session or {}).get("status") or "FULL_BODY_UNAVAILABLE"
+        failures.append(
+            "featured-avatar fallback Accept variant not proven cacheable: " + reason
+        )
 
     excluded_size = featured_avatar_probe(representative, size="thumb")
     if excluded_size.get("cf_cache_status") == "HIT":
@@ -2114,7 +2225,12 @@ def verify_featured_avatar_cloudflare_apply(
         "ok": not failures,
         "generated_at": utc_now(),
         "featured_avatar_rows": rows,
-        "fallback_accept": {"attempts": fallback_attempts, "final": fallback_final},
+        "fallback_accept": {
+            "attempts": fallback_attempts,
+            "same_connection": fallback_session,
+            "final": fallback_final,
+            "verified": fallback_verified,
+        },
         "excluded_thumb": excluded_size,
         "excluded_version": excluded_version,
         "hero_probe": hero,

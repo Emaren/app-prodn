@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "bf1528370e3877390e7ebe9a915acf4b4e1bc1955b16eb3dafc60e2c5f0c45ff",
+      "sha256": "899625f073e9674fcbcca7546d35159b2d4d2d62c09db49cedf5c345946fe484",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1302,9 +1302,9 @@
       "owner": "aoe2war-web",
       "path": "docs/PERFORMANCE_OS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-02",
+      "reviewed_at": "2026-10-12",
       "sensitivity": "internal",
-      "sha256": "79da9b5624ee0c972e66a96dad220dee87ef81e89de1817cae95fd7176722418",
+      "sha256": "4aea6961cc3518d89a05e23dbc4eb7ad0323d6c3dd9a8bf5327bd3d10650e603",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/wolochain-directory-treasury-privacy-20261012",
-    "commit": "dd52df8fbe173e83eedcaded3ee1b2496ee83704"
+    "branch": "fix/speedos-fallback-pop-proof-20261012",
+    "commit": "0a76328bd8092ded44c42c30c687b54fba979b15"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
