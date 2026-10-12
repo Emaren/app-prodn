@@ -266,8 +266,10 @@ is shadow evaluation only. It never means an accepted wager or confirmed
 on-chain locked balance. The OFF switch uses a narrower owner-authenticated,
 optimistic-versioned pause action that leaves all saved stake amounts unchanged
 and succeeds even for legacy over-limit presets or invalid unsaved form edits.
-Only an explicitly saved new plan is subject to the tightened amount validator;
-a user must never be locked out of pausing by an input-validation change.
+Both E1 and E2 expose this fail-safe pause, and both validate the same
+1,000-WOLO combined per-match cap in their client loadouts. Only an explicitly
+saved new plan is subject to the tightened amount validator; a user must never
+be locked out of pausing by an input-validation change.
 
 Admin telemetry lives at /admin/auto-bets, linked from the admin hub.
 Its session-gated GET /api/admin/auto-bets is private/no-store, bounded
