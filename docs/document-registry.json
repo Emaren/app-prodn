@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "f22e01304db54499f436b909ffc5447f1096cb2c1d1e7be6e490806547153e4c",
+      "sha256": "acee0b5857a4856bcf1b5e199a334e0af33574d4be64b92cbae90506995637a6",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2094,7 +2094,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feat/kingdom-treasury-20261012",
-    "commit": "98c7d504670b711dec6922803aa4a8f589e622eb"
+    "commit": "59aa21a729d032742cf5fc9b9dc2937d6958bb83"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
