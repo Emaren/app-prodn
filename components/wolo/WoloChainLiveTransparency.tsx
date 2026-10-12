@@ -5,7 +5,15 @@ import {
   missingHistoricalWoloAddresses,
   woloAddressDirectorySummary,
 } from "@/lib/woloHolderDirectory";
-import { parseWoloBalanceApiPayload } from "@/lib/woloBalanceRead";
+import {
+  formatMinimalDenomAmount,
+  parseWoloBalanceApiPayload,
+} from "@/lib/woloBalanceRead";
+import {
+  isOperatorReportedFaucetCohortAddress,
+  WOLO_FAUCET_COHORT_PUBLIC_LABEL,
+  WOLO_FAUCET_COHORT_QUALIFIER,
+} from "@/lib/woloFaucetIncidentAnnotations";
 import { WOLO_BASE_DENOM, WOLO_CHAIN_ID, WOLO_COIN_DECIMALS } from "@/lib/woloChain";
 
 type Holder = {
@@ -223,6 +231,7 @@ export default function WoloChainLiveTransparency() {
   const [error, setError] = useState<string | null>(null);
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
   const [historicalBalances, setHistoricalBalances] = useState<Record<string, "zero" | "nonzero" | "unavailable">>({});
+  const [incidentBalances, setIncidentBalances] = useState<Record<string, string | null>>({});
 
   async function refresh() {
     try {
@@ -239,28 +248,50 @@ export default function WoloChainLiveTransparency() {
 
       setHolders(payload);
 
-      // Only two governed historic identities. This lookup does not add holders.
-      // Show a zero balance only after an authenticated wolo-1 bank read.
+      // Bounded exact-address WoloChain reads. No private operator endpoint,
+      // inferred attribution, fabricated zero, or bulk player balance export.
       const missing = missingHistoricalWoloAddresses(payload.holders);
-      const results = await Promise.all(missing.map(async (account) => {
-        try {
-          const response = await fetch(`/api/wolo/balance/${encodeURIComponent(account.address)}`, {
-            cache: "no-store",
-          });
-          if (!response.ok) throw new Error("Historic balance read unavailable");
-          const raw: unknown = await response.json();
-          const parsed = parseWoloBalanceApiPayload(raw, {
-            address: account.address,
-            denom: WOLO_BASE_DENOM,
-            decimals: WOLO_COIN_DECIMALS,
-            chainId: WOLO_CHAIN_ID,
-          });
-          return [account.address, parsed.amount === "0" ? "zero" : "nonzero"] as const;
-        } catch {
-          return [account.address, "unavailable"] as const;
-        }
-      }));
-      setHistoricalBalances(Object.fromEntries(results));
+      const reported = payload.holders.filter((holder) =>
+        holder.classification === "unclassified" &&
+        isOperatorReportedFaucetCohortAddress(holder.address),
+      );
+      const addresses = [
+        ...missing.map((account) => account.address),
+        ...reported.map((holder) => holder.address),
+      ];
+      const results: Array<readonly [string, string | null]> = [];
+      for (let offset = 0; offset < addresses.length; offset += 4) {
+        const batch = await Promise.all(addresses.slice(offset, offset + 4).map(async (address) => {
+          try {
+            const response = await fetch(`/api/wolo/balance/${encodeURIComponent(address)}`, {
+              cache: "no-store",
+            });
+            if (!response.ok) throw new Error("Balance read unavailable");
+            const raw: unknown = await response.json();
+            const parsed = parseWoloBalanceApiPayload(raw, {
+              address,
+              denom: WOLO_BASE_DENOM,
+              decimals: WOLO_COIN_DECIMALS,
+              chainId: WOLO_CHAIN_ID,
+            });
+            return [address, parsed.amount] as const;
+          } catch {
+            return [address, null] as const;
+          }
+        }));
+        results.push(...batch);
+      }
+      const byAddress = new Map(results);
+      setHistoricalBalances(Object.fromEntries(missing.map((account) => {
+        const minimal = byAddress.get(account.address);
+        return [account.address, minimal == null ? "unavailable" :
+          minimal === "0" ? "zero" : "nonzero"];
+      })));
+      setIncidentBalances(Object.fromEntries(reported.map((holder) => {
+        const minimal = byAddress.get(holder.address);
+        return [holder.address, minimal === undefined || minimal === null ?
+          null : formatMinimalDenomAmount(minimal)];
+      })));
     } catch (refreshError) {
       setError(refreshError instanceof Error ? refreshError.message : "Live WoloChain data unavailable.");
     }
@@ -278,7 +309,9 @@ export default function WoloChainLiveTransparency() {
 
   useEffect(() => {
     void refresh();
-    const interval = window.setInterval(() => void refresh(), 30_000);
+    const interval = window.setInterval(() => {
+      if (document.visibilityState === "visible") void refresh();
+    }, 120_000);
     return () => window.clearInterval(interval);
   }, []);
 
@@ -423,9 +456,16 @@ export default function WoloChainLiveTransparency() {
                   <HolderAvatar holder={holder} />
 
                   <div className="min-w-0">
-                    <div className="truncate font-semibold tracking-[-0.015em] text-white">{holder.alias}</div>
+                    <div className="truncate font-semibold tracking-[-0.015em] text-white">
+                      {holder.classification === "unclassified" &&
+                      isOperatorReportedFaucetCohortAddress(holder.address)
+                        ? WOLO_FAUCET_COHORT_PUBLIC_LABEL : holder.alias}
+                    </div>
                     <div className="mt-1 text-[10px] uppercase tracking-[0.24em] text-slate-500">
-                      {roleLabel(holder.role, holder.use)} · {holder.classification}
+                      {holder.classification === "unclassified" &&
+                      isOperatorReportedFaucetCohortAddress(holder.address)
+                        ? WOLO_FAUCET_COHORT_QUALIFIER
+                        : `${roleLabel(holder.role, holder.use)} · ${holder.classification}`}
                     </div>
                   </div>
                 </div>
@@ -433,7 +473,16 @@ export default function WoloChainLiveTransparency() {
                 <WalletAddress address={holder.address} onCopy={copyAddress} />
 
                 <div className="text-center">
-                  {holder.classification !== "protocol" || holder.balanceHidden ? (
+                  {holder.classification === "unclassified" &&
+                  isOperatorReportedFaucetCohortAddress(holder.address) ? (
+                    <span className="font-mono text-xs text-slate-200">
+                      {incidentBalances[holder.address] === undefined
+                        ? "Reading WOLO…"
+                        : incidentBalances[holder.address] === null
+                          ? "Balance unavailable"
+                          : `${incidentBalances[holder.address]} WOLO`}
+                    </span>
+                  ) : holder.classification !== "protocol" || holder.balanceHidden ? (
                     <span className="sr-only">Balance hidden</span>
                   ) : (
                     <>
