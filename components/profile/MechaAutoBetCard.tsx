@@ -151,8 +151,7 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
   const mecha = "Mecha " + (displayName.trim().slice(0, 38) || "Warrior");
   const satchelVerifiedBalanceWolo: string | null = null; // No account-specific reconciled custody ledger.
   const depositAmountValue = number(depositAmount);
-  const depositAmountValid = Number.isSafeInteger(depositAmountValue) && depositAmountValue > 0
-    && depositAmountValue <= 50_000;
+  const depositAmountValid = Number.isSafeInteger(depositAmountValue) && depositAmountValue > 0;
   const walletAction = async () => {
     setWalletConnectError("");
     try {
@@ -280,7 +279,7 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
           </div>
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
             <span className="text-xs text-amber-200">
-              {depositAmountValid ? "Funding not available yet · escrow verification pending" : "Enter 1–50,000 WOLO"}
+              {depositAmountValid ? "Funding not available yet · escrow verification pending" : "Enter a positive whole-number WOLO amount"}
             </span>
             <button type="button" disabled aria-disabled="true"
               title="War Satchel funding requires an audited custody ledger and chain receipts"
