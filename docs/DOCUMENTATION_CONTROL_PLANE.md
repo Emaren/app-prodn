@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `hardening/inspections-brain-capture-freshness-20261012` at `3c25fc392f3578cb6bb94d19f0ba90ced5ee2c0c`
+Implementation baseline: `integration/kingdom-os-green-readiness-20261012` at `e206eb5867c5b7d2d7bb68e7d4668cbf782131f3`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
