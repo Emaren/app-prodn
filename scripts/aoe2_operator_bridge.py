@@ -490,8 +490,12 @@ def run_audit_snapshot(
     run_id: str | None,
     source_action: str,
 ) -> dict[str, Any] | None:
+    # Automatic bridge observation may reuse only an unchanged exact-source
+    # CERTIFIED Finish's three successful strict documentation Make targets.
+    # Human "Run Full Audit" claims execute the full CLI in execute_run.
+    # Protected Finish and direct audits never request --monitor.
     process = subprocess.run(
-        [str(CLI), "audit", "--json"],
+        [str(CLI), "audit", "--json", "--monitor"],
         cwd=str(ROOT),
         text=True,
         stdout=subprocess.PIPE,

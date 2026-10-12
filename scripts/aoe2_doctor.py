@@ -1828,6 +1828,7 @@ def collect_doctor(
     estate_payload: dict[str, Any] | None = None,
     include_estate: bool = True,
     progress: bool = False,
+    monitor: bool = False,
 ) -> Doctor:
     doctor = Doctor()
     try:
@@ -1858,7 +1859,7 @@ def collect_doctor(
             thread_name_prefix="aoe2war-estate",
         )
         estate_future = estate_executor.submit(
-            lambda: aoe2_audit.collect_audit().payload()
+            lambda: aoe2_audit.collect_audit(monitor=monitor).payload()
         )
 
     independent = Doctor()
@@ -1957,6 +1958,10 @@ def main() -> int:
     )
     parser.add_argument("--json", action="store_true")
     parser.add_argument(
+        "--monitor", action="store_true",
+        help="routine monitoring may reuse verified strict documentation proof from a certified Finish",
+    )
+    parser.add_argument(
         "--strict",
         action="store_true",
         help="return 1 when warnings remain; blockers always return 2",
@@ -1966,6 +1971,7 @@ def main() -> int:
     doctor = collect_doctor(
         include_estate=True,
         progress=not args.json,
+        monitor=args.monitor,
     )
     if args.json:
         print(json.dumps(doctor.payload(), indent=2, sort_keys=True))

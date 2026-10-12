@@ -63,6 +63,50 @@ V1 combines:
 The command does not mutate source, runtime, database, Wolo, storage, packages
 or host state.
 
+## Collection concurrency and failure containment
+
+Scheduled Operator Bridge refreshes and manually requested Brain refreshes are
+**one collection lane**, not independent authorization to launch redundant
+full estate audits. The Brain process holds a kernel-backed, nonblocking
+`.aoe2war-release/brain-collection.lock` while collecting. A second caller
+gets a truthful error ("already running") and must retry rather than spawning
+another heavyweight Doctor, Estate, documentation build or parallel probe.
+The empty local lock file does not contain operational evidence; the kernel
+releases its ownership automatically if the collector crashes. The protected
+Finish lock is separate and still defers periodic publication.
+
+Council runs each full Doctor, Storage and Workspace collection under its
+existing bounded deadlines. Doctor can spawn a tree of estate and
+documentation jobs; **on Council timeout**, Doctor is started as a fresh
+owned process group and Council signals that group, then escalates after a
+two-second grace period if necessary. This prevents Council timeouts from
+leaving its descendant `make`/Node/Python/Git probes as abandoned workers;
+it does not signal independently owned Codex, Steam, or bridge processes.
+
+These safeguards **do not bypass** the full Doctor, strict documentation
+validation, Estate audits, score thresholds, source parity or Wolo boundaries.
+A collection that fails or cannot acquire the lane never publishes a
+replacement healthy snapshot. The periodic bridge retries after failures;
+successful snapshots must still pass exact source and freshness validation.
+
+To avoid repeating strict documentation builds every five minutes,
+**only explicit `--monitor` observations**, including Brain's Council-owned
+Doctor and the Operator Bridge's automatic Estate publication, may reuse a prior
+complete strict-build result from a `CERTIFIED` protected Finish. That deterministic
+result is valid only when all three original central quality targets passed,
+the Finish's full Estate audit was P0=0/P1=0, the local app source exactly
+matches the certified release and each of the five core sources **plus**
+`AoE2WAR-docs` remains on the same clean branch and exact Git commit. The
+underlying certified receipt must be no older than **seven days**, with the
+original receipt name, SHA-256, completion time, observation time and six
+current source SHA values disclosed in `central_quality_proof`. If the proof is
+missing, expired, incomplete, dirty or source-divergent, the full Make gates
+run again. Standalone Doctor, human-triggered Full Estate Audit and protected
+Finish **never request `--monitor`** and run the exhaustive checks regardless
+of inherited environment variables. The reused proof is an earlier certified build,
+not a claim that a fresh build ran. Dynamic production, recovery, service,
+supply-chain and host probes still execute on each Doctor collection.
+
 ## Freshness is part of truth
 
 Persisted evidence is never presented as silently current.

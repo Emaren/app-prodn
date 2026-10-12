@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `integration/inspection-speed-preload-20261012` at `3f4de499434d18e9e0d9a4163e00999da3bc757a`
+Implementation baseline: `integration/brain-reliability-lcp-lifecycle-20261012` at `8668f7f30dc91149962448b2028cab9dc7ffb88e`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

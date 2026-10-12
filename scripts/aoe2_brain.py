@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 import argparse
+import fcntl
 import json
 import subprocess
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -24,6 +26,7 @@ FINISH_RECEIPT_DIR = ROOT / ".aoe2war-release" / "finish-receipts"
 COLD_LCP_ROOT = ROOT / ".aoe2war-release" / "performance-cold-lcp"
 EDGE_RECEIPT_ROOT = ROOT / ".aoe2war-release" / "performance-edge-receipts"
 ENGINEERING_MEMORY_PATH = ROOT / "docs" / "ENGINEERING_MEMORY.md"
+BRAIN_LOCK = ROOT / ".aoe2war-release" / "brain-collection.lock"
 
 
 def now_utc() -> datetime:
@@ -1839,6 +1842,29 @@ def print_payload(payload: dict[str, Any]) -> None:
         print("BEST NEXT ACTION: none — core operating checks are clear.")
 
 
+@contextmanager
+def brain_collection_lock(lock_path: Path = BRAIN_LOCK):
+    """One read-only Brain collection at a time, across bridge/manual processes.
+
+    A kernel flock automatically releases on crash. Refuse busy readers rather
+    than queue additional Doctor+Estate+documentation builds. This lock is
+    independent of the protected Finish transaction lock.
+    """
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    with lock_path.open("a+b") as handle:
+        try:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise RuntimeError(
+                "Kingdom Intelligence collection already running; retry after "
+                "its current bounded run completes"
+            ) from exc
+        try:
+            yield
+        finally:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(
         prog="aoe2war brain",
@@ -1852,7 +1878,8 @@ def main() -> int:
     args = parser.parse_args()
 
     try:
-        payload = collect()
+        with brain_collection_lock():
+            payload = collect()
     except Exception as exc:
         if args.json:
             print(

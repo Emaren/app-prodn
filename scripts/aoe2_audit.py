@@ -11,7 +11,7 @@ import tarfile
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -443,9 +443,121 @@ def copy_central_head_to_temp() -> tuple[tempfile.TemporaryDirectory[str], Path]
     return temp, checkout
 
 
-def check_central_quality_gates(audit: Audit) -> None:
+def certified_central_quality_proof(
+    *,
+    receipt_dir: Path | None = None,
+    now: datetime | None = None,
+    max_age: timedelta = timedelta(days=7),
+) -> dict[str, Any] | None:
+    """Reuse actual strict-build proof only for an unchanged clean source graph.
+
+    A protected Finish ran all three central documentation Make targets and
+    stored their result in its durable final Estate audit. Routine Brain
+    collection may verify that proof, never manufacture it. Any uncertainty
+    (missing receipt, expired proof, dirty/diverged checkout, absent target,
+    failed original audit) forces the exhaustive quality gates.
+    """
+    directory = receipt_dir or (ROOT / ".aoe2war-release" / "finish-receipts")
+    if not directory.is_dir():
+        return None
+    stamp = now or datetime.now(timezone.utc)
+    if stamp.tzinfo is None:
+        return None
+    expected_repos = {**CORE_SOURCES, "AoE2WAR-docs": DOCS}
+    current: dict[str, dict[str, str]] = {}
+    for repo_id, repo in expected_repos.items():
+        if not repo.is_dir():
+            return None
+        rc, head = git(repo, "rev-parse", "HEAD", timeout=15)
+        if rc != 0 or not re.fullmatch(r"[0-9a-f]{40}", head):
+            return None
+        rc, branch = git(repo, "branch", "--show-current", timeout=15)
+        if rc != 0 or not branch:
+            return None
+        rc, dirty = git(
+            repo, "status", "--porcelain=v1", "--untracked-files=all", timeout=25
+        )
+        if rc != 0 or dirty.strip():
+            return None
+        current[repo_id] = {"head": head, "branch": branch}
+
+    for path in sorted(directory.glob("*.json"), reverse=True)[:64]:
+        try:
+            receipt = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if not isinstance(receipt, dict) or receipt.get("status") != "CERTIFIED":
+            continue
+        try:
+            completed = datetime.fromisoformat(
+                str(receipt["completed_at"]).replace("Z", "+00:00")
+            )
+        except (KeyError, ValueError, TypeError):
+            continue
+        age = (stamp - completed).total_seconds() if completed.tzinfo else -1
+        if age < -300 or age > max_age.total_seconds():
+            continue
+        audit = receipt.get("final_audit")
+        if not isinstance(audit, dict) or audit.get("p0") != 0 or audit.get("p1") != 0:
+            continue
+        info = audit.get("info")
+        if not isinstance(info, dict):
+            continue
+        results = info.get("central_quality_gates")
+        source = info.get("source_repositories")
+        docs = info.get("central_repository")
+        if not all(isinstance(value, dict) for value in (results, source, docs)):
+            continue
+        if set(results) != {"docs-check", "audit-taxonomy", "strict-build"}:
+            continue
+        if any(
+            not isinstance(results[label], dict)
+            or results[label].get("rc") != 0
+            for label in ("docs-check", "audit-taxonomy", "strict-build")
+        ):
+            continue
+        saved = {**source, "AoE2WAR-docs": docs}
+        if set(saved) != set(current):
+            continue
+        if any(
+            not isinstance(saved[key], dict)
+            or saved[key].get("head") != current[key]["head"]
+            or saved[key].get("branch") != current[key]["branch"]
+            or saved[key].get("dirty_count") != 0
+            for key in current
+        ):
+            continue
+        release = receipt.get("final_release")
+        if (
+            not isinstance(release, dict)
+            or (release.get("local") or {}).get("head")
+            != current["app-prodn"]["head"]
+        ):
+            continue
+        return {
+            "results": results,
+            "authority": {
+                "mode": "source-bound-certified-finish-reuse",
+                "receipt": path.name,
+                "receipt_sha256": sha256(path),
+                "certified_at": completed.isoformat(),
+                "checked_at": stamp.isoformat(),
+                "age_seconds": max(0, age),
+                "source_heads": {key: row["head"] for key, row in current.items()},
+            },
+        }
+    return None
+
+
+def check_central_quality_gates(audit: Audit, monitor: bool = False) -> None:
     if not DOCS.is_dir():
         return
+    if monitor:
+        proof = certified_central_quality_proof()
+        if proof is not None:
+            audit.info["central_quality_gates"] = proof["results"]
+            audit.info["central_quality_proof"] = proof["authority"]
+            return
     venv_python = DOCS / ".venv-docs" / "bin" / "python"
     if not venv_python.is_file():
         audit.add("P0", "Documentation", "docs-venv-missing", str(venv_python))
@@ -947,7 +1059,7 @@ def source_repository_check() -> tuple[Audit, dict[str, dict[str, Any]]]:
     return local, snapshots
 
 
-def collect_audit() -> Audit:
+def collect_audit(*, monitor: bool = False) -> Audit:
     # Audit domains are read-only and largely independent. Keep each worker's
     # mutable Audit private, then merge results in the historical serial order
     # so receipts and human diffs remain deterministic. Central repository
@@ -957,7 +1069,7 @@ def collect_audit() -> Audit:
         source_future = pool.submit(source_repository_check)
         docs_future = pool.submit(run_audit_check, check_source_documentation)
         taxonomy_future = pool.submit(run_audit_check, check_taxonomy)
-        quality_future = pool.submit(run_audit_check, check_central_quality_gates)
+        quality_future = pool.submit(run_audit_check, check_central_quality_gates, monitor)
         maps_future = pool.submit(run_audit_check, check_maps)
         context_future = pool.submit(run_audit_check, check_context_archives)
         production_future = pool.submit(run_audit_check, check_production)
@@ -1041,9 +1153,14 @@ def main() -> int:
         ),
     )
     parser.add_argument("--json", action="store_true")
+    parser.add_argument(
+        "--monitor",
+        action="store_true",
+        help="routine monitoring may reuse a complete certified exact-source docs quality proof",
+    )
     args = parser.parse_args()
 
-    audit = collect_audit()
+    audit = collect_audit(monitor=args.monitor)
 
     if args.json:
         print(json.dumps(audit.payload(), indent=2, sort_keys=True))

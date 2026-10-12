@@ -142,6 +142,20 @@ request-start distribution and p50/p95 LCP to the baseline with the same
 view mode, release route, and sampling policy; discard the experiment if
 it increases duplicate requests, long tasks or critical page competition.
 
+For the observed 40-sample post-response LCP tail, the sampler can also
+record `metrics.lcpImageLifecycle` for **only featured-avatar image nodes**:
+first MutationObserver-observed DOM insertion, captured native `load` event,
+and presence at DOMContentLoaded. Each event is time-stamped on the same
+`performance.now()` clock as LCP and Resource Timing, retaining source URL,
+`complete`, `naturalWidth`, `decoding` and `loading` without altering the
+image or forcing its decode. The in-page evidence is capped at 96 events per
+sample; `capped` marks any loss. Event timestamps are observer callback times,
+not guaranteed exact DOM mutation times. Missing events remain `null`,
+rather than invented zeros. Compare those events to `responseEnd`,
+`finalLcp.loadTime` and `finalLcp.renderTime` to test whether a preloaded
+asset waited for its rendered element, a native `load` event, or later paint.
+This is an instrumentation change only; it is **not** a homepage speed fix.
+
 The command is bound to the currently certified production SHA/build and seals its
 receipt under `.aoe2war-release/performance-cold-lcp/`. It is diagnostic-only:
 `productionMutated`, `databaseMutated`, and `woloMutated` are all false. Use
