@@ -69,6 +69,35 @@ Unknown wallets remain unclassified until an identity source exists. A single
 verified or active-staker identity may contribute its public player name; an
 ambiguous shared address does not publish one guessed identity.
 
+## Public historic-address directory (not funded holders)
+
+The WoloChain visual holder table retains the live, ordered list from
+`GET /api/wolo/holders` as its **funded/staked census**. After those rows,
+it may append only two registered historical player identities currently
+absent from that census: `[BDB]Pigman` and `Ra 𓁛𓇳`. Their canonical
+Bech32 addresses come from `lib/woloMainnetNetworkAccounts.ts`. They are
+never manually counted as current holders or inserted into the REST
+denom-owner index. A typical current count of 36 + 2 registered historical
+addresses means **38 visible rows**, not "38 active holders" and not a
+proof that WoloChain has only 38 addresses in existence.
+
+Each historic row uses the read-only, exact-address
+`GET /api/wolo/balance/{address}`, with full chain, denom, decimals and
+timestamp validation; it displays "0 WOLO" only on a verified zero.
+If funds are observed but the current holder census has not caught up,
+it displays a refresh state rather than silently exposing a player balance.
+An upstream failure is "Balance unavailable", not an invented zero.
+Any historical address that enters the live funded/staked holder census
+is de-duplicated out of the separate historical rows.
+
+The operator reports the eight currently unidentified trailing wallets as
+connected to the August 2026 faucet exploit. This is not yet an audited
+address-level cluster, and **row rank is unstable**: never automatically
+assign an attack label from ranks 29–36 or from unclassified status alone.
+Matching exact addresses against transaction-proven incident evidence is
+a separate classification task. Faucet incident totals remain private
+operational records and are not part of the public Treasury page.
+
 ## Public and operator policies
 
 The normal public response is `view: "public"` and
