@@ -75,7 +75,7 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
     Number.isSafeInteger(perGame) && perGame <= MAX_AUTO_GAME_WOLO &&
     (untilOut || (Number.isSafeInteger(count) && count >= 1 && count <= (server?.limits.maxGames ?? 10_000))) &&
     Number.isSafeInteger(plan) && plan <= planLimit;
-  const armed = Boolean(server?.effectiveEnabled && server.preset.enabled);
+  const armed = Boolean(server?.preset.enabled);
   const readiness = Boolean(server?.readiness.identityReady && server?.readiness.watcherKeyReady &&
     server?.readiness.durableMarketEvaluatorReady);
   const previewOnly = server?.runtime.previewOnly !== false || !server.runtime.executionReady;
