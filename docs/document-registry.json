@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "48590f801d121536b05e31db6dfa50a44cbf178044d9a77f2602a44ce2d413b9",
+      "sha256": "54d08bee7a24ac5f44006339921918a3a88bb2b75c96ec68996c8c70a38aa783",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "main",
-    "commit": "e4e21a62090ee9d1bcb76473e0b7f876aaa82c35"
+    "branch": "fix/speedos-installed-hero-verify-current-20261012",
+    "commit": "5d3a7174be2a859c98c80f06539f48b5bc8a99fa"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
