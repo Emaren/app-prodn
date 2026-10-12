@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a21e6c4741b67484bb5af2d505f8b4d33fa4e931f5db2742373b37215e394e5d",
+      "sha256": "8ca38e00c23c2e4111721d7407bd7c49c610830d367c1ae28a08367d7fcad85f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2094,7 +2094,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feat/mecha-e2-wallet-satchel-clarity-20261012",
-    "commit": "e75c860333d5058252191aff5286018e9c6e1f04"
+    "commit": "1918fe3144617d6b12730c776b09579fb097fa4c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
