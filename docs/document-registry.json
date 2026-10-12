@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "cdb0b66d6403d7834e764ede233d1152f44075040a6e4e1cbf2d47ba251d1160",
+      "sha256": "c4522092d3e504fb756d48653d3a6b31f686a427db28a7bb20981bf000b358ec",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -940,7 +940,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-06",
       "sensitivity": "internal",
-      "sha256": "cdde40062abe1187c7db13efcda58f91a3b3de2ee32de9d7cea7516a06c44f46",
+      "sha256": "92271db2dd296b54f8ca9879b43c982e3d72506b49365df02fc5530fe08fa03c",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2094,7 +2094,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "integration/brain-reliability-lcp-lifecycle-20261012",
-    "commit": "4f8df9432c20218820bbf5c9cd0f2be2c4712719"
+    "commit": "7ff3cb5dbff8521269966c77e8877e1217dde8b7"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
