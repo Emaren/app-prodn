@@ -4,7 +4,7 @@
  * No per-player aggregate balances, inferred transaction purposes,
  * fabricated fiat conversions, or generated transfer events.
  */
-import { WOLO_MAINNET_NETWORK_ACCOUNTS } from "@/lib/woloMainnetNetworkAccounts";
+import { WOLO_MAINNET_NETWORK_ACCOUNTS } from "./woloMainnetNetworkAccounts.ts";
 
 /** Audited alias registry, not newly invented current holders. */
 export const TREASURY_LEGACY_IDENTITIES = WOLO_MAINNET_NETWORK_ACCOUNTS.filter(
