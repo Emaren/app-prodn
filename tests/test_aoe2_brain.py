@@ -307,6 +307,48 @@ class KingdomIntelligenceTests(unittest.TestCase):
         self.assertEqual(edge["featured_avatar"], {"passed": 2, "total": 2})
         self.assertNotIn("cf_ray", repr(edge))
 
+    def test_short_diagnostic_cannot_displace_qualified_cold_phone_proof(self):
+        now = datetime(2026, 10, 12, 16, 0, tzinfo=timezone.utc)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+
+            def write_receipt(name, samples, lcp, *, viewport="phone", count=None):
+                folder = root / name
+                folder.mkdir()
+                metrics_count = samples if count is None else count
+                metrics = {
+                    key: {"count": metrics_count, "p50": lcp, "p95": lcp + 100}
+                    for key in ("lcpMs", "readyMs", "documentTtfbMs")
+                }
+                (folder / "receipt.json").write_text(json.dumps({
+                    "kind": "aoe2war-cold-process-lcp",
+                    "releaseSha": "c" * 40,
+                    "buildVersion": "certified",
+                    "generatedAt": "2026-10-12T14:00:00Z",
+                    "viewport": viewport,
+                    "samples": samples,
+                    "summary": {**metrics, "lcpTargets": [
+                        {"target": "https://example.test/featured.webp", "count": metrics_count},
+                    ]},
+                }))
+
+            write_receipt("a-qualifying-phone", 20, 780)
+            write_receipt("b-newer-short-phone", 5, 530)
+            write_receipt("c-newer-desktop", 20, 400, viewport="desktop")
+            write_receipt("d-newer-underfilled-phone", 20, 350, count=5)
+            with patch.object(MODULE, "COLD_LCP_ROOT", root):
+                proof = MODULE.latest_cold_lcp(now)
+            self.assertTrue(proof["available"])
+            self.assertEqual(proof["samples"], 20)
+            self.assertEqual(proof["metrics"]["lcp_ms"]["p50"], 780)
+            self.assertEqual(proof["top_lcp_target_count"], 20)
+            self.assertNotIn("https://example.test/featured.webp", repr(proof))
+
+            (root / "a-qualifying-phone" / "receipt.json").unlink()
+            with patch.object(MODULE, "COLD_LCP_ROOT", root):
+                missing = MODULE.latest_cold_lcp(now)
+            self.assertEqual(missing, {"available": False})
+
     def test_source_summary_requires_exact_four_plane_identity(self):
         exact = MODULE.source_summary(release(exact=True))
         self.assertTrue(exact["exact"])
