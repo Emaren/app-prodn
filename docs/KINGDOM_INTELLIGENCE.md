@@ -63,6 +63,35 @@ V1 combines:
 The command does not mutate source, runtime, database, Wolo, storage, packages
 or host state.
 
+## Collection concurrency and failure containment
+
+Scheduled Operator Bridge refreshes and manually requested Brain refreshes are
+**one collection lane**, not independent authorization to launch redundant
+full estate audits. The Brain process holds a kernel-backed, nonblocking
+`.aoe2war-release/brain-collection.lock` while collecting. A second caller
+gets a truthful error ("already running") and must retry rather than spawning
+another heavyweight Doctor, Estate, documentation build or parallel probe.
+The empty local lock file does not contain operational evidence; the kernel
+releases its ownership automatically if the collector crashes. The protected
+Finish lock is separate and still defers periodic publication.
+
+Council runs each full Doctor, Storage and Workspace collection under its
+existing bounded deadlines. Doctor can spawn a tree of estate and
+documentation jobs; **on Council timeout**, Doctor is started as a fresh
+owned process group and Council signals that group, then escalates after a
+two-second grace period if necessary. This prevents Council timeouts from
+leaving its descendant `make`/Node/Python/Git probes as abandoned workers;
+it does not signal independently owned Codex, Steam, or bridge processes.
+
+These safeguards **do not bypass** the full Doctor, strict documentation
+validation, Estate audits, score thresholds, source parity or Wolo boundaries.
+A collection that fails or cannot acquire the lane never publishes a
+replacement healthy snapshot. The periodic bridge retries after failures;
+successful snapshots must still pass exact source and freshness validation.
+
+A later optimization may replace redundant builds with certified,
+source-bound proofs, but never with a blanket skip or invented freshness.
+
 ## Freshness is part of truth
 
 Persisted evidence is never presented as silently current.
