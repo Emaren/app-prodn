@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "48590f801d121536b05e31db6dfa50a44cbf178044d9a77f2602a44ce2d413b9",
+      "sha256": "dd80e6e3ff627593332df57da2e772a8863f8e5f245b3141c3d809b5c6e60754",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1304,7 +1304,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-02",
       "sensitivity": "internal",
-      "sha256": "939716b03947b319e5ce2f855f362f17f4e685b667884bc8ab7796a9cf949a30",
+      "sha256": "2265934b9c586269e5bfc9af2ce37783f388731731abf75c8e29cedafcb7e155",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "main",
-    "commit": "e4e21a62090ee9d1bcb76473e0b7f876aaa82c35"
+    "branch": "fix/speed-cold-lcp-resource-proof-20261012",
+    "commit": "7028ee218dfb6c1ee23c0b7269549ac694e9ecb5"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
