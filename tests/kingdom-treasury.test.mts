@@ -66,6 +66,16 @@ test("live holder membership is not padded with registered or historical wallets
   assert.equal(system[0]?.publicBalance, "1,000.000000");
   assert.equal(system[1]?.publicBalance, "0.000000");
   assert.equal(system.some((row) => row.address === address("b")), false);
+  const networkWithBounty = {
+    ...network,
+    count: 4,
+    accounts: [...network.accounts, {
+      address: address("d"),label: "Ecosystem Bounties", role: "bounty",
+      use:"Bounty Pool",isModule:false,isRetired:false,isUserFacing:true,
+      amountWoloFormatted:"20.000000",directAmountWoloFormatted:"20.000000",
+    }],
+  };
+  assert.equal(publicSystemAccounts(networkWithBounty, holders).some((a) => a.label === "Ecosystem Bounties"), true);
   assert.equal(isPublicTreasuryHolders({ ...holders, count: 38 }), false);
 });
 
