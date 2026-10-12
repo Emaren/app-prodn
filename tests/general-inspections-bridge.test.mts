@@ -300,6 +300,69 @@ function makeEstate(speedCurrent = true) {
   };
 }
 
+test("replayed old Brain payload cannot regain credit from a new delivery timestamp", () => {
+  const estate = makeEstate(true);
+  try {
+    const envelope = bridgePayload(true);
+    // An old Brain observation arrives again much later with a fresh receipt time.
+    envelope.receivedAt = "2026-09-19T12:01:00Z";
+    writeJson(estate.options.bridgePath, envelope);
+    const snapshot = buildBridgeGeneralInspectionsSnapshot({
+      ...estate.options,
+      now: Date.parse("2026-09-19T12:02:00Z"),
+    });
+    assert.ok(snapshot);
+    const release = snapshot.categories.find((item) => item.id === "release");
+    const security = snapshot.categories.find((item) => item.id === "security");
+    const data = snapshot.categories.find((item) => item.id === "data");
+    assert.equal(release?.checks.find((item) => item.id === "doctor")?.earned, 0);
+    assert.equal(security?.checks.find((item) => item.id === "failed-units")?.earned, 0);
+    assert.equal(data?.checks.find((item) => item.id === "wolo-8092")?.earned, 0);
+    // Durable certification remains valid despite loss of current telemetry credit.
+    assert.equal(release?.checks.find((item) => item.id === "certified")?.earned, 15);
+    assert.ok(
+      snapshot.notes.some((note) =>
+        note.includes("capture 8.9h old") && note.includes("delivery 1m old"),
+      ),
+    );
+  } finally {
+    rmSync(estate.root, { recursive: true, force: true });
+  }
+});
+
+test("fresh Brain payload without fresh bridge delivery also loses live credit", () => {
+  const estate = makeEstate(true);
+  try {
+    const envelope = bridgePayload(true);
+    envelope.receivedAt = "2026-09-18T03:09:10Z";
+    writeJson(estate.options.bridgePath, envelope);
+    const snapshot = buildBridgeGeneralInspectionsSnapshot(estate.options);
+    assert.ok(snapshot);
+    const release = snapshot.categories.find((item) => item.id === "release");
+    assert.equal(release?.checks.find((item) => item.id === "doctor")?.earned, 0);
+    assert.equal(release?.checks.find((item) => item.id === "certified")?.earned, 15);
+    assert.ok(snapshot.notes.some((note) => note.includes("delivery 1.0d old")));
+  } finally {
+    rmSync(estate.root, { recursive: true, force: true });
+  }
+});
+
+test("missing Brain capture time cannot inherit envelope's fresh generatedAt", () => {
+  const estate = makeEstate(true);
+  try {
+    const envelope = bridgePayload(true);
+    delete (envelope.payload as { generated_at?: string }).generated_at;
+    writeJson(estate.options.bridgePath, envelope);
+    const snapshot = buildBridgeGeneralInspectionsSnapshot(estate.options);
+    assert.ok(snapshot);
+    const release = snapshot.categories.find((item) => item.id === "release");
+    assert.equal(release?.checks.find((item) => item.id === "doctor")?.earned, 0);
+    assert.ok(snapshot.notes.some((note) => note.includes("No evidence timestamp")));
+  } finally {
+    rmSync(estate.root, { recursive: true, force: true });
+  }
+});
+
 test("bridge-backed General Inspections can reach green from certified evidence", () => {
   const estate = makeEstate(true);
   try {
