@@ -126,7 +126,7 @@ export function projectHdReplayEngine(data: PublicParserObservatory) {
       latestJobs: parser.jobs.slice(0, 6).map((job) => ({
         id: String(job.id),
         createdAt: job.createdAt,
-        status: sanitizeLabel(job.status, "Unknown", 32),
+        status: job.candidateOnly ? "Candidate-only" : "Recorded",
         lastEvent: sanitizeLabel(job.latestEvent?.eventType, "No events", 48),
       })),
     },
