@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a454158410a503b1c9ca3fdbd311ca81a15a9b5603588194b35c29e664bc4406",
+      "sha256": "05595ffbe3a3e1e0c1c9f532c86b60fbc4e64700eb4c1bb1db34c5183e0e01fc",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -917,7 +917,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-06",
       "sensitivity": "internal",
-      "sha256": "6ff1bd5687ea33b05d165e53595b46c1f3ecf64b5a8adc0cdecac90621b74a0a",
+      "sha256": "63a28f37e5b5dffec80af72900aea084f6c3c32eec104c8322ca9f847da72bb0",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1971,7 +1971,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-01",
       "sensitivity": "internal",
-      "sha256": "bf0b108c2f59bac59b28e37cff9f8b3ebe9ab30d960d3a05683b05a724674220",
+      "sha256": "9a402fef7cb6c74f04ee5a95acc49b0217d6c72ac2b0c6b59cfca3d7f394c758",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/treasury-release-gate-unused-selected-20261012",
-    "commit": "68002e9d6e81044f9ba7c4c1adff757394201b43"
+    "branch": "fix/wolochain-directory-treasury-privacy-20261012",
+    "commit": "8c44222d1d2786477e32059564ff6dafe7be8d2f"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
