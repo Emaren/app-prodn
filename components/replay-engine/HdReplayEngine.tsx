@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import {
-  Activity, ArrowDownRight, ArrowUpRight, Binary, ChevronDown, ChevronRight,
-  Clock3, Cpu, Database, FileQuestion, Gauge, HardDrive, Info, Layers3,
+  ArrowUpRight, Binary, ChevronDown, ChevronRight,
+  Clock3, Cpu, Database, Gauge, HardDrive, Info,
   Radio, RefreshCw, ScanLine, Search, ShieldCheck, Target, Users, Waves,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
