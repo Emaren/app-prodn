@@ -152,24 +152,24 @@ class MonitoringProofIsolationTests(unittest.TestCase):
         }
         with tempfile.TemporaryDirectory() as root:
             with (
-                patch.dict("os.environ", {"AOE2WAR_KI_CENTRAL_PROOF_REUSE": "1"}),
                 patch.object(audit, "DOCS", pathlib.Path(root)),
                 patch.object(audit, "certified_central_quality_proof", return_value=proof),
             ):
-                audit.check_central_quality_gates(instance)
+                audit.check_central_quality_gates(instance, monitor=True)
         self.assertEqual(instance.info["central_quality_gates"], proof["results"])
         self.assertEqual(instance.info["central_quality_proof"], proof["authority"])
 
     def test_no_opt_in_never_reads_monitoring_proof(self):
         instance = audit.Audit()
-        with (
-            patch.dict("os.environ", {"AOE2WAR_KI_CENTRAL_PROOF_REUSE": ""}),
-            patch.object(audit, "certified_central_quality_proof") as cached,
-            patch.object(audit, "DOCS", pathlib.Path("/__aoe2_nonexistent_docs__")),
-        ):
-            audit.check_central_quality_gates(instance)
+        with tempfile.TemporaryDirectory() as root:
+            with (
+                patch.object(audit, "certified_central_quality_proof") as cached,
+                patch.object(audit, "DOCS", pathlib.Path(root)),
+            ):
+                audit.check_central_quality_gates(instance)
         cached.assert_not_called()
         self.assertNotIn("central_quality_proof", instance.info)
+        self.assertEqual(instance.count("P0"), 1)  # Exhaustive path requires docs venv.
 
 
 if __name__ == "__main__":
