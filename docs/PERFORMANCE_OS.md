@@ -389,9 +389,15 @@ blanket `/_next/image` cache policy.
 
 Phone cold-LCP evidence can legitimately move away from the hero after the certified
 hero edge lane is active. In the Extreme/Advanced homepage presentation the Featured
-Warriors rail precedes the hero carousel, collapses to one large card per row on a
-390px viewport, and shuffles its opening roster. No single avatar is therefore a safe
-mobile-only preload target.
+Warriors rail precedes the hero carousel and collapses to one large card per row on a
+390px viewport. The first opening card is selected deterministically in SSR and
+preserved through hydration, while later rotation introduces variety no earlier than
+14 seconds. The initial card is therefore the only safe preload candidate: its exact
+unoptimized image URL gets one ReactDOM `preload(..., { as: "image", fetchPriority:
+"high" })` hint before markup discovery, matching the actual image request and
+respecting the user's chosen view mode. Do not preload every featured avatar, change
+rotation or promote subsequent cards to high priority; cold-phone tests must verify
+the latency impact before claiming a speed improvement.
 
 `aoe2war speed edge plan-featured-avatar` binds the complete eligible cohort instead
 of using a wildcard API rule. It reads the live `/api/lobby` `featuredWarriorEntries`
