@@ -23,7 +23,11 @@ type Resource = {
   decodedBodySize: number;
 };
 
-function capture(url: string, resources: Resource[]) {
+function capture(
+  url: string,
+  resources: Resource[],
+  hints: Array<{ href: string; fetchpriority: string }> = [],
+) {
   const diag = {
     lcp: url ? [{ url, startTime: 1200, element: "img" }] : [],
     longTasks: [],
@@ -36,12 +40,23 @@ function capture(url: string, resources: Resource[]) {
     },
     window: { __AOE2WAR_COLD_DIAG__: diag },
     location: { href: "https://aoe2war.com/" },
-    document: { title: "AoE2WAR" },
+    document: {
+      title: "AoE2WAR",
+      querySelectorAll: () => hints.map((hint) => ({
+        href: hint.href,
+        getAttribute: (name: string) => name === "fetchpriority" ? hint.fetchpriority : null,
+      })),
+    },
   });
   return result as {
     finalLcp: { url: string; startTime: number } | null;
     lcpResourceTiming: Resource | null;
     lcpResourceMatchCount: number;
+    lcpPreloadHint: {
+      imageHintCount: number;
+      exactLcpHintCount: number;
+      highPriorityExactHintCount: number;
+    };
     resources: Resource[];
     resourceCount: number;
   };
@@ -89,4 +104,32 @@ test("LCP-less fallback remains null without deriving a false timing match", () 
   assert.equal(result.finalLcp, null);
   assert.equal(result.lcpResourceTiming, null);
   assert.equal(result.lcpResourceMatchCount, 0);
+});
+
+test("exact first-avatar preload hint is visible without duplicate LCP request", () => {
+  const target = "https://aoe2war.com/api/media-assets/avatar/opening-featured?size=card";
+  const unrelated = "https://aoe2war.com/api/media-assets/avatar/other-featured?size=card";
+  const entry = { ...resource(target, 190, 110), initiatorType: "link" };
+  const result = capture(target, [entry, resource(unrelated, 500, 120)], [
+    { href: target, fetchpriority: "high" },
+    { href: unrelated, fetchpriority: "low" },
+  ]);
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(result.lcpPreloadHint)),
+    { imageHintCount: 2, exactLcpHintCount: 1, highPriorityExactHintCount: 1 },
+  );
+  assert.equal(result.lcpResourceMatchCount, 1);
+  assert.equal(result.lcpResourceTiming?.initiatorType, "link");
+  assert.equal(result.lcpResourceTiming?.startTime, 190);
+});
+
+test("a preload for a different image cannot masquerade as successful LCP preload", () => {
+  const target = "https://aoe2war.com/api/media-assets/avatar/visible-featured?size=card";
+  const result = capture(target, [resource(target, 700, 140)], [
+    { href: "https://aoe2war.com/api/media-assets/avatar/other-featured?size=card", fetchpriority: "high" },
+  ]);
+  assert.equal(result.lcpPreloadHint.imageHintCount, 1);
+  assert.equal(result.lcpPreloadHint.exactLcpHintCount, 0);
+  assert.equal(result.lcpPreloadHint.highPriorityExactHintCount, 0);
+  assert.equal(result.lcpResourceMatchCount, 1);
 });
