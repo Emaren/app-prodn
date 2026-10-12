@@ -23,6 +23,7 @@ const samples = Math.max(1, Math.min(20, Number(args.samples || 8)));
 const viewportName = String(args.viewport || "desktop");
 const releaseSha = String(args["release-sha"] || "");
 const buildVersion = String(args["build-version"] || "");
+const collectorSha = String(args["collector-sha"] || "");
 const outDir = path.resolve(String(args["out-dir"] || ""));
 const chrome = String(
   args.chrome || "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
@@ -553,6 +554,7 @@ const receipt = {
   generatedAt: new Date().toISOString(),
   releaseSha,
   buildVersion,
+  collectorSourceSha: collectorSha,
   url,
   viewport: viewportName,
   samples,
