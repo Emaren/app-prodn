@@ -107,7 +107,7 @@ test("records exact featured LCP insertion, native load and DOMContentLoaded wit
   assert.equal(life.firstInsertedAtMs, 820);
   assert.equal(life.firstNativeLoadAtMs, 910);
   assert.equal(life.domContentLoadedObservedAtMs, 1120);
-  assert.deepEqual(life.events.map((x) => x.phase), ["insert", "native-load", "dom-content-loaded"]);
+  assert.deepEqual(Array.from(life.events, (x) => x.phase), ["insert", "native-load", "dom-content-loaded"]);
   assert.ok(life.events.every((e) => e.url === lcpUrl));
   assert.equal(life.events[0].complete, false);
   assert.equal(life.events[1].complete, true);
@@ -130,7 +130,7 @@ test("when the final LCP target does not match any featured-image events, no lif
   assert.equal(unrelated.lcpImageLifecycle.firstInsertedAtMs, null);
   assert.equal(unrelated.lcpImageLifecycle.firstNativeLoadAtMs, null);
   assert.equal(unrelated.lcpImageLifecycle.domContentLoadedObservedAtMs, null);
-  assert.deepEqual(unrelated.lcpImageLifecycle.events, []);
+  assert.deepEqual(Array.from(unrelated.lcpImageLifecycle.events), []);
 });
 
 test("featured event evidence is capped, rather than collecting unbounded per-image logs", () => {
