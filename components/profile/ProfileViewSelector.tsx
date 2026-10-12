@@ -61,7 +61,7 @@ export default function ProfileViewSelector({
               aria-expanded={shown}
               aria-controls={id + "-" + group.prefix}
               onFocus={() => setOpen(group.family)}
-              onClick={() => setOpen((current) => current === group.family ? null : group.family)}
+              onClick={() => setOpen(group.family)}
               className={"flex items-center gap-1 rounded-full px-3 py-2 text-[10px] font-bold tracking-[.06em] transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-300 sm:px-4 " +
                 (selected
                   ? "bg-amber-300 text-[#11110f] shadow-[0_8px_24px_rgba(251,191,36,.22)]"
