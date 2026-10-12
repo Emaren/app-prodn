@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `integration/storage-speedos-proof-20261012` at `e4c80b2c553a733e75228e5bf5a2d7ac4c1c16a1`
+Implementation baseline: `ops/general-inspections-evidence-triage-20261012` at `644b2ab1ffd691228a697c6632554fe50f8d3370`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
