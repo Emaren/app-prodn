@@ -389,7 +389,7 @@ export default function WoloChainLiveTransparency() {
           </div>
 
           <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-200">
-            {holders ? `${holderRows.length} known wallets` : "Loading"}
+            {holders ? `${holderRows.length} listed wallets` : "Loading"}
           </div>
         </div>
 
