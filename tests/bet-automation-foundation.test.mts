@@ -4,6 +4,7 @@ import test from "node:test";
 
 import {
   BET_AUTOMATION_MAX_RESERVE_WOLO,
+  BET_AUTOMATION_MAX_PER_GAME_WOLO,
   BetAutomationInputError,
   estimateBetAutomationReserveWolo,
   parseBetAutoPresetDraft,
@@ -62,6 +63,27 @@ test("finite plans cannot estimate more than 10,000 WOLO", () => {
     (error: unknown) =>
       error instanceof BetAutomationInputError &&
       /10,100 WOLO/.test(error.message)
+  );
+});
+
+test("Mecha per-match preset boundary is enforced", () => {
+  assert.equal(BET_AUTOMATION_MAX_PER_GAME_WOLO, 1_000);
+  assert.equal(
+    parseBetAutoPresetDraft(validPreset({
+      winnerStakeWolo: 998, desyncSide: "yes", desyncStakeWolo: 2,
+      gamesRemaining: 1,
+    })).winnerStakeWolo, 998
+  );
+  assert.throws(
+    () => parseBetAutoPresetDraft(validPreset({ winnerStakeWolo: 1_001, gamesRemaining: 1 })),
+    /between 1 and 1,000/
+  );
+  assert.throws(
+    () => parseBetAutoPresetDraft(validPreset({
+      winnerStakeWolo: 999, desyncSide: "yes", desyncStakeWolo: 2,
+      gamesRemaining: 1,
+    })),
+    /combined per-game plan cannot exceed 1,000/
   );
 });
 
