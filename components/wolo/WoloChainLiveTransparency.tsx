@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { WOLO_MAINNET_NETWORK_ACCOUNTS } from "@/lib/woloMainnetNetworkAccounts";
 
 type Holder = {
   rank: number;
@@ -16,6 +17,8 @@ type Holder = {
   isKnownUser: boolean;
   isInfrastructure: boolean;
   avatarUrl?: string | null;
+  firstSeenAt?: string | null;
+  historical?: boolean;
 };
 
 type HoldersPayload = {
@@ -31,6 +34,15 @@ type HoldersPayload = {
   holders: Holder[];
 };
 
+// Historical known player wallets are not additional active holders.
+const historicPlayerWallets = WOLO_MAINNET_NETWORK_ACCOUNTS.filter(
+  (account) => account.label === "[BDB]Pigman" || account.label === "Ra 𓁛𓇳"
+);
+function isFaucetEraUnclassified(holder: Holder) {
+  // First-seen chronology is not proof of participation in an incident.
+  return holder.classification === "unclassified" &&
+    holder.firstSeenAt?.startsWith("2026-08-18");
+}
 const protocolPurposeByLabel: Record<string, string> = {
   "Founder's Cold Reserve": "Long-hold reserve. Hard-anchor scarcity.",
   "Founder Operating / Emaren": "Build speed. Shipping budget. Public receive wallet.",
@@ -257,7 +269,17 @@ export default function WoloChainLiveTransparency() {
     [holders?.holders]
   );
 
-  const holderRows = holders?.holders ?? [];
+  const activeRows = holders?.holders ?? [];
+  const activeAddresses = new Set(activeRows.map((row) => row.address.toLowerCase()));
+  const historicRows: Holder[] = holders ? historicPlayerWallets
+    .filter((account) => !activeAddresses.has(account.address.toLowerCase()))
+    .map((account, index) => ({
+      address: account.address, alias: account.label, rank: activeRows.length + index + 1,
+      role: "Player Wallet", use: "Player Wallet", classification: "player",
+      balanceWolo: null, balanceWoloFormatted: null, exactBalanceWolo: null,
+      balanceHidden: true, isKnownUser: true, isInfrastructure: false, historical: true,
+    })) : [];
+  const holderRows = [...activeRows, ...historicRows];
 
   return (
     <section className="relative space-y-6">
@@ -361,13 +383,13 @@ export default function WoloChainLiveTransparency() {
             <div className="text-[11px] uppercase tracking-[0.34em] text-white/45">WOLO holders</div>
             <div className="mt-2 text-sm text-slate-500">
               {holders
-                ? `${holders.count} current holders on the Wolo Chain network.`
+                ? `${holders.count} current holders · ${holderRows.length} listed wallets on WoloChain.`
                 : "Loading the live denom-owner projection."}
             </div>
           </div>
 
           <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-200">
-            {holders ? `${holders.count} wallets` : "Loading"}
+            {holders ? `${holderRows.length} known wallets` : "Loading"}
           </div>
         </div>
 
@@ -391,9 +413,13 @@ export default function WoloChainLiveTransparency() {
                   <HolderAvatar holder={holder} />
 
                   <div className="min-w-0">
-                    <div className="truncate font-semibold tracking-[-0.015em] text-white">{holder.alias}</div>
+                    <div className="truncate font-semibold tracking-[-0.015em] text-white">{holder.historical ? holder.alias : isFaucetEraUnclassified(holder) ? "August 2026 faucet-era wallet" : holder.alias}</div>
                     <div className="mt-1 text-[10px] uppercase tracking-[0.24em] text-slate-500">
-                      {roleLabel(holder.role, holder.use)} · {holder.classification}
+                      {holder.historical
+                        ? "Registered historical wallet · not currently funded"
+                        : isFaucetEraUnclassified(holder)
+                          ? "First seen Aug 18 · incident involvement unverified"
+                          : `${roleLabel(holder.role, holder.use)} · ${holder.classification}`}
                     </div>
                   </div>
                 </div>
@@ -401,7 +427,9 @@ export default function WoloChainLiveTransparency() {
                 <WalletAddress address={holder.address} onCopy={copyAddress} />
 
                 <div className="text-center">
-                  {holder.classification !== "protocol" || holder.balanceHidden ? (
+                  {holder.historical ? (
+                    <span className="text-xs text-slate-400">0 WOLO liquid*</span>
+                  ) : holder.classification !== "protocol" || holder.balanceHidden ? (
                     <span className="sr-only">Balance hidden</span>
                   ) : (
                     <>
@@ -417,8 +445,8 @@ export default function WoloChainLiveTransparency() {
 
         <div className="relative z-10 mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
           <div>
-            Current liquid holders and active stakers. Player and unclassified wallet + stake totals
-            determine rank but remain unpublished; protocol/system balances remain public.
+            Current liquid holders and active stakers.
+            {historicRows.length > 0 ? " *Historical rows are registered but absent from the current funded census." : ""}
           </div>
           <div>Updated: {holders?.updatedAt ? new Date(holders.updatedAt).toLocaleTimeString() : "loading"}</div>
         </div>
