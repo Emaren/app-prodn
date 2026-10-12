@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a454158410a503b1c9ca3fdbd311ca81a15a9b5603588194b35c29e664bc4406",
+      "sha256": "6c84f9005a2a3903b79c4756230f894aadfe4f7e5781776fb787638936c75152",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -917,7 +917,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-06",
       "sensitivity": "internal",
-      "sha256": "6ff1bd5687ea33b05d165e53595b46c1f3ecf64b5a8adc0cdecac90621b74a0a",
+      "sha256": "105e6be4e8dd27f2acd24333ef63b8d34a8af6b0d9385cfe8452203402f6b4e5",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1971,7 +1971,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-01",
       "sensitivity": "internal",
-      "sha256": "bf0b108c2f59bac59b28e37cff9f8b3ebe9ab30d960d3a05683b05a724674220",
+      "sha256": "72fd1b969f6a39c52f3c72fa0095892aab80a76f0a7528910676de24df0044e1",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/treasury-release-gate-unused-selected-20261012",
-    "commit": "68002e9d6e81044f9ba7c4c1adff757394201b43"
+    "branch": "feat/treasury-faucet-public-cleanup-roster-20261012",
+    "commit": "b13ad4e4c04885cc91cf2c247d9a2d396ac557c0"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
