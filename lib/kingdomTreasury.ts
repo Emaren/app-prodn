@@ -236,6 +236,14 @@ export function observedKingdomOutflows(
   rows: readonly TreasuryTransfer[],
   systemAccounts: readonly { address: string }[]
 ) {
-  const senders = new Set(systemAccounts.map((a) => a.address.toLowerCase()));
+  // An ordinary faucet claim is onboarding infrastructure, not a public
+  // kingdom payout or a champion tribute. Keep it in the chain ledger,
+  // never in the public Treasury payment rail.
+  const faucetAddresses = new Set(WOLO_MAINNET_NETWORK_ACCOUNTS
+    .filter((account) => account.role === "faucet" || account.use === "Faucet Wallet")
+    .map((account) => account.address.toLowerCase()));
+  const senders = new Set(systemAccounts
+    .map((account) => account.address.toLowerCase())
+    .filter((address) => !faucetAddresses.has(address)));
   return rows.filter((row) => senders.has(row.senderAddress.toLowerCase()));
 }
