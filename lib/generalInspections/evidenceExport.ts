@@ -20,3 +20,9 @@ export function formatInspectionEvidence(snapshot: GeneralInspectionsSnapshot): 
   for (const note of snapshot.notes) lines.push(`NOTE: ${note}`);
   return lines.join("\n");
 }
+
+export function formatInspectionJson(snapshot: GeneralInspectionsSnapshot): string {
+  // Serialize only the sanitized snapshot already loaded by the public page.
+  // Do not refetch, invoke operator actions, or add privileged evidence.
+  return JSON.stringify(snapshot, null, 2);
+}
