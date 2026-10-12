@@ -87,6 +87,24 @@ The normal public response is `view: "public"` and
 The admin-authenticated operator response is:
 
 ```text
+The public WoloChain holder table labels the live count as current funded/staking
+holders and can append two exact canonical historical player identities,
+`[BDB]Pigman` and `Ra 𓁛𓇳`, **after** the funded list when those addresses
+are absent from live owners. Such rows are marked historic and report
+`0 WOLO liquid` only as the observed complete current-denom census;
+the historical display does not invent an account or increase `count` from
+the API, and it never exposes the player's staking balance. A table showing
+36 funded + two historic entries must say **38 listed, 36 current**,
+not `38 total network addresses`: an offline-generated address may never
+appear on-chain.
+
+Retained-transfer `firstSeenAt` on an **unclassified** address may support
+an August 18, 2026 faucet-*era* label, explicitly unverified as raid participation.
+A rank number or matching calendar date is never proof of a specific attacker's
+address; address-level incident evidence is required before assigning that role.
+The existing `protocol_system_only` privacy boundary remains in force
+for all unclassified non-protocol balances.
+
 GET /api/wolo/holders?view=operator
 ```
 
