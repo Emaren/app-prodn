@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "899625f073e9674fcbcca7546d35159b2d4d2d62c09db49cedf5c345946fe484",
+      "sha256": "2747a126b851a57422ec6aca7088a13c1c480a4136768051464e36db17723d9e",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/speedos-fallback-pop-proof-20261012",
-    "commit": "0a76328bd8092ded44c42c30c687b54fba979b15"
+    "branch": "main",
+    "commit": "4b632387e5ae8c357686c6b820793ac7ffb7858a"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
