@@ -90,13 +90,29 @@ An upstream failure is "Balance unavailable", not an invented zero.
 Any historical address that enters the live funded/staked holder census
 is de-duplicated out of the separate historical rows.
 
-The operator reports the eight currently unidentified trailing wallets as
-connected to the August 2026 faucet exploit. This is not yet an audited
-address-level cluster, and **row rank is unstable**: never automatically
-assign an attack label from ranks 29–36 or from unclassified status alone.
-Matching exact addresses against transaction-proven incident evidence is
-a separate classification task. Faucet incident totals remain private
-operational records and are not part of the public Treasury page.
+The operator provided a screenshot identifying eight trailing unclassified
+addresses as part of the August 2026 faucet incident. Their **exact,
+checksum-valid addresses**, not mutable ranks #29–36, are stored in
+`lib/woloFaucetIncidentAnnotations.ts`. The public WoloChain table marks
+only **matching unclassified** accounts as "August 2026 faucet hack" with
+"Operator-reported · forensic match pending" adjacent. This is an
+operator attribution, NOT an independently verified attack membership
+or a statement about the actual controller of the wallet.
+
+The eight address-specific liquid bank balances use the existing public
+`/api/wolo/balance/{address}` adapter (bounded four concurrent calls,
+foreground-only recheck every two minutes) and validate chain, denom,
+decimals, address, amount and timestamp. Unavailable is not a zero.
+Unlike the bulk holder API, the page deliberately discloses these
+**explicitly operator-tagged pseudonymous addresses** after that source
+check; it never discloses unrelated player or other unclassified balance
+amounts, nor labels wallet identities by rank. If one address becomes a
+known player wallet, the explicit label and display exception disappear.
+This scoped disclosure was specifically requested by the operator and
+does not change the established `protocol_system_only` API contract.
+A further transaction-graph audit can corroborate or correct the
+operator-provided incident classification later. Faucet claim totals
+remain internal records and are not on the public Treasury page.
 
 ## Public and operator policies
 
