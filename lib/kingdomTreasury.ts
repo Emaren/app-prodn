@@ -206,7 +206,8 @@ export function publicSystemAccounts(network: TreasuryNetwork, holders: Treasury
   // balance may be zero without becoming an additional current holder.
   // Never publish user/staking personal balances from the network projection.
   const accounts = network.accounts.filter((account) =>
-    !account.isRetired && !account.isUserFacing && account.role !== "user"
+    !account.isRetired && account.role !== "user" &&
+    (!account.isUserFacing || KINGDOM_RESERVE_LABELS.has(account.label))
   ).map((account) => ({
     ...account,
     publicBalance: currentProtocol.get(account.address.toLowerCase())?.balanceWoloFormatted ??
