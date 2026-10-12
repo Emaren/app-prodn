@@ -492,14 +492,11 @@ def run_audit_snapshot(
 ) -> dict[str, Any] | None:
     # Automatic bridge observation may reuse only an unchanged exact-source
     # CERTIFIED Finish's three successful strict documentation Make targets.
-    # Human "Run Full Audit" claims execute the CLI directly in execute_run,
-    # and protected Finish always invokes the exhaustive audit without opt-in.
-    child_env = os.environ.copy()
-    child_env["AOE2WAR_KI_CENTRAL_PROOF_REUSE"] = "1"
+    # Human "Run Full Audit" claims execute the full CLI in execute_run.
+    # Protected Finish and direct audits never request --monitor.
     process = subprocess.run(
-        [str(CLI), "audit", "--json"],
+        [str(CLI), "audit", "--json", "--monitor"],
         cwd=str(ROOT),
-        env=child_env,
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
