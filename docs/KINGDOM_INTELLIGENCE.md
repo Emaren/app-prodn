@@ -111,6 +111,14 @@ supply-chain and host probes still execute on each Doctor collection.
 
 Persisted evidence is never presented as silently current.
 
+The public KI view uses the older age of the original `payload.generated_at` Brain
+collection and the server's `receivedAt` delivery envelope. A retransmitted old
+collection cannot appear newly healthy merely because the bridge delivered it again.
+If the Brain capture timestamp is missing, the public result is explicitly stale,
+even when the envelope receipt is fresh. General Inspections applies the same
+two-clock rule to bridge-dependent weighted checks; separately certified activation
+and live VPS filesystem receipts remain independent authorities.
+
 Replay certainty includes receipt age and becomes stale after 24 hours.
 Performance campaign evidence includes age and becomes stale after seven days.
 Source/release state is collected live through the existing release collector.
