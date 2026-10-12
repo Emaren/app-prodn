@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `hardening/inspections-brain-capture-freshness-20261012` at `e132d9abcb2c49baaaad4858bbd1badb05b37b29`
+Implementation baseline: `hardening/inspections-brain-capture-freshness-20261012` at `4593c01fa9f7cdf49c4fd8c2fff2ab73eae8dedd`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
