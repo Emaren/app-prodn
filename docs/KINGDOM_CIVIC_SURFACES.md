@@ -91,18 +91,29 @@ The page reads the existing public `/api/wolo/mainnet-transfers?limit=25`
 index, which supplies a *bounded sample of 25 indexed successful MsgSend
 rows*, not a complete financial history. A transfer is displayed in the
 kingdom-origin stream only if its sender is an eligible network system account.
+The public rail also excludes faucet hot-wallet disbursements and
+`senderKind=faucet` transfer evidence, keeping small claims in internal
+operational logs rather than mislabeling them as kingdom payouts.
 A bank-send event is **not** automatically claimed to be a champion bounty,
 founder bonus, marketplace purchase, or bet payout. Such payment categories
 remain explicitly awaiting dedicated purpose-bound settlement receipts.
 The page sends no transaction, touches no betting or escrow state and uses no
 admin operator API from public clients.
 
-### Faucet raid and wallet provenance
+### Historic wallet identities and internal incident provenance
 
-August 18, 2026 security evidence: 653 successful faucet claims at 2 WOLO
-each (1,306 WOLO gross); 647 recipient wallets moved funds onward; 644
-converged on a common destination. These are **incident-level facts**,
-not a claim that arbitrary current unclassified holders are incident wallets.
+The August 2026 faucet incident remains an **internal security log**, not a
+public Treasury statistic. No claim totals, losses, or suspect counts appear on
+`/kingdom-treasury`. The operator's October 12 screenshot identifies eight exact,
+checksum-valid public addresses. WoloChain displays those eight as
+"August 2026 faucet hack" with a visible "Operator-reported · forensic
+match pending" qualifier, not a claim of independently proven attack
+ownership. The classification is address-bound, never rank-bound, and
+requires the holder still be unclassified; source-chain verification of
+their liquid balances is done by the existing public per-address read.
+A future transaction-graph join must independently corroborate or
+correct the incident cohort. Treasury does not publish the incident
+or claim totals and excludes its faucet hot-wallet sends.
 Do not assign an attacker identity to any particular address without a
 sealed address-level incident membership proof. The canonical
 `WOLO_MAINNET_NETWORK_ACCOUNTS` registry **already contains two historical
@@ -114,6 +125,13 @@ Historical July observations showed both with zero WOLO, but their **present
 membership must always be derived afresh from live holder data**. The
 dashboard displays both with exact addresses and membership badges; they
 never inflate current-funded counts merely because they are registered.
+The WoloChain holders page now also displays those two historic records after
+the current-live ranking (38 visible addresses when the chain currently has 36
+funded/staked and neither historic identity is funded). Their row position is
+directory index, not a claim of a globally exhaustive address universe; a live
+`/api/wolo/balance/{address}` chain-bound response must confirm zero before
+`0 WOLO` is shown. A failed read displays balance unavailable. It never
+promotes historic zero records into the authoritative funded holder census.
 
 ### Design and performance
 

@@ -3,7 +3,6 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
   KINGDOM_RESERVE_LABELS,
-  TREASURY_FAUCET_INCIDENT,
   REPORTED_TREASURY_COSTS,
   disclosedKingdomReserveBalance, legacyIdentityMembership, isPublicTreasuryHolders,
   isTreasuryNetwork, isTreasuryPool, isTreasuryTransfers,
@@ -49,9 +48,6 @@ test("canonical monetary commitments are reported, never fake bank activity", ()
   assert.equal(reportedMonthlyOutlay(), 71.89);
   assert.equal(REPORTED_TREASURY_COSTS.find((x) => x.id === "apple")?.status, "planned-unpaid");
   assert.equal(REPORTED_TREASURY_COSTS.find((x) => x.id === "apple")?.billing, "unconfirmed");
-  assert.equal(TREASURY_FAUCET_INCIDENT.successfulClaims, 653);
-  assert.equal(TREASURY_FAUCET_INCIDENT.grossOutflowWolo, 1306);
-  assert.equal(TREASURY_FAUCET_INCIDENT.commonDestinationRecipients, 644);
 });
 
 test("live holder membership is not padded with registered or historical wallets", () => {
@@ -120,6 +116,15 @@ test("transfer stream is strictly observed kingdom-origin bank sends", () => {
     senderKind:null,recipientKind:"user",amountWolo:2,amountLabel:"2 WOLO",source:"wolo-mainnet-bank-send",
   });
   assert.equal(observedKingdomOutflows([mk(address("a")),mk(address("b"))],system).length,1);
+  const hotWallet = { address: address("d"), label: "Faucet Hot Wallet", role: "faucet" };
+  assert.equal(
+    observedKingdomOutflows(
+      [mk(address("a")), mk(address("d")), { ...mk(address("a")), key: "claimed", senderKind: "faucet" }],
+      [...system, hotWallet],
+    ).length,
+    1,
+    "Never surface small faucet claims as kingdom payout activity",
+  );
   assert.equal(isTreasuryTransfers({ok:true,source:"wolo-mainnet-bank-send",latestTimestamp:null,totalRows:2,rows:[mk(address("a"))]}),true);
   assert.equal(isTreasuryTransfers({ok:true,source:"random",latestTimestamp:null,totalRows:2,rows:[mk(address("a"))]}),false);
 });
@@ -152,10 +157,12 @@ test("public site wiring preserves source and performance boundaries", () => {
   assert.match(client,/No signing\. No payments from this page/);
   assert.match(client,/HISTORICAL \/ NOT CURRENT FUNDED/);
   assert.match(client,/legacyIdentityMembership/);
+  assert.doesNotMatch(client, /FAUCET RAID|TREASURY_FAUCET_INCIDENT|Incident evidence/);
+  assert.doesNotMatch(readFileSync("lib/kingdomTreasury.ts","utf8"), /TREASURY_FAUCET_INCIDENT/);
   assert.match(client,/Personal balance hidden/);
   assert.match(css,/prefers-reduced-motion:reduce/);
   assert.match(shell,/href: "\/kingdom-treasury", label: "Kingdom Treasury"/);
-  assert.match(wolo,/current holders on the Wolo Chain network/);
+  assert.match(wolo,/current holders on the WoloChain network/);
   assert.match(index,/^\/kingdom-treasury$/m);
   for (const name of KINGDOM_RESERVE_LABELS) {
     assert.ok(kingdom.includes(`"${name}"`), `reserve name ${name} must stay canonical`);

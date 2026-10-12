@@ -117,16 +117,6 @@ export const REPORTED_TREASURY_COSTS: readonly TreasuryCost[] = [
   { id: "apple", name: "Apple developer program", amount: 99, currency: "reported-$", billing: "unconfirmed", status: "planned-unpaid", note: "Not yet paid · billing cadence unconfirmed" },
 ] as const;
 
-export const TREASURY_FAUCET_INCIDENT = {
-  date: "2026-08-18",
-  successfulClaims: 653,
-  payoutWolo: 2,
-  grossOutflowWolo: 1306,
-  walletOnwardTransfers: 647,
-  commonDestinationRecipients: 644,
-  provenance: "docs/WOLO_FAUCET_SECURITY.md",
-} as const;
-
 export function reportedMonthlyOutlay(costs: readonly TreasuryCost[] = REPORTED_TREASURY_COSTS) {
   return Math.round(costs.filter((cost) => cost.billing === "monthly" && cost.status === "reported-active")
     .reduce((sum, cost) => sum + cost.amount, 0) * 100) / 100;
@@ -236,6 +226,13 @@ export function observedKingdomOutflows(
   rows: readonly TreasuryTransfer[],
   systemAccounts: readonly { address: string }[]
 ) {
-  const senders = new Set(systemAccounts.map((a) => a.address.toLowerCase()));
-  return rows.filter((row) => senders.has(row.senderAddress.toLowerCase()));
+  // Faucet disbursements are an internal operations ledger, not
+  // community rewards or treasury allocations. Never advertise claims
+  // as external kingdom payouts.
+  const senders = new Set(systemAccounts.filter((account) => {
+    const classified = account as { address: string; label?: string; role?: string };
+    return classified.label !== "Faucet Hot Wallet" && classified.role !== "faucet";
+  }).map((account) => account.address.toLowerCase()));
+  return rows.filter((row) =>
+    row.senderKind !== "faucet" && senders.has(row.senderAddress.toLowerCase()));
 }

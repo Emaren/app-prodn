@@ -69,6 +69,51 @@ Unknown wallets remain unclassified until an identity source exists. A single
 verified or active-staker identity may contribute its public player name; an
 ambiguous shared address does not publish one guessed identity.
 
+## Public historic-address directory (not funded holders)
+
+The WoloChain visual holder table retains the live, ordered list from
+`GET /api/wolo/holders` as its **funded/staked census**. After those rows,
+it may append only two registered historical player identities currently
+absent from that census: `[BDB]Pigman` and `Ra 𓁛𓇳`. Their canonical
+Bech32 addresses come from `lib/woloMainnetNetworkAccounts.ts`. They are
+never manually counted as current holders or inserted into the REST
+denom-owner index. A typical current count of 36 + 2 registered historical
+addresses means **38 visible rows**, not "38 active holders" and not a
+proof that WoloChain has only 38 addresses in existence.
+
+Each historic row uses the read-only, exact-address
+`GET /api/wolo/balance/{address}`, with full chain, denom, decimals and
+timestamp validation; it displays "0 WOLO" only on a verified zero.
+If funds are observed but the current holder census has not caught up,
+it displays a refresh state rather than silently exposing a player balance.
+An upstream failure is "Balance unavailable", not an invented zero.
+Any historical address that enters the live funded/staked holder census
+is de-duplicated out of the separate historical rows.
+
+The operator provided a screenshot identifying eight trailing unclassified
+addresses as part of the August 2026 faucet incident. Their **exact,
+checksum-valid addresses**, not mutable ranks #29–36, are stored in
+`lib/woloFaucetIncidentAnnotations.ts`. The public WoloChain table marks
+only **matching unclassified** accounts as "August 2026 faucet hack" with
+"Operator-reported · forensic match pending" adjacent. This is an
+operator attribution, NOT an independently verified attack membership
+or a statement about the actual controller of the wallet.
+
+The eight address-specific liquid bank balances use the existing public
+`/api/wolo/balance/{address}` adapter (bounded four concurrent calls,
+foreground-only recheck every two minutes) and validate chain, denom,
+decimals, address, amount and timestamp. Unavailable is not a zero.
+Unlike the bulk holder API, the page deliberately discloses these
+**explicitly operator-tagged pseudonymous addresses** after that source
+check; it never discloses unrelated player or other unclassified balance
+amounts, nor labels wallet identities by rank. If one address becomes a
+known player wallet, the explicit label and display exception disappear.
+This scoped disclosure was specifically requested by the operator and
+does not change the established `protocol_system_only` API contract.
+A further transaction-graph audit can corroborate or correct the
+operator-provided incident classification later. Faucet claim totals
+remain internal records and are not on the public Treasury page.
+
 ## Public and operator policies
 
 The normal public response is `view: "public"` and

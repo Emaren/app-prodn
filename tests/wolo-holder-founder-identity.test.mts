@@ -118,13 +118,16 @@ test(
   () => {
     assert.match(
       transparency,
-      /current holders on the Wolo Chain network/,
+      /current holders on the WoloChain network/,
     );
 
     assert.match(
       transparency,
-      /wallet \+ stake totals\s+determine rank/,
+      /Current liquid holders and active stakers\./,
     );
+    assert.doesNotMatch(transparency, /wallet \\+ stake totals|determine rank but remain unpublished/);
+    assert.match(transparency, /historicalRows\.map/);
+    assert.match(transparency, /parseWoloBalanceApiPayload/);
   },
 );
 
