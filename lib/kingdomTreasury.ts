@@ -240,7 +240,7 @@ export function observedKingdomOutflows(
   // kingdom payout or a champion tribute. Keep it in the chain ledger,
   // never in the public Treasury payment rail.
   const faucetAddresses = new Set(WOLO_MAINNET_NETWORK_ACCOUNTS
-    .filter((account) => account.role === "faucet" || account.use === "Faucet Wallet")
+    .filter((account) => account.role === "faucet")
     .map((account) => account.address.toLowerCase()));
   const senders = new Set(systemAccounts
     .map((account) => account.address.toLowerCase())
