@@ -4,6 +4,21 @@
  * No per-player aggregate balances, inferred transaction purposes,
  * fabricated fiat conversions, or generated transfer events.
  */
+import { WOLO_MAINNET_NETWORK_ACCOUNTS } from "@/lib/woloMainnetNetworkAccounts";
+
+/** Audited alias registry, not newly invented current holders. */
+export const TREASURY_LEGACY_IDENTITIES = WOLO_MAINNET_NETWORK_ACCOUNTS.filter(
+  (account) => account.label === "[BDB]Pigman" || account.label === "Ra 𓁛𓇳"
+).map((account) => ({ label: account.label, address: account.address, role: account.role }));
+
+export function legacyIdentityMembership(holders: TreasuryHolders) {
+  const funded = new Set(holders.holders.map((holder) => holder.address.toLowerCase()));
+  return TREASURY_LEGACY_IDENTITIES.map((entry) => ({
+    ...entry,
+    isCurrentHolder: funded.has(entry.address.toLowerCase()),
+  }));
+}
+
 export type TreasuryHolder = {
   address: string;
   alias: string;
