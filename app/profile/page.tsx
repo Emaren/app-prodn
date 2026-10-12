@@ -43,6 +43,15 @@ import ScheduledMatchCard, {
   CompactScheduledMatchHistoryRow,
 } from "@/components/challenge/ScheduledMatchCard";
 import AutoBetReserveCard from "@/components/profile/AutoBetReserveCard";
+import MechaAutoBetCard from "@/components/profile/MechaAutoBetCard";
+import ProfileViewSelector from "@/components/profile/ProfileViewSelector";
+import {
+  DEFAULT_PROFILE_VIEW,
+  profileViewFamily,
+  readProfileViewVariant,
+  saveProfileViewVariant,
+  type ProfileViewVariant,
+} from "@/lib/profileViewVariant";
 import MarketplaceBusinessCard from "@/components/market/MarketplaceBusinessCard";
 import ProfileDocumentVault from "@/components/profile/ProfileDocumentVault";
 import BrowserStreamStudio from "@/components/streaming/BrowserStreamStudio";
@@ -162,16 +171,7 @@ type WoloTransactionsResponse = {
 
 const MONEY_TX_PAGE_SIZE = 20;
 
-type ProfileViewMode = "basic" | "advanced" | "extreme";
-
-const PROFILE_VIEW_MODES: Array<{
-  key: ProfileViewMode;
-  label: string;
-}> = [
-  { key: "basic", label: "Basic" },
-  { key: "advanced", label: "Advanced" },
-  { key: "extreme", label: "Extreme" },
-];
+type ProfileViewMode = ProfileViewVariant;
 
 function normalizedProfileName(value: string | null | undefined) {
   return (value || "").trim().toLowerCase();
@@ -251,7 +251,14 @@ function ProfilePageContent() {
   const [watcherPairRequestStarted, setWatcherPairRequestStarted] = useState(false);
   const [claimingWolo, setClaimingWolo] = useState(false);
   const [status, setStatus] = useState("");
-  const [profileViewMode, setProfileViewMode] = useState<ProfileViewMode>("extreme");
+  const [profileViewMode, setProfileViewModeState] = useState<ProfileViewMode>(DEFAULT_PROFILE_VIEW);
+  useEffect(() => {
+    setProfileViewModeState(readProfileViewVariant(uid));
+  }, [uid]);
+  const setProfileViewMode = useCallback((next: ProfileViewMode) => {
+    setProfileViewModeState(next);
+    saveProfileViewVariant(uid, next);
+  }, [uid]);
   const [claimSeedApplied, setClaimSeedApplied] = useState(false);
   const {
     themeKey,
@@ -789,12 +796,12 @@ function ProfilePageContent() {
   const profileHandle = profile?.inGameName || profile?.steamPersonaName || playerName || "";
   const canUseApprenticeshipAdmin =
     Boolean((profile as { isAdmin?: boolean } | null)?.isAdmin) || isApprenticeshipAdminName(profileHandle) || isApprenticeshipAdminName(displayName);
-  const profileModeLabel =
-    profileViewMode === "basic" ? "Basic profile" : profileViewMode === "advanced" ? "Advanced profile" : "Extreme profile";
-  const profileDeckMode: "basic" | "advanced" = profileViewMode === "basic" ? "basic" : "advanced";
+  const profileModeLabel = profileViewMode.toUpperCase() + " profile";
+  const profileFamily = profileViewFamily(profileViewMode);
+  const profileDeckMode: "basic" | "advanced" = profileFamily === "basic" ? "basic" : "advanced";
   const isBasicProfileView = profileDeckMode === "basic";
 
-  if (profileViewMode === "extreme") {
+  if (profileFamily === "extreme") {
     return (
       <div className="space-y-6">
       <ExtremeProfileView
@@ -1644,34 +1651,11 @@ function IdentityCard({
   );
 }
 
-function ProfileModeToggle({
-  value,
-  onChange,
-}: {
+function ProfileModeToggle({ value, onChange }: {
   value: ProfileViewMode;
   onChange: (value: ProfileViewMode) => void;
 }) {
-  return (
-    <div className="grid grid-cols-3 overflow-hidden rounded-full border border-white/10 bg-black/24 p-1">
-      {PROFILE_VIEW_MODES.map((mode) => {
-        const active = value === mode.key;
-        return (
-          <button
-            key={mode.key}
-            type="button"
-            onClick={() => onChange(mode.key)}
-            className={`rounded-full px-3 py-1.5 text-[11px] font-semibold transition ${
-              active
-                ? "bg-amber-300 text-slate-950 shadow-[0_10px_28px_rgba(251,191,36,0.22)]"
-                : "text-slate-400 hover:bg-white/[0.06] hover:text-white"
-            }`}
-          >
-            {mode.label}
-          </button>
-        );
-      })}
-    </div>
-  );
+  return <ProfileViewSelector value={value} onChange={onChange} />;
 }
 
 function ProfileIconAction({
@@ -2341,7 +2325,7 @@ function ExtremeProfileView({
         ) : null}
       </section>
 
-      <AutoBetReserveCard />
+      {profileViewMode === "e2" ? <MechaAutoBetCard displayName={displayName} /> : <AutoBetReserveCard />}
 
       <MarketplaceBusinessCard />
 
