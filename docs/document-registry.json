@@ -292,9 +292,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BET_AUTOMATION_AND_CUSTODY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-29",
+      "reviewed_at": "2026-10-12",
       "sensitivity": "internal",
-      "sha256": "70468b0bfda753d4628441420378df1d35e51469f8ff13df73c313b94cc1a0f0",
+      "sha256": "5f6312fc2e4a2e3a82d72218f1ac698224de4869e11119687bd84ea2ac2602a4",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "2747a126b851a57422ec6aca7088a13c1c480a4136768051464e36db17723d9e",
+      "sha256": "04920bb8ba34f9bf39e5bc8c65d65b030402ad86ca83378e2f3cc027deb0ce74",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "main",
-    "commit": "4b632387e5ae8c357686c6b820793ac7ffb7858a"
+    "branch": "feat/mecha-auto-bet-e2-20261012",
+    "commit": "2086d04766e4f482fa10dd07c3a8b3e838d10af8"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
