@@ -179,7 +179,7 @@ export default function KingdomTreasury() {
       </div>}
 
       <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Value label="Wolo Chain Network" value={holders.data ? amount(holders.data.count) : "—"} sub="Current funded holders · live wallet + staking projection" />
+        <Value label="WoloChain Network" value={holders.data ? amount(holders.data.count) : "—"} sub="Current funded holders · live wallet + staking projection" />
         <Value label="Registered network accounts" value={network.data ? amount(network.data.registryAddressCount) : "—"} sub="Address registry · may include unfunded module accounts" accent="blue"/>
         <Value label="WOLO / USDC pool" value={pool.data ? `$${money(pool.data.liquidityUsd)}` : "—"} sub={pool.data ? `Pool #${pool.data.poolId} · derived USDC depth` : "Osmosis liquidity unavailable"} accent="mint" />
         <Value label="Monthly baseline" value={`$${money(reportedOutlay)}`} sub="Founder-reported costs · dollar currency unconfirmed" accent="rose"/>
@@ -262,7 +262,7 @@ export default function KingdomTreasury() {
 
       <section className="grid gap-4 lg:grid-cols-[.87fr_1.13fr]">
         <div className="kt-panel p-5 sm:p-7">
-          <PanelHeading index="04" title="Wolo Chain Network" marker="FUNDED ADDRESS CENSUS"/>
+          <PanelHeading index="04" title="WoloChain Network" marker="FUNDED ADDRESS CENSUS"/>
           <div className="kt-holder-plate"><div className="kt-label">CURRENT HOLDERS ON WOLO-1</div><div className="kt-major-stat">{holders.data ? amount(holders.data.count) : "—"}</div><div className="mt-3 text-xs leading-5 text-[#a3b0ae]">Live current funded/staking projection. A historical wallet does not increase this count without current funds.</div></div>
           <button type="button" className="kt-expand mt-4" onClick={() => setHoldersOpen(!holdersOpen)} aria-expanded={holdersOpen}><span className="flex items-center gap-2"><Coins size={15}/> All current holders · identity and privacy policy</span><ChevronDown size={17} className={holdersOpen?"rotate-180":""}/></button>
           {holdersOpen && <div className="kt-scroll mt-3 max-h-[480px] space-y-2 overflow-y-auto pr-1">{holderRows.map((h) => <div className="kt-account flex items-center justify-between gap-3" key={h.address}>
