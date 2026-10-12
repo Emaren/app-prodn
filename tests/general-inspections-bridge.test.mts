@@ -341,7 +341,7 @@ test("fresh Brain payload without fresh bridge delivery also loses live credit",
     const release = snapshot.categories.find((item) => item.id === "release");
     assert.equal(release?.checks.find((item) => item.id === "doctor")?.earned, 0);
     assert.equal(release?.checks.find((item) => item.id === "certified")?.earned, 15);
-    assert.ok(snapshot.notes.some((note) => note.includes("delivery 1.0d old")));
+    assert.ok(snapshot.notes.some((note) => note.includes("delivery 24.0h old")));
   } finally {
     rmSync(estate.root, { recursive: true, force: true });
   }
