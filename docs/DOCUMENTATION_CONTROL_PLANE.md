@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/mecha-auto-bet-e2-20261012` at `b5a4dd75d56f114ab2161d9ef37324354db6f21e`
+Implementation baseline: `feat/mecha-auto-bet-e2-20261012` at `fdef7fbfac65127f036648995d5ff77223049fad`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
