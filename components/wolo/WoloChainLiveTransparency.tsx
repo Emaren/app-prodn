@@ -1,6 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import {
+  missingHistoricalWoloAddresses,
+  woloAddressDirectorySummary,
+} from "@/lib/woloHolderDirectory";
+import { parseWoloBalanceApiPayload } from "@/lib/woloBalanceRead";
+import { WOLO_BASE_DENOM, WOLO_CHAIN_ID, WOLO_COIN_DECIMALS } from "@/lib/woloChain";
 
 type Holder = {
   rank: number;
@@ -216,6 +222,7 @@ export default function WoloChainLiveTransparency() {
   const [holders, setHolders] = useState<HoldersPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
+  const [historicalBalances, setHistoricalBalances] = useState<Record<string, "zero" | "nonzero" | "unavailable">>({});
 
   async function refresh() {
     try {
@@ -231,6 +238,29 @@ export default function WoloChainLiveTransparency() {
       }
 
       setHolders(payload);
+
+      // Only two governed historic identities. This lookup does not add holders.
+      // Show a zero balance only after an authenticated wolo-1 bank read.
+      const missing = missingHistoricalWoloAddresses(payload.holders);
+      const results = await Promise.all(missing.map(async (account) => {
+        try {
+          const response = await fetch(`/api/wolo/balance/${encodeURIComponent(account.address)}`, {
+            cache: "no-store",
+          });
+          if (!response.ok) throw new Error("Historic balance read unavailable");
+          const raw: unknown = await response.json();
+          const parsed = parseWoloBalanceApiPayload(raw, {
+            address: account.address,
+            denom: WOLO_BASE_DENOM,
+            decimals: WOLO_COIN_DECIMALS,
+            chainId: WOLO_CHAIN_ID,
+          });
+          return [account.address, parsed.amount === "0" ? "zero" : "nonzero"] as const;
+        } catch {
+          return [account.address, "unavailable"] as const;
+        }
+      }));
+      setHistoricalBalances(Object.fromEntries(results));
     } catch (refreshError) {
       setError(refreshError instanceof Error ? refreshError.message : "Live WoloChain data unavailable.");
     }
@@ -258,6 +288,8 @@ export default function WoloChainLiveTransparency() {
   );
 
   const holderRows = holders?.holders ?? [];
+  const historicalRows = holders ? missingHistoricalWoloAddresses(holders.holders) : [];
+  const directory = holders ? woloAddressDirectorySummary(holders.holders) : null;
 
   return (
     <section className="relative space-y-6">
@@ -361,13 +393,13 @@ export default function WoloChainLiveTransparency() {
             <div className="text-[11px] uppercase tracking-[0.34em] text-white/45">WOLO holders</div>
             <div className="mt-2 text-sm text-slate-500">
               {holders
-                ? `${holders.count} current holders on the Wolo Chain network.`
+                ? `${holders.count} current holders on the WoloChain network · ${directory?.listedAddressCount ?? holders.count} displayed addresses.`
                 : "Loading the live denom-owner projection."}
             </div>
           </div>
 
           <div className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-slate-200">
-            {holders ? `${holders.count} wallets` : "Loading"}
+            {directory ? `${directory.listedAddressCount} listed · ${directory.currentHolderCount} funded` : "Loading"}
           </div>
         </div>
 
@@ -412,14 +444,34 @@ export default function WoloChainLiveTransparency() {
                 </div>
               </article>
             ))}
+            {historicalRows.map((account, index) => (
+              <article
+                key={account.address}
+                data-historic-address={account.address}
+                className="grid grid-cols-[3rem_minmax(13rem,0.82fr)_minmax(24rem,1fr)_minmax(10rem,0.62fr)] items-center gap-4 rounded-[1.05rem] border border-amber-300/10 bg-amber-200/[0.025] px-3 py-3 text-sm"
+              >
+                <div className="text-center font-mono text-xs text-slate-500">#{holderRows.length + index + 1}</div>
+                <div className="min-w-0">
+                  <div className="truncate font-semibold text-white">{account.label}</div>
+                  <div className="mt-1 text-[10px] uppercase tracking-[0.14em] text-amber-200/55">
+                    Registered historic · not currently funded
+                  </div>
+                </div>
+                <WalletAddress address={account.address} onCopy={copyAddress} />
+                <div className="text-center font-mono text-xs text-slate-300">
+                  {historicalBalances[account.address] === "zero"
+                    ? "0 WOLO"
+                    : historicalBalances[account.address] === "nonzero"
+                      ? "Funds detected · census updating"
+                      : "Balance unavailable"}
+                </div>
+              </article>
+            ))}
           </div>
         </div>
 
         <div className="relative z-10 mt-4 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
-          <div>
-            Current liquid holders and active stakers. Player and unclassified wallet + stake totals
-            determine rank but remain unpublished; protocol/system balances remain public.
-          </div>
+          <div>Current liquid holders and active stakers.</div>
           <div>Updated: {holders?.updatedAt ? new Date(holders.updatedAt).toLocaleTimeString() : "loading"}</div>
         </div>
       </section>
