@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `diag/speedos-exact-lcp-dom-identity-20261012` at `c5365984f68ebc6e66e6bbce1b66305b63464a53`
+Implementation baseline: `diag/speedos-exact-lcp-dom-identity-20261012` at `28f414c352e5f155e1667f94e5458a160e3f3d53`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
