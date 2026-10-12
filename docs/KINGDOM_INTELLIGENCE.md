@@ -89,8 +89,21 @@ A collection that fails or cannot acquire the lane never publishes a
 replacement healthy snapshot. The periodic bridge retries after failures;
 successful snapshots must still pass exact source and freshness validation.
 
-A later optimization may replace redundant builds with certified,
-source-bound proofs, but never with a blanket skip or invented freshness.
+To avoid repeating strict documentation builds every five minutes,
+**only the Council-owned Doctor invoked by Brain** may reuse a prior complete
+strict-build result from a `CERTIFIED` protected Finish. That deterministic
+result is valid only when all three original central quality targets passed,
+the Finish's full Estate audit was P0=0/P1=0, the local app source exactly
+matches the certified release and each of the five core sources **plus**
+`AoE2WAR-docs` remains on the same clean branch and exact Git commit. The
+underlying certified receipt must be no older than **seven days**, with the
+original receipt name, SHA-256, completion time, observation time and six
+current source SHA values disclosed in `central_quality_proof`. If the proof is
+missing, expired, incomplete, dirty or source-divergent, the full Make gates
+run again. Standalone Doctor, full Estate Audit and protected Finish **never
+opt in to this reuse path**. The reused proof is an earlier certified build,
+not a claim that a fresh build ran. Dynamic production, recovery, service,
+supply-chain and host probes still execute on each Doctor collection.
 
 ## Freshness is part of truth
 
