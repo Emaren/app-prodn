@@ -295,10 +295,65 @@ function makeEstate(speedCurrent = true) {
       downloadRoot,
       expiryRoot,
       rootFsPath: volumeRoot,
+      filesystemEvidence: {
+        rootFreeGiB: 8,
+        volumeUsedPercent: 78,
+      },
       now: Date.parse("2026-09-19T03:10:00Z"),
     },
   };
 }
+
+test("live VPS capacity supersedes a contradictory older bridge storage snapshot", () => {
+  const estate = makeEstate(true);
+  try {
+    const envelope = bridgePayload(true);
+    envelope.payload.storage.root_free_bytes = 1 * 1024 ** 3;
+    envelope.payload.storage.volume_used_percent = 95;
+    writeJson(estate.options.bridgePath, envelope);
+    const snapshot = buildBridgeGeneralInspectionsSnapshot(estate.options);
+    assert.ok(snapshot);
+    const organization = snapshot.categories.find((item) => item.id === "organization");
+    const security = snapshot.categories.find((item) => item.id === "security");
+    assert.equal(organization?.checks.find((check) => check.id === "root-free")?.earned, 15);
+    assert.equal(organization?.checks.find((check) => check.id === "volume-used")?.earned, 15);
+    assert.equal(security?.checks.find((check) => check.id === "root-resilience")?.earned, 10);
+    assert.match(organization?.checks.find((check) => check.id === "root-free")?.detail ?? "", /8.00 GiB free.*live VPS/);
+    assert.match(organization?.checks.find((check) => check.id === "volume-used")?.detail ?? "", /78.0% used.*live VPS/);
+  } finally {
+    rmSync(estate.root, { recursive: true, force: true });
+  }
+});
+
+test("unavailable VPS filesystem uses only fresh and explicitly labeled bridge capacity", () => {
+  const estate = makeEstate(true);
+  try {
+    const unavailable = {
+      ...estate.options,
+      filesystemEvidence: {
+        rootFreeGiB: null,
+        volumeUsedPercent: null,
+      },
+    };
+    const fresh = buildBridgeGeneralInspectionsSnapshot(unavailable);
+    assert.ok(fresh);
+    const healthy = fresh.categories.find((item) => item.id === "organization");
+    assert.equal(healthy?.checks.find((check) => check.id === "root-free")?.earned, 15);
+    assert.equal(healthy?.checks.find((check) => check.id === "volume-used")?.earned, 15);
+    assert.match(healthy?.checks.find((check) => check.id === "root-free")?.detail ?? "", /operator bridge fallback/);
+
+    const stale = buildBridgeGeneralInspectionsSnapshot({
+      ...unavailable,
+      now: Date.parse("2026-09-19T13:10:00Z"),
+    });
+    assert.ok(stale);
+    const organization = stale.categories.find((item) => item.id === "organization");
+    assert.equal(organization?.checks.find((check) => check.id === "root-free")?.earned, 0);
+    assert.equal(organization?.checks.find((check) => check.id === "volume-used")?.earned, 0);
+  } finally {
+    rmSync(estate.root, { recursive: true, force: true });
+  }
+});
 
 test("replayed old Brain payload cannot regain credit from a new delivery timestamp", () => {
   const estate = makeEstate(true);
