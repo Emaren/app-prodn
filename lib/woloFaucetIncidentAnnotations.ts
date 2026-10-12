@@ -21,5 +21,5 @@ export function isOperatorReportedFaucetCohortAddress(address: string) {
   return COHORT.has(address.toLowerCase());
 }
 
-export const WOLO_FAUCET_COHORT_PUBLIC_LABEL = "August 2026 faucet incident";
+export const WOLO_FAUCET_COHORT_PUBLIC_LABEL = "August 2026 faucet hack";
 export const WOLO_FAUCET_COHORT_QUALIFIER = "Operator-reported · forensic match pending";
