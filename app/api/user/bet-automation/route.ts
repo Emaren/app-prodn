@@ -195,7 +195,10 @@ export async function PATCH(request: NextRequest) {
     const body = (await request.json().catch(() => null)) as
       | (Record<string, unknown> & { expectedVersion?: unknown })
       | null;
-    const draft = parseBetAutoPresetDraft(body);
+    // A pause must always work, including for pre-cap legacy presets whose
+    // stored amounts no longer pass new financial input validation.
+    const pauseOnly = body?.action === "pause";
+    const draft = pauseOnly ? null : parseBetAutoPresetDraft(body);
     const expectedVersion = body?.expectedVersion;
 
     if (
@@ -222,16 +225,20 @@ export async function PATCH(request: NextRequest) {
         );
       }
 
-      const data = {
-        enabled: draft.enabled,
-        winnerStakeWolo: draft.winnerStakeWolo,
-        desyncSide: draft.desyncSide,
-        desyncStakeWolo: draft.desyncStakeWolo,
-        untilOut: draft.untilOut,
-        gamesRemaining: draft.gamesRemaining,
-        selfOnly: true,
-        pausedReason: draft.enabled ? null : "user_paused",
-      };
+      // Cancel is a narrower mutation: do not revalidate, normalize, or
+      // rewrite potentially old values merely to switch automatic decisions off.
+      const data = pauseOnly
+        ? { enabled: false, pausedReason: "user_paused" }
+        : {
+            enabled: draft!.enabled,
+            winnerStakeWolo: draft!.winnerStakeWolo,
+            desyncSide: draft!.desyncSide,
+            desyncStakeWolo: draft!.desyncStakeWolo,
+            untilOut: draft!.untilOut,
+            gamesRemaining: draft!.gamesRemaining,
+            selfOnly: true,
+            pausedReason: draft!.enabled ? null : "user_paused",
+          };
 
       if (!current) {
         return tx.betAutoPreset.create({
