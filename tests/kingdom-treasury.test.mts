@@ -5,7 +5,7 @@ import {
   KINGDOM_RESERVE_LABELS,
   TREASURY_FAUCET_INCIDENT,
   REPORTED_TREASURY_COSTS,
-  disclosedKingdomReserveBalance, isPublicTreasuryHolders,
+  disclosedKingdomReserveBalance, legacyIdentityMembership, isPublicTreasuryHolders,
   isTreasuryNetwork, isTreasuryPool, isTreasuryTransfers,
   observedKingdomOutflows, publicSystemAccounts, reportedMonthlyOutlay,
   type TreasuryHolders, type TreasuryNetwork,
@@ -79,6 +79,18 @@ test("live holder membership is not padded with registered or historical wallets
   assert.equal(isPublicTreasuryHolders({ ...holders, count: 38 }), false);
 });
 
+test("legacy registered [BDB]Pigman and Ra identities do not inflate active holder census", () => {
+  const holders = sampleHolders();
+  const legacy = legacyIdentityMembership(holders);
+  assert.equal(legacy.length, 2);
+  assert.ok(legacy.some((row) => row.label === "[BDB]Pigman" &&
+    row.address === "wolo1ntal93v8c5wryq2d9puhks8l25zedhepyv8n5k"));
+  assert.ok(legacy.some((row) => row.label === "Ra 𓁛𓇳" &&
+    row.address === "wolo198ajhn5atpw65u6z89z5hwfer2vx90u4ydxe7z"));
+  assert.ok(legacy.every((row) => row.isCurrentHolder === false));
+  assert.equal(holders.count, 2);
+});
+
 test("player-linked balance never becomes a public protocol balance", () => {
   const holders = sampleHolders();
   assert.equal(isPublicTreasuryHolders({
@@ -138,7 +150,8 @@ test("public site wiring preserves source and performance boundaries", () => {
   assert.match(client,/document.visibilityState/);
   assert.match(client,/SpeedReadyMarker route="\/kingdom-treasury"/);
   assert.match(client,/No signing\. No payments from this page/);
-  assert.match(client,/zero additional holders counted without verified wallet matches/);
+  assert.match(client,/HISTORICAL \/ NOT CURRENT FUNDED/);
+  assert.match(client,/legacyIdentityMembership/);
   assert.match(client,/Personal balance hidden/);
   assert.match(css,/prefers-reduced-motion:reduce/);
   assert.match(shell,/href: "\/kingdom-treasury", label: "Kingdom Treasury"/);
