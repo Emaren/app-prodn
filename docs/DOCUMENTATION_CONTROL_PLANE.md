@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `main` at `e4e21a62090ee9d1bcb76473e0b7f876aaa82c35`
+Implementation baseline: `fix/speed-cold-lcp-resource-proof-20261012` at `7028ee218dfb6c1ee23c0b7269549ac694e9ecb5`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
