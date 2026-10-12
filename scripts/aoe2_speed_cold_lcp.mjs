@@ -150,6 +150,22 @@ const SNAPSHOT_EXPR = String.raw`(() => {
     encodedBodySize: lcpResource.encodedBodySize,
     decodedBodySize: lcpResource.decodedBodySize,
   } : null;
+  // Compare rendered browser preload hints with the actual final LCP URL.
+  // A hint proves only that it was emitted; initiatorType/resource matches
+  // still determine whether the browser used it without an extra fetch.
+  const imagePreloadLinks = Array.from(
+    document.querySelectorAll('link[rel~="preload"][as="image"]')
+  );
+  const exactLcpHints = finalLcp?.url
+    ? imagePreloadLinks.filter((link) => link.href === finalLcp.url)
+    : [];
+  const lcpPreloadHint = {
+    imageHintCount: imagePreloadLinks.length,
+    exactLcpHintCount: exactLcpHints.length,
+    highPriorityExactHintCount: exactLcpHints.filter(
+      (link) => (link.getAttribute("fetchpriority") || "").toLowerCase() === "high"
+    ).length,
+  };
   const resources = allResourceEntries
     .map((e) => ({
       name: e.name,
@@ -192,6 +208,7 @@ const SNAPSHOT_EXPR = String.raw`(() => {
     // Null is honest when the browser did not retain a matching resource.
     lcpResourceTiming,
     lcpResourceMatchCount: lcpMatches.length,
+    lcpPreloadHint,
     longTasks,
     longTaskCount: longTasks.length,
     longTaskTotalMs: longTasks.reduce((sum, e) => sum + e.duration, 0),

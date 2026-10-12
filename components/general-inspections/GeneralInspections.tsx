@@ -6,6 +6,7 @@ import {
   Boxes,
   ChevronDown,
   CircleDot,
+  ClipboardCopy,
   DatabaseZap,
   Gauge,
   HardDrive,
@@ -17,6 +18,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
+import { formatInspectionEvidence } from "@/lib/generalInspections/evidenceExport";
 import type {
   GeneralInspectionsSnapshot,
   InspectionCategory,
@@ -209,6 +211,7 @@ export default function GeneralInspections() {
   const [selectedId, setSelectedId] = useState("speed");
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copyStatus, setCopyStatus] = useState<"idle" | "copied" | "failed">("idle");
 
   const load = useCallback(async (manual = false) => {
     if (manual) setRefreshing(true);
@@ -241,6 +244,16 @@ export default function GeneralInspections() {
     () => snapshot?.categories.find((item) => item.id === selectedId) ?? snapshot?.categories[0] ?? null,
     [selectedId, snapshot],
   );
+
+  const copyEvidence = useCallback(async () => {
+    if (!snapshot) return;
+    try {
+      await navigator.clipboard.writeText(formatInspectionEvidence(snapshot));
+      setCopyStatus("copied");
+    } catch {
+      setCopyStatus("failed");
+    }
+  }, [snapshot]);
 
   return (
     <main className={styles.shell}>
@@ -321,6 +334,15 @@ export default function GeneralInspections() {
                     </div>
                     <button
                       type="button"
+                      onClick={() => void copyEvidence()}
+                      className="grid h-10 w-10 place-items-center rounded-xl border border-sky-200/10 bg-sky-300/[0.04] text-sky-200/70 transition hover:bg-sky-300/[0.08]"
+                      title="Copy current inspection evidence"
+                      aria-label="Copy current inspection evidence"
+                    >
+                      <ClipboardCopy className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => void load(true)}
                       disabled={refreshing}
                       className="grid h-10 w-10 place-items-center rounded-xl border border-sky-200/10 bg-sky-300/[0.04] text-sky-200/70 transition hover:bg-sky-300/[0.08] disabled:opacity-50"
@@ -330,6 +352,13 @@ export default function GeneralInspections() {
                     </button>
                   </div>
                 </header>
+                <div role="status" aria-live="polite" className="px-5 text-[10px] text-slate-400">
+                  {copyStatus === "copied"
+                    ? "Inspection evidence copied"
+                    : copyStatus === "failed"
+                      ? "Clipboard unavailable; inspect the visible check rows"
+                      : null}
+                </div>
                 <div>
                   {selected.checks.map((item, index) => <CheckRow key={item.id} check={item} index={index} />)}
                 </div>
