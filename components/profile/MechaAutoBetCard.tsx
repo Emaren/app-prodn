@@ -149,7 +149,7 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
     server.runtime.mode === "disabled" ? "AUTOMATION OFFLINE" :
     !readiness ? "WAITING FOR WATCHER" : previewOnly ? "SHADOW READY" : "FUNDED READY";
   const mecha = "Mecha " + (displayName.trim().slice(0, 38) || "Warrior");
-  const satchelVerified = false; // No owner-specific chain-reconciled custody ledger exists yet.
+  const satchelVerifiedBalanceWolo: string | null = null; // No account-specific reconciled custody ledger.
   const depositAmountValue = number(depositAmount);
   const depositAmountValid = Number.isSafeInteger(depositAmountValue) && depositAmountValue > 0
     && depositAmountValue <= 50_000;
@@ -216,7 +216,7 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
             <LockKeyhole className="h-4 w-4" aria-hidden /> WAR SATCHEL
           </div>
           <div className="mt-3 text-2xl font-black tabular-nums text-white" aria-label="War Satchel verified balance">
-            {satchelVerified ? "0" : "—"} <span className="text-xs font-bold text-slate-400">WOLO</span>
+            {satchelVerifiedBalanceWolo ?? "—"} <span className="text-xs font-bold text-slate-400">WOLO</span>
           </div>
           <button type="button" onClick={() => setSatchelOpen((value) => !value)}
             aria-expanded={satchelOpen}
@@ -325,7 +325,7 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
                 onChange={(event) => setDsStake(event.target.value)}
                 className="ml-auto w-24 rounded-lg border border-sky-300/35 bg-slate-950 px-2 py-2 text-right text-sm font-bold text-white outline-none" />}
             </div>
-          ) : <button type="button" onClick={() => setDsPanel(true)} className="mt-4 text-[10px] font-black uppercase tracking-[.12em] text-sky-200">D-SYNC OPTIONS ↗</button>}
+          ) : <button type="button" onClick={() => setDsPanel(true)} className="mt-4 text-[10px] font-black uppercase tracking-[.12em] text-sky-200">DESYNC OPTIONS ↗</button>}
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
             <span className={"text-xs " + (valid ? "text-slate-400" : "text-rose-300")}>
               {valid ? perGame.toLocaleString() + " / 1,000 MATCH · " + plan.toLocaleString() + " / " + planLimit.toLocaleString() + " PLAN" :
@@ -347,7 +347,7 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
         {error ? <span className="text-rose-300">{error}</span> :
           notice ? <span className="text-emerald-300">{notice}</span> :
           <span className="inline-flex items-center gap-1.5 text-slate-500">
-            <Coins className="h-3 w-3" />{previewOnly ? "PREVIEW ONLY · NO WOLO MOVED · NO BET PLACED" : "FUNDED CUSTODY VERIFIED"}
+            <Coins className="h-3 w-3" />{previewOnly ? "PREVIEW ONLY · NO WOLO MOVED · NO BET PLACED" : "FUNDING STATUS UNAVAILABLE"}
           </span>}
       </div>
     </section>
