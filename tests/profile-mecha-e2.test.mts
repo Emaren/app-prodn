@@ -36,6 +36,7 @@ test("E2 renders on the existing Extreme profile stage and preserves E1", () => 
   const selector = readFileSync(new URL("../components/profile/ProfileViewSelector.tsx", import.meta.url), "utf8");
   assert.match(selector, /onPointerEnter/);
   assert.match(selector, /onPointerLeave/);
+  assert.match(selector, /onClick=\{\(\) => setOpen\(group\.family\)\}/);
   assert.match(selector, /onKeyDown/);
   assert.match(selector, /aria-expanded/);
 });
