@@ -2442,6 +2442,8 @@ def cold_lcp(
         release_sha,
         "--build-version",
         build_version,
+        "--collector-sha",
+        str(identity.get("operator_source_sha") or ""),
     ]
     proc = subprocess.run(
         command,
