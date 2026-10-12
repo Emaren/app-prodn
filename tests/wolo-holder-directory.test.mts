@@ -42,7 +42,7 @@ test("public directory reads only governed historic accounts; results and totals
   const holdersApi = readFileSync("app/api/wolo/holders/route.ts", "utf8");
   assert.match(page,/\/api\/wolo\/balance\//);
   assert.match(page,/parseWoloBalanceApiPayload/);
-  assert.match(page,/parsed\.amount === "0" \? "zero" : "nonzero"/);
+  assert.match(page,/minimal === "0" \? "zero" : "nonzero"/);
   assert.match(page,/Balance unavailable/);
   assert.match(page,/Current liquid holders and active stakers\./);
   assert.doesNotMatch(page,/Player and unclassified wallet \+ stake totals/);
