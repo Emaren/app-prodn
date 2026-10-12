@@ -41,9 +41,12 @@ while retaining the underlying five-minute server-side corpus cache. A
 machine pulse or scanning animation means interface activity **only**,
 not a new replay winner or an active Codex job. Parser jobs are labeled as
 recorded parser jobs, never as live Codex execution. Missing current
-measurement is displayed as unavailable or stale. The page can later
-consume an independently authenticated, explicit public Codex receipt
-feed, but V1 makes no such connection or progress claim.
+measurement is displayed as unavailable or stale. The page also includes an explicitly dated **October 12 Phase II**
+research checkpoint (terminal-evidence veto, Action 34 unknown callback,
+legacy-format verifier lead, zero newly verified winners). This is
+historical, not a live agent status. It can later consume an independently
+authenticated, explicit public Codex receipt feed, but V1 makes no such
+connection or progress claim.
 
 Three distinct metric grains remain explicit:
 
