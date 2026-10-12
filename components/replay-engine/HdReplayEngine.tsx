@@ -9,6 +9,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { ReplayEngineCase, ReplayEngineSnapshot } from "@/lib/hdReplayEngine";
+import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 
 const REFRESH_MS = 120_000;
 const integer = (value: number) => value.toLocaleString("en-US");
@@ -265,6 +266,7 @@ export default function HdReplayEngine({ initial }: {
 
   return (
     <main className="replay-shell min-h-screen w-full text-stone-100" data-replay-engine="v1">
+      <SpeedReadyMarker route="/hd-replay-engine" ready={Boolean(data)} />
       <div className="replay-grid-overlay" aria-hidden />
       <div className="relative mx-auto max-w-[1540px] space-y-5 px-3 py-6 sm:px-6 sm:py-8 xl:px-9">
         <header className="replay-command-deck">
