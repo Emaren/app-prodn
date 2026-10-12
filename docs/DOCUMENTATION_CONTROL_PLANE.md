@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `integration/kingdom-os-green-readiness-20261012` at `e206eb5867c5b7d2d7bb68e7d4668cbf782131f3`
+Implementation baseline: `diag/speedos-exact-lcp-dom-identity-20261012` at `28f414c352e5f155e1667f94e5458a160e3f3d53`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

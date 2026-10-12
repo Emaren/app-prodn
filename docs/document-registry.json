@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "4c2b2f7538b324608ccde5b3dc8677efff0b07d7b8c1101b380dc1598e9d857a",
+      "sha256": "a6506b20b4351d7803049cb8630c430bb2084e9124b44a93f0599ef8178ca3e7",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1304,7 +1304,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-02",
       "sensitivity": "internal",
-      "sha256": "7639b9e7cdd482781c16f440588aa92c8c311f8c970e9699b804ba210e9ad426",
+      "sha256": "f5733332f81747b22498fe9b8eff1d111e40afb05a1f2ec3d22bc7236ed76cd7",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "integration/kingdom-os-green-readiness-20261012",
-    "commit": "e206eb5867c5b7d2d7bb68e7d4668cbf782131f3"
+    "branch": "diag/speedos-exact-lcp-dom-identity-20261012",
+    "commit": "28f414c352e5f155e1667f94e5458a160e3f3d53"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

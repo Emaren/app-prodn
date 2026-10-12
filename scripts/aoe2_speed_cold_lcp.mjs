@@ -23,6 +23,7 @@ const samples = Math.max(1, Math.min(20, Number(args.samples || 8)));
 const viewportName = String(args.viewport || "desktop");
 const releaseSha = String(args["release-sha"] || "");
 const buildVersion = String(args["build-version"] || "");
+const collectorSha = String(args["collector-sha"] || "");
 const outDir = path.resolve(String(args["out-dir"] || ""));
 const chrome = String(
   args.chrome || "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
@@ -74,11 +75,24 @@ const INIT_SCRIPT = String.raw`(() => {
     featuredImageEvents: [],
     featuredImageEventsCapped: false,
   };
+  // WeakMap identity is per actual IMG node, not per URL. Multiple DOM nodes
+  // may reuse one already-downloaded URL across streamed/hydrated boundaries.
   const featuredImageSeen = new WeakSet();
-  const recordFeaturedImage = (node, phase) => {
-    if (!node || String(node.tagName || "").toUpperCase() !== "IMG") return;
+  const featuredImageIds = new WeakMap();
+  let nextFeaturedImageId = 0;
+  const featuredImageId = (node) => {
+    if (!node || String(node.tagName || "").toUpperCase() !== "IMG") return null;
     const url = String(node.currentSrc || node.src || "");
-    if (!url.includes("/api/media-assets/avatar/") || !url.includes("-featured")) return;
+    if (!url.includes("/api/media-assets/avatar/") || !url.includes("-featured")) return null;
+    if (!featuredImageIds.has(node)) {
+      featuredImageIds.set(node, ++nextFeaturedImageId);
+    }
+    return featuredImageIds.get(node);
+  };
+  const recordFeaturedImage = (node, phase) => {
+    const nodeId = featuredImageId(node);
+    if (nodeId === null) return;
+    const url = String(node.currentSrc || node.src || "");
     if (phase === "insert") {
       if (featuredImageSeen.has(node)) return;
       featuredImageSeen.add(node);
@@ -87,8 +101,11 @@ const INIT_SCRIPT = String.raw`(() => {
       state.featuredImageEventsCapped = true;
       return;
     }
+    const layer = node.closest?.("[data-featured-warrior-image-buffer]");
     state.featuredImageEvents.push({
-      phase, atMs: performance.now(), url,
+      phase, atMs: performance.now(), url, nodeId,
+      connected: typeof node.isConnected === "boolean" ? node.isConnected : null,
+      bufferLayer: layer?.getAttribute?.("data-featured-warrior-image-buffer") ?? null,
       complete: Boolean(node.complete),
       naturalWidth: Number(node.naturalWidth || 0),
       decoding: String(node.decoding || ""),
@@ -101,6 +118,17 @@ const INIT_SCRIPT = String.raw`(() => {
     new MutationObserver((mutations) => {
       for (const mutation of mutations) {
         if (mutation.type !== "childList") continue;
+        // Match actual removals and inserts; do not infer a React remount from
+        // two URL-identical load events alone.
+        for (const node of mutation.removedNodes || []) {
+          if (String(node.tagName || "").toUpperCase() === "IMG") {
+            recordFeaturedImage(node, "remove");
+          } else if (typeof node.querySelectorAll === "function") {
+            for (const image of node.querySelectorAll("img")) {
+              recordFeaturedImage(image, "remove");
+            }
+          }
+        }
         for (const node of mutation.addedNodes) {
           if (String(node.tagName || "").toUpperCase() === "IMG") {
             recordFeaturedImage(node, "insert");
@@ -144,6 +172,7 @@ const INIT_SCRIPT = String.raw`(() => {
           id: e.id || "",
           url: e.url || "",
           element: elementLabel(e.element),
+          elementNodeId: featuredImageId(e.element),
         });
       }
     }).observe({ type: "largest-contentful-paint", buffered: true });
@@ -226,14 +255,27 @@ const SNAPSHOT_EXPR = String.raw`(() => {
   const exactLcpImageEvents = finalLcp?.url
     ? featuredImageEvents.filter((event) => event.url === finalLcp.url)
     : [];
+  const finalLcpNodeId = finalLcp?.elementNodeId ?? null;
+  const matchedLcpNodeEvents = finalLcpNodeId === null
+    ? []
+    : exactLcpImageEvents.filter((event) => event.nodeId === finalLcpNodeId);
   const lcpImageLifecycle = {
     trackedFeaturedEvents: featuredImageEvents.length,
     capped: Boolean(diag.featuredImageEventsCapped),
-    // Null rather than a fabricated timing when the observer misses an event.
+    // URL evidence remains for backwards comparison, but only stable
+    // WeakMap node identity can tie a load or insertion to the LCP element.
     firstInsertedAtMs: exactLcpImageEvents.find((event) => event.phase === "insert")?.atMs ?? null,
     firstNativeLoadAtMs: exactLcpImageEvents.find((event) => event.phase === "native-load")?.atMs ?? null,
     domContentLoadedObservedAtMs:
       exactLcpImageEvents.find((event) => event.phase === "dom-content-loaded")?.atMs ?? null,
+    distinctNodeCount: new Set(exactLcpImageEvents.map((event) => event.nodeId)).size,
+    finalLcpNodeId,
+    matchedNodeInsertionAtMs:
+      matchedLcpNodeEvents.find((event) => event.phase === "insert")?.atMs ?? null,
+    matchedNodeNativeLoadAtMs:
+      matchedLcpNodeEvents.find((event) => event.phase === "native-load")?.atMs ?? null,
+    matchedNodeRemoveAtMs:
+      matchedLcpNodeEvents.find((event) => event.phase === "remove")?.atMs ?? null,
     events: exactLcpImageEvents,
   };
   const resources = allResourceEntries
@@ -512,6 +554,7 @@ const receipt = {
   generatedAt: new Date().toISOString(),
   releaseSha,
   buildVersion,
+  collectorSourceSha: collectorSha,
   url,
   viewport: viewportName,
   samples,
