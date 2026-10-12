@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a6506b20b4351d7803049cb8630c430bb2084e9124b44a93f0599ef8178ca3e7",
+      "sha256": "09738f77aa4a6f618bec8ea88aa344f60935f4a7f76d440e21e6dd21bef5ea93",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1304,7 +1304,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-02",
       "sensitivity": "internal",
-      "sha256": "f5733332f81747b22498fe9b8eff1d111e40afb05a1f2ec3d22bc7236ed76cd7",
+      "sha256": "3709133ddfad4faa8edad579cbe701ef51ff6bbfbb8183cf5a24c1bb0305f07d",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "diag/speedos-exact-lcp-dom-identity-20261012",
-    "commit": "28f414c352e5f155e1667f94e5458a160e3f3d53"
+    "branch": "diag/speedos-react-hydration-lcp-20261012",
+    "commit": "f8f329b89bded31728e8268bf15fc271d3fc8c2d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
