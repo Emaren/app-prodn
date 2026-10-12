@@ -156,7 +156,7 @@ export function isTreasuryNetwork(value: unknown): value is TreasuryNetwork {
     n.accounts.every((a) => !!a && typeof a.address === "string" &&
       /^wolo1[0-9a-z]{30,90}$/.test(a.address) && typeof a.label === "string" &&
       typeof a.role === "string" && typeof a.directAmountWoloFormatted === "string" &&
-      /^\\d[\\d,.]*$/.test(a.directAmountWoloFormatted) && typeof a.isModule === "boolean" &&
+      /^\d[\d,.]*$/.test(a.directAmountWoloFormatted) && typeof a.isModule === "boolean" &&
       typeof a.isRetired === "boolean" && typeof a.isUserFacing === "boolean");
 }
 
