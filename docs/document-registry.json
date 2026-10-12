@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "48590f801d121536b05e31db6dfa50a44cbf178044d9a77f2602a44ce2d413b9",
+      "sha256": "932e42e1f54278d6b00aa04480e549cf3378a92770b224c9924841b6c957baa6",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1304,7 +1304,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-02",
       "sensitivity": "internal",
-      "sha256": "939716b03947b319e5ce2f855f362f17f4e685b667884bc8ab7796a9cf949a30",
+      "sha256": "2265934b9c586269e5bfc9af2ce37783f388731731abf75c8e29cedafcb7e155",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1694,7 +1694,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-19",
       "sensitivity": "internal",
-      "sha256": "e8b09f141c5d05fe930ee070be4c9af8bb81c247dd8f193d7fc8e4654e3d8c87",
+      "sha256": "f0dca5c6030904945e977254ede92fb4ac95d64792c5c3cc20dc71b1dfaafaad",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "main",
-    "commit": "e4e21a62090ee9d1bcb76473e0b7f876aaa82c35"
+    "branch": "integration/storage-speedos-proof-20261012",
+    "commit": "e4c80b2c553a733e75228e5bf5a2d7ac4c1c16a1"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

@@ -128,7 +128,29 @@ const SNAPSHOT_EXPR = String.raw`(() => {
   const lcp = Array.isArray(diag.lcp) ? diag.lcp : [];
   const longTasks = Array.isArray(diag.longTasks) ? diag.longTasks : [];
   const shifts = Array.isArray(diag.layoutShifts) ? diag.layoutShifts : [];
-  const resources = performance.getEntriesByType("resource")
+  // Retain the exact final LCP URL's resource timing independently of the
+  // longest-40 diagnostic ranking. Most small featured images are not in
+  // that ranking even when their paint is the page's LCP.
+  const allResourceEntries = performance.getEntriesByType("resource");
+  const finalLcp = lcp.length ? lcp[lcp.length - 1] : null;
+  const lcpMatches = finalLcp?.url
+    ? allResourceEntries.filter((e) => e.name === finalLcp.url)
+    : [];
+  const lcpResource = lcpMatches.length
+    ? lcpMatches[lcpMatches.length - 1]
+    : null;
+  const lcpResourceTiming = lcpResource ? {
+    name: lcpResource.name,
+    initiatorType: lcpResource.initiatorType,
+    startTime: lcpResource.startTime,
+    responseStart: lcpResource.responseStart,
+    responseEnd: lcpResource.responseEnd,
+    duration: lcpResource.duration,
+    transferSize: lcpResource.transferSize,
+    encodedBodySize: lcpResource.encodedBodySize,
+    decodedBodySize: lcpResource.decodedBodySize,
+  } : null;
+  const resources = allResourceEntries
     .map((e) => ({
       name: e.name,
       initiatorType: e.initiatorType,
@@ -166,7 +188,10 @@ const SNAPSHOT_EXPR = String.raw`(() => {
     paints,
     readyMs: ready.length ? Math.min(...ready) : null,
     lcpEntries: lcp,
-    finalLcp: lcp.length ? lcp[lcp.length - 1] : null,
+    finalLcp,
+    // Null is honest when the browser did not retain a matching resource.
+    lcpResourceTiming,
+    lcpResourceMatchCount: lcpMatches.length,
     longTasks,
     longTaskCount: longTasks.length,
     longTaskTotalMs: longTasks.reduce((sum, e) => sum + e.duration, 0),
@@ -175,7 +200,7 @@ const SNAPSHOT_EXPR = String.raw`(() => {
       : 0,
     cls: shifts.reduce((sum, e) => sum + e.value, 0),
     resources,
-    resourceCount: performance.getEntriesByType("resource").length,
+    resourceCount: allResourceEntries.length,
   };
 })()`;
 
