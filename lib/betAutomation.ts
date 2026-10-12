@@ -3,6 +3,8 @@ import { normalizeReplayPlayers } from "./teamResolution.ts";
 
 export const BET_AUTOMATION_CUSTODY_CAPABILITY = "bet-custody-v1";
 export const BET_AUTOMATION_MAX_RESERVE_WOLO = 10_000;
+/** Auto-bet combined winner + Desync stake cap; manual wagers retain 50k. */
+export const BET_AUTOMATION_MAX_PER_GAME_WOLO = 1_000;
 export const BET_AUTOMATION_MAX_GAMES = 10_000;
 
 export type BetAutomationMode = "disabled" | "shadow" | "live";
@@ -99,7 +101,7 @@ export function parseBetAutoPresetDraft(value: unknown): BetAutoPresetDraft {
   const winnerStakeWolo = readRequiredInteger(
     value.winnerStakeWolo,
     "winnerStakeWolo",
-    { min: 1, max: BET_AUTOMATION_MAX_RESERVE_WOLO }
+    { min: 1, max: BET_AUTOMATION_MAX_PER_GAME_WOLO }
   );
 
   const desyncSide = value.desyncSide;
@@ -110,7 +112,7 @@ export function parseBetAutoPresetDraft(value: unknown): BetAutoPresetDraft {
   const desyncStakeWolo = readRequiredInteger(
     value.desyncStakeWolo,
     "desyncStakeWolo",
-    { min: 0, max: BET_AUTOMATION_MAX_RESERVE_WOLO }
+    { min: 0, max: BET_AUTOMATION_MAX_PER_GAME_WOLO }
   );
 
   if (desyncSide === "none" && desyncStakeWolo !== 0) {
@@ -126,9 +128,9 @@ export function parseBetAutoPresetDraft(value: unknown): BetAutoPresetDraft {
   }
 
   const perGameWolo = winnerStakeWolo + desyncStakeWolo;
-  if (perGameWolo > BET_AUTOMATION_MAX_RESERVE_WOLO) {
+  if (perGameWolo > BET_AUTOMATION_MAX_PER_GAME_WOLO) {
     throw new BetAutomationInputError(
-      `The combined per-game plan cannot exceed ${BET_AUTOMATION_MAX_RESERVE_WOLO.toLocaleString("en-US")} WOLO.`
+      `The combined per-game plan cannot exceed ${BET_AUTOMATION_MAX_PER_GAME_WOLO.toLocaleString("en-US")} WOLO.`
     );
   }
 
