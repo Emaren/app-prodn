@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import {
   BET_AUTOMATION_MAX_GAMES,
   BET_AUTOMATION_MAX_RESERVE_WOLO,
+  BET_AUTOMATION_MAX_PER_GAME_WOLO,
   BetAutomationInputError,
   DEFAULT_BET_AUTO_PRESET,
   estimateBetAutomationReserveWolo,
@@ -85,6 +86,7 @@ function responsePayload(input: {
     runtime: automationRuntime,
     limits: {
       maxEstimatedReserveWolo: BET_AUTOMATION_MAX_RESERVE_WOLO,
+      maxPerGameWolo: BET_AUTOMATION_MAX_PER_GAME_WOLO,
       maxGames: BET_AUTOMATION_MAX_GAMES,
       selfOnly: true,
     },
