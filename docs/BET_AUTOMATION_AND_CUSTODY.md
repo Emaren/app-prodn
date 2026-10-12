@@ -250,12 +250,28 @@ browser storage, not yet as a cross-device account preference. The selector
 supports Escape, keyboard focus and mouse transit across the trigger/popover
 without collapsing prematurely.
 
-The E2 tile prioritizes a next-game stake, ON/OFF preview command, compact
-readiness indicator, War Satchel, D-Sync shortcut, and expandable settings for
-winner stake, D-Sync side/stake, a finite number of games or Until Out. Its
-subtle beacon is CSS-only and respects reduced-motion preferences. No session
-polling loop is introduced. The War Satchel currently displays zero locked;
-there is no deposit, wallet signer or withdrawal control.
+The E2 tile now prioritizes three distinct numbers: exact connected-wallet
+balance, personal War Satchel balance, and next-match WOLO stake. "AUTO BETTING"
+identifies the feature; the short controls say "BET PLAN", "DESYNC" and
+"ARM PREVIEW" instead of insider names "LOADOUT", "DS" and "LOAD PREVIEW".
+The Mecha title and ON/OFF preview switch remain prominent. Its subtle beacon
+is CSS-only and respects reduced-motion preferences, and the tile does not add
+its own polling loop.
+
+The wallet balance is a real Keplr-connected WoloChain address lookup through
+the existing useWoloBalance hook, validated for exact address, wolo-1 chain ID,
+uwolo denomination, decimals, data provenance, and bounded query freshness.
+Disconnected, loading and errored reads never display fabricated "0 WOLO".
+The independently verified War Satchel balance is not implemented and must
+therefore display an explicit unavailable dash rather than a fictional zero.
+The "LOAD SATCHEL" button opens a premium deposit amount panel with amount
+entry and quick-select values. Its transfer button remains visibly unavailable
+until an owner-specific, chain-reconciled custodial subledger, signature flow,
+idempotent deposit verifier, and withdrawal authority are implemented and
+certified. No click sends tokens, and the stored shadow preset cannot claim
+funded readiness. No custody/address permissions or migrations are introduced.
+The panel is a truthful product surface for an unfinished financial rail,
+not an accepted or pending funding request.
 
 Combined winner plus D-Sync stake for an automatic game must be an integer
 from 1 to 1,000 WOLO. The finite-plan upper envelope remains 10,000 WOLO.
