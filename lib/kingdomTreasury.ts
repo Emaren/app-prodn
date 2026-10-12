@@ -170,6 +170,31 @@ export function isTreasuryTransfers(value: unknown): value is TreasuryTransfers 
       typeof row.amountWolo === "number" && Number.isFinite(row.amountWolo));
 }
 
+/** Exact unencumbered reserve labels authorized by lib/kingdomSummary.ts. */
+export const KINGDOM_RESERVE_LABELS = new Set([
+  "Community Treasury",
+  "DEX Liquidity Reserve",
+  "Faucet Growth Reserve",
+  "Faucet Hot Wallet",
+  "Validator Ops",
+  "Ecosystem Bounties",
+  "Workshop Sponsorships",
+  "Wolo-Osmosis Relayer Gas",
+]);
+
+export function disclosedKingdomReserveBalance(
+  accounts: readonly { label: string; publicBalance: string | null }[]
+) {
+  const sources = accounts.filter((a) => KINGDOM_RESERVE_LABELS.has(a.label));
+  if (sources.length !== KINGDOM_RESERVE_LABELS.size || sources.some((a) => a.publicBalance === null)) {
+    return null;
+  }
+  return sources.reduce((sum, a) => {
+    const amount = Number((a.publicBalance || "").replace(/,/g, ""));
+    return Number.isFinite(amount) && amount >= 0 ? sum + amount : NaN;
+  }, 0);
+}
+
 export function publicSystemAccounts(network: TreasuryNetwork, holders: TreasuryHolders) {
   const currentProtocol = new Map(holders.holders
     .filter((h) => h.classification === "protocol")
