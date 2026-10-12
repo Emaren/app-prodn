@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/hd-replay-engine-20261012` at `b11ea68b436ad8dd05c246cf6ea7f3f23291ea05`
+Implementation baseline: `feat/hd-replay-engine-20261012` at `03a513ca1de7468f78945302dec99e5e37d967f2`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
