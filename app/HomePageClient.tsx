@@ -2,6 +2,7 @@
 
 import {type CSSProperties, type ReactNode, useCallback, useEffect, useMemo, useRef, useState} from "react";
 import dynamic from "next/dynamic";
+import { preload } from "react-dom";
 import Image from "next/image";
 import Link from "next/link";
 import { ChevronRight, Crown } from "lucide-react";
@@ -1070,6 +1071,23 @@ function useRotatingFeaturedWarriors(pool: FeaturedWarrior[], paused: boolean) {
   );
 
   const openingLineup = curatedFeaturedWarriorOpening(pool, false);
+
+  // The opening lineup is deterministic across SSR/hydration. Advertise only
+  // the first above-the-fold card to the browser's preload scanner, rather
+  // than warming every rotating avatar or depending on DOM image discovery.
+  const openingPreloadSrcRef = useRef<string | null>(null);
+  if (
+    !openingPreloadSrcRef.current &&
+    openingLineup[0] &&
+    featuredWarriorHasRealAvatar(openingLineup[0]) &&
+    !featuredWarriorIsMystery(openingLineup[0])
+  ) {
+    openingPreloadSrcRef.current = featuredWarriorImageSrc(openingLineup[0]);
+  }
+  if (openingPreloadSrcRef.current) {
+    preload(openingPreloadSrcRef.current, { as: "image", fetchPriority: "high" });
+  }
+
   const [visibleWarriors, setVisibleWarriors] = useState(openingLineup);
   const [featuredWarriorsReady, setFeaturedWarriorsReady] = useState(false);
 
