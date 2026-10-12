@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "492ccb432bbbc13e0bb5cc0f8381ea1dc048a3440683191cb77ef5890b3b8f99",
+      "sha256": "0f126719444ecf2e0eb5219b5f74f9a801400575f217a1fe4d13ce2b91da054d",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2094,7 +2094,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "diag/speedos-lcp-image-lifecycle-20261012",
-    "commit": "f4313d874d693070a2a54d642b9b2873b650857f"
+    "commit": "9bf58f4ea5b0a0b2e18dac0925b3db310f033806"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
