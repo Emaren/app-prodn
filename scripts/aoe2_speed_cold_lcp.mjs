@@ -470,7 +470,7 @@ async function runOne(index) {
     // diagnostics. Never persist arbitrary console text, exception objects,
     // input data, cookies, user messages or source maps.
     const hydrationSignalPattern =
-      /hydration|hydrating|server.rendered.html|react(?:\\.dev)?\\/errors\\/(?:418|423|425)|minified.react.error.?#(?:418|423|425)/i;
+      /hydration|hydrating|server.rendered.html|react(?:\.dev)?\/errors\/(?:418|423|425)|minified.react.error.?#(?:418|423|425)/i;
     const hydrationSignals = routeEvents.filter((event) => {
       if (event.method === "Runtime.consoleAPICalled") {
         return (event.params?.args || []).some((arg) =>
