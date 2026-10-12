@@ -63,6 +63,16 @@ V1 combines:
 The command does not mutate source, runtime, database, Wolo, storage, packages
 or host state.
 
+## Read-only Git index discipline
+
+Estate source checks perform branch, HEAD, porcelain-status and remote-reference
+observations without mutating worktrees. The audit's Git helper invokes these
+commands with `git --no-optional-locks`, preventing opportunistic
+`.git/index.lock` creation for index-stat refreshes during routine Doctor /
+Brain snapshots. Full protected Git operations (fetch, fast-forward, Finish)
+retain normal Git lock semantics; this change does not remove a pre-existing
+lock, bypass ownership checks or certify a dirty repository.
+
 ## Collection concurrency and failure containment
 
 Scheduled Operator Bridge refreshes and manually requested Brain refreshes are
