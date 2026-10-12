@@ -90,7 +90,11 @@ settlements; this is only a visual projection.
 The page reads the existing public `/api/wolo/mainnet-transfers?limit=25`
 index, which supplies a *bounded sample of 25 indexed successful MsgSend
 rows*, not a complete financial history. A transfer is displayed in the
-kingdom-origin stream only if its sender is an eligible network system account.
+kingdom-origin stream only if its sender is an eligible network system account
+**excluding any registered faucet distribution wallet**. Routine faucet claims
+belong in the internal indexed chain log, never the public Treasury payment
+rail; neither the August-raid claim-count tile nor speculative attacker
+accusations appear on the Treasury page.
 A bank-send event is **not** automatically claimed to be a champion bounty,
 founder bonus, marketplace purchase, or bet payout. Such payment categories
 remain explicitly awaiting dedicated purpose-bound settlement receipts.
@@ -112,8 +116,20 @@ player addresses**: `[BDB]Pigman` at
 Pigman's registered tag; “Raw” is not proven to be a separately owned wallet.
 Historical July observations showed both with zero WOLO, but their **present
 membership must always be derived afresh from live holder data**. The
-dashboard displays both with exact addresses and membership badges; they
-never inflate current-funded counts merely because they are registered.
+Treasury displays both with exact addresses and membership badges; the
+WoloChain holder table additionally appends either as a registered historical
+row only if absent from the complete live funded-holder projection. Thus 36
+current holders plus two distinct historical addresses may appear as 38
+**listed** entries, but never as 38 current holders; not even this registry
+asserts 38 is the complete set of every offline-created Wolo address.
+Historical nonholder rows disclose no private player or staking balance.
+An unclassified wallet whose **indexed first-seen date is August 18** may
+receive the chronological label "August 2026 faucet-era wallet" with an
+explicit "incident involvement unverified" caveat. Only exact address-level
+on-chain incident provenance can promote that to attacker attribution or
+permit a different public balance-disclosure policy. The WoloChain UI retains
+the current-holder/active-staker sentence and removes internal rank/privacy
+implementation explanation.
 
 ### Design and performance
 
