@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
+import signal
 import subprocess
 from pathlib import Path
 from typing import Any
@@ -14,21 +16,42 @@ CLI = ROOT / "bin" / "aoe2war"
 
 
 def command_json(*args: str, timeout: int = 120) -> dict[str, Any]:
-    proc = subprocess.run(
-        [str(CLI), *args],
+    # Doctor spawns an estate audit and multiple grandchildren (Make, Node,
+    # Python, Git). subprocess.run(timeout=...) only kills its immediate child,
+    # allowing the costly documentation build to survive a Council timeout.
+    # Own an isolated process group so timeout cleanup reaches that tree,
+    # without ever signalling the Operator Bridge, Codex or another owner.
+    command = [str(CLI), *args]
+    proc = subprocess.Popen(
+        command,
         cwd=ROOT,
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
-        timeout=timeout,
-        check=False,
+        start_new_session=True,
     )
     try:
-        payload = json.loads(proc.stdout)
+        output, _ = proc.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(proc.pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+        try:
+            proc.communicate(timeout=2)
+        except subprocess.TimeoutExpired:
+            try:
+                os.killpg(proc.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            proc.communicate()
+        raise
+    try:
+        payload = json.loads(output)
     except Exception as exc:
         raise RuntimeError(
             f"{' '.join(args)} did not return JSON rc={proc.returncode}: "
-            f"{proc.stdout[-3000:]}"
+            f"{output[-3000:]}"
         ) from exc
     if not isinstance(payload, dict):
         raise RuntimeError(f"{' '.join(args)} returned non-object JSON")
