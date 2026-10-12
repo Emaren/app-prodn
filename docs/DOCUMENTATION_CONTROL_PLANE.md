@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `diag/speedos-lcp-image-lifecycle-20261012` at `f4313d874d693070a2a54d642b9b2873b650857f`
+Implementation baseline: `diag/speedos-lcp-image-lifecycle-20261012` at `9bf58f4ea5b0a0b2e18dac0925b3db310f033806`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
