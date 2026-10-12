@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "3cae32e9659eaf4f51abc04d1cc0e1454158d6648cb896fbe33d91f2f54fa4c0",
+      "sha256": "d04d13470f98c58cda3f43144b439c87104f76f233ed2b1d6a2d5fa1b1659b2c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1558,7 +1558,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-07",
       "sensitivity": "restricted",
-      "sha256": "137bc0b1af5a5df44491773418cee00494ce4489cc08d79db32e5718e8b66951",
+      "sha256": "ca631ff7dbf3116e898b4dec96b6ed653466bdc1e0a7903ade2be414054d6f64",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/speedos-qualified-cold-receipts-20261012",
-    "commit": "a993e1bb52c38cb9b7ab473e7c9b6afd7b9d304c"
+    "branch": "feat/hd-replay-engine-20261012",
+    "commit": "b11ea68b436ad8dd05c246cf6ea7f3f23291ea05"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
