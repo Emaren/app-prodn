@@ -91,7 +91,7 @@ test("both normal and Extreme profiles mount the merchant control plane and chat
   assert.equal(businessMounts.length, 2);
   assert.match(
     profile,
-    /<AutoBetReserveCard \/>\s*<MarketplaceBusinessCard \/>\s*\{\/\* =+\s*THE ARMORY/
+    /profileViewMode === "e2" \? <MechaAutoBetCard displayName=\{displayName\} \/> : <AutoBetReserveCard \/>\}\s*<MarketplaceBusinessCard \/>\s*\{\/\* =+\s*THE ARMORY/
   );
   assert.match(contact, /parseMarketplaceInboxMessage/);
   assert.match(contact, /MarketplaceMessageCard/);
