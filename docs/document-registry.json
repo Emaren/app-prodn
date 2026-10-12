@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "1579ede292f2d237db568fa6fd3e5d4b88e19c71bd4920e9e11274e27d717d54",
+      "sha256": "2267ed481b3c2d816e6bc9d4356d330082b605e4580d7c723cb95ac32aad4f9b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2094,7 +2094,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feat/hd-replay-engine-20261012",
-    "commit": "03a513ca1de7468f78945302dec99e5e37d967f2"
+    "commit": "9e4853a22b26c1b0d863daa75f4d9ef1d755bc46"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
