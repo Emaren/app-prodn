@@ -26,7 +26,7 @@ export type ReplayEngineSnapshot = ReturnType<typeof projectHdReplayEngine>;
 
 function sanitizeLabel(value: unknown, fallback: string, length = 80) {
   if (typeof value !== "string") return fallback;
-  const clean = value.replace(/[\\x00-\\x1F\\x7F]/g, " ").trim();
+  const clean = value.replace(/[\x00-\x1F\x7F]/g, " ").trim();
   return clean ? clean.slice(0, length) : fallback;
 }
 
@@ -42,10 +42,11 @@ function cohort(rows: Cohort[], limit = 12) {
 
 function toCase(game: PublicUnknown): ReplayEngineCase {
   const players = game.players
-    .filter((name): name is string => typeof name === "string" && Boolean(name.trim()))
+    .filter((name): name is string =>
+      typeof name === "string" && Boolean(name.trim()) && name !== "Roster unresolved")
     .slice(0, 8)
     .map((name) => sanitizeLabel(name, "Unknown player", 48));
-  const participantsObserved = game.observedPlayers >= 2;
+  const participantsObserved = players.length >= 2 && game.observedPlayers >= 2;
   const sidesVerified = game.teamsResolved === true;
   return {
     id: game.id,
