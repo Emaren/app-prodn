@@ -120,6 +120,11 @@ test("transfer stream is strictly observed kingdom-origin bank sends", () => {
     senderKind:null,recipientKind:"user",amountWolo:2,amountLabel:"2 WOLO",source:"wolo-mainnet-bank-send",
   });
   assert.equal(observedKingdomOutflows([mk(address("a")),mk(address("b"))],system).length,1);
+  const faucet = "wolo1dshyzxffd0jj39k7gj9tq9hgsx96ylxamyp5g0";
+  const withFaucet = [...system, { address: faucet, label: "Faucet Hot Wallet" }];
+  assert.deepEqual(observedKingdomOutflows([mk(address("a")), mk(faucet)], withFaucet)
+    .map((row) => row.senderAddress), [address("a")],
+    "verified faucet bank sends remain ledger evidence, not public Treasury payouts");
   assert.equal(isTreasuryTransfers({ok:true,source:"wolo-mainnet-bank-send",latestTimestamp:null,totalRows:2,rows:[mk(address("a"))]}),true);
   assert.equal(isTreasuryTransfers({ok:true,source:"random",latestTimestamp:null,totalRows:2,rows:[mk(address("a"))]}),false);
 });
@@ -153,6 +158,15 @@ test("public site wiring preserves source and performance boundaries", () => {
   assert.match(client,/HISTORICAL \/ NOT CURRENT FUNDED/);
   assert.match(client,/legacyIdentityMembership/);
   assert.match(client,/Personal balance hidden/);
+  assert.doesNotMatch(client,/AUG 18 · FAUCET RAID|TREASURY_FAUCET_INCIDENT|successfulClaims/);
+  assert.match(client,/faucet claims excluded/);
+  assert.match(wolo,/historicPlayerWallets/);
+  assert.match(wolo,/holderRows\.length} listed wallets on WoloChain/);
+  assert.match(wolo,/Registered historical wallet/);
+  assert.match(wolo,/firstSeenAt\?\.startsWith\("2026-08-18"\)/);
+  assert.match(wolo,/incident involvement unverified/);
+  assert.match(wolo,/Current liquid holders and active stakers\./);
+  assert.doesNotMatch(wolo,/Player and unclassified wallet \+ stake totals/);
   assert.match(css,/prefers-reduced-motion:reduce/);
   assert.match(shell,/href: "\/kingdom-treasury", label: "Kingdom Treasury"/);
   assert.match(wolo,/current holders on the Wolo Chain network/);
