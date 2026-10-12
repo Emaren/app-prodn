@@ -165,7 +165,10 @@ observer records the exact candidate element's node ID; insert, remove and
 native-load observations use the same IDs. The receipt includes the number of
 distinct nodes with the exact final LCP URL and timestamps **matched to the
 final LCP element**, as distinct from the legacy earliest same-URL events.
-Original resource timing, paint and rating metrics are unchanged.
+Original resource timing, paint and rating metrics are unchanged. The receipt
+separately records `collectorSourceSha` (operator Mac Git HEAD) and
+`releaseSha` (certified production); a newer local probe must not
+impersonate a later site deployment.
 
 This resolves whether a new DOM node appeared during streamed rendering,
 hydration or a view transition, but does **not** automatically establish which
