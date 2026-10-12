@@ -146,7 +146,8 @@ class DoctorTests(unittest.TestCase):
             def payload(self):
                 return {"p0": 0, "p1": 0, "estate": "HEALTHY"}
 
-        def slow_audit():
+        def slow_audit(*, monitor=False):
+            self.assertFalse(monitor, "direct Doctor stays exhaustive by default")
             audit_started.set()
             self.assertTrue(release_seen.wait(1.0))
             self.assertTrue(allow_audit_finish.wait(1.0))
