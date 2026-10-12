@@ -85,6 +85,17 @@ test("unknown-game labels are bounded and full private evidence does not leak", 
   assert.equal(JSON.stringify(snapshot).includes("replay_file"), false);
 });
 
+test("placeholder-only roster slots cannot pass the participants-observed gate", () => {
+  const payload = sample();
+  payload.unknowns.latest[0]!.players = ["Roster unresolved", "Roster unresolved"];
+  payload.unknowns.latest[0]!.observedPlayers = 2;
+  const snapshot = projectHdReplayEngine(payload);
+  assert.equal(snapshot.unknown.cases[0]?.players.length, 0);
+  assert.equal(snapshot.unknown.cases[0]?.gates.participantsObserved, false);
+  assert.equal(snapshot.unknown.cases[0]?.gates.resultVerified, false);
+  assert.equal(snapshot.unknown.cases[0]?.gatesPassed, 2);
+});
+
 test("new public route, navigation and presentation are read-only and honest", () => {
   const page = source("app/hd-replay-engine/page.tsx");
   const api = source("app/api/hd-replay-engine/route.ts");
