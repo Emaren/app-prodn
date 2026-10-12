@@ -213,6 +213,7 @@ test("LCP element identity distinguishes same-URL DOM replacement from cached im
   assert.equal(rows[3].nodeId, rows[4].nodeId);
   const out = runInNewContext(snapshot![1], context) as {
     finalLcp: { elementNodeId: number };
+    lcpResourceMatchCount: number;
     lcpImageLifecycle: {
       distinctNodeCount: number; finalLcpNodeId: number;
       matchedNodeInsertionAtMs: number; matchedNodeNativeLoadAtMs: number;
