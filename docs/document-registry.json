@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "327a19d53f2b8a4f0153e344e9bc9c48a522aed7e653f65d0d0755d294eb1234",
+      "sha256": "bf1528370e3877390e7ebe9a915acf4b4e1bc1955b16eb3dafc60e2c5f0c45ff",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2094,7 +2094,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/wolochain-directory-treasury-privacy-20261012",
-    "commit": "ab426ced4de58c25997cebd0e9a2af31c3e268ec"
+    "commit": "dd52df8fbe173e83eedcaded3ee1b2496ee83704"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
