@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `integration/brain-reliability-lcp-lifecycle-20261012` at `4f8df9432c20218820bbf5c9cd0f2be2c4712719`
+Implementation baseline: `integration/brain-reliability-lcp-lifecycle-20261012` at `7ff3cb5dbff8521269966c77e8877e1217dde8b7`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
