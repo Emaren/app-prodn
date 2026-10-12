@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/speedos-qualified-cold-receipts-20261012` at `a993e1bb52c38cb9b7ab473e7c9b6afd7b9d304c`
+Implementation baseline: `feat/hd-replay-engine-20261012` at `b11ea68b436ad8dd05c246cf6ea7f3f23291ea05`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
