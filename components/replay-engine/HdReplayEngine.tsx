@@ -482,7 +482,37 @@ export default function HdReplayEngine({ initial }: {
         </section>
 
         <section className="replay-panel p-5 sm:p-7">
-          <SectionIndex number="08" title="Machine telemetry" marker="OBSERVED · NEVER SIMULATED" />
+          <SectionIndex number="08" title="The research frontier" marker="SEALED OCT 12 CHECKPOINT · NOT LIVE CODEX" />
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="replay-subpanel">
+              <span className="replay-eyebrow !text-emerald-200/75">Verified engineering</span>
+              <strong>Terminal veto</strong>
+              <p className="mt-2 text-xs leading-5 text-stone-400">Unsafe disconnect and conflicting terminal evidence can no longer be bypassed by legacy candidate flags.</p>
+            </div>
+            <div className="replay-subpanel">
+              <span className="replay-eyebrow !text-amber-200/75">Unresolved semantics</span>
+              <strong>Action 34</strong>
+              <p className="mt-2 text-xs leading-5 text-stone-400">Packet and dispatcher identified. Winner-affecting callback effects still unproven.</p>
+            </div>
+            <div className="replay-subpanel">
+              <span className="replay-eyebrow !text-[#9dcad9]">Latest research lead</span>
+              <strong>Legacy formats</strong>
+              <p className="mt-2 text-xs leading-5 text-stone-400">Checking whether version-specific result witnesses are rejected by an HD-only terminal verifier.</p>
+            </div>
+            <div className="replay-subpanel">
+              <span className="replay-eyebrow !text-amber-200/75">Phase II outcome</span>
+              <strong>0 new winners</strong>
+              <p className="mt-2 text-xs leading-5 text-stone-400">Three candidate-only parses. First independently proven historical recovery still awaited.</p>
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-[11px] text-stone-500">
+            <span>Research cards are an explicitly dated checkpoint. They do not auto-update from the separate Codex worktree.</span>
+            <span className="inline-flex items-center gap-2"><Clock3 size={13} /> OCT 12, 2026 · PHASE II SEALED</span>
+          </div>
+        </section>
+
+        <section className="replay-panel p-5 sm:p-7">
+          <SectionIndex number="09" title="Machine telemetry" marker="OBSERVED · NEVER SIMULATED" />
           <div className="grid gap-4 md:grid-cols-[1fr_1.3fr]">
             <div className="replay-machine-inset">
               <div className="replay-eyebrow text-stone-500">CUMULATIVE ACTIVITY</div>
