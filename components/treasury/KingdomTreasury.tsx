@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import {
-  ArrowDownLeft, ArrowRight, ArrowUpRight, Banknote, Check, ChevronDown,
+  ArrowUpRight, Banknote, Check, ChevronDown,
   ChevronRight, CircleHelp, Coins, Crown, ExternalLink, Landmark,
   Layers3, LockKeyhole, Radar, RefreshCw, Search, ShieldCheck,
-  ShieldAlert, Vault, Wallet, Waves, Zap,
+  ShieldAlert, Wallet, Waves, Zap,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
@@ -17,7 +17,7 @@ import {
   type TreasuryHolders, type TreasuryNetwork,
   type TreasuryPool, type TreasuryTransfers,
 } from "@/lib/kingdomTreasury";
-import "./treasury.css";
+import type { ReactNode } from "react";
 
 type Feed<T> = { data: T | null; error: boolean; checkedAt: number | null };
 const empty = <T,>(): Feed<T> => ({ data: null, error: false, checkedAt: null });
@@ -31,7 +31,7 @@ const date = (value: string | null | undefined) =>
 function Led({ ok = true }: { ok?: boolean }) {
   return <span className={`kt-led ${ok ? "" : "kt-led-dim"}`} aria-hidden />;
 }
-function Eyelet({ children }: { children: React.ReactNode }) {
+function Eyelet({ children }: { children: ReactNode }) {
   return <span className="kt-eyelet">{children}</span>;
 }
 function PanelHeading({ index, title, marker }: { index: string; title: string; marker: string }) {
@@ -310,7 +310,7 @@ export default function KingdomTreasury() {
       </section>
 
       <footer className="flex flex-wrap items-center justify-between gap-3 px-2 pb-5 pt-2 text-[10px] uppercase tracking-[.14em] text-[#7f918c]">
-        <span className="flex items-center gap-2"><Vault size={14}/> KINGDOM TREASURY · PUBLIC EVIDENCE, NOT AN ACCOUNTING ATTESTATION</span>
+        <span className="flex items-center gap-2"><Landmark size={14}/> KINGDOM TREASURY · PUBLIC EVIDENCE, NOT AN ACCOUNTING ATTESTATION</span>
         <span className="flex items-center gap-2"><Waves size={13}/> MOTION IS AMBIENT · NO FUNDS MOVE FROM THIS PAGE</span>
       </footer>
     </div>
