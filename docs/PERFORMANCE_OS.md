@@ -156,6 +156,26 @@ rather than invented zeros. Compare those events to `responseEnd`,
 asset waited for its rendered element, a native `load` event, or later paint.
 This is an instrumentation change only; it is **not** a homepage speed fix.
 
+#### Exact LCP image DOM identity (local probe only)
+
+After two October 12 cold cohorts exposed multiple same-URL featured avatar
+insertion and native-load events for slow samples, the browser harness now
+assigns each observed IMG node a stable, ephemeral WeakMap identity. The LCP
+observer records the exact candidate element's node ID; insert, remove and
+native-load observations use the same IDs. The receipt includes the number of
+distinct nodes with the exact final LCP URL and timestamps **matched to the
+final LCP element**, as distinct from the legacy earliest same-URL events.
+Original resource timing, paint and rating metrics are unchanged.
+
+This resolves whether a new DOM node appeared during streamed rendering,
+hydration or a view transition, but does **not** automatically establish which
+React operation caused the replacement. An observer callback timestamp
+approximates insertion/removal notification, not exact mutation microtiming.
+Collection remains capped and read-only, without retaining usernames,
+cookies or full DOM. The local Mac collector can observe the certified
+production site before any server deployment of these diagnostic changes.
+Do not change image markup until this identity proof narrows the culprit.
+
 The command is bound to the currently certified production SHA/build and seals its
 receipt under `.aoe2war-release/performance-cold-lcp/`. It is diagnostic-only:
 `productionMutated`, `databaseMutated`, and `woloMutated` are all false. Use
