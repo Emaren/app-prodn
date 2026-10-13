@@ -106,7 +106,9 @@ export function projectWarSatchelResearch(ownerUid: string, events: readonly War
         break;
       }
       case "release": {
-        requireId(event.reason, "release reason");
+        if (!["unmatched", "void", "market_closed", "cancelled"].includes(event.reason)) {
+          throw new Error("Unknown release reason");
+        }
         const reservation = reservations.get(requireId(event.reservationId, "reservation"));
         if (reservation?.state !== "reserved") throw new Error("Reservation is not available to release");
         reservation.state = "released";
