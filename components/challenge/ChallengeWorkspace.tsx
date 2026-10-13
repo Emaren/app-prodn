@@ -501,7 +501,6 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
   const [historyHasMore, setHistoryHasMore] = useState(false);
   const [historyNextCursor, setHistoryNextCursor] = useState<number | null>(null);
   const [historyLoading, setHistoryLoading] = useState(false);
-  const [historyAutoLoadFailed, setHistoryAutoLoadFailed] = useState(false);
   const historyLoadingRef = useRef(false);
 
   const requestedTitle = searchParams.get("title");
@@ -552,7 +551,6 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
     setOlderHistoryActivities([]);
     setHistoryHasMore(payload.historyPage.hasMore);
     setHistoryNextCursor(payload.historyPage.nextCursor);
-    setHistoryAutoLoadFailed(false);
   }, []);
 
   const buildNationalChallengeNote = useCallback((country: RepresentedCountry | "") => {
@@ -1080,7 +1078,6 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
     if (historyLoadingRef.current || !historyHasMore) return;
 
     if (!historyNextCursor) {
-      setHistoryAutoLoadFailed(true);
       return;
     }
 
@@ -1130,9 +1127,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
       setError(null);
       setHistoryHasMore(hasMore);
       setHistoryNextCursor(nextCursor);
-      setHistoryAutoLoadFailed(hasMore && !nextCursor);
     } catch (historyError) {
-      setHistoryAutoLoadFailed(true);
       setError(
         historyError instanceof Error ? historyError.message : "Challenge history unavailable."
       );
