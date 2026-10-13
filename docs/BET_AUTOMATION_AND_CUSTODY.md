@@ -240,6 +240,22 @@ game identity, promotion is blocked with `auto_execution_preset_collision`
 and the exact market family is moved to operator review. The reconciler never
 silently merges those preview rows or guesses which one should survive.
 
+## October 13: E2 profile QueryClient context hotfix
+
+The certified October 13 E2 deployment exposed an authenticated `/profile`
+client crash: `No QueryClient set, use QueryClientProvider to set one`.
+`MechaAutoBetCard` invokes `useWoloBalance` (TanStack `useQuery`), but
+the profile route initially lacked the wallet-query provider present on
+`/bets`, `/wolo`, `/wallet`, and `/staking`. The hotfix adds the
+existing `app/Providers.tsx` through `app/profile/layout.tsx` so the
+Mecha E2 wallet read has provider ancestry without imposing query-client
+costs on unrelated site routes. The accompanying route-ancestry regression
+ensures this does not recur when the E2 presentation changes. Wallet
+verification, disabled satchel funding, replay truth and Wolo settlement
+are unchanged. A certified build and Doctor health alone are **not** an
+authenticated-page render proof; operator browser verification after
+protected activation is required before this incident is closed.
+
 ## October 12: E2 Mecha command milestone (non-custodial)
 
 The default /profile presentation is E2. The click-or-hover profile selector
