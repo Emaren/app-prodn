@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/replay-other-public-veto-surfaces-20261013",
-    "commit": "57c9e0187d9fc568743e32c946996fa40f577e34"
+    "branch": "perf/release-gate-lint-preflight-20261013",
+    "commit": "a664adcc2df3d80bc6f9ff2339757c64df7f4529"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
