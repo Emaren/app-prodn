@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/speedos-fallback-curl-binary-20261013` at `24d22b15a866e3181a8fc54c40401cd41be101ff`
+Implementation baseline: `fix/satchel-one-economic-game-20261013` at `05fdd7f2798e950cde0e26016a34e97beec7f280`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

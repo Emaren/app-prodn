@@ -264,6 +264,17 @@ remains OPEN; the next gate is exact chain-event parsing, physical bank/vault
 liability reconciliation and owner-bound durable ledger design with independent
 security review. The E2 "Load from Wallet" button remains disabled.
 
+### October 13: canonical-game economic uniqueness across plan edits
+
+The offline reducer now prevents a second **active or committed** reservation
+for one owner/canonical game even when the preset's policy version changes.
+A never-committed reservation may be explicitly released and retried under a
+new version; an accepted commitment cannot be repeated after a plan edit or a
+refund. This is a research-level negative control for future funded execution,
+not an authenticated custody ledger, chain transfer, real ticket, or live
+betting capability. Database transaction ownership and physical liability
+reconciliation remain necessary before an executor may use this invariant.
+
 ## October 13: E2 profile QueryClient context hotfix
 
 The certified October 13 E2 deployment exposed an authenticated `/profile`

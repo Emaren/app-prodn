@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-12",
       "sensitivity": "internal",
-      "sha256": "e50b5bc9f6d12520d58f0d283cb0725d7be41e242f8d3923275412b639d2d757",
+      "sha256": "637425f186706afd1251dfbe39bc7cd6ab034b44fe4de5da4da2c0785b4f42de",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "737d5f801bdd160b93802e01d6d8d9936e099c45264e829418637af22baffeed",
+      "sha256": "d52ca86a1317ff7a3843476922cad31b61ceda9cdc2a8c391893383abca85e7d",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/speedos-fallback-curl-binary-20261013",
-    "commit": "24d22b15a866e3181a8fc54c40401cd41be101ff"
+    "branch": "fix/satchel-one-economic-game-20261013",
+    "commit": "05fdd7f2798e950cde0e26016a34e97beec7f280"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

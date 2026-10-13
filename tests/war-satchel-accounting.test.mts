@@ -66,10 +66,27 @@ test("reserve is owner-bounded, versioned per canonical game and capped at 1,000
     kind: "reserve", id: "event-reserve-2", ownerUid: uid,
     reservationId: "reserve-2", gameId: "game-101", policyVersion: 1, amountUwolo: "100",
   };
-  assert.throws(() => projectWarSatchelResearch(uid, [deposit(), reserve(), sameGameDifferentReservation]), /Duplicate reservation or game policy/);
+  assert.throws(() => projectWarSatchelResearch(uid, [deposit(), reserve(), sameGameDifferentReservation]), /Duplicate reservation or canonical game commitment/);
+  // A policy edit must not create a second funded intention for the same
+  // canonical game while a reservation is active.
   const otherVersion = { ...sameGameDifferentReservation, policyVersion: 2 };
-  const state = projectWarSatchelResearch(uid, [deposit(), reserve(), otherVersion]);
-  assert.equal(state.reservedUwolo, "500000100");
+  assert.throws(
+    () => projectWarSatchelResearch(uid, [deposit(), reserve(), otherVersion]),
+    /Duplicate reservation or canonical game commitment/,
+  );
+  // A released, never-accepted reservation can be retried under a new version.
+  const retried = projectWarSatchelResearch(uid, [deposit(), reserve(), release(), otherVersion]);
+  assert.equal(retried.reservedUwolo, "100");
+  assert.equal(retried.availableUwolo, "1999999900");
+  // Once accepted, version changes cannot create a second economic commitment.
+  assert.throws(
+    () => projectWarSatchelResearch(uid, [deposit(), reserve(), commit(), otherVersion]),
+    /Duplicate reservation or canonical game commitment/,
+  );
+  // Other canonical games remain independently eligible.
+  const nextGame = { ...otherVersion, gameId: "game-102" };
+  const next = projectWarSatchelResearch(uid, [deposit(), reserve(), nextGame]);
+  assert.equal(next.reservedUwolo, "500000100");
 });
 
 test("concurrent-like double settle, cancel and ticket reuse are rejected", () => {
