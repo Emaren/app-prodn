@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "8498c154c5831e50c3fdf80f3eeea3ce5ee0bc8ebee22c079ccaacfe6c2cded3",
+      "sha256": "3915cf4af7cde10c216a80e4461c6d2acd2291a21b3beece6e2d789a4b262522",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2094,7 +2094,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feat/satchel-accounting-contract-20261013",
-    "commit": "18e7291bbdef90a7b0444a97a30258711dcd525f"
+    "commit": "e5f88e82f8a070fada3e08680e6f1c298faed379"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
