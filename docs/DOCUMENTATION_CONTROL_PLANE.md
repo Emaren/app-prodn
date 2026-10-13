@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/public-image-optimizer-forge-market-20261013` at `2718af68cc45265fdf5be58a5d05645f314abcbc`
+Implementation baseline: `fix/public-image-optimizer-forge-market-20261013` at `d7536ccf29e5337298885acf66c66749897e47ea`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
