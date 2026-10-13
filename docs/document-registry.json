@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-12",
       "sensitivity": "internal",
-      "sha256": "509e7ce3a9741daaff47d4f02bc87dafd5261d082805cc0e4120347031546a59",
+      "sha256": "beb71f038b5faa17635db5bd767f5bc4db56776805eb88db615d6eb086307222",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6bf475566f30c343341980ca2ead5f5425df674bfd01f476e88a66aee893f2aa",
+      "sha256": "fe21c6ee14b4655a7cae43caf21cfd6cea327c6cefda96708808b218f5288f81",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/mecha-satchel-custody-proof-20261013",
-    "commit": "0738bab317c7d9c4af5d057bcfe1e636c8bb8aac"
+    "branch": "feat/satchel-durable-ledger-gate-b-20261013",
+    "commit": "8b5d241f3b702e4497396efa64ecee9dc20a792b"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
