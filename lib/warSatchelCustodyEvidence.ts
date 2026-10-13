@@ -57,7 +57,7 @@ function enforce(condition: unknown, detail: string): asserts condition {
 function integerAmount(raw: unknown, positive: boolean, label: string): bigint {
   enforce(typeof raw === "string" && /^(0|[1-9][0-9]{0,76})$/.test(raw), "invalid " + label);
   const value = BigInt(raw);
-  enforce(!positive || value > 0n, "non-positive " + label);
+  enforce(!positive || value > BigInt(0), "non-positive " + label);
   return value;
 }
 function naturalHeight(raw: string, label: string): bigint {
@@ -129,7 +129,7 @@ export function examineSatchelDepositEvidence(input: {
   const txHeight = naturalHeight(tx.height, "transaction height");
   const headHeight = naturalHeight(head.height, "chain head height");
   enforce(headHeight >= txHeight &&
-    headHeight - txHeight + 1n >= BigInt(input.minConfirmations), "insufficient confirmation depth");
+    headHeight - txHeight + BigInt(1) >= BigInt(input.minConfirmations), "insufficient confirmation depth");
   enforce(tx.matched_expected === true && tx.matching_transfer_count === 1, "ambiguous or absent matching transfer");
   const index = tx.matched_transfer_index;
   enforce(Number.isSafeInteger(index) && index! >= 0 &&
@@ -148,7 +148,7 @@ export function examineSatchelDepositEvidence(input: {
     vaultAddress: intent.vaultAddress,
     amountUwolo: intent.amountUwolo,
     txHeight: txHeight.toString(),
-    confirmations: (headHeight - txHeight + 1n).toString(),
+    confirmations: (headHeight - txHeight + BigInt(1)).toString(),
     // Never treated as a bank asset or spendable ledger balance.
     creditAuthorized: false as const,
     wagerAuthorized: false as const,
@@ -176,7 +176,7 @@ export function examineSatchelReserveArithmetic(input: {
     input.segments.length <= 32, "missing liability census");
   const categories = new Set<string>();
   const receipts = new Set<string>();
-  let liabilities = 0n;
+  let liabilities = BigInt(0);
   for (const segment of input.segments) {
     enforce(segment && typeof segment.category === "string" &&
       /^[a-z][a-z0-9_-]{0,63}$/.test(segment.category) &&
