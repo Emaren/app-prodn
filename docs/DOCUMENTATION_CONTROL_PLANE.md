@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/leaderboard-disconnect-veto-20261013` at `d42e3ccc726dd0c12c1ddfaa3c2c1c700bd44fea`
+Implementation baseline: `fix/featured-avatar-rule-evidence-20261013` at `102e7593612fddbb9e3f1fd81d6b0aae90cb098c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
