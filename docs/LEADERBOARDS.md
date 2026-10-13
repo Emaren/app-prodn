@@ -27,6 +27,26 @@ AoE2WAR has two first-class HD leaderboard routes backed by current production d
 
 The homepage leaderboard chrome and the shared Kingdom menu open the modern board. Both leaderboard pages link directly to the other view.
 
+## October 13, 2026 — canonical disconnect veto in ranked W/L
+
+The modern leaderboard's paginated raw game corpus
+(`lib/publicLeaderboardGameCorpus.ts`) must select persisted
+`GameStats.disconnect_detected`, in addition to the normal result and
+adjudication fields. Downstream `publicReplayWinnerTruth` and
+`resolveReplayResultForPlayer` already apply that field when supplied.
+Failing to fetch it makes a Watcher-final recorded winner appear verified even
+when the immutable row carries a disconnect/desync counterevidence veto.
+
+A fresh source-bound Zodiac audit showed one public snapshot with 829 games,
+577W/199L/53 unknown, against canonical complete-input 575W/193L/61 unknown.
+This is an **input-projection discrepancy, not a recovery event**. Do not
+change game rows, ELO, payouts, historic accepted adjudications or market
+authority merely to force the two public displays to agree. After protected
+source deployment, recompute the exact UID/SteamID64 account's results with
+fresh generation evidence and investigate the eight unknown differences
+individually. The 46-result Workshop/Observatory discrepancy was separately
+fixed upstream in PR #527.
+
 ## Full historical RM/DM roster (October 9, 2026)
 
 Both RM and DM present **every eligible public identity**, including

@@ -21,6 +21,7 @@ export type PublicLeaderboardRawGame = {
   winner: string | null;
   parse_reason: string | null;
   parse_source: string | null;
+  disconnect_detected: boolean;
   replayResultAdjudications: unknown;
 };
 
@@ -143,6 +144,7 @@ async function loadPublicLeaderboardRawGamePage(
       winner: true,
       parse_reason: true,
       parse_source: true,
+      disconnect_detected: true,
       replayResultAdjudications:
         EFFECTIVE_REPLAY_RESULT_ADJUDICATION_RELATION,
     },
