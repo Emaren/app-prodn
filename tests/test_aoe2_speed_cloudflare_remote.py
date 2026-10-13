@@ -539,6 +539,38 @@ class CloudflareRemoteHelperTests(unittest.TestCase):
             finally:
                 MODULE.STATE, MODULE.ASSET_REQUEST, MODULE.LAST_ASSET_APPLY = old
 
+    def test_read_only_authority_reports_nonsecret_featured_rule_identity(self):
+        from unittest.mock import patch
+
+        expr = MODULE.canonical_featured_avatar_expression([
+            "/api/media-assets/avatar/user-u-79ce46af3d504ceca718e5fda83e3502-featured"
+        ])
+        zone = {"id": "zone-1", "name": "aoe2war.com", "status": "active"}
+        rule = {
+            "id": "secret-internal-rule-id",
+            "description": MODULE.FEATURED_AVATAR_RULE_DESCRIPTION,
+            "enabled": True, "action": "set_cache_settings", "expression": expr,
+        }
+        with patch.object(MODULE, "api", return_value={"result": {"status": "active"}}), \
+             patch.object(MODULE, "resolve_zone", return_value=zone), \
+             patch.object(MODULE, "phase_ruleset", return_value={"rules": [rule]}):
+            result = MODULE.cmd_verify()
+
+        self.assertEqual(result["featured_avatar_rule"]["present"], True)
+        self.assertEqual(result["featured_avatar_rule"]["enabled"], True)
+        self.assertEqual(result["featured_avatar_rule"]["action"], "set_cache_settings")
+        self.assertEqual(result["featured_avatar_rule"]["expression_sha256"], MODULE.hashlib.sha256(expr.encode()).hexdigest())
+        self.assertNotIn("secret-internal-rule-id", json.dumps(result))
+        self.assertNotIn(expr, json.dumps(result))
+
+        with patch.object(MODULE, "api", return_value={"result": {"status": "active"}}), \
+             patch.object(MODULE, "resolve_zone", return_value=zone), \
+             patch.object(MODULE, "phase_ruleset", return_value={"rules": []}):
+            absent = MODULE.cmd_verify()
+        self.assertEqual(absent["featured_avatar_rule"], {
+            "present": False, "enabled": False, "action": None, "expression_sha256": None,
+        })
+
     def featured_avatar_request(self, **overrides):
         paths = [
             "/api/media-assets/avatar/user-aoe2hd-ai-concierge-featured",
