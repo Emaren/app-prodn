@@ -1772,7 +1772,7 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
             [
                 "status\tINSUFFICIENT",
                 "receipt_dir\t/mnt/HC_Volume_105319120/"
-                "aoe2war/root-headroom-recoveries/test",
+                "aoe2war/root-headroom-recoveries/20261013T222654Z",
                 "before_kb\t4194304",
                 "after_kb\t5000000",
                 "reclaimed_kb\t805696",
