@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "f8909ef90522b2c2425fca4dcccd42f304d2c2a88038be192bc6630efa4e2b24",
+      "sha256": "737d5f801bdd160b93802e01d6d8d9936e099c45264e829418637af22baffeed",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1304,7 +1304,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-12",
       "sensitivity": "internal",
-      "sha256": "4aea6961cc3518d89a05e23dbc4eb7ad0323d6c3dd9a8bf5327bd3d10650e603",
+      "sha256": "f7bcf8b72f42b09db16905d90c8e02e469fd55329c8caa9ed34279ef00ace59b",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/satchel-accounting-contract-20261013",
-    "commit": "a88871c6a4436d6b55a77ee84c46526b7ae8446e"
+    "branch": "fix/speedos-fallback-curl-binary-20261013",
+    "commit": "24d22b15a866e3181a8fc54c40401cd41be101ff"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

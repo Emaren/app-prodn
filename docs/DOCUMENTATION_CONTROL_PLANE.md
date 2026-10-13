@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/satchel-accounting-contract-20261013` at `a88871c6a4436d6b55a77ee84c46526b7ae8446e`
+Implementation baseline: `fix/speedos-fallback-curl-binary-20261013` at `24d22b15a866e3181a8fc54c40401cd41be101ff`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

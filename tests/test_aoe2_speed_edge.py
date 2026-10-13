@@ -1019,6 +1019,51 @@ class SpeedEdgeTests(unittest.TestCase):
         )
         self.assertFalse(invalid_content["ok"])
 
+    def test_fallback_curl_discards_every_binary_image_body(self):
+        """Real local curl: one -o used to spill 2nd..5th binary bodies."""
+        import shutil
+        import subprocess
+
+        if not shutil.which("curl"):
+            self.skipTest("curl binary unavailable on this test host")
+        url = MODULE.PUBLIC_BASE + "/api/media-assets/avatar/user-test-featured?size=card"
+        with tempfile.TemporaryDirectory(prefix="speedos-binary-curl-") as tmp:
+            binary = Path(tmp) / "image.webp"
+            binary.write_bytes(b"\\x89PNG\\x9a\\xffbinary-payload" * 15)
+            captured = []
+
+            def run_local(command, **kwargs):
+                self.assertEqual(command.count(url), 5)
+                self.assertEqual(command.count("-o"), 5)
+                self.assertEqual(command.count("/dev/null"), 5)
+                self.assertEqual(kwargs["timeout"], 145)
+                rewritten = [binary.as_uri() if arg == url else arg for arg in command]
+                result = subprocess.run(rewritten, **kwargs)
+                captured.append(result.stdout)
+                return result
+
+            result = MODULE.probe_featured_avatar_fallback_same_connection(
+                url, run_fn=run_local
+            )
+            self.assertEqual(len(captured), 1)
+            self.assertNotIn("binary-payload", captured[0])
+            self.assertEqual(captured[0].count("__AOE2_FEATURED_FALLBACK__"), 5)
+            self.assertFalse(result["ok"])  # file:// is not HTTP 200/cacheable
+            self.assertEqual(len(result["rows"]), 5)
+
+    def test_fallback_curl_rejects_undecodable_output_without_crashing(self):
+        url = MODULE.PUBLIC_BASE + "/api/media-assets/avatar/user-test-featured?size=card"
+
+        def corrupt(_command, **_kwargs):
+            raise UnicodeDecodeError("utf-8", b"\\x9a", 0, 1, "invalid start byte")
+
+        result = MODULE.probe_featured_avatar_fallback_same_connection(
+            url, run_fn=corrupt
+        )
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["status"], "PROBE_OUTPUT_DECODE_ERROR")
+        self.assertEqual(result["rows"], [])
+
     def test_featured_fallback_miss_can_pass_verified_same_pop_session(self):
         original_avatar = MODULE.featured_avatar_probe
         original_session = MODULE.probe_featured_avatar_fallback_same_connection
