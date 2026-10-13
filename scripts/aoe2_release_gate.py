@@ -706,6 +706,20 @@ def command_plan(
     for script in focused_npm_tests(paths):
         commands.append((script, ["npm", "run", script], 900))
 
+    # Reject cheap source lint failures before the expensive Node/Python suites.
+    # Preserve diff, documentation, secret and dependency preflights; this only
+    # reorders independent lint checks and never skips any validation.
+    lint_labels = {"eslint-full", "eslint-changed"}
+    lint_steps = [step for step in commands if step[0] in lint_labels]
+    if lint_steps:
+        remaining = [step for step in commands if step[0] not in lint_labels]
+        first_contract = next(
+            (index for index, step in enumerate(remaining)
+             if step[0] in {"active-node-test-contract", "active-python-test-contract"}),
+            len(remaining),
+        )
+        commands = remaining[:first_contract] + lint_steps + remaining[first_contract:]
+
     return commands
 
 
