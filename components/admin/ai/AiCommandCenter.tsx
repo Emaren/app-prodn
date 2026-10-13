@@ -414,14 +414,14 @@ export default function AiCommandCenter() {
         <h2 className="text-2xl font-semibold">Recent failures</h2>
         {snapshot?.recentErrors.some((trace) => trace.errorCode === "openai_quota_exhausted") && (
           <div role="status" className="mt-3 rounded-xl border border-amber-300/30 bg-amber-300/10 p-4 text-xs leading-relaxed text-amber-100">
-            OpenAI API quota exhaustion was recorded. Verify credits and usage limits in the site's
+            OpenAI API quota exhaustion was recorded. Verify credits and usage limits in the site&apos;s
             provider account; restarting Radio WOLO or deploying code cannot restore account funding.
             No API key or raw upstream billing message is shown here.
           </div>
         )}
         {snapshot?.recentErrors.some((trace) => trace.errorCode === "openai_rate_limited") && (
           <div role="status" className="mt-3 rounded-xl border border-white/15 bg-white/[.05] p-4 text-xs leading-relaxed text-slate-300">
-            Provider rate-limit evidence detected. Use bounded retry/backoff; don't flood the AI gateway.
+            Provider rate-limit evidence detected. Use bounded retry/backoff; do not flood the AI gateway.
           </div>
         )}
         <div className="mt-4 space-y-2">
