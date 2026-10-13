@@ -1174,6 +1174,19 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
             int(5.0625 * 1024 ** 3),
         )
 
+    def test_preflight_recovery_margin_catches_five_point_zero_three_gib(self):
+        contract = self.contract()
+        with mock.patch.object(
+            MODULE.aoe2_doctor, "load_contract", return_value=contract
+        ):
+            near_floor = self.snapshot()
+            near_floor["root"]["available_bytes"] = int(5.03 * 1024 ** 3)
+            self.assertFalse(MODULE.root_below_release_floor(near_floor))
+            self.assertTrue(MODULE.root_below_recovery_target(near_floor))
+            at_target = self.snapshot()
+            at_target["root"]["available_bytes"] = int(5.125 * 1024 ** 3)
+            self.assertFalse(MODULE.root_below_recovery_target(at_target))
+
     def test_final_capacity_noops_when_root_remains_healthy(self):
         snapshot = self.snapshot()
         snapshot["root"]["available_bytes"] = 6 * 1024 ** 3
@@ -1894,30 +1907,18 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
             source,
         )
 
-    def test_finish_wires_recovery_only_for_low_root(self):
+    def test_finish_preflight_recovers_even_when_above_hard_floor(self):
         import inspect
 
         source = inspect.getsource(
             MODULE.execute_finish
         )
 
-        self.assertIn(
-            "root_below_release_floor",
-            source,
-        )
-
-        self.assertIn(
-            "recover_root_headroom",
-            source,
-        )
-
+        self.assertIn("root_below_recovery_target(preflight_capacity)", source)
+        self.assertIn("recover_root_headroom", source)
         self.assertLess(
-            source.index(
-                "root_below_release_floor"
-            ),
-            source.index(
-                "recover_root_headroom"
-            ),
+            source.index("root_below_recovery_target(preflight_capacity)"),
+            source.index("recover_root_headroom"),
         )
 
         self.assertIn(
