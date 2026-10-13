@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-12",
       "sensitivity": "internal",
-      "sha256": "820038c5311aae15eecb23651332b29db0eeafce3ba8cd7579e7b347280a9ef8",
+      "sha256": "64ac61ffe68e709671930ea5a2785067668e5a8d7c76beca8df2b5150776a0db",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "2ec1fb7001aba90f27831dfb9a3f0981a90916d0eabca93f5eabfb7026f0c2b5",
+      "sha256": "6191e97fefd253187ef3a5b399dd0f427b4843c2cc670d3d7dc5e4af044d29de",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/mecha-e2-wallet-satchel-clarity-20261012",
-    "commit": "3d9b98732ef7d382d6dd84bf86aa5b6613a91db6"
+    "branch": "hotfix/profile-query-provider-20261013",
+    "commit": "a5ecf00d9163e39450f77ded0056ff4d13f95024"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

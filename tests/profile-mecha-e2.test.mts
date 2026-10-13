@@ -42,6 +42,23 @@ test("E2 renders on the existing Extreme profile stage and preserves E1", () => 
   assert.match(selector, /aria-expanded/);
 });
 
+test("profile E2 mounts a route-scoped query client before reading the wallet", () => {
+  const profileLayout = readFileSync(new URL("../app/profile/layout.tsx", import.meta.url), "utf8");
+  const provider = readFileSync(new URL("../app/Providers.tsx", import.meta.url), "utf8");
+  const page = readFileSync(new URL("../app/profile/page.tsx", import.meta.url), "utf8");
+  const card = readFileSync(new URL("../components/profile/MechaAutoBetCard.tsx", import.meta.url), "utf8");
+  const hook = readFileSync(new URL("../hooks/useWoloBalance.ts", import.meta.url), "utf8");
+  assert.match(profileLayout, /import\s*\{\s*Providers\s*\}\s*from\s*["']@\/app\/Providers["']/);
+  assert.match(profileLayout, /return\s*<Providers>\{children\}<\/Providers>/);
+  assert.match(provider, /<QueryClientProvider\s+client=\{queryClient\}>\{children\}<\/QueryClientProvider>/);
+  assert.match(page, /profileViewMode === "e2"\s*\?\s*<MechaAutoBetCard/);
+  assert.match(card, /useWoloBalance\(/);
+  assert.match(hook, /useQuery<string>\(/);
+  // Provider must remain route-scoped: no global wallet-query initialization.
+  const rootLayout = readFileSync(new URL("../app/layout.tsx", import.meta.url), "utf8");
+  assert.doesNotMatch(rootLayout, /QueryClientProvider|<Providers>/);
+});
+
 test("Mecha UI shows only server-owned preview status; not an on-chain wallet", () => {
   const card = readFileSync(new URL("../components/profile/MechaAutoBetCard.tsx", import.meta.url), "utf8");
   assert.match(card, /role="switch"/);
