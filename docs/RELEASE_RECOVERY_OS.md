@@ -186,6 +186,14 @@ the already-proven stage-retirement machinery can reach it.
 
 ### Recovery exhaustion produces an actionable failure receipt
 
+The capacity preflight proactively invokes the existing bounded root-recovery
+worker whenever free root space is below the **floor plus configured margin**
+(currently 5.125 GiB), even when the hard 5 GiB release floor has barely been
+reached. This allows ordinary nginx log rotation to create closed `.log.1`
+candidates for the already-approved hashed archival tier before staging.
+Nginx rotation uses its own configured schedule/size rules; Finish itself does
+not force log rotation, restart nginx, or promote live logs to deletion.
+
 When every approved root-reclaim class is exhausted below the configured
 recovery target, the worker seals an `INSUFFICIENT` receipt under
 `<volume>/aoe2war/root-headroom-recoveries/<UTC>/recovery.txt` with
