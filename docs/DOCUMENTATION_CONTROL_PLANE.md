@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/replay-other-public-veto-surfaces-20261013` at `57c9e0187d9fc568743e32c946996fa40f577e34`
+Implementation baseline: `perf/release-gate-lint-preflight-20261013` at `a664adcc2df3d80bc6f9ff2339757c64df7f4529`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
