@@ -15,6 +15,27 @@ sensitivity: "internal"
 
 # AoE2WAR Performance OS
 
+## October 13, 2026 — featured-avatar live-rule fingerprint (read-only)
+
+The certified phone cohort showed 20/20 exact LCP image-resource/preload proof;
+p50/p95 LCP were 1,126/1,939 ms. Separate featured-avatar verification
+returned the same 161,696-byte WebP SHA256 and HTTP 200 from SEA/PDX, but
+`CF-Cache-Status: DYNAMIC` repeatedly at SEA for one path. That is **not**
+explained by independent POP changes alone. The probe requests do include
+the canonical `size=card&v=20260630a` query (the receipt's `path` field
+omits the URL query by design); never widen cache rules based on that display
+field.
+
+The protected Cloudflare helper `verify` response now includes
+`featured_avatar_rule` with `present`, `enabled`, `action` and the
+SHA-256 of the active expression, without leaking rule IDs or access secrets.
+Compare that digest with the exact public `plan-featured-avatar` expression
+before considering a governed apply. This is a **read-only authority check**;
+a matching rule still does not guarantee a `HIT` if another rule, CDN
+configuration, or response property bypasses cache. Preserve the failed
+response receipt and same-POP evidence. Never fake HIT or relax identity,
+Accept, URL, version, or cookie guards.
+
 ## Purpose
 
 Performance OS turns release speed and public-site speed into durable,

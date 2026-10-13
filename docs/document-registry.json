@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "3df40c77311e04126e33208b6828ee22be15014708372e855fd5e26e1d19f6fc",
+      "sha256": "ef2b203705a3518b0ced732642df2da80df0528c8ebc2c0c07a667e9ce821aae",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1304,7 +1304,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-12",
       "sensitivity": "internal",
-      "sha256": "f7bcf8b72f42b09db16905d90c8e02e469fd55329c8caa9ed34279ef00ace59b",
+      "sha256": "665b22b772428192717abb51f110338f08ba47eef6188ce39286a084ac821ac2",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/challenge-hall-snapshot-latency-20261013",
-    "commit": "f496034cf309c4b1d746b73f753ef8ea17adafdc"
+    "branch": "fix/featured-avatar-rule-evidence-20261013",
+    "commit": "41aed3fc7d88c7fecb081af254e424abf5951b7e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

@@ -571,9 +571,25 @@ def cmd_verify() -> dict[str, Any]:
     verify = api("GET", "/user/tokens/verify") or {}
     zone = resolve_zone()
     ruleset = phase_ruleset(zone["id"])
+    featured = find_featured_avatar_rule(ruleset)
+    expression = str((featured or {}).get("expression") or "")
+    # Report only non-secret, read-only evidence about the live installed rule.
+    # A public image returning DYNAMIC can result from a missing/disabled rule,
+    # stale exact-path roster or expression drift; edge transport alone cannot
+    # distinguish those conditions.
+    featured_status = {
+        "present": featured is not None,
+        "enabled": (featured or {}).get("enabled") is True,
+        "action": (featured or {}).get("action"),
+        "expression_sha256": (
+            hashlib.sha256(expression.encode("utf-8")).hexdigest()
+            if expression else None
+        ),
+    }
     return {
         "ok": True,
         "command": "verify",
+        "featured_avatar_rule": featured_status,
         "token_status": (verify.get("result") or {}).get("status"),
         "zone_name": zone.get("name"),
         "zone_status": zone.get("status"),
