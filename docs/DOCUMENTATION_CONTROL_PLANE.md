@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/replay-other-public-veto-surfaces-20261013` at `57c9e0187d9fc568743e32c946996fa40f577e34`
+Implementation baseline: `fix/challenge-history-unused-state-20261013` at `42e0cd88f6a514a7254294dc5eec1ae112619f0d`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
