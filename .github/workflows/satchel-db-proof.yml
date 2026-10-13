@@ -1,0 +1,58 @@
+name: War Satchel Disposable PostgreSQL Proof
+
+on:
+  pull_request:
+    paths:
+      - "prisma/schema.prisma"
+      - "prisma/migrations/20261013185000_war_satchel_dormant_ledger_gate_b/**"
+      - "tests/fixtures/war_satchel_migration_smoke.sql"
+      - ".github/workflows/satchel-db-proof.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: satchel-disposable-postgres-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  satchel-postgres-proof:
+    name: Gate B constraints against real PostgreSQL 16
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: satchel_disposable
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: synthetic-ci-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d satchel_disposable"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGDATABASE: satchel_disposable
+      PGUSER: postgres
+      PGPASSWORD: synthetic-ci-only
+    steps:
+      - uses: actions/checkout@v7
+      - name: Prepare isolated PostgreSQL client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client
+      - name: Prove migration and financial invariants against disposable PostgreSQL
+        run: |
+          set -euo pipefail
+          psql -X -v ON_ERROR_STOP=1 -c 'CREATE TABLE "users" ("id" INTEGER PRIMARY KEY);'
+          psql -X -v ON_ERROR_STOP=1 -f prisma/migrations/20261013185000_war_satchel_dormant_ledger_gate_b/migration.sql
+          psql -X -v ON_ERROR_STOP=1 -f tests/fixtures/war_satchel_migration_smoke.sql
+      - name: Confirm test-only execution boundary
+        run: |
+          echo "Disposable PostgreSQL only; no production database, WoloChain, or betting API credentials configured."
