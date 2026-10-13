@@ -15,6 +15,27 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## October 13, 2026 — journal-to-account conservation audit
+
+`lib/warSatchelJournalAudit.ts` provides a new, deliberately read-only audit
+over one complete, server-read, monotonically ordered owner journal. Starting
+from zero, it projects the available/reserved/committed/withdrawal-held buckets,
+checks each signed delta against the permitted deposit, reserve, commit, release,
+refund, hold, cancellation and withdrawal transition shape, rejects missing
+external transfer-claim references on chain-facing transitions, validates every
+intermediate post-state, detects duplicate event keys/claim IDs and compares
+the final balances and revision against the owner account snapshot.
+
+The contract tests cover one full synthetic lifecycle plus adversarial
+account drift, stale post-balance, wrong owner, replayed receipt, overdraft,
+out-of-order and missing events. It must run on an independently consistent
+database snapshot; it does not know if the bank vault has sufficient assets,
+if historic manual Bet Escrow claims are completely enumerated, if a signature
+is legitimate or if any real transaction was final. **All PASS results return
+`custodyApproved=false`, `creditAuthorized=false` and
+`executionReady=false`.** This audit remains unconnected to a live funding
+or wagering API.
+
 ## War Satchel Gate B persistence substrate — DRAFT, never live credit (October 13, 2026)
 
 This change establishes the **database structure** missing from the deployed
