@@ -8,7 +8,7 @@ systems: ["app-prodn","aoe2war","wolochain","vpssentry"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "storage-operating-contract"
-reviewed_at: "2026-09-19"
+reviewed_at: "2026-10-13"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -80,6 +80,69 @@ Capacity health and retention topology are separate facts. A volume below the
 capacity threshold may still carry structural rollback debt. The lean-retention
 expiry lane remains authoritative for reducing the runtime estate to two hot
 expanded rollback generations plus three proven cold checkpoints.
+
+## Capacity triage and preventive operating loop (October 2026)
+
+The estate has **three different disks** with separate risks: the operator
+Mac, the VPS root filesystem, and the VPS mounted volume. A successful volume
+expiry does not improve root headroom; clearing Mac caches does not increase
+VPS capacity. Treat each filesystem as its own budget.
+
+The primary read-only capacity triage is:
+
+```bash
+./bin/aoe2war storage triage
+./bin/aoe2war storage triage --json
+./bin/aoe2war storage deep-census
+./bin/aoe2war storage local-maintain
+./bin/aoe2war storage expiry inventory
+```
+
+- `triage` runs the bounded three-plane deep census, ranks
+  **measured review-only** classes, identifies root free-space pressure against
+  the 6 GiB preferred headroom in the operations contract, exposes Mac pressure,
+  and reports expanded rollback debt independently of volume usage.
+- Any slow/unreadable named bucket marks the plane **UNKNOWN**, not healthy.
+  All rows carry `mutation_allowed=false`; a large cache is not
+  proof that it can be discarded. Triage never invokes remote expiry,
+  modifies Wolo, or writes a cleanup plan to production.
+- The `expiry inventory` result has `EXPIRE` and
+  `KEEP` classifications. Its candidate count is **preliminary**,
+  not a deletion budget. Only a later content-hashed sealed ledger authorizes
+  one-object expiry. Save the inventory output to a private JSON file and run
+  `storage triage --expiry-inventory /path/to/inventory.json`
+  to combine the evidence. Never automate deletion from that JSON count.
+- Use `storage estate` for a lightweight regular check. Run
+  `storage triage` if Mac exceeds 90% used, VPS root falls
+  below the 6 GiB preferred headroom, the volume enters WATCH, or
+  structural rollback debt increases. Do this **before** attempting
+  Finish, not after its deployment phase fails. Triage is advisory;
+  the protected Finish gate remains authoritative.
+
+### Diagnosis when pruning is not working
+
+| Symptom | Correct lane | Boundary |
+| --- | --- | --- |
+| Mac npm, generic cache, Go module or Next build grows | `storage triage` and developer cache review | REVIEW only; never add all of .cache, build trees, or toolchains to broad auto-delete |
+| Four named Mac cache allowlist entries grow | `storage local-maintain` preview; separately authorize apply | Only Yarn, Go build, pnpm, and CoreSimulator caches in apply contract |
+| VPS root near 5 GiB free | Root section of `storage deep-census`, governed snap/cache/log/fast-rollback review | Root and volume headroom separate; no raw recursive delete, active Next dependency removal or unbounded journal wipe |
+| Mounted volume WATCH with old runtime generations | `storage expiry inventory`, verified lean-retention ledger | Active runtime plus two hot and three verified cold checkpoints and all receipts stay protected |
+| Old archive campaign PAUSED | `storage campaign status` and source/BUILD_ID reconciliation | Resume cannot adopt a new source without the separate handoff proof |
+| Database snapshot scan INCOMPLETE | `storage db-snapshots plan --json`; inspect blockers | Retirement remains disabled with zero candidates until receipts/references prove safety |
+| Watcher staging preview EACCES | Inspect root-owned staging identity and operator read authority | Do not chmod or bypass identity/hash proof |
+| Watcher download preview source changed | Reconcile Mac/GitHub/certified runtime via protected Finish | SHA guard is intentional; do not bypass |
+
+### Evidence-driven capacity closure
+
+Record exact source/BUILD_ID; filesystem; measured allocated bytes before and
+after **on the same filesystem**; candidate classification; which independent
+lane authorizes mutation; transaction receipt and hash; protected Wolo
+continuity where applicable; and verified remaining free space.
+
+If protected or unclassified bytes still exceed practical capacity **after**
+authorized reclamation is exhausted, report the actual remaining deficit as a
+storage purchasing decision. Never relabel protected or unmeasured files
+as junk merely to create a green score.
 
 ## Capacity policy
 
