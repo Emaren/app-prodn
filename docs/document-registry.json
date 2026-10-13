@@ -1486,7 +1486,7 @@
       "owner": "aoe2war-web",
       "path": "docs/RELEASE_RECOVERY_OS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-13",
+      "reviewed_at": "2026-09-29",
       "sensitivity": "internal",
       "sha256": "2232f7643a4aaa9a19477fb26b949eeaf1395d41bcbc865718e0ec2cbdaa2fba",
       "source_of_truth": "git",
