@@ -8,8 +8,8 @@
  * Do not use this function as betting or financial settlement authority.
  */
 import { normalizeLeaderboardIdentityName, normalizeLeaderboardSteamId } from "./leaderboardIdentity.ts";
-import { publicReplayWinnerTruth } from "./publicReplayTruth.ts";
-import { resolveReplayResultForPlayer, type ReplayPlayerResultGame } from "./replayPlayerResult.ts";
+import { publicReplayWinnerTruth, type PublicGameStatsLike } from "./publicReplayTruth.ts";
+import { resolveReplayResultForPlayer } from "./replayPlayerResult.ts";
 
 export type DirectoryPlayerSnapshotResult = {
   resultEligible: boolean;
@@ -20,7 +20,7 @@ export type DirectoryPlayerSnapshotResult = {
 };
 
 export function canonicalDirectoryParticipantResult(
-  game: ReplayPlayerResultGame,
+  game: PublicGameStatsLike,
   snapshot: DirectoryPlayerSnapshotResult,
 ): "win" | "loss" | "unknown" {
   if (!snapshot.resultEligible ||
