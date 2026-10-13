@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b24276c8b561e71462e356715b5bcc0816c6dd911869a4c03774877f84a16b2e",
+      "sha256": "b9e5f193b2e48d7c4423b5110a4025d6ed173e9a3c8856ef7cb35a1446d59e85",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2094,7 +2094,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/challenge-hall-responsive-20261013",
-    "commit": "09b4f4bfa6cb97add5f040804bf85d8ea3a33421"
+    "commit": "9b6e6142745349e096c630fc0eb0257d9d10c819"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
