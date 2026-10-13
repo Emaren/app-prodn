@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `hotfix/profile-query-provider-20261013` at `a5ecf00d9163e39450f77ded0056ff4d13f95024`
+Implementation baseline: `test/profile-runtime-query-boundary-20261013` at `2ece7d13dbd92001639247adeef40f8cf1ab19c9`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
