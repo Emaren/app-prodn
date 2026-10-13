@@ -2561,10 +2561,49 @@ def recover_root_headroom(
 
     if rc != 0:
         if result.get("status") == "INSUFFICIENT":
+            # The remote worker has already sealed a durable failure receipt.
+            # Preserve the exact target/actual gap and custody location in
+            # the operator-facing error so we never repeat an opaque recovery
+            # run or suggest generic deletion of protected evidence.
+            target_kb = (
+                root_headroom_recovery_target_bytes() + 1023
+            ) // 1024
+            try:
+                after_kb = int(result["after_kb"])
+                before_kb = int(result["before_kb"])
+                if before_kb < 0 or after_kb < 0:
+                    raise ValueError("negative capacity")
+            except (KeyError, TypeError, ValueError) as exc:
+                raise FinishError(
+                    "bounded root-headroom recovery reported insufficient "
+                    "capacity but returned invalid measurement evidence"
+                ) from exc
+            receipt_dir = str(result.get("receipt_dir") or "")
+            receipt_root = (
+                str(contract["canonical"]["volume_mount"])
+                + "/aoe2war/root-headroom-recoveries/"
+            )
+            if not (
+                receipt_dir.startswith(receipt_root)
+                and re.fullmatch(
+                    r"[0-9]{8}T[0-9]{6}Z",
+                    receipt_dir[len(receipt_root):],
+                )
+            ):
+                raise FinishError(
+                    "bounded root-headroom recovery is insufficient but "
+                    "returned an invalid recovery receipt path"
+                )
+            needed_kb = max(0, target_kb - after_kb)
             raise FinishError(
-                "bounded root-headroom recovery exhausted "
-                "approved reclaim classes but the recovery "
-                "target is still unmet"
+                "bounded root-headroom recovery exhausted approved reclaim "
+                "classes; "
+                f"remaining shortfall={needed_kb / 1024:.1f} MiB, "
+                f"free={after_kb / 1024 / 1024:.3f} GiB, "
+                f"target={target_kb / 1024 / 1024:.3f} GiB; "
+                f"sealed evidence: {receipt_dir}/recovery.txt "
+                "(inspect the recorded per-tier counters; do not lower "
+                "the release floor or blindly delete files)"
             )
 
         if result.get("status") == "FAST_ROLLBACK_PRUNE_FAILED":
