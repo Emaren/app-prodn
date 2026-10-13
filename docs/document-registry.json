@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c39616890a6fd6071c849f268619e15ec09f246f904da1cee97729836d690788",
+      "sha256": "91c1b9ebd555365a127ca5029d41b1f3d31d69ce301140362a6c78d78e7819fe",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -983,7 +983,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-07-28",
       "sensitivity": "internal",
-      "sha256": "aee06169cf13b31f37ec8c170307c32d4a5fc9f9f707a712474a8273a6d3ef13",
+      "sha256": "ce1c2d5ec4c4f33bc73a4ad9c4e764459683b18ba85f5063558ed2c8615b8bf5",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/replay-observatory-disconnect-veto-20261013",
-    "commit": "35f0ed772f620569e70485c5fbc735134e4138ff"
+    "branch": "fix/leaderboard-disconnect-veto-20261013",
+    "commit": "d42e3ccc726dd0c12c1ddfaa3c2c1c700bd44fea"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
