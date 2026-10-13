@@ -39,6 +39,10 @@ module.exports = {
       { pathname: "/api/media-assets/**" },
       { pathname: "/uploads/managed-assets/**" },
       { pathname: "/champions/**" },
+      { pathname: "/academy/**" },
+      { pathname: "/workshop/**" },
+      // Betting Hall contains dynamic bet routes; allow its exact hero image.
+      { pathname: "/bets/betting_hall2.png" },
       { pathname: "/icons/icon-192x192.png" },
       { pathname: "/kingdom/**" },
       // Both dedicated visual estates use next/image; absent localPatterns
