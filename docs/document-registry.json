@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "10df59081fa5042de5963f25661c2fa833366e693fbcae4040e4b8e22c71aa25",
+      "sha256": "5fb896be4ed14b917de6767754448beb8feb33633a06326835e27f2727a8cf5f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2094,7 +2094,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/ai-provider-quota-health-v2-20261013",
-    "commit": "993c846f58249b9f60e9dab51a91ab6a11a379fc"
+    "commit": "68a389bdd583a3008e0988d652a52ef28e750018"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
