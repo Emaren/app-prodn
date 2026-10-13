@@ -2,6 +2,7 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
+import { classifyOpenAiFailure } from "./aiProviderHealth";
 
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
 const OPENAI_KEY_FALLBACK = "/etc/aoe2hdbets/openai.key";
@@ -98,15 +99,6 @@ export function openAiOutputText(payload: unknown) {
   return "";
 }
 
-function providerErrorMessage(
-  payload: unknown,
-  fallback: string,
-) {
-  const source = record(payload);
-  const error = record(source?.error);
-  return text(error?.message) || fallback;
-}
-
 export async function requestDirectOpenAiResponse(
   request: DirectOpenAiRequest,
 ) {
@@ -167,14 +159,12 @@ export async function requestDirectOpenAiResponse(
   const payload = await response.json().catch(() => null);
 
   if (!response.ok) {
+    const failure = classifyOpenAiFailure(response.status, payload);
     throw new DirectOpenAiError(
-      providerErrorMessage(
-        payload,
-        `OpenAI returned HTTP ${response.status}.`,
-      ),
+      failure.message,
       {
         status: response.status,
-        code: `openai_${response.status}`,
+        code: failure.code,
       },
     );
   }
