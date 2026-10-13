@@ -10,7 +10,7 @@
  */
 export const WAR_SATCHEL_CHAIN_ID = "wolo-1" as const;
 export const WAR_SATCHEL_DENOM = "uwolo" as const;
-export const WAR_SATCHEL_MAX_GAME_UWOLO = 1_000_000_000n;
+export const WAR_SATCHEL_MAX_GAME_UWOLO = BigInt(1_000_000_000);
 
 type EventRoot = { id: string; ownerUid: string };
 type ChainReceipt = { receiptId: string; chainId: string; denom: string };
@@ -58,12 +58,12 @@ function chainProof(event: ChainReceipt, seen: Set<string>) {
  */
 export function projectWarSatchelResearch(ownerUid: string, events: readonly WarSatchelResearchEvent[]) {
   requireId(ownerUid, "owner");
-  let available = 0n;
-  let reserved = 0n;
-  let withdrawing = 0n;
-  let committed = 0n;
-  let withdrawn = 0n;
-  let deposited = 0n;
+  let available = BigInt(0);
+  let reserved = BigInt(0);
+  let withdrawing = BigInt(0);
+  let committed = BigInt(0);
+  let withdrawn = BigInt(0);
+  let deposited = BigInt(0);
   const seenIds = new Map<string, string>();
   const receipts = new Set<string>();
   const reservations = new Map<string, Reservation>();
@@ -124,7 +124,7 @@ export function projectWarSatchelResearch(ownerUid: string, events: readonly War
         reservation.state = "committed";
         reserved -= reservation.amount;
         committed += reservation.amount;
-        tickets.set(ticketId, { amount: reservation.amount, refunded: 0n });
+        tickets.set(ticketId, { amount: reservation.amount, refunded: BigInt(0) });
         break;
       }
       case "verified_refund": {
@@ -165,7 +165,7 @@ export function projectWarSatchelResearch(ownerUid: string, events: readonly War
         break;
       }
     }
-    if (available < 0n || reserved < 0n || withdrawing < 0n || committed < 0n || withdrawn < 0n) {
+    if (available < BigInt(0) || reserved < BigInt(0) || withdrawing < BigInt(0) || committed < BigInt(0) || withdrawn < BigInt(0)) {
       throw new Error("Negative satchel category");
     }
     if (available + reserved + withdrawing + committed + withdrawn !== deposited) {
