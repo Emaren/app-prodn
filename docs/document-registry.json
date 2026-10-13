@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-12",
       "sensitivity": "internal",
-      "sha256": "64ac61ffe68e709671930ea5a2785067668e5a8d7c76beca8df2b5150776a0db",
+      "sha256": "e50b5bc9f6d12520d58f0d283cb0725d7be41e242f8d3923275412b639d2d757",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e27458e7e4e4c5e314ac4eadeb4650fa2b1aee2486797007b1973f93408ae50c",
+      "sha256": "8498c154c5831e50c3fdf80f3eeea3ce5ee0bc8ebee22c079ccaacfe6c2cded3",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "test/profile-runtime-query-boundary-20261013",
-    "commit": "2ece7d13dbd92001639247adeef40f8cf1ab19c9"
+    "branch": "feat/satchel-accounting-contract-20261013",
+    "commit": "18e7291bbdef90a7b0444a97a30258711dcd525f"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
