@@ -15,6 +15,60 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## War Satchel Gate B — exact-transfer evidence, not deposited funds (October 13, 2026)
+
+The `Mecha Emaren` profile still exposes only shadow auto-betting and a disabled
+"Load from Wallet" control. Its wallet balance is not a custodial balance.
+`lib/warSatchelAccountingResearch.ts` remains an **offline event-conservation
+oracle**, and no client payload is permitted to call its `verified_deposit`
+transition. No persistent Satchel credit ledger or live wager executor is
+enabled by this milestone.
+
+Two reusable **pure, explicitly NON-CREDITING** Gate B checks are introduced in
+`lib/warSatchelCustodyEvidence.ts`:
+
+- `satchelDepositMemo(uid, nonce)` establishes an exact versioned
+  owner/nonce memo namespace distinct from manual bet-ticket stake memos.
+- `examineSatchelDepositEvidence` requires caller-supplied **independently
+  authenticated server evidence**: logged-in owner UID, proven Keplr sender,
+  designated current escrow vault, `wolo-1`, `uwolo` with canonical integer
+  amount, signed-intent provenance still external, exact memo/tx hash, chain
+  success, finalized chain head, time-limited intent and adequate
+  confirmations. It requires the WoloChain escrow verifier's *unique*
+  `matching_transfer_count=1` and exact `matched_transfer_index` into the
+  returned transfer list; foreign denominations and multi-transfer ambiguity
+  are not creditable. It emits only an
+  `uncredited_deposit_candidate` with a canonical
+  `(chain ID, tx hash, transfer ordinal)` key and explicitly sets
+  `creditAuthorized=false` and `wagerAuthorized=false`.
+- `examineSatchelReserveArithmetic` rejects unverified/duplicate liability
+  snapshots, old heights, missing categories, and numeric shortfalls. A
+  positive surplus is **not proof of solvency or complete, non-overlapping
+  liability enumeration**; `custodyApproved` and `executionReady` remain
+  false even when arithmetic covers the supplied partitions.
+
+WoloChain escrow verifier source PR #4 now exposes a canonical matched transfer
+ordinal only when there is exactly one same-sender/same-recipient/same-amount
+`uwolo` transfer; separate fake-denomination/failed-tx controls still refuse.
+That PR is not automatically deployed. This app contract does not attest the
+service URL, verify a Keplr signature or owner session, prove a finalized
+canonical head from an independent node, establish bank-liability completeness,
+perform unique database reservations, send WOLO, record a claim, or bypass the
+manual Bet Escrow financial rail. Passing tests only qualifies the next
+transactional-custody design review, never an enablement toggle.
+
+**Remaining enabling gates:** establish the independently reviewed dedicated
+Satchel vault or exact shared-vault partition; signed authenticated deposit
+intent and memo/nonce TTL; chain finality/transfer uniqueness anchored to a
+real verified node; globally unique immutable journal and transactional
+balance credit with owner restrictions; bank assets ≥ all existing manual bet
+stakes/refunds/claims/staking-reward and Satchel liabilities; a failing-closed
+operator kill switch and reconciliation receipts; canary deposits and
+withdrawals with separately authorized exact-signature checks; **then** connect
+idempotent next-game reservations and accepted BetStakeTickets, full unmatched
+refunds and withdrawals. Existing `LIVE_EXECUTOR_IMPLEMENTED=false` remains
+authoritative until that later certification.
+
 ## Public financial activity projection
 
 Grouped public activity is a typed read model. `lib/betLifecycleActivity.ts`
