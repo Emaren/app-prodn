@@ -1574,7 +1574,7 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
             [
                 "status\tRECOVERED",
                 "receipt_dir\t/mnt/HC_Volume_105319120/"
-                "aoe2war/root-headroom-recoveries/test",
+                "aoe2war/root-headroom-recoveries/20261013T222654Z",
                 "before_kb\t4194304",
                 "after_kb\t6291456",
                 "reclaimed_kb\t2097152",
@@ -1780,12 +1780,43 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
         ):
             with self.assertRaisesRegex(
                 MODULE.FinishError,
-                "approved reclaim classes",
-            ):
+                "approved reclaim classes.*remaining shortfall=.*sealed evidence:",
+            ) as raised:
                 MODULE.recover_root_headroom(
                     snapshot=self.snapshot(),
                     production=self.production(),
                 )
+            self.assertIn("20261013T222654Z/recovery.txt", str(raised.exception))
+            self.assertIn("target=5.125 GiB", str(raised.exception))
+            self.assertIn("do not lower", str(raised.exception))
+
+    def test_recovery_insufficient_refuses_forged_or_missing_custody(self):
+        for lines in (
+            ["status\\tINSUFFICIENT", "before_kb\\t4194304", "after_kb\\t5000000"],
+            [
+                "status\\tINSUFFICIENT",
+                "receipt_dir\\t/mnt/HC_Volume_105319120/aoe2war/"
+                "root-headroom-recoveries/../../fake",
+                "before_kb\\t4194304", "after_kb\\t5000000",
+            ],
+        ):
+            with self.subTest(lines=lines):
+                with (
+                    mock.patch.object(
+                        MODULE.aoe2_doctor,
+                        "load_contract",
+                        return_value=self.contract(),
+                    ),
+                    mock.patch.object(MODULE, "ssh_text", return_value=(45, "\\n".join(lines))),
+                ):
+                    with self.assertRaisesRegex(
+                        MODULE.FinishError,
+                        "invalid recovery receipt path",
+                    ):
+                        MODULE.recover_root_headroom(
+                            snapshot=self.snapshot(),
+                            production=self.production(),
+                        )
 
     def test_recovery_refuses_unsafe_wolo_precondition(self):
         production = self.production()
