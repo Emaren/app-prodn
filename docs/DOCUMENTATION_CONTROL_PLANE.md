@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/mecha-satchel-custody-proof-20261013` at `0738bab317c7d9c4af5d057bcfe1e636c8bb8aac`
+Implementation baseline: `feat/satchel-durable-ledger-gate-b-20261013` at `8b5d241f3b702e4497396efa64ecee9dc20a792b`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
