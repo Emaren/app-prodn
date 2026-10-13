@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `perf/release-gate-lint-preflight-rebased-20261013` at `bb99d719a3d1ee2b530300e864b58a0858c378e9`
+Implementation baseline: `feat/storage-os-capacity-triage-20261013` at `dcd194bff78e5d911192b0c86bd91dc8c410a5d7`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

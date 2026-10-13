@@ -460,6 +460,24 @@ class StorageOSTests(unittest.TestCase):
 
             self.assertTrue(target.is_dir())
 
+    def test_local_maintain_rejects_symlinked_cache_ancestor(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = pathlib.Path(directory).resolve()
+            protected = home / "private-data"
+            target = protected / "Yarn"
+            target.mkdir(parents=True)
+            (target / "secret.txt").write_text("keep")
+            library = home / "Library"
+            library.mkdir()
+            (library / "Caches").symlink_to(protected, target_is_directory=True)
+            with mock.patch.object(MODULE, "LOCAL_RECEIPT_DIR", home / "receipts"):
+                with self.assertRaisesRegex(
+                    MODULE.StorageError, "symlinked local cache ancestor"
+                ):
+                    MODULE.local_maintain(apply=True, json_mode=True, home=home)
+            self.assertEqual((target / "secret.txt").read_text(), "keep")
+            self.assertFalse((home / "receipts").exists())
+
     def test_context_retention_snapshot_counts_only_extra_archives(self):
         with tempfile.TemporaryDirectory() as directory:
             home = pathlib.Path(directory)
@@ -704,6 +722,110 @@ class StorageOSTests(unittest.TestCase):
 
         self.assertEqual(size, 0)
         self.assertTrue(ok)
+
+    def test_triage_keeps_pressure_and_deletion_authority_separate(self):
+        census = {
+            "kind": "aoe2war-three-plane-deep-storage-census",
+            "local": {
+                "filesystem": {"used_percent": 94.16, "free_bytes": 27 * 1024 ** 3},
+                "rows": [
+                    {"name": "generic_cache", "allocated_bytes": 4 * 1024 ** 3,
+                     "classification": "REGENERABLE_REVIEW", "probe_ok": True},
+                    {"name": "recovery_vault", "allocated_bytes": 38 * 1024 ** 3,
+                     "classification": "PROTECTED", "probe_ok": True},
+                ],
+            },
+            "root": {
+                "filesystem": {"used_percent": 86.04, "available_bytes": 5 * 1024 ** 3},
+                "rows": [
+                    {"name": "snap_download_cache", "allocated_bytes": 512 * 1024 ** 2,
+                     "classification": "UNPROVEN_RECLAIM", "probe_ok": True},
+                    {"name": "active_node_modules", "allocated_bytes": 1 * 1024 ** 3,
+                     "classification": "PROTECTED_ACTIVE_RUNTIME", "probe_ok": True},
+                ],
+            },
+            "volume": {
+                "used_percent": 79.70, "available_bytes": 57 * 1024 ** 3,
+                "eligible_expanded_count": 42,
+            },
+        }
+        expiry = {
+            "kind": "aoe2war-lean-retention-inventory",
+            "rows": [
+                {"action": "EXPIRE"} for _ in range(29)
+            ] + [
+                {"action": "KEEP"} for _ in range(69)
+            ],
+        }
+        triage = MODULE.build_storage_triage(census, expiry_inventory=expiry)
+        self.assertEqual(triage["status"], "ATTENTION")
+        self.assertFalse(triage["mutation_allowed"])
+        self.assertTrue(triage["cross_filesystem_reclaim_is_not_transferable"])
+        planes = {row["id"]: row for row in triage["planes"]}
+        self.assertEqual(planes["vps-root"]["state"], "ATTENTION")
+        self.assertEqual(planes["mac"]["state"], "WATCH")
+        self.assertEqual(planes["vps-volume"]["state"], "WATCH")
+        self.assertEqual(planes["vps-volume"]["expiry"]["expire_count"], 29)
+        self.assertEqual(planes["vps-volume"]["expanded_archive_eligible_count"], 42)
+        self.assertEqual(planes["mac"]["measured_review_buckets"][0]["name"], "generic_cache")
+        self.assertEqual(len(planes["mac"]["measured_review_buckets"]), 1)
+        self.assertEqual(len(planes["vps-root"]["measured_review_buckets"]), 1)
+        self.assertTrue(all(not row["mutation_allowed"] for row in triage["planes"]))
+
+    def test_triage_probe_failure_is_never_reported_as_healthy(self):
+        census = {
+            "kind": "aoe2war-three-plane-deep-storage-census",
+            "local": {
+                "filesystem": {"used_percent": 50, "free_bytes": 40 * 1024 ** 3},
+                "rows": [{"name": "cache", "allocated_bytes": 0, "probe_ok": False}],
+            },
+            "root": {
+                "filesystem": {"used_percent": 40, "available_bytes": 10 * 1024 ** 3},
+                "rows": [],
+            },
+            "volume": {
+                "used_percent": 60, "available_bytes": 100 * 1024 ** 3,
+                "eligible_expanded_count": 0,
+            },
+        }
+        result = MODULE.build_storage_triage(census)
+        self.assertEqual(result["status"], "UNKNOWN")
+        self.assertFalse(result["probe_complete"])
+        self.assertIsNone(result["planes"][-1]["expiry"]["expire_count"])
+
+    def test_triage_refuses_malformed_retention_inventory(self):
+        census = {"kind": "aoe2war-three-plane-deep-storage-census",
+                  "local": {"filesystem": {"free_bytes": 1, "used_percent": 1}, "rows": []},
+                  "root": {"filesystem": {"available_bytes": 1, "used_percent": 1}, "rows": []},
+                  "volume": {"used_percent": 1, "available_bytes": 1}}
+        with self.assertRaises(MODULE.StorageError):
+            MODULE.build_storage_triage(census, expiry_inventory={
+                "kind": "aoe2war-lean-retention-inventory",
+                "rows": [{"action": "DELETE"}],
+            })
+
+    def test_triage_is_read_only_even_when_supplying_expiry_file(self):
+        with tempfile.TemporaryDirectory() as directory:
+            inventory = pathlib.Path(directory) / "inventory.json"
+            inventory.write_text(
+                '{"kind":"aoe2war-lean-retention-inventory","rows":[{"action":"KEEP"}]}'
+            )
+            census = {
+                "kind": "aoe2war-three-plane-deep-storage-census",
+                "local": {"filesystem": {"used_percent": 45, "free_bytes": 9}, "rows": []},
+                "root": {"filesystem": {"used_percent": 50, "available_bytes": 9}, "rows": []},
+                "volume": {"used_percent": 70, "available_bytes": 9},
+            }
+            with (
+                mock.patch.object(MODULE, "load_contract", return_value={
+                    "capacity": {"root_free_preferred_gib": 6},
+                }),
+                mock.patch.object(MODULE, "deep_storage_census", return_value=census),
+                mock.patch.object(MODULE, "run", side_effect=AssertionError("mutating worker invoked")),
+            ):
+                result = MODULE.storage_triage(expiry_inventory_path=inventory)
+            self.assertFalse(result["mutation_allowed"])
+            self.assertEqual(result["planes"][-1]["expiry"]["status"], "PREVIEW_ONLY")
 
     def test_remote_root_deep_census_embedded_python_compiles(self):
         compile(

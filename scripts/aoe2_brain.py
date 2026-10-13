@@ -688,6 +688,13 @@ def brain_recommendations(
         )
     )
     if storage_health and storage_health not in {"HEALTHY", "PASS"}:
+        # WATCH is below the automatic archive trigger; diagnose the three
+        # independent disks rather than directing the operator to a no-op plan.
+        needs_diagnosis = storage_health == "WATCH"
+        storage_action = (
+            "aoe2war storage triage --json"
+            if needs_diagnosis else "aoe2war storage plan --json"
+        )
         if finish.get("available") and not finish.get("closure_complete"):
             rows.append(
                 {
@@ -698,10 +705,15 @@ def brain_recommendations(
                     "reason": (
                         f"Storage health={storage_health or 'ATTENTION'} "
                         f"used={storage_used if storage_used is not None else 'unknown'}; "
-                        "rerunning Finish before restoring headroom can only repeat "
-                        "the final Doctor blocker."
+                        + (
+                            "WATCH alone does not authorize archival; inspect Mac, "
+                            "root and mounted-volume debt separately before Finish."
+                            if needs_diagnosis else
+                            "rerunning Finish before restoring headroom can only repeat "
+                            "the final Doctor blocker."
+                        )
                     ),
-                    "action": "aoe2war storage plan --json",
+                    "action": storage_action,
                 }
             )
         else:
@@ -717,7 +729,7 @@ def brain_recommendations(
                         "the latest Finish is already certified, so this is "
                         "maintenance work rather than a release prerequisite."
                     ),
-                    "action": "aoe2war storage plan --json",
+                    "action": storage_action,
                 }
             )
 

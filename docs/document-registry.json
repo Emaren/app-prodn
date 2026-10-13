@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "1187c7d7b8e4bd2b2e4a29a9ae81219ad129a3ab9bf204e6c438728e7abbad32",
+      "sha256": "fa94f9d0335ffa30d85dc7f6d317984a2e769b6b60e653c940579afa76e7e4b4",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1692,9 +1692,9 @@
       "owner": "aoe2war-web",
       "path": "docs/STORAGE_OS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-19",
+      "reviewed_at": "2026-10-13",
       "sensitivity": "internal",
-      "sha256": "f0dca5c6030904945e977254ede92fb4ac95d64792c5c3cc20dc71b1dfaafaad",
+      "sha256": "cec8b29fdb1753b8a23d1a74daa3f03c912018c09643096668131e9b576d3d3c",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "perf/release-gate-lint-preflight-rebased-20261013",
-    "commit": "bb99d719a3d1ee2b530300e864b58a0858c378e9"
+    "branch": "feat/storage-os-capacity-triage-20261013",
+    "commit": "dcd194bff78e5d911192b0c86bd91dc8c410a5d7"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

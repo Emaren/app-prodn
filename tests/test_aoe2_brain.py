@@ -1055,6 +1055,20 @@ class KingdomIntelligenceTests(unittest.TestCase):
             [row["key"] for row in rows],
         )
 
+    def test_watch_storage_routes_to_three_plane_triage_not_archive_noop(self):
+        rows = MODULE.brain_recommendations(
+            finish=finish(complete=False),
+            control=control(status="current"),
+            performance=performance(),
+            truth=truth(),
+            council_recommendations=[],
+            storage={"health": "WATCH", "used_percent": 79.7},
+        )
+        row = next(item for item in rows if item["key"] == "storage-blocks-finish")
+        self.assertEqual(row["action"], "aoe2war storage triage --json")
+        self.assertIn("WATCH alone does not authorize archival", row["reason"])
+        self.assertNotIn("can only repeat the final Doctor blocker", row["reason"])
+
     def test_storage_pressure_outranks_finish_rerun(self):
         perf = performance()
         perf["matches_current_release"] = False

@@ -909,6 +909,184 @@ def print_deep_storage_census(payload: dict[str, Any]) -> None:
     print("Mutation:   NONE — census only; classifications do not grant deletion authority.")
 
 
+
+def _triage_buckets(rows: list[dict[str, Any]], *, limit: int = 5) -> list[dict[str, Any]]:
+    """Rank measured review buckets; a ranking never conveys delete authority."""
+    result = []
+    for row in rows:
+        if row.get("probe_ok") is not True:
+            continue
+        allocated = row.get("allocated_bytes")
+        if not isinstance(allocated, int) or isinstance(allocated, bool) or allocated <= 0:
+            continue
+        classification = str(row.get("classification") or "UNKNOWN")
+        if classification.startswith("PROTECTED"):
+            continue
+        result.append({
+            "name": row.get("name"),
+            "allocated_bytes": allocated,
+            "classification": classification,
+            "mutation_authority": "NONE",
+        })
+    return sorted(result, key=lambda row: row["allocated_bytes"], reverse=True)[:limit]
+
+
+def build_storage_triage(
+    census: dict[str, Any],
+    *,
+    expiry_inventory: dict[str, Any] | None = None,
+    root_preferred_gib: int = 6,
+) -> dict[str, Any]:
+    """Explain three independent capacity planes without authorizing reclamation."""
+    if census.get("kind") != "aoe2war-three-plane-deep-storage-census":
+        raise StorageError("triage requires an exact three-plane deep storage census")
+    local = census["local"]
+    root = census["root"]
+    volume = census["volume"]
+    mac_disk = local["filesystem"]
+    root_disk = root["filesystem"]
+    mac_free = int(mac_disk["free_bytes"])
+    mac_pct = float(mac_disk["used_percent"])
+    root_free = int(root_disk["available_bytes"])
+    root_pct = float(root_disk["used_percent"])
+    volume_pct = float(volume["used_percent"])
+    volume_free = int(volume["available_bytes"])
+    eligible = int(volume.get("eligible_expanded_count") or 0)
+    mac_probe_failure = any(row.get("probe_ok") is not True for row in local["rows"])
+    root_probe_failure = any(row.get("probe_ok") is not True for row in root["rows"])
+    preferred_bytes = root_preferred_gib * 1024 ** 3
+    expiry_summary = {
+        "status": "NOT_SUPPLIED",
+        "expire_count": None,
+        "keep_count": None,
+        "note": "A structural debt count is not a sealed deletion ledger.",
+    }
+    if expiry_inventory is not None:
+        if expiry_inventory.get("kind") != "aoe2war-lean-retention-inventory":
+            raise StorageError("supplied expiry inventory has the wrong kind")
+        rows = expiry_inventory.get("rows")
+        if not isinstance(rows, list):
+            raise StorageError("supplied expiry inventory has no rows")
+        # This is a preview count, not a verified content-hashed deletion budget.
+        expire = sum(row.get("action") == "EXPIRE" for row in rows)
+        keep = sum(row.get("action") == "KEEP" for row in rows)
+        if expire + keep != len(rows):
+            raise StorageError("expiry inventory contains unclassified actions")
+        expiry_summary = {
+            "status": "PREVIEW_ONLY",
+            "expire_count": expire,
+            "keep_count": keep,
+            "note": "Expiry actions require fresh sealed ledger, exact hashes and recovery proof.",
+        }
+    root_state = "UNKNOWN" if root_probe_failure else (
+        "ATTENTION" if root_free < preferred_bytes else "OBSERVE"
+    )
+    mac_state = "UNKNOWN" if mac_probe_failure else (
+        "WATCH" if mac_pct >= 90 else "OBSERVE"
+    )
+    volume_state = (
+        "ATTENTION" if volume_pct >= 82 else
+        "WATCH" if volume_pct >= 78 or eligible > 0 else "OBSERVE"
+    )
+    actions = [
+        {
+            "id": "vps-root",
+            "state": root_state,
+            "used_percent": root_pct,
+            "free_bytes": root_free,
+            "preferred_free_bytes": preferred_bytes,
+            "measured_review_buckets": _triage_buckets(root["rows"]),
+            "next_step": "Review root buckets, then only use separately governed housekeeping; never treat mounted-volume reclamation as root reclamation.",
+            "mutation_allowed": False,
+        },
+        {
+            "id": "mac",
+            "state": mac_state,
+            "used_percent": mac_pct,
+            "free_bytes": mac_free,
+            "measured_review_buckets": _triage_buckets(local["rows"]),
+            "next_step": "Run aoe2war storage local-maintain for its strict cache preview; larger review buckets require separate proof and authorization.",
+            "mutation_allowed": False,
+        },
+        {
+            "id": "vps-volume",
+            "state": volume_state,
+            "used_percent": volume_pct,
+            "free_bytes": volume_free,
+            "expanded_archive_eligible_count": eligible,
+            "expiry": expiry_summary,
+            "next_step": "Use aoe2war storage expiry inventory for structural debt, then a separately sealed expiry ledger; do not automatically archive merely because WATCH.",
+            "mutation_allowed": False,
+        },
+    ]
+    priority = {"ATTENTION": 0, "UNKNOWN": 1, "WATCH": 2, "OBSERVE": 3}
+    actions.sort(key=lambda row: priority[row["state"]])
+    return {
+        "schema": 1,
+        "kind": "aoe2war-storage-triage",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "status": min((row["state"] for row in actions), key=lambda state: priority[state]),
+        "planes": actions,
+        "probe_complete": not mac_probe_failure and not root_probe_failure,
+        "mutation_allowed": False,
+        "cross_filesystem_reclaim_is_not_transferable": True,
+        "protected": "active runtime, rollback checkpoints, recovery evidence, replay and financial data remain outside generic cleanup",
+    }
+
+
+def storage_triage(*, expiry_inventory_path: Path | None = None) -> dict[str, Any]:
+    expiry = None
+    if expiry_inventory_path is not None:
+        # The intake is a local immutable operator-supplied JSON preview. Do not
+        # invoke the expiry tool here: its Mac bootstrap stages code remotely.
+        if expiry_inventory_path.is_symlink() or not expiry_inventory_path.is_file():
+            raise StorageError("expiry inventory must be an existing plain local file")
+        if expiry_inventory_path.stat().st_size > 16 * 1024 * 1024:
+            raise StorageError("expiry inventory is too large")
+        try:
+            expiry = json.loads(expiry_inventory_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            raise StorageError("expiry inventory JSON cannot be read") from exc
+    capacity = load_contract().get("capacity") or {}
+    preferred = capacity.get("root_free_preferred_gib")
+    if not isinstance(preferred, int) or isinstance(preferred, bool) or not 3 <= preferred <= 30:
+        raise StorageError("invalid root preferred-free contract")
+    return build_storage_triage(
+        deep_storage_census(),
+        expiry_inventory=expiry,
+        root_preferred_gib=preferred,
+    )
+
+
+def print_storage_triage(payload: dict[str, Any]) -> None:
+    print("⚔️  AOE2WAR STORAGE TRIAGE — READ ONLY")
+    print()
+    print(f"Estate:       {payload['status']}")
+    for plane in payload["planes"]:
+        print(
+            f"{plane['id']}: {plane['state']} · {plane['used_percent']:.2f}% used · "
+            f"{gib(plane['free_bytes'])} free"
+        )
+        for row in plane.get("measured_review_buckets") or []:
+            print(
+                f"  REVIEW {gib(row['allocated_bytes']):>10} "
+                f"{row['name']} ({row['classification']})"
+            )
+        if plane["id"] == "vps-volume":
+            print(f"  Expanded archival debt: {plane['expanded_archive_eligible_count']}")
+            expiry = plane["expiry"]
+            print(
+                "  Expiry candidates: "
+                + (str(expiry['expire_count']) if expiry['expire_count'] is not None else "NOT MEASURED")
+                + " · preliminary classification only"
+            )
+        print("  NEXT: " + plane["next_step"])
+    print()
+    if not payload["probe_complete"]:
+        print("STOP: One or more named capacity probes did not complete; no healthy claim.")
+    print("No files modified. No class shown here is deletion authorization.")
+
+
 def estate_snapshot(*, measure: bool = False) -> dict[str, Any]:
     volume = snapshot(measure=measure)
     local = local_storage_snapshot(measure=measure)
@@ -998,6 +1176,13 @@ def print_estate(payload: dict[str, Any]) -> None:
 def _assert_local_reclaim_path(home: Path, path: Path) -> None:
     if path.is_symlink():
         raise StorageError(f"refusing symlinked local cache path: {path}")
+    # A symlink at Library/Caches is as dangerous as a symlink at the leaf:
+    # resolving inside $HOME alone does not prove we remain in the cache lane.
+    for ancestor in path.parents:
+        if ancestor == home:
+            break
+        if ancestor.is_symlink():
+            raise StorageError(f"refusing symlinked local cache ancestor: {ancestor}")
     resolved_home = home.resolve()
     resolved = path.resolve()
     if resolved == resolved_home or resolved_home not in resolved.parents:
@@ -1302,6 +1487,9 @@ def parser() -> argparse.ArgumentParser:
     q.add_argument("--json", action="store_true")
     q = sub.add_parser("deep-census")
     q.add_argument("--json", action="store_true")
+    q = sub.add_parser("triage")
+    q.add_argument("--json", action="store_true")
+    q.add_argument("--expiry-inventory", type=Path)
     q = sub.add_parser("maintain")
     q.add_argument("--apply", action="store_true")
     q.add_argument("--until-target", action="store_true")
@@ -1344,6 +1532,13 @@ def main() -> int:
         return 0
     if args.command == "local-maintain":
         return local_maintain(apply=args.apply, json_mode=args.json)
+    if args.command == "triage":
+        payload = storage_triage(expiry_inventory_path=args.expiry_inventory)
+        if args.json:
+            print(json.dumps(payload, indent=2, sort_keys=True))
+        else:
+            print_storage_triage(payload)
+        return 0
     if args.command == "deep-census":
         payload = deep_storage_census()
         if args.json:
