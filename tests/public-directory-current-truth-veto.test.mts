@@ -58,7 +58,24 @@ test("stale accepted Zodiac win and loss snapshots are both vetoed after disconn
 });
 
 test("untrusted team outcome cannot resurrect an old snapshot result", () => {
-  const row = { ...game(), parse_source: "watcher_final", parse_reason: "watcher_final_unparsed", key_events: { completed: false, postgame_available: false } };
+  const row = { ...game(),
+    winner: "Alpha",
+    parse_source: "watcher_final",
+    parse_reason: "watcher_final_unparsed",
+    key_events: {
+      completed: false,
+      postgame_available: false,
+      has_scores: false,
+      result_resolution: { result_status: "review_required", result_trusted: false },
+    },
+    event_types: ["build", "move"],
+    players: [
+      { name: "Alpha", steam_id: ALPHA, number: 1, team_id: 1, winner: true, score: null },
+      { name: "Ally", steam_id: "76561198000000003", number: 2, team_id: 1, winner: true, score: null },
+      { name: "Bravo", steam_id: BRAVO, number: 3, team_id: 2, winner: false, score: null },
+      { name: "Opponent", steam_id: "76561198000000004", number: 4, team_id: 2, winner: false, score: null },
+    ],
+  };
   assert.equal(canonicalDirectoryParticipantResult(row, alpha), "unknown");
   assert.equal(canonicalDirectoryParticipantResult(row, bravo), "unknown");
 });
