@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ef2b203705a3518b0ced732642df2da80df0528c8ebc2c0c07a667e9ce821aae",
+      "sha256": "b0b2e79e9e34527143d42e90d5192c49ca2c161f7c6b64f8ae13f4ae34d38af0",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1237,7 +1237,7 @@
       "review_interval_days": 60,
       "reviewed_at": "2026-09-22",
       "sensitivity": "internal",
-      "sha256": "9e24dbecad531ec1265ec0748f7dcd9b0fd16514fb1fb144a6e4191f03635eaa",
+      "sha256": "7f34cc46a2339ea18ce32562527fef3eb590501148115ec335900807cf1ae94e",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/featured-avatar-rule-evidence-20261013",
-    "commit": "41aed3fc7d88c7fecb081af254e424abf5951b7e"
+    "branch": "fix/replay-other-public-veto-surfaces-20261013",
+    "commit": "57c9e0187d9fc568743e32c946996fa40f577e34"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
