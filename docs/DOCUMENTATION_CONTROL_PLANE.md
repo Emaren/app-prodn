@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/leaderboard-disconnect-veto-20261013` at `d42e3ccc726dd0c12c1ddfaa3c2c1c700bd44fea`
+Implementation baseline: `fix/challenge-hall-responsive-20261013` at `9cc3843b82676e5728d7be77fed7dcc737b1fb83`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
