@@ -103,3 +103,46 @@ that every remaining route is already localized.
 ## Accessibility and motion
 
 The trigger is labeled `Universal Translator`. The selector is keyboard navigable, closes on Escape or outside pointer input, restores trigger focus, and becomes a viewport-bounded modal sheet on mobile. `prefers-reduced-motion` disables the cycling interval and transition motion.
+
+## October 2026 — Admin Translation Control Tower
+
+The private **Translate** link in the existing admin Command Tower opens
+/admin/translations. Its authenticated /api/admin/translations endpoint has
+private no-store caching, uses committed language catalogs and makes no AI,
+user-conversation, financial or chain calls.
+
+The tower compares canonical English nested shell keys and every homepage
+static/dynamic slot against each of the sixteen public locales. It reports
+populated/missing/extra keys, English-identical strings as review candidates,
+and bounded missing-key examples. These are **catalog-key completeness**
+statistics, NOT native-language quality, freshness or whole-site coverage.
+Unmeasured website routes remain UNKNOWN; the viewer-permissioned chat/AI
+translation pipeline is NOT AUDITED by these numbers.
+
+**Priority:** Turkish (tr) first, Greek (el) second, French (fr) third.
+French is already shipped in the global-shell and homepage catalogs but is
+not fully verified across the website. Turkish and Greek are visible as
+**planned** candidates in the admin dashboard; they MUST NOT be selectable in
+public until real language catalogs, typed registry/loader support, account
+preference wiring, placeholder/ICU checks, route smoke tests and native copy
+review are complete. An English-as-Turkish/Greek substitution is not completion.
+
+Spanish currently has a committed site-copy DOM translation layer. The tower
+reports its entry count, not an invented all-route denominator. Dynamic chats,
+usernames, financial copy and sacred product terms require their independent
+permission, provenance and native-language safeguards.
+
+### Permanent improvement loop
+
+1. Produce a deterministic source-string index by route, including dynamic
+   placeholders and source revisions.
+2. Translate only new/changed source entries in bounded batches, with
+   glossary and protected product-term checks, never every page view.
+3. Gate published catalogs on reviewable diffs and quality/fallback receipts;
+   show failed or untouched routes rather than treating file existence as 100%.
+4. Promote Turkish and Greek only after key routes and catalog tests pass.
+5. Track chat AI availability, 429/quota failures, cost, retry/backoff and
+   permission-safe caches separately from static catalog readiness.
+
+This release implements trustworthy measurement and admin visibility only;
+it does not represent those five future execution stages as finished.

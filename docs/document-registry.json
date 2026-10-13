@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "2e80e500a2ebe7ccddbb3d0b4140c74e4619acd778f7d3918a450e1f5c7a2b97",
+      "sha256": "b18326d5f0de335d66a56a413b0cbce8f9efe5c8e424bd6c58c8c4e1a254e620",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1741,7 +1741,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-08-20",
       "sensitivity": "internal",
-      "sha256": "f1ab29e00897714682bf96dc308dfef544f3da623ac09ae826017c93f89fb096",
+      "sha256": "7337c42a4db61512c6266cab44befcbdf227b7f6cd9e1b308c094da0d225ef06",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/release-root-shortfall-receipts-20261013",
-    "commit": "77b1d69b40dc4d4d3088213591b00762ea2bb135"
+    "branch": "feat/admin-translation-control-tower-20261013",
+    "commit": "77f4b0f8b339f4bffbaf50246ee53a28681c05fc"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
