@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "9cecbd38dd6e8c9b3481b23ac1568848baa73c2243f162c175cce3a1026b3f39",
+      "sha256": "fa94f9d0335ffa30d85dc7f6d317984a2e769b6b60e653c940579afa76e7e4b4",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2094,7 +2094,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feat/storage-os-capacity-triage-20261013",
-    "commit": "579b25f204455b0f6a8615bf0133e5fe37a0c8b5"
+    "commit": "dcd194bff78e5d911192b0c86bd91dc8c410a5d7"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
