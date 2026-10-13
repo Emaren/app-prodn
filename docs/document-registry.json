@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ef2b203705a3518b0ced732642df2da80df0528c8ebc2c0c07a667e9ce821aae",
+      "sha256": "c5cc29b5c78abdbade60ea8973ba5d6fde5074d449fdc616df2a76adf4763a26",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -983,7 +983,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-07-28",
       "sensitivity": "internal",
-      "sha256": "ce1c2d5ec4c4f33bc73a4ad9c4e764459683b18ba85f5063558ed2c8615b8bf5",
+      "sha256": "863882224db4f22a438c476f29ca96f9a8552c3908a1352c8aeedbbc0f9edfeb",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/featured-avatar-rule-evidence-20261013",
-    "commit": "41aed3fc7d88c7fecb081af254e424abf5951b7e"
+    "branch": "fix/replay-directory-canonical-veto-20261013",
+    "commit": "78dbb7f511a3b3f82a5db44a1187cfd81f121096"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
