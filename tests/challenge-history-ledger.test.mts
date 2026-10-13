@@ -42,14 +42,16 @@ test("challenge ledger pagination is stable by descending Match ID and follows A
   assert.match(workspaceSource, /sort\(\(left, right\) => right\.challengeId - left\.challengeId\)/);
 });
 
-test("challenge history and activity auto-load without truncating events before grouping", () => {
+test("compact challenge activity does not deep-fetch on visibility, while full history stays cursor paged", () => {
   assert.doesNotMatch(challengesSource, /return items\.slice\(/);
   assert.match(historyRouteSource, /activities: page\.activities/);
+  assert.match(challengesSource, /INITIAL_CHALLENGE_HISTORY_LIMIT = 8/);
   assert.match(workspaceSource, /new IntersectionObserver/);
-  assert.match(workspaceSource, /ref=\{activitySentinelRef\}/);
+  assert.doesNotMatch(workspaceSource, /ref=\{activitySentinelRef\}/);
   assert.match(workspaceSource, /ref=\{historySentinelRef\}/);
   assert.match(workspaceSource, /historyHasMore && historyAutoLoadFailed/);
-
+  assert.match(workspaceSource, /max-h-\[14\.5rem\]/);
+  assert.match(workspaceSource, /mask-image:linear-gradient/);
   const groupedActivitySource = workspaceSource.slice(
     workspaceSource.indexOf("const recentChallengeRecords"),
     workspaceSource.indexOf("const acceptanceDeadlinePreview")
