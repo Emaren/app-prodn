@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b0b2e79e9e34527143d42e90d5192c49ca2c161f7c6b64f8ae13f4ae34d38af0",
+      "sha256": "84f13f75e9ce99080a11ff40d4a9a384789694a12956e4fc34f4b7efe516a00c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/replay-other-public-veto-surfaces-20261013",
-    "commit": "57c9e0187d9fc568743e32c946996fa40f577e34"
+    "branch": "fix/challenge-history-unused-state-20261013",
+    "commit": "42e0cd88f6a514a7254294dc5eec1ae112619f0d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
