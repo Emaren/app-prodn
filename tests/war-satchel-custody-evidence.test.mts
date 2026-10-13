@@ -29,7 +29,7 @@ function fixture() {
     lookup: {
       ok: true, found: true, chain_id: "wolo-1", tx_hash: hash,
       tx_success: true, code: 0, height: "10420",
-      timestamp: "2026-10-13T15:40:00Z", memo: intent.memo,
+      timestamp: "2026-10-13T15:40:00.123456789Z", memo: intent.memo,
       matched_expected: true, matched_transfer_index: 1,
       matching_transfer_count: 1,
       matched_transfer: { sender, recipient: vault, amount, denom: "uwolo" },
