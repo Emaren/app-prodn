@@ -118,7 +118,8 @@ The primary read-only capacity triage is:
   structural rollback debt increases. Do this **before** attempting
   Finish, not after its deployment phase fails. Kingdom Intelligence now
   routes WATCH status to this triage instead of repeating a no-op archive
-  plan. Triage is advisory; the protected Finish gate remains authoritative.
+  plan. Council's storage recommendation now follows the same WATCH contract;
+  its explicit archival apply is reserved for maintenance-due conditions. Triage is advisory; the protected Finish gate remains authoritative.
 
 ### Diagnosis when pruning is not working
 
