@@ -199,12 +199,10 @@ export async function GET(request: NextRequest) {
     const prisma = getPrisma();
     const viewerUid = await getSessionUid(request);
     const payload = await loadChallengeHubSnapshot(prisma, viewerUid);
-    if (process.env.AOE2WAR_PROD_DB_PREVIEW !== "true") {
-      await retryChallengeCommissionerNotices(prisma, [
-        ...payload.scheduledMatches.map((match) => match.id),
-        ...payload.historyMatches.map((match) => match.id),
-      ]);
-    }
+    // GET is the critical path for the Challenge Hall. Do not retry
+    // commissioner inbox writes while a reader waits for their board.
+    // Creation/idempotency and the scheduled lifecycle reconciler retain
+    // their independent, idempotent notification responsibilities.
     return NextResponse.json(payload);
   } catch (error) {
     console.error("Failed to load challenge hub:", error);

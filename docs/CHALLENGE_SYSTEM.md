@@ -15,6 +15,29 @@ sensitivity: "internal"
 
 # AoE2WAR Challenge Protocols and Presentation
 
+## October 13, 2026 — Challenge Hall fast first paint
+
+The Challenge Hall is an authenticated, **non-shared-cache** page. Its
+`GET /api/challenges` must not block on independent commissioner-inbox
+notification retries: issuance/idempotent POST and the dedicated scheduled
+challenge reconciler preserve those idempotent notice/retry responsibilities.
+An initial GET returns the viewer-owned snapshot without a second round of
+commissioner message writes after projection.
+
+Initial completed-history loading is limited to **eight** recent rows instead
+of 24, while all active/actionable matches retain their own separately bounded
+query. Older challenge history is available through `GET /api/challenges/history`
+and deliberate **Load older** controls. Infinite-scroll sentinels were removed
+because the short activity card could auto-trigger extra API calls on mount.
+
+Recent Challenge Activity is presented in a scrollable, approximately
+two-and-a-half-row viewport with a soft bottom fade. This is a **display**
+change, not deletion/truncation of activity events, history, match records,
+funding, winner truth, notification audit or settlement evidence. A slow
+server-side reconciliation can still dominate response time; compare
+production timings after release and do not mark the route as instantly
+loaded without measuring the authenticated GET.
+
 ## Championship Challenge V2
 
 The [Championship Belt Constitution V1](./CHAMPIONSHIP_BELT_CONSTITUTION.md)
