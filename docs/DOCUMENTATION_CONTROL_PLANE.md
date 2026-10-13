@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `test/profile-runtime-query-boundary-20261013` at `2ece7d13dbd92001639247adeef40f8cf1ab19c9`
+Implementation baseline: `feat/satchel-accounting-contract-20261013` at `18e7291bbdef90a7b0444a97a30258711dcd525f`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
