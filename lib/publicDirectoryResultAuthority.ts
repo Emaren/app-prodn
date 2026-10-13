@@ -23,6 +23,10 @@ export function canonicalDirectoryParticipantResult(
   game: PublicGameStatsLike,
   snapshot: DirectoryPlayerSnapshotResult,
 ): "win" | "loss" | "unknown" {
+  // A snapshot from an incomplete/non-final original never grants W/L.
+  // Do not let a postgame-looking payload from an intermediate save through.
+  if (game.is_final !== true && game.isFinal !== true) return "unknown";
+
   if (!snapshot.resultEligible ||
     (snapshot.resultStatus !== "win" && snapshot.resultStatus !== "loss")) {
     return "unknown";
