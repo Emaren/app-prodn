@@ -3806,7 +3806,10 @@ export async function loadChallengeHubSnapshot(
     };
   }
 
-  const [candidateRows, historySnapshot, sessionSnapshot] = await Promise.all([
+  // Do not load the entire live-session snapshot just to render an empty
+  // Challenge Hall. Zero scheduled rows means there is nothing to correlate,
+  // settle or promote, and the empty session shape is authoritative here.
+  const [candidateRows, historySnapshot] = await Promise.all([
     prisma.user.findMany({
       where: {
         uid: {
@@ -3821,8 +3824,11 @@ export async function loadChallengeHubSnapshot(
       take: 80,
     }),
     loadChallengeHistoryRows(prisma, viewer.id, viewer.isAdmin),
-    loadLiveSessionSnapshot(prisma),
   ]);
+  const sessionSnapshot =
+    historySnapshot.rows.length > 0
+      ? await loadLiveSessionSnapshot(prisma)
+      : { activeSessions: [], recentlyCompletedSessions: [] };
 
   const challengeUsers = new Map<number, ChallengeUserRow>();
   challengeUsers.set(viewer.id, viewer);
