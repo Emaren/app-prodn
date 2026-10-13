@@ -362,7 +362,7 @@
       "review_interval_days": 60,
       "reviewed_at": "2026-10-07",
       "sensitivity": "internal",
-      "sha256": "e1bd0c533acafcb348b928a037533e528df42b6765a094b84a6d9ec64a3b00b1",
+      "sha256": "8fbbbc70673bf0f57010b1aa32329b5d1ad86cec7c77243e63d7e9b62dfa4985",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "91c1b9ebd555365a127ca5029d41b1f3d31d69ce301140362a6c78d78e7819fe",
+      "sha256": "b9e5f193b2e48d7c4423b5110a4025d6ed173e9a3c8856ef7cb35a1446d59e85",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/leaderboard-disconnect-veto-20261013",
-    "commit": "d42e3ccc726dd0c12c1ddfaa3c2c1c700bd44fea"
+    "branch": "fix/challenge-hall-responsive-20261013",
+    "commit": "9b6e6142745349e096c630fc0eb0257d9d10c819"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

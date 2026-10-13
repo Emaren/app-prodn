@@ -81,7 +81,8 @@ const CHALLENGE_RECENT_LINGER_MS = 15 * 60 * 1000;
 const CHALLENGE_START_GRACE_MS = 60 * 1000;
 const SESSION_MATCH_LOOKBACK_MS = 45 * 60 * 1000;
 const SESSION_MATCH_LOOKAHEAD_MS = 8 * 60 * 60 * 1000;
-const INITIAL_CHALLENGE_HISTORY_LIMIT = 24;
+// Compact landing page; full history remains cursor-paged on demand.
+const INITIAL_CHALLENGE_HISTORY_LIMIT = 8;
 const EXPECTED_AUTOMATIC_SETTLEMENT_SKIP_CODES = new Set([
   "ALREADY_SETTLED",
   "PLAN_BLOCKED",
@@ -3806,7 +3807,10 @@ export async function loadChallengeHubSnapshot(
     };
   }
 
-  const [candidateRows, historySnapshot, sessionSnapshot] = await Promise.all([
+  // Do not load the entire live-session snapshot just to render an empty
+  // Challenge Hall. Zero scheduled rows means there is nothing to correlate,
+  // settle or promote, and the empty session shape is authoritative here.
+  const [candidateRows, historySnapshot] = await Promise.all([
     prisma.user.findMany({
       where: {
         uid: {
@@ -3821,8 +3825,11 @@ export async function loadChallengeHubSnapshot(
       take: 80,
     }),
     loadChallengeHistoryRows(prisma, viewer.id, viewer.isAdmin),
-    loadLiveSessionSnapshot(prisma),
   ]);
+  const sessionSnapshotPromise =
+    historySnapshot.rows.length > 0
+      ? loadLiveSessionSnapshot(prisma)
+      : Promise.resolve({ activeSessions: [], recentlyCompletedSessions: [] });
 
   const challengeUsers = new Map<number, ChallengeUserRow>();
   challengeUsers.set(viewer.id, viewer);
@@ -3831,11 +3838,16 @@ export async function loadChallengeHubSnapshot(
     challengeUsers.set(row.challenger.id, row.challenger);
     challengeUsers.set(row.challenged.id, row.challenged);
   }
-  const watcherReadinessByUserId = await loadChallengeWatcherReadinessByUserId(
-    prisma,
-    [...challengeUsers.keys()],
-    new Date(nowIso),
-  );
+  // Watcher-readiness and session correlation are independent queries.
+  // Start both concurrently rather than serializing the signed-in board.
+  const [sessionSnapshot, watcherReadinessByUserId] = await Promise.all([
+    sessionSnapshotPromise,
+    loadChallengeWatcherReadinessByUserId(
+      prisma,
+      [...challengeUsers.keys()],
+      new Date(nowIso),
+    ),
+  ]);
   const watcherReadinessByUid = new Map(
     [...challengeUsers.values()].map((user) => [
       user.uid,

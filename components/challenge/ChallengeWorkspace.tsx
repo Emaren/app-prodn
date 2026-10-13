@@ -504,7 +504,6 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
   const [historyAutoLoadFailed, setHistoryAutoLoadFailed] = useState(false);
   const historyLoadingRef = useRef(false);
   const activityScrollRef = useRef<HTMLDivElement | null>(null);
-  const activitySentinelRef = useRef<HTMLDivElement | null>(null);
   const historyScrollRef = useRef<HTMLDivElement | null>(null);
   const historySentinelRef = useRef<HTMLDivElement | null>(null);
   const requestedTitle = searchParams.get("title");
@@ -1173,7 +1172,9 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
       observers.push(observer);
     };
 
-    observe(activityScrollRef.current, activitySentinelRef.current);
+    // Activity is an intentional short preview: it must not trigger
+    // automatic deep-history scans as soon as its small window fills.
+    // The full history rail keeps its existing on-demand pagination.
     observe(historyScrollRef.current, historySentinelRef.current);
 
     return () => {
@@ -2280,7 +2281,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
 
             <div
               ref={activityScrollRef}
-              className="mt-5 max-h-[36rem] space-y-3 overflow-y-auto overscroll-contain scroll-smooth pr-1"
+              className="mt-5 max-h-[14.5rem] space-y-3 overflow-y-auto overscroll-contain scroll-smooth pr-1 [mask-image:linear-gradient(to_bottom,#000_0%,#000_76%,transparent_100%)] [scrollbar-width:thin]"
             >
               {recentChallengeRecords.length === 0 ? (
                 <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-slate-300">
@@ -2328,7 +2329,6 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                   Loading older challenge activity…
                 </div>
               ) : null}
-              <div ref={activitySentinelRef} aria-hidden className="h-px w-full" />
               {historyHasMore && historyAutoLoadFailed ? (
                 <button
                   type="button"
