@@ -42,7 +42,9 @@ snapshot eligibility and a current independently eligible public replay
 result, then verifies the matched current participant with the existing
 canonical player/side resolver. Exact Steam ID takes precedence over display
 names; duplicate identity or a changed winner/side fails closed to
-`unknown`. It does not alter the replay snapshot, user identity, ELO
+`unknown`. An explicitly untrusted or review-required terminal packet also
+vetoes stale player flags, except when a separate accepted statistics-only
+adjudication supplies authoritative evidence. It does not alter the replay snapshot, user identity, ELO
 authority, accepted adjudication ledger, Bet Escrow or WOLO. Legitimate
 independent stats-only result adjudications continue through the existing
 public and participant adjudication projectors.
