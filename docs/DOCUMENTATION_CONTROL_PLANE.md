@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/satchel-accounting-contract-20261013` at `18e7291bbdef90a7b0444a97a30258711dcd525f`
+Implementation baseline: `feat/satchel-accounting-contract-20261013` at `e5f88e82f8a070fada3e08680e6f1c298faed379`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
