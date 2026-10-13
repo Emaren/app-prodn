@@ -116,8 +116,9 @@ The primary read-only capacity triage is:
   `storage triage` if Mac exceeds 90% used, VPS root falls
   below the 6 GiB preferred headroom, the volume enters WATCH, or
   structural rollback debt increases. Do this **before** attempting
-  Finish, not after its deployment phase fails. Triage is advisory;
-  the protected Finish gate remains authoritative.
+  Finish, not after its deployment phase fails. Kingdom Intelligence now
+  routes WATCH status to this triage instead of repeating a no-op archive
+  plan. Triage is advisory; the protected Finish gate remains authoritative.
 
 ### Diagnosis when pruning is not working
 
