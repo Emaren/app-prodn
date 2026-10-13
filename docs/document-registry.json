@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-12",
       "sensitivity": "internal",
-      "sha256": "637425f186706afd1251dfbe39bc7cd6ab034b44fe4de5da4da2c0785b4f42de",
+      "sha256": "509e7ce3a9741daaff47d4f02bc87dafd5261d082805cc0e4120347031546a59",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "f62edd65090849afa3c30d59357ca854a9fcd728b571286d641fa4fd7021d03d",
+      "sha256": "6bf475566f30c343341980ca2ead5f5425df674bfd01f476e88a66aee893f2aa",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/public-image-optimizer-forge-market-20261013",
-    "commit": "d7536ccf29e5337298885acf66c66749897e47ea"
+    "branch": "feat/mecha-satchel-custody-proof-20261013",
+    "commit": "0738bab317c7d9c4af5d057bcfe1e636c8bb8aac"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

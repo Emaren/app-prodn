@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/public-image-optimizer-forge-market-20261013` at `d7536ccf29e5337298885acf66c66749897e47ea`
+Implementation baseline: `feat/mecha-satchel-custody-proof-20261013` at `0738bab317c7d9c4af5d057bcfe1e636c8bb8aac`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
