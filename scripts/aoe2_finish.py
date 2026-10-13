@@ -1326,7 +1326,7 @@ def root_headroom_plan_recovery_available(
     if not bool(finish.get("auto_root_headroom_recovery", False)):
         return False
 
-    if not root_below_release_floor(snapshot):
+    if not root_below_recovery_target(snapshot):
         return False
 
     volume_critical = float(
@@ -4281,6 +4281,17 @@ def plan_payload(*, preserve_context_history: bool = False) -> dict[str, Any]:
             )
         else:
             blockers.append(str(exc))
+
+    else:
+        # Root is above the hard floor but might remain below the
+        # staging-recovery target. Make the dry-run report the same
+        # protected action that Finish will attempt on apply.
+        if root_recovery_remediable and root_below_recovery_target(capacity_snapshot):
+            remediated_blockers.append(
+                "bounded root-headroom recovery will restore the protected "
+                "staging margin using only approved regenerable/archived "
+                "classes or durable-proven fast rollback cache"
+            )
 
     if documentation_summary["blocked"]:
         blockers.append(
