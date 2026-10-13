@@ -58,6 +58,32 @@ live effective result/team coverage separately from private Engine Room
 candidate coverage. The page is read-only: it cannot promote candidates,
 adjudicate games, settle markets, or change chain history.
 
+## October 13, 2026 — disconnect-veto projection correction
+
+The Workshop and public/owner Parser Observatory projections consume final
+`GameStats` rows through `lib/parserObservatory.ts`. Both Prisma read
+selections **must include `disconnect_detected`**, and the local result helper
+must pass it to `resolveReplayWinnerTruth` alongside `is_final`. The logical
+public resolver already recognizes the same persisted field; omitting it at
+the database selection boundary silently treats `false/unknown` as absence
+of counterevidence.
+
+A paired current-evidence comparison reproduced the exact count discrepancy:
+4,060 results and 3,913 complete battles in the missing-disconnect public
+projection versus 4,014 results and 3,868 complete battles with the
+persisted disconnect veto included. The delta of 46 results (45 otherwise
+complete rosters) represented **projection overstatement**, not 46 newly
+independently recovered winners. Zodiac's public 53 unknown vs canonical
+61 unknown difference also requires exact-source reconciliation.
+
+The application fix is intentionally read-only. It changes no immutable game,
+adjudication, market, wallet or settlement record, and does not unilaterally
+displace a separately valid accepted Commissioner adjudication. The production
+counts must be measured after deployment from a source-matched, fresh cache;
+do not assert these checkpoint numbers are permanently fixed census totals.
+A structural selection test and an independent stored-winner disconnect veto
+positive/negative control guard against this exact data-loss regression.
+
 ## Historical Campaign III production checkpoint
 
 The frozen 2,025-artifact cohort was fully accounted as of July 17, 2026. This

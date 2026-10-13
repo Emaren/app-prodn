@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6bf475566f30c343341980ca2ead5f5425df674bfd01f476e88a66aee893f2aa",
+      "sha256": "c39616890a6fd6071c849f268619e15ec09f246f904da1cee97729836d690788",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1237,7 +1237,7 @@
       "review_interval_days": 60,
       "reviewed_at": "2026-09-22",
       "sensitivity": "internal",
-      "sha256": "c81ce74da0a0aadd038ff5a24c49afcabebbb23f914befb09ad848f86e74e118",
+      "sha256": "9e24dbecad531ec1265ec0748f7dcd9b0fd16514fb1fb144a6e4191f03635eaa",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/mecha-satchel-custody-proof-20261013",
-    "commit": "0738bab317c7d9c4af5d057bcfe1e636c8bb8aac"
+    "branch": "fix/replay-observatory-disconnect-veto-20261013",
+    "commit": "35f0ed772f620569e70485c5fbc735134e4138ff"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
