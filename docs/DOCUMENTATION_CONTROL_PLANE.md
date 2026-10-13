@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/ai-provider-quota-health-v2-20261013` at `993c846f58249b9f60e9dab51a91ab6a11a379fc`
+Implementation baseline: `fix/ai-provider-quota-health-v2-20261013` at `68a389bdd583a3008e0988d652a52ef28e750018`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
