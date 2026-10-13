@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/release-root-shortfall-receipts-20261013` at `99092e420778bc38f83afb21d341edf3534a34cf`
+Implementation baseline: `fix/release-root-shortfall-receipts-20261013` at `d083c29fe718b1700a4cd11ea4198ea7e71c84da`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
