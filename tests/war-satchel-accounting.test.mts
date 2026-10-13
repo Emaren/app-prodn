@@ -58,7 +58,7 @@ test("fail closed on external ledger identity, denomination, malformed amounts a
 });
 
 test("reserve is owner-bounded, versioned per canonical game and capped at 1,000 WOLO", () => {
-  assert.equal(WAR_SATCHEL_MAX_GAME_UWOLO, 1_000_000_000n);
+  assert.equal(WAR_SATCHEL_MAX_GAME_UWOLO, BigInt(1_000_000_000));
   assert.throws(() => projectWarSatchelResearch(uid, [deposit(), reserve(), { ...release(), reason: "arbitrary_fee" } as unknown as WarSatchelResearchEvent]), /Unknown release reason/);
   assert.throws(() => projectWarSatchelResearch(uid, [deposit("100"), reserve()]), /Insufficient/);
   assert.throws(() => projectWarSatchelResearch(uid, [deposit("2000000000"), reserve("1000000001")]), /Per-game cap/);
