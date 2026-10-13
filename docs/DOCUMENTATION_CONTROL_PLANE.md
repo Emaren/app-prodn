@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/featured-avatar-rule-evidence-20261013` at `102e7593612fddbb9e3f1fd81d6b0aae90cb098c`
+Implementation baseline: `fix/featured-avatar-rule-evidence-20261013` at `41aed3fc7d88c7fecb081af254e424abf5951b7e`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
