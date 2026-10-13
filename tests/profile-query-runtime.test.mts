@@ -77,7 +77,8 @@ test("negative control: the real E2 component rejects a missing QueryClient", ()
 test("profile layout supplies the real QueryClient and renders E2's visible triad", () => {
   const tree = React.createElement(
     ProfileLayout,
-    { children: React.createElement(E2, { displayName: "Fixture" }) },
+    {},
+    React.createElement(E2, { displayName: "Fixture" }),
   );
   const html = renderToStaticMarkup(tree);
   for (const label of ["AUTO BETTING", "Mecha Fixture", "WALLET", "WAR SATCHEL", "NEXT MATCH BET", "LOAD SATCHEL", "BET PLAN", "DESYNC"]) {
