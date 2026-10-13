@@ -149,3 +149,29 @@ The view shows:
 The current panel is observability-first. It does not yet mutate KKR repository
 permissions. Future granular controls can use this topology as the operator
 surface without changing the underlying public-Kingdom/privacy boundary.
+
+## October 2026 — Provider quota and rate-limit honesty
+
+The October 13 player-chat screenshot shows the upstream OpenAI Responses API
+reporting depleted credits. This is not proof of a broken Radio restart or a
+missing ChatGPT entitlement. The site's independently billed API/provider
+account and limits must be checked by an authorized operator; Git changes
+cannot create account credits.
+
+lib/aiProviderHealth.ts classifies **explicit structured** insufficient_quota
+or billing_hard_limit_reached HTTP 429 responses as openai_quota_exhausted.
+Other HTTP 429 failures remain openai_rate_limited; 401/403, 5xx and malformed
+errors get distinct bounded code families. The direct OpenAI boundary returns
+fixed user-safe messages, never free-form billing/credential error text.
+AI Concierge writes the existing redacted AiRequestTrace errorCode without
+request or response body. /admin/ai displays a private quota/operator
+warning if the bounded recent telemetry includes that observed failure.
+No credentials are exposed or tested by this feature.
+
+This improves diagnosis and prevents raw upstream errors in player chat. It
+does not assert provider health, introduce silent new provider fallbacks,
+retry a billed request, restore API credits or expose a user-facing billing
+button. Verify restored credit/quota with the authorized provider account,
+then run a separately authorized, bounded live health probe and prove a
+successful trace before calling the AI healthy. Chat translations have their
+own membership/visibility and message-revision restrictions.
