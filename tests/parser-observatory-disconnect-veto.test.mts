@@ -17,7 +17,7 @@ test("both public and viewer Observatory queries select stored disconnect/desync
     const selectEnd = source.indexOf("replayResultAdjudications:", pos);
     assert.ok(selectEnd !== -1 && selectEnd - pos < 3000, "unexpected Observatory query boundary");
     const selection = source.slice(pos, selectEnd);
-    assert.match(selection, /disconnect_detected:\\s*true/, "stored disconnect veto must be selected");
+    assert.match(selection, /disconnect_detected:\s*true/, "stored disconnect veto must be selected");
   }
 });
 
@@ -26,8 +26,8 @@ test("Observatory direct truth helper forwards the fetched disconnect flag", () 
   const end = source.indexOf("function bump(", begin);
   assert.ok(begin !== -1 && end > begin, "result helper structure is missing");
   const helper = source.slice(begin, end);
-  assert.match(helper, /disconnectDetected:\\s*row\\.disconnect_detected/);
-  assert.match(helper, /isFinal:\\s*row\\.is_final/);
+  assert.match(helper, /disconnectDetected:\s*row\.disconnect_detected/);
+  assert.match(helper, /isFinal:\s*row\.is_final/);
 });
 
 test("an otherwise accepted canonical winner becomes unknown when watcher disconnect is proven", () => {
