@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "dcfad66ae8a23fe753d5baf45cfeb07aa9adeb7edd16efbb47cffdb4eb67c0be",
+      "sha256": "422fd7739767e645d042fd52cda3779630fdf38652a30fb3d0eb335e2476026f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2094,7 +2094,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/public-image-optimizer-forge-market-20261013",
-    "commit": "21d62e5de5cb0f92c3bec8c5bd156aedbf1b1ac8"
+    "commit": "2718af68cc45265fdf5be58a5d05645f314abcbc"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
