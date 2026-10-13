@@ -17,6 +17,7 @@ import {
 import { loadUserCommunitySummaries } from "@/lib/communityHonors";
 import { isPublicBattleArchiveRow } from "@/lib/publicBattleArchiveEligibility";
 import { cleanPublicGameRows } from "@/lib/publicReplayTruth";
+import { canonicalDirectoryParticipantResult } from "@/lib/publicDirectoryResultAuthority";
 import { loadPendingWoloClaimSummariesByName } from "@/lib/pendingWoloClaims";
 import {
   applyReplayAdjudicationToGameStats,
@@ -206,24 +207,6 @@ function hasHdHeaderRatingSource(
     (rawSources as Record<string, unknown>)[lane] ===
     "hd_header"
   );
-}
-
-function resultFromSnapshot(
-  snapshot: CanonicalPlayerSnapshot,
-): LeaderboardReplayResult {
-  if (!snapshot.resultEligible) {
-    return "unknown";
-  }
-
-  if (snapshot.resultStatus === "win") {
-    return "win";
-  }
-
-  if (snapshot.resultStatus === "loss") {
-    return "loss";
-  }
-
-  return "unknown";
 }
 
 function updateLastPlayedAt(entry: PublicPlayerDirectoryEntry, nextPlayedAt: Date | string | null) {
@@ -851,8 +834,10 @@ export async function loadPublicPlayerDirectoryFresh(
       snapshot.createdAt;
     const observedAt =
       toIso(playedAt);
+    // Accepted snapshots retain identity and history but no longer override
+    // a later disconnect/desync veto or untrusted team outcome.
     const result =
-      resultFromSnapshot(snapshot);
+      canonicalDirectoryParticipantResult(game, snapshot);
     const player =
       playerForCanonicalSnapshot(
         game,
