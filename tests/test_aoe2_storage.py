@@ -460,6 +460,24 @@ class StorageOSTests(unittest.TestCase):
 
             self.assertTrue(target.is_dir())
 
+    def test_local_maintain_rejects_symlinked_cache_ancestor(self):
+        with tempfile.TemporaryDirectory() as directory:
+            home = pathlib.Path(directory).resolve()
+            protected = home / "private-data"
+            target = protected / "Yarn"
+            target.mkdir(parents=True)
+            (target / "secret.txt").write_text("keep")
+            library = home / "Library"
+            library.mkdir()
+            (library / "Caches").symlink_to(protected, target_is_directory=True)
+            with mock.patch.object(MODULE, "LOCAL_RECEIPT_DIR", home / "receipts"):
+                with self.assertRaisesRegex(
+                    MODULE.StorageError, "symlinked local cache ancestor"
+                ):
+                    MODULE.local_maintain(apply=True, json_mode=True, home=home)
+            self.assertEqual((target / "secret.txt").read_text(), "keep")
+            self.assertFalse((home / "receipts").exists())
+
     def test_context_retention_snapshot_counts_only_extra_archives(self):
         with tempfile.TemporaryDirectory() as directory:
             home = pathlib.Path(directory)
