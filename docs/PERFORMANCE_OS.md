@@ -541,6 +541,31 @@ Cloudflare configuration, database, Wolo and deployed app remain untouched.
 The earlier failure receipt remains immutable, and the new proof never
 changes speed thresholds or implies that slow cold-phone LCP was fixed.
 
+#### October 13: fallback curl multi-URL binary-output correction
+
+The Oct 13 certified-release edge verification crashed with
+`UnicodeDecodeError: 'utf-8' codec can't decode byte 0x9a` inside the
+five-request same-connection fallback probe. The subprocess included five
+image URLs but only one `curl -o /dev/null`: curl assigns output files per
+URL, so later binary image bodies spilled into textual stdout (HTTP headers
+plus `--write-out` markers). An isolated real-curl `file://` binary fixture
+reproduced that exact stdout contamination without network access.
+
+The repaired probe applies `-o /dev/null` to **each of the five requests** in
+one curl process, retaining headers and per-request numeric markers, same-POP
+cache HIT proof, `Vary: Accept`/MIME-type requirements, and all hero/static/
+dynamic/exclusion checks. It also returns an explicit fail-closed decode status
+for unexpected malformed output instead of a traceback. A local binary-body
+regression checks the actual curl command and a negative control verifies
+invalid decoding never authorizes an edge HIT. No Cloudflare cache rule,
+production service, database, Wolo, or scoring threshold changes.
+
+This is a **verifier reliability fix**, not proof that the new release's
+cold-phone speed improved. The Oct 13 source-bound 20-sample phone cohort
+measured LCP p50 1,874ms / p95 2,939.2ms and document TTFB p95 1,551.62ms;
+the dominant tail requires separate resource/TTFB/root-cause evidence and a
+controlled exact-release remeasurement.
+
 ### Workshop navigation hot path
 
 The Workshop is a rich public route whose initial server render combines the bounded Workshop
