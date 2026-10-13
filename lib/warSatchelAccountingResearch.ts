@@ -24,7 +24,7 @@ export type WarSatchelResearchEvent =
   | (EventRoot & ChainReceipt & { kind: "withdraw_confirmed"; withdrawalId: string })
   | (EventRoot & { kind: "withdraw_cancelled"; withdrawalId: string });
 
-type Reservation = { amount: bigint; state: "reserved" | "released" | "committed" };
+type Reservation = { amount: bigint; gameId: string; state: "reserved" | "released" | "committed" };
 type Withdrawal = { amount: bigint; state: "pending" | "cancelled" | "confirmed" };
 type Ticket = { amount: bigint; refunded: bigint };
 
@@ -68,6 +68,8 @@ export function projectWarSatchelResearch(ownerUid: string, events: readonly War
   const receipts = new Set<string>();
   const reservations = new Map<string, Reservation>();
   const gameVersions = new Set<string>();
+  const activeGames = new Set<string>();
+  const committedGames = new Set<string>();
   const withdrawals = new Map<string, Withdrawal>();
   const tickets = new Map<string, Ticket>();
 
@@ -97,12 +99,15 @@ export function projectWarSatchelResearch(ownerUid: string, events: readonly War
         const gameId = requireId(event.gameId, "canonical game");
         if (!Number.isSafeInteger(event.policyVersion) || event.policyVersion < 1) throw new Error("Invalid policy version");
         const gameVersion = JSON.stringify([gameId, event.policyVersion]);
-        if (reservations.has(reservationId) || gameVersions.has(gameVersion)) throw new Error("Duplicate reservation or game policy");
+        if (reservations.has(reservationId) || gameVersions.has(gameVersion) || activeGames.has(gameId) || committedGames.has(gameId)) {
+          throw new Error("Duplicate reservation or canonical game commitment");
+        }
         if (available < amount) throw new Error("Insufficient available satchel WOLO");
         available -= amount;
         reserved += amount;
-        reservations.set(reservationId, { amount, state: "reserved" });
+        reservations.set(reservationId, { amount, gameId, state: "reserved" });
         gameVersions.add(gameVersion);
+        activeGames.add(gameId);
         break;
       }
       case "release": {
@@ -112,6 +117,7 @@ export function projectWarSatchelResearch(ownerUid: string, events: readonly War
         const reservation = reservations.get(requireId(event.reservationId, "reservation"));
         if (reservation?.state !== "reserved") throw new Error("Reservation is not available to release");
         reservation.state = "released";
+        activeGames.delete(reservation.gameId);
         reserved -= reservation.amount;
         available += reservation.amount; // unmatched returns 100%, no 2% fee
         break;
@@ -122,6 +128,8 @@ export function projectWarSatchelResearch(ownerUid: string, events: readonly War
         const ticketId = requireId(event.acceptedTicketId, "accepted ticket");
         if (tickets.has(ticketId)) throw new Error("Duplicate accepted ticket");
         reservation.state = "committed";
+        activeGames.delete(reservation.gameId);
+        committedGames.add(reservation.gameId);
         reserved -= reservation.amount;
         committed += reservation.amount;
         tickets.set(ticketId, { amount: reservation.amount, refunded: BigInt(0) });
