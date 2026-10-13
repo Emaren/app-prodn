@@ -362,7 +362,7 @@
       "review_interval_days": 60,
       "reviewed_at": "2026-10-07",
       "sensitivity": "internal",
-      "sha256": "e1bd0c533acafcb348b928a037533e528df42b6765a094b84a6d9ec64a3b00b1",
+      "sha256": "5b407951f24163c50556029585d789a64f2f176a16a417cc18a351306c7c4df5",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "91c1b9ebd555365a127ca5029d41b1f3d31d69ce301140362a6c78d78e7819fe",
+      "sha256": "3df40c77311e04126e33208b6828ee22be15014708372e855fd5e26e1d19f6fc",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/leaderboard-disconnect-veto-20261013",
-    "commit": "d42e3ccc726dd0c12c1ddfaa3c2c1c700bd44fea"
+    "branch": "fix/challenge-hall-snapshot-latency-20261013",
+    "commit": "f496034cf309c4b1d746b73f753ef8ea17adafdc"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
