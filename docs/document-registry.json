@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b0277414d6c5383a665383797eb01f901ce4b8c8c805701037d4a167e17c9dd2",
+      "sha256": "c8223230e580ce46d3ef52703bd8f89cab128e4901bb3ec6b46299f49c177e59",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1486,9 +1486,9 @@
       "owner": "aoe2war-web",
       "path": "docs/RELEASE_RECOVERY_OS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-29",
+      "reviewed_at": "2026-10-13",
       "sensitivity": "internal",
-      "sha256": "c9cc090265435790dfb3c81a13a5278b885c92011f9a383e3ef100951d648364",
+      "sha256": "87f67a4bbd896c54fa4be1c5aaf6991e36d04b62bf2df2aaa54a8c4dbd477ed9",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/council-storage-watch-triage-20261013",
-    "commit": "6064e21f1cae5141b2c2ed4065095f08c0781512"
+    "branch": "fix/release-root-shortfall-receipts-20261013",
+    "commit": "a5a76003150be80855fcc69b685d314358c9277f"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
