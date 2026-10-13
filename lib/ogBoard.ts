@@ -78,6 +78,7 @@ type OgBoardRawRow = {
   is_final: boolean;
   parse_source: string;
   parse_reason: string;
+  disconnect_detected: boolean;
 };
 
 function readRecord(value: unknown): Record<string, unknown> {
@@ -155,7 +156,8 @@ export async function loadOgBoardPage(
       parse_iteration,
       is_final,
       parse_source,
-      parse_reason
+      parse_reason,
+      disconnect_detected
     FROM game_stats
     WHERE is_final = true
       AND parse_reason <> 'superseded_by_later_upload'

@@ -243,6 +243,8 @@ async function loadPublicBattleArchivePageFresh(
       createdAt: true,
       parse_reason: true,
       parse_source: true,
+      event_types: true,
+      disconnect_detected: true,
       original_filename: true,
       replay_file: true,
       key_events: true,
