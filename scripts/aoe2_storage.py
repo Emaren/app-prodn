@@ -1176,6 +1176,13 @@ def print_estate(payload: dict[str, Any]) -> None:
 def _assert_local_reclaim_path(home: Path, path: Path) -> None:
     if path.is_symlink():
         raise StorageError(f"refusing symlinked local cache path: {path}")
+    # A symlink at Library/Caches is as dangerous as a symlink at the leaf:
+    # resolving inside $HOME alone does not prove we remain in the cache lane.
+    for ancestor in path.parents:
+        if ancestor == home:
+            break
+        if ancestor.is_symlink():
+            raise StorageError(f"refusing symlinked local cache ancestor: {ancestor}")
     resolved_home = home.resolve()
     resolved = path.resolve()
     if resolved == resolved_home or resolved_home not in resolved.parents:
