@@ -14,7 +14,7 @@ test("GET responds with the authoritative snapshot before commissioner notice re
   const handler = route.slice(getStart, postStart);
   assert.match(handler, /await loadChallengeHubSnapshot\(prisma, viewerUid\)/);
   assert.match(handler, /after\(async \(\) => \{/);
-  assert.doesNotMatch(handler, /await retryChallengeCommissionerNotices\(/);
+  assert.ok(handler.includes('await retryChallengeCommissionerNotices(prisma, challengeIds)'));
   assert.match(handler, /return NextResponse\.json\(payload\)/);
   assert.match(handler, /challengeIds\.length > 0/);
 });
