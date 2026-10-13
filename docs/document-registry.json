@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d52ca86a1317ff7a3843476922cad31b61ceda9cdc2a8c391893383abca85e7d",
+      "sha256": "f62edd65090849afa3c30d59357ca854a9fcd728b571286d641fa4fd7021d03d",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/satchel-one-economic-game-20261013",
-    "commit": "05fdd7f2798e950cde0e26016a34e97beec7f280"
+    "branch": "fix/public-image-optimizer-forge-market-20261013",
+    "commit": "d7536ccf29e5337298885acf66c66749897e47ea"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

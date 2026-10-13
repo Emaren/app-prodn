@@ -39,8 +39,16 @@ module.exports = {
       { pathname: "/api/media-assets/**" },
       { pathname: "/uploads/managed-assets/**" },
       { pathname: "/champions/**" },
+      { pathname: "/academy/**" },
+      { pathname: "/workshop/**" },
+      // Betting Hall contains dynamic bet routes; allow its exact hero image.
+      { pathname: "/bets/betting_hall2.png" },
       { pathname: "/icons/icon-192x192.png" },
       { pathname: "/kingdom/**" },
+      // Both dedicated visual estates use next/image; absent localPatterns
+      // cause optimizer 400s even when the original public files exist.
+      { pathname: "/kingdom-forge/**" },
+      { pathname: "/market/**" },
       { pathname: "/oracle/**" },
       { pathname: "/shorts/**" },
       { pathname: "/legacy/**" },
@@ -118,6 +126,7 @@ module.exports = {
       "featured-warriors",
       "icons",
       "kingdom",
+      "kingdom-forge",
       "legacy",
       "lobby",
       "market",
