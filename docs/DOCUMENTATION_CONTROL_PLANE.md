@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/mecha-auto-bet-e2-20261012` at `8d2a01c86130e80a784928fe4b8813d0b7b3c621`
+Implementation baseline: `feat/mecha-e2-wallet-satchel-clarity-20261012` at `3d9b98732ef7d382d6dd84bf86aa5b6613a91db6`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
