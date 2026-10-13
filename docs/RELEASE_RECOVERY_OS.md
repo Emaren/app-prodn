@@ -186,6 +186,10 @@ the already-proven stage-retirement machinery can reach it.
 
 ### Recovery exhaustion produces an actionable failure receipt
 
+Both read-only Finish planning and the apply capacity preflight identify when
+root capacity is below the configured protected staging target; the dry run
+labels the same approved, bounded recovery that apply will attempt.
+
 The capacity preflight proactively invokes the existing bounded root-recovery
 worker whenever free root space is below the **floor plus configured margin**
 (currently 5.125 GiB), even when the hard 5 GiB release floor has barely been
