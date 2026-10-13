@@ -313,6 +313,40 @@ repair. Verify new tables, hub/detail/chat state, timer authentication, and
 affected financial proofs after certification. Legacy repairs remain explicit
 read-only/idempotent operator procedures; release is not authorization to pay.
 
+## October 13, 2026 — Challenge Hall response-first loading and compact activity
+
+Challenge Hall's owner-scoped `GET /api/challenges` must return its canonical
+snapshot **before** retrying idempotent Commissioner notifications. The retry
+runs using Next.js `after()` with the same bounded set of visible match IDs;
+neither a failing notification service nor repeated notice delivery may hold
+the interactive Challenge page hostage. The separate protected reconciliation
+runner retains its authority for timed/financial state transitions. The GET
+snapshot continues to use existing persistence and settlement authority:
+response-first notification handling does not grant permission to weaken the
+Watcher proof or financial state machine.
+
+An **empty** Challenge runway/history can skip the global live-session
+snapshot: with no ScheduledMatch rows, there is nothing to correlate, promote
+or settle. Nonempty Challenge boards retain normal Watcher/live-session truth.
+The landing-page resolved-history window now includes eight newest records
+rather than 24; the active runway remains separate and complete (up to the
+existing active-query bound). The full resolved ledger stays accessible with
+existing cursor-based `/api/challenges/history` pagination and the owner/admin
+visibility policy is unchanged.
+
+The Recent Challenge Activity card displays approximately two to three rows,
+with a bottom fade. That small preview no longer triggers automatic older
+history fetches via its own intersection sentinel, which previously meant a
+small scrolling tile could turn into an eager deep-history scan. The separate
+full History section remains the existing pagination trigger, and manual
+Load Older behavior is preserved. This is a presentation/performance change,
+not a count deletion, financial action, or change to canonical events.
+
+**Acceptance proof:** exact-head challenge tests, TypeScript, lint, Next
+production build, docs registry and a real page-level latency comparison
+before/after on signed-in and signed-out sessions. Source optimization does
+not by itself establish an instant production response.
+
 ## Performance contract
 
 The Challenge Hall must not load every historical event or RAW record in initial SSR.
