@@ -37,6 +37,37 @@ export function canonicalDirectoryParticipantResult(
   const authority = publicReplayWinnerTruth(game);
   if (!authority.statsEligible) return "unknown";
 
+  // A preserved Watcher row can contain structured participant flags even
+  // after its original result-resolution packet explicitly said "review".
+  // Those raw flags are observations, not independent terminal authority.
+  // A separately accepted stats-only adjudication remains the exception.
+  const acceptedStatsAdjudication =
+    authority.truthReasons.includes("replay_result_adjudication");
+  if (!acceptedStatsAdjudication) {
+    const keyEvents = (() => {
+      const raw = game.key_events ?? game.keyEvents;
+      if (typeof raw === "string") {
+        try { return JSON.parse(raw) as unknown; } catch { return null; }
+      }
+      return raw;
+    })();
+    const key = keyEvents && typeof keyEvents === "object" &&
+      !Array.isArray(keyEvents) ? keyEvents as Record<string, unknown> : {};
+    const rawResolution = key.result_resolution;
+    const resolution = rawResolution && typeof rawResolution === "object" &&
+      !Array.isArray(rawResolution)
+      ? rawResolution as Record<string, unknown> : {};
+    const status = String(resolution.result_status ?? "").toLowerCase();
+    const reason = String(game.parse_reason ?? game.parseReason ?? "").toLowerCase();
+    if (
+      resolution.result_trusted === false ||
+      status === "review_required" ||
+      reason === "watcher_final_unparsed" ||
+      reason === "hd_final_parse_match_fallback" ||
+      reason.startsWith("watcher_inferred_")
+    ) return "unknown";
+  }
+
   const steamId = normalizeLeaderboardSteamId(snapshot.steamId);
   const slot = snapshot.playerSlot;
   const name = normalizeLeaderboardIdentityName(snapshot.normalizedName);
