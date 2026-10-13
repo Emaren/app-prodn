@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { createChampionshipChallenge } from "@/lib/championshipChallenges";
 
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 
 import { Prisma } from "@/lib/generated/prisma";
 
@@ -199,11 +199,19 @@ export async function GET(request: NextRequest) {
     const prisma = getPrisma();
     const viewerUid = await getSessionUid(request);
     const payload = await loadChallengeHubSnapshot(prisma, viewerUid);
+    // Deliver the authoritative read snapshot immediately. Commissioner notice
+    // retries are idempotent follow-up maintenance, not part of GET response
+    // correctness; Next.js after() runs them after the response is sent.
     if (process.env.AOE2WAR_PROD_DB_PREVIEW !== "true") {
-      await retryChallengeCommissionerNotices(prisma, [
+      const challengeIds = [
         ...payload.scheduledMatches.map((match) => match.id),
         ...payload.historyMatches.map((match) => match.id),
-      ]);
+      ];
+      if (challengeIds.length > 0) {
+        after(async () => {
+          await retryChallengeCommissionerNotices(prisma, challengeIds);
+        });
+      }
     }
     return NextResponse.json(payload);
   } catch (error) {
