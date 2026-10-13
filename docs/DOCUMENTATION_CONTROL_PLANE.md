@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/mecha-e2-wallet-satchel-clarity-20261012` at `3d9b98732ef7d382d6dd84bf86aa5b6613a91db6`
+Implementation baseline: `hotfix/profile-query-provider-20261013` at `a5ecf00d9163e39450f77ded0056ff4d13f95024`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
