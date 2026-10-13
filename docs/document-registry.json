@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "bc89bccf277013c541ff7bcff4d43b43c565a61970d4ac3f2fcf8acb3a74bdf6",
+      "sha256": "9a41acfdc25042fd7ea9b8686a0a681238a58630fbc13e401fecb0c517294f6a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -983,7 +983,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-07-28",
       "sensitivity": "internal",
-      "sha256": "863882224db4f22a438c476f29ca96f9a8552c3908a1352c8aeedbbc0f9edfeb",
+      "sha256": "300db1bca5f5b00774a7228fe5ce6acf3ce11c9eabd0089ac56319745c8452d4",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2094,7 +2094,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/replay-directory-canonical-veto-20261013",
-    "commit": "09bf6739e8e909405de1445c8ac66252d47b45fa"
+    "commit": "31a67b840b1c2229d099d206984c5790d299220a"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
