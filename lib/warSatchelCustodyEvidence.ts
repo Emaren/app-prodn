@@ -65,7 +65,7 @@ function naturalHeight(raw: string, label: string): bigint {
   return height;
 }
 function isoTime(raw: string, label: string): number {
-  enforce(typeof raw === "string" && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,3})?Z$/.test(raw), "invalid " + label);
+  enforce(typeof raw === "string" && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{1,9})?Z$/.test(raw), "invalid " + label);
   const time = Date.parse(raw);
   enforce(Number.isFinite(time), "invalid " + label);
   return time;
@@ -138,7 +138,10 @@ export function examineSatchelDepositEvidence(input: {
   enforce(tx.matched_transfer != null &&
     transfer.sender === intent.senderAddress && transfer.recipient === intent.vaultAddress &&
     transfer.amount === intent.amountUwolo && transfer.denom === SATCHEL_PROOF_DENOM &&
-    JSON.stringify(tx.matched_transfer) === JSON.stringify(transfer), "indexed uwolo transfer mismatch");
+    tx.matched_transfer.sender === transfer.sender &&
+    tx.matched_transfer.recipient === transfer.recipient &&
+    tx.matched_transfer.amount === transfer.amount &&
+    tx.matched_transfer.denom === transfer.denom, "indexed uwolo transfer mismatch");
 
   return Object.freeze({
     kind: "uncredited_deposit_candidate" as const,
