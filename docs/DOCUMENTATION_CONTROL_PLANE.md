@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/replay-other-public-veto-surfaces-20261013` at `57c9e0187d9fc568743e32c946996fa40f577e34`
+Implementation baseline: `fix/replay-directory-canonical-veto-20261013` at `34ce33a399c014244597d115966c08f23a05da82`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

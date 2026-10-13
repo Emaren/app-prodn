@@ -27,6 +27,38 @@ AoE2WAR has two first-class HD leaderboard routes backed by current production d
 
 The homepage leaderboard chrome and the shared Kingdom menu open the modern board. Both leaderboard pages link directly to the other view.
 
+## October 13, 2026 — accepted snapshot vs current participant truth
+
+Replay Truth VIII demonstrated an additional result-authority leak in the
+public player directory: an old `replayPlayerSnapshot` with accepted aggregate
+eligibility could still contribute stored `win` or `loss` even after its
+source battle acquired a persisted disconnect or untrusted-team veto.
+`lib/publicPlayerDirectory.ts` supplies this directory to
+`lib/lobbyLeaderboard.ts`. The earlier query fixes #527/#529 did not by
+themselves correct accepted snapshot aggregation.
+
+`canonicalDirectoryParticipantResult` now requires **both** accepted
+snapshot eligibility and a current independently eligible public replay
+result, then verifies the matched current participant with the existing
+canonical player/side resolver. Exact Steam ID takes precedence over display
+names; duplicate identity or a changed winner/side fails closed to
+`unknown`. An explicitly untrusted or review-required terminal packet also
+vetoes stale player flags, except when a separate accepted statistics-only
+adjudication supplies authoritative evidence. It does not alter the replay snapshot, user identity, ELO
+authority, accepted adjudication ledger, Bet Escrow or WOLO. Legitimate
+independent stats-only result adjudications continue through the existing
+public and participant adjudication projectors.
+
+Codex's source-bound eight-game Zodiac discrepancy is #23829, #24666,
+#25892, #25985, #25994, #26028, #29091 and #41041. The first, second,
+fifth, sixth and seventh have disconnect/desync counterevidence; the remaining
+three have untrusted team result. Their old snapshot outcomes are evidence,
+**not permission to count a resolved public win or loss**. Deploy and run a
+fresh current-generation exact-account census before asserting a changed
+public total. Results verified remain 4,014/5,647, Full Battle Truth
+3,868/5,647 at the Codex Phase VIII 13:58 MDT observation; no new winners
+were recovered or promoted.
+
 ## October 13, 2026 — canonical disconnect veto in ranked W/L
 
 The modern leaderboard's paginated raw game corpus
