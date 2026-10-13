@@ -3826,10 +3826,10 @@ export async function loadChallengeHubSnapshot(
     }),
     loadChallengeHistoryRows(prisma, viewer.id, viewer.isAdmin),
   ]);
-  const sessionSnapshot =
+  const sessionSnapshotPromise =
     historySnapshot.rows.length > 0
-      ? await loadLiveSessionSnapshot(prisma)
-      : { activeSessions: [], recentlyCompletedSessions: [] };
+      ? loadLiveSessionSnapshot(prisma)
+      : Promise.resolve({ activeSessions: [], recentlyCompletedSessions: [] });
 
   const challengeUsers = new Map<number, ChallengeUserRow>();
   challengeUsers.set(viewer.id, viewer);
@@ -3838,11 +3838,16 @@ export async function loadChallengeHubSnapshot(
     challengeUsers.set(row.challenger.id, row.challenger);
     challengeUsers.set(row.challenged.id, row.challenged);
   }
-  const watcherReadinessByUserId = await loadChallengeWatcherReadinessByUserId(
-    prisma,
-    [...challengeUsers.keys()],
-    new Date(nowIso),
-  );
+  // Watcher-readiness and session correlation are independent queries.
+  // Start both concurrently rather than serializing the signed-in board.
+  const [sessionSnapshot, watcherReadinessByUserId] = await Promise.all([
+    sessionSnapshotPromise,
+    loadChallengeWatcherReadinessByUserId(
+      prisma,
+      [...challengeUsers.keys()],
+      new Date(nowIso),
+    ),
+  ]);
   const watcherReadinessByUid = new Map(
     [...challengeUsers.values()].map((user) => [
       user.uid,
