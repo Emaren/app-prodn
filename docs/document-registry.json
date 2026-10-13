@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6191e97fefd253187ef3a5b399dd0f427b4843c2cc670d3d7dc5e4af044d29de",
+      "sha256": "7238e96cae2fd98dc3d0758e64340bcb14e5d7bacbf887359eb1d75a2632456c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1442,7 +1442,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-29",
       "sensitivity": "internal",
-      "sha256": "9c9ecdf814ff639e85fab032120181bdf481b26ef4fcd2a714f3cc7c480ed7a0",
+      "sha256": "648af026a9cbab7ac1cf72b20eb810e68008d814e16699bf5958f7353ac141eb",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "hotfix/profile-query-provider-20261013",
-    "commit": "a5ecf00d9163e39450f77ded0056ff4d13f95024"
+    "branch": "test/profile-runtime-query-boundary-20261013",
+    "commit": "1358d918f594bc8e0ea7066ee9ffa036e7e24e98"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
