@@ -20,8 +20,9 @@ test("GET responds with the authoritative snapshot before commissioner notice re
 });
 
 test("empty challenge board requires neither live-session polling nor reconciliation writes", () => {
-  assert.match(service, /historySnapshot\.rows\.length > 0\s*\? await loadLiveSessionSnapshot\(prisma\)/);
+  assert.match(service, /historySnapshot\.rows\.length > 0\s*\? loadLiveSessionSnapshot\(prisma\)/);
   assert.match(service, /\{ activeSessions: \[\], recentlyCompletedSessions: \[\] \}/);
+  assert.match(service, /const \\[sessionSnapshot, watcherReadinessByUserId\\] = await Promise\\.all/);
   assert.match(service, /INITIAL_CHALLENGE_HISTORY_LIMIT = 8/);
   assert.match(service, /if \(scheduledMatchIds\.length === 0\)/);
 });
