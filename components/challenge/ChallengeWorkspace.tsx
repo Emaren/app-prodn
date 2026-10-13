@@ -503,10 +503,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyAutoLoadFailed, setHistoryAutoLoadFailed] = useState(false);
   const historyLoadingRef = useRef(false);
-  const activityScrollRef = useRef<HTMLDivElement | null>(null);
-  const activitySentinelRef = useRef<HTMLDivElement | null>(null);
-  const historyScrollRef = useRef<HTMLDivElement | null>(null);
-  const historySentinelRef = useRef<HTMLDivElement | null>(null);
+
   const requestedTitle = searchParams.get("title");
   const requestedKind = searchParams.get("kind");
   const requestedCountry = searchParams.get("country");
@@ -1145,41 +1142,10 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
     }
   }, [historyHasMore, historyNextCursor]);
 
-  useEffect(() => {
-    if (!historyHasMore || historyAutoLoadFailed) return;
+  // Challenge history stays on explicit user demand. Two independent scroll
+  // observers previously caused opportunistic pagination during initial render,
+  // including when the short activity panel was immediately in view.
 
-    if (!historyNextCursor) {
-      setHistoryAutoLoadFailed(true);
-      return;
-    }
-
-    if (typeof IntersectionObserver === "undefined") {
-      setHistoryAutoLoadFailed(true);
-      return;
-    }
-
-    const observers: IntersectionObserver[] = [];
-    const observe = (root: HTMLDivElement | null, target: HTMLDivElement | null) => {
-      if (!root || !target) return;
-      const observer = new IntersectionObserver(
-        (entries) => {
-          if (entries.some((entry) => entry.isIntersecting)) {
-            void loadOlderHistory();
-          }
-        },
-        { root, rootMargin: "0px 0px 240px 0px", threshold: 0.01 }
-      );
-      observer.observe(target);
-      observers.push(observer);
-    };
-
-    observe(activityScrollRef.current, activitySentinelRef.current);
-    observe(historyScrollRef.current, historySentinelRef.current);
-
-    return () => {
-      for (const observer of observers) observer.disconnect();
-    };
-  }, [historyAutoLoadFailed, historyHasMore, historyNextCursor, loadOlderHistory]);
 
   async function updatePreference(
     challengeId: number,
@@ -2279,8 +2245,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
             </div>
 
             <div
-              ref={activityScrollRef}
-              className="mt-5 max-h-[36rem] space-y-3 overflow-y-auto overscroll-contain scroll-smooth pr-1"
+              className="mt-5 max-h-[13.25rem] space-y-3 overflow-y-auto overscroll-contain scroll-smooth pr-1 [mask-image:linear-gradient(to_bottom,black_0%,black_74%,transparent_100%)]"
             >
               {recentChallengeRecords.length === 0 ? (
                 <div className="rounded-2xl border border-white/10 bg-white/5 px-4 py-5 text-sm text-slate-300">
@@ -2328,8 +2293,8 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                   Loading older challenge activity…
                 </div>
               ) : null}
-              <div ref={activitySentinelRef} aria-hidden className="h-px w-full" />
-              {historyHasMore && historyAutoLoadFailed ? (
+
+              {historyHasMore ? (
                 <button
                   type="button"
                   onClick={() => void loadOlderHistory()}
@@ -2360,7 +2325,7 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
             </div>
 
             <div
-              ref={historyScrollRef}
+
               className="mt-5 max-h-[36rem] min-w-0 space-y-4 overflow-y-auto overscroll-contain scroll-smooth pr-1"
             >
               {historyMatches.length === 0 ? (
@@ -2395,8 +2360,8 @@ export default function ChallengeWorkspace({ initialFocusId = null }: ChallengeW
                   Loading older challenges…
                 </div>
               ) : null}
-              <div ref={historySentinelRef} aria-hidden className="h-px w-full" />
-              {historyHasMore && historyAutoLoadFailed ? (
+
+              {historyHasMore ? (
                 <button
                   type="button"
                   onClick={() => void loadOlderHistory()}

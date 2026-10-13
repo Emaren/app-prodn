@@ -42,13 +42,17 @@ test("challenge ledger pagination is stable by descending Match ID and follows A
   assert.match(workspaceSource, /sort\(\(left, right\) => right\.challengeId - left\.challengeId\)/);
 });
 
-test("challenge history and activity auto-load without truncating events before grouping", () => {
+test("challenge activity is compact and historical pagination is explicit, without truncating underlying events", () => {
   assert.doesNotMatch(challengesSource, /return items\.slice\(/);
   assert.match(historyRouteSource, /activities: page\.activities/);
-  assert.match(workspaceSource, /new IntersectionObserver/);
-  assert.match(workspaceSource, /ref=\{activitySentinelRef\}/);
-  assert.match(workspaceSource, /ref=\{historySentinelRef\}/);
-  assert.match(workspaceSource, /historyHasMore && historyAutoLoadFailed/);
+  assert.match(challengesSource, /INITIAL_CHALLENGE_HISTORY_LIMIT = 8/);
+  assert.match(challengesSource, /activeRows, resolvedRows/);
+  assert.match(workspaceSource, /max-h-\[13\.25rem\]/);
+  assert.match(workspaceSource, /mask-image:linear-gradient/);
+  assert.doesNotMatch(workspaceSource, /new IntersectionObserver/);
+  assert.doesNotMatch(workspaceSource, /activitySentinelRef|historySentinelRef/);
+  assert.match(workspaceSource, /historyHasMore \? \(/);
+  assert.match(workspaceSource, /onClick=\{\(\) => void loadOlderHistory\(\)\}/);
 
   const groupedActivitySource = workspaceSource.slice(
     workspaceSource.indexOf("const recentChallengeRecords"),
