@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "38a5ef73baef80719057a07669ed241cc3a6a8881386dabef4e560587a92aa0a",
+      "sha256": "2e80e500a2ebe7ccddbb3d0b4140c74e4619acd778f7d3918a450e1f5c7a2b97",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1488,7 +1488,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-13",
       "sensitivity": "internal",
-      "sha256": "f134c0b56f416d6420cef237278e1a92cc4b9f064108c47c37822d10e1585ac5",
+      "sha256": "2232f7643a4aaa9a19477fb26b949eeaf1395d41bcbc865718e0ec2cbdaa2fba",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2094,7 +2094,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/release-root-shortfall-receipts-20261013",
-    "commit": "dfd1d22c4514d06d3f65f31a474d0ac30859893f"
+    "commit": "77b1d69b40dc4d4d3088213591b00762ea2bb135"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
