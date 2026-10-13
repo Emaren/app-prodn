@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c5cc29b5c78abdbade60ea8973ba5d6fde5074d449fdc616df2a76adf4763a26",
+      "sha256": "bc89bccf277013c541ff7bcff4d43b43c565a61970d4ac3f2fcf8acb3a74bdf6",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2094,7 +2094,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/replay-directory-canonical-veto-20261013",
-    "commit": "78dbb7f511a3b3f82a5db44a1187cfd81f121096"
+    "commit": "09bf6739e8e909405de1445c8ac66252d47b45fa"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
