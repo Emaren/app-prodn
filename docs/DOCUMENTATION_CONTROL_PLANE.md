@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/satchel-one-economic-game-20261013` at `05fdd7f2798e950cde0e26016a34e97beec7f280`
+Implementation baseline: `fix/public-image-optimizer-forge-market-20261013` at `21d62e5de5cb0f92c3bec8c5bd156aedbf1b1ac8`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
