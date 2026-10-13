@@ -58,6 +58,31 @@ live effective result/team coverage separately from private Engine Room
 candidate coverage. The page is read-only: it cannot promote candidates,
 adjudicate games, settle markets, or change chain history.
 
+## October 13, 2026 — last public replay read surfaces
+
+The remaining Replay Truth VIII source boundary audit found three separate
+app readers omitting persisted `GameStats.disconnect_detected`:
+
+- The paginated `lib/publicBattleArchive.ts` Prisma selection lacked both the
+  final disconnect flag and `event_types`, despite relying on
+  `cleanPublicGameRows` for canonical result presentation.
+- The `lib/ogBoard.ts` raw SQL returned an otherwise complete final replay
+  without `disconnect_detected`. The outgoing OG battle cards must never
+  reintroduce a winner removed from Workshop truth.
+- The `lib/replayReviewQueue.ts` query did not explicitly nominate
+  disconnect-tagged old final rows; its direct resolver and classifier also
+  omitted the stored flag/finality. A legacy scalar winner must not hide a
+  review candidate with confirmed desync counterevidence.
+
+Each of these readers now selects and propagates the original evidence.
+No adjudication record, game row, payout, manual Wolo claim, market, leaderboard
+rating or financial state is updated. These are read-only display/review
+consistency fixes, **not new verified winners**. Codex Phase VIII truth remains
+4,014 / 5,647 known logical outcomes and 3,868 / 5,647 Full Battle Truth at
+the source-bound October 13 observation. Protected Finish and a fresh
+post-deploy multi-surface snapshot are required before claiming the deployed
+counts and review queue have converged.
+
 ## October 13, 2026 — disconnect-veto projection correction
 
 The Workshop and public/owner Parser Observatory projections consume final

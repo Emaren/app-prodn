@@ -695,6 +695,8 @@ export async function loadReplayReviewQueue(
       is_final: true,
       OR: [
         { winner: null },
+        { disconnect_detected: true },
+        // A historic scalar/snapshot winner does not suppress a stored veto.
         { winner: { in: ["", "Unknown", "UNKNOWN", "unknown", "N/A", "na"] } },
         { parse_reason: { startsWith: "watcher_inferred_" } },
         { parse_reason: { in: ["watcher_final_unparsed", "hd_final_parse_match_fallback"] } },
@@ -721,6 +723,8 @@ export async function loadReplayReviewQueue(
       parse_iteration: true,
       parse_source: true,
       parse_reason: true,
+      is_final: true,
+      disconnect_detected: true,
       userUid: true,
       user: {
         select: {
@@ -775,6 +779,8 @@ export async function loadReplayReviewQueue(
       parseSource: row.parse_source,
       keyEvents: row.key_events,
       eventTypes: row.event_types,
+      isFinal: row.is_final,
+      disconnectDetected: row.disconnect_detected,
     });
     if (
       winnerTruth.statsEligible &&
@@ -844,6 +850,9 @@ export async function loadReplayReviewQueue(
         parseReason: row.parse_reason,
         parseSource: row.parse_source,
         keyEvents: row.key_events,
+        eventTypes: row.event_types,
+        isFinal: row.is_final,
+        disconnectDetected: row.disconnect_detected,
         finalAccepted: true,
         watcherCount: 1,
       }) ?? {
