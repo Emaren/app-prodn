@@ -178,6 +178,9 @@ async function loadCorpusRows() {
       key_events: true,
       parse_source: true,
       parse_reason: true,
+      // Replay result truth must include the original disconnect/desync veto.
+      // Omitting this field can falsely promote watcher_final scalar winners.
+      disconnect_detected: true,
       played_on: true,
       timestamp: true,
       createdAt: true,
@@ -821,6 +824,9 @@ export async function loadViewerParserVault(uid: string | null) {
       key_events: true,
       parse_source: true,
       parse_reason: true,
+      // Replay result truth must include the original disconnect/desync veto.
+      // Omitting this field can falsely promote watcher_final scalar winners.
+      disconnect_detected: true,
       played_on: true,
       timestamp: true,
       createdAt: true,
