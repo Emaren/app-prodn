@@ -134,6 +134,28 @@ class ReleaseGateTests(unittest.TestCase):
         self.assertNotIn("eslint-full", labels)
 
 
+    def test_lint_runs_before_expensive_contracts_without_skipping_them(self):
+        for path, lint_label in (
+            ("components/challenge/ChallengeWorkspace.tsx", "eslint-changed"),
+            ("eslint.config.mjs", "eslint-full"),
+        ):
+            with self.subTest(path=path):
+                scope = {
+                    "mode": "committed",
+                    "base_sha": "a" * 40,
+                    "target_sha": "b" * 40,
+                    "changed_files": [path],
+                }
+                plan = MODULE.command_plan(scope, "APPLICATION")
+                labels = [label for label, _args, _timeout in plan]
+                self.assertEqual(labels.count(lint_label), 1)
+                for contract in ("active-node-test-contract", "active-python-test-contract"):
+                    self.assertIn(contract, labels)
+                    self.assertLess(labels.index(lint_label), labels.index(contract))
+                self.assertLess(labels.index("tracked-secret-scan"), labels.index(lint_label))
+                self.assertIn("typescript", labels)
+
+
     def test_storage_os_is_infrastructure_risk(self):
         self.assertEqual(
             MODULE.path_risk("scripts/aoe2_storage.py"),

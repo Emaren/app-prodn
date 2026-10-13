@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "84f13f75e9ce99080a11ff40d4a9a384789694a12956e4fc34f4b7efe516a00c",
+      "sha256": "1187c7d7b8e4bd2b2e4a29a9ae81219ad129a3ab9bf204e6c438728e7abbad32",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/challenge-history-unused-state-20261013",
-    "commit": "42e0cd88f6a514a7254294dc5eec1ae112619f0d"
+    "branch": "perf/release-gate-lint-preflight-rebased-20261013",
+    "commit": "bb99d719a3d1ee2b530300e864b58a0858c378e9"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
