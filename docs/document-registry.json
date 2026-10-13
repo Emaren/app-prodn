@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "fa94f9d0335ffa30d85dc7f6d317984a2e769b6b60e653c940579afa76e7e4b4",
+      "sha256": "b0277414d6c5383a665383797eb01f901ce4b8c8c805701037d4a167e17c9dd2",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1694,7 +1694,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-13",
       "sensitivity": "internal",
-      "sha256": "cec8b29fdb1753b8a23d1a74daa3f03c912018c09643096668131e9b576d3d3c",
+      "sha256": "dff2b0fb5bf19143d81539025df8d1c19b5d2e48161e96a569470b6c82e5950b",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/storage-os-capacity-triage-20261013",
-    "commit": "dcd194bff78e5d911192b0c86bd91dc8c410a5d7"
+    "branch": "fix/council-storage-watch-triage-20261013",
+    "commit": "6064e21f1cae5141b2c2ed4065095f08c0781512"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

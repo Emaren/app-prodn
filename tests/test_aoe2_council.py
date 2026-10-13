@@ -33,6 +33,32 @@ class CouncilTests(unittest.TestCase):
             payload = council.collect()
         self.assertEqual(payload["release_snapshot"], release_snapshot)
 
+    def test_watch_storage_recommends_triage_not_archival_apply(self):
+        common = dict(
+            audit={"p0": 0, "p1": 0},
+            doctor={},
+            host={"failed_transient": 0},
+            recovery={"status": "VERIFIED"},
+            workspace={"cleanup_candidates": [], "orphans": []},
+            pulse={"status": "PASS"},
+            due_docs=0,
+            ready={"ready_routes": 0, "baseline_routes": 0},
+            architecture=[],
+        )
+        watch = council.build_recommendations(
+            **common, storage={"health": "WATCH", "used_percent": 79.7}
+        )
+        watch_row = next(row for row in watch if row["key"] == "storage-health")
+        self.assertEqual(watch_row["action"], "aoe2war storage triage --json")
+        due = council.build_recommendations(
+            **common, storage={"health": "MAINTENANCE_DUE", "used_percent": 83}
+        )
+        due_row = next(row for row in due if row["key"] == "storage-health")
+        self.assertEqual(
+            due_row["action"],
+            "aoe2war storage maintain --apply --until-target --max-generations 25",
+        )
+
     def test_recovery_gap_ranks_ahead_of_reboot(self):
         recs = council.build_recommendations(
             audit={"p0": 0, "p1": 0},

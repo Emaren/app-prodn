@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/storage-os-capacity-triage-20261013` at `dcd194bff78e5d911192b0c86bd91dc8c410a5d7`
+Implementation baseline: `fix/council-storage-watch-triage-20261013` at `6064e21f1cae5141b2c2ed4065095f08c0781512`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
