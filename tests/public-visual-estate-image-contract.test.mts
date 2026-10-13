@@ -17,6 +17,9 @@ const visualPaths = [
   "/kingdom-forge/round-chamber.jpg",
   "/kingdom-forge/tournament-engine.jpg",
   "/market/agora-marketplace.webp",
+  "/academy/the-academy-title-fresh-23fc015f-lossless.webp",
+  "/workshop/workshop-observatory-hero.webp",
+  "/bets/betting_hall2.png",
 ] as const;
 
 test("visual estates are allowed by the actual Next image optimizer config", () => {
@@ -40,6 +43,8 @@ test("all Marketplace and Kingdom Forge referenced hero/project images are real 
     assert.ok(data.length > 10_000, `missing or suspiciously empty artwork: ${src}`);
     if (src.endsWith(".jpg")) {
       assert.equal(data.subarray(0, 3).toString("hex"), "ffd8ff", `invalid JPEG image: ${src}`);
+    } else if (src.endsWith(".png")) {
+      assert.equal(data.subarray(0, 8).toString("hex"), "89504e470d0a1a0a", `invalid PNG image: ${src}`);
     } else {
       assert.equal(data.subarray(0, 4).toString(), "RIFF", `invalid WebP RIFF container: ${src}`);
       assert.equal(data.subarray(8, 12).toString(), "WEBP", `invalid WebP bytes: ${src}`);
