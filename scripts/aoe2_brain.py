@@ -705,7 +705,7 @@ def brain_recommendations(
                     "reason": (
                         f"Storage health={storage_health or 'ATTENTION'} "
                         f"used={storage_used if storage_used is not None else 'unknown'}; "
-                        (
+                        + (
                             "WATCH alone does not authorize archival; inspect Mac, "
                             "root and mounted-volume debt separately before Finish."
                             if needs_diagnosis else
