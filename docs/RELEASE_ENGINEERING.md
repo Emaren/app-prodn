@@ -411,6 +411,25 @@ writable production-shaped shadow before release. The Direct/Nav Chat
 reaction/reply/edit fix is the reference example: source tests were green before
 a real browser proof exposed the missing data and event-lifecycle requirements.
 
+### Authenticated Mecha E2 runtime-provider regression
+
+The E2 wallet panel initially passed static TypeScript/source tests but crashed
+on the authenticated `/profile` route because TanStack Query had no
+`QueryClientProvider`. A negative/positive **actual React render** regression
+now runs inside the active Node test contract
+(`tests/profile-query-runtime.test.mts`). It transpiles and renders the
+production E2 component, production `useWoloBalance` hook, and actual
+`app/profile/layout.tsx`/`app/Providers.tsx` ancestry; wallet connection is
+stubbed offline. The negative control **must throw** `No QueryClient set` when
+the provider is absent; the real layout must render all three E2 money-state
+areas without exceptions. No chain or login credentials are used.
+
+This contract is an important **pre-certification release gate**, but its
+server-side render is NOT a substitute for an authenticated Chrome smoke:
+client hydration, user interactions, persistence and browser-only behavior
+still require the separate real-browser work tracked under issue #519. Do not
+claim the browser stage is implemented or certified by this component test.
+
 ## Interactive operator recovery discipline
 
 The release engine already owns fail-closed validation, locking, staging,
