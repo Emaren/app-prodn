@@ -1097,6 +1097,29 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
                 )
             )
 
+    def test_plan_recovery_predicate_accepts_staging_margin_pressure(self):
+        with mock.patch.object(
+            MODULE.aoe2_doctor,
+            "load_contract",
+            return_value=self.contract(),
+        ):
+            above_floor = self.snapshot()
+            above_floor["root"]["available_bytes"] = int(5.03 * 1024 ** 3)
+            self.assertTrue(MODULE.root_headroom_plan_recovery_available(
+                above_floor, self.production()
+            ))
+            healthy = self.snapshot()
+            healthy["root"]["available_bytes"] = 6 * 1024 ** 3
+            self.assertFalse(MODULE.root_headroom_plan_recovery_available(
+                healthy, self.production()
+            ))
+
+    def test_finish_plan_communicates_preflight_margin_recovery(self):
+        import inspect
+        source = inspect.getsource(MODULE.plan_payload)
+        self.assertIn("root_below_recovery_target(capacity_snapshot)", source)
+        self.assertIn("restore the protected ", source)
+
     def test_plan_recovery_predicate_rejects_unsafe_wolo(self):
         production = self.production()
         production["wolo_8093_count"] = 0
