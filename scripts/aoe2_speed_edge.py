@@ -2026,15 +2026,21 @@ def probe_featured_avatar_fallback_same_connection(
     command = [
         "curl", "-sS", "--compressed", "--connect-timeout", "10",
         "--max-time", "25", "-H", f"Accept: {ASSET_FALLBACK_ACCEPT}",
-        "-D", "-", "-o", "/dev/null",
+        "-D", "-",
         "-w", f"\n{marker}%{{http_code}}|%{{num_connects}}\n",
-        *([target] * repeats),
+        # Curl's -o applies to ONE URL, not the entire URL list. Repeating
+        # just the URL prints subsequent binary images to stdout, where
+        # text=True raises UnicodeDecodeError before cache evidence exists.
+        *[arg for _ in range(repeats) for arg in ("-o", "/dev/null", target)],
     ]
     try:
         proc = (run_fn or subprocess.run)(
             command, cwd=ROOT, text=True, stdout=subprocess.PIPE,
             stderr=subprocess.PIPE, timeout=145, check=False,
         )
+    except UnicodeError:
+        # Unexpected undecodable output must fail closed, never count as HIT.
+        return {"ok": False, "status": "PROBE_OUTPUT_DECODE_ERROR", "rows": []}
     except (OSError, subprocess.TimeoutExpired):
         return {"ok": False, "status": "PROBE_UNAVAILABLE", "rows": []}
     if proc.returncode != 0:
