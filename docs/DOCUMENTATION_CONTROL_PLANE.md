@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/satchel-durable-ledger-gate-b-20261013` at `3790ffedda1040efa250ad15c918e9279ef31d3d`
+Implementation baseline: `feat/satchel-durable-ledger-gate-b-20261013` at `b6b04c74e8f4488d2a356b2230a5040c569b41b6`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
