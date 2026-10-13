@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/council-storage-watch-triage-20261013` at `6064e21f1cae5141b2c2ed4065095f08c0781512`
+Implementation baseline: `fix/release-root-shortfall-receipts-20261013` at `77b1d69b40dc4d4d3088213591b00762ea2bb135`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

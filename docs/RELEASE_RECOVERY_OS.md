@@ -184,6 +184,42 @@ bounded root recovery may continue.
 This ordering prevents a superseded one-GiB stage from blocking Finish before
 the already-proven stage-retirement machinery can reach it.
 
+### Recovery exhaustion produces an actionable failure receipt
+
+Both read-only Finish planning and the apply capacity preflight identify when
+root capacity is below the configured protected staging target; the dry run
+labels the same approved, bounded recovery that apply will attempt.
+
+The capacity preflight proactively invokes the existing bounded root-recovery
+worker whenever free root space is below the **floor plus configured margin**
+(currently 5.125 GiB), even when the hard 5 GiB release floor has barely been
+reached. This allows ordinary nginx log rotation to create closed `.log.1`
+candidates for the already-approved hashed archival tier before staging.
+Nginx rotation uses its own configured schedule/size rules; Finish itself does
+not force log rotation, restart nginx, or promote live logs to deletion.
+
+When every approved root-reclaim class is exhausted below the configured
+recovery target, the worker seals an `INSUFFICIENT` receipt under
+`<volume>/aoe2war/root-headroom-recoveries/<UTC>/recovery.txt` with
+`RECOVERY_SHA256`, before refusing the deployment.
+
+The Finish error reports exact remaining MiB, free/target GiB, and the
+validated receipt path. It must not report a successful deployment merely
+because the root release floor was briefly crossed while the bounded
+128-MiB hysteresis target remained unmet.
+
+Read `apt_reclaimed_kb`, `snap_reclaimed_kb`,
+`journal_reclaimed_kb`, `nginx_reclaimed_kb`,
+`system_log_reclaimed_kb`, and `fast_rollback_reclaimed_kb`
+from that receipt. Distinguish inactive Snap revision removal from the
+separate `/var/lib/snapd/cache` download cache, which is currently
+**review-only, not auto-reclaim-authorized**. Distinguish live nginx logs
+from already-closed, SHA-sealed rotated log candidates.
+
+The operator must identify and approve a further precise recovery class
+if warranted; broad filesystem deletion and reduced safety thresholds
+are not acceptable alternatives.
+
 ## Bounded root-headroom recovery
 
 The configured release floor remains authoritative. When root capacity is below

@@ -1326,7 +1326,7 @@ def root_headroom_plan_recovery_available(
     if not bool(finish.get("auto_root_headroom_recovery", False)):
         return False
 
-    if not root_below_release_floor(snapshot):
+    if not root_below_recovery_target(snapshot):
         return False
 
     volume_critical = float(
@@ -1396,6 +1396,21 @@ def root_headroom_recovery_target_bytes() -> int:
         )
 
     return target
+
+
+
+def root_below_recovery_target(snapshot: dict[str, Any]) -> bool:
+    """Preflight against bounded staging margin, not merely the hard floor.
+
+    Crossing the hard 5 GiB floor while remaining below the 5.125 GiB target
+    is not sufficient release headroom. Reuse the existing proof-gated root
+    worker; the worker itself independently rechecks root, source, BUILD_ID,
+    web service and protected Wolo listener authority before any mutation.
+    """
+    return (
+        int(snapshot["root"]["available_bytes"])
+        < root_headroom_recovery_target_bytes()
+    )
 
 
 def verified_fast_rollback_headroom_tier_script() -> str:
@@ -2561,10 +2576,49 @@ def recover_root_headroom(
 
     if rc != 0:
         if result.get("status") == "INSUFFICIENT":
+            # The remote worker has already sealed a durable failure receipt.
+            # Preserve the exact target/actual gap and custody location in
+            # the operator-facing error so we never repeat an opaque recovery
+            # run or suggest generic deletion of protected evidence.
+            target_kb = (
+                root_headroom_recovery_target_bytes() + 1023
+            ) // 1024
+            try:
+                after_kb = int(result["after_kb"])
+                before_kb = int(result["before_kb"])
+                if before_kb < 0 or after_kb < 0:
+                    raise ValueError("negative capacity")
+            except (KeyError, TypeError, ValueError) as exc:
+                raise FinishError(
+                    "bounded root-headroom recovery reported insufficient "
+                    "capacity but returned invalid measurement evidence"
+                ) from exc
+            receipt_dir = str(result.get("receipt_dir") or "")
+            receipt_root = (
+                str(contract["canonical"]["volume_mount"])
+                + "/aoe2war/root-headroom-recoveries/"
+            )
+            if not (
+                receipt_dir.startswith(receipt_root)
+                and re.fullmatch(
+                    r"[0-9]{8}T[0-9]{6}Z",
+                    receipt_dir[len(receipt_root):],
+                )
+            ):
+                raise FinishError(
+                    "bounded root-headroom recovery is insufficient but "
+                    "returned an invalid recovery receipt path"
+                )
+            needed_kb = max(0, target_kb - after_kb)
             raise FinishError(
-                "bounded root-headroom recovery exhausted "
-                "approved reclaim classes but the recovery "
-                "target is still unmet"
+                "bounded root-headroom recovery exhausted approved reclaim "
+                "classes; "
+                f"remaining shortfall={needed_kb / 1024:.1f} MiB, "
+                f"free={after_kb / 1024 / 1024:.3f} GiB, "
+                f"target={target_kb / 1024 / 1024:.3f} GiB; "
+                f"sealed evidence: {receipt_dir}/recovery.txt "
+                "(inspect the recorded per-tier counters; do not lower "
+                "the release floor or blindly delete files)"
             )
 
         if result.get("status") == "FAST_ROLLBACK_PRUNE_FAILED":
@@ -4228,6 +4282,17 @@ def plan_payload(*, preserve_context_history: bool = False) -> dict[str, Any]:
         else:
             blockers.append(str(exc))
 
+    else:
+        # Root is above the hard floor but might remain below the
+        # staging-recovery target. Make the dry-run report the same
+        # protected action that Finish will attempt on apply.
+        if root_recovery_remediable and root_below_recovery_target(capacity_snapshot):
+            remediated_blockers.append(
+                "bounded root-headroom recovery will restore the protected "
+                "staging margin using only approved regenerable/archived "
+                "classes or durable-proven fast rollback cache"
+            )
+
     if documentation_summary["blocked"]:
         blockers.append(
             "documentation/update plan is blocked by non-remediable findings"
@@ -4499,7 +4564,7 @@ def execute_finish(
                 "continuing bounded root recovery"
             )
 
-    if root_below_release_floor(preflight_capacity):
+    if root_below_recovery_target(preflight_capacity):
         progress.start(
             "Recovering approved root headroom "
             "(APT → disabled Snap revisions → journal → "

@@ -1097,6 +1097,29 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
                 )
             )
 
+    def test_plan_recovery_predicate_accepts_staging_margin_pressure(self):
+        with mock.patch.object(
+            MODULE.aoe2_doctor,
+            "load_contract",
+            return_value=self.contract(),
+        ):
+            above_floor = self.snapshot()
+            above_floor["root"]["available_bytes"] = int(5.03 * 1024 ** 3)
+            self.assertTrue(MODULE.root_headroom_plan_recovery_available(
+                above_floor, self.production()
+            ))
+            healthy = self.snapshot()
+            healthy["root"]["available_bytes"] = 6 * 1024 ** 3
+            self.assertFalse(MODULE.root_headroom_plan_recovery_available(
+                healthy, self.production()
+            ))
+
+    def test_finish_plan_communicates_preflight_margin_recovery(self):
+        import inspect
+        source = inspect.getsource(MODULE.plan_payload)
+        self.assertIn("root_below_recovery_target(capacity_snapshot)", source)
+        self.assertIn("restore the protected ", source)
+
     def test_plan_recovery_predicate_rejects_unsafe_wolo(self):
         production = self.production()
         production["wolo_8093_count"] = 0
@@ -1173,6 +1196,19 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
             target,
             int(5.0625 * 1024 ** 3),
         )
+
+    def test_preflight_recovery_margin_catches_five_point_zero_three_gib(self):
+        contract = self.contract()
+        with mock.patch.object(
+            MODULE.aoe2_doctor, "load_contract", return_value=contract
+        ):
+            near_floor = self.snapshot()
+            near_floor["root"]["available_bytes"] = int(5.03 * 1024 ** 3)
+            self.assertFalse(MODULE.root_below_release_floor(near_floor))
+            self.assertTrue(MODULE.root_below_recovery_target(near_floor))
+            at_target = self.snapshot()
+            at_target["root"]["available_bytes"] = int(5.125 * 1024 ** 3)
+            self.assertFalse(MODULE.root_below_recovery_target(at_target))
 
     def test_final_capacity_noops_when_root_remains_healthy(self):
         snapshot = self.snapshot()
@@ -1574,7 +1610,7 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
             [
                 "status\tRECOVERED",
                 "receipt_dir\t/mnt/HC_Volume_105319120/"
-                "aoe2war/root-headroom-recoveries/test",
+                "aoe2war/root-headroom-recoveries/20261013T222654Z",
                 "before_kb\t4194304",
                 "after_kb\t6291456",
                 "reclaimed_kb\t2097152",
@@ -1635,7 +1671,7 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
             [
                 "status\tRECOVERED",
                 "receipt_dir\t/mnt/HC_Volume_105319120/"
-                "aoe2war/root-headroom-recoveries/test",
+                "aoe2war/root-headroom-recoveries/20261013T222654Z",
                 "before_kb\t4194304",
                 "after_kb\t6291456",
                 "reclaimed_kb\t2097152",
@@ -1759,7 +1795,7 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
             [
                 "status\tINSUFFICIENT",
                 "receipt_dir\t/mnt/HC_Volume_105319120/"
-                "aoe2war/root-headroom-recoveries/test",
+                "aoe2war/root-headroom-recoveries/20261013T222654Z",
                 "before_kb\t4194304",
                 "after_kb\t5000000",
                 "reclaimed_kb\t805696",
@@ -1780,12 +1816,43 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
         ):
             with self.assertRaisesRegex(
                 MODULE.FinishError,
-                "approved reclaim classes",
-            ):
+                "approved reclaim classes.*remaining shortfall=.*sealed evidence:",
+            ) as raised:
                 MODULE.recover_root_headroom(
                     snapshot=self.snapshot(),
                     production=self.production(),
                 )
+            self.assertIn("20261013T222654Z/recovery.txt", str(raised.exception))
+            self.assertIn("target=5.125 GiB", str(raised.exception))
+            self.assertIn("do not lower", str(raised.exception))
+
+    def test_recovery_insufficient_refuses_forged_or_missing_custody(self):
+        for lines in (
+            ["status\tINSUFFICIENT", "before_kb\t4194304", "after_kb\t5000000"],
+            [
+                "status\tINSUFFICIENT",
+                "receipt_dir\t/mnt/HC_Volume_105319120/aoe2war/"
+                "root-headroom-recoveries/../../fake",
+                "before_kb\t4194304", "after_kb\t5000000",
+            ],
+        ):
+            with self.subTest(lines=lines):
+                with (
+                    mock.patch.object(
+                        MODULE.aoe2_doctor,
+                        "load_contract",
+                        return_value=self.contract(),
+                    ),
+                    mock.patch.object(MODULE, "ssh_text", return_value=(45, "\n".join(lines))),
+                ):
+                    with self.assertRaisesRegex(
+                        MODULE.FinishError,
+                        "invalid recovery receipt path",
+                    ):
+                        MODULE.recover_root_headroom(
+                            snapshot=self.snapshot(),
+                            production=self.production(),
+                        )
 
     def test_recovery_refuses_unsafe_wolo_precondition(self):
         production = self.production()
@@ -1863,30 +1930,18 @@ class LearnedRootHeadroomRecoveryTests(unittest.TestCase):
             source,
         )
 
-    def test_finish_wires_recovery_only_for_low_root(self):
+    def test_finish_preflight_recovers_even_when_above_hard_floor(self):
         import inspect
 
         source = inspect.getsource(
             MODULE.execute_finish
         )
 
-        self.assertIn(
-            "root_below_release_floor",
-            source,
-        )
-
-        self.assertIn(
-            "recover_root_headroom",
-            source,
-        )
-
+        self.assertIn("root_below_recovery_target(preflight_capacity)", source)
+        self.assertIn("recover_root_headroom", source)
         self.assertLess(
-            source.index(
-                "root_below_release_floor"
-            ),
-            source.index(
-                "recover_root_headroom"
-            ),
+            source.index("root_below_recovery_target(preflight_capacity)"),
+            source.index("recover_root_headroom"),
         )
 
         self.assertIn(
