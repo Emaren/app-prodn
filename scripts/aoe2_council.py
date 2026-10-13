@@ -438,8 +438,12 @@ def build_recommendations(
                 f"used={used if used is not None else 'unknown'}"
             ),
             action=(
-                "aoe2war storage maintain --apply "
-                "--until-target --max-generations 25"
+                "aoe2war storage triage --json"
+                if storage_health == "WATCH"
+                else (
+                    "aoe2war storage maintain --apply "
+                    "--until-target --max-generations 25"
+                )
             ),
         )
 
