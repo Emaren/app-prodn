@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "f87f51aede1124ba0d49e7c0b2753ca4abfe978c7df5ae02f9f4740b6ff36f55",
+      "sha256": "ef2b203705a3518b0ced732642df2da80df0528c8ebc2c0c07a667e9ce821aae",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2094,7 +2094,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/featured-avatar-rule-evidence-20261013",
-    "commit": "102e7593612fddbb9e3f1fd81d6b0aae90cb098c"
+    "commit": "41aed3fc7d88c7fecb081af254e424abf5951b7e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
