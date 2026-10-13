@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/challenge-hall-responsive-20261013` at `9cc3843b82676e5728d7be77fed7dcc737b1fb83`
+Implementation baseline: `fix/challenge-hall-responsive-20261013` at `3e9cf48604c492e24033ca0a9c5d57b361576fc5`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
