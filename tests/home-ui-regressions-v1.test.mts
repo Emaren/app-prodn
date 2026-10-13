@@ -6,6 +6,15 @@ function source(path: string) {
   return readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 }
 
+function allowedLocalImagePatterns() {
+  const config = source("next.config.js");
+  // Bound the assertion to the actual config array; new valid assets must not
+  // push existing source permissions outside arbitrary 500-char windows.
+  const match = /localPatterns:\s*\[([\s\S]*?)\]/.exec(config);
+  assert.ok(match, "Next image localPatterns array must exist");
+  return match[1];
+}
+
 test("home layout regressions stay fixed", () => {
   const shell = source("app/AppShell.tsx");
   const home = source("app/HomePageClient.tsx");
@@ -36,37 +45,37 @@ test("lobby leaderboard honors curated featured avatars", () => {
 });
 
 test("AoE2 Shorts posters are allowed through Next image optimization", () => {
-  const config = source("next.config.js");
+  const config = allowedLocalImagePatterns();
 
   assert.match(
     config,
-    /localPatterns:[\s\S]{0,500}\{ pathname: "\/shorts\/\*\*" \}/,
+    /\{ pathname: "\/shorts\/\*\*" \}/,
   );
 });
 
 test("legacy WOLO artwork is allowed through Next image optimization", () => {
-  const config = source("next.config.js");
+  const config = allowedLocalImagePatterns();
   const staking = source("app/staking/page.tsx");
 
   assert.match(
     config,
-    /localPatterns:[\s\S]{0,600}\{ pathname: "\/legacy\/\*\*" \}/,
+    /\{ pathname: "\/legacy\/\*\*" \}/,
   );
   assert.match(staking, /const WOLO_LOGO_SRC = "\/legacy\/wolo-logo-transparent\.webp";/);
 });
 
 test("Kingdom and Oracle hero art is allowed through Next image optimization", () => {
-  const config = source("next.config.js");
+  const config = allowedLocalImagePatterns();
   const kingdom = source("app/kingdom/KingdomHero.tsx");
   const oracle = source("components/oracle/OraclePremiumFloor.tsx");
 
   assert.match(
     config,
-    /localPatterns:[\s\S]{0,700}\{ pathname: "\/kingdom\/\*\*" \}/,
+    /\{ pathname: "\/kingdom\/\*\*" \}/,
   );
   assert.match(
     config,
-    /localPatterns:[\s\S]{0,700}\{ pathname: "\/oracle\/\*\*" \}/,
+    /\{ pathname: "\/oracle\/\*\*" \}/,
   );
   assert.match(kingdom, /src="\/kingdom\/kingdom-hero-bg\.webp"/);
   assert.match(oracle, /src="\/oracle\/oracle-hero-bg\.webp"/);
