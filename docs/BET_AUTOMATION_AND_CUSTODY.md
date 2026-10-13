@@ -240,6 +240,30 @@ game identity, promotion is blocked with `auto_execution_preset_collision`
 and the exact market family is moved to operator review. The reconciler never
 silently merges those preview rows or guesses which one should survive.
 
+## October 13: War Satchel offline conservation research oracle
+
+`lib/warSatchelAccountingResearch.ts` provides an intentionally **unwired**
+and side-effect-free accounting projection for a future owner-specific custody
+ledger. Its corresponding Node regression suite verifies canonical positive
+integer `uwolo` amounts, exact `wolo-1/uwolo` classification, event-ID and
+receipt replay rejection, one reservation per canonical game and policy version,
+the maximum 1,000 WOLO per-match reservation, atomic-value conservation across
+available/reserved/committed/withdrawal-pending/withdrawn states, unmatched
+100% returns, bounded ticket refunds and withdrawal finalization/cancellation.
+
+**CRITICAL TRUST BOUNDARY:** The reducer processes events that a future
+independent verifier **must already have authenticated**. Naming an event
+`verified_deposit`, supplying `receiptId`, or passing a WoloChain ID is
+NOT cryptographic chain proof. Never accept these events from a browser, API
+request or client-supplied transaction hash. The module does not authenticate
+the account owner, inspect a real block, verify finality, reserve database rows,
+hold a real bank balance, or authorize a signer. There is no DB table/migration,
+API endpoint, user credit, deposit/withdrawal route, funded wager, automated
+executor, or Wolo settlement change in this tranche. Financial issue #514
+remains OPEN; the next gate is exact chain-event parsing, physical bank/vault
+liability reconciliation and owner-bound durable ledger design with independent
+security review. The E2 "Load from Wallet" button remains disabled.
+
 ## October 13: E2 profile QueryClient context hotfix
 
 The certified October 13 E2 deployment exposed an authenticated `/profile`
