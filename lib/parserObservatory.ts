@@ -51,6 +51,8 @@ function resultTruth(row: GameRow) {
     parseSource: row.parse_source,
     keyEvents: row.key_events,
     eventTypes: row.event_types,
+    isFinal: row.is_final,
+    disconnectDetected: row.disconnect_detected,
   });
 }
 
