@@ -1398,6 +1398,21 @@ def root_headroom_recovery_target_bytes() -> int:
     return target
 
 
+
+def root_below_recovery_target(snapshot: dict[str, Any]) -> bool:
+    """Preflight against bounded staging margin, not merely the hard floor.
+
+    Crossing the hard 5 GiB floor while remaining below the 5.125 GiB target
+    is not sufficient release headroom. Reuse the existing proof-gated root
+    worker; the worker itself independently rechecks root, source, BUILD_ID,
+    web service and protected Wolo listener authority before any mutation.
+    """
+    return (
+        int(snapshot["root"]["available_bytes"])
+        < root_headroom_recovery_target_bytes()
+    )
+
+
 def verified_fast_rollback_headroom_tier_script() -> str:
     return r"""
 # ------------------------------------------------------------
@@ -4538,7 +4553,7 @@ def execute_finish(
                 "continuing bounded root recovery"
             )
 
-    if root_below_release_floor(preflight_capacity):
+    if root_below_recovery_target(preflight_capacity):
         progress.start(
             "Recovering approved root headroom "
             "(APT → disabled Snap revisions → journal → "
