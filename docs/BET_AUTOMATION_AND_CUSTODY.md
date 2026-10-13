@@ -15,6 +15,46 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## War Satchel Gate B persistence substrate — DRAFT, never live credit (October 13, 2026)
+
+This change establishes the **database structure** missing from the deployed
+non-crediting verifier. `prisma/schema.prisma` and
+`prisma/migrations/20261013185000_war_satchel_dormant_ledger_gate_b/migration.sql`
+define four new, additive, zero-default financial objects:
+
+1. `WarSatchelAccount`: exactly one **inactive** account per site User;
+   available, reserved, committed and withdrawal-held amounts begin at 0
+   integer `uwolo`. Non-negative SQL CHECKs and restricted foreign keys
+   prevent invalid stored snapshots and owner deletion.
+2. `WarSatchelDepositIntent`: canonical owner + nonce, signed-memo digest,
+   intended sender/vault, amount and expiry. Created intents are **not money**.
+3. `WoloTransferClaim`: one globally unique `(chainId,txHash,transferIndex)`
+   across finance rails, immutable owner/rail/amount/source digest, limited
+   forward-only states, and no deletion/replay. **Existing manual tickets and
+   old indexed transfers have not been backfilled.** They must be proven and
+   reserved into this same authority before any new finance rail is enabled.
+4. `WarSatchelJournal`: append-only event keys and one-use transfer-claim
+   references; signed available/reserved/committed/held deltas and
+   non-negative post-event balances. SQL triggers reject UPDATE/DELETE.
+
+This schema introduces no funding endpoint, no chain transfer, no account
+credit, no money-moving worker, no balance display source, and no new live
+executor. Financial transaction code still **must** provide a SERIALIZABLE
+transaction that locks the owner account, claims a uniquely final chain transfer
+and writes the journal and aggregate change atomically; it must reject replay
+claims across old manual Bet Escrow and the new Satchel. Balance snapshots
+alone cannot be used to declare bank solvency.
+
+**Explicit review required before applying the migration in production:**
+PostgreSQL disposable-DB migration/rollback tests, constraint/trigger runtime
+tests, independent existing Bet Escrow and staking-liability census, immutable
+chain-proof/transfer-order audit (including duplicate Cosmos logs), chosen
+custody vault and signer, reconciliation/kill-switch design and rollback plan.
+These safeguards are not automatically established by passing source CI.
+Only then add owner APIs, Keplr transfer consent, accepted BetStakeTicket
+execution and exact-funds refunds. The current `LIVE_EXECUTOR_IMPLEMENTED=false`
+and disabled Satchel load button remain mandatory.
+
 ## War Satchel Gate B — exact-transfer evidence, not deposited funds (October 13, 2026)
 
 The `Mecha Emaren` profile still exposes only shadow auto-betting and a disabled
