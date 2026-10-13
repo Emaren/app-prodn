@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "8c732fd4442c75228dc0c8cdde2641316a71b8dbf2d42bd628a5dd9aa61e2653",
+      "sha256": "6bf475566f30c343341980ca2ead5f5425df674bfd01f476e88a66aee893f2aa",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2094,7 +2094,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feat/mecha-satchel-custody-proof-20261013",
-    "commit": "c45e575541054173cc603abb4f39aa01d943a4c6"
+    "commit": "0738bab317c7d9c4af5d057bcfe1e636c8bb8aac"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
