@@ -292,9 +292,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BET_AUTOMATION_AND_CUSTODY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-12",
+      "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "509e7ce3a9741daaff47d4f02bc87dafd5261d082805cc0e4120347031546a59",
+      "sha256": "316eb31f3cf2ab7591665f35138107286f84d39d8544004b5e5871ff41db060a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "7c19f64d1214b1df52ba4a853deeb804e37a4bcf8f5170dd1d1e4dacb4f6ad2d",
+      "sha256": "0e55d780fdeba17344416ee5582a046cd7babf1a43ad7680cd4ffaea2f8da786",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "ops/wolo-unproven-claim-forensics-20261014",
-    "commit": "a0b0e98c2596b08db86d10613f479c2543b60fc4"
+    "branch": "feature/war-satchel-durable-custody-foundation-20261014",
+    "commit": "148dca1827ccfb6a1efd47f869fcdf914b66fff4"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
