@@ -120,17 +120,30 @@ export function examineSatchelDepositEvidence(input: {
     proof.expected_amount_uwolo === intent.amountUwolo, "chain verifier expectations differ");
   const tx = proof.lookup;
   enforce(tx && tx.ok === true && tx.found === true && tx.tx_success === true &&
-    (tx.code === 0 || tx.code === undefined), "transaction not finalized successfully");
+    tx.code === 0, "transaction success code missing or failed");
   enforce(tx.chain_id === SATCHEL_PROOF_CHAIN && TX_HASH.test(tx.tx_hash) &&
     tx.tx_hash.toUpperCase() === input.claimedTxHash.toUpperCase(), "wrong transaction identity");
   enforce(tx.memo === intent.memo, "memo does not bind owner intent");
   const timestamp = isoTime(tx.timestamp, "on-chain transaction time");
+  enforce(timestamp <= observed, "transaction dated after observed chain head");
   enforce(timestamp >= created && timestamp <= expires, "transaction outside intent lifetime");
   const txHeight = naturalHeight(tx.height, "transaction height");
   const headHeight = naturalHeight(head.height, "chain head height");
   enforce(headHeight >= txHeight &&
     headHeight - txHeight + BigInt(1) >= BigInt(input.minConfirmations), "insufficient confirmation depth");
   enforce(tx.matched_expected === true && tx.matching_transfer_count === 1, "ambiguous or absent matching transfer");
+  // Do not delegate exclusivity to a reported summary field: recompute the
+  // exact sender/recipient/amount/uwolo event count over the full returned list.
+  // A candidate with two identical transfers is ambiguous even when an
+  // upstream verifier incorrectly reports matching_transfer_count=1.
+  enforce(Array.isArray(tx.transfers) && tx.transfers.length > 0 && tx.transfers.length <= 10000,
+    "missing or oversized canonical transfer list");
+  const matches = tx.transfers.reduce((count, item) =>
+    count + Number(item.sender === intent.senderAddress &&
+      item.recipient === intent.vaultAddress &&
+      item.amount === intent.amountUwolo &&
+      item.denom === SATCHEL_PROOF_DENOM), 0);
+  enforce(matches === 1, "ambiguous or absent exact uwolo transfer");
   const index = tx.matched_transfer_index;
   enforce(Number.isSafeInteger(index) && index! >= 0 &&
     Array.isArray(tx.transfers) && index! < tx.transfers.length, "missing canonical transfer index");
