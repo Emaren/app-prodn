@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/satchel-atomic-owner-challenge-quota-20261014` at `a95ddc0ebff727ecc5c0af3458fea925ef160e0a`
+Implementation baseline: `feature/satchel-append-only-journal-20261014` at `2db0b561412b1552fb98e18d9021682bab28a50c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
