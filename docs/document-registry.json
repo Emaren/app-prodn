@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d444e8acc646c94714e349b0abc9033b1141835039172d37a394b2a222c2f9f9",
+      "sha256": "7c19f64d1214b1df52ba4a853deeb804e37a4bcf8f5170dd1d1e4dacb4f6ad2d",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1946,9 +1946,9 @@
       "owner": "aoe2war-web",
       "path": "docs/WOLO_MAINNET_SETTLEMENT_RUNBOOK.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-10",
+      "reviewed_at": "2026-10-14",
       "sensitivity": "restricted",
-      "sha256": "1b127a501c14985693dcad8ecbca1184bbc416a6da81b472d20715c0b3115b91",
+      "sha256": "436f6624edd29e21a6fd183857707b6f099db17d00c2c5444c3635cc9105167a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "ops/wolo-maintenance-drain-readonly-20261014",
-    "commit": "13038c017804ada05b14436a739eb069c0b39fad"
+    "branch": "ops/wolo-unproven-claim-forensics-20261014",
+    "commit": "a0b0e98c2596b08db86d10613f479c2543b60fc4"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
