@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","wolochain","vps"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "host-maintenance-procedure"
-reviewed_at: "2026-09-14"
+reviewed_at: "2026-10-13"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -324,3 +324,7 @@ its receipt. The human terminal view now also prints the final non-empty failure
 line, bounded to 500 characters, when the operation returns `FAILED`. This
 does not retry, bypass, or weaken any host, service, timer, listener, recovery or
 Wolo proof; it only makes the existing fail-closed reason immediately visible.
+
+## Dated source-contract review — 2026-10-13
+
+Review checkpoint 2026-10-13: The operator-maintenance boundaries were checked against scripts/aoe2_maintenance_run.sh. Its transient work remains lower priority than the validator, including OOMScoreAdjust=800. Application Finish still grants no package upgrade/reboot authority. Live Ubuntu package counts, effective Wolo listener state and active recovery evidence must always be measured at execution time.
