@@ -33,6 +33,7 @@ VALUES
   (3, 'simulation:player101:reserved', 101, 'user_reserved_liability'),
   (4, 'simulation:player102:available', 102, 'user_available_liability');
 
+BEGIN; -- post the entire balanced journal atomically
 INSERT INTO war_satchel_ledger_journals (id,source_key)
 VALUES
   ('11111111-1111-4111-8111-111111111111','simulation:deposit-user101-1000');
@@ -44,8 +45,9 @@ VALUES
   ('11111111-1111-4111-8111-111111111111',2,-1000);
 
 SET CONSTRAINTS ALL IMMEDIATE;
-SET CONSTRAINTS ALL DEFERRED;
+COMMIT;
 
+BEGIN; -- reservation is one balanced atomic transaction
 INSERT INTO war_satchel_ledger_journals (id,source_key)
 VALUES
   ('22222222-2222-4222-8222-222222222222','simulation:reserve-user101-600');
@@ -57,7 +59,7 @@ VALUES
   ('22222222-2222-4222-8222-222222222222',3,-600);
 
 SET CONSTRAINTS ALL IMMEDIATE;
-SET CONSTRAINTS ALL DEFERRED;
+COMMIT;
 
 DO $verify$
 DECLARE vault_balance NUMERIC; available NUMERIC; reserved NUMERIC;
