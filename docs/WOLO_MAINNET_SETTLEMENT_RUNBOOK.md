@@ -29,7 +29,10 @@ gap in the diagnostic**, not evidence of missing funds or a chain reset.
 READ ONLY / REPEATABLE READ PostgreSQL transaction and checks the exact
 amount derived internally from claim #889 against `wolo_indexed_transfers`,
 using ±10 minutes, ±2 hours, and ±48 hours around the recorded
-attempt. It outputs only aggregate counts and at most twelve **public**
+attempt. It also checks for **one exact known server-not-configured**
+error substring in the private claim record and reports only an allowlisted
+error category, never the raw text. Even this source-matched category is
+not independent proof that no earlier transfer was broadcast. It outputs only aggregate counts and at most twelve **public**
 transaction hashes with indexed timestamps and transfer ordinals. It never
 prints private identities, signer addresses, recipient addresses, amounts,
 raw error text or memos. It does not query, sign or broadcast to WoloChain.
