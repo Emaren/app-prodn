@@ -26,7 +26,11 @@ function fixture() {
       transfers: [{ sender: wallet, recipient: vault, amount: "200000000", denom: "uwolo" }],
     },
   };
-  const responses: Record<string, unknown> = {
+  const responses: {
+    health: {ok: boolean; chain_id: string};
+    status: {result: {node_info: {network: string}; sync_info: {catching_up: boolean; latest_block_height: string}}};
+    proof: typeof proof;
+  } = {
     health: { ok: true, chain_id: "wolo-1" },
     status: { result: { node_info: { network: "wolo-1" }, sync_info: {
       catching_up: false, latest_block_height: "10422",
@@ -117,11 +121,11 @@ test("wrong owner, wallet and amount cannot reach chain proof", async () => {
 test("wrong chain, syncing head, missing health and failed transaction all refuse evidence", async () => {
   allowReadonlyEvidence();
   for (const corrupt of [
-    (x: ReturnType<typeof fixture>) => { (x.responses.health as any).ok = false; },
-    (x: ReturnType<typeof fixture>) => { (x.responses.health as any).chain_id = "cosmoshub-4"; },
-    (x: ReturnType<typeof fixture>) => { (x.responses.status as any).result.node_info.network = "cosmoshub-4"; },
-    (x: ReturnType<typeof fixture>) => { (x.responses.status as any).result.sync_info.catching_up = true; },
-    (x: ReturnType<typeof fixture>) => { (x.responses.status as any).result.sync_info.latest_block_height = "10420"; },
+    (x: ReturnType<typeof fixture>) => { x.responses.health.ok = false; },
+    (x: ReturnType<typeof fixture>) => { x.responses.health.chain_id = "cosmoshub-4"; },
+    (x: ReturnType<typeof fixture>) => { x.responses.status.result.node_info.network = "cosmoshub-4"; },
+    (x: ReturnType<typeof fixture>) => { x.responses.status.result.sync_info.catching_up = true; },
+    (x: ReturnType<typeof fixture>) => { x.responses.status.result.sync_info.latest_block_height = "10420"; },
     (x: ReturnType<typeof fixture>) => { x.proof.lookup.tx_success = false; },
     (x: ReturnType<typeof fixture>) => { x.proof.lookup.code = 7; },
     (x: ReturnType<typeof fixture>) => { x.proof.lookup.transfers[0].denom = "ufake"; },
