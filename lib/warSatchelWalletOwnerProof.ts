@@ -7,7 +7,7 @@
  * replay prevention CANNOT be implemented by cryptography alone.
  */
 import { makeSignDoc, pubkeyToAddress, serializeSignDoc } from "@cosmjs/amino";
-import { Secp256k1, Secp256k1Signature, sha256 } from "@cosmjs/crypto";
+import { createPublicKey, ECDH, verify as verifyEcdsa } from "node:crypto";
 
 export type SatchelWalletOwnerChallenge = {
   purpose: "satchel-v1:owner-proof";
@@ -98,7 +98,7 @@ export async function verifyWarSatchelWalletOwnerProof(input: {
 }) {
   const { challenge, keplrSignature } = input;
   const now = parseIso(input.nowUtc);
-  const payload = satchelWalletOwnerChallengeText(challenge);
+  satchelWalletOwnerChallengeText(challenge);
   requireProof(challenge.consumedAtUtc === null, "challenge already used");
   requireProof(challenge.ownerUid === input.authenticatedUid, "wrong logged-in owner");
   requireProof(challenge.walletAddress === input.authenticatedWalletAddress, "owner-wallet binding differs");
@@ -112,14 +112,28 @@ export async function verifyWarSatchelWalletOwnerProof(input: {
   );
   requireProof(expectedWallet === challenge.walletAddress, "signature key not the linked Wolo wallet");
   const signBytes = serializeSignDoc(satchelWalletOwnerSignDoc(challenge));
-  const ok = await Secp256k1.verifySignature(
-    Secp256k1Signature.fromFixedLength(rawSig),
-    sha256(signBytes),
-    rawKey,
+  // Expand the validated compressed secp256k1 key into a standards-based JWK.
+  // OpenSSL's P1363 verifier consumes Keplr's exact r||s 64-byte signature.
+  // No third-party crypto dependency or signing authority is introduced.
+  const expanded = Buffer.from(ECDH.convertKey(Buffer.from(rawKey), "secp256k1", undefined, undefined, "uncompressed"));
+  requireProof(expanded.length === 65 && expanded[0] === 4, "invalid secp256k1 key shape");
+  const publicKey = createPublicKey({
+    key: {
+      kty: "EC",
+      crv: "secp256k1",
+      x: expanded.subarray(1, 33).toString("base64url"),
+      y: expanded.subarray(33, 65).toString("base64url"),
+    },
+    format: "jwk",
+  });
+  const ok = verifyEcdsa(
+    "sha256",
+    Buffer.from(signBytes),
+    { key: publicKey, dsaEncoding: "ieee-p1363" },
+    Buffer.from(rawSig),
   );
   requireProof(ok, "invalid signature");
   // Return minimal evidence only. This is not an API capability or persisted flag.
-  void payload;
   return Object.freeze({
     kind: "unconsumed_verified_wallet_owner_candidate" as const,
     ownerUid: challenge.ownerUid,
