@@ -40,7 +40,7 @@ ALTER TABLE "war_satchel_deposit_intents"
 -- operator or future app route to retarget sender/vault/amount/memo/owner
 -- after a user was shown an exact Keplr transaction.
 CREATE OR REPLACE FUNCTION war_satchel_intents_economic_identity_lock()
-RETURNS TRIGGER LANGUAGE plpgsql AS $
+RETURNS TRIGGER LANGUAGE plpgsql AS $wolo_intent_guard$
 BEGIN
   IF (
     NEW."id", NEW."user_id", NEW."chain_id", NEW."sender_address",
@@ -55,7 +55,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$;
+$wolo_intent_guard$;
 CREATE TRIGGER war_satchel_intents_economic_lock
 BEFORE UPDATE ON "war_satchel_deposit_intents"
 FOR EACH ROW EXECUTE FUNCTION war_satchel_intents_economic_identity_lock();
@@ -98,7 +98,7 @@ ALTER TABLE "war_satchel_proof_candidates"
 -- A proof candidate for another wallet, vault, denom, or deposit amount can
 -- never be attached to an intent, even if an application validation regresses.
 CREATE OR REPLACE FUNCTION war_satchel_proof_candidates_identity_check()
-RETURNS TRIGGER LANGUAGE plpgsql AS $
+RETURNS TRIGGER LANGUAGE plpgsql AS $wolo_proof_guard$
 BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM "war_satchel_deposit_intents" i
@@ -113,7 +113,7 @@ BEGIN
   END IF;
   RETURN NEW;
 END;
-$;
+$wolo_proof_guard$;
 CREATE TRIGGER war_satchel_proofs_exact_intent
 BEFORE INSERT ON "war_satchel_proof_candidates"
 FOR EACH ROW EXECUTE FUNCTION war_satchel_proof_candidates_identity_check();
