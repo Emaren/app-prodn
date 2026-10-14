@@ -77,14 +77,16 @@ test("Tournaments remains in the Kingdom competition navigation", () => {
   assert.match(shell, /Where all the warriors go/);
   assert.match(shell, /War records, battlecraft, and victories preserved\./);
   assert.match(shell, /const isTournamentSurface/);
+  assert.match(shell, /const isTournamentImmersiveSurface = isTournamentImmersiveRoute\(pathname\)/);
   assert.match(shell, /isTournamentSurface[\s\S]*?max-w-none/);
   assert.match(
     shell,
-    /isLivingLeaderboardSurface \|\| isTournamentSurface[\s\S]*?h-\[100dvh\]/
+    /isLivingLeaderboardSurface \|\| isTournamentImmersiveSurface[\s\S]*?h-\[100dvh\]/
   );
   assert.match(
     shell,
-    /isTournamentSurface \? "fixed inset-x-0 top-0" : "sticky top-0"/
+    /isTournamentImmersiveSurface \? "fixed inset-x-0 top-0" : "sticky top-0"/
   );
-  assert.match(shell, /isTournamentSurface[\s\S]*?!py-0 !pb-0 overflow-hidden/);
+  assert.match(shell, /isTournamentImmersiveSurface[\s\S]*?!py-0 !pb-0 overflow-hidden/);
+  assert.match(shell, /isTournamentSurface[\s\S]*?!py-0 !pb-0 overflow-x-clip/);
 });
