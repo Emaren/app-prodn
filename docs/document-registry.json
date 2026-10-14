@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "06f35e27bd38bde365d3538d607a6d63d397be809ec2aa491261ae73041a5671",
+      "sha256": "a179dc71f9eb02eb3cae51c88bbf25cf327405af346dd7017061ad35557ef96e",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1948,7 +1948,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "restricted",
-      "sha256": "10fac94414383050a327ac4e7b74d71ea92ceac3f448f8602050ea7aee1178e4",
+      "sha256": "82021caf4afac8401067cb73ff00665244da32c9391f700ad3c33d40fac18780",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2094,7 +2094,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "ops/claim889-amount-window-forensics-20261014",
-    "commit": "2ac9e2efcfdfa28666ddc15d0b9bc412f96c297c"
+    "commit": "bf67928cb5c23b1972d5345579b240285d181fb1"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
