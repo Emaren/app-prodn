@@ -19,6 +19,13 @@ test("War Satchel has durable intent and separately identified receipt models", 
   assert.match(sql, /CREATE UNIQUE INDEX "uq_war_satchel_intents_memo"/);
   assert.match(sql, /CREATE UNIQUE INDEX "uq_war_satchel_proofs_chain_tx_ordinal"/);
   assert.match(sql, /CREATE UNIQUE INDEX "uq_war_satchel_proofs_intent"/);
+  assert.match(schema, /@@unique\(\[id, userId\], map: "uq_war_satchel_intents_id_owner"/);
+  assert.match(schema, /@relation\(fields: \[intentId, userId\], references: \[id, userId\]/);
+  assert.match(sql, /FOREIGN KEY \("intent_id", "user_id"\) REFERENCES "war_satchel_deposit_intents" \("id", "user_id"\)/);
+  assert.match(sql, /war_satchel_proofs_exact_intent/);
+  assert.match(sql, /i\."sender_address" = NEW\."sender_address"/);
+  assert.match(sql, /i\."vault_address" = NEW\."vault_address"/);
+  assert.match(sql, /i\."amount_uwolo" = NEW\."amount_uwolo"/);
 });
 
 test("there is no spendable custody balance or deposit-crediting executor", () => {
