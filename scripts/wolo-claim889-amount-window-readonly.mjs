@@ -29,7 +29,7 @@ try {
   await client.query("BEGIN TRANSACTION ISOLATION LEVEL REPEATABLE READ READ ONLY");
   const { rows: claims } = await client.query(
     "SELECT id, claim_kind, source_founder_bonus_id, source_market_id, status, " +
-    "amount_wolo, payout_attempted_at, payout_tx_hash " +
+    "amount_wolo, payout_attempted_at, payout_tx_hash, error_state " +
     "FROM pending_wolo_claims WHERE id = 889"
   );
   const claim = claims[0];
@@ -40,7 +40,11 @@ try {
       !Number.isSafeInteger(claim.amount_wolo) || claim.amount_wolo < 1) {
     throw new Error("claim not the recorded unresolved founder bonus");
   }
-  const exactUwolo = (BigInt(claim.amount_wolo) * 1000000n).toString();
+  const errorText = String(claim.error_state ?? "");
+  const knownPrebroadcastConfigurationError = errorText.includes(
+    "wolo-1 payout execution is blocked: the mainnet settlement service is not configured on 127.0.0.1:8092"
+  );
+    const exactUwolo = (BigInt(claim.amount_wolo) * 1000000n).toString();
   const attemptAt = claim.payout_attempted_at;
   // The app's index does NOT attest transaction success/finality, and need
   // not contain all history. No match in this cache cannot clear a claim.
@@ -91,6 +95,10 @@ try {
     mode: "read_only_same_amount_window_index_crosscheck",
     claimId: 889,
     claimStillUnresolved: true,
+    historicalErrorHint: knownPrebroadcastConfigurationError
+      ? "SOURCE_MATCHED_NO_SETTLEMENT_SERVICE_CONFIG_ERROR"
+      : "OTHER_OR_UNKNOWN_ERROR_NO_BROADCAST_CONCLUSION",
+    historicalErrorProofLimit: "A source-matched error suggests this recorded attempt may have stopped before broadcast; it does NOT establish that no earlier or alternate transaction succeeded.",
     index: "INCOMPLETE: app cache, not authoritative wolo-1 blockchain proof",
     counts: Object.fromEntries(fields.map(k=>[k,row[k]])),
     candidatesTruncated: row.within_48_hours > candidates.length,
