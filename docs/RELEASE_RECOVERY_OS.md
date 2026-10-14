@@ -47,6 +47,17 @@ human diagnosis only for failure classes that have a tested recovery contract.
 
 ## Core invariants
 
+
+**Blocked dry-run diagnostics:** `aoe2war finish --dry-run` now renders
+the underlying classified documentation/update evidence immediately after
+the generic blocker: source-documentation checker results, unknown P0/P1
+severity, area/key/detail, and any blocked control-map reason. This only
+improves operator diagnosis; `finish --dry-run --json` remains the complete
+read-only evidence record. No blocker is downgraded or silently remediated
+by presenting its cause. For a focused read-only check, run
+`aoe2war update --json`, which lists `blocked_source_docs`,
+`unknown_p0`, `unknown_p1` and `estate_maps`.
+
 1. `aoe2war finish` remains the normal operator entry point.
 2. An exact current staged release receives first right of resume.
 3. A staged candidate is never discarded merely because newer Git authority
