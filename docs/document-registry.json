@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0e55d780fdeba17344416ee5582a046cd7babf1a43ad7680cd4ffaea2f8da786",
+      "sha256": "cb1a37547df152fd5f0b103fd3b4b6fafa2e1d17caa421d002f7d82f1f4ab55e",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2094,7 +2094,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/war-satchel-durable-custody-foundation-20261014",
-    "commit": "148dca1827ccfb6a1efd47f869fcdf914b66fff4"
+    "commit": "9a54ec75cf2d78b0ba1e277eb36fa9be460cf123"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
