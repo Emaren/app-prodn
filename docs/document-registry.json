@@ -110,7 +110,7 @@
       "review_interval_days": 60,
       "reviewed_at": "2026-09-29",
       "sensitivity": "internal",
-      "sha256": "b1fcd14c63698c3a37b04c835d68683271d19fd0672e860e2da4278689f0a7cb",
+      "sha256": "1c2919846f5db398605bef17c1b40948adda325b0fa0e69f7eb975910a5330af",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5fb896be4ed14b917de6767754448beb8feb33633a06326835e27f2727a8cf5f",
+      "sha256": "e5d9ee546c2ce550a2c0447161479b6a140d4b07a3fdbd3dfc22760b7b0da34f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/ai-provider-quota-health-v2-20261013",
-    "commit": "68a389bdd583a3008e0988d652a52ef28e750018"
+    "branch": "fix/legacy-tournament-document-scroll-20261013",
+    "commit": "1cbd05bf9be13010ee62efbf8dee55cf72a91aac"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
