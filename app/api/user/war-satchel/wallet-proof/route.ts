@@ -65,30 +65,38 @@ export async function POST(request: NextRequest) {
   if (!actor) return respond(401, "Signed-in account required.");
   if (!actor.user.walletAddress) return respond(409, "Link a Wolo wallet first.");
   try {
-    const now = new Date();
-    const recentlyIssued = await actor.prisma.warSatchelWalletChallenge.count({
-      where: {
-        userId: actor.user.id,
-        issuedAt: { gt: new Date(now.getTime() - RECENT_WINDOW_MS) },
-      },
-    });
-    if (recentlyIssued >= CHALLENGE_HOURLY_LIMIT) {
+    // Serialize all issuance for this owner through its existing User row:
+    // concurrent requests must not both observe the old hourly count.
+    const challenge = await actor.prisma.$transaction(async (tx) => {
+      const locked = await tx.$queryRaw<{ id: number }[]>`
+        SELECT id FROM users WHERE id = ${actor.user.id} FOR UPDATE
+      `;
+      if (locked.length !== 1 || locked[0]?.id !== actor.user.id) {
+        throw new Error("SATCHEL_WALLET_OWNER_LOCK_UNAVAILABLE");
+      }
+      const now = new Date();
+      const recentlyIssued = await tx.warSatchelWalletChallenge.count({
+        where: {
+          userId: actor.user.id,
+          issuedAt: { gt: new Date(now.getTime() - RECENT_WINDOW_MS) },
+        },
+      });
+      if (recentlyIssued >= CHALLENGE_HOURLY_LIMIT) return null;
+      return tx.warSatchelWalletChallenge.create({
+        data: {
+          id: randomUUID(),
+          nonce: randomBytes(16).toString("hex"),
+          userId: actor.user.id,
+          ownerUid: actor.user.uid,
+          walletAddress: actor.user.walletAddress!,
+          issuedAt: now,
+          expiresAt: new Date(now.getTime() + CHALLENGE_TTL_MS),
+        },
+      });
+    }, { maxWait: 4000, timeout: 7000 });
+    if (!challenge) {
       return respond(429, "Too many wallet verification requests; try again later.");
     }
-    const id = randomUUID();
-    const nonce = randomBytes(16).toString("hex");
-    const expiresAt = new Date(now.getTime() + CHALLENGE_TTL_MS);
-    const challenge = await actor.prisma.warSatchelWalletChallenge.create({
-      data: {
-        id,
-        nonce,
-        userId: actor.user.id,
-        ownerUid: actor.user.uid,
-        walletAddress: actor.user.walletAddress,
-        issuedAt: now,
-        expiresAt,
-      },
-    });
     const witness: SatchelWalletOwnerChallenge = {
       purpose: "satchel-v1:owner-proof",
       ownerUid: challenge.ownerUid,
@@ -99,7 +107,7 @@ export async function POST(request: NextRequest) {
       consumedAtUtc: null,
     };
     return NextResponse.json({
-      challengeId: id,
+      challengeId: challenge.id,
       chainId: "wolo-1",
       walletAddress: witness.walletAddress,
       message: satchelWalletOwnerChallengeText(witness),

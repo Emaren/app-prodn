@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "185b47fb4532fc05f12436e0fd41a874e0e928e3668ce51f88cb450a1ca9dcd3",
+      "sha256": "22ebedd617b3b3d9a2caaf8ff055b3598331506c263b11f8dfb33207a296816a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "24fd7184b52114be2ec33b8e590a88341ba3ee306fc6ff7af9b83da8fd939144",
+      "sha256": "55150a78f65edeb2fe5426f84b0e12af7563a40ef541d35546af4dc6362d6376",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/satchel-server-challenge-20261014",
-    "commit": "8c280c26b27766c72720689334767f26de90dd2a"
+    "branch": "fix/satchel-atomic-owner-challenge-quota-20261014",
+    "commit": "a95ddc0ebff727ecc5c0af3458fea925ef160e0a"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
