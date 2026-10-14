@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/satchel-journal-cross-owner-guard-20261014` at `a1d027941dae0bc8eeb47b6a140b9bff1356d9a4`
+Implementation baseline: `ops/claim889-amount-window-forensics-20261014` at `59305866814b585c03264b57216bc56fe115daa9`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
