@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { Secp256k1, sha256 } from "@cosmjs/crypto";
+import { ECDH, generateKeyPairSync, sign as signEcdsa } from "node:crypto";
 import { pubkeyToAddress, serializeSignDoc } from "@cosmjs/amino";
 import {
   satchelWalletOwnerChallengeText,
@@ -9,14 +9,18 @@ import {
   type SatchelWalletOwnerChallenge,
 } from "../lib/warSatchelWalletOwnerProof.ts";
 
-const PRIV = new Uint8Array(32).fill(7);
 const NOW = "2026-10-14T12:00:01.000Z";
 const start = "2026-10-14T12:00:00.000Z";
 const end = "2026-10-14T12:10:00.000Z";
 
 async function fixture() {
-  const { pubkey } = await Secp256k1.makeKeypair(PRIV);
-  const compressed = Secp256k1.compressPubkey(pubkey);
+  const { publicKey, privateKey } = generateKeyPairSync("ec", { namedCurve: "secp256k1" });
+  const jwk = publicKey.export({ format: "jwk" });
+  if (!jwk.x || !jwk.y) throw new Error("Missing test EC public key");
+  const uncompressed = Buffer.concat([
+    Buffer.from([4]), Buffer.from(jwk.x, "base64url"), Buffer.from(jwk.y, "base64url"),
+  ]);
+  const compressed = ECDH.convertKey(uncompressed, "secp256k1", undefined, undefined, "compressed");
   const publicKeyB64 = Buffer.from(compressed).toString("base64");
   const address = pubkeyToAddress({ type: "tendermint/PubKeySecp256k1", value: publicKeyB64 }, "wolo");
   const challenge: SatchelWalletOwnerChallenge = {
@@ -28,9 +32,11 @@ async function fixture() {
     expiresAtUtc: end,
     consumedAtUtc: null,
   };
-  const signature = (await Secp256k1.createSignature(
-    sha256(serializeSignDoc(satchelWalletOwnerSignDoc(challenge))), PRIV,
-  )).toFixedLength();
+  const signature = signEcdsa(
+    "sha256",
+    Buffer.from(serializeSignDoc(satchelWalletOwnerSignDoc(challenge))),
+    { key: privateKey, dsaEncoding: "ieee-p1363" },
+  );
   const keplrSignature = {
     pub_key: { type: "tendermint/PubKeySecp256k1", value: publicKeyB64 },
     signature: Buffer.from(signature).toString("base64"),
