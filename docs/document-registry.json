@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "44d2f240c958c88904f651ce7ced9fe43f44a2846ded40a2019d7585cd68eb7b",
+      "sha256": "340dfb70bf127ee3bb4b833829b92596668346afcc1670f5c18cfd72aea59553",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "1c2849ed52193006e5a2f76481b46155328e5a7e54bbed8c0dffb67fc51384e4",
+      "sha256": "128a6b41d76c16e092862269afe98624fd4438f420a258ec89f22ad193829ce3",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2094,7 +2094,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/satchel-adr36-owner-proof-20261014",
-    "commit": "550e3118fe250ffaeaeb84452c4e77cb7bbb8034"
+    "commit": "01872e995ae0c7a3617b169b3048ded0f30415b4"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
