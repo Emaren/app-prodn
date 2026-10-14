@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 
 import { displayMatchPlayer, displayName } from "@/components/lobby/utils";
 import TimeDisplayText from "@/components/time/TimeDisplayText";
-import { getLobbyMessages, getTournamentBySlug } from "@/lib/communityStore";
+import { getTournamentBySlug, getTournamentRecentMessages } from "@/lib/communityStore";
 import {
   getFallbackTournament,
   getTournamentMatchStatusLabel,
@@ -13,7 +13,6 @@ import {
   type LobbyTournamentEntrant,
 } from "@/lib/lobby";
 import { getPrisma } from "@/lib/prisma";
-import { readGuestReactionSessionIdFromCookies } from "@/lib/guestReactionSession";
 import { SESSION_COOKIE_NAME, verifySession } from "@/lib/session";
 
 export const runtime = "nodejs";
@@ -112,10 +111,9 @@ export default async function TournamentDetailPage({
     notFound();
   }
 
-  const messages = await getLobbyMessages(prisma, tournament.roomSlug, 12, {
-    uid: claims?.uid ?? null,
-    guestSessionId: readGuestReactionSessionIdFromCookies(cookieStore),
-  });
+  // This historical page renders only the twelve latest public messages;
+  // avoid loading reaction trees it does not display.
+  const messages = await getTournamentRecentMessages(prisma, tournament.roomSlug, 12);
   const bracketPreviewSlots = buildBracketPreviewSlots(tournament.entrants);
 
   return (
