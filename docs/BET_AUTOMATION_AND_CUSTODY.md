@@ -15,6 +15,28 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## War Satchel Gate C3a race-hardening — no concurrent double reservations (October 14, 2026)
+
+A second reviewed PostgreSQL migration serializes the **commit-time** ledger
+balance check with a transaction-scoped advisory lock. This prevents two
+concurrent READ COMMITTED transactions from independently observing the same
+unspent simulated balance and both committing a reservation. The function
+explicitly rejects snapshot isolation levels that could hide commits made
+while a concurrent transaction waited for the lock.
+
+A real multi-session PostgreSQL 16 CI test races two 300-uwolo reservations
+against one owner's remaining 400-uwolo available balance; exactly one must
+commit and the other must fail without changing the ledger. The test also
+requires the sum of account balances to remain correct and rejects replaying
+the mutation under REPEATABLE READ.
+
+The prior C3a migration remains **unchanged**; the fix is a new additive
+migration so already-merged migration history is not rewritten.
+This remains SIMULATION ONLY: it does not create or unlock a Satchel
+deposit, credit funds, authorize transfers, or permit a live auto-bet.
+The future funded ledger must use its own reviewed concurrency and vault
+solvency design; this gate cannot be used as live-money authorization.
+
 ## War Satchel Gate C3a — simulation-only balanced accounting (October 14, 2026)
 
 The next custody prerequisite is a **double-entry WOLO ledger** in which

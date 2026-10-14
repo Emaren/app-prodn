@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "f0d724e95e9d323e9548ea0e62556f16cb8f7f0e0e133b1ed0b59a0d8e2596df",
+      "sha256": "a589e9d9bda7f88f9b4c7e689b99541a12c7cfed824cb97111e960dec58687e1",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b1c65c4b69a28987d78aa0a9d92a3c5850a9195bc8992aea81ee63d0fbe31740",
+      "sha256": "67916f09511982cf17567ab5f86ac8822c3e7072b68134e05cc77c6b487115cf",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/satchel-balanced-ledger-foundation-20261014",
-    "commit": "ec422807f0b748942cf203571300d6a21fc2c7c8"
+    "branch": "fix/satchel-simulation-ledger-race-20261014",
+    "commit": "2cc03e7c62fb8e06448eddd8e8c65708e4d98758"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
