@@ -15,7 +15,7 @@ import {
 const HASH = /^[a-fA-F0-9]{64}$/;
 const ADDRESS = /^wolo1[023456789acdefghjklmnpqrstuvwxyz]{38,90}$/;
 const AMOUNT = /^[1-9][0-9]{0,18}$/;
-const MAX_UWOLO = 9_223_372_036_854_775_807n;
+const MAX_UWOLO = BigInt("9223372036854775807");
 const LOCAL_ESCROW = "http://127.0.0.1:8092";
 const LOCAL_RPC = "http://127.0.0.1:27657";
 const MAX_JSON_BYTES = 1024 * 1024;
