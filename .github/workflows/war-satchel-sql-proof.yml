@@ -7,6 +7,8 @@ on:
       - "prisma/migrations/20261014_103500_war_satchel_noncrediting_foundation/**"
       - "prisma/migrations/20261014_133000_war_satchel_wallet_owner_challenges/**"
       - "tests/sql/war_satchel_wallet_challenge_contract.sql"
+      - "prisma/migrations/20261014_144000_war_satchel_immutable_journal/**"
+      - "tests/sql/war_satchel_journal_contract.sql"
       - "tests/sql/war_satchel_foundation_contract.sql"
       - ".github/workflows/war-satchel-sql-proof.yml"
   push:
@@ -16,6 +18,8 @@ on:
       - "prisma/migrations/20261014_103500_war_satchel_noncrediting_foundation/**"
       - "prisma/migrations/20261014_133000_war_satchel_wallet_owner_challenges/**"
       - "tests/sql/war_satchel_wallet_challenge_contract.sql"
+      - "prisma/migrations/20261014_144000_war_satchel_immutable_journal/**"
+      - "tests/sql/war_satchel_journal_contract.sql"
       - "tests/sql/war_satchel_foundation_contract.sql"
       - ".github/workflows/war-satchel-sql-proof.yml"
 
@@ -61,3 +65,7 @@ jobs:
         run: psql -X -v ON_ERROR_STOP=1 -f prisma/migrations/20261014_133000_war_satchel_wallet_owner_challenges/migration.sql
       - name: Test challenge replay, expiry, quota, owner and nonce immutability
         run: psql -X -v ON_ERROR_STOP=1 -f tests/sql/war_satchel_wallet_challenge_contract.sql
+      - name: Apply Satchel zero-sum append-only journal migration
+        run: psql -X -v ON_ERROR_STOP=1 -f prisma/migrations/20261014_144000_war_satchel_immutable_journal/migration.sql
+      - name: Prove transactionally balanced, owner-locked, tamper-resistant Satchel journals
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/sql/war_satchel_journal_contract.sql
