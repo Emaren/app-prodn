@@ -5298,6 +5298,7 @@ model WarSatchelProofCandidate {
   intent WarSatchelDepositIntent @relation(fields: [intentId, userId], references: [id, userId], onDelete: Restrict, onUpdate: NoAction)
   user   User                    @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: NoAction)
 
+  @@unique([intentId, userId], map: "uq_war_satchel_proofs_intent_owner")
   @@unique([chainId, txHash, transferIndex], map: "uq_war_satchel_proofs_chain_tx_ordinal")
   @@index([userId, createdAt], map: "ix_war_satchel_proofs_owner_created")
   @@map("war_satchel_proof_candidates")
