@@ -8,6 +8,8 @@ on:
       - "prisma/migrations/20261014_133000_war_satchel_wallet_owner_challenges/**"
       - "tests/sql/war_satchel_wallet_challenge_contract.sql"
       - "prisma/migrations/20261014_150000_war_satchel_simulated_double_entry/**"
+      - "prisma/migrations/20261014_164500_war_satchel_simulation_concurrency_guard/**"
+      - "tests/sql/war_satchel_simulation_concurrency_test.sh"
       - "tests/sql/war_satchel_simulation_double_entry_contract.sql"
       - "tests/sql/war_satchel_foundation_contract.sql"
       - ".github/workflows/war-satchel-sql-proof.yml"
@@ -19,6 +21,8 @@ on:
       - "prisma/migrations/20261014_133000_war_satchel_wallet_owner_challenges/**"
       - "tests/sql/war_satchel_wallet_challenge_contract.sql"
       - "prisma/migrations/20261014_150000_war_satchel_simulated_double_entry/**"
+      - "prisma/migrations/20261014_164500_war_satchel_simulation_concurrency_guard/**"
+      - "tests/sql/war_satchel_simulation_concurrency_test.sh"
       - "tests/sql/war_satchel_simulation_double_entry_contract.sql"
       - "tests/sql/war_satchel_foundation_contract.sql"
       - ".github/workflows/war-satchel-sql-proof.yml"
@@ -69,3 +73,7 @@ jobs:
         run: psql -X -v ON_ERROR_STOP=1 -f prisma/migrations/20261014_150000_war_satchel_simulated_double_entry/migration.sql
       - name: Prove zero-sum, non-overdraft and immutable sandbox journals
         run: psql -X -v ON_ERROR_STOP=1 -f tests/sql/war_satchel_simulation_double_entry_contract.sql
+      - name: Install additive transaction-serialization guard
+        run: psql -X -v ON_ERROR_STOP=1 -f prisma/migrations/20261014_164500_war_satchel_simulation_concurrency_guard/migration.sql
+      - name: Race two user reservations against one available WOLO balance
+        run: bash tests/sql/war_satchel_simulation_concurrency_test.sh
