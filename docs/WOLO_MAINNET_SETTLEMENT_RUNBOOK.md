@@ -15,6 +15,36 @@ sensitivity: "restricted"
 
 # WOLO Mainnet Settlement App Runbook
 
+## Claim #889 follow-up: crosscheck indexed amount, not only memo (October 14)
+
+The operator's immutable memo-only diagnostic at 2026-10-14T19:40:06Z
+scanned 4,097 cached `wolo-1` `uwolo` transfer rows (170 within
+48 hours of the July 4 attempted founder payment). It found **zero**
+memo-pattern hits and produced verdict `INCONCLUSIVE_NO_PROOF_FROM_PARTIAL_INDEX`.
+The code intentionally searched by memo first, so an older payout with a
+different or blank memo could never be returned. This is a **coverage
+gap in the diagnostic**, not evidence of missing funds or a chain reset.
+
+`scripts/wolo-claim889-amount-window-readonly.mjs` runs an independent
+READ ONLY / REPEATABLE READ PostgreSQL transaction and checks the exact
+amount derived internally from claim #889 against `wolo_indexed_transfers`,
+using ±10 minutes, ±2 hours, and ±48 hours around the recorded
+attempt. It outputs only aggregate counts and at most twelve **public**
+transaction hashes with indexed timestamps and transfer ordinals. It never
+prints private identities, signer addresses, recipient addresses, amounts,
+raw error text or memos. It does not query, sign or broadcast to WoloChain.
+A source-verified invocation must run with the existing protected
+production app EnvironmentFile, under a restrictive transient systemd
+unit, never by pasting `DATABASE_URL`.
+
+**Regardless of results**, its exit code 3 means the payout is still
+unproven. The app transfer index is an incomplete cache and cannot attest
+chain success, true sender/recipient, denomination or idempotency. Each
+possible transaction must be checked against canonical `wolo-1` evidence;
+no match cannot certify nonpayment. Never clear, retry or rescind claim
+#889 merely to make the release gate pass.
+
+
 ## October 14 blocked claim #889 — secondary index-only evidence
 
 The protected live finance audit returned **one** old unproven payout attempt:
