@@ -16,6 +16,9 @@ test("claim amount index hunt remains read-only and returns no custody authoriza
   assert.match(source,/within_48_hours/);
   assert.match(source,/LIMIT 12/);
   assert.match(source,/verifiedOnCanonicalChain: false/);
+  assert.match(source,/SOURCE_MATCHED_NO_SETTLEMENT_SERVICE_CONFIG_ERROR/);
+  assert.match(source,/historicalErrorProofLimit/);
+  assert.doesNotMatch(source,/console\.log\([^\n]*errorText/);
   assert.match(source,/verifiedRecipient: false/);
   assert.match(source,/releaseAuthorized: false/);
   assert.match(source,/BLOCKED_NO_INDEPENDENT_PAYOUT_PROOF/);
