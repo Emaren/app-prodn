@@ -15,18 +15,21 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
-## Gate B verifier hardening — explicit chain result and independently unique transfer
+## Gate B verifier hardening — canonical success semantics and unique transfer
 
-The pure, non-crediting `examineSatchelDepositEvidence` contract now rejects
-an omitted Cosmos transaction code: the observed success code must be
-explicitly `0`, even if a service-provided `tx_success` flag is true.
-It also independently recounts the exact `wolo-1` `uwolo` transfers
+The pure, non-crediting `examineSatchelDepositEvidence` contract
+requires `tx_success=true` from the trusted WoloChain verifier, whose Go
+implementation derives it directly from the canonical REST transaction
+`Code == 0`. That Go JSON uses `code,omitempty`, so a successful code
+of zero legitimately omits the optional field; any **present nonzero**
+code is refused. This compatibility behavior is regression-tested.
+The contract independently recounts the exact `wolo-1` `uwolo` transfers
 matching the authorized sender, vault destination and integer amount,
 rather than trusting the service's `matching_transfer_count` summary.
 A mismatched count, duplicate exact transfer, ambiguous event index or
 transaction timestamp later than the independently observed chain head
-cannot become a receipt candidate. Negative tests cover all three newly
-tightened cases.
+cannot become a receipt candidate. Negative tests cover missing-zero compatibility, nonzero failures, duplicate
+exact transfers falsely summarized as unique, and future timestamps.
 
 This only strengthens offline evidence validation. It does **not** authenticate
 an untrusted client response, prove canonical head finality, install a
