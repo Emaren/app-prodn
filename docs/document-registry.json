@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "50e33e871e8ded36e17885b70bfedec88aba3cf66ae6bccd4ca81c412ab28fe7",
+      "sha256": "55b5a1dd54f8a22e277228ff5d40897996e9dd722aa7478e439a719627dd5cf6",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2094,7 +2094,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/satchel-receipt-explicit-success-20261014",
-    "commit": "bb5f565631d9c379f117b30fe02e0edc2bcc3593"
+    "commit": "b8ada3a21a4a6769c22dd59f59d382c262c4a274"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
