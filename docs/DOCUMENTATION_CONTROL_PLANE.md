@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/kingdom-agents-observatory-20261013` at `4c90f9bde7bbf12f3c5da47477daabe44bec7f41`
+Implementation baseline: `ops/wolo-maintenance-drain-readonly-20261014` at `13038c017804ada05b14436a739eb069c0b39fad`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
