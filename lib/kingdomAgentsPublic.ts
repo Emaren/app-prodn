@@ -95,7 +95,7 @@ export async function buildKingdomAgentsPublicSnapshot(): Promise<KingdomAgentPu
           task: group.description.slice(0, 140),
           signal: check.ratio
             ? check.ratio.passed + "/" + check.ratio.total + " checks"
-            : check.earned.toFixed(1).replace(/\\.0$/, "") + "/" + check.weight + " points",
+            : String(check.earned) + "/" + check.weight + " points",
           evidenceAt: safeDate(check.evidenceAt),
           source: "General Inspections",
         });
