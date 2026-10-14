@@ -8,12 +8,49 @@ systems: ["app-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "financial-domain-contract"
-reviewed_at: "2026-10-12"
+reviewed_at: "2026-10-14"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # Bet Automation and Wolo Custody Boundary
+
+## War Satchel Gate C1 — persisted evidence, zero credited WOLO (October 14, 2026)
+
+This milestone adds only the independently testable storage foundation of a
+pre-funded War Satchel:
+
+- `WarSatchelDepositIntent` uniquely identifies a prospective owner-bound
+  wallet deposit, exact `wolo-1` vault destination, amount in canonical integer
+  `uwolo`, owner nonce and memo, and a strict 30-minute expiry. Database
+  constraints prohibit nonpositive amounts and duplicate memos/nonces. **An
+  intent is not authorization to take custody, not a signed transfer, and not
+  an owner wallet proof.**
+- `WarSatchelProofCandidate` may later hold one exact chain receipt's identity,
+  anchored to an intent and globally unique by
+  `(chain_id, tx_hash, transfer_index)`. Its only allowed database status is
+  `uncredited`. A database trigger refuses UPDATE/DELETE. A receipt candidate
+  is *not* an available or reserved satchel balance. It cannot be spent,
+  withdrawn, or used for a wager.
+- No public API, wallet send route, custody address provisioning, signer
+  delegation, auto-bet reservation, accepted BetStakeTicket, or bank accounting
+  change is introduced. The "Load from Wallet" control **remains disabled**.
+  The operator must not solicit real deposits until separately certified
+  independent vault/key authority and complete ledger accounting exist.
+
+This is intentionally isolated in new tables and has no migration touching
+old betting, claim, staking, or payout records. The database schema and SQL
+migration must be applied only by the existing protected release controller;
+never to the live VPS ad hoc. The manual wallet-to-bet flow is unchanged.
+
+**Next enabling step (C2):** independent Keplr wallet ownership proof and
+revocable user intent admission; designated vault separated from manual Bet
+Escrow or fully audited partitioning; exact authenticated chain verifier +
+canonical finality, transactional immutable credit journal, global balance /
+liability reconciliation, and idempotent audited withdrawal and reservation
+machines. The already observed founder claim #889 is an independent financial
+release blocker and must not be silently cleared as part of Satchel adoption.
+
 
 ## War Satchel Gate B — exact-transfer evidence, not deposited funds (October 13, 2026)
 
