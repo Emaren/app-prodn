@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/war-satchel-durable-custody-foundation-20261014` at `13633d8b35c7e3ec847ed4a8753b40c156723e8b`
+Implementation baseline: `feature/war-satchel-durable-custody-foundation-20261014` at `e487ad2044f563a18c8adf048958bc9dc11eca19`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
