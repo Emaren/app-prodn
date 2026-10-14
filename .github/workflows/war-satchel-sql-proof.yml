@@ -5,6 +5,8 @@ on:
     paths:
       - "prisma/schema.prisma"
       - "prisma/migrations/20261014_103500_war_satchel_noncrediting_foundation/**"
+      - "prisma/migrations/20261014_133000_war_satchel_wallet_owner_challenges/**"
+      - "tests/sql/war_satchel_wallet_challenge_contract.sql"
       - "tests/sql/war_satchel_foundation_contract.sql"
       - ".github/workflows/war-satchel-sql-proof.yml"
   push:
@@ -12,6 +14,8 @@ on:
     paths:
       - "prisma/schema.prisma"
       - "prisma/migrations/20261014_103500_war_satchel_noncrediting_foundation/**"
+      - "prisma/migrations/20261014_133000_war_satchel_wallet_owner_challenges/**"
+      - "tests/sql/war_satchel_wallet_challenge_contract.sql"
       - "tests/sql/war_satchel_foundation_contract.sql"
       - ".github/workflows/war-satchel-sql-proof.yml"
 
@@ -53,3 +57,7 @@ jobs:
             -f prisma/migrations/20261014_103500_war_satchel_noncrediting_foundation/migration.sql
       - name: Prove real SQL rejects double credits, cross-owner funds and mutation
         run: psql -X -v ON_ERROR_STOP=1 -f tests/sql/war_satchel_foundation_contract.sql
+      - name: Execute server-issued one-use Keplr challenge migration
+        run: psql -X -v ON_ERROR_STOP=1 -f prisma/migrations/20261014_133000_war_satchel_wallet_owner_challenges/migration.sql
+      - name: Test challenge replay, expiry, quota, owner and nonce immutability
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/sql/war_satchel_wallet_challenge_contract.sql
