@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/satchel-receipt-explicit-success-20261014` at `e709a1cad5162994345366c4ff4fa5e3fd2d1504`
+Implementation baseline: `fix/satchel-receipt-explicit-success-20261014` at `bb5f565631d9c379f117b30fe02e0edc2bcc3593`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
