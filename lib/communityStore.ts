@@ -191,11 +191,10 @@ export async function ensureTournamentRoom(prisma: PrismaClient, slug: string, t
   });
 }
 
-async function buildLobbyTournament(
-  prisma: PrismaClient,
+function buildLobbyTournament(
   tournament: TournamentRecord,
   viewerUid?: string | null
-): Promise<LobbyTournament> {
+): LobbyTournament {
   // Entrants are already loaded in TOURNAMENT_INCLUDE; use this exact
   // snapshot for viewer membership instead of a second racing SQL read.
   const viewerJoined =
@@ -241,7 +240,7 @@ export async function getFeaturedTournament(
     return getFallbackTournament(false);
   }
 
-  return buildLobbyTournament(prisma, tournament, viewerUid);
+  return buildLobbyTournament(tournament, viewerUid);
 }
 
 export async function getTournamentBySlug(
@@ -258,7 +257,7 @@ export async function getTournamentBySlug(
     return null;
   }
 
-  return buildLobbyTournament(prisma, tournament, viewerUid);
+  return buildLobbyTournament(tournament, viewerUid);
 }
 
 export async function getLobbyMessages(
