@@ -3438,6 +3438,49 @@ def documentation_plan_summary(plan: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+
+def documentation_blocker_details(summary: dict[str, Any]) -> list[str]:
+    """Render the already-computed fail-closed update facts, without mutating them.
+
+    Finish's blocked dry-run must expose the *specific* unknown P0/P1,
+    source-documentation failure or map authority mismatch. Otherwise the
+    operator sees only a generic stop and cannot choose a legitimate fix.
+    """
+    if not summary.get("blocked"):
+        return []
+
+    details: list[str] = []
+    for item in summary.get("blocked_source_docs") or []:
+        if not isinstance(item, dict):
+            continue
+        name = str(item.get("repo") or "unknown repo")
+        reason = str(item.get("detail") or "source checker failed")
+        details.append(f"source docs [{name}]: {reason[:350]}")
+
+    for severity, key in (("P0", "unknown_p0"), ("P1", "unknown_p1")):
+        for item in summary.get(key) or []:
+            if not isinstance(item, dict):
+                continue
+            area = str(item.get("area") or "unknown area")
+            finding_key = str(item.get("key") or "unknown")
+            reason = str(item.get("detail") or "no detail")
+            details.append(
+                f"{severity} [{area}/{finding_key}]: {reason[:350]}"
+            )
+
+    estate = summary.get("estate_maps") or {}
+    if isinstance(estate, dict) and estate.get("status") == "blocked":
+        details.append(
+            "control-document map: "
+            + str(estate.get("reason") or "blocked").strip()[:350]
+        )
+
+    return details or [
+        "update planner blocked without classified details; "
+        "inspect 'aoe2war update --json' read-only report"
+    ]
+
+
 def docs_history_relation(repo: Path, head: str, remote: str) -> str:
     if head == remote:
         return "EXACT"
@@ -6306,6 +6349,14 @@ def main() -> int:
                 print("Blocking preflight findings:")
                 for blocker in payload["blockers"]:
                     print(f"  - {blocker}")
+                doc_details = documentation_blocker_details(
+                    payload.get("documentation_plan") or {}
+                )
+                if doc_details:
+                    print()
+                    print("Exact documentation/update gate findings:")
+                    for detail in doc_details:
+                        print(f"  - {detail}")
                 print()
             if payload["automatic_remediations"]:
                 print("Automatically remediated before mutation:")
