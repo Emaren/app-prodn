@@ -18,8 +18,8 @@ sensitivity: "internal"
 ## War Satchel Gate C2a — Keplr owner-signature verifier (October 14, 2026)
 
 `lib/warSatchelWalletOwnerProof.ts` implements a **pure off-chain ADR-36
-signature-verification contract** using the existing CosmJS secp256k1
-libraries. A future authenticated server caller must issue, persist and
+signature-verification contract** using CosmJS canonical amino signing bytes
+and Node's built-in secp256k1 verification; the dependency set is unchanged. A future authenticated server caller must issue, persist and
 atomically consume a 128-bit unpredictable challenge bound to the signed-in
 user UID and one exact `wolo1...` wallet, with a maximum 10-minute lifetime.
 The signable human-readable message names `aoe2war.com`, `wolo-1`,
