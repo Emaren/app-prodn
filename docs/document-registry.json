@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d431036524c4a6915f329b177efdc040bf323440241b0780d471a043d09d1cf6",
+      "sha256": "5732325c59679b379c8a18146619b1f9d3e5b2aa9f9dedf566bd552e2a1e698a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/legacy-tournament-document-scroll-20261013",
-    "commit": "53e9e1d48eb76b9a140f0d82cc5db49ed2893c71"
+    "branch": "feature/kingdom-agents-observatory-20261013",
+    "commit": "4c90f9bde7bbf12f3c5da47477daabe44bec7f41"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
