@@ -200,7 +200,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-09-14",
       "sensitivity": "internal",
-      "sha256": "ad02e0aedeb6f1aef800da96045a29338db415f78f05cea887d2305c526c639a",
+      "sha256": "eb6be7b7cfbebf5c9124ac6627175e310686b8117d44774133e7002ecfecfece",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b18326d5f0de335d66a56a413b0cbce8f9efe5c8e424bd6c58c8c4e1a254e620",
+      "sha256": "5fb896be4ed14b917de6767754448beb8feb33633a06326835e27f2727a8cf5f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/admin-translation-control-tower-20261013",
-    "commit": "77f4b0f8b339f4bffbaf50246ee53a28681c05fc"
+    "branch": "fix/ai-provider-quota-health-v2-20261013",
+    "commit": "68a389bdd583a3008e0988d652a52ef28e750018"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
