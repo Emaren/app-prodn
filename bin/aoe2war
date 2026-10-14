@@ -84,6 +84,7 @@ RELEASE="$BIN_DIR/aoe2war-release"
 AUDIT="$BIN_DIR/../scripts/aoe2_audit.py"
 DOCTOR="$BIN_DIR/../scripts/aoe2_doctor.py"
 INSPECTIONS="$BIN_DIR/../scripts/aoe2_inspections.py"
+SHEPHERD="$BIN_DIR/../scripts/aoe2_shepherd.py"
 UPDATE="$BIN_DIR/../scripts/aoe2_update.py"
 CONTROL="$BIN_DIR/../scripts/aoe2_control.py"
 FINISH="$BIN_DIR/../scripts/aoe2_finish.py"
@@ -123,6 +124,7 @@ Usage:
   aoe2war audit [--json]
   aoe2war doctor [--json] [--strict]
   aoe2war inspections [--json] [--file SNAPSHOT.json]  # public read-only board triage
+  aoe2war shepherd [--json] [--inspections-file SNAPSHOT.json]  # read-only release dependency plan
   aoe2war update [--apply] [--json]
   aoe2war control <status|fast|refresh> [options]
   aoe2war docs <status|impact|audit|update> [options]
@@ -600,6 +602,10 @@ case "$command" in
   inspections)
     shift
     exec "$AOE2WAR_PYTHON" "$INSPECTIONS" "$@"
+    ;;
+  shepherd)
+    shift
+    exec "$AOE2WAR_PYTHON" "$SHEPHERD" "$@"
     ;;
   docs)
     shift
