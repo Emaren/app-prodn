@@ -155,3 +155,59 @@ $$;
 CREATE TRIGGER "wolo_transfer_claim_identity_guard"
  BEFORE UPDATE OR DELETE ON "wolo_transfer_claims"
  FOR EACH ROW EXECUTE FUNCTION "protect_wolo_transfer_claim_identity"();
+
+
+-- An immutable journal alone is insufficient. Lock the exact global transfer
+-- claim long enough to prove that money in this row belongs to this owner,
+-- carries an already allocated receipt, and agrees on integer uwolo amount.
+-- Independent chain proof and bank/aggregate-liability parity are still
+-- REQUIRED before any application writer can be enabled.
+CREATE FUNCTION "guard_war_satchel_journal_claim"() RETURNS TRIGGER
+ LANGUAGE plpgsql AS $$
+DECLARE
+  owner_id INTEGER;
+  claim_owner INTEGER;
+  claim_amount BIGINT;
+  claim_rail VARCHAR(32);
+  claim_state VARCHAR(24);
+  expected_amount BIGINT;
+BEGIN
+  IF NEW."kind" IN (
+    'verified_deposit','verified_payout','verified_refund','withdraw_confirmed'
+  ) THEN
+    IF NEW."transfer_claim_id" IS NULL THEN
+      RAISE EXCEPTION 'external money movement missing transfer claim'
+        USING ERRCODE = '23514';
+    END IF;
+    SELECT "user_id" INTO owner_id FROM "war_satchel_accounts"
+      WHERE "id" = NEW."account_id" FOR SHARE;
+    SELECT "user_id","amount_uwolo","rail","status"
+      INTO claim_owner,claim_amount,claim_rail,claim_state
+      FROM "wolo_transfer_claims"
+      WHERE "id" = NEW."transfer_claim_id" FOR SHARE;
+    expected_amount := CASE WHEN NEW."kind" = 'withdraw_confirmed'
+      THEN -NEW."delta_withdrawal_uwolo"
+      ELSE NEW."delta_available_uwolo" END;
+    IF owner_id IS NULL OR claim_owner IS NULL OR claim_owner <> owner_id THEN
+      RAISE EXCEPTION 'external transfer claim belongs to another owner'
+        USING ERRCODE = '23514';
+    END IF;
+    IF claim_state <> 'allocated' OR claim_amount <> expected_amount
+       OR expected_amount <= 0 THEN
+      RAISE EXCEPTION 'external transfer claim not allocated for exact amount'
+        USING ERRCODE = '23514';
+    END IF;
+    IF NEW."kind" = 'verified_deposit' AND claim_rail <> 'satchel' THEN
+      RAISE EXCEPTION 'satchel deposit requires satchel transfer claim'
+        USING ERRCODE = '23514';
+    END IF;
+  ELSIF NEW."transfer_claim_id" IS NOT NULL THEN
+    RAISE EXCEPTION 'internal movement cannot consume external transfer claim'
+      USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END
+$$;
+CREATE TRIGGER "war_satchel_journal_claim_guard"
+ BEFORE INSERT ON "war_satchel_journal"
+ FOR EACH ROW EXECUTE FUNCTION "guard_war_satchel_journal_claim"();
