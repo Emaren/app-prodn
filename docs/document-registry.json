@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c2e82c81fce38b85e7033056a0bafa4548a1313c25d551ec52ebf05d4766b7a9",
+      "sha256": "fc22d734ea039807742ce3f77be86c022f2e58d6a04953691103f815443ca52a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1948,7 +1948,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "restricted",
-      "sha256": "436f6624edd29e21a6fd183857707b6f099db17d00c2c5444c3635cc9105167a",
+      "sha256": "6158e03c21b1f85ba4e057ebfe30f2527361c96b4884ec118aec5ec264bb9717",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/finish-readable-doc-blockers-20261014",
-    "commit": "2c0a638b1399c93ad3f3c7b590645c190f01ad40"
+    "branch": "ops/founder889-indexed-proof-triage-20261014",
+    "commit": "84fd32b1b79afd95e7910edbf252a6f56e4f5b02"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

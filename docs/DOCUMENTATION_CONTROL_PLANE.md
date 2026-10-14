@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/finish-readable-doc-blockers-20261014` at `2c0a638b1399c93ad3f3c7b590645c190f01ad40`
+Implementation baseline: `ops/founder889-indexed-proof-triage-20261014` at `84fd32b1b79afd95e7910edbf252a6f56e4f5b02`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

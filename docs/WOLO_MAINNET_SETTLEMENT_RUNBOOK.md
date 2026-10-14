@@ -15,6 +15,36 @@ sensitivity: "restricted"
 
 # WOLO Mainnet Settlement App Runbook
 
+## October 14 blocked claim #889 — secondary index-only evidence
+
+The protected live finance audit returned **one** old unproven payout attempt:
+pending `founders_win` claim #889, bonus #15, market #4476, attempted
+July 4, 2026. Under currently derived request IDs and memo patterns,
+no record matched in the primary/founder settlement state or private backup.
+A direct Wolo REST **transaction search** by sender failed with HTTPError;
+the error did not prove the node was unavailable or that no payment occurred.
+
+`scripts/wolo-claim889-indexed-proof-readonly.mjs` is a separately
+audited, restricted read-only database diagnostic. It compares this exact
+claim to the existing `wolo_indexed_transfers` cache, reports the indexed
+time-span and coverage near the attempt, and lists bounded public tx hash
+**candidates** only for transfer memos matching the founder/bonus/claim/
+market reference patterns. It checks amount equality internally without
+printing the amount, recipient, sender or raw memo. It does not call a
+signer or Cosmos transaction-search endpoint, and it never modifies
+the claim or any transfer. The script exits code 3 intentionally
+even when candidates are found.
+
+**The application transfer index is incomplete by design** and its lookup
+cannot prove nonpayment. A possible hash must be checked directly on
+the canonical `wolo-1` chain for successful execution, the exact memo,
+sender, recipient, amount in `uwolo` and distinct transfer ordinal. If
+no candidate is found, the operator must not assume no transfer occurred.
+The missing financial proof remains a release blocker until separately
+reconciled. Never clear the old attempt timestamp or fabricate a tx hash
+to manufacture a green preflight.
+
+
 This is the AoE2HDBets-side runbook only. WoloChain owns the chain service,
 keys, signer funding, and settlement truth.
 
