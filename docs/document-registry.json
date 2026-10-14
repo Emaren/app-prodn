@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "67916f09511982cf17567ab5f86ac8822c3e7072b68134e05cc77c6b487115cf",
+      "sha256": "c2e82c81fce38b85e7033056a0bafa4548a1313c25d551ec52ebf05d4766b7a9",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1488,7 +1488,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-29",
       "sensitivity": "internal",
-      "sha256": "2232f7643a4aaa9a19477fb26b949eeaf1395d41bcbc865718e0ec2cbdaa2fba",
+      "sha256": "e0cb3bf15ec5c8062e21c555e2d336c3d6cfe1e8a6668c50d73ebed0f3c457dc",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/satchel-simulation-ledger-race-20261014",
-    "commit": "2cc03e7c62fb8e06448eddd8e8c65708e4d98758"
+    "branch": "fix/finish-readable-doc-blockers-20261014",
+    "commit": "2c0a638b1399c93ad3f3c7b590645c190f01ad40"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
