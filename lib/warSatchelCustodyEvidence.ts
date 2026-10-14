@@ -119,8 +119,12 @@ export function examineSatchelDepositEvidence(input: {
   enforce(proof.expected_sender === intent.senderAddress &&
     proof.expected_amount_uwolo === intent.amountUwolo, "chain verifier expectations differ");
   const tx = proof.lookup;
+  // WoloChain's Go response serializes Code with json:"code,omitempty":
+  // confirmed code=0 is omitted. The trusted verifier independently derives
+  // tx_success from the REST tx response Code==0, so do not reject that
+  // authentic successful response solely for missing an optional zero field.
   enforce(tx && tx.ok === true && tx.found === true && tx.tx_success === true &&
-    tx.code === 0, "transaction success code missing or failed");
+    (tx.code === 0 || tx.code === undefined), "transaction failed or unverified");
   enforce(tx.chain_id === SATCHEL_PROOF_CHAIN && TX_HASH.test(tx.tx_hash) &&
     tx.tx_hash.toUpperCase() === input.claimedTxHash.toUpperCase(), "wrong transaction identity");
   enforce(tx.memo === intent.memo, "memo does not bind owner intent");
