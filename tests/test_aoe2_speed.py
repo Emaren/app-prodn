@@ -1081,7 +1081,9 @@ class PerformanceOSTests(unittest.TestCase):
 
     def test_full_speed_cohort_v2_covers_current_world_surfaces(self):
         routes = SPEED_MODULE.route_list(True)
-        self.assertEqual(len(routes), 93)
+        # Coverage grows when a new ordinary public page is introduced.
+        # Enforce the historical minimum and uniqueness, not a frozen page count.
+        self.assertGreaterEqual(len(routes), 93)
         self.assertEqual(len(routes), len(set(routes)))
         for route in (
             "/wargraph",
@@ -1096,6 +1098,7 @@ class PerformanceOSTests(unittest.TestCase):
             "/leagues/founding-charter-preview",
             "/kingdom-forge",
             "/kingdom-intelligence",
+            "/kingdom-agents",
             "/kingdom-treasury",
             "/general-inspections",
             "/hd-replay-engine",
