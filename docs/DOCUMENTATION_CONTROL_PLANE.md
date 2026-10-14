@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `ops/claim889-amount-window-forensics-20261014` at `2ac9e2efcfdfa28666ddc15d0b9bc412f96c297c`
+Implementation baseline: `ops/claim889-amount-window-forensics-20261014` at `bf67928cb5c23b1972d5345579b240285d181fb1`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
