@@ -20,6 +20,63 @@ sys.modules[SPEC.name] = MODULE
 SPEC.loader.exec_module(MODULE)
 
 
+class FinishDocumentationDiagnosticsTests(unittest.TestCase):
+    def test_blocked_source_and_p1_are_human_actionable(self):
+        summary = {
+            "blocked": True,
+            "blocked_source_docs": [
+                {"repo": "wolochain", "detail": "registry source sha differs"}
+            ],
+            "unknown_p0": [],
+            "unknown_p1": [
+                {"area": "WoloChain", "key": "vps-source-drift",
+                 "detail": "VPS old source differs from reviewed implementation"}
+            ],
+            "estate_maps": {"status": "current"},
+        }
+        lines = MODULE.documentation_blocker_details(summary)
+        self.assertEqual(len(lines), 2)
+        self.assertIn("wolochain", lines[0])
+        self.assertIn("registry source sha differs", lines[0])
+        self.assertIn("WoloChain/vps-source-drift", lines[1])
+
+    def test_source_p0_and_control_map_are_rendered_without_bypassing_gate(self):
+        summary = {
+            "blocked": True,
+            "blocked_source_docs": [],
+            "unknown_p0": [
+                {"area": "Release Engine", "key": "runtime-provenance",
+                 "detail": "active deployed artifact lacks proven source"}
+            ],
+            "unknown_p1": [],
+            "estate_maps": {
+                "status": "blocked",
+                "reason": "source runtime map mismatch",
+            },
+        }
+        lines = MODULE.documentation_blocker_details(summary)
+        self.assertTrue(any("runtime-provenance" in line for line in lines))
+        self.assertTrue(any("source runtime map mismatch" in line for line in lines))
+
+    def test_unblocked_and_unclassified_are_explicit(self):
+        self.assertEqual(
+            MODULE.documentation_blocker_details({"blocked": False}),
+            [],
+        )
+        self.assertIn(
+            "update --json",
+            MODULE.documentation_blocker_details({"blocked": True})[0],
+        )
+
+    def test_detail_rendering_caps_source_descriptions(self):
+        lines = MODULE.documentation_blocker_details({
+            "blocked": True, "blocked_source_docs": [
+                {"repo": "repo", "detail": "x" * 600}
+            ]
+        })
+        self.assertLess(len(lines[0]), 410)
+
+
 class FinishTests(unittest.TestCase):
     def workshop_contract(self):
         return {

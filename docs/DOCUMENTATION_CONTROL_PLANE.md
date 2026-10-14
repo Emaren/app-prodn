@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/satchel-simulation-ledger-race-20261014` at `2cc03e7c62fb8e06448eddd8e8c65708e4d98758`
+Implementation baseline: `fix/finish-readable-doc-blockers-20261014` at `2c0a638b1399c93ad3f3c7b590645c190f01ad40`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
