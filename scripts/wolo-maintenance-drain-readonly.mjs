@@ -8,7 +8,11 @@
  * Run as an isolated one-shot process with production EnvironmentFile supplied
  * by systemd; NEVER echo, log or include DATABASE_URL in the command line.
  */
-import pg from "pg";
+import { createRequire } from "node:module";
+
+const packageAuthority = process.env.AOE2WAR_PACKAGE_JSON?.trim();
+const require = createRequire(packageAuthority || new URL("../package.json", import.meta.url));
+const pg = require("pg");
 
 const { Client } = pg;
 const expected = [
