@@ -15,6 +15,27 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## Gate B verifier hardening — canonical success semantics and unique transfer
+
+The pure, non-crediting `examineSatchelDepositEvidence` contract
+requires `tx_success=true` from the trusted WoloChain verifier, whose Go
+implementation derives it directly from the canonical REST transaction
+`Code == 0`. That Go JSON uses `code,omitempty`, so a successful code
+of zero legitimately omits the optional field; any **present nonzero**
+code is refused. This compatibility behavior is regression-tested.
+The contract independently recounts the exact `wolo-1` `uwolo` transfers
+matching the authorized sender, vault destination and integer amount,
+rather than trusting the service's `matching_transfer_count` summary.
+A mismatched count, duplicate exact transfer, ambiguous event index or
+transaction timestamp later than the independently observed chain head
+cannot become a receipt candidate. Negative tests cover missing-zero compatibility, nonzero failures, duplicate
+exact transfers falsely summarized as unique, and future timestamps.
+
+This only strengthens offline evidence validation. It does **not** authenticate
+an untrusted client response, prove canonical head finality, install a
+vault, write a deposit, authorize a credit, or enable automatic bets.
+
+
 ## War Satchel Gate C3a race-hardening — no concurrent double reservations (October 14, 2026)
 
 A second reviewed PostgreSQL migration serializes the **commit-time** ledger

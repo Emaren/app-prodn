@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `ops/founder889-indexed-proof-triage-20261014` at `84fd32b1b79afd95e7910edbf252a6f56e4f5b02`
+Implementation baseline: `fix/satchel-receipt-explicit-success-20261014` at `b8ada3a21a4a6769c22dd59f59d382c262c4a274`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

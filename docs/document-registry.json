@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "a589e9d9bda7f88f9b4c7e689b99541a12c7cfed824cb97111e960dec58687e1",
+      "sha256": "c28e4546228bae1c24e0f7336fa739c37b4bb4735c88751a39cff15a30298bc1",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "fc22d734ea039807742ce3f77be86c022f2e58d6a04953691103f815443ca52a",
+      "sha256": "55b5a1dd54f8a22e277228ff5d40897996e9dd722aa7478e439a719627dd5cf6",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "ops/founder889-indexed-proof-triage-20261014",
-    "commit": "84fd32b1b79afd95e7910edbf252a6f56e4f5b02"
+    "branch": "fix/satchel-receipt-explicit-success-20261014",
+    "commit": "b8ada3a21a4a6769c22dd59f59d382c262c4a274"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
