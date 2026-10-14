@@ -26,6 +26,7 @@ CREATE TABLE "war_satchel_deposit_intents" (
     AND "expires_at" <= "created_at" + INTERVAL '30 minutes'
   )
 );
+CREATE UNIQUE INDEX "uq_war_satchel_intents_id_owner" ON "war_satchel_deposit_intents" ("id", "user_id");
 CREATE UNIQUE INDEX "uq_war_satchel_intents_memo" ON "war_satchel_deposit_intents" ("memo");
 CREATE UNIQUE INDEX "uq_war_satchel_intents_nonce" ON "war_satchel_deposit_intents" ("nonce");
 CREATE INDEX "ix_war_satchel_intents_owner_created" ON "war_satchel_deposit_intents" ("user_id", "created_at");
@@ -62,10 +63,34 @@ CREATE UNIQUE INDEX "uq_war_satchel_proofs_chain_tx_ordinal" ON "war_satchel_pro
 CREATE INDEX "ix_war_satchel_proofs_owner_created" ON "war_satchel_proof_candidates" ("user_id", "created_at");
 ALTER TABLE "war_satchel_proof_candidates"
   ADD CONSTRAINT "war_satchel_proof_candidates_intent_id_fkey"
-  FOREIGN KEY ("intent_id") REFERENCES "war_satchel_deposit_intents" ("id") ON DELETE RESTRICT ON UPDATE NO ACTION;
+  FOREIGN KEY ("intent_id", "user_id") REFERENCES "war_satchel_deposit_intents" ("id", "user_id") ON DELETE RESTRICT ON UPDATE NO ACTION;
 ALTER TABLE "war_satchel_proof_candidates"
   ADD CONSTRAINT "war_satchel_proof_candidates_user_id_fkey"
   FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE RESTRICT ON UPDATE NO ACTION;
+
+-- Additional server-side economic identity check at the SQL boundary.
+-- A proof candidate for another wallet, vault, denom, or deposit amount can
+-- never be attached to an intent, even if an application validation regresses.
+CREATE OR REPLACE FUNCTION war_satchel_proof_candidates_identity_check()
+RETURNS TRIGGER LANGUAGE plpgsql AS $
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM "war_satchel_deposit_intents" i
+    WHERE i."id" = NEW."intent_id"
+      AND i."user_id" = NEW."user_id"
+      AND i."chain_id" = NEW."chain_id"
+      AND i."sender_address" = NEW."sender_address"
+      AND i."vault_address" = NEW."vault_address"
+      AND i."amount_uwolo" = NEW."amount_uwolo"
+  ) THEN
+    RAISE EXCEPTION 'War Satchel receipt does not match immutable owner and amount intent';
+  END IF;
+  RETURN NEW;
+END;
+$;
+CREATE TRIGGER war_satchel_proofs_exact_intent
+BEFORE INSERT ON "war_satchel_proof_candidates"
+FOR EACH ROW EXECUTE FUNCTION war_satchel_proof_candidates_identity_check();
 
 -- Database-level append-only requirement for receipt proofs.
 -- Prevents retroactive reassignment of consumed transaction identity or
