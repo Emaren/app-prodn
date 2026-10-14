@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "c28e4546228bae1c24e0f7336fa739c37b4bb4735c88751a39cff15a30298bc1",
+      "sha256": "83e7c2d3260154f4db4da538f7a32fe3d27a1473a8a4ffeb7d37912d50656789",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "55b5a1dd54f8a22e277228ff5d40897996e9dd722aa7478e439a719627dd5cf6",
+      "sha256": "c264eac38afe8945654330fe0058e1aab7f1127a42b602bb3849458567462767",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/satchel-receipt-explicit-success-20261014",
-    "commit": "b8ada3a21a4a6769c22dd59f59d382c262c4a274"
+    "branch": "fix/satchel-journal-cross-owner-guard-20261014",
+    "commit": "a1d027941dae0bc8eeb47b6a140b9bff1356d9a4"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
