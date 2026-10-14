@@ -191,32 +191,16 @@ export async function ensureTournamentRoom(prisma: PrismaClient, slug: string, t
   });
 }
 
-async function viewerHasJoinedTournament(
-  prisma: PrismaClient,
-  tournamentId: number,
-  viewerUid?: string | null
-) {
-  if (!viewerUid) {
-    return false;
-  }
-
-  return Boolean(
-    await prisma.tournamentEntry.findFirst({
-      where: {
-        tournamentId,
-        user: { uid: viewerUid },
-      },
-      select: { id: true },
-    })
-  );
-}
-
 async function buildLobbyTournament(
   prisma: PrismaClient,
   tournament: TournamentRecord,
   viewerUid?: string | null
 ): Promise<LobbyTournament> {
-  const viewerJoined = await viewerHasJoinedTournament(prisma, tournament.id, viewerUid);
+  // Entrants are already loaded in TOURNAMENT_INCLUDE; use this exact
+  // snapshot for viewer membership instead of a second racing SQL read.
+  const viewerJoined =
+    Boolean(viewerUid) &&
+    tournament.entries.some((entry) => entry.user.uid === viewerUid);
 
   return {
     id: tournament.id,
