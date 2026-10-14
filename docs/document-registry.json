@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "191883fc7ff1fbfc052ab18fb7545e7af87fe443c47d41f5ac81f1ae66753e68",
+      "sha256": "5bf4390d82d6d37290d0cf269be577a1f018329e7af6610b75ae87a604749c1d",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2094,7 +2094,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/satchel-append-only-journal-20261014",
-    "commit": "2db0b561412b1552fb98e18d9021682bab28a50c"
+    "commit": "0445c218146c8ca18b5505a341fd5a9c8b3f2289"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
