@@ -24,7 +24,7 @@ test("Satchel journal has no live spendable transfer endpoints or mutating impor
 });
 test("database contract covers receipt idempotency, owner binding, zero sum and immutability",()=>{
   for(const marker of ["duplicate use of a chain deposit receipt","cross-user deposit proof",
-      "append postings to a past committed journal","zero-line journal at commit",
+      "append postings to a past committed journal","zero-line journal at commit","two-line zero-sum invariant at commit", "cross-user liability posting",
       "reassign liability account to another user","SATCHEL_APPEND_ONLY_JOURNAL_SQL_PASS"]){
     assert.ok(contract.includes(marker),marker);
   }
