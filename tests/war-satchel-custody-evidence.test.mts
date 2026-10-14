@@ -85,7 +85,9 @@ test("only the specific matched WOLO coin may be credited, never a foreign denom
   assert.throws(() => examineSatchelDepositEvidence(x), /indexed uwolo transfer mismatch/);
   x.proof.lookup!.matched_transfer!.denom = "uwolo";
   x.proof.lookup!.transfers![1].amount = "699999999";
-  assert.throws(() => examineSatchelDepositEvidence(x), /indexed uwolo transfer mismatch/);
+  // Recounting authoritative transfer events now rejects a missing exact coin
+  // before reaching the later matched-transfer-index consistency check.
+  assert.throws(() => examineSatchelDepositEvidence(x), /ambiguous or absent exact uwolo transfer/);
 });
 
 test("accept WoloChain's omitted-zero Go success code, reject any nonzero code", () => {
