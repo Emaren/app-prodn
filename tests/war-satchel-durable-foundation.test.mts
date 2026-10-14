@@ -23,6 +23,9 @@ test("War Satchel has durable intent and separately identified receipt models", 
   assert.match(schema, /@relation\(fields: \[intentId, userId\], references: \[id, userId\]/);
   assert.match(sql, /FOREIGN KEY \("intent_id", "user_id"\) REFERENCES "war_satchel_deposit_intents" \("id", "user_id"\)/);
   assert.match(sql, /war_satchel_proofs_exact_intent/);
+  assert.match(sql, /war_satchel_intents_economic_lock/);
+  assert.match(sql, /NEW\."vault_address", NEW\."amount_uwolo", NEW\."memo", NEW\."nonce"/);
+  assert.match(sql, /War Satchel economic intent identity is immutable/);
   assert.match(sql, /i\."sender_address" = NEW\."sender_address"/);
   assert.match(sql, /i\."vault_address" = NEW\."vault_address"/);
   assert.match(sql, /i\."amount_uwolo" = NEW\."amount_uwolo"/);
