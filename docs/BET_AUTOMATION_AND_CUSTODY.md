@@ -15,6 +15,32 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## War Satchel Gate C2a — Keplr owner-signature verifier (October 14, 2026)
+
+`lib/warSatchelWalletOwnerProof.ts` implements a **pure off-chain ADR-36
+signature-verification contract** using the existing CosmJS secp256k1
+libraries. A future authenticated server caller must issue, persist and
+atomically consume a 128-bit unpredictable challenge bound to the signed-in
+user UID and one exact `wolo1...` wallet, with a maximum 10-minute lifetime.
+The signable human-readable message names `aoe2war.com`, `wolo-1`,
+`satchel-v1:owner-proof`, UID, wallet, nonce and issued/expiry times. It
+explicitly states that no transfer, bet, withdrawal or custody authorization
+is conveyed by the signature. The verifier checks canonical ADR-36 amino
+sign bytes, compressed secp256k1 pubkey and derived `wolo` address, signature,
+owner session and expiry; negative tests exercise tampering, replay-consumed
+challenges, mismatched UID/wallet and future/expired windows.
+
+**Critical limitation:** A successful helper call is a candidate wallet-control
+witness, not a verified persistent binding. This milestone does not expose a
+public route or generate real challenges. Server-side persistent
+`nonce` uniqueness, single-use atomic consumption, CSRF/session binding,
+revocation and actor-safe rate limits still must be implemented and separately
+tested before any client-side `Keplr.signArbitrary` flow can use it. Do not
+accept a client-supplied challenge as trusted server evidence. It cannot
+credit the Gate C1 tables or move WOLO, and the live Satchel funding
+button remains disabled.
+
+
 ## War Satchel Gate C1 — persisted evidence, zero credited WOLO (October 14, 2026)
 
 This milestone adds only the independently testable storage foundation of a
