@@ -349,6 +349,12 @@ but isolates fullscreen behavior to the root bracket.
 Tournament detail reads use getTournamentBySlug and TOURNAMENT_INCLUDE.
 Viewer entry membership uses the already-loaded entrant identities, not
 a redundant membership SQL query that can race the current entrant snapshot.
+The historic page renders the newest 12 public room-message authors, texts and
+timestamps only. Its dedicated getTournamentRecentMessages projection reads
+bounded metadata from the same public room, omits all unused reactions and
+guest-reaction identity joins, and orders latest messages deterministically by
+creation time and message ID before restoring chronological display order.
+The modern interactive lobby keeps its separate full reaction reader.
 Replay proof projections, original results and historical competition
 records are untouched. The theoretical 100,000 WOLO bracket label is
 presentation, not proof of funded escrow or a payment entitlement.
