@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "4ac3ed7c66caebcc58163f8cd36d363eef408e39c191e16ef1c06d0fc6637f2a",
+      "sha256": "b1c65c4b69a28987d78aa0a9d92a3c5850a9195bc8992aea81ee63d0fbe31740",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2094,7 +2094,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/satchel-balanced-ledger-foundation-20261014",
-    "commit": "9e35197fe64046a5df1a432a70402bd6c800d19f"
+    "commit": "ec422807f0b748942cf203571300d6a21fc2c7c8"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
