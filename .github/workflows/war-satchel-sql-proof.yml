@@ -1,0 +1,55 @@
+name: War Satchel PostgreSQL Migration Proof
+
+on:
+  pull_request:
+    paths:
+      - "prisma/schema.prisma"
+      - "prisma/migrations/20261014_103500_war_satchel_noncrediting_foundation/**"
+      - "tests/sql/war_satchel_foundation_contract.sql"
+      - ".github/workflows/war-satchel-sql-proof.yml"
+  push:
+    branches: [main]
+    paths:
+      - "prisma/schema.prisma"
+      - "prisma/migrations/20261014_103500_war_satchel_noncrediting_foundation/**"
+      - "tests/sql/war_satchel_foundation_contract.sql"
+      - ".github/workflows/war-satchel-sql-proof.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  non-crediting-contract:
+    name: PostgreSQL 16 / War Satchel exact proof constraints
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: satchel_ci
+          POSTGRES_PASSWORD: satchel_ci_ephemeral
+          POSTGRES_DB: satchel_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U satchel_ci -d satchel_ci"
+          --health-interval 4s
+          --health-timeout 4s
+          --health-retries 12
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGUSER: satchel_ci
+      PGPASSWORD: satchel_ci_ephemeral
+      PGDATABASE: satchel_ci
+    steps:
+      - uses: actions/checkout@v7
+      - name: Prepare isolated synthetic user key dependency
+        run: psql -X -v ON_ERROR_STOP=1 -c 'CREATE TABLE users (id INTEGER PRIMARY KEY)'
+      - name: Execute real PostgreSQL migration (fail closed)
+        run: |
+          psql -X -v ON_ERROR_STOP=1 \
+            -f prisma/migrations/20261014_103500_war_satchel_noncrediting_foundation/migration.sql
+      - name: Prove real SQL rejects double credits, cross-owner funds and mutation
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/sql/war_satchel_foundation_contract.sql

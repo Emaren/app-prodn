@@ -68,6 +68,8 @@ model User {
   betStakeIntents                BetStakeIntent[]
   betStakeTickets                BetStakeTicket[]
   betAutoPreset                  BetAutoPreset?
+  warSatchelDepositIntents       WarSatchelDepositIntent[]
+  warSatchelProofCandidates      WarSatchelProofCandidate[]
   betMarketWallets               BetMarketWallet[]
   betMarketFinancialAdjustments  BetMarketFinancialAdjustment[]
   reviewedPlayerIdentityAliases  PlayerIdentityAlias[]
@@ -5241,4 +5243,63 @@ model ChampionshipTitleDispute {
   @@unique([trophyId,custodyEpoch])
   @@index([status,createdAt])
   @@map("championship_title_disputes")
+}
+
+/**
+ * War Satchel escrow deposit request. Intent creation is NEVER a credit or
+ * a signer permission. Only an independently verified finalized chain transfer
+ * can later be considered for a separate transactional custody ledger.
+ * There is deliberately no live crediting or betting mutation in this model.
+ */
+model WarSatchelDepositIntent {
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          Int      @map("user_id")
+  chainId         String   @default("wolo-1") @map("chain_id") @db.VarChar(32)
+  senderAddress   String   @map("sender_address") @db.VarChar(100)
+  vaultAddress    String   @map("vault_address") @db.VarChar(100)
+  amountUwolo     BigInt   @map("amount_uwolo")
+  memo            String   @unique(map: "uq_war_satchel_intents_memo") @db.VarChar(240)
+  nonce           String   @unique(map: "uq_war_satchel_intents_nonce") @db.VarChar(64)
+  status          String   @default("prepared") @db.VarChar(32)
+  expiresAt       DateTime @map("expires_at") @db.Timestamp(6)
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  proofCandidate  WarSatchelProofCandidate?
+
+  @@unique([id, userId], map: "uq_war_satchel_intents_id_owner")
+  @@index([userId, createdAt], map: "ix_war_satchel_intents_owner_created")
+  @@index([status, expiresAt], map: "ix_war_satchel_intents_status_expiry")
+  @@map("war_satchel_deposit_intents")
+}
+
+/**
+ * Immutable evidence-candidate identity ONLY. Unlike a cash balance or
+ * available-to-wager credit, this table cannot authorize token movement.
+ * A separate source-attested transaction journal and custody reconciliation
+ * are required before turning on any credit/money execution endpoints.
+ */
+model WarSatchelProofCandidate {
+  id            BigInt   @id @default(autoincrement())
+  intentId      String   @unique(map: "uq_war_satchel_proofs_intent") @map("intent_id") @db.Uuid
+  userId        Int      @map("user_id")
+  chainId       String   @map("chain_id") @db.VarChar(32)
+  txHash        String   @map("tx_hash") @db.VarChar(64)
+  transferIndex Int      @map("transfer_index")
+  senderAddress String   @map("sender_address") @db.VarChar(100)
+  vaultAddress  String   @map("vault_address") @db.VarChar(100)
+  amountUwolo   BigInt   @map("amount_uwolo")
+  txHeight      BigInt   @map("tx_height")
+  status        String   @default("uncredited") @db.VarChar(24)
+  verifiedAt    DateTime @map("verified_at") @db.Timestamp(6)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  intent WarSatchelDepositIntent @relation(fields: [intentId, userId], references: [id, userId], onDelete: Restrict, onUpdate: NoAction)
+  user   User                    @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([intentId, userId], map: "uq_war_satchel_proofs_intent_owner")
+  @@unique([chainId, txHash, transferIndex], map: "uq_war_satchel_proofs_chain_tx_ordinal")
+  @@index([userId, createdAt], map: "ix_war_satchel_proofs_owner_created")
+  @@map("war_satchel_proof_candidates")
 }
