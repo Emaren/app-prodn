@@ -186,7 +186,7 @@ export default function KingdomAgentsClient({ initial }: { initial: KingdomAgent
             </div>
           </section>
           <section className={styles.chamber}>
-            <div className={styles.sectionHeading}><span>02 / SHEPHERD'S ORDERS</span><Link href="/general-inspections">GENERAL INSPECTIONS <ArrowUpRight size={12}/></Link></div>
+            <div className={styles.sectionHeading}><span>02 / SHEPHERD&apos;S ORDERS</span><Link href="/general-inspections">GENERAL INSPECTIONS <ArrowUpRight size={12}/></Link></div>
             <div className={styles.directive}>
               <div className={styles.directiveCrest}><Swords size={25} strokeWidth={1.3}/></div>
               <div className={styles.directiveEyebrow}>PRIORITY DIRECTIVE · {data.directive?.level ?? "OBSERVATION"}</div>
