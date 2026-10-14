@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-12",
       "sensitivity": "internal",
-      "sha256": "1d08a6512b3fffc84767a5e0955fd512d3ee057a27987762e693288f364f271f",
+      "sha256": "5180f55278fe1f2396cdd33055f7d250e3af500ee4b223033dc7378886b14870",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ec90dbc85467da668689c620c4ec2c60f2934e1b0b0e4942609542c13cade409",
+      "sha256": "71286ae0fb120a939fd57fa7330a695c5311c7469b0986c5590930ab8be0c63a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2094,7 +2094,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feat/satchel-durable-ledger-gate-b-20261013",
-    "commit": "b6b04c74e8f4488d2a356b2230a5040c569b41b6"
+    "commit": "a9bfee6092874fcca06474dd619b343dc615e580"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
