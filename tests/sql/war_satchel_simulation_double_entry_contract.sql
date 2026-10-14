@@ -23,7 +23,7 @@ BEGIN
 END;
 $expect_ledger$;
 
-INSERT INTO "users" ("id") VALUES (101), (102);
+INSERT INTO "users" ("id") VALUES (101), (102) ON CONFLICT DO NOTHING;
 
 INSERT INTO war_satchel_ledger_accounts
   (id, account_key, owner_user_id, account_kind)
