@@ -37,7 +37,7 @@ test("legacy tournament detail uses normal document scroll without redesigning p
   assert.match(detail, /100,000 WOLO/);
   assert.match(detail, /BracketPreviewTile/);
   assert.match(detail, /getTournamentBySlug/);
-  assert.match(detail, /getLobbyMessages/);
+  assert.match(detail, /getTournamentRecentMessages/);
   assert.doesNotMatch(detail, /overflow-y-hidden|h-\[100dvh\]|document\.body\.style\.overflow/);
 });
 
@@ -49,5 +49,15 @@ test("tournament viewing makes one canonical entrant snapshot, no extra viewer m
   assert.doesNotMatch(store, /async function viewerHasJoinedTournament/);
   assert.match(store, /sourceGameStats: \{[\s\S]*?replayHash: true/);
   assert.match(tournamentPage, /verifySession\(/);
-  assert.match(tournamentPage, /readGuestReactionSessionIdFromCookies/);
+  assert.doesNotMatch(tournamentPage, /readGuestReactionSessionIdFromCookies/);
+  assert.match(tournamentPage, /getTournamentRecentMessages\(prisma, tournament\.roomSlug, 12\)/);
+  const reader = store.slice(
+    store.indexOf("export async function getTournamentRecentMessages("),
+    store.indexOf("export async function getLobbyMessages(")
+  );
+  assert.match(reader, /take: Math\.max\(1, Math\.min\(30,/);
+  assert.match(reader, /orderBy: \[\{ createdAt: "desc" \}, \{ id: "desc" \}\]/);
+  assert.match(reader, /inGameName: true/);
+  assert.match(reader, /steamPersonaName: true/);
+  assert.doesNotMatch(reader, /reactions|guestReactions|include:/);
 });
