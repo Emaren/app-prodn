@@ -21,7 +21,10 @@ Source `app/api/user/war-satchel/wallet-proof/route.ts` is a **disabled-by-defau
 Keplr wallet-control verification endpoint. `POST` creates a cryptographically
 random 128-bit nonce on the server for the authenticated current user and
 persisted linked wallet; the request body cannot select an alternate UID,
-signer, nonce, custody vault or amount. It returns the exact ADR-36 text with
+signer, nonce, custody vault or amount.
+The server locks the current user's database row and performs the hourly
+challenge count plus insert in one bounded transaction. This prevents two
+concurrent browser requests from both passing an unlocked quota check. It returns the exact ADR-36 text with
 a five-minute expiration. `PUT` accepts the signature, independently loads
 the stored nonce/current session user/wallet, limits verification attempts
 with an atomic DB increment and atomically consumes the challenge exactly
