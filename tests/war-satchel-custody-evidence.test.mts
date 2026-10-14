@@ -88,12 +88,15 @@ test("only the specific matched WOLO coin may be credited, never a foreign denom
   assert.throws(() => examineSatchelDepositEvidence(x), /indexed uwolo transfer mismatch/);
 });
 
-test("fail closed on missing Cosmos success code even if a verifier claims success", () => {
+test("accept WoloChain's omitted-zero Go success code, reject any nonzero code", () => {
   const x = fixture();
   x.proof.lookup!.code = undefined;
-  assert.throws(() => examineSatchelDepositEvidence(x), /success code missing or failed/);
+  assert.equal(examineSatchelDepositEvidence(x).creditAuthorized, false);
   x.proof.lookup!.code = 1;
-  assert.throws(() => examineSatchelDepositEvidence(x), /success code missing or failed/);
+  assert.throws(() => examineSatchelDepositEvidence(x), /transaction failed or unverified/);
+  x.proof.lookup!.code = undefined;
+  x.proof.lookup!.tx_success = false;
+  assert.throws(() => examineSatchelDepositEvidence(x), /transaction failed or unverified/);
 });
 
 test("upstream cannot hide a duplicate exact transfer with a false count", () => {
