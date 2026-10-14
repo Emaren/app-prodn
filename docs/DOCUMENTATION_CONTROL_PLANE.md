@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/satchel-adr36-owner-proof-20261014` at `01872e995ae0c7a3617b169b3048ded0f30415b4`
+Implementation baseline: `feature/satchel-server-challenge-20261014` at `8c280c26b27766c72720689334767f26de90dd2a`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

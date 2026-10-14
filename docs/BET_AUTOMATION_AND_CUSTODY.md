@@ -15,6 +15,37 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## War Satchel Gate C2b — single-use server-issued wallet challenge (Oct 14, 2026)
+
+Source `app/api/user/war-satchel/wallet-proof/route.ts` is a **disabled-by-default**
+Keplr wallet-control verification endpoint. `POST` creates a cryptographically
+random 128-bit nonce on the server for the authenticated current user and
+persisted linked wallet; the request body cannot select an alternate UID,
+signer, nonce, custody vault or amount. It returns the exact ADR-36 text with
+a five-minute expiration. `PUT` accepts the signature, independently loads
+the stored nonce/current session user/wallet, limits verification attempts
+with an atomic DB increment and atomically consumes the challenge exactly
+once after cryptographic proof. Both methods require the explicit
+`WAR_SATCHEL_OWNER_PROOF_ENABLED=true` operator release flag and an
+`https://aoe2war.com` browser Origin; the default response is 503.
+
+`WarSatchelWalletChallenge` is durable non-money evidence with a globally
+unique nonce, owner-bound immutable metadata, immutable consumption, an
+at-most-10-minute SQL time window and max five signature attempts.
+Real PostgreSQL CI executes the migration and rejects replay, owner/
+destination/nonce retargets and attempt-counter rewind. Normal release
+security checks must also pass.
+
+**This is NOT a Satchel funding capability or permanent wallet
+authorization.** It does not alter `users.wallet_address`, produce
+a spendable Satchel balance, sign/broadcast a transaction, reserve bets
+or enable the Load button. The operator flag must remain **off** in
+production until migrations and risk review are complete. A future
+wallet-binding and custody deposit workflow must verify a separate
+authorized vault and exact chain transfer and maintain immutable
+double-entry accounting before enabling any real deposit or wager.
+
+
 ## War Satchel Gate C2a — Keplr owner-signature verifier (October 14, 2026)
 
 `lib/warSatchelWalletOwnerProof.ts` implements a **pure off-chain ADR-36

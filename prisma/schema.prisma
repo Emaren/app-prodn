@@ -70,6 +70,7 @@ model User {
   betAutoPreset                  BetAutoPreset?
   warSatchelDepositIntents       WarSatchelDepositIntent[]
   warSatchelProofCandidates      WarSatchelProofCandidate[]
+  warSatchelWalletChallenges     WarSatchelWalletChallenge[]
   betMarketWallets               BetMarketWallet[]
   betMarketFinancialAdjustments  BetMarketFinancialAdjustment[]
   reviewedPlayerIdentityAliases  PlayerIdentityAlias[]
@@ -5302,4 +5303,26 @@ model WarSatchelProofCandidate {
   @@unique([chainId, txHash, transferIndex], map: "uq_war_satchel_proofs_chain_tx_ordinal")
   @@index([userId, createdAt], map: "ix_war_satchel_proofs_owner_created")
   @@map("war_satchel_proof_candidates")
+}
+
+/**
+ * Server-issued, one-use Keplr ADR-36 wallet-control proof challenge.
+ * Not a Satchel deposit, signer permission, user-wallet address mutation,
+ * custody credit or wager authorization. Historical rows are audit evidence.
+ */
+model WarSatchelWalletChallenge {
+  id               String    @id @default(uuid()) @db.Uuid
+  userId           Int       @map("user_id")
+  ownerUid         String    @map("owner_uid") @db.VarChar(100)
+  walletAddress    String    @map("wallet_address") @db.VarChar(100)
+  nonce            String    @unique(map: "uq_war_satchel_wallet_nonce") @db.VarChar(32)
+  issuedAt         DateTime  @default(now()) @map("issued_at") @db.Timestamp(6)
+  expiresAt        DateTime  @map("expires_at") @db.Timestamp(6)
+  consumedAt       DateTime? @map("consumed_at") @db.Timestamp(6)
+  attempts         Int       @default(0)
+  user             User      @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([userId, issuedAt], map: "ix_war_satchel_wallet_actor_issue")
+  @@index([userId, expiresAt], map: "ix_war_satchel_wallet_actor_expiry")
+  @@map("war_satchel_wallet_challenges")
 }
