@@ -16,6 +16,7 @@ import {
   BarChart3,
   BadgeDollarSign,
   Bot,
+  Network,
   Castle,
   ChevronDown,
   Coins,
@@ -102,6 +103,7 @@ export default function HeaderMenu({
       { href: "/television-wolo", label: "Television WOLO", icon: Tv, featured: true },
       { href: "/bounties", label: "Bounty Board", icon: Target, featured: true },
       { href: "/ai", label: "AI Council", icon: Bot, featured: true },
+      { href: "/kingdom-agents", label: "Kingdom Agents", icon: Network, featured: true },
       { href: "/radio", label: "Radio WOLO", icon: Radio, featured: true },
       { href: "/admin/user-list", label: "Admin", icon: Shield, adminOnly: true, featured: true },
       {

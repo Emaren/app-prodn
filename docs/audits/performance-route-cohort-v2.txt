@@ -32,6 +32,7 @@
 /hd-replay-engine
 /general-inspections
 /kingdom
+/kingdom-agents
 /kingdom-intelligence
 /kingdom-treasury
 /kingdom-forge
