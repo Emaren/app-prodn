@@ -71,6 +71,7 @@ model User {
   warSatchelDepositIntents       WarSatchelDepositIntent[]
   warSatchelProofCandidates      WarSatchelProofCandidate[]
   warSatchelWalletChallenges     WarSatchelWalletChallenge[]
+  warSatchelLedgerAccounts       WarSatchelLedgerAccount[]
   betMarketWallets               BetMarketWallet[]
   betMarketFinancialAdjustments  BetMarketFinancialAdjustment[]
   reviewedPlayerIdentityAliases  PlayerIdentityAlias[]
@@ -5325,4 +5326,56 @@ model WarSatchelWalletChallenge {
   @@index([userId, issuedAt], map: "ix_war_satchel_wallet_actor_issue")
   @@index([userId, expiresAt], map: "ix_war_satchel_wallet_actor_expiry")
   @@map("war_satchel_wallet_challenges")
+}
+
+/**
+ * Isolated accounting rehearsal account, NOT a real custodial WOLO balance.
+ * Source_kind at the database layer permits simulations only in C3a.
+ */
+model WarSatchelLedgerAccount {
+  id           BigInt                     @id @default(autoincrement())
+  accountKey   String                     @unique(map: "uq_war_satchel_ledger_account_key") @map("account_key") @db.VarChar(160)
+  ownerUserId  Int?                       @map("owner_user_id")
+  accountKind  String                     @map("account_kind") @db.VarChar(36)
+  chainId      String                     @default("wolo-1") @map("chain_id") @db.VarChar(32)
+  denom        String                     @default("uwolo") @db.VarChar(24)
+  createdAt    DateTime                   @default(now()) @map("created_at") @db.Timestamp(6)
+  owner        User?                      @relation(fields: [ownerUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  postings     WarSatchelLedgerPosting[]
+
+  @@index([ownerUserId, accountKind], map: "ix_war_satchel_ledger_owner_kind")
+  @@map("war_satchel_ledger_accounts")
+}
+
+/**
+ * Unique immutable journal identity. Simulation-only until real signer,
+ * on-chain vault solvency and credit admission are independently reviewed.
+ */
+model WarSatchelLedgerJournal {
+  id          String                     @id @default(uuid()) @db.Uuid
+  sourceKind  String                     @default("simulation") @map("source_kind") @db.VarChar(24)
+  sourceKey   String                     @unique(map: "uq_war_satchel_ledger_source_key") @map("source_key") @db.VarChar(180)
+  createdAt   DateTime                   @default(now()) @map("created_at") @db.Timestamp(6)
+  postings    WarSatchelLedgerPosting[]
+
+  @@map("war_satchel_ledger_journals")
+}
+
+/**
+ * Double-entry signed integer uwolo accounting row. SUM(delta_uwolo)=0
+ * for every journal at COMMIT, enforced by deferred database constraints.
+ * Rows are append-only; no live funding/withdrawal functionality is attached.
+ */
+model WarSatchelLedgerPosting {
+  id          BigInt                   @id @default(autoincrement())
+  journalId   String                   @map("journal_id") @db.Uuid
+  accountId   BigInt                   @map("account_id")
+  deltaUwolo  BigInt                   @map("delta_uwolo")
+  createdAt   DateTime                 @default(now()) @map("created_at") @db.Timestamp(6)
+  journal     WarSatchelLedgerJournal  @relation(fields: [journalId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  account     WarSatchelLedgerAccount  @relation(fields: [accountId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([journalId, accountId], map: "uq_war_satchel_posting_one_entry_per_account")
+  @@index([accountId, createdAt], map: "ix_war_satchel_postings_account_time")
+  @@map("war_satchel_ledger_postings")
 }

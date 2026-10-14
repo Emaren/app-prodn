@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "22ebedd617b3b3d9a2caaf8ff055b3598331506c263b11f8dfb33207a296816a",
+      "sha256": "f0d724e95e9d323e9548ea0e62556f16cb8f7f0e0e133b1ed0b59a0d8e2596df",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "55150a78f65edeb2fe5426f84b0e12af7563a40ef541d35546af4dc6362d6376",
+      "sha256": "b1c65c4b69a28987d78aa0a9d92a3c5850a9195bc8992aea81ee63d0fbe31740",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/satchel-atomic-owner-challenge-quota-20261014",
-    "commit": "a95ddc0ebff727ecc5c0af3458fea925ef160e0a"
+    "branch": "feature/satchel-balanced-ledger-foundation-20261014",
+    "commit": "ec422807f0b748942cf203571300d6a21fc2c7c8"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

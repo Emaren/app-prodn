@@ -15,6 +15,45 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## War Satchel Gate C3a — simulation-only balanced accounting (October 14, 2026)
+
+The next custody prerequisite is a **double-entry WOLO ledger** in which
+every movement has one equal-and-opposite entry. This milestone introduces
+three new Prisma models and tables: `WarSatchelLedgerAccount` for separated
+user-available, user-reserved and custody-asset categories;
+`WarSatchelLedgerJournal` for one unique source identity per operation; and
+`WarSatchelLedgerPosting` for integer signed `uwolo` entries.
+
+The database enforces crucial financial conditions independently of
+application code. A deferred PostgreSQL constraint trigger refuses a journal
+with fewer than two postings or a nonzero net sum at transaction commit.
+Account balances cannot overdraw the vault asset or either user's available
+and reserved liability. Journal IDs and external source keys are globally
+unique; account identity, sources and postings are append-only and cannot
+be overwritten or deleted to disguise past movements.
+
+**Simulation-only guard:** the SQL database constraint accepts only
+`source_kind='simulation'` with a `simulation:`-prefixed source key.
+There is deliberately no production deposit-credit event, no spendable
+balance API, no signed transfer, no wagering executor, no real vault
+selection or withdrawal. This is a functioning *test ledger*, not a live
+banking system. Existing bettors and balances are unaffected by this source
+change. The migration must not be run manually on the production VPS.
+
+An isolated PostgreSQL 16 workflow executes the real migration and checks
+successful synthetic deposit and reservation plus failed scenarios:
+nonzero-sum journal, missing side, duplicate source, overdraft,
+wrong user account, live-credit spoofing, and immutable history. Automated
+testing of a simulator does **not** constitute evidence of actual
+WoloChain vault balances or ownership of funds.
+
+**Gate C3b:** separately certify a custody vault and owner-authorized
+transfer ingress, independent finalized `wolo-1/uwolo` receipt proof,
+liability-to-chain-asset reconciliation, transactional credit admission
+and exact-once credit; only then can any sandbox accounting infrastructure
+become real money via an audited additional migration and canary.
+
+
 ## War Satchel Gate C2b — single-use server-issued wallet challenge (Oct 14, 2026)
 
 Source `app/api/user/war-satchel/wallet-proof/route.ts` is a **disabled-by-default**
