@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["operators","developers","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-09-14"
+reviewed_at: "2026-10-13"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -216,3 +216,7 @@ managed row:
 - `ARCHITECTURE.md` — application/database boundary
 - `docs/WORKSHOP_ARCHITECTURE.md` — public Workshop/privacy boundary
 - `docs/OPERATOR_START_HERE.md` — fresh-session authority and recovery rules
+
+## Dated source-contract review — 2026-10-13
+
+Review checkpoint 2026-10-13: The exact profile-document size/count/total limits were cross-checked against lib/profileDocuments.ts (25 MiB, 30 active documents and 250 MiB). Production HD/DE database separation and owner/private file handling remain mandatory; source inspection is not evidence that a particular private file or database row currently exists.

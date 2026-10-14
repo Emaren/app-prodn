@@ -8,7 +8,7 @@ systems: ["app-prodn","aoe2-watcher"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-08-15"
+reviewed_at: "2026-10-13"
 review_interval_days: 60
 sensitivity: "internal"
 ---
@@ -215,3 +215,7 @@ candidate estate cannot silently omit current exact-Steam matches. The audit
 uses canonical replay-player normalization and intentionally excludes the same
 under-60-second `no_rated_result` / not-completed early exits that public player
 profiles already classify as no-game replays.
+
+## Dated source-contract review — 2026-10-13
+
+Review checkpoint 2026-10-13: The Basic/Advanced/Extreme preference names and account/guest separation were reviewed against lib/tileViewPreferences.ts and the current AppShell route classifier. Rank truth must remain server-authoritative; the archived August 15 visual and performance decisions are retained as dated engineering evidence, not a fresh browser performance certification.

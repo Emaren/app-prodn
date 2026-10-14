@@ -8,7 +8,7 @@ systems: ["app-prodn","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "financial-domain-contract"
-reviewed_at: "2026-09-14"
+reviewed_at: "2026-10-13"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -176,3 +176,7 @@ Marketplace releases should prove:
 - owner/admin authority tests;
 - inquiry/invoice/tax single-use payment behavior;
 - final source/build/version certification.
+
+## Dated source-contract review — 2026-10-13
+
+Review checkpoint 2026-10-13: lib/marketplaceBusiness.ts still specifies MARKETPLACE_STANDARD_WOLO=100 and MARKETPLACE_BUSINESS_TAX_BPS=1000, as documented. This is source-contract review only; no chain payment, custody reserve, user balance, transaction finality or marketplace tax receipt has been revalidated or changed. Financial authorization remains independently gated.

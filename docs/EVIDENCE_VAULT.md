@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["operators","auditors","ai-agents"]
 source_of_truth: "git"
 authority: "disaster-recovery-contract"
-reviewed_at: "2026-09-14"
+reviewed_at: "2026-10-13"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -671,3 +671,7 @@ All temporary plaintext restore workspaces were removed afterward.
 This pilot materially improved total-Hetzner-loss recovery, but by itself it
 never made `offsite_evidence.enabled=true` truthful; full schema-2 proof was
 still required.
+
+## Dated source-contract review — 2026-10-13
+
+Review checkpoint 2026-10-13: This disaster-recovery contract was reread against the current Recovery OS source in scripts/aoe2_recovery.py and the operator's latest Doctor evidence (100/100). The required independent hashes, ten recovery classes and Wolo key exclusions remain the governing rules. This documentation review does not substitute for a fresh off-host restore exercise or prove current remote vault object health.
