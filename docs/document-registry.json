@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e5d9ee546c2ce550a2c0447161479b6a140d4b07a3fdbd3dfc22760b7b0da34f",
+      "sha256": "1118cac644134a2dfa26627faf18c7641e99d06667941f9e3cecfc14bdf8a49b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2094,7 +2094,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/legacy-tournament-document-scroll-20261013",
-    "commit": "1cbd05bf9be13010ee62efbf8dee55cf72a91aac"
+    "commit": "3e6846b3c45404f27c38c351ff3823cdf4224016"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
