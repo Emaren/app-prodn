@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "7203e0860eb65f3c7e983dddd546a904b12a3faeb388e545166461703137abbf",
+      "sha256": "c28e4546228bae1c24e0f7336fa739c37b4bb4735c88751a39cff15a30298bc1",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "269e39f84292ed72dcbfdd237f3e26544c40ce8d87d1754a34df2325293f39f4",
+      "sha256": "50e33e871e8ded36e17885b70bfedec88aba3cf66ae6bccd4ca81c412ab28fe7",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2094,7 +2094,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/satchel-receipt-explicit-success-20261014",
-    "commit": "e709a1cad5162994345366c4ff4fa5e3fd2d1504"
+    "commit": "bb5f565631d9c379f117b30fe02e0edc2bcc3593"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
