@@ -8,7 +8,7 @@ systems: ["app-prodn","wolochain"]
 audience: ["operators","ai-agents"]
 source_of_truth: "git"
 authority: "operational-procedure"
-reviewed_at: "2026-10-10"
+reviewed_at: "2026-10-14"
 review_interval_days: 30
 sensitivity: "restricted"
 ---
@@ -17,6 +17,40 @@ sensitivity: "restricted"
 
 This is the AoE2HDBets-side runbook only. WoloChain owns the chain service,
 keys, signer funding, and settlement truth.
+
+## October 14 live finance-drain blocker — one unproven claim
+
+At 2026-10-14T10:14:52.444Z the operator ran the immutable,
+read-only PostgreSQL financial snapshot from app-prodn merge
+`3ecc28bd983bd517f4e82b982ef5726f3f33eaf7`
+as a restricted transient systemd unit. Five scanned categories were zero.
+Exactly **one** `pending_wolo_claims` record had
+`payout_attempted_at IS NOT NULL`, no `payout_tx_hash`, and was not
+`claimed` or `rescinded`. The tool exited code 3 by design and **blocked**
+the settlement-only promotion. This is not evidence that a transfer occurred
+nor evidence it did not occur.
+
+The follow-up `scripts/wolo-unproven-claim-forensics-readonly.mjs` performs
+one read-only repeatable-read transaction using the exact same predicate and
+outputs a bounded list of claim ID, payout kind, grouping/source IDs, status,
+attempt/creation/update times, presence of proof URL, and a broad nonauthoritative
+error classification. It never prints player names, wallets, amounts,
+stored notes, raw error text, credentials or transaction memos. Its SQL session
+is explicitly read-only and its return code remains 3 when any row exists.
+It must be run as a temporary scoped systemd unit with the protected
+`/etc/aoe2hdbets/aoe2hdbets-web.env` EnvironmentFile (not echoed), using
+the production app package for the `pg` module. This is investigation,
+**not a manual retry**.
+
+If a claim is found, review its persisted settlement request identity and
+independently corroborate WoloChain transaction inclusion, success, memo,
+denomination, amount, exact recipient and prior idempotency outcome
+**without broadcasting a transfer**. Only after that evidence may a separate
+financial correction be designed and reviewed. Do not zero the attempt time,
+rescind the claim, fabricate a proof hash, or mark it paid merely to clear the
+release gate. Other app-side and on-demand payout ingress also must be drained
+before any two-service executable promotion.
+
 
 Review note (2026-10-10): App-side procedural review checked the
 documented separation of WoloChain settlement authority, escrow
