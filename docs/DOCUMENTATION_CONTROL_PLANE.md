@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/legacy-tournament-document-scroll-20261013` at `53e9e1d48eb76b9a140f0d82cc5db49ed2893c71`
+Implementation baseline: `feat/kingdom-shepherd-preflight-v1-20261014` at `4cc85b20d26583f2dcdfcc8ea9ab5a2775feaec0`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

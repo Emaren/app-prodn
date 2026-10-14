@@ -2848,3 +2848,41 @@ MATCH_WINNER policy and live challenger eligibility under the normal lock order.
 More than one matching explicit Challenge remains ambiguous and must fail
 closed. A matching explicit title Challenge already owns the session and is not
 re-promoted.
+
+## 2026-10-13/14 — Green Doctor and 76-point inspections are not contradictory
+
+A protected Finish reported Doctor 100/100 with zero warnings, while
+General Inspections reported 76/100 and Kingdom Intelligence displayed
+an older Doctor grade. Those were different collection times, source
+releases and proof authorities. The seven weighted inspection categories
+need separately fresh certified activation, Bridge publication, current
+SpeedOS, Replay Truth certainty, storage and documentation evidence.
+A live Bridge heartbeat cannot substitute for a fresh Brain publication.
+New source commits cannot inherit old-release browser performance proof.
+
+Durable answer: dependency-ordered Kingdom Shepherd, not a ninth scoring
+OS or second Doctor. Check source and governed documentation identity
+before a costly Finish; then capacity, deployment, bridge, current-release
+performance/replay receipts and finally inspection scores. Failed central
+generation must not leave dirty canonical files; app issue #550 tracks
+that transactional Update OS repair.
+
+Specifically, central taxonomy included a Watcher 1.6.4 lifecycle
+document that lived only on a feature branch, not Watcher main. Its
+removal veto was correct, but its source membership was stale. The
+source-bound fix is central docs issue #24 and PR #25. Preserve the
+original feature-branch document and audited retirement decision.
+
+## 2026-10-13 — Reusable Replay Truth negative experiments
+
+Phase VIII's supposed +46 results and +45 Full Battle Truth came from
+omitting the disconnect_detected field from a projection; they were
+not new independently verified winners. Phase IX inspected four
+header-only recordings with zero terminal/world clocks. The field
+player_killed=1.0 appeared in both winners and losers in control #32388
+and is not defeat proof. Zodiac's stored snapshots also disagreed
+with canonical abstention for eight games. Preserve negative controls,
+exact byte/file hashes, decode hypotheses, test and stop conditions
+before claiming another winner. Retire unchanged disproven hypotheses;
+revisit them only with new independent evidence. No unverified winner
+may alter settlement or financial state.
