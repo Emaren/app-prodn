@@ -37,6 +37,7 @@ import {
 import { UserAuthProvider, useUserAuth } from "@/context/UserAuthContext";
 import { UniversalLanguageProvider } from "@/context/UniversalLanguageContext";
 import { livingKingdomRealmForPath } from "@/lib/livingKingdom/realms";
+import { isTournamentImmersiveRoute } from "@/lib/tournamentShellRoutes";
 
 const HeaderInboxControl = dynamic(
   () => import("@/components/contact/HeaderInboxControl"),
@@ -1243,6 +1244,8 @@ function InnerShell({ children }: { children: React.ReactNode }) {
   const isChampionsSurface = pathname === "/champions" || Boolean(pathname?.startsWith("/champions/"));
   const isTournamentSurface =
     pathname === "/tournaments" || Boolean(pathname?.startsWith("/tournaments/"));
+  // The full-screen bracket owns a viewport; legacy tournament slugs do not.
+  const isTournamentImmersiveSurface = isTournamentImmersiveRoute(pathname);
   const isWarGraphSurface =
     pathname === "/wargraph" || Boolean(pathname?.startsWith("/wargraph/"));
   const isFullWidthPrestigeSurface =
@@ -1630,7 +1633,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
     <div
       className={`${isAcademySurface ? "academy-route-shell" : ""} flex w-full flex-col overflow-x-hidden text-white transition-[background-image,background-color] duration-500 ${isContactPage
         ? "h-[100dvh] min-h-0 max-h-[100dvh] overflow-hidden"
-        : isLivingLeaderboardSurface || isTournamentSurface
+        : isLivingLeaderboardSurface || isTournamentImmersiveSurface
           ? "h-[100dvh] min-h-0 overflow-y-hidden"
           : "min-h-screen"}`}
       onWheel={handleContactShellWheel}
@@ -1678,7 +1681,7 @@ function InnerShell({ children }: { children: React.ReactNode }) {
       ) : null}
       <header
         data-app-shell-header
-        className={`${isTournamentSurface ? "fixed inset-x-0 top-0" : "sticky top-0"} z-[180] shrink-0 overflow-visible border-b px-3 pb-3 pt-[calc(env(safe-area-inset-top)+0.7rem)] backdrop-blur-md transition-[background-color,border-color] duration-500 sm:px-4 sm:backdrop-blur-xl lg:py-3 lg:backdrop-blur-2xl ${headerSkin.shell}`}
+        className={`${isTournamentImmersiveSurface ? "fixed inset-x-0 top-0" : "sticky top-0"} z-[180] shrink-0 overflow-visible border-b px-3 pb-3 pt-[calc(env(safe-area-inset-top)+0.7rem)] backdrop-blur-md transition-[background-color,border-color] duration-500 sm:px-4 sm:backdrop-blur-xl lg:py-3 lg:backdrop-blur-2xl ${headerSkin.shell}`}
         style={
           isClanSurface
             ? clanHeaderStyle
@@ -2010,8 +2013,10 @@ function InnerShell({ children }: { children: React.ReactNode }) {
                           : "max-w-6xl"
               }`
         } ${isAcademySurface ? "academy-shell-skin" : ""} ${
-          isTournamentSurface
+          isTournamentImmersiveSurface
             ? "!py-0 !pb-0 overflow-hidden"
+            : isTournamentSurface
+              ? "!py-0 !pb-0 overflow-x-clip"
             : isContactPage
             ? "!py-2 !pb-2 overflow-hidden sm:!py-3 sm:!pb-3"
             : isLivingLeaderboardSurface
