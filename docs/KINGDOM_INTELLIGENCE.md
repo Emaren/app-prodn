@@ -460,3 +460,38 @@ Kingdom Intelligence does not:
 - make presentation styling part of the self-knowledge contract.
 
 The Brain should remain useful even if no external model is available.
+
+## Kingdom Shepherd V1 — dependency coordinator, not another Doctor
+
+The read-only command **aoe2war shepherd** coordinates the existing eight
+OS agents and one Doctor. It adds no new OS, independent health score,
+daemon, or automatic remediation privilege. The --json output is a bounded
+dependency plan. Optional --inspections-file SNAPSHOT.json compares
+authorized General Inspections observations with the intended source SHA
+and retains every weighted score unchanged.
+
+V1 checks local Git worktrees and cached upstream tracking references
+(without network fetch), source documentation registries versus canonical
+central taxonomy, and optional inspection timestamp/source mismatch. A
+cached upstream reference is not live GitHub authority, and no live
+production health, WOLO custody or replay winner result is certified by
+this cheap observation. Missing evidence remains explicitly UNKNOWN.
+
+Dependency stages: source → documentation → capacity → release →
+publication → current-release evidence → inspections. This order explains
+why Doctor 100 at preflight and a 76-point older inspection snapshot can
+both be valid. Full protected Finish, not Shepherd, owns mutation and
+activation. V1 always reports mutationAllowed=false and
+readyForLiveMutation=false.
+
+First reproduced blocker: central taxonomy claimed a Watcher 1.6.4
+development-only plan absent from canonical Watcher main. Shepherd
+requires a separately reviewed retirement (central PR #25), not a
+silent deletion, copy into main, or weakened docs gate. The prior failed
+documentation federation stranded four generated files; app issue #550
+owns the atomic/staged future repair. Issue #551 owns the coordinator.
+
+Future UI: a small critical-path and proof-age rail in existing Kingdom
+Intelligence, not a new standalone 100-point dashboard. Every suggested
+remediation needs an owner, source SHA, sealed receipt and independent
+safety gate. Avoid exposing private document bodies or credentials.
