@@ -5268,6 +5268,7 @@ model WarSatchelDepositIntent {
   user            User     @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   proofCandidate  WarSatchelProofCandidate?
 
+  @@unique([id, userId], map: "uq_war_satchel_intents_id_owner")
   @@index([userId, createdAt], map: "ix_war_satchel_intents_owner_created")
   @@index([status, expiresAt], map: "ix_war_satchel_intents_status_expiry")
   @@map("war_satchel_deposit_intents")
@@ -5294,7 +5295,7 @@ model WarSatchelProofCandidate {
   verifiedAt    DateTime @map("verified_at") @db.Timestamp(6)
   createdAt     DateTime @default(now()) @map("created_at") @db.Timestamp(6)
 
-  intent WarSatchelDepositIntent @relation(fields: [intentId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  intent WarSatchelDepositIntent @relation(fields: [intentId, userId], references: [id, userId], onDelete: Restrict, onUpdate: NoAction)
   user   User                    @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: NoAction)
 
   @@unique([chainId, txHash, transferIndex], map: "uq_war_satchel_proofs_chain_tx_ordinal")
