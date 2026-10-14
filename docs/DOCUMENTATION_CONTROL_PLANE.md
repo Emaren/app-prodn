@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/legacy-tournament-document-scroll-20261013` at `3e6846b3c45404f27c38c351ff3823cdf4224016`
+Implementation baseline: `fix/legacy-tournament-document-scroll-20261013` at `53e9e1d48eb76b9a140f0d82cc5db49ed2893c71`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
