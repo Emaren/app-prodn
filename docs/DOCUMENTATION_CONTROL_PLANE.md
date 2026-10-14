@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `ops/wolo-maintenance-drain-readonly-20261014` at `13038c017804ada05b14436a739eb069c0b39fad`
+Implementation baseline: `ops/wolo-unproven-claim-forensics-20261014` at `a0b0e98c2596b08db86d10613f479c2543b60fc4`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
