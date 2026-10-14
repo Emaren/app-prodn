@@ -12,8 +12,8 @@ import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import type {
   KingdomAgentPublic,
   KingdomAgentPublicSnapshot,
-  KingdomAgentState,
 } from "@/lib/kingdomAgentsPublic";
+import type { KingdomAgentState } from "@/lib/kingdomAgentPolicy";
 import styles from "./KingdomAgents.module.css";
 
 const stateLabel: Record<KingdomAgentState, string> = {
