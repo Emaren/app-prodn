@@ -60,6 +60,12 @@ test("journal entries cannot be rewritten or deleted, and cannot report negative
   assert.match(migration, /"ck_war_satchel_journal_nonzero" CHECK/);
   assert.match(migration, /BEFORE UPDATE OR DELETE ON "war_satchel_journal"/);
   assert.match(migration, /'war_satchel_journal is append only'/);
+  assert.match(migration, /"guard_war_satchel_journal_claim"/);
+  assert.match(migration, /claim_owner <> owner_id/);
+  assert.match(migration, /claim_state <> 'allocated'/);
+  assert.match(migration, /claim_amount <> expected_amount/);
+  assert.match(migration, /claim_rail <> 'satchel'/);
+  assert.match(migration, /"war_satchel_journal_claim_guard"/);
 });
 
 test("the schema-only milestone cannot silently enable deposits or the funded executor", () => {
