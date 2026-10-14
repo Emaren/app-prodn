@@ -9,6 +9,8 @@ on:
       - "tests/sql/war_satchel_wallet_challenge_contract.sql"
       - "prisma/migrations/20261014_150000_war_satchel_simulated_double_entry/**"
       - "prisma/migrations/20261014_164500_war_satchel_simulation_concurrency_guard/**"
+      - "prisma/migrations/20261014_191500_war_satchel_simulation_single_owner/**"
+      - "tests/sql/war_satchel_simulation_owner_isolation_contract.sql"
       - "tests/sql/war_satchel_simulation_concurrency_test.sh"
       - "tests/sql/war_satchel_simulation_double_entry_contract.sql"
       - "tests/sql/war_satchel_foundation_contract.sql"
@@ -22,6 +24,8 @@ on:
       - "tests/sql/war_satchel_wallet_challenge_contract.sql"
       - "prisma/migrations/20261014_150000_war_satchel_simulated_double_entry/**"
       - "prisma/migrations/20261014_164500_war_satchel_simulation_concurrency_guard/**"
+      - "prisma/migrations/20261014_191500_war_satchel_simulation_single_owner/**"
+      - "tests/sql/war_satchel_simulation_owner_isolation_contract.sql"
       - "tests/sql/war_satchel_simulation_concurrency_test.sh"
       - "tests/sql/war_satchel_simulation_double_entry_contract.sql"
       - "tests/sql/war_satchel_foundation_contract.sql"
@@ -77,3 +81,7 @@ jobs:
         run: psql -X -v ON_ERROR_STOP=1 -f prisma/migrations/20261014_164500_war_satchel_simulation_concurrency_guard/migration.sql
       - name: Race two user reservations against one available WOLO balance
         run: bash tests/sql/war_satchel_simulation_concurrency_test.sh
+      - name: Install additive cross-user liability isolation guard
+        run: psql -X -v ON_ERROR_STOP=1 -f prisma/migrations/20261014_191500_war_satchel_simulation_single_owner/migration.sql
+      - name: Prove balanced journals cannot silently transfer another player's liability
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/sql/war_satchel_simulation_owner_isolation_contract.sql

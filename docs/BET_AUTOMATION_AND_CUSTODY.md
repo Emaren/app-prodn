@@ -15,6 +15,32 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## C3a simulation journal owner isolation — October 14, 2026
+
+The already merged simulation-only accounting journal refused nonzero-sum
+transactions, overdrafts and concurrent double reservations. A further
+negative case was identified: a balanced posting pair could shift
+liability from one player to another without overdrawing either account.
+Source migration
+`20261014_191500_war_satchel_simulation_single_owner` augments the
+existing commit-time journal guard to require **exactly one owner** across
+each journal's non-vault accounts. Mixed-owner liability movements and
+ownerless vault-only journals are rejected, while the shared vault
+asset category and one owner's liability buckets can coexist.
+
+This is an additive migration; it does **not** alter either previous
+migration's historical bytes, allow real deposit sources, accept money,
+change user balances, or activate automatic wagers. PostgreSQL 16 CI
+executes the existing simulated accounting and concurrency contracts,
+then checks that a balanced cross-player transfer fails atomically with
+no persisted journal or postings.
+
+Do not merge or run a second historical accounting schema in parallel
+with this existing simulation ledger. Funded custody still requires a
+separate explicitly authorized live ledger/chain-proof source and
+independent multi-rail collateral accounting.
+
+
 ## Gate B verifier hardening — canonical success semantics and unique transfer
 
 The pure, non-crediting `examineSatchelDepositEvidence` contract
