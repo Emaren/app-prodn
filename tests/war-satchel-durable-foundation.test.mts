@@ -20,6 +20,8 @@ test("War Satchel has durable intent and separately identified receipt models", 
   assert.match(sql, /CREATE UNIQUE INDEX "uq_war_satchel_proofs_chain_tx_ordinal"/);
   assert.match(sql, /CREATE UNIQUE INDEX "uq_war_satchel_proofs_intent"/);
   assert.match(schema, /@@unique\(\[id, userId\], map: "uq_war_satchel_intents_id_owner"/);
+  assert.match(schema, /@@unique\(\[intentId, userId\], map: "uq_war_satchel_proofs_intent_owner"/);
+  assert.match(sql, /CREATE UNIQUE INDEX "uq_war_satchel_proofs_intent_owner"/);
   assert.match(schema, /@relation\(fields: \[intentId, userId\], references: \[id, userId\]/);
   assert.match(sql, /FOREIGN KEY \("intent_id", "user_id"\) REFERENCES "war_satchel_deposit_intents" \("id", "user_id"\)/);
   assert.match(sql, /war_satchel_proofs_exact_intent/);
