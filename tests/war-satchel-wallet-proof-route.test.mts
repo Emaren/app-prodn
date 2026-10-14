@@ -27,7 +27,7 @@ test("Keplr proof cannot be enabled without operator release authorization",()=>
 test("challenge persistence locks signer, UID, nonce and consumption at SQL level",()=>{
   assert.match(schema,/model WarSatchelWalletChallenge/);
   assert.match(sql,/CHECK \("attempts" >= 0 AND "attempts" <= 5\)/);
-  assert.match(sql,/War Satchel/i); // Bounded records, not value transfer.
+  assert.match(sql,/CREATE TABLE "war_satchel_wallet_challenges"/);
   assert.match(sql,/wallet challenge owner\/address\/nonce is immutable/i);
   assert.match(sql,/Consumed wallet challenge cannot be replayed/);
   assert.match(sql,/Wallet proof failed-attempt count cannot decrease/);
