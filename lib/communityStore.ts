@@ -260,6 +260,56 @@ export async function getTournamentBySlug(
   return buildLobbyTournament(tournament, viewerUid);
 }
 
+/**
+ * Lean historical tournament detail read. The old public page renders only
+ * author, body and timestamp; it must not load whole reaction/user trees.
+ * Same room resolution/visibility boundary as the public lobby message reader.
+ */
+export async function getTournamentRecentMessages(
+  prisma: PrismaClient,
+  roomSlug: string,
+  limit = 12,
+): Promise<Array<{
+  id: number;
+  body: string;
+  createdAt: string;
+  user: { inGameName: string | null; steamPersonaName: string | null };
+}>> {
+  const room =
+    roomSlug === LOBBY_ROOM_SLUG
+      ? await ensureLobbyRoom(prisma)
+      : await prisma.chatRoom.findUnique({
+          where: { slug: roomSlug },
+          select: { id: true },
+        });
+
+  if (!room) return [];
+
+  const rows = await prisma.chatMessage.findMany({
+    where: { roomId: room.id },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: Math.max(1, Math.min(30, Math.floor(limit) || 12)),
+    select: {
+      id: true,
+      body: true,
+      createdAt: true,
+      user: {
+        select: {
+          inGameName: true,
+          steamPersonaName: true,
+        },
+      },
+    },
+  });
+
+  return rows.reverse().map((row) => ({
+    id: row.id,
+    body: row.body,
+    createdAt: row.createdAt.toISOString(),
+    user: row.user,
+  }));
+}
+
 export async function getLobbyMessages(
   prisma: PrismaClient,
   roomSlug = LOBBY_ROOM_SLUG,
