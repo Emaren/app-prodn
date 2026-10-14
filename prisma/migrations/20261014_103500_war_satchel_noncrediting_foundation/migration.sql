@@ -35,6 +35,31 @@ ALTER TABLE "war_satchel_deposit_intents"
   ADD CONSTRAINT "war_satchel_deposit_intents_user_id_fkey"
   FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE RESTRICT ON UPDATE NO ACTION;
 
+-- Economic deposit intent identity is immutable, while its status may later
+-- advance through explicitly reviewed non-money stages. Do not permit a DB
+-- operator or future app route to retarget sender/vault/amount/memo/owner
+-- after a user was shown an exact Keplr transaction.
+CREATE OR REPLACE FUNCTION war_satchel_intents_economic_identity_lock()
+RETURNS TRIGGER LANGUAGE plpgsql AS $
+BEGIN
+  IF (
+    NEW."id", NEW."user_id", NEW."chain_id", NEW."sender_address",
+    NEW."vault_address", NEW."amount_uwolo", NEW."memo", NEW."nonce",
+    NEW."expires_at", NEW."created_at"
+  ) IS DISTINCT FROM (
+    OLD."id", OLD."user_id", OLD."chain_id", OLD."sender_address",
+    OLD."vault_address", OLD."amount_uwolo", OLD."memo", OLD."nonce",
+    OLD."expires_at", OLD."created_at"
+  ) THEN
+    RAISE EXCEPTION 'War Satchel economic intent identity is immutable';
+  END IF;
+  RETURN NEW;
+END;
+$;
+CREATE TRIGGER war_satchel_intents_economic_lock
+BEFORE UPDATE ON "war_satchel_deposit_intents"
+FOR EACH ROW EXECUTE FUNCTION war_satchel_intents_economic_identity_lock();
+
 CREATE TABLE "war_satchel_proof_candidates" (
   "id" BIGSERIAL NOT NULL,
   "intent_id" UUID NOT NULL,
