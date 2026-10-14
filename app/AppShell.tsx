@@ -6,7 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Anvil, Archive, BarChart3, Bot, BrainCircuit, Castle, Cpu, Landmark, ClipboardCheck, Crown, Eye, Globe2, GraduationCap, Hammer, MessageSquare, Radio, Scale, Store, Target, Trophy, UsersRound, X, Zap } from "lucide-react";
+import { Anvil, Archive, BarChart3, Bot, BrainCircuit, Network, Castle, Cpu, Landmark, ClipboardCheck, Crown, Eye, Globe2, GraduationCap, Hammer, MessageSquare, Radio, Scale, Store, Target, Trophy, UsersRound, X, Zap } from "lucide-react";
 import { createPortal } from "react-dom";
 import SpeedRuntime from "@/components/speed/SpeedRuntime";
 import SpeedWebVitals from "@/components/speed/SpeedWebVitals";
@@ -139,6 +139,7 @@ const KINGDOM_LINKS = [
   { href: "/market", label: "Marketplace", icon: Store, body: "Player shops, craft, and commissions" },
   { href: "/ai", label: "AI Council", icon: Bot, body: "Ask the public house council" },
   { href: "/kingdom-intelligence", label: "Kingdom Intelligence", icon: BrainCircuit, body: "Watch the kingdom reason about itself" },
+  { href: "/kingdom-agents", label: "Kingdom Agents", icon: Network, body: "Meet the live sentinels protecting the kingdom" },
   { href: "/kingdom-treasury", label: "Kingdom Treasury", icon: Landmark, body: "Wallets, liquidity, kingdom transfers, and operating costs" },
   { href: "/bounties", label: "Bounties", icon: Target, body: "Open opportunities and payout proof" },
   { href: "/forum", label: "Forum", icon: MessageSquare, body: "War Room threads and community" },
@@ -178,6 +179,7 @@ const PAGE_HEADINGS: ReadonlyArray<{ prefix: string; title: string }> = [
   { prefix: "/leagues", title: "Leagues" },
   { prefix: "/kingdom-forge", title: "Kingdom Forge" },
   { prefix: "/kingdom-intelligence", title: "Kingdom Intelligence" },
+  { prefix: "/kingdom-agents", title: "Kingdom Agents" },
   { prefix: "/kingdom", title: "The Kingdom" },
   { prefix: "/wargraph", title: "WarGraph" },
   { prefix: "/round-chamber", title: "The Chamber" },
