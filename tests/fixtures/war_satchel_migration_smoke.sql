@@ -125,4 +125,90 @@ BEGIN
 END
 $proof$;
 
+
+-- Gate B owner/custody negative controls: distinct receipts must not be
+-- allowed to credit an unrelated owner, pre-allocation, or wrong denomination.
+INSERT INTO war_satchel_accounts (user_id) VALUES (2);
+INSERT INTO wolo_transfer_claims
+ (chain_id,tx_hash,transfer_index,rail,user_id,amount_uwolo,block_height,source_evidence_sha256)
+ VALUES
+ ('wolo-1',repeat('B',64),0,'satchel',2,700,124,repeat('b',64)),
+ ('wolo-1',repeat('C',64),0,'satchel',1,700,125,repeat('c',64)),
+ ('wolo-1',repeat('D',64),0,'satchel',1,699,126,repeat('d',64)),
+ ('wolo-1',repeat('E',64),0,'manual_bet',1,700,127,repeat('e',64));
+UPDATE wolo_transfer_claims SET status='verified'
+ WHERE tx_hash IN (repeat('B',64),repeat('D',64),repeat('E',64));
+UPDATE wolo_transfer_claims SET status='allocated'
+ WHERE tx_hash IN (repeat('B',64),repeat('D',64),repeat('E',64));
+
+DO $proof$
+DECLARE
+  rejected BOOLEAN;
+  case_name TEXT;
+  claim_hash TEXT;
+BEGIN
+  FOR case_name, claim_hash IN
+    SELECT * FROM (VALUES
+      ('cross-owner',repeat('B',64)),
+      ('not-allocated',repeat('C',64)),
+      ('amount-mismatch',repeat('D',64)),
+      ('wrong-rail',repeat('E',64))
+    ) AS cases(name,tx)
+  LOOP
+    rejected:=false;
+    BEGIN
+      INSERT INTO war_satchel_journal
+       (account_id,event_key,transfer_claim_id,kind,delta_available_uwolo,
+        after_available_uwolo,after_reserved_uwolo,after_committed_uwolo,
+        after_withdrawal_uwolo)
+      VALUES (1,'fixture.refused.' || case_name,
+        (SELECT id FROM wolo_transfer_claims WHERE tx_hash=claim_hash),
+        'verified_deposit',700,1400,0,0,0);
+    EXCEPTION WHEN check_violation THEN rejected:=true;
+    END;
+    IF NOT rejected THEN
+      RAISE EXCEPTION 'claim boundary accepted invalid % transfer',case_name;
+    END IF;
+  END LOOP;
+
+  rejected:=false;
+  BEGIN
+    INSERT INTO war_satchel_journal
+     (account_id,event_key,kind,delta_available_uwolo,
+      after_available_uwolo,after_reserved_uwolo,after_committed_uwolo,
+      after_withdrawal_uwolo)
+    VALUES (1,'fixture.refused.no-claim','verified_deposit',700,1400,0,0,0);
+  EXCEPTION WHEN check_violation THEN rejected:=true;
+  END;
+  IF NOT rejected THEN
+    RAISE EXCEPTION 'external credit without transfer claim was accepted';
+  END IF;
+
+  rejected:=false;
+  BEGIN
+    INSERT INTO war_satchel_journal
+     (account_id,event_key,transfer_claim_id,kind,delta_available_uwolo,
+      delta_reserved_uwolo,after_available_uwolo,after_reserved_uwolo,
+      after_committed_uwolo,after_withdrawal_uwolo)
+    VALUES (1,'fixture.refused.internal-claim',
+      (SELECT id FROM wolo_transfer_claims WHERE tx_hash=repeat('C',64)),
+      'reserve',-10,10,690,10,0,0);
+  EXCEPTION WHEN check_violation THEN rejected:=true;
+  END;
+  IF NOT rejected THEN
+    RAISE EXCEPTION 'internal reserve consumed external claim';
+  END IF;
+END
+$proof$;
+
+DO $proof$
+DECLARE n BIGINT;
+BEGIN
+  SELECT count(*) INTO n FROM war_satchel_journal;
+  IF n <> 1 THEN RAISE EXCEPTION 'negative controls modified journal'; END IF;
+  SELECT revision INTO n FROM war_satchel_accounts WHERE user_id=1;
+  IF n <> 1 THEN RAISE EXCEPTION 'negative controls modified account'; END IF;
+END
+$proof$;
+
 SELECT 'PASS: unique global receipt, owner lock, zero-default account, nonnegative balances and immutable journal' AS satchel_ephemeral_db_proof;
