@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/satchel-balanced-ledger-foundation-20261014` at `9e35197fe64046a5df1a432a70402bd6c800d19f`
+Implementation baseline: `feature/satchel-balanced-ledger-foundation-20261014` at `ec422807f0b748942cf203571300d6a21fc2c7c8`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
