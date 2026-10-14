@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c264eac38afe8945654330fe0058e1aab7f1127a42b602bb3849458567462767",
+      "sha256": "651d773592da9306fa711c319eb1a6f954fc316011795053a49a524acf3c09b1",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1948,7 +1948,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "restricted",
-      "sha256": "6158e03c21b1f85ba4e057ebfe30f2527361c96b4884ec118aec5ec264bb9717",
+      "sha256": "10fac94414383050a327ac4e7b74d71ea92ceac3f448f8602050ea7aee1178e4",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/satchel-journal-cross-owner-guard-20261014",
-    "commit": "a1d027941dae0bc8eeb47b6a140b9bff1356d9a4"
+    "branch": "ops/claim889-amount-window-forensics-20261014",
+    "commit": "59305866814b585c03264b57216bc56fe115daa9"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
