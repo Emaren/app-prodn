@@ -15,6 +15,43 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## Gate C3a — append-only zero-sum accounting journal (October 14, 2026)
+
+Source-only, **non-crediting** Prisma models
+`WarSatchelLedgerAccount`, `WarSatchelLedgerJournal` and
+`WarSatchelLedgerPosting` create an empty accounting journal. Every
+journal is actor-bound, globally unique by event source, and checked
+**at database transaction commit** for at least two nonzero postings
+whose signed `uwolo` deltas sum to exactly zero. Journal, posting and
+account rows cannot be updated or deleted; entries may be inserted only
+in the same PostgreSQL transaction that created their journal.
+One verified-deposit event may reference at most one distinct
+`WarSatchelProofCandidate` and must refer to a proof belonging to its
+ledger owner. A separate shared-vault asset account is allowed exactly
+once; per-user bucket records are unique. `vault_asset` is an
+accounting category, **not** authorization that a real separate
+on-chain vault/key exists.
+
+The protected CI checks this migration against PostgreSQL 16 with
+synthetic users and Gate C1 proof candidates, exercises two balanced
+journals and rejects duplicate source/receipt, wrong owner, zero-line
+commit, and attempts to mutate old accounting history.
+**No public account-balance API or journal writer exists.** The
+database ledger is *not* considered a funded Satchel. Even if
+zero-sum journals later record correct debts, conservation within the
+Satchel is NOT independently verified chain collateral. The
+application must separately prove the actual bank/vault and all
+manual betting, staking, refund, payout and withdrawal liabilities.
+
+Remaining prerequisites for real deposits and live Mecha bets are an
+independent canonical head/finality verifier, escrow/memo/denom
+matching, source-authorized and transactionally controlled ledger
+writer with nonnegative balance/solvency checks, complete collateral
+accounting, safe withdrawals and an accepted-bet ticket executor.
+No migration is deployed, and the existing War Satchel Load button
+remains disabled.
+
+
 ## War Satchel Gate C2b — single-use server-issued wallet challenge (Oct 14, 2026)
 
 Source `app/api/user/war-satchel/wallet-proof/route.ts` is a **disabled-by-default**
