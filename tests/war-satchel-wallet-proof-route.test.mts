@@ -14,12 +14,11 @@ test("Keplr proof cannot be enabled without operator release authorization",()=>
   assert.match(route,/randomBytes\(16\)/);
   assert.match(route,/CHALLENGE_TTL_MS = 5 \* 60_000/);
   assert.match(route,/CHALLENGE_HOURLY_LIMIT = 5/);
-  assert.match(route,/actor\\.prisma\\.\\$transaction\\(async \\(tx\\) =>/);
-  assert.match(route,/SELECT id FROM users WHERE id = \\$\\{actor\\.user\\.id\\} FOR UPDATE/);
-  assert.match(route,/tx\\.warSatchelWalletChallenge\\.count/);
-  assert.match(route,/tx\\.warSatchelWalletChallenge\\.create/);
-  assert.match(route,/maxWait: 4000, timeout: 7000/);
-
+  assert.ok(route.includes("actor.prisma.$transaction(async (tx) =>"));
+  assert.ok(route.includes("SELECT id FROM users WHERE id = ${actor.user.id} FOR UPDATE"));
+  assert.ok(route.includes("tx.warSatchelWalletChallenge.count"));
+  assert.ok(route.includes("tx.warSatchelWalletChallenge.create"));
+  assert.ok(route.includes("maxWait: 4000, timeout: 7000"));
   assert.match(route,/attempts: \{ lt: 5 \}/);
   assert.match(route,/consumedAt: null, expiresAt: \{ gt: new Date\(\) \}/);
   assert.match(route,/walletControlVerified: true/);
