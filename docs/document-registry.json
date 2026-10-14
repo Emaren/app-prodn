@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5732325c59679b379c8a18146619b1f9d3e5b2aa9f9dedf566bd552e2a1e698a",
+      "sha256": "d444e8acc646c94714e349b0abc9033b1141835039172d37a394b2a222c2f9f9",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/kingdom-agents-observatory-20261013",
-    "commit": "4c90f9bde7bbf12f3c5da47477daabe44bec7f41"
+    "branch": "ops/wolo-maintenance-drain-readonly-20261014",
+    "commit": "13038c017804ada05b14436a739eb069c0b39fad"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
