@@ -71,6 +71,8 @@ model User {
   warSatchelDepositIntents       WarSatchelDepositIntent[]
   warSatchelProofCandidates      WarSatchelProofCandidate[]
   warSatchelWalletChallenges     WarSatchelWalletChallenge[]
+  warSatchelLedgerAccounts       WarSatchelLedgerAccount[]
+  warSatchelLedgerJournals       WarSatchelLedgerJournal[]
   betMarketWallets               BetMarketWallet[]
   betMarketFinancialAdjustments  BetMarketFinancialAdjustment[]
   reviewedPlayerIdentityAliases  PlayerIdentityAlias[]
@@ -5303,6 +5305,7 @@ model WarSatchelProofCandidate {
   @@unique([chainId, txHash, transferIndex], map: "uq_war_satchel_proofs_chain_tx_ordinal")
   @@index([userId, createdAt], map: "ix_war_satchel_proofs_owner_created")
   @@map("war_satchel_proof_candidates")
+  ledgerJournal WarSatchelLedgerJournal?
 }
 
 /**
@@ -5325,4 +5328,58 @@ model WarSatchelWalletChallenge {
   @@index([userId, issuedAt], map: "ix_war_satchel_wallet_actor_issue")
   @@index([userId, expiresAt], map: "ix_war_satchel_wallet_actor_expiry")
   @@map("war_satchel_wallet_challenges")
+}
+
+/** C3a append-only double-entry evidence. No live balance or transfer API. */
+model WarSatchelLedgerAccount {
+  id          BigInt   @id @default(autoincrement())
+  userId      Int?     @map("user_id")
+  chainId     String   @default("wolo-1") @map("chain_id") @db.VarChar(32)
+  denom       String   @default("uwolo") @db.VarChar(16)
+  bucket      String   @db.VarChar(32)
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  postings    WarSatchelLedgerPosting[]
+
+  @@unique([userId, bucket], map: "uq_war_satchel_ledger_owner_bucket")
+  @@map("war_satchel_ledger_accounts")
+}
+
+/**
+ * Every future movement has one unique source identity and >=2 balanced
+ * postings committed atomically, never mutable rows or cached funds.
+ * Ledger presence alone NEVER proves custody or spendable collateral.
+ */
+model WarSatchelLedgerJournal {
+  id               String    @id @default(uuid()) @db.Uuid
+  userId           Int       @map("user_id")
+  sourceKey        String    @unique(map: "uq_war_satchel_ledger_source") @map("source_key") @db.VarChar(180)
+  eventKind        String    @map("event_kind") @db.VarChar(32)
+  proofCandidateId BigInt?   @unique(map: "uq_war_satchel_ledger_proof") @map("proof_candidate_id")
+  createdTxid      BigInt    @default(dbgenerated("txid_current()")) @map("created_txid")
+  createdAt        DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+
+  user             User      @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  proofCandidate   WarSatchelProofCandidate? @relation(fields: [proofCandidateId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  postings         WarSatchelLedgerPosting[]
+
+  @@unique([id, userId], map: "uq_war_satchel_ledger_journal_owner")
+  @@index([userId, createdAt], map: "ix_war_satchel_ledger_owner_history")
+  @@map("war_satchel_ledger_journals")
+}
+
+model WarSatchelLedgerPosting {
+  id         BigInt  @id @default(autoincrement())
+  journalId  String  @map("journal_id") @db.Uuid
+  userId     Int     @map("user_id")
+  accountId  BigInt  @map("account_id")
+  deltaUwolo BigInt  @map("delta_uwolo")
+
+  journal WarSatchelLedgerJournal @relation(fields: [journalId, userId], references: [id, userId], onDelete: Restrict, onUpdate: NoAction)
+  account WarSatchelLedgerAccount @relation(fields: [accountId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@unique([journalId, accountId], map: "uq_war_satchel_ledger_single_account_line")
+  @@index([accountId, journalId], map: "ix_war_satchel_ledger_account_history")
+  @@map("war_satchel_ledger_postings")
 }
