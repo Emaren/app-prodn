@@ -15,6 +15,37 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## C3b — independent local chain evidence reader, still NON-CREDITING (October 14, 2026)
+
+`lib/warSatchelReadOnlyChainAdapter.ts` extends the pure Gate B proof rules
+with **read-only, server-side** sourcing. It reads settlement health and an
+exact hash-based escrow-verification result only from pinned loopback
+`127.0.0.1:8092`, and current canonical `wolo-1` height/sync status only
+from `127.0.0.1:27657`. It refuses HTTP failure, wrong chain, catching-up
+node, oversized/malformed responses, missing unique `uwolo` transfer,
+failed transaction, wrong memo/owner/amount, stale head or insufficient
+confirmations. It does not accept browser-submitted chain proof JSON or an
+external user-provided HTTP host. The transaction hash is **a search hint,
+not a receipt**.
+
+The reader is **disabled by default** behind
+`WAR_SATCHEL_PROOF_AUDIT_ENABLED=true`, and additionally requires a
+server-configured `WAR_SATCHEL_CERTIFIED_VAULT_ADDRESS` different from
+both the existing betting escrow and challenge escrow addresses. Its
+result is expressly `uncredited_deposit_candidate` with
+`creditAuthorized=false`, `wagerAuthorized=false` and
+`mutationPerformed=false`. No public route calls this helper; no database
+balance or ledger journal is changed. It cannot fund the Satchel.
+
+**Caution:** The present 8092 service is configured for the preexisting
+manual betting escrow, not a separately certified Satchel vault. A distinct
+Satchel vault and independently configured verifier/signer boundary must be
+reviewed and introduced before even the read-only live candidate can
+succeed. Merely enabling the audit flag or reusing existing bet collateral
+is not an acceptable substitute. The source-only adapter makes no claim
+to a deployed service upgrade or a functioning bank ledger.
+
+
 ## C3a simulation journal owner isolation — October 14, 2026
 
 The already merged simulation-only accounting journal refused nonzero-sum

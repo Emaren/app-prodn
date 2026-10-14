@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "83e7c2d3260154f4db4da538f7a32fe3d27a1473a8a4ffeb7d37912d50656789",
+      "sha256": "20a2e2e2ff37928b00f7ea880f83ef39b28224393ab6fabb1739db1d8f36f937",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a179dc71f9eb02eb3cae51c88bbf25cf327405af346dd7017061ad35557ef96e",
+      "sha256": "15ea8d2d9c977bd1e424bc2e548c31c0a00a5f8ec7c686528f5bf7a5b3ad0bdc",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "ops/claim889-amount-window-forensics-20261014",
-    "commit": "bf67928cb5c23b1972d5345579b240285d181fb1"
+    "branch": "feature/satchel-canonical-readonly-evidence-20261014",
+    "commit": "d5ad67bcc5f7ccd486dd419410d778f8474bfc4f"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
