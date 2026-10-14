@@ -132,6 +132,47 @@ SELECT expect_wolo_ledger_rejection(
  'zero-line journal at commit',true
 );
 
+
+-- A header with two NON-balancing lines must also fail at commit,
+-- not just an empty header. All tentative rows roll back together.
+CREATE FUNCTION insert_unbalanced_synthetic_journal()
+RETURNS VOID LANGUAGE plpgsql AS $unbalanced$
+BEGIN
+  INSERT INTO war_satchel_ledger_journals
+    ("id","user_id","source_key","event_kind")
+  VALUES ('77777777-7777-4777-8777-777777777777',101,'unbalanced:two-lines','reserve');
+  INSERT INTO war_satchel_ledger_postings
+    ("journal_id","user_id","account_id","delta_uwolo")
+  SELECT '77777777-7777-4777-8777-777777777777',101,id,100
+  FROM war_satchel_ledger_accounts WHERE user_id=101 AND bucket='available';
+  INSERT INTO war_satchel_ledger_postings
+    ("journal_id","user_id","account_id","delta_uwolo")
+  SELECT '77777777-7777-4777-8777-777777777777',101,id,-50
+  FROM war_satchel_ledger_accounts WHERE user_id=101 AND bucket='reserved';
+END;
+$unbalanced$;
+SELECT expect_wolo_ledger_rejection(
+ $q$SELECT insert_unbalanced_synthetic_journal()$q$,
+ 'two-line zero-sum invariant at commit',true
+);
+
+CREATE FUNCTION insert_cross_owner_synthetic_journal()
+RETURNS VOID LANGUAGE plpgsql AS $wrong_owner$
+BEGIN
+  INSERT INTO war_satchel_ledger_journals
+    ("id","user_id","source_key","event_kind")
+  VALUES ('88888888-8888-4888-8888-888888888888',101,'cross-owner:bad-posting','reserve');
+  INSERT INTO war_satchel_ledger_postings
+    ("journal_id","user_id","account_id","delta_uwolo")
+  SELECT '88888888-8888-4888-8888-888888888888',101,id,100
+  FROM war_satchel_ledger_accounts WHERE user_id=102 AND bucket='available';
+END;
+$wrong_owner$;
+SELECT expect_wolo_ledger_rejection(
+ $q$SELECT insert_cross_owner_synthetic_journal()$q$,
+ 'cross-user liability posting'
+);
+
 DO $assert$
 DECLARE total BIGINT;
 BEGIN
