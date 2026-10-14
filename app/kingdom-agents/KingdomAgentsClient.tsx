@@ -201,7 +201,7 @@ export default function KingdomAgentsClient({ initial }: { initial: KingdomAgent
             <div className={styles.feed}>
               {data.activity.length ? data.activity.slice(0, 6).map((event) => (
                 <div key={event.id} className={styles.feedRow}>
-                  <Beacon state={event.status.toUpperCase() === "SUCCEEDED" ? "healthy" : event.status.toUpperCase().includes("FAIL") ? "blocked" : "working"}/>
+                  <Beacon state={["SUCCEEDED", "COMPLETE", "CERTIFIED"].includes(event.status.toUpperCase()) ? "healthy" : ["FAILED", "BLOCKED", "TIMED_OUT"].includes(event.status.toUpperCase()) ? "blocked" : ["RUNNING", "ACTIVE", "CLAIMED"].includes(event.status.toUpperCase()) ? "working" : "unknown"}/>
                   <div><strong>{event.name}</strong><small>{event.system} · {event.status}</small></div>
                   <time dateTime={event.at}>{formatTime(event.at)}</time>
                 </div>
