@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d431036524c4a6915f329b177efdc040bf323440241b0780d471a043d09d1cf6",
+      "sha256": "550f0a4c391bd39ef7c5e40c770f16545d81e4b41c7128ad9d1ae46c3b834201",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-04",
       "sensitivity": "internal",
-      "sha256": "f1f41403dc06dda3ab7877cd8924428d79aa1e3989f56ed306e7cd464e801d52",
+      "sha256": "838cab2c12bb27b99c483c619d2947a0c9c2551e3b742d3e5bd6ced52c87cc37",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -940,7 +940,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-06",
       "sensitivity": "internal",
-      "sha256": "5fae870f81ecf4c0420654b53366750bbacee22d8e466921d4391bd594945e9d",
+      "sha256": "9d82fbde678f8536e37964532a67a88e617bd60ced0bb1608d57483b777613ea",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/legacy-tournament-document-scroll-20261013",
-    "commit": "53e9e1d48eb76b9a140f0d82cc5db49ed2893c71"
+    "branch": "feat/kingdom-shepherd-preflight-v1-20261014",
+    "commit": "4cc85b20d26583f2dcdfcc8ea9ab5a2775feaec0"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
