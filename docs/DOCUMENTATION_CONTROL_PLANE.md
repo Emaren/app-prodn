@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/satchel-append-only-journal-20261014` at `2db0b561412b1552fb98e18d9021682bab28a50c`
+Implementation baseline: `feature/satchel-append-only-journal-20261014` at `0445c218146c8ca18b5505a341fd5a9c8b3f2289`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
