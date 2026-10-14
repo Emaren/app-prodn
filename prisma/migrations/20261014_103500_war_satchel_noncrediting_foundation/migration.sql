@@ -83,6 +83,7 @@ CREATE TABLE "war_satchel_proof_candidates" (
   CONSTRAINT "war_satchel_proofs_uncreditable" CHECK ("status" = 'uncredited'),
   CONSTRAINT "war_satchel_proofs_tx_hash_format" CHECK ("tx_hash" ~ '^[A-F0-9]{64}$')
 );
+CREATE UNIQUE INDEX "uq_war_satchel_proofs_intent_owner" ON "war_satchel_proof_candidates" ("intent_id", "user_id");
 CREATE UNIQUE INDEX "uq_war_satchel_proofs_intent" ON "war_satchel_proof_candidates" ("intent_id");
 CREATE UNIQUE INDEX "uq_war_satchel_proofs_chain_tx_ordinal" ON "war_satchel_proof_candidates" ("chain_id", "tx_hash", "transfer_index");
 CREATE INDEX "ix_war_satchel_proofs_owner_created" ON "war_satchel_proof_candidates" ("user_id", "created_at");
