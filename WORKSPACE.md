@@ -325,3 +325,37 @@ python /var/www/AoE2HDBets/api-prodn/scripts/set_admin.py --email you@example.co
 - VPS ownership drift can block deploys or `.next` image-cache writes
 - inbox attachment debugging requires a valid participant session because the binary route is protected
 - old inbox attachments may still be legacy `data:` rows, but new uploads are written to disk-backed `file:v1:` refs
+
+
+## Tournament legacy-route compatibility
+
+The modern /tournaments landing is an immersive fixed-viewport bracket
+battlefield owned by components/tournaments/TournamentBracketExperience.tsx.
+Only the exact route, including harmless trailing slash, receives the
+100dvh height and vertical overflow confinement in app/AppShell.tsx.
+
+Historical long-form /tournaments/[slug] tournament detail pages are
+DOCUMENT-SCROLL surfaces. They retain old full-width visual content,
+the historic title/prize typography, footer policy, cards and replay proofs.
+The detail page must never inherit the root battlefield scroll lock.
+Its shared header is sticky, not fixed, so keyboard, wheel and touch
+scrolling can access every section and the 12-message recent chat snapshot.
+
+The October 13, 2026 regression came from using isTournamentSurface
+as a blanket fullscreen gate for all descendant URLs. The separate
+isTournamentImmersiveRoute function preserves the old style classifier,
+but isolates fullscreen behavior to the root bracket.
+
+Tournament detail reads use getTournamentBySlug and TOURNAMENT_INCLUDE.
+Viewer entry membership uses the already-loaded entrant identities, not
+a redundant membership SQL query that can race the current entrant snapshot.
+The historic page renders the newest 12 public room-message authors, texts and
+timestamps only. Its dedicated getTournamentRecentMessages projection reads
+bounded metadata from the same public room, omits all unused reactions and
+guest-reaction identity joins, and orders latest messages deterministically by
+creation time and message ID before restoring chronological display order.
+The modern interactive lobby keeps its separate full reaction reader.
+Replay proof projections, original results and historical competition
+records are untouched. The theoretical 100,000 WOLO bracket label is
+presentation, not proof of funded escrow or a payment entitlement.
+No WOLO, database rows, or live-bet authority changes in this fix.

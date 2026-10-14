@@ -191,32 +191,15 @@ export async function ensureTournamentRoom(prisma: PrismaClient, slug: string, t
   });
 }
 
-async function viewerHasJoinedTournament(
-  prisma: PrismaClient,
-  tournamentId: number,
-  viewerUid?: string | null
-) {
-  if (!viewerUid) {
-    return false;
-  }
-
-  return Boolean(
-    await prisma.tournamentEntry.findFirst({
-      where: {
-        tournamentId,
-        user: { uid: viewerUid },
-      },
-      select: { id: true },
-    })
-  );
-}
-
-async function buildLobbyTournament(
-  prisma: PrismaClient,
+function buildLobbyTournament(
   tournament: TournamentRecord,
   viewerUid?: string | null
-): Promise<LobbyTournament> {
-  const viewerJoined = await viewerHasJoinedTournament(prisma, tournament.id, viewerUid);
+): LobbyTournament {
+  // Entrants are already loaded in TOURNAMENT_INCLUDE; use this exact
+  // snapshot for viewer membership instead of a second racing SQL read.
+  const viewerJoined =
+    Boolean(viewerUid) &&
+    tournament.entries.some((entry) => entry.user.uid === viewerUid);
 
   return {
     id: tournament.id,
@@ -257,7 +240,7 @@ export async function getFeaturedTournament(
     return getFallbackTournament(false);
   }
 
-  return buildLobbyTournament(prisma, tournament, viewerUid);
+  return buildLobbyTournament(tournament, viewerUid);
 }
 
 export async function getTournamentBySlug(
@@ -274,7 +257,57 @@ export async function getTournamentBySlug(
     return null;
   }
 
-  return buildLobbyTournament(prisma, tournament, viewerUid);
+  return buildLobbyTournament(tournament, viewerUid);
+}
+
+/**
+ * Lean historical tournament detail read. The old public page renders only
+ * author, body and timestamp; it must not load whole reaction/user trees.
+ * Same room resolution/visibility boundary as the public lobby message reader.
+ */
+export async function getTournamentRecentMessages(
+  prisma: PrismaClient,
+  roomSlug: string,
+  limit = 12,
+): Promise<Array<{
+  id: number;
+  body: string;
+  createdAt: string;
+  user: { inGameName: string | null; steamPersonaName: string | null };
+}>> {
+  const room =
+    roomSlug === LOBBY_ROOM_SLUG
+      ? await ensureLobbyRoom(prisma)
+      : await prisma.chatRoom.findUnique({
+          where: { slug: roomSlug },
+          select: { id: true },
+        });
+
+  if (!room) return [];
+
+  const rows = await prisma.chatMessage.findMany({
+    where: { roomId: room.id },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: Math.max(1, Math.min(30, Math.floor(limit) || 12)),
+    select: {
+      id: true,
+      body: true,
+      createdAt: true,
+      user: {
+        select: {
+          inGameName: true,
+          steamPersonaName: true,
+        },
+      },
+    },
+  });
+
+  return rows.reverse().map((row) => ({
+    id: row.id,
+    body: row.body,
+    createdAt: row.createdAt.toISOString(),
+    user: row.user,
+  }));
 }
 
 export async function getLobbyMessages(
