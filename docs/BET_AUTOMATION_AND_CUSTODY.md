@@ -58,6 +58,19 @@ define four new, additive, zero-default financial objects:
    references; signed available/reserved/committed/held deltas and
    non-negative post-event balances. SQL triggers reject UPDATE/DELETE.
 
+**Gate B journal identity hardening (October 14).** A database-side
+`BEFORE INSERT` guard now refuses an external credit or withdrawal journal
+entry unless its globally unique transfer claim is allocated, belongs to the
+same owner, and has the exact integer `uwolo` amount. Satchel deposits must
+use the dedicated satchel rail. Internal moves cannot consume an external
+transfer claim. Disposable PostgreSQL negative tests cover cross-owner,
+unallocated, mismatched-amount, wrong-rail, absent-claim and internal-claim
+attempts, and confirm failed attempts leave account/journal state unchanged.
+These are **necessary, not sufficient** controls: no verifier, asset/liability
+census, authenticated signature, SERIALIZABLE writer or live funding/withdrawal
+capability is added. The branch remains DRAFT and no production migration is
+authorized.
+
 This schema introduces no funding endpoint, no chain transfer, no account
 credit, no money-moving worker, no balance display source, and no new live
 executor. Financial transaction code still **must** provide a SERIALIZABLE
