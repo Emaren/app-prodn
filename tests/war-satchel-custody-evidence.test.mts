@@ -88,6 +88,28 @@ test("only the specific matched WOLO coin may be credited, never a foreign denom
   assert.throws(() => examineSatchelDepositEvidence(x), /indexed uwolo transfer mismatch/);
 });
 
+test("fail closed on missing Cosmos success code even if a verifier claims success", () => {
+  const x = fixture();
+  x.proof.lookup!.code = undefined;
+  assert.throws(() => examineSatchelDepositEvidence(x), /success code missing or failed/);
+  x.proof.lookup!.code = 1;
+  assert.throws(() => examineSatchelDepositEvidence(x), /success code missing or failed/);
+});
+
+test("upstream cannot hide a duplicate exact transfer with a false count", () => {
+  const x = fixture();
+  x.proof.lookup!.transfers!.push({ sender, recipient: vault, amount, denom: "uwolo" });
+  // Upstream summary erroneously claims just one match. Our own count refuses.
+  x.proof.lookup!.matching_transfer_count = 1;
+  assert.throws(() => examineSatchelDepositEvidence(x), /ambiguous or absent exact uwolo transfer/);
+});
+
+test("receipt timestamp must not postdate canonical observed head", () => {
+  const x = fixture();
+  x.proof.lookup!.timestamp = "2026-10-13T15:42:00Z";
+  assert.throws(() => examineSatchelDepositEvidence(x), /dated after observed chain head/);
+});
+
 test("duplicated matching bank transfers cannot create a unique receipt", () => {
   const a = fixture();
   a.proof.lookup!.matching_transfer_count = 2;
