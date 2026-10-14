@@ -2,9 +2,8 @@ import "server-only";
 
 import { buildGeneralInspectionsSnapshot } from "@/lib/generalInspections/serverSnapshot";
 import { loadPublicKingdomIntelligence } from "@/lib/kingdomIntelligencePublic";
-import type { InspectionState } from "@/lib/generalInspections/types";
+import { inspectionAgentState, systemAgentState, type KingdomAgentState } from "@/lib/kingdomAgentPolicy";
 
-export type KingdomAgentState = "working" | "healthy" | "watch" | "blocked" | "unknown";
 export type KingdomAgentKind = "system" | "inspection";
 
 export type KingdomAgentPublic = {
@@ -31,21 +30,6 @@ export type KingdomAgentPublicSnapshot = {
   activity: { id: string; name: string; status: string; at: string; system: string }[];
 };
 
-function statusFromInspection(state: InspectionState, fraction: number): KingdomAgentState {
-  if (state === "red") return "blocked";
-  if (state === "amber" || fraction < 1) return "watch";
-  return "healthy";
-}
-
-function statusFromSystem(state: string, activeProcess: boolean): KingdomAgentState {
-  const value = state.toUpperCase();
-  if (["FAILED", "FAIL", "BLOCKED", "UNSAFE"].includes(value)) return "blocked";
-  if (activeProcess && ["ACTIVE", "RUNNING", "RUNNING_CAPTURE", "RUNNING_TRANSACTION", "CLAIMED", "RESUME_REQUESTED"].includes(value)) return "working";
-  if (["PASS", "READY", "HEALTHY", "CERTIFIED", "COMPLETE", "VERIFIED"].includes(value)) return "healthy";
-  if (["ATTENTION", "ATTENTION_REQUIRED", "WATCH", "MAINTENANCE_DUE", "WAITING", "ACTIVE"].includes(value)) return "watch";
-  return "unknown";
-}
-
 function safeDate(value: string | null | undefined): string | null {
   return value && Number.isFinite(Date.parse(value)) ? new Date(value).toISOString() : null;
 }
@@ -66,7 +50,7 @@ export async function buildKingdomAgentsPublicSnapshot(): Promise<KingdomAgentPu
   if (intelligence?.available) {
     for (const system of intelligence.systemAgents) {
       const state = intelligenceCurrent
-        ? statusFromSystem(system.state, system.activeProcess)
+        ? systemAgentState(system.state, system.activeProcess)
         : "unknown";
       agents.push({
         id: "system/" + system.key,
@@ -91,7 +75,7 @@ export async function buildKingdomAgentsPublicSnapshot(): Promise<KingdomAgentPu
           name: check.label.slice(0, 110),
           lane: group.title,
           kind: "inspection",
-          state: statusFromInspection(check.state, fraction),
+          state: inspectionAgentState(check.state, fraction),
           task: group.description.slice(0, 140),
           signal: check.ratio
             ? check.ratio.passed + "/" + check.ratio.total + " checks"
