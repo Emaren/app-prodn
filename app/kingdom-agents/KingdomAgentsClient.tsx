@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import {
-  Activity, ArrowUpRight, BrainCircuit, CheckCircle2, CircleAlert,
-  Clock3, Eye, GitBranch, HeartPulse, Layers3, RadioTower,
+  Activity, ArrowUpRight, BrainCircuit, CheckCircle2,
+  Clock3, Eye, GitBranch, HeartPulse, RadioTower,
   Search, ShieldCheck, Swords, Workflow, X,
 } from "lucide-react";
 import { useUserAuth } from "@/context/UserAuthContext";
@@ -33,7 +33,7 @@ const laneShortNames: Record<string, string> = {
 function formatTime(stamp: string | null) {
   if (!stamp) return "NO TIMESTAMP";
   const date = new Date(stamp);
-  return Number.isFinite(date.getTime()) ? date.toLocaleString() : "NO TIMESTAMP";
+  return Number.isFinite(date.getTime()) ? date.toISOString().slice(0, 16).replace("T", " ") + " UTC" : "NO TIMESTAMP";
 }
 
 function stateOf(items: KingdomAgentPublic[]) {
@@ -77,13 +77,18 @@ export default function KingdomAgentsClient({ initial }: { initial: KingdomAgent
 
   useEffect(() => {
     const controller = new AbortController();
-    const poll = () => { if (!document.hidden) void update(controller.signal); };
-    const interval = window.setInterval(poll, 45_000);
-    document.addEventListener("visibilitychange", poll);
+    let pending = false;
+    const boundedPoll = () => {
+      if (pending || document.hidden) return;
+      pending = true;
+      void update(controller.signal).finally(() => { pending = false; });
+    };
+    const interval = window.setInterval(boundedPoll, 45_000);
+    document.addEventListener("visibilitychange", boundedPoll);
     return () => {
       controller.abort();
       window.clearInterval(interval);
-      document.removeEventListener("visibilitychange", poll);
+      document.removeEventListener("visibilitychange", boundedPoll);
     };
   }, [update]);
 
