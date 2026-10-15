@@ -4,6 +4,7 @@ import test from "node:test";
 
 import {
   assertAdminRetryWinnerTruthGate,
+  hasAmbiguousPriorWoloPayoutAttempt,
   buildAdminMarketClaimRequestId,
   buildAdminMarketClaimSettlementRunId,
   buildAdminRetryEscrowFundingRequirements,
@@ -465,3 +466,34 @@ test(
     assert.doesNotMatch(helper, /executeWoloSettlementRun\(/);
   }
 );
+
+test("unproven prior payout attempts must never become a second WOLO send", async () => {
+  const attempt = new Date("2026-07-04T00:00:00Z");
+  assert.equal(hasAmbiguousPriorWoloPayoutAttempt({
+    payoutAttemptedAt: attempt, payoutTxHash: null,
+  }), true);
+  assert.equal(hasAmbiguousPriorWoloPayoutAttempt({
+    payoutAttemptedAt: attempt, payoutTxHash: "   ",
+  }), true);
+  assert.equal(hasAmbiguousPriorWoloPayoutAttempt({
+    payoutAttemptedAt: null, payoutTxHash: null,
+  }), false);
+  assert.equal(hasAmbiguousPriorWoloPayoutAttempt({
+    payoutAttemptedAt: attempt, payoutTxHash: "A".repeat(64),
+  }), false);
+
+  const source = await readFile(new URL("../lib/adminWoloClaims.ts", import.meta.url), "utf8");
+  const start = source.indexOf("export async function retryPendingClaimSettlement");
+  const status = source.indexOf('if (claim.status !== "pending")', start);
+  const initial = source.indexOf("if (hasAmbiguousPriorWoloPayoutAttempt(claim))", status);
+  const founderLock = source.indexOf("withFounderPayoutTargetLock(", initial);
+  const lockedGate = source.indexOf("if (hasAmbiguousPriorWoloPayoutAttempt(currentClaim))", founderLock);
+  const founderSend = source.indexOf("await executeFounderWoloPayout(", lockedGate);
+  const generalSend = source.indexOf("await (useFounderSettlement ? executeFounderWoloPayout : executeWoloPayout)", lockedGate);
+  assert.ok(start >= 0 && status > start && initial > status);
+  assert.ok(founderLock > initial && lockedGate > founderLock);
+  assert.ok(founderSend > lockedGate);
+  assert.ok(generalSend > lockedGate);
+  assert.match(source.slice(founderLock, lockedGate), /payoutAttemptedAt: true/);
+  assert.match(source.slice(initial, founderLock), /ambiguous_prior_attempt/);
+});
