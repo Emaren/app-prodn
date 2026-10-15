@@ -41,6 +41,43 @@ memory before closing the work.
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
 
+## 2026-10-15 — A replayed bet-ticket transfer may never reduce verification authority
+
+The existing bet-ticket broadcast binder took a ticket-level advisory lock,
+then a transfer-level advisory lock, and checked all other WOLO transfer
+claimants. That protection prevented incompatible hashes and duplicate
+financial claims, but an **identical hash retry** for a ticket already in
+verified_unrecorded status fell through to the ordinary update and wrote
+broadcast_submitted again. If subsequent chain re-verification timed out,
+the durable ticket could lose its stronger verified-state marker even though
+the hash had not changed. This is an observable status-monotonicity defect;
+it does not prove a real payout loss or an incorrect chain transfer.
+
+The narrow source fix in lib/betStakeTickets.ts preserves the early immutable
+recorded path and adds only one short-circuit condition for
+verified_unrecorded **with the identical existing stakeTxHash**. Ticket and
+transfer locks, other-ticket/legacy intent/wager conflict checks, wallet
+binding, post-broadcast verification and final wager recording are unchanged.
+A different hash still fails with 409, and a previously unbound ticket still
+enters broadcast_submitted through the existing path. Later retries still
+perform any necessary chain verification in commitBetStakeTicket; only the
+already-proven local broadcast binding stops moving backwards.
+
+The executable mock-transaction regression suite covers exact same-hash
+verified replay (zero DB updates), recorded idempotence, ordinary first
+binding, incompatible new hashes, other-ticket/legacy claim conflicts,
+viewer-scoped recovery-list queries and source order of the ticket-owner
+check before external transfer operations. A separate executable
+commitBetStakeTicket test configures a synthetic nonfunctional escrow,
+then proves that both a foreign-owned existing ticket and a missing ticket
+produce the same 404 without reaching a transfer, financial transaction,
+or other database read. These tests use synthetic data,
+no real WOLO RPC/wallets/database. Existing wider tests remain required:
+a mock cannot certify PostgreSQL advisory-lock concurrency, chain-finality
+or multi-request payment outcomes. Run against disposable/isolated
+PostgreSQL evidence before altering reconciliation/settlement behavior.
+No user-facing UI, financial amount policy, or live contract was changed.
+
 ## 2026-10-15 — Three HD internal API gates share one timing-safe, fail-closed primitive
 
 Three replay-related HTTP endpoints historically validated the same

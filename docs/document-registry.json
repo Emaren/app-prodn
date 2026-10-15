@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "492d4f8b37937de6443a036ea74623578caf9152da1a7dd53539c5b6b259f0dd",
+      "sha256": "0cfd82df8b21990b98d19e487636fed8c136b43e59d5e2ee6c94a318aa0a138b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-15",
       "sensitivity": "internal",
-      "sha256": "9331512dded3d52281d362f05cf150ed73785ef69eba5ab56265b2a1e6db4764",
+      "sha256": "ce9b9a4535d89c53705ad11579a887de5ed81d27d30dfc572f2b138e675dc817",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/hd-internal-api-key-guard-20261015",
-    "commit": "cd4b4d71cac90f5f4ac92fd5bd9366d9895389e2"
+    "branch": "fix/bet-ticket-monotonic-broadcast-20261015",
+    "commit": "e52b36b1407855ad776a99fa2f3ec278c210bdcd"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
