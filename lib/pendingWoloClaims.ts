@@ -423,13 +423,22 @@ export async function rescindPendingWoloClaim(
     note?: string | null;
   }
 ) {
+  // Atomic compare-and-set, not a read-then-write precheck. An attempted,
+  // claimed, or tx-hash-bearing payout cannot be deleted from financial truth
+  // through the wallet-link rescind rail, including concurrent payout races.
   return prisma.pendingWoloClaim.update({
-    where: { id: input.claimId },
+    where: {
+      id: input.claimId,
+      status: "pending",
+      payoutAttemptedAt: null,
+      payoutTxHash: null,
+    },
     data: {
       status: "rescinded",
       rescindedByUserId: input.adminUserId ?? null,
       rescindedAt: new Date(),
       note: input.note?.trim().slice(0, 160) || null,
+      errorState: "Rescinded before any recorded payout attempt; no on-chain proof inferred.",
     },
   });
 }
