@@ -289,54 +289,78 @@ export async function createPendingWoloClaim(
   const nextPayoutAttemptedAt = input.payoutAttemptedAt ?? null;
 
   if (typeof input.sourceMarketId === "number" && Number.isFinite(input.sourceMarketId)) {
-    return prisma.pendingWoloClaim.upsert({
-      where: {
-        sourceMarketId_normalizedPlayerName_claimKind_claimGroupKey: {
-          sourceMarketId: input.sourceMarketId,
-          normalizedPlayerName,
+    const identity = {
+      sourceMarketId_normalizedPlayerName_claimKind_claimGroupKey: {
+        sourceMarketId: input.sourceMarketId,
+        normalizedPlayerName,
+        claimKind,
+        claimGroupKey,
+      },
+    };
+    const createData = {
+      normalizedPlayerName,
+      displayPlayerName,
+      amountWolo,
+      claimKind,
+      claimGroupKey,
+      targetScope,
+      status: nextStatus,
+      sourceMarketId: input.sourceMarketId,
+      sourceGameStatsId: input.sourceGameStatsId ?? null,
+      sourceFounderBonusId: input.sourceFounderBonusId ?? null,
+      claimedByUserId: nextClaimedByUserId,
+      payoutTxHash: nextPayoutTxHash,
+      payoutProofUrl: nextPayoutProofUrl,
+      errorState: nextErrorState,
+      payoutAttemptedAt: nextPayoutAttemptedAt,
+      claimedAt: nextClaimedAt,
+      note: input.note?.trim().slice(0, 160) || null,
+    };
+
+    // A unique-key upsert unconditionally overwrote prior payoutAttemptedAt,
+    // payoutTxHash and even "claimed" status on replay. Use a DB-atomic
+    // conditional update instead. A claim that already carries a payout
+    // attempt, hash, or final disposition MUST NOT be rewritten by this
+    // ordinary create/sync API; it requires independent financial review.
+    try {
+      return await prisma.pendingWoloClaim.update({
+        where: {
+          ...identity,
+          status: "pending",
+          payoutAttemptedAt: null,
+          payoutTxHash: null,
+        },
+        data: {
+          displayPlayerName,
+          amountWolo,
           claimKind,
           claimGroupKey,
+          targetScope,
+          status: nextStatus,
+          sourceGameStatsId: input.sourceGameStatsId ?? null,
+          sourceFounderBonusId: input.sourceFounderBonusId ?? null,
+          claimedByUserId: nextClaimedByUserId,
+          rescindedByUserId: null,
+          payoutTxHash: nextPayoutTxHash,
+          payoutProofUrl: nextPayoutProofUrl,
+          errorState: nextErrorState,
+          payoutAttemptedAt: nextPayoutAttemptedAt,
+          claimedAt: nextClaimedAt,
+          rescindedAt: null,
+          note: input.note?.trim().slice(0, 160) || null,
         },
-      },
-      update: {
-        displayPlayerName,
-        amountWolo,
-        claimKind,
-        claimGroupKey,
-        targetScope,
-        status: nextStatus,
-        sourceGameStatsId: input.sourceGameStatsId ?? null,
-        sourceFounderBonusId: input.sourceFounderBonusId ?? null,
-        claimedByUserId: nextClaimedByUserId,
-        rescindedByUserId: null,
-        payoutTxHash: nextPayoutTxHash,
-        payoutProofUrl: nextPayoutProofUrl,
-        errorState: nextErrorState,
-        payoutAttemptedAt: nextPayoutAttemptedAt,
-        claimedAt: nextClaimedAt,
-        rescindedAt: null,
-        note: input.note?.trim().slice(0, 160) || null,
-      },
-      create: {
-        normalizedPlayerName,
-        displayPlayerName,
-        amountWolo,
-        claimKind,
-        claimGroupKey,
-        targetScope,
-        status: nextStatus,
-        sourceMarketId: input.sourceMarketId,
-        sourceGameStatsId: input.sourceGameStatsId ?? null,
-        sourceFounderBonusId: input.sourceFounderBonusId ?? null,
-        claimedByUserId: nextClaimedByUserId,
-        payoutTxHash: nextPayoutTxHash,
-        payoutProofUrl: nextPayoutProofUrl,
-        errorState: nextErrorState,
-        payoutAttemptedAt: nextPayoutAttemptedAt,
-        claimedAt: nextClaimedAt,
-        note: input.note?.trim().slice(0, 160) || null,
-      },
-    });
+      });
+    } catch (error) {
+      // P2025 means no row met the protected update predicate. A true new
+      // claim may insert; an existing already-attempted/claimed/rescinded row
+      // instead collides with the existing UNIQUE identity and fails closed
+      // (P2002). Never delete/reset that row or blindly retry a payment.
+      if (typeof error !== "object" || error === null ||
+          !("code" in error) || error.code !== "P2025") {
+        throw error;
+      }
+      return prisma.pendingWoloClaim.create({ data: createData });
+    }
   }
 
   return prisma.pendingWoloClaim.create({

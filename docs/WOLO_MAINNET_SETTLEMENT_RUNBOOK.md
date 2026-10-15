@@ -15,6 +15,32 @@ sensitivity: "restricted"
 
 # WOLO Mainnet Settlement App Runbook
 
+## October 15, 2026 — immutable historical claim writes (shared boundary)
+
+Admin and automated Founder payout retry prevention must not rely only on
+HTTP endpoints. The previous generic `createPendingWoloClaim` market-identity
+`upsert` could unconditionally rewrite `payout_attempted_at`, payout tx
+hash, and a final claim status on a repeated settlement/synchronization
+attempt. This was a potential financial-history erasure path independent of
+the explicit admin retry and rescind protections.
+
+The shared claim writer now executes a **conditional database update** on
+the exact compound market identity, requiring original status `pending`
+with BOTH `payoutAttemptedAt IS NULL` and `payoutTxHash IS NULL`. That
+database predicate protects the row atomically against concurrent payout
+changes. If no eligible row exists (Prisma P2025), a true first-time claim
+may be created. When the identity already exists with a recorded attempt,
+proof hash, claimed or rescinded status, the existing UNIQUE identity
+rejects the insert; the caller must stop and investigate, never clear
+history, retry the payout, or convert it into an ordinary pending claim.
+No fallback reads or attempts to rewrite the historical row are allowed.
+
+This protects the recorded claim evidence of #889 and other past payout
+attempts. It does **not** prove the claim was paid or unpaid, reimburse
+anyone, close the Wolo service cutover, or activate a real funded Satchel
+or Watcher/Mecha wager. Live activation requires independently certified
+HD deployment after current Wolo runtime/source financial gate resolution.
+
 ## October 15, 2026 — fail-closed admin claim retries and rescission
 
 Founder claim #889 remains **pending and payout-ambiguous**, not proved

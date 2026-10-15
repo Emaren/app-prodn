@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "801372a164c2800c8324e87f0780d6012c2915cf3c26f51caaf294e4fca5a7ff",
+      "sha256": "081d1f417e4c28b02298499924d404f2b16b1fdabcdf88726b53f2b6127ab9aa",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1971,7 +1971,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "restricted",
-      "sha256": "2a4730969672feff1bc13f99cb5aace116f2b71e7fd02bb605025c983b2f3e9d",
+      "sha256": "d693420a473da0c8a3ff94de36788405ee4759f90ba8d2499034f2cd965fe780",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/satchel-immutable-uncredited-receipt-admission-20261015",
-    "commit": "685996c422e4eb7aa3c1d1dc409b6dc92987d61"
+    "branch": "fix/pending-wolo-claim-immutable-payout-history-20261015",
+    "commit": "1162d7f45cc2ef25784d99a2358c9857788770f6"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
