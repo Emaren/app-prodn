@@ -44,6 +44,8 @@ jobs:
         run: python3 scripts/aoe2_code_health.py --no-receipt --require-clean-worktree
       - name: Census internal module graph (read-only)
         run: python3 scripts/aoe2_module_graph.py --ci
+      - name: Census HD API route authority evidence (read-only)
+        run: python3 scripts/aoe2_route_authority.py --ci
       - name: Verify documentation control plane
         run: python3 scripts/docs_v2_check.py
       - name: Verify Node test inventory

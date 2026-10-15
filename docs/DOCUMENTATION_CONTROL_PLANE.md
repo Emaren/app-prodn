@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/module-graph-type-only-edges-20261015` at `a5b2c29c86788f169c136241ddb382f5bdca82ee`
+Implementation baseline: `audit/hd-route-auth-contract-census-20261015` at `8afdaa64ccd2bcb06baf0fa1027fd28e47788415`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

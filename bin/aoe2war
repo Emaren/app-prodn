@@ -111,6 +111,7 @@ DEV_OS="$BIN_DIR/../scripts/aoe2_dev.py"
 TRUTH_OS="$BIN_DIR/../scripts/aoe2_truth.py"
 CODE_HEALTH="$BIN_DIR/../scripts/aoe2_code_health.py"
 MODULE_GRAPH="$BIN_DIR/../scripts/aoe2_module_graph.py"
+ROUTE_AUTHORITY="$BIN_DIR/../scripts/aoe2_route_authority.py"
 DEPENDENCY_CHECK="$BIN_DIR/../scripts/check_dependency_contract.py"
 DEPENDENCY_SECURITY="$BIN_DIR/../scripts/check_dependency_security.py"
 
@@ -693,6 +694,10 @@ case "$command" in
   module-graph)
     shift
     exec "$AOE2WAR_PYTHON" "$MODULE_GRAPH" "$@"
+    ;;
+  route-authority)
+    shift
+    exec "$AOE2WAR_PYTHON" "$ROUTE_AUTHORITY" "$@"
     ;;
   deps)
     shift

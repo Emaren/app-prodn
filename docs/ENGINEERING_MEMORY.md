@@ -41,6 +41,58 @@ memory before closing the work.
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
 
+## 2026-10-15 — Route authority audit: 14 initial candidates were recognized delegated gates
+
+The first full HD route census read 262 route files / 356 exported handlers,
+with 154 routes exposing a mutation method and 166 routes carrying one of
+its original limited local guard-name signals. Fourteen sensitive-named write
+routes needed manual call-path review. Source inspection established that all
+14 carry identified credential or delegated authority checks; **this does not
+prove successful negative integration tests**:
+
+- 8 Radio WOLO administration routes call requireRadioWoloOperator, whose
+  implementation first calls requireAdmin and then checks the operator UID.
+- replay-auto-recovery, replay-roster-recovery and replay/post-ingest routes
+  use INTERNAL_API_KEY-backed fail-closed authorized(request) checks.
+- bet stake reconciliation uses configured reconciliation/cron token and
+  timingSafeEqual before the read/mutation handlers.
+- the bet ticket commit/recover routes delegate to shared
+  handleBetStakeTicketCommit, which validates getSessionUid and viewer
+  identity before delegating to commitBetStakeTicket.
+
+Code Health OS now recognizes those **names as lexical review signals**
+to prevent continually misreporting the same valid patterns. Regression tests
+pin the source-level call paths and fail if a known reviewed guard disappears.
+They do not establish that every actor is rejected at runtime or that these
+guards never contain implementation defects. The scanner continues to flag
+new sensitive mutating paths with no recognized guard for owner-led review.
+No auth logic, permission rules, or financial service was changed.
+
+## 2026-10-15 — HTTP authorization evidence must not be guessed from filenames
+
+The HD web has 261 app/api HTTP route files, with many legitimate authority
+styles: requireAdmin, getSessionUid, dedicated replay-review access gates,
+OS bridge tokens, and delegated business-function authorization. A static
+scanner that assumes every route without a literal requireAdmin is
+unauthenticated would invent vulnerabilities and encourage risky mass rewrites.
+
+Code Health OS therefore exposes an independent read-only
+aoe2war route-authority --json census of exported HTTP methods, mutation
+surfaces, local guard-symbol evidence, and body-reader symbols. It reports
+manual authority-trace candidates only when a mutating sensitive-named route
+has no matching local signal. These are REVIEW prompts, NOT a vulnerability,
+security grade, skipped guard, or runtime proof. A guard can be inside
+a delegated helper; a local symbol can appear in a comment without running.
+Follow actual imported helper calls, role/session checks, input bounds,
+idempotency and error paths before opening a defect or proposing a patch.
+
+The census is deterministic, bounded, read-only, no secret/source content
+printed, no network/database/wallet calls, no new agent mutation authority.
+CI observes existing debts but fails only on analyzer execution errors.
+Behaviour-changing fixes require independent negative tests and explicit
+financial/replay signoff. Do not infer live dashboard or deployed 100/100
+from source inventory.
+
 ## 2026-10-15 — TypeScript type-only imports are not runtime cycle evidence
 
 The first Module Graph OS hosted census counted three cycles across 1,174
