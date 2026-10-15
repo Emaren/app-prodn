@@ -115,6 +115,38 @@ campaigns.
 
 ## Finish-only runtime-provenance planning invariant
 
+### Legacy provenance with a verified forward source release (October 15, 2026)
+
+A previously healthy **legacy-unmanifested** runtime may be older than the
+current sealed GitHub main. The initial Finish-only rule accepted only exact
+same-source parity, unintentionally blocking a legitimate advance from an
+older clean production commit to a newer committed release *before the protected
+ship controller could build, capture rollback and certify the new artifact*.
+
+The narrow correction in `scripts/aoe2_update.py` permits only a
+**monotonic ancestor-verified source advance** into Finish's immediately
+following governed staging and activation. It requires:
+- Local HEAD equals GitHub main, with exact 40-character identities.
+- Local and production tracked trees are clean; live service is active,
+  reachable, public/internal version parity healthy, active BUILD_ID present.
+- Protected Wolo 8092/8093 listeners each have exactly one live process.
+- Current production source is a **different, verified Git ancestor** of
+  current source, and the Documentation Baseline is an ancestor of local HEAD.
+- No prior staged release tree/BUILD_ID exists; certification state is exactly
+  `legacy-unmanifested`.
+
+This only makes the precise P0 **eligible for repair by the next protected
+source-forward release**, and never labels the old build certified. Standalone
+Update/Audit continues to fail closed; unrelated Doctor findings, WoloChain
+source mismatch, financial safety, migrations, root headroom, unsigned
+manifest, failed release gates, and missing rollback evidence remain blocking.
+The protected ship captures the previous live artifact, builds/stages beside
+it, preserves code-state rollback, checks public/internal health and a soak,
+and creates a source- and artifact-bound certification receipt. Finish
+**must fail** unless the new runtime is certified as the current Git SHA.
+No service, database, or money mutation is authorized by this source change
+alone.
+
 Runtime provenance remains a P0 by default. Standalone Update/Audit must not
 reinterpret or waive a missing certification receipt.
 
