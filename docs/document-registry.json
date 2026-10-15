@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "7dee3bce51bb1e036e3717ed3fce334dfa2183b030ba1f0f29cc7bf310239e4f",
+      "sha256": "725d7278c316e79ecb2ccead001df1809873012049d6caa63d90d189657c2674",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1948,7 +1948,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "restricted",
-      "sha256": "be925a58859de19ad03f830c1320c59d18f475ad50865027731dc3562ccf1774",
+      "sha256": "2a4730969672feff1bc13f99cb5aace116f2b71e7fd02bb605025c983b2f3e9d",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2094,7 +2094,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/wolo-ambiguous-payout-no-retry-or-rescind-20261015",
-    "commit": "e9bc7d158a3f70c9da0939da7d6a04239db48952"
+    "commit": "44140e62ee7ef510e8aea6cf9f5f7e2a68592584"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
