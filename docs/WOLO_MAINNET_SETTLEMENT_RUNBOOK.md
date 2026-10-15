@@ -15,6 +15,22 @@ sensitivity: "restricted"
 
 # WOLO Mainnet Settlement App Runbook
 
+## October 15, 2026 — founder claim #889 canonical candidate cross-check (read-only)
+
+The October 15 protected two-service preflight is **PASS** on the original shared payout executable, separate consensus executable, staged settlement verifier, immutable private snapshot, healthy 8092/8093 listeners, and no observed request locks. That certifies **preflight state only**, not permission to promote either financial service. It does not certify a clean app release or automated betting.
+
+Founder claim #889 remains unresolved: prior read-only app-cache analysis found **three same-amount indexed transactions lifetime** and **zero within ±48 hours** of its payout-attempt timestamp. The cached index is incomplete and cannot establish that no transfer occurred.
+
+`scripts/wolo-claim889-canonical-candidates-readonly.mjs` adds a new evidence lane:
+- Reads exactly claim #889 and at most 12 distinct same-amount cached hash candidates under read-only, repeatable-read PostgreSQL transaction (running through the private production EnvironmentFile, not command-line secrets).
+- Pins public `wolo-1` RPC status/network and individually reads those hashes from the public Cosmos transaction REST API with bounded response sizes, no redirects and per-request timeouts.
+- Compares actual successful on-chain `MsgSend` denomination/amount to the deterministic founder-bonus #15 memo from the production source, and reports only public hashes and evidence flags.
+- **Never** marks the historical cache complete; never assumes a matching memo proves recipient identity, signer's payout authority, or unique global payout; even a good candidate remains a review-only lead.
+
+Codes: `2` means source, DB, RPC, or complete candidate retrieval failed; `3` means the bounded investigation ran, remains inconclusive, and **no payout/retry or release is authorized**. No operation signs, broadcasts, moves WOLO, updates a claim, pauses ingress, changes source checkout, or changes the consensus node. Before any settlement-only promotion, independently prove claim #889's actual state through full canonical chain history and signer/recipient checks plus separately approved financial-drain and watchdog recovery; do not clear it from a cache absence, error hint, or a CI green score.
+
+
+
 ## Claim #889 follow-up: crosscheck indexed amount, not only memo (October 14)
 
 The operator's immutable memo-only diagnostic at 2026-10-14T19:40:06Z
