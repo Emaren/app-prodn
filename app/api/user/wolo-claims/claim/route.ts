@@ -6,7 +6,6 @@ import {
   loadPendingWoloClaimSummaryForUser,
 } from "@/lib/pendingWoloClaims";
 import { getSessionUid } from "@/lib/session";
-import { recordUserActivity } from "@/lib/userExperience";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -36,22 +35,25 @@ export async function POST(request: NextRequest) {
     const result = await claimPendingWoloClaimsForUser(prisma, user);
     const summary = await loadPendingWoloClaimSummaryForUser(prisma, user);
 
-    if (result.claimedCount > 0) {
-      await recordUserActivity(prisma, {
-        userId: user.id,
-        type: "wolo_claim_manual",
-        path: request.nextUrl.pathname,
-        label: `${result.claimedCount} claims`,
-        metadata: {
-          claimIds: result.claimIds,
-          claimedAmountWolo: result.claimedAmountWolo,
+    // User-facing intent cannot finalize a financial claim. A payout can
+    // only become 'claimed' after independent chain-proof verification in the
+    // protected settlement rail. No app entitlement is consumed here.
+    if (result.requiresSettlement) {
+      return NextResponse.json(
+        {
+          code: "CHAIN_SETTLEMENT_REQUIRED",
+          detail: "Your WOLO entitlement is still pending. Claiming requires a verified on-chain payout; nothing has been marked paid or deducted.",
+          pendingClaimAmountWolo: summary.pendingAmountWolo,
+          pendingClaimCount: summary.pendingCount,
+          pendingClaimLatestCreatedAt: summary.latestCreatedAt,
         },
-        dedupeWithinSeconds: 0,
-      });
+        { status: 409, headers: { "Cache-Control": "no-store" } },
+      );
     }
 
     return NextResponse.json({
       ok: true,
+      detail: "No verified pending WOLO payout is ready on this profile.",
       claimedCount: result.claimedCount,
       claimedAmountWolo: result.claimedAmountWolo,
       pendingClaimAmountWolo: summary.pendingAmountWolo,
