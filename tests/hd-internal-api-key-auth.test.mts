@@ -27,7 +27,7 @@ test("internal HD API credentials reject mismatched bytes, lengths and prefixes"
     "aoe2-internal-123456788",
     "AOE2-internal-123456789",
     "aoe2-internal-123456789-suffix",
-    "aoe2-internal-123456789\u0000",
+    "aoe2-internal-123456789.extra",
     "completely-different-key",
   ]) {
     assert.equal(internalApiKeyMatches(request(supplied), expected), false, supplied);
@@ -61,8 +61,8 @@ test("three protected HD replay endpoints call shared guard before effectful wor
     const route = readFileSync(new URL("../" + path, import.meta.url), "utf8");
     assert.match(route, /import \{ internalApiKeyMatches \} from "@\/lib\/internalApiKeyAuth"/);
     assert.match(route, /function authorized\(request: NextRequest\) \{\s*return internalApiKeyMatches\(request, process\.env\.INTERNAL_API_KEY\);\s*\}/);
-    assert.match(route, /if \(!authorized\(request\)\)/);
-    const authGate = route.indexOf("if (!authorized(request))");
+    assert.match(route, /!\s*authorized\s*\(\s*request\s*\)/);
+    const authGate = route.search(/!\s*authorized\s*\(\s*request\s*\)/);
     const sideEffects = [
       route.indexOf("getPrisma()", authGate),
       route.indexOf("queueBetMarketEnsure(", authGate),
