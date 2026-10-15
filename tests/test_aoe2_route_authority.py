@@ -102,5 +102,73 @@ class RouteAuthorityTests(unittest.TestCase):
         self.assertEqual(rows["manual_authority_trace_candidates"], [])
 
 
+    def test_reviewed_hd_route_guards_remain_source_bound(self):
+        root = MODULE.parents[1]
+        radio_routes = (
+            "app/api/admin/radio-submissions/route.ts",
+            "app/api/admin/radio/assets/[id]/route.ts",
+            "app/api/admin/radio/assets/route.ts",
+            "app/api/admin/radio/programs/[id]/items/route.ts",
+            "app/api/admin/radio/programs/[id]/route.ts",
+            "app/api/admin/radio/programs/route.ts",
+            "app/api/admin/radio/station/start/route.ts",
+            "app/api/admin/radio/station/stop/route.ts",
+        )
+        for path in radio_routes:
+            with self.subTest(route=path):
+                content = (root / path).read_text(encoding="utf-8")
+                self.assertIn("requireRadioWoloOperator", content)
+                self.assertIn("await requireRadioWoloOperator", content.replace(
+                    "\n", " ").replace("  ", " "))
+                self.assertFalse(audit.classify_route(
+                    path, content
+                )["manual_authority_trace_candidate"])
+        radio_guard = (root / "lib/radioWoloOperator.ts").read_text(encoding="utf-8")
+        self.assertIn("await requireAdmin(request)", radio_guard)
+        self.assertIn("isRadioWoloOperatorUid", radio_guard)
+
+        internal_routes = (
+            "app/api/admin/replay-auto-recovery/route.ts",
+            "app/api/admin/replay-roster-recovery/route.ts",
+            "app/api/replay/post-ingest/route.ts",
+        )
+        import re
+        for path in internal_routes:
+            with self.subTest(route=path):
+                content = (root / path).read_text(encoding="utf-8")
+                self.assertIn("INTERNAL_API_KEY", content)
+                self.assertRegex(
+                    content, r"!\s*authorized\s*\(\s*request\s*\)"
+                )
+                self.assertFalse(audit.classify_route(
+                    path, content
+                )["manual_authority_trace_candidate"])
+
+        stake = (root / "app/api/bets/stake-reconciliation/route.ts").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("timingSafeEqual", stake)
+        self.assertIn("BET_STAKE_RECONCILE_TOKEN", stake)
+        self.assertIn("tokensEqual", stake)
+        self.assertIn("authorize(request)", stake)
+        self.assertFalse(audit.classify_route(
+            "app/api/bets/stake-reconciliation/route.ts", stake
+        )["manual_authority_trace_candidate"])
+
+        delegate = (
+            root / "app/api/bets/tickets/[ticketId]/_handler.ts"
+        ).read_text(encoding="utf-8")
+        self.assertIn("await getSessionUid(request)", delegate)
+        self.assertIn("if (!sessionUid)", delegate)
+        self.assertIn("commitBetStakeTicket", delegate)
+        for kind in ("commit", "recover"):
+            route = f"app/api/bets/tickets/[ticketId]/{kind}/route.ts"
+            content = (root / route).read_text(encoding="utf-8")
+            self.assertIn("export const POST = handleBetStakeTicketCommit", content)
+            self.assertFalse(audit.classify_route(
+                route, content
+            )["manual_authority_trace_candidate"])
+
+
 if __name__ == "__main__":
     unittest.main()
