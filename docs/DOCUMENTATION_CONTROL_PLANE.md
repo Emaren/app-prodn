@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/satchel-bounded-stream-evidence-20261014` at `08507c5dce71b91ce757df0ce8b51c3793459bc7`
+Implementation baseline: `feat/satchel-keplr-wallet-owner-ui-20261015` at `203e71a66e321f6832fc0e166fac70e581dac8ce`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

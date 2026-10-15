@@ -39,3 +39,14 @@ test("challenge persistence locks signer, UID, nonce and consumption at SQL leve
   assert.match(sql,/expires_at" <= "issued_at" \+ INTERVAL '10 minutes'/);
   assert.doesNotMatch(sql,/\b(UPDATE "war_satchel_deposit_intents"|ALTER TABLE "pending_wolo_claims"|CREATE TABLE "war_satchel_accounts")\b/);
 });
+
+test("wallet-proof capability is read-only, default-off and never enables financial authority", () => {
+  assert.match(route, /export async function GET\(request: NextRequest\)/);
+  assert.match(route, /available: Boolean\(actor\?\.user\.walletAddress\)/);
+  assert.match(route, /process\.env\.WAR_SATCHEL_OWNER_PROOF_ENABLED !== "true"/);
+  assert.match(route, /custodyApproved: false/);
+  assert.match(route, /creditAuthorized: false/);
+  assert.match(route, /wagerAuthorized: false/);
+  const onlyGet = route.split("export async function GET(request: NextRequest) {")[1]?.split("export async function POST")[0] || "";
+  assert.doesNotMatch(onlyGet, /sendTokens|signAndBroadcast|\$transaction|\.create\(|\.update\(/);
+});
