@@ -16,9 +16,6 @@ import { recordUserActivity } from "@/lib/userExperience";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const RESCINDED_UNPAID_CLAIM_DETAIL =
-  "Admin rescinded this unclaimed wallet-link claim. No payout tx was sent.";
-
 async function rescindClaim(
   request: NextRequest,
   claimId: number,
@@ -38,6 +35,9 @@ async function rescindClaim(
       normalizedPlayerName: true,
       amountWolo: true,
       sourceFounderBonusId: true,
+      status: true,
+      payoutAttemptedAt: true,
+      payoutTxHash: true,
     },
   });
 
@@ -45,25 +45,34 @@ async function rescindClaim(
     return NextResponse.json({ detail: "Claim not found" }, { status: 404 });
   }
 
-  const claim = await rescindPendingWoloClaim(prisma, {
-    claimId,
-    adminUserId: admin.id,
-    note: payloadNote,
-  });
+  if (existingClaim.status !== "pending" ||
+      existingClaim.payoutAttemptedAt !== null ||
+      existingClaim.payoutTxHash !== null) {
+    return NextResponse.json({
+      detail: "This claim has prior payout activity or is no longer pending. Rescission requires independent financial reconciliation.",
+      retryable: false,
+    }, { status: 409 });
+  }
 
-  const cleanedClaim = await prisma.pendingWoloClaim.update({
-    where: { id: claim.id },
-    data: {
-      errorState: RESCINDED_UNPAID_CLAIM_DETAIL,
-      payoutAttemptedAt: null,
-    },
-    select: {
-      id: true,
-      displayPlayerName: true,
-      amountWolo: true,
-      note: true,
-    },
-  });
+  // Protected helper atomically checks pending + no attempted payout + no hash.
+  // Do not clear payoutAttemptedAt or overwrite history after rescission.
+  let cleanedClaim;
+  try {
+    cleanedClaim = await rescindPendingWoloClaim(prisma, {
+      claimId,
+      adminUserId: admin.id,
+      note: payloadNote,
+    });
+  } catch (error) {
+    if (typeof error === "object" && error !== null &&
+        "code" in error && error.code === "P2025") {
+      return NextResponse.json({
+        detail: "Claim changed concurrently or has unresolved payout activity. Rescission refused.",
+        retryable: false,
+      }, { status: 409 });
+    }
+    throw error;
+  }
 
   if (existingClaim.sourceFounderBonusId) {
     await syncFounderBonusStatus(prisma, [existingClaim.sourceFounderBonusId]);
@@ -143,6 +152,14 @@ async function retrySettlementClaim(request: NextRequest, claimId: number) {
         {
           detail:
             "This pending row already has a payout tx hash and needs manual review.",
+        },
+        { status: 409 },
+      );
+    case "ambiguous_prior_attempt":
+      return NextResponse.json(
+        {
+          detail: result.detail || "This payout was previously attempted without proof and must be reconciled before any retry.",
+          retryable: false,
         },
         { status: 409 },
       );
