@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/satchel-owner-bound-prepared-intents-20261015` at `bdbb6b094fa82f87525f83be7fd912c61b1dc977`
+Implementation baseline: `feat/satchel-owner-bound-prepared-intents-20261015` at `acba503372d15aa6e31d24c63d8b8661e0ed93fe`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
