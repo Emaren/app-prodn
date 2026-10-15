@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Activity, ArrowUpRight, BrainCircuit, CheckCircle2, ChevronDown, CircleDashed, Code2, Cpu, Database, GitBranch, GitCommitHorizontal, GitPullRequest, HardDrive, HeartPulse, Network, Radio, RefreshCw, Server, ShieldCheck, TestTube2, Workflow, Zap } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Activity, ArrowUpRight, BrainCircuit, CheckCircle2, Code2, Cpu, Database, GitBranch, GitCommitHorizontal, GitPullRequest, HardDrive, Network, Radio, RefreshCw, Server, ShieldCheck, TestTube2, Workflow, Zap } from "lucide-react";
 import type { OsEvent, OsPublicSnapshot } from "@/lib/aoe2warOsPublic";
 import modelAtlas from "@/config/aoe2war-os-models.json";
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
@@ -42,7 +42,7 @@ function Gauge({ label, value, detail, variant }: {
   </div>;
 }
 function Section({ label, title, note, children }: {
-  label: string; title: string; note: string; children: React.ReactNode;
+  label: string; title: string; note: string; children: ReactNode;
 }) {
   return <section className={styles.section}><header className={styles.sectionHeader}>
     <div><span className={styles.eyebrow}>{label}</span><h2>{title}</h2></div><span className={styles.sectionNote}>{note}</span>
@@ -181,7 +181,7 @@ export default function Aoe2warOsDeck({ initial }: { initial: OsPublicSnapshot }
       </Section>
       <Section label="04 // DATA CITADEL" title="THE PRISMA ATLAS" note={`${modelAtlas.models.length} SOURCE MODELS · EXACT SCHEMA ENUMERATION`}>
         <div className={styles.prismaHeader}><Database size={20}/><strong>{b.prismaModels}</strong><span>MODELS</span><strong>{b.prismaMigrations}</strong><span>MIGRATIONS</span><label>FIND MODEL <input value={atlasFilter} onChange={event => setAtlasFilter(event.target.value)} placeholder="Search 193 models…" aria-label="Find a Prisma model"/></label></div>
-        <div className={styles.modelGrid}>{atlas.slice(0,193).map((name,index)=><div key={name}><small>{String(modelAtlas.models.indexOf(name)+1).padStart(3,"0")}</small><span>{name}</span></div>)}</div>
+        <div className={styles.modelGrid}>{atlas.slice(0,193).map(name=><div key={name}><small>{String(modelAtlas.models.indexOf(name)+1).padStart(3,"0")}</small><span>{name}</span></div>)}</div>
         {!atlas.length && <div className={styles.empty}>NO MODEL MATCHES THIS FILTER</div>}
       </Section>
       <Section label="05 // MAINTENANCE DEBT" title="THE REFACTOR RADAR" note="MEASURED SOURCE SHAPE · NOT PROVEN DEFECTS">
