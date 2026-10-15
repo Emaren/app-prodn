@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c1685e56082bb8bf3c84e7a92ff6cf3ff182c046b6cb272b533d444a61827346",
+      "sha256": "b87e8b87c546824700c658d6adfda648076b8432175d19f67c40a358ad3b0065",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1488,7 +1488,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-09-29",
       "sensitivity": "internal",
-      "sha256": "e0cb3bf15ec5c8062e21c555e2d336c3d6cfe1e8a6668c50d73ebed0f3c457dc",
+      "sha256": "a42c6b1aff44ad5cd447b968afa3f1b0229d877e8a0a5b5d8ecb54e84a9e379d",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/satchel-owner-bound-prepared-intents-20261015",
-    "commit": "f4cb5ea85684e566e79f8526d88e1bf314ba6b00"
+    "branch": "fix/finish-legacy-provenance-forward-release-20261015",
+    "commit": "102b2559386df804eaea7ddc5ffb8fd25e91439b"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
