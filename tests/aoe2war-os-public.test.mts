@@ -36,7 +36,9 @@ test("public OS page exposes no admin route or mutation and safely distinguishes
   assert.match(evidence, /RELEASE_ACTIONS = new Set\(\["deploy", "finish", "rollback"\]\)/);
   assert.match(evidence, /RUNNING = new Set\(\["queued", "claimed", "running"\]\)/);
   assert.match(evidence, /Math\.abs\(Date\.now\(\) - Date\.parse\(beat\)\) > 90_000/);
-  assert.match(evidence, /lastDeployAt: null/);
+  assert.match(evidence, /lastDeployAt: certifiedAt/);
+  assert.match(evidence, /receipt.production_deployed === true/);
+  assert.match(evidence, /source === releaseSha/);
   assert.match(deck, /NO VERIFIED ACTIVE DEPLOY/);
   assert.match(deck, /BUILD ≠ DEPLOY/);
   assert.doesNotMatch(evidence, /bridgeTokenConfigured|stdoutTail|requestedByUid|requestedByUserId/);
@@ -50,8 +52,12 @@ test("OS telemetry is bounded, user-visibility gated and fails closed on source 
   assert.match(evidence, /AbortSignal\.timeout\(4500\)/);
   assert.match(evidence, /Array\.isArray\(commits\) \? commits\.slice\(0, 7\)/);
   assert.match(evidence, /safeUrl\(item\.html_url\)/);
-  assert.match(evidence, /lastDeployAt: null/);
+  assert.match(evidence, /lastDeployAt: certifiedAt/);
+  assert.match(evidence, /receipt.production_deployed === true/);
+  assert.match(evidence, /source === releaseSha/);
   assert.match(deck, /document\.hidden/);
   assert.match(deck, /45_000/);
+  assert.match(deck, /poll\(\);/);
+  assert.match(source("app/aoe2war-os/page.tsx"), /includeGithub: false/);
   assert.match(deck, /controller\.abort\(\)/);
 });
