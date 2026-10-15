@@ -61,10 +61,12 @@ Agents states; and current GitHub commit/PR/Actions events.
 - A release-operation beacon uses only a recent Operator Bridge heartbeat
   plus exact allowlisted queued/claimed/running deploy/finish/rollback action.
   It is **release control in progress**, not a certified successful deploy.
-- "Last deployed at" is intentionally unavailable until an exact
-  source/build-matched certified timestamp is exposed by a suitable owned
-  release receipt. Commit time, CI completion, file mtime and inspection
-  timestamp are NOT substitutes.
+- "Last deployed at" is shown only when a bounded, local Finish
+  receipt records `production_deployed=true`, a certified outcome, the
+  exact matching live production source SHA and an explicit
+  `release_certified_at` timestamp. Otherwise it says NOT PROVEN.
+  Commit time, CI completion, file mtime and inspection timestamps
+  are NOT substitutes.
 - Operational 100/100 is defined by each owned, explicitly versioned check
   having current appropriate proof at its source/runtime generation. The
   engineering maturity estimate (74/100 at October 15) is a separate
@@ -80,7 +82,9 @@ filename selectors. It reads allowlisted, bounded and safely projected
 status only; GitHub URLs are verified to the official app repository.
 Public polling is bounded to 45 seconds while the tab is visible, stops on
 unmount, and displays interrupted signals rather than preserving fake
-"live" state. Server GitHub reads use 45-second cache and short timeout.
+"live" state. Initial server rendering does not wait on external GitHub:
+the activity feed hydrates after first paint. Server GitHub reads use
+45-second cache and short timeout.
 Animations respect reduced motion and never claim a job is running based
 only on a decorative animation.
 
