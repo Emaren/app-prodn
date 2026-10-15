@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/pending-wolo-claim-immutable-payout-history-20261015` at `1162d7f45cc2ef25784d99a2358c9857788770f6`
+Implementation baseline: `fix/war-satchel-owner-guard-complete-20261015` at `cdf801c3baf6ed0b7a6d3cedd23bf3e7f93f4091`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
