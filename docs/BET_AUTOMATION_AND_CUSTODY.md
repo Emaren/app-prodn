@@ -15,6 +15,42 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## C3d — immutable globally unique on-chain evidence admission (October 15, 2026)
+
+`lib/warSatchelUncreditedProofRecorder.ts` adds an optional,
+**non-crediting** durable evidence writer after the canonical read-only
+`/api/user/war-satchel/deposit-evidence` checker. The additional
+`WAR_SATCHEL_UNCREDITED_PROOF_RECORDING_ENABLED=true` flag is
+**OFF by default** and only works when the existing owner-proof,
+canonical receipt audit, and separately certified vault flags pass.
+
+After full canonical `wolo-1` success/three-confirmation/exact
+MsgSend validation, the writer uses SERIALIZABLE transaction plus
+`FOR UPDATE` on the actual linked User and immutable deposit-intent
+row, re-checking wallet, owner, receipt hash, memo, amount, vault, intent
+creation and expiry. It inserts a `war_satchel_proof_candidates` row
+with `status='uncredited'` only. Database constraints enforce one proof
+per intent; one globally unique chain + tx hash + transfer ordinal;
+owner/intent economic identity; SQL append-only immutable rows; and
+**no status except uncredited**. Exact duplicate owner-side retries
+return the same uncredited record; conflicting proofs stop without
+rewriting data. A race that violates a unique constraint fails closed,
+never receives a balance.
+
+No Satchel asset or liability journal is posted. The existing ledger
+remains `simulation`-only. No customer available balance changes, and
+no Keplr transfer, signer execution, stake ticket, automatic betting,
+withdrawal, refund or settlement transaction is created. The success
+response explicitly remains `creditAuthorized=false` and
+`wagerAuthorized=false`. Thus this is **persistent evidence**, not
+real custody credit. Enabling a flag is not a substitute for a new
+bank-backed live balanced ledger and withdrawal/solvency controls.
+
+The C3d writer cannot be approved for live funds until all preceding
+vault/operator and current-chain verification gates are independently
+certified. It must never be presented as a usable War Satchel balance.
+The current `LOAD SATCHEL` funding action stays disabled.
+
 ## C3c — canonical WoloChain bank-send candidate audit, no live funds (October 15, 2026)
 
 `lib/warSatchelCanonicalReceipt.ts` and
