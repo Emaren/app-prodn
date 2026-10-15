@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "9d22b23e3bcd7b7eaaf77aa23f81e391b948d2b0f3bc90a15666dcb5174e471c",
+      "sha256": "8ca34cbfa5e4c22e061a1d5a13c4b24a9575cd23cfd81379b77712a05ad9298d",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ad1f04c84dce91cb9e010367c6cc271bc27daf59d99deca81575500448a3c587",
+      "sha256": "7cb658a6167dea0374fec3a7ab26f939078d762f05dfecaea2a7b667c3de252b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-15",
       "sensitivity": "internal",
-      "sha256": "9b2a86e302930c0b136da083f467161849e4967194c431a6b151d523791843ca",
+      "sha256": "5feb02e289760500f92cec087a683161356f8d418d308b360edad3e5951462c8",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1971,7 +1971,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "restricted",
-      "sha256": "d693420a473da0c8a3ff94de36788405ee4759f90ba8d2499034f2cd965fe780",
+      "sha256": "2375fc9dc1edc0b5023b10cc99922899fb8d6577bbf43385469ddb5dab8d871b",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/satchel-vault-known-wallet-exclusions-20261015",
-    "commit": "903d8751c16316c90b4e8e244bea25cb270227ac"
+    "branch": "main",
+    "commit": "e67d1b79efc60dfceeeeedde16932848db2442ab"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

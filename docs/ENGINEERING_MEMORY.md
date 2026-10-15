@@ -57,6 +57,22 @@ is **never** signer, solvency, custody, deposit or payout approval;
 the existing C2/C3 feature flags and `creditAuthorized=false`
 remain enforced.
 
+## 2026-10-15 — Claim WOLO is not a payout: prevent phantom-paid claims
+
+The profile's legacy Claim WOLO POST marked pending database rows
+`claimed` merely by normalized player-name match. That is not the same as
+a successful chain transfer. It also had a stale read-to-broad-update race
+and could touch claims attached to other owners. The emergency Git-only
+fix makes the profile action read-only and responds 409
+`CHAIN_SETTLEMENT_REQUIRED` while preserving pending claims. This
+intentionally **does not** claim the profile payout feature now works:
+the owner-bound, chain-finalized payout path is a separate acceptance gate.
+
+Financial rule: **no status `claimed` without distinct on-chain proof
+and exact owner/amount/transfer binding**. Historical rows need
+read-only review before any correction; do not automatically rewrite
+older records to reconcile their missing hashes.
+
 ## 2026-10-15 — Generic internal HTTP writes must not evade the route authority review queue
 
 The first HD route-authority census checked mutating API files with sensitive

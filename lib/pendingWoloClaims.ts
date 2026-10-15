@@ -386,6 +386,15 @@ export async function createPendingWoloClaim(
   });
 }
 
+/**
+ * Profile claims are NOT on-chain payouts. Preserve unspent claim liabilities:
+ * only the guarded settlement executor may finalize a claim after independent
+ * successful wolo-1 MsgSend proof. Never set status='claimed' from a user
+ * session, normalized-name match, or a button click.
+ *
+ * This bounded read-only inspection keeps the legacy endpoint contract while
+ * real owner-authorized payout requests are designed and certified separately.
+ */
 export async function claimPendingWoloClaimsForUser(
   prisma: PendingWoloClaimDb,
   user: PendingWoloClaimLookupUser
@@ -396,46 +405,27 @@ export async function claimPendingWoloClaimsForUser(
       claimedCount: 0,
       claimedAmountWolo: 0,
       claimIds: [] as number[],
+      requiresSettlement: false,
     };
   }
 
   const rows = await prisma.pendingWoloClaim.findMany({
     where: visibleMainnetClaimWhere({
       status: "pending",
-      normalizedPlayerName: { in: keys },
+      OR: [
+        { claimedByUserId: user.id },
+        { claimedByUserId: null, normalizedPlayerName: { in: keys } },
+      ],
     }),
-    select: {
-      id: true,
-      amountWolo: true,
-    },
-  });
-
-  if (rows.length === 0) {
-    return {
-      claimedCount: 0,
-      claimedAmountWolo: 0,
-      claimIds: [] as number[],
-    };
-  }
-
-  const claimIds = rows.map((row) => row.id);
-  const claimedAmountWolo = rows.reduce((sum, row) => sum + row.amountWolo, 0);
-
-  await prisma.pendingWoloClaim.updateMany({
-    where: {
-      id: { in: claimIds },
-    },
-    data: {
-      status: "claimed",
-      claimedByUserId: user.id,
-      claimedAt: new Date(),
-    },
+    select: { id: true },
+    take: 1,
   });
 
   return {
-    claimedCount: rows.length,
-    claimedAmountWolo,
-    claimIds,
+    claimedCount: 0,
+    claimedAmountWolo: 0,
+    claimIds: [] as number[],
+    requiresSettlement: rows.length > 0,
   };
 }
 
