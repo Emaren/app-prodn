@@ -15,6 +15,39 @@ sensitivity: "restricted"
 
 # WOLO Mainnet Settlement App Runbook
 
+## October 15, 2026 — profile Claim WOLO cannot mean paid without chain proof
+
+Source review found that the legacy `POST /api/user/wolo-claims/claim`
+called `claimPendingWoloClaimsForUser`, which selected name-matched
+`pending` claims and used `pendingWoloClaim.updateMany` to change them
+directly to `claimed`, attach a session user ID, and stamp `claimedAt`.
+There was no required on-chain payout hash, no distinct finalized
+`wolo-1` `MsgSend`, and no database compare-and-set requiring an
+unattempted, unclaimed row. A user pressing Claim WOLO therefore risked
+making an **unpaid liability look paid**, including inappropriately
+claiming rows associated with another owner sharing a player name.
+
+The source-only correction replaces that legacy write path with a bounded,
+read-only eligibility observation; name-matched unassigned claims and
+claims already attached to the requesting user may be observed, never
+consumed. A pending claim (including a team-name split visible on the
+profile) returns HTTP 409 with `CHAIN_SETTLEMENT_REQUIRED` and current
+pending totals. The profile surfaces the specific detail. An empty
+profile reports no verified claim ready. The entire pending record,
+payout-attempt timestamp, payout hash, claimant identity and liability
+are unchanged. The protected admin settlement rail remains the only
+existing path capable of finalizing a payout with independently validated
+mainnet transaction proof.
+
+**This is a containment repair, not restoration of live profile payouts.**
+The next product step is a separately reviewed and certified owner-bound
+claim/payout request with unique on-chain proof, wallet ownership and
+transaction/ledger idempotency. Do not simply call an admin payout function
+from a public profile endpoint, forge `payoutTxHash`, clear claim #889,
+or infer payout from a UI click. No live WOLO transfer, production schema
+change, mainnet service operation or UI redesign was performed.
+
+
 ## October 15, 2026 — immutable historical claim writes (shared boundary)
 
 Admin and automated Founder payout retry prevention must not rely only on
