@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "747d1adabb7569363b9a58b83ecce5053ef908405dd596a4a5b530a722fe5a27",
+      "sha256": "ad1f04c84dce91cb9e010367c6cc271bc27daf59d99deca81575500448a3c587",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2117,7 +2117,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/satchel-vault-known-wallet-exclusions-20261015",
-    "commit": "895de53ba89e22fce8ab59971a6571b586400ac1"
+    "commit": "903d8751c16316c90b4e8e244bea25cb270227ac"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
