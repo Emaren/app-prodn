@@ -37,6 +37,8 @@ the vault address and transfer memo** and returns
 `state=PREPARED_UNFUNDABLE`, `depositAuthorized=false`,
 `creditAuthorized=false` and `wagerAuthorized=false`.
 
+The Mecha profile now mounts `WarSatchelWalletProof` under the Satchel panel, but only when the protected server capability reports an exact match to the connected Keplr address. Browser ADR-36 signing uses the server-issued challenge, sends the signature back to the one-use verifier, and displays a control-proof state only. The bank-transfer button remains unavailable; no local wallet signature authorizes a deposit or bet.
+
 **This endpoint is not a deposit experience.** There is no real credited
 balance, Keplr bank MsgSend, withdrawal, manual stake ticket funding or
 funded Mecha executor. Its two feature flags must remain OFF in production.
