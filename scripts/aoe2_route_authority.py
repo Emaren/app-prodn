@@ -84,8 +84,12 @@ def classify_route(path: str, source: str) -> dict[str, Any]:
         "surface": surface,
         "local_guard_symbols_seen": guards,
         "body_reader_symbols_seen": bodies,
-        # Only an owner review prompt; a guard may be inside a delegated helper.
-        "manual_authority_trace_candidate": mutating and sensitive_name and not guards,
+        # Only an owner review prompt. An internal route needs authority review
+        # even when its generic path lacks money/replay/security keywords.
+        # A guard may still live inside a delegated helper.
+        "manual_authority_trace_candidate": (
+            mutating and (sensitive_name or surface == "internal_path") and not guards
+        ),
     }
 
 
