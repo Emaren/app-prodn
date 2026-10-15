@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a601b904612c6808c68c79afd59d124086ff20fc527594507e78ed58b8785b60",
+      "sha256": "7cb658a6167dea0374fec3a7ab26f939078d762f05dfecaea2a7b667c3de252b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/profile-wolo-claim-proof-boundary-20261015",
-    "commit": "160022a0d545ed97c0724006c5f1954a505b5dd0"
+    "branch": "main",
+    "commit": "e67d1b79efc60dfceeeeedde16932848db2442ab"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
