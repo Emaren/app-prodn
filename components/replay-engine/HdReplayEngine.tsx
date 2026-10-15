@@ -11,6 +11,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ReplayEngineCase, ReplayEngineSnapshot } from "@/lib/hdReplayEngine";
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import PhoenixRecoveryDashboard from "@/components/replay-engine/PhoenixRecoveryDashboard";
+import PhoenixResearchChronicle from "@/components/replay-engine/PhoenixResearchChronicle";
 import type { PhoenixDashboardSnapshot } from "@/lib/phoenixRecoveryDashboard";
 
 const REFRESH_MS = 120_000;
@@ -315,6 +316,7 @@ export default function HdReplayEngine({ initial, phoenix }: {
         )}
 
         <PhoenixRecoveryDashboard snapshot={phoenix} />
+        <PhoenixResearchChronicle />
 
         <section aria-label="Replay corpus key counts" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <Stat label="Final replay records" value={counts ? integer(counts.final) : "—"}
