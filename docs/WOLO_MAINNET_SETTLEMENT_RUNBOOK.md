@@ -30,7 +30,10 @@ The app now refuses its **admin retry** for any `pending_wolo_claims`
 row with `payout_attempted_at IS NOT NULL` but no stored payout hash,
 with a specific HTTP 409 `ambiguous_prior_attempt` outcome. This condition
 is checked before payout planning, and founder retries recheck it **inside
-the existing idempotency lock**. A stored non-empty tx hash may still enter
+the existing idempotency lock**. The background Founder bonus auto-settlement
+flow also refuses any previously attempted or hash-bearing claim on a
+re-read inside its founder idempotency lock; its ordinary existing-group
+dedupe remains intact. A stored non-empty tx hash may still enter
 the exact existing chain-validation path, not an unproven new send.
 If an operator independently proves nonpayment, resolution requires a
 separately reviewed evidence-preserving financial correction; **do not**
