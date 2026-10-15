@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ee07c7a8a3962849286f57db2227efa0b30c7c41f6ee944b21eff7ba09dc428e",
+      "sha256": "ada304b375e0b9cb5285e6c02663ac7a6fac308c5e9d7bcd590a3eb10881feda",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/wolo-ambiguous-payout-no-retry-or-rescind-20261015",
-    "commit": "cf71bb9ce62c28318fd53fd44cac8dcae41d0f40"
+    "branch": "feat/phoenix-recovery-dashboard-20261014",
+    "commit": "7523f9d190e70d79e76b84417cca15158010efe4"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

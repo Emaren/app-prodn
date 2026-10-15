@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/wolo-ambiguous-payout-no-retry-or-rescind-20261015` at `cf71bb9ce62c28318fd53fd44cac8dcae41d0f40`
+Implementation baseline: `feat/phoenix-recovery-dashboard-20261014` at `7523f9d190e70d79e76b84417cca15158010efe4`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
