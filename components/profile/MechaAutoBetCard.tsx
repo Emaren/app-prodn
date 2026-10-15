@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ChevronDown, Coins, Crosshair, LockKeyhole, Radar, Settings2, ShieldCheck, X, Wallet, ArrowDownToLine } from "lucide-react";
 import { useKeplr } from "@/hooks/use-keplr";
+import WarSatchelWalletProof from "@/components/profile/WarSatchelWalletProof";
 import { useWoloBalance } from "@/hooks/useWoloBalance";
 import { deriveWoloBalanceReadState, formatMinimalDenomAmount } from "@/lib/woloBalanceRead";
 
@@ -257,6 +258,7 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
               <X className="h-4 w-4" aria-hidden />
             </button>
           </div>
+          <WarSatchelWalletProof walletAddress={walletStatus === "connected" ? walletAddress : ""} />
           <div className="mt-4 grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
             <label className="text-[10px] font-black uppercase tracking-[.16em] text-slate-400">
               WOLO FROM YOUR WALLET
