@@ -101,3 +101,19 @@ test("Mecha UI shows only server-owned preview status; not an on-chain wallet", 
   assert.match(route, /pauseOnly = body\?\.action === "pause"/);
   assert.match(route, /enabled: false, pausedReason: "user_paused"/);
 });
+
+test("Mecha wallet control is authenticated ADR-36 only, never a deposit authorization", () => {
+  const card = readFileSync(new URL("../components/profile/MechaAutoBetCard.tsx", import.meta.url), "utf8");
+  const control = readFileSync(new URL("../components/profile/WarSatchelWalletProof.tsx", import.meta.url), "utf8");
+  const server = readFileSync(new URL("../app/api/user/war-satchel/wallet-proof/route.ts", import.meta.url), "utf8");
+  assert.match(card, /<WarSatchelWalletProof walletAddress=/);
+  assert.match(control, /signArbitrary\("wolo-1", walletAddress, challenge.message\)/);
+  assert.match(control, /walletControlVerified !== true/);
+  assert.match(control, /result.custodyApproved !== false/);
+  assert.match(control, /result.creditAuthorized !== false/);
+  assert.match(control, /result.wagerAuthorized !== false/);
+  assert.match(control, /0 WOLO MOVED/);
+  assert.doesNotMatch(control, /sendTokens|signAndBroadcast|MsgSend|bank\/send/);
+  assert.match(server, /WAR_SATCHEL_OWNER_PROOF_ENABLED !== "true"/);
+  assert.match(card, /LOAD FROM WALLET · COMING SOON/);
+});
