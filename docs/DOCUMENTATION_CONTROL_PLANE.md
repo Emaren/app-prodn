@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/update-independent-docs-context-20261015` at `dcf34534af0a826927d75e39ccbffe9feb0d9e8d`
+Implementation baseline: `integration/iron-foundation-three-lanes-20261015` at `b5e46fc7d680f31b694154f2b81fb534f95972ac`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
