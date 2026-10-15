@@ -41,6 +41,33 @@ memory before closing the work.
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
 
+## 2026-10-15 — Route authority audit: 14 initial candidates were recognized delegated gates
+
+The first full HD route census read 262 route files / 356 exported handlers,
+with 154 routes exposing a mutation method and 166 routes carrying one of
+its original limited local guard-name signals. Fourteen sensitive-named write
+routes needed manual call-path review. Source inspection established that all
+14 carry identified credential or delegated authority checks; **this does not
+prove successful negative integration tests**:
+
+- 8 Radio WOLO administration routes call requireRadioWoloOperator, whose
+  implementation first calls requireAdmin and then checks the operator UID.
+- replay-auto-recovery, replay-roster-recovery and replay/post-ingest routes
+  use INTERNAL_API_KEY-backed fail-closed authorized(request) checks.
+- bet stake reconciliation uses configured reconciliation/cron token and
+  timingSafeEqual before the read/mutation handlers.
+- the bet ticket commit/recover routes delegate to shared
+  handleBetStakeTicketCommit, which validates getSessionUid and viewer
+  identity before delegating to commitBetStakeTicket.
+
+Code Health OS now recognizes those **names as lexical review signals**
+to prevent continually misreporting the same valid patterns. Regression tests
+pin the source-level call paths and fail if a known reviewed guard disappears.
+They do not establish that every actor is rejected at runtime or that these
+guards never contain implementation defects. The scanner continues to flag
+new sensitive mutating paths with no recognized guard for owner-led review.
+No auth logic, permission rules, or financial service was changed.
+
 ## 2026-10-15 — HTTP authorization evidence must not be guessed from filenames
 
 The HD web has 261 app/api HTTP route files, with many legitimate authority
