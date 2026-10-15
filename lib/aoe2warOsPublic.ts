@@ -1,6 +1,6 @@
 import "server-only";
 
-import { readFile } from "node:fs/promises";
+import { lstat, readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 
 import { buildGeneralInspectionsSnapshot } from "@/lib/generalInspections/serverSnapshot";
@@ -140,6 +140,45 @@ async function safeJson(file: string): Promise<Record<string, unknown> | null> {
   } catch { return null; }
 }
 
+/**
+ * A real last-deployment timestamp is emitted ONLY from an exact-source
+ * Finish receipt recording production_deployed=true and certified outcome.
+ * Never use GitHub commit time, build completion, mtimes or inspection time.
+ * This is a bounded local receipt read, NOT a new operator command.
+ */
+let certifiedCache: { sha: string; checkedAt: number; at: string | null } | null = null;
+async function certifiedDeployTime(releaseSha: string | null): Promise<string | null> {
+  if (!releaseSha || !/^[a-f0-9]{40}$/i.test(releaseSha)) return null;
+  if (certifiedCache?.sha === releaseSha && Date.now() - certifiedCache.checkedAt < 60_000)
+    return certifiedCache.at;
+  const directory = path.join(process.cwd(), ".aoe2war-release", "finish-receipts");
+  let candidates: string[] = [];
+  try {
+    const entries = await readdir(directory, { withFileTypes: true });
+    candidates = entries.filter(item => item.isFile() && /^20\\d{6}T[A-Za-z0-9-]+\\.json$/.test(item.name))
+      .map(item => item.name).sort().reverse().slice(0, 28);
+  } catch { /* source receipts may live on the operator machine, not VPS */ }
+  let found: string | null = null;
+  for (const name of candidates) {
+    const file = path.join(directory, name);
+    try {
+      const stat = await lstat(file);
+      if (!stat.isFile() || stat.size > 750_000) continue;
+      const receipt = object(JSON.parse(await readFile(file, "utf8")));
+      const outcome = string(receipt.release_outcome);
+      const source = string(object(object(receipt.certified_release).production).source_sha);
+      const at = stamp(receipt.release_certified_at);
+      if (receipt.production_deployed === true && source === releaseSha &&
+          (outcome === "CERTIFIED" || outcome === "CERTIFIED_WORKSHOP_INCOMPLETE") && at) {
+        found = at;
+        break;
+      }
+    } catch { /* invalid or unreadable receipt has no timestamp authority */ }
+  }
+  certifiedCache = { sha: releaseSha, checkedAt: Date.now(), at: found };
+  return found;
+}
+
 /** Public RELEASE CONTROL indication only. Never projects usernames, hostnames, logs, parameters or secrets. */
 async function releaseControl(): Promise<{
   deploying: boolean; releaseAction: string | null; releaseStatus: string | null;
@@ -229,6 +268,7 @@ export async function buildAoe2warOsPublicSnapshot(options: { includeGithub?: bo
   })) ?? [];
   const agentCounts = { healthy: 0, working: 0, watch: 0, blocked: 0, unknown: 0 };
   publicAgents.forEach(item => { agentCounts[item.state] += 1; });
+  const certifiedAt = await certifiedDeployTime(inspection?.releaseSha ?? null);
   const gitEvents = githubEvents(commits, pulls, workflows);
   if (control?.event) gitEvents.unshift(control.event);
   return {
@@ -240,7 +280,7 @@ export async function buildAoe2warOsPublicSnapshot(options: { includeGithub?: bo
       buildVersion: inspection?.buildVersion ?? null,
       inspectionAt: inspection?.generatedAt ?? null,
       // Not inferred from CI time, file mtime, build ID, or unverified GitHub deployment.
-      lastDeployAt: null,
+      lastDeployAt: certifiedAt,
       deploying: control?.deploying ?? false,
       releaseAction: control?.releaseAction ?? null,
       releaseStatus: control?.releaseStatus ?? null,
