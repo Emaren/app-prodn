@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d969fc0f3fda031c590d217d3c85be7cdc9bb327aa21b7cd646378be20e452fb",
+      "sha256": "801372a164c2800c8324e87f0780d6012c2915cf3c26f51caaf294e4fca5a7ff",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2117,7 +2117,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feat/satchel-immutable-uncredited-receipt-admission-20261015",
-    "commit": "6c9107e549bc402528a944dccd3a579631dfa6d2"
+    "commit": "685996c422e4eb7aa3c1d1dc409b6dc92987d61"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
