@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "52e083b96127c03c520ee3cbb14ae365591f11b2b5de5275c84a4ac7f13710ad",
+      "sha256": "8782e982f9a9d33ace0da0b6c6e48bfff54e90f4e095be8f738b0f493c3c72a3",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-15",
       "sensitivity": "internal",
-      "sha256": "eaa4cfc3d30c5ebd39b6a24f8ae733b832b02f872ab5759b98ccc6b6911f1347",
+      "sha256": "104641e1b9ef07b6b7fd9e08e8ef1d0946c7d23d913be1431001e4048eabd393",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "audit/iron-foundation-module-graph-20261015",
-    "commit": "f7dcaf1b48a3e5898e590f71e321b5cec8bd4c2e"
+    "branch": "fix/module-graph-type-only-edges-20261015",
+    "commit": "a5b2c29c86788f169c136241ddb382f5bdca82ee"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

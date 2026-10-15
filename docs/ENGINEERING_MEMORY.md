@@ -41,6 +41,34 @@ memory before closing the work.
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
 
+## 2026-10-15 — TypeScript type-only imports are not runtime cycle evidence
+
+The first Module Graph OS hosted census counted three cycles across 1,174
+modules and 3,118 internal references. A source review immediately found
+that lib/lobby.ts and lib/liveTicker.ts mutually reference **types** with
+explicit TypeScript import-type syntax, not runtime values. Treating this
+two-file component as a runtime circular dependency would direct engineering
+effort at nonexistent runtime execution coupling.
+
+The graph now distinguishes **provably erased** type-only imports/exports
+(including import-type and all-type named specifiers) from runtime imports,
+dynamic literal imports and CommonJS require. Ambiguous or mixed named
+imports remain conservatively runtime. The original resolved_edges and
+most_imported continue to describe *all* source coupling, while
+resolved_runtime_edges, resolved_type_only_edges, most_imported_runtime
+and cycle_group_count describe the more relevant runtime layer.
+type_augmented_cycle_group_count reports all-edge strongly connected groups
+that are not themselves runtime strongly connected groups.
+Client-to-server-only reachability traverses runtime imports only.
+
+This remains lexical evidence: ambiguous syntax can produce false runtime
+positives, Next.js/TypeScript compiler semantics require their own tests,
+and source-only graph changes are NOT evidence of a live production fix.
+It changes no application module dependency or runtime behavior.
+Review exact cycle-group membership after hosted CI before selecting a
+backend extraction. Preserve all financial and game-result transactions
+until separately tested and authorized.
+
 ## 2026-10-15 — Preserve a measurable module graph before refactoring HD backend giants
 
 The AoE2WAR HD source tree at `main@026c41a2` contains structural hotspots:

@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `audit/iron-foundation-module-graph-20261015` at `f7dcaf1b48a3e5898e590f71e321b5cec8bd4c2e`
+Implementation baseline: `fix/module-graph-type-only-edges-20261015` at `a5b2c29c86788f169c136241ddb382f5bdca82ee`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

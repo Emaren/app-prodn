@@ -21,9 +21,10 @@ EXCLUDED_SEGMENTS = frozenset({".next", "node_modules", ".aoe2war-release", "cov
 # Quoted specifiers in static import/export lines. Multiline clauses are
 # bounded to prevent a source comment or malformed file from scanning MBs.
 STATIC_IMPORT_RE = re.compile(
-    r"""(?m)^[ \t]*(?:import|export)\s+(?:type\s+)?"""
-    r"""(?:[^;'"]{0,750}?\s+from\s+)?["']([^"'\r\n]+)["']"""
+    r"""(?m)^[ \t]*(?:import|export)\s+(?P<explicit_type>type\s+)?"""
+    r"""(?P<clause>[^;'""]{0,750}?\s+from\s+)?["'](?P<module>[^"'\r\n]+)["']"""
 )
+
 LITERAL_CALL_RE = re.compile(
     r"""\b(?:import|require)\s*\(\s*["']([^"'\r\n]+)["']\s*\)"""
 )
@@ -48,11 +49,38 @@ def find_modules(root: Path = ROOT) -> dict[str, Path]:
     return dict(sorted(modules.items()))
 
 
+def import_clause_is_type_only(clause: str | None) -> bool:
+    """Recognize only provably erased named imports; ambiguous clauses stay runtime."""
+    if not clause:
+        return False
+    stripped = re.sub(r"\s+from\s+$", "", clause).strip()
+    if not (stripped.startswith("{") and stripped.endswith("}")):
+        return False
+    names = [item.strip() for item in stripped[1:-1].split(",") if item.strip()]
+    return bool(names) and all(re.match(r"^type\s+\w", name) for name in names)
+
+
+def extract_import_references(source: str) -> list[tuple[str, str]]:
+    """Return (module, kind) where kind is runtime or safely erased type_only.
+
+    A lexical census is never a substitute for the TypeScript compiler.
+    Mixed/ambiguous named imports conservatively remain runtime. Literal
+    import() and require() expressions are runtime; no source is executed.
+    """
+    references: list[tuple[str, str]] = []
+    for match in STATIC_IMPORT_RE.finditer(source):
+        kind = "type_only" if (
+            match.group("explicit_type") is not None
+            or import_clause_is_type_only(match.group("clause"))
+        ) else "runtime"
+        references.append((match.group("module"), kind))
+    references.extend((m.group(1), "runtime") for m in LITERAL_CALL_RE.finditer(source))
+    return references
+
+
 def extract_imports(source: str) -> set[str]:
-    """Only lexical import/export and literal import()/require() references."""
-    matches = {m.group(1) for m in STATIC_IMPORT_RE.finditer(source)}
-    matches.update(m.group(1) for m in LITERAL_CALL_RE.finditer(source))
-    return matches
+    """Backward-compatible union of lexical import paths, regardless of kind."""
+    return {specifier for specifier, _kind in extract_import_references(source)}
 
 
 def resolve_import(importer: str, specifier: str, known: set[str]) -> str | None:
@@ -135,41 +163,62 @@ def inspect(root: Path = ROOT) -> dict[str, Any]:
     files = find_modules(root)
     known = set(files)
     graph: dict[str, set[str]] = {name: set() for name in files}
-    raw_imports: dict[str, set[str]] = {}
+    runtime_graph: dict[str, set[str]] = {name: set() for name in files}
+    type_graph: dict[str, set[str]] = {name: set() for name in files}
     client: set[str] = set()
     server: set[str] = set()
     unresolved: list[dict[str, str]] = []
     for name, file in files.items():
         source = file.read_text(encoding="utf-8")
-        specifiers = extract_imports(source)
-        raw_imports[name] = specifiers
+        references = extract_import_references(source)
         if client_directive(source):
             client.add(name)
-        if specifiers & SERVER_IMPORTS:
+        if any(specifier in SERVER_IMPORTS and kind == "runtime"
+               for specifier, kind in references):
             server.add(name)
-        for specifier in sorted(specifiers):
+        for specifier, kind in sorted(references):
             if not (specifier.startswith("@/") or specifier.startswith("./")
                     or specifier.startswith("../")):
                 continue
             resolved = resolve_import(name, specifier, known)
             if resolved:
                 graph[name].add(resolved)
+                if kind == "runtime":
+                    runtime_graph[name].add(resolved)
+                else:
+                    type_graph[name].add(resolved)
             elif not specifier.endswith((".css", ".scss", ".json", ".svg", ".png",
                                          ".jpg", ".webp", ".woff", ".woff2")):
-                unresolved.append({"importer": name, "specifier": specifier})
+                finding = {"importer": name, "specifier": specifier}
+                if finding not in unresolved:
+                    unresolved.append(finding)
 
+    # A module imported both for values and types is a runtime edge. The
+    # type-only count excludes those edges for a non-overlapping partition.
+    type_only_graph = {
+        node: targets - runtime_graph[node]
+        for node, targets in type_graph.items()
+    }
     incoming: dict[str, int] = {node: 0 for node in graph}
     for targets in graph.values():
         for target in targets:
             incoming[target] += 1
-    cycles = strongly_connected(graph)
+    cycles = strongly_connected(runtime_graph)
+    all_cycles = strongly_connected(graph)
+    runtime_cycle_sets = [set(group) for group in cycles]
+    # The all-edge SCC may join multiple genuine runtime SCCs. Report every
+    # group whose multi-module cycle requires at least one erased type edge.
+    type_augmented_cycles = [
+        group for group in all_cycles
+        if not any(set(group) == runtime_set for runtime_set in runtime_cycle_sets)
+    ]
 
     # Import reachability, not a proof of an actual browser bundle violation.
     reachable: set[str] = set(client)
     pending = list(client)
     while pending:
         node = pending.pop()
-        for dependency in graph[node]:
+        for dependency in runtime_graph[node]:
             if dependency not in reachable:
                 reachable.add(dependency)
                 pending.append(dependency)
@@ -184,12 +233,17 @@ def inspect(root: Path = ROOT) -> dict[str, Any]:
     return {
         "schema": 1,
         "kind": "aoe2war-static-module-graph",
-        "scope": "literal static imports/exports and literal import()/require(); "
-                 "Next.js resolver, conditional bundling and TS semantics not certified",
+        "scope": "lexical imports/exports split by provably erased type-only syntax; "
+                 "ambiguous imports conservatively runtime; Next.js resolver and "
+                 "TypeScript compiler semantics not certified",
         "module_count": len(files),
         "resolved_edges": sum(map(len, graph.values())),
+        "resolved_runtime_edges": sum(map(len, runtime_graph.values())),
+        "resolved_type_only_edges": sum(map(len, type_only_graph.values())),
         "cycle_group_count": len(cycles),
         "cycle_groups": cycles[:30],
+        "type_augmented_cycle_group_count": len(type_augmented_cycles),
+        "type_augmented_cycle_groups": type_augmented_cycles[:30],
         "unresolved_local_count": len(unresolved),
         "unresolved_local_sample": unresolved[:40],
         "client_entry_count": len(client),
@@ -197,6 +251,10 @@ def inspect(root: Path = ROOT) -> dict[str, Any]:
         "client_reachable_server_imports": client_server_paths[:40],
         "most_imported": rank_counts(incoming),
         "most_dependencies": rank_counts({p: len(v) for p, v in graph.items()}),
+        "most_imported_runtime": rank_counts({
+            node: sum(node in targets for targets in runtime_graph.values())
+            for node in runtime_graph
+        }),
         "interpretation": "Observational refactor evidence only. Never change runtime "
                           "or block finance/settlement based on lexical risk alone.",
     }
@@ -214,17 +272,20 @@ def main() -> int:
             print(json.dumps(report, indent=2, sort_keys=True))
         else:
             print("⚔️  AOE2WAR STATIC MODULE GRAPH")
-            for key in ("module_count", "resolved_edges", "cycle_group_count",
-                        "unresolved_local_count", "client_entry_count",
-                        "server_only_import_count"):
+            for key in ("module_count", "resolved_edges", "resolved_runtime_edges",
+                        "resolved_type_only_edges", "cycle_group_count",
+                        "type_augmented_cycle_group_count", "unresolved_local_count",
+                        "client_entry_count", "server_only_import_count"):
                 print(f"  {key}: {report[key]}")
             print("  Client-reachable server-import modules:",
                   len(report["client_reachable_server_imports"]))
             for row in report["most_imported"][:10]:
                 print(f"  IN {row['count']:>3}  {row['path']}")
             for group in report["cycle_groups"][:5]:
-                print("  CYCLE " + " → ".join(group[:8]))
-            print("  Evidence is lexical and read-only, not a release waiver.")
+                print("  RUNTIME-CYCLE " + " → ".join(group[:8]))
+            for group in report["type_augmented_cycle_groups"][:5]:
+                print("  TYPE-AUGMENTED " + " → ".join(group[:8]))
+            print("  Type-only paths are erased; all results remain lexical evidence.")
         return 0
     except (OSError, ValueError, UnicodeError) as exc:
         print(f"STOP: module graph census failed: {exc}")

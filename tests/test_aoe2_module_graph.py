@@ -75,6 +75,87 @@ class ModuleGraphTests(unittest.TestCase):
         self.assertEqual(first["client_reachable_server_imports"], ["lib/c.ts"])
         self.assertEqual(first["most_imported"][0], {"path": "lib/a.ts", "count": 2})
 
+    def test_type_only_lobby_ticker_cycle_is_not_a_runtime_cycle(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write(root, "lib/lobby.ts",
+                  'import type { LiveTickerSnapshot } from "@/lib/liveTicker";\n'
+                  'export type LobbySnapshot = { ticker: LiveTickerSnapshot };\n')
+            write(root, "lib/liveTicker.ts",
+                  'import type { LobbyTournament, LobbyMatchRow } from "@/lib/lobby";\n'
+                  'export type LiveTickerSnapshot = { tournament: LobbyTournament; '
+                  'matches: LobbyMatchRow[] };\n')
+            write(root, "components/Widget.tsx",
+                  '"use client";\nimport type { LiveTickerSnapshot } '
+                  'from "@/lib/liveTicker";\n')
+            readout = graph.inspect(root)
+
+        self.assertEqual(readout["resolved_edges"], 3)
+        self.assertEqual(readout["resolved_runtime_edges"], 0)
+        self.assertEqual(readout["resolved_type_only_edges"], 3)
+        self.assertEqual(readout["cycle_group_count"], 0)
+        self.assertEqual(readout["type_augmented_cycle_group_count"], 1)
+        self.assertEqual(readout["type_augmented_cycle_groups"], [
+            ["lib/liveTicker.ts", "lib/lobby.ts"]
+        ])
+        self.assertEqual(readout["client_reachable_server_imports"], [])
+
+    def test_lexical_import_kinds_distinguish_types_from_values_and_side_effects(self):
+        imports = graph.extract_import_references(
+            'import type { A, B } from "./types";\n'
+            'export type { C } from "./export";\n'
+            'import { type X, type Y as Z } from "./named";\n'
+            'export { type T } from "./reexport";\n'
+            'import { type Q, usable } from "./mixed";\n'
+            'export { live, type Another } from "./mixed-export";\n'
+            'import Thing from "./value";\n'
+            'import "./side-effect";\n'
+            'const lazy = import("./lazy");\n'
+            'const cjs = require("./cjs");\n'
+        )
+        self.assertEqual(dict(imports), {
+            "./types": "type_only",
+            "./export": "type_only",
+            "./named": "type_only",
+            "./reexport": "type_only",
+            "./mixed": "runtime",
+            "./mixed-export": "runtime",
+            "./value": "runtime",
+            "./side-effect": "runtime",
+            "./lazy": "runtime",
+            "./cjs": "runtime",
+        })
+
+    def test_type_only_edges_do_not_spuriously_reach_server_module(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write(root, "components/Widget.tsx",
+                  '"use client";\nimport type { ServerShape } '
+                  'from "@/lib/private";\n')
+            write(root, "lib/private.ts",
+                  'import "server-only";\nexport type ServerShape = { ok: true };\n')
+            readout = graph.inspect(root)
+            self.assertEqual(readout["server_only_import_count"], 1)
+            self.assertEqual(readout["client_reachable_server_imports"], [])
+            write(root, "components/Widget.tsx",
+                  '"use client";\nimport { runtime } from "@/lib/private";\n')
+            runtime_readout = graph.inspect(root)
+            self.assertEqual(
+                runtime_readout["client_reachable_server_imports"], ["lib/private.ts"]
+            )
+
+    def test_runtime_import_takes_precedence_over_type_only_of_same_target(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write(root, "lib/a.ts",
+                  'import type { A } from "./b";\n'
+                  'import { value } from "./b";\n')
+            write(root, "lib/b.ts", "export const value = 1;\n")
+            readout = graph.inspect(root)
+        self.assertEqual(readout["resolved_edges"], 1)
+        self.assertEqual(readout["resolved_runtime_edges"], 1)
+        self.assertEqual(readout["resolved_type_only_edges"], 0)
+
     def test_empty_tree_and_independent_server_import_have_no_false_alarm(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
