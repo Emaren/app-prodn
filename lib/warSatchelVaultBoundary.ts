@@ -4,7 +4,7 @@
  * A future dedicated Satchel vault must be independently provisioned and
  * reviewed: it must NOT collide with any known existing WOLO role.
  */
-import { WOLO_MAINNET_WALLET_ALIASES } from "./woloMainnetWallets";
+import { WOLO_MAINNET_WALLET_ALIASES } from "./woloMainnetWallets.ts";
 
 const KNOWN_ADDRESSES = new Set(
   WOLO_MAINNET_WALLET_ALIASES.map(row => row.address.trim().toLowerCase())
