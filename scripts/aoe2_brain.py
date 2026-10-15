@@ -651,6 +651,35 @@ def brain_recommendations(
     rows: list[dict[str, Any]] = []
     source = source or {}
 
+    # The last certified Finish receipt owns its exact failure phase. A root
+    # capacity-preflight failure is not cured by volume archive maintenance or
+    # another generic triage/Finish loop; keep it visible until new headroom
+    # evidence permits a protected release retry.
+    root_capacity_blocked = bool(
+        finish.get("available")
+        and not finish.get("closure_complete")
+        and finish.get("failed_phase") == "capacity_preflight"
+    )
+    if root_capacity_blocked:
+        rows.append(
+            {
+                "rank": 3,
+                "level": "EXTERNAL BLOCKER",
+                "key": "root-headroom-capacity-preflight",
+                "title": "Restore verified VPS root headroom before Finish",
+                "reason": (
+                    "The last Finish failed in capacity_preflight on VPS root; "
+                    "a mounted-volume WATCH status does not satisfy the root "
+                    "staging requirement. Await supported capacity expansion "
+                    "or separately approved, receipted root-space relief."
+                ),
+                "action": (
+                    "Verify new VPS root headroom against the protected Finish "
+                    "floor before the next certified deployment attempt"
+                ),
+            }
+        )
+
     storage_handoff = storage_handoff or {}
     handoff_status = str(storage_handoff.get("status") or "").upper()
     if handoff_status and handoff_status not in {"NONE", "V2_RESUMED"}:
@@ -695,7 +724,11 @@ def brain_recommendations(
             "aoe2war storage triage --json"
             if needs_diagnosis else "aoe2war storage plan --json"
         )
-        if finish.get("available") and not finish.get("closure_complete"):
+        if (
+            finish.get("available")
+            and not finish.get("closure_complete")
+            and not root_capacity_blocked
+        ):
             rows.append(
                 {
                     "rank": 4,
@@ -716,7 +749,7 @@ def brain_recommendations(
                     "action": storage_action,
                 }
             )
-        else:
+        elif not root_capacity_blocked:
             rows.append(
                 {
                     "rank": 9,
@@ -761,7 +794,11 @@ def brain_recommendations(
         )
 
     source_requires_finish = source.get("implementation_equivalent") is False
-    if source_requires_finish and control_status in {"current", "deferred"}:
+    if (
+        source_requires_finish
+        and control_status in {"current", "deferred"}
+        and not root_capacity_blocked
+    ):
         rows.append(
             {
                 "rank": 6,
@@ -776,7 +813,11 @@ def brain_recommendations(
                 "action": "aoe2war finish",
             }
         )
-    elif finish.get("available") and not finish.get("closure_complete"):
+    elif (
+        finish.get("available")
+        and not finish.get("closure_complete")
+        and not root_capacity_blocked
+    ):
         if control_status == "current":
             rows.append(
                 {

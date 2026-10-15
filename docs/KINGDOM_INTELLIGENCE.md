@@ -283,6 +283,16 @@ invariants and mission state may not fork by visual variant.
 
 ## Dependency-aware next action
 
+When the latest Finish receipt specifically fails at `capacity_preflight`, the
+Brain treats that failure phase as the first actionable root-filesystem blocker,
+even when the attached volume is merely in WATCH. It must not recommend an
+identical volume triage or another Finish attempt before verified new root
+headroom exists. It instead exposes the externally blocked root-capacity task
+and requires a fresh protected headroom check before retry. This recommendation
+is **not** permission to prune fast rollback generations, resize a live disk,
+or waive the release controller's headroom or financial gates. No source of
+record is changed by updating a recommendation.
+
 Kingdom Intelligence must recommend the prerequisite that can actually clear the
 current blocker, not merely repeat the failed outer transaction.
 

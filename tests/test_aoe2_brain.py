@@ -1055,6 +1055,43 @@ class KingdomIntelligenceTests(unittest.TestCase):
             [row["key"] for row in rows],
         )
 
+    def test_capacity_preflight_replaces_repeat_storage_triage_and_finish(self):
+        blocked_finish = finish(complete=False)
+        blocked_finish["failed_phase"] = "capacity_preflight"
+        blocked_finish["error"] = "private-finish-receipt-path-not-for-public-output"
+        rows = MODULE.brain_recommendations(
+            source=MODULE.source_summary(release(exact=False)),
+            finish=blocked_finish,
+            control=control(status="deferred"),
+            performance=performance(),
+            truth=truth(),
+            council_recommendations=[],
+            storage={"health": "WATCH", "volume_used_percent": 81.93},
+        )
+        keys = [row["key"] for row in rows]
+        self.assertEqual(keys[0], "root-headroom-capacity-preflight")
+        self.assertIn("root headroom", rows[0]["title"].lower())
+        self.assertIn("VPS root headroom", rows[0]["action"])
+        self.assertNotIn("storage-blocks-finish", keys)
+        self.assertNotIn("storage-headroom-maintenance", keys)
+        self.assertNotIn("finish-source-authority", keys)
+        self.assertNotIn("finish-closure", keys)
+        self.assertNotIn("private-finish-receipt-path", repr(rows))
+
+    def test_capacity_preflight_is_visible_even_when_volume_is_healthy(self):
+        blocked_finish = finish(complete=False)
+        blocked_finish["failed_phase"] = "capacity_preflight"
+        rows = MODULE.brain_recommendations(
+            finish=blocked_finish,
+            control=control(status="current"),
+            performance=performance(),
+            truth=truth(),
+            council_recommendations=[],
+            storage={"health": "HEALTHY", "volume_used_percent": 70.0},
+        )
+        self.assertEqual(rows[0]["key"], "root-headroom-capacity-preflight")
+        self.assertNotIn("finish-closure", [row["key"] for row in rows])
+
     def test_watch_storage_routes_to_three_plane_triage_not_archive_noop(self):
         rows = MODULE.brain_recommendations(
             finish=finish(complete=False),

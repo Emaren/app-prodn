@@ -74,6 +74,35 @@ The remaining Wolo settlement promotion belongs to `Emaren/wolochain#5`.
 Capacity/rescale and application release remain separately gated operations.
 Do not run Finish repeatedly to repair this independent maintenance deadlock.
 
+## 2026-10-15 — Root capacity-preflight failures outrank volume WATCH triage
+
+An October 15 protected Finish stopped at `capacity_preflight`: the VPS root
+had ~3.65 GiB free versus a 5.125 GiB staging floor, while an independent
+mounted volume was only at WATCH. The Brain was recommending another storage
+triage even after the operator had completed physical block-device inspection
+and proven that the 38.1 GiB primary disk has no unused 160 GiB partition.
+The durable policy is phase-specific: failed Finish root-capacity preflight
+suppresses generic duplicate storage triage and premature Finish suggestions,
+while preserving the actual failed receipt, live estate warnings and separate
+WoloChain financial-source gate. A new provider-supported disk expansion or
+separately authorized, verified root-relief receipt is required before a
+protected Finish retry. A recommendation is not disk/deploy authorization.
+
+## 2026-10-15 — Phoenix research failures must remain a searchable engineering asset
+
+The HD Replay Engine's source-bound Phoenix snapshot records **zero new winners**
+in its 25-original audit, but authentic replay-loading, byte framing,
+disconnect/side counterevidence and stopped same-byte hypotheses are durable
+learning. Draft API PR #46 retains 13 bounded experiment records; that number
+does not represent every historical Codex run. The candidate Research Chronicle
+from app PR #587 presents those 13 records, all 25 audited game IDs and five
+dated lessons separately, without inventing all-time experiment counts, new
+winner truth, runtime certification or settlement authority. A future
+source-verified, privacy-reviewed import must account for earlier pre-ledger
+research before the page can claim exhaustive longitudinal coverage. No
+unchanged original is automatically retryable; a new authenticated final
+artifact or genuinely new controlled decoder proof must change the evidence.
+
 ## 2026-10-06 — Bridge liveness is not Kingdom Intelligence freshness
 
 A certified release exposed a split-brain control-plane seam: production, Release OS,
