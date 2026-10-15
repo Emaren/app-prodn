@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `audit/hd-route-auth-contract-census-20261015` at `8afdaa64ccd2bcb06baf0fa1027fd28e47788415`
+Implementation baseline: `fix/hd-internal-api-key-guard-20261015` at `cd4b4d71cac90f5f4ac92fd5bd9366d9895389e2`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

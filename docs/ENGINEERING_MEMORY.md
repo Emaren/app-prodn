@@ -41,6 +41,33 @@ memory before closing the work.
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
 
+## 2026-10-15 — Three HD internal API gates share one timing-safe, fail-closed primitive
+
+Three replay-related HTTP endpoints historically validated the same
+INTERNAL_API_KEY against the x-api-key header using independent inline,
+trimmed JavaScript string equality. They were fail closed when unconfigured,
+but duplicated the sensitive comparison and used ordinary short-circuit
+equality instead of the timingSafeEqual primitive already present elsewhere.
+
+The common lib/internalApiKeyAuth.ts gate is a **pure request-header decision**
+that requires nonempty configured/supplied tokens, preserves exactly the
+existing whitespace-trim, header name, case-sensitivity and Unicode byte
+matching contracts, and compares equal-length UTF-8 buffers using Node's
+timingSafeEqual. It neither reads environment secrets by itself nor
+logs inputs. The existing route-specific 401 responses, status headers,
+service sequencing, replay result authority, DB updates and retries are
+unchanged. A route still calls authorized(request) before effectful work.
+
+Executable Node tests run missing/empty/mismatched-length and byte-content
+denials plus valid identical-token admission on synthetic Request objects;
+source-binding tests ensure all three route guards delegate through the
+shared primitive before their existing protected service calls.
+This is **not** full Next.js route integration or live credential-rotation
+certification. Follow-up: exercise unauthenticated and wrong-role HTTP
+requests against an isolated, DB-stubbed app, then separately prove Wolo
+stake/claim idempotency using shadow transactions. Do not expose credentials
+or claim green production release from this source-only patch.
+
 ## 2026-10-15 — Route authority audit: 14 initial candidates were recognized delegated gates
 
 The first full HD route census read 262 route files / 356 exported handlers,

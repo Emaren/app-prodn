@@ -1,3 +1,4 @@
+import { internalApiKeyMatches } from "@/lib/internalApiKeyAuth";
 import { materializeSpontaneousChampionshipEncounters, reconcileChampionshipEvidence } from "@/lib/championshipChallenges";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -22,9 +23,7 @@ function record(value: unknown): JsonRecord | null {
 }
 
 function authorized(request: NextRequest) {
-  const expected = process.env.INTERNAL_API_KEY?.trim();
-  const supplied = request.headers.get("x-api-key")?.trim();
-  return Boolean(expected && supplied && expected === supplied);
+  return internalApiKeyMatches(request, process.env.INTERNAL_API_KEY);
 }
 
 export async function POST(request: NextRequest) {

@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "af3e2355b2a03c1b5315eef7afbe2a0bd83babc0ba0cfe1e7b95c28e9a5ee14a",
+      "sha256": "492d4f8b37937de6443a036ea74623578caf9152da1a7dd53539c5b6b259f0dd",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-15",
       "sensitivity": "internal",
-      "sha256": "3136ea341b767e80813996dc0b03e3ef6ce6612c9db6bade7bbc5c2711391d2f",
+      "sha256": "9331512dded3d52281d362f05cf150ed73785ef69eba5ab56265b2a1e6db4764",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "audit/hd-route-auth-contract-census-20261015",
-    "commit": "8afdaa64ccd2bcb06baf0fa1027fd28e47788415"
+    "branch": "fix/hd-internal-api-key-guard-20261015",
+    "commit": "cd4b4d71cac90f5f4ac92fd5bd9366d9895389e2"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
