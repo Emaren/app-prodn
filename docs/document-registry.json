@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b87e8b87c546824700c658d6adfda648076b8432175d19f67c40a358ad3b0065",
+      "sha256": "8856fd3a90f1e91def29f4f0a4a7fc6da8c068e0ba387420cdb9f3009e02d530",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2094,7 +2094,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/finish-legacy-provenance-forward-release-20261015",
-    "commit": "102b2559386df804eaea7ddc5ffb8fd25e91439b"
+    "commit": "35e49731c00a000b441d2df42a4bea698b33af47"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
