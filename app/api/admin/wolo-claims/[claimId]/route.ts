@@ -85,7 +85,7 @@ async function rescindClaim(
       userId: matchedUser.id,
       type: "wolo_claim_rescinded",
       path: "/admin/wolochain",
-      label: claim.displayPlayerName,
+      label: cleanedClaim.displayPlayerName,
       metadata: {
         claimId: cleanedClaim.id,
         amountWolo: cleanedClaim.amountWolo,
