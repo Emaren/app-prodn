@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "29cb718fdd9183a6cfd1c0bc703c6e6f1e28cead6df042110d72d3062bdde17a",
+      "sha256": "e0476e536903bb6fc07ddb60b5e2ed92dc66b80c60ca5b97522ced7710d1b4eb",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1948,7 +1948,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "restricted",
-      "sha256": "af59aaec89125b5717b494cabc6ea7d62c148705c4d6aa07ea95f98440d637c8",
+      "sha256": "2a4730969672feff1bc13f99cb5aace116f2b71e7fd02bb605025c983b2f3e9d",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "forensics/claim889-canonical-chain-candidate-20261015",
-    "commit": "341338590fe4eb520cc2637a144e7d50cde84227"
+    "branch": "fix/wolo-ambiguous-payout-no-retry-or-rescind-20261015",
+    "commit": "cf71bb9ce62c28318fd53fd44cac8dcae41d0f40"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

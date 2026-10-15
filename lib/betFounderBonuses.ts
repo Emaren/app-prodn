@@ -1119,9 +1119,17 @@ export async function settleFounderBonuses(
             },
             select: {
               status: true,
+              payoutAttemptedAt: true,
+              payoutTxHash: true,
             },
           });
-          if (currentClaim?.status === "claimed") {
+          // ExistingGroups normally excludes any recorded founder target, but
+          // recheck under the idempotency lock: no previous attempt may be
+          // re-broadcast merely because a bounded memo search misses it.
+          if (currentClaim &&
+              (currentClaim.status !== "pending" ||
+               currentClaim.payoutAttemptedAt !== null ||
+               Boolean(currentClaim.payoutTxHash?.trim()))) {
             return;
           }
 

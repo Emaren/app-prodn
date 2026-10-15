@@ -15,6 +15,41 @@ sensitivity: "restricted"
 
 # WOLO Mainnet Settlement App Runbook
 
+## October 15, 2026 — fail-closed admin claim retries and rescission
+
+Founder claim #889 remains **pending and payout-ambiguous**, not proved
+paid or unpaid. Canonical wolo-1 inspection ruled out the three
+same-amount indexed transfers as exact Founder bonus #15 memo matches, and
+both root-private current settlement request directories had zero matching
+bonus #15 durable records. Neither observation covers every historical
+payout path or proves absence of a prior successful transfer. Maintain its
+liability and preserve the attempted-at timestamp. No admin retry, blind
+rescind, or new payout is approved.
+
+The app now refuses its **admin retry** for any `pending_wolo_claims`
+row with `payout_attempted_at IS NOT NULL` but no stored payout hash,
+with a specific HTTP 409 `ambiguous_prior_attempt` outcome. This condition
+is checked before payout planning, and founder retries recheck it **inside
+the existing idempotency lock**. The background Founder bonus auto-settlement
+flow also refuses any previously attempted or hash-bearing claim on a
+re-read inside its founder idempotency lock; its ordinary existing-group
+dedupe remains intact. A stored non-empty tx hash may still enter
+the exact existing chain-validation path, not an unproven new send.
+If an operator independently proves nonpayment, resolution requires a
+separately reviewed evidence-preserving financial correction; **do not**
+clear `payout_attempted_at` to bypass this hold.
+
+Administrative wallet-link claim **rescission** is now an atomic
+database compare-and-set requiring status `pending`, null attempted-at
+and null payout tx hash; any attempted/claimed/changed row fails closed.
+The route returns HTTP 409 on observed conflicting state or a concurrent
+Prisma `P2025` guard failure. Removed the prior second update that could
+overwrite `error_state` and zero a payout-attempt timestamp. No
+financial amounts, ledger balances, signer keys, consensus state or
+chain services are changed by this source update. These protections
+will only be active once the HD site receives its independent certified
+deployment; CI green is not production activation.
+
 ## October 15, 2026 — founder claim #889 canonical candidate cross-check (read-only)
 
 The October 15 protected two-service preflight is **PASS** on the original shared payout executable, separate consensus executable, staged settlement verifier, immutable private snapshot, healthy 8092/8093 listeners, and no observed request locks. That certifies **preflight state only**, not permission to promote either financial service. It does not certify a clean app release or automated betting.

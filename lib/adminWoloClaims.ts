@@ -43,6 +43,19 @@ type RetryClaimSettlementOptions = {
 };
 
 const MAINNET_CLAIM_CUTOFF = new Date("2026-05-25T00:00:00.000Z");
+/**
+ * A prior payout attempt without a stored tx hash has an unknown chain result.
+ * A bounded memo search is not proof of nonpayment; do not rebroadcast from
+ * the admin retry rail until independently reconciled.
+ */
+export function hasAmbiguousPriorWoloPayoutAttempt(claim: {
+  payoutAttemptedAt: Date | null;
+  payoutTxHash: string | null;
+}): boolean {
+  return claim.payoutAttemptedAt !== null &&
+    !(claim.payoutTxHash || "").trim();
+}
+
 
 export type RetryClaimSettlementResult =
   | {
@@ -55,7 +68,7 @@ export type RetryClaimSettlementResult =
   | {
       outcome: "skipped";
       claimId: number;
-      reason: "not_found" | "not_pending" | "unmatched_user" | "already_has_payout_tx" | "pre_mainnet_legacy";
+      reason: "not_found" | "not_pending" | "unmatched_user" | "already_has_payout_tx" | "pre_mainnet_legacy" | "ambiguous_prior_attempt";
       detail?: string;
     }
   | {
@@ -807,6 +820,15 @@ export async function retryPendingClaimSettlement(
     return { outcome: "skipped", claimId: claim.id, reason: "not_pending" };
   }
 
+  if (hasAmbiguousPriorWoloPayoutAttempt(claim)) {
+    return {
+      outcome: "skipped",
+      claimId: claim.id,
+      reason: "ambiguous_prior_attempt",
+      detail: "A previous payout attempt has no confirmed transaction proof. Independent on-chain reconciliation is required; admin retry is disabled.",
+    };
+  }
+
   if (claim.createdAt < MAINNET_CLAIM_CUTOFF) {
     const detail = "Legacy pre-mainnet claim row is not payable on WoloChain mainnet.";
 
@@ -927,6 +949,7 @@ export async function retryPendingClaimSettlement(
             select: {
               status: true,
               payoutTxHash: true,
+              payoutAttemptedAt: true,
             },
           });
           if (!currentClaim || currentClaim.status !== "pending") {
@@ -934,6 +957,16 @@ export async function retryPendingClaimSettlement(
               outcome: "skipped" as const,
               claimId: claim.id,
               reason: currentClaim ? "not_pending" as const : "not_found" as const,
+            };
+          }
+          // Revalidate INSIDE founder idempotency lock: a concurrent prior
+          // attempt must never become a second chain send.
+          if (hasAmbiguousPriorWoloPayoutAttempt(currentClaim)) {
+            return {
+              outcome: "skipped" as const,
+              claimId: claim.id,
+              reason: "ambiguous_prior_attempt" as const,
+              detail: "Previous payout attempt has no chain proof; no retry or broadcast permitted.",
             };
           }
 
