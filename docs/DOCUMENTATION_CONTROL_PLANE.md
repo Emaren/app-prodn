@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `integration/iron-foundation-three-lanes-20261015` at `b5e46fc7d680f31b694154f2b81fb534f95972ac`
+Implementation baseline: `audit/iron-foundation-module-graph-20261015` at `f7dcaf1b48a3e5898e590f71e321b5cec8bd4c2e`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

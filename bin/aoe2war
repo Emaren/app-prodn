@@ -110,6 +110,7 @@ FACTS="$BIN_DIR/../scripts/aoe2_facts.py"
 DEV_OS="$BIN_DIR/../scripts/aoe2_dev.py"
 TRUTH_OS="$BIN_DIR/../scripts/aoe2_truth.py"
 CODE_HEALTH="$BIN_DIR/../scripts/aoe2_code_health.py"
+MODULE_GRAPH="$BIN_DIR/../scripts/aoe2_module_graph.py"
 DEPENDENCY_CHECK="$BIN_DIR/../scripts/check_dependency_contract.py"
 DEPENDENCY_SECURITY="$BIN_DIR/../scripts/check_dependency_security.py"
 
@@ -688,6 +689,10 @@ case "$command" in
   code-health)
     shift
     exec "$AOE2WAR_PYTHON" "$CODE_HEALTH" "$@"
+    ;;
+  module-graph)
+    shift
+    exec "$AOE2WAR_PYTHON" "$MODULE_GRAPH" "$@"
     ;;
   deps)
     shift
