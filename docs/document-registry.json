@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "15ea8d2d9c977bd1e424bc2e548c31c0a00a5f8ec7c686528f5bf7a5b3ad0bdc",
+      "sha256": "5b8ed80315dced27ed45570493f21c6779200585bb464ad709ff85eeacfb8baf",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/satchel-canonical-readonly-evidence-20261014",
-    "commit": "d5ad67bcc5f7ccd486dd419410d778f8474bfc4f"
+    "branch": "fix/satchel-bounded-stream-evidence-20261014",
+    "commit": "08507c5dce71b91ce757df0ce8b51c3793459bc7"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
