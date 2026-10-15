@@ -15,6 +15,36 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## C2c — signed-owner bound, NON-FUNDABLE deposit intent preparation (October 15, 2026)
+
+`app/api/user/war-satchel/funding-intents/route.ts` creates an immutable
+**preparation-only** record; it does not provide a wallet transfer instruction.
+The endpoint is disabled by default behind both
+`WAR_SATCHEL_NONCREDITING_INTENTS_ENABLED=true` and
+`WAR_SATCHEL_OWNER_PROOF_ENABLED=true`, authenticated same-origin request,
+a nominated distinct vault **candidate** (not a certified funded vault),
+and a signed Keplr ADR-36 challenge consumed in the preceding five minutes
+by the same logged-in UID and same persisted wallet address.
+
+The route locks the User row, rechecks the linked address under a SERIALIZABLE
+database transaction, enforces three intents per hour, no reuse of one recent
+challenge window, and at most one unexpired prepared/submitted intent. Only
+whole-number 1–10,000 WOLO amounts are admitted. A random server-side nonce,
+canonical `aoe2war/satchel/v1/<uid>/<nonce>` memo, immutable sender,
+owner, vault candidate, amount, and 30-minute expiry are stored under the
+existing C1 SQL economic-identity lock. The response deliberately **redacts
+the vault address and transfer memo** and returns
+`state=PREPARED_UNFUNDABLE`, `depositAuthorized=false`,
+`creditAuthorized=false` and `wagerAuthorized=false`.
+
+**This endpoint is not a deposit experience.** There is no real credited
+balance, Keplr bank MsgSend, withdrawal, manual stake ticket funding or
+funded Mecha executor. Its two feature flags must remain OFF in production.
+Future C3/C4 work must independently certify Satchel vault custody, exact
+finalized on-chain transfer and single-use credit admission, a balanced
+asset/liability journal, refund/withdrawal coverage, and signed-release
+proof before exposing *any* destination/memo or turning on LOAD SATCHEL.
+
 ## C3b — independent local chain evidence reader, still NON-CREDITING (October 14, 2026)
 
 `lib/warSatchelReadOnlyChainAdapter.ts` extends the pure Gate B proof rules
