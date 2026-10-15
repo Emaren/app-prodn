@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/finish-legacy-provenance-forward-release-20261015` at `102b2559386df804eaea7ddc5ffb8fd25e91439b`
+Implementation baseline: `fix/finish-legacy-provenance-forward-release-20261015` at `35e49731c00a000b441d2df42a4bea698b33af47`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
