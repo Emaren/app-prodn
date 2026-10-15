@@ -41,6 +41,39 @@ memory before closing the work.
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
 
+## 2026-10-15 — Preserve a measurable module graph before refactoring HD backend giants
+
+The AoE2WAR HD source tree at `main@026c41a2` contains structural hotspots:
+`lib/bets.ts` has 10,021 source lines and the Prisma schema has 5,382 lines.
+Size alone does not establish a defect or authority to split wagering,
+rewrite migrations, or merge unrelated stale feature branches. Existing
+`aoe2war code-health` measures file size, source duplication and worktrees,
+but did not previously expose concrete import cycles or highly depended-upon
+modules.
+
+`./bin/aoe2war module-graph --json` is the **separate read-only**
+architecture sensor. It identifies internal TypeScript/JavaScript literal import
+edges, strongly-connected cyclic groups, highest incoming/outgoing dependencies,
+unresolved static local references and any client-reachable modules with
+literal `server-only` or Node server imports. The census is deterministic,
+bounded and source-only. It reads no DB, remote host, wallet, live replay or
+finance state; it does not alter source files, build output, receipts or runtime.
+GitHub's control-plane job executes the same census on each PR/merge. Existing
+technical debt is **reported, not automatically suppressed or treated as a
+new build failure**; only analyzer errors fail the observation step.
+
+This is lexical evidence, **not** complete TypeScript/Next bundler resolution
+or a security proof. Nonliteral dynamic imports, conditions, types and Next
+server-action semantics need source-level review before declaring a cycle or
+boundary a runtime defect. The sequence for refactoring a large backend
+module is: record exact initial dependency and behavioural tests, identify
+one pure/read-only seam, preserve exported API and transaction boundaries,
+move no settlement/wallet authority without financial signoff, compare the
+new graph and existing test suites, then land one small isolated change.
+Don't refactor `app/bets/page.tsx` because it is large without separate
+human authorization for the UI. A clean graph does not make an unshipped
+release or missing outcome proof automatically green.
+
 ## 2026-10-15 — Independent maintenance must retain financial authority debt
 
 The October 15 audit had nine independently remediable documentation/context
