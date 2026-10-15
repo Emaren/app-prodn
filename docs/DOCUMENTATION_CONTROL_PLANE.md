@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/satchel-keplr-wallet-owner-ui-20261015` at `203e71a66e321f6832fc0e166fac70e581dac8ce`
+Implementation baseline: `feat/satchel-owner-bound-prepared-intents-20261015` at `f4cb5ea85684e566e79f8526d88e1bf314ba6b00`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
