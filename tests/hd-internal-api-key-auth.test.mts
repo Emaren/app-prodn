@@ -43,7 +43,7 @@ test("internal HD API credential admission retains the exact existing trim contr
 });
 
 test("internal HD API credential admission is byte-exact for Unicode and long values", () => {
-  const suffix = "🔐-HD-äΩ";
+  const suffix = "-HD-ä"; // HTTP header bytes must be Latin-1 / ByteString-safe.
   const token = "a".repeat(4096) + suffix;
   assert.equal(internalApiKeyMatches(request(token), token), true);
   assert.equal(internalApiKeyMatches(request(token + "z"), token), false);
