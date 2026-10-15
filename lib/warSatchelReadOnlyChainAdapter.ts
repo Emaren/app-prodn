@@ -11,6 +11,7 @@ import {
   type SatchelDepositIntent,
   type SatchelEscrowProof,
 } from "./warSatchelCustodyEvidence.ts";
+import { readWarSatchelBoundedUtf8 } from "./warSatchelBoundedBody.ts";
 
 const HASH = /^[a-fA-F0-9]{64}$/;
 const ADDRESS = /^wolo1[023456789acdefghjklmnpqrstuvwxyz]{38,90}$/;
@@ -52,16 +53,12 @@ async function readJson(url: string, reader: FetchReader): Promise<Record<string
   const contentLength = Number(response!.headers.get("content-length") || "0");
   assert(Number.isSafeInteger(contentLength) && contentLength >= 0 &&
     contentLength <= MAX_JSON_BYTES, "oversized response header");
-  let text: string;
+  // A missing/false Content-Length cannot authorize unbounded buffering.
+  // Read no more than the evidence cap, even for chunked local responses.
+  const text = await readWarSatchelBoundedUtf8(response!.body, MAX_JSON_BYTES);
+  assert(text !== null, "oversized, unreadable or empty evidence");
   try {
-    text = await response!.text();
-  } catch {
-    refuse("unable to read canonical evidence");
-  }
-  assert(Buffer.byteLength(text!, "utf8") > 0 &&
-    Buffer.byteLength(text!, "utf8") <= MAX_JSON_BYTES, "oversized or empty evidence");
-  try {
-    return object(JSON.parse(text!));
+    return object(JSON.parse(text));
   } catch {
     refuse("invalid JSON evidence");
   }
