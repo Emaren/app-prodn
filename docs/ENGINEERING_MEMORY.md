@@ -57,6 +57,16 @@ and exact owner/amount/transfer binding**. Historical rows need
 read-only review before any correction; do not automatically rewrite
 older records to reconcile their missing hashes.
 
+## 2026-10-15 — Stored Mecha plans must not bypass current safety budgets
+
+The original preset form enforced 1,000 WOLO/game and 10,000 WOLO per
+finite plan, but admission-time validation didn't enforce total stored
+exposure. The shadow worker also mapped unrecognized legacy Desync
+choices to `none`, changing the meaning of persisted owner consent.
+Both now fail closed at market admission, with direct and worker tests.
+Shadow preview remains non-funding; live automated betting is still
+disabled pending real custody and unique accepted ticket settlement.
+
 ## 2026-10-15 — Generic internal HTTP writes must not evade the route authority review queue
 
 The first HD route-authority census checked mutating API files with sensitive
