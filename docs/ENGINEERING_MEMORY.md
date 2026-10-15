@@ -67,7 +67,11 @@ The executable mock-transaction regression suite covers exact same-hash
 verified replay (zero DB updates), recorded idempotence, ordinary first
 binding, incompatible new hashes, other-ticket/legacy claim conflicts,
 viewer-scoped recovery-list queries and source order of the ticket-owner
-check before external transfer operations. These tests use synthetic data,
+check before external transfer operations. A separate executable
+commitBetStakeTicket test configures a synthetic nonfunctional escrow,
+then proves that both a foreign-owned existing ticket and a missing ticket
+produce the same 404 without reaching a transfer, financial transaction,
+or other database read. These tests use synthetic data,
 no real WOLO RPC/wallets/database. Existing wider tests remain required:
 a mock cannot certify PostgreSQL advisory-lock concurrency, chain-finality
 or multi-request payment outcomes. Run against disposable/isolated
