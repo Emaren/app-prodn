@@ -8,6 +8,7 @@ import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 import { readWarSatchelBoundedUtf8 } from "@/lib/warSatchelBoundedBody";
 import { inspectCanonicalSatchelDeposit } from "@/lib/warSatchelCanonicalReceipt";
+import { recordUncreditedWarSatchelReceipt } from "@/lib/warSatchelUncreditedProofRecorder";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -108,8 +109,25 @@ export async function POST(request: NextRequest) {
       certifiedVault: vault, hash, chainStatus, txResponse,
       nowUtc: new Date().toISOString(),
     });
+    // Additional opt-in: insert immutable, globally unique evidence under
+    // owner/intent row locks. SQL categorically forbids live credits here.
+    // Disabled by default and NEVER a wallet-deposit or spending authority.
+    const recorded = process.env.WAR_SATCHEL_UNCREDITED_PROOF_RECORDING_ENABLED === "true"
+      ? await recordUncreditedWarSatchelReceipt(prisma, {
+          ownerUserId: owner.id, ownerUid: uid,
+          ownerWallet: owner.walletAddress,
+          storedIntent: {
+            id: intent.id, chainId: intent.chainId, senderAddress: intent.senderAddress,
+            vaultAddress: intent.vaultAddress, amountUwolo: intent.amountUwolo.toString(),
+            memo: intent.memo, status: intent.status,
+            createdAtUtc: intent.createdAt.toISOString(),
+            expiresAtUtc: intent.expiresAt.toISOString(),
+          },
+          canonicalProof: verified,
+        })
+      : null;
     return NextResponse.json({
-      state: "CANONICAL_EVIDENCE_ONLY_UNCREDITED",
+      state: recorded?.state || "CANONICAL_EVIDENCE_ONLY_UNCREDITED",
       receiptKey: verified.receiptKey,
       height: verified.height, confirmations: verified.confirmations,
       depositAuthorized: false, creditAuthorized: false, wagerAuthorized: false,
