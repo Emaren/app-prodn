@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/satchel-immutable-uncredited-receipt-admission-20261015` at `6c9107e549bc402528a944dccd3a579631dfa6d2`
+Implementation baseline: `feat/satchel-immutable-uncredited-receipt-admission-20261015` at `685996c422e4eb7aa3c1d1dc409b6dc92987d61`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
