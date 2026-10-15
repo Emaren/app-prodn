@@ -41,6 +41,20 @@ memory before closing the work.
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
 
+## 2026-10-15 — Root capacity-preflight failures outrank volume WATCH triage
+
+An October 15 protected Finish stopped at `capacity_preflight`: the VPS root
+had ~3.65 GiB free versus a 5.125 GiB staging floor, while an independent
+mounted volume was only at WATCH. The Brain was recommending another storage
+triage even after the operator had completed physical block-device inspection
+and proven that the 38.1 GiB primary disk has no unused 160 GiB partition.
+The durable policy is phase-specific: failed Finish root-capacity preflight
+suppresses generic duplicate storage triage and premature Finish suggestions,
+while preserving the actual failed receipt, live estate warnings and separate
+WoloChain financial-source gate. A new provider-supported disk expansion or
+separately authorized, verified root-relief receipt is required before a
+protected Finish retry. A recommendation is not disk/deploy authorization.
+
 ## 2026-10-06 — Bridge liveness is not Kingdom Intelligence freshness
 
 A certified release exposed a split-brain control-plane seam: production, Release OS,
