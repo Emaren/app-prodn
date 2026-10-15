@@ -9,6 +9,7 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
+import { readWarSatchelBoundedUtf8 } from "@/lib/warSatchelBoundedBody";
 import {
   satchelWalletOwnerChallengeText,
   verifyWarSatchelWalletOwnerProof,
@@ -48,8 +49,10 @@ async function viewer(request: NextRequest) {
 async function bodyWithin(request: NextRequest) {
   const n = Number(request.headers.get("content-length") || "0");
   if (!Number.isSafeInteger(n) || n < 0 || n > 3072) return null;
-  const raw = await request.text();
-  if (raw.length > 3072) return null;
+  // Content-Length is only advisory: chunked callers may omit or forge it.
+  // Enforce the limit while streaming, before allocating the full body.
+  const raw = await readWarSatchelBoundedUtf8(request.body, 3072);
+  if (raw === null) return null;
   try {
     const data: unknown = JSON.parse(raw);
     if (!data || typeof data !== "object" || Array.isArray(data)) return null;
