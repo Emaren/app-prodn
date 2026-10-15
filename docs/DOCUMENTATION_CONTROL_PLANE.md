@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/satchel-vault-known-wallet-exclusions-20261015` at `895de53ba89e22fce8ab59971a6571b586400ac1`
+Implementation baseline: `fix/satchel-vault-known-wallet-exclusions-20261015` at `903d8751c16316c90b4e8e244bea25cb270227ac`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
