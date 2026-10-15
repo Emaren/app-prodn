@@ -11,6 +11,6 @@ export const metadata: Metadata = {
 };
 
 export default async function Aoe2warOsPage() {
-  const initial = await buildAoe2warOsPublicSnapshot();
+  const initial = await buildAoe2warOsPublicSnapshot({ includeGithub: false });
   return <Aoe2warOsDeck initial={initial} />;
 }
