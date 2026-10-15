@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0c3fd7ae571294f568bb1f5e3cd73b299bc8cc33718254002d6cf8cfbb260bb9",
+      "sha256": "a127a8c8bce90c1f9369c1bc1f65d36891f744336d5bdf99ccbc9dd998752d14",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2117,7 +2117,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/public-aoe2war-os-command-deck-20261015",
-    "commit": "7e42b359aa05e0fb056b9639f5ad79c8f03e978a"
+    "commit": "1f49356fd345962a803c7d8938ddb0d7beef7548"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
