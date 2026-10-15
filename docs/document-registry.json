@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "8782e982f9a9d33ace0da0b6c6e48bfff54e90f4e095be8f738b0f493c3c72a3",
+      "sha256": "012bfe99406b2d2a899504b6baba00d6b2d618beec118f526111e497020f82ff",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-15",
       "sensitivity": "internal",
-      "sha256": "104641e1b9ef07b6b7fd9e08e8ef1d0946c7d23d913be1431001e4048eabd393",
+      "sha256": "0a4d2720ed46fcf97730edb125ffe3fb31af7a0f39bb35eca3d58d14af8aaae2",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/module-graph-type-only-edges-20261015",
-    "commit": "a5b2c29c86788f169c136241ddb382f5bdca82ee"
+    "branch": "audit/hd-route-auth-contract-census-20261015",
+    "commit": "b67fc6ee3148619e9e32662a3cae9a27e169568a"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
