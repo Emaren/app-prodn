@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/profile-wolo-claim-proof-boundary-20261015` at `160022a0d545ed97c0724006c5f1954a505b5dd0`
+Implementation baseline: `hardening/mecha-stored-preset-shadow-admission-20261015` at `7c759825665d212ee3784557deb960cf58711fea`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
