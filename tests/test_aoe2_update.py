@@ -505,11 +505,13 @@ class UpdateCommandTests(unittest.TestCase):
                           "key": "runtime-provenance",
                           "detail": "status='legacy-unmanifested'"}],
         }
-        with mock.patch.object(MODULE.aoe2_audit, "collect_audit", return_value=audit), \\
-             mock.patch.object(MODULE, "source_checker", return_value=(0, "PASS")), \\
-             mock.patch.object(MODULE, "estate_map_refresh_plan",
-                               return_value={"status": "deferred"}), \\
-             mock.patch.object(MODULE.aoe2_release, "is_ancestor", return_value=True):
+        with (
+            mock.patch.object(MODULE.aoe2_audit, "collect_audit", return_value=audit),
+            mock.patch.object(MODULE, "source_checker", return_value=(0, "PASS")),
+            mock.patch.object(MODULE, "estate_map_refresh_plan",
+                              return_value={"status": "deferred"}),
+            mock.patch.object(MODULE.aoe2_release, "is_ancestor", return_value=True),
+        ):
             ordinary = MODULE.collect_plan(release_data=data)
             finish = MODULE.collect_plan(release_data=data, defer_runtime_provenance=True)
         self.assertTrue(ordinary["blocked"])
