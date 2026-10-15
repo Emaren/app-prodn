@@ -28,3 +28,13 @@ test("admin does not erase payout evidence when rescinding or retrying ambiguous
   assert.doesNotMatch(route, /RESCINDED_UNPAID_CLAIM_DETAIL/);
   assert.doesNotMatch(route, /prisma\.pendingWoloClaim\.update\(/);
 });
+
+test("background founder payout also rechecks the recorded attempt inside its lock", async () => {
+  const source = await readFile(new URL("../lib/betFounderBonuses.ts", import.meta.url), "utf8");
+  const start = source.indexOf("await withFounderPayoutTargetLock(");
+  const select = source.indexOf("payoutAttemptedAt: true", start);
+  const guard = source.indexOf('currentClaim.payoutAttemptedAt !== null', select);
+  const request = source.indexOf("await executeFounderWoloPayout(", guard);
+  assert.ok(start >= 0 && select > start && guard > select && request > guard);
+  assert.match(source.slice(guard, request), /currentClaim\.payoutTxHash\?\.trim\(\)/);
+});
