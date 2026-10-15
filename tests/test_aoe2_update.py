@@ -194,8 +194,9 @@ class UpdateCommandTests(unittest.TestCase):
             source.count('for target in ("docs-check", "audit-taxonomy", "build")'),
             1,
         )
-        self.assertIn('git_output(DOCS, "write-tree")', source)
-        self.assertIn("verify_committed_tree(DOCS, validated_tree)", source)
+        self.assertIn('git_output(stage, "write-tree")', source)
+        self.assertLess(source.index("verify_committed_tree(stage, validated_tree)"), source.index('stage, "push"'))
+        self.assertIn("central_federation_fast_forward(state)", source)
 
     def test_baseline_refresh_detection(self):
         self.assertTrue(

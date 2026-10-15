@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "repository-entrypoint"
-reviewed_at: "2026-10-04"
+reviewed_at: "2026-10-15"
 review_interval_days: 14
 sensitivity: "internal"
 ---
@@ -40,6 +40,39 @@ memory before closing the work.
 4. `aoe2war finish` remains the canonical end-of-work transaction and owns
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
+
+## 2026-10-15 — Independent maintenance must retain financial authority debt
+
+The October 15 audit had nine independently remediable documentation/context
+findings plus one genuine Wolo source mismatch. The reviewed settlement verifier
+was newer than the deployed checkout and settlement executable. Promoting Git
+or changing a documented baseline merely to unblock federation would suppress
+real financial debt. Ordinary Update and Finish correctly stopped.
+
+The explicit `aoe2war docs update --maintenance-only` lane now plans only
+central federation and project cameras. It may retain that one evidence-proven
+external Wolo P1 while requiring stable clean source, reviewed baseline, VPS
+checkout, separate live consensus/settlement binaries, and listener proof. It
+cannot refresh source baselines or certified runtime maps and cannot use Finish
+deferrals. Unknown/additional findings stop it. Its final certification is
+scoped docs/context truth; the financial finding and release hold remain open.
+
+Two earlier interruptions (#516/#550) showed why strict validation alone was
+insufficient: generation dirtied canonical docs before a later metadata/review
+or build failure. Central synchronization now generates and validates in an
+isolated worktree, revalidates source and remote identities, and publishes the
+exact validated tree before a guarded canonical fast-forward. Failure evidence
+is retained outside the canonical worktree; recovery never resets operator work.
+
+A camera hash proves bytes, not source identity. Independent maintenance also
+verifies real tar contents against source registries and captured source files,
+rechecks source identity around capture, and preserves older paired generations
+without pruning. Failed or interrupted proof cannot claim current context.
+Receipts are unique, immutable, and accompanied by SHA-256 manifests.
+
+The remaining Wolo settlement promotion belongs to `Emaren/wolochain#5`.
+Capacity/rescale and application release remain separately gated operations.
+Do not run Finish repeatedly to repair this independent maintenance deadlock.
 
 ## 2026-10-06 — Bridge liveness is not Kingdom Intelligence freshness
 
