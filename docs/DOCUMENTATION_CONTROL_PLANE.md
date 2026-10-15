@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/satchel-canonical-readonly-evidence-20261014` at `d5ad67bcc5f7ccd486dd419410d778f8474bfc4f`
+Implementation baseline: `fix/satchel-bounded-stream-evidence-20261014` at `08507c5dce71b91ce757df0ce8b51c3793459bc7`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
