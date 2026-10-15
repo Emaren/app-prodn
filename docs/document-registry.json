@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "1637b980708e570ccd49b062772156b9c8b4e648442e35254664be0b29812ea9",
+      "sha256": "52e083b96127c03c520ee3cbb14ae365591f11b2b5de5275c84a4ac7f13710ad",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-15",
       "sensitivity": "internal",
-      "sha256": "0818289548e8ce54a04dc735d3f8b5af75edc174005c7f69558b3965914a87d2",
+      "sha256": "eaa4cfc3d30c5ebd39b6a24f8ae733b832b02f872ab5759b98ccc6b6911f1347",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "integration/iron-foundation-three-lanes-20261015",
-    "commit": "b5e46fc7d680f31b694154f2b81fb534f95972ac"
+    "branch": "audit/iron-foundation-module-graph-20261015",
+    "commit": "f7dcaf1b48a3e5898e590f71e321b5cec8bd4c2e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
