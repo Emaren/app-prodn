@@ -6,6 +6,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
+import { warSatchelVaultDistinctFromKnownWallets } from "@/lib/warSatchelVaultBoundary";
 import { readWarSatchelBoundedUtf8 } from "@/lib/warSatchelBoundedBody";
 import { inspectCanonicalSatchelDeposit } from "@/lib/warSatchelCanonicalReceipt";
 import { recordUncreditedWarSatchelReceipt } from "@/lib/warSatchelUncreditedProofRecorder";
@@ -51,7 +52,7 @@ function auditedVault() {
     process.env.WOLO_STAKING_WALLET_ADDRESS,
     process.env.WOLO_COMMUNITY_TREASURY_ADDRESS,
   ].map(x => x?.trim()).filter(Boolean);
-  if (!ADDR.test(vault) || excluded.length < 2 || excluded.includes(vault)) return null;
+  if (!ADDR.test(vault) || excluded.length < 2 || !warSatchelVaultDistinctFromKnownWallets(vault, excluded)) return null;
   return vault;
 }
 
