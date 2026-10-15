@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0cfd82df8b21990b98d19e487636fed8c136b43e59d5e2ee6c94a318aa0a138b",
+      "sha256": "dcdfee40f85210a9cc6c062970031ff4effda3f815c7a82f60e720e53ac34841",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-15",
       "sensitivity": "internal",
-      "sha256": "ce9b9a4535d89c53705ad11579a887de5ed81d27d30dfc572f2b138e675dc817",
+      "sha256": "5481a3b1bcd5df561e55fc85fe77da8b4c1e634b9d05d8a30ce0f241845c5185",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/bet-ticket-monotonic-broadcast-20261015",
-    "commit": "e52b36b1407855ad776a99fa2f3ec278c210bdcd"
+    "branch": "audit/internal-route-authority-review-20261015",
+    "commit": "f92e0984afc66d6c4eda91edd0eddec7ed0603a9"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

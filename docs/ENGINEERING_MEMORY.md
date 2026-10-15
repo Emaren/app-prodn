@@ -41,6 +41,28 @@ memory before closing the work.
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
 
+## 2026-10-15 — Generic internal HTTP writes must not evade the route authority review queue
+
+The first HD route-authority census checked mutating API files with sensitive
+path keywords (such as bet, replay, and payout) for local guard-symbol evidence.
+This missed a narrower class: a mutating `app/api/internal/**/route.ts` endpoint
+whose path name used only generic words. Such an endpoint could be absent from
+the manual review queue even if no recognized local guard symbol appeared.
+
+Code Health OS now includes **all mutating internal-path endpoints** in that
+review-candidate predicate, independent of keyword matching. Tests cover
+unguarded generically named internal POST, a recognized bridge-token gate,
+GET-only internal health and unrelated general-purpose public POST behavior.
+The scanner remains lexical and advisory: a missing recognized symbol is
+**not** proof of an unauthenticated endpoint; delegated service guards may
+exist. No actual route handler, runtime authorization, HTTP response, wallet,
+database, or frontend was modified. Every new candidate requires an owner
+tracing the real call path and, where justified, synthetic negative tests.
+
+This closes an audit-coverage blind spot, **not** security certification.
+Do not convert scanner candidates into automatic auth edits or authorize
+financial/service changes from static evidence alone.
+
 ## 2026-10-15 — A replayed bet-ticket transfer may never reduce verification authority
 
 The existing bet-ticket broadcast binder took a ticket-level advisory lock,

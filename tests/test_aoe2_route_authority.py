@@ -170,5 +170,46 @@ class RouteAuthorityTests(unittest.TestCase):
             )["manual_authority_trace_candidate"])
 
 
+    def test_generic_internal_mutations_cannot_escape_authority_review_by_name(self):
+        # Scanner is intentionally lexical: this is a prompt for call-path
+        # review, not proof a delegated endpoint is unsafe.
+        unguarded = audit.classify_route(
+            "app/api/internal/ops/route.ts",
+            'export async function POST() { return Response.json({ ok: true }); }',
+        )
+        self.assertEqual(unguarded["surface"], "internal_path")
+        self.assertTrue(unguarded["manual_authority_trace_candidate"])
+        self.assertEqual(unguarded["local_guard_symbols_seen"], [])
+
+        guarded = audit.classify_route(
+            "app/api/internal/ops/route.ts",
+            'export async function POST(request: Request) { '
+            'if (!bridgeTokenMatches(request)) return new Response(null, {status: 401}); '
+            'return Response.json({ ok: true }); }',
+        )
+        self.assertEqual(guarded["local_guard_symbols_seen"], ["bridgeTokenMatches"])
+        self.assertFalse(guarded["manual_authority_trace_candidate"])
+
+        public_post = audit.classify_route(
+            "app/api/public/status/route.ts",
+            'export async function POST() { return Response.json({ ok: true }); }',
+        )
+        self.assertFalse(public_post["manual_authority_trace_candidate"])
+
+    def test_generic_internal_review_inventory_is_bounded_and_deterministic(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            write(root, "app/api/internal/ops/route.ts",
+                  'export async function POST() { return Response.json({}); }\\n')
+            write(root, "app/api/internal/health/route.ts",
+                  'export async function GET() { return Response.json({}); }\\n')
+            first = audit.inspect(root)
+            second = audit.inspect(root)
+        self.assertEqual(first, second)
+        self.assertEqual(first["manual_authority_trace_candidates"],
+                         ["app/api/internal/ops/route.ts"])
+        self.assertEqual(first["mutation_route_count"], 1)
+
+
 if __name__ == "__main__":
     unittest.main()
