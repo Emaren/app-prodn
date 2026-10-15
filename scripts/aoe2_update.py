@@ -848,17 +848,35 @@ def runtime_provenance_finish_remediable(
     production = release_data.get("production") or {}
     certification = release_data.get("certification") or {}
     source = str(local.get("head") or "")
+    deployed_source = str(production.get("source_sha") or "")
+    documentation = release_data.get("documentation") or {}
+
+    # Missing provenance is never a release certificate. For an ordinary
+    # source-forward deploy, the protected release path already preserves the
+    # old live artifact, stages beside it, and *requires* a new certified
+    # activation receipt before Finish can complete. Allow only that
+    # verified monotonic source relationship into the immediate ship step.
+    # Unrelated, divergent or reversed histories remain P0 blockers.
+    forward_release = bool(
+        len(deployed_source) == 40
+        and deployed_source != source
+        and documentation.get("baseline_is_ancestor_of_local") is True
+        and production.get("staged_build_id") in (None, "")
+        and aoe2_release.is_ancestor(deployed_source, source) is True
+    )
+    same_source = deployed_source == source
 
     return bool(
         len(source) == 40
         and github.get("main_sha") == source
         and production.get("reachable") is True
-        and production.get("source_sha") == source
-        and local.get("dirty_count") in (0, None)
-        and production.get("dirty_count") in (0, None)
+        and (same_source or forward_release)
+        and local.get("dirty_count") == 0
+        and production.get("dirty_count") == 0
         and production.get("service") == "active"
         and production.get("version_parity") is True
         and bool(production.get("active_build_id"))
+        and not production.get("staged_build_id")
         and production.get("wolo_8092_count") == 1
         and production.get("wolo_8093_count") == 1
         and certification.get("status") == "legacy-unmanifested"
