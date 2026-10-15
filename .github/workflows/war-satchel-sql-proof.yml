@@ -11,6 +11,8 @@ on:
       - "prisma/migrations/20261014_164500_war_satchel_simulation_concurrency_guard/**"
       - "prisma/migrations/20261014_191500_war_satchel_simulation_single_owner/**"
       - "tests/sql/war_satchel_simulation_owner_isolation_contract.sql"
+      - "prisma/migrations/20261015_151500_war_satchel_simulation_guard_correction/**"
+      - "tests/sql/war_satchel_simulation_guard_correction_contract.sql"
       - "tests/sql/war_satchel_simulation_concurrency_test.sh"
       - "tests/sql/war_satchel_simulation_double_entry_contract.sql"
       - "tests/sql/war_satchel_foundation_contract.sql"
@@ -26,6 +28,8 @@ on:
       - "prisma/migrations/20261014_164500_war_satchel_simulation_concurrency_guard/**"
       - "prisma/migrations/20261014_191500_war_satchel_simulation_single_owner/**"
       - "tests/sql/war_satchel_simulation_owner_isolation_contract.sql"
+      - "prisma/migrations/20261015_151500_war_satchel_simulation_guard_correction/**"
+      - "tests/sql/war_satchel_simulation_guard_correction_contract.sql"
       - "tests/sql/war_satchel_simulation_concurrency_test.sh"
       - "tests/sql/war_satchel_simulation_double_entry_contract.sql"
       - "tests/sql/war_satchel_foundation_contract.sql"
@@ -85,3 +89,7 @@ jobs:
         run: psql -X -v ON_ERROR_STOP=1 -f prisma/migrations/20261014_191500_war_satchel_simulation_single_owner/migration.sql
       - name: Prove balanced journals cannot silently transfer another player's liability
         run: psql -X -v ON_ERROR_STOP=1 -f tests/sql/war_satchel_simulation_owner_isolation_contract.sql
+      - name: Correct simulation owner cardinality versus overdraft guard
+        run: psql -X -v ON_ERROR_STOP=1 -f prisma/migrations/20261015_151500_war_satchel_simulation_guard_correction/migration.sql
+      - name: Prove valid single-owner release and rejection of mixed-owner or fake real credit
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/sql/war_satchel_simulation_guard_correction_contract.sql

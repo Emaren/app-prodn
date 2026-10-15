@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "6bbbf1326da7f68622d5be4807a3d84f23b5e5e0ce0249240540dacc9efffa84",
+      "sha256": "8ca34cbfa5e4c22e061a1d5a13c4b24a9575cd23cfd81379b77712a05ad9298d",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "081d1f417e4c28b02298499924d404f2b16b1fdabcdf88726b53f2b6127ab9aa",
+      "sha256": "d873ac9116a922fd82794282108b08ad87ea8bbbc3fb43b0debf4d522c20fd19",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/pending-wolo-claim-immutable-payout-history-20261015",
-    "commit": "1162d7f45cc2ef25784d99a2358c9857788770f6"
+    "branch": "fix/war-satchel-owner-guard-complete-20261015",
+    "commit": "70f573cb041b9466a9befbd60067f9498d5ab469"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
