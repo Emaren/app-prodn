@@ -1,3 +1,4 @@
+import { internalApiKeyMatches } from "@/lib/internalApiKeyAuth";
 import "server-only";
 
 import {
@@ -52,24 +53,8 @@ const FINAL_RECORDING_EXTENSIONS =
     ".mgl",
   ]);
 
-function authorized(
-  request: NextRequest
-) {
-  const expected =
-    process.env
-      .INTERNAL_API_KEY
-      ?.trim();
-
-  const supplied =
-    request.headers
-      .get("x-api-key")
-      ?.trim();
-
-  return Boolean(
-    expected &&
-    supplied &&
-    expected === supplied
-  );
+function authorized(request: NextRequest) {
+  return internalApiKeyMatches(request, process.env.INTERNAL_API_KEY);
 }
 
 function boundedInteger(
