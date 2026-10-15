@@ -62,6 +62,20 @@ async function bodyWithin(request: NextRequest) {
   }
 }
 
+export async function GET(request: NextRequest) {
+  if (process.env.WAR_SATCHEL_OWNER_PROOF_ENABLED !== "true") {
+    return NextResponse.json({ available: false }, { headers: HEADERS });
+  }
+  const actor = await viewer(request).catch(() => null);
+  return NextResponse.json({
+    available: Boolean(actor?.user.walletAddress),
+    walletAddress: actor?.user.walletAddress ?? null,
+    custodyApproved: false,
+    creditAuthorized: false,
+    wagerAuthorized: false,
+  }, { headers: HEADERS });
+}
+
 export async function POST(request: NextRequest) {
   if (!permitted(request)) return respond(503, "Wallet proof is not enabled for public use.");
   const actor = await viewer(request).catch(() => null);
