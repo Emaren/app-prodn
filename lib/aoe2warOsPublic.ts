@@ -155,7 +155,7 @@ async function certifiedDeployTime(releaseSha: string | null): Promise<string | 
   let candidates: string[] = [];
   try {
     const entries = await readdir(directory, { withFileTypes: true });
-    candidates = entries.filter(item => item.isFile() && /^20\\d{6}T[A-Za-z0-9-]+\\.json$/.test(item.name))
+    candidates = entries.filter(item => item.isFile() && /^20\d{6}T[A-Za-z0-9-]+\.json$/.test(item.name))
       .map(item => item.name).sort().reverse().slice(0, 28);
   } catch { /* source receipts may live on the operator machine, not VPS */ }
   let found: string | null = null;
