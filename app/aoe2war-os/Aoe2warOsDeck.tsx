@@ -72,6 +72,7 @@ export default function Aoe2warOsDeck({ initial }: { initial: OsPublicSnapshot }
       pending = true;
       void refresh(controller.signal).finally(() => { pending = false; });
     };
+    poll();
     const timer = window.setInterval(poll, 45_000);
     document.addEventListener("visibilitychange", poll);
     return () => { window.clearInterval(timer); document.removeEventListener("visibilitychange", poll); controller.abort(); };
