@@ -18,11 +18,14 @@ ROOT = Path(__file__).resolve().parents[1]
 ROUTE_ROOT = Path("app/api")
 HTTP_METHODS = ("GET", "HEAD", "OPTIONS", "POST", "PUT", "PATCH", "DELETE")
 MUTATING = frozenset({"POST", "PUT", "PATCH", "DELETE"})
-# These exact names are search terms, not proof a guard actually runs.
+# Reviewed HD pattern names, including radio operator and ticket delegation,
+# plus local authenticated-token helpers. This is only lexical evidence:
+# a matching name can be unused or forged; runtime negative tests are separate.
 GUARDS = ("requireAdmin", "getSessionUid", "requireViewer", "getServerSession",
           "requireReplayResultReviewAccess", "bridgeTokenMatches",
-          "isAuthorized", "verifySession", "requireAuthenticated",
-          "requireUser", "assertAdmin")
+          "requireRadioWoloOperator", "handleBetStakeTicketCommit",
+          "authorized", "authorize", "isAuthorized", "verifySession",
+          "requireAuthenticated", "requireUser", "assertAdmin")
 BODY_READERS = ("request.json(", "request.text(", "request.formData(",
                 "request.arrayBuffer(", "request.body", "readBounded",
                 "readWarSatchelBoundedUtf8")
