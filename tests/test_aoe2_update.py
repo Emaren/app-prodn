@@ -467,7 +467,7 @@ class UpdateCommandTests(unittest.TestCase):
     def test_source_forward_legacy_provenance_is_only_immediately_remediable_via_governed_ship(self):
         data = legacy_unmanifested_release()
         data["production"]["source_sha"] = "b" * 40
-        data["documentation"]["baseline_is_ancestor_of_local"] = True
+        data.setdefault("documentation", {})["baseline_is_ancestor_of_local"] = True
         with mock.patch.object(MODULE.aoe2_release, "is_ancestor", return_value=True) as ancestry:
             self.assertTrue(MODULE.runtime_provenance_finish_remediable(data))
         ancestry.assert_called_once_with("b" * 40, "a" * 40)
@@ -488,7 +488,7 @@ class UpdateCommandTests(unittest.TestCase):
             with self.subTest(label=label):
                 candidate = legacy_unmanifested_release()
                 candidate["production"]["source_sha"] = "b" * 40
-                candidate["documentation"]["baseline_is_ancestor_of_local"] = True
+                candidate.setdefault("documentation", {})["baseline_is_ancestor_of_local"] = True
                 mutation(candidate)
                 with mock.patch.object(MODULE.aoe2_release, "is_ancestor",
                                        return_value=ancestry_result):
@@ -497,7 +497,7 @@ class UpdateCommandTests(unittest.TestCase):
     def test_forward_legacy_provenance_never_unblocks_standalone_update(self):
         data = legacy_unmanifested_release()
         data["production"]["source_sha"] = "b" * 40
-        data["documentation"]["baseline_is_ancestor_of_local"] = True
+        data.setdefault("documentation", {})["baseline_is_ancestor_of_local"] = True
         audit = mock.Mock()
         audit.payload.return_value = {
             "p0": 1, "p1": 0,
