@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/war-satchel-owner-guard-complete-20261015",
-    "commit": "70f573cb041b9466a9befbd60067f9498d5ab469"
+    "branch": "main",
+    "commit": "881474b5aa35b9a9be4f3c63af975a5d7f7cb9fa"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
