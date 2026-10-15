@@ -1,6 +1,7 @@
 -- Regression: final additive owner guard MUST admit a valid one-owner
 -- zero-sum release while refusing all unfunded/mixed-owner sources.
--- Synthetic only. No real chain funds, balance API or signer.
+-- Prior concurrency rehearsal also committed one +300/-300 reserve: starting
+-- balances are vault=1000, available=-100, reserved=-900.\n-- Synthetic only. No real chain funds, balance API or signer.
 BEGIN;
 INSERT INTO war_satchel_ledger_journals (id,source_key)
 VALUES ('44444444-4444-4444-8444-444444444444',
@@ -17,7 +18,7 @@ BEGIN
   SELECT sum(delta_uwolo::numeric) INTO available FROM war_satchel_ledger_postings WHERE account_id=2;
   SELECT sum(delta_uwolo::numeric) INTO reserved FROM war_satchel_ledger_postings WHERE account_id=3;
   SELECT sum(delta_uwolo::numeric) INTO vault FROM war_satchel_ledger_postings WHERE account_id=1;
-  IF available <> -500 OR reserved <> -500 OR vault <> 1000 THEN
+  IF available <> -200 OR reserved <> -800 OR vault <> 1000 THEN
     RAISE EXCEPTION 'Safe release did not preserve owner liabilities and assets';
   END IF;
   IF (SELECT count(*) FROM war_satchel_ledger_journals
