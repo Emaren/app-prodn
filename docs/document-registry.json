@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "af1f82ff34f2dcf64b1351f09b865ffb463a79eac3cfb0f920339714813520fa",
+      "sha256": "d873ac9116a922fd82794282108b08ad87ea8bbbc3fb43b0debf4d522c20fd19",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2117,7 +2117,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/war-satchel-owner-guard-complete-20261015",
-    "commit": "cdf801c3baf6ed0b7a6d3cedd23bf3e7f93f4091"
+    "commit": "70f573cb041b9466a9befbd60067f9498d5ab469"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
