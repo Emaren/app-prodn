@@ -10,6 +10,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 import { warSatchelVaultDistinctFromKnownWallets } from "@/lib/warSatchelVaultBoundary";
+import { resolveCommunityTreasuryAddressConfig } from "@/lib/woloCommunityTreasury";
 import { satchelDepositMemo } from "@/lib/warSatchelCustodyEvidence";
 import { readWarSatchelBoundedUtf8 } from "@/lib/warSatchelBoundedBody";
 
@@ -44,6 +45,7 @@ function candidateVault() {
     process.env.WOLO_STAKING_WALLET_ADDRESS,
     process.env.WOLO_BET_PAYOUT_ADDRESS,
     process.env.WOLO_COMMUNITY_TREASURY_ADDRESS,
+    resolveCommunityTreasuryAddressConfig().address,
   ].map(value => value?.trim() || "").filter(Boolean);
   if (!ADDRESS.test(vault) || excluded.length < 2 || !warSatchelVaultDistinctFromKnownWallets(vault, excluded)) return null;
   return vault;
