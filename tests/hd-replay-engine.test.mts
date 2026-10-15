@@ -109,12 +109,21 @@ test("new public route, navigation and presentation are read-only and honest", (
   assert.match(client, /Evidence checkpoints/);
   assert.match(client, /Not a win probability/);
   assert.match(client, /PRIVATE CODEX WORKTREE NOT CONNECTED/);
-  assert.match(client, /SEALED OCT 12 CHECKPOINT · NOT LIVE CODEX/);
-  assert.match(client, /0 new winners/);
+  assert.match(client, /PhoenixRecoveryDashboard snapshot=\{phoenix\}/);
+  assert.match(page, /loadPhoenixDashboardCache/);
   assert.match(client, /aria-expanded/);
   assert.match(css, /prefers-reduced-motion:reduce/);
   assert.match(nav, /href: "\/hd-replay-engine", label: "HD Replay Engine"/);
   assert.ok(nav.indexOf('href: "/game-stats"') < nav.indexOf('href: "/hd-replay-engine"'));
   assert.ok(nav.indexOf('href: "/hd-replay-engine"') < nav.indexOf('href: "/speed"'));
   assert.doesNotMatch(api, /prisma\.|\$executeRaw|\$queryRaw|POST|PUT|DELETE/);
+});
+
+test("unavailable result coverage stays unavailable while an empty corpus remains distinct", () => {
+  const client = source("components/replay-engine/HdReplayEngine.tsx");
+  assert.match(client, /resultCoverageBps \?\? null/);
+  assert.match(client, /resolved=\{counts\?\.verifiedResult \?\? null\}/);
+  assert.match(client, /value !== null && resolved !== null && total !== null/);
+  assert.match(client, /total === 0 \? "Empty corpus" : "Evidence bound" : "Awaiting evidence"/);
+  assert.match(client, /Verified result coverage unavailable/);
 });

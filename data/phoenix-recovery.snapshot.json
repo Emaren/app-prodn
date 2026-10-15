@@ -1,0 +1,113 @@
+{
+  "api_source_sha": "e09e830c339dc8c8181badab5f3eed0053b7c441",
+  "authority": {
+    "betting_writes": 0,
+    "candidate_only": true,
+    "production_writes": 0,
+    "result_authority": false,
+    "settlement_writes": 0,
+    "wolo_writes": 0
+  },
+  "certified_application_source": null,
+  "corpus": {
+    "full_battle_truth": 4181,
+    "full_battle_truth_percent": 69.86965240641712,
+    "logical_battles": 5984,
+    "trusted_results": 4328,
+    "unresolved_results": 1656,
+    "workshop_complete_rosters": 5514
+  },
+  "measurement_scope": {
+    "audit_cases": 25,
+    "audit_observed_at": "2026-10-15T02:56:04.200Z",
+    "kind": "current_unknown_inventory_with_optional_bound_historical_audit"
+  },
+  "measurements": {
+    "attempted_cases_all_time": null,
+    "complete_byte_framed_streams": 25,
+    "external_artifacts_indexed": null,
+    "full_summary_parses": 2,
+    "header_fallback_parses": 23,
+    "new_verified_winners_7_days": null,
+    "new_verified_winners_all_time": null,
+    "new_verified_winners_audit": 0,
+    "originals_authenticated": 25,
+    "terminal_candidates": null,
+    "truncated_streams": 0,
+    "yield_percent": null
+  },
+  "observed_at": "2026-10-15T02:52:48.686Z",
+  "opportunities": [
+    {
+      "count": 1169,
+      "family": "external_terminal_evidence",
+      "game_stats_ids": [
+        42304,
+        42311,
+        42313
+      ],
+      "next_step": "No decisive proof indexed; obtain bound final evidence. Unaudited body coverage remains unmeasured."
+    },
+    {
+      "count": 158,
+      "family": "parser_decoder",
+      "game_stats_ids": [
+        30497,
+        31415,
+        33842
+      ],
+      "next_step": "Metadata suggests a parse gap, not recoverable winners; require a new byte window and matching controls."
+    },
+    {
+      "count": 329,
+      "family": "participant_binding",
+      "game_stats_ids": [
+        35629,
+        35636,
+        35637
+      ],
+      "next_step": "Establish complete authenticated participants and sides before interpreting results."
+    }
+  ],
+  "production_source": "e4594e1fb1d5fabd37e9a04ca100db085b514efd",
+  "recovery": {
+    "evidence_families": {
+      "external_terminal_evidence": 1169,
+      "original_artifact_binding": 0,
+      "parser_decoder": 158,
+      "participant_binding": 329
+    },
+    "exhausted_same_bytes_cases": 10,
+    "history_scope": "bounded_ledger_not_complete_attempt_history",
+    "indexed_history_cases": 12,
+    "states": {
+      "decoder_gap": 158,
+      "external_required": 1169,
+      "identity_ambiguous": 329,
+      "no_replay_proof": 0,
+      "promotion_eligible": 0,
+      "verified_review_required": 0
+    }
+  },
+  "schema": "aoe2war.phoenix_dashboard.v1",
+  "snapshot_sha256": "60fb2077b8906a537d2459c05cf876bbbd8cc46ac654ba662116b6b5c48bb35c",
+  "source_authority": "snapshot_bound_not_runtime_certification",
+  "unknown_causes": [
+    {
+      "count": 1074,
+      "reason": "disconnect_or_desync"
+    },
+    {
+      "count": 2,
+      "reason": "stored_winner_not_canonical_team"
+    },
+    {
+      "count": 542,
+      "reason": "untrusted_structured_team_result"
+    },
+    {
+      "count": 38,
+      "reason": "winner_missing"
+    }
+  ]
+}
