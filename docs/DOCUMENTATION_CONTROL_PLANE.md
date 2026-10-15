@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/war-satchel-owner-guard-complete-20261015` at `cdf801c3baf6ed0b7a6d3cedd23bf3e7f93f4091`
+Implementation baseline: `fix/war-satchel-owner-guard-complete-20261015` at `70f573cb041b9466a9befbd60067f9498d5ab469`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
