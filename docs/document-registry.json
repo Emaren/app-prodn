@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d873ac9116a922fd82794282108b08ad87ea8bbbc3fb43b0debf4d522c20fd19",
+      "sha256": "1ddc096ffad0f9b4a5b88cc6708cf4e374a4c0a63f77112f1af3e481b57b20e0",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1326,7 +1326,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-15",
       "sensitivity": "internal",
-      "sha256": "60e4f3d311866e91f5ec239cd32e6542c09ccad5e37be62a30268d9c2a05e3be",
+      "sha256": "f8e39a31c42ebc3388cf05d6c85d792fc58ca40e7307317ea82ce3736af2b3e7",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/war-satchel-owner-guard-complete-20261015",
-    "commit": "70f573cb041b9466a9befbd60067f9498d5ab469"
+    "branch": "feature/hd-replay-research-chronicle-20261015",
+    "commit": "6961a3b5c5fdd41ae78405ef006337acb1b2e043"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
