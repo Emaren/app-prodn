@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "8856fd3a90f1e91def29f4f0a4a7fc6da8c068e0ba387420cdb9f3009e02d530",
+      "sha256": "29cb718fdd9183a6cfd1c0bc703c6e6f1e28cead6df042110d72d3062bdde17a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1948,7 +1948,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "restricted",
-      "sha256": "82021caf4afac8401067cb73ff00665244da32c9391f700ad3c33d40fac18780",
+      "sha256": "af59aaec89125b5717b494cabc6ea7d62c148705c4d6aa07ea95f98440d637c8",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2093,8 +2093,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/finish-legacy-provenance-forward-release-20261015",
-    "commit": "35e49731c00a000b441d2df42a4bea698b33af47"
+    "branch": "forensics/claim889-canonical-chain-candidate-20261015",
+    "commit": "341338590fe4eb520cc2637a144e7d50cde84227"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
