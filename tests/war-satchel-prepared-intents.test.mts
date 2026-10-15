@@ -44,8 +44,10 @@ test("Satchel candidate vault cannot be manual betting/challenge, staking or pay
     "WOLO_CHALLENGE_ESCROW_ADDRESS",
     "WOLO_STAKING_WALLET_ADDRESS",
     "WOLO_BET_PAYOUT_ADDRESS",
+    "WOLO_COMMUNITY_TREASURY_ADDRESS",
   ]) {
     assert.ok(route.includes(token), "missing vault exclusion " + token);
   }
-  assert.match(route, /excluded.length < 2 \|\| excluded.includes\(vault\)/);
+  assert.match(route, /excluded.length < 2 \|\| !warSatchelVaultDistinctFromKnownWallets\(vault, excluded\)/);
+  assert.match(route, /resolveCommunityTreasuryAddressConfig\(\)\.address/);
 });
