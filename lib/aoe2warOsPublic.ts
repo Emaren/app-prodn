@@ -207,13 +207,14 @@ function githubEvents(commits: unknown, pulls: unknown, workflows: unknown): OsE
   return events.sort((a, b) => b.at.localeCompare(a.at)).slice(0, 18);
 }
 
-export async function buildAoe2warOsPublicSnapshot(): Promise<OsPublicSnapshot> {
+export async function buildAoe2warOsPublicSnapshot(options: { includeGithub?: boolean } = {}): Promise<OsPublicSnapshot> {
+  const includeGithub = options.includeGithub !== false;
   const [inspectionR, agentsR, controlR, commitsR, pullsR, workflowR] = await Promise.allSettled([
     Promise.resolve().then(() => buildGeneralInspectionsSnapshot()),
     buildKingdomAgentsPublicSnapshot(), releaseControl(),
-    github("commits?per_page=7"),
-    github("pulls?state=all&sort=updated&direction=desc&per_page=8"),
-    github("actions/runs?per_page=8"),
+    includeGithub ? github("commits?per_page=7") : Promise.resolve(null),
+    includeGithub ? github("pulls?state=all&sort=updated&direction=desc&per_page=8") : Promise.resolve(null),
+    includeGithub ? github("actions/runs?per_page=8") : Promise.resolve(null),
   ]);
   const inspection = inspectionR.status === "fulfilled" ? inspectionR.value : null;
   const agents = agentsR.status === "fulfilled" ? agentsR.value : null;
