@@ -15,6 +15,34 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## October 15, 2026 — simulation ledger valid-release regression correction
+
+The C3a simulation-only cross-player owner-isolation function had an
+objective bug in its October 14 additive migration: it reused
+`violating_accounts` (already holding the count of overdraft accounts)
+for the distinct owner count, then rejected the required valid single
+owner because that variable was **1** rather than **0**.
+
+New additive
+`20261015_151500_war_satchel_simulation_guard_correction` repairs the
+function without editing any previously merged migration. It keeps
+**two independent variables**: overdraft account count must be zero,
+and distinct non-vault liability owner count must be exactly one.
+No other SQL constraint, append-only ledger trigger, read-committed
+transaction advisory lock, simulated source marker or no-live-credit
+condition is relaxed.
+
+PostgreSQL 16 CI now verifies a real committed, balanced, synthetic
+single-player reservation release, with exact expected vault,
+available and reserved balances, and fresh rejections of cross-owner
+liability transfer, overdraft and falsely claimed live chain credit.
+This is a correctness fix for the accounting **research** journal.
+It does not implement a live custody ledger, create spendable balance,
+authorize a Keplr transfer or execute a bet. The existing Satchel
+funding UI MUST remain disabled until independent vault control,
+chain-backed receipt admission, confirmed solvency and audited
+withdrawal/reservation/accepted-stake paths are completed.
+
 ## C3d — immutable globally unique on-chain evidence admission (October 15, 2026)
 
 `lib/warSatchelUncreditedProofRecorder.ts` adds an optional,
