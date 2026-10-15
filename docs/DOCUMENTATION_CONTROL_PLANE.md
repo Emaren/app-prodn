@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/hd-internal-api-key-guard-20261015` at `1484f2e2ad0097fc12dbe7e2a2a47129ad66db49`
+Implementation baseline: `fix/hd-internal-api-key-guard-20261015` at `cd4b4d71cac90f5f4ac92fd5bd9366d9895389e2`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
