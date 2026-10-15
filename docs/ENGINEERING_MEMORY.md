@@ -41,6 +41,58 @@ memory before closing the work.
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
 
+## 2026-10-15 — Public Kingdom Machine: why CI, live release, and source census stay independent
+
+The public route `/aoe2war-os` is a **read-only** visual command deck, separate from
+the authenticated operator bridge at `/admin/aoe2war-os`. Both castle
+navigation dropdowns offer AoE2WAR OS and Television WOLO; the primary
+player-navigation chips are otherwise unchanged.
+
+The deck shows an independently captured source census (exact capture SHA,
+time and CI receipt); an exact 193-name schema-derived Prisma model atlas;
+test pass/skip counts; modularity/cycle and storage source metrics; the
+existing public General Inspections readiness categories; existing Kingdom
+Agents states; and current GitHub commit/PR/Actions events.
+
+**Authority never gets merged into a decorative light:**
+- GitHub push/PR/Actions CI proves source activity, not VPS activation.
+- Certified production source/build comes from General Inspections; absent
+  or stale sources must visibly say UNKNOWN/UNVERIFIED, never fabricate 0.
+- A release-operation beacon uses only a recent Operator Bridge heartbeat
+  plus exact allowlisted queued/claimed/running deploy/finish/rollback action.
+  It is **release control in progress**, not a certified successful deploy.
+- "Last deployed at" is intentionally unavailable until an exact
+  source/build-matched certified timestamp is exposed by a suitable owned
+  release receipt. Commit time, CI completion, file mtime and inspection
+  timestamp are NOT substitutes.
+- Operational 100/100 is defined by each owned, explicitly versioned check
+  having current appropriate proof at its source/runtime generation. The
+  engineering maturity estimate (74/100 at October 15) is a separate
+  subjective planning rubric and never rendered as a measured production
+  certification. No scores are reweighted simply to look green.
+- Source benchmarks are historical until renewed by a source-bound census;
+  a newly merged GitHub commit does not retroactively update the old source
+  sample or the currently deployed site's schema.
+
+Public traffic never accesses authenticated OS control commands, operator
+identities, raw run logs, wallet addresses, secret paths, or arbitrary
+filename selectors. It reads allowlisted, bounded and safely projected
+status only; GitHub URLs are verified to the official app repository.
+Public polling is bounded to 45 seconds while the tab is visible, stops on
+unmount, and displays interrupted signals rather than preserving fake
+"live" state. Server GitHub reads use 45-second cache and short timeout.
+Animations respect reduced motion and never claim a job is running based
+only on a decorative animation.
+
+Improvement gates: source-accurate Prisma enumeration; actual verified
+production/source separation; no write methods or privilege bypass on
+the public endpoint; safe unknown/outage projection; GitHub source origin;
+Node/TS, Python/docs and production build CI. Future improvements must
+deliver **measured** faster signals, correct last-deploy receipts, more
+reliable agent actions, or reduced maintenance cost rather than merely
+more lights, manufactured 100s, or background polling.
+
+
 ## 2026-10-15 — Generic internal HTTP writes must not evade the route authority review queue
 
 The first HD route-authority census checked mutating API files with sensitive
