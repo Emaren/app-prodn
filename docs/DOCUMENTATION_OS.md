@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "documentation-operations-contract"
-reviewed_at: "2026-09-04"
+reviewed_at: "2026-10-15"
 review_interval_days: 60
 sensitivity: "internal"
 ---
@@ -66,6 +66,62 @@ not rewritten by a read-only audit.
 
 `update` delegates to the existing protected `aoe2war update` engine. The
 legacy top-level command remains supported for compatibility.
+
+## Independent federation and context maintenance
+
+When a genuine unpromoted Wolo settlement verifier blocks the ordinary update
+and Finish lanes, inspect the explicitly scoped plan:
+
+```bash
+aoe2war docs update --maintenance-only
+aoe2war docs update --maintenance-only --json
+```
+
+After review, apply only that scope with:
+
+```bash
+aoe2war docs update --maintenance-only --apply
+```
+
+This mode can synchronize already valid source documentation into the central
+federation and capture source-bound project cameras. It cannot refresh source
+implementation baselines, rewrite semantic documents, refresh certified runtime
+maps, defer validation to Finish, or activate any runtime. Ordinary `update
+--apply` and `finish` retain their existing fail-closed gates.
+
+The only external finding it can hold open is exactly `P1 / WoloChain /
+vps-source-drift`. The classifier requires clean canonical source and remote
+identity, the reviewed implementation baseline, the exact clean VPS checkout,
+and separate live consensus and settlement executable identities. Missing or
+changing evidence blocks the operation. The finding stays `OPEN_P1`, owned by
+WoloChain operations under `Emaren/wolochain#5`; synchronization never changes
+the verifier baseline or promotes the verifier. All other P0/P1 findings must
+be individually eligible documentation/context work or block this lane.
+
+Central generation runs in a detached staging worktree under a shared central
+repository lock. All source registries, source checksums, taxonomy membership,
+metadata/review windows, docs-check, taxonomy audit, deterministic generation,
+and strict build must pass before publishing one exact validated Git tree.
+Source and canonical repository identities are checked again before publication.
+Publication uses an exact expected remote and a fast-forward; canonical docs
+advance only after verified publication. A failed gate leaves canonical docs
+unchanged and clean. Failed/interrupted staging and hashed receipts remain
+available as evidence; unknown or changed publication state fails closed on
+retry. Never reset/clean canonical docs to recover a failed synchronization.
+
+The independent lane captures only project cameras with truncation and pruning
+disabled, verifies portable TGZ/Markdown checksums and actual archive source
+contents against clean source identities, then rechecks those identities. Prior
+paired cameras are retained with their checksums in governed local context
+history after the new generation verifies. No unique history is deleted. Missing
+archive proof, insufficient local headroom, or an interrupted retention step
+cannot yield `CONTEXT_CURRENT`.
+
+Successful output is scoped: `DOCS_FEDERATED_WITH_EXTERNAL_WOLO_HOLD` and
+`CONTEXT_CURRENT` require final evidence. The full estate audit must still show
+the genuine Wolo P1. A successful maintenance exit code proves completion of
+this scope, never release certification, overall estate health, or a 100/100
+score. Source and runtime SHAs remain distinct in immutable checksum receipts.
 
 ## Operational learning capture
 

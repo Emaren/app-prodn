@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d873ac9116a922fd82794282108b08ad87ea8bbbc3fb43b0debf4d522c20fd19",
+      "sha256": "1637b980708e570ccd49b062772156b9c8b4e648442e35254664be0b29812ea9",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -659,9 +659,9 @@
       "owner": "aoe2war-web",
       "path": "docs/DOCUMENTATION_OS.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-09-04",
+      "reviewed_at": "2026-10-15",
       "sensitivity": "internal",
-      "sha256": "49922030fe736db2a4a2f95a0e9a415481f657d8e6dd153dd89b214531a56d49",
+      "sha256": "bf8e91839ee87cfdf21cfc7afa3cb1f0350d946cb3a8ebb45e9baf3b78a378db",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -681,9 +681,9 @@
       "owner": "aoe2war-web",
       "path": "docs/ENGINEERING_MEMORY.md",
       "review_interval_days": 14,
-      "reviewed_at": "2026-10-04",
+      "reviewed_at": "2026-10-15",
       "sensitivity": "internal",
-      "sha256": "f1f41403dc06dda3ab7877cd8924428d79aa1e3989f56ed306e7cd464e801d52",
+      "sha256": "0818289548e8ce54a04dc735d3f8b5af75edc174005c7f69558b3965914a87d2",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -940,7 +940,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-06",
       "sensitivity": "internal",
-      "sha256": "5fae870f81ecf4c0420654b53366750bbacee22d8e466921d4391bd594945e9d",
+      "sha256": "73a81e2a47b2269d5746fb60fa74d4104306665c468d7ec8384339b0308833d8",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1326,7 +1326,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-15",
       "sensitivity": "internal",
-      "sha256": "60e4f3d311866e91f5ec239cd32e6542c09ccad5e37be62a30268d9c2a05e3be",
+      "sha256": "f8e39a31c42ebc3388cf05d6c85d792fc58ca40e7307317ea82ce3736af2b3e7",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/war-satchel-owner-guard-complete-20261015",
-    "commit": "70f573cb041b9466a9befbd60067f9498d5ab469"
+    "branch": "integration/iron-foundation-three-lanes-20261015",
+    "commit": "b5e46fc7d680f31b694154f2b81fb534f95972ac"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

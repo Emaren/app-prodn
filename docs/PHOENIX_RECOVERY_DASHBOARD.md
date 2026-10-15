@@ -20,6 +20,59 @@ cached public Parser Observatory and a dated, immutable Phoenix research
 snapshot. The Phoenix panel replaces the old static October 12 research cards.
 It is available even when the live observatory cannot refresh.
 
+## Research Chronicle — bounded historical memory, not a new truth authority
+
+The existing `/hd-replay-engine` now includes a read-only **Phoenix Research
+Chronicle** below the sealed Recovery panel. The panel remains the authoritative
+October 15 snapshot of the corpus; the Chronicle is a **separate historical
+excerpt**, sourced from draft API PR #46 and its pinned `research-memory.json`
+and Phoenix XI evidence audit. The API research seal is
+`e6093762fad055a1d8e8dc3b64df9e9acf36ccab` with observation
+`2026-10-15T02:56:04.200Z`. No API PR merge or production activation is implied.
+
+The Chronicle transcribes **13 unique experiment records**, keyed by their
+own research IDs and game examples, plus all **25 original IDs** authenticated
+in the bounded October 15 Phoenix XI audit. Those scopes overlap: they are
+neither 38 distinct games nor a measured campaign-wide attempt count. The
+previous cached public aggregate's 12 indexed/10 retired case numbers are a
+different bounded source snapshot; do not silently overwrite or combine them.
+The real *all-time count of Codex experiments*, labor hours, tokens, method
+yield and cumulative winners added outside that audit remain **unmeasured**.
+The measure `0 new winners` applies to the bound 25-case audit and the
+documented latest research checkpoints, not to an invented total of all past
+work.
+
+Each public experiment tile has game ID, method, observed negative evidence,
+retired/blocked/control disposition and the **new** information required before
+retry. The compact dated milestone series differentiates known-result native
+#32388 loading/performance records from the still-unproven completed-game winner
+and side semantics. The exact 25 audit IDs are shown separately: two existing
+full-summary parses and 23 header fallbacks; all frames reached EOF, but none
+proved a new winner. Negative disconnect/partial evidence remains binding.
+#25590 needs new independently associated final evidence, #25324 a finished-
+versus-unfinished control pair, and #12284 is a **result-known structural
+control**, not recovered unknown-winner debt.
+
+The public projection is manually reviewed from these pinned sources:
+`lib/phoenixResearchChronicle.ts` is bounded and typed;
+`components/replay-engine/PhoenixResearchChronicle.tsx` only renders safe
+source-reviewed fields. No raw API research-memory JSON, private paths, Steam
+identity, private receipts, financial rows or artifact bytes are copied into
+the app. No page load performs network searches, replay parsing, native
+execution or result promotion. Source documentation is accessible in the
+draft API [PR #46](https://github.com/Emaren/api-prodn/pull/46) and
+[Phoenix XI proof report](https://github.com/Emaren/api-prodn/blob/e6093762fad055a1d8e8dc3b64df9e9acf36ccab/docs/replay-intelligence/phoenix-xi-recovery-2026-10-14.md).
+
+**Refresh policy:** A newer API research method or commit does not silently
+update this excerpt. First authenticate each source record, reconcile its
+exact game ID, scope and receipt with new trusted evidence, review public-field
+sensitivity, and rerun the 13-record / 25-case scope and privacy tests.
+Publish under a new dated source seal; retain previous seals as history and
+report all-time counts only if the experiment registry has a complete,
+verified denominator. Longer-term conversion to a generated, hashed public
+index must retain one API research-memory authority and its stop-retry gates.
+Do not build a second replay-result engine or weaken existing betting checks.
+
 ## Evidence and denominators
 
 The sealed Phoenix XI inventory has 5,984 logical battles, 4,328 trusted results,

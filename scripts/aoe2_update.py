@@ -8,6 +8,7 @@ import json
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -22,6 +23,8 @@ import aoe2_audit
 import aoe2_doctor
 import aoe2_release
 import aoe2_truth
+import aoe2_update_hold
+import aoe2_update_context
 
 ROOT = Path(__file__).resolve().parents[1]
 WORKSPACE = aoe2_audit.WORKSPACE
@@ -141,6 +144,15 @@ class Progress:
         )
 
 
+def stop_process_group(process: subprocess.Popen) -> None:
+    """Reap generators and their children before sealing failure evidence."""
+    try:
+        os.killpg(process.pid, signal.SIGKILL)
+    except ProcessLookupError:
+        pass
+    process.wait()
+
+
 def run_with_heartbeat(
     args: list[str],
     *,
@@ -162,32 +174,31 @@ def run_with_heartbeat(
                 stdout=capture,
                 stderr=subprocess.STDOUT,
                 env=env,
+                start_new_session=True,
             )
         except Exception as exc:
             return 127, str(exc)
 
         deadline = step_started + timeout
 
-        while True:
-            remaining = deadline - time.monotonic()
-            if remaining <= 0:
-                process.kill()
-                process.wait()
-                capture.seek(0)
-                captured = capture.read().rstrip()
-                suffix = f"\\nTimed out after {timeout}s"
-                return 124, (captured + suffix).strip()
+        try:
+            while True:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    stop_process_group(process)
+                    capture.seek(0)
+                    captured = capture.read().rstrip()
+                    suffix = f"\nTimed out after {timeout}s"
+                    return 124, (captured + suffix).strip()
 
-            try:
-                returncode = process.wait(
-                    timeout=min(heartbeat_seconds, remaining)
-                )
-                break
-            except subprocess.TimeoutExpired:
-                progress.wait(
-                    label,
-                    time.monotonic() - step_started,
-                )
+                try:
+                    returncode = process.wait(timeout=min(heartbeat_seconds, remaining))
+                    break
+                except subprocess.TimeoutExpired:
+                    progress.wait(label, time.monotonic() - step_started)
+        except BaseException:
+            stop_process_group(process)
+            raise
 
         capture.seek(0)
         return returncode, capture.read().rstrip()
@@ -200,20 +211,30 @@ def run(
     timeout: int = 180,
     env: dict[str, str] | None = None,
 ) -> tuple[int, str]:
+    process = None
     try:
-        p = subprocess.run(
+        process = subprocess.Popen(
             args,
             cwd=str(cwd),
             text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            timeout=timeout,
             env=env,
-            check=False,
+            start_new_session=True,
         )
-        return p.returncode, p.stdout.rstrip()
+        output, _ = process.communicate(timeout=timeout)
+        return process.returncode, output.rstrip()
     except Exception as exc:
+        if process is not None:
+            stop_process_group(process)
         return 127, str(exc)
+    except BaseException:
+        if process is not None:
+            stop_process_group(process)
+        raise
+    finally:
+        if process is not None and process.stdout is not None:
+            process.stdout.close()
 
 
 def git(repo: Path, *args: str, timeout: int = 60) -> tuple[int, str]:
@@ -888,11 +909,18 @@ def collect_plan(
     *,
     preserve_context_history: bool = False,
     defer_runtime_provenance: bool = False,
+    maintenance_only: bool = False,
 ) -> dict[str, Any]:
     audit = aoe2_audit.collect_audit()
     payload = audit.payload()
 
-    if release_data is None:
+    if maintenance_only:
+        estate_maps = {
+            "status": "deferred",
+            "reason": "independent maintenance never refreshes certified runtime maps",
+            "intended_source_sha": None,
+        }
+    elif release_data is None:
         try:
             release_data = aoe2_release.collect()
         except Exception as exc:
@@ -1033,8 +1061,72 @@ def collect_plan(
         or estate_maps["status"] == "blocked"
     )
 
+    external_hold = None
+    central_recovery = None
+    maintenance_errors: list[str] = []
+    if maintenance_only:
+        # This lane publishes generated central docs and cameras only. Source
+        # documentation/baseline edits still require the ordinary reviewed lane.
+        if baseline_refreshes:
+            maintenance_errors.append("source documentation refresh requires review: "
+                                      + ", ".join(sorted(baseline_refreshes)))
+        eligible = {
+            ("Documentation", "central-source-snapshot-stale"),
+            ("Documentation", "central-federation-drift"),
+            ("Context Durability", "archive-stale"),
+            ("Context Durability", "archive-retention-drift"),
+        }
+        unknown_p0 = p0_findings
+        auto_remediable_p0 = []
+        auto_remediable_p1 = []
+        unknown_p1 = [item for item in payload["findings"]
+                      if item["severity"] == "P1"
+                      and (item.get("area"), item.get("key")) not in eligible]
+        try:
+            central_recovery = central_federation_recovery_preview()
+        except (UpdateError, OSError, ValueError) as exc:
+            maintenance_errors.append(f"central federation recovery is not proven: {exc}")
+        if central_recovery:
+            recovery_detail = (f"AoE2WAR-docs: local={central_recovery['before']} "
+                               f"origin/{central_recovery['branch']}={central_recovery['candidate']}")
+            unknown_p1 = [item for item in unknown_p1 if not (
+                item.get("area") == "Git" and item.get("key") == "remote-parity"
+                and item.get("detail") == recovery_detail)]
+            central_sync_needed = True
+        for item in payload["findings"]:
+            if item.get("area") == "Context Durability" and item.get("key") in {"archive-stale", "archive-retention-drift"}:
+                project = archive_project_from_finding(str(item.get("detail", "")))
+                if not project:
+                    maintenance_errors.append("unrecognized stale context series")
+                else:
+                    context_projects.add(project)
+        if any(item.get("area") == "WoloChain" and item.get("key") == "vps-source-drift"
+               for item in unknown_p1):
+            try:
+                external_hold = aoe2_update_hold.collect_wolo_hold(payload, wolo_repo=WOLOCHAIN)
+            except (aoe2_update_hold.HoldError, OSError, ValueError) as exc:
+                maintenance_errors.append(f"external Wolo hold is not proven: {exc}")
+            else:
+                unknown_p1 = [item for item in unknown_p1
+                              if (item.get("area"), item.get("key")) != ("WoloChain", "vps-source-drift")]
+        try:
+            aoe2_update_context.source_snapshot(
+                SOURCES, DOCS,
+                docs_remote=central_recovery["candidate"] if central_recovery else None,
+            )
+        except (aoe2_update_context.ContextError, OSError, ValueError) as exc:
+            maintenance_errors.append(f"source authority is not proven: {exc}")
+        blocked = bool(unknown_p0 or unknown_p1 or blocked_source_docs or maintenance_errors)
+        if context_projects or central_sync_needed:
+            context_projects.update(REPO_TO_CONTEXT.values())
+            context_projects.add("AoE2WAR-docs")
+
     return {
         "schema": 1,
+        "maintenance_only": maintenance_only,
+        "external_hold": external_hold,
+        "central_recovery": central_recovery,
+        "maintenance_errors": maintenance_errors,
         "audit": payload,
         "baseline_refreshes": sorted(baseline_refreshes),
         "blocked_source_docs": blocked_source_docs,
@@ -1089,6 +1181,15 @@ def print_plan(plan: dict[str, Any]) -> None:
     print("⚔️  AOE2WAR UPDATE PLAN")
     print()
     print(f"Estate audit: P0={audit['p0']} P1={audit['p1']}")
+    if plan.get("maintenance_only"):
+        print("Scope: independent central federation + source-bound context only")
+        if plan.get("external_hold"):
+            print("OPEN_P1: WoloChain / vps-source-drift; owner: WoloChain operations")
+            print("Release/Finish remains blocked; financial gate: Emaren/wolochain#5")
+        if plan.get("central_recovery"):
+            print("RECOVER: exact previously validated central publication; canonical fast-forward only")
+        for error in plan.get("maintenance_errors", []):
+            print("BLOCKED: " + error)
     print()
 
     print("Source documentation:")
@@ -1144,7 +1245,8 @@ def print_plan(plan: dict[str, Any]) -> None:
         print("UPDATE: ALREADY CURRENT")
     else:
         print("UPDATE: READY")
-        print("Run: aoe2war update --apply")
+        print("Run: aoe2war docs update "
+              + ("--maintenance-only " if plan.get("maintenance_only") else "") + "--apply")
 
 
 def require_clean_remote(repo_id: str, repo: Path) -> tuple[str, str]:
@@ -1588,157 +1690,444 @@ def preflight_central_governed_documents(
     reconcile_taxonomy(taxonomy, registries)
 
 
-def central_sync(
-    progress: Progress | None = None,
-) -> dict[str, Any]:
-    branch, before_head = require_clean_remote("AoE2WAR-docs", DOCS)
-
-    venv_python = DOCS / ".venv-docs" / "bin" / "python"
-    if not venv_python.is_file():
-        raise UpdateError(f"central documentation venv missing: {venv_python}")
-
-    # Preflight governed source membership before sync_workspace writes files.
-    preflight_central_governed_documents(
-        DOCS / "catalog" / "document-taxonomy.json", SOURCES
-    )
-
-    if progress:
-        progress.start("Synchronizing five repository registries...")
-
-    sync_args = [
-        str(venv_python),
-        "scripts/sync_workspace.py",
-        "--workspace", str(WORKSPACE),
-        "--vpssentry", str(VPSSENTRY),
-        "--wolochain", str(WOLOCHAIN),
-    ]
-    rc, out = (
-        run_with_heartbeat(
-            sync_args,
-            cwd=DOCS,
-            progress=progress,
-            label="Synchronizing repository registries",
-            timeout=180,
-        )
-        if progress
-        else run(sync_args, cwd=DOCS, timeout=180)
-    )
-    if rc != 0:
-        raise UpdateError(
-            "central raw registry synchronization failed: "
-            + aoe2_audit.checker_summary(out)
-        )
-    if progress:
-        progress.done("Five repository registries synchronized")
-
-    registries: dict[str, dict[str, Any]] = {}
-    for path in sorted((DOCS / "catalog" / "registries").glob("*.json")):
-        payload = json.loads(path.read_text(encoding="utf-8"))
-        repo_id = payload.get("repo")
-        if isinstance(repo_id, str):
-            registries[repo_id] = payload
-
-    if set(registries) != set(SOURCES):
-        raise UpdateError(
-            "central registry membership mismatch: "
-            f"actual={sorted(registries)} expected={sorted(SOURCES)}"
-        )
-
-    if progress:
-        progress.start("Reconciling central taxonomy...")
-
-    taxonomy_path = DOCS / "catalog" / "document-taxonomy.json"
-    taxonomy = json.loads(taxonomy_path.read_text(encoding="utf-8"))
-    taxonomy, taxonomy_changes = reconcile_taxonomy(taxonomy, registries)
-    taxonomy_path.write_text(
-        json.dumps(taxonomy, indent=2) + "\n",
-        encoding="utf-8",
-    )
-    if progress:
-        progress.done(
-            f"Central taxonomy reconciled "
-            f"({len(taxonomy_changes)} source document change(s))"
-        )
-
-    gate_labels = {
-        "docs-check": "central docs-check",
-        "audit-taxonomy": "central taxonomy audit",
-        "build": "strict MkDocs build",
-    }
-    for target in ("docs-check", "audit-taxonomy", "build"):
-        label = gate_labels[target]
-        if progress:
-            progress.start(f"Running {label}...")
-            rc, out = run_with_heartbeat(
-                ["make", target],
-                cwd=DOCS,
-                progress=progress,
-                label=f"Running {label}",
-                timeout=240,
-            )
-        else:
-            rc, out = run(["make", target], cwd=DOCS, timeout=240)
+def central_federation_snapshot() -> dict[str, dict[str, str]]:
+    """Bind federation to clean, published source commits and registry bytes."""
+    snapshot: dict[str, dict[str, str]] = {}
+    for repo_id, repo in sorted(SOURCES.items()):
+        branch, head = require_clean_remote(repo_id, repo)
+        registry = repo / "docs" / "document-registry.json"
+        if not registry.is_file() or registry.is_symlink():
+            raise UpdateError(f"{repo_id} source registry missing or symlinked: {registry}")
+        digest = sha256(registry)
+        rc, out = source_checker(repo)
         if rc != 0:
             raise UpdateError(
-                f"central {target} failed: {aoe2_audit.checker_summary(out)}"
+                f"{repo_id} source documentation validation failed: "
+                + aoe2_audit.checker_summary(out)
             )
-        if progress:
-            progress.done(f"{label} passed")
+        if require_clean_remote(repo_id, repo) != (branch, head) or sha256(registry) != digest:
+            raise UpdateError(f"{repo_id} source changed during federation validation")
+        snapshot[repo_id] = {"branch": branch, "commit": head, "registry_sha256": digest}
+    return snapshot
 
-    rc, out = git(DOCS, "diff", "--check")
-    if rc != 0:
-        raise UpdateError(f"central diff check failed: {out}")
 
-    changed = status_paths(DOCS)
-    unsafe = sorted(path for path in changed if not central_owned_path(path))
-    if unsafe:
-        raise UpdateError(
-            "central synchronization touched paths outside the generated/control-plane "
-            f"allowlist: {unsafe}"
+def central_federation_revalidate(expected: dict[str, dict[str, str]]) -> None:
+    if central_federation_snapshot() != expected:
+        raise UpdateError("source authority changed during central federation; publication refused")
+
+
+def central_federation_write_state(directory: Path, state: dict[str, Any]) -> None:
+    """The journal is replaceable; finalized receipts below are immutable."""
+    pending = directory / "state.pending"
+    with pending.open("w", encoding="utf-8") as handle:
+        json.dump(state, handle, indent=2, sort_keys=True)
+        handle.write("\n")
+        handle.flush()
+        os.fsync(handle.fileno())
+    pending.replace(directory / "state.json")
+    descriptor = os.open(directory, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+
+
+def central_federation_receipt(
+    directory: Path,
+    state: dict[str, Any],
+    status: str,
+    *,
+    error: str = "",
+) -> Path:
+    stage = Path(state["worktree"])
+    patch = ""
+    files: dict[str, str] = {}
+    if stage.is_dir():
+        rc, patch = git(stage, "diff", "--binary", state["before"], "--")
+        if rc != 0:
+            patch = "Unable to capture diff: " + patch
+        for relative in sorted(status_paths(stage)):
+            path = stage / relative
+            if path.is_file() and not path.is_symlink():
+                files[relative] = sha256(path)
+    # Use a unique receipt name even when recovering a previously failed run.
+    token = f"{status}-{time.time_ns()}"
+    patch_path = directory / f"{token}.patch"
+    with patch_path.open("x", encoding="utf-8") as handle:
+        handle.write(patch)
+        handle.write("\n" if patch else "")
+        handle.flush()
+        os.fsync(handle.fileno())
+    payload = {
+        **state,
+        "status": status,
+        "error": error,
+        "recorded_at": datetime.now(timezone.utc).isoformat(),
+        "diff": str(patch_path),
+        "diff_sha256": sha256(patch_path),
+        "changed_file_sha256": files,
+    }
+    path = directory / f"{token}.json"
+    with path.open("x", encoding="utf-8") as handle:
+        json.dump(payload, handle, indent=2, sort_keys=True)
+        handle.write("\n")
+        handle.flush()
+        os.fsync(handle.fileno())
+    with path.with_suffix(".json.sha256").open("x", encoding="utf-8") as handle:
+        handle.write(f"{sha256(path)}  {path.name}\n")
+        handle.flush()
+        os.fsync(handle.fileno())
+    descriptor = os.open(directory, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
+    return path
+
+
+def central_federation_record_interruptions(root: Path) -> None:
+    # SIGKILL/power loss cannot run an exception handler. The next lock holder
+    # seals the abandoned journal and retained worktree instead of deleting it.
+    for journal in sorted(root.glob("run-*/state.json")):
+        try:
+            state = json.loads(journal.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            raise UpdateError(f"unreadable federation recovery journal: {journal}: {exc}") from exc
+        if state.get("phase") == "complete":
+            continue
+        directory = journal.parent
+        if list(directory.glob("failed-*.json")) or list(directory.glob("interrupted-*.json")):
+            continue
+        central_federation_receipt(
+            directory, state, "interrupted",
+            error="previous process ended without a finalized receipt; retained for inspection/recovery",
         )
 
-    if not changed:
-        return {
-            "status": "already-current",
-            "before": before_head,
-            "after": before_head,
-            "taxonomy_changes": taxonomy_changes,
-        }
 
-    rc, out = run(["git", "add", "--", *sorted(changed)], cwd=DOCS)
-    if rc != 0:
-        raise UpdateError(f"central staging failed: {out}")
+@contextmanager
+def central_federation_lock():
+    # A Git-common-dir lock also serializes callers from other app worktrees.
+    common = Path(git_output(DOCS, "rev-parse", "--path-format=absolute", "--git-common-dir"))
+    root = common / "aoe2war-federation"
+    root.mkdir(parents=True, exist_ok=True)
+    with (root / "federation.lock").open("a+", encoding="utf-8") as handle:
+        try:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as exc:
+            raise UpdateError("another central documentation federation holds the shared lock") from exc
+        handle.seek(0)
+        handle.truncate()
+        handle.write(f"pid={os.getpid()}\n")
+        handle.flush()
+        try:
+            yield root
+        finally:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
-    rc, out = git(DOCS, "diff", "--cached", "--check")
-    if rc != 0:
-        raise UpdateError(f"central staged diff check failed: {out}")
 
-    validated_tree = git_output(DOCS, "write-tree")
+def central_federation_assert_canonical(branch: str, head: str) -> None:
+    if (
+        git_output(DOCS, "branch", "--show-current") != branch
+        or git_output(DOCS, "rev-parse", "HEAD") != head
+        or status_paths(DOCS)
+    ):
+        raise UpdateError("canonical documentation checkout changed; fast-forward refused")
 
-    if progress:
-        progress.start("Committing central documentation synchronization...")
 
-    rc, out = run(
-        ["git", "commit", "-m", "Synchronize AoE2WAR documentation estate"],
-        cwd=DOCS,
+def central_federation_fast_forward(state: dict[str, Any]) -> None:
+    central_federation_assert_canonical(state["branch"], state["before"])
+    if remote_sha(DOCS, state["branch"]) != state["candidate"]:
+        raise UpdateError("published documentation remote changed; canonical fast-forward refused")
+    # Hooks have already run on the staged commit. Do not run checkout hooks
+    # that could mutate the canonical worktree while applying the proven tree.
+    rc, out = git(
+        DOCS, "-c", "core.hooksPath=/dev/null", "-c", "merge.autoStash=false",
+        "merge", "--ff-only", "--no-edit", state["candidate"],
     )
     if rc != 0:
-        raise UpdateError(f"central commit failed: {out}")
+        raise UpdateError(f"published documentation canonical fast-forward failed: {out}")
+    verify_committed_tree(DOCS, state["validated_tree"])
 
-    after_head = git_output(DOCS, "rev-parse", "HEAD")
-    push_and_verify("AoE2WAR-docs", DOCS, branch)
-    verify_committed_tree(DOCS, validated_tree)
-    if progress:
-        progress.done(
-            f"Central documentation pushed and tree-proven ({after_head[:10]})"
-        )
 
+def central_federation_recovery_candidate(root: Path) -> tuple[Path, dict[str, Any]] | None:
+    """Read-only proof shared by planning and locked publication recovery."""
+    branch = git_output(DOCS, "branch", "--show-current")
+    head = git_output(DOCS, "rev-parse", "HEAD")
+    central_federation_assert_canonical(branch, head)
+    remote = remote_sha(DOCS, branch)
+    if not branch or remote in {None, head}:
+        return None
+    matches = []
+    for journal in sorted(root.glob("run-*/state.json")):
+        state = json.loads(journal.read_text(encoding="utf-8"))
+        if (
+            state.get("before") == head and state.get("branch") == branch
+            and state.get("candidate") == remote and state.get("validated_tree")
+            and all(
+                state.get("gates", {}).get(target, {}).get("rc") == 0
+                for target in ("docs-check", "audit-taxonomy", "build")
+            )
+            and state.get("phase") in {"publishing", "published", "canonical-fast-forward"}
+        ):
+            matches.append((journal.parent, state))
+    if len(matches) != 1:
+        raise UpdateError("central local/remote mismatch has no unique validated publication to recover")
+    directory, state = matches[0]
+    stage = Path(state["worktree"])
+    if git_output(stage, "rev-parse", "HEAD") != remote:
+        raise UpdateError("interrupted federation candidate changed; recovery refused")
+    verify_committed_tree(stage, state["validated_tree"])
+    rc, _out = git(stage, "merge-base", "--is-ancestor", head, remote)
+    if rc != 0:
+        raise UpdateError("interrupted federation candidate is not a fast-forward of its base")
+    central_federation_revalidate(state["source_snapshot"])
+    central_federation_assert_canonical(branch, head)
+    if remote_sha(DOCS, branch) != remote:
+        raise UpdateError("interrupted federation remote changed during recovery proof")
+    return directory, state
+
+
+def central_federation_recovery_preview() -> dict[str, Any] | None:
+    """Prove one recoverable publication without locks, receipts or checkout writes.
+
+    No proof means the normal parity blocker remains authoritative. Apply must
+    re-prove this evidence under the shared federation lock before any mutation.
+    """
+    try:
+        common = Path(git_output(DOCS, "rev-parse", "--path-format=absolute", "--git-common-dir"))
+        candidate = central_federation_recovery_candidate(common / "aoe2war-federation")
+        if candidate is None:
+            return None
+        directory, state = candidate
+        return {**state, "journal": str(directory / "state.json")}
+    except (UpdateError, OSError, ValueError, KeyError, TypeError):
+        return None
+
+
+def central_federation_recover(root: Path, before_publish=None) -> dict[str, Any] | None:
+    """Finish only a known, tree-proven publication interrupted before checkout."""
+    candidate = central_federation_recovery_candidate(root)
+    if candidate is None:
+        return None
+    directory, state = candidate
+    if before_publish is not None:
+        before_publish()
+    central_federation_revalidate(state["source_snapshot"])
+    central_federation_fast_forward(state)
+    state["phase"] = "complete"
+    receipt = central_federation_receipt(directory, state, "recovered")
+    central_federation_write_state(directory, state)
     return {
-        "status": "synchronized",
-        "before": before_head,
-        "after": after_head,
-        "taxonomy_changes": taxonomy_changes,
+        "status": "synchronized", "before": state["before"], "after": state["candidate"],
+        "taxonomy_changes": state.get("taxonomy_changes", []),
+        "validated_tree": state["validated_tree"], "receipt": str(receipt),
+        "recovered": True,
     }
+
+
+def central_federation_validate_snapshot(
+    stage: Path,
+    expected: dict[str, dict[str, str]],
+) -> dict[str, dict[str, Any]]:
+    registries: dict[str, dict[str, Any]] = {}
+    state = json.loads((stage / "catalog/runtime/repository-state.json").read_text(encoding="utf-8"))
+    rows = state.get("repositories", [])
+    indexed = {item.get("id"): item for item in rows if isinstance(item, dict)}
+    if len(rows) != len(expected) or set(indexed) != set(expected):
+        raise UpdateError("central repository-state membership mismatch")
+    for path in sorted((stage / "catalog/registries").glob("*.json")):
+        payload = json.loads(path.read_text(encoding="utf-8"))
+        repo_id = payload.get("repo")
+        if repo_id in registries or repo_id not in expected:
+            raise UpdateError(f"central registry membership mismatch: {repo_id!r}")
+        snapshot = expected[repo_id]
+        row = indexed[repo_id]
+        if (
+            sha256(path) != snapshot["registry_sha256"]
+            or row.get("registry_sha256") != snapshot["registry_sha256"]
+            or row.get("documentation_snapshot") != {
+                "branch": snapshot["branch"], "commit": snapshot["commit"],
+            }
+            or row.get("implementation_baseline") != payload.get("implementation_baseline")
+        ):
+            raise UpdateError(f"{repo_id} generated registry/source snapshot SHA mismatch")
+        registries[repo_id] = payload
+    if set(registries) != set(expected):
+        raise UpdateError("central registry membership mismatch")
+    return registries
+
+
+def central_sync(
+    progress: Progress | None = None,
+    *,
+    before_publish=None,
+) -> dict[str, Any]:
+    with central_federation_lock() as federation_root:
+        central_federation_record_interruptions(federation_root)
+        recovered = central_federation_recover(federation_root, before_publish)
+        if recovered is not None:
+            return recovered
+        branch, before_head = require_clean_remote("AoE2WAR-docs", DOCS)
+        venv_python = DOCS / ".venv-docs" / "bin" / "python"
+        venv_mkdocs = DOCS / ".venv-docs" / "bin" / "mkdocs"
+        if not venv_python.is_file() or not venv_mkdocs.is_file():
+            raise UpdateError("central documentation venv/python/mkdocs missing")
+
+        source_snapshot = central_federation_snapshot()
+        preflight_central_governed_documents(
+            DOCS / "catalog/document-taxonomy.json", SOURCES
+        )
+        directory = Path(tempfile.mkdtemp(prefix="run-", dir=federation_root))
+        stage = directory / "tree"
+        state: dict[str, Any] = {
+            "schema_version": 1, "phase": "preparing", "branch": branch,
+            "before": before_head, "worktree": str(stage),
+            "canonical": str(DOCS), "source_snapshot": source_snapshot,
+        }
+        central_federation_write_state(directory, state)
+        try:
+            rc, out = git(DOCS, "worktree", "add", "--detach", str(stage), before_head)
+            if rc != 0:
+                raise UpdateError(f"central isolated worktree creation failed: {out}")
+            state["phase"] = "generating"
+            central_federation_write_state(directory, state)
+            if progress:
+                progress.start("Synchronizing repository registries in isolated documentation worktree...")
+            sync_args = [
+                str(venv_python), "scripts/sync_workspace.py",
+                "--workspace", str(WORKSPACE), "--vpssentry", str(VPSSENTRY),
+                "--wolochain", str(WOLOCHAIN),
+            ]
+            rc, out = (
+                run_with_heartbeat(
+                    sync_args, cwd=stage, progress=progress,
+                    label="Synchronizing repository registries", timeout=180,
+                ) if progress else run(sync_args, cwd=stage, timeout=180)
+            )
+            if rc != 0:
+                raise UpdateError("central raw registry synchronization failed: " + aoe2_audit.checker_summary(out))
+            registries = central_federation_validate_snapshot(stage, source_snapshot)
+            # sync_workspace stamps wall time. Keep the prior timestamp when its
+            # complete source-bound input is unchanged, so retries are idempotent.
+            runtime_path = stage / "catalog/runtime/repository-state.json"
+            prior_runtime = json.loads((DOCS / "catalog/runtime/repository-state.json").read_text(encoding="utf-8"))
+            runtime = json.loads(runtime_path.read_text(encoding="utf-8"))
+            if (
+                {key: value for key, value in prior_runtime.items() if key != "generated_at"}
+                == {key: value for key, value in runtime.items() if key != "generated_at"}
+            ):
+                runtime_path.write_bytes((DOCS / "catalog/runtime/repository-state.json").read_bytes())
+            taxonomy_path = stage / "catalog/document-taxonomy.json"
+            taxonomy, taxonomy_changes = reconcile_taxonomy(
+                json.loads(taxonomy_path.read_text(encoding="utf-8")), registries
+            )
+            taxonomy_path.write_text(json.dumps(taxonomy, indent=2) + "\n", encoding="utf-8")
+            state["taxonomy_changes"] = taxonomy_changes
+            state["phase"] = "validating"
+            central_federation_write_state(directory, state)
+            common = [
+                f"VENV_PYTHON={venv_python}", f"VENV_MKDOCS={venv_mkdocs}",
+                f"WORKSPACE={WORKSPACE}", f"VPSSENTRY={VPSSENTRY}",
+                f"WOLOCHAIN={WOLOCHAIN}",
+            ]
+            # Existing docs-check validates metadata, frontmatter, source hashes,
+            # review expiry and generation idempotence. Audit validates taxonomy
+            # against actual sources; build runs MkDocs with --strict.
+            for target in ("docs-check", "audit-taxonomy", "build"):
+                if progress:
+                    progress.start(f"Running isolated central {target}...")
+                    rc, out = run_with_heartbeat(
+                        ["make", target, *common], cwd=stage, progress=progress,
+                        label=f"Running central {target}", timeout=240,
+                    )
+                else:
+                    rc, out = run(["make", target, *common], cwd=stage, timeout=240)
+                state.setdefault("gates", {})[target] = {
+                    "rc": rc, "summary": aoe2_audit.checker_summary(out),
+                }
+                central_federation_write_state(directory, state)
+                if rc != 0:
+                    raise UpdateError(f"central {target} failed: {aoe2_audit.checker_summary(out)}")
+            central_federation_validate_snapshot(stage, source_snapshot)
+            rc, out = git(stage, "diff", "--check")
+            if rc != 0:
+                raise UpdateError(f"central diff check failed: {out}")
+            changed = status_paths(stage)
+            unsafe = sorted(path for path in changed if not central_owned_path(path))
+            if unsafe:
+                raise UpdateError(f"central synchronization touched paths outside generated/control-plane allowlist: {unsafe}")
+            if not changed:
+                central_federation_revalidate(source_snapshot)
+                central_federation_assert_canonical(branch, before_head)
+                if remote_sha(DOCS, branch) != before_head:
+                    raise UpdateError("central remote changed during federation")
+                state["phase"] = "complete"
+                receipt = central_federation_receipt(directory, state, "already-current")
+                central_federation_write_state(directory, state)
+                return {"status": "already-current", "before": before_head, "after": before_head,
+                        "taxonomy_changes": taxonomy_changes, "receipt": str(receipt)}
+            rc, out = git(stage, "add", "--", *sorted(changed))
+            if rc != 0:
+                raise UpdateError(f"central staging failed: {out}")
+            rc, out = git(stage, "diff", "--cached", "--check")
+            if rc != 0:
+                raise UpdateError(f"central staged diff check failed: {out}")
+            validated_tree = git_output(stage, "write-tree")
+            state["validated_tree"] = validated_tree
+            rc, out = git(stage, "commit", "-m", "Synchronize AoE2WAR documentation estate")
+            if rc != 0:
+                raise UpdateError(f"central commit failed: {out}")
+            candidate = git_output(stage, "rev-parse", "HEAD")
+            state["candidate"] = candidate
+            verify_committed_tree(stage, validated_tree)
+            rc, out = git(stage, "merge-base", "--is-ancestor", before_head, candidate)
+            if rc != 0:
+                raise UpdateError("central candidate is not a fast-forward of validated base")
+            if before_publish is not None:
+                before_publish()
+            central_federation_revalidate(source_snapshot)
+            central_federation_assert_canonical(branch, before_head)
+            if remote_sha(DOCS, branch) != before_head:
+                raise UpdateError("central remote changed before publication")
+            state["phase"] = "publishing"
+            central_federation_write_state(directory, state)
+            # The explicit ancestor proof above makes this a fast-forward only;
+            # the lease additionally rejects every remote compare-and-swap race.
+            rc, out = git(
+                stage, "push", f"--force-with-lease=refs/heads/{branch}:{before_head}",
+                "origin", f"{candidate}:refs/heads/{branch}", timeout=120,
+            )
+            if rc != 0:
+                raise UpdateError(f"central publication failed (retained for safe retry): {out}")
+            if remote_sha(DOCS, branch) != candidate:
+                raise UpdateError("central post-push parity failed; canonical checkout unchanged")
+            state["phase"] = "published"
+            central_federation_write_state(directory, state)
+            verify_committed_tree(stage, validated_tree)
+            state["phase"] = "canonical-fast-forward"
+            central_federation_write_state(directory, state)
+            central_federation_fast_forward(state)
+            state["phase"] = "complete"
+            receipt = central_federation_receipt(directory, state, "synchronized")
+            central_federation_write_state(directory, state)
+            if progress:
+                progress.done(f"Central documentation published and tree-proven ({candidate[:10]})")
+            return {
+                "status": "synchronized", "before": before_head, "after": candidate,
+                "taxonomy_changes": taxonomy_changes, "validated_tree": validated_tree,
+                "receipt": str(receipt),
+            }
+        except BaseException as exc:
+            try:
+                receipt = central_federation_receipt(directory, state, "failed", error=str(exc))
+            except Exception as receipt_error:
+                raise UpdateError(
+                    f"central federation failed: {exc}; evidence retained at {directory}; "
+                    f"failure receipt could not be finalized: {receipt_error}"
+                ) from exc
+            if isinstance(exc, (KeyboardInterrupt, SystemExit)):
+                raise
+            raise UpdateError(f"{exc}; failure receipt: {receipt}; staged worktree retained: {stage}") from exc
 
 
 def prune_context_before_capture(
@@ -1838,6 +2227,7 @@ def capture_context(
     *,
     preserve_context_history: bool = False,
     include_host_context: bool = False,
+    source_bound: bool = False,
 ) -> dict[str, dict[str, Any]]:
     if not projects:
         return {}
@@ -1860,6 +2250,8 @@ def capture_context(
     env["PRUNE_DRY_RUN"] = "0"
     env["KEEP_N"] = "1"
     env["CONTEXT_PROFILE"] = "ops"
+    if source_bound:
+        env["CONTEXT_TRUNCATE"] = "0"
 
     capture_label = "Capturing context: " + ", ".join(projects)
     if include_host_context:
@@ -2024,13 +2416,128 @@ def capture_context(
 
 def write_receipt(payload: dict[str, Any]) -> Path:
     RECEIPT_DIR.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    path = RECEIPT_DIR / f"{stamp}.json"
-    path.write_text(
-        json.dumps(payload, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    path = RECEIPT_DIR / f"{stamp}-{os.getpid()}-{time.monotonic_ns()}.json"
+    with path.open("x", encoding="utf-8") as handle:
+        handle.write(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+        handle.flush()
+        os.fsync(handle.fileno())
+    with path.with_suffix(".json.sha256").open("x", encoding="utf-8") as handle:
+        handle.write(f"{sha256(path)}  {path.name}\n")
+        handle.flush()
+        os.fsync(handle.fileno())
+    descriptor = os.open(RECEIPT_DIR, os.O_RDONLY)
+    try:
+        os.fsync(descriptor)
+    finally:
+        os.close(descriptor)
     return path
+
+
+def apply_independent_maintenance(
+    plan: dict[str, Any], progress: Progress | None = None,
+) -> int:
+    """Certify only generated documentation/cameras while retaining external debt."""
+    if plan["blocked"] or not plan.get("maintenance_only"):
+        raise UpdateError("independent maintenance requires an unblocked scoped plan")
+    payload: dict[str, Any] = {
+        "schema": 1,
+        "kind": "aoe2war-independent-maintenance",
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "status": "RUNNING",
+        "before_audit": plan["audit"],
+        "external_hold": plan.get("external_hold"),
+        "production_deployed": False,
+        "runtime_mutated": False,
+        "database_mutated": False,
+        "wolo_mutated": False,
+        "context_history_deleted": False,
+        "release_certified": False,
+    }
+
+    def guard_hold() -> None:
+        if plan.get("external_hold"):
+            current = aoe2_update_hold.collect_wolo_hold(plan["audit"], wolo_repo=WOLOCHAIN)
+            aoe2_update_hold.verify_wolo_hold(plan["external_hold"], current)
+
+    try:
+        recovery = central_federation_recovery_preview()
+        if recovery != plan.get("central_recovery"):
+            raise UpdateError("central publication recovery evidence changed after planning")
+        before_sources = aoe2_update_context.source_snapshot(
+            SOURCES, DOCS, docs_remote=recovery["candidate"] if recovery else None,
+        )
+        payload["before_sources"] = before_sources
+        payload["start_receipt"] = str(write_receipt(payload))
+        guard_hold()
+        # Fail on insufficient local capture space before publishing federation.
+        if plan["context_projects"]:
+            context_capture_headroom(plan["context_projects"], progress)
+        if plan["central_sync"]:
+            payload["central_result"] = central_sync(progress=progress, before_publish=guard_hold)
+        else:
+            payload["central_result"] = {"status": "already-current"}
+        capture_sources = aoe2_update_context.source_snapshot(SOURCES, DOCS)
+        for repo_id, identity in before_sources.items():
+            if repo_id != "AoE2WAR-docs" and capture_sources.get(repo_id) != identity:
+                raise UpdateError(f"source authority changed during federation: {repo_id}")
+        payload["capture_sources"] = capture_sources
+        guard_hold()
+        if plan["context_projects"]:
+            archives = capture_context(
+                plan["context_projects"], progress=progress,
+                preserve_context_history=True, include_host_context=False, source_bound=True,
+            )
+        else:
+            archives = aoe2_update_context.latest_context_archives(VPSSENTRY / "context", capture_sources)
+        payload["context_archives"] = archives
+        aoe2_update_context.verify_source_snapshot(capture_sources, SOURCES, DOCS)
+        payload["context_source_bindings"] = aoe2_update_context.verify_context_sources(archives, capture_sources)
+        guard_hold()
+        payload["retained_context_history"] = aoe2_update_context.preserve_previous_context(archives)
+        after_audit = aoe2_audit.collect_audit().payload()
+        payload["after_audit"] = after_audit
+        guard_hold()
+        aoe2_update_context.verify_source_snapshot(capture_sources, SOURCES, DOCS)
+        remaining = [item for item in after_audit.get("findings", [])
+                     if item.get("severity") in {"P0", "P1"}]
+        if after_audit.get("p0") != sum(item["severity"] == "P0" for item in remaining) or after_audit.get("p1") != sum(item["severity"] == "P1" for item in remaining):
+            raise UpdateError("final audit severity counts disagree with findings")
+        if plan.get("external_hold"):
+            if len(remaining) != 1 or (
+                remaining[0].get("severity"), remaining[0].get("area"), remaining[0].get("key")
+            ) != ("P1", "WoloChain", "vps-source-drift"):
+                raise UpdateError("final audit must retain exactly the proven external Wolo P1: "
+                                  + json.dumps(remaining, sort_keys=True))
+            # The final audit's source identities must match the same hold too.
+            final_hold = aoe2_update_hold.collect_wolo_hold(after_audit, wolo_repo=WOLOCHAIN)
+            aoe2_update_hold.verify_wolo_hold(
+                plan["external_hold"], final_hold,
+                allow_federated_baseline=payload["central_result"].get("status") == "synchronized",
+            )
+            payload["after_external_hold"] = final_hold
+        elif remaining:
+            raise UpdateError("final maintenance audit remains blocked: " + json.dumps(remaining, sort_keys=True))
+        payload["status"] = ("DOCS_FEDERATED_WITH_EXTERNAL_WOLO_HOLD"
+                             if plan.get("external_hold") else "DOCS_FEDERATED")
+        payload["context_status"] = "CONTEXT_CURRENT"
+        payload["completed_at"] = datetime.now(timezone.utc).isoformat()
+        receipt = write_receipt(payload)
+        print(payload["status"])
+        print("CONTEXT_CURRENT")
+        print(f"Estate audit: P0={after_audit['p0']} P1={after_audit['p1']}")
+        if plan.get("external_hold"):
+            print("OPEN_P1: WoloChain / vps-source-drift — Emaren/wolochain#5")
+            print("Release/Finish remains blocked by the external financial gate.")
+        print("Production/runtime/database/Wolo mutations: NONE")
+        print(f"Receipt: {receipt}")
+        return 0
+    except BaseException as exc:
+        payload["status"] = "INTERRUPTED" if isinstance(exc, (KeyboardInterrupt, SystemExit)) else "FAILED"
+        payload["error"] = str(exc)
+        payload["failed_at"] = datetime.now(timezone.utc).isoformat()
+        receipt = write_receipt(payload)
+        raise UpdateError(f"{exc}\nindependent maintenance failure receipt: {receipt}") from exc
 
 
 def apply_update(
@@ -2043,6 +2550,10 @@ def apply_update(
     preserve_context_history: bool = False,
     defer_runtime_provenance: bool = False,
 ) -> int:
+    if plan.get("maintenance_only"):
+        if any((defer_context, defer_final_audit, force_control_refresh, defer_runtime_provenance)):
+            raise UpdateError("independent maintenance cannot use Finish deferral/force flags")
+        return apply_independent_maintenance(plan, progress)
     if plan["blocked"]:
         raise UpdateError("update plan is blocked; resolve findings manually")
 
@@ -2292,6 +2803,11 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--maintenance-only",
+        action="store_true",
+        help="explicit independent docs/context lane; retains a proven external Wolo P1 and never certifies a release",
+    )
+    parser.add_argument(
         "--apply",
         action="store_true",
         help="apply the safe maintenance plan",
@@ -2340,6 +2856,10 @@ def main() -> int:
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
 
+    if args.maintenance_only and any((args.defer_context, args.defer_final_audit,
+                                     args.force_control_refresh, args.defer_runtime_provenance)):
+        parser.error("--maintenance-only cannot use Finish deferral/force flags")
+
     if (
         args.defer_context
         or args.defer_final_audit
@@ -2358,7 +2878,7 @@ def main() -> int:
         )
 
     if not args.apply:
-        plan = collect_plan()
+        plan = collect_plan(maintenance_only=args.maintenance_only)
         if args.json:
             print(json.dumps(plan, indent=2, sort_keys=True))
         else:
@@ -2383,6 +2903,7 @@ def main() -> int:
             locked_plan = collect_plan(
                 preserve_context_history=args.preserve_context_history,
                 defer_runtime_provenance=args.defer_runtime_provenance,
+                maintenance_only=args.maintenance_only,
             )
             locked_audit = locked_plan["audit"]
             progress.done(
@@ -2399,6 +2920,7 @@ def main() -> int:
             if (
                 not locked_plan["changes_needed"]
                 and not args.force_control_refresh
+                and not args.maintenance_only
             ):
                 if locked_plan["estate_maps"]["status"] == "deferred":
                     progress.done(

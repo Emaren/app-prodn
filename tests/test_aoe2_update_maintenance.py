@@ -1,0 +1,216 @@
+from __future__ import annotations
+
+import contextlib
+import copy
+import io
+import json
+from pathlib import Path
+import sys
+import tempfile
+import time
+import unittest
+from unittest import mock
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
+import aoe2_update as update
+
+
+def incident():
+    findings = [
+        {"severity": "P1", "area": "Documentation", "key": "central-source-snapshot-stale", "detail": repo}
+        for repo in ("app-prodn", "vpssentry", "wolochain")
+    ]
+    findings.append({"severity": "P1", "area": "Documentation", "key": "central-federation-drift", "detail": "taxonomy paths and reviewed_at differ"})
+    findings.extend({"severity": "P1", "area": "Context Durability", "key": "archive-stale", "detail": project + ": source newer than camera"}
+                    for project in ("AoE2HDBets", "aoe2-watcher", "WoloChain-wolo-1", "VPSSentry", "AoE2WAR-docs"))
+    findings.append({"severity": "P1", "area": "WoloChain", "key": "vps-source-drift", "detail": "unpromoted verifier"})
+    return {"p0": 0, "p1": 10, "findings": findings, "info": {}}
+
+
+class MaintenanceTests(unittest.TestCase):
+    def plan(self, payload=None, maintenance=True, checker=(0, "PASS"), hold_error=None,
+             recovery=None, source_error=None):
+        audit = mock.Mock()
+        audit.payload.return_value = payload or incident()
+        with contextlib.ExitStack() as stack:
+            stack.enter_context(mock.patch.object(update.aoe2_audit, "collect_audit", return_value=audit))
+            stack.enter_context(mock.patch.object(update, "source_checker", return_value=checker))
+            stack.enter_context(mock.patch.object(update, "estate_map_refresh_plan", return_value={"status": "deferred", "reason": "runtime behind"}))
+            stack.enter_context(mock.patch.object(update, "stale_central_wolo_vps_drift_remediable", return_value=False))
+            stack.enter_context(mock.patch.object(update, "central_federation_recovery_preview", return_value=recovery))
+            stack.enter_context(mock.patch.object(update.aoe2_update_context, "source_snapshot", return_value={"app-prodn": {"head": "a" * 40}}, side_effect=source_error))
+            stack.enter_context(mock.patch.object(update.aoe2_update_hold, "collect_wolo_hold", return_value={"proof": "exact"}, side_effect=hold_error))
+            return update.collect_plan(release_data={}, maintenance_only=maintenance)
+
+    def test_october_15_nine_maintenance_findings_preserve_financial_p1(self):
+        plan = self.plan()
+        self.assertFalse(plan["blocked"])
+        self.assertEqual(plan["audit"]["p1"], 10)
+        self.assertEqual(plan["external_hold"], {"proof": "exact"})
+        self.assertEqual(len(plan["context_projects"]), 5)
+        self.assertTrue(plan["central_sync"])
+        self.assertEqual(plan["estate_maps"]["status"], "deferred")
+        self.assertEqual(plan["auto_remediable_p1"], [])
+        stream = io.StringIO()
+        with contextlib.redirect_stdout(stream):
+            update.print_plan(plan)
+        self.assertIn("OPEN_P1", stream.getvalue())
+        self.assertIn("--maintenance-only --apply", stream.getvalue())
+        self.assertNotIn("HEALTHY", stream.getvalue())
+
+    def test_default_update_keeps_real_financial_drift_blocking(self):
+        self.assertTrue(self.plan(maintenance=False)["blocked"])
+
+    def test_no_unknown_p0_or_p1_is_waived(self):
+        for severity, area, key in (("P1", "WoloChain", "financial-authority"),
+                                    ("P1", "Financial", "archive-stale"),
+                                    ("P0", "Documentation", "strict-build"),
+                                    ("P1", "Context Durability", "archive-retention-drift")):
+            with self.subTest(key=key):
+                payload = incident()
+                payload["findings"].append({"severity": severity, "area": area, "key": key, "detail": "new blocker"})
+                payload[severity.lower()] += 1
+                self.assertTrue(self.plan(payload)["blocked"])
+
+    def test_unavailable_runtime_evidence_blocks(self):
+        plan = self.plan(hold_error=update.aoe2_update_hold.HoldError("binary evidence unavailable"))
+        self.assertTrue(plan["blocked"])
+        self.assertIsNone(plan["external_hold"])
+
+    def test_source_baseline_refresh_is_outside_scoped_lane(self):
+        plan = self.plan(checker=(1, "implementation changed after the recorded baseline"))
+        self.assertTrue(plan["blocked"])
+        self.assertIn("source documentation refresh requires review", " ".join(plan["maintenance_errors"]))
+
+    def test_only_exact_proven_interrupted_publication_can_recover_git_parity(self):
+        recovery = {"before": "a" * 40, "candidate": "b" * 40, "branch": "main"}
+        payload = incident()
+        payload["findings"].append({"severity": "P1", "area": "Git", "key": "remote-parity",
+                                    "detail": f"AoE2WAR-docs: local={recovery['before']} origin/main={recovery['candidate']}"})
+        payload["p1"] += 1
+        self.assertFalse(self.plan(payload, recovery=recovery)["blocked"])
+        self.assertTrue(self.plan(payload)["blocked"])
+        payload["findings"][-1]["detail"] = "api-prodn: remote advanced"
+        self.assertTrue(self.plan(payload, recovery=recovery)["blocked"])
+
+    def test_dirty_or_remote_divergent_source_blocks_preview(self):
+        self.assertTrue(self.plan(source_error=update.aoe2_update_context.ContextError("dirty worktree"))["blocked"])
+
+    def test_finish_deferral_flags_cannot_enter_scoped_apply(self):
+        with self.assertRaisesRegex(update.UpdateError, "Finish"):
+            update.apply_update({"maintenance_only": True}, defer_final_audit=True)
+
+    def test_cli_rejects_finish_options_with_independent_lane(self):
+        with mock.patch.object(sys, "argv", ["update", "--maintenance-only", "--apply", "--force-control-refresh"]), contextlib.redirect_stderr(io.StringIO()):
+            with self.assertRaises(SystemExit) as error:
+                update.main()
+        self.assertEqual(error.exception.code, 2)
+
+    def run_apply(self, final=None, hold_change=False, context_error=False, headroom_error=False):
+        plan = self.plan()
+        final = final or {"p0": 0, "p1": 1, "findings": [incident()["findings"][-1]], "info": {}}
+        audit = mock.Mock()
+        audit.payload.return_value = final
+        sources = {"app-prodn": {"head": "a" * 40}, "AoE2WAR-docs": {"head": "b" * 40}}
+        with tempfile.TemporaryDirectory() as directory, contextlib.ExitStack() as stack:
+            stack.enter_context(mock.patch.object(update, "RECEIPT_DIR", Path(directory)))
+            stack.enter_context(mock.patch.object(update, "central_federation_recovery_preview", return_value=None))
+            stack.enter_context(mock.patch.object(update.aoe2_update_context, "source_snapshot", return_value=sources))
+            stack.enter_context(mock.patch.object(update.aoe2_update_context, "verify_source_snapshot"))
+            stack.enter_context(mock.patch.object(update.aoe2_update_context, "verify_context_sources", return_value={}))
+            retain = stack.enter_context(mock.patch.object(update.aoe2_update_context, "preserve_previous_context", return_value={}))
+            stack.enter_context(mock.patch.object(update, "context_capture_headroom", side_effect=update.UpdateError("headroom unavailable") if headroom_error else None))
+            central = stack.enter_context(mock.patch.object(update, "central_sync", return_value={"status": "synchronized"}))
+            capture = stack.enter_context(mock.patch.object(update, "capture_context", return_value={}, side_effect=update.UpdateError("capture failed") if context_error else None))
+            stack.enter_context(mock.patch.object(update.aoe2_audit, "collect_audit", return_value=audit))
+            stack.enter_context(mock.patch.object(update.aoe2_update_hold, "collect_wolo_hold", return_value={"proof": "exact"}))
+            stack.enter_context(mock.patch.object(update.aoe2_update_hold, "verify_wolo_hold", side_effect=update.aoe2_update_hold.HoldError("changed binary") if hold_change else None))
+            output = io.StringIO()
+            error = None
+            with contextlib.redirect_stdout(output):
+                try:
+                    result = update.apply_update(plan)
+                except update.UpdateError as exc:
+                    error = exc
+                    result = None
+            receipts = [json.loads(path.read_text()) for path in sorted(Path(directory).glob("*.json"))]
+            for path in Path(directory).glob("*.json"):
+                self.assertEqual(path.with_suffix(".json.sha256").read_text(), f"{update.sha256(path)}  {path.name}\n")
+            return result, error, output.getvalue(), receipts, central, capture, retain
+
+    def test_success_never_certifies_estate_or_release(self):
+        result, error, output, receipts, central, capture, _ = self.run_apply()
+        self.assertEqual(result, 0)
+        self.assertIsNone(error)
+        final = receipts[-1]
+        self.assertEqual(final["status"], "DOCS_FEDERATED_WITH_EXTERNAL_WOLO_HOLD")
+        self.assertEqual(final["context_status"], "CONTEXT_CURRENT")
+        self.assertFalse(final["release_certified"])
+        self.assertIn("P0=0 P1=1", output)
+        self.assertNotIn("HEALTHY", output)
+        self.assertEqual(capture.call_args.kwargs["preserve_context_history"], True)
+        self.assertEqual(capture.call_args.kwargs["source_bound"], True)
+        self.assertIn("before_publish", central.call_args.kwargs)
+
+    def test_changed_hold_stops_before_publication(self):
+        _, error, _, receipts, central, capture, _ = self.run_apply(hold_change=True)
+        self.assertIn("changed binary", str(error))
+        central.assert_not_called()
+        capture.assert_not_called()
+        self.assertTrue(any(row["status"] == "FAILED" for row in receipts))
+
+    def test_capture_failure_never_reports_context_current_or_retains_old_cameras(self):
+        _, error, output, receipts, _, _, retain = self.run_apply(context_error=True)
+        self.assertIn("capture failed", str(error))
+        self.assertNotIn("CONTEXT_CURRENT", output)
+        self.assertTrue(any(row["status"] == "FAILED" for row in receipts))
+        retain.assert_not_called()
+
+    def test_headroom_failure_stops_before_docs_publication_or_capture(self):
+        _, error, output, _, central, capture, retain = self.run_apply(headroom_error=True)
+        self.assertIn("headroom unavailable", str(error))
+        central.assert_not_called()
+        capture.assert_not_called()
+        retain.assert_not_called()
+        self.assertNotIn("CONTEXT_CURRENT", output)
+
+    def test_final_audit_cannot_hide_new_or_disappeared_financial_finding(self):
+        for final in ({"p0": 0, "p1": 0, "findings": []}, incident()):
+            with self.subTest(final=final["p1"]):
+                _, error, output, _, _, _, _ = self.run_apply(final=copy.deepcopy(final))
+                self.assertIsNotNone(error)
+                self.assertNotIn("CONTEXT_CURRENT", output)
+
+    def test_receipts_never_overwrite_prior_evidence(self):
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(update, "RECEIPT_DIR", Path(directory)):
+            paths = [update.write_receipt({"status": "FAILED", "attempt": index}) for index in range(3)]
+            self.assertEqual(len(set(paths)), 3)
+            self.assertEqual([json.loads(path.read_text())["attempt"] for path in paths], [0, 1, 2])
+
+    def test_interrupted_generator_children_cannot_mutate_sealed_evidence(self):
+        with tempfile.TemporaryDirectory() as directory:
+            marker = Path(directory) / "late-write"
+            child = "import time,pathlib;time.sleep(0.4);pathlib.Path(" + repr(str(marker)) + ").write_text('changed')"
+            parent = "import subprocess,sys,time;subprocess.Popen([sys.executable,'-c'," + repr(child) + "]);time.sleep(5)"
+            progress = mock.Mock()
+            progress.wait.side_effect = KeyboardInterrupt()
+            with self.assertRaises(KeyboardInterrupt):
+                update.run_with_heartbeat([sys.executable, "-c", parent], cwd=Path(directory),
+                                          progress=progress, label="generation", timeout=5,
+                                          heartbeat_seconds=0.1)
+            time.sleep(0.5)
+            self.assertFalse(marker.exists())
+
+    def test_noninteractive_timeout_stops_generator_children(self):
+        with tempfile.TemporaryDirectory() as directory:
+            marker = Path(directory) / "late-write"
+            child = "import time,pathlib;time.sleep(0.4);pathlib.Path(" + repr(str(marker)) + ").write_text('changed')"
+            parent = "import subprocess,sys,time;subprocess.Popen([sys.executable,'-c'," + repr(child) + "]);time.sleep(5)"
+            code, _ = update.run([sys.executable, "-c", parent], cwd=Path(directory), timeout=0.1)
+            self.assertNotEqual(code, 0)
+            time.sleep(0.5)
+            self.assertFalse(marker.exists())
+
+
+if __name__ == "__main__":
+    unittest.main()
