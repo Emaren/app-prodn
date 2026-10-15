@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { readFileSync } from "node:fs";
 
-import { bindBetStakeTicketBroadcast } from "../lib/betStakeTickets.ts";
+import {
+  bindBetStakeTicketBroadcast,
+  loadViewerBetStakeTickets,
+} from "../lib/betStakeTickets.ts";
 
 type TicketStatus =
   | "awaiting_signature"
@@ -171,4 +175,52 @@ test("a transfer already claimed by another ticket, legacy wager, or intent is d
     assert.equal(f.ticket.stakeTxHash, null);
     assert.equal(f.ticket.status, "awaiting_signature");
   }
+});
+
+
+test("viewer ticket retrieval scopes the database query to that viewer ID", async () => {
+  const originalPreview = process.env.AOE2WAR_PROD_DB_PREVIEW;
+  process.env.AOE2WAR_PROD_DB_PREVIEW = "true";
+  const rows = [
+    { id: 111, userId: 5, status: "broadcast_submitted" },
+    { id: 222, userId: 8, status: "verified_unrecorded" },
+  ];
+  let observed: Record<string, unknown> | null = null;
+  const prisma = {
+    betStakeTicket: {
+      findMany: async ({
+        where,
+        take,
+      }: {
+        where: { userId: number };
+        take: number;
+      }) => {
+        observed = { ...where, take };
+        return rows.filter((row) => row.userId === where.userId);
+      },
+    },
+  };
+  try {
+    const userFive = await loadViewerBetStakeTickets(prisma as never, 5);
+    const userEight = await loadViewerBetStakeTickets(prisma as never, 8);
+    assert.deepEqual(userFive.map((row) => row.id), [111]);
+    assert.deepEqual(userEight.map((row) => row.id), [222]);
+    assert.equal(observed?.userId, 8);
+    assert.equal(observed?.take, 8);
+  } finally {
+    if (originalPreview === undefined) delete process.env.AOE2WAR_PROD_DB_PREVIEW;
+    else process.env.AOE2WAR_PROD_DB_PREVIEW = originalPreview;
+  }
+});
+
+test("bet commit ownership check precedes transfer binding and chain verification", () => {
+  const source = readFileSync(new URL("../lib/betStakeTickets.ts", import.meta.url), "utf8");
+  const loaded = source.indexOf("const ticket = await loadOwnedTicket", source.indexOf("export async function commitBetStakeTicket"));
+  const matched = source.indexOf("ticket.userId !== userId", source.indexOf("async function loadOwnedTicket"));
+  const bind = source.indexOf("await bindBetStakeTicketBroadcast(", loaded);
+  const chain = source.indexOf("const verification = await verifyStakeTransfer(", bind);
+  assert.ok(matched >= 0, "missing exact-owner decision from ticket load");
+  assert.ok(loaded >= 0, "ticket owner must be loaded first");
+  assert.ok(bind > loaded, "transaction binding requires ticket owner check");
+  assert.ok(chain > bind, "remote chain verification happens after identity binding");
 });
