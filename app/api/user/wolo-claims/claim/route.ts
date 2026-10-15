@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     // User-facing intent cannot finalize a financial claim. A payout can
     // only become 'claimed' after independent chain-proof verification in the
     // protected settlement rail. No app entitlement is consumed here.
-    if (result.requiresSettlement) {
+    if (result.requiresSettlement || summary.pendingCount > 0) {
       return NextResponse.json(
         {
           code: "CHAIN_SETTLEMENT_REQUIRED",
