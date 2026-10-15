@@ -463,6 +463,60 @@ class UpdateCommandTests(unittest.TestCase):
                     MODULE.runtime_provenance_finish_remediable(candidate)
                 )
 
+
+    def test_source_forward_legacy_provenance_is_only_immediately_remediable_via_governed_ship(self):
+        data = legacy_unmanifested_release()
+        data["production"]["source_sha"] = "b" * 40
+        data["documentation"]["baseline_is_ancestor_of_local"] = True
+        with mock.patch.object(MODULE.aoe2_release, "is_ancestor", return_value=True) as ancestry:
+            self.assertTrue(MODULE.runtime_provenance_finish_remediable(data))
+        ancestry.assert_called_once_with("b" * 40, "a" * 40)
+
+        failures = [
+            ("not an ancestor", lambda x: None, False),
+            ("staged candidate", lambda x: x["production"].__setitem__("staged_build_id", "old-stage"), True),
+            ("docs unverified", lambda x: x["documentation"].__setitem__("baseline_is_ancestor_of_local", False), True),
+            ("production dirty", lambda x: x["production"].__setitem__("dirty_count", 1), True),
+            ("local dirty", lambda x: x["local"].__setitem__("dirty_count", 1), True),
+            ("github drift", lambda x: x["github"].__setitem__("main_sha", "c" * 40), True),
+            ("health drift", lambda x: x["production"].__setitem__("version_parity", False), True),
+            ("missing build ID", lambda x: x["production"].__setitem__("active_build_id", ""), True),
+            ("wolo rail drift", lambda x: x["production"].__setitem__("wolo_8093_count", 0), True),
+            ("wrong provenance", lambda x: x["certification"].__setitem__("status", "BROKEN"), True),
+        ]
+        for label, mutation, ancestry_result in failures:
+            with self.subTest(label=label):
+                candidate = legacy_unmanifested_release()
+                candidate["production"]["source_sha"] = "b" * 40
+                candidate["documentation"]["baseline_is_ancestor_of_local"] = True
+                mutation(candidate)
+                with mock.patch.object(MODULE.aoe2_release, "is_ancestor",
+                                       return_value=ancestry_result):
+                    self.assertFalse(MODULE.runtime_provenance_finish_remediable(candidate))
+
+    def test_forward_legacy_provenance_never_unblocks_standalone_update(self):
+        data = legacy_unmanifested_release()
+        data["production"]["source_sha"] = "b" * 40
+        data["documentation"]["baseline_is_ancestor_of_local"] = True
+        audit = mock.Mock()
+        audit.payload.return_value = {
+            "p0": 1, "p1": 0,
+            "findings": [{"severity": "P0", "area": "Release Engine",
+                          "key": "runtime-provenance",
+                          "detail": "status='legacy-unmanifested'"}],
+        }
+        with mock.patch.object(MODULE.aoe2_audit, "collect_audit", return_value=audit), \\
+             mock.patch.object(MODULE, "source_checker", return_value=(0, "PASS")), \\
+             mock.patch.object(MODULE, "estate_map_refresh_plan",
+                               return_value={"status": "deferred"}), \\
+             mock.patch.object(MODULE.aoe2_release, "is_ancestor", return_value=True):
+            ordinary = MODULE.collect_plan(release_data=data)
+            finish = MODULE.collect_plan(release_data=data, defer_runtime_provenance=True)
+        self.assertTrue(ordinary["blocked"])
+        self.assertFalse(finish["blocked"])
+        self.assertEqual([x["key"] for x in finish["auto_remediable_p0"]],
+                         ["runtime-provenance"])
+
     def test_collect_plan_defers_runtime_provenance_only_when_finish_authorizes_it(self):
         audit = mock.Mock()
         audit.payload.return_value = {
