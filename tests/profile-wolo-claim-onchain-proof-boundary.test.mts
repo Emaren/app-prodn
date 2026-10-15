@@ -15,7 +15,7 @@ test("a profile Claim WOLO button must never mark an unpaid claim paid", () => {
   assert.match(body, /status: "pending"/);
   assert.match(body, /claimedByUserId: user\.id/);
   assert.match(body, /claimedByUserId: null/);
-  assert.match(body, /requiresSettlement: rows\.length > 0/);
+  assert.match(route, /result\.requiresSettlement \|\| summary\.pendingCount > 0/);
   assert.match(body, /take: 1/);
   assert.doesNotMatch(body, /pendingWoloClaim\.(update|updateMany|upsert|create|delete)/);
   assert.doesNotMatch(body, /status: "claimed"|claimedAt: new Date\(\)/);
