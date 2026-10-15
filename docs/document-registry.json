@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c588802872501b72af41af81152144540adbf497216f5189cea16448266d59f7",
+      "sha256": "492d4f8b37937de6443a036ea74623578caf9152da1a7dd53539c5b6b259f0dd",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2117,7 +2117,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/hd-internal-api-key-guard-20261015",
-    "commit": "1484f2e2ad0097fc12dbe7e2a2a47129ad66db49"
+    "commit": "cd4b4d71cac90f5f4ac92fd5bd9366d9895389e2"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
