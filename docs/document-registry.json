@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "d386244e72777656369b3b998a83bbd89902e04b0a11b2e1e6d97f60a00d2951",
+      "sha256": "6bbbf1326da7f68622d5be4807a3d84f23b5e5e0ce0249240540dacc9efffa84",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c2608bb59653def8c764188f0a7bf29df7a48fe09dc7a8085887b5a2d928a73a",
+      "sha256": "d969fc0f3fda031c590d217d3c85be7cdc9bb327aa21b7cd646378be20e452fb",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/satchel-canonical-readonly-deposit-receipt-c3-20261015",
-    "commit": "b61092ce13086e4716882384bcbf572cd0d2b223"
+    "branch": "feat/satchel-immutable-uncredited-receipt-admission-20261015",
+    "commit": "6c9107e549bc402528a944dccd3a579631dfa6d2"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
