@@ -15,6 +15,55 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## C3c — canonical WoloChain bank-send candidate audit, no live funds (October 15, 2026)
+
+`lib/warSatchelCanonicalReceipt.ts` and
+`POST /api/user/war-satchel/deposit-evidence` add an independent
+**owner-authenticated read-only** chain-evidence path for an already
+server-prepared, immutable C2 intent. Unlike C3b's 8092 betting-escrow
+verifier, the new validator inspects the actual canonical public
+`wolo-1` RPC head and transaction REST bytes at one exact 64-hex hash,
+hardcoded to `rpc-mainnet.aoe2war.com` and
+`rest-mainnet.aoe2war.com`. It does **not** assume the betting escrow
+is or can become the separate Satchel custody vault.
+
+All endpoints are bounded, fixed-host, no redirects, 6.5-second
+timeouts and at most 256 KiB per JSON response. The API requires a
+signed-in owner, strict same-origin POST with exactly one UUID
+`intentId` and one 64-hex `txHash`, the same persisted linked Keplr
+wallet, an active immutable `prepared` intent on `wolo-1`, and a
+separately certified vault distinct from known betting/challenge,
+staking, payout and community treasury addresses. It verifies
+transaction success, canonical chain id, synced final height with at
+least **three confirmations**, on-chain time **within the C2 intent's
+original 30-minute lifetime**, exact owner-bound memo, one—and only
+one—`/cosmos.bank.v1beta1.MsgSend` sending the precise
+`uwolo` amount from owner to vault, and rejects mixed-denom or
+multiple-bank-message transactions.
+
+Feature flags `WAR_SATCHEL_CANONICAL_RECEIPT_AUDIT_ENABLED=true` and
+`WAR_SATCHEL_OWNER_PROOF_ENABLED=true` are both required to run a
+read-only audit. **Leave both OFF in production until reviewed.** A
+successful response is only
+`CANONICAL_EVIDENCE_ONLY_UNCREDITED`, with all
+`depositAuthorized=false`, `creditAuthorized=false`,
+`wagerAuthorized=false`. It returns no transfer destination or
+memo. No API mutation, bank transaction, deposit admission, ledger
+posting, available balance, withdrawal, stake, bet or automation is
+introduced. A verified transaction candidate does **not** prove
+vault signer segregation, independently attested reserve, historical
+unique credit admission, or withdrawal viability.
+
+**Remaining C3/C4/C5 gate:** independently provision and certify the
+vault/signer, live balanced immutable asset/liability journal,
+globally exactly-once receipt admission, atomic reservation,
+accepted-Watcher ticket debit, unmatched/full refunds, and withdrawals;
+then protect and canary a certified app/Wolo deployment. The older
+simulation-only ledger and nonfundable C2 prepared intents still
+CANNOT represent real customer WOLO. The `LOAD SATCHEL` button
+remains unavailable and no auto bets execute. No feature flag should
+be switched on to make the presentation appear funded.
+
 ## C2c — signed-owner bound, NON-FUNDABLE deposit intent preparation (October 15, 2026)
 
 `app/api/user/war-satchel/funding-intents/route.ts` creates an immutable
