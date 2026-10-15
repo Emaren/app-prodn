@@ -41,6 +41,31 @@ memory before closing the work.
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
 
+## 2026-10-15 — HTTP authorization evidence must not be guessed from filenames
+
+The HD web has 261 app/api HTTP route files, with many legitimate authority
+styles: requireAdmin, getSessionUid, dedicated replay-review access gates,
+OS bridge tokens, and delegated business-function authorization. A static
+scanner that assumes every route without a literal requireAdmin is
+unauthenticated would invent vulnerabilities and encourage risky mass rewrites.
+
+Code Health OS therefore exposes an independent read-only
+aoe2war route-authority --json census of exported HTTP methods, mutation
+surfaces, local guard-symbol evidence, and body-reader symbols. It reports
+manual authority-trace candidates only when a mutating sensitive-named route
+has no matching local signal. These are REVIEW prompts, NOT a vulnerability,
+security grade, skipped guard, or runtime proof. A guard can be inside
+a delegated helper; a local symbol can appear in a comment without running.
+Follow actual imported helper calls, role/session checks, input bounds,
+idempotency and error paths before opening a defect or proposing a patch.
+
+The census is deterministic, bounded, read-only, no secret/source content
+printed, no network/database/wallet calls, no new agent mutation authority.
+CI observes existing debts but fails only on analyzer execution errors.
+Behaviour-changing fixes require independent negative tests and explicit
+financial/replay signoff. Do not infer live dashboard or deployed 100/100
+from source inventory.
+
 ## 2026-10-15 — TypeScript type-only imports are not runtime cycle evidence
 
 The first Module Graph OS hosted census counted three cycles across 1,174
