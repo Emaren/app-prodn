@@ -40,6 +40,10 @@ function loadProductionModule(relativePath: string): Record<string, unknown> {
   const originalRequire = createRequire(filename);
   mod.require = (specifier: string): unknown => {
     if (specifier === "@/hooks/use-keplr") return DISCONNECTED_KEPLR;
+    if (specifier === "@/components/profile/WarSatchelWalletProof") {
+      // Execute the actual optional Keplr-owner component, not an inert stub.
+      return loadProductionModule("components/profile/WarSatchelWalletProof.tsx");
+    }
     if (specifier === "@/hooks/useWoloBalance") {
       return loadProductionModule("hooks/useWoloBalance.ts");
     }
