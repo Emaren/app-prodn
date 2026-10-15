@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/bet-ticket-monotonic-broadcast-20261015",
-    "commit": "e52b36b1407855ad776a99fa2f3ec278c210bdcd"
+    "branch": "audit/internal-route-authority-review-20261015",
+    "commit": "f92e0984afc66d6c4eda91edd0eddec7ed0603a9"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
