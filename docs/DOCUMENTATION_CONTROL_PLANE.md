@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `audit/internal-route-authority-review-20261015` at `f92e0984afc66d6c4eda91edd0eddec7ed0603a9`
+Implementation baseline: `fix/profile-wolo-claim-proof-boundary-20261015` at `160022a0d545ed97c0724006c5f1954a505b5dd0`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
