@@ -15,6 +15,35 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## October 15, 2026 — one canonical vault collision policy for both Satchel gates
+
+The C2 nonfundable intent route and C3 canonical receipt route each had
+separate vault-exclusion lists. The preparation route omitted the
+community Treasury and neither route rejected all known existing
+mainnet wallets when some role addresses were absent from the
+environment. This could allow a seemingly independent Satchel vault
+candidate to reuse treasury, founder, player, staking, escrow or payout
+addresses. Nothing had been credited, but the divergent prerequisites
+would undermine future owner-bound custody certification.
+
+`warSatchelVaultDistinctFromKnownWallets` now rejects every address
+in the authoritative known WOLO mainnet wallet catalog plus all
+currently supplied custody/role addresses. Both preparation and
+canonical chain-audit gates share the same predicate, including the
+existing treasury environment alias resolver. Tests enumerate all
+registered wallets and verify conflicting configured addresses and
+legacy aliases. These checks are additive; the existing minimum
+configuration guard, strict chain, wallet proof, nonce, expiry,
+exact receipt, uncredited status and feature flags remain intact.
+
+This is **candidate isolation only**. A newly unknown address passing
+the predicate is NOT certified as a segregated vault or solvent
+escrow. Neither endpoint can yet authorize a Keplr transfer, a live
+Satchel credit, a withdrawal or an automatic bet. A dedicated vault
+must receive independent signer-control, chain-proof, accounting and
+rescue certification before any wallet funding is enabled.
+
+
 ## October 15, 2026 — simulation ledger valid-release regression correction
 
 The C3a simulation-only cross-player owner-isolation function had an
