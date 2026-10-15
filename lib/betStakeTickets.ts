@@ -706,9 +706,18 @@ export async function bindBetStakeTicketBroadcast(
           "That WOLO transfer is already attached to another stake."
         );
       }
+      // An exact replay of a verified transfer is already bound to this
+      // ticket. Rewriting it to broadcast_submitted would roll verification
+      // authority backwards if the subsequent network check fails.
+      // Keep recorded immutable as before, and retain verified proof on
+      // same-hash retries. New/different hashes still use the existing
+      // ticket + transfer locks and conflict checks above.
       if (
-        current.status ===
-        "recorded"
+        current.status === "recorded" ||
+        (
+          current.status === "verified_unrecorded" &&
+          current.stakeTxHash === input.stakeTxHash
+        )
       ) {
         return current;
       }
