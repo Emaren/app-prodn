@@ -41,6 +41,22 @@ memory before closing the work.
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
 
+## 2026-10-15 — Satchel vault policy must exclude existing WOLO role wallets
+
+Preparing a nonfundable Satchel intent and reviewing a canonical
+transaction used subtly different wallet-exclusion lists. The
+preparation gate omitted community Treasury and both missed the
+full registered mainnet wallet catalog. A dedicated asset/liability
+vault must not silently be one of the site's historical treasury,
+player, founder, payout, staking or escrow addresses.
+
+Both gates now share the catalog-plus-environment exclusion
+predicate, including Treasury aliases. Regression tests cover all
+catalogued addresses and novel candidates. Passing this local guard
+is **never** signer, solvency, custody, deposit or payout approval;
+the existing C2/C3 feature flags and `creditAuthorized=false`
+remain enforced.
+
 ## 2026-10-15 — Generic internal HTTP writes must not evade the route authority review queue
 
 The first HD route-authority census checked mutating API files with sensitive
