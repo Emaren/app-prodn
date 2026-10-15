@@ -99,7 +99,7 @@ test("public route remains nonfundable, authenticated, strict-URL, bounded, and 
   assert.match(route, /vaultAddress: vault, status: "prepared"/);
   assert.match(route, /redirect: "error"/);
   assert.match(route, /readWarSatchelBoundedUtf8\(response.body, LIMIT\)/);
-  assert.match(route, /state: "CANONICAL_EVIDENCE_ONLY_UNCREDITED"/);
+  assert.match(route, /state: recorded\\?\\.state \\|\\| "CANONICAL_EVIDENCE_ONLY_UNCREDITED"/);
   assert.match(route, /creditAuthorized: false, wagerAuthorized: false/);
   assert.doesNotMatch(route, /signAndBroadcast|sendTokens|executeWoloPayout|\.create\(|\.update\(|\.delete\(|BetStakeTicket/);
   assert.doesNotMatch(route, /vaultAddress: vault, transferMemo: /);
