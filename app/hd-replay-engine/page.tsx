@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import HdReplayEngine from "@/components/replay-engine/HdReplayEngine";
 import { projectHdReplayEngine } from "@/lib/hdReplayEngine";
 import { loadPublicParserObservatory } from "@/lib/parserObservatory";
+import { loadPhoenixDashboardCache } from "@/lib/phoenixRecoveryDashboardCache";
 
 import "./engine.css";
 
@@ -19,5 +20,5 @@ export default async function HdReplayEnginePage() {
     .then(projectHdReplayEngine)
     .catch(() => null);
 
-  return <HdReplayEngine initial={snapshot} />;
+  return <HdReplayEngine initial={snapshot} phoenix={loadPhoenixDashboardCache()} />;
 }

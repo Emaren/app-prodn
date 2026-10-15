@@ -278,7 +278,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "Bet and Replay Reliability Release — 2026-07-29",
+      "title": "Bet and Replay Reliability Release \u2014 2026-07-29",
       "type": "historical"
     },
     {
@@ -487,7 +487,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "Championship Hall E5 — presentation and release contract",
+      "title": "Championship Hall E5 \u2014 presentation and release contract",
       "type": "reference"
     },
     {
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e0476e536903bb6fc07ddb60b5e2ed92dc66b80c60ca5b97522ced7710d1b4eb",
+      "sha256": "ada304b375e0b9cb5285e6c02663ac7a6fac308c5e9d7bcd590a3eb10881feda",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1266,7 +1266,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "AoE2WAR Production Performance Audit — 2026-07-18",
+      "title": "AoE2WAR Production Performance Audit \u2014 2026-07-18",
       "type": "historical"
     },
     {
@@ -1288,7 +1288,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "AoE2WAR Production Performance Audit — 2026-08-13",
+      "title": "AoE2WAR Production Performance Audit \u2014 2026-08-13",
       "type": "historical"
     },
     {
@@ -1319,6 +1319,29 @@
         "operators",
         "ai-agents"
       ],
+      "authority": "research-presentation-contract",
+      "id": "aoe2war.app-prodn.docs-phoenix-recovery-dashboard",
+      "owner": "aoe2war-web",
+      "path": "docs/PHOENIX_RECOVERY_DASHBOARD.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-10-15",
+      "sensitivity": "internal",
+      "sha256": "60e4f3d311866e91f5ec239cd32e6542c09ccad5e37be62a30268d9c2a05e3be",
+      "source_of_truth": "git",
+      "status": "active",
+      "systems": [
+        "app-prodn",
+        "api-prodn"
+      ],
+      "title": "Phoenix Recovery Dashboard",
+      "type": "reference"
+    },
+    {
+      "audience": [
+        "developers",
+        "operators",
+        "ai-agents"
+      ],
       "authority": "implementation-contract",
       "id": "aoe2war.app-prodn.docs-player-identity-discovery-wave2",
       "owner": "aoe2war-web",
@@ -1333,7 +1356,7 @@
         "app-prodn",
         "api-prodn"
       ],
-      "title": "Player Identity Wave 2 — Deterministic Discovery V2",
+      "title": "Player Identity Wave 2 \u2014 Deterministic Discovery V2",
       "type": "reference"
     },
     {
@@ -1380,7 +1403,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "AoE2WAR Production Parity Seal — 2026-07-26",
+      "title": "AoE2WAR Production Parity Seal \u2014 2026-07-26",
       "type": "historical"
     },
     {
@@ -1472,7 +1495,7 @@
         "app-prodn",
         "wolochain"
       ],
-      "title": "AoE2WAR Certified Release Engineering Seal — 2026-08-10",
+      "title": "AoE2WAR Certified Release Engineering Seal \u2014 2026-08-10",
       "type": "historical"
     },
     {
@@ -1542,7 +1565,7 @@
         "aoe2-watcher",
         "wolochain"
       ],
-      "title": "Replay Statistics and Operations Release — 2026-07-25",
+      "title": "Replay Statistics and Operations Release \u2014 2026-07-25",
       "type": "historical"
     },
     {
@@ -2065,7 +2088,7 @@
       "systems": [
         "app-prodn"
       ],
-      "title": "War Room Forum — Saturday July 4, 2026 Edition",
+      "title": "War Room Forum \u2014 Saturday July 4, 2026 Edition",
       "type": "historical"
     },
     {
@@ -2093,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/wolo-ambiguous-payout-no-retry-or-rescind-20261015",
-    "commit": "cf71bb9ce62c28318fd53fd44cac8dcae41d0f40"
+    "branch": "feat/phoenix-recovery-dashboard-20261014",
+    "commit": "7523f9d190e70d79e76b84417cca15158010efe4"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

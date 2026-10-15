@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/wolo-ambiguous-payout-no-retry-or-rescind-20261015` at `cf71bb9ce62c28318fd53fd44cac8dcae41d0f40`
+Implementation baseline: `feat/phoenix-recovery-dashboard-20261014` at `7523f9d190e70d79e76b84417cca15158010efe4`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
@@ -27,7 +27,7 @@ This page is generated from the validated front matter in this repository. Cross
 
 ## Documentation health
 
-- Authoritative repository documents: **91**
+- Authoritative repository documents: **92**
 - Path moves in this migration: **0**
 - Every listed document has an explicit owner, lifecycle, authority, and review interval.
 
@@ -36,13 +36,13 @@ This page is generated from the validated front matter in this repository. Cross
 - `explanation`: 5
 - `generated`: 1
 - `historical`: 12
-- `reference`: 55
+- `reference`: 56
 - `runbook`: 17
 - `working`: 1
 
 ### Lifecycle
 
-- `active`: 75
+- `active`: 76
 - `generated`: 1
 - `historical`: 12
 - `superseded`: 3
@@ -107,6 +107,7 @@ This page is generated from the validated front matter in this repository. Cross
 | [AoE2WAR Production Performance Audit — 2026-07-18](PERFORMANCE_AUDIT_2026-07-18.md) | `historical` | `historical` | `historical-evidence` |
 | [AoE2WAR Production Performance Audit — 2026-08-13](PERFORMANCE_AUDIT_2026-08-13.md) | `historical` | `historical` | `release-evidence` |
 | [AoE2WAR Performance OS](PERFORMANCE_OS.md) | `reference` | `active` | `performance-operating-contract` |
+| [Phoenix Recovery Dashboard](PHOENIX_RECOVERY_DASHBOARD.md) | `reference` | `active` | `research-presentation-contract` |
 | [Player Identity Wave 2 — Deterministic Discovery V2](PLAYER_IDENTITY_DISCOVERY_WAVE2.md) | `reference` | `active` | `implementation-contract` |
 | [Player War Archive Operations](PLAYER_WAR_ARCHIVE_OPERATIONS.md) | `runbook` | `active` | `operational-procedure` |
 | [AoE2WAR Production Parity Seal — 2026-07-26](PRODUCTION_PARITY_2026-07-26.md) | `historical` | `historical` | `historical-evidence` |

@@ -10,6 +10,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { ReplayEngineCase, ReplayEngineSnapshot } from "@/lib/hdReplayEngine";
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
+import PhoenixRecoveryDashboard from "@/components/replay-engine/PhoenixRecoveryDashboard";
+import type { PhoenixDashboardSnapshot } from "@/lib/phoenixRecoveryDashboard";
 
 const REFRESH_MS = 120_000;
 const integer = (value: number) => value.toLocaleString("en-US");
@@ -69,11 +71,12 @@ function Stat({ label, value, sub, tone = "neutral" }: {
 }
 
 function EngineRing({ value, resolved, total }: {
-  value: number; resolved: number; total: number;
+  value: number | null; resolved: number | null; total: number | null;
 }) {
-  const pct = Math.max(0, Math.min(100, value / 100));
+  const available = value !== null && resolved !== null && total !== null;
+  const pct = available ? Math.max(0, Math.min(100, value / 100)) : 0;
   return (
-    <div className="replay-ring-assembly" aria-label={`Verified results: ${percent(value)}`}>
+    <div className="replay-ring-assembly" aria-label={available ? `Verified results: ${percent(value)}` : "Verified result coverage unavailable"}>
       <div className="replay-ring-outer">
         <div className="replay-ring-marks" />
         <div className="replay-ring-rotation" />
@@ -82,10 +85,10 @@ function EngineRing({ value, resolved, total }: {
         }}>
           <div className="replay-ring-center">
             <span className="replay-eyebrow text-stone-400">RESULT TRUTH</span>
-            <strong className="mt-1 font-mono text-[clamp(2rem,4vw,3.7rem)] font-semibold leading-none tracking-[-0.085em] text-stone-50">{percent(value)}</strong>
-            <span className="mt-2 font-mono text-[11px] text-stone-400">{integer(resolved)} / {integer(total)}</span>
+            <strong className="mt-1 font-mono text-[clamp(2rem,4vw,3.7rem)] font-semibold leading-none tracking-[-0.085em] text-stone-50">{available ? total === 0 ? "—" : percent(value) : "—"}</strong>
+            <span className="mt-2 font-mono text-[11px] text-stone-400">{available ? `${integer(resolved)} / ${integer(total)}` : "Source unavailable"}</span>
             <div className="mt-4 flex items-center gap-2 text-[10px] uppercase tracking-[.18em] text-emerald-200/75">
-              <StatusLight subdued /> Evidence bound
+              <StatusLight subdued /> {available ? total === 0 ? "Empty corpus" : "Evidence bound" : "Awaiting evidence"}
             </div>
           </div>
         </div>
@@ -200,8 +203,9 @@ function CaseTile({ game, expanded, onToggle }: {
 
 type CohortTab = "reason" | "owner" | "player" | "format" | "map";
 
-export default function HdReplayEngine({ initial }: {
+export default function HdReplayEngine({ initial, phoenix }: {
   initial: ReplayEngineSnapshot | null;
+  phoenix: PhoenixDashboardSnapshot | null;
 }) {
   const [data, setData] = useState(initial);
   const [syncing, setSyncing] = useState(false);
@@ -295,8 +299,8 @@ export default function HdReplayEngine({ initial }: {
                 <Link className="replay-action-muted" href="/game-stats">Parser Observatory <ArrowUpRight size={13} /></Link>
               </div>
             </div>
-            <div className="flex items-center justify-center"><EngineRing value={counts?.resultCoverageBps ?? 0}
-              resolved={counts?.verifiedResult ?? 0} total={counts?.final ?? 0} /></div>
+            <div className="flex items-center justify-center"><EngineRing value={counts?.resultCoverageBps ?? null}
+              resolved={counts?.verifiedResult ?? null} total={counts?.final ?? null} /></div>
           </div>
           <div className="relative z-10 mt-7 flex flex-wrap items-center justify-between gap-2 border-t border-[#c9a36d]/15 pt-4">
             <span className="replay-eyebrow text-stone-500">OBSERVATORY / PUBLIC FINAL-RECORD GRAIN</span>
@@ -309,6 +313,8 @@ export default function HdReplayEngine({ initial }: {
             Could not refresh replay evidence. {data ? "Displaying the last known snapshot, not live activity." : "No verified snapshot is available. Counts remain unavailable."}
           </div>
         )}
+
+        <PhoenixRecoveryDashboard snapshot={phoenix} />
 
         <section aria-label="Replay corpus key counts" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           <Stat label="Final replay records" value={counts ? integer(counts.final) : "—"}
@@ -478,36 +484,6 @@ export default function HdReplayEngine({ initial }: {
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-[11px] text-stone-500">
             <span>Evidence gates are discrete checks (0–4), not a probabilistic “percent finished.”</span>
             <Link href="/game-stats" className="inline-flex items-center gap-1 text-amber-200/80 hover:text-white">Open full Parser Observatory <ArrowUpRight size={13} /></Link>
-          </div>
-        </section>
-
-        <section className="replay-panel p-5 sm:p-7">
-          <SectionIndex number="08" title="The research frontier" marker="SEALED OCT 12 CHECKPOINT · NOT LIVE CODEX" />
-          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <div className="replay-subpanel">
-              <span className="replay-eyebrow !text-emerald-200/75">Verified engineering</span>
-              <strong>Terminal veto</strong>
-              <p className="mt-2 text-xs leading-5 text-stone-400">Unsafe disconnect and conflicting terminal evidence can no longer be bypassed by legacy candidate flags.</p>
-            </div>
-            <div className="replay-subpanel">
-              <span className="replay-eyebrow !text-amber-200/75">Unresolved semantics</span>
-              <strong>Action 34</strong>
-              <p className="mt-2 text-xs leading-5 text-stone-400">Packet and dispatcher identified. Winner-affecting callback effects still unproven.</p>
-            </div>
-            <div className="replay-subpanel">
-              <span className="replay-eyebrow !text-[#9dcad9]">Latest research lead</span>
-              <strong>Legacy formats</strong>
-              <p className="mt-2 text-xs leading-5 text-stone-400">Checking whether version-specific result witnesses are rejected by an HD-only terminal verifier.</p>
-            </div>
-            <div className="replay-subpanel">
-              <span className="replay-eyebrow !text-amber-200/75">Phase II outcome</span>
-              <strong>0 new winners</strong>
-              <p className="mt-2 text-xs leading-5 text-stone-400">Three candidate-only parses. First independently proven historical recovery still awaited.</p>
-            </div>
-          </div>
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3 text-[11px] text-stone-500">
-            <span>Research cards are an explicitly dated checkpoint. They do not auto-update from the separate Codex worktree.</span>
-            <span className="inline-flex items-center gap-2"><Clock3 size={13} /> OCT 12, 2026 · PHASE II SEALED</span>
           </div>
         </section>
 
