@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/bet-ticket-monotonic-broadcast-20261015` at `86cfa03fad8a037964ad6ccb1141ca6b7b9e3cd0`
+Implementation baseline: `fix/bet-ticket-monotonic-broadcast-20261015` at `e52b36b1407855ad776a99fa2f3ec278c210bdcd`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
