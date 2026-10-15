@@ -36,7 +36,7 @@ async function jsonReply(res: Response): Promise<Record<string, unknown>> {
   return body as Record<string, unknown>;
 }
 
-/** Gate C2: off-chain control only, no MsgSend, custody, or live wager. */
+/** Gate C2: off-chain signature proof only, no funds move or wagers. */
 export default function WarSatchelWalletProof({ walletAddress }: { walletAddress: string }) {
   const [available, setAvailable] = useState(false);
   const [busy, setBusy] = useState(false);
