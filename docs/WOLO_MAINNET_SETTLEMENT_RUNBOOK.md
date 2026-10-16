@@ -31,7 +31,7 @@ execution code is parsed strictly: explicit nonzero rejects, malformed
 or explicitly null codes reject. **Missing code is accepted ONLY with
 the complete canonical envelope** because Cosmos' Go JSON
 `omitempty` legitimately omits a successful zero. The endpoint is
-accessed without redirects, on a 6.5-second timeout, and the response
+accessed with mandatory HTTP 200 (not partial HTTP 206), without redirects, on a 6.5-second timeout, and the response
 is bounded to 750,000 bytes even for chunked transfers. Missing,
 oversized, mismatched, or failed evidence returns zero sends.
 
