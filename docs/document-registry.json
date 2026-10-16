@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "bba6819561b6e2f97d8ffd5a26031c16d797f17908beedfe26362e1df701a01b",
+      "sha256": "574d8f8d8ce7c799ea45372eada03b44679c08ade5938b60bf6a35a767143084",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2117,7 +2117,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/payout-evidence-amount-hash-boundary-20261015",
-    "commit": "476b2dd46f11777d5519d29f8f6782d01e9da48f"
+    "commit": "bf0bfcd978b3bfa4d8640203e5bb15fd0ae284cb"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
