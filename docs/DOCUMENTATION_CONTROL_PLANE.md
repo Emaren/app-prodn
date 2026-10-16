@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/satchel-canonical-rest-zero-code-20261016` at `c45e005e88a6c155dc7abc22b0f522982a8221b5`
+Implementation baseline: `perf/kingdom-os-single-inspection-snapshot-20261016` at `2ee4a8a05cd904c74b802f2f7b71f6668b0fae94`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
