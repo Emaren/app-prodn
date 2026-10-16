@@ -9,7 +9,7 @@ import {
   toUwoLoAmount,
 } from "@/lib/woloChain";
 
-type ClaimGuardDb = Pick<PrismaClient, "pendingWoloClaim" | "user"> | Prisma.TransactionClient;
+type ClaimGuardDb = Pick<PrismaClient, "pendingWoloClaim"> | Prisma.TransactionClient;
 
 export type WoloMsgSend = {
   index: number;
@@ -51,13 +51,6 @@ export type ClaimPayoutGuardResult = {
   matchingSendCount: number;
   totalSendCount: number;
   existingClaimCount: number;
-};
-
-type ExistingClaimUse = {
-  id: number;
-  txHash: string;
-  toAddress: string | null;
-  amountWolo: number;
 };
 
 function normalizeTxHash(value: string | null | undefined) {
@@ -358,44 +351,19 @@ export async function validateDistinctClaimPayoutTxBatch(
         payoutTxHash: { in: txHashVariants },
         ...(incomingIds.length > 0 ? { id: { notIn: incomingIds } } : {}),
       },
-      select: {
-        id: true,
-        amountWolo: true,
-        claimedByUserId: true,
-      },
+      select: { id: true },
     });
-    const userIds = Array.from(
-      new Set(
-        existingRows
-          .map((row) => row.claimedByUserId)
-          .filter((id): id is number => typeof id === "number")
-      )
-    );
-    const users = userIds.length
-      ? await prisma.user.findMany({
-          where: { id: { in: userIds } },
-          select: { id: true, walletAddress: true },
-        })
-      : [];
-    const walletByUserId = new Map(
-      users.map((user) => [user.id, normalizeAddress(user.walletAddress)] as const)
-    );
-    const existingUses: ExistingClaimUse[] = existingRows.map((row) => ({
-      id: row.id,
-      txHash,
-      amountWolo: row.amountWolo,
-      toAddress:
-        typeof row.claimedByUserId === "number"
-          ? walletByUserId.get(row.claimedByUserId) ?? null
-          : null,
-    }));
-    const existingKeys = existingUses
-      .map((row) => sendKey(row.toAddress, row.amountWolo))
-      .filter((key): key is string => Boolean(key));
+    // A claimed row records a tx hash, but does NOT retain an immutable
+    // payout-recipient/source/MsgSend ordinal. Looking up that user's
+    // *current* linked wallet can silently misattribute an old transfer
+    // after a wallet rotation. Do not re-use an already consumed tx hash
+    // across separate claim operations based on mutable profile data.
+    // A single fresh batch can still allocate distinct sends together.
+    const hasUnboundHistoricalTxUse = existingRows.length > 0;
     const incomingKeys = txEntries
       .map((entry) => sendKey(entry.toAddress, entry.amountWolo))
       .filter((key): key is string => Boolean(key));
-    const requiredByKey = countByKey([...existingKeys, ...incomingKeys]);
+    const requiredByKey = countByKey(incomingKeys);
     const availableByKey = countByKey(
       lookup.sends.map((send) => `${send.toAddress}|${send.amountUwolo}`)
     );
@@ -407,7 +375,6 @@ export async function validateDistinctClaimPayoutTxBatch(
       })),
       lookup.sends,
     );
-    const missingExistingWalletCount = existingUses.filter((row) => !row.toAddress).length;
     const anyPairOverAllocated = Array.from(requiredByKey.entries()).some(
       ([key, requiredCount]) => (availableByKey.get(key) ?? 0) < requiredCount
     );
@@ -417,11 +384,11 @@ export async function validateDistinctClaimPayoutTxBatch(
       const matchingSendCount = key ? availableByKey.get(key) ?? 0 : 0;
       const failure =
         baseFailure ||
-        (missingExistingWalletCount > 0
+        (hasUnboundHistoricalTxUse
           ? {
-              code: "EXISTING_CLAIM_WALLET_UNVERIFIED",
+              code: "HISTORICAL_TX_REUSE_UNVERIFIED",
               detail:
-                "WOLO payout tx is already used by a claimed row without a verifiable recipient wallet. Admin review required before reusing this tx.",
+                "WOLO payout tx is already attached to a claimed row without an immutable sender, recipient and MsgSend ordinal. A current profile wallet is not historical payment proof. Independent settlement review required.",
             }
           : null) ||
         (anyPairOverAllocated
