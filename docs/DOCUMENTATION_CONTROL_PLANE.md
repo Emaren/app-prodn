@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/satchel-canonical-proof-int64-bounds-20261016` at `feaec158d818406112ec09e6e956c2a5758dbeab`
+Implementation baseline: `fix/satchel-canonical-proof-int64-bounds-20261016` at `2ace179fd528f8213524f42f1a2ee205f68f5148`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
