@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/public-aoe2war-os-command-deck-20261015` at `1f49356fd345962a803c7d8938ddb0d7beef7548`
+Implementation baseline: `feature/public-aoe2war-os-command-deck-20261015` at `d50adffca22035c911be910b920415d35827a5a1`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
