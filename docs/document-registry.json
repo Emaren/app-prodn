@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "f66e636737f08f5e81c8dad1f2b453e5ddc6afcae2d280dd2d0a814a19b1a278",
+      "sha256": "287bc81c6b78eb9b07276f880d1f086b0080a7ab1ec74af516ad0690cb3eef81",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-15",
       "sensitivity": "internal",
-      "sha256": "1697d3963a8af703b08770d63935b0da31015a6318bef6598dc236c2cb20e43e",
+      "sha256": "fa04c7550355bbbb1c2ee590155b2f5cf786b6a905a0bb4c754da090c39a25cc",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/settlement-tx-transport-bounds-20261015",
-    "commit": "2517df89da79ed343ec9e0589816b25cc76f9040"
+    "branch": "hardening/node-test-failure-diagnostics-20261016",
+    "commit": "6a7fdca226bd17fd9aac4b51cd5b0c7b4547a8e7"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
