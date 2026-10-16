@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "8f7a10ad2ba8b054d9628343a5f15f97b926218d5336a48cc02d842f8f29e155",
+      "sha256": "29d441a63f400d39c7a23bedf74f6385849a4490f0f626d7b0677168d984fecf",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "069ee7fe71107748e92b8d20704eecaf10291e49ed83a95e368ae635543c00f1",
+      "sha256": "daf88866bab6844e9475413a533f33322063e1a77c5fb0f60d217cedb7cae094",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-15",
       "sensitivity": "internal",
-      "sha256": "eb98f1c7ca5e0a379964e17f0cfa33530c41dd8057e2b8ed4dbb5767e69e3b44",
+      "sha256": "05b627baf0438d1d0df20b760afa69cb21100c601dc1a54028cdb3d1b78eb4b6",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2117,7 +2117,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/mecha-active-session-market-census-20261016",
-    "commit": "6c97a1f36d3d2ce1f616799608d1d7019d4b2874"
+    "commit": "661daa1942d7a04961d7edacfb0bffdd853926f1"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
