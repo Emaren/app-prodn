@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e074776487ba9ce093799da6cf409a50eab0f443659cdeab23f30b5edafa72a0",
+      "sha256": "e9a1b4f00622bc1ba0b517ab8d76cdab85cf742b26ead9516bfb0af2eb9faea8",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-15",
       "sensitivity": "internal",
-      "sha256": "175081d743671cdb5c77a52baf6cd264aa4baef1d56efbb297252ab7105b7514",
+      "sha256": "71920700bacc586865e45be4309a85aa5df8c12922496219c2e0e7e3fdd84142",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -940,7 +940,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-06",
       "sensitivity": "internal",
-      "sha256": "74511b8c75f403dc43cf6bb5104f06790b6b642c64fdf267795afdf07bcc8d19",
+      "sha256": "4b638f67513cbb8b2dce8d2d9b3fe32435cc85a8407cb0c9cf4e02a4b0be3fe6",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/satchel-canonical-rest-zero-code-20261016",
-    "commit": "c45e005e88a6c155dc7abc22b0f522982a8221b5"
+    "branch": "perf/kingdom-os-single-inspection-snapshot-20261016",
+    "commit": "2ee4a8a05cd904c74b802f2f7b71f6668b0fae94"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
