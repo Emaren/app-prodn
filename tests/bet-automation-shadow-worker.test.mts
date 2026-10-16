@@ -625,6 +625,13 @@ test("shadow market census excludes 100 newer unrelated games without losing an 
     childMarkets: [],
   }));
   const target = { ...market(), childMarkets: [] };
+  // Every unrelated market even has a live Watcher session, but none
+  // belongs to a user with an enabled self-only preset.
+  const unrelatedSessions = unrelated.map((item, i) => session({
+    sessionKey: item.linkedSessionKey ?? "invalid",
+    identityAliases: [],
+    uploaders: [{ uid: "unrelated-uploader-" + i }],
+  }));
   const observed: { linkedSessionKey: { in: string[] } }[] = [];
   const created: Array<Record<string, unknown>> = [];
   const db = {
@@ -652,7 +659,7 @@ test("shadow market census excludes 100 newer unrelated games without losing an 
     },
   };
   const result = await runBetAutoShadowWorker(db as never, {
-    activeSessions: [session()] as never,
+    activeSessions: [session(), ...unrelatedSessions] as never,
     env: { BET_AUTOMATION_MODE: "shadow" },
   });
   assert.deepEqual(observed[0]?.linkedSessionKey.in.sort(),
@@ -694,6 +701,7 @@ test("source narrows the Mecha user DB query while preserving independent canoni
   );
   assert.match(source, /user: \{ uid: \{ in: activeUploaderUids \} \}/);
   assert.match(source, /linkedSessionKey: \{ in: activeSessionKeys \}/);
+  assert.match(source, /const activePresetUids = new Set\(presets\.map/);
   assert.match(source, /take: 101/);
   assert.match(source, /BET_AUTO_SHADOW_ACTIVE_MARKET_COHORT_OVERFLOW/);
   assert.match(source, /evaluateBetAutoShadowAdmission\(/);
