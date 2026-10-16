@@ -187,7 +187,7 @@ export async function fetchWoloTxMsgSends(
     };
   }
 
-  if (!response.ok) {
+  if (!response.ok || response.status !== 200) {
     return {
       txHash: normalizedHash,
       restUrl,
