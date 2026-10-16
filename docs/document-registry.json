@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "623d2d3428ea5feb0f0475c705d34d59bc4965e80f43abb167017efd1f5b2cc2",
+      "sha256": "c87baf4cb5df0f027d5d17934e7364496dc47bcd9a4eab4d25dd66a67adbb778",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2117,7 +2117,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/mecha-stored-preset-readiness-source-20261015",
-    "commit": "85321a293c85a711809bcf13448412531a56d0ce"
+    "commit": "eba00b1c6757ec944390660fb7333322fc05ae84"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
