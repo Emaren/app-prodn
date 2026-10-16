@@ -145,8 +145,12 @@ export async function runBetAutoShadowWorker(
   // A global "newest 100 markets" query can silently miss the player's
   // still-live match behind 100 unrelated newer games.
   const sessionByIdentity = exactSessionIndex(options.activeSessions);
+  const activePresetUids = new Set(presets.map((preset) => preset.user.uid.trim()));
   const activeSessionKeys = [...sessionByIdentity.entries()]
-    .filter(([, session]) => session !== null)
+    .filter(([, session]) =>
+      session !== null &&
+      session.uploaders.some((uploader) => activePresetUids.has(uploader.uid.trim()))
+    )
     .map(([identity]) => identity);
   if (activeSessionKeys.length === 0) {
     return {
