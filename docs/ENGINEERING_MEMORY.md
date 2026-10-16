@@ -68,6 +68,32 @@ historical source evidence remains unproved: **do not assume the same
 escrow wallet paid every claim**, do not automatically retry #889,
 and never equate source-binding alone with unique payout request proof.
 
+## 2026-10-16 — Satchel C3 must understand Cosmos omitted zero and root Tx
+
+Satchel canonical receipt validation assumed a nested
+`tx_response.tx.body` and explicit `code:0`, rejecting legitimate
+Cosmos REST v1beta1 root `tx.body` and zero-code omitempty.
+It now recognizes both structures, refuses conflicting dual
+decoded bodies, rejects explicit malformed or failed codes,
+and retains the owner, exact memo, chain, amount and timing gates.
+A wire-shape match is *not* independently authenticated consensus
+nor permission to credit WOLO: Satchel custody stays unavailable.
+
+## 2026-10-16 — Current linked wallet is not the historical payout destination
+
+The mainnet payout guard previously retrieved current
+`User.walletAddress` for already-claimed rows sharing a transaction
+hash, then counted their old payouts against that mutable destination.
+Mixed-case hexadecimal transaction hashes also need database-level case-insensitive equality; testing just uppercase and lowercase variants can miss a prior use.
+A wallet change after payment makes that retroactive reconstruction
+unreliable. The guard now blocks cross-operation reuse of any
+already-consumed hash with `HISTORICAL_TX_REUSE_UNVERIFIED`, while
+preserving distinct send allocation inside a single current
+verification batch. This reduces runtime DB lookups and eliminates a
+false-proof path; it may conservatively require manual evidence review
+for legitimate historical multi-send cases. No actual payout was
+performed or historical row rewritten.
+
 ## 2026-10-16 — Claim payout REST must prove canonical tx identity before reading bank sends
 
 The legacy reconciliation helper defaulted unknown/malformed
@@ -149,17 +175,6 @@ Node/TS, Python/docs and production build CI. Future improvements must
 deliver **measured** faster signals, correct last-deploy receipts, more
 reliable agent actions, or reduced maintenance cost rather than merely
 more lights, manufactured 100s, or background polling.
-
-## 2026-10-16 — Satchel C3 must understand Cosmos omitted zero and root Tx
-
-Satchel canonical receipt validation assumed a nested
-`tx_response.tx.body` and explicit `code:0`, rejecting legitimate
-Cosmos REST v1beta1 root `tx.body` and zero-code omitempty.
-It now recognizes both structures, refuses conflicting dual
-decoded bodies, rejects explicit malformed or failed codes,
-and retains the owner, exact memo, chain, amount and timing gates.
-A wire-shape match is *not* independently authenticated consensus
-nor permission to credit WOLO: Satchel custody stays unavailable.
 
 ## 2026-10-15 — A saved Mecha plan must be invalid in *every* read model
 

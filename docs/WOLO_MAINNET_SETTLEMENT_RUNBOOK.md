@@ -15,6 +15,37 @@ sensitivity: "restricted"
 
 # WOLO Mainnet Settlement App Runbook
 
+## October 16, 2026 — prior claimed transaction hashes cannot be reallocated from current wallets
+
+Historical payout rows contain a transaction hash and `claimedByUserId`, but
+do **not** contain an immutable paid-recipient address, source-signer
+identity, or bank `MsgSend` ordinal. The previous proof guard looked
+up each prior claimant's **current** linked profile wallet and counted
+matching sends there. A later Keplr wallet rotation could therefore
+misidentify an earlier payment recipient, and allow a different transfer
+to stand in for a previously consumed proof.
+
+The guard now treats every separate previously claimed row bearing the
+same transaction hash as an **unresolved consumption boundary**.
+It uses case-insensitive database comparison of the complete transaction hash, so uppercase, lowercase and mixed-case hex all hit the same consumed-proof guard.
+It returns `HISTORICAL_TX_REUSE_UNVERIFIED`, without attempting to
+allocate that transaction again. No current-profile wallet lookup is
+used as evidence of the original recipient. Fresh distinct bank
+`MsgSend` effects within a **single** newly reviewed batch still
+receive the existing exact recipient/amount, cardinality, canonical
+chain-envelope and sender checks. A claimant's own row is excluded
+from the prior-use lookup for idempotent review of that same claim.
+
+This intentionally refuses some legitimate historical multi-payout
+transaction reuse until an operator independently reconstructs the
+original source, recipient, transaction ordinal and durable claim
+identity. It does **not** assume funds were unpaid, change a claim,
+broadcast funds, or license an automatic retry. Claim #889 and all
+ambiguous prior payout attempts remain on hold. A future immutable
+financial receipt journal can support exact historical reallocation
+without sacrificing this fail-closed guard.
+
+
 ## October 16, 2026 — canonical escrow sender binding in payout evidence
 
 The existing `validateDistinctClaimPayoutTxBatch` already used canonical
