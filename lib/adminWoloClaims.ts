@@ -11,6 +11,7 @@ import {
   buildBetStakeTicketMemo,
 } from "@/lib/betStakeMemo";
 import { normalizePublicPlayerName } from "@/lib/publicPlayers";
+import { uniquelyMatchedWoloClaimCandidate, WOLO_CLAIM_MATCH_CENSUS_LIMIT } from "./woloClaimUniqueNameOwner.ts";
 import { recordUserActivity } from "@/lib/userExperience";
 import { getWoloBetEscrowRuntime, isWoloMainnet } from "@/lib/woloChain";
 import { validateDistinctClaimPayoutTx } from "@/lib/woloClaimPayoutGuards";
@@ -780,17 +781,13 @@ export async function findMatchedClaimUser(
       steamPersonaName: true,
       walletAddress: true,
     },
-    take: 250,
+    // LIMIT + 1 is a fail-closed overflow sentinel, not a presumed
+    // complete census. Never pay the first visible matching name when
+    // the eligible population might hide another owner.
+    take: WOLO_CLAIM_MATCH_CENSUS_LIMIT + 1,
   });
 
-  return (
-    users.find((user) => {
-      const userKeys = [user.inGameName, user.steamPersonaName]
-        .map((value) => normalizeClaimKey(value))
-        .filter(Boolean);
-      return userKeys.some((key) => claimKeys.includes(key));
-    }) || null
-  );
+  return uniquelyMatchedWoloClaimCandidate(claimKeys, users, normalizeClaimKey);
 }
 
 export async function retryPendingClaimSettlement(

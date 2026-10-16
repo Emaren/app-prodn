@@ -29,6 +29,19 @@ behavior, authority, architecture, financial policy, recovery, release
 procedure, or debugging strategy, update the owning living contract and this
 memory before closing the work.
 
+## 2026-10-16 — Never pay the first matching legacy player name
+
+`findMatchedClaimUser` formerly chose `users.find(...)` from
+an unordered 250-account census. Two eligible users sharing one name
+could route financial claim retries to an arbitrary profile wallet.
+The new pure resolver requires exactly one candidate, and a LIMIT+1
+read detects unproven completeness above 250. An ambiguous or incomplete
+name cohort returns no payout recipient. Name uniqueness is necessary,
+not sufficient, for wallet-owner or historical entitlement proof. Tests
+cover duplicate aliases, input order, shared wallets, unsafe IDs and
+census overflow. A future scalable indexed resolver must preserve this
+fail-closed invariant, not simply raise the cap.
+
 ## 2026-10-16 — Registry SHA must hash UTF-8 bytes, not an ASCII-only approximation
 
 The source-bound documentation gate caught a malformed registry hash for
