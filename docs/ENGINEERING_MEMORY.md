@@ -167,6 +167,18 @@ a synthetic success. Source-contract tests guard exactly one call.
 This eliminates redundant inspection work; fresh server profiling
 is still needed before claiming a latency improvement.
 
+## 2026-10-15 — Unbounded legacy WOLO transaction lookups survived canonical claim proof fixes
+
+Newer payout-claim REST verification was byte/time bounded, but the
+shared legacy staking and escrow `fetchTx` still used unrestricted
+`Response.json()`, no deadline and default redirect handling.
+Created `woloBoundedTxLookup.ts`, reused the 750KB chunk-safe body
+reader, imposed no redirects and 6.5-second timeout, and routed the
+legacy lookup through it. Tested oversized chunks, malformed bodies,
+partial success, spoofed lengths and transport failure. This fixes
+resource/availability risk only; money proof and signer/custody gates
+remain independent and unchanged.
+
 ## 2026-10-16 — Claim payout REST must prove canonical tx identity before reading bank sends
 
 The legacy reconciliation helper defaulted unknown/malformed

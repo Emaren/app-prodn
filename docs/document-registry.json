@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "26d3a9c494f84d2c68d38e0b1cd800a4970447684a308a235987206ed1a6229a",
+      "sha256": "f66e636737f08f5e81c8dad1f2b453e5ddc6afcae2d280dd2d0a814a19b1a278",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-15",
       "sensitivity": "internal",
-      "sha256": "9e85ac092e9d78890dcb99006b3415af7e6b4a4d74f3478745407e0e6bce393f",
+      "sha256": "1697d3963a8af703b08770d63935b0da31015a6318bef6598dc236c2cb20e43e",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1971,7 +1971,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "restricted",
-      "sha256": "7e1cd4c3544228c5307c7529af1eb98798f7eff339f9388ae2ba724d9aa436d4",
+      "sha256": "4d0fb1b4a6c023a9179da579b495006c9b727ba5153e9f4229e19fd724ac11db",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/claim-payout-authorized-sender-provenance-20261016",
-    "commit": "e1827a97e2561a330a860c8408086bd0f224234f"
+    "branch": "fix/settlement-tx-transport-bounds-20261015",
+    "commit": "2517df89da79ed343ec9e0589816b25cc76f9040"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
