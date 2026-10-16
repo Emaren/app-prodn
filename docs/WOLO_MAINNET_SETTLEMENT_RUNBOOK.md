@@ -15,6 +15,35 @@ sensitivity: "restricted"
 
 # WOLO Mainnet Settlement App Runbook
 
+## October 16, 2026 — canonical WOLO payout response identity and size gate
+
+The read-only batch payout reconciliation library previously treated an
+absent or malformed `tx_response.code` as `0` and extracted `MsgSend`
+data without independently verifying `tx_response.txhash` or a positive
+committed height. A valid HTTP response was thus too easily equated with
+a successful canonical transaction. The REST response was also parsed
+using unbounded `Response.json()` and without a request timeout.
+
+`inspectWoloPayoutTxEnvelope` now requires an exact 64-hex requested
+transaction hash match, a positive committed height, and a decoded
+transaction body before a bank send can count as payout evidence. The
+execution code is parsed strictly: explicit nonzero rejects, malformed
+or explicitly null codes reject. **Missing code is accepted ONLY with
+the complete canonical envelope** because Cosmos' Go JSON
+`omitempty` legitimately omits a successful zero. The endpoint is
+accessed with mandatory HTTP 200 (not partial HTTP 206), without redirects, on a 6.5-second timeout, and the response
+is bounded to 750,000 bytes even for chunked transfers. Missing,
+oversized, mismatched, or failed evidence returns zero sends.
+
+This is an additional *read-only reconciliation* gate. It does not
+prove consensus finality or independence of the REST trust path by
+itself, does not establish payout ownership or a signer balance, and
+cannot settle a claim or authorize a retry. Real payout confirmation
+still requires unique `MsgSend`, correct recipient/amount/sender,
+canonical chain state, durable request identity, and a safe financial
+review. Historic #889 remains held if evidence is ambiguous.
+
+
 ## October 15, 2026 — read-only historical paid-status/proof-gap census
 
 The legacy authenticated profile Claim WOLO route used to mark matched

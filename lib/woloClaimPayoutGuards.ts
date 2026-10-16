@@ -1,4 +1,6 @@
 import type { Prisma, PrismaClient } from "@/lib/generated/prisma";
+import { inspectWoloPayoutTxEnvelope } from "./woloCanonicalPayoutEnvelope.ts";
+import { readWarSatchelBoundedUtf8 } from "./warSatchelBoundedBody.ts";
 import {
   WOLO_BASE_DENOM,
   WOLO_REST_URL,
@@ -88,18 +90,6 @@ function getStringField(record: Record<string, unknown> | null | undefined, key:
   return typeof value === "string" ? value.trim() : "";
 }
 
-function parseTxCode(payload: unknown) {
-  const root = asRecord(payload);
-  const txResponse = asRecord(root?.tx_response);
-  const rawCode = txResponse?.code;
-  if (typeof rawCode === "number") return rawCode;
-  if (typeof rawCode === "string") {
-    const parsed = Number.parseInt(rawCode, 10);
-    return Number.isFinite(parsed) ? parsed : 0;
-  }
-  return 0;
-}
-
 function extractTxMessages(payload: unknown) {
   const root = asRecord(payload);
   const rootTx = asRecord(root?.tx);
@@ -179,6 +169,8 @@ export async function fetchWoloTxMsgSends(
 
   const response = await fetch(buildLookupUrl(restUrl, normalizedHash), {
     cache: "no-store",
+    redirect: "error",
+    signal: AbortSignal.timeout(6500),
     headers: { accept: "application/json" },
   }).catch(() => null);
 
@@ -195,7 +187,7 @@ export async function fetchWoloTxMsgSends(
     };
   }
 
-  if (!response.ok) {
+  if (!response.ok || response.status !== 200) {
     return {
       txHash: normalizedHash,
       restUrl,
@@ -208,7 +200,22 @@ export async function fetchWoloTxMsgSends(
     };
   }
 
-  const payload = await response.json().catch(() => null);
+  const maxBytes = 750_000;
+  const header = response.headers.get("content-length");
+  if (header !== null &&
+      (!/^[0-9]{1,12}$/.test(header) || Number(header) > maxBytes)) {
+    return {
+      txHash: normalizedHash, restUrl, proofUrl, found: false,
+      success: false, statusCode: response.status,
+      detail: "WOLO REST transaction response exceeded the evidence byte limit.",
+      sends: [],
+    };
+  }
+  const raw = await readWarSatchelBoundedUtf8(response.body, maxBytes);
+  let payload: unknown = null;
+  if (raw !== null) {
+    try { payload = JSON.parse(raw) as unknown; } catch { /* fail closed */ }
+  }
   if (!payload) {
     return {
       txHash: normalizedHash,
@@ -217,22 +224,22 @@ export async function fetchWoloTxMsgSends(
       found: false,
       success: false,
       statusCode: response.status,
-      detail: "WOLO REST lookup returned an unstructured tx payload.",
+      detail: "WOLO REST lookup returned unreadable or oversized transaction evidence.",
       sends: [],
     };
   }
 
-  const code = parseTxCode(payload);
-  const success = code === 0;
+  const envelope = inspectWoloPayoutTxEnvelope(payload, normalizedHash);
   return {
     txHash: normalizedHash,
     restUrl,
     proofUrl,
     found: true,
-    success,
+    success: envelope.ok,
     statusCode: response.status,
-    detail: success ? null : `WOLO tx failed with code ${code}.`,
-    sends: success ? extractMsgSends(payload) : [],
+    detail: envelope.ok ? null
+      : "WOLO tx canonical proof incomplete or unsuccessful: " + envelope.reason + ".",
+    sends: envelope.ok ? extractMsgSends(payload) : [],
   };
 }
 
