@@ -84,6 +84,6 @@ test("financial source verifier preserves distinct MsgSend allocations and does 
   assert.match(code, /INVALID_EXPECTED_PAYOUT_SENDER/);
   // A read-only query WHERE status="claimed" is necessary for collision
   // detection. Reject mutations/broadcasts instead of banning that text.
-  assert.match(code, /pendingWoloClaim\\.findMany\\(/);
-  assert.doesNotMatch(code, /pendingWoloClaim\\.(?:update|updateMany|create|delete|upsert)\\s*\\(|signAndBroadcast\\s*\\(/);
+  assert.match(code, /pendingWoloClaim\.findMany\(/);
+  assert.doesNotMatch(code, /pendingWoloClaim\.(?:update|updateMany|create|delete|upsert)\s*\(|signAndBroadcast\s*\(/);
 });
