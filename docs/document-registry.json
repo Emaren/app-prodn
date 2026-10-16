@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e074776487ba9ce093799da6cf409a50eab0f443659cdeab23f30b5edafa72a0",
+      "sha256": "c872a2e81e20fb7323d150cd29bef5faf31e22b12a4f0fb43ff71ed25b67c82f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-15",
       "sensitivity": "internal",
-      "sha256": "175081d743671cdb5c77a52baf6cd264aa4baef1d56efbb297252ab7105b7514",
+      "sha256": "5405897936ec88e28497f79795efb07bd28c9c67f72b7ec12da975f271cecf9f",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1971,7 +1971,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "restricted",
-      "sha256": "27fc0e1a59406d00ac471d7585b29ef617073376649d5b79f4c897b015610570",
+      "sha256": "3ebe2326f91222b87834be3cc479ff3a8723ad7d6fceb1a33d2d3d965c0fce20",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/satchel-canonical-rest-zero-code-20261016",
-    "commit": "c45e005e88a6c155dc7abc22b0f522982a8221b5"
+    "branch": "fix/wolo-msgsend-proof-integrity-20261016",
+    "commit": "ca5b423cfbd8b5b5a84a4e4dc4acf3a35a4f3529"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

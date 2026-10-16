@@ -68,6 +68,18 @@ historical source evidence remains unproved: **do not assume the same
 escrow wallet paid every claim**, do not automatically retry #889,
 and never equate source-binding alone with unique payout request proof.
 
+## 2026-10-16 — Bank payout evidence must preserve original message ordinals
+
+The payout REST decoder previously filtered non-object messages before
+enumerating MsgSends and used `.find()` on `uwolo` amounts, silently
+accepting ambiguous duplicate-denomination amounts. Canonical source
+identity and a successful tx code alone cannot repair that loss of
+effect-level provenance. Added a pure, fail-closed bank-send decoder
+that preserves top-level message indexes, rejects malformed/doubled
+coins and contradictory decoded bank messages, and returns no
+financial evidence from ambiguous input. A malformed supplied transaction object is never silently ignored in favor of the other valid REST view; a null absent optional view remains allowed. Adversarial source-bound
+tests guard the behavior. Still no payout or transaction promotion.
+
 ## 2026-10-16 — Satchel C3 must understand Cosmos omitted zero and root Tx
 
 Satchel canonical receipt validation assumed a nested
