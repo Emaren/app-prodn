@@ -15,6 +15,19 @@ sensitivity: "internal"
 
 # AoE2WAR Engineering Memory and Learned Invariants
 
+## 2026-10-16 — The OS must not repeat expensive General Inspections scans
+
+The public command deck called General Inspections directly *and* via
+the Kingdom Agents projection on every refresh. Both scans read the
+same release, storage and runtime evidence, duplicating filesystem
+work while potentially showing mismatched timestamps. The OS now
+shares a single promise with Kingdom Agents, retaining standalone
+agent behavior. Failure is shared as unavailable, never rerun as
+a synthetic success. Source-contract tests guard exactly one call.
+This eliminates redundant inspection work; fresh server profiling
+is still needed before claiming a latency improvement.
+
+
 ## Purpose
 
 This is the durable anti-relearning layer for AoE2WAR engineering.
