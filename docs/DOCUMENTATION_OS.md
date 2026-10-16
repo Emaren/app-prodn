@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "documentation-operations-contract"
-reviewed_at: "2026-10-15"
+reviewed_at: "2026-10-16"
 review_interval_days: 60
 sensitivity: "internal"
 ---
@@ -122,6 +122,30 @@ Successful output is scoped: `DOCS_FEDERATED_WITH_EXTERNAL_WOLO_HOLD` and
 the genuine Wolo P1. A successful maintenance exit code proves completion of
 this scope, never release certification, overall estate health, or a 100/100
 score. Source and runtime SHAs remain distinct in immutable checksum receipts.
+
+## Bounded recovery for an expired central review
+
+The independent `aoe2war docs update --maintenance-only` lane may **stage**
+a recovery when a detached central build reports only a known expired-review
+error for a document whose **canonical source registry already contains a
+strictly newer, still-valid review**. The source-documentation checkers must
+pass, the federation must be due, and the error must match the known taxonomy
+expiry-only shape. Admission is **not a waiver of P0**: any unrelated or
+malformed P0 still blocks, and a stale canonical source review still blocks.
+
+The existing isolated central staging worktree must regenerate all federated
+registries, taxonomy and static documentation, pass strict validation, and
+publish with exact source and remote identity proofs. The final independent
+estate audit must establish **P0=0**. When an independently proven unpromoted
+Wolo verifier still differs from the VPS, preserve exactly the existing
+`P1 / WoloChain / vps-source-drift` as `OPEN_P1`; never declare the estate
+or production release fully certified. Source/runtime binaries, databases,
+keys, settlement state and production services remain untouched.
+
+This narrow seam restores the ability to repair a central documentation
+copy that has aged out while canonical source documentation is current;
+it does not extend document review dates, alter semantic source content,
+or permit arbitrary failed builds to be disregarded.
 
 ## Operational learning capture
 
