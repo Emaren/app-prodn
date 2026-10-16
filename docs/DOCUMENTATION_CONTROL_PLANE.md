@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `perf/kingdom-os-single-inspection-snapshot-20261016` at `8fc04c8d0d636c189f6a2bc3350aa56efbf4f164`
+Implementation baseline: `perf/mecha-shadow-active-uploaders-20261016` at `1b6aa9bb36c3263c3547091b8f5efd9ced0c759d`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
