@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `perf/kingdom-os-single-inspection-snapshot-20261016` at `2ee4a8a05cd904c74b802f2f7b71f6668b0fae94`
+Implementation baseline: `fix/wolo-dual-body-conflict-20261016` at `ce4811ccf0ba46e6c14f6df8e20c260be4c03803`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

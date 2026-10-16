@@ -1,3 +1,5 @@
+import { isDeepStrictEqual } from "node:util";
+
 /**
  * Canonical REST transaction envelope gate for historical WOLO payout proofs.
  *
@@ -10,7 +12,7 @@ export type PayoutTxEnvelope =
   | { ok: true; executionCode: number; committedHeight: string }
   | { ok: false; reason: "TX_ENVELOPE_MISSING" | "TX_HASH_NOT_BOUND" |
       "TX_NOT_COMMITTED" | "TX_CODE_INVALID" | "TX_EXECUTION_FAILED" |
-      "TX_BODY_MISSING" };
+      "TX_BODY_MISSING" | "TX_BODY_CONFLICT" };
 
 function record(value: unknown): Record<string, unknown> | null {
   return value !== null && typeof value === "object" && !Array.isArray(value)
@@ -52,8 +54,21 @@ export function inspectWoloPayoutTxEnvelope(
 
   // Cosmos v1beta1 REST may include the decoded Tx in the outer root or
   // in the TxResponse. Never accept a bare status with no Tx body.
-  const tx = record(root.tx) ?? record(response.tx);
-  if (!record(tx?.body)) return { ok: false, reason: "TX_BODY_MISSING" };
+  const rootTx = record(root.tx);
+  const responseTx = record(response.tx);
+  const rootBody = record(rootTx?.body);
+  const responseBody = record(responseTx?.body);
+  // Two decoded-body locations are optional Cosmos wire representations,
+  // not two independent permissions to choose whichever version pays us.
+  // Reject a malformed location and any disagreement, even when one body
+  // has no messages: the downstream extractor must never choose another.
+  if ((root.tx != null && !rootBody) || (response.tx != null && !responseBody)) {
+    return { ok: false, reason: "TX_BODY_MISSING" };
+  }
+  if (!rootBody && !responseBody) return { ok: false, reason: "TX_BODY_MISSING" };
+  if (rootBody && responseBody && !isDeepStrictEqual(rootBody, responseBody)) {
+    return { ok: false, reason: "TX_BODY_CONFLICT" };
+  }
 
   const code = codeOf(response);
   if (code === null) return { ok: false, reason: "TX_CODE_INVALID" };

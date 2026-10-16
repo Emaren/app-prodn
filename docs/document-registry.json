@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e9a1b4f00622bc1ba0b517ab8d76cdab85cf742b26ead9516bfb0af2eb9faea8",
+      "sha256": "c2c5b5dc0d77e41d5481d318511f98414450ebf5e1146a0e459b94b276d0f3a1",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-15",
       "sensitivity": "internal",
-      "sha256": "71920700bacc586865e45be4309a85aa5df8c12922496219c2e0e7e3fdd84142",
+      "sha256": "62c55c5db59599318ca285e5b8223fc38b95fc6b39355cde089cd0a287f14f04",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -940,7 +940,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-06",
       "sensitivity": "internal",
-      "sha256": "4b638f67513cbb8b2dce8d2d9b3fe32435cc85a8407cb0c9cf4e02a4b0be3fe6",
+      "sha256": "74511b8c75f403dc43cf6bb5104f06790b6b642c64fdf267795afdf07bcc8d19",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1971,7 +1971,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "restricted",
-      "sha256": "27fc0e1a59406d00ac471d7585b29ef617073376649d5b79f4c897b015610570",
+      "sha256": "1619daf97cc121d24daf08bab7f3361f33e695dc76f9dd9e22a9f03c00add8f6",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "perf/kingdom-os-single-inspection-snapshot-20261016",
-    "commit": "2ee4a8a05cd904c74b802f2f7b71f6668b0fae94"
+    "branch": "fix/wolo-dual-body-conflict-20261016",
+    "commit": "ce4811ccf0ba46e6c14f6df8e20c260be4c03803"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

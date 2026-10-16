@@ -15,19 +15,6 @@ sensitivity: "internal"
 
 # AoE2WAR Engineering Memory and Learned Invariants
 
-## 2026-10-16 — The OS must not repeat expensive General Inspections scans
-
-The public command deck called General Inspections directly *and* via
-the Kingdom Agents projection on every refresh. Both scans read the
-same release, storage and runtime evidence, duplicating filesystem
-work while potentially showing mismatched timestamps. The OS now
-shares a single promise with Kingdom Agents, retaining standalone
-agent behavior. Failure is shared as unavailable, never rerun as
-a synthetic success. Source-contract tests guard exactly one call.
-This eliminates redundant inspection work; fresh server profiling
-is still needed before claiming a latency improvement.
-
-
 ## Purpose
 
 This is the durable anti-relearning layer for AoE2WAR engineering.
@@ -81,6 +68,18 @@ historical source evidence remains unproved: **do not assume the same
 escrow wallet paid every claim**, do not automatically retry #889,
 and never equate source-binding alone with unique payout request proof.
 
+## 2026-10-16 — Bank payout evidence must preserve original message ordinals
+
+The payout REST decoder previously filtered non-object messages before
+enumerating MsgSends and used `.find()` on `uwolo` amounts, silently
+accepting ambiguous duplicate-denomination amounts. Canonical source
+identity and a successful tx code alone cannot repair that loss of
+effect-level provenance. Added a pure, fail-closed bank-send decoder
+that preserves top-level message indexes, rejects malformed/doubled
+coins and contradictory decoded bank messages, and returns no
+financial evidence from ambiguous input. A malformed supplied transaction object is never silently ignored in favor of the other valid REST view; a null absent optional view remains allowed. Adversarial source-bound
+tests guard the behavior. Still no payout or transaction promotion.
+
 ## 2026-10-16 — Satchel C3 must understand Cosmos omitted zero and root Tx
 
 Satchel canonical receipt validation assumed a nested
@@ -106,6 +105,28 @@ verification batch. This reduces runtime DB lookups and eliminates a
 false-proof path; it may conservatively require manual evidence review
 for legitimate historical multi-send cases. No actual payout was
 performed or historical row rewritten.
+
+## 2026-10-16 — Never choose between conflicting Cosmos payout bodies
+
+The WOLO payout REST proof checker allowed root `tx.body` or
+`tx_response.tx.body` but did not compare simultaneous decoded bodies.
+Downstream message extraction could choose a different body depending on
+message count. The gate now rejects inconsistent or malformed dual
+representations before assigning any bank send. Tests preserve legitimate
+single-envelope Cosmos compatibility and fail on conflicting send
+content. No money or production operations were changed.
+
+## 2026-10-16 — The OS must not repeat expensive General Inspections scans
+
+The public command deck called General Inspections directly *and* via
+the Kingdom Agents projection on every refresh. Both scans read the
+same release, storage and runtime evidence, duplicating filesystem
+work while potentially showing mismatched timestamps. The OS now
+shares a single promise with Kingdom Agents, retaining standalone
+agent behavior. Failure is shared as unavailable, never rerun as
+a synthetic success. Source-contract tests guard exactly one call.
+This eliminates redundant inspection work; fresh server profiling
+is still needed before claiming a latency improvement.
 
 ## 2026-10-16 — Claim payout REST must prove canonical tx identity before reading bank sends
 

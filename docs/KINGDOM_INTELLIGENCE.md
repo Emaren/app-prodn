@@ -35,7 +35,6 @@ those metrics require fresh production profiling. No visual components,
 links, player-facing scoring weights, deployment control, persistence,
 funds, finance or operator permissions were changed.
 
-
 ## 2026-10-15 — Public AoE2WAR OS command deck and evidence-based 100 contracts
 
 The public route `/aoe2war-os` is a **read-only** visual command deck, separate from
