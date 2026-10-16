@@ -15,6 +15,33 @@ sensitivity: "restricted"
 
 # WOLO Mainnet Settlement App Runbook
 
+## October 16, 2026 — legacy claim name collisions must not select a random recipient
+
+The legacy admin Claim WOLO recovery path previously fetched up to 250
+wallet-linked, loosely verified accounts and selected the **first** whose
+player display/persona name matched a normalized historical claim key.
+Without a unique-identity check or overflow sentinel, two accounts could
+share an alias and the query order could decide who received a payout.
+At 250 eligible accounts, later matching owners could be hidden entirely.
+
+`uniquelyMatchedWoloClaimCandidate` now rejects multiple distinct matching
+user IDs, even when they share the same wallet, and rejects malformed or
+duplicate account IDs. Admin discovery retrieves `250 + 1` eligible
+accounts and fails closed when the 251st row reveals a possibly incomplete
+census. A uniquely matching account inside an actually complete bounded
+cohort may continue through the existing payout-authority gates. It does
+**not** create a wallet ownership attestation, replace source-entitlement
+proof, pay historical founder claim #889, or authorize a retry.
+
+This is a protective limit, not a complete scalable lookup solution:
+if the eligible account population grows beyond 250, the operator must
+implement a selective, proven-complete indexed identity resolver rather
+than increasing the cap blindly or returning the first match. Tests cover
+both name orders, aliases, shared wallet, duplicate user ID, empty names,
+full 250 records and censored 251-record responses. No production data was
+queried or changed by the source-only fix.
+
+
 ## October 16, 2026 — signer-bound new Claim WOLO payouts
 
 The standard and Founder Rewards admin payout completion paths previously
