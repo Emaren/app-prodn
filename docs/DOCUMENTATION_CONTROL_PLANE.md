@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/wolo-dual-body-conflict-20261016` at `8f035fb69827109b0d25e4c2b606910fd5a3f39d`
+Implementation baseline: `fix/wolo-msgsend-proof-integrity-20261016` at `ca5b423cfbd8b5b5a84a4e4dc4acf3a35a4f3529`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

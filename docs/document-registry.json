@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "1efc7f07e77a0f4b8a9a141c06d36a72ba8c21433471b230bac48c896795d3ad",
+      "sha256": "c872a2e81e20fb7323d150cd29bef5faf31e22b12a4f0fb43ff71ed25b67c82f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-15",
       "sensitivity": "internal",
-      "sha256": "c40b899236a1d9cafde35b8d05f013a1a49b49eaf3ef3aa3e4e34b24d27f7cb9",
+      "sha256": "5405897936ec88e28497f79795efb07bd28c9c67f72b7ec12da975f271cecf9f",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1971,7 +1971,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "restricted",
-      "sha256": "ab2c88810388818e60b5a0f8f1307e0a78357df5a5f46b69a3f9b13009d72bb9",
+      "sha256": "3ebe2326f91222b87834be3cc479ff3a8723ad7d6fceb1a33d2d3d965c0fce20",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/wolo-dual-body-conflict-20261016",
-    "commit": "8f035fb69827109b0d25e4c2b606910fd5a3f39d"
+    "branch": "fix/wolo-msgsend-proof-integrity-20261016",
+    "commit": "ca5b423cfbd8b5b5a84a4e4dc4acf3a35a4f3529"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

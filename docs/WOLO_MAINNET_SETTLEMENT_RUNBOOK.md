@@ -43,6 +43,34 @@ not establish independent consensus finality, payout memo ownership, or
 signer custody. Claim #889 is not automatically cleared.
 
 
+## October 16, 2026 — decoded bank-send ordinals and ambiguous WOLO amounts
+
+Before this source change the historical payout verifier decoded the
+REST transaction's `body.messages` using a helper that silently
+filtered malformed message objects. It then assigned MsgSend indexes
+**after** filtering, losing the original transaction-message ordinal.
+For each `MsgSend` it also used the first `uwolo` coin while ignoring
+a second entry for the same denomination. Both behaviors destroy
+the precision a future claim-to-send-ordinal reconciliation needs.
+
+`lib/woloCanonicalBankSends.ts` now decodes complete top-level message
+arrays without shifting indexes, rejects any malformed top-level
+message, malformed bank amount, duplicate denom, noncanonical or zero
+amount, missing bank sender/recipient, and contradictory decoded
+`tx` versus `tx_response.tx` bank-transfer observations. It accepts
+legitimate additional non-WOLO denominations and non-bank transaction
+messages without treating them as WOLO payouts. A non-null but non-object `tx` or `tx_response.tx` is contradictory evidence, not permission to ignore one source. Malformed evidence
+produces `success=false` and **zero** candidate MsgSends. A valid
+transaction with no WOLO transfer produces zero sends, not a payout.
+
+These are necessary **read-only** checks, never independent finality,
+wallet ownership, request memo, paid-status settlement authority,
+reserve certification or approval to repay historical rows. The
+global historical tx-reuse stop, configured-signer matching and
+founder claim #889 financial holds remain unchanged. No token
+or claim was mutated by the source changes.
+
+
 ## October 16, 2026 — prior claimed transaction hashes cannot be reallocated from current wallets
 
 Historical payout rows contain a transaction hash and `claimedByUserId`, but

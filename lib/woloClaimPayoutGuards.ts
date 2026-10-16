@@ -1,5 +1,6 @@
 import type { Prisma, PrismaClient } from "@/lib/generated/prisma";
 import { inspectWoloPayoutTxEnvelope } from "./woloCanonicalPayoutEnvelope.ts";
+import { extractCanonicalWoloMsgSends } from "./woloCanonicalBankSends.ts";
 import { hasSufficientBoundPayoutSources } from "./woloPayoutSenderEvidence.ts";
 import { readWarSatchelBoundedUtf8 } from "./warSatchelBoundedBody.ts";
 import {
@@ -69,58 +70,6 @@ function normalizedRestUrl(value: string | null | undefined = WOLO_REST_URL) {
 
 function buildLookupUrl(restUrl: string, txHash: string) {
   return `${normalizedRestUrl(restUrl)}/cosmos/tx/v1beta1/txs/${txHash}`;
-}
-
-function asRecord(value: unknown): Record<string, unknown> | null {
-  return value && typeof value === "object" ? (value as Record<string, unknown>) : null;
-}
-
-function asRecordArray(value: unknown): Array<Record<string, unknown>> {
-  return Array.isArray(value)
-    ? value.map(asRecord).filter((entry): entry is Record<string, unknown> => Boolean(entry))
-    : [];
-}
-
-function getStringField(record: Record<string, unknown> | null | undefined, key: string) {
-  const value = record?.[key];
-  return typeof value === "string" ? value.trim() : "";
-}
-
-function extractTxMessages(payload: unknown) {
-  const root = asRecord(payload);
-  const rootTx = asRecord(root?.tx);
-  const rootBody = asRecord(rootTx?.body);
-  const response = asRecord(root?.tx_response);
-  const responseTx = asRecord(response?.tx);
-  const responseBody = asRecord(responseTx?.body);
-  const rootMessages = asRecordArray(rootBody?.messages);
-  return rootMessages.length > 0 ? rootMessages : asRecordArray(responseBody?.messages);
-}
-
-function extractMsgSends(payload: unknown): WoloMsgSend[] {
-  const sends: WoloMsgSend[] = [];
-
-  for (const [index, message] of extractTxMessages(payload).entries()) {
-    if (getStringField(message, "@type") !== "/cosmos.bank.v1beta1.MsgSend") continue;
-
-    const toAddress = normalizeAddress(getStringField(message, "to_address"));
-    const fromAddress = normalizeAddress(getStringField(message, "from_address"));
-    const coin = asRecordArray(message.amount).find(
-      (entry) => getStringField(entry, "denom") === WOLO_BASE_DENOM
-    );
-    const amountUwolo = getStringField(coin, "amount");
-    if (!toAddress || !fromAddress || !/^[0-9]+$/.test(amountUwolo)) continue;
-
-    sends.push({
-      index,
-      fromAddress,
-      toAddress,
-      amountUwolo,
-      denom: WOLO_BASE_DENOM,
-    });
-  }
-
-  return sends;
 }
 
 function sendKey(address: string | null | undefined, amountWolo: number) {
@@ -226,16 +175,23 @@ export async function fetchWoloTxMsgSends(
   }
 
   const envelope = inspectWoloPayoutTxEnvelope(payload, normalizedHash);
+  const parsedSends = envelope.ok
+    ? extractCanonicalWoloMsgSends(payload, WOLO_BASE_DENOM)
+    : null;
+  const decoded = envelope.ok && parsedSends !== null;
   return {
     txHash: normalizedHash,
     restUrl,
     proofUrl,
     found: true,
-    success: envelope.ok,
+    success: decoded,
     statusCode: response.status,
-    detail: envelope.ok ? null
-      : "WOLO tx canonical proof incomplete or unsuccessful: " + envelope.reason + ".",
-    sends: envelope.ok ? extractMsgSends(payload) : [],
+    detail: !envelope.ok
+      ? "WOLO tx canonical proof incomplete or unsuccessful: " + envelope.reason + "."
+      : !decoded
+        ? "WOLO tx bank transfer evidence is malformed or inconsistent."
+        : null,
+    sends: parsedSends ?? [],
   };
 }
 
