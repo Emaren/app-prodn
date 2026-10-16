@@ -15,7 +15,7 @@ import tempfile
 import time
 from collections import Counter
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -928,7 +928,7 @@ def recoverable_central_review_p0(finding: dict[str, Any]) -> bool:
     today = datetime.now(timezone.utc).date()
     for item in items:
         match = re.fullmatch(
-            r"([a-z0-9_-]+):(docs/[A-Za-z0-9_./-]+): documentation review expired on (\\d{4}-\\d{2}-\\d{2})",
+            r"([a-z0-9_-]+):(docs/[A-Za-z0-9_./-]+): documentation review expired on (\d{4}-\d{2}-\d{2})",
             item,
         )
         if match is None:
@@ -953,7 +953,6 @@ def recoverable_central_review_p0(finding: dict[str, Any]) -> bool:
         if not isinstance(reviewed, str) or type(interval) is not int or interval <= 0:
             return False
         try:
-            from datetime import date
             reviewed_date = date.fromisoformat(reviewed)
             expired_date = date.fromisoformat(expired_on)
         except ValueError:
