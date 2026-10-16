@@ -67,6 +67,8 @@
   place-items: center;
   width: 5.25rem;
   height: 5.25rem;
+  flex-shrink: 0;
+  aspect-ratio: 1;
   border-radius: 9999px;
   background: conic-gradient(currentColor var(--score-angle, 0deg), rgb(148 163 184 / .11) var(--score-angle, 0deg));
   box-shadow: 0 0 28px color-mix(in srgb, currentColor 12%, transparent);
