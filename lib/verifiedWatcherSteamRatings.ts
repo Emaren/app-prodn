@@ -72,6 +72,8 @@ async function readFresh(prisma: PrismaClient): Promise<VerifiedWatcherSteamRati
         )
         AND g.played_on IS NOT NULL
         AND g.played_on <= NOW() + INTERVAL '5 minutes'
+        -- An authentic archived game date is not a current rating.
+        AND g.played_on >= g.created_at - INTERVAL '48 hours'
         -- Original client replay source must agree with alleged game clock.
         -- Filename is source-local; 48h accounts for timezone ambiguity.
         AND (
