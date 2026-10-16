@@ -332,6 +332,7 @@ export type BetAutoShadowAdmission =
       reason:
         | "preset_disabled"
         | "auto_stake_cap_exceeded"
+        | "stored_preset_invalid"
         | "preset_not_self_only"
         | "finite_plan_exhausted"
         | "owner_uid_missing"
@@ -371,10 +372,26 @@ export function evaluateBetAutoShadowAdmission(input: {
   if (!input.preset.selfOnly) {
     return { eligible: false, reason: "preset_not_self_only" };
   }
+  // Persisted presets may predate present-day input validation.
+  // Revalidate the complete stored contract instead of silently adjusting it
+  // when a canonical Watcher game becomes eligible.
+  if (
+    input.preset.desyncSide !== "none" &&
+    input.preset.desyncSide !== "yes" &&
+    input.preset.desyncSide !== "no"
+  ) return { eligible: false, reason: "stored_preset_invalid" };
+  if (
+    (input.preset.untilOut && input.preset.gamesRemaining !== null) ||
+    (!input.preset.untilOut &&
+      (!Number.isSafeInteger(input.preset.gamesRemaining) ||
+       (input.preset.gamesRemaining ?? 0) > BET_AUTOMATION_MAX_GAMES))
+  ) return { eligible: false, reason: "stored_preset_invalid" };
   const { winnerStakeWolo, desyncSide, desyncStakeWolo } = input.preset;
   if (
     !Number.isSafeInteger(winnerStakeWolo) || winnerStakeWolo < 1 ||
+    winnerStakeWolo > BET_AUTOMATION_MAX_PER_GAME_WOLO ||
     !Number.isSafeInteger(desyncStakeWolo) || desyncStakeWolo < 0 ||
+    desyncStakeWolo > BET_AUTOMATION_MAX_PER_GAME_WOLO ||
     (desyncSide === "none" && desyncStakeWolo !== 0) ||
     (desyncSide !== "none" && desyncStakeWolo < 1) ||
     winnerStakeWolo + desyncStakeWolo > BET_AUTOMATION_MAX_PER_GAME_WOLO
@@ -388,6 +405,15 @@ export function evaluateBetAutoShadowAdmission(input: {
       (input.preset.gamesRemaining ?? 0) <= 0)
   ) {
     return { eligible: false, reason: "finite_plan_exhausted" };
+  }
+
+  const requiredReserveWolo =
+    input.preset.untilOut
+      ? BET_AUTOMATION_MAX_RESERVE_WOLO
+      : (winnerStakeWolo + desyncStakeWolo) * (input.preset.gamesRemaining ?? 0);
+  if (!Number.isSafeInteger(requiredReserveWolo) ||
+      requiredReserveWolo > BET_AUTOMATION_MAX_RESERVE_WOLO) {
+    return { eligible: false, reason: "auto_stake_cap_exceeded" };
   }
 
   const ownerUid = normalizedIdentity(input.ownerUid);

@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "9d22b23e3bcd7b7eaaf77aa23f81e391b948d2b0f3bc90a15666dcb5174e471c",
+      "sha256": "bc2fa64b3fd62b5cdd24972d7a38b2dbdc3b3662ee7126339c1fefe732f93225",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "4d7ddc9f117937f15d5bdeda5b4d2d234532038ef0deec7ce2b6808f379602f6",
+      "sha256": "b1c577e55b22766a35f34b0beb875c50ee646a50ae4ea67bbf7aabaf4dcfe871",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-15",
       "sensitivity": "internal",
-      "sha256": "70b1b4b6cf593280930514e10a401e1e4d1e3c39d08f4bd4e1a01ed515d425c1",
+      "sha256": "94cad6e1775efe5b3f967ca51c1770f1fe846e031c800f3ee9358b4a0521ffa4",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1971,7 +1971,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "restricted",
-      "sha256": "09092f4eb70ac0bd1f59497164561d2e84cb9ec3fd694793eb2620d185bb5edf",
+      "sha256": "2375fc9dc1edc0b5023b10cc99922899fb8d6577bbf43385469ddb5dab8d871b",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "audit/claimed-wolo-without-proof-20261015",
-    "commit": "0e35897864081f30d91f5ac97fe5025528202ab0"
+    "branch": "hardening/mecha-stored-preset-shadow-admission-20261015",
+    "commit": "59d0020be699968353f1504758a66db681644b42"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
