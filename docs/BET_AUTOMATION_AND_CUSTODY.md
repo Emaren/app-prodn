@@ -15,6 +15,36 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## October 16, 2026 — canonical Satchel evidence must fit the signed-64-bit ledger schema
+
+The C3 canonical chain inspector accepted block heights with up to 20
+decimal digits, including numbers too large for PostgreSQL `BIGINT`.
+The C3d immutable, noncrediting receipt recorder accepted **arbitrarily
+long** decimal strings for receipt height and confirmation count and
+parsed confirmations directly with `BigInt` before limiting input.
+This allowed malformed synthetic evidence to reach expensive numeric
+parsing or storage errors instead of the evidence-integrity boundary.
+
+Both C3 inspection and C3d persistence now share
+`isPositiveSatchelInt64`, requiring canonical positive decimal
+representation, no leading zeros, at most 19 digits, and an exact
+maximum of `9223372036854775807`. Confirmation depth uses the same
+validated quantity and independently requires at least three. The
+stored intent's exact `uwolo` amount is checked against the same
+DB-safe bound. Regression tests include exact boundary values,
+malformed numbers, unsafe heights, and 100,000-digit adversarial inputs.
+
+This is an **input-bounds correction**, not a statement that public
+RPC heads independently authenticate consensus or that any actual
+Satchel deposits are enabled. C3d still writes immutable
+`uncredited` evidence only when its separate feature switch is
+enabled, and neither this patch nor the C2/C3 foundations authorize
+a vault, collateral credit, live balance, withdrawal, or funded
+Mecha wager. WoloChain #17 remains unavailable pending dedicated
+custody, independent chain trust, source/asset-liability reconciliation
+and an operator-approved canary.
+
+
 ## October 16, 2026 — restrict shadow evaluation to proven live Watcher uploaders
 
 The preview-only Mecha worker previously queried **every** enabled

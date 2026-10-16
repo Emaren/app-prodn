@@ -212,6 +212,17 @@ partial success, spoofed lengths and transport failure. This fixes
 resource/availability risk only; money proof and signer/custody gates
 remain independent and unchanged.
 
+## 2026-10-16 — Signed-int64 Satchel proof boundaries before parsing or SQL
+
+C3 accepted 20-digit heights exceeding the signed `BIGINT` storage
+range. C3d checked unbounded decimal heights and confirmations and
+converted arbitrary-length strings with `BigInt` before an input
+ceiling. Both now share a pure canonical-positive-int64 validator,
+used on block heights, confirmation counts and stored `uwolo`
+amounts; at least three confirmations remain mandatory. Adversarial
+tests include 100,000-digit inputs. No wallet, payout, custody
+credit, database schema, or financial activation changed.
+
 ## 2026-10-16 — Claim payout REST must prove canonical tx identity before reading bank sends
 
 The legacy reconciliation helper defaulted unknown/malformed
