@@ -81,10 +81,31 @@ export async function runBetAutoShadowWorker(
     };
   }
 
+  // A live auto-bet can only belong to an authenticated uploader of the
+  // exact Watcher session. Restrict the DB candidate set *before* the
+  // market-by-preset cross-product rather than loading every enabled owner.
+  // This is only a CPU/DB optimization; admission still independently checks
+  // the uploader UID, Steam roster, proposition and market integrity.
+  const activeUploaderUids = [...new Set(
+    options.activeSessions.flatMap((session) =>
+      session.uploaders.map((uploader) => uploader.uid.trim()).filter(Boolean))
+  )];
+  if (activeUploaderUids.length === 0) {
+    return {
+      mode: "shadow",
+      evaluatedCount: 0,
+      eligibleCount: 0,
+      createdCount: 0,
+      existingCount: 0,
+      skippedCount: 0,
+    };
+  }
+
   const presets = await prisma.betAutoPreset.findMany({
     where: {
       enabled: true,
       selfOnly: true,
+      user: { uid: { in: activeUploaderUids } },
       OR: [
         { untilOut: true },
         { gamesRemaining: { gt: 0 } },
@@ -109,7 +130,7 @@ export async function runBetAutoShadowWorker(
     },
   });
 
-  if (presets.length === 0 || options.activeSessions.length === 0) {
+  if (presets.length === 0) {
     return {
       mode: "shadow",
       evaluatedCount: 0,
