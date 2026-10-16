@@ -57,6 +57,12 @@ test("both admin Claim WOLO completion branches demand the observed signer", () 
   assert.equal(code.split("validateDistinctClaimPayoutTx(").length - 1, 2);
   assert.match(code, /executeFounderWoloPayout/);
   assert.match(code, /executeWoloPayout/);
+  assert.match(code, /expectedSenderAddress: expectedEscrowAddress/);
+  assert.match(code, /execution\.signerRole !== "escrow"/);
+  assert.match(code, /execution\.signerAddress\.trim\(\)\.toLowerCase\(\) !== expectedEscrowAddress/);
+  assert.match(code, /expectedSenderAddress: null as string \| null/);
+  assert.match(code, /expectedSenderAddress\?: string \| null/);
+
 });
 
 test("financial source verifier preserves distinct MsgSend allocations and does not infer sender", () => {
