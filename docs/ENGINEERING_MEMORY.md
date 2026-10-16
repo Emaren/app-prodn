@@ -40,6 +40,10 @@ canonical bank-send guard. This prevents unrelated but otherwise
 matching transfers from being treated as successful claim payments.
 Nonmainnet environments retain their existing nullable source behavior; mandatory signer provenance applies to wolo-1. Legacy unknown senders are not retrospectively inferred; #889 remains
 on financial hold, and source health is not consensus attestation.
+Grouped market retries bind to the dry-run verified escrow identity.
+Previously stored hashes and memo-recovered payouts cannot safely
+inherit that evidence; on wolo-1 they remain held without verified
+historic signer/receipt provenance.
 
 ## Mandatory operating rhythm
 
