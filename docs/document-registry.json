@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c8b04fb79e4b3a39678c4128caf429de83560d3d4f13f77442304e2acc94d963",
+      "sha256": "f66e636737f08f5e81c8dad1f2b453e5ddc6afcae2d280dd2d0a814a19b1a278",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-15",
       "sensitivity": "internal",
-      "sha256": "edf4edbc00330837387528114bafeb5155f8c7037fbb488469b49b33031659af",
+      "sha256": "1697d3963a8af703b08770d63935b0da31015a6318bef6598dc236c2cb20e43e",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1971,7 +1971,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "restricted",
-      "sha256": "f1dfa722cf20782f51f013d2ce7efb571ad78c065c91c5ccca9d40a6843fc824",
+      "sha256": "4d0fb1b4a6c023a9179da579b495006c9b727ba5153e9f4229e19fd724ac11db",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/payout-evidence-amount-hash-boundary-20261015",
-    "commit": "54f371e3d478e963eba5a493c0bb8c209f2e1c41"
+    "branch": "fix/settlement-tx-transport-bounds-20261015",
+    "commit": "2517df89da79ed343ec9e0589816b25cc76f9040"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
