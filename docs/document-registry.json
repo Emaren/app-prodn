@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "49232cf1b9518e8dd87fe60aed0ce38a306e6fb7db24c4940653c07d668107f7",
+      "sha256": "d99b54d214c658849457d6e45527baf5cbc8f0c56f5df6df594868ee39746be5",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "4adf79cc265479bd1f5024ab6d469a1bf70e1d8677531201133bb82104522fc2",
+      "sha256": "b3b21a5d25a04f728727180d1e3ae3553943218711f44f5f304b762c61b29f12",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-15",
       "sensitivity": "internal",
-      "sha256": "004cad9faf9bcaf9781d13987b8566db16110bc8e7ea83bb9320026382c8797d",
+      "sha256": "88342a07fa2d5121e852c933ccb5e45a874dca0e00e8eeb24a3a5d60d9dd6f74",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/claim-payout-authorized-sender-provenance-20261016",
-    "commit": "69e6f1efaa7b57079325429b3343090712ac2859"
+    "branch": "fix/mecha-active-session-market-census-20261016",
+    "commit": "1a0e1a7208f54daed069ce19d1f9b18c73a9fe45"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
