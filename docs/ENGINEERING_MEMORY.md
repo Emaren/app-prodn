@@ -106,6 +106,16 @@ false-proof path; it may conservatively require manual evidence review
 for legitimate historical multi-send cases. No actual payout was
 performed or historical row rewritten.
 
+## 2026-10-16 — Never choose between conflicting Cosmos payout bodies
+
+The WOLO payout REST proof checker allowed root `tx.body` or
+`tx_response.tx.body` but did not compare simultaneous decoded bodies.
+Downstream message extraction could choose a different body depending on
+message count. The gate now rejects inconsistent or malformed dual
+representations before assigning any bank send. Tests preserve legitimate
+single-envelope Cosmos compatibility and fail on conflicting send
+content. No money or production operations were changed.
+
 ## 2026-10-16 — Claim payout REST must prove canonical tx identity before reading bank sends
 
 The legacy reconciliation helper defaulted unknown/malformed

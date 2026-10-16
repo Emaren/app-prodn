@@ -56,6 +56,46 @@ test("status-only receipts and fake bodies never promote a confirmed payout", ()
     { ok: false, reason: "TX_ENVELOPE_MISSING" });
 });
 
+test("two decoded Cosmos transaction locations must agree on ALL payout-relevant fields", () => {
+  const canonical = envelope();
+  const body = canonical.tx.body;
+  const matching = {
+    ...canonical,
+    tx_response: { ...canonical.tx_response, tx: { body: { ...body, messages: body.messages.map(m => ({ ...m })) } } },
+  };
+  assert.deepEqual(inspectWoloPayoutTxEnvelope(matching, requested),
+    { ok: true, executionCode: 0, committedHeight: "1250" });
+
+  const contradictory = {
+    ...matching,
+    tx_response: {
+      ...matching.tx_response,
+      tx: { body: { messages: [{ "@type": "/cosmos.bank.v1beta1.MsgSend", "to_address": "foreign" }] } },
+    },
+  };
+  assert.deepEqual(inspectWoloPayoutTxEnvelope(contradictory, requested),
+    { ok: false, reason: "TX_BODY_CONFLICT" });
+
+  const noMessages = {
+    ...matching,
+    tx_response: { ...matching.tx_response, tx: { body: { messages: [] } } },
+  };
+  assert.deepEqual(inspectWoloPayoutTxEnvelope(noMessages, requested),
+    { ok: false, reason: "TX_BODY_CONFLICT" });
+  assert.deepEqual(inspectWoloPayoutTxEnvelope({
+    ...matching, tx_response: { ...matching.tx_response, tx: { body: null } },
+  }, requested), { ok: false, reason: "TX_BODY_MISSING" });
+});
+
+test("single root or single TxResponse location is accepted, not invented as conflict", () => {
+  const rootOnly = envelope();
+  assert.equal(inspectWoloPayoutTxEnvelope(rootOnly, requested).ok, true);
+  const txResponseOnly = {
+    tx_response: { ...rootOnly.tx_response, tx: { body: rootOnly.tx.body } },
+  };
+  assert.equal(inspectWoloPayoutTxEnvelope(txResponseOnly, requested).ok, true);
+});
+
 test("payout guard must enforce canonical response and strict byte/time budgets", () => {
   const source = readFileSync(new URL("../lib/woloClaimPayoutGuards.ts", import.meta.url), "utf8");
   assert.match(source, /inspectWoloPayoutTxEnvelope\(payload, normalizedHash\)/);

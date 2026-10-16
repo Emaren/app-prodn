@@ -15,6 +15,34 @@ sensitivity: "restricted"
 
 # WOLO Mainnet Settlement App Runbook
 
+## October 16, 2026 — conflicting dual decoded WOLO payout bodies fail closed
+
+The read-only claim payout REST adapter already required the requested
+transaction hash, successful code, positive block height, strict HTTP 200,
+bounded payload, and sender proof. It accepted the decoded transaction from
+either standard Cosmos root `tx.body` or alternate
+`tx_response.tx.body`, but did not compare them when **both** were present.
+The payout guard's message extractor preferred root messages when nonempty
+and otherwise fell back to response messages. Contradictory bank-transfer
+claims in the same gateway response could therefore evade the envelope
+check and influence which `MsgSend` appeared to match a claimed payout.
+
+`inspectWoloPayoutTxEnvelope` now rejects a malformed supplied decoded
+location and fails with `TX_BODY_CONFLICT` when both bodies are not
+structurally identical (ignoring object key order). This check happens
+before any `MsgSend` allocation, which continues to require source
+signer and recipient, amount and distinct transfer evidence. A single
+valid root or response body remains supported, as required for Cosmos
+wire compatibility. Regression cases cover agreement, disagreement,
+missing messages, malformed mirrored body, and each single-location
+variant.
+
+**Scope:** read-only financial-proof refusal. No historical claim is
+rewritten, no wallet funds are sent, and passing the REST check still does
+not establish independent consensus finality, payout memo ownership, or
+signer custody. Claim #889 is not automatically cleared.
+
+
 ## October 16, 2026 — decoded bank-send ordinals and ambiguous WOLO amounts
 
 Before this source change the historical payout verifier decoded the
