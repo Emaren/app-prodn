@@ -7,6 +7,7 @@ import shlex
 import subprocess
 
 import aoe2_recovery
+import aoe2_host_checkpoint
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -374,6 +375,10 @@ def main() -> int:
     q.add_argument("--json", action="store_true")
     q = sub.add_parser("maintenance-plan")
     q.add_argument("--json", action="store_true")
+    q = sub.add_parser("maintenance-checkpoint")
+    q.add_argument("--dir", required=True, type=Path)
+    q.add_argument("--max-age-hours", type=float, default=24.0)
+    q.add_argument("--json", action="store_true")
     args = parser.parse_args()
 
     if args.command in (None, "status"):
@@ -406,6 +411,29 @@ def main() -> int:
             )
             print("Mutation: NONE — this command is planning only.")
         return 1 if payload["status"] == "BLOCKED" else 0
+
+    if args.command == "maintenance-checkpoint":
+        try:
+            payload = aoe2_host_checkpoint.inspect_checkpoint(
+                args.dir, max_age_hours=args.max_age_hours
+            )
+        except (aoe2_host_checkpoint.CheckpointError, OSError) as exc:
+            print(f"STOP: {exc}")
+            return 2
+        if args.json:
+            print(json.dumps(payload, indent=2, sort_keys=True))
+        else:
+            print("⚔️  AOE2WAR HOST DB CHECKPOINT EVIDENCE")
+            print()
+            print(f"Status:            {payload['status']}")
+            print(f"Ciphertext SHA256: {payload['ciphertext_sha256']}")
+            print(f"Integrity:         {payload['ciphertext_integrity']}")
+            print(f"Age:               {payload['age_hours']}h / {payload['freshness_limit_hours']}h limit")
+            print(f"Full archive decode: {payload['recorded_capture_and_decode']} (operator statement)")
+            print("Isolated restore:  NOT PERFORMED")
+            print("Wolo snapshot:     NOT VERIFIED BY THIS COMMAND")
+            print("Mutation:          NONE — locally verifies existing ciphertext.")
+        return 0 if payload["status"] == "FRESH" else 1
 
     if args.command == "tidy":
         payload = tidy(
