@@ -8,7 +8,7 @@ import {
 } from "../lib/warSatchelInt64Evidence.ts";
 
 test("Satchel evidence admits only canonical positive PostgreSQL signed-64 quantities", () => {
-  assert.equal(SATCHEL_MAX_SIGNED_INT64, 9223372036854775807n);
+  assert.equal(SATCHEL_MAX_SIGNED_INT64, BigInt("9223372036854775807"));
   for (const valid of ["1","2","3","9223372036854775806","9223372036854775807"]) {
     assert.equal(isPositiveSatchelInt64(valid), true, valid);
   }
