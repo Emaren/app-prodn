@@ -55,6 +55,16 @@ obtain bounded, owner-safe historical counts, then independently review
 canonical chain success and signer/request evidence before any financial
 correction. No production census has been run by this code change.
 
+## 2026-10-15 — A saved Mecha plan must be invalid in *every* read model
+
+The worker's stored-plan admission was fail-closed but the settings
+API could silently project an unrecognized stored Desync value as
+`none` without warning the owner. Now one financial-integrity
+predicate is reused by the worker, admission and API readiness, and
+invalid history reports `requiresPlanReview` without changing saved
+data or client enum compatibility. Exhausted plans are not labelled
+corrupt. Live betting stays off.
+
 ## 2026-10-15 — Stored Mecha plans must not bypass current safety budgets
 
 The original preset form enforced 1,000 WOLO/game and 10,000 WOLO per
