@@ -41,6 +41,10 @@ memory before closing the work.
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
 
+## 2026-10-15 — New Kingdom pages require source-edition registration
+
+The public AoE2WAR OS deck originally joined both castle menus and SpeedOS, but not the 24-page source-hashed page-change manifest. Registered /aoe2war-os as the 25th tracked page in the Python generator and generated TypeScript source, with independent recomputation of its route-file digest in Node CI and the existing 25-page menu contract. This preserves notifications without changing any live visual dot styling.
+
 ## 2026-10-15 — Public OS local receipts require bounded descriptor authority
 
 The public command deck originally read JSON before bounding its size, then
