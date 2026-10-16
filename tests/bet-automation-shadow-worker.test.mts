@@ -693,7 +693,7 @@ test("source narrows the Mecha user DB query while preserving independent canoni
     new URL("../lib/betAutomationShadowWorker.ts", import.meta.url), "utf8"
   );
   assert.match(source, /user: \{ uid: \{ in: activeUploaderUids \} \}/);
-  assert.match(source, /linkedSessionKey: \\{ in: activeSessionKeys \\}/);
+  assert.match(source, /linkedSessionKey: \{ in: activeSessionKeys \}/);
   assert.match(source, /take: 101/);
   assert.match(source, /BET_AUTO_SHADOW_ACTIVE_MARKET_COHORT_OVERFLOW/);
   assert.match(source, /evaluateBetAutoShadowAdmission\(/);
