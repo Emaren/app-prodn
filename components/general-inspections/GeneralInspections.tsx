@@ -124,26 +124,22 @@ function CategoryCard({
       aria-pressed={selected}
       className={cx(styles.card, selected && styles.cardSelected, "group w-full rounded-[1.35rem] p-4 text-left sm:p-5")}
     >
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2.5">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-sky-200/10 bg-sky-300/[0.045] text-sky-200/80">
-              <Icon className="h-4 w-4" />
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-col gap-2">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-sky-200/10 bg-sky-300/[0.045] text-sky-200/80">
+            <Icon className="h-4 w-4" />
+          </span>
+          <div className="flex items-center gap-2">
+            <Ember state={category.state} />
+            <span className={cx("text-[9px] font-black uppercase tracking-[0.24em]", stateClasses[category.state])}>
+              {stateLabels[category.state]}
             </span>
-            <div>
-              <div className="flex items-center gap-2">
-                <Ember state={category.state} />
-                <span className={cx("text-[9px] font-black uppercase tracking-[0.24em]", stateClasses[category.state])}>
-                  {stateLabels[category.state]}
-                </span>
-              </div>
-              <h2 className="mt-1 text-[15px] font-black tracking-tight text-white sm:text-base">{category.title}</h2>
-            </div>
           </div>
-          <p className="mt-3 max-w-[30rem] text-[11px] leading-5 text-slate-500">{category.description}</p>
         </div>
         <ScoreRing score={category.score} state={category.state} />
       </div>
+      <h2 className="mt-3 break-words text-[15px] font-black tracking-tight text-white sm:text-base">{category.title}</h2>
+      <p className="mt-2 max-w-[30rem] text-[11px] leading-5 text-slate-500">{category.description}</p>
       <div className="mt-4">
         <div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-[0.16em] text-slate-600">
           <span>{healthy}/{category.checks.length} green checks</span>
