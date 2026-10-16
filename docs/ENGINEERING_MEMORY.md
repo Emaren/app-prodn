@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "repository-entrypoint"
-reviewed_at: "2026-10-15"
+reviewed_at: "2026-10-16"
 review_interval_days: 14
 sensitivity: "internal"
 ---
@@ -3450,3 +3450,28 @@ MATCH_WINNER policy and live challenger eligibility under the normal lock order.
 More than one matching explicit Challenge remains ambiguous and must fail
 closed. A matching explicit title Challenge already owns the session and is not
 re-promoted.
+
+## October 16, 2026 — central-documentation stale-review recovery seam
+
+After the October 16 root disk expansion, canonical `app-prodn` source
+(`9357f4ce`) carried a valid October 16 review for
+`docs/BET_STAKE_TICKETS.md`, but the detached central documentation build
+still read the October 15 federated review and reported two coupled P0s
+(`docs-check`, `strict-build`). The independent docs maintenance planner
+recognized the live Wolo settlement hold correctly, yet unconditionally
+classified both known repairable central-build P0s as unknown, deadlocking
+federation repair.
+
+The maintained contract permits **staged repair only** when each expired
+central review is linked to a uniquely identified canonical source registry
+document with a strictly newer, live review, with source checker parity and
+central sync required. Unrelated P0s, malformed failure details, outdated
+source reviews or unproven Wolo runtime identity remain hard stops. Central
+staging must pass its independent strict build, and the post-apply audit
+must show zero P0 and exactly the protected unpromoted Wolo P1. No runtime,
+database, validator, custody or release mutation is authorized by this seam.
+
+The clean canonical Wolo source checkout `40a01cc8` contains C4 and C5,
+but this source merge is **not evidence of VPS binary promotion**. The
+current VPS settlement implementation remains on its own protected
+source/build authority pending explicit financial certification.
