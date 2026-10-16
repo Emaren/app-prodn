@@ -316,9 +316,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BET_STAKE_TICKETS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-15",
+      "reviewed_at": "2026-10-16",
       "sensitivity": "internal",
-      "sha256": "2d4ba75da121deba757b3f2bd49d53125d187a886ccc8b7c1f0c91e793715b12",
+      "sha256": "51aa4c0e3e27afeed8c2780bc8f612e7e18db355c6134b77b78b4d8bfa217b2f",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
