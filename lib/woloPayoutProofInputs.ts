@@ -9,13 +9,23 @@ export const WOLO_PAYOUT_MICRO_UNITS = 1_000_000;
 export function canonicalPayoutUWolo(amountWolo: number): string | null {
   if (typeof amountWolo !== "number" || !Number.isFinite(amountWolo) ||
       amountWolo <= 0) return null;
-  const raw = amountWolo * WOLO_PAYOUT_MICRO_UNITS;
-  const rounded = Math.round(raw);
-  // Allow ordinary IEEE-754 representation jitter for genuine six-decimal
-  // amounts, but never silently round economic value at >6 decimals.
-  if (!Number.isSafeInteger(rounded) || rounded <= 0 ||
-      Math.abs(raw - rounded) > 0.000001) return null;
-  return String(rounded);
+  // Decode the number's *observable decimal representation* using bigint
+  // instead of multiplying floats, which can silently round payout evidence.
+  // Exponential spellings such as 1e-6 and 1e+4 are permitted.
+  const parsed = /^(\d+)(?:\.(\d+))?(?:e([+-]?\d+))?$/i.exec(String(amountWolo));
+  if (!parsed) return null;
+  const fractionalDigits = parsed[2]?.length ?? 0;
+  const exponent = parsed[3] == null ? 0 : Number(parsed[3]);
+  if (!Number.isSafeInteger(exponent) || Math.abs(exponent) > 20) return null;
+  const unscaled = BigInt(parsed[1] + (parsed[2] ?? ""));
+  const microExponent = exponent + 6 - fractionalDigits;
+  const units = microExponent >= 0
+    ? unscaled * (10n ** BigInt(microExponent))
+    : unscaled % (10n ** BigInt(-microExponent)) === 0n
+      ? unscaled / (10n ** BigInt(-microExponent))
+      : 0n;
+  return units > 0n && units <= BigInt(Number.MAX_SAFE_INTEGER)
+    ? units.toString() : null;
 }
 
 export function canonicalPayoutTxHash(value: string | null | undefined): string | null {
