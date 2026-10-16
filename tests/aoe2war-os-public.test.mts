@@ -40,7 +40,8 @@ test("public OS page exposes no admin route or mutation and safely distinguishes
   assert.match(evidence, /lastDeployAt: certifiedAt/);
   assert.match(evidence, /constants\.O_RDONLY \| constants\.O_NOFOLLOW/);
   assert.match(evidence, /const entry = await handle\.stat\(\)/);
-  assert.match(evidence, /entry\.size > 128_000/);
+  assert.match(evidence, /maxBytes = 128_000/);
+  assert.match(evidence, /entry\.size > maxBytes/);
   assert.match(evidence, /await handle\.read\(bytes/);
   assert.match(evidence, /const receipt = await safeJson\(file, 750_000\)/);
   assert.doesNotMatch(evidence, /await lstat\(file\)|await readFile\(file/);
