@@ -1,6 +1,7 @@
 import "server-only";
 
-import { lstat, readFile, readdir } from "node:fs/promises";
+import { constants } from "node:fs";
+import { lstat, open, readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 
 import { buildGeneralInspectionsSnapshot } from "@/lib/generalInspections/serverSnapshot";
@@ -133,15 +134,23 @@ async function github(relative: string): Promise<unknown> {
   } catch { return null; }
 }
 async function safeJson(file: string): Promise<Record<string, unknown> | null> {
+  // Open without following a symlink and bind the size check to the SAME
+  // descriptor we read. Checking lstat then using readFile leaves a race.
+  let handle: Awaited<ReturnType<typeof open>> | null = null;
   try {
-    // Reject nonregular files and symlinks before loading bytes: operator
-    // receipts are low-volume, public status reads must stay bounded.
-    const entry = await lstat(file);
-    if (!entry.isFile() || entry.size > 128_000) return null;
-    const handle = await readFile(file);
-    if (handle.byteLength > 128_000) return null;
-    return object(JSON.parse(handle.toString("utf8")));
+    handle = await open(file, constants.O_RDONLY | constants.O_NOFOLLOW);
+    const entry = await handle.stat();
+    if (!entry.isFile() || entry.size < 1 || entry.size > 128_000) return null;
+    const bytes = Buffer.alloc(entry.size);
+    let position = 0;
+    while (position < bytes.length) {
+      const { bytesRead } = await handle.read(bytes, position, bytes.length - position, position);
+      if (bytesRead <= 0) return null;
+      position += bytesRead;
+    }
+    return object(JSON.parse(bytes.toString("utf8")));
   } catch { return null; }
+  finally { await handle?.close().catch(() => {}); }
 }
 
 /**
