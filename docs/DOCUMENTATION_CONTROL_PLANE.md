@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `hardening/mecha-stored-preset-shadow-admission-20261015` at `59d0020be699968353f1504758a66db681644b42`
+Implementation baseline: `audit/claimed-wolo-without-proof-20261015` at `e7ee112475e3b3263c57fbdbcee3a9f058b80e3c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
