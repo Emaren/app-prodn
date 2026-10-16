@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "302485842356b9b333fb49b60527653434e4e59e0d1e7a29e6f5c74291c2a744",
+      "sha256": "56fe5410db07c546b2c9a4c1a35cac6078287be6cfc54fc5c22dbf5bfef448e6",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-16",
       "sensitivity": "internal",
-      "sha256": "49eb24cc1975971b966a20bd766982daedca02d12ec58228040a355d78c18da1",
+      "sha256": "01406160e4afc91bc3dada705e765e588dab5848cc6775a86c8ab928476a935c",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/independent-docs-expired-review-recovery-20261016",
-    "commit": "c6069a0d4e968b8e98398982a136d3eb771867e7"
+    "branch": "fix/steam-rating-chronology-source-20261016",
+    "commit": "7ac4fbc39d4769e2b0b65f9765365e09d450643f"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

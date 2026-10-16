@@ -43,7 +43,8 @@ test("current rating selection against isolated PostgreSQL", {
     await client.query(`CREATE TABLE replay_parse_attempts (
       id integer PRIMARY KEY, user_uid text, replay_hash text,
       played_on timestamp, created_at timestamp NOT NULL,
-      parse_source text, upload_mode text, status text, evidence jsonb
+      parse_source text, upload_mode text, status text, evidence jsonb,
+      original_filename text
     )`);
     const steamId = "76561198000000001";
     const replayHash = "a".repeat(64);
@@ -59,13 +60,15 @@ test("current rating selection against isolated PostgreSQL", {
     const currentTime = "2026-10-05T00:00:00.000Z";
     let id = 0;
     const canonicalTime = (value: string) => new Date(value).toISOString().replace(/(\.\d{3})Z$/, "$1000Z");
-    const capturedAt = "2026-10-10T00:00:00.000000Z";
+    const defaultCapturedAt = "2026-10-06T00:00:00.000000Z";
     const insert = async (options: {
       source?: string; playedOn?: string | null; players?: unknown;
       proof?: Record<string, unknown> | null; hash?: string;
       observation?: Record<string, unknown>; outerUid?: string;
+      originalFilename?: string | null; capturedAt?: string;
     } = {}) => {
       const ident = ++id;
+      const capturedAt = options.capturedAt ?? defaultCapturedAt;
       const digest = options.hash ?? (ident === 1 ? replayHash : ident.toString(16).padStart(64, "0"));
       const source = options.source ?? "watcher_live";
       const playedOn = options.playedOn === undefined ? currentTime : options.playedOn;
@@ -115,9 +118,9 @@ test("current rating selection against isolated PostgreSQL", {
         [ident, digest, JSON.stringify(players), JSON.stringify({ watcher_upload: proof }), playedOn, source],
       );
       await client!.query(
-        "INSERT INTO replay_parse_attempts (id,user_uid,replay_hash,played_on,created_at,parse_source,upload_mode,status,evidence) VALUES ($1,$2,$3,$4,$5,$6,'watcher','stored',$7)",
+        "INSERT INTO replay_parse_attempts (id,user_uid,replay_hash,played_on,created_at,parse_source,upload_mode,status,evidence,original_filename) VALUES ($1,$2,$3,$4,$5,$6,'watcher','stored',$7,$8)",
         [ident, options.outerUid ?? "u_current-fixture", digest, playedOn, capturedAt, source,
-          JSON.stringify({ current_account_observation: observation })],
+          JSON.stringify({ current_account_observation: observation }), options.originalFilename ?? null],
       );
     };
     const states = async () => {
@@ -194,11 +197,11 @@ test("current rating selection against isolated PostgreSQL", {
     await t.test("new live RM and older live DM are selected with independent lane clocks", async () => {
       await client!.query("TRUNCATE game_stats, replay_parse_attempts");
       id = 0;
-      await insert({ playedOn: "2026-10-01T00:00:00.000Z", players: [{ ...basePlayer, steam_rm_rating: null, steam_dm_rating: 2000 }] });
+      await insert({ playedOn: "2026-10-04T00:00:00.000Z", players: [{ ...basePlayer, steam_rm_rating: null, steam_dm_rating: 2000 }] });
       await insert({ playedOn: currentTime, players: [{ ...basePlayer, steam_rm_rating: 1684, steam_dm_rating: null, rate_snapshot: 3999 }] });
       const state = await assertCurrent("Current Warrior", 1684, 2000);
       assert.equal(state?.steamRmObservedAt, currentTime);
-      assert.equal(state?.steamDmObservedAt, "2026-10-01T00:00:00.000Z");
+      assert.equal(state?.steamDmObservedAt, "2026-10-04T00:00:00.000Z");
     });
 
     await t.test("reparse and row creation clocks cannot replace actual live played_on", async () => {
@@ -216,6 +219,37 @@ test("current rating selection against isolated PostgreSQL", {
       assert.equal(row.players[0].steam_rm_rating, 1333);
       assert.equal(row.players[0].steam_dm_rating, 2444);
       await assertCurrent();
+    });
+
+    await t.test("2025 replay signed as live in October 2026 cannot override current", async () => {
+      await reset();
+      const before = await current();
+      await insert({
+        source: "watcher_final",
+        playedOn: "2026-10-16T18:05:51.057Z",
+        capturedAt: "2026-10-16T18:05:52.306775Z",
+        originalFilename: "MP Replay v5.8 @2025.11.29 181650 (4).aoe2record",
+        players: [{ ...basePlayer, steam_rm_rating: 2900, steam_dm_rating: 2321 }],
+      });
+      assert.deepEqual(await current(), before);
+      assert.equal(
+        (await client!.query("SELECT COUNT(*)::integer AS n FROM replay_parse_attempts")).rows[0].n,
+        2,
+        "Immutable forensic receipt stays in the database",
+      );
+    });
+
+    await t.test("truly historical but date-consistent late arrival cannot become current", async () => {
+      await reset();
+      const before = await current();
+      await insert({
+        source: "watcher_final",
+        playedOn: "2025-11-29T18:16:50Z",
+        capturedAt: "2026-10-16T18:05:52.306775Z",
+        originalFilename: "MP Replay v5.8 @2025.11.29 181650 (4).aoe2record",
+        players: [{ ...basePlayer, steam_rm_rating: 2900, steam_dm_rating: 2321 }],
+      });
+      assert.deepEqual(await current(), before);
     });
 
     await t.test("new signed hash-bound live observation legitimately advances name and rating", async () => {
@@ -281,7 +315,7 @@ test("current rating selection against isolated PostgreSQL", {
         { observation: { uploader_uid: "u_other-user" } },
         { outerUid: "u_other-user" },
         { observation: { observed_game_at: "malformed-date" } },
-        { observation: { captured_at: "2026-10-10T00:00:00.001000Z" } },
+        { observation: { captured_at: "2026-10-06T00:00:00.001000Z" } },
         { observation: { result_authority: true } },
         { observation: { archive_verified: false } },
         { observation: { parser: { name: "untrusted-parser" } } },

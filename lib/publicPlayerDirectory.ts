@@ -43,6 +43,7 @@ import {
   loadVerifiedWatcherSteamRatings,
   selectLatestSteamObservation,
 } from "@/lib/verifiedWatcherSteamRatings";
+import { isReplayRatingClockConsistent } from "@/lib/replayRatingClockIntegrity";
 import { loadPublicPresenceSnapshot } from "@/lib/publicPresence";
 import { loadPublicPlayerDirectoryGeneration } from "@/lib/publicPlayerDirectoryGeneration";
 import { resolveLeaderboardReplayMode } from "@/lib/leaderboardGameMode";
@@ -899,8 +900,15 @@ export async function loadPublicPlayerDirectoryFresh(
       observedName: replayName,
       normalizedName,
       observedAt,
+      // Keep historical replay counts and W/L, but never grant rating
+      // chronology to a server upload-time game clock that contradicts
+      // its ORIGINAL filename or Watcher client file mtime.
       ratingObservedAt:
-        toIso(game.played_on),
+        isReplayRatingClockConsistent({
+          playedOn: game.played_on,
+          originalFilename: game.original_filename,
+          keyEvents: game.key_events,
+        }) ? toIso(game.played_on) : null,
       acceptedAt:
         snapshot.createdAt.toISOString(),
       result,

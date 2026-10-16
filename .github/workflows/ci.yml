@@ -115,3 +115,38 @@ jobs:
         run: yarn build
       - name: Census Next build performance
         run: python3 scripts/aoe2_speed_build.py --no-receipt --require-build
+
+  isolated-rating-postgres:
+    name: Isolated Steam-rating PostgreSQL chronology
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      # Never connect to production. The test creates a private Unix-socket
+      # cluster under /tmp, exercises authority selection, then destroys it.
+      RUN_PLAYER_CURRENT_RATING_PG_TESTS: "1"
+      AOE2WAR_TEST_PG_BIN: /usr/lib/postgresql/16/bin
+      DATABASE_URL: postgresql://fixture:fixture@127.0.0.1:5432/not_used
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.22.0
+          cache: yarn
+      - name: Enable pinned package manager
+        run: corepack enable
+      - name: Install pinned PostgreSQL test tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends postgresql-16
+          test -x /usr/lib/postgresql/16/bin/initdb
+          test -x /usr/lib/postgresql/16/bin/pg_ctl
+      - name: Install frozen application dependencies
+        run: yarn install --frozen-lockfile --ignore-scripts --non-interactive
+      - name: Generate Prisma client
+        run: npx prisma generate
+      - name: Prove current Steam RM/DM rating chronology against isolated PostgreSQL
+        run: |
+          node --experimental-strip-types \
+            --experimental-loader ./scripts/aoe2-alias-loader.mjs \
+            --disable-warning=MODULE_TYPELESS_PACKAGE_JSON \
+            --test tests/current-watcher-rating-postgres.test.mts

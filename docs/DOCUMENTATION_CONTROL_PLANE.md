@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/independent-docs-expired-review-recovery-20261016` at `c6069a0d4e968b8e98398982a136d3eb771867e7`
+Implementation baseline: `fix/steam-rating-chronology-source-20261016` at `7ac4fbc39d4769e2b0b65f9765365e09d450643f`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

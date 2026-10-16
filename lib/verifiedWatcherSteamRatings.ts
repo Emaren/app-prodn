@@ -72,6 +72,31 @@ async function readFresh(prisma: PrismaClient): Promise<VerifiedWatcherSteamRati
         )
         AND g.played_on IS NOT NULL
         AND g.played_on <= NOW() + INTERVAL '5 minutes'
+        -- An authentic archived game date is not a current rating.
+        AND g.played_on >= g.created_at - INTERVAL '48 hours'
+        -- Original client replay source must agree with alleged game clock.
+        -- Filename is source-local; 48h accounts for timezone ambiguity.
+        AND (
+          SUBSTRING(g.original_filename FROM
+            '@([0-9]{4}[.][0-9]{2}[.][0-9]{2})') IS NULL
+          OR SUBSTRING(g.original_filename FROM
+            '@([0-9]{4}[.][0-9]{2}[.][0-9]{2})') IN (
+            TO_CHAR(g.played_on - INTERVAL '2 days', 'YYYY.MM.DD'),
+            TO_CHAR(g.played_on - INTERVAL '1 day', 'YYYY.MM.DD'),
+            TO_CHAR(g.played_on, 'YYYY.MM.DD'),
+            TO_CHAR(g.played_on + INTERVAL '1 day', 'YYYY.MM.DD'),
+            TO_CHAR(g.played_on + INTERVAL '2 days', 'YYYY.MM.DD')
+          )
+        )
+        AND CASE WHEN
+          (g.key_events::jsonb #>> '{watcher_upload,file_mtime_ms}') ~ '^[0-9]{13}$'
+          THEN g.played_on <= (
+            TO_TIMESTAMP((
+              g.key_events::jsonb #>> '{watcher_upload,file_mtime_ms}'
+            )::numeric / 1000) AT TIME ZONE 'UTC'
+          ) + INTERVAL '48 hours'
+          ELSE true
+        END
         AND g.user_uid IS NOT NULL AND BTRIM(g.user_uid) <> ''
         AND g.user_uid <> 'system'
         AND LOWER(g.replay_hash) ~ '^[a-f0-9]{64}$'
