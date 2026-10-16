@@ -15,6 +15,30 @@ sensitivity: "internal"
 
 # Kingdom Intelligence
 
+## 2026-10-16 — Fail closed when public evidence streams describe different releases
+
+Kingdom Agents combines General Inspections (full certified production release SHA)
+with Kingdom Intelligence (public 12-hex release prefix). Both can be fresh but
+refer to different deployed generations. A separate age check did not prove
+shared identity and could project a healthy system sentinel from stale-release
+facts alongside a different inspections score.
+
+A pure, unit-tested identity arbiter now requires a valid full 40-hex inspection
+SHA and exactly 12 hex KI prefix characters. Only a matching prefix permits
+KI-derived system agent states, Doctor score, directive and activity to be
+reported as current together with inspection watchposts. A conflicting pair
+reports `releaseAlignment=mismatch`, shows `SOURCE DRIFT`, masks mixed release
+identity and leaves KI system states unknown. Missing/invalid evidence reports
+`releaseAlignment=unknown`, not healthy; independently observed inspection
+checks are still labeled with their own source.
+
+This is an evidence-presentation correction, **not** a 100/100 score change,
+source refresh, actual agent process, reauthentication of GitHub, production
+release or Wolo financial action. No live deployment or external observation
+was performed. Separate public routes still collect independently; consistent
+source IDs allow coherent interpretation, not atomic multi-source sampling.
+
+
 ## 2026-10-16 — One General Inspections evidence scan per public OS refresh
 
 The public AoE2WAR OS endpoint combines General Inspections and Kingdom
