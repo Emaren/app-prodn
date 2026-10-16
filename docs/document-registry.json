@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "116e159c2a2faaebe14eee92c17ba0e7e29ebdbaa1892e812dfd6b76b64e3a0a",
+      "sha256": "49232cf1b9518e8dd87fe60aed0ce38a306e6fb7db24c4940653c07d668107f7",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "80cfb1017ac8c6aba79bc7182ed24e6a140ee741b7b960ff7fc6e240a8f14de1",
+      "sha256": "ede14d144530e27ac41bbdd0aa5b453404a6bb5d8b6160de9eb84a03adfe5958",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-15",
       "sensitivity": "internal",
-      "sha256": "087bf41ec21f87313475b640dad5ae4a11b050d5ea96cd6380a844d0a208b716",
+      "sha256": "e7f64887d3a733ef4c2549b9063da19436a0d847cf2b664bb6f0f99326a9aa38",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "perf/kingdom-os-single-inspection-snapshot-20261016",
-    "commit": "8fc04c8d0d636c189f6a2bc3350aa56efbf4f164"
+    "branch": "perf/mecha-shadow-active-uploaders-20261016",
+    "commit": "1b6aa9bb36c3263c3547091b8f5efd9ced0c759d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
