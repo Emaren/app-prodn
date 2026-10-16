@@ -1,7 +1,7 @@
 import "server-only";
 
 import { constants } from "node:fs";
-import { lstat, open, readFile, readdir } from "node:fs/promises";
+import { open, readdir } from "node:fs/promises";
 import path from "node:path";
 
 import { buildGeneralInspectionsSnapshot } from "@/lib/generalInspections/serverSnapshot";
@@ -133,14 +133,14 @@ async function github(relative: string): Promise<unknown> {
     return await response.json();
   } catch { return null; }
 }
-async function safeJson(file: string): Promise<Record<string, unknown> | null> {
+async function safeJson(file: string, maxBytes = 128_000): Promise<Record<string, unknown> | null> {
   // Open without following a symlink and bind the size check to the SAME
   // descriptor we read. Checking lstat then using readFile leaves a race.
   let handle: Awaited<ReturnType<typeof open>> | null = null;
   try {
     handle = await open(file, constants.O_RDONLY | constants.O_NOFOLLOW);
     const entry = await handle.stat();
-    if (!entry.isFile() || entry.size < 1 || entry.size > 128_000) return null;
+    if (!entry.isFile() || entry.size < 1 || entry.size > maxBytes) return null;
     const bytes = Buffer.alloc(entry.size);
     let position = 0;
     while (position < bytes.length) {
@@ -175,9 +175,8 @@ async function certifiedDeployTime(releaseSha: string | null): Promise<string | 
   for (const name of candidates) {
     const file = path.join(directory, name);
     try {
-      const stat = await lstat(file);
-      if (!stat.isFile() || stat.size > 750_000) continue;
-      const receipt = object(JSON.parse(await readFile(file, "utf8")));
+      const receipt = await safeJson(file, 750_000);
+      if (!receipt) continue;
       const outcome = string(receipt.release_outcome);
       const source = string(object(object(receipt.certified_release).production).source_sha);
       const at = stamp(receipt.release_certified_at);
