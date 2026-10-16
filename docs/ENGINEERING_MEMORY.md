@@ -15,19 +15,6 @@ sensitivity: "internal"
 
 # AoE2WAR Engineering Memory and Learned Invariants
 
-## 2026-10-16 — Bank payout evidence must preserve original message ordinals
-
-The payout REST decoder previously filtered non-object messages before
-enumerating MsgSends and used `.find()` on `uwolo` amounts, silently
-accepting ambiguous duplicate-denomination amounts. Canonical source
-identity and a successful tx code alone cannot repair that loss of
-effect-level provenance. Added a pure, fail-closed bank-send decoder
-that preserves top-level message indexes, rejects malformed/doubled
-coins and contradictory decoded bank messages, and returns no
-financial evidence from ambiguous input. Adversarial source-bound
-tests guard the behavior. Still no payout or transaction promotion.
-
-
 ## Purpose
 
 This is the durable anti-relearning layer for AoE2WAR engineering.
@@ -80,6 +67,29 @@ fails closed on these known escrow paths. Other founder/admin
 historical source evidence remains unproved: **do not assume the same
 escrow wallet paid every claim**, do not automatically retry #889,
 and never equate source-binding alone with unique payout request proof.
+
+## 2026-10-16 — Bank payout evidence must preserve original message ordinals
+
+The payout REST decoder previously filtered non-object messages before
+enumerating MsgSends and used `.find()` on `uwolo` amounts, silently
+accepting ambiguous duplicate-denomination amounts. Canonical source
+identity and a successful tx code alone cannot repair that loss of
+effect-level provenance. Added a pure, fail-closed bank-send decoder
+that preserves top-level message indexes, rejects malformed/doubled
+coins and contradictory decoded bank messages, and returns no
+financial evidence from ambiguous input. Adversarial source-bound
+tests guard the behavior. Still no payout or transaction promotion.
+
+## 2026-10-16 — Satchel C3 must understand Cosmos omitted zero and root Tx
+
+Satchel canonical receipt validation assumed a nested
+`tx_response.tx.body` and explicit `code:0`, rejecting legitimate
+Cosmos REST v1beta1 root `tx.body` and zero-code omitempty.
+It now recognizes both structures, refuses conflicting dual
+decoded bodies, rejects explicit malformed or failed codes,
+and retains the owner, exact memo, chain, amount and timing gates.
+A wire-shape match is *not* independently authenticated consensus
+nor permission to credit WOLO: Satchel custody stays unavailable.
 
 ## 2026-10-16 — Current linked wallet is not the historical payout destination
 
