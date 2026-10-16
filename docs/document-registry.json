@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "8a145b6c7f83b3a58b9dc0734dcbf3466e3a976e8a0052ecc38c7aef3c8de4a2",
+      "sha256": "f12aa887509c625a01cfa0b7bd8e51cec6860807687bad34994d385c528a42de",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-15",
       "sensitivity": "internal",
-      "sha256": "5279f5cfeed8eb8ef1889ee555af063f6e9ffc399207938a50e423e1207f8e6a",
+      "sha256": "9e85ac092e9d78890dcb99006b3415af7e6b4a4d74f3478745407e0e6bce393f",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1971,7 +1971,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "restricted",
-      "sha256": "53b363874780fc50f13466ed7716e351f748375ac8f8778e00843fdf64f034f0",
+      "sha256": "7e1cd4c3544228c5307c7529af1eb98798f7eff339f9388ae2ba724d9aa436d4",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2117,7 +2117,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/claim-payout-authorized-sender-provenance-20261016",
-    "commit": "905f9e6cef7e55422774d5079109992a3228201e"
+    "commit": "555249ebde671d3c9a267634afa2eba1bb1fb6a3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
