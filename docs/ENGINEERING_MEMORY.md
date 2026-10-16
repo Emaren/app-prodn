@@ -41,10 +41,6 @@ memory before closing the work.
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
 
-## 2026-10-15 — Public OS local status reads need descriptor-bound limits
-
-The public command deck initially read entire bridge JSON before checking 128 KiB. A subsequent pre-read `lstat` improved memory use but still allowed a path race. The reader now opens with `O_NOFOLLOW`, checks and reads a bounded regular file on the same descriptor, and closes it even on errors. Tests enforce the safe read boundary. Failed reads produce unavailable status; they never synthesize a live deploy.
-
 ## 2026-10-15 — Public Kingdom Machine: why CI, live release, and source census stay independent
 
 The public route `/aoe2war-os` is a **read-only** visual command deck, separate from
@@ -100,6 +96,61 @@ deliver **measured** faster signals, correct last-deploy receipts, more
 reliable agent actions, or reduced maintenance cost rather than merely
 more lights, manufactured 100s, or background polling.
 
+## 2026-10-15 — Historical Claim WOLO payout proof must be audited, not inferred
+
+The old profile Claim WOLO path could set `pending_wolo_claims.status`
+to `claimed` without an on-chain payout. The new profile guard stops
+future write-only status transitions, but historical `claimed` rows
+lacking `payout_tx_hash` remain an **unmeasured** evidence class.
+
+Added a repeatable-read, read-only, aggregate-only census, intentionally
+separating legacy and mainnet-era data and refusing any payout authority.
+Do not equate missing hash to nonpayment; do not auto-reopen rows. First
+obtain bounded, owner-safe historical counts, then independently review
+canonical chain success and signer/request evidence before any financial
+correction. No production census has been run by this code change.
+
+## 2026-10-15 — Stored Mecha plans must not bypass current safety budgets
+
+The original preset form enforced 1,000 WOLO/game and 10,000 WOLO per
+finite plan, but admission-time validation didn't enforce total stored
+exposure. The shadow worker also mapped unrecognized legacy Desync
+choices to `none`, changing the meaning of persisted owner consent.
+Both now fail closed at market admission, with direct and worker tests.
+Shadow preview remains non-funding; live automated betting is still
+disabled pending real custody and unique accepted ticket settlement.
+
+## 2026-10-15 — Satchel vault policy must exclude existing WOLO role wallets
+
+Preparing a nonfundable Satchel intent and reviewing a canonical
+transaction used subtly different wallet-exclusion lists. The
+preparation gate omitted community Treasury and both missed the
+full registered mainnet wallet catalog. A dedicated asset/liability
+vault must not silently be one of the site's historical treasury,
+player, founder, payout, staking or escrow addresses.
+
+Both gates now share the catalog-plus-environment exclusion
+predicate, including Treasury aliases. Regression tests cover all
+catalogued addresses and novel candidates. Passing this local guard
+is **never** signer, solvency, custody, deposit or payout approval;
+the existing C2/C3 feature flags and `creditAuthorized=false`
+remain enforced.
+
+## 2026-10-15 — Claim WOLO is not a payout: prevent phantom-paid claims
+
+The profile's legacy Claim WOLO POST marked pending database rows
+`claimed` merely by normalized player-name match. That is not the same as
+a successful chain transfer. It also had a stale read-to-broad-update race
+and could touch claims attached to other owners. The emergency Git-only
+fix makes the profile action read-only and responds 409
+`CHAIN_SETTLEMENT_REQUIRED` while preserving pending claims. This
+intentionally **does not** claim the profile payout feature now works:
+the owner-bound, chain-finalized payout path is a separate acceptance gate.
+
+Financial rule: **no status `claimed` without distinct on-chain proof
+and exact owner/amount/transfer binding**. Historical rows need
+read-only review before any correction; do not automatically rewrite
+older records to reconcile their missing hashes.
 
 ## 2026-10-15 — Generic internal HTTP writes must not evade the route authority review queue
 

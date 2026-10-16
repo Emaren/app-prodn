@@ -301,6 +301,57 @@ test("finite plans must still have capacity, while Until Out remains preview-eli
   assert.equal(untilOut.eligible, true);
 });
 
+test("stored Mecha presets cannot bypass the 10k plan budget or fabricate Desync choices", () => {
+  assert.deepEqual(
+    evaluate({ preset: { winnerStakeWolo: 500, gamesRemaining: 21 } }),
+    { eligible: false, reason: "auto_stake_cap_exceeded" },
+  );
+  assert.deepEqual(
+    evaluate({ preset: { desyncSide: "legacy-invalid" as never, desyncStakeWolo: 0 } }),
+    { eligible: false, reason: "stored_preset_invalid" },
+  );
+  assert.deepEqual(
+    evaluate({ preset: { gamesRemaining: 10_001 } }),
+    { eligible: false, reason: "stored_preset_invalid" },
+  );
+  assert.deepEqual(
+    evaluate({ preset: { untilOut: true, gamesRemaining: 2 } }),
+    { eligible: false, reason: "stored_preset_invalid" },
+  );
+  assert.deepEqual(
+    evaluate({ preset: { winnerStakeWolo: 1_001 } }),
+    { eligible: false, reason: "auto_stake_cap_exceeded" },
+  );
+  assert.equal(evaluate({ preset: { winnerStakeWolo: 500, gamesRemaining: 20 } }).eligible, true);
+});
+
+test("malformed stored Desync value never creates a shadow outbox row", async () => {
+  let writes = 0;
+  const prisma = {
+    betAutoPreset: {
+      findMany: async () => [{
+        ...preset(), desyncSide: "unrecognized_old_value",
+        user: { uid: "emaren", steamId: OWNER_STEAM },
+      }],
+    },
+    betMarket: {
+      findMany: async () => [{ ...market(), childMarkets: [] }],
+    },
+    betAutoExecution: {
+      createMany: async () => { writes += 1; throw new Error("never materialize"); },
+    },
+  };
+  const result = await runBetAutoShadowWorker(prisma as never, {
+    activeSessions: [session()] as never,
+    env: { BET_AUTOMATION_MODE: "shadow" },
+  });
+  assert.deepEqual(result, {
+    mode: "shadow", evaluatedCount: 1, eligibleCount: 0,
+    createdCount: 0, existingCount: 0, skippedCount: 1,
+  });
+  assert.equal(writes, 0);
+});
+
 test("shadow worker is durable but structurally non-financial", () => {
   const worker = readFileSync(
     new URL("../lib/betAutomationShadowWorker.ts", import.meta.url),

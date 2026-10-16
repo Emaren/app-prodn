@@ -15,6 +15,61 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## October 15, 2026 — persisted Mecha plans receive full admission-time validation
+
+The interactive preset form rejects combined stakes over 1,000 WOLO per
+game, and finite plans requiring over 10,000 WOLO. Existing shadow admission,
+however, checked the per-game ceiling but did not recheck a *stored*
+finite plan's full 10,000-WOLO exposure at the moment a canonical Watcher
+market became available. In addition, the worker converted unknown
+historical Desync enum values to `none`, quietly changing the user's
+stored selection rather than failing closed.
+
+The shadow admission now rechecks stored Desync enums, Until-Out
+null/finite-plan consistency, the 10,000-game maximum, per-leg limits
+and total finite plan exposure at admission time. Invalid Desync values
+never enter the immutable preview outbox; no automatic correction to
+`none` occurs. Pure and worker integration tests prove that 500 WOLO
+for 21 matches is rejected (10,500 > 10,000), invalid persisted enums
+are rejected, and 500 for exactly 20 matches remains valid.
+No client plan is rewritten and no user gets a false funded-bet receipt.
+
+**This remains the non-financial shadow worker.**
+`LIVE_EXECUTOR_IMPLEMENTED=false`, `acceptedAt=null`, no stake tickets,
+reservations, on-chain payouts, active WOLO movement or decrement of
+the player's finite plan. A future real executor must revalidate and lock
+a *newly reviewed consent and balance* at actual stake acceptance.
+
+
+## October 15, 2026 — one canonical vault collision policy for both Satchel gates
+
+The C2 nonfundable intent route and C3 canonical receipt route each had
+separate vault-exclusion lists. The preparation route omitted the
+community Treasury and neither route rejected all known existing
+mainnet wallets when some role addresses were absent from the
+environment. This could allow a seemingly independent Satchel vault
+candidate to reuse treasury, founder, player, staking, escrow or payout
+addresses. Nothing had been credited, but the divergent prerequisites
+would undermine future owner-bound custody certification.
+
+`warSatchelVaultDistinctFromKnownWallets` now rejects every address
+in the authoritative known WOLO mainnet wallet catalog plus all
+currently supplied custody/role addresses. Both preparation and
+canonical chain-audit gates share the same predicate, including the
+existing treasury environment alias resolver. Tests enumerate all
+registered wallets and verify conflicting configured addresses and
+legacy aliases. These checks are additive; the existing minimum
+configuration guard, strict chain, wallet proof, nonce, expiry,
+exact receipt, uncredited status and feature flags remain intact.
+
+This is **candidate isolation only**. A newly unknown address passing
+the predicate is NOT certified as a segregated vault or solvent
+escrow. Neither endpoint can yet authorize a Keplr transfer, a live
+Satchel credit, a withdrawal or an automatic bet. A dedicated vault
+must receive independent signer-control, chain-proof, accounting and
+rescue certification before any wallet funding is enabled.
+
+
 ## October 15, 2026 — simulation ledger valid-release regression correction
 
 The C3a simulation-only cross-player owner-isolation function had an

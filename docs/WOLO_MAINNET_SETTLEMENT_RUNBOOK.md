@@ -15,6 +15,76 @@ sensitivity: "restricted"
 
 # WOLO Mainnet Settlement App Runbook
 
+## October 15, 2026 — read-only historical paid-status/proof-gap census
+
+The legacy authenticated profile Claim WOLO route used to mark matched
+`pending_wolo_claims` as `claimed` by player-name association without
+an independently proved `wolo-1` payout, a stored tx hash, or a safe
+claimant-bound atomic completion predicate. PR #598 stopped all *new*
+phantom-paid profile transitions. That source repair does not tell us how
+many historical claim rows, if any, were already marked claimed without
+recorded transaction proof.
+
+`scripts/wolo-claimed-without-proof-readonly.mjs` adds a bounded,
+**aggregate-only** historical census. Run it only from the protected
+application EnvironmentFile, never supply `DATABASE_URL` on a shell
+command line. It opens a read-only repeatable-read PostgreSQL transaction
+with connection/query timeouts, reads only fixed `status='claimed' AND
+payout_tx_hash IS NULL` cohorts, and rolls back before summarizing.
+The output reports anonymized count buckets by mainnet-era versus legacy
+creation time (cutoff 2026-05-25) and a fixed allowlist of payout kinds,
+plus counts of prior attempt timestamps and unverified proof-URL presence.
+It **never prints** player names, owner IDs, wallets, amounts, raw error
+text, settlement memos, hashes, or credentials.
+
+Exit 0 means this particular predicate found no rows in the observed
+snapshot, **not** that all claims were paid or full chain state was
+reconciled. Exit 3 means one or more rows demand independent historical
+settlement review; exit 2 means the source/database cannot be validated.
+Hashless claimed rows do **not** prove unpaid funds, and even a hash-bearing
+claim does not independently prove a successful transaction. Do not
+automatically reopen, retry, rescind, repay, or rewrite any legacy record
+to make this report green. Current WoloChain state, signer records,
+claim identity, and unique transfer evidence must be verified separately.
+
+The script performs no payments, migrations, balance writes, Satchel
+credits, bets, wallet access, or production promotions. Its presence
+does not clear founder claim #889 or the financial-release gate.
+
+
+## October 15, 2026 — profile Claim WOLO cannot mean paid without chain proof
+
+Source review found that the legacy `POST /api/user/wolo-claims/claim`
+called `claimPendingWoloClaimsForUser`, which selected name-matched
+`pending` claims and used `pendingWoloClaim.updateMany` to change them
+directly to `claimed`, attach a session user ID, and stamp `claimedAt`.
+There was no required on-chain payout hash, no distinct finalized
+`wolo-1` `MsgSend`, and no database compare-and-set requiring an
+unattempted, unclaimed row. A user pressing Claim WOLO therefore risked
+making an **unpaid liability look paid**, including inappropriately
+claiming rows associated with another owner sharing a player name.
+
+The source-only correction replaces that legacy write path with a bounded,
+read-only eligibility observation; name-matched unassigned claims and
+claims already attached to the requesting user may be observed, never
+consumed. A pending claim (including a team-name split visible on the
+profile) returns HTTP 409 with `CHAIN_SETTLEMENT_REQUIRED` and current
+pending totals. The profile surfaces the specific detail. An empty
+profile reports no verified claim ready. The entire pending record,
+payout-attempt timestamp, payout hash, claimant identity and liability
+are unchanged. The protected admin settlement rail remains the only
+existing path capable of finalizing a payout with independently validated
+mainnet transaction proof.
+
+**This is a containment repair, not restoration of live profile payouts.**
+The next product step is a separately reviewed and certified owner-bound
+claim/payout request with unique on-chain proof, wallet ownership and
+transaction/ledger idempotency. Do not simply call an admin payout function
+from a public profile endpoint, forge `payoutTxHash`, clear claim #889,
+or infer payout from a UI click. No live WOLO transfer, production schema
+change, mainnet service operation or UI redesign was performed.
+
+
 ## October 15, 2026 — immutable historical claim writes (shared boundary)
 
 Admin and automated Founder payout retry prevention must not rely only on

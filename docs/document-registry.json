@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "8ca34cbfa5e4c22e061a1d5a13c4b24a9575cd23cfd81379b77712a05ad9298d",
+      "sha256": "bc2fa64b3fd62b5cdd24972d7a38b2dbdc3b3662ee7126339c1fefe732f93225",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -316,9 +316,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BET_STAKE_TICKETS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-15",
+      "reviewed_at": "2026-10-16",
       "sensitivity": "internal",
-      "sha256": "2d4ba75da121deba757b3f2bd49d53125d187a886ccc8b7c1f0c91e793715b12",
+      "sha256": "51aa4c0e3e27afeed8c2780bc8f612e7e18db355c6134b77b78b4d8bfa217b2f",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b07e72d93d1a9e6edafa736def95b3dd5e5b0ef9cb5a0ca320b822bbfbada8aa",
+      "sha256": "50060cb59f73bcb39f004b6a545fccdf61dcc986db319be57ed6453f6de8e87c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-15",
       "sensitivity": "internal",
-      "sha256": "8edfa4adf3fc6403c8ad800f7d2e19b34a03fb0876c49581c7a8162e8c090744",
+      "sha256": "b2220dfb7cd0341e7aa4e04f75c35f2e986d7556aa319827d11fcf267c18e860",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -940,7 +940,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-06",
       "sensitivity": "internal",
-      "sha256": "f9c16ddd336770e79fe9e1fd718bdad76038d7474e8d906dec0cb6cc3764e421",
+      "sha256": "73a81e2a47b2269d5746fb60fa74d4104306665c468d7ec8384339b0308833d8",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1971,7 +1971,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "restricted",
-      "sha256": "d693420a473da0c8a3ff94de36788405ee4759f90ba8d2499034f2cd965fe780",
+      "sha256": "09092f4eb70ac0bd1f59497164561d2e84cb9ec3fd694793eb2620d185bb5edf",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/public-aoe2war-os-command-deck-20261015",
-    "commit": "d50adffca22035c911be910b920415d35827a5a1"
+    "branch": "audit/claimed-wolo-without-proof-20261015",
+    "commit": "e7ee112475e3b3263c57fbdbcee3a9f058b80e3c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/public-aoe2war-os-command-deck-20261015` at `d50adffca22035c911be910b920415d35827a5a1`
+Implementation baseline: `audit/claimed-wolo-without-proof-20261015` at `e7ee112475e3b3263c57fbdbcee3a9f058b80e3c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

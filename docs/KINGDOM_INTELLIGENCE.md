@@ -15,14 +15,6 @@ sensitivity: "internal"
 
 # Kingdom Intelligence
 
-Kingdom Intelligence (KI), also called **the Brain**, is AoE2WAR's durable
-self-knowledge layer. It is not an LLM and must not require an LLM to explain
-the operating state of the project.
-
-The project supplies deterministic facts, provenance, invariants, freshness,
-ranked next actions, receipts and protected commands. External AI systems may
-consume that structure, but the authoritative state belongs to AoE2WAR.
-
 ## 2026-10-15 — Public AoE2WAR OS command deck and evidence-based 100 contracts
 
 The public route `/aoe2war-os` is a **read-only** visual command deck, separate from
@@ -80,6 +72,14 @@ deliver **measured** faster signals, correct last-deploy receipts, more
 reliable agent actions, or reduced maintenance cost rather than merely
 more lights, manufactured 100s, or background polling.
 
+
+Kingdom Intelligence (KI), also called **the Brain**, is AoE2WAR's durable
+self-knowledge layer. It is not an LLM and must not require an LLM to explain
+the operating state of the project.
+
+The project supplies deterministic facts, provenance, invariants, freshness,
+ranked next actions, receipts and protected commands. External AI systems may
+consume that structure, but the authoritative state belongs to AoE2WAR.
 
 ## Constitutional lens
 
