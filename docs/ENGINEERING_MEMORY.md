@@ -73,6 +73,7 @@ and never equate source-binding alone with unique payout request proof.
 The mainnet payout guard previously retrieved current
 `User.walletAddress` for already-claimed rows sharing a transaction
 hash, then counted their old payouts against that mutable destination.
+Mixed-case hexadecimal transaction hashes also need database-level case-insensitive equality; testing just uppercase and lowercase variants can miss a prior use.
 A wallet change after payment makes that retroactive reconstruction
 unreliable. The guard now blocks cross-operation reuse of any
 already-consumed hash with `HISTORICAL_TX_REUSE_UNVERIFIED`, while
