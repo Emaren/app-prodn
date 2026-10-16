@@ -64,7 +64,7 @@ test("real census script is read-only, credential-safe and never labels absent h
   assert.match(source, /WHERE status = 'claimed' AND payout_tx_hash IS NULL/);
   assert.match(source, /GROUP BY 1,2/);
   assert.match(source, /ROLLBACK/);
-  assert.match(source, /claimed_with(out|_)proof/i);
+  assert.match(source, /claimed_without_proof/i);
   assert.match(source, /does not prove nonpayment/i);
   assert.match(source, /result\.totalRowsRequiringReview > 0 \? 3 : 0/);
   assert.doesNotMatch(source, /SELECT\s+id\s*,|SELECT\s+\*|amount_wolo\b|wallet_address\b|normalized_player_name\b|error_state\b|payout_memo\b|UPDATE pending_|DELETE FROM|INSERT INTO|executeWoloPayout|signAndBroadcast/);
