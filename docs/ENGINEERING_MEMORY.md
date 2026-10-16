@@ -55,6 +55,19 @@ obtain bounded, owner-safe historical counts, then independently review
 canonical chain success and signer/request evidence before any financial
 correction. No production census has been run by this code change.
 
+## 2026-10-16 — Escrow payout proof needs the authorized *sender*, not only receiver and amount
+
+A successfully committed WOLO bank send to the right recipient
+with a matching amount could belong to an unrelated sender. The
+escrow-backed bet-settlement and #JimsRule correction paths now pass
+the independently configured escrow address into the existing
+distinct-transaction guard, and a pure, count-preserving check refuses
+wrong-sender and same-effect-reused input. Absent configured source
+fails closed on these known escrow paths. Other founder/admin
+historical source evidence remains unproved: **do not assume the same
+escrow wallet paid every claim**, do not automatically retry #889,
+and never equate source-binding alone with unique payout request proof.
+
 ## 2026-10-16 — Claim payout REST must prove canonical tx identity before reading bank sends
 
 The legacy reconciliation helper defaulted unknown/malformed
