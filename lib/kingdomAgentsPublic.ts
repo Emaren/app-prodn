@@ -1,6 +1,7 @@
 import "server-only";
 
 import { buildGeneralInspectionsSnapshot } from "@/lib/generalInspections/serverSnapshot";
+import type { GeneralInspectionsSnapshot } from "@/lib/generalInspections/types.ts";
 import { loadPublicKingdomIntelligence } from "@/lib/kingdomIntelligencePublic";
 import { inspectionAgentState, systemAgentState, type KingdomAgentState } from "@/lib/kingdomAgentPolicy";
 
@@ -37,9 +38,17 @@ function safeDate(value: string | null | undefined): string | null {
 // Single public projection of existing, separately owned telemetry.
 // An inspection check is an evidence watchpost, NOT a spawned AI process.
 // No shell, database mutation, secrets, or privileged control surface.
-export async function buildKingdomAgentsPublicSnapshot(): Promise<KingdomAgentPublicSnapshot> {
+export async function buildKingdomAgentsPublicSnapshot(
+  options: { inspectionSource?: PromiseLike<GeneralInspectionsSnapshot | null> | GeneralInspectionsSnapshot | null } = {},
+): Promise<KingdomAgentPublicSnapshot> {
+  // A single OS request needs one coherent inspection snapshot. Standalone
+  // agent requests still perform their own scan, preserving existing behavior.
+  // Null means the caller's read failed; never retry or synthesize a green read.
+  const inspectionSource = Object.prototype.hasOwnProperty.call(options, "inspectionSource")
+    ? Promise.resolve(options.inspectionSource ?? null)
+    : Promise.resolve().then(() => buildGeneralInspectionsSnapshot());
   const [inspectionResult, intelligenceResult] = await Promise.allSettled([
-    Promise.resolve().then(() => buildGeneralInspectionsSnapshot()),
+    inspectionSource,
     loadPublicKingdomIntelligence(),
   ]);
   const inspection = inspectionResult.status === "fulfilled" ? inspectionResult.value : null;
