@@ -15,6 +15,28 @@ sensitivity: "restricted"
 
 # WOLO Mainnet Settlement App Runbook
 
+## October 16, 2026 — signer-bound new Claim WOLO payouts
+
+The standard and Founder Rewards admin payout completion paths previously
+checked the canonical tx recipient and amount without binding the exact
+source wallet. A genuine unrelated MsgSend could appear to support the
+claim. The private settlement service health's `payout_address` is now
+captured before each POST; local fallback derives the source directly
+from its signer account. Mainnet refuses missing or invalid signer
+identity **before broadcast**. The returned
+`expectedSenderAddress` is passed through both admin claim completion
+guards; exact canonical sender, recipient, amount and distinct bank-send
+count must match before changing status to `claimed`.
+
+The two payout services may have **different signers**; no global
+escrow address is assumed for Founder Rewards. Health identity is not
+independent chain trust. A signer rotation between preflight and
+broadcast requires fail-closed review rather than another blind payout.
+Historical missing-signer records, founder claim #889, unresolved
+liabilities and live Satchel custody remain blocked. No live operation
+or token movement was performed by this source-only change.
+
+
 ## October 15, 2026 — canonical WOLO proof inputs cannot be silently rounded
 
 Read-only `validateDistinctClaimPayoutTxBatch` previously accepted 16–128
