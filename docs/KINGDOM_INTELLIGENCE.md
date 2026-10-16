@@ -15,6 +15,27 @@ sensitivity: "internal"
 
 # Kingdom Intelligence
 
+## 2026-10-16 — One General Inspections evidence scan per public OS refresh
+
+The public AoE2WAR OS endpoint combines General Inspections and Kingdom
+Agents. Previously it invoked `buildGeneralInspectionsSnapshot()` directly
+and `buildKingdomAgentsPublicSnapshot()` invoked the same scanner a second
+time, potentially scanning all local receipts, filesystem volumes and
+release evidence twice within a single 45-second dashboard refresh.
+
+The OS aggregator now creates **one promise** for this snapshot and
+shares the identical outcome with the agent projection. Standalone
+Kingdom Agents routes retain their independent scanner as before.
+A rejected inspection promise remains unavailable in both consumers
+instead of silently running a second check or falsely reporting 100.
+
+This is an objective reduction from two independent inspection scans
+to one per OS snapshot. It does not claim a measured latency gain:
+those metrics require fresh production profiling. No visual components,
+links, player-facing scoring weights, deployment control, persistence,
+funds, finance or operator permissions were changed.
+
+
 ## 2026-10-15 — Public AoE2WAR OS command deck and evidence-based 100 contracts
 
 The public route `/aoe2war-os` is a **read-only** visual command deck, separate from
