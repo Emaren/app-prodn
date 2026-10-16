@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b3b21a5d25a04f728727180d1e3ae3553943218711f44f5f304b762c61b29f12",
+      "sha256": "e818ff035437b20508d063f679e289e361ff75a44aa3de053a29069cd568c7b4",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2117,7 +2117,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/mecha-active-session-market-census-20261016",
-    "commit": "1a0e1a7208f54daed069ce19d1f9b18c73a9fe45"
+    "commit": "1170223c93d9d050b0f03f80c5d3d629586aa910"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
