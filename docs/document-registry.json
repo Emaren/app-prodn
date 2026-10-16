@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c2c5b5dc0d77e41d5481d318511f98414450ebf5e1146a0e459b94b276d0f3a1",
+      "sha256": "80cfb1017ac8c6aba79bc7182ed24e6a140ee741b7b960ff7fc6e240a8f14de1",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-15",
       "sensitivity": "internal",
-      "sha256": "62c55c5db59599318ca285e5b8223fc38b95fc6b39355cde089cd0a287f14f04",
+      "sha256": "087bf41ec21f87313475b640dad5ae4a11b050d5ea96cd6380a844d0a208b716",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -940,7 +940,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-06",
       "sensitivity": "internal",
-      "sha256": "74511b8c75f403dc43cf6bb5104f06790b6b642c64fdf267795afdf07bcc8d19",
+      "sha256": "e9982dd80d5415ac2fba969d9c15e1831ebf82d453bac211a71f83fe515f1bd1",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/wolo-dual-body-conflict-20261016",
-    "commit": "ce4811ccf0ba46e6c14f6df8e20c260be4c03803"
+    "branch": "perf/kingdom-os-single-inspection-snapshot-20261016",
+    "commit": "8fc04c8d0d636c189f6a2bc3350aa56efbf4f164"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
