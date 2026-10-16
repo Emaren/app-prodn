@@ -29,6 +29,46 @@ behavior, authority, architecture, financial policy, recovery, release
 procedure, or debugging strategy, update the owning living contract and this
 memory before closing the work.
 
+## 2026-10-16 — Source game time versus server upload time is a security boundary
+
+Production Zodiac DM ELO oscillated as archived replay games were added.
+An operator's read-only SQL census confirmed that six final replay rows
+(ID 55553/55564/55566/55678/55686/55692) with actual client filenames
+from August 2025 through March 2026 were assigned `played_on` dates
+October 16, 2026—within seconds of database creation. Original
+`file_mtime_ms` independently matched the historical files, while
+both GameStats and supposedly immutable current-account observations
+claimed signed `live_monitor`. Their archived replay ratings (e.g.
+2321, 2303, 2348, 2311, 2358) displaced current leaderboard ELO.
+
+**Root cause:** API ingress parsed a freshly written server temporary
+file. The parser's generic `extract_datetime_from_filename` fallback
+used the temp file's mtime as replay game time. A valid replay content
+signature authenticates bytes and provenance supplied by the client;
+it does **not** authenticate the claimed game chronology or upgrade an
+archived match into a current Steam account observation. The dedicated
+Watcher historic batch path labels `historical_import`, but observed
+produced rows were `live_monitor`; determine installed Watcher scan
+path/version separately, with no presumptive attribution to batch UI.
+
+**Read-side containment (source candidate):** require all three
+leaderboard rating-selection paths (immutable receipt, signed GameStats,
+historical replay fallback) to reject source clocks that contradict
+the original replay filename date beyond a 48-hour timezone margin.
+Signed GameStats and the historical fallback additionally check original
+Watcher file mtime, rejecting an alleged game clock more than 48 hours
+*after* original mtime. This does not delete games, W/L, or immutable
+forensic rows; absent independent date evidence remains an explicit
+limitation, not proof of a good observation. The API owning code has
+a future-only correction using original filename date or NULL, rather
+than temporary upload mtime. Source vs live deploy, immutable historic
+poisoning and new genuine Steam rate snapshots are separate gates.
+
+Regression cases reproduce every one of the six incident rows and
+preserve genuine live observations across source-local timezone shifts.
+No arbitrary choice of Zodiac's actual current DM value is legitimate.
+See app #630, API draft PR #50, Watcher rolling 1.6.5 PR #41.
+
 ## 2026-10-16 — Never pay the first matching legacy player name
 
 `findMatchedClaimUser` formerly chose `users.find(...)` from
