@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "11c20bc3cd776b54abf31e2a843418e46a660fec1e91aee8adb0d07be8b2ceb0",
+      "sha256": "116e159c2a2faaebe14eee92c17ba0e7e29ebdbaa1892e812dfd6b76b64e3a0a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "79a51386a659fe039e50ac8d4f043730345629af2b65ee4a9b7b1d92abc04570",
+      "sha256": "1d3f568314418be884d387ace5ebe408e2de7feb35e57f1f738e52f007b9d40c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-15",
       "sensitivity": "internal",
-      "sha256": "a59cc78c390d08a41fa11a1e6e5b52795983593cf817f4ff248f882d080dee9f",
+      "sha256": "2f7b8d89b327f0131501aa74f46248c7bebbcb1118d570d4dca897559e1d4db3",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/claim-escrow-sender-binding-20261016",
-    "commit": "3522a3242c179eb434852bd910390d6d44cb604b"
+    "branch": "fix/satchel-canonical-rest-zero-code-20261016",
+    "commit": "b3b81e096c266f45b39c5fac5bc2bdbc38ba448b"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
