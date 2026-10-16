@@ -659,9 +659,9 @@
       "owner": "aoe2war-web",
       "path": "docs/DOCUMENTATION_OS.md",
       "review_interval_days": 60,
-      "reviewed_at": "2026-10-15",
+      "reviewed_at": "2026-10-16",
       "sensitivity": "internal",
-      "sha256": "bf8e91839ee87cfdf21cfc7afa3cb1f0350d946cb3a8ebb45e9baf3b78a378db",
+      "sha256": "e5c3f9f0a5f90fca226ce5760740e0b32efef36321e967ce3bcd22acc3c62128",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -681,9 +681,9 @@
       "owner": "aoe2war-web",
       "path": "docs/ENGINEERING_MEMORY.md",
       "review_interval_days": 14,
-      "reviewed_at": "2026-10-15",
+      "reviewed_at": "2026-10-16",
       "sensitivity": "internal",
-      "sha256": "2d6d32f60c91ea633f9d7665f3f06c480e1c968c824357130f78a80c60ed0514",
+      "sha256": "49eb24cc1975971b966a20bd766982daedca02d12ec58228040a355d78c18da1",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
