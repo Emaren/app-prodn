@@ -9,6 +9,7 @@ import {
   estimateBetAutomationReserveWolo,
   parseBetAutoPresetDraft,
   readBetAutomationRuntime,
+  storedBetAutoFinancialIssue,
   type BetAutoPresetDraft,
 } from "@/lib/betAutomation";
 import { getPrisma } from "@/lib/prisma";
@@ -82,6 +83,7 @@ function responsePayload(input: {
   watcherKeyReady: boolean;
 }) {
   const automationRuntime = readBetAutomationRuntime();
+  const storedIssue = input.preset ? storedBetAutoFinancialIssue(input.preset) : null;
   return {
     runtime: automationRuntime,
     limits: {
@@ -92,16 +94,20 @@ function responsePayload(input: {
     },
     readiness: {
       presetStored: Boolean(input.preset),
+      storedPlanValid: storedIssue === null,
+      storedPlanIssue: storedIssue,
+      requiresPlanReview: storedIssue !== null,
       identityReady: Boolean(input.steamId),
       watcherKeyReady: input.watcherKeyReady,
       durableMarketEvaluatorReady: true,
       executionReady: automationRuntime.executionReady,
-      detail:
-        "The durable Watcher-market shadow evaluator is connected. It records exact self-match preview evidence only; Wolo custody and funded wager execution remain disconnected.",
+      detail: storedIssue
+        ? "The stored plan no longer passes financial integrity checks. Review and save a new plan before automation can evaluate it. No WOLO has been moved."
+        : "The durable Watcher-market shadow evaluator is connected. It records exact self-match preview evidence only; Wolo custody and funded wager execution remain disconnected.",
     },
     preset: serializePreset(input.preset),
     effectiveEnabled:
-      Boolean(input.preset?.enabled) && automationRuntime.executionReady,
+      Boolean(input.preset?.enabled) && storedIssue === null && automationRuntime.executionReady,
   };
 }
 
