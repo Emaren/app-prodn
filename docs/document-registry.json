@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "49232cf1b9518e8dd87fe60aed0ce38a306e6fb7db24c4940653c07d668107f7",
+      "sha256": "22b1bbde9f5fe6530c7ea661b068bec95ce3257495c71ccddfe6e74cb2926005",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "4adf79cc265479bd1f5024ab6d469a1bf70e1d8677531201133bb82104522fc2",
+      "sha256": "65c3521aab418f7bdc2f43eefcf552606383971a0c1a6569116437f6cb7cc3c5",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-15",
       "sensitivity": "internal",
-      "sha256": "004cad9faf9bcaf9781d13987b8566db16110bc8e7ea83bb9320026382c8797d",
+      "sha256": "8d7a1265c23539cc4ff36cab980f86ae3a50709bb7cb5338b80d7457897f1bc5",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/claim-payout-authorized-sender-provenance-20261016",
-    "commit": "69e6f1efaa7b57079325429b3343090712ac2859"
+    "branch": "fix/satchel-canonical-proof-int64-bounds-20261016",
+    "commit": "feaec158d818406112ec09e6e956c2a5758dbeab"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
