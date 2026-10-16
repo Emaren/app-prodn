@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e4cc6de46224de5da4281b684029f66c2d13faae8684706215c485250406fd0d",
+      "sha256": "aca2a3959c3c8ccc9d03f8963339818e48751f66be17db7b54b878ed86560c95",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-15",
       "sensitivity": "internal",
-      "sha256": "23a5b6240aca25f12b942d5c8ec7782617b5d73f3a51afaf4485a3ea9c2ae44a",
+      "sha256": "47638f10019ee259cefd401ad3a4046e6684235cc690f3b4f3eb32cadbee08ad",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1971,7 +1971,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "restricted",
-      "sha256": "09092f4eb70ac0bd1f59497164561d2e84cb9ec3fd694793eb2620d185bb5edf",
+      "sha256": "6fbdf1cabb4328e6533eb52c878c9553975fde70df1e94092ee9fc260ff2ef2d",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feature/public-aoe2war-os-command-deck-20261015",
-    "commit": "888c9d8c2ecde11995e9a8664def266d6ee20ab3"
+    "branch": "fix/claim-payout-canonical-rest-envelope-20261016",
+    "commit": "cdada7964c2c72c62e8076e29a31c1af7a5447c7"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
