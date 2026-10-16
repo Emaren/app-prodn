@@ -134,6 +134,10 @@ async function github(relative: string): Promise<unknown> {
 }
 async function safeJson(file: string): Promise<Record<string, unknown> | null> {
   try {
+    // Reject nonregular files and symlinks before loading bytes: operator
+    // receipts are low-volume, public status reads must stay bounded.
+    const entry = await lstat(file);
+    if (!entry.isFile() || entry.size > 128_000) return null;
     const handle = await readFile(file);
     if (handle.byteLength > 128_000) return null;
     return object(JSON.parse(handle.toString("utf8")));
