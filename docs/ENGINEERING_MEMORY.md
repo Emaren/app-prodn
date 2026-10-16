@@ -38,7 +38,7 @@ mainnet requires its presence before broadcast. Both admin completion
 paths require this exact sender in the already count-preserving
 canonical bank-send guard. This prevents unrelated but otherwise
 matching transfers from being treated as successful claim payments.
-Legacy unknown senders are not retrospectively inferred; #889 remains
+Nonmainnet environments retain their existing nullable source behavior; mandatory signer provenance applies to wolo-1. Legacy unknown senders are not retrospectively inferred; #889 remains
 on financial hold, and source health is not consensus attestation.
 
 ## Mandatory operating rhythm
