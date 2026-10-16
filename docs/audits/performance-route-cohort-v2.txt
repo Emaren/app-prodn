@@ -8,6 +8,7 @@
 /
 /about
 /academy
+/aoe2war-os
 /ai
 /app
 /battle-archive

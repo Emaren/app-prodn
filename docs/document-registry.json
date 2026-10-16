@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "bc2fa64b3fd62b5cdd24972d7a38b2dbdc3b3662ee7126339c1fefe732f93225",
+      "sha256": "11c20bc3cd776b54abf31e2a843418e46a660fec1e91aee8adb0d07be8b2ceb0",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "dfcbca3f2f8c2e37c889532e7d9f1c5361599c41550e1b2073b395985eedca1c",
+      "sha256": "e4cc6de46224de5da4281b684029f66c2d13faae8684706215c485250406fd0d",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-15",
       "sensitivity": "internal",
-      "sha256": "5e644e977e4ef637ebef57ce713a523decaa2694ad2fc97811a068ab50e647fa",
+      "sha256": "23a5b6240aca25f12b942d5c8ec7782617b5d73f3a51afaf4485a3ea9c2ae44a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -940,7 +940,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-06",
       "sensitivity": "internal",
-      "sha256": "73a81e2a47b2269d5746fb60fa74d4104306665c468d7ec8384339b0308833d8",
+      "sha256": "74511b8c75f403dc43cf6bb5104f06790b6b642c64fdf267795afdf07bcc8d19",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1971,7 +1971,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "restricted",
-      "sha256": "6fbdf1cabb4328e6533eb52c878c9553975fde70df1e94092ee9fc260ff2ef2d",
+      "sha256": "09092f4eb70ac0bd1f59497164561d2e84cb9ec3fd694793eb2620d185bb5edf",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/claim-payout-canonical-rest-envelope-20261016",
-    "commit": "e24449b2d12cbe8dc68aa48f310382a40ef78c1b"
+    "branch": "feature/public-aoe2war-os-command-deck-20261015",
+    "commit": "888c9d8c2ecde11995e9a8664def266d6ee20ab3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

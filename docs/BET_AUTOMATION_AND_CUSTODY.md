@@ -15,6 +15,35 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## October 15, 2026 — source-consistent stored-plan integrity across API and Mecha
+
+The previous persisted-plan worker correctly rejected invalid historical
+Desync enum values, oversized per-game stakes and finite plans above
+10,000 WOLO. The player settings API, however, still normalized a
+malformed stored Desync value to `none` for its backwards-compatible
+preset representation, without flagging the record as invalid. This
+could make a plan appear valid while the Watcher-market shadow worker
+properly refused to evaluate it.
+
+A single pure `storedBetAutoFinancialIssue` now applies the same
+saved-plan bounds to the API's owner-only readiness projection, the
+shadow producer, and exact-market admission. API readiness adds
+`storedPlanValid`, `storedPlanIssue` and `requiresPlanReview`,
+with explicit explanation when the historical plan is invalid. The
+legacy displayed enum field remains backward-compatible and existing
+UI/navigation are unchanged. Exhausted-but-valid finite plans retain
+their separate lifecycle reason; no saved values are silently rewritten,
+no new orders, reservations, or WOLO transfers occur.
+
+Contract tests exercise legacy invalid enums, 10,000 WOLO finite
+reserve boundary, per-game combined stake, indefinite Until-Out
+consistency, non-integer amounts and legacy expiration. A genuine
+new plan can only be saved through the existing owner-authenticated,
+version-checked PATCH path. The funded executor remains intentionally
+unavailable until dedicated Satchel custody, chain proof, reserve
+accounting, and protected canary acceptance are established.
+
+
 ## October 15, 2026 — persisted Mecha plans receive full admission-time validation
 
 The interactive preset form rejects combined stakes over 1,000 WOLO per

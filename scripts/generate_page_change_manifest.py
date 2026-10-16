@@ -33,6 +33,7 @@ PAGES = [
     ("/statistics", "Kingdom Statistics"),
     ("/television-wolo", "Television WOLO"),
     ("/speed", "Speed"),
+    ("/aoe2war-os", "AoE2WAR OS"),
 ]
 
 EXTENSIONS = {".ts", ".tsx", ".js", ".jsx", ".json", ".css", ".md"}

@@ -122,4 +122,9 @@ export const PAGE_CHANGE_MANIFEST = [
     label: "Speed",
     version: "src-75f0d3084c8236e92b55",
   },
+  {
+    href: "/aoe2war-os",
+    label: "AoE2WAR OS",
+    version: "src-b80e3817daef3d3ac54d",
+  },
 ] as const;
