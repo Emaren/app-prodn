@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "49232cf1b9518e8dd87fe60aed0ce38a306e6fb7db24c4940653c07d668107f7",
+      "sha256": "116e159c2a2faaebe14eee92c17ba0e7e29ebdbaa1892e812dfd6b76b64e3a0a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "2e1d10e415f6cb7173cdcee8f785f01c7662f0faffe94c6a0c1c2a04fdc4a3d1",
+      "sha256": "80cfb1017ac8c6aba79bc7182ed24e6a140ee741b7b960ff7fc6e240a8f14de1",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-15",
       "sensitivity": "internal",
-      "sha256": "67aafbb2871b7a77a3729d2217b4f5f8d016ce1e9dba4fbeea39085e7d23de0e",
+      "sha256": "087bf41ec21f87313475b640dad5ae4a11b050d5ea96cd6380a844d0a208b716",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -940,7 +940,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-06",
       "sensitivity": "internal",
-      "sha256": "74511b8c75f403dc43cf6bb5104f06790b6b642c64fdf267795afdf07bcc8d19",
+      "sha256": "e9982dd80d5415ac2fba969d9c15e1831ebf82d453bac211a71f83fe515f1bd1",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "perf/mecha-shadow-active-uploaders-20261016",
-    "commit": "fc54b63168084d8027770c7c886e8da969b2e4de"
+    "branch": "perf/kingdom-os-single-inspection-snapshot-20261016",
+    "commit": "8fc04c8d0d636c189f6a2bc3350aa56efbf4f164"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
