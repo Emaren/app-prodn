@@ -58,6 +58,8 @@ Agents states; and current GitHub commit/PR/Actions events.
   a newly merged GitHub commit does not retroactively update the old source
   sample or the currently deployed site's schema.
 
+The local public-status receipt reader opens with `O_NOFOLLOW`, checks a regular-file descriptor and its <=128 KiB length, and reads exactly that bounded snapshot through the same descriptor. It cannot trust a first-path `lstat()` followed by a second-path open because a symlink swap could circumvent the original size check. Missing/invalid evidence remains unavailable, not success.
+
 Public traffic never accesses authenticated OS control commands, operator
 identities, raw run logs, wallet addresses, secret paths, or arbitrary
 filename selectors. It reads allowlisted, bounded and safely projected
