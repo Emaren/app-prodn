@@ -15,7 +15,7 @@ import tempfile
 import time
 from collections import Counter
 from contextlib import contextmanager
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -904,6 +904,64 @@ def runtime_provenance_finish_remediable(
     )
 
 
+def recoverable_central_review_p0(finding: dict[str, Any]) -> bool:
+    """Admit only a stale central review when the canonical source renewed it.
+
+    Admission is not a waiver: detached federation generation and the final
+    independent estate audit must still pass before maintenance can complete.
+    """
+    if (finding.get("severity"), finding.get("area"), finding.get("key")) not in {
+        ("P0", "Documentation", "docs-check"),
+        ("P0", "Documentation", "strict-build"),
+    }:
+        return False
+
+    detail = finding.get("detail")
+    prefix = "ValueError: taxonomy contract failed: | - "
+    suffix = " | make: *** [generate] Error 1"
+    if not isinstance(detail, str) or not detail.startswith(prefix) or not detail.endswith(suffix):
+        return False
+
+    items = detail[len(prefix):-len(suffix)].split(" | - ")
+    if not items or len(items) > 100:
+        return False
+    today = datetime.now(timezone.utc).date()
+    for item in items:
+        match = re.fullmatch(
+            r"([a-z0-9_-]+):(docs/[A-Za-z0-9_./-]+): documentation review expired on (\d{4}-\d{2}-\d{2})",
+            item,
+        )
+        if match is None:
+            return False
+        repo_id, path, expired_on = match.groups()
+        repo = SOURCES.get(repo_id)
+        if repo is None or ".." in Path(path).parts:
+            return False
+        registry = aoe2_audit.load_json(repo / "docs" / "document-registry.json")
+        documents = registry.get("documents") if isinstance(registry, dict) else None
+        if not isinstance(documents, list):
+            return False
+        matches = [
+            doc for doc in documents
+            if isinstance(doc, dict) and doc.get("path") == path
+        ]
+        if len(matches) != 1:
+            return False
+        doc = matches[0]
+        reviewed = doc.get("reviewed_at")
+        interval = doc.get("review_interval_days")
+        if not isinstance(reviewed, str) or type(interval) is not int or interval <= 0:
+            return False
+        try:
+            reviewed_date = date.fromisoformat(reviewed)
+            expired_date = date.fromisoformat(expired_on)
+        except ValueError:
+            return False
+        if reviewed_date <= expired_date or not (0 <= (today - reviewed_date).days < interval):
+            return False
+    return True
+
+
 def collect_plan(
     release_data: dict[str, Any] | None = None,
     *,
@@ -1076,8 +1134,16 @@ def collect_plan(
             ("Context Durability", "archive-stale"),
             ("Context Durability", "archive-retention-drift"),
         }
-        unknown_p0 = p0_findings
-        auto_remediable_p0 = []
+        # A previously expired central review is recoverable only when every
+        # referenced canonical source document has a strictly newer, live review
+        # and all source checkers have passed. No other P0 is admissible here.
+        auto_remediable_p0 = [
+            item for item in p0_findings
+            if central_sync_needed and not baseline_refreshes
+            and not blocked_source_docs and recoverable_central_review_p0(item)
+        ]
+        admitted_p0_ids = {id(item) for item in auto_remediable_p0}
+        unknown_p0 = [item for item in p0_findings if id(item) not in admitted_p0_ids]
         auto_remediable_p1 = []
         unknown_p1 = [item for item in payload["findings"]
                       if item["severity"] == "P1"

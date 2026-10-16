@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+from datetime import datetime, timedelta, timezone
 import copy
 import io
 import json
@@ -25,6 +26,32 @@ def incident():
                     for project in ("AoE2HDBets", "aoe2-watcher", "WoloChain-wolo-1", "VPSSentry", "AoE2WAR-docs"))
     findings.append({"severity": "P1", "area": "WoloChain", "key": "vps-source-drift", "detail": "unpromoted verifier"})
     return {"p0": 0, "p1": 10, "findings": findings, "info": {}}
+
+
+
+def renewed_review_incident():
+    payload = incident()
+    expired = (datetime.now(timezone.utc).date() - timedelta(days=1)).isoformat()
+    for key in ("docs-check", "strict-build"):
+        payload["findings"].append({
+            "severity": "P0", "area": "Documentation", "key": key,
+            "detail": (
+                "ValueError: taxonomy contract failed: | - "
+                "app-prodn:docs/BET_STAKE_TICKETS.md: documentation review expired on "
+                + expired + " | make: *** [generate] Error 1"
+            ),
+        })
+        payload["p0"] += 1
+    return payload
+
+
+def renewed_review_registry(*, reviewed_at=None):
+    return {"documents": [{
+        "path": "docs/BET_STAKE_TICKETS.md",
+        "reviewed_at": reviewed_at or datetime.now(timezone.utc).date().isoformat(),
+        "review_interval_days": 30,
+    }]}
+
 
 
 class MaintenanceTests(unittest.TestCase):
@@ -72,6 +99,70 @@ class MaintenanceTests(unittest.TestCase):
                 payload[severity.lower()] += 1
                 self.assertTrue(self.plan(payload)["blocked"])
 
+    def test_renewed_canonical_reviews_admit_staged_central_p0_repair(self):
+        with mock.patch.object(update.aoe2_audit, "load_json", return_value=renewed_review_registry()):
+            plan = self.plan(renewed_review_incident())
+        self.assertFalse(plan["blocked"])
+        self.assertEqual(len(plan["auto_remediable_p0"]), 2)
+        self.assertEqual(plan["unknown_p0"], [])
+        self.assertTrue(plan["central_sync"])
+        self.assertEqual(plan["external_hold"], {"proof": "exact"})
+        self.assertTrue(plan["maintenance_only"])
+
+    def test_central_p0_recovery_rejects_unrelated_or_concatenated_errors(self):
+        for detail in (
+            "Build failure: taxonomy contract failed",
+            "ValueError: taxonomy contract failed: | - "
+            "app-prodn:docs/BET_STAKE_TICKETS.md: documentation review expired on "
+            "2026-10-15 | - unrelated error | make: *** [generate] Error 1",
+        ):
+            with self.subTest(detail=detail):
+                payload = renewed_review_incident()
+                payload["findings"][-1]["detail"] = detail
+                with mock.patch.object(update.aoe2_audit, "load_json", return_value=renewed_review_registry()):
+                    plan = self.plan(payload)
+                self.assertTrue(plan["blocked"])
+                self.assertEqual(len(plan["unknown_p0"]), 1)
+
+    def test_central_p0_recovery_rejects_unrenewed_or_missing_source_reviews(self):
+        old = (datetime.now(timezone.utc).date() - timedelta(days=1)).isoformat()
+        for registry in (
+            renewed_review_registry(reviewed_at=old),
+            {"documents": []},
+            {"documents": [{"path": "docs/BET_STAKE_TICKETS.md",
+                            "reviewed_at": "garbage", "review_interval_days": 30}]},
+        ):
+            with self.subTest(registry=registry):
+                with mock.patch.object(update.aoe2_audit, "load_json", return_value=registry):
+                    plan = self.plan(renewed_review_incident())
+                self.assertTrue(plan["blocked"])
+                self.assertEqual(len(plan["unknown_p0"]), 2)
+
+    def test_central_p0_recovery_requires_federation_drift(self):
+        payload = renewed_review_incident()
+        payload["findings"] = [
+            item for item in payload["findings"]
+            if item.get("key") not in {"central-source-snapshot-stale", "central-federation-drift"}
+        ]
+        payload["p1"] = sum(item["severity"] == "P1" for item in payload["findings"])
+        with mock.patch.object(update.aoe2_audit, "load_json", return_value=renewed_review_registry()):
+            plan = self.plan(payload)
+        self.assertTrue(plan["blocked"])
+        self.assertEqual(len(plan["unknown_p0"]), 2)
+
+    def test_renewed_review_does_not_allow_extra_unknown_p0(self):
+        payload = renewed_review_incident()
+        payload["findings"].append({
+            "severity": "P0", "area": "Documentation",
+            "key": "taxonomy-schema-invalid", "detail": "unrelated catalog corruption",
+        })
+        payload["p0"] += 1
+        with mock.patch.object(update.aoe2_audit, "load_json", return_value=renewed_review_registry()):
+            plan = self.plan(payload)
+        self.assertTrue(plan["blocked"])
+        self.assertEqual(len(plan["auto_remediable_p0"]), 2)
+        self.assertEqual(len(plan["unknown_p0"]), 1)
+
     def test_unavailable_runtime_evidence_blocks(self):
         plan = self.plan(hold_error=update.aoe2_update_hold.HoldError("binary evidence unavailable"))
         self.assertTrue(plan["blocked"])
@@ -106,8 +197,8 @@ class MaintenanceTests(unittest.TestCase):
                 update.main()
         self.assertEqual(error.exception.code, 2)
 
-    def run_apply(self, final=None, hold_change=False, context_error=False, headroom_error=False):
-        plan = self.plan()
+    def run_apply(self, final=None, hold_change=False, context_error=False, headroom_error=False, payload=None):
+        plan = self.plan(payload)
         final = final or {"p0": 0, "p1": 1, "findings": [incident()["findings"][-1]], "info": {}}
         audit = mock.Mock()
         audit.payload.return_value = final
@@ -151,6 +242,19 @@ class MaintenanceTests(unittest.TestCase):
         self.assertEqual(capture.call_args.kwargs["preserve_context_history"], True)
         self.assertEqual(capture.call_args.kwargs["source_bound"], True)
         self.assertIn("before_publish", central.call_args.kwargs)
+
+    def test_staged_central_p0_repair_cannot_claim_success_while_p0_survives(self):
+        final = renewed_review_incident()
+        # The old central review remains unresolved after a mocked publication.
+        with mock.patch.object(update.aoe2_audit, "load_json", return_value=renewed_review_registry()):
+            _, error, output, receipts, central, _, retain = self.run_apply(
+                final=final, payload=renewed_review_incident()
+            )
+        self.assertIn("final audit must retain exactly", str(error))
+        self.assertNotIn("CONTEXT_CURRENT", output)
+        self.assertTrue(any(row["status"] == "FAILED" for row in receipts))
+        central.assert_called_once()
+        retain.assert_called_once()
 
     def test_changed_hold_stops_before_publication(self):
         _, error, _, receipts, central, capture, _ = self.run_apply(hold_change=True)
