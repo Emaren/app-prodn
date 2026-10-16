@@ -127,6 +127,22 @@ async function loadCurrentWatcherAccountStatesFresh(
           )
           AND a.played_on IS NOT NULL
           AND a.played_on <= a.created_at
+          -- Original client replay filename is immutable receipt metadata.
+          -- A match saved in 2025 must never become an October 2026
+          -- current-account rating merely because an API temp file was new.
+          -- Allow 48h for source-local timezone/date ambiguity.
+          AND (
+            SUBSTRING(a.original_filename FROM
+              '@([0-9]{4}[.][0-9]{2}[.][0-9]{2})') IS NULL
+            OR SUBSTRING(a.original_filename FROM
+              '@([0-9]{4}[.][0-9]{2}[.][0-9]{2})') IN (
+              TO_CHAR(a.played_on - INTERVAL '2 days', 'YYYY.MM.DD'),
+              TO_CHAR(a.played_on - INTERVAL '1 day', 'YYYY.MM.DD'),
+              TO_CHAR(a.played_on, 'YYYY.MM.DD'),
+              TO_CHAR(a.played_on + INTERVAL '1 day', 'YYYY.MM.DD'),
+              TO_CHAR(a.played_on + INTERVAL '2 days', 'YYYY.MM.DD')
+            )
+          )
           AND a.user_uid IS NOT NULL AND BTRIM(a.user_uid) <> '' AND a.user_uid <> 'system'
           AND LOWER(a.replay_hash) ~ '^[a-f0-9]{64}$'
           AND a.evidence::jsonb #>>
