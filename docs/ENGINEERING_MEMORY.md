@@ -29,6 +29,33 @@ behavior, authority, architecture, financial policy, recovery, release
 procedure, or debugging strategy, update the owning living contract and this
 memory before closing the work.
 
+## 2026-10-16 — Host backup integrity is not a fresh isolated restore
+
+October 16 Ubuntu maintenance upgraded eight exact package versions without
+restart of the sole Wolo validator or a reboot. Its preflight captured a new
+off-host Mac-encrypted PostgreSQL custom archive (~608 MiB), ran full CMS
+decryption and `pg_restore --file=/dev/null`, and SHA-256 sealed the archive
+and a human checkpoint. That is meaningful *archive integrity + recorded
+decode* evidence; it is **not** an isolated database restoration or current
+consensus/settlement backup. Historical 10/10 Recovery OS evidence remains
+historical until its class-specific freshness is verified.
+
+Source-only Host OS now offers `aoe2war host maintenance-checkpoint --dir`
+to rehash the encrypted ciphertext against exact-name manifests, check local
+UTC freshness, and preserve the distinction between a cryptographic archive
+check and a self-reported decode. Fail-closed negative tests reject forged
+or stale metadata, symlinks, altered ciphertext, wrong hash binding and
+unsupported restore claims. The verifier never reads CMS private keys,
+changes production, or reports a Wolo snapshot. Its default 24-hour freshness
+window applies **only** to this DB checkpoint class.
+
+Future Host OS phases must bind explicit operator approval, pinned apt
+simulation, protected Wolo/Traffic windows, package transaction logs and
+postflight source/port/service identities into a separate immutable
+maintenance receipt, then project sanitized status into Admin OS. A fresh
+local checkpoint alone cannot authorize apt, a reboot, a chain mutation or
+pretend a failed `Finish` is certified. See HOST_MAINTENANCE.md and #624.
+
 ## 2026-10-16 — Never pay the first matching legacy player name
 
 `findMatchedClaimUser` formerly chose `users.find(...)` from
