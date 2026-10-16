@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import models from "../config/aoe2war-os-models.json" with { type: "json" };
@@ -67,4 +68,26 @@ test("OS telemetry is bounded, user-visibility gated and fails closed on source 
   assert.match(deck, /poll\(\);/);
   assert.match(source("app/aoe2war-os/page.tsx"), /includeGithub: false/);
   assert.match(deck, /controller\.abort\(\)/);
+});
+
+test("AoE2WAR OS change-notice version hashes exactly the three route source files", () => {
+  const files = [
+    "app/aoe2war-os/Aoe2warOsDeck.module.css",
+    "app/aoe2war-os/Aoe2warOsDeck.tsx",
+    "app/aoe2war-os/page.tsx",
+  ];
+  const digest = createHash("sha256");
+  for (const path of files) {
+    digest.update(path);
+    digest.update(Buffer.from([0]));
+    digest.update(readFileSync(new URL("../" + path, import.meta.url)));
+    digest.update(Buffer.from([0]));
+  }
+  const edition = "src-" + digest.digest("hex").slice(0, 20);
+  const manifest = source("lib/pageChangeManifest.generated.ts");
+  const generator = source("scripts/generate_page_change_manifest.py");
+  assert.match(generator, /\("\/aoe2war-os", "AoE2WAR OS"\)/);
+  assert.ok(manifest.includes('href: "/aoe2war-os"'));
+  assert.ok(manifest.includes('version: "' + edition + '"'),
+    "Page edition must be regenerated whenever the command deck source changes");
 });
