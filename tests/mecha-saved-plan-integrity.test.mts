@@ -25,7 +25,7 @@ test("unknown legacy Desync values cannot be silently represented as an eligible
   for (const desyncSide of ["legacy", "null", "", "maybe", "YES"]) {
     assert.equal(storedBetAutoFinancialIssue({ ...preset(), desyncSide }), "stored_preset_invalid");
   }
-  assert.equal(storedBetAutoFinancialIssue({ ...preset(), desyncSide: "no", desyncStakeWolo: 200 }), null);
+  assert.equal(storedBetAutoFinancialIssue({ ...preset(), desyncSide: "no", desyncStakeWolo: 200, gamesRemaining: 10 }), null);
   assert.equal(storedBetAutoFinancialIssue({ ...preset(), desyncSide: "yes", desyncStakeWolo: 600 }), "auto_stake_cap_exceeded");
   assert.equal(storedBetAutoFinancialIssue({ ...preset(), desyncSide: "none", desyncStakeWolo: 1 }), "auto_stake_cap_exceeded");
 });
