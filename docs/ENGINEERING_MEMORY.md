@@ -29,6 +29,18 @@ behavior, authority, architecture, financial policy, recovery, release
 procedure, or debugging strategy, update the owning living contract and this
 memory before closing the work.
 
+## 2026-10-16 — New claim completion must verify the actual service payout sender
+
+Admin Claim WOLO code omitted `expectedFromAddress` for both ordinary
+and Founder Rewards new payouts. The payout layer now carries its
+specific health-observed service signer (or local derived account);
+mainnet requires its presence before broadcast. Both admin completion
+paths require this exact sender in the already count-preserving
+canonical bank-send guard. This prevents unrelated but otherwise
+matching transfers from being treated as successful claim payments.
+Legacy unknown senders are not retrospectively inferred; #889 remains
+on financial hold, and source health is not consensus attestation.
+
 ## Mandatory operating rhythm
 
 1. Begin with `aoe2war status`, `aoe2war facts`, and the current context.
