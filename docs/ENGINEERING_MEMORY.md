@@ -41,6 +41,10 @@ memory before closing the work.
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
 
+## 2026-10-15 — Public OS local status reads need descriptor-bound limits
+
+The public command deck initially read entire bridge JSON before checking 128 KiB. A subsequent pre-read `lstat` improved memory use but still allowed a path race. The reader now opens with `O_NOFOLLOW`, checks and reads a bounded regular file on the same descriptor, and closes it even on errors. Tests enforce the safe read boundary. Failed reads produce unavailable status; they never synthesize a live deploy.
+
 ## 2026-10-15 — Public Kingdom Machine: why CI, live release, and source census stay independent
 
 The public route `/aoe2war-os` is a **read-only** visual command deck, separate from
