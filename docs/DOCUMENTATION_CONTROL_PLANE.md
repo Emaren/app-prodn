@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/wolo-dual-body-conflict-20261016` at `ce4811ccf0ba46e6c14f6df8e20c260be4c03803`
+Implementation baseline: `perf/mecha-shadow-active-uploaders-20261016` at `fc54b63168084d8027770c7c886e8da969b2e4de`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
