@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "116e159c2a2faaebe14eee92c17ba0e7e29ebdbaa1892e812dfd6b76b64e3a0a",
+      "sha256": "49232cf1b9518e8dd87fe60aed0ce38a306e6fb7db24c4940653c07d668107f7",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "574d8f8d8ce7c799ea45372eada03b44679c08ade5938b60bf6a35a767143084",
+      "sha256": "ede14d144530e27ac41bbdd0aa5b453404a6bb5d8b6160de9eb84a03adfe5958",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-15",
       "sensitivity": "internal",
-      "sha256": "45aa0f94df15be40c13ae7d8ae34756322d4c59e30183eac7813cca416a5f533",
+      "sha256": "e7f64887d3a733ef4c2549b9063da19436a0d847cf2b664bb6f0f99326a9aa38",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1971,7 +1971,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "restricted",
-      "sha256": "f1dfa722cf20782f51f013d2ce7efb571ad78c065c91c5ccca9d40a6843fc824",
+      "sha256": "1619daf97cc121d24daf08bab7f3361f33e695dc76f9dd9e22a9f03c00add8f6",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/payout-evidence-amount-hash-boundary-20261015",
-    "commit": "bf0bfcd978b3bfa4d8640203e5bb15fd0ae284cb"
+    "branch": "perf/mecha-shadow-active-uploaders-20261016",
+    "commit": "1b6aa9bb36c3263c3547091b8f5efd9ced0c759d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

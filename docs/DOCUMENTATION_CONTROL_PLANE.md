@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/payout-evidence-amount-hash-boundary-20261015` at `bf0bfcd978b3bfa4d8640203e5bb15fd0ae284cb`
+Implementation baseline: `perf/mecha-shadow-active-uploaders-20261016` at `1b6aa9bb36c3263c3547091b8f5efd9ced0c759d`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
