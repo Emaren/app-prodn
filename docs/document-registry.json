@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "daf88866bab6844e9475413a533f33322063e1a77c5fb0f60d217cedb7cae094",
+      "sha256": "95376c33dc7b0723572c0ccbf80f70487e33d55f01741ba92bcade45092b60ea",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-15",
       "sensitivity": "internal",
-      "sha256": "05b627baf0438d1d0df20b760afa69cb21100c601dc1a54028cdb3d1b78eb4b6",
+      "sha256": "2d6d32f60c91ea633f9d7665f3f06c480e1c968c824357130f78a80c60ed0514",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1971,7 +1971,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "restricted",
-      "sha256": "4227c5ae5a6c2b2421c7af46e1c84fb2a07845bf95a225916dd2b4ec1d295647",
+      "sha256": "8e79666b17dbedfed13670eb1fc06c8984031f178b804b615193972da93782a2",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/mecha-active-session-market-census-20261016",
-    "commit": "661daa1942d7a04961d7edacfb0bffdd853926f1"
+    "branch": "fix/wolo-claim-unique-name-owner-20261016",
+    "commit": "2d2c3c22dfcc2516c9176d13477beba26f8fc213"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
