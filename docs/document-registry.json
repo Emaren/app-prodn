@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "16a7b0e0068ccf2c7284e25bc2a72785f5ff392dcd6313b165f8c3d9157ace57",
+      "sha256": "0c3a13ed8befc911aa7b18726ef8b7d89aa6df79c89777cd0f90c1a5b0fea778",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-15",
       "sensitivity": "internal",
-      "sha256": "abca2a46d4cc99420688e3ac929a193214182bc3938e385bd98e3a31b59cc750",
+      "sha256": "98d323af6069cd509275bae286492b0766c55e4c0022015a7aef39a1d5f95587",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1971,7 +1971,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "restricted",
-      "sha256": "41a5faa26b317fde65a5f31c0e0e847a8cea883514a8d06e5c070e61bc198e7a",
+      "sha256": "27fc0e1a59406d00ac471d7585b29ef617073376649d5b79f4c897b015610570",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2117,7 +2117,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/claim-historical-tx-reuse-failclosed-20261016",
-    "commit": "48afc1253f90373200c312e6de38c3d059db1366"
+    "commit": "c5031374965645eb76c80a0b12c575bcd2f2c2b3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
