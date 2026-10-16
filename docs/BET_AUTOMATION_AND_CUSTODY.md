@@ -15,6 +15,32 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## October 16, 2026 — preview insertion conflicts cannot mean "all already exist"
+
+The Mecha shadow worker uses `createMany(skipDuplicates: true)` for
+idempotent, non-financial preview receipts. Its exception fallback
+previously caught `P2002` and returned `createdCount=0` and
+`existingCount=candidates.length` as if every row had been observed
+in the database. A real batch failure can leave zero or partial rows
+written. The old response could therefore conceal a missing live-game
+preview and mislead operator telemetry.
+
+The worker now lets the database's successful `skipDuplicates`
+insertion count determine `createdCount` and `existingCount`.
+An unexpected `P2002` throws
+`BET_AUTO_SHADOW_INSERT_CONFLICT_UNVERIFIED`, retaining the underlying
+error as the cause. Impossible returned insertion counts throw
+`BET_AUTO_SHADOW_INSERT_COUNT_INVALID`. The reconciliation's existing
+outer error reporting owns the failure; no blind retries, fabricated
+"already exists" counts or partial-success acknowledgements occur.
+
+Tests reproduce an aborted `P2002` batch and impossible insertion
+counts. Normal repeated execution remains idempotent and unaffected.
+All candidate rows still have `acceptedAt=null`,
+`reservationId=null`, and no BetStakeTicket or funded movement.
+This corrects telemetry truthfulness, **not** live wagering readiness.
+
+
 ## October 16, 2026 — never truncate an active Watcher bet behind unrelated live markets
 
 The non-financial Mecha shadow evaluator previously queried the newest

@@ -212,6 +212,17 @@ partial success, spoofed lengths and transport failure. This fixes
 resource/availability risk only; money proof and signer/custody gates
 remain independent and unchanged.
 
+## 2026-10-16 — Never manufacture successful shadow-preview counts after a failed DB batch
+
+With `skipDuplicates: true` the PostgreSQL success response is the
+authority for how many preview rows were newly inserted. Catching an
+unexpected `P2002` and claiming that every requested row already
+existed concealed aborted or partially applied work. The worker now
+throws an explicit unverified-conflict failure, rejects impossible
+insertion counts and preserves the cause for outer reconciliation
+telemetry. Targeted negative tests keep this fail-closed. No funded
+transaction or automatic retry was enabled.
+
 ## 2026-10-16 — Match Mecha's market query to active Watcher sessions
 
 Filtering Mecha presets to active Watcher uploaders was incomplete:

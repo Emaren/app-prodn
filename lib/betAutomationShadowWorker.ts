@@ -345,14 +345,21 @@ export async function runBetAutoShadowWorker(
       data: candidates,
       skipDuplicates: true,
     });
+    // A successful skipDuplicates batch returns a truthful insertion count.
+    // Never synthesize an "all existing" receipt from a failed batch.
+    if (!Number.isSafeInteger(created.count) ||
+        created.count < 0 || created.count > candidates.length) {
+      throw new Error("BET_AUTO_SHADOW_INSERT_COUNT_INVALID");
+    }
     createdCount = created.count;
   } catch (error) {
-    /*
-     * PostgreSQL createMany(skipDuplicates) is the primary concurrency guard.
-     * Keep the fallback narrowly idempotent for mocked/alternate Prisma
-     * surfaces that report P2002 at the batch boundary.
-     */
-    if (!isPrismaUniqueConstraintError(error)) throw error;
+    // PostgreSQL createMany(skipDuplicates) already handles duplicate keys.
+    // An unexpected P2002 can abort the whole batch with zero or partial
+    // inserts. Claiming all candidates "existing" would hide missing work.
+    if (isPrismaUniqueConstraintError(error)) {
+      throw new Error("BET_AUTO_SHADOW_INSERT_CONFLICT_UNVERIFIED", { cause: error });
+    }
+    throw error;
   }
 
   return {
