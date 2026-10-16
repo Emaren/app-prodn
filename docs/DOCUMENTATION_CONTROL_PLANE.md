@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/mecha-stored-preset-readiness-source-20261015` at `eba00b1c6757ec944390660fb7333322fc05ae84`
+Implementation baseline: `feature/public-aoe2war-os-command-deck-20261015` at `888c9d8c2ecde11995e9a8664def266d6ee20ab3`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
