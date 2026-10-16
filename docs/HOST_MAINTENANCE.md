@@ -152,6 +152,45 @@ receipt writer is not implemented by this documentation. Until it exists, do
 not claim that host maintenance has automated or off-host evidence; retain the
 approved incident/change record and command outputs without secrets.
 
+## Locally verified encrypted database checkpoint (read-only)
+
+The operator can verify a finished off-host PostgreSQL checkpoint without
+opening the private CMS key, contacting the VPS, changing files, or invoking an
+OS package operation:
+
+```bash
+./bin/aoe2war host maintenance-checkpoint \
+  --dir "$HOME/aoe2war-recovery/20261016T153508Z-host-maintenance-db"
+./bin/aoe2war host maintenance-checkpoint --dir "$CHECKPOINT" --json
+```
+
+The bounded SHA-256 manifest reader requires exactly `database.cms`,
+`database.cms.sha256`, `checkpoint.txt`, and `checkpoint.txt.sha256`
+under an explicitly selected local directory. It uses descriptor-based regular
+file reads with symlink refusal, hashes the **actual complete encrypted archive**,
+and checks that the human checkpoint's declared ciphertext SHA matches the
+verified manifest. It checks a trusted target database identifier, chronological
+UTC timestamps, a 40-character operator Git SHA, and recorded
+capture/encryption/decryption/SQL archive decode results.
+
+The command's default **24-hour** freshness window is only a *pre-maintenance
+checkpoint age policy*, not proof of an isolated restore or Recovery OS coverage.
+It reports `FRESH` (exit 0), `STALE` (exit 1), or `STOP` (exit 2). Operators can
+select a narrower/higher bounded window with `--max-age-hours` (0–720).
+The original archive and its manifests are never modified. Output includes
+only a bounded integrity/freshness summary and the original operator source
+SHA, not secrets or Mac absolute paths.
+
+**Authority boundary:** this checksum proof establishes *ciphertext integrity*.
+The recorded `Full archive decode: PASS` is an operator attestation—not a
+fresh re-execution of CMS decryption, an actual restored database, a fresh
+Wolo snapshot, or protected host upgrade authorization. Do not present this
+as full disaster recovery freshness or a completed full maintenance receipt.
+The independently authorized live Wolo capture/separate key custody and
+immutable Host Maintenance OS transaction receipt writer remain open under
+#624. For full release and host changes, preserve the prior authorization,
+simulation, service/provenance, console recovery and postflight gates below.
+
 ## Read-only preflight
 
 Run the read-only application and estate checks first:
