@@ -170,6 +170,45 @@ class RouteAuthorityTests(unittest.TestCase):
             )["manual_authority_trace_candidate"])
 
 
+    def test_import_only_and_comment_only_guards_cannot_clear_manual_review(self):
+        route = "app/api/admin/treasury/route.ts"
+        unused = audit.classify_route(
+            route,
+            'import { requireAdmin } from "@/lib/adminSession";\n'
+            'export async function POST() { return Response.json({ok:true}); }\n',
+        )
+        self.assertEqual(unused["local_guard_symbols_seen"], ["requireAdmin"])
+        self.assertEqual(unused["call_or_delegation_guard_symbols_seen"], [])
+        self.assertTrue(unused["manual_authority_trace_candidate"])
+
+        comment_only = audit.classify_route(
+            "app/api/internal/ops/route.ts",
+            '/* requireAdmin(request) */\n'
+            '// bridgeTokenMatches(request)\n'
+            'export async function POST() { return Response.json({ok:true}); }\n',
+        )
+        self.assertEqual(comment_only["call_or_delegation_guard_symbols_seen"], [])
+        self.assertTrue(comment_only["manual_authority_trace_candidate"])
+
+        called = audit.classify_route(
+            route,
+            'import { requireAdmin } from "@/lib/adminSession";\n'
+            'export async function POST(request: Request) {\n'
+            '  await requireAdmin(request);\n'
+            '  return Response.json({ok:true});\n}\n',
+        )
+        self.assertEqual(called["call_or_delegation_guard_symbols_seen"], ["requireAdmin"])
+        self.assertFalse(called["manual_authority_trace_candidate"])
+
+        delegated = audit.classify_route(
+            "app/api/bets/tickets/commit/route.ts",
+            'import { handleBetStakeTicketCommit } from "./handler";\n'
+            'export const POST = handleBetStakeTicketCommit;\n',
+        )
+        self.assertEqual(delegated["call_or_delegation_guard_symbols_seen"],
+                         ["handleBetStakeTicketCommit"])
+        self.assertFalse(delegated["manual_authority_trace_candidate"])
+
     def test_generic_internal_mutations_cannot_escape_authority_review_by_name(self):
         # Scanner is intentionally lexical: this is a prompt for call-path
         # review, not proof a delegated endpoint is unsafe.

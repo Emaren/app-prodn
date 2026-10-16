@@ -29,6 +29,19 @@ behavior, authority, architecture, financial policy, recovery, release
 procedure, or debugging strategy, update the owning living contract and this
 memory before closing the work.
 
+## 2026-10-16 — A route importing an auth helper has not proved it calls that helper
+
+The HD read-only route-authority census previously classified any occurrence of
+a known guard name as local evidence, including an unused import or a comment.
+A money/internal POST could therefore disappear from the *manual review* queue
+without an actual call or direct handler delegation. The scanner now retains
+the historical lexical symbol census separately, and requires conservative
+call/delegation evidence to remove an endpoint from that queue. Comment-only
+and import-only symbols are covered by regression tests. Source lexical calls
+are still not runtime authorization proof: reviewers must follow delegated
+implementations and negative auth tests before calling a route safe or unsafe.
+No live routes, wallets, sessions or production services were changed.
+
 ## 2026-10-16 — Never pay the first matching legacy player name
 
 `findMatchedClaimUser` formerly chose `users.find(...)` from

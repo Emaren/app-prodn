@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/wolo-claim-unique-name-owner-20261016` at `2d2c3c22dfcc2516c9176d13477beba26f8fc213`
+Implementation baseline: `fix/route-authority-called-guard-evidence-20261016` at `bebfed8f9ff5e78d8ed1c3cae6217c20322098b7`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
