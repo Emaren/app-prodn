@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/claim-historical-tx-reuse-failclosed-20261016` at `c5031374965645eb76c80a0b12c575bcd2f2c2b3`
+Implementation baseline: `fix/wolo-msgsend-proof-integrity-20261016` at `edb8b10ae32c84e4795d4c7759bcc732a0c0bb70`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
