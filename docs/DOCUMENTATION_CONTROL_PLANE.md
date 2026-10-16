@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/wolo-msgsend-proof-integrity-20261016` at `d8c9725a0470a10726e85fe6e9052533c4305f65`
+Implementation baseline: `fix/wolo-msgsend-proof-integrity-20261016` at `ca5b423cfbd8b5b5a84a4e4dc4acf3a35a4f3529`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
