@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `audit/claimed-wolo-without-proof-20261015` at `e7ee112475e3b3263c57fbdbcee3a9f058b80e3c`
+Implementation baseline: `fix/claim-payout-canonical-rest-envelope-20261016` at `455abf037026b33b5b483ffec45e4380fae2667e`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
