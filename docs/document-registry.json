@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "7b89aa9b250fb54ab7603569e4031c82fdd8b3a68f87bf8793d143212baf22bf",
+      "sha256": "b8b4c808ca57b7f4899aefd96ab10d2220fcd4116c1a2007411fc1a530351cfb",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2117,7 +2117,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/claim-payout-authorized-sender-provenance-20261016",
-    "commit": "e905bcd9d043c4145fab60a7952b8458376cb1ba"
+    "commit": "69e6f1efaa7b57079325429b3343090712ac2859"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
