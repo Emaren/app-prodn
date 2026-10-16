@@ -12,7 +12,7 @@ import {
 } from "@/lib/betStakeMemo";
 import { normalizePublicPlayerName } from "@/lib/publicPlayers";
 import { recordUserActivity } from "@/lib/userExperience";
-import { getWoloBetEscrowRuntime } from "@/lib/woloChain";
+import { getWoloBetEscrowRuntime, isWoloMainnet } from "@/lib/woloChain";
 import { validateDistinctClaimPayoutTx } from "@/lib/woloClaimPayoutGuards";
 import {
   executeFounderWoloPayout,
@@ -734,8 +734,14 @@ async function executeMarketClaimSettlementRun(input: {
   if (!execution.ok || !payout?.ok || !payout.txHash) {
     throw new Error(summarizeSettlementRunFailure(execution, payout));
   }
+  if (execution.signerRole !== "escrow" ||
+      (execution.signerAddress &&
+       execution.signerAddress.trim().toLowerCase() !== expectedEscrowAddress)) {
+    throw new Error("Escrow payout signer changed between validation and execution; hold for manual reconciliation.");
+  }
 
   return {
+    expectedSenderAddress: expectedEscrowAddress,
     settlementRunId: execution.settlementRunId || settlementRunId,
     status: execution.status,
     txHash: payout.txHash,
@@ -980,6 +986,7 @@ export async function retryPendingClaimSettlement(
           let payout: {
             txHash: string;
             proofUrl?: string | null;
+            expectedSenderAddress?: string | null;
           } | null = storedPayoutTxHash
             ? {
                 txHash: storedPayoutTxHash,
@@ -1013,6 +1020,7 @@ export async function retryPendingClaimSettlement(
             txHash: payout.txHash,
             toAddress: payoutAddress,
             amountWolo: claim.amountWolo,
+            expectedFromAddress: payout.expectedSenderAddress ?? (isWoloMainnet() ? "" : null),
           });
           if (!payoutGuard.ok) {
             throw new Error(
@@ -1164,6 +1172,7 @@ export async function retryPendingClaimSettlement(
       ? {
           txHash: storedPayoutTxHash,
           proofUrl: null,
+          expectedSenderAddress: null as string | null,
         }
       : useGroupedMarketSettlement && market
         ? await executeMarketClaimSettlementRun({
@@ -1197,6 +1206,7 @@ export async function retryPendingClaimSettlement(
       txHash: payout.txHash,
       toAddress: matchedUser.walletAddress,
       amountWolo: claim.amountWolo,
+      expectedFromAddress: payout.expectedSenderAddress ?? (isWoloMainnet() ? "" : null),
     });
 
     if (!payoutGuard.ok) {

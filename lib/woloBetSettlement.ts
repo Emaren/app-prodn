@@ -19,6 +19,7 @@ import {
   isWoloMainnet,
   toUwoLoAmount,
 } from "@/lib/woloChain";
+import { requireObservedWoloPayoutSender } from "./woloPayoutSignerIdentity.ts";
 
 export type StakeVerificationResult = {
   verified: boolean;
@@ -36,6 +37,8 @@ export type PayoutExecutionResult = {
   toAddress: string;
   requestId?: string | null;
   proofUrl?: string | null;
+  /** Observed before broadcast; chain sender must independently match. */
+  expectedSenderAddress: string | null;
 };
 
 export type SettlementRunPayoutInput = {
@@ -1603,6 +1606,8 @@ async function executeWoloPayoutViaSettlementService(input: {
   if (shouldBlockSettlementForHealth(health)) {
     throw new Error(settlementHealthBlockerDetail(health));
   }
+  // Refuse missing signer identity before broadcasting any new mainnet payout.
+  const expectedSenderAddress = requireObservedWoloPayoutSender(health?.payoutAddress, isWoloMainnet());
 
   const baseUrl = normalizeSettlementBaseUrl(WOLO_SETTLEMENT_URL);
   const response = await fetch(`${baseUrl}/settlement/v1/payouts`, {
@@ -1629,6 +1634,7 @@ async function executeWoloPayoutViaSettlementService(input: {
     toAddress: input.toAddress,
     requestId: payload.request_id?.trim() || input.requestId || null,
     proofUrl: selectPreferredProofUrl(payload),
+    expectedSenderAddress,
   };
 }
 
@@ -1647,6 +1653,7 @@ async function executeWoloPayoutViaNamedSettlementService(
   if (shouldBlockSettlementForNamedHealth(health)) {
     throw new Error(settlementHealthBlockerDetail(health));
   }
+  const expectedSenderAddress = requireObservedWoloPayoutSender(health?.payoutAddress, isWoloMainnet());
 
   const baseUrl = normalizeSettlementBaseUrl(baseUrlRaw);
   const response = await fetch(`${baseUrl}/settlement/v1/payouts`, {
@@ -1673,6 +1680,7 @@ async function executeWoloPayoutViaNamedSettlementService(
     toAddress: input.toAddress,
     requestId: payload.request_id?.trim() || input.requestId || null,
     proofUrl: selectPreferredProofUrl(payload),
+    expectedSenderAddress,
   };
 }
 
@@ -2377,6 +2385,7 @@ export async function executeWoloPayout(input: {
       `WOLO payout mnemonic resolved to ${account.address}, not ${WOLO_PAYOUT_ADDRESS}.`
     );
   }
+  const expectedSenderAddress = requireObservedWoloPayoutSender(account.address, isWoloMainnet());
 
   const client = await SigningStargateClient.connectWithSigner(WOLO_RPC_URL, wallet, {
     gasPrice: GasPrice.fromString(WOLO_DEFAULT_GAS_PRICE),
@@ -2395,5 +2404,6 @@ export async function executeWoloPayout(input: {
     amountWolo: input.amountWolo,
     toAddress: input.toAddress,
     proofUrl: buildWoloRestTxLookupUrl(result.transactionHash),
+    expectedSenderAddress,
   };
 }

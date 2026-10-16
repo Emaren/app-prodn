@@ -29,6 +29,34 @@ behavior, authority, architecture, financial policy, recovery, release
 procedure, or debugging strategy, update the owning living contract and this
 memory before closing the work.
 
+## 2026-10-16 — Registry SHA must hash UTF-8 bytes, not an ASCII-only approximation
+
+The source-bound documentation gate caught a malformed registry hash for
+`docs/DOCUMENTATION_CONTROL_PLANE.md` after a documentation-only
+reconciliation. A one-off SHA-256 helper passed the ASCII `abc` fixture
+but incorrectly encoded non-ASCII UTF-8 code points. The index file was
+correct; its claimed digest was not. Verify Unicode fixtures (such as
+`é` and `—`) or, preferably, run the repository's canonical
+`scripts/docs_v2_check.py --write` generator whenever available.
+Never weaken the strict registry gate, falsify a baseline or mark the
+source complete merely because ASCII checks pass.
+
+## 2026-10-16 — New claim completion must verify the actual service payout sender
+
+Admin Claim WOLO code omitted `expectedFromAddress` for both ordinary
+and Founder Rewards new payouts. The payout layer now carries its
+specific health-observed service signer (or local derived account);
+mainnet requires its presence before broadcast. Both admin completion
+paths require this exact sender in the already count-preserving
+canonical bank-send guard. This prevents unrelated but otherwise
+matching transfers from being treated as successful claim payments.
+Nonmainnet environments retain their existing nullable source behavior; mandatory signer provenance applies to wolo-1. Legacy unknown senders are not retrospectively inferred; #889 remains
+on financial hold, and source health is not consensus attestation.
+Grouped market retries bind to the dry-run verified escrow identity.
+Previously stored hashes and memo-recovered payouts cannot safely
+inherit that evidence; on wolo-1 they remain held without verified
+historic signer/receipt provenance.
+
 ## 2026-10-16 — Node CI failures must identify the broken invariant, not only its file
 
 The central source-bound Node contract runner used `--test-reporter=dot`.

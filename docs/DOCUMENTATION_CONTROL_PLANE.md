@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `hardening/node-test-failure-diagnostics-20261016` at `6a7fdca226bd17fd9aac4b51cd5b0c7b4547a8e7`
+Implementation baseline: `fix/claim-payout-authorized-sender-provenance-20261016` at `69e6f1efaa7b57079325429b3343090712ac2859`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
