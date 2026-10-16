@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/claim-payout-canonical-rest-envelope-20261016` at `cdada7964c2c72c62e8076e29a31c1af7a5447c7`
+Implementation baseline: `fix/claim-escrow-sender-binding-20261016` at `3522a3242c179eb434852bd910390d6d44cb604b`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "aca2a3959c3c8ccc9d03f8963339818e48751f66be17db7b54b878ed86560c95",
+      "sha256": "79a51386a659fe039e50ac8d4f043730345629af2b65ee4a9b7b1d92abc04570",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-15",
       "sensitivity": "internal",
-      "sha256": "47638f10019ee259cefd401ad3a4046e6684235cc690f3b4f3eb32cadbee08ad",
+      "sha256": "a59cc78c390d08a41fa11a1e6e5b52795983593cf817f4ff248f882d080dee9f",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1971,7 +1971,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "restricted",
-      "sha256": "6fbdf1cabb4328e6533eb52c878c9553975fde70df1e94092ee9fc260ff2ef2d",
+      "sha256": "0582ac11fed46f21ea553ea19b651f7e8a54fbd244c913289f7e97df1956a982",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/claim-payout-canonical-rest-envelope-20261016",
-    "commit": "cdada7964c2c72c62e8076e29a31c1af7a5447c7"
+    "branch": "fix/claim-escrow-sender-binding-20261016",
+    "commit": "3522a3242c179eb434852bd910390d6d44cb604b"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

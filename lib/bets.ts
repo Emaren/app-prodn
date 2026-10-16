@@ -4280,6 +4280,7 @@ async function settleResolvedMarketWagers(prisma: PrismaClient) {
           txHash: payout.txHash,
           toAddress: plan.walletAddress,
           amountWolo: plan.amountWolo,
+          expectedFromAddress: getWoloBetEscrowRuntime().escrowAddress ?? "",
         };
       })
       .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
@@ -4705,6 +4706,7 @@ async function settleMarketIntegrityCorrections(prisma: PrismaClient) {
         txHash: payout.txHash,
         toAddress: walletAddress,
         amountWolo: adjustment.amountStillOwedWolo,
+        expectedFromAddress: getWoloBetEscrowRuntime().escrowAddress ?? "",
       }])
     ).get(requestId);
     if (!guard?.ok) {

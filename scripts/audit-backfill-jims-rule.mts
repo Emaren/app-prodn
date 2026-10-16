@@ -321,6 +321,7 @@ async function finalizeRow(
       txHash: payout.txHash,
       toAddress: row.walletAddress,
       amountWolo: row.owedWolo,
+      expectedFromAddress: getWoloBetEscrowRuntime().escrowAddress ?? "",
     }])
   ).get(row.requestId);
 
