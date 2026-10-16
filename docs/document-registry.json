@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "80cfb1017ac8c6aba79bc7182ed24e6a140ee741b7b960ff7fc6e240a8f14de1",
+      "sha256": "bba6819561b6e2f97d8ffd5a26031c16d797f17908beedfe26362e1df701a01b",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-15",
       "sensitivity": "internal",
-      "sha256": "087bf41ec21f87313475b640dad5ae4a11b050d5ea96cd6380a844d0a208b716",
+      "sha256": "45aa0f94df15be40c13ae7d8ae34756322d4c59e30183eac7813cca416a5f533",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1971,7 +1971,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "restricted",
-      "sha256": "1619daf97cc121d24daf08bab7f3361f33e695dc76f9dd9e22a9f03c00add8f6",
+      "sha256": "f1dfa722cf20782f51f013d2ce7efb571ad78c065c91c5ccca9d40a6843fc824",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "perf/kingdom-os-single-inspection-snapshot-20261016",
-    "commit": "8fc04c8d0d636c189f6a2bc3350aa56efbf4f164"
+    "branch": "fix/payout-evidence-amount-hash-boundary-20261015",
+    "commit": "476b2dd46f11777d5519d29f8f6782d01e9da48f"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
