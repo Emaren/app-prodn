@@ -15,6 +15,38 @@ sensitivity: "restricted"
 
 # WOLO Mainnet Settlement App Runbook
 
+## October 16, 2026 — canonical escrow sender binding in payout evidence
+
+The existing `validateDistinctClaimPayoutTxBatch` already used canonical
+transaction identity and count-based duplicate detection, but counted
+`recipient|amount` without checking the **sender**. An unrelated
+successful bank send to the correct recipient for the correct amount
+could pass that part of the settlement evidence guard.
+
+The guard now supports optional `expectedFromAddress`, normalized and
+rejected if malformed. Known escrow-backed settlement paths in
+`lib/bets.ts` (batched bet settlements and corrective refunds) and
+`scripts/audit-backfill-jims-rule.mts` supply the **configured
+escrow wallet**. A missing configuration supplies an invalid value
+and fails closed instead of silently skipping the source requirement.
+For a known sender, the guard also counts exact
+`sender|recipient|uwolo amount` bank sends; duplicate obligations
+require distinct matching sends. Existing recipient+amount consumption
+checks remain in force for older claimed rows. The pure validator and
+tests exercise foreign payers, same-amount transfers and insufficient
+distinct sends.
+
+**Scope / remaining holds:** the admin/founder claim routes do not yet
+possess a reliably attested and date-correct expected payout signer.
+They deliberately receive no invented source address; optional sender
+support does not certify those legacy paths. Founder #889 stays on
+hold. A matching transfer still does not prove unique request/memo
+binding, complete historical receipt consumption, canonical chain
+trust, or safe signer/escrow reserves. Do not treat this incremental
+source improvement as financial-release clearance. No payout, claim
+write, correction execution or deployment occurs in this PR.
+
+
 ## October 16, 2026 — canonical WOLO payout response identity and size gate
 
 The read-only batch payout reconciliation library previously treated an
