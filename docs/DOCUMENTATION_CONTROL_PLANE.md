@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `perf/kingdom-os-single-inspection-snapshot-20261016` at `8fc04c8d0d636c189f6a2bc3350aa56efbf4f164`
+Implementation baseline: `fix/payout-evidence-amount-hash-boundary-20261015` at `476b2dd46f11777d5519d29f8f6782d01e9da48f`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
