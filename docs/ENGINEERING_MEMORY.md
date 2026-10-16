@@ -150,6 +150,17 @@ deliver **measured** faster signals, correct last-deploy receipts, more
 reliable agent actions, or reduced maintenance cost rather than merely
 more lights, manufactured 100s, or background polling.
 
+## 2026-10-16 — Satchel C3 must understand Cosmos omitted zero and root Tx
+
+Satchel canonical receipt validation assumed a nested
+`tx_response.tx.body` and explicit `code:0`, rejecting legitimate
+Cosmos REST v1beta1 root `tx.body` and zero-code omitempty.
+It now recognizes both structures, refuses conflicting dual
+decoded bodies, rejects explicit malformed or failed codes,
+and retains the owner, exact memo, chain, amount and timing gates.
+A wire-shape match is *not* independently authenticated consensus
+nor permission to credit WOLO: Satchel custody stays unavailable.
+
 ## 2026-10-15 — A saved Mecha plan must be invalid in *every* read model
 
 The worker's stored-plan admission was fail-closed but the settings
