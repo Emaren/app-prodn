@@ -15,6 +15,19 @@ sensitivity: "internal"
 
 # AoE2WAR Engineering Memory and Learned Invariants
 
+## 2026-10-16 — Bank payout evidence must preserve original message ordinals
+
+The payout REST decoder previously filtered non-object messages before
+enumerating MsgSends and used `.find()` on `uwolo` amounts, silently
+accepting ambiguous duplicate-denomination amounts. Canonical source
+identity and a successful tx code alone cannot repair that loss of
+effect-level provenance. Added a pure, fail-closed bank-send decoder
+that preserves top-level message indexes, rejects malformed/doubled
+coins and contradictory decoded bank messages, and returns no
+financial evidence from ambiguous input. Adversarial source-bound
+tests guard the behavior. Still no payout or transaction promotion.
+
+
 ## Purpose
 
 This is the durable anti-relearning layer for AoE2WAR engineering.
