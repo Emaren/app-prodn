@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/steam-rating-chronology-source-20261016` at `7ac4fbc39d4769e2b0b65f9765365e09d450643f`
+Implementation baseline: `fix/inspections-rings-mainline-20261016` at `e347a838e92559b5611fe92ff6da608832a8539a`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
