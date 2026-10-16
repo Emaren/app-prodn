@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/claim-historical-tx-reuse-failclosed-20261016` at `48afc1253f90373200c312e6de38c3d059db1366`
+Implementation baseline: `fix/claim-historical-tx-reuse-failclosed-20261016` at `c5031374965645eb76c80a0b12c575bcd2f2c2b3`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
