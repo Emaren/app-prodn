@@ -46,3 +46,11 @@ test("account dropdown exposes Television WOLO", async () => {
     /href: "\/television-wolo", label: "Television WOLO"/,
   );
 });
+
+test("caster's broadcaster identity cannot be misrepresented as player POV", async () => {
+  const client = await readFile(clientPath, "utf8");
+  assert.match(client, /if \(stream\.role === "caster"\)/);
+  assert.match(client, /stream\.playerLabel \+ " · Main Cast"/);
+  assert.match(client, /if \(stream\.role === "player_pov"\)/);
+  assert.doesNotMatch(client, /if \(stream\.playerLabel\) return stream\.playerLabel \+ " POV"/);
+});
