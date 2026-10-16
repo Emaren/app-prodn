@@ -55,6 +55,17 @@ obtain bounded, owner-safe historical counts, then independently review
 canonical chain success and signer/request evidence before any financial
 correction. No production census has been run by this code change.
 
+## 2026-10-16 — Claim payout REST must prove canonical tx identity before reading bank sends
+
+The legacy reconciliation helper defaulted unknown/malformed
+`tx_response.code` to success and did not bind the REST reply's
+hash or committed height to the requested hash. It also consumed a
+potentially unbounded JSON response. Fixed with a reusable strict
+envelope classifier plus timeout, no-redirect, byte-bounded streaming
+and adversarial tests. Genuine Cosmos JSON may omit zero code, but
+only with exact hash, positive height and decoded body. This does not
+verify consensus independently or authorize actual fund movement.
+
 ## 2026-10-15 — New Kingdom pages require source-edition registration
 
 The public AoE2WAR OS deck originally joined both castle menus and SpeedOS, but not the 24-page source-hashed page-change manifest. Registered /aoe2war-os as the 25th tracked page in the Python generator and generated TypeScript source, with independent recomputation of its route-file digest in Node CI and the existing 25-page menu contract. This preserves notifications without changing any live visual dot styling.
