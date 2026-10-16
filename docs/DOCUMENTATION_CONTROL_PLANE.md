@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/independent-docs-expired-review-recovery-20261016` at `c6069a0d4e968b8e98398982a136d3eb771867e7`
+Implementation baseline: `fix/inspection-score-rings-flex-shrink-20261016` at `110d043548c3c291cb94b5df5bff3e0b334447af`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
