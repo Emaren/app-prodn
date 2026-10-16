@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/claim-escrow-sender-binding-20261016` at `3522a3242c179eb434852bd910390d6d44cb604b`
+Implementation baseline: `fix/claim-historical-tx-reuse-failclosed-20261016` at `c5031374965645eb76c80a0b12c575bcd2f2c2b3`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

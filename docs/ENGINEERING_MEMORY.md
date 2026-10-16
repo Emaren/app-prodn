@@ -68,6 +68,21 @@ historical source evidence remains unproved: **do not assume the same
 escrow wallet paid every claim**, do not automatically retry #889,
 and never equate source-binding alone with unique payout request proof.
 
+## 2026-10-16 — Current linked wallet is not the historical payout destination
+
+The mainnet payout guard previously retrieved current
+`User.walletAddress` for already-claimed rows sharing a transaction
+hash, then counted their old payouts against that mutable destination.
+Mixed-case hexadecimal transaction hashes also need database-level case-insensitive equality; testing just uppercase and lowercase variants can miss a prior use.
+A wallet change after payment makes that retroactive reconstruction
+unreliable. The guard now blocks cross-operation reuse of any
+already-consumed hash with `HISTORICAL_TX_REUSE_UNVERIFIED`, while
+preserving distinct send allocation inside a single current
+verification batch. This reduces runtime DB lookups and eliminates a
+false-proof path; it may conservatively require manual evidence review
+for legitimate historical multi-send cases. No actual payout was
+performed or historical row rewritten.
+
 ## 2026-10-16 — Claim payout REST must prove canonical tx identity before reading bank sends
 
 The legacy reconciliation helper defaulted unknown/malformed
