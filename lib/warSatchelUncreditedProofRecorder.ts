@@ -6,6 +6,7 @@
  */
 import type { PrismaClient } from "@/lib/generated/prisma";
 import type { SatchelImmutableIntent, inspectCanonicalSatchelDeposit } from "./warSatchelCanonicalReceipt";
+import { isPositiveSatchelInt64, hasMinimumSatchelConfirmations } from "./warSatchelInt64Evidence.ts";
 
 type CanonicalProof = ReturnType<typeof inspectCanonicalSatchelDeposit>;
 const HASH = /^[A-F0-9]{64}$/;
@@ -32,12 +33,11 @@ export async function recordUncreditedWarSatchelReceipt(
       proof.denom !== "uwolo" || proof.canonicalSendCount !== 1 ||
       !HASH.test(proof.txHash) ||
       proof.receiptKey !== "wolo-1:" + proof.txHash + ":0" ||
-      !/^[1-9][0-9]*$/.test(proof.height) ||
-      !/^[1-9][0-9]*$/.test(proof.confirmations) ||
-      BigInt(proof.confirmations) < BigInt(3) ||
+      !isPositiveSatchelInt64(proof.height) ||
+      !hasMinimumSatchelConfirmations(proof.confirmations, 3) ||
       intent.status !== "prepared" || intent.chainId !== "wolo-1" ||
       intent.senderAddress !== ownerWallet ||
-      !/^[1-9][0-9]{0,18}$/.test(intent.amountUwolo)) {
+      !isPositiveSatchelInt64(intent.amountUwolo)) {
     throw new Error("SATCHEL_PROOF_IDENTITY_MISMATCH");
   }
 

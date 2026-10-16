@@ -3,11 +3,10 @@
  * No signing, custody credit, spendable balance, withdrawal, or wager.
  * Only the trusted server can supply the immutable intent and linked owner.
  */
+import { isPositiveSatchelInt64 } from "./warSatchelInt64Evidence.ts";
+
 const HASH = /^[a-fA-F0-9]{64}$/;
 const ADDRESS = /^wolo1[023456789acdefghjklmnpqrstuvwxyz]{38,90}$/;
-const HEIGHT = /^[1-9][0-9]{0,19}$/;
-const MAX_UWOLO = BigInt("9223372036854775807");
-const AMOUNT = /^[1-9][0-9]{0,18}$/;
 const TYPE = "/cosmos.bank.v1beta1.MsgSend";
 
 export type SatchelImmutableIntent = {
@@ -51,7 +50,7 @@ export function inspectCanonicalSatchelDeposit(input: {
   demand(ADDRESS.test(it.senderAddress) && it.senderAddress === input.ownerWallet &&
     ADDRESS.test(it.vaultAddress) && it.vaultAddress === input.certifiedVault, "owner or vault mismatch");
   demand(HASH.test(input.hash), "invalid tx hash");
-  demand(AMOUNT.test(it.amountUwolo) && BigInt(it.amountUwolo) <= MAX_UWOLO,
+  demand(isPositiveSatchelInt64(it.amountUwolo),
     "invalid DB-safe amount");
   demand(it.memo.startsWith("aoe2war/satchel/v1/" + input.ownerUid + "/") &&
     /^aoe2war\/satchel\/v1\/[A-Za-z0-9_.:-]{1,128}\/[A-Za-z0-9_-]{16,64}$/.test(it.memo),
@@ -65,7 +64,7 @@ export function inspectCanonicalSatchelDeposit(input: {
   const net = obj(status.node_info);
   const sync = obj(status.sync_info);
   demand(net.network === "wolo-1" && sync.catching_up === false, "canonical head unavailable");
-  demand(typeof sync.latest_block_height === "string" && HEIGHT.test(sync.latest_block_height),
+  demand(isPositiveSatchelInt64(sync.latest_block_height),
     "invalid canonical head height");
   const response = obj(input.txResponse);
   const tx = obj(response.tx_response);
@@ -75,7 +74,7 @@ export function inspectCanonicalSatchelDeposit(input: {
   // Explicit null, malformed codes, and all nonzero codes still fail closed.
   const executionCode = Object.prototype.hasOwnProperty.call(tx, "code") ? tx.code : 0;
   demand(executionCode === 0 || executionCode === "0", "transaction not successful");
-  demand(typeof tx.height === "string" && HEIGHT.test(tx.height), "invalid transaction height");
+  demand(isPositiveSatchelInt64(tx.height), "invalid transaction height");
   const head = BigInt(sync.latest_block_height as string);
   const height = BigInt(tx.height as string);
   demand(head >= height && head - height + BigInt(1) >= BigInt(3),
