@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "11c20bc3cd776b54abf31e2a843418e46a660fec1e91aee8adb0d07be8b2ceb0",
+      "sha256": "116e159c2a2faaebe14eee92c17ba0e7e29ebdbaa1892e812dfd6b76b64e3a0a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0c3a13ed8befc911aa7b18726ef8b7d89aa6df79c89777cd0f90c1a5b0fea778",
+      "sha256": "e074776487ba9ce093799da6cf409a50eab0f443659cdeab23f30b5edafa72a0",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-15",
       "sensitivity": "internal",
-      "sha256": "98d323af6069cd509275bae286492b0766c55e4c0022015a7aef39a1d5f95587",
+      "sha256": "175081d743671cdb5c77a52baf6cd264aa4baef1d56efbb297252ab7105b7514",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/claim-historical-tx-reuse-failclosed-20261016",
-    "commit": "c5031374965645eb76c80a0b12c575bcd2f2c2b3"
+    "branch": "fix/satchel-canonical-rest-zero-code-20261016",
+    "commit": "c45e005e88a6c155dc7abc22b0f522982a8221b5"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
