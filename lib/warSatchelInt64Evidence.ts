@@ -8,7 +8,7 @@
  *
  * This does not authenticate chain trust, grant credit, or authorize funds.
  */
-export const SATCHEL_MAX_SIGNED_INT64 = 9223372036854775807n;
+export const SATCHEL_MAX_SIGNED_INT64 = BigInt("9223372036854775807");
 
 export function isPositiveSatchelInt64(value: unknown): value is string {
   if (typeof value !== "string" || !/^[1-9][0-9]{0,18}$/.test(value)) return false;
