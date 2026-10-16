@@ -64,6 +64,8 @@ the activity feed hydrates after first paint. Server GitHub reads use
 Animations respect reduced motion and never claim a job is running based
 only on a decorative animation.
 
+The command deck is registered as the **25th** tracked Kingdom page in the source-hashed page-change manifest. Source edition is generated from the exact public page's three route files, and tests independently recompute the hash so player change notices cannot silently drift. This extends existing infrastructure without changing tiny castle dots or primary player nav chips.
+
 Improvement gates: source-accurate Prisma enumeration; actual verified
 production/source separation; no write methods or privilege bypass on
 the public endpoint; safe unknown/outage projection; GitHub source origin;
