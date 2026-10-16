@@ -41,6 +41,17 @@ memory before closing the work.
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
 
+## 2026-10-16 — Claim payout REST must prove canonical tx identity before reading bank sends
+
+The legacy reconciliation helper defaulted unknown/malformed
+`tx_response.code` to success and did not bind the REST reply's
+hash or committed height to the requested hash. It also consumed a
+potentially unbounded JSON response. Fixed with a reusable strict
+envelope classifier plus timeout, no-redirect, byte-bounded streaming
+and adversarial tests. Genuine Cosmos JSON may omit zero code, but
+only with exact hash, positive height and decoded body. This does not
+verify consensus independently or authorize actual fund movement.
+
 ## 2026-10-15 — Historical Claim WOLO payout proof must be audited, not inferred
 
 The old profile Claim WOLO path could set `pending_wolo_claims.status`
