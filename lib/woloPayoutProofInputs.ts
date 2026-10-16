@@ -20,11 +20,11 @@ export function canonicalPayoutUWolo(amountWolo: number): string | null {
   const unscaled = BigInt(parsed[1] + (parsed[2] ?? ""));
   const microExponent = exponent + 6 - fractionalDigits;
   const units = microExponent >= 0
-    ? unscaled * (10n ** BigInt(microExponent))
-    : unscaled % (10n ** BigInt(-microExponent)) === 0n
-      ? unscaled / (10n ** BigInt(-microExponent))
-      : 0n;
-  return units > 0n && units <= BigInt(Number.MAX_SAFE_INTEGER)
+    ? unscaled * (BigInt(10) ** BigInt(microExponent))
+    : unscaled % (BigInt(10) ** BigInt(-microExponent)) === BigInt(0)
+      ? unscaled / (BigInt(10) ** BigInt(-microExponent))
+      : BigInt(0);
+  return units > BigInt(0) && units <= BigInt(Number.MAX_SAFE_INTEGER)
     ? units.toString() : null;
 }
 
