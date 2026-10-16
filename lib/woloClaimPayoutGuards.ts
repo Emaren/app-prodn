@@ -1,5 +1,6 @@
 import type { Prisma, PrismaClient } from "@/lib/generated/prisma";
 import { inspectWoloPayoutTxEnvelope } from "./woloCanonicalPayoutEnvelope.ts";
+import { hasSufficientBoundPayoutSources } from "./woloPayoutSenderEvidence.ts";
 import { readWarSatchelBoundedUtf8 } from "./warSatchelBoundedBody.ts";
 import {
   WOLO_BASE_DENOM,
@@ -398,13 +399,13 @@ export async function validateDistinctClaimPayoutTxBatch(
     const availableByKey = countByKey(
       lookup.sends.map((send) => `${send.toAddress}|${send.amountUwolo}`)
     );
-    const expectedBySender = countByKey(txEntries
-      .filter((entry) => entry.expectedFromAddress)
-      .map((entry) => `${entry.expectedFromAddress}|${entry.toAddress}|${toUwoLoAmount(entry.amountWolo)}`));
-    const observedBySender = countByKey(lookup.sends
-      .map((send) => `${send.fromAddress}|${send.toAddress}|${send.amountUwolo}`));
-    const senderAllocationInvalid = Array.from(expectedBySender.entries()).some(
-      ([key, requiredCount]) => (observedBySender.get(key) ?? 0) < requiredCount
+    const senderAllocationInvalid = !hasSufficientBoundPayoutSources(
+      txEntries.map((entry) => ({
+        fromAddress: entry.expectedFromAddress,
+        toAddress: entry.toAddress as string,
+        amountUwolo: toUwoLoAmount(entry.amountWolo),
+      })),
+      lookup.sends,
     );
     const missingExistingWalletCount = existingUses.filter((row) => !row.toAddress).length;
     const anyPairOverAllocated = Array.from(requiredByKey.entries()).some(
