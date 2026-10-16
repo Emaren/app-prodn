@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "79a51386a659fe039e50ac8d4f043730345629af2b65ee4a9b7b1d92abc04570",
+      "sha256": "16a7b0e0068ccf2c7284e25bc2a72785f5ff392dcd6313b165f8c3d9157ace57",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-15",
       "sensitivity": "internal",
-      "sha256": "a59cc78c390d08a41fa11a1e6e5b52795983593cf817f4ff248f882d080dee9f",
+      "sha256": "abca2a46d4cc99420688e3ac929a193214182bc3938e385bd98e3a31b59cc750",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1971,7 +1971,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "restricted",
-      "sha256": "0582ac11fed46f21ea553ea19b651f7e8a54fbd244c913289f7e97df1956a982",
+      "sha256": "41a5faa26b317fde65a5f31c0e0e847a8cea883514a8d06e5c070e61bc198e7a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/claim-escrow-sender-binding-20261016",
-    "commit": "3522a3242c179eb434852bd910390d6d44cb604b"
+    "branch": "fix/claim-historical-tx-reuse-failclosed-20261016",
+    "commit": "48afc1253f90373200c312e6de38c3d059db1366"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
