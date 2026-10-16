@@ -15,6 +15,36 @@ sensitivity: "restricted"
 
 # WOLO Mainnet Settlement App Runbook
 
+## October 15, 2026 — bound legacy staking and escrow transaction REST reads
+
+The canonical Claim WOLO payout proof guard already had a 750,000-byte
+streaming limit, 6.5-second request deadline and no-redirect policy.
+However, `woloBetSettlement.ts` still fetched transaction evidence for
+stake verification, escrow verification, network fees and recovery
+using unrestricted `fetch(...).json()` without a timeout or redirect
+policy. A slow or malicious gateway could make these protected operations
+buffer unbounded bodies or wait indefinitely. The separate canonical
+claim guard did not cover this older path.
+
+`lib/woloBoundedTxLookup.ts` now reuses the existing proven
+byte-bounded stream reader. It accepts only HTTP 200, rejects redirects,
+caps each request at 6.5 seconds, caps both declared and streamed bodies
+to 750,000 bytes, rejects malformed/nonobject JSON, and returns null
+on transport errors. The shared legacy `fetchTx` delegates here;
+the existing retry count, payment semantics, claim state, signer roles
+and financial authorities are otherwise unchanged. Regression tests
+cover partial/misdirected HTTP, timeouts, false Content-Length,
+chunked oversize, empty/malformed payloads, and the caller boundary.
+
+**Evidence distinction:** this is resource and transport hardening,
+not transaction-finality certification. Success at this reader does NOT
+mean a transfer has the right hash, chain, authorized signer, correct
+memo/ordinal, or available reserves. Every caller still owns those
+separate proof checks; unresolved #889 remains held. No financial
+write, deployment, actual token movement or listener operation
+was made by this source-only change.
+
+
 ## October 15, 2026 — canonical WOLO proof inputs cannot be silently rounded
 
 Read-only `validateDistinctClaimPayoutTxBatch` previously accepted 16–128
