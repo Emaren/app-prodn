@@ -218,7 +218,7 @@ Filtering Mecha presets to active Watcher uploaders was incomplete:
 the winner-market query still took the newest 100 markets globally.
 100 newer unrelated games could obscure an eligible player's older
 live match. The preview worker now queries only unambiguous active
-Watcher session keys/aliases and detects >100 scoped records with
+Watcher session keys/aliases belonging to eligible saved-plan uploaders and detects >100 scoped records with
 a fail-closed explicit overflow. Negative tests cover both exact
 selection and no partial write on overflow. The executor stays
 disabled. Later funded operation must have full bounded-pagination
