@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/settlement-tx-transport-bounds-20261015` at `2517df89da79ed343ec9e0589816b25cc76f9040`
+Implementation baseline: `hardening/node-test-failure-diagnostics-20261016` at `6a7fdca226bd17fd9aac4b51cd5b0c7b4547a8e7`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

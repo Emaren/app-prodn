@@ -45,6 +45,27 @@ Previously stored hashes and memo-recovered payouts cannot safely
 inherit that evidence; on wolo-1 they remain held without verified
 historic signer/receipt provenance.
 
+## 2026-10-16 — Node CI failures must identify the broken invariant, not only its file
+
+The central source-bound Node contract runner used `--test-reporter=dot`.
+That kept CI compact, but a failed financial test reported only its
+filename, without the failing subtest or source location. Debugging
+then required code guesses or manually recreating individual contracts.
+
+`scripts/node-test-evidence-reporter.mjs` now retains compact positive
+progress and full aggregate pass/fail/skip accounting, while reporting
+up to 24 distinct failed test names, locations, assertion codes and
+the first line of each error. It does not dump raw actual/expected
+objects or stack traces, which may contain financial test fixtures.
+Failing children are not counted twice as parent failures. Missing
+runner summaries remain explicitly UNKNOWN rather than green.
+
+`config/test-contract.json` selects this reporter for the one
+audited `tests/*.test.mts` inventory. Contract tests cover failure
+identity, truncation, redaction, missing summary and source configuration.
+This changes test observability only: it cannot waive a failure, quarantine
+a test, alter build contents, modify financial state or certify production.
+
 ## Mandatory operating rhythm
 
 1. Begin with `aoe2war status`, `aoe2war facts`, and the current context.
