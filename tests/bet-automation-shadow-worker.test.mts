@@ -619,11 +619,91 @@ test("Mecha queries unique active Watcher uploader UIDs, not unrelated player pl
   assert.equal(created[0]?.reservationId, null);
 });
 
+test("shadow market census excludes 100 newer unrelated games without losing an older active Watcher match", async () => {
+  const unrelated = Array.from({ length: 100 }, (_, i) => ({
+    ...market({ id: 1000 + i, linkedSessionKey: "unrelated:" + i }),
+    childMarkets: [],
+  }));
+  const target = { ...market(), childMarkets: [] };
+  // Every unrelated market even has a live Watcher session, but none
+  // belongs to a user with an enabled self-only preset.
+  const unrelatedSessions = unrelated.map((item, i) => session({
+    sessionKey: item.linkedSessionKey ?? "invalid",
+    identityAliases: [],
+    uploaders: [{ uid: "unrelated-uploader-" + i }],
+  }));
+  const observed: { linkedSessionKey: { in: string[] } }[] = [];
+  const created: Array<Record<string, unknown>> = [];
+  const db = {
+    betAutoPreset: { findMany: async () => [{
+      ...preset(), user: { uid: "emaren", steamId: OWNER_STEAM },
+    }] },
+    betMarket: {
+      findMany: async ({ where, take }: {
+        where: { linkedSessionKey: { in: string[] } };
+        take: number;
+      }) => {
+        observed.push(where);
+        assert.equal(take, 101, "one extra row catches cohort truncation");
+        // Simulate Prisma applying WHERE and LIMIT on newer-first results.
+        return [...unrelated, target].filter((row) =>
+          where.linkedSessionKey.in.includes(row.linkedSessionKey ?? "")
+        ).slice(0, take);
+      },
+    },
+    betAutoExecution: {
+      createMany: async ({ data }: { data: Array<Record<string, unknown>> }) => {
+        created.push(...data);
+        return { count: data.length };
+      },
+    },
+  };
+  const result = await runBetAutoShadowWorker(db as never, {
+    activeSessions: [session(), ...unrelatedSessions] as never,
+    env: { BET_AUTOMATION_MODE: "shadow" },
+  });
+  assert.deepEqual(observed[0]?.linkedSessionKey.in.sort(),
+    ["legacy-exact-match", "platform:exact-match"]);
+  assert.equal(result.eligibleCount, 1);
+  assert.equal(result.createdCount, 1);
+  assert.equal(created[0]?.winnerMarketId, 41);
+  assert.equal(created[0]?.acceptedAt, null);
+  assert.equal(created[0]?.reservationId, null);
+});
+
+test("shadow market census detects 101 active records without writing partial preview evidence", async () => {
+  let writes = 0;
+  const db = {
+    betAutoPreset: { findMany: async () => [{
+      ...preset(), user: { uid: "emaren", steamId: OWNER_STEAM },
+    }] },
+    betMarket: {
+      findMany: async () => Array.from({ length: 101 }, (_, i) =>
+        ({ ...market({ id: i + 1 }), childMarkets: [] })),
+    },
+    betAutoExecution: {
+      createMany: async () => { writes += 1; throw new Error("must not write partial cohort"); },
+    },
+  };
+  await assert.rejects(
+    runBetAutoShadowWorker(db as never, {
+      activeSessions: [session()] as never,
+      env: { BET_AUTOMATION_MODE: "shadow" },
+    }),
+    /BET_AUTO_SHADOW_ACTIVE_MARKET_COHORT_OVERFLOW/,
+  );
+  assert.equal(writes, 0);
+});
+
 test("source narrows the Mecha user DB query while preserving independent canonical admission", () => {
   const source = readFileSync(
     new URL("../lib/betAutomationShadowWorker.ts", import.meta.url), "utf8"
   );
   assert.match(source, /user: \{ uid: \{ in: activeUploaderUids \} \}/);
+  assert.match(source, /linkedSessionKey: \{ in: activeSessionKeys \}/);
+  assert.match(source, /const activePresetUids = new Set\(presets\.map/);
+  assert.match(source, /take: 101/);
+  assert.match(source, /BET_AUTO_SHADOW_ACTIVE_MARKET_COHORT_OVERFLOW/);
   assert.match(source, /evaluateBetAutoShadowAdmission\(/);
   assert.match(source, /exactSessionIndex\(options\.activeSessions\)/);
   assert.match(source, /acceptedAt: null/);

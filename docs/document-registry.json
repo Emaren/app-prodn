@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "22b1bbde9f5fe6530c7ea661b068bec95ce3257495c71ccddfe6e74cb2926005",
+      "sha256": "29d441a63f400d39c7a23bedf74f6385849a4490f0f626d7b0677168d984fecf",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "52fcdafc18f8de770287b2c58472fc21b37c4768df2eb03019271d31123b7d8e",
+      "sha256": "daf88866bab6844e9475413a533f33322063e1a77c5fb0f60d217cedb7cae094",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-15",
       "sensitivity": "internal",
-      "sha256": "8d7a1265c23539cc4ff36cab980f86ae3a50709bb7cb5338b80d7457897f1bc5",
+      "sha256": "05b627baf0438d1d0df20b760afa69cb21100c601dc1a54028cdb3d1b78eb4b6",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/satchel-canonical-proof-int64-bounds-20261016",
-    "commit": "2ace179fd528f8213524f42f1a2ee205f68f5148"
+    "branch": "fix/mecha-active-session-market-census-20261016",
+    "commit": "661daa1942d7a04961d7edacfb0bffdd853926f1"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

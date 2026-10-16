@@ -15,6 +15,36 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## October 16, 2026 — never truncate an active Watcher bet behind unrelated live markets
+
+The non-financial Mecha shadow evaluator previously queried the newest
+100 verified live winner markets across **all** game sessions before
+matching those markets against the canonical active Watcher snapshot.
+When 100 newer unrelated markets existed, an older still-live verified
+Watcher match could be excluded despite its player being an exact
+authenticated uploader. The preset filter added in #612 removed
+unrelated owners, but not unrelated markets.
+
+The read-only discovery query now restricts `linkedSessionKey` to
+the unique unambiguous canonical session keys and aliases in the
+already-supplied Watcher snapshot **whose authenticated uploader owns an enabled eligible saved plan**. It fetches **101** records to
+detect exceeding the supported 100-market cohort, and throws an
+explicit `BET_AUTO_SHADOW_ACTIVE_MARKET_COHORT_OVERFLOW` instead of
+silently hiding an eligible market. Overflow fails the preview pass
+before any outbox write, and the enclosing reconciliation controls
+report the failure. This is still a deliberately bounded single
+cohort, not an assertion that every larger cohort has been scanned.
+
+Tests reproduce 100 newer unrelated markets obscuring one active
+Watcher game, verify correct exact-game selection, and prove a
+101-market active cohort cannot produce partial preview writes.
+The same uploader identity, Steam roster, locked proposition,
+Desync sibling and preset safety checks remain in admission.
+This is an **objective correctness fix** rather than measured speed.
+No actual reservation, BetStakeTicket, accepted wager, WOLO transfer,
+plan decrement or live-executor enablement is introduced.
+
+
 ## October 16, 2026 — canonical Satchel evidence must fit the signed-64-bit ledger schema
 
 The C3 canonical chain inspector accepted block heights with up to 20

@@ -141,19 +141,43 @@ export async function runBetAutoShadowWorker(
     };
   }
 
+  // Only enumerate exact, unambiguous identities in this Watcher snapshot.
+  // A global "newest 100 markets" query can silently miss the player's
+  // still-live match behind 100 unrelated newer games.
+  const sessionByIdentity = exactSessionIndex(options.activeSessions);
+  const activePresetUids = new Set(presets.map((preset) => preset.user.uid.trim()));
+  const activeSessionKeys = [...sessionByIdentity.entries()]
+    .filter(([, session]) =>
+      session !== null &&
+      session.uploaders.some((uploader) => activePresetUids.has(uploader.uid.trim()))
+    )
+    .map(([identity]) => identity);
+  if (activeSessionKeys.length === 0) {
+    return {
+      mode: "shadow",
+      evaluatedCount: 0,
+      eligibleCount: 0,
+      createdCount: 0,
+      existingCount: 0,
+      skippedCount: 0,
+    };
+  }
+
   const markets = await prisma.betMarket.findMany({
     where: {
       marketType: "winner",
       status: "live",
       scheduledMatchId: null,
-      linkedSessionKey: { not: null },
+      linkedSessionKey: { in: activeSessionKeys },
       propositionHash: { not: null },
       teamResolutionStatus: "resolved",
       teamConfidence: "high",
       integrityStatus: "verified",
     },
     orderBy: [{ updatedAt: "desc" }, { id: "asc" }],
-    take: 100,
+    // Fetch one extra to detect overflow. Never silently claim completeness
+    // when the bounded cohort is truncated; this worker is preview-only.
+    take: 101,
     select: {
       id: true,
       marketType: true,
@@ -185,6 +209,10 @@ export async function runBetAutoShadowWorker(
     },
   });
 
+  if (markets.length > 100) {
+    throw new Error("BET_AUTO_SHADOW_ACTIVE_MARKET_COHORT_OVERFLOW");
+  }
+
   if (markets.length === 0) {
     return {
       mode: "shadow",
@@ -196,7 +224,6 @@ export async function runBetAutoShadowWorker(
     };
   }
 
-  const sessionByIdentity = exactSessionIndex(options.activeSessions);
   const candidates: Prisma.BetAutoExecutionCreateManyInput[] = [];
   let evaluatedCount = 0;
   let skippedCount = 0;
