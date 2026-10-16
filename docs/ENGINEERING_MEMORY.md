@@ -198,6 +198,18 @@ deliver **measured** faster signals, correct last-deploy receipts, more
 reliable agent actions, or reduced maintenance cost rather than merely
 more lights, manufactured 100s, or background polling.
 
+## 2026-10-16 — A live Mecha shadow batch should not scan unrelated owner presets
+
+The worker selected every enabled self-only saved betting plan, then
+ran each against up to 100 live Watcher markets despite requiring the
+owner to be an exact active session uploader. Restrict database
+selection to the deduplicated active uploader UIDs, and short-circuit
+empty uploads. The exact roster, market, Desync, financial limits and
+owner uploader evidence remain independently checked at admission.
+Tests cover no-DB-query behavior and exclusion of unrelated owners.
+No live funds or feature flags changed; measure production performance
+before claiming a latency benefit.
+
 ## 2026-10-15 — A saved Mecha plan must be invalid in *every* read model
 
 The worker's stored-plan admission was fail-closed but the settings
