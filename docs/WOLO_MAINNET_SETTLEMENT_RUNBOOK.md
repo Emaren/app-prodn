@@ -31,7 +31,7 @@ message, malformed bank amount, duplicate denom, noncanonical or zero
 amount, missing bank sender/recipient, and contradictory decoded
 `tx` versus `tx_response.tx` bank-transfer observations. It accepts
 legitimate additional non-WOLO denominations and non-bank transaction
-messages without treating them as WOLO payouts. Malformed evidence
+messages without treating them as WOLO payouts. A non-null but non-object `tx` or `tx_response.tx` is contradictory evidence, not permission to ignore one source. Malformed evidence
 produces `success=false` and **zero** candidate MsgSends. A valid
 transaction with no WOLO transfer produces zero sends, not a payout.
 
