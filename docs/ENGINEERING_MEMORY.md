@@ -41,6 +41,18 @@ memory before closing the work.
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
 
+## 2026-10-15 — Public OS local receipts require bounded descriptor authority
+
+The public command deck originally read JSON before bounding its size, then
+used a separate lstat/readFile check vulnerable to a path swap. All local
+status evidence now opens a single file descriptor with O_NOFOLLOW, checks
+regular-file type and size on that descriptor, and reads exactly those
+bytes. Operator bridge evidence is capped at 128 KiB and protected Finish
+receipts at 750 KiB. Invalid or untrusted evidence remains UNAVAILABLE;
+it cannot synthesize a verified deployment. Regression tests enforce the
+reader shared by both source types. This is a source-only guard; no release
+controller, signer or financial activity changed.
+
 ## 2026-10-15 — Public Kingdom Machine: why CI, live release, and source census stay independent
 
 The public route `/aoe2war-os` is a **read-only** visual command deck, separate from
