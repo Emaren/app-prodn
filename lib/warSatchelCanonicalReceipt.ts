@@ -71,7 +71,10 @@ export function inspectCanonicalSatchelDeposit(input: {
   const tx = obj(response.tx_response);
   demand(typeof tx.txhash === "string" &&
     tx.txhash.toUpperCase() === input.hash.toUpperCase(), "tx identity mismatch");
-  demand(tx.code === 0 || tx.code === "0", "transaction not successful");
+  // Cosmos/Go omitempty removes a successful numeric zero from tx_response.
+  // Explicit null, malformed codes, and all nonzero codes still fail closed.
+  const executionCode = Object.prototype.hasOwnProperty.call(tx, "code") ? tx.code : 0;
+  demand(executionCode === 0 || executionCode === "0", "transaction not successful");
   demand(typeof tx.height === "string" && HEIGHT.test(tx.height), "invalid transaction height");
   const head = BigInt(sync.latest_block_height as string);
   const height = BigInt(tx.height as string);
@@ -80,7 +83,17 @@ export function inspectCanonicalSatchelDeposit(input: {
   const onchainTime = parseClock(tx.timestamp as string);
   demand(onchainTime >= created && onchainTime <= expired && onchainTime <= now,
     "transaction outside prepared intent lifetime");
-  const body = obj(obj(tx.tx).body);
+  // Cosmos REST v1beta1 normally returns the decoded Tx at root.tx.
+  // Some RPC/gateway serializers also include tx_response.tx. Accept
+  // either without accepting contradictory decoded payloads.
+  demand(response.tx != null || tx.tx != null, "decoded transaction unavailable");
+  const primary = response.tx != null ? obj(obj(response.tx).body) : obj(obj(tx.tx).body);
+  if (response.tx != null && tx.tx != null) {
+    const secondary = obj(obj(tx.tx).body);
+    demand(JSON.stringify(primary) === JSON.stringify(secondary),
+      "conflicting decoded transaction bodies");
+  }
+  const body = primary;
   demand(body.memo === it.memo, "tx memo mismatches unique intent");
   demand(Array.isArray(body.messages) && body.messages.length === 1,
     "unexpected transaction messages; no ambiguous/multi-transfer credit");
