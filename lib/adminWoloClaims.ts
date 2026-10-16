@@ -1013,6 +1013,7 @@ export async function retryPendingClaimSettlement(
             txHash: payout.txHash,
             toAddress: payoutAddress,
             amountWolo: claim.amountWolo,
+            expectedFromAddress: payout.expectedSenderAddress ?? "",
           });
           if (!payoutGuard.ok) {
             throw new Error(
@@ -1197,6 +1198,7 @@ export async function retryPendingClaimSettlement(
       txHash: payout.txHash,
       toAddress: matchedUser.walletAddress,
       amountWolo: claim.amountWolo,
+      expectedFromAddress: payout.expectedSenderAddress ?? "",
     });
 
     if (!payoutGuard.ok) {
