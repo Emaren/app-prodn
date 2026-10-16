@@ -260,9 +260,13 @@ function githubEvents(commits: unknown, pulls: unknown, workflows: unknown): OsE
 
 export async function buildAoe2warOsPublicSnapshot(options: { includeGithub?: boolean } = {}): Promise<OsPublicSnapshot> {
   const includeGithub = options.includeGithub !== false;
+  // OS refreshes previously scanned all release/storage/Doctor evidence twice
+  // (once here and again inside the public agents projection). Reuse the exact
+  // same observation; simultaneous callers never infer two conflicting scores.
+  const inspectionSource = Promise.resolve().then(() => buildGeneralInspectionsSnapshot());
   const [inspectionR, agentsR, controlR, commitsR, pullsR, workflowR] = await Promise.allSettled([
-    Promise.resolve().then(() => buildGeneralInspectionsSnapshot()),
-    buildKingdomAgentsPublicSnapshot(), releaseControl(),
+    inspectionSource,
+    buildKingdomAgentsPublicSnapshot({ inspectionSource }), releaseControl(),
     includeGithub ? github("commits?per_page=7") : Promise.resolve(null),
     includeGithub ? github("pulls?state=all&sort=updated&direction=desc&per_page=8") : Promise.resolve(null),
     includeGithub ? github("actions/runs?per_page=8") : Promise.resolve(null),
