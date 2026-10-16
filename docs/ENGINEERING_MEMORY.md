@@ -41,77 +41,6 @@ memory before closing the work.
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
 
-## 2026-10-15 — New Kingdom pages require source-edition registration
-
-The public AoE2WAR OS deck originally joined both castle menus and SpeedOS, but not the 24-page source-hashed page-change manifest. Registered /aoe2war-os as the 25th tracked page in the Python generator and generated TypeScript source, with independent recomputation of its route-file digest in Node CI and the existing 25-page menu contract. This preserves notifications without changing any live visual dot styling.
-
-## 2026-10-15 — Public OS local receipts require bounded descriptor authority
-
-The public command deck originally read JSON before bounding its size, then
-used a separate lstat/readFile check vulnerable to a path swap. All local
-status evidence now opens a single file descriptor with O_NOFOLLOW, checks
-regular-file type and size on that descriptor, and reads exactly those
-bytes. Operator bridge evidence is capped at 128 KiB and protected Finish
-receipts at 750 KiB. Invalid or untrusted evidence remains UNAVAILABLE;
-it cannot synthesize a verified deployment. Regression tests enforce the
-reader shared by both source types. This is a source-only guard; no release
-controller, signer or financial activity changed.
-
-## 2026-10-15 — Public Kingdom Machine: why CI, live release, and source census stay independent
-
-The public route `/aoe2war-os` is a **read-only** visual command deck, separate from
-the authenticated operator bridge at `/admin/aoe2war-os`. Both castle
-navigation dropdowns offer AoE2WAR OS and Television WOLO; the primary
-player-navigation chips are otherwise unchanged.
-
-The deck shows an independently captured source census (exact capture SHA,
-time and CI receipt); an exact 193-name schema-derived Prisma model atlas;
-test pass/skip counts; modularity/cycle and storage source metrics; the
-existing public General Inspections readiness categories; existing Kingdom
-Agents states; and current GitHub commit/PR/Actions events.
-
-**Authority never gets merged into a decorative light:**
-- GitHub push/PR/Actions CI proves source activity, not VPS activation.
-- Certified production source/build comes from General Inspections; absent
-  or stale sources must visibly say UNKNOWN/UNVERIFIED, never fabricate 0.
-- A release-operation beacon uses only a recent Operator Bridge heartbeat
-  plus exact allowlisted queued/claimed/running deploy/finish/rollback action.
-  It is **release control in progress**, not a certified successful deploy.
-- "Last deployed at" is shown only when a bounded, local Finish
-  receipt records `production_deployed=true`, a certified outcome, the
-  exact matching live production source SHA and an explicit
-  `release_certified_at` timestamp. Otherwise it says NOT PROVEN.
-  Commit time, CI completion, file mtime and inspection timestamps
-  are NOT substitutes.
-- Operational 100/100 is defined by each owned, explicitly versioned check
-  having current appropriate proof at its source/runtime generation. The
-  engineering maturity estimate (74/100 at October 15) is a separate
-  subjective planning rubric and never rendered as a measured production
-  certification. No scores are reweighted simply to look green.
-- Source benchmarks are historical until renewed by a source-bound census;
-  a newly merged GitHub commit does not retroactively update the old source
-  sample or the currently deployed site's schema.
-
-Public traffic never accesses authenticated OS control commands, operator
-identities, raw run logs, wallet addresses, secret paths, or arbitrary
-filename selectors. It reads allowlisted, bounded and safely projected
-status only; GitHub URLs are verified to the official app repository.
-Public polling is bounded to 45 seconds while the tab is visible, stops on
-unmount, and displays interrupted signals rather than preserving fake
-"live" state. Initial server rendering does not wait on external GitHub:
-the activity feed hydrates after first paint. Server GitHub reads use
-45-second cache and short timeout.
-Animations respect reduced motion and never claim a job is running based
-only on a decorative animation.
-
-Improvement gates: source-accurate Prisma enumeration; actual verified
-production/source separation; no write methods or privilege bypass on
-the public endpoint; safe unknown/outage projection; GitHub source origin;
-Node/TS, Python/docs and production build CI. Future improvements must
-deliver **measured** faster signals, correct last-deploy receipts, more
-reliable agent actions, or reduced maintenance cost rather than merely
-more lights, manufactured 100s, or background polling.
-
 ## 2026-10-15 — Historical Claim WOLO payout proof must be audited, not inferred
 
 The old profile Claim WOLO path could set `pending_wolo_claims.status`
@@ -125,6 +54,16 @@ Do not equate missing hash to nonpayment; do not auto-reopen rows. First
 obtain bounded, owner-safe historical counts, then independently review
 canonical chain success and signer/request evidence before any financial
 correction. No production census has been run by this code change.
+
+## 2026-10-15 — A saved Mecha plan must be invalid in *every* read model
+
+The worker's stored-plan admission was fail-closed but the settings
+API could silently project an unrecognized stored Desync value as
+`none` without warning the owner. Now one financial-integrity
+predicate is reused by the worker, admission and API readiness, and
+invalid history reports `requiresPlanReview` without changing saved
+data or client enum compatibility. Exhausted plans are not labelled
+corrupt. Live betting stays off.
 
 ## 2026-10-15 — Stored Mecha plans must not bypass current safety budgets
 
