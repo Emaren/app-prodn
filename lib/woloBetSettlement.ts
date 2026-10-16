@@ -1,3 +1,4 @@
+import { fetchBoundedWoloTxJson } from "./woloBoundedTxLookup.ts";
 import { createHash } from "node:crypto";
 
 import type { StdFee } from "@cosmjs/amino";
@@ -1083,16 +1084,9 @@ export function validateWoloAddress(address: string) {
 async function fetchTx(txHash: string) {
   const normalizedHash = normalizeTxHash(txHash);
   if (!normalizedHash) return null;
-
-  const response = await fetch(`${WOLO_REST_URL}/cosmos/tx/v1beta1/txs/${normalizedHash}`, {
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    return null;
-  }
-
-  return response.json();
+  return fetchBoundedWoloTxJson(
+    `${WOLO_REST_URL}/cosmos/tx/v1beta1/txs/${normalizedHash}`,
+  );
 }
 
 function sleep(ms: number) {
