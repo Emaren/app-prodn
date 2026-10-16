@@ -67,8 +67,14 @@ export function extractCanonicalWoloMsgSends(
   denom: string,
 ): CanonicalWoloMsgSend[] | null {
   const root = obj(payload);
+  const rootResponse = obj(root?.tx_response);
   const outerTx = obj(root?.tx);
-  const nestedTx = obj(obj(root?.tx_response)?.tx);
+  const nestedTx = obj(rootResponse?.tx);
+  // If either REST source supplies a non-null transaction, it must be
+  // a decodable object. Never accept the other source after discarding a
+  // contradictory malformed view as if it were merely absent.
+  if ((root?.tx != null && !outerTx) ||
+      (rootResponse?.tx != null && !nestedTx)) return null;
   const outer = outerTx ? decodeBody(outerTx.body, denom) : null;
   const nested = nestedTx ? decodeBody(nestedTx.body, denom) : null;
   if ((outerTx && !outer) || (nestedTx && !nested)) return null;
