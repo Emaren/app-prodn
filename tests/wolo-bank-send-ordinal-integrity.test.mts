@@ -55,6 +55,23 @@ test("mutually inconsistent root and nested transaction messages cannot become p
   assert.deepEqual(extractCanonicalWoloMsgSends(payload([send()], [send()]), denom),
     [{ index: 0, fromAddress: sender, toAddress: receiver, amountUwolo: "3000000", denom }]);
 });
+test("supplied malformed duplicate REST view cannot be ignored in favor of a valid one", () => {
+  const validRoot = payload([send()]);
+  assert.equal(extractCanonicalWoloMsgSends({
+    ...validRoot, tx_response: { tx: "not a transaction" },
+  }, denom), null);
+  assert.equal(extractCanonicalWoloMsgSends({
+    ...validRoot, tx_response: { tx: [] },
+  }, denom), null);
+  assert.equal(extractCanonicalWoloMsgSends({
+    tx: "not a transaction", tx_response: { tx: validRoot.tx },
+  }, denom), null);
+  assert.equal(extractCanonicalWoloMsgSends({
+    ...validRoot, tx_response: { tx: null },
+  }, denom)?.[0]?.amountUwolo, "3000000",
+    "Cosmos null optional TxResponse.tx is absent, not conflicting evidence");
+});
+
 test("valid non-WOLO transaction is no payout, malformed tx is untrusted", () => {
   assert.deepEqual(extractCanonicalWoloMsgSends(payload([
     { "@type": "/cosmos.staking.v1beta1.MsgDelegate" },
