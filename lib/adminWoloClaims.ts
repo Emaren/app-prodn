@@ -12,7 +12,7 @@ import {
 } from "@/lib/betStakeMemo";
 import { normalizePublicPlayerName } from "@/lib/publicPlayers";
 import { recordUserActivity } from "@/lib/userExperience";
-import { getWoloBetEscrowRuntime } from "@/lib/woloChain";
+import { getWoloBetEscrowRuntime, isWoloMainnet } from "@/lib/woloChain";
 import { validateDistinctClaimPayoutTx } from "@/lib/woloClaimPayoutGuards";
 import {
   executeFounderWoloPayout,
@@ -1013,7 +1013,7 @@ export async function retryPendingClaimSettlement(
             txHash: payout.txHash,
             toAddress: payoutAddress,
             amountWolo: claim.amountWolo,
-            expectedFromAddress: payout.expectedSenderAddress ?? "",
+            expectedFromAddress: payout.expectedSenderAddress ?? (isWoloMainnet() ? "" : null),
           });
           if (!payoutGuard.ok) {
             throw new Error(
@@ -1198,7 +1198,7 @@ export async function retryPendingClaimSettlement(
       txHash: payout.txHash,
       toAddress: matchedUser.walletAddress,
       amountWolo: claim.amountWolo,
-      expectedFromAddress: payout.expectedSenderAddress ?? "",
+      expectedFromAddress: payout.expectedSenderAddress ?? (isWoloMainnet() ? "" : null),
     });
 
     if (!payoutGuard.ok) {
