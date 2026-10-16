@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/claim-payout-authorized-sender-provenance-20261016` at `555249ebde671d3c9a267634afa2eba1bb1fb6a3`
+Implementation baseline: `fix/claim-payout-authorized-sender-provenance-20261016` at `84db49901520215f1b662efc6a97a6d63e07d347`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
