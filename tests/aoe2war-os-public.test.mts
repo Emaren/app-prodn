@@ -37,6 +37,8 @@ test("public OS page exposes no admin route or mutation and safely distinguishes
   assert.match(evidence, /RUNNING = new Set\(\["queued", "claimed", "running"\]\)/);
   assert.match(evidence, /Math\.abs\(Date\.now\(\) - Date\.parse\(beat\)\) > 90_000/);
   assert.match(evidence, /lastDeployAt: certifiedAt/);
+  assert.match(evidence, /const entry = await lstat\(file\)/);
+  assert.match(evidence, /!entry\.isFile\(\) \|\| entry\.size > 128_000/);
   assert.match(evidence, /receipt.production_deployed === true/);
   assert.match(evidence, /source === releaseSha/);
   assert.match(deck, /NO VERIFIED ACTIVE DEPLOY/);
