@@ -5,6 +5,7 @@ import type {
 import type { LiveGameSession } from "@/lib/liveSessionSnapshot";
 import {
   evaluateBetAutoShadowAdmission,
+  storedBetAutoFinancialIssue,
   readBetAutomationRuntime,
 } from "@/lib/betAutomation";
 
@@ -206,7 +207,7 @@ export async function runBetAutoShadowWorker(
       evaluatedCount += 1;
       // A malformed legacy database value is not a new selection by the
       // player. Never coerce it into an unrequested Desync outcome.
-      if (!["none", "no", "yes"].includes(preset.desyncSide)) {
+      if (storedBetAutoFinancialIssue(preset)) {
         skippedCount += 1;
         continue;
       }
