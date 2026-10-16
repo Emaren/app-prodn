@@ -35,6 +35,8 @@ export type ClaimPayoutGuardEntry = {
   txHash: string;
   toAddress: string;
   amountWolo: number;
+  /** Trusted expected source when independently established by the caller; no guessing legacy origins. */
+  expectedFromAddress?: string | null;
 };
 
 export type ClaimPayoutGuardResult = {
@@ -252,8 +254,13 @@ export async function validateDistinctClaimPayoutTxBatch(
       ...entry,
       txHash: normalizeTxHash(entry.txHash),
       toAddress: normalizeAddress(entry.toAddress),
+      expectedFromAddress: entry.expectedFromAddress == null
+        ? null : normalizeAddress(entry.expectedFromAddress),
+      invalidExpectedSource: entry.expectedFromAddress != null &&
+        !normalizeAddress(entry.expectedFromAddress),
     }))
-    .filter((entry) => entry.txHash && entry.toAddress && entry.amountWolo > 0);
+    .filter((entry) => entry.txHash && entry.toAddress &&
+      entry.amountWolo > 0 && !entry.invalidExpectedSource);
   const results = new Map<string, ClaimPayoutGuardResult>();
   const byTxHash = new Map<string, typeof normalizedEntries>();
 
@@ -279,6 +286,20 @@ export async function validateDistinctClaimPayoutTxBatch(
         ok: false,
         failureCode: "INVALID_RECIPIENT_WALLET",
         detail: "WOLO payout guard rejected an invalid recipient wallet.",
+        proofUrl: buildWoloRestTxLookupUrl(original.txHash),
+        matchingSendCount: 0,
+        totalSendCount: 0,
+        existingClaimCount: 0,
+      });
+    } else if (original.expectedFromAddress != null &&
+        !normalizeAddress(original.expectedFromAddress)) {
+      results.set(original.key, {
+        key: original.key,
+        claimId: original.claimId ?? null,
+        txHash: normalizeTxHash(original.txHash) || original.txHash,
+        ok: false,
+        failureCode: "INVALID_EXPECTED_PAYOUT_SENDER",
+        detail: "WOLO payout guard refused an invalid expected signer wallet.",
         proofUrl: buildWoloRestTxLookupUrl(original.txHash),
         matchingSendCount: 0,
         totalSendCount: 0,
@@ -377,6 +398,14 @@ export async function validateDistinctClaimPayoutTxBatch(
     const availableByKey = countByKey(
       lookup.sends.map((send) => `${send.toAddress}|${send.amountUwolo}`)
     );
+    const expectedBySender = countByKey(txEntries
+      .filter((entry) => entry.expectedFromAddress)
+      .map((entry) => `${entry.expectedFromAddress}|${entry.toAddress}|${toUwoLoAmount(entry.amountWolo)}`));
+    const observedBySender = countByKey(lookup.sends
+      .map((send) => `${send.fromAddress}|${send.toAddress}|${send.amountUwolo}`));
+    const senderAllocationInvalid = Array.from(expectedBySender.entries()).some(
+      ([key, requiredCount]) => (observedBySender.get(key) ?? 0) < requiredCount
+    );
     const missingExistingWalletCount = existingUses.filter((row) => !row.toAddress).length;
     const anyPairOverAllocated = Array.from(requiredByKey.entries()).some(
       ([key, requiredCount]) => (availableByKey.get(key) ?? 0) < requiredCount
@@ -399,6 +428,13 @@ export async function validateDistinctClaimPayoutTxBatch(
               code: "DUPLICATE_TX_GUARD",
               detail:
                 "WOLO payout tx does not contain enough distinct matching MsgSends for every claimed row using this tx hash.",
+            }
+          : null) ||
+        (senderAllocationInvalid
+          ? {
+              code: "PAYOUT_SENDER_MISMATCH",
+              detail:
+                "WOLO payout tx lacks a distinct bank MsgSend from the trusted expected payout wallet.",
             }
           : null);
 
