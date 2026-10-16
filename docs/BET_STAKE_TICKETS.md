@@ -8,11 +8,31 @@ systems: ["app-prodn", "wolochain"]
 audience: ["developers", "operators", "ai-agents"]
 source_of_truth: "git"
 authority: "financial-domain-contract"
-reviewed_at: "2026-09-15"
+reviewed_at: "2026-10-16"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 # Manual Bet Stake Tickets
+
+## October 16, 2026 — bounded source contract review
+
+Reviewed the current `lib/betStakeTickets.ts`,
+`lib/betStakeFunding.ts`, `lib/betStakeMemo.ts`,
+`lib/betStakeAutoRecovery.ts`, and the owner-authenticated prepare
+and commit handlers against this document. Source still uses the
+versioned single-transfer ticket memo, separate winner/Desync legs,
+two-rail hash collision exclusion, bounded signed-but-unrecorded
+reconciliation, and the `BET_STAKE_TICKETS_ENABLED` fail-closed switch.
+The public prepare handler forces `source: "manual"`, while Mecha
+live execution remains separately disabled.
+
+This review renews the **source contract** only. It does not recreate
+the September 15 production snapshot, establish today's escrow signer
+reserve, prove that all historical tickets are settled, authorize
+automation spending, or clear the WoloChain/Hetzner protected release
+gates. Any live promotion still requires current independently sourced
+chain, financial and runtime evidence.
+
 
 ## Contract
 

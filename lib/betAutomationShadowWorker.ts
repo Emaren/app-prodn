@@ -204,16 +204,19 @@ export async function runBetAutoShadowWorker(
 
     for (const preset of presets) {
       evaluatedCount += 1;
+      // A malformed legacy database value is not a new selection by the
+      // player. Never coerce it into an unrequested Desync outcome.
+      if (!["none", "no", "yes"].includes(preset.desyncSide)) {
+        skippedCount += 1;
+        continue;
+      }
       const admission = evaluateBetAutoShadowAdmission({
         preset: {
           id: preset.id,
           version: preset.version,
           enabled: preset.enabled,
           winnerStakeWolo: preset.winnerStakeWolo,
-          desyncSide:
-            preset.desyncSide === "yes" || preset.desyncSide === "no"
-              ? preset.desyncSide
-              : "none",
+          desyncSide: preset.desyncSide as "none" | "no" | "yes",
           desyncStakeWolo: preset.desyncStakeWolo,
           untilOut: preset.untilOut,
           gamesRemaining: preset.gamesRemaining,

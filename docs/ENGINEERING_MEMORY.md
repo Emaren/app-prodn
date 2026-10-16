@@ -41,6 +41,16 @@ memory before closing the work.
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
 
+## 2026-10-15 — Stored Mecha plans must not bypass current safety budgets
+
+The original preset form enforced 1,000 WOLO/game and 10,000 WOLO per
+finite plan, but admission-time validation didn't enforce total stored
+exposure. The shadow worker also mapped unrecognized legacy Desync
+choices to `none`, changing the meaning of persisted owner consent.
+Both now fail closed at market admission, with direct and worker tests.
+Shadow preview remains non-funding; live automated betting is still
+disabled pending real custody and unique accepted ticket settlement.
+
 ## 2026-10-15 — Satchel vault policy must exclude existing WOLO role wallets
 
 Preparing a nonfundable Satchel intent and reviewing a canonical

@@ -15,6 +15,32 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## October 15, 2026 — persisted Mecha plans receive full admission-time validation
+
+The interactive preset form rejects combined stakes over 1,000 WOLO per
+game, and finite plans requiring over 10,000 WOLO. Existing shadow admission,
+however, checked the per-game ceiling but did not recheck a *stored*
+finite plan's full 10,000-WOLO exposure at the moment a canonical Watcher
+market became available. In addition, the worker converted unknown
+historical Desync enum values to `none`, quietly changing the user's
+stored selection rather than failing closed.
+
+The shadow admission now rechecks stored Desync enums, Until-Out
+null/finite-plan consistency, the 10,000-game maximum, per-leg limits
+and total finite plan exposure at admission time. Invalid Desync values
+never enter the immutable preview outbox; no automatic correction to
+`none` occurs. Pure and worker integration tests prove that 500 WOLO
+for 21 matches is rejected (10,500 > 10,000), invalid persisted enums
+are rejected, and 500 for exactly 20 matches remains valid.
+No client plan is rewritten and no user gets a false funded-bet receipt.
+
+**This remains the non-financial shadow worker.**
+`LIVE_EXECUTOR_IMPLEMENTED=false`, `acceptedAt=null`, no stake tickets,
+reservations, on-chain payouts, active WOLO movement or decrement of
+the player's finite plan. A future real executor must revalidate and lock
+a *newly reviewed consent and balance* at actual stake acceptance.
+
+
 ## October 15, 2026 — one canonical vault collision policy for both Satchel gates
 
 The C2 nonfundable intent route and C3 canonical receipt route each had
