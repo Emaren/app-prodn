@@ -4,6 +4,7 @@ import { buildGeneralInspectionsSnapshot } from "@/lib/generalInspections/server
 import type { GeneralInspectionsSnapshot } from "@/lib/generalInspections/types.ts";
 import { loadPublicKingdomIntelligence } from "@/lib/kingdomIntelligencePublic";
 import { inspectionAgentState, systemAgentState, type KingdomAgentState } from "@/lib/kingdomAgentPolicy";
+import { reconcileKingdomReleaseEvidence, type KingdomReleaseAlignment } from "@/lib/kingdomReleaseEvidence";
 
 export type KingdomAgentKind = "system" | "inspection";
 
@@ -23,7 +24,7 @@ export type KingdomAgentPublicSnapshot = {
   schema: 1;
   observedAt: string;
   releaseSha: string | null;
-  sources: { intelligence: boolean; inspections: boolean; intelligenceStale: boolean };
+  sources: { intelligence: boolean; inspections: boolean; intelligenceStale: boolean; releaseAlignment: KingdomReleaseAlignment };
   readinessScore: number | null;
   doctorScore: number | null;
   directive: { title: string; level: string } | null;
@@ -53,7 +54,11 @@ export async function buildKingdomAgentsPublicSnapshot(
   ]);
   const inspection = inspectionResult.status === "fulfilled" ? inspectionResult.value : null;
   const intelligence = intelligenceResult.status === "fulfilled" ? intelligenceResult.value : null;
-  const intelligenceCurrent = Boolean(intelligence?.available && !intelligence.stale);
+  const releaseAlignment = reconcileKingdomReleaseEvidence(
+    inspection?.releaseSha, intelligence?.source?.productionRelease,
+  );
+  // Two fresh but different certified releases are NOT one health authority.
+  const intelligenceCurrent = Boolean(intelligence?.available && !intelligence.stale && releaseAlignment === "aligned");
   const agents: KingdomAgentPublic[] = [];
 
   if (intelligence?.available) {
@@ -68,7 +73,8 @@ export async function buildKingdomAgentsPublicSnapshot(
         kind: "system",
         state,
         task: system.summary.slice(0, 150),
-        signal: intelligenceCurrent ? system.state : "STALE SIGNAL",
+        signal: intelligenceCurrent ? system.state : releaseAlignment === "mismatch"
+          ? "RELEASE MISMATCH" : intelligence?.stale ? "STALE SIGNAL" : "RELEASE UNVERIFIED",
         evidenceAt: safeDate(intelligence.generatedAt),
         source: "Kingdom Intelligence",
       });
@@ -109,11 +115,12 @@ export async function buildKingdomAgentsPublicSnapshot(
   return {
     schema: 1,
     observedAt: new Date().toISOString(),
-    releaseSha: inspection?.releaseSha?.slice(0, 12) ?? intelligence?.source?.productionRelease ?? null,
+    releaseSha: releaseAlignment === "aligned" ? inspection?.releaseSha?.slice(0, 12) ?? null : null,
     sources: {
       intelligence: Boolean(intelligence?.available),
-      intelligenceStale: !intelligenceCurrent,
+      intelligenceStale: !intelligence?.available || Boolean(intelligence.stale),
       inspections: Boolean(inspection),
+      releaseAlignment,
     },
     readinessScore: inspection?.overallScore ?? null,
     doctorScore: intelligenceCurrent ? intelligence?.health?.doctorScore ?? null : null,

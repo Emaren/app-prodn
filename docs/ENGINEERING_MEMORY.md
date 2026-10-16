@@ -29,6 +29,17 @@ behavior, authority, architecture, financial policy, recovery, release
 procedure, or debugging strategy, update the owning living contract and this
 memory before closing the work.
 
+## 2026-10-16 — Do not combine fresh health readings from different releases
+
+General Inspections and Kingdom Intelligence are separate evidence collectors.
+Freshness and successful transport are necessary but do not prove they refer
+to the same certified runtime. Kingdom Agents now requires full production SHA
+and matching public 12-character prefix before treating KI sentinel states,
+Doctor score, action directive and activity as current in the combined view.
+When releases disagree, the provenance is unknown and the interface explicitly
+warns about SOURCE DRIFT; no green state is manufactured. This is a read-only
+presentation/authority join, not a score reset or new autonomous operator.
+
 ## 2026-10-16 — Never pay the first matching legacy player name
 
 `findMatchedClaimUser` formerly chose `users.find(...)` from

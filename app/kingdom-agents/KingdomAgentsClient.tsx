@@ -107,7 +107,7 @@ export default function KingdomAgentsClient({ initial }: { initial: KingdomAgent
   ), [data.agents, lane, filter, query]);
   const focus = data.agents.find((agent) => agent.id === selected) ?? null;
   const noSources = !data.sources.inspections && !data.sources.intelligence;
-  const lost = signalLost || noSources || data.sources.intelligenceStale;
+  const lost = signalLost || noSources || data.sources.intelligenceStale || data.sources.releaseAlignment !== "aligned";
   const scan = data.agents.slice(0, 48);
   const summary = data.directive?.title ?? (
     tally.blocked ? "A verified gate needs attention." :
@@ -130,7 +130,7 @@ export default function KingdomAgentsClient({ initial }: { initial: KingdomAgent
             <div className={styles.heroPills}>
               <span className={lost ? styles.signalWarn : styles.signalGood}>
                 <Beacon state={lost ? "watch" : "healthy"} />
-                {signalLost ? "LINK INTERRUPTED" : noSources ? "SIGNAL ABSENT" : data.sources.intelligenceStale ? "INTELLIGENCE STALE" : "TELEMETRY CONNECTED"}
+                {signalLost ? "LINK INTERRUPTED" : noSources ? "SIGNAL ABSENT" : data.sources.intelligenceStale ? "INTELLIGENCE STALE" : data.sources.releaseAlignment === "mismatch" ? "SOURCE DRIFT" : data.sources.releaseAlignment === "unknown" ? "RELEASE UNVERIFIED" : "TELEMETRY CONNECTED"}
               </span>
               <span>PROVENANCE · {data.releaseSha ?? "UNVERIFIED"}</span>
             </div>
