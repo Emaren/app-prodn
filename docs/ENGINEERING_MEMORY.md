@@ -212,6 +212,18 @@ partial success, spoofed lengths and transport failure. This fixes
 resource/availability risk only; money proof and signer/custody gates
 remain independent and unchanged.
 
+## 2026-10-16 — Match Mecha's market query to active Watcher sessions
+
+Filtering Mecha presets to active Watcher uploaders was incomplete:
+the winner-market query still took the newest 100 markets globally.
+100 newer unrelated games could obscure an eligible player's older
+live match. The preview worker now queries only unambiguous active
+Watcher session keys/aliases and detects >100 scoped records with
+a fail-closed explicit overflow. Negative tests cover both exact
+selection and no partial write on overflow. The executor stays
+disabled. Later funded operation must have full bounded-pagination
+or similarly complete admission before authorization.
+
 ## 2026-10-16 — Claim payout REST must prove canonical tx identity before reading bank sends
 
 The legacy reconciliation helper defaulted unknown/malformed
