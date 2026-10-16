@@ -77,7 +77,7 @@ identity and a successful tx code alone cannot repair that loss of
 effect-level provenance. Added a pure, fail-closed bank-send decoder
 that preserves top-level message indexes, rejects malformed/doubled
 coins and contradictory decoded bank messages, and returns no
-financial evidence from ambiguous input. Adversarial source-bound
+financial evidence from ambiguous input. A malformed supplied transaction object is never silently ignored in favor of the other valid REST view; a null absent optional view remains allowed. Adversarial source-bound
 tests guard the behavior. Still no payout or transaction promotion.
 
 ## 2026-10-16 — Satchel C3 must understand Cosmos omitted zero and root Tx
