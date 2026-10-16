@@ -27,7 +27,7 @@ unrelated owners, but not unrelated markets.
 
 The read-only discovery query now restricts `linkedSessionKey` to
 the unique unambiguous canonical session keys and aliases in the
-already-supplied Watcher snapshot. It fetches **101** records to
+already-supplied Watcher snapshot **whose authenticated uploader owns an enabled eligible saved plan**. It fetches **101** records to
 detect exceeding the supported 100-market cohort, and throws an
 explicit `BET_AUTO_SHADOW_ACTIVE_MARKET_COHORT_OVERFLOW` instead of
 silently hiding an eligible market. Overflow fails the preview pass
