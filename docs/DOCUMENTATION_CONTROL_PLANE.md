@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/satchel-vault-known-wallet-exclusions-20261015` at `baa88a94ea212fbac0edfd0a1b98270b67dbf859`
+Implementation baseline: `hardening/mecha-stored-preset-shadow-admission-20261015` at `59d0020be699968353f1504758a66db681644b42`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
