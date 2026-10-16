@@ -1,6 +1,18 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import test from "node:test";
+import nodeTest from "node:test";
+
+// The central test inventory uses Node's compact dot reporter, which reports
+// failing *files* but suppresses individual assertion details. Emit only a
+// failed local check name and the assertion message for actionable CI evidence.
+const test = (name: string, check: () => void) => nodeTest(name, () => {
+  try { check(); }
+  catch (error) {
+    process.stderr.write("SIGNER_PROVENANCE_TEST_FAILED: " + name + " — " +
+      (error instanceof Error ? error.message : String(error)) + "\n");
+    throw error;
+  }
+});
 import { requireObservedWoloPayoutSender } from "../lib/woloPayoutSignerIdentity.ts";
 import { hasSufficientBoundPayoutSources } from "../lib/woloPayoutSenderEvidence.ts";
 
