@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "3276ffd894cb05c08f7a082ff5c1cd033a7cc30460ddd37c43c821e6962e32be",
+      "sha256": "9d22b23e3bcd7b7eaaf77aa23f81e391b948d2b0f3bc90a15666dcb5174e471c",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6570923d35d9a37cbcc830f17ce7b95c9650ef66e350f3dedf88971b51a240aa",
+      "sha256": "2f6c60b3590ed8427d41b8bb9bca7a90ddf3c32551d6f19c9ec92481445cb715",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-15",
       "sensitivity": "internal",
-      "sha256": "7f2ec2c28abf76e89d7037d8cdb635248a0bdd7610ad596f98b6e2f20b9e7daa",
+      "sha256": "55be153f37ea168a532dbe25069afd7cf30a26a03398e0a697ccfc7b3b405a51",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "hardening/mecha-stored-preset-shadow-admission-20261015",
-    "commit": "7c759825665d212ee3784557deb960cf58711fea"
+    "branch": "fix/satchel-vault-known-wallet-exclusions-20261015",
+    "commit": "baa88a94ea212fbac0edfd0a1b98270b67dbf859"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

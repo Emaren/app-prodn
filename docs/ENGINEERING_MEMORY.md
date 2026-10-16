@@ -41,6 +41,32 @@ memory before closing the work.
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
 
+## 2026-10-15 — Stored Mecha plans must not bypass current safety budgets
+
+The original preset form enforced 1,000 WOLO/game and 10,000 WOLO per
+finite plan, but admission-time validation didn't enforce total stored
+exposure. The shadow worker also mapped unrecognized legacy Desync
+choices to `none`, changing the meaning of persisted owner consent.
+Both now fail closed at market admission, with direct and worker tests.
+Shadow preview remains non-funding; live automated betting is still
+disabled pending real custody and unique accepted ticket settlement.
+
+## 2026-10-15 — Satchel vault policy must exclude existing WOLO role wallets
+
+Preparing a nonfundable Satchel intent and reviewing a canonical
+transaction used subtly different wallet-exclusion lists. The
+preparation gate omitted community Treasury and both missed the
+full registered mainnet wallet catalog. A dedicated asset/liability
+vault must not silently be one of the site's historical treasury,
+player, founder, payout, staking or escrow addresses.
+
+Both gates now share the catalog-plus-environment exclusion
+predicate, including Treasury aliases. Regression tests cover all
+catalogued addresses and novel candidates. Passing this local guard
+is **never** signer, solvency, custody, deposit or payout approval;
+the existing C2/C3 feature flags and `creditAuthorized=false`
+remain enforced.
+
 ## 2026-10-15 — Claim WOLO is not a payout: prevent phantom-paid claims
 
 The profile's legacy Claim WOLO POST marked pending database rows
@@ -56,16 +82,6 @@ Financial rule: **no status `claimed` without distinct on-chain proof
 and exact owner/amount/transfer binding**. Historical rows need
 read-only review before any correction; do not automatically rewrite
 older records to reconcile their missing hashes.
-
-## 2026-10-15 — Stored Mecha plans must not bypass current safety budgets
-
-The original preset form enforced 1,000 WOLO/game and 10,000 WOLO per
-finite plan, but admission-time validation didn't enforce total stored
-exposure. The shadow worker also mapped unrecognized legacy Desync
-choices to `none`, changing the meaning of persisted owner consent.
-Both now fail closed at market admission, with direct and worker tests.
-Shadow preview remains non-funding; live automated betting is still
-disabled pending real custody and unique accepted ticket settlement.
 
 ## 2026-10-15 — Generic internal HTTP writes must not evade the route authority review queue
 
