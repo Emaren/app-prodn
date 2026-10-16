@@ -64,7 +64,8 @@ test("payout guard must enforce canonical response and strict byte/time budgets"
   assert.match(source, /AbortSignal\.timeout\(6500\)/);
   assert.match(source, /redirect: "error"/);
   assert.match(source, /!response\.ok \|\| response\.status !== 200/);
-  assert.match(source, /sends: envelope\.ok \? extractMsgSends\(payload\) : \[\]/);
+  assert.match(source, /extractCanonicalWoloMsgSends\(payload, WOLO_BASE_DENOM\)/);
+  assert.match(source, /sends: parsedSends \?\? \[\]/);
   assert.doesNotMatch(source, /Number\.parseInt\(rawCode/);
   assert.doesNotMatch(source, /await response\.json\(/);
 });
