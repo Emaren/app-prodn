@@ -53,7 +53,7 @@ test("service payout paths observe signer from private health before payout POST
 
 test("both admin Claim WOLO completion branches demand the observed signer", () => {
   const code = readFileSync(new URL("../lib/adminWoloClaims.ts", import.meta.url), "utf8");
-  assert.equal(code.split("expectedFromAddress: payout.expectedSenderAddress ?? \"\"").length - 1, 2);
+  assert.equal(code.split('expectedFromAddress: payout.expectedSenderAddress ?? (isWoloMainnet() ? "" : null)').length - 1, 2);
   assert.equal(code.split("validateDistinctClaimPayoutTx(").length - 1, 2);
   assert.match(code, /executeFounderWoloPayout/);
   assert.match(code, /executeWoloPayout/);
