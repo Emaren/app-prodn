@@ -6,10 +6,11 @@ const guard = readFileSync(new URL("../lib/woloClaimPayoutGuards.ts", import.met
 
 test("claimed historical tx hash is not reusable from a mutable present-day user wallet", () => {
   assert.match(guard, /status: "claimed"/);
-  assert.match(guard, /payoutTxHash: \{ in: txHashVariants \}/);
+  assert.match(guard, /payoutTxHash: \{ equals: txHash, mode: "insensitive" \}/);
   assert.match(guard, /incomingIds\.length > 0 \? \{ id: \{ notIn: incomingIds \} \} : \{\}/);
   assert.match(guard, /select: \{ id: true \}/);
   assert.match(guard, /hasUnboundHistoricalTxUse = existingRows\.length > 0/);
+  assert.doesNotMatch(guard, /txHashVariants|txHash\.toLowerCase\(\)/);
   assert.match(guard, /code: "HISTORICAL_TX_REUSE_UNVERIFIED"/);
   assert.match(guard, /baseFailure \|\|\s*\(hasUnboundHistoricalTxUse/);
   assert.doesNotMatch(guard, /prisma\.user\.findMany\(/);
