@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/mecha-active-session-market-census-20261016` at `1a0e1a7208f54daed069ce19d1f9b18c73a9fe45`
+Implementation baseline: `fix/mecha-active-session-market-census-20261016` at `1170223c93d9d050b0f03f80c5d3d629586aa910`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
