@@ -2,12 +2,12 @@ import type { Prisma, PrismaClient } from "@/lib/generated/prisma";
 import { inspectWoloPayoutTxEnvelope } from "./woloCanonicalPayoutEnvelope.ts";
 import { extractCanonicalWoloMsgSends } from "./woloCanonicalBankSends.ts";
 import { hasSufficientBoundPayoutSources } from "./woloPayoutSenderEvidence.ts";
+import { canonicalPayoutTxHash, canonicalPayoutUWolo } from "./woloPayoutProofInputs.ts";
 import { readWarSatchelBoundedUtf8 } from "./warSatchelBoundedBody.ts";
 import {
   WOLO_BASE_DENOM,
   WOLO_REST_URL,
   buildWoloRestTxLookupUrl,
-  toUwoLoAmount,
 } from "@/lib/woloChain";
 
 type ClaimGuardDb = Pick<PrismaClient, "pendingWoloClaim"> | Prisma.TransactionClient;
@@ -55,8 +55,7 @@ export type ClaimPayoutGuardResult = {
 };
 
 function normalizeTxHash(value: string | null | undefined) {
-  const clean = (value || "").trim().toUpperCase();
-  return /^[A-F0-9]{16,128}$/.test(clean) ? clean : null;
+  return canonicalPayoutTxHash(value);
 }
 
 function normalizeAddress(value: string | null | undefined) {
@@ -74,8 +73,9 @@ function buildLookupUrl(restUrl: string, txHash: string) {
 
 function sendKey(address: string | null | undefined, amountWolo: number) {
   const toAddress = normalizeAddress(address);
-  if (!toAddress) return null;
-  return `${toAddress}|${toUwoLoAmount(amountWolo)}`;
+  const amount = canonicalPayoutUWolo(amountWolo);
+  if (!toAddress || !amount) return null;
+  return `${toAddress}|${amount}`;
 }
 
 function countByKey(values: string[]) {
@@ -208,9 +208,10 @@ export async function validateDistinctClaimPayoutTxBatch(
         ? null : normalizeAddress(entry.expectedFromAddress),
       invalidExpectedSource: entry.expectedFromAddress != null &&
         !normalizeAddress(entry.expectedFromAddress),
+      amountUwolo: canonicalPayoutUWolo(entry.amountWolo),
     }))
     .filter((entry) => entry.txHash && entry.toAddress &&
-      entry.amountWolo > 0 && !entry.invalidExpectedSource);
+      entry.amountUwolo && !entry.invalidExpectedSource);
   const results = new Map<string, ClaimPayoutGuardResult>();
   const byTxHash = new Map<string, typeof normalizedEntries>();
 
@@ -255,7 +256,7 @@ export async function validateDistinctClaimPayoutTxBatch(
         totalSendCount: 0,
         existingClaimCount: 0,
       });
-    } else if (original.amountWolo <= 0) {
+    } else if (!canonicalPayoutUWolo(original.amountWolo)) {
       results.set(original.key, {
         key: original.key,
         claimId: original.claimId ?? null,
@@ -328,7 +329,7 @@ export async function validateDistinctClaimPayoutTxBatch(
       txEntries.map((entry) => ({
         fromAddress: entry.expectedFromAddress,
         toAddress: entry.toAddress as string,
-        amountUwolo: toUwoLoAmount(entry.amountWolo),
+        amountUwolo: entry.amountUwolo as string,
       })),
       lookup.sends,
     );

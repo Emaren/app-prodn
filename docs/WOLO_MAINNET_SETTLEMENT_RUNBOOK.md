@@ -15,6 +15,34 @@ sensitivity: "restricted"
 
 # WOLO Mainnet Settlement App Runbook
 
+## October 15, 2026 — canonical WOLO proof inputs cannot be silently rounded
+
+Read-only `validateDistinctClaimPayoutTxBatch` previously accepted 16–128
+hexadecimal characters as a prospective transaction hash, even though
+actual WoloChain transaction identities are 64 hex characters. It also
+checked only that `amountWolo > 0` before calling the floating-point
+`toUwoLoAmount` converter. NaN could receive no explicit per-entry
+failure, Infinity could pass the positive prefilter, and sub-microunit
+values could silently round into a different evidence amount.
+
+`canonicalPayoutTxHash` now enforces exactly 64 hex characters before
+any network lookup. `canonicalPayoutUWolo` derives an exact positive
+six-decimal `uwolo` representation using bounded bigint parsing of
+the input number's observable decimal value. It refuses nonfinite,
+negative, zero, fractional-micro and unsafe-large economic evidence
+rather than rounding it. The existing guard returns its explicit
+`INVALID_AMOUNT` failure before chain access or sender allocation.
+Tests include smallest 1-uwolo value, six-decimal large values,
+scientific notation, malformed hashes, precision/overflow, and static
+no-mutation contracts.
+
+This only verifies the *shape* of financial evidence. It is **not**
+on-chain finality, signer or claim-owner proof, a write to historical
+claim status, approval of a new payout, or Satchel credit. A claimant's
+legacy payout remains unresolved without unique authenticated transfer
+proof; founder claim #889 is untouched.
+
+
 ## October 16, 2026 — conflicting dual decoded WOLO payout bodies fail closed
 
 The read-only claim payout REST adapter already required the requested

@@ -116,6 +116,17 @@ representations before assigning any bank send. Tests preserve legitimate
 single-envelope Cosmos compatibility and fail on conflicting send
 content. No money or production operations were changed.
 
+## 2026-10-15 — Payout evidence must not round a bad amount into plausible proof
+
+The read-only claim payout guard normalized noncanonical 16–128 hex
+hashes and let NaN/Infinity or amounts beyond six WOLO decimal places
+enter a weak positive-only filter. Centralized exact 64-hex and
+bigint microdenom validation now rejects bad inputs with
+`INVALID_TX_HASH` or `INVALID_AMOUNT` without attempting lookups
+or silently rounding financial claims. No execution, chain, claim or
+deposit state was changed. Real payout ownership and signer evidence
+remain independent release gates.
+
 ## 2026-10-16 — A live Mecha shadow batch should not scan unrelated owner presets
 
 The worker selected every enabled self-only saved betting plan, then
