@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "65c3521aab418f7bdc2f43eefcf552606383971a0c1a6569116437f6cb7cc3c5",
+      "sha256": "52fcdafc18f8de770287b2c58472fc21b37c4768df2eb03019271d31123b7d8e",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2117,7 +2117,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/satchel-canonical-proof-int64-bounds-20261016",
-    "commit": "feaec158d818406112ec09e6e956c2a5758dbeab"
+    "commit": "2ace179fd528f8213524f42f1a2ee205f68f5148"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
