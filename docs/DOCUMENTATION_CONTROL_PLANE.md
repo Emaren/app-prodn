@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/satchel-canonical-rest-zero-code-20261016` at `c45e005e88a6c155dc7abc22b0f522982a8221b5`
+Implementation baseline: `fix/wolo-dual-body-conflict-20261016` at `8f035fb69827109b0d25e4c2b606910fd5a3f39d`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
