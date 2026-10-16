@@ -15,6 +15,31 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## October 16, 2026 — restrict shadow evaluation to proven live Watcher uploaders
+
+The preview-only Mecha worker previously queried **every** enabled
+self-only preset and compared those rows with up to 100 live Watcher
+markets. As the player population grows, that is unnecessary DB work and
+a large market-by-all-users cross product: a preset cannot be eligible
+unless its owner is an exact authenticated uploader of an active session.
+
+The worker now collects unique, nonblank uploader UIDs from the supplied
+canonical active-session snapshot and restricts the existing
+`betAutoPreset.findMany` query to those owner UIDs before market
+evaluation. No active uploader means no database query. All original
+market, Steam-ID/roster, uploader, selected-side, proposition, Desync,
+and cap checks continue independently in
+`evaluateBetAutoShadowAdmission`. This does not let a session UID
+alone authorize any wager. Regression tests cover empty/no-uploader
+snapshots, repeated uploader identities, excluding unrelated owner
+presets, and maintaining preview-only candidate fields.
+
+This is an **objective query-scope reduction**, not a benchmarked
+throughput or latency claim. Actual reduction depends on active-session
+population and current enabled presets. `LIVE_EXECUTOR_IMPLEMENTED=false`,
+no funded balance, accepted ticket, reserve, or WOLO transfer is created.
+
+
 ## October 16, 2026 — Cosmos REST Satchel proof uses canonical root Tx and omitted success code
 
 A source review found that `inspectCanonicalSatchelDeposit` accepted

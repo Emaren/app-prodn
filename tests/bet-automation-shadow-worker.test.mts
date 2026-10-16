@@ -553,3 +553,79 @@ test("disabled automation mode performs no shadow database work", async () => {
     skippedCount: 0,
   });
 });
+
+test("shadow worker avoids reading all presets when no active uploader exists", async () => {
+  let queries = 0;
+  const db = {
+    betAutoPreset: { findMany: async () => { queries += 1; throw new Error("must not query presets"); } },
+    betMarket: { findMany: async () => { queries += 1; throw new Error("must not query markets"); } },
+  };
+  for (const activeSessions of [
+    [],
+    [session({ uploaders: [] })],
+    [session({ uploaders: [{ uid: "  " }] })],
+  ]) {
+    const result = await runBetAutoShadowWorker(db as never, {
+      activeSessions: activeSessions as never,
+      env: { BET_AUTOMATION_MODE: "shadow" },
+    });
+    assert.deepEqual(result, {
+      mode: "shadow", evaluatedCount: 0, eligibleCount: 0,
+      createdCount: 0, existingCount: 0, skippedCount: 0,
+    });
+  }
+  assert.equal(queries, 0, "no database query without an eligible uploader identity");
+});
+
+test("Mecha queries unique active Watcher uploader UIDs, not unrelated player plans", async () => {
+  const seenQueries: string[][] = [];
+  const created: Array<Record<string, unknown>> = [];
+  const plans = [
+    { ...preset(), user: { uid: "emaren", steamId: OWNER_STEAM } },
+    { ...preset({ id: 8 }), user: { uid: "unrelated", steamId: OTHER_STEAM } },
+  ];
+  const db = {
+    betAutoPreset: {
+      findMany: async ({ where }: { where: { user: { uid: { in: string[] } } } }) => {
+        seenQueries.push(where.user.uid.in);
+        return plans.filter((plan) => where.user.uid.in.includes(plan.user.uid));
+      },
+    },
+    betMarket: {
+      findMany: async () => [{ ...market(), childMarkets: [] }],
+    },
+    betAutoExecution: {
+      createMany: async ({ data }: { data: Array<Record<string, unknown>> }) => {
+        created.push(...data);
+        return { count: data.length };
+      },
+    },
+  };
+  const result = await runBetAutoShadowWorker(db as never, {
+    activeSessions: [session({ uploaders: [
+      { uid: "emaren" }, { uid: "emaren" }, { uid: "  " },
+    ] })] as never,
+    env: { BET_AUTOMATION_MODE: "shadow" },
+  });
+  assert.deepEqual(seenQueries, [["emaren"]]);
+  assert.deepEqual(result, {
+    mode: "shadow", evaluatedCount: 1, eligibleCount: 1,
+    createdCount: 1, existingCount: 0, skippedCount: 0,
+  });
+  assert.equal(created.length, 1);
+  assert.equal(created[0]?.presetId, 7);
+  assert.equal(created[0]?.status, BET_AUTO_SHADOW_READY_STATUS);
+  assert.equal(created[0]?.acceptedAt, null);
+  assert.equal(created[0]?.reservationId, null);
+});
+
+test("source narrows the Mecha user DB query while preserving independent canonical admission", () => {
+  const source = readFileSync(
+    new URL("../lib/betAutomationShadowWorker.ts", import.meta.url), "utf8"
+  );
+  assert.match(source, /user: \{ uid: \{ in: activeUploaderUids \} \}/);
+  assert.match(source, /evaluateBetAutoShadowAdmission\(/);
+  assert.match(source, /exactSessionIndex\(options\.activeSessions\)/);
+  assert.match(source, /acceptedAt: null/);
+  assert.match(source, /reservationId: null/);
+});
