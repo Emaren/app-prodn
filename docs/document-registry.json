@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "50060cb59f73bcb39f004b6a545fccdf61dcc986db319be57ed6453f6de8e87c",
+      "sha256": "ae8028d3b4d90d9064e36494bb4b6d68f121b87ca2b1b9e737d43e8323bfa74f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-15",
       "sensitivity": "internal",
-      "sha256": "b2220dfb7cd0341e7aa4e04f75c35f2e986d7556aa319827d11fcf267c18e860",
+      "sha256": "d7a1010077fb2a03a9a372ba164a19860b9fa1a8c49e722870a3b6b156a88a9d",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -940,7 +940,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-06",
       "sensitivity": "internal",
-      "sha256": "73a81e2a47b2269d5746fb60fa74d4104306665c468d7ec8384339b0308833d8",
+      "sha256": "0adeadb83b5f45066ccd3d6d84f901dab1eb1b644201c95e03ab5afd4ae65dfe",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "audit/claimed-wolo-without-proof-20261015",
-    "commit": "e7ee112475e3b3263c57fbdbcee3a9f058b80e3c"
+    "branch": "feature/public-aoe2war-os-command-deck-20261015",
+    "commit": "5e2cfb6691b25ffab7ef2d94a36d44ab3aa1b73b"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
