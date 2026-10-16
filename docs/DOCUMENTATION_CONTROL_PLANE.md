@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/payout-evidence-amount-hash-boundary-20261015` at `54f371e3d478e963eba5a493c0bb8c209f2e1c41`
+Implementation baseline: `fix/settlement-tx-transport-bounds-20261015` at `2517df89da79ed343ec9e0589816b25cc76f9040`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
