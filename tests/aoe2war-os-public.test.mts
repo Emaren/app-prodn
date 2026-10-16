@@ -41,6 +41,8 @@ test("public OS page exposes no admin route or mutation and safely distinguishes
   assert.match(evidence, /const entry = await handle\.stat\(\)/);
   assert.match(evidence, /entry\.size > 128_000/);
   assert.match(evidence, /await handle\.read\(bytes/);
+  assert.match(evidence, /const receipt = await safeJson\(file, 750_000\)/);
+  assert.doesNotMatch(evidence, /await lstat\(file\)|await readFile\(file/);
   assert.match(evidence, /await handle\?\.close\(\)/);
   assert.match(evidence, /receipt.production_deployed === true/);
   assert.match(evidence, /source === releaseSha/);
