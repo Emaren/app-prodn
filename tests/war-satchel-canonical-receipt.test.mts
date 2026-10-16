@@ -89,6 +89,47 @@ test("does not treat mixed or duplicated transfers as one approved credit", () =
   }
 });
 
+test("standard Cosmos REST root.tx decoded body and omitted code zero remain valid", () => {
+  const wrapped = tx();
+  const decoded = wrapped.tx_response.tx;
+  const { tx: unused, ...response } = wrapped.tx_response;
+  const rootTx = { tx: decoded, tx_response: response };
+  const result = inspect({ txResponse: rootTx });
+  assert.equal(result.receiptKey, "wolo-1:" + hash + ":0");
+  assert.equal(result.creditAuthorized, false);
+  assert.equal(result.wagerAuthorized, false);
+
+  const successWithoutCode = structuredClone(rootTx);
+  delete (successWithoutCode.tx_response as { code?: number }).code;
+  const proof = inspect({ txResponse: successWithoutCode });
+  assert.equal(proof.kind, "canonical_chain_candidate_uncredited");
+  assert.equal(proof.depositAuthorized, false);
+
+  const legacyWithoutCode = tx();
+  delete (legacyWithoutCode.tx_response as { code?: number }).code;
+  assert.equal(inspect({ txResponse: legacyWithoutCode }).creditAuthorized, false);
+});
+
+test("explicit failed, null or contradictory Cosmos REST data fails closed", () => {
+  const original = tx();
+  const decoded = original.tx_response.tx;
+  const { tx: unused, ...response } = original.tx_response;
+  for (const code of [null, "", "00", "0junk", false, -1, 1, "1", 0.5, {}]) {
+    assert.throws(() => inspect({
+      txResponse: { tx: decoded, tx_response: { ...response, code } },
+    }), /SATCHEL_CANONICAL_AUDIT_REFUSED/, "code: " + String(code));
+  }
+  assert.throws(() => inspect({
+    txResponse: { tx: { body: { memo: "forged", messages: [] } }, tx_response: original.tx_response },
+  }), /SATCHEL_CANONICAL_AUDIT_REFUSED/);
+  assert.throws(() => inspect({
+    txResponse: { tx_response: { ...response, tx: null } },
+  }), /SATCHEL_CANONICAL_AUDIT_REFUSED/);
+  assert.throws(() => inspect({
+    txResponse: { tx_response: response },
+  }), /SATCHEL_CANONICAL_AUDIT_REFUSED/);
+});
+
 test("public route remains nonfundable, authenticated, strict-URL, bounded, and write-free", () => {
   const route = readFileSync("app/api/user/war-satchel/deposit-evidence/route.ts", "utf8");
   assert.match(route, /WAR_SATCHEL_CANONICAL_RECEIPT_AUDIT_ENABLED !== "true"/);

@@ -15,6 +15,31 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## October 16, 2026 — Cosmos REST Satchel proof uses canonical root Tx and omitted success code
+
+A source review found that `inspectCanonicalSatchelDeposit` accepted
+only `tx_response.tx.body` and required an explicit `tx_response.code`.
+The standard Cosmos v1beta1 `/txs/{hash}` response may expose the decoded
+body in root-level `tx.body`, while protobuf JSON can omit the zero
+execution code on success. That made valid evidence unable to pass
+the otherwise exact C3 preview audit.
+
+C3 now accepts either legitimate decoded-body placement, refuses
+contradictory dual-body evidence, and accepts an **omitted** execution
+code as zero only when all the existing exact sender, vault, denom,
+amount, owner memo, chain, hash, committed height, timestamp and
+confirmation-depth predicates pass. Explicit null, malformed and
+nonzero execution codes still fail. Tests cover standard Cosmos
+root-body replies, omitted code, conflicting envelopes and failures.
+
+This is a wire compatibility and **noncrediting evidence** repair,
+not custody certification or independent consensus verification.
+Authenticated light-client evidence and an independent Satchel
+vault/signer remain absent. `creditAuthorized=false`,
+`depositAuthorized=false` and `wagerAuthorized=false` persist.
+No token transfer, database correction, credit or live deployment occurred.
+
+
 ## October 15, 2026 — source-consistent stored-plan integrity across API and Mecha
 
 The previous persisted-plan worker correctly rejected invalid historical
