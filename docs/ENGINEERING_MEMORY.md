@@ -128,6 +128,17 @@ a synthetic success. Source-contract tests guard exactly one call.
 This eliminates redundant inspection work; fresh server profiling
 is still needed before claiming a latency improvement.
 
+## 2026-10-15 — Payout evidence must not round a bad amount into plausible proof
+
+The read-only claim payout guard normalized noncanonical 16–128 hex
+hashes and let NaN/Infinity or amounts beyond six WOLO decimal places
+enter a weak positive-only filter. Centralized exact 64-hex and
+bigint microdenom validation now rejects bad inputs with
+`INVALID_TX_HASH` or `INVALID_AMOUNT` without attempting lookups
+or silently rounding financial claims. No execution, chain, claim or
+deposit state was changed. Real payout ownership and signer evidence
+remain independent release gates.
+
 ## 2026-10-16 — Claim payout REST must prove canonical tx identity before reading bank sends
 
 The legacy reconciliation helper defaulted unknown/malformed
