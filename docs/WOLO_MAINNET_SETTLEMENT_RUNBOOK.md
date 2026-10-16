@@ -27,6 +27,7 @@ to stand in for a previously consumed proof.
 
 The guard now treats every separate previously claimed row bearing the
 same transaction hash as an **unresolved consumption boundary**.
+It uses case-insensitive database comparison of the complete transaction hash, so uppercase, lowercase and mixed-case hex all hit the same consumed-proof guard.
 It returns `HISTORICAL_TX_REUSE_UNVERIFIED`, without attempting to
 allocate that transaction again. No current-profile wallet lookup is
 used as evidence of the original recipient. Fresh distinct bank
