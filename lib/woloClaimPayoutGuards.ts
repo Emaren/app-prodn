@@ -344,11 +344,12 @@ export async function validateDistinctClaimPayoutTxBatch(
     const incomingIds = txEntries
       .map((entry) => entry.claimId)
       .filter((id): id is number => typeof id === "number");
-    const txHashVariants = Array.from(new Set([txHash, txHash.toLowerCase()]));
     const existingRows = await prisma.pendingWoloClaim.findMany({
       where: {
         status: "claimed",
-        payoutTxHash: { in: txHashVariants },
+        // Case-insensitive DB equality includes mixed-case hexadecimal tx
+        // hashes; checking just uppercase/lowercase variants misses those.
+        payoutTxHash: { equals: txHash, mode: "insensitive" },
         ...(incomingIds.length > 0 ? { id: { notIn: incomingIds } } : {}),
       },
       select: { id: true },
