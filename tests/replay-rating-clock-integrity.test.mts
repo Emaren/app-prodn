@@ -75,6 +75,8 @@ test("all three rating paths deny source-date contradictions", () => {
   const receipt = src("../lib/currentWatcherAccountState.ts");
   const signed = src("../lib/verifiedWatcherSteamRatings.ts");
   const historical = src("../lib/publicPlayerDirectory.ts");
+  assert.match(receipt, /a\.played_on >= a\.created_at - INTERVAL '48 hours'/);
+  assert.match(signed, /g\.played_on >= g\.created_at - INTERVAL '48 hours'/);
   assert.match(receipt, /SUBSTRING\(a\.original_filename FROM/);
   assert.match(receipt, /TO_CHAR\(a\.played_on - INTERVAL '2 days'/);
   assert.match(signed, /SUBSTRING\(g\.original_filename FROM/);
