@@ -41,6 +41,20 @@ memory before closing the work.
    documentation federation, context refresh, release proof, and certification.
 5. Never treat a prior chat statement as newer than live OS/Git/receipt truth.
 
+## 2026-10-15 — Historical Claim WOLO payout proof must be audited, not inferred
+
+The old profile Claim WOLO path could set `pending_wolo_claims.status`
+to `claimed` without an on-chain payout. The new profile guard stops
+future write-only status transitions, but historical `claimed` rows
+lacking `payout_tx_hash` remain an **unmeasured** evidence class.
+
+Added a repeatable-read, read-only, aggregate-only census, intentionally
+separating legacy and mainnet-era data and refusing any payout authority.
+Do not equate missing hash to nonpayment; do not auto-reopen rows. First
+obtain bounded, owner-safe historical counts, then independently review
+canonical chain success and signer/request evidence before any financial
+correction. No production census has been run by this code change.
+
 ## 2026-10-15 — Satchel vault policy must exclude existing WOLO role wallets
 
 Preparing a nonfundable Satchel intent and reviewing a canonical
