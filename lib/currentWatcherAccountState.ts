@@ -127,6 +127,9 @@ async function loadCurrentWatcherAccountStatesFresh(
           )
           AND a.played_on IS NOT NULL
           AND a.played_on <= a.created_at
+          -- Current Steam account evidence must be a fresh observed match;
+          -- late arrival of a truly old replay stays historical evidence.
+          AND a.played_on >= a.created_at - INTERVAL '48 hours'
           -- Original client replay filename is immutable receipt metadata.
           -- A match saved in 2025 must never become an October 2026
           -- current-account rating merely because an API temp file was new.
