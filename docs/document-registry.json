@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "82f5bba0f2c3c6c0f93b8c9cfbc48055f0a29a8024d27d23df8d58c762881ef4",
+      "sha256": "54b916d8a61ef82724f3ed0e3943fbb42c17938e7200fc66b58a899829e03355",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-16",
       "sensitivity": "internal",
-      "sha256": "01406160e4afc91bc3dada705e765e588dab5848cc6775a86c8ab928476a935c",
+      "sha256": "5f52310fff11dd2a47ef4e605670163fd3c26e5b380fa6f3e77633d3f0079525",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -846,7 +846,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-13",
       "sensitivity": "internal",
-      "sha256": "2eece9e5847aa5676e9da11f30a5fc0d3ffe3ebaf8da66119c4ca80010bbc25e",
+      "sha256": "3fa4166cb62dd8ac0f94fc22a21e794db2f921e5241f33e4608e9e321ebbf1d4",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/inspections-rings-mainline-20261016",
-    "commit": "e347a838e92559b5611fe92ff6da608832a8539a"
+    "branch": "feat/host-checkpoint-mainline-20261016",
+    "commit": "0ae8dcf3fa0eee8893e748122aa9fb429565eb12"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

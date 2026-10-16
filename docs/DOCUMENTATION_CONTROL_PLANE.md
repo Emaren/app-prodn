@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/inspections-rings-mainline-20261016` at `e347a838e92559b5611fe92ff6da608832a8539a`
+Implementation baseline: `feat/host-checkpoint-mainline-20261016` at `0ae8dcf3fa0eee8893e748122aa9fb429565eb12`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
