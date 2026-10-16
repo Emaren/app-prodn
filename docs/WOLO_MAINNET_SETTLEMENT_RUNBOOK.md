@@ -28,6 +28,12 @@ identity **before broadcast**. The returned
 guards; exact canonical sender, recipient, amount and distinct bank-send
 count must match before changing status to `claimed`.
 
+Grouped market-claim retries also use their validated independent
+escrow signer, rejecting any conflicting execution signer. Historical
+stored hashes and memo-recovered transactions do not acquire a new
+signer merely through replay; unknown mainnet source stays held for
+independent review and no blind rebroadcast.
+
 The two payout services may have **different signers**; no global
 escrow address is assumed for Founder Rewards. Health identity is not
 independent chain trust. A signer rotation between preflight and
