@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/hd-mecha-funded-seam-with-reviewed-deps-20261017` at `f99ed9979f684c98d64d7285aa5dd901854644b4`
+Implementation baseline: `feat/hd-mecha-funded-seam-with-reviewed-deps-20261017` at `6b2ee025cc0bb49c36903e854553cf7c810559b3`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
