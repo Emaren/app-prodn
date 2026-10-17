@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c194a71a7ab6c504dcb169b63ed866be53fbda9d82cf4cbb07ed05f70e6666d2",
+      "sha256": "eed24237a6fc5440389126bb917e5203ffda261b897f9215f04db0c5625869bf",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2117,7 +2117,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "test/hd-shadow-rehearsal-real-postgres-ci-20261017",
-    "commit": "2928b003e3f2d6c6a5595850e1a447ef25e55c5d"
+    "commit": "9fd8fb1e0374814fec0ad328b069ab38c0159667"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
