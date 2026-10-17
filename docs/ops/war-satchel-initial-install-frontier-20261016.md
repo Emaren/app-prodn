@@ -1,3 +1,17 @@
+---
+id: "aoe2war.app-prodn.docs-ops-war-satchel-initial-install-frontier-20261016"
+title: "War Satchel six-migration initial-install release frontier"
+type: "runbook"
+status: "draft"
+owner: "aoe2war-web"
+systems: ["app-prodn","wolochain"]
+audience: ["operators","ai-agents"]
+source_of_truth: "git"
+authority: "read-only-operator-release-evidence"
+reviewed_at: "2026-10-16"
+review_interval_days: 30
+sensitivity: "internal"
+---
 # War Satchel six-migration initial-install release frontier
 
 Status: RELEASE HOLD. Operational evidence from October 16, 2026, read-only; this is not production approval.
