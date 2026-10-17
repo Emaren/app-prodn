@@ -127,8 +127,8 @@ class ShadowSafetyTests(unittest.TestCase):
             mock.patch.object(MODULE, "six_sql", return_value=b"BEGIN; ROLLBACK;"),
         ):
             result = MODULE.rehearse()
-        statements = [c.kwargs.get("data", b"") for c in apply.call_args_list]
-        self.assertEqual(statements, [None, b"BEGIN; ROLLBACK;"])
+        statements = [c.args[1] for c in apply.call_args_list]
+        self.assertEqual(statements, [b"same-schema", b"BEGIN; ROLLBACK;"])
         sql_cmds = [" ".join(c.args) for c in pg.call_args_list]
         self.assertEqual(sum("CREATE DATABASE" in c for c in sql_cmds), 1)
         self.assertEqual(sum("DROP DATABASE" in c for c in sql_cmds), 1)
