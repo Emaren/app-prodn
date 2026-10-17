@@ -8,6 +8,7 @@
  * independently certified one-shot signer and chain recovery service.
  */
 import type { PrismaClient } from "@/lib/generated/prisma";
+import { satchelFinancialBridgeReady } from "./warSatchelFinancialBridgeHold.ts";
 import { connectCertifiedSatchelSigner } from "./warSatchelDedicatedSignerClient.ts";
 import { executeFundedMechaTicketBatch } from "./warSatchelAutoBetExecutor.ts";
 
@@ -39,7 +40,8 @@ export async function runFundedMechaOutboxTick(
   prisma:PrismaClient,
   options?:{limit?:number;now?:Date},
 ):Promise<FundedMechaIntakeReport>{
-  if(process.env.WAR_SATCHEL_LIVE_EXECUTOR_ENABLED!=="true"||
+  if(!satchelFinancialBridgeReady() ||
+     process.env.WAR_SATCHEL_LIVE_EXECUTOR_ENABLED!=="true"||
      process.env.WAR_SATCHEL_AUTO_EXECUTION_TICK_ENABLED!=="true"||
      process.env.WAR_SATCHEL_VAULT_WITHDRAWAL_CERTIFIED!=="true"||
      process.env.WAR_SATCHEL_BET_PAYOUT_ROUTING_CERTIFIED!=="true"||
