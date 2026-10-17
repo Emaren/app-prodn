@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `security/hd-satchel-early-custody-gate-20261017` at `48070c530789018053bf212bfd0d1ea51b4bffc9`
+Implementation baseline: `diagnostics/satchel-shadow-schema-delta-20261017` at `ec213fd0d0c9c868026512c3cbcbaa78e95ac2a5`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
