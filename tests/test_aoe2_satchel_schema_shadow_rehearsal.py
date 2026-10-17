@@ -36,12 +36,14 @@ class ShadowSafetyTests(unittest.TestCase):
         with self.assertRaises(MODULE.RehearsalStop):
             MODULE.psql("postgres; DROP DATABASE aoe2hd_db", "SELECT 1")
 
-    def test_six_sql_has_transaction_rollback_and_no_existing_data_backfill(self):
-        sql = MODULE.six_sql().decode("utf-8")
+    def test_cohort_sql_has_transaction_rollback_and_no_existing_data_backfill(self):
+        sql = MODULE.cohort_sql().decode("utf-8")
         self.assertTrue(sql.startswith("BEGIN;"))
         self.assertTrue(sql.rstrip().endswith("ROLLBACK;"))
         self.assertEqual(sql.count("CREATE OR REPLACE FUNCTION"), 6)
         self.assertIn("owner_count", sql)
+        self.assertIn("seven funded table identities missing", sql)
+        self.assertIn("signed funded-spend-consent table missing", sql)
         self.assertNotIn("DROP DATABASE", sql)
         self.assertNotIn("UPDATE users", sql)
 
@@ -84,7 +86,7 @@ class ShadowSafetyTests(unittest.TestCase):
                 ]),
             ):
                 sources = MODULE.source_evidence("a" * 40)
-            self.assertEqual(len(sources), 118)
+            self.assertEqual(len(sources), 119)
             self.assertEqual(
                 sources["historic_000"],
                 hashlib.sha256(b"SELECT 1;\n").hexdigest(),
@@ -125,7 +127,7 @@ class ShadowSafetyTests(unittest.TestCase):
             mock.patch.object(MODULE, "postgres", return_value=b"") as pg,
             mock.patch.object(MODULE, "schema_bytes", return_value=b"same-schema"),
             mock.patch.object(MODULE, "apply_to_shadow") as apply,
-            mock.patch.object(MODULE, "six_sql", return_value=b"BEGIN; ROLLBACK;"),
+            mock.patch.object(MODULE, "cohort_sql", return_value=b"BEGIN; ROLLBACK;"),
         ):
             result = MODULE.rehearse()
         statements = [c.args[1] for c in apply.call_args_list]
@@ -135,6 +137,8 @@ class ShadowSafetyTests(unittest.TestCase):
         self.assertEqual(sum("DROP DATABASE" in c for c in sql_cmds), 1)
         self.assertNotIn('DROP DATABASE "aoe2hd_db"', " ".join(sql_cmds))
         self.assertTrue(result["disposable_database_removed"])
+        self.assertEqual(result["pending_migration_count"], 7)
+        self.assertTrue(result["pending_migrations_exercised"])
         self.assertFalse(result["production_mutated"])
         self.assertFalse(result["production_data_copied"])
 
@@ -159,7 +163,7 @@ class ShadowSafetyTests(unittest.TestCase):
             mock.patch.object(MODULE, "postgres", side_effect=pg),
             mock.patch.object(MODULE, "schema_bytes", return_value=b"same-schema"),
             mock.patch.object(MODULE, "apply_to_shadow"),
-            mock.patch.object(MODULE, "six_sql", return_value=b"BEGIN; ROLLBACK;"),
+            mock.patch.object(MODULE, "cohort_sql", return_value=b"BEGIN; ROLLBACK;"),
         ):
             with self.assertRaisesRegex(MODULE.RehearsalStop, "cleanup failed"):
                 MODULE.rehearse()
