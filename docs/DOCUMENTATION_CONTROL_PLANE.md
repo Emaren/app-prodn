@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `diagnostics/satchel-shadow-schema-delta-20261017` at `522a26a972c4dc8dc881d0d69a23aa1a059b88df`
+Implementation baseline: `fix/hd-shadow-safe-object-context-20261017` at `30d6ba2c5d27a2f8c766b15b156d9e60f5077307`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
