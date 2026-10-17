@@ -15,6 +15,8 @@ test("only a bounded, signed Watcher shadow outbox feeds the funded executor",()
   assert.match(source,/orderBy:\[\{createdAt:"asc"\},\{id:"asc"\}\]/);
   assert.match(source,/take:max/);
   assert.match(source,/executeFundedMechaTicketBatch\(/);
+  assert.match(source,/warSatchelDedicatedSignerClient/);
+  assert.doesNotMatch(source,/warSatchelIsolatedSignerClient|makeSatchelLoopbackSigner/);
   assert.doesNotMatch(source,/setInterval\(|while\s*\(/);
 });
 test("unapproved producer, withdrawal, claim return or custody flag cannot execute one funded bet",()=>{
@@ -27,7 +29,7 @@ test("unapproved producer, withdrawal, claim return or custody flag cannot execu
     "WAR_SATCHEL_UNMATCHED_REFUND_CREDIT_CERTIFIED",
   ])assert.match(source,new RegExp(flag));
   assert.match(source,/return off\(\)/);
-  assert.match(source,/await makeSatchelLoopbackSigner\(\)/);
+  assert.match(source,/await connectCertifiedSatchelSigner\(\)/);
 });
 test("only the separately authenticated loopback signer may authorize a real vault-to-escrow call",()=>{
   const transport=load("lib/warSatchelIsolatedSignerClient.ts");
