@@ -127,7 +127,7 @@ residue="$("${PSQL[@]}" -c "
   SELECT
     (SELECT count(*) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace
       WHERE n.nspname='public' AND c.relname LIKE 'war_satchel_%') +
-    (SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.relnamespace
+    (SELECT count(*) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
       WHERE n.nspname='public' AND p.proname LIKE 'war_satchel_%');
 ")"
 [[ "$residue" == "0" ]] || { echo "STOP: Satchel residue" >&2; exit 77; }
