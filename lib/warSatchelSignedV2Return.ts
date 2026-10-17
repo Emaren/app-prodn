@@ -13,7 +13,7 @@ const HASH = /^[A-F0-9]{64}$/;
 const DIGEST = /^[a-f0-9]{64}$/;
 const ADDRESS = /^wolo1[023456789acdefghjklmnpqrstuvwxyz]{38,90}$/;
 const DECIMAL = /^[1-9][0-9]{0,18}$/;
-const MAX = 9223372036854775807n;
+const MAX = BigInt("9223372036854775807");
 const A_DOMAIN = "aoe2war/satchel/return-allocation/v2";
 const R_DOMAIN = "aoe2war/satchel/claim-return-approval/v2";
 const PUBLIC_SPKI = "302a300506032b6570032100";
@@ -162,7 +162,7 @@ export function verifySatchelSignedV2Return(input: {
   const rawLegs = allocation.legs;
   if (!Array.isArray(rawLegs) || rawLegs.length < 1 || rawLegs.length > 16)
     stop("invalid_leg_count");
-  let totalPrincipal = 0n, totalReturn = 0n, totalStake = 0n;
+  let totalPrincipal = BigInt(0), totalReturn = BigInt(0), totalStake = BigInt(0);
   let found = 0, previousLeg = "";
   const legArrays: unknown[][] = [];
   for (const item of rawLegs) {
@@ -177,7 +177,7 @@ export function verifySatchelSignedV2Return(input: {
     if (!Array.isArray(ents) || ents.length < 1 || ents.length > 128)
       stop("invalid_entitlements");
     const entryArrays: unknown[][] = [];
-    let legPrincipal = 0n, previousEntitlement = "";
+    let legPrincipal = BigInt(0), previousEntitlement = "";
     for (const item of ents) {
       const ent = obj(item);
       keys(ent, entitlementFields);
