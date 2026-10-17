@@ -63,6 +63,7 @@ function mockRead(healthBody:Record<string,unknown>,resultBody:Record<string,unk
 }
 const args={
  requestId:"satchel:ticket:112",
+ ownerUid:"owner.with.dot",
  chainId:"wolo-1" as const,
  senderAddress:addr,
  recipientAddress:escrow,
@@ -101,6 +102,7 @@ test("signed one-shot request goes only once after two pinned service health che
    const signer=await connectCertifiedSatchelSigner(t.reader);
    assert.equal(signer.attestedVaultAddress,addr);
    const response=await signer.submitOneShot(args);
+   assert.equal(response.kind,"broadcast_confirmed");
    assert.deepEqual(response,{kind:"broadcast_confirmed",txHash:"B".repeat(64)});
    assert.deepEqual(t.calls(),{healthCalls:2,sendCalls:1});
  }finally{restore()}
@@ -126,6 +128,8 @@ test("wrong valid recipient, bad memo or wrong account fail BEFORE a signer POST
    const t=mockRead(health(),{});
    const signer=await connectCertifiedSatchelSigner(t.reader);
    for(const dangerous of [
+     {...args,ownerUid:""},
+     {...args,ownerUid:"different owner"},
      {...args,recipientAddress:addr},
      {...args,recipientAddress:"wolo1"+"r".repeat(38)},
      {...args,memo:"unrelated Wolo bank withdrawal"},
