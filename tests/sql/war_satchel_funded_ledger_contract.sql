@@ -126,5 +126,81 @@ BEGIN
   IF NOT failed THEN RAISE EXCEPTION 'reservation owner reassigned'; END IF;
 END;
 $test$;
+
+-- Owner payout failure matrix, all synthetic and rolled back.
+INSERT INTO war_satchel_funded_withdrawals
+  (id,owner_user_id,owner_wallet_address,amount_uwolo)
+VALUES('fd000000-1111-4111-8111-000000000041',71241,
+  'wolo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq',25000000);
+
+DO $withdrawal_test$
+DECLARE failed BOOLEAN;
+BEGIN
+  failed:=FALSE;
+  BEGIN
+    UPDATE war_satchel_funded_withdrawals SET status='sent',
+      tx_hash=repeat('D',64),confirmed_height=531
+    WHERE owner_user_id=71241;
+  EXCEPTION WHEN OTHERS THEN failed:=SQLERRM LIKE '%illegal%';
+  END;
+  IF NOT failed THEN RAISE EXCEPTION 'withdrawal sent without prebroadcast fence'; END IF;
+
+  failed:=FALSE;
+  BEGIN
+    UPDATE war_satchel_funded_withdrawals SET owner_user_id=71242
+    WHERE owner_user_id=71241;
+  EXCEPTION WHEN OTHERS THEN failed:=SQLERRM LIKE '%immutable%';
+  END;
+  IF NOT failed THEN RAISE EXCEPTION 'withdrawal reassigned to other Steam owner'; END IF;
+
+  UPDATE war_satchel_funded_withdrawals SET status='unknown_hold'
+    WHERE owner_user_id=71241;
+
+  failed:=FALSE;
+  BEGIN
+    UPDATE war_satchel_funded_withdrawals SET status='cancelled'
+      WHERE owner_user_id=71241;
+  EXCEPTION WHEN OTHERS THEN failed:=SQLERRM LIKE '%illegal%';
+  END;
+  IF NOT failed THEN RAISE EXCEPTION 'ambiguous chain withdrawal was refunded'; END IF;
+
+  UPDATE war_satchel_funded_withdrawals SET status='sent',
+    tx_hash=repeat('D',64),confirmed_height=531
+  WHERE owner_user_id=71241;
+
+  failed:=FALSE;
+  BEGIN
+    UPDATE war_satchel_funded_withdrawals SET status='unknown_hold'
+      WHERE owner_user_id=71241;
+  EXCEPTION WHEN OTHERS THEN failed:=SQLERRM LIKE '%illegal%';
+  END;
+  IF NOT failed THEN RAISE EXCEPTION 'sent payout was made eligible for replay'; END IF;
+
+  failed:=FALSE;
+  BEGIN
+    UPDATE war_satchel_funded_withdrawals SET amount_uwolo=1
+      WHERE owner_user_id=71241;
+  EXCEPTION WHEN OTHERS THEN failed:=SQLERRM LIKE '%immutable%';
+  END;
+  IF NOT failed THEN RAISE EXCEPTION 'withdrawal amount changed after sent'; END IF;
+
+  failed:=FALSE;
+  BEGIN
+    INSERT INTO war_satchel_funded_journal
+      (owner_user_id,source_key,event_kind,amount_uwolo,
+        delta_available_uwolo,delta_reserved_uwolo,
+        delta_committed_uwolo,delta_withdrawal_pending_uwolo)
+    VALUES(71241,'test:bad_withdrawal','withdraw_cancel',25000000,24750000,0,0,-25000000);
+  EXCEPTION WHEN check_violation THEN failed:=TRUE;
+  END;
+  IF NOT failed THEN RAISE EXCEPTION 'withdrawal cancellation fee was accepted'; END IF;
+
+  INSERT INTO war_satchel_funded_journal
+    (owner_user_id,source_key,event_kind,amount_uwolo,
+      delta_available_uwolo,delta_reserved_uwolo,
+      delta_committed_uwolo,delta_withdrawal_pending_uwolo)
+  VALUES(71241,'test:withdrawn','withdraw_sent',25000000,0,0,0,-25000000);
+END;
+$withdrawal_test$;
 ROLLBACK;
-SELECT 'PASS funded War Satchel receipt uniqueness, ledger constraints and immutable reservation lifecycle' AS result;
+SELECT 'PASS Satchel funded credit, full refund, nonnegative ledger and immutable withdrawal payout guards' AS result;
