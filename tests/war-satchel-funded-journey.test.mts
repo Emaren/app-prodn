@@ -44,6 +44,9 @@ test("a forged client credit cannot supply owner amount destination or trusted c
   assert.match(credit, /Object\.keys\(input\)\.sort\(\)\.join\(","\) !== "intentId,txHash"/);
   assert.match(credit, /authenticateOwnerDeposit\(/);
   assert.match(credit, /authenticatedDeposit: verified/);
+  assert.match(credit, /bank\.height - verified\.height \+ BigInt\(1\)/);
+  assert.match(credit, /confirmations < BigInt\(3\)/);
+  assert.doesNotMatch(credit, /confirmations:\s*"3"/);
   assert.doesNotMatch(credit, /canonicalJson\(|inspectCanonicalSatchelDeposit\(/);
   assert.match(credit, /recordUncreditedWarSatchelReceipt\(/);
   assert.match(credit, /readIndependentSatchelBank\(/);
