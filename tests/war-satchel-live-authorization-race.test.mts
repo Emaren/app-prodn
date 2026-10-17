@@ -6,10 +6,13 @@ const get=(p:string)=>readFileSync(new URL("../"+p,import.meta.url),"utf8");
 test("Keplr mandate revocation and final signer authorization serialize on one global DB lock",()=>{
   const ledger=get("lib/warSatchelFundedLedger.ts");
   const route=get("app/api/user/war-satchel/auto-consent/route.ts");
+  const profile=get("app/api/user/bet-automation/route.ts");
   const lock=ledger.match(/const FINANCIAL_LOCK_CLASS = (\d+);[\s\S]*?const FINANCIAL_LOCK_ID = (\d+);/);
   assert(lock);assert.equal(lock[1],"724176");assert.equal(lock[2],"47");
   assert.match(ledger,/await tx\.\$executeRaw`SELECT pg_advisory_xact_lock\(\$\{FINANCIAL_LOCK_CLASS\}, \$\{FINANCIAL_LOCK_ID\}\)`/);
   assert.match(route,/await tx\.\$executeRaw`SELECT pg_advisory_xact_lock\(724176, 47\)`/);
+  assert.match(profile,/WAR_SATCHEL_LIVE_EXECUTOR_ENABLED/);
+  assert.match(profile,/await tx\.\$executeRaw`SELECT pg_advisory_xact_lock\(724176, 47\)`/);
   assert.match(ledger,/keplr_auto_spending_mandate_revoked_before_broadcast/);
   assert.match(ledger,/watcher_proposition_not_live_before_broadcast/);
   assert.match(ledger,/signedAt: \{ not: null \}, revokedAt: null, spendExpiresAt: \{ gt: now \}/);
