@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 type Keplr={signArbitrary(chainId:string,address:string,message:string):Promise<{
   pub_key:{type:string;value:string};signature:string;
 }>};
-async function send(method:"POST"|"PUT",data:unknown){
+async function send(method:"POST"|"PUT"|"DELETE",data:unknown){
   const response=await fetch("/api/user/war-satchel/withdrawal",{
     method,credentials:"same-origin",cache:"no-store",
     headers:{"Content-Type":"application/json"},body:JSON.stringify(data),
@@ -24,14 +24,28 @@ export default function WarSatchelWithdrawAction({walletAddress}:{
   const [busy,setBusy]=useState(false);
   const [state,setState]=useState("");
   const [requestId,setRequestId]=useState("");
+  const [requestStatus,setRequestStatus]=useState<"reserved"|"unknown_hold"|"sent"|null>(null);
   useEffect(()=>{
     let active=true;
-    setEnabled(false);
+    setEnabled(false); setRequestId("");setRequestStatus(null);
     if(!walletAddress)return;
     void fetch("/api/user/war-satchel/withdrawal",{cache:"no-store",
       credentials:"same-origin"}).then(r=>r.json()).then((x:unknown)=>{
         if(active&&x&&typeof x==="object"){
-          setEnabled((x as Record<string,unknown>).withdrawalsEnabled===true);
+          const response=x as Record<string,unknown>;
+          setEnabled(response.withdrawalsEnabled===true);
+          if(Array.isArray(response.latest)){
+            const pending=response.latest.find(v=>{
+              if(!v||typeof v!=="object")return false;
+              const row=v as Record<string,unknown>;
+              return typeof row.id==="string"&&
+                (row.status==="reserved"||row.status==="unknown_hold");
+            }) as Record<string,unknown>|undefined;
+            if(pending){
+              setRequestId(String(pending.id));
+              setRequestStatus(pending.status==="reserved"?"reserved":"unknown_hold");
+            }
+          }
         }
       }).catch(()=>{if(active)setEnabled(false);});
     return()=>{active=false};
@@ -65,11 +79,25 @@ export default function WarSatchelWithdrawAction({walletAddress}:{
         throw Error("Withdrawal was not durably reserved.");
       }
       setRequestId(receipt.withdrawalId);
+      setRequestStatus("reserved");
       setState("Request safely reserved. Payment is NOT yet confirmed. Do not repeat it; check the status before trying again.");
     }catch(e){
       setState((e instanceof Error?e.message:"Withdrawal unavailable.")+
         " No new payment should be inferred. Do not authorize a duplicate on timeout.");
     }finally{setBusy(false)}
+  };
+  const cancel=async()=>{
+    if(busy||!enabled||!requestId||requestStatus!=="reserved")return;
+    setBusy(true);setState("");
+    try{
+      const result=await send("DELETE",{withdrawalId:requestId});
+      if(result.fullyRefunded!==true)throw Error("Cancellation was not financially confirmed.");
+      setRequestId("");setRequestStatus(null);
+      setState("Reserved withdrawal cancelled in full. No WOLO transfer was signed or broadcast.");
+    }catch(error){
+      setState((error instanceof Error?error.message:"Cancellation unavailable.")+
+        " If signing began, the request stays held to prevent double payment.");
+    }finally{setBusy(false);}
   };
   return (
     <div className="mt-3 rounded-xl border border-slate-500/30 p-3">
@@ -90,7 +118,20 @@ export default function WarSatchelWithdrawAction({walletAddress}:{
         className="mt-3 rounded-lg border border-sky-200/40 p-3 text-xs font-bold disabled:opacity-40">
         {busy?"VERIFYING KEPLR...":enabled?"AUTHORIZE WITHDRAWAL IN KEPLR":"WITHDRAWAL SERVICE NOT CERTIFIED"}
       </button>
-      {requestId&&<p className="mt-2 break-all font-mono text-xs">Withdrawal request: {requestId}</p>}
+      {requestId&&(
+        <div className="mt-2 space-y-2">
+          <p className="break-all font-mono text-xs">Withdrawal request: {requestId}</p>
+          <p className="text-xs text-slate-300">Status: {requestStatus === "unknown_hold"
+            ? "SIGNING UNCERTAIN — NO RESEND OR CANCELLATION"
+            : requestStatus === "reserved" ? "RESERVED, NOT YET BROADCAST" : "PENDING"}</p>
+          {requestStatus==="reserved"&&(
+            <button type="button" disabled={busy} onClick={()=>void cancel()}
+              className="rounded-lg border border-amber-200/40 p-2 text-xs font-semibold disabled:opacity-40">
+              CANCEL UNSENT WITHDRAWAL — RETURN FULL AMOUNT
+            </button>
+          )}
+        </div>
+      )}
       {state&&<p role="status" className="mt-2 text-xs text-amber-200">{state}</p>}
     </div>
   );
