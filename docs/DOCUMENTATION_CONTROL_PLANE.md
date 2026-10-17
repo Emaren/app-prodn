@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/hd-shadow-safe-object-context-20261017` at `30d6ba2c5d27a2f8c766b15b156d9e60f5077307`
+Implementation baseline: `fix/hd-satchel-shadow-diagnostic-only-20261017` at `894c2fbff7583a90bcdd3016a0a0863fa238be8e`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
