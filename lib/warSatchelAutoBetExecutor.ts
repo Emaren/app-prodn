@@ -131,17 +131,31 @@ export async function executeFundedMechaTicketBatch(
       // owner wallet, daily cap, physical vault and immutable Watcher evidence
       // UNDER a global serializable vault lock.
       const bank = await readIndependentSatchelBank();
-      const reservation = await reserveForWatcherExecution(prisma, {
-        ownerUserId: user.id,
-        ownerUid: user.uid,
-        executionId,
-        presetVersion: execution.presetVersion,
-        expectedGameIdentityKey: execution.gameIdentityKey,
-        expectedPropositionHash: execution.propositionHash,
-        selectedSide: execution.selectedSide as "left" | "right",
-        reserveUwolo: BigInt(execution.winnerStakeWolo + execution.desyncStakeWolo) * BigInt(1000000),
-        bank,
-      });
+      let reservation: Awaited<ReturnType<typeof reserveForWatcherExecution>>;
+      try {
+        reservation = await reserveForWatcherExecution(prisma, {
+          ownerUserId: user.id,
+          ownerUid: user.uid,
+          executionId,
+          presetVersion: execution.presetVersion,
+          expectedGameIdentityKey: execution.gameIdentityKey,
+          expectedPropositionHash: execution.propositionHash,
+          selectedSide: execution.selectedSide as "left" | "right",
+          reserveUwolo: BigInt(execution.winnerStakeWolo + execution.desyncStakeWolo) * BigInt(1000000),
+          bank,
+        });
+      } catch (error) {
+        // An explicit, deterministic gate rejection rolls BACK the entire
+        // PostgreSQL reservation transaction. A stale/paused player's plan
+        // must not starve every other eligible Watcher game in the queue.
+        // All other errors, including ambiguous commit/DB transport, STOP:
+        // there may be a durable reservation we have not received.
+        if (error instanceof Error &&
+            error.message.startsWith("WAR_SATCHEL_FUNDED_REFUSED:")) {
+          return { kind: "ineligible" as const };
+        }
+        throw error;
+      }
       if (reservation.status !== "reserved") return { kind: "already_handled" as const };
       userById.set(executionId, ownerView(user));
       return {
