@@ -7,6 +7,11 @@ test("funded Mecha worker has no public timer and always fails shut without cert
  const worker=read("scripts/war-satchel-funded-mecha-worker.ts");
  assert.match(worker,/const execute = args\[0\] === "--execute"/);
  assert.match(worker,/!approved\(\)/);
+ assert.match(worker,/return satchelFinancialBridgeReady\(\) &&/);
+ assert.match(worker,/if \(!execute && !satchelFinancialBridgeReady\(\)\)/);
+ assert.match(worker,/financial_bridge_unverified_hold/);
+ assert.ok(worker.indexOf("if (execute && !approved())") < worker.indexOf("const prisma = getPrisma()"),
+   "execute must be stopped before Prisma queue initialization");
  assert.match(worker,/WAR_SATCHEL_SIGNER_OPERATOR_APPROVED/);
  assert.match(worker,/WAR_SATCHEL_SIGNER_CLIENT_ENABLED/);
  assert.doesNotMatch(worker,/createLocalIsolatedSatchelSigner|assertLocalSatchelSignerHealth/);
