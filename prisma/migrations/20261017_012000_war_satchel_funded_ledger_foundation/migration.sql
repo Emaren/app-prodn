@@ -142,3 +142,49 @@ CREATE TABLE "war_satchel_funded_reservations" (
     CHECK ("status" IN ('reserved', 'unknown_hold', 'committed', 'released'))
 );
 CREATE INDEX "ix_satchel_funded_reservation_owner" ON "war_satchel_funded_reservations" ("owner_user_id", "status", "created_at");
+
+-- Receipt + audit journals are write-once, not correction-in-place.
+-- A wrong entry requires a new separately reviewed compensating source key.
+CREATE FUNCTION war_satchel_funded_audit_immutable()
+RETURNS TRIGGER LANGUAGE plpgsql AS $satchel_immutable$
+BEGIN
+  RAISE EXCEPTION 'funded War Satchel financial receipts and journals are immutable';
+END;
+$satchel_immutable$;
+CREATE TRIGGER satchel_funded_receipt_immutable
+  BEFORE UPDATE OR DELETE ON "war_satchel_funded_receipts"
+  FOR EACH ROW EXECUTE FUNCTION war_satchel_funded_audit_immutable();
+CREATE TRIGGER satchel_funded_journal_immutable
+  BEFORE UPDATE OR DELETE ON "war_satchel_funded_journal"
+  FOR EACH ROW EXECUTE FUNCTION war_satchel_funded_audit_immutable();
+
+-- Prevent retroactive reassignment of a reserved wager to another owner,
+-- game, amount or ticket identity, including across worker restarts.
+CREATE FUNCTION war_satchel_funded_reservation_transition()
+RETURNS TRIGGER LANGUAGE plpgsql AS $satchel_reservation$
+BEGIN
+  IF (NEW.id, NEW.owner_user_id, NEW.execution_id, NEW.amount_uwolo,
+      NEW.ticket_request_id, NEW.created_at)
+     IS DISTINCT FROM
+     (OLD.id, OLD.owner_user_id, OLD.execution_id, OLD.amount_uwolo,
+      OLD.ticket_request_id, OLD.created_at) THEN
+    RAISE EXCEPTION 'funded War Satchel reservation economic identity immutable';
+  END IF;
+  IF (OLD.status='reserved' AND NEW.status NOT IN ('reserved','unknown_hold','released'))
+     OR (OLD.status='unknown_hold' AND NEW.status NOT IN ('unknown_hold','committed'))
+     OR (OLD.status IN ('committed','released') AND NEW.status <> OLD.status) THEN
+    RAISE EXCEPTION 'illegal funded War Satchel reservation state transition';
+  END IF;
+  IF NEW.status <> 'committed' AND (NEW.ticket_id IS NOT NULL OR NEW.tx_hash IS NOT NULL) THEN
+    RAISE EXCEPTION 'uncommitted funded reservation cannot claim a settled ticket';
+  END IF;
+  IF OLD.status='committed' AND
+     (NEW.ticket_id, NEW.tx_hash) IS DISTINCT FROM (OLD.ticket_id, OLD.tx_hash) THEN
+    RAISE EXCEPTION 'settled funded ticket identity immutable';
+  END IF;
+  RETURN NEW;
+END;
+$satchel_reservation$;
+CREATE TRIGGER satchel_funded_reservation_guard
+  BEFORE UPDATE ON "war_satchel_funded_reservations"
+  FOR EACH ROW EXECUTE FUNCTION war_satchel_funded_reservation_transition();
