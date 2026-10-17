@@ -17,6 +17,7 @@ on:
       - "tests/sql/war_satchel_simulation_double_entry_contract.sql"
       - "tests/sql/war_satchel_foundation_contract.sql"
       - "tests/sql/war_satchel_atomic_migration_rehearsal.sh"
+      - "tests/sql/war_satchel_full_history_schema_rehearsal.sh"
       - ".github/workflows/war-satchel-sql-proof.yml"
   push:
     branches: [main]
@@ -35,6 +36,7 @@ on:
       - "tests/sql/war_satchel_simulation_double_entry_contract.sql"
       - "tests/sql/war_satchel_foundation_contract.sql"
       - "tests/sql/war_satchel_atomic_migration_rehearsal.sh"
+      - "tests/sql/war_satchel_full_history_schema_rehearsal.sh"
       - ".github/workflows/war-satchel-sql-proof.yml"
 
 permissions:
@@ -125,3 +127,33 @@ jobs:
       - uses: actions/checkout@v7
       - name: Assert full six-migration sequence rolls back cleanly on synthetic PostgreSQL
         run: bash tests/sql/war_satchel_atomic_migration_rehearsal.sh
+
+  full-history-schema-rehearsal:
+    name: PostgreSQL 16 / 112-migration history + 6 Satchel (NO DEPLOY)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: satchel_ci
+          POSTGRES_PASSWORD: satchel_ci_ephemeral
+          POSTGRES_DB: satchel_history_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U satchel_ci -d satchel_history_ci"
+          --health-interval 4s
+          --health-timeout 4s
+          --health-retries 12
+    env:
+      CI: "true"
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGUSER: satchel_ci
+      PGPASSWORD: satchel_ci_ephemeral
+      PGDATABASE: satchel_history_ci
+    steps:
+      - uses: actions/checkout@v7
+      - name: Replay historical production schema from immutable SQL source
+        run: bash tests/sql/war_satchel_full_history_schema_rehearsal.sh
