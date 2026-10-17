@@ -104,3 +104,18 @@ test("structural alias, extra field and expired interval inversion reject", () =
     x.allocation.expires_at=x.allocation.issued_at;
   })), /invalid_signature_interval/);
 });
+
+
+test("signed plan cannot rename a unique market, duplicate a claim, or include founder 889", () => {
+  assert.throws(() => verify(altered(x => {
+    x.allocation.legs.push(structuredClone(x.allocation.legs[0]));
+  })), /duplicate_or_unsorted_leg/);
+  assert.throws(() => verify(altered(x => {
+    x.allocation.legs[0].entitlements[0].claim_id = "889";
+  })), /duplicate_or_unsorted_entitlement/);
+});
+test("Go v2 signatures must expire within the reviewed 300-second window", () => {
+  assert.throws(() => verify(altered(x => {
+    x.allocation.expires_at = x.allocation.issued_at + 301;
+  })), /invalid_signature_interval/);
+});
