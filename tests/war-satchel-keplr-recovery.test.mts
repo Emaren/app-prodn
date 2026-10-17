@@ -35,3 +35,14 @@ test("recover a transaction ONLY after matching saved intent and 64-char hash",(
  assert.match(ui,/setTxHash\(recoveryHash\.toUpperCase\(\)\)/);
  assert.match(ui,/No WOLO will be resent/);
 });
+
+test("already-credited receipts cannot trap a player's next legitimate Keplr deposit",()=>{
+ const api=read("app/api/user/war-satchel/funding-intents/route.ts");
+ const locked=api.slice(api.indexOf("const outstanding ="));
+ assert.match(locked,/proofCandidate: \{ is: null \}/);
+ assert.match(locked,/fundedReceipt: \{ is: null \}/);
+ const ui=read("components/profile/WarSatchelFundingAction.tsx");
+ assert.match(ui,/setKnownIntents\(current => current\.filter\(x => x\.id !== intentId\)\)/);
+ assert.match(ui,/PREPARE ANOTHER DEPOSIT/);
+ assert.match(ui,/setMayHaveSent\(false\)/);
+});
