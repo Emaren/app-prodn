@@ -1050,6 +1050,10 @@ export async function creditVerifiedSatchelClaimReturn(
      !claim.sourceMarketId||!claim.payoutTxHash||
      !Number.isSafeInteger(claim.amountWolo)||claim.amountWolo<=0)
     stop("claim_not_final_owner_bound_or_wager_kind");
+  // Prisma's nullable claim market FK is not narrowed across async
+  // financial transaction closures; snapshot a proven immutable integer.
+  const sourceMarketId=claim.sourceMarketId;
+  if(sourceMarketId===null)stop("missing_claim_market_identity");
   const txHash=claim.payoutTxHash.toUpperCase();
   const proof=await verifyLiveCanonicalSatchelClaimReturn({
     claimId:claim.id,claimKind:claim.claimKind,
@@ -1068,7 +1072,7 @@ export async function creditVerifiedSatchelClaimReturn(
       stop("claim_return_owner_identity_changed");
     const current=await tx.pendingWoloClaim.findUnique({where:{id:input.claimId}});
     if(!current||current.claimedByUserId!==input.ownerUserId||
-       current.sourceMarketId!==claim.sourceMarketId||
+       current.sourceMarketId!==sourceMarketId||
        current.status!=="claimed"||current.claimKind!==claim.claimKind||
        current.amountWolo!==claim.amountWolo||
        current.payoutTxHash?.toUpperCase()!==proof.txHash)
@@ -1092,7 +1096,7 @@ export async function creditVerifiedSatchelClaimReturn(
     }
     const wagers=await tx.betWager.findMany({
       where:{
-        marketId:claim.sourceMarketId,
+        marketId:sourceMarketId,
         userId:input.ownerUserId,
         status:claim.claimKind==="bet_refund"?"void":"won",
       },
@@ -1140,7 +1144,7 @@ export async function creditVerifiedSatchelClaimReturn(
     const receipt=await tx.satchelFundedClaimReturn.create({
       data:{
         claimId:claim.id,ownerUserId:input.ownerUserId,
-        sourceMarketId:claim.sourceMarketId,claimKind:claim.claimKind,
+        sourceMarketId,claimKind:claim.claimKind,
         chainId:"wolo-1",txHash:proof.txHash,transferIndex:0,
         amountUwolo:proof.amountUwolo,vaultAddress:vault,
         canonicalHeight:proof.canonicalHeight,
