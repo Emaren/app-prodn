@@ -198,7 +198,11 @@ export function assessFundedMechaAdmission(input: FundedAutoAdmissionInput): Fun
     .some(value => value === null)) {
     return no("noncanonical_or_overflowing_uwolo");
   }
-  const liabilityComponents = available! + reserved! + committed! + withdrawalPending!;
+  // "committed" is an audited historical spend whose WOLO has LEFT the
+  // exclusive Satchel vault for the distinct wager escrow. It is NOT an
+  // outstanding physical Satchel-bank liability. Counting it after the
+  // chain send would permanently misstate solvency and block new deposits.
+  const liabilityComponents = available! + reserved! + withdrawalPending!;
   if (bank! < globalLiabilities! ||
       liabilityComponents > globalLiabilities!) {
     return no("physical_vault_or_global_liability_shortfall");
