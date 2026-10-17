@@ -201,6 +201,7 @@
     "SatchelFundedJournal",
     "SatchelFundedReservation",
     "SatchelAutoSpendConsent",
-    "SatchelFundedWithdrawal"
+    "SatchelFundedWithdrawal",
+    "SatchelWithdrawalChallenge"
   ]
 }
