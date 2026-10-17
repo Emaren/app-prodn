@@ -33,8 +33,15 @@ function verify(approval: unknown = fixture.return_approval,
     approval, independentOperatorPublicKeyHex, expected: {...expected, ...overrides},
   });
 }
-function altered(change: (r: any) => void) {
-  const approval = structuredClone(fixture.return_approval);
+type MutableFixture = {
+  allocation: { signature:string; issued_at:number; expires_at:number;
+    funds_available_uwolo:string;
+    legs:Array<{entitlements:Array<{amount_uwolo:string;principal_uwolo:string}>}> };
+  signature:string; amount_uwolo:string; allocation_digest:string;
+  [key:string]:unknown;
+};
+function altered(change: (r: MutableFixture) => void) {
+  const approval = structuredClone(fixture.return_approval) as MutableFixture;
   change(approval);
   return approval;
 }
