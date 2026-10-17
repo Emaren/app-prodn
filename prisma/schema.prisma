@@ -78,6 +78,7 @@ model User {
   satchelFundedReservations      SatchelFundedReservation[]
   satchelAutoSpendConsents       SatchelAutoSpendConsent[]
   satchelFundedWithdrawals       SatchelFundedWithdrawal[]
+  satchelWithdrawalChallenges    SatchelWithdrawalChallenge[]
   betMarketWallets               BetMarketWallet[]
   betMarketFinancialAdjustments  BetMarketFinancialAdjustment[]
   reviewedPlayerIdentityAliases  PlayerIdentityAlias[]
@@ -5518,8 +5519,29 @@ model SatchelFundedWithdrawal {
   confirmedHeight    BigInt?   @map("confirmed_height")
   createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt          DateTime  @default(now()) @map("updated_at") @db.Timestamp(6)
+  authorizingChallengeId String @unique(map: "uq_satchel_withdrawal_challenge") @map("authorizing_challenge_id") @db.Uuid
+
   owner User @relation(fields: [ownerUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  challenge SatchelWithdrawalChallenge @relation(fields: [authorizingChallengeId], references: [id], onDelete: Restrict, onUpdate: NoAction)
 
   @@index([ownerUserId, status, createdAt], map: "ix_satchel_withdrawal_owner_status")
   @@map("war_satchel_funded_withdrawals")
+}
+
+/** One-use ADR-36 Keplr withdrawal permission; ownership and amount immutable. */
+model SatchelWithdrawalChallenge {
+  id              String     @id @db.Uuid
+  ownerUserId     Int        @map("owner_user_id")
+  ownerUid        String     @map("owner_uid") @db.VarChar(100)
+  walletAddress   String     @map("wallet_address") @db.VarChar(100)
+  amountUwolo     BigInt     @map("amount_uwolo")
+  issuedAt        DateTime   @map("issued_at") @db.Timestamp(6)
+  expiresAt       DateTime   @map("expires_at") @db.Timestamp(6)
+  consumedAt      DateTime?  @map("consumed_at") @db.Timestamp(6)
+
+  owner User @relation(fields: [ownerUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  withdrawal SatchelFundedWithdrawal?
+
+  @@index([ownerUserId, issuedAt], map: "ix_satchel_withdraw_challenge_owner")
+  @@map("war_satchel_funded_withdrawal_challenges")
 }
