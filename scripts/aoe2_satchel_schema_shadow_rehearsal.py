@@ -215,6 +215,62 @@ def schema_fingerprint(data: bytes) -> str:
     return hashlib.sha256("".join(lines).encode("utf-8")).hexdigest()
 
 
+def describe_schema_delta(source: bytes, restored: bytes) -> str:
+    """Bounded structural diff metadata, never raw production SQL or identifiers.
+
+    This is diagnostic only: any difference remains a HARD STOP. pg_dump
+    --schema-only can contain function constants and comments; neither raw
+    bytes nor contextual snippets are printed or written to disk.
+    """
+    import difflib
+
+    original = source.decode("utf-8", "strict").splitlines()
+    shadow = restored.decode("utf-8", "strict").splitlines()
+    if len(original) > 30_000 or len(shadow) > 30_000:
+        return (
+            f"schema line counts source={len(original)} shadow={len(shadow)}; "
+            "too large for bounded delta; equality remains blocked"
+        )
+
+    def kind(line: str) -> str:
+        if line.startswith("--"):
+            return "comment"
+        if line.startswith("\\"):
+            return "psql-directive"
+        token = re.match(r"\\s*([A-Za-z_]+)", line)
+        keyword = token.group(1).upper() if token else "BLANK_OR_PUNCT"
+        # Whitelist SQL statement verbs; redact all other content as OTHER.
+        return keyword if keyword in {
+            "CREATE", "ALTER", "DROP", "COMMENT", "SELECT", "SET", "GRANT",
+            "REVOKE", "COPY", "INSERT", "UPDATE", "DELETE", "BEGIN", "END",
+        } else "OTHER"
+
+    def line_id(line: str) -> str:
+        return hashlib.sha256(line.encode("utf-8")).hexdigest()[:12]
+
+    diffs = []
+    matcher = difflib.SequenceMatcher(a=original, b=shadow, autojunk=True)
+    for tag, a, b, c, d in matcher.get_opcodes():
+        if tag == "equal":
+            continue
+        sample_a = original[a] if a < b else ""
+        sample_b = shadow[c] if c < d else ""
+        diffs.append(
+            f"{tag}: source_lines={a + 1}-{b} "
+            f"shadow_lines={c + 1}-{d} "
+            f"source_kind={kind(sample_a)} shadow_kind={kind(sample_b)} "
+            f"source_line_sha12={line_id(sample_a)} "
+            f"shadow_line_sha12={line_id(sample_b)}"
+        )
+        if len(diffs) >= 6:
+            break
+    return (
+        f"schema delta source_lines={len(original)} "
+        f"shadow_lines={len(shadow)}; "
+        + ("; ".join(diffs) if diffs else "difference not localized")
+    )
+
+
 def cohort_sql() -> bytes:
     body = bytearray(b"BEGIN;\nSET LOCAL statement_timeout='30s';\n")
     body.extend(b"SET LOCAL lock_timeout='5s';\n")
@@ -273,7 +329,7 @@ def apply_to_shadow(database: str, sql: bytes) -> None:
     )
 
 
-def rehearse() -> dict:
+def rehearse(*, explain_schema_mismatch: bool = False) -> dict:
     name = SHADOW_PREFIX + secrets.token_hex(7)
     if not SAFE_NAME.fullmatch(name):
         raise RehearsalStop("unsafe random scratch database name")
@@ -292,7 +348,14 @@ def rehearse() -> dict:
         source_digest = schema_fingerprint(source_dump)
         baseline_digest = schema_fingerprint(baseline)
         if source_digest != baseline_digest:
-            raise RehearsalStop("shadow schema not equal to production schema-only export")
+            diagnostics = (
+                describe_schema_delta(source_dump, baseline)
+                if explain_schema_mismatch else ""
+            )
+            raise RehearsalStop(
+                "shadow schema not equal to production schema-only export"
+                + (": " + diagnostics if diagnostics else "")
+            )
         apply_to_shadow(name, cohort_sql())
         after_digest = schema_fingerprint(schema_bytes(name))
         if baseline_digest != after_digest:
@@ -333,9 +396,13 @@ def main() -> int:
     mode.add_argument("--check", action="store_true", help="read-only (default)")
     mode.add_argument("--rehearse", action="store_true", help="use a disposable DB")
     ap.add_argument("--authorize-shadow-database", action="store_true")
+    ap.add_argument("--explain-schema-mismatch", action="store_true",
+                    help="print only bounded hashed diff metadata on a failed shadow comparison")
     args = ap.parse_args()
     if args.rehearse != args.authorize_shadow_database:
         ap.error("--rehearse requires --authorize-shadow-database and vice versa")
+    if args.explain_schema_mismatch and not args.rehearse:
+        ap.error("--explain-schema-mismatch requires --rehearse with explicit authorization")
     try:
         invoke(["sudo", "-n", "-u", "postgres", "true"])
         sources = source_evidence(args.source_sha)
@@ -348,7 +415,7 @@ def main() -> int:
         if not args.rehearse:
             print("PASS: READ-ONLY FRONTIER; no schema export or database creation")
             return 0
-        receipt = rehearse()
+        receipt = rehearse(explain_schema_mismatch=args.explain_schema_mismatch)
         for key, value in receipt.items():
             print(f"{key}: {value}")
         return 0
