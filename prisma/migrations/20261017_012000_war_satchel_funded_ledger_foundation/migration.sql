@@ -188,3 +188,84 @@ $satchel_reservation$;
 CREATE TRIGGER satchel_funded_reservation_guard
   BEFORE UPDATE ON "war_satchel_funded_reservations"
   FOR EACH ROW EXECUTE FUNCTION war_satchel_funded_reservation_transition();
+
+-- Explicit wallet-signed owner/preset-version spending mandate. A saved UI
+-- toggle is not permission to debit user WOLO. This is NOT a withdrawal
+-- mandate and never grants access to the player's Keplr private key.
+CREATE TABLE "war_satchel_auto_spend_consents" (
+  "id" UUID NOT NULL PRIMARY KEY,
+  "owner_user_id" INTEGER NOT NULL,
+  "preset_id" INTEGER NOT NULL,
+  "preset_version" INTEGER NOT NULL,
+  "owner_uid" VARCHAR(100) NOT NULL,
+  "wallet_address" VARCHAR(100) NOT NULL,
+  "nonce" VARCHAR(64) NOT NULL,
+  "winner_stake_wolo" INTEGER NOT NULL,
+  "desync_side" VARCHAR(8) NOT NULL,
+  "desync_stake_wolo" INTEGER NOT NULL,
+  "per_game_cap_wolo" INTEGER NOT NULL,
+  "daily_cap_wolo" INTEGER NOT NULL,
+  "issued_at" TIMESTAMP(6) NOT NULL,
+  "challenge_expires_at" TIMESTAMP(6) NOT NULL,
+  "spend_expires_at" TIMESTAMP(6) NOT NULL,
+  "signed_at" TIMESTAMP(6),
+  "revoked_at" TIMESTAMP(6),
+  CONSTRAINT "fk_satchel_consent_owner"
+    FOREIGN KEY ("owner_user_id") REFERENCES "users"("id") ON DELETE RESTRICT,
+  CONSTRAINT "fk_satchel_consent_preset"
+    FOREIGN KEY ("preset_id") REFERENCES "bet_auto_presets"("id") ON DELETE RESTRICT,
+  CONSTRAINT "uq_satchel_consent_nonce" UNIQUE ("nonce"),
+  CONSTRAINT "ck_satchel_consent_positive_limits" CHECK (
+    "preset_version" > 0 AND "winner_stake_wolo" > 0
+    AND "winner_stake_wolo" <= 1000
+    AND "desync_side" IN ('none','no','yes')
+    AND "desync_stake_wolo" >= 0 AND "desync_stake_wolo" <= 1000
+    AND (("desync_side"='none' AND "desync_stake_wolo"=0)
+      OR ("desync_side"<>'none' AND "desync_stake_wolo">0))
+    AND "winner_stake_wolo"+"desync_stake_wolo" <= 1000
+    AND "per_game_cap_wolo" > 0 AND "per_game_cap_wolo" <= 1000
+    AND "per_game_cap_wolo" >= "winner_stake_wolo"+"desync_stake_wolo"
+    AND "daily_cap_wolo">= "per_game_cap_wolo"
+    AND "daily_cap_wolo" <= 10000
+  ),
+  CONSTRAINT "ck_satchel_consent_time_windows" CHECK (
+    "issued_at" < "challenge_expires_at"
+    AND "challenge_expires_at" <= "issued_at" + INTERVAL '5 minutes'
+    AND "spend_expires_at" > "challenge_expires_at"
+    AND "spend_expires_at" <= "issued_at" + INTERVAL '24 hours'
+    AND ("signed_at" IS NULL OR ("signed_at" >= "issued_at" AND "signed_at" < "challenge_expires_at"))
+    AND ("revoked_at" IS NULL OR ("signed_at" IS NOT NULL AND "revoked_at" >= "signed_at"))
+  )
+);
+CREATE INDEX "ix_satchel_auto_consent_owner_plan"
+  ON "war_satchel_auto_spend_consents" ("owner_user_id","preset_id","preset_version","signed_at");
+
+-- A signed mandate must never be repointed to a larger budget or someone
+-- else's Steam identity; only a first signature and later revocation mutate.
+CREATE FUNCTION war_satchel_signed_consent_economic_lock()
+RETURNS TRIGGER LANGUAGE plpgsql AS $satchel_consent_lock$
+BEGIN
+  IF (NEW.id, NEW.owner_user_id, NEW.preset_id, NEW.preset_version,
+      NEW.owner_uid, NEW.wallet_address, NEW.nonce, NEW.winner_stake_wolo,
+      NEW.desync_side, NEW.desync_stake_wolo, NEW.per_game_cap_wolo,
+      NEW.daily_cap_wolo, NEW.issued_at, NEW.challenge_expires_at,
+      NEW.spend_expires_at)
+     IS DISTINCT FROM
+     (OLD.id, OLD.owner_user_id, OLD.preset_id, OLD.preset_version,
+      OLD.owner_uid, OLD.wallet_address, OLD.nonce, OLD.winner_stake_wolo,
+      OLD.desync_side, OLD.desync_stake_wolo, OLD.per_game_cap_wolo,
+      OLD.daily_cap_wolo, OLD.issued_at, OLD.challenge_expires_at,
+      OLD.spend_expires_at) THEN
+    RAISE EXCEPTION 'signed Satchel spending mandate economic identity immutable';
+  END IF;
+  IF (OLD.signed_at IS NOT NULL AND NEW.signed_at IS DISTINCT FROM OLD.signed_at)
+     OR (OLD.revoked_at IS NOT NULL AND NEW.revoked_at IS DISTINCT FROM OLD.revoked_at)
+     OR (OLD.revoked_at IS NOT NULL AND NEW.signed_at IS DISTINCT FROM OLD.signed_at) THEN
+    RAISE EXCEPTION 'signed Satchel mandate cannot be unsent or reactivated';
+  END IF;
+  RETURN NEW;
+END;
+$satchel_consent_lock$;
+CREATE TRIGGER satchel_signed_consent_economic_lock
+  BEFORE UPDATE ON "war_satchel_auto_spend_consents"
+  FOR EACH ROW EXECUTE FUNCTION war_satchel_signed_consent_economic_lock();
