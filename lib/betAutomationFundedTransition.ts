@@ -65,9 +65,10 @@ function validClaim(claim: FundedAutoReservedClaim, executionId: number) {
     Number.isSafeInteger(claim.executionId) && claim.executionId > 0 &&
     /^[a-zA-Z0-9_.:/-]{1,128}$/.test(claim.reservationId) &&
     /^[a-zA-Z0-9_.:/-]{1,128}$/.test(claim.ticketRequestId) &&
-    claim.ownerUid.trim().length > 0 &&
-    claim.gameIdentityKey.trim().length > 0 &&
-    /^[1-9][0-9]{0,18}$/.test(claim.reserveUwolo);
+    typeof claim.ownerUid === "string" && claim.ownerUid.trim().length > 0 &&
+    typeof claim.gameIdentityKey === "string" && claim.gameIdentityKey.trim().length > 0 &&
+    /^[1-9][0-9]{0,18}$/.test(claim.reserveUwolo) &&
+    BigInt(claim.reserveUwolo) <= BigInt("9223372036854775807");
 }
 
 /**
@@ -111,9 +112,14 @@ export async function runFundedMechaTransitionBatch(
       continue;
     }
 
+    let outcome: FundedAutoTicketOutcome;
     try {
-      const outcome = await ports.submitReservedTicket(claim);
-      if (outcome.kind === "accepted") {
+      outcome = await ports.submitReservedTicket(claim);
+    } catch {
+      outcome = { kind: "unknown_after_broadcast", reason: "transport_or_execution_unknown" };
+    }
+
+    if (outcome.kind === "accepted") {
         if (!Number.isSafeInteger(outcome.ticketId) || outcome.ticketId <= 0 ||
             !/^[0-9A-Fa-f]{64}$/.test(outcome.fundingTxHash)) {
           await ports.holdUnknown(claim, "invalid_accepted_ticket_proof");
@@ -139,10 +145,6 @@ export async function runFundedMechaTransitionBatch(
         await ports.holdUnknown(claim, "unrecognized_ticket_response");
         unknownHeld += 1;
       }
-    } catch {
-      await ports.holdUnknown(claim, "transport_or_execution_unknown");
-      unknownHeld += 1;
-    }
   }
 
   return Object.freeze({
