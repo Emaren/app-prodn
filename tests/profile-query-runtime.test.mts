@@ -43,6 +43,9 @@ function loadProductionModule(relativePath: string): Record<string, unknown> {
     if (specifier === "@/components/profile/WarSatchelFundingAction") {
       return loadProductionModule("components/profile/WarSatchelFundingAction.tsx");
     }
+    if (specifier === "@/components/profile/WarSatchelWithdrawAction") {
+      return loadProductionModule("components/profile/WarSatchelWithdrawAction.tsx");
+    }
     if (specifier === "@/components/profile/WarSatchelSpendAuthorization") {
       return loadProductionModule("components/profile/WarSatchelSpendAuthorization.tsx");
     }
