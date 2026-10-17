@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ae3b3920a095d16d8638027957d6322146dedabf8c73e630d694bfa33edfce0e",
+      "sha256": "6876bb63b905d4a1f839f6389d1191fd68d9abdb170af82b72680cae10b846c0",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/hd-braces-waiver-scope-review-20261017",
-    "commit": "b5deefc3759620e1eee58292dd8584b62798ad4c"
+    "branch": "fix/hd-release-gate-and-dependency-expiry-20261017",
+    "commit": "070369cab20bb26087a3c1305c2254e37399ee61"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
