@@ -94,7 +94,7 @@ export async function connectCertifiedSatchelSigner(
   return Object.freeze({
     custodyRole: "exclusive-war-satchel-v1" as const,
     attestedVaultAddress: cfg.address,
-    async submitOneShot(input) {
+    async submitOneShot(input: Parameters<IsolatedSatchelSigner["submitOneShot"]>[0]) {
       if (input.chainId !== "wolo-1" || input.senderAddress !== cfg.address ||
           input.denom !== "uwolo" || !ADDR.test(input.recipientAddress) ||
           input.recipientAddress === cfg.address ||
