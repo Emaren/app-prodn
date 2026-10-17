@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "54b916d8a61ef82724f3ed0e3943fbb42c17938e7200fc66b58a899829e03355",
+      "sha256": "78f4f5a18f7d3df0b7bb839940eae83520e3621df4c1a5328079b42ffea12932",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2090,6 +2090,28 @@
       ],
       "title": "War Room Forum — Saturday July 4, 2026 Edition",
       "type": "historical"
+    },
+    {
+      "audience": [
+        "operators",
+        "ai-agents"
+      ],
+      "authority": "read-only-operator-release-evidence",
+      "id": "aoe2war.app-prodn.docs-ops-war-satchel-initial-install-frontier-20261016",
+      "owner": "aoe2war-web",
+      "path": "docs/ops/war-satchel-initial-install-frontier-20261016.md",
+      "review_interval_days": 30,
+      "reviewed_at": "2026-10-16",
+      "sensitivity": "internal",
+      "sha256": "d4d29574438a31624f44f0db094d2846027cc74c7beb079192f16ea5f4706c01",
+      "source_of_truth": "git",
+      "status": "draft",
+      "systems": [
+        "app-prodn",
+        "wolochain"
+      ],
+      "title": "War Satchel six-migration initial-install release frontier",
+      "type": "runbook"
     },
     {
       "audience": [
