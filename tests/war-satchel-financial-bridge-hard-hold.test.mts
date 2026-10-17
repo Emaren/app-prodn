@@ -102,6 +102,8 @@ test("all funded financial entry points are fenced at source, not by a mutable f
       /function isEnabled\(\) \{\s*return satchelFinancialBridgeReady\(\) &&/],
     ["app/api/user/war-satchel/withdrawal/route.ts",
       /function enabled\(\)\{\s*return satchelFinancialBridgeReady\(\) &&/],
+    ["app/api/user/war-satchel/credit-verified/route.ts",
+      /function enabled\(\) \{[\s\S]*?return satchelFinancialBridgeReady\(\) &&/],
     ["lib/warSatchelAutoBetExecutor.ts",
       /function enabled\(signer: IsolatedSatchelSigner\) \{\s*requireSatchelFinancialBridge\(\)/],
     ["lib/warSatchelFundedWatcherTick.ts",
@@ -113,6 +115,17 @@ test("all funded financial entry points are fenced at source, not by a mutable f
     assert.match(source(path), marker, path);
   }
 });
+
+
+test("public credit endpoint refuses before any third-party REST call or preliminary receipt write", () => {
+  const route = source("app/api/user/war-satchel/credit-verified/route.ts");
+  const gate = route.indexOf("if (!enabled()) return fail(503");
+  const fetch = route.indexOf("const [chainStatus, txResponse, bank]");
+  const record = route.indexOf("await recordUncreditedWarSatchelReceipt");
+  assert.ok(gate >= 0 && fetch > gate && record > gate);
+  assert.match(route, /function enabled\(\) \{[\s\S]*?return satchelFinancialBridgeReady\(\) &&/);
+});
+
 
 test("hold is hard-coded false, never a mutable environment or remote value", () => {
   const implementation = source("lib/warSatchelFinancialBridgeHold.ts");
