@@ -234,6 +234,9 @@ export default function WarSatchelFundingAction({
         { intentId, txHash });
       if (result.credited !== true) throw Error("Your deposit has not been credited.");
       setCredited(true);
+      // Successfully credited receipt is no longer an unfinished transfer.
+      // Other unresolved intents remain visible and MUST NOT be resent.
+      setKnownIntents(current => current.filter(x => x.id !== intentId));
       setDetail("Canonical WOLO credit recorded. Your War Satchel balance is reconciled.");
       await refreshBalance();
     } catch (error) {
@@ -304,6 +307,17 @@ export default function WarSatchelFundingAction({
             {credited ? "CREDIT VERIFIED" : busy ? "VERIFYING CHAIN..." : "VERIFY DEPOSIT & CREDIT SATCHEL"}
           </button>
         </div>
+      )}
+      {credited && (
+        <button type="button" disabled={busy || knownIntents.length > 0}
+          onClick={() => {
+            setTxHash(""); setIntentId(""); setRecoveryHash("");
+            setRecoveryIntent(""); setMayHaveSent(false); setCredited(false);
+            setDetail("Previous transfer was verified. You can prepare a new deposit.");
+          }}
+          className="rounded-lg border border-slate-200/40 p-2 text-xs font-semibold disabled:opacity-40">
+          PREPARE ANOTHER DEPOSIT
+        </button>
       )}
       {detail && <p role="status" className="text-xs text-amber-200">{detail}</p>}
     </div>
