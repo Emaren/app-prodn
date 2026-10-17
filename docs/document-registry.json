@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "19fe0aa2610739cdf4ceda08fc52c5840f3297e80715da8e1fd6f2ba5e355380",
+      "sha256": "752f1acc400d84634faef763c2082619b1053a4080c0e3bfd07d3d7143fd2fc0",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2117,7 +2117,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feat/hd-satchel-signed-v2-return-proof-20261017",
-    "commit": "980d146940ea38afd4cd7fe9be54c2d0d90cdb1c"
+    "commit": "8a2fc3e2e8b21af996f6f0c60d24630633cc7474"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
