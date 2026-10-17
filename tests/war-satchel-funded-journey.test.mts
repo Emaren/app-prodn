@@ -23,7 +23,7 @@ test("Keplr cannot be shown a Satchel destination until credit and withdrawal pa
 
 test("Keplr client verifies exact chain wallet memo and displays no fake credited balance", () => {
   const client = read("components/profile/WarSatchelFundingAction.tsx");
-  assert.match(client, /disabled=\{busy \|\| !ready \|\| !valid\}/);
+  assert.match(client, /disabled=\{busy \|\| !ready \|\| !valid \|\| mayHaveSent \|\|\s*knownIntents\.length > 0\}/);
   assert.match(client, /quote\.recipientAddress/);
   assert.match(client, /quote\.memo/);
   assert.match(client, /keplr\.enable\("wolo-1"\)/);
