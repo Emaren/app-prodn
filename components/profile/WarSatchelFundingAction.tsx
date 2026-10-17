@@ -1,0 +1,232 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+type Keplr = {
+  enable(chainId: string): Promise<void>;
+  getOfflineSigner(chainId: string): import("@cosmjs/proto-signing").OfflineSigner;
+};
+type Balance = {
+  available: boolean;
+  depositEnabled: boolean;
+  availableUwolo: string;
+  reservedUwolo: string;
+  withdrawalPendingUwolo: string;
+};
+type FundingQuote = {
+  enabled: true;
+  chainId: "wolo-1";
+  denom: "uwolo";
+  ownerWalletAddress: string;
+  recipientAddress: string;
+  amountUwolo: string;
+  memo: string;
+  intentId: string;
+  expiresAtUtc: string;
+};
+const ADDR = /^wolo1[023456789acdefghjklmnpqrstuvwxyz]{38,90}$/;
+const TX_HASH = /^[A-F0-9]{64}$/;
+
+async function reply(response: Response) {
+  const json: unknown = await response.json().catch(() => null);
+  if (!json || typeof json !== "object" || Array.isArray(json)) {
+    throw new Error("Satchel server returned an unreadable response.");
+  }
+  return json as Record<string, unknown>;
+}
+async function postJson(url: string, payload: unknown) {
+  const response = await fetch(url, {
+    method: "POST",
+    cache: "no-store", credentials: "same-origin",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  const body = await reply(response);
+  if (!response.ok) throw new Error(String(body.detail || "Satchel operation unavailable."));
+  return body;
+}
+function quoteValid(data: unknown, walletAddress: string, amountWolo: number): data is FundingQuote {
+  if (!data || typeof data !== "object" || Array.isArray(data)) return false;
+  const q = data as Record<string, unknown>;
+  const amount = BigInt(amountWolo) * BigInt(1000000);
+  return q.enabled === true && q.chainId === "wolo-1" && q.denom === "uwolo" &&
+    q.ownerWalletAddress === walletAddress &&
+    typeof q.recipientAddress === "string" && ADDR.test(q.recipientAddress) &&
+    q.recipientAddress !== walletAddress &&
+    q.amountUwolo === amount.toString() &&
+    typeof q.memo === "string" && /^aoe2war\/satchel\/v1\//.test(q.memo) &&
+    q.memo.length <= 240 &&
+    typeof q.intentId === "string" &&
+    typeof q.expiresAtUtc === "string" &&
+    Number.isFinite(Date.parse(q.expiresAtUtc)) &&
+    Date.parse(q.expiresAtUtc) > Date.now();
+}
+function wolo(raw: string) {
+  if (!/^(0|[1-9][0-9]{0,18})$/.test(raw)) return "—";
+  const amount = BigInt(raw);
+  const whole = (amount / BigInt(1000000)).toLocaleString();
+  const fraction = String(amount % BigInt(1000000)).padStart(6,"0").replace(/0+$/,"");
+  return whole + (fraction ? "." + fraction : "");
+}
+
+/**
+ * Real Keplr transaction flow, but only when backend confirms all audited
+ * custody and withdrawal release gates. Browser never holds a server key.
+ * Any ambiguous transfer stays pending; the UI never retries signing.
+ */
+export default function WarSatchelFundingAction({
+  walletAddress, depositAmount,
+}: {
+  walletAddress: string;
+  depositAmount: string;
+}) {
+  const [balance, setBalance] = useState<Balance | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [txHash, setTxHash] = useState("");
+  const [intentId, setIntentId] = useState("");
+  const [detail, setDetail] = useState("");
+  const [credited, setCredited] = useState(false);
+
+  const refreshBalance = async () => {
+    const response = await fetch("/api/user/war-satchel/balance", {
+      credentials: "same-origin", cache: "no-store",
+    });
+    const data = await reply(response);
+    if (response.ok) {
+      setBalance({
+        available: data.available === true,
+        depositEnabled: data.depositEnabled === true,
+        availableUwolo: typeof data.availableUwolo === "string" ? data.availableUwolo : "0",
+        reservedUwolo: typeof data.reservedUwolo === "string" ? data.reservedUwolo : "0",
+        withdrawalPendingUwolo: typeof data.withdrawalPendingUwolo === "string" ? data.withdrawalPendingUwolo : "0",
+      });
+    }
+  };
+  useEffect(() => {
+    let active = true;
+    void fetch("/api/user/war-satchel/balance", {
+      credentials: "same-origin", cache: "no-store",
+    }).then(reply).then(data => {
+      if (!active) return;
+      setBalance({
+        available: data.available === true,
+        depositEnabled: data.depositEnabled === true,
+        availableUwolo: typeof data.availableUwolo === "string" ? data.availableUwolo : "0",
+        reservedUwolo: typeof data.reservedUwolo === "string" ? data.reservedUwolo : "0",
+        withdrawalPendingUwolo: typeof data.withdrawalPendingUwolo === "string" ? data.withdrawalPendingUwolo : "0",
+      });
+    }).catch(() => { if (active) setBalance(null); });
+    return () => { active = false; };
+  }, []);
+
+  const amount = /^\d+$/.test(depositAmount.trim()) ? Number(depositAmount.trim()) : NaN;
+  const valid = Number.isSafeInteger(amount) && amount >= 1 && amount <= 10000;
+  const ready = balance?.available === true && balance.depositEnabled === true &&
+    Boolean(walletAddress && ADDR.test(walletAddress));
+
+  const sendFromKeplr = async () => {
+    if (busy || !ready || !valid || txHash) return;
+    setBusy(true); setDetail(""); setCredited(false);
+    try {
+      // Server mints an owner-linked memo and exact amount; a client cannot
+      // substitute a recipient or pre-credit a user balance.
+      const prepared = await postJson("/api/user/war-satchel/funding-intents",
+        { amountWolo: String(amount) });
+      if (typeof prepared.id !== "string") throw Error("Deposit intent unavailable.");
+      const quoteRaw = await postJson("/api/user/war-satchel/funding-quote",
+        { intentId: prepared.id });
+      if (!quoteValid(quoteRaw, walletAddress, amount)) {
+        throw Error("Keplr transfer quote does not match your wallet or amount.");
+      }
+      const quote = quoteRaw;
+      const keplr = (window as unknown as { keplr?: Keplr }).keplr;
+      if (!keplr?.enable || !keplr.getOfflineSigner) {
+        throw Error("Keplr extension is not installed or the Wolo chain is unavailable.");
+      }
+      await keplr.enable("wolo-1");
+      const signer = keplr.getOfflineSigner("wolo-1");
+      const accounts = await signer.getAccounts();
+      if (accounts.length !== 1 || accounts[0].address !== walletAddress) {
+        throw Error("Keplr signer account changed. No transfer submitted.");
+      }
+      if (Date.parse(quote.expiresAtUtc) <= Date.now()) {
+        throw Error("Prepared transfer expired. No transfer submitted.");
+      }
+      const { SigningStargateClient } = await import("@cosmjs/stargate");
+      const client = await SigningStargateClient.connectWithSigner(
+        "https://rpc-mainnet.aoe2war.com", signer,
+      );
+      try {
+        // The wallet extension shows this transfer for explicit confirmation.
+        // A returned success is NOT yet an account credit.
+        const result = await client.sendTokens(
+          walletAddress, quote.recipientAddress,
+          [{ denom: "uwolo", amount: quote.amountUwolo }],
+          { amount: [{ denom: "uwolo", amount: "5000" }], gas: "200000" },
+          quote.memo,
+        );
+        if (result.code !== 0 || !TX_HASH.test(result.transactionHash.toUpperCase())) {
+          throw Error("Keplr did not confirm a successful Wolo transaction.");
+        }
+        setTxHash(result.transactionHash.toUpperCase());
+        setIntentId(quote.intentId);
+        setDetail("Transfer broadcast. Keep the hash; verify it after three chain confirmations. Do not resend.");
+      } finally {
+        client.disconnect();
+      }
+    } catch (e) {
+      setDetail(e instanceof Error ? e.message : "Keplr transfer was not completed. Check chain history before retrying.");
+    } finally { setBusy(false); }
+  };
+
+  const verifyAndCredit = async () => {
+    if (busy || !txHash || !intentId || credited) return;
+    setBusy(true); setDetail("");
+    try {
+      const proof = await postJson("/api/user/war-satchel/deposit-evidence",
+        { intentId, txHash });
+      if (proof.receiptKey !== "wolo-1:" + txHash + ":0") {
+        throw Error("Recorded chain proof does not match your transaction.");
+      }
+      const result = await postJson("/api/user/war-satchel/credit-verified",
+        { intentId, txHash });
+      if (result.credited !== true) throw Error("Your deposit has not been credited.");
+      setCredited(true);
+      setDetail("Canonical WOLO credit recorded. Your War Satchel balance is reconciled.");
+      await refreshBalance();
+    } catch (error) {
+      setDetail((error instanceof Error ? error.message : "Confirmation pending.") +
+        " Your transfer may already be on chain. Do not send it again.");
+    } finally { setBusy(false); }
+  };
+
+  return (
+    <div className="mt-3 space-y-3 text-sm text-slate-200">
+      {balance?.available ? (
+        <p>
+          Verified War Satchel: <strong>{wolo(balance.availableUwolo)} WOLO available</strong>
+          {" · "}{wolo(balance.reservedUwolo)} reserved
+          {" · "}{wolo(balance.withdrawalPendingUwolo)} pending withdrawal
+        </p>
+      ) : (
+        <p>War Satchel funding is not certified for production. No deposit address will be shown until withdrawals and custody are safe.</p>
+      )}
+      {!txHash && (
+        <button type="button" disabled={busy || !ready || !valid} onClick={() => void sendFromKeplr()}
+          className="rounded-xl border border-amber-300/40 px-4 py-3 font-bold text-amber-100 disabled:cursor-not-allowed disabled:opacity-40">
+          {busy ? "CONFIRMING WITH KEPLR..." : ready ? "TRANSFER WOLO FROM KEPLR" : "FUNDING AWAITING VAULT CERTIFICATION"}
+        </button>
+      )}
+      {txHash && (
+        <div className="space-y-2 rounded-xl border border-sky-200/25 p-3">
+          <p className="break-all font-mono text-xs">Transaction: {txHash}</p>
+          <button type="button" onClick={() => void verifyAndCredit()} disabled={busy || credited}
+            className="rounded-lg border border-sky-200/40 p-2 font-semibold disabled:opacity-40">
+            {credited ? "CREDIT VERIFIED" : busy ? "VERIFYING CHAIN..." : "VERIFY DEPOSIT & CREDIT SATCHEL"}
+          </button>
+        </div>
+      )}
+      {detail && <p role="status" className="text-xs text-amber-200">{detail}</p>}
+    </div>
+  );
+}
