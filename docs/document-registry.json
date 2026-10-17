@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ede1627f5e4baf8e79a84cff42ca3f2ec08294d6bf1a893b35fd106bd7fbabfc",
+      "sha256": "627843773becd170764f5464b38c1013d2ee042db7afef16dc3c09b2b91e483a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2117,7 +2117,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feat/hd-mecha-funded-seam-with-reviewed-deps-20261017",
-    "commit": "6afc11399c6e84c7cfcb308f4d4523ce1b8c3866"
+    "commit": "ccdb176c77729dd28b3fa888c52db0c82fcdf655"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
