@@ -76,6 +76,7 @@ model User {
   satchelFundedReceipts          SatchelFundedReceipt[]
   satchelFundedJournal           SatchelFundedJournal[]
   satchelFundedReservations      SatchelFundedReservation[]
+  satchelAutoSpendConsents       SatchelAutoSpendConsent[]
   betMarketWallets               BetMarketWallet[]
   betMarketFinancialAdjustments  BetMarketFinancialAdjustment[]
   reviewedPlayerIdentityAliases  PlayerIdentityAlias[]
@@ -2601,6 +2602,7 @@ model BetAutoPreset {
 
   user       User               @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: NoAction)
   executions BetAutoExecution[]
+  satchelAutoSpendConsents SatchelAutoSpendConsent[]
 
   @@index([enabled, updatedAt], map: "ix_bet_auto_presets_enabled_updated_at")
   @@map("bet_auto_presets")
@@ -5470,4 +5472,34 @@ model SatchelFundedReservation {
 
   @@index([ownerUserId, status, createdAt], map: "ix_satchel_funded_reservation_owner")
   @@map("war_satchel_funded_reservations")
+}
+
+/** Explicit off-chain Keplr ADR-36 authorization to AUTO-SPEND Satchel WOLO.
+ * Does not sign a chain transfer; it only bounds server authority to one
+ * immutable, owner-bound version of the Mecha preset for at most 24h.
+ */
+model SatchelAutoSpendConsent {
+  id                 String    @id @db.Uuid
+  ownerUserId        Int       @map("owner_user_id")
+  presetId           Int       @map("preset_id")
+  presetVersion      Int       @map("preset_version")
+  ownerUid           String    @map("owner_uid") @db.VarChar(100)
+  walletAddress      String    @map("wallet_address") @db.VarChar(100)
+  nonce              String    @unique(map: "uq_satchel_consent_nonce") @db.VarChar(64)
+  winnerStakeWolo    Int       @map("winner_stake_wolo")
+  desyncSide         String    @map("desync_side") @db.VarChar(8)
+  desyncStakeWolo    Int       @map("desync_stake_wolo")
+  perGameCapWolo     Int       @map("per_game_cap_wolo")
+  dailyCapWolo       Int       @map("daily_cap_wolo")
+  issuedAt           DateTime  @map("issued_at") @db.Timestamp(6)
+  challengeExpiresAt DateTime  @map("challenge_expires_at") @db.Timestamp(6)
+  spendExpiresAt     DateTime  @map("spend_expires_at") @db.Timestamp(6)
+  signedAt           DateTime? @map("signed_at") @db.Timestamp(6)
+  revokedAt          DateTime? @map("revoked_at") @db.Timestamp(6)
+
+  owner User          @relation(fields: [ownerUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  preset BetAutoPreset @relation(fields: [presetId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([ownerUserId, presetId, presetVersion, signedAt], map: "ix_satchel_auto_consent_owner_plan")
+  @@map("war_satchel_auto_spend_consents")
 }
