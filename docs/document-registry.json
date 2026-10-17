@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "238208640ea1392355ab31d2981950afe20298cdacac237f6497307cd94f9f83",
+      "sha256": "a0fd5beaad454c9d16d3a95cdb2e7185e2dcf7b5867ee8792be3b381929f4cbc",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2117,7 +2117,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "security/hd-satchel-signed-settlement-hard-hold-20261017",
-    "commit": "bc5f1615fff6502ca5bb8b27636b22a3da9c496f"
+    "commit": "8afd60dbf0ddcb8da483bd15d2ebd8761b8f9582"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
