@@ -203,9 +203,24 @@ export async function DELETE(request: NextRequest) {
   if (!sameOrigin(request)) return reply(403, { detail: "Invalid origin." });
   const actor = await viewer(request);
   if (!actor) return reply(401, { detail: "Sign in required." });
-  await actor.prisma.satchelAutoSpendConsent.updateMany({
-    where: { ownerUserId: actor.user.id, revokedAt: null, signedAt: { not: null } },
-    data: { revokedAt: new Date() },
-  });
-  return reply(200, { revoked: true, newBetsAuthorized: false });
+  try {
+    // Serialize mandate revocation with the funding worker's FINAL check
+    // immediately before an external chain send. Any send already fenced
+    // before this revocation is in flight and must be reconciled; it cannot
+    // be unsent or automatically refunded.
+    await actor.prisma.$transaction(async tx => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(724176, 47)`;
+      await tx.satchelAutoSpendConsent.updateMany({
+        where: {
+          ownerUserId: actor.user.id, revokedAt: null,
+          signedAt: { not: null },
+        },
+        data: { revokedAt: new Date() },
+      });
+    }, { isolationLevel: "Serializable", maxWait: 5000, timeout: 9000 });
+    return reply(200, { revoked: true, newBetsAuthorized: false,
+      inFlightTransfersMayStillSettle: true });
+  } catch {
+    return reply(503, { detail: "Could not certify revocation. Do not assume it succeeded." });
+  }
 }
