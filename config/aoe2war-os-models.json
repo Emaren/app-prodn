@@ -199,6 +199,7 @@
     "SatchelFundedBalance",
     "SatchelFundedReceipt",
     "SatchelFundedJournal",
-    "SatchelFundedReservation"
+    "SatchelFundedReservation",
+    "SatchelAutoSpendConsent"
   ]
 }
