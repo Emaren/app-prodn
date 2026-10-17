@@ -36,7 +36,7 @@ function verify(approval: unknown = fixture.return_approval,
 type MutableFixture = {
   allocation: { signature:string; issued_at:number; expires_at:number;
     funds_available_uwolo:string;
-    legs:Array<{entitlements:Array<{amount_uwolo:string;principal_uwolo:string}>}> };
+    legs:Array<{entitlements:Array<{amount_uwolo:string;principal_uwolo:string;claim_id:string}>}> };
   signature:string; amount_uwolo:string; allocation_digest:string;
   [key:string]:unknown;
 };
