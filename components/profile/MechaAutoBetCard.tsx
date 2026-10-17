@@ -5,6 +5,7 @@ import { ChevronDown, Coins, Crosshair, LockKeyhole, Radar, Settings2, ShieldChe
 import { useKeplr } from "@/hooks/use-keplr";
 import WarSatchelWalletProof from "@/components/profile/WarSatchelWalletProof";
 import WarSatchelFundingAction from "@/components/profile/WarSatchelFundingAction";
+import WarSatchelSpendAuthorization from "@/components/profile/WarSatchelSpendAuthorization";
 import { useWoloBalance } from "@/hooks/useWoloBalance";
 import { deriveWoloBalanceReadState, formatMinimalDenomAmount } from "@/lib/woloBalanceRead";
 
@@ -260,6 +261,13 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
             </button>
           </div>
           <WarSatchelWalletProof walletAddress={walletStatus === "connected" ? walletAddress : ""} />
+          {server?.preset && server.preset.version > 0 && (
+            <WarSatchelSpendAuthorization
+              walletAddress={walletStatus === "connected" ? walletAddress : ""}
+              presetVersion={server.preset.version}
+              plannedStakeWolo={server.preset.winnerStakeWolo + server.preset.desyncStakeWolo}
+            />
+          )}
           <div className="mt-4 grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
             <label className="text-[10px] font-black uppercase tracking-[.16em] text-slate-400">
               WOLO FROM YOUR WALLET
