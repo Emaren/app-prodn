@@ -8,7 +8,7 @@
  * independently certified one-shot signer and chain recovery service.
  */
 import type { PrismaClient } from "@/lib/generated/prisma";
-import { makeSatchelLoopbackSigner } from "./warSatchelIsolatedSignerClient.ts";
+import { connectCertifiedSatchelSigner } from "./warSatchelDedicatedSignerClient.ts";
 import { executeFundedMechaTicketBatch } from "./warSatchelAutoBetExecutor.ts";
 
 const MAX=25;
@@ -53,7 +53,7 @@ export async function runFundedMechaOutboxTick(
   const earliest=new Date(now.getTime()-MAX_AGE_MS);
   // Verify the isolated sidecar's authenticated identity BEFORE selecting
   // work, and never downgrade to a shared Wolo escrow/payout signer.
-  const signer=await makeSatchelLoopbackSigner();
+  const signer=await connectCertifiedSatchelSigner();
   const rows=await prisma.betAutoExecution.findMany({
     where:{
       status:"shadow_ready",
