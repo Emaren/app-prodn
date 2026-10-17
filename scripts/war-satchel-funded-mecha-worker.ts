@@ -9,6 +9,7 @@
 import { getPrisma } from "../lib/prisma.ts";
 import { executeFundedMechaTicketBatch } from "../lib/warSatchelAutoBetExecutor.ts";
 import { connectCertifiedSatchelSigner } from "../lib/warSatchelDedicatedSignerClient.ts";
+import { satchelFinancialBridgeReady } from "../lib/warSatchelFinancialBridgeHold.ts";
 
 const MAX_BATCH = 25;
 
@@ -26,7 +27,8 @@ function approved() {
     "WAR_SATCHEL_SIGNER_OPERATOR_APPROVED",
     "WAR_SATCHEL_SIGNER_CLIENT_ENABLED",
   ];
-  return keys.every(key => process.env[key] === "true");
+  return satchelFinancialBridgeReady() &&
+    keys.every(key => process.env[key] === "true");
 }
 
 async function main() {
@@ -36,13 +38,22 @@ async function main() {
     throw new Error("MECHA_FUNDED_USAGE: --dry-run (default) | --execute");
   }
   const execute = args[0] === "--execute";
-  const prisma = getPrisma();
+  // A set of environment flags cannot override the immutable custody hold.
+  // Avoid even opening the financial queue when the bridge is unverified.
+  if (!execute && !satchelFinancialBridgeReady()) {
+    console.log(JSON.stringify({
+      mode: "dry_run", state: "financial_bridge_unverified_hold",
+      liveWagersPlaced: 0, chainTransfersSent: 0,
+    }));
+    return;
+  }
   // The actual on-chain queue cannot run until the additional funded ledger
   // migration is GOVERNED and installed. On an older DB do not probe these
   // financial tables or falsely report that they contain zero funds.
   if (execute && !approved()) {
     throw new Error("MECHA_FUNDED_LIVE_FINANCIAL_AUTHORITY_NOT_CERTIFIED");
   }
+  const prisma = getPrisma();
   if (!execute && process.env.WAR_SATCHEL_FUNDED_LEDGER_ENABLED !== "true") {
     console.log(JSON.stringify({
       mode: "dry_run", state: "funded_database_not_enabled",

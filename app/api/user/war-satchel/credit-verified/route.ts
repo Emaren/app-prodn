@@ -9,6 +9,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
+import { satchelFinancialBridgeReady } from "@/lib/warSatchelFinancialBridgeHold";
 import { readWarSatchelBoundedUtf8 } from "@/lib/warSatchelBoundedBody";
 import { inspectCanonicalSatchelDeposit } from "@/lib/warSatchelCanonicalReceipt";
 import { recordUncreditedWarSatchelReceipt } from "@/lib/warSatchelUncreditedProofRecorder";
@@ -27,7 +28,9 @@ function fail(status: number, detail: string) {
   return NextResponse.json({ detail, credited: false }, { status, headers: H });
 }
 function enabled() {
-  return process.env.WAR_SATCHEL_FUNDED_LEDGER_ENABLED === "true" &&
+  // Source-level interlock precedes any REST lookup or preliminary ledger write.
+  return satchelFinancialBridgeReady() &&
+    process.env.WAR_SATCHEL_FUNDED_LEDGER_ENABLED === "true" &&
     process.env.WAR_SATCHEL_FINANCIAL_OPERATOR_ATTESTED === "true" &&
     process.env.WAR_SATCHEL_UNCREDITED_PROOF_RECORDING_ENABLED === "true" &&
     process.env.WAR_SATCHEL_OWNER_PROOF_ENABLED === "true" &&
