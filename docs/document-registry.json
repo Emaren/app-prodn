@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c6eae540871c7a59ebdd7ed4913928a56f137421832ba94f8011808bdf99a75c",
+      "sha256": "3eadf18d237639d1bfc7d658b7af8fa2d5c3748df5ecfe1d01b89595931977ba",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/hd-shadow-safe-object-context-20261017",
-    "commit": "30d6ba2c5d27a2f8c766b15b156d9e60f5077307"
+    "branch": "feat/hd-mecha-funded-seam-with-reviewed-deps-20261017",
+    "commit": "4bb986520550e5d1790daa8bfa3fc90dfc0117f3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
