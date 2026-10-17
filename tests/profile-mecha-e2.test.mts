@@ -79,6 +79,7 @@ test("Mecha UI shows only server-owned preview status; not an on-chain wallet", 
   assert.match(card, /LOAD SATCHEL/);
   assert.match(card, /WOLO FROM YOUR WALLET/);
   assert.match(card, /<WarSatchelFundingAction/);
+  assert.match(card, /<WarSatchelWithdrawAction/);
   assert.doesNotMatch(card, /depositAmountValue <= 50_000/);
   const funding = readFileSync(new URL("../components/profile/WarSatchelFundingAction.tsx", import.meta.url), "utf8");
   assert.match(funding, /disabled=\{busy \|\| !ready \|\| !valid\}/);
