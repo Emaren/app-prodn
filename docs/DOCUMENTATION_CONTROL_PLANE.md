@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `integration/hd-satchel-sync-main-20261017` at `a85fc4f99d2d06cf6d60888417c30cd6f072c9e0`
+Implementation baseline: `integration/hd-satchel-sync-main-20261017` at `21d88550b138adb95dbee748cf7e84273e67215d`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
