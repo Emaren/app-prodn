@@ -93,12 +93,37 @@ def observed_apply(database: str, sql: bytes) -> None:
         if query(database, "SELECT count(*) FROM users") != "0":
             refuse("source data leaked into schema-only shadow database")
 
+# Diagnostic diff is safe here: CI source contains only the literal synthetic
+# users table and no real application data.
+import difflib
+original_schema_bytes = SHADOW.schema_bytes
+captured_dumps = []
+def record_schema_bytes(database: str) -> bytes:
+    result = original_schema_bytes(database)
+    captured_dumps.append(result)
+    return result
+
 with (
     mock.patch.object(SHADOW, "SOURCE_DATABASE", DB),
     mock.patch.object(SHADOW, "postgres", side_effect=ci_postgres),
     mock.patch.object(SHADOW, "apply_to_shadow", side_effect=observed_apply),
+    mock.patch.object(SHADOW, "schema_bytes", side_effect=record_schema_bytes),
 ):
-    result = SHADOW.rehearse()
+    try:
+        result = SHADOW.rehearse()
+    except SHADOW.RehearsalStop:
+        if len(captured_dumps) >= 2:
+            diff = difflib.unified_diff(
+                captured_dumps[0].decode("utf-8").splitlines(),
+                captured_dumps[1].decode("utf-8").splitlines(),
+                fromfile="CI source-only dump", tofile="CI shadow-only dump",
+                lineterm="",
+            )
+            for i, line in enumerate(diff):
+                if i >= 100:
+                    break
+                print(line, flush=True)
+        raise
     if result.get("status") != "PASS" or not result.get("disposable_database_removed"):
         refuse("rehearsal returned a non-certified result")
     if not result.get("six_migrations_exercised"):
