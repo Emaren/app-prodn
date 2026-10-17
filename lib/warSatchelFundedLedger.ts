@@ -1,3 +1,4 @@
+import { inspectSingleTicketSatchelReturn } from "./warSatchelClaimReturnAttribution.ts";
 import { verifyLiveCanonicalSatchelClaimReturn } from "./warSatchelCanonicalClaimReturn.ts";
 import { getWoloBetEscrowRuntime } from "./woloChain.ts";
 import { isVerifiedSatchelWithdrawal, type SatchelVerifiedWithdrawal } from "./warSatchelWithdrawalAuthorization.ts";
@@ -1111,30 +1112,48 @@ export async function creditVerifiedSatchelClaimReturn(
         status:claim.claimKind==="bet_refund"?"void":"won",
       },
       select:{
-        id:true,payoutWolo:true,
-        stakeLeg:{select:{ticket:{select:{
-          id:true,userId:true,source:true,walletProvider:true,
-          walletAddress:true,stakeTxHash:true,status:true,
-        }}}},
+        id:true,amountWolo:true,payoutWolo:true,status:true,
+        stakeLeg:{select:{
+          id:true,marketId:true,amountWolo:true,
+          ticket:{select:{
+            id:true,userId:true,source:true,walletProvider:true,
+            walletAddress:true,stakeTxHash:true,status:true,
+            clientRequestId:true,
+          }},
+        }},
       },
       take:1001,
     });
-    if(wagers.length<1||wagers.length>1000)
-      stop("claim_return_bettor_wager_census_incomplete");
-    let entitlement=BigInt(0);
-    for(const wager of wagers){
-      const ticket=wager.stakeLeg?.ticket;
-      if(!ticket||ticket.userId!==input.ownerUserId||
-         ticket.source!=="auto"||ticket.walletProvider!=="satchel-vault"||
-         ticket.walletAddress!==vault||ticket.status!=="recorded"||
-         !ticket.stakeTxHash||
-         !Number.isSafeInteger(wager.payoutWolo)||wager.payoutWolo===null||
-         wager.payoutWolo<0)
-        stop("claim_return_owner_ticket_attribution_incomplete");
-      entitlement+=BigInt(wager.payoutWolo);
+    // Existing market claims can aggregate several wager tickets. WoloChain's
+    // signed return v2 binds each immutable claim to ONE original operation,
+    // owner, funding tx and market leg. Never manufacture a single-ticket
+    // allocation for an aggregated claim or credit a short unmatched refund.
+    const attributed=inspectSingleTicketSatchelReturn({
+      ownerUserId:input.ownerUserId,
+      claimKind:claim.claimKind,
+      claimAmountWolo:claim.amountWolo,
+      marketId:sourceMarketId,
+      vaultAddress:vault,
+      wagers,
+    });
+    // Complete the chain of custody back to the exact durable Mecha request.
+    // A recorded BetStakeTicket without a committed owner reservation is not
+    // enough to attach an escrow return to the pooled customer ledger.
+    const original=await tx.satchelFundedReservation.findUnique({
+      where:{ticketId:attributed.ticketId},
+      select:{
+        ownerUserId:true,status:true,ticketRequestId:true,txHash:true,
+        ticketId:true,
+      },
+    });
+    if(!original || original.status!=="committed" ||
+       original.ownerUserId!==input.ownerUserId ||
+       original.ticketId!==attributed.ticketId ||
+       original.ticketRequestId!==attributed.operationId ||
+       original.txHash?.toUpperCase()!==attributed.fundingTxHash ||
+       attributed.amountUwolo!==proof.amountUwolo) {
+      stop("claim_return_original_funded_operation_not_committed_or_bound");
     }
-    if(entitlement!==BigInt(claim.amountWolo))
-      stop("claim_return_amount_not_exact_settled_entitlement");
 
     requireFreshBank(bank,Date.now());
     const liabilities=await outstandingVaultLiability(tx);
