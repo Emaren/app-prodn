@@ -132,7 +132,7 @@ async function withExclusiveSatchelTx<T>(
   return prisma.$transaction(async tx => {
     // Global vault fence: even unrelated users must not race aggregate
     // physical bank liabilities or create two reservations concurrently.
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(${FINANCIAL_LOCK_CLASS}, ${FINANCIAL_LOCK_ID})`;
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(${FINANCIAL_LOCK_CLASS}, ${FINANCIAL_LOCK_ID})`;
     return action(tx);
   }, {
     isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
