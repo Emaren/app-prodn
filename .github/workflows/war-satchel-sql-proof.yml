@@ -12,6 +12,8 @@ on:
       - "prisma/migrations/20261014_191500_war_satchel_simulation_single_owner/**"
       - "tests/sql/war_satchel_simulation_owner_isolation_contract.sql"
       - "prisma/migrations/20261015_151500_war_satchel_simulation_guard_correction/**"
+      - "prisma/migrations/20261017_012000_war_satchel_funded_ledger_foundation/**"
+      - "tests/sql/war_satchel_funded_ledger_contract.sql"
       - "tests/sql/war_satchel_simulation_guard_correction_contract.sql"
       - "tests/sql/war_satchel_simulation_concurrency_test.sh"
       - "tests/sql/war_satchel_simulation_double_entry_contract.sql"
@@ -29,6 +31,8 @@ on:
       - "prisma/migrations/20261014_191500_war_satchel_simulation_single_owner/**"
       - "tests/sql/war_satchel_simulation_owner_isolation_contract.sql"
       - "prisma/migrations/20261015_151500_war_satchel_simulation_guard_correction/**"
+      - "prisma/migrations/20261017_012000_war_satchel_funded_ledger_foundation/**"
+      - "tests/sql/war_satchel_funded_ledger_contract.sql"
       - "tests/sql/war_satchel_simulation_guard_correction_contract.sql"
       - "tests/sql/war_satchel_simulation_concurrency_test.sh"
       - "tests/sql/war_satchel_simulation_double_entry_contract.sql"
@@ -66,7 +70,9 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - name: Prepare isolated synthetic user key dependency
-        run: psql -X -v ON_ERROR_STOP=1 -c 'CREATE TABLE users (id INTEGER PRIMARY KEY)'
+        run: |
+          psql -X -v ON_ERROR_STOP=1 -c 'CREATE TABLE users (id INTEGER PRIMARY KEY)'
+          psql -X -v ON_ERROR_STOP=1 -c 'CREATE TABLE bet_auto_executions (id INTEGER PRIMARY KEY)'
       - name: Execute real PostgreSQL migration (fail closed)
         run: |
           psql -X -v ON_ERROR_STOP=1 \
@@ -93,3 +99,7 @@ jobs:
         run: psql -X -v ON_ERROR_STOP=1 -f prisma/migrations/20261015_151500_war_satchel_simulation_guard_correction/migration.sql
       - name: Prove valid single-owner release and rejection of mixed-owner or fake real credit
         run: psql -X -v ON_ERROR_STOP=1 -f tests/sql/war_satchel_simulation_guard_correction_contract.sql
+      - name: Migrate isolated owner-bound FUNDED journal and reservation model
+        run: psql -X -v ON_ERROR_STOP=1 -f prisma/migrations/20261017_012000_war_satchel_funded_ledger_foundation/migration.sql
+      - name: Prove global deposit uniqueness, no overdraft, no 2 percent refund fee and immutable held wager
+        run: psql -X -v ON_ERROR_STOP=1 -f tests/sql/war_satchel_funded_ledger_contract.sql
