@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ChevronDown, Coins, Crosshair, LockKeyhole, Radar, Settings2, ShieldCheck, X, Wallet, ArrowDownToLine } from "lucide-react";
 import { useKeplr } from "@/hooks/use-keplr";
 import WarSatchelWalletProof from "@/components/profile/WarSatchelWalletProof";
+import WarSatchelFundingAction from "@/components/profile/WarSatchelFundingAction";
 import { useWoloBalance } from "@/hooks/useWoloBalance";
 import { deriveWoloBalanceReadState, formatMinimalDenomAmount } from "@/lib/woloBalanceRead";
 
@@ -279,15 +280,14 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
               ))}
             </div>
           </div>
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-            <span className="text-xs text-amber-200">
-              {depositAmountValid ? "Funding not available yet · escrow verification pending" : "Enter a positive whole-number WOLO amount"}
-            </span>
-            <button type="button" disabled aria-disabled="true"
-              title="War Satchel funding requires an audited custody ledger and chain receipts"
-              className="rounded-xl border border-amber-200/20 bg-white/[.04] px-4 py-3 text-xs font-black uppercase tracking-[.1em] text-slate-400 opacity-70">
-              LOAD FROM WALLET · COMING SOON
-            </button>
+          <div className="mt-4">
+            {!depositAmountValid && (
+              <p className="mb-2 text-xs text-amber-200">Enter a positive whole-number WOLO amount</p>
+            )}
+            <WarSatchelFundingAction
+              walletAddress={walletStatus === "connected" ? walletAddress : ""}
+              depositAmount={depositAmount}
+            />
           </div>
         </div>
       )}
