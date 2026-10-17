@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `ops/hd-satchel-schema-only-shadow-rehearsal-20261017` at `c272fc5e27c4389c6818370ca98fc8ae7804ef1e`
+Implementation baseline: `test/hd-shadow-rehearsal-real-postgres-ci-20261017` at `a5fb9a9d1aefeb21fa1657358eed1ad810675a87`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
