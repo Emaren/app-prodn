@@ -15,7 +15,11 @@ test("unrecognized outcome cannot silently leave a reserved WOLO claim looking r
   assert.match(ledger,/where: \{ id: reservation\.id, status: "reserved" \}/);
   assert.match(ledger,/data: \{ status: "unknown_hold", updatedAt: new Date\(\) \}/);
   assert.match(ledger,/data: \{ status: "funded_unknown_hold", reason: input\.reason \}/);
-  assert.match(adapter,/await ports\.holdUnknown\(claim, "transport_or_execution_unknown"\)/);
+  // Adapter turns a thrown/ambiguous send into UNKNOWN, then persists the
+  // one-shot hold through the dedicated outcome branch.
+  assert.match(adapter,/kind: "unknown_after_broadcast", reason: "transport_or_execution_unknown"/);
+  assert.match(adapter,/outcome\.kind === "unknown_after_broadcast"/);
+  assert.match(adapter,/await ports\.holdUnknown\(claim, outcome\.reason\)/);
   assert.doesNotMatch(executor,/async holdUnknown\(\)\s*\{/);
   assert.doesNotMatch(ledger,/data: \{ status: "funded_unknown_hold", reason: input\.reason, nextAttemptAt:/);
 });
