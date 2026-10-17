@@ -293,7 +293,7 @@ export async function reserveForWatcherExecution(
     reserveUwolo: bigint;
     bank: CanonicalSatchelBank;
   },
-): Promise<{ status: "reserved" | "already_reserved"; reservationId: string }> {
+): Promise<{ status: "reserved" | "already_reserved_do_not_resubmit" | "already_processed_do_not_resubmit"; reservationId: string }> {
   if (!Number.isSafeInteger(input.ownerUserId) || input.ownerUserId <= 0 ||
       !Number.isSafeInteger(input.executionId) || input.executionId <= 0 ||
       !Number.isSafeInteger(input.presetVersion) || input.presetVersion <= 0 ||
@@ -308,7 +308,12 @@ export async function reserveForWatcherExecution(
       if (found.ownerUserId !== input.ownerUserId || found.amountUwolo !== input.reserveUwolo) {
         stop("duplicate_execution_not_same_owner_or_amount");
       }
-      return { status: "already_reserved" as const, reservationId: found.id };
+      return {
+        status: found.status === "reserved"
+          ? "already_reserved_do_not_resubmit" as const
+          : "already_processed_do_not_resubmit" as const,
+        reservationId: found.id,
+      };
     }
     const exec = await tx.betAutoExecution.findUnique({
       where: { id: input.executionId },
