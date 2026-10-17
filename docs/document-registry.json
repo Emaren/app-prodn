@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d7fc4eb7692bd006896dde2e0124796de5fc2e28a999a35f73a493625727e527",
+      "sha256": "c6610b07f0bc7cb7a6e3f3f17791738a25b671e5c3efc35c89957cf43be6d0ac",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "security/hd-satchel-early-custody-gate-20261017",
-    "commit": "48070c530789018053bf212bfd0d1ea51b4bffc9"
+    "branch": "diagnostics/satchel-shadow-schema-delta-20261017",
+    "commit": "ec213fd0d0c9c868026512c3cbcbaa78e95ac2a5"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
