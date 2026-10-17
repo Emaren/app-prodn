@@ -36,12 +36,14 @@ class ShadowSafetyTests(unittest.TestCase):
         with self.assertRaises(MODULE.RehearsalStop):
             MODULE.psql("postgres; DROP DATABASE aoe2hd_db", "SELECT 1")
 
-    def test_six_sql_has_transaction_rollback_and_no_existing_data_backfill(self):
-        sql = MODULE.six_sql().decode("utf-8")
+    def test_cohort_sql_has_transaction_rollback_and_no_existing_data_backfill(self):
+        sql = MODULE.cohort_sql().decode("utf-8")
         self.assertTrue(sql.startswith("BEGIN;"))
         self.assertTrue(sql.rstrip().endswith("ROLLBACK;"))
         self.assertEqual(sql.count("CREATE OR REPLACE FUNCTION"), 6)
         self.assertIn("owner_count", sql)
+        self.assertIn("seven funded table identities missing", sql)
+        self.assertIn("signed funded-spend-consent table missing", sql)
         self.assertNotIn("DROP DATABASE", sql)
         self.assertNotIn("UPDATE users", sql)
 
@@ -84,7 +86,7 @@ class ShadowSafetyTests(unittest.TestCase):
                 ]),
             ):
                 sources = MODULE.source_evidence("a" * 40)
-            self.assertEqual(len(sources), 118)
+            self.assertEqual(len(sources), 119)
             self.assertEqual(
                 sources["historic_000"],
                 hashlib.sha256(b"SELECT 1;\n").hexdigest(),
@@ -125,7 +127,7 @@ class ShadowSafetyTests(unittest.TestCase):
             mock.patch.object(MODULE, "postgres", return_value=b"") as pg,
             mock.patch.object(MODULE, "schema_bytes", return_value=b"same-schema"),
             mock.patch.object(MODULE, "apply_to_shadow") as apply,
-            mock.patch.object(MODULE, "six_sql", return_value=b"BEGIN; ROLLBACK;"),
+            mock.patch.object(MODULE, "cohort_sql", return_value=b"BEGIN; ROLLBACK;"),
         ):
             result = MODULE.rehearse()
         statements = [c.args[1] for c in apply.call_args_list]
@@ -135,8 +137,78 @@ class ShadowSafetyTests(unittest.TestCase):
         self.assertEqual(sum("DROP DATABASE" in c for c in sql_cmds), 1)
         self.assertNotIn('DROP DATABASE "aoe2hd_db"', " ".join(sql_cmds))
         self.assertTrue(result["disposable_database_removed"])
+        self.assertEqual(result["pending_migration_count"], 7)
+        self.assertTrue(result["pending_migrations_exercised"])
         self.assertFalse(result["production_mutated"])
         self.assertFalse(result["production_data_copied"])
+
+    def test_explicit_mismatch_diagnostic_exercises_sql_but_never_certifies(self):
+        # Source/restore textual divergence is real: only the disposable
+        # shadow may run the migration cohort; this is NEVER a release PASS.
+        with (
+            mock.patch.object(MODULE, "postgres", return_value=b"") as pg,
+            mock.patch.object(MODULE, "schema_bytes",
+                              side_effect=[b"source ddl", b"restored ddl", b"restored ddl"]),
+            mock.patch.object(MODULE, "apply_to_shadow") as apply,
+            mock.patch.object(MODULE, "cohort_sql", return_value=b"BEGIN; ROLLBACK;"),
+        ):
+            result = MODULE.rehearse(diagnostic_only_on_schema_mismatch=True)
+        self.assertEqual(result["status"], "DIAGNOSTIC_ONLY_SCHEMA_MISMATCH")
+        self.assertFalse(result["schema_equivalent"])
+        self.assertTrue(result["pending_migrations_exercised"])
+        self.assertFalse(result["production_mutated"])
+        self.assertFalse(result["custody_authorized"])
+        self.assertTrue(result["disposable_database_removed"])
+        self.assertEqual([x.args[1] for x in apply.call_args_list],
+                         [b"source ddl", b"BEGIN; ROLLBACK;"])
+        self.assertEqual(sum("DROP DATABASE" in " ".join(c.args)
+                             for c in pg.call_args_list), 1)
+
+    def test_mismatch_diagnostic_refuses_rollback_schema_drift(self):
+        with (
+            mock.patch.object(MODULE, "postgres", return_value=b"") as pg,
+            mock.patch.object(MODULE, "schema_bytes",
+                              side_effect=[b"source", b"restored", b"drifted"]),
+            mock.patch.object(MODULE, "apply_to_shadow"),
+            mock.patch.object(MODULE, "cohort_sql", return_value=b"BEGIN; ROLLBACK;"),
+        ):
+            with self.assertRaisesRegex(MODULE.RehearsalStop, "schema changed"):
+                MODULE.rehearse(diagnostic_only_on_schema_mismatch=True)
+        self.assertEqual(sum("DROP DATABASE" in " ".join(c.args)
+                             for c in pg.call_args_list), 1)
+
+    def test_diagnostic_flag_requires_explicit_shadow_authorization(self):
+        with mock.patch.object(sys, "argv", [
+            "rehearsal", "--source-sha", "a" * 40,
+            "--diagnose-migrations-on-mismatch",
+        ]):
+            with self.assertRaises(SystemExit):
+                MODULE.main()
+
+    def test_diagnostic_result_exits_nonzero_and_cannot_be_release_pass(self):
+        with (
+            mock.patch.object(sys, "argv", [
+                "rehearsal", "--source-sha", "a" * 40,
+                "--rehearse", "--authorize-shadow-database",
+                "--diagnose-migrations-on-mismatch",
+            ]),
+            mock.patch.object(MODULE, "invoke", return_value=b""),
+            mock.patch.object(MODULE, "source_evidence", return_value={"x": "y"}),
+            mock.patch.object(MODULE, "production_frontier",
+                              return_value={"completed": 112, "rolled_back": 2,
+                                            "pending": list(MODULE.SATCHEL)}),
+            mock.patch.object(MODULE, "rehearse",
+                              return_value={"status": "DIAGNOSTIC_ONLY_SCHEMA_MISMATCH",
+                                            "production_mutated": False}) as rehearse,
+            redirect_stdout(io.StringIO()) as output,
+        ):
+            code = MODULE.main()
+        self.assertEqual(code, 2)
+        self.assertIn("DIAGNOSTIC_ONLY_SCHEMA_MISMATCH", output.getvalue())
+        rehearse.assert_called_once_with(
+            explain_schema_mismatch=False,
+            diagnostic_only_on_schema_mismatch=True,
+        )
 
     def test_rehearsal_error_still_drops_shadow(self):
         with (
@@ -159,7 +231,7 @@ class ShadowSafetyTests(unittest.TestCase):
             mock.patch.object(MODULE, "postgres", side_effect=pg),
             mock.patch.object(MODULE, "schema_bytes", return_value=b"same-schema"),
             mock.patch.object(MODULE, "apply_to_shadow"),
-            mock.patch.object(MODULE, "six_sql", return_value=b"BEGIN; ROLLBACK;"),
+            mock.patch.object(MODULE, "cohort_sql", return_value=b"BEGIN; ROLLBACK;"),
         ):
             with self.assertRaisesRegex(MODULE.RehearsalStop, "cleanup failed"):
                 MODULE.rehearse()
@@ -227,6 +299,115 @@ class ShadowSafetyTests(unittest.TestCase):
                 MODULE.RehearsalStop
             ):
                 MODULE.schema_fingerprint(payload)
+
+
+    def test_schema_delta_is_bounded_and_does_not_echo_source_sql(self):
+        private_source = (
+            b"-- PostgreSQL database dump\n"
+            b"CREATE TABLE public.internal_secret(credential text DEFAULT 'TOP_PRIVATE_A');\n"
+            b"COMMENT ON TABLE public.internal_secret IS 'HIDDEN_HOLDING_B';\n"
+        )
+        shadow = (
+            b"-- PostgreSQL database dump\n"
+            b"CREATE TABLE public.internal_secret(credential text);\n"
+            b"COMMENT ON TABLE public.internal_secret IS 'DIFFERENT_C';\n"
+        )
+        result = MODULE.describe_schema_delta(private_source, shadow)
+        self.assertIn("source_lines=3", result)
+        self.assertIn("source_kind=CREATE", result)
+        self.assertIn("shadow_kind=CREATE", result)
+        self.assertIn("source_line_sha12=", result)
+        for secret in ("TOP_PRIVATE_A", "HIDDEN_HOLDING_B", "DIFFERENT_C",
+                       "internal_secret", "credential"):
+            self.assertNotIn(secret, result)
+
+    def test_schema_delta_identifies_function_section_without_disclosing_sql(self):
+        source = (
+            "-- Name: secret_settlement; Type: FUNCTION; Schema: public; Owner: private_user\n"
+            "CREATE FUNCTION public.secret_settlement() RETURNS text AS $\n"
+            "    SELECT 'owner-signer-secret-123'::regclass, 'aoe2hd_db';\n"
+            "$ LANGUAGE sql;\n"
+        ).encode()
+        shadow = (
+            "-- Name: secret_settlement; Type: FUNCTION; Schema: public; Owner: private_user\n"
+            "CREATE FUNCTION public.secret_settlement() RETURNS text AS $\n"
+            "    SELECT 'other-private-secret-456'::regclass, 'aoe2war_satchel_shadow_test';\n"
+            "$ LANGUAGE sql;\n"
+        ).encode()
+        out = MODULE.describe_schema_delta(source, shadow)
+        self.assertIn("source_section=FUNCTION", out)
+        self.assertIn("shadow_section=FUNCTION", out)
+        self.assertIn("source_clues=LIVE_DATABASE_LITERAL,REGCLASS_CAST,CAST_EXPRESSION", out)
+        self.assertIn("shadow_clues=SHADOW_DATABASE_LITERAL,REGCLASS_CAST,CAST_EXPRESSION", out)
+        for private in (
+            "secret_settlement", "private_user", "owner-signer-secret-123",
+            "other-private-secret-456", "aoe2hd_db",
+            "aoe2war_satchel_shadow_test",
+        ):
+            self.assertNotIn(private, out)
+
+    def test_schema_delta_rejects_unrecognized_dump_section_type(self):
+        source = (
+            "-- Name: a_secret; Type: PRIVATE SECRET; Schema: public; Owner: nobody\n"
+            "    source-123\n"
+        ).encode()
+        shadow = (
+            "-- Name: a_secret; Type: PRIVATE SECRET; Schema: public; Owner: nobody\n"
+            "    shadow-456\n"
+        ).encode()
+        out = MODULE.describe_schema_delta(source, shadow)
+        self.assertIn("source_section=OTHER", out)
+        self.assertIn("shadow_section=OTHER", out)
+        self.assertNotIn("PRIVATE SECRET", out)
+        self.assertNotIn("a_secret", out)
+
+    def test_schema_delta_ignores_validated_pg_dump_nonce(self):
+        prefix = "-- PostgreSQL database dump\n"
+        suffix = "-- PostgreSQL database dump complete\n"
+        def dump(nonce):
+            return (
+                prefix + "\\restrict " + nonce + "\n"
+                + "CREATE TABLE public.test(id bigint);\n"
+                + "\\unrestrict " + nonce + "\n" + suffix
+            ).encode("utf-8")
+        a, b = dump("a" * 64), dump("b" * 64)
+        self.assertEqual(MODULE.schema_fingerprint(a),
+                         MODULE.schema_fingerprint(b))
+        self.assertIn("difference not localized",
+                      MODULE.describe_schema_delta(a, b))
+
+    def test_schema_delta_large_input_stays_bounded(self):
+        massive = b"SELECT 1;\n" * 30_001
+        out = MODULE.describe_schema_delta(massive, massive + b"SELECT 2;\n")
+        self.assertIn("too large", out)
+        self.assertNotIn("SELECT", out)
+
+    def test_shadow_mismatch_diagnostics_fail_closed_and_cleanup(self):
+        source = b"CREATE TABLE public.private_src(id int);\n"
+        shadow = b"CREATE TABLE public.private_src(id bigint);\n"
+        with (
+            mock.patch.object(MODULE, "postgres", return_value=b"") as pg,
+            mock.patch.object(MODULE, "schema_bytes", side_effect=[source, shadow]),
+            mock.patch.object(MODULE, "apply_to_shadow") as apply,
+            mock.patch.object(MODULE, "cohort_sql") as cohort,
+        ):
+            with self.assertRaises(MODULE.RehearsalStop) as caught:
+                MODULE.rehearse(explain_schema_mismatch=True)
+        self.assertIn("shadow schema not equal", str(caught.exception))
+        self.assertIn("source_kind=CREATE", str(caught.exception))
+        self.assertNotIn("private_src", str(caught.exception))
+        self.assertEqual(apply.call_count, 1)
+        cohort.assert_not_called()
+        statements = [" ".join(c.args) for c in pg.call_args_list]
+        self.assertEqual(sum("CREATE DATABASE" in s for s in statements), 1)
+        self.assertEqual(sum("DROP DATABASE" in s for s in statements), 1)
+
+    def test_schema_delta_flag_denied_outside_authorized_rehearsal(self):
+        with mock.patch.object(sys, "argv", [
+            "rehearsal", "--source-sha", "a" * 40, "--explain-schema-mismatch",
+        ]):
+            with self.assertRaises(SystemExit):
+                MODULE.main()
 
 
 if __name__ == "__main__":

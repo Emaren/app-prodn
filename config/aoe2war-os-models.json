@@ -195,6 +195,14 @@
     "WarSatchelWalletChallenge",
     "WarSatchelLedgerAccount",
     "WarSatchelLedgerJournal",
-    "WarSatchelLedgerPosting"
+    "WarSatchelLedgerPosting",
+    "SatchelFundedBalance",
+    "SatchelFundedReceipt",
+    "SatchelFundedJournal",
+    "SatchelFundedReservation",
+    "SatchelAutoSpendConsent",
+    "SatchelFundedWithdrawal",
+    "SatchelWithdrawalChallenge",
+    "SatchelFundedClaimReturn"
   ]
 }

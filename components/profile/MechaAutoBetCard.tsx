@@ -4,6 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import { ChevronDown, Coins, Crosshair, LockKeyhole, Radar, Settings2, ShieldCheck, X, Wallet, ArrowDownToLine } from "lucide-react";
 import { useKeplr } from "@/hooks/use-keplr";
 import WarSatchelWalletProof from "@/components/profile/WarSatchelWalletProof";
+import WarSatchelFundingAction from "@/components/profile/WarSatchelFundingAction";
+import WarSatchelSpendAuthorization from "@/components/profile/WarSatchelSpendAuthorization";
+import WarSatchelWithdrawAction from "@/components/profile/WarSatchelWithdrawAction";
 import { useWoloBalance } from "@/hooks/useWoloBalance";
 import { deriveWoloBalanceReadState, formatMinimalDenomAmount } from "@/lib/woloBalanceRead";
 
@@ -259,6 +262,13 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
             </button>
           </div>
           <WarSatchelWalletProof walletAddress={walletStatus === "connected" ? walletAddress : ""} />
+          {server?.preset && server.preset.version > 0 && (
+            <WarSatchelSpendAuthorization
+              walletAddress={walletStatus === "connected" ? walletAddress : ""}
+              presetVersion={server.preset.version}
+              plannedStakeWolo={server.preset.winnerStakeWolo + server.preset.desyncStakeWolo}
+            />
+          )}
           <div className="mt-4 grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end">
             <label className="text-[10px] font-black uppercase tracking-[.16em] text-slate-400">
               WOLO FROM YOUR WALLET
@@ -279,15 +289,17 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
               ))}
             </div>
           </div>
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-            <span className="text-xs text-amber-200">
-              {depositAmountValid ? "Funding not available yet · escrow verification pending" : "Enter a positive whole-number WOLO amount"}
-            </span>
-            <button type="button" disabled aria-disabled="true"
-              title="War Satchel funding requires an audited custody ledger and chain receipts"
-              className="rounded-xl border border-amber-200/20 bg-white/[.04] px-4 py-3 text-xs font-black uppercase tracking-[.1em] text-slate-400 opacity-70">
-              LOAD FROM WALLET · COMING SOON
-            </button>
+          <div className="mt-4">
+            {!depositAmountValid && (
+              <p className="mb-2 text-xs text-amber-200">Enter a positive whole-number WOLO amount</p>
+            )}
+            <WarSatchelFundingAction
+              walletAddress={walletStatus === "connected" ? walletAddress : ""}
+              depositAmount={depositAmount}
+            />
+            <WarSatchelWithdrawAction
+              walletAddress={walletStatus === "connected" ? walletAddress : ""}
+            />
           </div>
         </div>
       )}

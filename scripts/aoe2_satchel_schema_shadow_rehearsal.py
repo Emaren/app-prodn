@@ -30,6 +30,7 @@ SATCHEL = (
     "20261014_164500_war_satchel_simulation_concurrency_guard",
     "20261014_191500_war_satchel_simulation_single_owner",
     "20261015_151500_war_satchel_simulation_guard_correction",
+    "20261017_012000_war_satchel_funded_ledger_foundation",
 )
 SHA = re.compile(r"^[0-9a-f]{40}$")
 HEX_SHA256 = re.compile(r"^[0-9a-f]{64}$")
@@ -80,8 +81,8 @@ def source_evidence(expected_sha: str) -> dict[str, str]:
     folder = ROOT / "prisma" / "migrations"
     sql_files = sorted(folder.glob("*/migration.sql"))
     names = [p.parent.name for p in sql_files]
-    if len(names) != 118 or len(set(names)) != 118:
-        raise RehearsalStop("source migration inventory is not 118 unique files")
+    if len(names) != 119 or len(set(names)) != 119:
+        raise RehearsalStop("source migration inventory is not 119 unique files")
     if [name for name in names if name in SATCHEL] != list(SATCHEL):
         raise RehearsalStop("exact Satchel migration identity/order changed")
     if any(
@@ -214,7 +215,111 @@ def schema_fingerprint(data: bytes) -> str:
     return hashlib.sha256("".join(lines).encode("utf-8")).hexdigest()
 
 
-def six_sql() -> bytes:
+def describe_schema_delta(source: bytes, restored: bytes) -> str:
+    """Bounded structural diff metadata, never raw production SQL or identifiers.
+
+    This is diagnostic only: any difference remains a HARD STOP. pg_dump
+    --schema-only can contain function constants and comments; neither raw
+    bytes nor contextual snippets are printed or written to disk.
+    """
+    import difflib
+
+    original = source.decode("utf-8", "strict").splitlines()
+    shadow = restored.decode("utf-8", "strict").splitlines()
+    # Caller invoked schema_fingerprint() for both dumps first, which has
+    # already rejected missing, malformed or unpaired restriction tokens.
+    # Ignore only those validated non-schema tokens in this diagnostic too.
+    for lines in (original, shadow):
+        for i, line in enumerate(lines):
+            if line.startswith("\\restrict ") or line.startswith("\\unrestrict "):
+                lines[i] = line.split(" ", 1)[0] + " VERIFIED_NONCE"
+    if len(original) > 30_000 or len(shadow) > 30_000:
+        return (
+            f"schema line counts source={len(original)} shadow={len(shadow)}; "
+            "too large for bounded delta; equality remains blocked"
+        )
+
+    def kind(line: str) -> str:
+        if line.startswith("--"):
+            return "comment"
+        if line.startswith("\\"):
+            return "psql-directive"
+        token = re.match(r"\s*([A-Za-z_]+)", line)
+        keyword = token.group(1).upper() if token else "BLANK_OR_PUNCT"
+        # Whitelist SQL statement verbs; redact all other content as OTHER.
+        return keyword if keyword in {
+            "CREATE", "ALTER", "DROP", "COMMENT", "SELECT", "SET", "GRANT",
+            "REVOKE", "COPY", "INSERT", "UPDATE", "DELETE", "BEGIN", "END",
+        } else "OTHER"
+
+    def section_type(lines: list[str], offset: int) -> str:
+        """Only the pg_dump metadata TYPE; never print object name or SQL.
+
+        A changed column/function body normally begins with whitespace and
+        is otherwise labeled OTHER. Inspect the preceding pg_dump section
+        descriptor, but strictly allowlist the returned TYPE token.
+        """
+        allowed = {
+            "ACL", "AGGREGATE", "CAST", "COLLATION", "COMMENT",
+            "CONSTRAINT", "DEFAULT", "DOMAIN", "EXTENSION", "FUNCTION",
+            "INDEX", "MATERIALIZED VIEW", "POLICY", "PROCEDURE",
+            "PUBLICATION", "RULE", "SCHEMA", "SEQUENCE", "TABLE",
+            "TRIGGER", "TYPE", "VIEW",
+        }
+        # This is diagnostic metadata, not schema equivalence evidence.
+        for prior in reversed(lines[max(0, offset - 1500):offset + 1]):
+            if not prior.startswith("-- Name: "):
+                continue
+            match = re.search(r"; Type: ([A-Z ]+); Schema:", prior)
+            if match:
+                return match.group(1) if match.group(1) in allowed else "OTHER"
+        return "UNKNOWN"
+
+    def safe_clues(line: str) -> str:
+        """Fixed labels only; literals, identifiers and paths are never emitted."""
+        flags = [
+            label for label, present in (
+                ("LIVE_DATABASE_LITERAL", SOURCE_DATABASE in line),
+                ("SHADOW_DATABASE_LITERAL", SHADOW_PREFIX in line),
+                ("REGCLASS_CAST", "::regclass" in line.lower()),
+                ("CAST_EXPRESSION", "::" in line),
+                ("FUNCTION_SEARCH_PATH", "search_path" in line.lower()),
+            )
+            if present
+        ]
+        return ",".join(flags) if flags else "NONE"
+
+    def line_id(line: str) -> str:
+        return hashlib.sha256(line.encode("utf-8")).hexdigest()[:12]
+
+    diffs = []
+    matcher = difflib.SequenceMatcher(a=original, b=shadow, autojunk=True)
+    for tag, a, b, c, d in matcher.get_opcodes():
+        if tag == "equal":
+            continue
+        sample_a = original[a] if a < b else ""
+        sample_b = shadow[c] if c < d else ""
+        diffs.append(
+            f"{tag}: source_lines={a + 1}-{b} "
+            f"shadow_lines={c + 1}-{d} "
+            f"source_kind={kind(sample_a)} shadow_kind={kind(sample_b)} "
+            f"source_section={section_type(original, a)} "
+            f"shadow_section={section_type(shadow, c)} "
+            f"source_clues={safe_clues(sample_a)} "
+            f"shadow_clues={safe_clues(sample_b)} "
+            f"source_line_sha12={line_id(sample_a)} "
+            f"shadow_line_sha12={line_id(sample_b)}"
+        )
+        if len(diffs) >= 6:
+            break
+    return (
+        f"schema delta source_lines={len(original)} "
+        f"shadow_lines={len(shadow)}; "
+        + ("; ".join(diffs) if diffs else "difference not localized")
+    )
+
+
+def cohort_sql() -> bytes:
     body = bytearray(b"BEGIN;\nSET LOCAL statement_timeout='30s';\n")
     body.extend(b"SET LOCAL lock_timeout='5s';\n")
     for name in SATCHEL:
@@ -226,8 +331,27 @@ DECLARE n_tables INTEGER; n_functions INTEGER; body TEXT;
 BEGIN
   SELECT count(*) INTO n_tables FROM pg_class c JOIN pg_namespace n
   ON n.oid=c.relnamespace WHERE n.nspname='public'
-  AND c.relkind IN ('r','p') AND c.relname LIKE 'war_satchel_%';
-  IF n_tables <> 6 THEN RAISE EXCEPTION 'six table identities missing'; END IF;
+  AND c.relkind IN ('r','p') AND c.relname IN (
+    'war_satchel_deposit_intents',
+    'war_satchel_proof_candidates',
+    'war_satchel_wallet_challenges',
+    'war_satchel_ledger_accounts',
+    'war_satchel_ledger_journals',
+    'war_satchel_ledger_postings'
+  );
+  IF n_tables <> 6 THEN RAISE EXCEPTION 'six original simulation tables missing'; END IF;
+  SELECT count(*) INTO n_tables FROM pg_class c JOIN pg_namespace n
+  ON n.oid=c.relnamespace WHERE n.nspname='public'
+  AND c.relkind IN ('r','p') AND c.relname LIKE 'war_satchel_funded_%';
+  IF n_tables <> 7 THEN
+    RAISE EXCEPTION 'seven funded table identities missing';
+  END IF;
+  SELECT count(*) INTO n_tables FROM pg_class c JOIN pg_namespace n
+  ON n.oid=c.relnamespace WHERE n.nspname='public'
+  AND c.relkind IN ('r','p') AND c.relname='war_satchel_auto_spend_consents';
+  IF n_tables <> 1 THEN
+    RAISE EXCEPTION 'signed funded-spend-consent table missing';
+  END IF;
   SELECT count(*) INTO n_functions FROM pg_proc p JOIN pg_namespace n
   ON n.oid=p.pronamespace WHERE n.nspname='public'
   AND p.proname LIKE 'war_satchel_%';
@@ -253,7 +377,8 @@ def apply_to_shadow(database: str, sql: bytes) -> None:
     )
 
 
-def rehearse() -> dict:
+def rehearse(*, explain_schema_mismatch: bool = False,
+            diagnostic_only_on_schema_mismatch: bool = False) -> dict:
     name = SHADOW_PREFIX + secrets.token_hex(7)
     if not SAFE_NAME.fullmatch(name):
         raise RehearsalStop("unsafe random scratch database name")
@@ -271,18 +396,34 @@ def rehearse() -> dict:
         baseline = schema_bytes(name)
         source_digest = schema_fingerprint(source_dump)
         baseline_digest = schema_fingerprint(baseline)
-        if source_digest != baseline_digest:
-            raise RehearsalStop("shadow schema not equal to production schema-only export")
-        apply_to_shadow(name, six_sql())
+        schema_mismatch = source_digest != baseline_digest
+        diagnostics = (
+            describe_schema_delta(source_dump, baseline)
+            if schema_mismatch and explain_schema_mismatch else ""
+        )
+        if schema_mismatch and not diagnostic_only_on_schema_mismatch:
+            raise RehearsalStop(
+                "shadow schema not equal to production schema-only export"
+                + (": " + diagnostics if diagnostics else "")
+            )
+        # Diagnostic ONLY: run the same seven-file SQL cohort in the disposable
+        # restored shadow. Passing here never proves source schema equivalence,
+        # nor permits applying any migration to the production database.
+        apply_to_shadow(name, cohort_sql())
         after_digest = schema_fingerprint(schema_bytes(name))
         if baseline_digest != after_digest:
-            raise RehearsalStop("schema changed after six-migration ROLLBACK")
+            raise RehearsalStop("schema changed after seven-migration ROLLBACK")
         result = {
-            "status": "PASS", "database": SOURCE_DATABASE,
+            "status": ("DIAGNOSTIC_ONLY_SCHEMA_MISMATCH" if schema_mismatch else "PASS"),
+            "database": SOURCE_DATABASE,
             "schema_sha256": source_digest, "shadow_schema_sha256": baseline_digest,
+            "schema_equivalent": not schema_mismatch,
+            "schema_delta": diagnostics or ("DIFFERENT" if schema_mismatch else "NONE"),
             "post_rollback_sha256": after_digest,
-            "six_migrations_exercised": True,
-            "comparison": "all schema bytes except validated paired pg_dump restriction nonce",
+            "pending_migrations_exercised": True,
+            "pending_migration_count": len(SATCHEL),
+            "comparison": ("MISMATCH: no production installation authority" if schema_mismatch
+                           else "all schema bytes except validated paired pg_dump restriction nonce"),
             "production_mutated": False, "production_data_copied": False,
             "custody_authorized": False,
         }
@@ -312,9 +453,17 @@ def main() -> int:
     mode.add_argument("--check", action="store_true", help="read-only (default)")
     mode.add_argument("--rehearse", action="store_true", help="use a disposable DB")
     ap.add_argument("--authorize-shadow-database", action="store_true")
+    ap.add_argument("--explain-schema-mismatch", action="store_true",
+                    help="print only bounded hashed diff metadata on a failed shadow comparison")
+    ap.add_argument("--diagnose-migrations-on-mismatch", action="store_true",
+                    help="shadow-only SQL diagnosis on mismatch, never a green release gate")
     args = ap.parse_args()
     if args.rehearse != args.authorize_shadow_database:
         ap.error("--rehearse requires --authorize-shadow-database and vice versa")
+    if args.explain_schema_mismatch and not args.rehearse:
+        ap.error("--explain-schema-mismatch requires --rehearse with explicit authorization")
+    if args.diagnose_migrations_on_mismatch and not args.rehearse:
+        ap.error("--diagnose-migrations-on-mismatch requires --rehearse with explicit authorization")
     try:
         invoke(["sudo", "-n", "-u", "postgres", "true"])
         sources = source_evidence(args.source_sha)
@@ -327,10 +476,15 @@ def main() -> int:
         if not args.rehearse:
             print("PASS: READ-ONLY FRONTIER; no schema export or database creation")
             return 0
-        receipt = rehearse()
+        receipt = rehearse(
+            explain_schema_mismatch=args.explain_schema_mismatch,
+            diagnostic_only_on_schema_mismatch=args.diagnose_migrations_on_mismatch,
+        )
         for key, value in receipt.items():
             print(f"{key}: {value}")
-        return 0
+        # Schema mismatch cannot be classified as a passed release gate,
+        # even if the detached seven-file SQL cohort rolls back cleanly.
+        return 0 if receipt["status"] == "PASS" else 2
     except RehearsalStop as exc:
         print(f"STOP: {exc}", file=sys.stderr)
         return 2

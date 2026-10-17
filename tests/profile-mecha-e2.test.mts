@@ -78,10 +78,13 @@ test("Mecha UI shows only server-owned preview status; not an on-chain wallet", 
   assert.match(card, /Chain verified/);
   assert.match(card, /LOAD SATCHEL/);
   assert.match(card, /WOLO FROM YOUR WALLET/);
-  assert.match(card, /LOAD FROM WALLET · COMING SOON/);
+  assert.match(card, /<WarSatchelFundingAction/);
+  assert.match(card, /<WarSatchelWithdrawAction/);
   assert.doesNotMatch(card, /depositAmountValue <= 50_000/);
-  assert.match(card, /disabled aria-disabled="true"/);
-  assert.match(card, /escrow verification pending/);
+  const funding = readFileSync(new URL("../components/profile/WarSatchelFundingAction.tsx", import.meta.url), "utf8");
+  assert.match(funding, /disabled=\{busy \|\| !ready \|\| !valid \|\| mayHaveSent \|\|\s*knownIntents\.length > 0\}/);
+  assert.match(funding, /FUNDING AWAITING VAULT CERTIFICATION/);
+  assert.match(funding, /FUNDING AWAITING VAULT CERTIFICATION/);
   assert.match(card, /satchelVerifiedBalanceWolo: string \| null = null/);
   assert.match(card, /satchelVerifiedBalanceWolo \?\? "—"/);
   assert.doesNotMatch(card, /0 LOCKED|satchelVerified \? "0"/);
@@ -115,5 +118,5 @@ test("Mecha wallet control is authenticated ADR-36 only, never a deposit authori
   assert.match(control, /0 WOLO MOVED/);
   assert.doesNotMatch(control, /sendTokens|signAndBroadcast|MsgSend|bank\/send/);
   assert.match(server, /WAR_SATCHEL_OWNER_PROOF_ENABLED !== "true"/);
-  assert.match(card, /LOAD FROM WALLET · COMING SOON/);
+  assert.match(card, /<WarSatchelFundingAction/);
 });
