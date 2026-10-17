@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/hd-ship-plan-migration-frontier-20261017` at `c7b17107ba16a8d3510199d7a9a3638f4f5bae0b`
+Implementation baseline: `test/hd-satchel-six-migration-atomic-rehearsal-20261017` at `b460d11c133c9f3b0175b53cbeb3970c8353d0ce`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
