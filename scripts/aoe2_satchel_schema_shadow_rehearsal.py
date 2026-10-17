@@ -30,6 +30,7 @@ SATCHEL = (
     "20261014_164500_war_satchel_simulation_concurrency_guard",
     "20261014_191500_war_satchel_simulation_single_owner",
     "20261015_151500_war_satchel_simulation_guard_correction",
+    "20261017_012000_war_satchel_funded_ledger_foundation",
 )
 SHA = re.compile(r"^[0-9a-f]{40}$")
 HEX_SHA256 = re.compile(r"^[0-9a-f]{64}$")
@@ -80,8 +81,8 @@ def source_evidence(expected_sha: str) -> dict[str, str]:
     folder = ROOT / "prisma" / "migrations"
     sql_files = sorted(folder.glob("*/migration.sql"))
     names = [p.parent.name for p in sql_files]
-    if len(names) != 118 or len(set(names)) != 118:
-        raise RehearsalStop("source migration inventory is not 118 unique files")
+    if len(names) != 119 or len(set(names)) != 119:
+        raise RehearsalStop("source migration inventory is not 119 unique files")
     if [name for name in names if name in SATCHEL] != list(SATCHEL):
         raise RehearsalStop("exact Satchel migration identity/order changed")
     if any(
@@ -214,7 +215,7 @@ def schema_fingerprint(data: bytes) -> str:
     return hashlib.sha256("".join(lines).encode("utf-8")).hexdigest()
 
 
-def six_sql() -> bytes:
+def cohort_sql() -> bytes:
     body = bytearray(b"BEGIN;\nSET LOCAL statement_timeout='30s';\n")
     body.extend(b"SET LOCAL lock_timeout='5s';\n")
     for name in SATCHEL:
@@ -227,7 +228,19 @@ BEGIN
   SELECT count(*) INTO n_tables FROM pg_class c JOIN pg_namespace n
   ON n.oid=c.relnamespace WHERE n.nspname='public'
   AND c.relkind IN ('r','p') AND c.relname LIKE 'war_satchel_%';
-  IF n_tables <> 6 THEN RAISE EXCEPTION 'six table identities missing'; END IF;
+  IF n_tables <> 6 THEN RAISE EXCEPTION 'six simulation table identities missing'; END IF;
+  SELECT count(*) INTO n_tables FROM pg_class c JOIN pg_namespace n
+  ON n.oid=c.relnamespace WHERE n.nspname='public'
+  AND c.relkind IN ('r','p') AND c.relname LIKE 'war_satchel_funded_%';
+  IF n_tables <> 7 THEN
+    RAISE EXCEPTION 'seven funded table identities missing';
+  END IF;
+  SELECT count(*) INTO n_tables FROM pg_class c JOIN pg_namespace n
+  ON n.oid=c.relnamespace WHERE n.nspname='public'
+  AND c.relkind IN ('r','p') AND c.relname='war_satchel_auto_spend_consents';
+  IF n_tables <> 1 THEN
+    RAISE EXCEPTION 'signed funded-spend-consent table missing';
+  END IF;
   SELECT count(*) INTO n_functions FROM pg_proc p JOIN pg_namespace n
   ON n.oid=p.pronamespace WHERE n.nspname='public'
   AND p.proname LIKE 'war_satchel_%';
@@ -273,15 +286,16 @@ def rehearse() -> dict:
         baseline_digest = schema_fingerprint(baseline)
         if source_digest != baseline_digest:
             raise RehearsalStop("shadow schema not equal to production schema-only export")
-        apply_to_shadow(name, six_sql())
+        apply_to_shadow(name, cohort_sql())
         after_digest = schema_fingerprint(schema_bytes(name))
         if baseline_digest != after_digest:
-            raise RehearsalStop("schema changed after six-migration ROLLBACK")
+            raise RehearsalStop("schema changed after seven-migration ROLLBACK")
         result = {
             "status": "PASS", "database": SOURCE_DATABASE,
             "schema_sha256": source_digest, "shadow_schema_sha256": baseline_digest,
             "post_rollback_sha256": after_digest,
-            "six_migrations_exercised": True,
+            "pending_migrations_exercised": True,
+            "pending_migration_count": len(SATCHEL),
             "comparison": "all schema bytes except validated paired pg_dump restriction nonce",
             "production_mutated": False, "production_data_copied": False,
             "custody_authorized": False,
