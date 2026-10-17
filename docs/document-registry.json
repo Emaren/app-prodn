@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "3b76dd61ea314dd897d2e9a2ee2b324fee6fe60e5349b8d1f615a8ae90d64658",
+      "sha256": "bbeb688f005693e055909e444fd26174aec8817f48fc884f87e76035d90f9726",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "test/hd-satchel-six-migration-atomic-rehearsal-20261017",
-    "commit": "b460d11c133c9f3b0175b53cbeb3970c8353d0ce"
+    "branch": "ops/hd-satchel-schema-only-shadow-rehearsal-20261017",
+    "commit": "c272fc5e27c4389c6818370ca98fc8ae7804ef1e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
