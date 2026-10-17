@@ -106,5 +106,5 @@ test("runtime fixture remains offline: no wallet transfer or custody authorizati
   const card = readFileSync(path.resolve(ROOT, "components/profile/MechaAutoBetCard.tsx"), "utf8");
   assert.match(card, /<WarSatchelFundingAction/);
   const funding = readFileSync(new URL("../components/profile/WarSatchelFundingAction.tsx", import.meta.url), "utf8");
-  assert.match(funding, /disabled=\{busy \|\| !ready \|\| !valid\}/);
+  assert.match(funding, /disabled=\{busy \|\| !ready \|\| !valid \|\| mayHaveSent \|\|\s*knownIntents\.length > 0\}/);
 });
