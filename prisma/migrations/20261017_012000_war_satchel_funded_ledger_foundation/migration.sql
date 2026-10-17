@@ -45,6 +45,37 @@ CREATE TABLE "war_satchel_funded_receipts" (
 );
 CREATE INDEX "ix_satchel_funded_receipts_owner" ON "war_satchel_funded_receipts" ("owner_user_id", "created_at");
 
+-- Verified escrow→Satchel payout/refund receipts are NOT ordinary deposits.
+-- Each settled pending claim belongs to exactly one existing Steam owner.
+-- A chain transfer is globally unique; no two owners can credit it twice.
+CREATE TABLE "war_satchel_funded_claim_returns" (
+  "id" BIGSERIAL PRIMARY KEY,
+  "claim_id" INTEGER NOT NULL,
+  "owner_user_id" INTEGER NOT NULL,
+  "source_market_id" INTEGER NOT NULL,
+  "claim_kind" VARCHAR(24) NOT NULL,
+  "chain_id" VARCHAR(32) NOT NULL DEFAULT 'wolo-1',
+  "tx_hash" VARCHAR(64) NOT NULL,
+  "transfer_index" INTEGER NOT NULL DEFAULT 0,
+  "amount_uwolo" BIGINT NOT NULL,
+  "vault_address" VARCHAR(100) NOT NULL,
+  "canonical_height" BIGINT NOT NULL,
+  "created_at" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "fk_satchel_return_claim" FOREIGN KEY ("claim_id")
+    REFERENCES "pending_wolo_claims"("id") ON DELETE RESTRICT,
+  CONSTRAINT "fk_satchel_return_owner" FOREIGN KEY ("owner_user_id")
+    REFERENCES "users"("id") ON DELETE RESTRICT,
+  CONSTRAINT "uq_satchel_funded_return_claim" UNIQUE ("claim_id"),
+  CONSTRAINT "uq_satchel_funded_return_transfer" UNIQUE ("chain_id","tx_hash","transfer_index"),
+  CONSTRAINT "ck_satchel_funded_return_canonical" CHECK (
+    "chain_id"='wolo-1' AND "transfer_index"=0
+    AND "claim_kind" IN ('bet_payout','bet_refund')
+    AND "amount_uwolo">0 AND "canonical_height">0
+  )
+);
+CREATE INDEX "ix_satchel_funded_return_owner"
+  ON "war_satchel_funded_claim_returns"("owner_user_id","created_at");
+
 -- Every transition is a separately idempotent financial source operation.
 -- Entries are audit evidence; only the explicitly reviewed DB transaction
 -- adapter may change balances. Live debit transitions must balance to zero.
@@ -59,21 +90,30 @@ CREATE TABLE "war_satchel_funded_journal" (
   "delta_committed_uwolo" BIGINT NOT NULL,
   "delta_withdrawal_pending_uwolo" BIGINT NOT NULL,
   "receipt_id" BIGINT,
+  "claim_return_id" BIGINT,
   "execution_id" INTEGER,
   "created_at" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "fk_satchel_funded_journal_owner"
     FOREIGN KEY ("owner_user_id") REFERENCES "users"("id") ON DELETE RESTRICT,
   CONSTRAINT "fk_satchel_funded_journal_receipt"
     FOREIGN KEY ("receipt_id") REFERENCES "war_satchel_funded_receipts"("id") ON DELETE RESTRICT,
+  CONSTRAINT "fk_satchel_funded_journal_claim_return"
+    FOREIGN KEY ("claim_return_id") REFERENCES "war_satchel_funded_claim_returns"("id") ON DELETE RESTRICT,
   CONSTRAINT "uq_satchel_funded_journal_source" UNIQUE ("source_key"),
   CONSTRAINT "ck_satchel_funded_journal_positive" CHECK ("amount_uwolo" > 0),
   CONSTRAINT "ck_satchel_funded_journal_kind" CHECK ("event_kind" IN
-    ('deposit_credit', 'wager_reserve', 'wager_commit', 'wager_refund',
+    ('deposit_credit', 'claim_return_credit', 'wager_reserve', 'wager_commit', 'wager_refund',
      'withdraw_reserve', 'withdraw_cancel', 'withdraw_sent')),
   CONSTRAINT "ck_satchel_funded_journal_conservation" CHECK (
     CASE "event_kind"
       WHEN 'deposit_credit' THEN
         "receipt_id" IS NOT NULL
+        AND "delta_available_uwolo" = "amount_uwolo"
+        AND "delta_reserved_uwolo" = 0
+        AND "delta_committed_uwolo" = 0
+        AND "delta_withdrawal_pending_uwolo" = 0
+      WHEN 'claim_return_credit' THEN
+        "claim_return_id" IS NOT NULL
         AND "delta_available_uwolo" = "amount_uwolo"
         AND "delta_reserved_uwolo" = 0
         AND "delta_committed_uwolo" = 0
@@ -151,6 +191,9 @@ BEGIN
   RAISE EXCEPTION 'funded War Satchel financial receipts and journals are immutable';
 END;
 $satchel_immutable$;
+CREATE TRIGGER satchel_funded_claim_return_immutable
+  BEFORE UPDATE OR DELETE ON "war_satchel_funded_claim_returns"
+  FOR EACH ROW EXECUTE FUNCTION war_satchel_funded_audit_immutable();
 CREATE TRIGGER satchel_funded_receipt_immutable
   BEFORE UPDATE OR DELETE ON "war_satchel_funded_receipts"
   FOR EACH ROW EXECUTE FUNCTION war_satchel_funded_audit_immutable();
