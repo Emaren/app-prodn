@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/hd-braces-waiver-scope-review-20261017` at `b5deefc3759620e1eee58292dd8584b62798ad4c`
+Implementation baseline: `feat/hd-mecha-funded-seam-with-reviewed-deps-20261017` at `241ffbf847d8f81271cf83b2cdd71637c5de470e`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
