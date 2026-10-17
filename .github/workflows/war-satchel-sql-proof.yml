@@ -74,6 +74,7 @@ jobs:
           psql -X -v ON_ERROR_STOP=1 -c 'CREATE TABLE users (id INTEGER PRIMARY KEY)'
           psql -X -v ON_ERROR_STOP=1 -c 'CREATE TABLE bet_auto_presets (id INTEGER PRIMARY KEY)'
           psql -X -v ON_ERROR_STOP=1 -c 'CREATE TABLE bet_auto_executions (id INTEGER PRIMARY KEY)'
+          psql -X -v ON_ERROR_STOP=1 -c 'CREATE TABLE pending_wolo_claims (id INTEGER PRIMARY KEY)'
       - name: Execute real PostgreSQL migration (fail closed)
         run: |
           psql -X -v ON_ERROR_STOP=1 \
