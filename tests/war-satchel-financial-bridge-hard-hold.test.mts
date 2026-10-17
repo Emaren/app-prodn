@@ -116,6 +116,6 @@ test("all funded financial entry points are fenced at source, not by a mutable f
 
 test("hold is hard-coded false, never a mutable environment or remote value", () => {
   const implementation = source("lib/warSatchelFinancialBridgeHold.ts");
-  assert.match(implementation, /export const SATCHEL_FINANCIAL_BRIDGE_READY: false = false;/);
+  assert.match(implementation, /export const SATCHEL_FINANCIAL_BRIDGE_READY = false as const;/);
   assert.doesNotMatch(implementation, /process\.env|fetch\(|eval\(|readFileSync/);
 });
