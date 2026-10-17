@@ -269,3 +269,58 @@ $satchel_consent_lock$;
 CREATE TRIGGER satchel_signed_consent_economic_lock
   BEFORE UPDATE ON "war_satchel_auto_spend_consents"
   FOR EACH ROW EXECUTE FUNCTION war_satchel_signed_consent_economic_lock();
+
+-- Owner-directed, independently verified withdrawal liability state.
+-- The vault key is NOT stored here; a separately attested signer is required.
+CREATE TABLE "war_satchel_funded_withdrawals" (
+  "id" UUID NOT NULL PRIMARY KEY,
+  "owner_user_id" INTEGER NOT NULL,
+  "owner_wallet_address" VARCHAR(100) NOT NULL,
+  "amount_uwolo" BIGINT NOT NULL,
+  "status" VARCHAR(24) NOT NULL DEFAULT 'reserved',
+  "tx_hash" VARCHAR(64),
+  "confirmed_height" BIGINT,
+  "created_at" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updated_at" TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT "fk_satchel_withdrawal_owner" FOREIGN KEY ("owner_user_id")
+    REFERENCES "users"("id") ON DELETE RESTRICT,
+  CONSTRAINT "uq_satchel_withdrawal_hash" UNIQUE ("tx_hash"),
+  CONSTRAINT "ck_satchel_withdrawal_amount_positive" CHECK ("amount_uwolo" > 0),
+  CONSTRAINT "ck_satchel_withdrawal_status" CHECK
+    ("status" IN ('reserved','unknown_hold','sent','cancelled')),
+  CONSTRAINT "ck_satchel_withdrawal_canonical_finality" CHECK (
+    ("status"='sent' AND "tx_hash" ~ '^[0-9A-F]{64}$'
+      AND "confirmed_height" > 0)
+    OR ("status"<>'sent' AND "tx_hash" IS NULL AND "confirmed_height" IS NULL)
+  )
+);
+CREATE INDEX "ix_satchel_withdrawal_owner_status"
+  ON "war_satchel_funded_withdrawals" ("owner_user_id","status","created_at");
+
+-- Neither administrators nor job retries can change the payee or amount
+-- after reservation. In particular, broadcast uncertainty blocks cancellation.
+CREATE FUNCTION war_satchel_funded_withdrawal_transition()
+RETURNS TRIGGER LANGUAGE plpgsql AS $satchel_withdrawal$
+BEGIN
+  IF (NEW.id, NEW.owner_user_id, NEW.owner_wallet_address,
+      NEW.amount_uwolo, NEW.created_at)
+     IS DISTINCT FROM
+     (OLD.id, OLD.owner_user_id, OLD.owner_wallet_address,
+      OLD.amount_uwolo, OLD.created_at) THEN
+    RAISE EXCEPTION 'funded Satchel withdrawal economic identity immutable';
+  END IF;
+  IF (OLD.status='reserved' AND NEW.status NOT IN ('reserved','unknown_hold','cancelled'))
+     OR (OLD.status='unknown_hold' AND NEW.status NOT IN ('unknown_hold','sent'))
+     OR (OLD.status IN ('sent','cancelled') AND NEW.status<>OLD.status) THEN
+    RAISE EXCEPTION 'illegal funded Satchel withdrawal transition';
+  END IF;
+  IF OLD.status='sent' AND (NEW.tx_hash,NEW.confirmed_height) IS DISTINCT
+     FROM (OLD.tx_hash,OLD.confirmed_height) THEN
+    RAISE EXCEPTION 'finalized Satchel withdrawal proof immutable';
+  END IF;
+  RETURN NEW;
+END;
+$satchel_withdrawal$;
+CREATE TRIGGER satchel_funded_withdrawal_guard
+  BEFORE UPDATE ON "war_satchel_funded_withdrawals"
+  FOR EACH ROW EXECUTE FUNCTION war_satchel_funded_withdrawal_transition();
