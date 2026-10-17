@@ -14,6 +14,7 @@ import {
 } from "@/lib/warSatchelWithdrawalAuthorization";
 import {
   readIndependentSatchelBank,reserveOwnerSatchelWithdrawal,
+  cancelUnbroadcastSatchelWithdrawal,
 } from "@/lib/warSatchelFundedLedger";
 
 export const runtime="nodejs";
@@ -156,5 +157,47 @@ export async function PUT(request:NextRequest){
     });
   }catch{
     return out(409,{detail:"Keplr signature, owner identity, fresh vault balance or one-use approval failed. No payout broadcast."});
+  }
+}
+
+/**
+ * Owner-only full cancellation BEFORE signing/broadcast, never an ambiguous
+ * transfer refund. The protected global vault transaction lock races the
+ * signer fence: whichever one wins determines the only legal next state.
+ */
+export async function DELETE(request: NextRequest) {
+  if (!enabled()) return out(503, {detail:"Withdrawals are not certified."});
+  if (!origin(request)) return out(403, {detail:"Cross-site cancellation denied."});
+  const active=await actor(request);
+  if(!active) return out(401,{detail:"Sign in and link Keplr."});
+  const body=await parse(request);
+  if(!body||Object.keys(body).join(",")!=="withdrawalId"||
+     typeof body.withdrawalId!=="string"||!UUID.test(body.withdrawalId)) {
+    return out(400,{detail:"Invalid withdrawal request identity."});
+  }
+  try {
+    const withdrawal=await active.prisma.satchelFundedWithdrawal.findFirst({
+      where:{
+        id:body.withdrawalId,
+        ownerUserId:active.user.id,
+        ownerWalletAddress:active.user.walletAddress!,
+      },
+      select:{id:true,status:true},
+    });
+    if(!withdrawal) return out(404,{detail:"Withdrawal not found for this owner."});
+    if(withdrawal.status==="unknown_hold"||withdrawal.status==="sent") {
+      return out(409,{detail:"Transaction signing may have started; cancellation is not safe."});
+    }
+    const result=await cancelUnbroadcastSatchelWithdrawal(active.prisma,{
+      withdrawalId:withdrawal.id,ownerUserId:active.user.id,
+      // Safe only because the financial journal enforces status=reserved
+      // inside the same global vault lock used by the signing attempt.
+      independentlyNoBroadcast:true,
+    });
+    return out(200,{state:result.state,fullyRefunded:true});
+  } catch {
+    return out(409,{
+      detail:"Cancellation could not be proven before broadcast. No balance has been inferred; check withdrawal status.",
+    });
   }
 }
