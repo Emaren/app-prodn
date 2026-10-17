@@ -81,9 +81,9 @@ test("real secp256k1 ADR36 signature proves exact owner/preset/budget but does n
 });
 
 test("tampered per-game, daily, or desync stake cannot inherit original signature", () => {
-  assert.throws(() => verify({ ...original, winnerStakeWolo: 76 }), /invalid ADR-36 signature/);
+  assert.throws(() => verify({ ...original, winnerStakeWolo: 74 }), /invalid ADR-36 signature/);
   assert.throws(() => verify({ ...original, dailyCapWolo: 1001 }), /invalid ADR-36 signature/);
-  assert.throws(() => verify({ ...original, desyncStakeWolo: 26 }), /invalid ADR-36 signature/);
+  assert.throws(() => verify({ ...original, desyncStakeWolo: 24 }), /invalid ADR-36 signature/);
 });
 
 test("wallet account, owner, plan version and nonce cannot be substituted", () => {
