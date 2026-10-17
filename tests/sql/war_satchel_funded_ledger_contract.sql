@@ -41,8 +41,8 @@ BEGIN
   BEGIN
     INSERT INTO war_satchel_funded_journal
     (owner_user_id, source_key, event_kind, amount_uwolo, delta_available_uwolo,
-     delta_reserved_uwolo, delta_committed_uwolo, delta_withdrawal_pending_uwolo)
-    VALUES (71241,'test:credited','wager_refund',1,1,-1,0,0);
+     delta_reserved_uwolo, delta_committed_uwolo, delta_withdrawal_pending_uwolo,execution_id)
+    VALUES (71241,'test:credited','wager_refund',1,1,-1,0,0,81001);
   EXCEPTION WHEN unique_violation THEN failed := TRUE;
   END;
   IF NOT failed THEN RAISE EXCEPTION 'duplicate journal source accepted'; END IF;
