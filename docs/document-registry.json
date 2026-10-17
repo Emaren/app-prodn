@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "0e53d544e40469d857d38b6b58f4aad63c164fefe1b54732e339c407d9cc45f8",
+      "sha256": "70c7af41c6a33e1270fc0e34c33885136e660199d9f4985343ba6e67c9fb2d56",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "main",
-    "commit": "f8d47807a626cfe982488a5ab4f0591a10d5044c"
+    "branch": "fix/hd-release-gate-test-lint-20261017",
+    "commit": "7c11e885e7e9e2a5f38131822117e8692729c8e0"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `main` at `f8d47807a626cfe982488a5ab4f0591a10d5044c`
+Implementation baseline: `fix/hd-release-gate-test-lint-20261017` at `7c11e885e7e9e2a5f38131822117e8692729c8e0`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

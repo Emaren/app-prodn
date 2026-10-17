@@ -44,6 +44,10 @@ function fixture(options: {
   let reads = 0;
   const tx = {
     $executeRaw: async (_parts: TemplateStringsArray, _lockId: bigint) => {
+      // Preserve the SQL-template mock signature while explicitly consuming
+      // the parameters unused by this lock-counting regression fixture.
+      void _parts;
+      void _lockId;
       locks += 1;
       return 1;
     },
