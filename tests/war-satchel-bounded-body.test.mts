@@ -27,6 +27,9 @@ test("authenticated Comet proof can exceed 1 MiB without losing byte bounds", as
   const data = new Uint8Array(size).fill(0x61);
   assert.equal((await readWarSatchelBoundedUtf8(stream(data), 15 * 1024 * 1024))?.length, size);
   assert.equal(await readWarSatchelBoundedUtf8(stream(data), 1024 * 1024), null);
+  const chunks = Array.from({length: 2561}, () => new Uint8Array(4096).fill(0x61));
+  assert.equal((await readWarSatchelBoundedUtf8(stream(...chunks), 15 * 1024 * 1024))?.length,
+    2561 * 4096);
   assert.equal(await readWarSatchelBoundedUtf8(stream(bytes("a")), 16 * 1024 * 1024 + 1), null);
 });
 
