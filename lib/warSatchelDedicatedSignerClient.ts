@@ -103,6 +103,7 @@ export async function connectCertifiedSatchelSigner(
           input.recipientAddress !== cfg.escrow ||
           input.recipientAddress === cfg.address ||
           !/^satchel:ticket:[1-9][0-9]{0,11}$/.test(input.requestId) ||
+          !/^[a-zA-Z0-9_.:-]{1,100}$/.test(input.ownerUid) ||
           !/^[1-9][0-9]{0,18}$/.test(input.amountUwolo) ||
           BigInt(input.amountUwolo) > BigInt(1000)*BigInt(1000000) ||
           BigInt(input.amountUwolo) % BigInt(1000000) !== BigInt(0) ||
@@ -121,6 +122,7 @@ export async function connectCertifiedSatchelSigner(
         healthIsExact(await request("/satchel/v1/health", cfg.token, null, reader), cfg);
         const receipt = await request("/satchel/v1/one-shot", cfg.token, {
           request_id: input.requestId,
+          owner_id: input.ownerUid,
           chain_id: input.chainId,
           signer_role: "exclusive-war-satchel-v1",
           from_address: input.senderAddress,
