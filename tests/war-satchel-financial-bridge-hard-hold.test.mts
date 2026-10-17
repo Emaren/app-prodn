@@ -120,9 +120,10 @@ test("all funded financial entry points are fenced at source, not by a mutable f
 test("public credit endpoint refuses before any third-party REST call or preliminary receipt write", () => {
   const route = source("app/api/user/war-satchel/credit-verified/route.ts");
   const gate = route.indexOf("if (!enabled()) return fail(503");
-  const fetch = route.indexOf("const [chainStatus, txResponse, bank]");
+  const verified = route.indexOf("authenticateOwnerDeposit({");
   const record = route.indexOf("await recordUncreditedWarSatchelReceipt");
-  assert.ok(gate >= 0 && fetch > gate && record > gate);
+  assert.ok(gate >= 0 && verified > gate && record > verified);
+  assert.doesNotMatch(route, /canonicalJson\(|inspectCanonicalSatchelDeposit\(/);
   assert.match(route, /function enabled\(\) \{[\s\S]*?return satchelFinancialBridgeReady\(\) &&/);
 });
 
