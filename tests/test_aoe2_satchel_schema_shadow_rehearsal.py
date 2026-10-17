@@ -219,7 +219,7 @@ class ShadowSafetyTests(unittest.TestCase):
             ("\\unrestrict " + a + "\n").encode(),
             ("\\restrict " + a + "\n\\restrict " + a
              + "\n\\unrestrict " + a + "\n").encode(),
-            ("\\restrict " + a + "\n" + "SELECT 1;\n" * 20
+            ("SELECT 1;\n" * 20 + "\\restrict " + a + "\n"
              + "\\unrestrict " + a + "\n").encode(),
         ]
         for payload in malformed:
