@@ -115,8 +115,14 @@ export async function POST(request: NextRequest) {
       });
       if (proofWindowIntents > 0) throw new Error("OWNER_PROOF_ALREADY_USED_FOR_PREPARATION");
       const outstanding = await tx.warSatchelDepositIntent.count({
-        where: { userId: actor.id, status: { in: ["prepared", "submitted"] },
-          expiresAt: { gt: now } },
+        where: {
+          userId: actor.id, status: { in: ["prepared", "submitted"] },
+          expiresAt: { gt: now },
+          OR: [
+            { proofCandidate: { is: null } },
+            { proofCandidate: { is: { fundedReceipt: { is: null } } } },
+          ],
+        },
       });
       if (outstanding > 0) throw new Error("ONE_ACTIVE_INTENT_PER_OWNER");
 
@@ -178,6 +184,12 @@ export async function GET(request: NextRequest) {
         userId: actor.id, senderAddress: actor.walletAddress,
         chainId: "wolo-1", status: { in: ["prepared", "submitted"] },
         createdAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60_000) },
+        // Already credited transfers are NOT unfinished deposits. Do not
+        // trap the player for seven days after a successful credit.
+        OR: [
+          { proofCandidate: { is: null } },
+          { proofCandidate: { is: { fundedReceipt: { is: null } } } },
+        ],
       },
       orderBy: { createdAt: "desc" },
       take: 5,
