@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `test/hd-satchel-six-migration-atomic-rehearsal-20261017` at `b460d11c133c9f3b0175b53cbeb3970c8353d0ce`
+Implementation baseline: `ops/hd-satchel-schema-only-shadow-rehearsal-20261017` at `7b75e670cf5702d0d66f7648c63c331ebc8ef71a`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
