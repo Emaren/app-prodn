@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e884c8aa6996237a85a60ff86b4832f95d820b1e1d7c2e7b3a37beeb103a6ce2",
+      "sha256": "bbeb688f005693e055909e444fd26174aec8817f48fc884f87e76035d90f9726",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2117,7 +2117,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "ops/hd-satchel-schema-only-shadow-rehearsal-20261017",
-    "commit": "7b75e670cf5702d0d66f7648c63c331ebc8ef71a"
+    "commit": "c272fc5e27c4389c6818370ca98fc8ae7804ef1e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
