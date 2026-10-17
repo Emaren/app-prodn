@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/host-checkpoint-mainline-20261016` at `0ae8dcf3fa0eee8893e748122aa9fb429565eb12`
+Implementation baseline: `fix/hd-braces-waiver-scope-review-20261017` at `b5deefc3759620e1eee58292dd8584b62798ad4c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
