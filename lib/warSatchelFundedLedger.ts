@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+import { inspectLiveCanonicalWithdrawal } from "./warSatchelCanonicalWithdrawal.ts";
 /**
  * War Satchel C4: database-atomic, source-idempotent financial posting.
  *
@@ -651,5 +653,254 @@ export async function commitVerifiedSatchelAutoTicket(
       });
     }
     return { status: "committed" as const, ticketId: input.ticketId };
+  });
+}
+
+/**
+ * Funded withdrawal liability transitions (no wallet signing here).
+ * Only a future owner-authenticated, fresh Keplr withdrawal-mandate endpoint
+ * may call reserveOwnerSatchelWithdrawal. This module itself is NOT a route.
+ */
+function withdrawalGate() {
+  noFundsUntilCertified();
+  if (process.env.WAR_SATCHEL_VAULT_WITHDRAWAL_CERTIFIED !== "true" ||
+      process.env.WAR_SATCHEL_FUNDED_WITHDRAWALS_ENABLED !== "true" ||
+      process.env.WAR_SATCHEL_VAULT_CUSTODY_ROLE_VERIFIED !== "true") {
+    stop("withdrawal_or_exclusive_signer_not_certified");
+  }
+}
+
+/**
+ * Reserve exactly one owner-requested withdrawal before any external signing.
+ * The credited Satchel ledger, not a Keplr wallet extension balance, pays it.
+ * Economic payee is frozen to the user's independently linked Keplr wallet.
+ *
+ * The caller must have already verified a FRESH wallet-signed withdrawal
+ * challenge bound to the exact amount and request ID; no HTTP route can reach
+ * this function until that proof is implemented and certified.
+ */
+export async function reserveOwnerSatchelWithdrawal(
+  prisma: PrismaClient,
+  input: {
+    ownerUserId: number; ownerUid: string;
+    ownerKeplrWallet: string;
+    amountUwolo: bigint;
+    verifiedWithdrawalSignature: {
+      domain: "aoe2war-war-satchel-withdrawal-v1";
+      ownerUid: string; walletAddress: string; amountUwolo: string;
+      verifiedAtMs: number;
+    };
+    bank: CanonicalSatchelBank;
+  },
+) {
+  withdrawalGate();
+  if (!Number.isSafeInteger(input.ownerUserId) || input.ownerUserId < 1 ||
+      !ADDRESS.test(input.ownerKeplrWallet) ||
+      !positiveAmount(input.amountUwolo) ||
+      input.amountUwolo > BigInt(50000)*BigInt(1000000)) stop("invalid_withdrawal_request");
+  const signed = input.verifiedWithdrawalSignature;
+  if (!signed || signed.domain !== "aoe2war-war-satchel-withdrawal-v1" ||
+      signed.ownerUid !== input.ownerUid ||
+      signed.walletAddress !== input.ownerKeplrWallet ||
+      signed.amountUwolo !== input.amountUwolo.toString() ||
+      !Number.isFinite(signed.verifiedAtMs) ||
+      signed.verifiedAtMs > Date.now() ||
+      Date.now()-signed.verifiedAtMs > 5*60*1000) {
+    stop("fresh_keplr_withdrawal_signature_required");
+  }
+  return withExclusiveSatchelTx(prisma, async tx => {
+    const locked=await tx.$queryRaw<Array<{id:number;uid:string;wallet_address:string|null}>>`
+      SELECT id,uid,wallet_address FROM users WHERE id=${input.ownerUserId} FOR UPDATE
+    `;
+    if (locked.length!==1 || locked[0].uid!==input.ownerUid ||
+        locked[0].wallet_address!==input.ownerKeplrWallet) stop("withdrawal_owner_wallet_changed");
+    const account=await tx.satchelFundedBalance.findUnique({
+      where:{ownerUserId:input.ownerUserId},
+    });
+    if (!account || account.availableUwolo<input.amountUwolo) stop("owner_withdrawal_overdrawn");
+    requireFreshBank(input.bank,Date.now());
+    const outstanding=await outstandingVaultLiability(tx);
+    if (outstanding>input.bank.balanceUwolo) stop("withdrawal_vault_insolvent");
+    const id=randomUUID();
+    await tx.satchelFundedWithdrawal.create({
+      data:{
+        id, ownerUserId:input.ownerUserId,
+        ownerWalletAddress:input.ownerKeplrWallet,
+        amountUwolo:input.amountUwolo, status:"reserved",
+      },
+    });
+    await tx.satchelFundedJournal.create({
+      data:{
+        ownerUserId:input.ownerUserId,sourceKey:"satchel:withdraw:reserve:"+id,
+        eventKind:"withdraw_reserve",amountUwolo:input.amountUwolo,
+        deltaAvailableUwolo:-input.amountUwolo,
+        deltaReservedUwolo:BigInt(0),
+        deltaCommittedUwolo:BigInt(0),
+        deltaWithdrawalPendingUwolo:input.amountUwolo,
+      },
+    });
+    await tx.satchelFundedBalance.update({
+      where:{ownerUserId:input.ownerUserId},
+      data:{
+        availableUwolo:{decrement:input.amountUwolo},
+        withdrawalPendingUwolo:{increment:input.amountUwolo},
+        version:{increment:BigInt(1)},updatedAt:new Date(),
+      },
+    });
+    return Object.freeze({
+      state:"reserved" as const,withdrawalId:id,
+      sendTo:input.ownerKeplrWallet,
+      amountUwolo:input.amountUwolo.toString(),
+      memo:"aoe2war/satchel/withdraw/v1/"+id,
+    });
+  });
+}
+
+/** A signer must durably fence the request before any possible network send.
+ * Even a crash or timeout after this transition is NOT safe to resend.
+ */
+export async function markSatchelWithdrawalAttempt(
+  prisma: PrismaClient,
+  input:{withdrawalId:string;ownerUserId:number},
+) {
+  withdrawalGate();
+  return withExclusiveSatchelTx(prisma,async tx=>{
+    const found=await tx.satchelFundedWithdrawal.findUnique({
+      where:{id:input.withdrawalId},
+    });
+    if (!found || found.ownerUserId!==input.ownerUserId || found.status!=="reserved") {
+      stop("already_attempted_withdrawal_never_resubmit");
+    }
+    const changed=await tx.satchelFundedWithdrawal.updateMany({
+      where:{id:found.id,status:"reserved"},
+      data:{status:"unknown_hold",updatedAt:new Date()},
+    });
+    if(changed.count!==1)stop("withdrawal_attempt_race");
+    return Object.freeze({state:"broadcast_uncertainty_locked" as const});
+  });
+}
+
+/**
+ * Cancel only a 100% PROVEN non-broadcast request. Once attempted, no
+ * cancellation can release the same money while a chain send is in flight.
+ */
+export async function cancelUnbroadcastSatchelWithdrawal(
+  prisma: PrismaClient,
+  input:{withdrawalId:string;ownerUserId:number;independentlyNoBroadcast:boolean},
+) {
+  withdrawalGate();
+  if(!input.independentlyNoBroadcast)stop("cannot_cancel_ambiguous_payout");
+  return withExclusiveSatchelTx(prisma,async tx=>{
+    const found=await tx.satchelFundedWithdrawal.findUnique({
+      where:{id:input.withdrawalId},
+    });
+    if(!found||found.ownerUserId!==input.ownerUserId)stop("withdrawal_not_owner");
+    if(found.status==="cancelled")return Object.freeze({state:"already_cancelled" as const});
+    if(found.status!=="reserved")stop("withdrawal_already_attempted_no_refund");
+    const account=await tx.satchelFundedBalance.findUnique({
+      where:{ownerUserId:input.ownerUserId},
+    });
+    if(!account || account.withdrawalPendingUwolo<found.amountUwolo ||
+       account.availableUwolo+found.amountUwolo>MAX_I64)stop("withdrawal_liability_invalid");
+    await tx.satchelFundedJournal.create({
+      data:{
+        ownerUserId:input.ownerUserId,
+        sourceKey:"satchel:withdraw:cancel:"+found.id,
+        eventKind:"withdraw_cancel",amountUwolo:found.amountUwolo,
+        deltaAvailableUwolo:found.amountUwolo,
+        deltaReservedUwolo:BigInt(0),deltaCommittedUwolo:BigInt(0),
+        deltaWithdrawalPendingUwolo:-found.amountUwolo,
+      },
+    });
+    await tx.satchelFundedBalance.update({
+      where:{ownerUserId:input.ownerUserId},
+      data:{
+        availableUwolo:{increment:found.amountUwolo},
+        withdrawalPendingUwolo:{decrement:found.amountUwolo},
+        version:{increment:BigInt(1)},updatedAt:new Date(),
+      },
+    });
+    await tx.satchelFundedWithdrawal.update({
+      where:{id:found.id},data:{status:"cancelled",updatedAt:new Date()},
+    });
+    return Object.freeze({state:"fully_cancelled" as const,returnedUwolo:found.amountUwolo.toString()});
+  });
+}
+
+/**
+ * Never finalize based on the signer reply alone. Pull canonical evidence
+ * independently from the Wolo mainnet RPC + REST and prove the exact
+ * immutable owner, memo, amount and 3 confirmations. There is no public
+ * payout-completion API, and no path to mark an unknown hash as "sent"
+ * without matching chain evidence.
+ */
+export async function finalizeProvenSatchelWithdrawal(
+  prisma: PrismaClient,
+  input:{withdrawalId:string;ownerUserId:number;txHash:string},
+) {
+  withdrawalGate();
+  if(!TX_HASH.test(input.txHash))stop("invalid_withdrawal_tx_hash");
+  const withdrawal=await prisma.satchelFundedWithdrawal.findUnique({
+    where:{id:input.withdrawalId},
+  });
+  if(!withdrawal || withdrawal.ownerUserId!==input.ownerUserId ||
+      !["unknown_hold","sent"].includes(withdrawal.status))stop("withdrawal_not_inflight");
+  const vault=fundedVaultAddress();
+  const proven=await inspectLiveCanonicalWithdrawal({
+    withdrawalId:withdrawal.id,txHash:input.txHash,
+    vaultAddress:vault,ownerWalletAddress:withdrawal.ownerWalletAddress,
+    amountUwolo:withdrawal.amountUwolo.toString(),
+  });
+  const bank=await readIndependentSatchelBank();
+  if(bank.height<BigInt(proven.headHeight))stop("bank_snapshot_precedes_withdrawal_proof");
+  return withExclusiveSatchelTx(prisma,async tx=>{
+    const fresh=await tx.satchelFundedWithdrawal.findUnique({
+      where:{id:withdrawal.id},
+    });
+    if(!fresh || fresh.ownerUserId!==input.ownerUserId ||
+       fresh.ownerWalletAddress!==withdrawal.ownerWalletAddress ||
+       fresh.amountUwolo!==withdrawal.amountUwolo)stop("withdrawal_identity_changed");
+    if(fresh.status==="sent"){
+      if(fresh.txHash!==proven.hash || fresh.confirmedHeight!==BigInt(proven.confirmedHeight))
+        stop("withdrawal_conflicting_finality_proof");
+      return Object.freeze({state:"already_sent" as const,txHash:proven.hash});
+    }
+    if(fresh.status!=="unknown_hold")stop("cannot_finalize_unattempted_withdrawal");
+    const account=await tx.satchelFundedBalance.findUnique({
+      where:{ownerUserId:input.ownerUserId},
+    });
+    if(!account || account.withdrawalPendingUwolo<fresh.amountUwolo)stop("withdrawal_not_liability_backed");
+    requireFreshBank(bank,Date.now());
+    const liabilities=await outstandingVaultLiability(tx);
+    // This specific transfer already LEFT the vault. The current physical
+    // balance must fund every other claimant AFTER its pending liability
+    // is removed, not before (which would falsely require double collateral).
+    if(liabilities<fresh.amountUwolo ||
+       bank.balanceUwolo<liabilities-fresh.amountUwolo)
+       stop("post_withdrawal_vault_insolvent");
+    await tx.satchelFundedJournal.create({
+      data:{
+        ownerUserId:input.ownerUserId,
+        sourceKey:"satchel:withdraw:sent:"+fresh.id,
+        eventKind:"withdraw_sent",amountUwolo:fresh.amountUwolo,
+        deltaAvailableUwolo:BigInt(0),
+        deltaReservedUwolo:BigInt(0),
+        deltaCommittedUwolo:BigInt(0),
+        deltaWithdrawalPendingUwolo:-fresh.amountUwolo,
+      },
+    });
+    await tx.satchelFundedBalance.update({
+      where:{ownerUserId:input.ownerUserId},
+      data:{
+        withdrawalPendingUwolo:{decrement:fresh.amountUwolo},
+        version:{increment:BigInt(1)},updatedAt:new Date(),
+      },
+    });
+    await tx.satchelFundedWithdrawal.update({
+      where:{id:fresh.id},
+      data:{status:"sent",txHash:proven.hash,
+        confirmedHeight:BigInt(proven.confirmedHeight),updatedAt:new Date()},
+    });
+    return Object.freeze({state:"sent" as const,txHash:proven.hash});
   });
 }
