@@ -30,6 +30,9 @@ function isEnabled() {
     process.env.WAR_SATCHEL_FUNDED_WITHDRAWALS_ENABLED === "true" &&
     process.env.WAR_SATCHEL_DEPOSIT_INSTRUCTIONS_ENABLED === "true" &&
     process.env.WAR_SATCHEL_FUNDED_CREDIT_ENABLED === "true" &&
+    process.env.WAR_SATCHEL_NONCREDITING_INTENTS_ENABLED === "true" &&
+    process.env.WAR_SATCHEL_CANONICAL_RECEIPT_AUDIT_ENABLED === "true" &&
+    process.env.WAR_SATCHEL_UNCREDITED_PROOF_RECORDING_ENABLED === "true" &&
     process.env.WAR_SATCHEL_OWNER_PROOF_ENABLED === "true";
 }
 export async function POST(request: NextRequest) {
@@ -95,7 +98,10 @@ export async function POST(request: NextRequest) {
       process.env.WOLO_STAKING_WALLET_ADDRESS,
       process.env.WOLO_CHALLENGE_ESCROW_ADDRESS,
     ];
-    if (intent.vaultAddress !== vault ||
+    const candidate = (process.env.WAR_SATCHEL_VAULT_CANDIDATE_ADDRESS || "").trim();
+    // The C2 intent compiler and the C4 signing quote must refer to the
+    // SAME independently certified wallet. Otherwise no bank send is safe.
+    if (intent.vaultAddress !== vault || candidate !== vault ||
         !warSatchelVaultDistinctFromKnownWallets(vault, excluded)) throw Error("uncertified vault");
     const chain = await readIndependentSatchelBank();
     if (chain.vaultAddress !== vault) throw Error("bank authority mismatch");
