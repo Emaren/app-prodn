@@ -25,6 +25,6 @@ test("terminal accepted or released executions are NEVER changed to unknown or r
   const executor=read("lib/warSatchelAutoBetExecutor.ts");
   assert.match(ledger,/reservation\.status === "committed" \|\| reservation\.status === "released"/);
   assert.match(ledger,/return "already_terminal" as const/);
-  assert.match(executor,/if \(reservation\.status !== "reserved"\)/);
+  assert.match(executor,/execution\.status !== "shadow_ready"/);
   assert.match(executor,/return \{ kind: "already_handled" as const \}/);
 });
