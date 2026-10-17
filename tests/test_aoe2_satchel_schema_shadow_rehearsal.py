@@ -253,6 +253,46 @@ class ShadowSafetyTests(unittest.TestCase):
                        "internal_secret", "credential"):
             self.assertNotIn(secret, result)
 
+    def test_schema_delta_identifies_function_section_without_disclosing_sql(self):
+        source = (
+            "-- Name: secret_settlement; Type: FUNCTION; Schema: public; Owner: private_user\n"
+            "CREATE FUNCTION public.secret_settlement() RETURNS text AS $\n"
+            "    SELECT 'owner-signer-secret-123'::regclass, 'aoe2hd_db';\n"
+            "$ LANGUAGE sql;\n"
+        ).encode()
+        shadow = (
+            "-- Name: secret_settlement; Type: FUNCTION; Schema: public; Owner: private_user\n"
+            "CREATE FUNCTION public.secret_settlement() RETURNS text AS $\n"
+            "    SELECT 'other-private-secret-456'::regclass, 'aoe2war_satchel_shadow_test';\n"
+            "$ LANGUAGE sql;\n"
+        ).encode()
+        out = MODULE.describe_schema_delta(source, shadow)
+        self.assertIn("source_section=FUNCTION", out)
+        self.assertIn("shadow_section=FUNCTION", out)
+        self.assertIn("source_clues=LIVE_DATABASE_LITERAL,REGCLASS_CAST,CAST_EXPRESSION", out)
+        self.assertIn("shadow_clues=SHADOW_DATABASE_LITERAL,REGCLASS_CAST,CAST_EXPRESSION", out)
+        for private in (
+            "secret_settlement", "private_user", "owner-signer-secret-123",
+            "other-private-secret-456", "aoe2hd_db",
+            "aoe2war_satchel_shadow_test",
+        ):
+            self.assertNotIn(private, out)
+
+    def test_schema_delta_rejects_unrecognized_dump_section_type(self):
+        source = (
+            "-- Name: a_secret; Type: PRIVATE SECRET; Schema: public; Owner: nobody\n"
+            "    source-123\n"
+        ).encode()
+        shadow = (
+            "-- Name: a_secret; Type: PRIVATE SECRET; Schema: public; Owner: nobody\n"
+            "    shadow-456\n"
+        ).encode()
+        out = MODULE.describe_schema_delta(source, shadow)
+        self.assertIn("source_section=OTHER", out)
+        self.assertIn("shadow_section=OTHER", out)
+        self.assertNotIn("PRIVATE SECRET", out)
+        self.assertNotIn("a_secret", out)
+
     def test_schema_delta_ignores_validated_pg_dump_nonce(self):
         prefix = "-- PostgreSQL database dump\n"
         suffix = "-- PostgreSQL database dump complete\n"
