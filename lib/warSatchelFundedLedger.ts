@@ -918,3 +918,53 @@ export async function finalizeProvenSatchelWithdrawal(
     return Object.freeze({state:"sent" as const,txHash:proven.hash});
   });
 }
+
+/**
+ * Persist an UNKNOWN hold even if failure occurs between the atomic reserve
+ * and the initial attempt fence. Never assume that a thrown network or DB
+ * error proves "not broadcast." This is a durable no-retry financial quarantine
+ * visible on the existing execution record. Never changes a terminal ticket.
+ */
+export async function quarantineUnknownSatchelWager(
+  prisma: PrismaClient,
+  input: {
+    executionId: number;
+    ownerUserId: number;
+    reservationId: string;
+    reason: string;
+  },
+): Promise<"held" | "already_held" | "already_terminal"> {
+  if (!Number.isSafeInteger(input.executionId) || input.executionId <= 0 ||
+      !Number.isSafeInteger(input.ownerUserId) || input.ownerUserId <= 0 ||
+      !/^satchel:reserve:[1-9][0-9]{0,14}$/.test(input.reservationId) ||
+      !/^[a-z0-9_]{1,100}$/.test(input.reason)) {
+    stop("bad_unknown_hold_identity");
+  }
+  return withExclusiveSatchelTx(prisma, async tx => {
+    const reservation = await tx.satchelFundedReservation.findUnique({
+      where: { executionId: input.executionId },
+    });
+    if (!reservation || reservation.id !== input.reservationId ||
+        reservation.ownerUserId !== input.ownerUserId) {
+      stop("unknown_hold_owner_or_execution_mismatch");
+    }
+    if (reservation.status === "committed" || reservation.status === "released") {
+      return "already_terminal" as const;
+    }
+    const initial = reservation.status === "reserved";
+    if (initial) {
+      const modified = await tx.satchelFundedReservation.updateMany({
+        where: { id: reservation.id, status: "reserved" },
+        data: { status: "unknown_hold", updatedAt: new Date() },
+      });
+      if (modified.count !== 1) stop("unknown_hold_transition_race");
+    } else if (reservation.status !== "unknown_hold") {
+      stop("unsupported_unknown_reservation_state");
+    }
+    await tx.betAutoExecution.updateMany({
+      where: { id: input.executionId, reservationId: reservation.id },
+      data: { status: "funded_unknown_hold", reason: input.reason },
+    });
+    return initial ? "held" as const : "already_held" as const;
+  });
+}
