@@ -1,3 +1,4 @@
+import { isVerifiedSatchelWithdrawal, type SatchelVerifiedWithdrawal } from "./warSatchelWithdrawalAuthorization.ts";
 import { randomUUID } from "node:crypto";
 import { inspectLiveCanonicalWithdrawal } from "./warSatchelCanonicalWithdrawal.ts";
 /**
@@ -685,11 +686,7 @@ export async function reserveOwnerSatchelWithdrawal(
     ownerUserId: number; ownerUid: string;
     ownerKeplrWallet: string;
     amountUwolo: bigint;
-    verifiedWithdrawalSignature: {
-      domain: "aoe2war-war-satchel-withdrawal-v1";
-      ownerUid: string; walletAddress: string; amountUwolo: string;
-      verifiedAtMs: number;
-    };
+    verifiedWithdrawalSignature: SatchelVerifiedWithdrawal;
     bank: CanonicalSatchelBank;
   },
 ) {
@@ -699,7 +696,7 @@ export async function reserveOwnerSatchelWithdrawal(
       !positiveAmount(input.amountUwolo) ||
       input.amountUwolo > BigInt(50000)*BigInt(1000000)) stop("invalid_withdrawal_request");
   const signed = input.verifiedWithdrawalSignature;
-  if (!signed || signed.domain !== "aoe2war-war-satchel-withdrawal-v1" ||
+  if (!isVerifiedSatchelWithdrawal(signed) ||
       signed.ownerUid !== input.ownerUid ||
       signed.walletAddress !== input.ownerKeplrWallet ||
       signed.amountUwolo !== input.amountUwolo.toString() ||
@@ -714,6 +711,17 @@ export async function reserveOwnerSatchelWithdrawal(
     `;
     if (locked.length!==1 || locked[0].uid!==input.ownerUid ||
         locked[0].wallet_address!==input.ownerKeplrWallet) stop("withdrawal_owner_wallet_changed");
+    const challenge=await tx.satchelWithdrawalChallenge.findUnique({
+      where:{id:signed.challengeId},
+    });
+    const now=new Date();
+    if(!challenge || challenge.ownerUserId!==input.ownerUserId ||
+       challenge.ownerUid!==input.ownerUid ||
+       challenge.walletAddress!==input.ownerKeplrWallet ||
+       challenge.amountUwolo!==input.amountUwolo ||
+       challenge.consumedAt!==null ||
+       challenge.issuedAt.getTime()>signed.verifiedAtMs ||
+       challenge.expiresAt<=now)stop("signed_withdrawal_challenge_consumed_or_changed");
     const account=await tx.satchelFundedBalance.findUnique({
       where:{ownerUserId:input.ownerUserId},
     });
@@ -721,11 +729,17 @@ export async function reserveOwnerSatchelWithdrawal(
     requireFreshBank(input.bank,Date.now());
     const outstanding=await outstandingVaultLiability(tx);
     if (outstanding>input.bank.balanceUwolo) stop("withdrawal_vault_insolvent");
+    const consumed=await tx.satchelWithdrawalChallenge.updateMany({
+      where:{id:challenge.id,consumedAt:null,expiresAt:{gt:now}},
+      data:{consumedAt:now},
+    });
+    if(consumed.count!==1)stop("withdrawal_nonce_replayed");
     const id=randomUUID();
     await tx.satchelFundedWithdrawal.create({
       data:{
         id, ownerUserId:input.ownerUserId,
         ownerWalletAddress:input.ownerKeplrWallet,
+        authorizingChallengeId:challenge.id,
         amountUwolo:input.amountUwolo, status:"reserved",
       },
     });
