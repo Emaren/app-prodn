@@ -22,7 +22,6 @@ const MAX_I64 = BigInt("9223372036854775807");
 const BANK_HEAD_MAX_AGE_MS = 30_000;
 const ADDRESS = /^wolo1[023456789acdefghjklmnpqrstuvwxyz]{38,90}$/;
 const TX_HASH = /^[A-F0-9]{64}$/;
-const PROOF_ID = /^[A-F0-9]{64}$/;
 const RPC = "https://rpc-mainnet.aoe2war.com";
 const REST = "https://rest-mainnet.aoe2war.com";
 const FINANCIAL_LOCK_CLASS = 724176;
