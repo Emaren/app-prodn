@@ -1,4 +1,5 @@
 import { requireSatchelFinancialBridge } from "./warSatchelFinancialBridgeHold.ts";
+import { isAuthenticatedWarSatchelDeposit, type AuthenticatedWarSatchelDeposit } from "./warSatchelAuthenticatedDeposit.ts";
 import { inspectSingleTicketSatchelReturn } from "./warSatchelClaimReturnAttribution.ts";
 import { verifyLiveCanonicalSatchelClaimReturn } from "./warSatchelCanonicalClaimReturn.ts";
 import { getWoloBetEscrowRuntime } from "./woloChain.ts";
@@ -193,13 +194,20 @@ export async function creditRecordedSatchelProof(
     ownerUid: string;
     proofCandidateId: bigint;
     expectedTxHash: string;
+    authenticatedDeposit: AuthenticatedWarSatchelDeposit;
     bank: CanonicalSatchelBank;
   },
 ): Promise<FundedCreditResult> {
   noFundsUntilCertified();
   if (!Number.isSafeInteger(input.ownerUserId) || input.ownerUserId <= 0 ||
       !positiveAmount(input.proofCandidateId) ||
-      !TX_HASH.test(input.expectedTxHash)) stop("invalid_credit_identity");
+      !TX_HASH.test(input.expectedTxHash) ||
+      !isAuthenticatedWarSatchelDeposit(input.authenticatedDeposit) ||
+      input.authenticatedDeposit.txHash !== input.expectedTxHash ||
+      input.authenticatedDeposit.ownerUid !== input.ownerUid ||
+      input.authenticatedDeposit.height <= BigInt(0)) {
+    stop("authenticated_comet_deposit_required");
+  }
 
   return withExclusiveSatchelTx(prisma, async tx => {
     const actors = await tx.$queryRaw<Array<{ id: number; uid: string; wallet_address: string | null }>>`
@@ -215,7 +223,14 @@ export async function creditRecordedSatchelProof(
         proof.chainId !== "wolo-1" || proof.txHash !== input.expectedTxHash ||
         proof.transferIndex !== 0 || proof.vaultAddress !== fundedVaultAddress() ||
         proof.senderAddress !== actors[0].wallet_address || !positiveAmount(proof.amountUwolo) ||
-        proof.txHeight <= BigInt(0) || proof.intent.userId !== input.ownerUserId ||
+        proof.txHeight <= BigInt(0) ||
+        input.authenticatedDeposit.intentId !== proof.intentId ||
+        input.authenticatedDeposit.sender !== proof.senderAddress ||
+        input.authenticatedDeposit.vault !== proof.vaultAddress ||
+        input.authenticatedDeposit.amountUwolo !== proof.amountUwolo.toString() ||
+        input.authenticatedDeposit.height !== proof.txHeight ||
+        input.authenticatedDeposit.memo !== proof.intent.memo ||
+        proof.intent.userId !== input.ownerUserId ||
         proof.intent.senderAddress !== proof.senderAddress ||
         proof.intent.vaultAddress !== proof.vaultAddress ||
         proof.intent.amountUwolo !== proof.amountUwolo ||
