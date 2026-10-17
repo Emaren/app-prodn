@@ -36,7 +36,8 @@ export function inspectCanonicalSatchelWithdrawal(input:{
   chainStatus:unknown;
   txResponse:unknown;
 }):CanonicalWithdrawalProof{
-  assert(/^[0-9a-f-]{36}$/i.test(input.withdrawalId),"bad_withdrawal_identity");
+  assert(/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i.test(input.withdrawalId),
+    "bad_withdrawal_identity");
   assert(HASH.test(input.txHash)&&ADDR.test(input.vaultAddress)&&
     ADDR.test(input.ownerWalletAddress)&&
     input.ownerWalletAddress!==input.vaultAddress,"bad_sender_or_payee");
@@ -53,7 +54,7 @@ export function inspectCanonicalSatchelWithdrawal(input:{
   assert(code===0||code==="0","failed_execution");
   const height=int(receipt.height);
   assert(head>=height&&head-height+BigInt(1)>=BigInt(3),"not_chain_final");
-  assert(response.tx!==null||receipt.tx!==null,"missing_decoded_transaction");
+  assert(response.tx!=null||receipt.tx!=null,"missing_decoded_transaction");
   const primary=response.tx!=null?obj(obj(response.tx).body):obj(obj(receipt.tx).body);
   if(response.tx!=null&&receipt.tx!=null){
     const other=obj(obj(receipt.tx).body);
