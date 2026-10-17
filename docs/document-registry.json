@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c6eae540871c7a59ebdd7ed4913928a56f137421832ba94f8011808bdf99a75c",
+      "sha256": "c43305b89227313b9a2652a5fa0ac303d3211b66d31b68f543a131edcf811cbb",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/hd-shadow-safe-object-context-20261017",
-    "commit": "30d6ba2c5d27a2f8c766b15b156d9e60f5077307"
+    "branch": "feat/hd-satchel-signed-v2-return-proof-20261017",
+    "commit": "16f5f339743c443bc381fb6b3e07f4afe4db3850"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
