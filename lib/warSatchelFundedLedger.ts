@@ -531,6 +531,51 @@ export async function markSatchelSubmissionAttempt(
         reservation.status !== "reserved") {
       stop("already_submitted_or_not_owner");
     }
+    // A Watcher reservation can sit between creation and first broadcast.
+    // Revalidate the CURRENT linked Keplr wallet, enabled preset, signed
+    // spending mandate and live proposition while still holding the same
+    // global financial lock. A revoked plan must never start a NEW send.
+    const execution = await tx.betAutoExecution.findUnique({
+      where: { id: input.executionId },
+      include: { preset: { include: { user: true } } },
+    });
+    if (!execution || execution.reservationId !== reservation.id ||
+        execution.preset.userId !== input.ownerUserId ||
+        execution.status !== "funded_reserved" ||
+        !execution.preset.enabled || !execution.preset.selfOnly ||
+        execution.preset.version !== execution.presetVersion ||
+        !execution.preset.user.walletAddress ||
+        BigInt(execution.winnerStakeWolo + execution.desyncStakeWolo) *
+          BigInt(1000000) !== reservation.amountUwolo) {
+      stop("execution_changed_before_first_broadcast");
+    }
+    const now = new Date();
+    const permit = await tx.satchelAutoSpendConsent.findFirst({
+      where: {
+        ownerUserId: input.ownerUserId,
+        ownerUid: execution.preset.user.uid,
+        walletAddress: execution.preset.user.walletAddress,
+        presetId: execution.presetId,
+        presetVersion: execution.presetVersion,
+        signedAt: { not: null }, revokedAt: null, spendExpiresAt: { gt: now },
+      },
+      orderBy: { signedAt: "desc" },
+    });
+    if (!permit || permit.winnerStakeWolo !== execution.winnerStakeWolo ||
+        permit.desyncStakeWolo !== execution.desyncStakeWolo ||
+        permit.desyncSide !== execution.desyncSide ||
+        permit.perGameCapWolo < execution.winnerStakeWolo + execution.desyncStakeWolo) {
+      stop("keplr_auto_spending_mandate_revoked_before_broadcast");
+    }
+    const market = await tx.betMarket.findUnique({
+      where: { id: execution.winnerMarketId },
+      select: { status: true, integrityStatus: true, propositionHash: true },
+    });
+    if (!market || market.status !== "live" ||
+        market.integrityStatus !== "verified" ||
+        market.propositionHash !== execution.propositionHash) {
+      stop("watcher_proposition_not_live_before_broadcast");
+    }
     const changed = await tx.satchelFundedReservation.updateMany({
       where: { id: reservation.id, status: "reserved" },
       data: { status: "unknown_hold", updatedAt: new Date() },
