@@ -43,6 +43,9 @@ function loadProductionModule(relativePath: string): Record<string, unknown> {
     if (specifier === "@/components/profile/WarSatchelFundingAction") {
       return loadProductionModule("components/profile/WarSatchelFundingAction.tsx");
     }
+    if (specifier === "@/components/profile/WarSatchelSpendAuthorization") {
+      return loadProductionModule("components/profile/WarSatchelSpendAuthorization.tsx");
+    }
     if (specifier === "@/components/profile/WarSatchelWalletProof") {
       // Execute the actual optional Keplr-owner component, not an inert stub.
       return loadProductionModule("components/profile/WarSatchelWalletProof.tsx");
