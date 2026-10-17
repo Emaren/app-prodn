@@ -1,3 +1,5 @@
+import { verifyLiveCanonicalSatchelClaimReturn } from "./warSatchelCanonicalClaimReturn.ts";
+import { getWoloBetEscrowRuntime } from "./woloChain.ts";
 import { isVerifiedSatchelWithdrawal, type SatchelVerifiedWithdrawal } from "./warSatchelWithdrawalAuthorization.ts";
 import { randomUUID } from "node:crypto";
 import { inspectLiveCanonicalWithdrawal } from "./warSatchelCanonicalWithdrawal.ts";
@@ -1011,5 +1013,161 @@ export async function quarantineUnknownSatchelWager(
       data: { status: "funded_unknown_hold", reason: input.reason },
     });
     return initial ? "held" as const : "already_held" as const;
+  });
+}
+
+/**
+ * Apply a physically received escrow payout/complete unmatched refund to the
+ * ORIGINAL Steam owner's spendable War Satchel. No token is transmitted here.
+ * The settled claim and its canonical 3-confirmation bank send are verified
+ * independently; all ledger and receipt writes occur under one global lock.
+ *
+ * This is NOT a public API and remains off until the unique escrow→vault
+ * payout path has its own protected production certification.
+ */
+export async function creditVerifiedSatchelClaimReturn(
+  prisma: PrismaClient,
+  input: {claimId:number;ownerUserId:number;ownerUid:string},
+) {
+  noFundsUntilCertified();
+  if(process.env.WAR_SATCHEL_CLAIM_RETURN_CREDIT_ENABLED!=="true" ||
+     process.env.WAR_SATCHEL_BET_PAYOUT_ROUTING_CERTIFIED!=="true" ||
+     process.env.WAR_SATCHEL_UNMATCHED_REFUND_CREDIT_CERTIFIED!=="true")
+    stop("claim_return_credit_not_certified");
+  if(!Number.isSafeInteger(input.claimId)||input.claimId<1||
+     !Number.isSafeInteger(input.ownerUserId)||input.ownerUserId<1)
+    stop("invalid_claim_return_identity");
+  const vault=fundedVaultAddress();
+  const escrow=getWoloBetEscrowRuntime();
+  if(!escrow.onchainAllowed || !escrow.escrowAddress ||
+      escrow.escrowAddress===vault)stop("escrow_sender_not_attested");
+
+  // The client does not supply any chain data, bank amount, payout recipient,
+  // transaction hash, or owner. Everything is sourced independently.
+  const claim=await prisma.pendingWoloClaim.findUnique({where:{id:input.claimId}});
+  if(!claim||claim.status!=="claimed"||claim.claimedByUserId!==input.ownerUserId||
+     (claim.claimKind!=="bet_payout"&&claim.claimKind!=="bet_refund")||
+     !claim.sourceMarketId||!claim.payoutTxHash||
+     !Number.isSafeInteger(claim.amountWolo)||claim.amountWolo<=0)
+    stop("claim_not_final_owner_bound_or_wager_kind");
+  const txHash=claim.payoutTxHash.toUpperCase();
+  const proof=await verifyLiveCanonicalSatchelClaimReturn({
+    claimId:claim.id,claimKind:claim.claimKind,
+    txHash,escrowAddress:escrow.escrowAddress,
+    vaultAddress:vault,
+    amountUwolo:(BigInt(claim.amountWolo)*BigInt(1000000)).toString(),
+  });
+  const bank=await readIndependentSatchelBank();
+  if(bank.height<proof.headHeight || bank.height<proof.canonicalHeight+BigInt(2))
+    stop("bank_does_not_cover_canonical_return_height");
+  return withExclusiveSatchelTx(prisma,async tx=>{
+    const owner=await tx.$queryRaw<Array<{id:number;uid:string}>>`
+      SELECT id,uid FROM users WHERE id=${input.ownerUserId} FOR UPDATE
+    `;
+    if(owner.length!==1||owner[0].uid!==input.ownerUid)
+      stop("claim_return_owner_identity_changed");
+    const current=await tx.pendingWoloClaim.findUnique({where:{id:input.claimId}});
+    if(!current||current.claimedByUserId!==input.ownerUserId||
+       current.sourceMarketId!==claim.sourceMarketId||
+       current.status!=="claimed"||current.claimKind!==claim.claimKind||
+       current.amountWolo!==claim.amountWolo||
+       current.payoutTxHash?.toUpperCase()!==proof.txHash)
+      stop("claim_changed_since_chain_verification");
+    const prior=await tx.satchelFundedClaimReturn.findUnique({
+      where:{claimId:claim.id},
+    });
+    if(prior){
+      if(prior.ownerUserId!==input.ownerUserId||
+         prior.txHash!==proof.txHash ||
+         prior.amountUwolo!==proof.amountUwolo)
+        stop("claim_return_already_owned_or_conflicting");
+      const account=await tx.satchelFundedBalance.findUnique({
+        where:{ownerUserId:input.ownerUserId},
+      });
+      return Object.freeze({
+        status:"already_credited" as const,
+        returnId:prior.id.toString(),
+        availableUwolo:String(account?.availableUwolo??BigInt(0)),
+      });
+    }
+    const wagers=await tx.betWager.findMany({
+      where:{
+        marketId:claim.sourceMarketId,
+        userId:input.ownerUserId,
+        status:claim.claimKind==="bet_refund"?"void":"won",
+      },
+      select:{
+        id:true,payoutWolo:true,
+        stakeLeg:{select:{ticket:{select:{
+          id:true,userId:true,source:true,walletProvider:true,
+          walletAddress:true,stakeTxHash:true,status:true,
+        }}}},
+      },
+      take:1001,
+    });
+    if(wagers.length<1||wagers.length>1000)
+      stop("claim_return_bettor_wager_census_incomplete");
+    let entitlement=BigInt(0);
+    for(const wager of wagers){
+      const ticket=wager.stakeLeg?.ticket;
+      if(!ticket||ticket.userId!==input.ownerUserId||
+         ticket.source!=="auto"||ticket.walletProvider!=="satchel-vault"||
+         ticket.walletAddress!==vault||ticket.status!=="recorded"||
+         !ticket.stakeTxHash||
+         !Number.isSafeInteger(wager.payoutWolo)||wager.payoutWolo===null||
+         wager.payoutWolo<0)
+        stop("claim_return_owner_ticket_attribution_incomplete");
+      entitlement+=BigInt(wager.payoutWolo);
+    }
+    if(entitlement!==BigInt(claim.amountWolo))
+      stop("claim_return_amount_not_exact_settled_entitlement");
+
+    requireFreshBank(bank,Date.now());
+    const liabilities=await outstandingVaultLiability(tx);
+    if(liabilities+proof.amountUwolo>MAX_I64 ||
+       bank.balanceUwolo<liabilities+proof.amountUwolo)
+      stop("vault_cannot_cover_claim_return_and_other_players");
+    const existingDeposit=await tx.satchelFundedReceipt.findUnique({
+      where:{chainId_txHash_transferIndex:{
+        chainId:"wolo-1",txHash:proof.txHash,transferIndex:0,
+      }},
+    });
+    if(existingDeposit)stop("claim_return_hash_already_used_as_deposit");
+
+    const currentBalance=await getOrCreateBalance(tx,input.ownerUserId);
+    if(currentBalance.availableUwolo+proof.amountUwolo>MAX_I64)
+      stop("owner_spendable_overflow");
+    const receipt=await tx.satchelFundedClaimReturn.create({
+      data:{
+        claimId:claim.id,ownerUserId:input.ownerUserId,
+        sourceMarketId:claim.sourceMarketId,claimKind:claim.claimKind,
+        chainId:"wolo-1",txHash:proof.txHash,transferIndex:0,
+        amountUwolo:proof.amountUwolo,vaultAddress:vault,
+        canonicalHeight:proof.canonicalHeight,
+      },
+    });
+    await tx.satchelFundedJournal.create({
+      data:{
+        ownerUserId:input.ownerUserId,
+        sourceKey:"satchel:return:claim:"+claim.id,
+        eventKind:"claim_return_credit",amountUwolo:proof.amountUwolo,
+        deltaAvailableUwolo:proof.amountUwolo,
+        deltaReservedUwolo:BigInt(0),deltaCommittedUwolo:BigInt(0),
+        deltaWithdrawalPendingUwolo:BigInt(0),
+        claimReturnId:receipt.id,
+      },
+    });
+    const account=await tx.satchelFundedBalance.update({
+      where:{ownerUserId:input.ownerUserId},
+      data:{
+        availableUwolo:{increment:proof.amountUwolo},
+        version:{increment:BigInt(1)},updatedAt:new Date(),
+      },
+    });
+    return Object.freeze({
+      status:"credited" as const,
+      returnId:receipt.id.toString(),
+      availableUwolo:account.availableUwolo.toString(),
+    });
   });
 }
