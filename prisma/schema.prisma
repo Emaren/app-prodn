@@ -74,6 +74,7 @@ model User {
   warSatchelLedgerAccounts       WarSatchelLedgerAccount[]
   satchelFundedBalance           SatchelFundedBalance?
   satchelFundedReceipts          SatchelFundedReceipt[]
+  satchelClaimReturns            SatchelFundedClaimReturn[]
   satchelFundedJournal           SatchelFundedJournal[]
   satchelFundedReservations      SatchelFundedReservation[]
   satchelAutoSpendConsents       SatchelAutoSpendConsent[]
@@ -2460,6 +2461,7 @@ model PendingWoloClaim {
 
   sourceFounderBonus    BetMarketFounderBonus?         @relation(fields: [sourceFounderBonusId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   correctiveAdjustments BetMarketFinancialAdjustment[]
+  satchelClaimReturn    SatchelFundedClaimReturn?
 
   @@unique([sourceMarketId, normalizedPlayerName, claimKind, claimGroupKey], map: "uq_pending_wolo_claims_market_player_kind_group")
   @@index([normalizedPlayerName, status], map: "ix_pending_wolo_claims_name_status")
@@ -5446,11 +5448,13 @@ model SatchelFundedJournal {
   deltaCommittedUwolo         BigInt   @map("delta_committed_uwolo")
   deltaWithdrawalPendingUwolo BigInt   @map("delta_withdrawal_pending_uwolo")
   receiptId                   BigInt?  @map("receipt_id")
+  claimReturnId               BigInt?  @map("claim_return_id")
   executionId                 Int?     @map("execution_id")
   createdAt                   DateTime @default(now()) @map("created_at") @db.Timestamp(6)
 
   owner User @relation(fields: [ownerUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   receipt SatchelFundedReceipt? @relation(fields: [receiptId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  claimReturn SatchelFundedClaimReturn? @relation(fields: [claimReturnId], references: [id], onDelete: Restrict, onUpdate: NoAction)
 
   @@index([ownerUserId, id], map: "ix_satchel_funded_journal_owner")
   @@map("war_satchel_funded_journal")
@@ -5544,4 +5548,32 @@ model SatchelWithdrawalChallenge {
 
   @@index([ownerUserId, issuedAt], map: "ix_satchel_withdraw_challenge_owner")
   @@map("war_satchel_funded_withdrawal_challenges")
+}
+
+/**
+ * Independently verified escrow→exclusive Satchel vault return of a
+ * settled claim (WIN or complete unmatched refund). One claim / one tx /
+ * one receiving Steam owner. Distinct from Keplr user-funded deposits.
+ */
+model SatchelFundedClaimReturn {
+  id              BigInt   @id @default(autoincrement())
+  claimId         Int      @unique(map: "uq_satchel_funded_return_claim") @map("claim_id")
+  ownerUserId     Int      @map("owner_user_id")
+  sourceMarketId  Int      @map("source_market_id")
+  claimKind       String   @map("claim_kind") @db.VarChar(24)
+  chainId         String   @default("wolo-1") @map("chain_id") @db.VarChar(32)
+  txHash          String   @map("tx_hash") @db.VarChar(64)
+  transferIndex   Int      @default(0) @map("transfer_index")
+  amountUwolo     BigInt   @map("amount_uwolo")
+  vaultAddress    String   @map("vault_address") @db.VarChar(100)
+  canonicalHeight BigInt   @map("canonical_height")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+
+  claim PendingWoloClaim @relation(fields: [claimId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  owner User @relation(fields: [ownerUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  journal SatchelFundedJournal[]
+
+  @@unique([chainId, txHash, transferIndex], map: "uq_satchel_funded_return_transfer")
+  @@index([ownerUserId, createdAt], map: "ix_satchel_funded_return_owner")
+  @@map("war_satchel_funded_claim_returns")
 }
