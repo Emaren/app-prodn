@@ -115,3 +115,23 @@ test("one ticket cannot masquerade as two operations or funding transactions",()
     ...base,wagers:[first,drift],
   }),/multi_ticket_or_conflicting_funding_requires_claim_partition/);
 });
+
+test("two ticket IDs cannot claim one physical transfer or one durable request",()=>{
+  const sameHash:SatchelReturnWager={...second,stakeLeg:{
+    ...second.stakeLeg!,ticket:{
+      ...second.stakeLeg!.ticket!,stakeTxHash:first.stakeLeg!.ticket!.stakeTxHash,
+    },
+  }};
+  assert.throws(()=>inspectSatchelClaimPartitionPreview({
+    ...base,wagers:[first,sameHash],
+  }),/multiple_tickets_share_one_chain_effect_or_operation/);
+  const sameRequest:SatchelReturnWager={...second,stakeLeg:{
+    ...second.stakeLeg!,ticket:{
+      ...second.stakeLeg!.ticket!,
+      clientRequestId:first.stakeLeg!.ticket!.clientRequestId,
+    },
+  }};
+  assert.throws(()=>inspectSatchelClaimPartitionPreview({
+    ...base,wagers:[first,sameRequest],
+  }),/multiple_tickets_share_one_chain_effect_or_operation/);
+});
