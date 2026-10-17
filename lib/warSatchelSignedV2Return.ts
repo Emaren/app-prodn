@@ -137,7 +137,8 @@ export function verifySatchelSignedV2Return(input: {
   const allocatedUntil = num(allocation.expires_at);
   const approvedAt = num(approval.issued_at);
   const approvedUntil = num(approval.expires_at);
-  if (allocatedUntil <= allocatedAt || approvedUntil <= approvedAt)
+  if (allocatedUntil <= allocatedAt || approvedUntil <= approvedAt ||
+      allocatedUntil - allocatedAt > 300 || approvedUntil - approvedAt > 300)
     stop("invalid_signature_interval");
 
   const operationId = str(allocation.operation_id);
@@ -155,7 +156,10 @@ export function verifySatchelSignedV2Return(input: {
   const available = amount(allocation.funds_available_uwolo);
   const funding = amount(expected.fundedAmountUwolo);
   const bankHeight = num(allocation.bank_height);
-  if (cap > available || !HASH.test(str(allocation.bank_evidence_digest)) ||
+  if (cap > available || cap > BigInt("100000000000000") ||
+      available > BigInt("100000000000000") ||
+      funding > BigInt(1000000000) ||
+      !HASH.test(str(allocation.bank_evidence_digest)) ||
       !HASH.test(str(allocation.bank_block_hash)))
     stop("invalid_reviewed_budget");
 
@@ -163,18 +167,22 @@ export function verifySatchelSignedV2Return(input: {
   if (!Array.isArray(rawLegs) || rawLegs.length < 1 || rawLegs.length > 16)
     stop("invalid_leg_count");
   let totalPrincipal = BigInt(0), totalReturn = BigInt(0), totalStake = BigInt(0);
+  const markets = new Set<string>(), claims = new Set<string>();
+  const entitlementIds = new Set<string>();
   let found = 0, previousLeg = "";
   const legArrays: unknown[][] = [];
   for (const item of rawLegs) {
     const leg = obj(item);
     keys(leg, legFields);
     const legId = str(leg.leg_id), marketId = str(leg.market_id);
-    if (previousLeg && legId <= previousLeg) stop("duplicate_or_unsorted_leg");
+    if ((previousLeg && legId <= previousLeg) || markets.has(marketId))
+      stop("duplicate_or_unsorted_leg");
+    markets.add(marketId);
     previousLeg = legId;
     const stake = amount(leg.stake_uwolo);
     totalStake = add(totalStake, stake);
     const ents = leg.entitlements;
-    if (!Array.isArray(ents) || ents.length < 1 || ents.length > 128)
+    if (!Array.isArray(ents) || ents.length > 64)
       stop("invalid_entitlements");
     const entryArrays: unknown[][] = [];
     let legPrincipal = BigInt(0), previousEntitlement = "";
@@ -183,8 +191,11 @@ export function verifySatchelSignedV2Return(input: {
       keys(ent, entitlementFields);
       const id = str(ent.entitlement_id), claim = str(ent.claim_id);
       const kind = str(ent.claim_kind);
-      if (previousEntitlement && id <= previousEntitlement)
+      if ((previousEntitlement && id <= previousEntitlement) ||
+          entitlementIds.has(id) || claims.has(claim) || claim === "889")
         stop("duplicate_or_unsorted_entitlement");
+      entitlementIds.add(id);
+      claims.add(claim);
       previousEntitlement = id;
       if (kind !== "bet_refund" && kind !== "bet_payout")
         stop("unknown_claim_kind");
@@ -193,6 +204,8 @@ export function verifySatchelSignedV2Return(input: {
       if (kind === "bet_refund" && principal !== returned)
         stop("unmatched_principal_not_fully_refunded");
       legPrincipal = add(legPrincipal, principal);
+      if (returned > BigInt("50000000000"))
+        stop("claim_return_exceeds_go_limit");
       totalReturn = add(totalReturn, returned);
       entryArrays.push([id, claim, kind, principal.toString(), returned.toString()]);
       if (claim === expected.claimId && legId === expected.legId &&
@@ -209,15 +222,18 @@ export function verifySatchelSignedV2Return(input: {
       totalReturn > cap || totalReturn > available || found !== 1)
     stop("not_exact_funded_ticket_allocation");
 
-  const allocatedBytes = JSON.stringify([
+  const allocationMessage = [
     A_DOMAIN, "wolo-1", "uwolo", expected.escrowAddress, expected.vaultAddress,
     2, str(allocation.allocation_id), revision, operationId, ownerId, ticketId,
     expected.fundingTxHash, cap.toString(), str(allocation.funds_budget_id),
     available.toString(), str(allocation.bank_evidence_digest), bankHeight,
-    str(allocation.bank_block_hash), legArrays, allocatedAt, allocatedUntil,
-  ]);
+    str(allocation.bank_block_hash), legArrays,
+  ];
+  // Go's AllocationDigest intentionally EXCLUDES review times and signature.
+  // Its AllocationMessage adds timestamps before signing the same economics.
+  const digest = hash(JSON.stringify(allocationMessage));
+  const allocatedBytes = JSON.stringify([...allocationMessage, allocatedAt, allocatedUntil]);
   verifySignature(allocatedBytes, allocation.signature, input.independentOperatorPublicKeyHex);
-  const digest = hash(allocatedBytes);
   if (!DIGEST.test(str(approval.allocation_digest)) ||
       approval.allocation_digest !== digest)
     stop("allocation_digest_mismatch");
