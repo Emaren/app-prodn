@@ -24,6 +24,9 @@ export async function readWarSatchelBoundedUtf8(
   const chunks: Uint8Array[] = [];
   let bytes = 0;
   let reads = 0;
+  // Keep public request limits at 2048 chunks, but accept a large portable
+  // proof split into ordinary 4 KiB network reads without losing the cap.
+  const maxReads = Math.max(2048, Math.ceil(maxBytes / 4096) + 16);
   let incomplete = true;
   try {
     while (true) {
@@ -34,7 +37,7 @@ export async function readWarSatchelBoundedUtf8(
       }
       // Bound both total bytes and an attacker-controlled stream of tiny chunks.
       reads += 1;
-      if (!(value instanceof Uint8Array) || reads > 2048 || value.byteLength > maxBytes - bytes) {
+      if (!(value instanceof Uint8Array) || reads > maxReads || value.byteLength > maxBytes - bytes) {
         return null;
       }
       bytes += value.byteLength;
