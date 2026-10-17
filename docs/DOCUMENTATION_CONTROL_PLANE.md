@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/hd-braces-waiver-scope-review-20261017` at `b5deefc3759620e1eee58292dd8584b62798ad4c`
+Implementation baseline: `fix/hd-release-gate-and-dependency-expiry-20261017` at `070369cab20bb26087a3c1305c2254e37399ee61`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
