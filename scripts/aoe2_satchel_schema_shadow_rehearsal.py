@@ -226,6 +226,13 @@ def describe_schema_delta(source: bytes, restored: bytes) -> str:
 
     original = source.decode("utf-8", "strict").splitlines()
     shadow = restored.decode("utf-8", "strict").splitlines()
+    # Caller invoked schema_fingerprint() for both dumps first, which has
+    # already rejected missing, malformed or unpaired restriction tokens.
+    # Ignore only those validated non-schema tokens in this diagnostic too.
+    for lines in (original, shadow):
+        for i, line in enumerate(lines):
+            if line.startswith("\\restrict ") or line.startswith("\\unrestrict "):
+                lines[i] = line.split(" ", 1)[0] + " VERIFIED_NONCE"
     if len(original) > 30_000 or len(shadow) > 30_000:
         return (
             f"schema line counts source={len(original)} shadow={len(shadow)}; "
