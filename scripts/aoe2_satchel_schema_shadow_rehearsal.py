@@ -377,7 +377,8 @@ def apply_to_shadow(database: str, sql: bytes) -> None:
     )
 
 
-def rehearse(*, explain_schema_mismatch: bool = False) -> dict:
+def rehearse(*, explain_schema_mismatch: bool = False,
+            diagnostic_only_on_schema_mismatch: bool = False) -> dict:
     name = SHADOW_PREFIX + secrets.token_hex(7)
     if not SAFE_NAME.fullmatch(name):
         raise RehearsalStop("unsafe random scratch database name")
@@ -395,26 +396,34 @@ def rehearse(*, explain_schema_mismatch: bool = False) -> dict:
         baseline = schema_bytes(name)
         source_digest = schema_fingerprint(source_dump)
         baseline_digest = schema_fingerprint(baseline)
-        if source_digest != baseline_digest:
-            diagnostics = (
-                describe_schema_delta(source_dump, baseline)
-                if explain_schema_mismatch else ""
-            )
+        schema_mismatch = source_digest != baseline_digest
+        diagnostics = (
+            describe_schema_delta(source_dump, baseline)
+            if schema_mismatch and explain_schema_mismatch else ""
+        )
+        if schema_mismatch and not diagnostic_only_on_schema_mismatch:
             raise RehearsalStop(
                 "shadow schema not equal to production schema-only export"
                 + (": " + diagnostics if diagnostics else "")
             )
+        # Diagnostic ONLY: run the same seven-file SQL cohort in the disposable
+        # restored shadow. Passing here never proves source schema equivalence,
+        # nor permits applying any migration to the production database.
         apply_to_shadow(name, cohort_sql())
         after_digest = schema_fingerprint(schema_bytes(name))
         if baseline_digest != after_digest:
             raise RehearsalStop("schema changed after seven-migration ROLLBACK")
         result = {
-            "status": "PASS", "database": SOURCE_DATABASE,
+            "status": ("DIAGNOSTIC_ONLY_SCHEMA_MISMATCH" if schema_mismatch else "PASS"),
+            "database": SOURCE_DATABASE,
             "schema_sha256": source_digest, "shadow_schema_sha256": baseline_digest,
+            "schema_equivalent": not schema_mismatch,
+            "schema_delta": diagnostics or ("DIFFERENT" if schema_mismatch else "NONE"),
             "post_rollback_sha256": after_digest,
             "pending_migrations_exercised": True,
             "pending_migration_count": len(SATCHEL),
-            "comparison": "all schema bytes except validated paired pg_dump restriction nonce",
+            "comparison": ("MISMATCH: no production installation authority" if schema_mismatch
+                           else "all schema bytes except validated paired pg_dump restriction nonce"),
             "production_mutated": False, "production_data_copied": False,
             "custody_authorized": False,
         }
@@ -446,11 +455,15 @@ def main() -> int:
     ap.add_argument("--authorize-shadow-database", action="store_true")
     ap.add_argument("--explain-schema-mismatch", action="store_true",
                     help="print only bounded hashed diff metadata on a failed shadow comparison")
+    ap.add_argument("--diagnose-migrations-on-mismatch", action="store_true",
+                    help="shadow-only SQL diagnosis on mismatch, never a green release gate")
     args = ap.parse_args()
     if args.rehearse != args.authorize_shadow_database:
         ap.error("--rehearse requires --authorize-shadow-database and vice versa")
     if args.explain_schema_mismatch and not args.rehearse:
         ap.error("--explain-schema-mismatch requires --rehearse with explicit authorization")
+    if args.diagnose_migrations_on_mismatch and not args.rehearse:
+        ap.error("--diagnose-migrations-on-mismatch requires --rehearse with explicit authorization")
     try:
         invoke(["sudo", "-n", "-u", "postgres", "true"])
         sources = source_evidence(args.source_sha)
@@ -463,10 +476,15 @@ def main() -> int:
         if not args.rehearse:
             print("PASS: READ-ONLY FRONTIER; no schema export or database creation")
             return 0
-        receipt = rehearse(explain_schema_mismatch=args.explain_schema_mismatch)
+        receipt = rehearse(
+            explain_schema_mismatch=args.explain_schema_mismatch,
+            diagnostic_only_on_schema_mismatch=args.diagnose_migrations_on_mismatch,
+        )
         for key, value in receipt.items():
             print(f"{key}: {value}")
-        return 0
+        # Schema mismatch cannot be classified as a passed release gate,
+        # even if the detached seven-file SQL cohort rolls back cleanly.
+        return 0 if receipt["status"] == "PASS" else 2
     except RehearsalStop as exc:
         print(f"STOP: {exc}", file=sys.stderr)
         return 2

@@ -142,6 +142,74 @@ class ShadowSafetyTests(unittest.TestCase):
         self.assertFalse(result["production_mutated"])
         self.assertFalse(result["production_data_copied"])
 
+    def test_explicit_mismatch_diagnostic_exercises_sql_but_never_certifies(self):
+        # Source/restore textual divergence is real: only the disposable
+        # shadow may run the migration cohort; this is NEVER a release PASS.
+        with (
+            mock.patch.object(MODULE, "postgres", return_value=b"") as pg,
+            mock.patch.object(MODULE, "schema_bytes",
+                              side_effect=[b"source ddl", b"restored ddl", b"restored ddl"]),
+            mock.patch.object(MODULE, "apply_to_shadow") as apply,
+            mock.patch.object(MODULE, "cohort_sql", return_value=b"BEGIN; ROLLBACK;"),
+        ):
+            result = MODULE.rehearse(diagnostic_only_on_schema_mismatch=True)
+        self.assertEqual(result["status"], "DIAGNOSTIC_ONLY_SCHEMA_MISMATCH")
+        self.assertFalse(result["schema_equivalent"])
+        self.assertTrue(result["pending_migrations_exercised"])
+        self.assertFalse(result["production_mutated"])
+        self.assertFalse(result["custody_authorized"])
+        self.assertTrue(result["disposable_database_removed"])
+        self.assertEqual([x.args[1] for x in apply.call_args_list],
+                         [b"source ddl", b"BEGIN; ROLLBACK;"])
+        self.assertEqual(sum("DROP DATABASE" in " ".join(c.args)
+                             for c in pg.call_args_list), 1)
+
+    def test_mismatch_diagnostic_refuses_rollback_schema_drift(self):
+        with (
+            mock.patch.object(MODULE, "postgres", return_value=b"") as pg,
+            mock.patch.object(MODULE, "schema_bytes",
+                              side_effect=[b"source", b"restored", b"drifted"]),
+            mock.patch.object(MODULE, "apply_to_shadow"),
+            mock.patch.object(MODULE, "cohort_sql", return_value=b"BEGIN; ROLLBACK;"),
+        ):
+            with self.assertRaisesRegex(MODULE.RehearsalStop, "schema changed"):
+                MODULE.rehearse(diagnostic_only_on_schema_mismatch=True)
+        self.assertEqual(sum("DROP DATABASE" in " ".join(c.args)
+                             for c in pg.call_args_list), 1)
+
+    def test_diagnostic_flag_requires_explicit_shadow_authorization(self):
+        with mock.patch.object(sys, "argv", [
+            "rehearsal", "--source-sha", "a" * 40,
+            "--diagnose-migrations-on-mismatch",
+        ]):
+            with self.assertRaises(SystemExit):
+                MODULE.main()
+
+    def test_diagnostic_result_exits_nonzero_and_cannot_be_release_pass(self):
+        with (
+            mock.patch.object(sys, "argv", [
+                "rehearsal", "--source-sha", "a" * 40,
+                "--rehearse", "--authorize-shadow-database",
+                "--diagnose-migrations-on-mismatch",
+            ]),
+            mock.patch.object(MODULE, "invoke", return_value=b""),
+            mock.patch.object(MODULE, "source_evidence", return_value={"x": "y"}),
+            mock.patch.object(MODULE, "production_frontier",
+                              return_value={"completed": 112, "rolled_back": 2,
+                                            "pending": list(MODULE.SATCHEL)}),
+            mock.patch.object(MODULE, "rehearse",
+                              return_value={"status": "DIAGNOSTIC_ONLY_SCHEMA_MISMATCH",
+                                            "production_mutated": False}) as rehearse,
+            redirect_stdout(io.StringIO()) as output,
+        ):
+            code = MODULE.main()
+        self.assertEqual(code, 2)
+        self.assertIn("DIAGNOSTIC_ONLY_SCHEMA_MISMATCH", output.getvalue())
+        rehearse.assert_called_once_with(
+            explain_schema_mismatch=False,
+            diagnostic_only_on_schema_mismatch=True,
+        )
+
     def test_rehearsal_error_still_drops_shadow(self):
         with (
             mock.patch.object(MODULE, "postgres", return_value=b"") as pg,
