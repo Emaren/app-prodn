@@ -3071,6 +3071,66 @@ def ship_release(
                 print(f"  - {error}")
         return 2
 
+    # A seal verifies the *source delta*, not the database's real applied
+    # frontier. Read it independently before advertising a green deployment
+    # plan; historically pending migrations must not disappear from view.
+    frontier = None
+    if manifest.get("migration_paths"):
+        from aoe2_release_migration_frontier import (
+            MigrationFrontierError,
+            inspect_release_frontier,
+        )
+        from aoe2_release_auto import AutoShipError, migration_contract
+
+        frontier_errors = []
+        try:
+            frontier = inspect_release_frontier(
+                ROOT, manifest, PROD_HOST, PROD_REPO
+            )
+            frontier_errors.extend(frontier["errors"])
+        except MigrationFrontierError as exc:
+            frontier_errors.append(str(exc))
+
+        # Independent SQL allowlist: the read-only DB comparison cannot
+        # authorize non-additive functions, financial writes, or exceptions.
+        try:
+            _contract, names = migration_contract(release_sha)
+            declared = {
+                str(p).split("/")[-2]
+                for p in manifest["migration_paths"]
+            }
+            if set(names) != declared:
+                frontier_errors.append(
+                    "SQL migration contract does not match sealed manifest"
+                )
+        except AutoShipError as exc:
+            frontier_errors.append("SQL migration contract HOLD: " + str(exc))
+
+        if frontier_errors:
+            payload = {
+                "schema": 1,
+                "kind": "aoe2war-ship-migration-frontier",
+                "status": "BLOCKED",
+                "errors": frontier_errors,
+                "frontier": frontier,
+                "production_mutated": False,
+            }
+            if json_output:
+                print(json.dumps(payload, indent=2, sort_keys=True))
+            else:
+                print("STOP: SHIP DRY-RUN MIGRATION FRONTIER BLOCKED")
+                if frontier:
+                    print(
+                        "Source/DB/Pending: "
+                        f"{frontier['source_count']}/"
+                        f"{frontier['completed_count']}/"
+                        f"{len(frontier['pending'])}"
+                    )
+                for error in frontier_errors:
+                    print("  - " + error)
+                print("No migrations were applied.")
+            return 2
+
     plan = build_plan(
         data,
         manifest,
@@ -3078,6 +3138,8 @@ def ship_release(
         gate_path,
         gate_sha,
     )
+    if frontier is not None:
+        plan["migration_frontier"] = frontier
     plan_path = write_plan(plan)
     payload = {
         **plan,

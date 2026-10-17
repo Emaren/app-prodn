@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "70c7af41c6a33e1270fc0e34c33885136e660199d9f4985343ba6e67c9fb2d56",
+      "sha256": "f26ec56d2e013ac6b9e9190f53013241fa7477624e5ee794c05522c23e26d303",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/hd-release-gate-test-lint-20261017",
-    "commit": "7c11e885e7e9e2a5f38131822117e8692729c8e0"
+    "branch": "fix/hd-ship-plan-migration-frontier-20261017",
+    "commit": "c7b17107ba16a8d3510199d7a9a3638f4f5bae0b"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
