@@ -121,7 +121,7 @@ export async function makeSatchelLoopbackSigner(
   return Object.freeze({
     attestedVaultAddress:cfg.addr,
     custodyRole:"exclusive-war-satchel-v1" as const,
-    async submitOneShot(input){
+    async submitOneShot(input: Parameters<IsolatedSatchelSigner["submitOneShot"]>[0]){
       // A client object is one-use as an extra line of defense. The REAL
       // signer MUST persist durable global ID uniqueness across restarts.
       if(attempted.has(input.requestId))
