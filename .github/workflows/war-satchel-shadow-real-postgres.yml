@@ -12,6 +12,7 @@ on:
       - "prisma/migrations/20261014_164500_war_satchel_simulation_concurrency_guard/**"
       - "prisma/migrations/20261014_191500_war_satchel_simulation_single_owner/**"
       - "prisma/migrations/20261015_151500_war_satchel_simulation_guard_correction/**"
+      - "prisma/migrations/20261017_012000_war_satchel_funded_ledger_foundation/**"
   push:
     branches: [main]
     paths:
@@ -24,6 +25,7 @@ on:
       - "prisma/migrations/20261014_164500_war_satchel_simulation_concurrency_guard/**"
       - "prisma/migrations/20261014_191500_war_satchel_simulation_single_owner/**"
       - "prisma/migrations/20261015_151500_war_satchel_simulation_guard_correction/**"
+      - "prisma/migrations/20261017_012000_war_satchel_funded_ledger_foundation/**"
 
 permissions:
   contents: read
@@ -61,5 +63,5 @@ jobs:
           psql --version
           pg_dump --version
           pg_isready -h 127.0.0.1 -p 5432 -U satchel_ci -d satchel_shadow_ci
-      - name: Prove real schema-only shadow restore, six SQL migrations, rollback and cleanup
+      - name: Prove real schema-only shadow restore, seven SQL migrations, rollback and cleanup
         run: python3 tests/sql/war_satchel_shadow_real_postgres_ci.py
