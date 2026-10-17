@@ -233,5 +233,59 @@ class ShadowSafetyTests(unittest.TestCase):
                 MODULE.schema_fingerprint(payload)
 
 
+    def test_schema_delta_is_bounded_and_does_not_echo_source_sql(self):
+        private_source = (
+            b"-- PostgreSQL database dump\n"
+            b"CREATE TABLE public.internal_secret(credential text DEFAULT 'TOP_PRIVATE_A');\n"
+            b"COMMENT ON TABLE public.internal_secret IS 'HIDDEN_HOLDING_B';\n"
+        )
+        shadow = (
+            b"-- PostgreSQL database dump\n"
+            b"CREATE TABLE public.internal_secret(credential text);\n"
+            b"COMMENT ON TABLE public.internal_secret IS 'DIFFERENT_C';\n"
+        )
+        result = MODULE.describe_schema_delta(private_source, shadow)
+        self.assertIn("source_lines=3", result)
+        self.assertIn("source_kind=CREATE", result)
+        self.assertIn("shadow_kind=CREATE", result)
+        self.assertIn("source_line_sha12=", result)
+        for secret in ("TOP_PRIVATE_A", "HIDDEN_HOLDING_B", "DIFFERENT_C",
+                       "internal_secret", "credential"):
+            self.assertNotIn(secret, result)
+
+    def test_schema_delta_large_input_stays_bounded(self):
+        massive = b"SELECT 1;\n" * 30_001
+        out = MODULE.describe_schema_delta(massive, massive + b"SELECT 2;\n")
+        self.assertIn("too large", out)
+        self.assertNotIn("SELECT", out)
+
+    def test_shadow_mismatch_diagnostics_fail_closed_and_cleanup(self):
+        source = b"CREATE TABLE public.private_src(id int);\n"
+        shadow = b"CREATE TABLE public.private_src(id bigint);\n"
+        with (
+            mock.patch.object(MODULE, "postgres", return_value=b"") as pg,
+            mock.patch.object(MODULE, "schema_bytes", side_effect=[source, shadow]),
+            mock.patch.object(MODULE, "apply_to_shadow") as apply,
+            mock.patch.object(MODULE, "cohort_sql") as cohort,
+        ):
+            with self.assertRaises(MODULE.RehearsalStop) as caught:
+                MODULE.rehearse(explain_schema_mismatch=True)
+        self.assertIn("shadow schema not equal", str(caught.exception))
+        self.assertIn("source_kind=CREATE", str(caught.exception))
+        self.assertNotIn("private_src", str(caught.exception))
+        self.assertEqual(apply.call_count, 1)
+        cohort.assert_not_called()
+        statements = [" ".join(c.args) for c in pg.call_args_list]
+        self.assertEqual(sum("CREATE DATABASE" in s for s in statements), 1)
+        self.assertEqual(sum("DROP DATABASE" in s for s in statements), 1)
+
+    def test_schema_delta_flag_denied_outside_authorized_rehearsal(self):
+        with mock.patch.object(sys, "argv", [
+            "rehearsal", "--source-sha", "a" * 40, "--explain-schema-mismatch",
+        ]):
+            with self.assertRaises(SystemExit):
+                MODULE.main()
+
+
 if __name__ == "__main__":
     unittest.main()
