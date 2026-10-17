@@ -1,3 +1,4 @@
+import { requireSatchelFinancialBridge } from "./warSatchelFinancialBridgeHold.ts";
 import { inspectSingleTicketSatchelReturn } from "./warSatchelClaimReturnAttribution.ts";
 import { verifyLiveCanonicalSatchelClaimReturn } from "./warSatchelCanonicalClaimReturn.ts";
 import { getWoloBetEscrowRuntime } from "./woloChain.ts";
@@ -43,6 +44,9 @@ function positiveAmount(value: bigint) {
   return value > BigInt(0) && value <= MAX_I64;
 }
 function noFundsUntilCertified() {
+  // Cannot be bypassed with environment flags, including operator-attested.
+  // Canonical decoded REST tx JSON is not signed committed-chain evidence.
+  requireSatchelFinancialBridge();
   if (process.env.WAR_SATCHEL_FUNDED_LEDGER_ENABLED !== "true" ||
       process.env.WAR_SATCHEL_FINANCIAL_OPERATOR_ATTESTED !== "true") {
     stop("operator_financial_activation_not_certified");
