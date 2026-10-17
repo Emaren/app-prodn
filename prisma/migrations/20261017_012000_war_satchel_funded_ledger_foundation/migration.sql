@@ -324,3 +324,51 @@ $satchel_withdrawal$;
 CREATE TRIGGER satchel_funded_withdrawal_guard
   BEFORE UPDATE ON "war_satchel_funded_withdrawals"
   FOR EACH ROW EXECUTE FUNCTION war_satchel_funded_withdrawal_transition();
+
+-- A one-use server-stored ADR-36 Keplr withdrawal intent must authorize each
+-- distinct physical bank-send. No prepared/consumed signature is transferable
+-- to a different Steam owner, wallet, amount, or recipient.
+CREATE TABLE "war_satchel_funded_withdrawal_challenges" (
+  "id" UUID NOT NULL PRIMARY KEY,
+  "owner_user_id" INTEGER NOT NULL,
+  "owner_uid" VARCHAR(100) NOT NULL,
+  "wallet_address" VARCHAR(100) NOT NULL,
+  "amount_uwolo" BIGINT NOT NULL,
+  "issued_at" TIMESTAMP(6) NOT NULL,
+  "expires_at" TIMESTAMP(6) NOT NULL,
+  "consumed_at" TIMESTAMP(6),
+  CONSTRAINT "fk_satchel_withdraw_challenge_owner"
+    FOREIGN KEY ("owner_user_id") REFERENCES "users"("id") ON DELETE RESTRICT,
+  CONSTRAINT "ck_satchel_withdraw_challenge_valid"
+    CHECK ("amount_uwolo">0 AND "expires_at">"issued_at"
+      AND "expires_at"<="issued_at"+INTERVAL '5 minutes'
+      AND ("consumed_at" IS NULL OR
+        ("consumed_at">="issued_at" AND "consumed_at"<"expires_at")))
+);
+CREATE INDEX "ix_satchel_withdraw_challenge_owner"
+  ON "war_satchel_funded_withdrawal_challenges" ("owner_user_id","issued_at");
+ALTER TABLE "war_satchel_funded_withdrawals"
+  ADD COLUMN "authorizing_challenge_id" UUID NOT NULL,
+  ADD CONSTRAINT "uq_satchel_withdrawal_challenge" UNIQUE ("authorizing_challenge_id"),
+  ADD CONSTRAINT "fk_satchel_withdrawal_challenge"
+    FOREIGN KEY ("authorizing_challenge_id")
+    REFERENCES "war_satchel_funded_withdrawal_challenges"("id") ON DELETE RESTRICT;
+
+CREATE FUNCTION war_satchel_funded_withdraw_challenge_immutable()
+RETURNS TRIGGER LANGUAGE plpgsql AS $satchel_wcha$
+BEGIN
+  IF (NEW.id,NEW.owner_user_id,NEW.owner_uid,NEW.wallet_address,
+      NEW.amount_uwolo,NEW.issued_at,NEW.expires_at) IS DISTINCT FROM
+     (OLD.id,OLD.owner_user_id,OLD.owner_uid,OLD.wallet_address,
+      OLD.amount_uwolo,OLD.issued_at,OLD.expires_at) THEN
+    RAISE EXCEPTION 'Satchel withdrawal Keplr challenge identity immutable';
+  END IF;
+  IF OLD.consumed_at IS NOT NULL AND NEW.consumed_at IS DISTINCT FROM OLD.consumed_at THEN
+    RAISE EXCEPTION 'Satchel withdrawal challenge is one-use';
+  END IF;
+  RETURN NEW;
+END;
+$satchel_wcha$;
+CREATE TRIGGER satchel_funded_withdraw_challenge_guard
+  BEFORE UPDATE ON "war_satchel_funded_withdrawal_challenges"
+  FOR EACH ROW EXECUTE FUNCTION war_satchel_funded_withdraw_challenge_immutable();
