@@ -203,7 +203,7 @@ class ShipPlannerFrontierTests(unittest.TestCase):
         }
         rc, output, planned = self._run_ship(frontier)
         self.assertEqual(rc, 2)
-        self.assertIn("five", output)
+        self.assertIn("first, second, third, fourth, fifth", output)
         self.assertIn("No migrations were applied", output)
         self.assertFalse(planned)
 
