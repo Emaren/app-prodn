@@ -14,7 +14,7 @@
  * approval/execution/recovery bridge. Its removal requires a separate
  * reviewed source change and production release authority.
  */
-export const SATCHEL_FINANCIAL_BRIDGE_READY: false = false;
+export const SATCHEL_FINANCIAL_BRIDGE_READY = false as const;
 
 export function satchelFinancialBridgeReady(): boolean {
   return SATCHEL_FINANCIAL_BRIDGE_READY;
