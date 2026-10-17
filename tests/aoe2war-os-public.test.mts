@@ -8,10 +8,10 @@ function source(path: string) {
   return readFileSync(new URL("../" + path, import.meta.url), "utf8");
 }
 
-test("AoE2WAR OS model atlas enumerates exactly 199 distinct real schema models", () => {
+test("AoE2WAR OS model atlas enumerates exactly 200 distinct real schema models", () => {
   const schema = source("prisma/schema.prisma");
   const names = [...schema.matchAll(/^model\s+([A-Za-z]\w*)\s*\{/gm)].map(match => match[1]);
-  assert.equal(names.length, 199);
+  assert.equal(names.length, 200);
   assert.deepEqual(models.models, names);
   assert.equal(new Set(models.models).size, models.models.length);
   assert.ok(models.models.includes("WarSatchelLedgerJournal"));
