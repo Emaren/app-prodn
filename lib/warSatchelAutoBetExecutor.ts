@@ -19,6 +19,7 @@ import {
   markSatchelSubmissionAttempt,
   releaseUnbroadcastSatchelReservation,
   commitVerifiedSatchelAutoTicket,
+  quarantineUnknownSatchelWager,
 } from "./warSatchelFundedLedger.ts";
 import {
   runFundedMechaTransitionBatch,
@@ -259,11 +260,19 @@ export async function executeFundedMechaTicketBatch(
         independentlyNoBroadcast: true,
       });
     },
-    async holdUnknown() {
-      // The DB has ALREADY fenced the signer attempt as unknown_hold before
-      // submitOneShot(). No resends, releases, retries, or phantom debits.
-      // A network failure before marking still leaves 'reserved' and is
-      // intentionally operator-visible rather than automatically replayed.
+    async holdUnknown(claim, reason) {
+      const user = userById.get(claim.executionId);
+      if (!user) {
+        // The claim has its own ownerUid, but never synthesize numeric IDs:
+        // an unverified fallback could hold another player's reservation.
+        throw Error("MECHA_FUNDED_UNKNOWN_HOLD_OWNER_NOT_RESOLVED");
+      }
+      await quarantineUnknownSatchelWager(prisma, {
+        executionId: claim.executionId,
+        ownerUserId: user.id,
+        reservationId: claim.reservationId,
+        reason,
+      });
     },
   });
 }
