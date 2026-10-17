@@ -232,5 +232,54 @@ BEGIN
   VALUES(71241,'test:withdrawn','withdraw_sent',25000000,0,0,0,-25000000);
 END;
 $withdrawal_test$;
+-- Escrow payout/refund is a DIFFERENT globally unique type from user deposits.
+INSERT INTO pending_wolo_claims(id) VALUES (88321);
+INSERT INTO war_satchel_funded_claim_returns
+(claim_id,owner_user_id,source_market_id,claim_kind,chain_id,tx_hash,
+ transfer_index,amount_uwolo,vault_address,canonical_height)
+VALUES(88321,71241,663,'bet_refund','wolo-1',repeat('F',64),0,25000000,
+ 'wolo1vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv',690);
+
+INSERT INTO war_satchel_funded_journal
+(owner_user_id,source_key,event_kind,amount_uwolo,
+ delta_available_uwolo,delta_reserved_uwolo,
+ delta_committed_uwolo,delta_withdrawal_pending_uwolo,claim_return_id)
+VALUES(71241,'test:claim-return:88321','claim_return_credit',25000000,
+ 25000000,0,0,0,
+ (SELECT id FROM war_satchel_funded_claim_returns WHERE claim_id=88321));
+
+DO $return_test$
+DECLARE failed BOOLEAN;
+BEGIN
+  failed:=FALSE;
+  BEGIN
+    INSERT INTO war_satchel_funded_claim_returns
+    (claim_id,owner_user_id,source_market_id,claim_kind,chain_id,tx_hash,
+     transfer_index,amount_uwolo,vault_address,canonical_height)
+    VALUES(88321,71242,663,'bet_refund','wolo-1',repeat('9',64),0,25000000,
+      'wolo1vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv',690);
+  EXCEPTION WHEN unique_violation THEN failed:=TRUE;
+  END;
+  IF NOT failed THEN RAISE EXCEPTION 'claim could be credited to two owners'; END IF;
+  failed:=FALSE;
+  BEGIN
+    INSERT INTO war_satchel_funded_journal
+    (owner_user_id,source_key,event_kind,amount_uwolo,
+     delta_available_uwolo,delta_reserved_uwolo,
+     delta_committed_uwolo,delta_withdrawal_pending_uwolo,claim_return_id)
+    VALUES(71241,'test:claim_return_fee','claim_return_credit',25000000,
+      24500000,0,0,0,
+      (SELECT id FROM war_satchel_funded_claim_returns WHERE claim_id=88321));
+  EXCEPTION WHEN check_violation THEN failed:=TRUE;
+  END;
+  IF NOT failed THEN RAISE EXCEPTION 'escrow return silently deducted a fee'; END IF;
+  failed:=FALSE;
+  BEGIN
+    UPDATE war_satchel_funded_claim_returns SET owner_user_id=71242 WHERE claim_id=88321;
+  EXCEPTION WHEN OTHERS THEN failed:=SQLERRM LIKE '%immutable%';
+  END;
+  IF NOT failed THEN RAISE EXCEPTION 'claim owner attribution not immutable'; END IF;
+END;
+$return_test$;
 ROLLBACK;
 SELECT 'PASS Satchel funded credit, full refund, nonnegative ledger and immutable withdrawal payout guards' AS result;
