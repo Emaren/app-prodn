@@ -8,9 +8,7 @@
  */
 import { getPrisma } from "../lib/prisma.ts";
 import { executeFundedMechaTicketBatch } from "../lib/warSatchelAutoBetExecutor.ts";
-import {
-  assertLocalSatchelSignerHealth, createLocalIsolatedSatchelSigner,
-} from "../lib/warSatchelIsolatedSignerTransport.ts";
+import { connectCertifiedSatchelSigner } from "../lib/warSatchelDedicatedSignerClient.ts";
 
 const MAX_BATCH = 25;
 
@@ -26,6 +24,7 @@ function approved() {
     "WAR_SATCHEL_BET_PAYOUT_ROUTING_CERTIFIED",
     "WAR_SATCHEL_UNMATCHED_REFUND_CREDIT_CERTIFIED",
     "WAR_SATCHEL_SIGNER_OPERATOR_APPROVED",
+    "WAR_SATCHEL_SIGNER_CLIENT_ENABLED",
   ];
   return keys.every(key => process.env[key] === "true");
 }
@@ -73,17 +72,10 @@ async function main() {
     }));
     return;
   }
-  const config = {
-    approvedByOperator: process.env.WAR_SATCHEL_SIGNER_OPERATOR_APPROVED === "true",
-    vaultAddress: process.env.WAR_SATCHEL_CERTIFIED_VAULT_ADDRESS || "",
-    escrowAddress: process.env.WOLO_BET_ESCROW_ADDRESS || "",
-    keyFingerprint: process.env.WAR_SATCHEL_SIGNER_PUBLIC_KEY_FINGERPRINT || "",
-    serviceAccessToken: process.env.WAR_SATCHEL_SIGNER_AUTH_TOKEN || "",
-  };
-  // Health alone is NOT a signer custody attestation; all operator flags,
-  // fingerprint and independent release receipts remain prerequisites.
-  await assertLocalSatchelSignerHealth(config);
-  const signer = createLocalIsolatedSatchelSigner(config);
+  // The protected HTTP tick and operator CLI MUST use the same exact
+  // protocol, build pin, signing role and durable one-shot responses.
+  // Do not resurrect the older alternate signer transport / wire schema.
+  const signer = await connectCertifiedSatchelSigner();
   const totals = await executeFundedMechaTicketBatch(prisma, signer, ids);
   console.log(JSON.stringify({
     mode: "execute", ...totals,
