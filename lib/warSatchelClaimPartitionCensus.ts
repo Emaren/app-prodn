@@ -9,6 +9,7 @@
  */
 import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
 import { inspectSatchelClaimPartitionPreview } from "./warSatchelClaimPartitionPreview.ts";
+import { verifyFullTicketSourcePartition } from "./warSatchelFullTicketSourceReview.ts";
 
 const MAX_WAGERS=1000;
 const MICRO=BigInt(1_000_000);
@@ -98,8 +99,31 @@ export async function readWarSatchelClaimPartitionCensus(
         stop("funded_ticket_reservation_owner_or_amount_mismatch");
       }
     }
+    // Inspect ALL source legs, not only the single market in this claim.
+    // WoloChain v2 rejects a partial ticket principal partition. This remains
+    // a read-only evidence census, not an escrow-run allocation or bank proof.
+    const fullTicketLegs=await tx.betStakeLeg.findMany({
+      where:{ticketId:{in:ticketIds}},
+      select:{
+        id:true,ticketId:true,marketId:true,amountWolo:true,
+        wager:{select:{
+          id:true,userId:true,marketId:true,stakeLegId:true,
+          amountWolo:true,status:true,executionMode:true,
+        }},
+      },
+      orderBy:{id:"asc"},
+      take:ticketIds.length*16+1,
+    });
+    const fullTicketSourceReview=verifyFullTicketSourcePartition({
+      preview,
+      funding:reservations.map(r=>({
+        ticketId:r.ticketId??0,amountUwolo:r.amountUwolo,
+      })),
+      legs:fullTicketLegs,
+    });
     return Object.freeze({
       ...preview,
+      fullTicketSourceReview,
       originalReservationsMatched:true as const,
       sourceSnapshot:"database_repeatable_read_only" as const,
       chainProofAuthorized:false as const,
