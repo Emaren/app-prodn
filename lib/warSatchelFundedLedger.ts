@@ -230,6 +230,16 @@ export async function creditRecordedSatchelProof(
         availableUwolo: String(account?.availableUwolo ?? BigInt(0)),
       });
     }
+    // The same physical MsgSend cannot first credit an escrow claim return
+    // and then enter an owner's balance again as a wallet deposit. The two
+    // receipt tables have independent unique keys, so enforce this cross-type
+    // exclusion under the SAME global financial transaction lock.
+    const priorReturn = await tx.satchelFundedClaimReturn.findUnique({
+      where: { chainId_txHash_transferIndex: {
+        chainId: "wolo-1", txHash: proof.txHash, transferIndex: 0,
+      } },
+    });
+    if (priorReturn) stop("physical_transfer_already_credited_as_claim_return");
     requireFreshBank(input.bank, Date.now());
     if (input.bank.height < proof.txHeight + BigInt(2)) stop("deposit_requires_three_confirmations");
     const oldLiability = await outstandingVaultLiability(tx);
@@ -1131,6 +1141,15 @@ export async function creditVerifiedSatchelClaimReturn(
     if(liabilities+proof.amountUwolo>MAX_I64 ||
        bank.balanceUwolo<liabilities+proof.amountUwolo)
       stop("vault_cannot_cover_claim_return_and_other_players");
+    // A pending, independently verified deposit candidate also reserves the
+    // physical chain effect identity. Otherwise the claim-return route could
+    // credit it first and the deposit route could try crediting it afterward.
+    const existingDepositCandidate=await tx.warSatchelProofCandidate.findUnique({
+      where:{chainId_txHash_transferIndex:{
+        chainId:"wolo-1",txHash:proof.txHash,transferIndex:0,
+      }},
+    });
+    if(existingDepositCandidate)stop("claim_return_hash_already_used_as_deposit_candidate");
     const existingDeposit=await tx.satchelFundedReceipt.findUnique({
       where:{chainId_txHash_transferIndex:{
         chainId:"wolo-1",txHash:proof.txHash,transferIndex:0,
