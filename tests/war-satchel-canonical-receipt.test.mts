@@ -93,6 +93,7 @@ test("standard Cosmos REST root.tx decoded body and omitted code zero remain val
   const wrapped = tx();
   const decoded = wrapped.tx_response.tx;
   const { tx: unused, ...response } = wrapped.tx_response;
+  void unused;
   const rootTx = { tx: decoded, tx_response: response };
   const result = inspect({ txResponse: rootTx });
   assert.equal(result.receiptKey, "wolo-1:" + hash + ":0");
@@ -114,6 +115,7 @@ test("explicit failed, null or contradictory Cosmos REST data fails closed", () 
   const original = tx();
   const decoded = original.tx_response.tx;
   const { tx: unused, ...response } = original.tx_response;
+  void unused;
   for (const code of [null, "", "00", "0junk", false, -1, 1, "1", 0.5, {}]) {
     assert.throws(() => inspect({
       txResponse: { tx: decoded, tx_response: { ...response, code } },
