@@ -15,6 +15,7 @@ const envKeys=[
   "WAR_SATCHEL_CERTIFIED_VAULT_ADDRESS",
   "WAR_SATCHEL_SIGNER_BUILD_SHA256",
   "WAR_SATCHEL_SIGNER_AUTH_TOKEN",
+  "WOLO_BET_ESCROW_ADDRESS",
 ];
 const original=Object.fromEntries(envKeys.map(k=>[k,process.env[k]]));
 function configure() {
@@ -25,6 +26,7 @@ function configure() {
     WAR_SATCHEL_CERTIFIED_VAULT_ADDRESS:addr,
     WAR_SATCHEL_SIGNER_BUILD_SHA256:code,
     WAR_SATCHEL_SIGNER_AUTH_TOKEN:token,
+    WOLO_BET_ESCROW_ADDRESS:escrow,
   });
 }
 function restore(){
@@ -66,7 +68,7 @@ const args={
  recipientAddress:escrow,
  denom:"uwolo" as const,
  amountUwolo:"10000000",
- memo:"aoe2war/mecha/one-shot/112",
+ memo:"AoE2HDBets bet ticket v1 · ticket 112",
 };
 
 test("no signer connection if operator has not explicitly activated financial key separation",async()=>{
@@ -118,13 +120,20 @@ test("a misleading HTTP 200 without durable signer fence is UNKNOWN, never a suc
    assert.equal(t.calls().sendCalls,1);
  }finally{restore()}
 });
-test("invalid recipient is refused before calling the signer",async()=>{
+test("wrong valid recipient, bad memo or wrong account fail BEFORE a signer POST",async()=>{
  try{
    configure();
    const t=mockRead(health(),{});
    const signer=await connectCertifiedSatchelSigner(t.reader);
-   assert.deepEqual(await signer.submitOneShot({...args,recipientAddress:addr}),
-     {kind:"unknown",reason:"invalid_or_ambiguous_signer_payload"});
+   for(const dangerous of [
+     {...args,recipientAddress:addr},
+     {...args,recipientAddress:"wolo1"+"r".repeat(38)},
+     {...args,memo:"unrelated Wolo bank withdrawal"},
+     {...args,memo:"AoE2HDBets bet ticket v1 · ticket 112\nother-send"},
+   ]){
+     assert.deepEqual(await signer.submitOneShot(dangerous),
+       {kind:"unknown",reason:"invalid_or_ambiguous_signer_payload"});
+   }
    assert.equal(t.calls().sendCalls,0);
  }finally{restore()}
 });
