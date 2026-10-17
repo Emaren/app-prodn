@@ -62,6 +62,9 @@ if not query(DB, "SHOW server_version_num").startswith("16"):
 # The table proves a database has actual data before the schema-only clone.
 # No real user information is present; the sentinel row is synthetic.
 query(DB, "CREATE TABLE users(id INTEGER PRIMARY KEY)")
+query(DB, "CREATE TABLE bet_auto_presets(id INTEGER PRIMARY KEY)")
+query(DB, "CREATE TABLE bet_auto_executions(id INTEGER PRIMARY KEY)")
+query(DB, "CREATE TABLE pending_wolo_claims(id INTEGER PRIMARY KEY)")
 query(DB, "INSERT INTO users(id) VALUES (7391)")
 if query(DB, "SELECT count(*) FROM users") != "1":
     refuse("ephemeral source sentinel was not created")
@@ -86,7 +89,7 @@ original_apply = SHADOW.apply_to_shadow
 
 def observed_apply(database: str, sql: bytes) -> None:
     original_apply(database, sql)
-    observed.append("schema_restore" if len(observed) == 0 else "six_file_rollback")
+    observed.append("schema_restore" if len(observed) == 0 else "seven_file_rollback")
     if len(observed) == 1:
         # Inspect real restored shadow table before the Satchel SQL runs.
         # A schema-only export MUST NOT carry the synthetic source user row.
@@ -126,16 +129,18 @@ with (
         raise
     if result.get("status") != "PASS" or not result.get("disposable_database_removed"):
         refuse("rehearsal returned a non-certified result")
-    if not result.get("six_migrations_exercised"):
-        refuse("six migrations were not actually exercised")
-    if observed != ["schema_restore", "six_file_rollback"]:
+    if not result.get("pending_migrations_exercised"):
+        refuse("seven migrations were not actually exercised")
+    if result.get("pending_migration_count") != 7:
+        refuse("incomplete pending funded migration cohort")
+    if observed != ["schema_restore", "seven_file_rollback"]:
         refuse("real PostgreSQL work sequence was incomplete")
     assert_no_shadow_databases()
 
     # An actual SQL fault must still clean up the throwaway DB; no real
     # migration or rollback may run against the source database.
     with mock.patch.object(
-        SHADOW, "six_sql", return_value=b"BEGIN;\nSELECT 1/0;\nROLLBACK;\n"
+        SHADOW, "cohort_sql", return_value=b"BEGIN;\nSELECT 1/0;\nROLLBACK;\n"
     ):
         try:
             SHADOW.rehearse()
