@@ -179,6 +179,41 @@ def schema_bytes(database: str) -> bytes:
     return result
 
 
+def schema_fingerprint(data: bytes) -> str:
+    """SHA-256 of exact pg_dump DDL, except its validated random safety token.
+
+    PostgreSQL 16.15+ generates a fresh paired \\restrict / \\unrestrict nonce
+    on every dump. That nonce is a psql safety delimiter, not schema. The
+    original dump is NEVER edited before restore; only its comparison copy
+    has this one strictly paired, anchored token normalized.
+    """
+    try:
+        lines = data.decode("utf-8", "strict").splitlines(keepends=True)
+    except UnicodeError as exc:
+        raise RehearsalStop("invalid UTF-8 in schema-only dump") from exc
+    nonce_pattern = re.compile(r"^(\\(?:un)?restrict) ([A-Za-z0-9]{24,160})(\r?\n?)$")
+    matches: list[tuple[int, str, str, str]] = []
+    for index, line in enumerate(lines):
+        if line.startswith("\\restrict ") or line.startswith("\\unrestrict "):
+            match = nonce_pattern.fullmatch(line)
+            if not match:
+                raise RehearsalStop("malformed pg_dump restriction directive")
+            matches.append((index, match.group(1), match.group(2), match.group(3)))
+    if matches:
+        if (
+            len(matches) != 2
+            or matches[0][1] != "\\restrict"
+            or matches[1][1] != "\\unrestrict"
+            or matches[0][2] != matches[1][2]
+            or matches[0][0] > 12
+            or matches[1][0] < len(lines) - 12
+        ):
+            raise RehearsalStop("unpaired or misplaced pg_dump restriction nonce")
+        for index, directive, _nonce, linebreak in matches:
+            lines[index] = f"{directive} VERIFIED_NONCE{linebreak}"
+    return hashlib.sha256("".join(lines).encode("utf-8")).hexdigest()
+
+
 def six_sql() -> bytes:
     body = bytearray(b"BEGIN;\nSET LOCAL statement_timeout='30s';\n")
     body.extend(b"SET LOCAL lock_timeout='5s';\n")
@@ -234,12 +269,12 @@ def rehearse() -> dict:
         source_dump = schema_bytes(SOURCE_DATABASE)
         apply_to_shadow(name, source_dump)
         baseline = schema_bytes(name)
-        source_digest = hashlib.sha256(source_dump).hexdigest()
-        baseline_digest = hashlib.sha256(baseline).hexdigest()
+        source_digest = schema_fingerprint(source_dump)
+        baseline_digest = schema_fingerprint(baseline)
         if source_digest != baseline_digest:
             raise RehearsalStop("shadow schema not equal to production schema-only export")
         apply_to_shadow(name, six_sql())
-        after_digest = hashlib.sha256(schema_bytes(name)).hexdigest()
+        after_digest = schema_fingerprint(schema_bytes(name))
         if baseline_digest != after_digest:
             raise RehearsalStop("schema changed after six-migration ROLLBACK")
         result = {
@@ -247,6 +282,7 @@ def rehearse() -> dict:
             "schema_sha256": source_digest, "shadow_schema_sha256": baseline_digest,
             "post_rollback_sha256": after_digest,
             "six_migrations_exercised": True,
+            "comparison": "all schema bytes except validated paired pg_dump restriction nonce",
             "production_mutated": False, "production_data_copied": False,
             "custody_authorized": False,
         }

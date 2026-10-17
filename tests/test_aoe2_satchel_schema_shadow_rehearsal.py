@@ -188,5 +188,46 @@ class ShadowSafetyTests(unittest.TestCase):
                 MODULE.main()
 
 
+    def test_schema_fingerprint_ignores_only_verified_pg_dump_nonce(self):
+        def dump(token, ddl="CREATE TABLE public.users(id integer);"):
+            return (
+                "-- PostgreSQL database dump\n"
+                + "\\restrict " + token + "\n"
+                + ddl + "\n"
+                + "\\unrestrict " + token + "\n"
+                + "-- PostgreSQL database dump complete\n"
+            ).encode()
+        a, b = "a" * 64, "b" * 64
+        self.assertEqual(
+            MODULE.schema_fingerprint(dump(a)),
+            MODULE.schema_fingerprint(dump(b)),
+        )
+        self.assertNotEqual(
+            MODULE.schema_fingerprint(dump(a)),
+            MODULE.schema_fingerprint(dump(a, "CREATE TABLE public.users(id bigint);")),
+        )
+        self.assertEqual(
+            MODULE.schema_fingerprint(b"CREATE TABLE users(id INTEGER);\n"),
+            hashlib.sha256(b"CREATE TABLE users(id INTEGER);\n").hexdigest(),
+        )
+
+    def test_schema_fingerprint_rejects_mismatched_or_duplicated_nonce(self):
+        a, b = "a" * 64, "b" * 64
+        malformed = [
+            ("\\restrict " + a + "\n\\unrestrict " + b + "\n").encode(),
+            ("\\restrict " + a + "\n").encode(),
+            ("\\unrestrict " + a + "\n").encode(),
+            ("\\restrict " + a + "\n\\restrict " + a
+             + "\n\\unrestrict " + a + "\n").encode(),
+            ("SELECT 1;\n" * 20 + "\\restrict " + a + "\n"
+             + "\\unrestrict " + a + "\n").encode(),
+        ]
+        for payload in malformed:
+            with self.subTest(payload=payload[:20]), self.assertRaises(
+                MODULE.RehearsalStop
+            ):
+                MODULE.schema_fingerprint(payload)
+
+
 if __name__ == "__main__":
     unittest.main()
