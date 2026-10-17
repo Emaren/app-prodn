@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `test/hd-shadow-rehearsal-real-postgres-ci-20261017` at `9fd8fb1e0374814fec0ad328b069ab38c0159667`
+Implementation baseline: `test/hd-shadow-rehearsal-real-postgres-ci-20261017` at `513e0d736ab234a31291bbc1becbeebe43100318`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
