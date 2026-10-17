@@ -291,7 +291,6 @@ export async function reserveForWatcherExecution(
     expectedPropositionHash: string;
     selectedSide: "left" | "right";
     reserveUwolo: bigint;
-    signedSpendingConsentVerified: boolean;
     bank: CanonicalSatchelBank;
   },
 ): Promise<{ status: "reserved" | "already_reserved"; reservationId: string }> {
@@ -300,8 +299,7 @@ export async function reserveForWatcherExecution(
       !Number.isSafeInteger(input.presetVersion) || input.presetVersion <= 0 ||
       !positiveAmount(input.reserveUwolo) ||
       input.reserveUwolo > BigInt(1000) * BigInt(1000000) ||
-      input.reserveUwolo % BigInt(1000000) !== BigInt(0) ||
-      !input.signedSpendingConsentVerified) stop("unverified_spending_consent_or_reserve");
+      input.reserveUwolo % BigInt(1000000) !== BigInt(0)) stop("unverified_spending_consent_or_reserve");
   return withExclusiveSatchelTx(prisma, async tx => {
     const found = await tx.satchelFundedReservation.findUnique({
       where: { executionId: input.executionId },
@@ -328,6 +326,30 @@ export async function reserveForWatcherExecution(
         exec.selectedSide !== input.selectedSide ||
         BigInt(exec.winnerStakeWolo + exec.desyncStakeWolo) * BigInt(1000000) !== input.reserveUwolo) {
       stop("watcher_execution_or_consent_changed");
+    }
+    // A saved profile toggle or caller-supplied Boolean is NOT owner spend
+    // consent. Re-read immutable Keplr ADR-36 signed plan at the instant of
+    // serializable reservation. Pausing, editing or revoking immediately stops
+    // new reserve claims, including racing Watcher workers.
+    const mandate = await tx.satchelAutoSpendConsent.findFirst({
+      where: {
+        ownerUserId: input.ownerUserId,
+        ownerUid: input.ownerUid,
+        walletAddress: exec.preset.user.walletAddress || "",
+        presetId: exec.presetId, presetVersion: exec.presetVersion,
+        signedAt: { not: null }, revokedAt: null,
+        spendExpiresAt: { gt: new Date() },
+      },
+      orderBy: { signedAt: "desc" },
+    });
+    if (!mandate ||
+        mandate.winnerStakeWolo !== exec.winnerStakeWolo ||
+        mandate.desyncSide !== exec.desyncSide ||
+        mandate.desyncStakeWolo !== exec.desyncStakeWolo ||
+        mandate.perGameCapWolo < exec.winnerStakeWolo + exec.desyncStakeWolo ||
+        mandate.dailyCapWolo > 10000 ||
+        mandate.signedAt === null) {
+      stop("keplr_signed_spending_mandate_missing_or_stale");
     }
     const evidence = exec.sourceEvidence && typeof exec.sourceEvidence === "object" &&
       !Array.isArray(exec.sourceEvidence)
@@ -379,7 +401,8 @@ export async function reserveForWatcherExecution(
       _sum: { amountUwolo: true },
     });
     const dailySpent = daily._sum.amountUwolo ?? BigInt(0);
-    if (dailySpent + input.reserveUwolo > BigInt(10000) * BigInt(1000000)) {
+    if (dailySpent + input.reserveUwolo >
+        BigInt(mandate.dailyCapWolo) * BigInt(1000000)) {
       stop("daily_watcher_wager_cap_exhausted");
     }
 
