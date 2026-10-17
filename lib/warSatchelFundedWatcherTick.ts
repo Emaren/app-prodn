@@ -8,11 +8,13 @@
  * serializable vault-wide reservation transaction before signing.
  */
 import type { PrismaClient } from "@/lib/generated/prisma";
+import { requireSatchelFinancialBridge } from "./warSatchelFinancialBridgeHold.ts";
 import { executeFundedMechaTicketBatch } from "./warSatchelAutoBetExecutor.ts";
 import { connectCertifiedSatchelSigner } from "./warSatchelDedicatedSignerClient.ts";
 
 const LIMIT=25;
 function financialReady(){
+  requireSatchelFinancialBridge();
   if(process.env.WAR_SATCHEL_FUNDED_LEDGER_ENABLED!=="true" ||
      process.env.WAR_SATCHEL_FINANCIAL_OPERATOR_ATTESTED!=="true" ||
      process.env.WAR_SATCHEL_LIVE_EXECUTOR_ENABLED!=="true" ||
