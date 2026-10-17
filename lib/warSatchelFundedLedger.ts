@@ -1128,9 +1128,14 @@ export async function creditVerifiedSatchelClaimReturn(
     // signed return v2 binds each immutable claim to ONE original operation,
     // owner, funding tx and market leg. Never manufacture a single-ticket
     // allocation for an aggregated claim or credit a short unmatched refund.
+    // Prisma stores a broad string; narrow the *transactionally reloaded*
+    // claim kind before passing it to the per-ticket return verifier.
+    const currentKind=current.claimKind;
+    if(currentKind!=="bet_payout"&&currentKind!=="bet_refund")
+      stop("claim_return_kind_changed_or_unsupported");
     const attributed=inspectSingleTicketSatchelReturn({
       ownerUserId:input.ownerUserId,
-      claimKind:claim.claimKind,
+      claimKind:currentKind,
       claimAmountWolo:claim.amountWolo,
       marketId:sourceMarketId,
       vaultAddress:vault,
