@@ -77,6 +77,7 @@ model User {
   satchelFundedJournal           SatchelFundedJournal[]
   satchelFundedReservations      SatchelFundedReservation[]
   satchelAutoSpendConsents       SatchelAutoSpendConsent[]
+  satchelFundedWithdrawals       SatchelFundedWithdrawal[]
   betMarketWallets               BetMarketWallet[]
   betMarketFinancialAdjustments  BetMarketFinancialAdjustment[]
   reviewedPlayerIdentityAliases  PlayerIdentityAlias[]
@@ -5502,4 +5503,23 @@ model SatchelAutoSpendConsent {
 
   @@index([ownerUserId, presetId, presetVersion, signedAt], map: "ix_satchel_auto_consent_owner_plan")
   @@map("war_satchel_auto_spend_consents")
+}
+
+/** User-specific physical Satchel withdrawal in escrow-like quarantine.
+ * An UNKNOWN broadcast can neither be refunded nor sent twice.
+ */
+model SatchelFundedWithdrawal {
+  id                 String    @id @db.Uuid
+  ownerUserId        Int       @map("owner_user_id")
+  ownerWalletAddress String    @map("owner_wallet_address") @db.VarChar(100)
+  amountUwolo        BigInt    @map("amount_uwolo")
+  status             String    @default("reserved") @db.VarChar(24)
+  txHash             String?   @unique(map: "uq_satchel_withdrawal_hash") @map("tx_hash") @db.VarChar(64)
+  confirmedHeight    BigInt?   @map("confirmed_height")
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt          DateTime  @default(now()) @map("updated_at") @db.Timestamp(6)
+  owner User @relation(fields: [ownerUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@index([ownerUserId, status, createdAt], map: "ix_satchel_withdrawal_owner_status")
+  @@map("war_satchel_funded_withdrawals")
 }
