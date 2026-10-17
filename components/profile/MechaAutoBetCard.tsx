@@ -6,6 +6,7 @@ import { useKeplr } from "@/hooks/use-keplr";
 import WarSatchelWalletProof from "@/components/profile/WarSatchelWalletProof";
 import WarSatchelFundingAction from "@/components/profile/WarSatchelFundingAction";
 import WarSatchelSpendAuthorization from "@/components/profile/WarSatchelSpendAuthorization";
+import WarSatchelWithdrawAction from "@/components/profile/WarSatchelWithdrawAction";
 import { useWoloBalance } from "@/hooks/useWoloBalance";
 import { deriveWoloBalanceReadState, formatMinimalDenomAmount } from "@/lib/woloBalanceRead";
 
@@ -295,6 +296,9 @@ export default function MechaAutoBetCard({ displayName }: { displayName: string 
             <WarSatchelFundingAction
               walletAddress={walletStatus === "connected" ? walletAddress : ""}
               depositAmount={depositAmount}
+            />
+            <WarSatchelWithdrawAction
+              walletAddress={walletStatus === "connected" ? walletAddress : ""}
             />
           </div>
         </div>
