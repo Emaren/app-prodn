@@ -96,6 +96,14 @@ export async function POST(request: NextRequest) {
       }),
       readIndependentSatchelBank(),
     ]);
+    // The chain height is a fresh server-side vault snapshot, not a claim
+    // supplied by the browser or the signer proof exporter. Never manufacture
+    // "3" confirmations for a transfer just included in the last block.
+    const confirmations = bank.height >= verified.height
+      ? bank.height - verified.height + BigInt(1) : BigInt(0);
+    if (confirmations < BigInt(3)) {
+      throw Error("satchel_deposit_not_yet_three_confirmations");
+    }
     // Persist an UNCredited candidate first. The durable single-owner vault
     // transaction below, never this evidence row, decides financial posting.
     await recordUncreditedWarSatchelReceipt(prisma, {
@@ -104,7 +112,7 @@ export async function POST(request: NextRequest) {
       canonicalProof: {
         kind: "canonical_chain_candidate_uncredited",
         receiptKey: verified.receiptId, txHash: verified.txHash,
-        height: verified.height.toString(), confirmations: "3",
+        height: verified.height.toString(), confirmations: confirmations.toString(),
         intentId: intent.id, ownerUid: owner.uid,
         canonicalSendCount: 1, chainId: "wolo-1", denom: "uwolo",
         creditAuthorized: false, depositAuthorized: false,
