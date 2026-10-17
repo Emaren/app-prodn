@@ -379,6 +379,10 @@ export async function releaseUnbroadcastSatchelReservation(
   input: { executionId: number; ownerUserId: number; independentlyNoBroadcast: boolean },
 ) {
   if (!input.independentlyNoBroadcast) stop("cannot_refund_unknown_broadcast");
+  // Only reserve-only identities may be released. The *first possible*
+  // broadcast must durably change status before any network call. Once
+  // attempted, the source cannot be treated as prebroadcast merely because
+  // an HTTP response was lost.
   return withExclusiveSatchelTx(prisma, async tx => {
     const reservation = await tx.satchelFundedReservation.findUnique({
       where: { executionId: input.executionId },
@@ -420,5 +424,149 @@ export async function releaseUnbroadcastSatchelReservation(
       data: { status: "funded_rejected", reason: "no_broadcast_full_refund" },
     });
     return { status: "released_in_full" as const, returnedUwolo: reservation.amountUwolo.toString() };
+  });
+}
+
+/**
+ * MUST be committed before the first external WOLO signing/broadcast attempt.
+ * A process crash after this transition leaves assets reserved in UNKNOWN,
+ * never eligible for immediate refund or a second send.
+ */
+export async function markSatchelSubmissionAttempt(
+  prisma: PrismaClient,
+  input: { executionId: number; ownerUserId: number; ticketRequestId: string },
+) {
+  return withExclusiveSatchelTx(prisma, async tx => {
+    const reservation = await tx.satchelFundedReservation.findUnique({
+      where: { executionId: input.executionId },
+    });
+    if (!reservation || reservation.ownerUserId !== input.ownerUserId ||
+        reservation.ticketRequestId !== input.ticketRequestId ||
+        reservation.status !== "reserved") {
+      stop("already_submitted_or_not_owner");
+    }
+    const changed = await tx.satchelFundedReservation.updateMany({
+      where: { id: reservation.id, status: "reserved" },
+      data: { status: "unknown_hold", updatedAt: new Date() },
+    });
+    if (changed.count !== 1) stop("racing_funded_submission");
+    await tx.betAutoExecution.updateMany({
+      where: { id: input.executionId, reservationId: reservation.id },
+      data: { status: "funded_submitting" },
+    });
+    return Object.freeze({ status: "submission_attempt_durably_fenced" as const });
+  });
+}
+
+/**
+ * Commit ONLY after the existing canonical BetStakeTicket verifier has
+ * persisted an accepted auto ticket in the DB, based on a proven vault→bet
+ * escrow transfer. The committed bucket is historical SPENT amount and is not
+ * part of physical War Satchel bank liabilities anymore.
+ *
+ * Deliberately do not pretend that a chain send is complete just because a
+ * signing endpoint returned HTTP 200.
+ */
+export async function commitVerifiedSatchelAutoTicket(
+  prisma: PrismaClient,
+  input: {
+    executionId: number;
+    ownerUserId: number;
+    ticketId: number;
+    fundingTxHash: string;
+  },
+): Promise<{ status: "committed" | "already_committed"; ticketId: number }> {
+  if (!Number.isSafeInteger(input.executionId) || input.executionId <= 0 ||
+      !Number.isSafeInteger(input.ownerUserId) || input.ownerUserId <= 0 ||
+      !Number.isSafeInteger(input.ticketId) || input.ticketId <= 0 ||
+      !TX_HASH.test(input.fundingTxHash)) stop("invalid_ticket_proof");
+  return withExclusiveSatchelTx(prisma, async tx => {
+    const reservation = await tx.satchelFundedReservation.findUnique({
+      where: { executionId: input.executionId },
+    });
+    if (!reservation || reservation.ownerUserId !== input.ownerUserId) stop("not_reserved_for_owner");
+    if (reservation.status === "committed") {
+      if (reservation.ticketId !== input.ticketId ||
+          reservation.txHash !== input.fundingTxHash) stop("conflicting_committed_ticket");
+      return { status: "already_committed" as const, ticketId: input.ticketId };
+    }
+    if (reservation.status !== "unknown_hold") stop("not_durably_marked_as_submitted");
+
+    const [ticket, execution, account] = await Promise.all([
+      tx.betStakeTicket.findUnique({
+        where: { id: input.ticketId },
+        include: { legs: true },
+      }),
+      tx.betAutoExecution.findUnique({
+        where: { id: input.executionId },
+        include: { preset: true },
+      }),
+      tx.satchelFundedBalance.findUnique({
+        where: { ownerUserId: input.ownerUserId },
+      }),
+    ]);
+    if (!ticket || !execution || !account ||
+        ticket.userId !== input.ownerUserId || ticket.source !== "auto" ||
+        ticket.status !== "recorded" ||
+        ticket.walletAddress !== fundedVaultAddress() ||
+        ticket.stakeTxHash?.toUpperCase() !== input.fundingTxHash ||
+        execution.id !== reservation.executionId ||
+        execution.preset.userId !== input.ownerUserId ||
+        execution.reservationId !== reservation.id ||
+        account.reservedUwolo < reservation.amountUwolo ||
+        BigInt(ticket.totalAmountWolo) * BigInt(1000000) !== reservation.amountUwolo ||
+        ticket.legs.length < 1 ||
+        ticket.legs.some(leg => !Number.isSafeInteger(leg.amountWolo) || leg.amountWolo <= 0)) {
+      stop("ticket_not_canonical_or_balance_inconsistent");
+    }
+    await tx.satchelFundedJournal.create({
+      data: {
+        ownerUserId: input.ownerUserId,
+        sourceKey: "satchel:commit:" + reservation.id,
+        eventKind: "wager_commit", amountUwolo: reservation.amountUwolo,
+        deltaAvailableUwolo: BigInt(0),
+        deltaReservedUwolo: -reservation.amountUwolo,
+        deltaCommittedUwolo: reservation.amountUwolo,
+        deltaWithdrawalPendingUwolo: BigInt(0),
+        executionId: reservation.executionId,
+      },
+    });
+    if (account.committedUwolo + reservation.amountUwolo > MAX_I64) {
+      stop("cumulative_historical_spend_overflow");
+    }
+    await tx.satchelFundedBalance.update({
+      where: { ownerUserId: input.ownerUserId },
+      data: {
+        reservedUwolo: { decrement: reservation.amountUwolo },
+        committedUwolo: { increment: reservation.amountUwolo },
+        version: { increment: BigInt(1) }, updatedAt: new Date(),
+      },
+    });
+    await tx.satchelFundedReservation.update({
+      where: { id: reservation.id },
+      data: {
+        status: "committed", ticketId: input.ticketId,
+        txHash: input.fundingTxHash, updatedAt: new Date(),
+      },
+    });
+    await tx.betAutoExecution.update({
+      where: { id: execution.id },
+      data: {
+        status: "accepted", ticketId: input.ticketId, acceptedAt: new Date(),
+      },
+    });
+    // A plan may have been paused/edited during the chain send. Never skip
+    // recording the proven spend for that reason. Decrement only if the same
+    // finite plan version still exists; otherwise surface via the durable
+    // ticket/execution audit without fabricating another plan.
+    if (!execution.preset.untilOut &&
+        execution.preset.version === execution.presetVersion &&
+        (execution.preset.gamesRemaining ?? 0) > 0) {
+      await tx.betAutoPreset.updateMany({
+        where: { id: execution.presetId, version: execution.presetVersion, gamesRemaining: { gt: 0 } },
+        data: { gamesRemaining: { decrement: 1 } },
+      });
+    }
+    return { status: "committed" as const, ticketId: input.ticketId };
   });
 }
