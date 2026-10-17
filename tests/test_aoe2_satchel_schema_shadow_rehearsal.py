@@ -253,6 +253,21 @@ class ShadowSafetyTests(unittest.TestCase):
                        "internal_secret", "credential"):
             self.assertNotIn(secret, result)
 
+    def test_schema_delta_ignores_validated_pg_dump_nonce(self):
+        prefix = "-- PostgreSQL database dump\n"
+        suffix = "-- PostgreSQL database dump complete\n"
+        def dump(nonce):
+            return (
+                prefix + "\\restrict " + nonce + "\n"
+                + "CREATE TABLE public.test(id bigint);\n"
+                + "\\unrestrict " + nonce + "\n" + suffix
+            ).encode("utf-8")
+        a, b = dump("a" * 64), dump("b" * 64)
+        self.assertEqual(MODULE.schema_fingerprint(a),
+                         MODULE.schema_fingerprint(b))
+        self.assertIn("difference not localized",
+                      MODULE.describe_schema_delta(a, b))
+
     def test_schema_delta_large_input_stays_bounded(self):
         massive = b"SELECT 1;\n" * 30_001
         out = MODULE.describe_schema_delta(massive, massive + b"SELECT 2;\n")
