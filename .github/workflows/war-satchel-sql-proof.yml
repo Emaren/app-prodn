@@ -16,6 +16,7 @@ on:
       - "tests/sql/war_satchel_simulation_concurrency_test.sh"
       - "tests/sql/war_satchel_simulation_double_entry_contract.sql"
       - "tests/sql/war_satchel_foundation_contract.sql"
+      - "tests/sql/war_satchel_atomic_migration_rehearsal.sh"
       - ".github/workflows/war-satchel-sql-proof.yml"
   push:
     branches: [main]
@@ -33,6 +34,7 @@ on:
       - "tests/sql/war_satchel_simulation_concurrency_test.sh"
       - "tests/sql/war_satchel_simulation_double_entry_contract.sql"
       - "tests/sql/war_satchel_foundation_contract.sql"
+      - "tests/sql/war_satchel_atomic_migration_rehearsal.sh"
       - ".github/workflows/war-satchel-sql-proof.yml"
 
 permissions:
@@ -93,3 +95,33 @@ jobs:
         run: psql -X -v ON_ERROR_STOP=1 -f prisma/migrations/20261015_151500_war_satchel_simulation_guard_correction/migration.sql
       - name: Prove valid single-owner release and rejection of mixed-owner or fake real credit
         run: psql -X -v ON_ERROR_STOP=1 -f tests/sql/war_satchel_simulation_guard_correction_contract.sql
+
+  atomic-six-migration-rehearsal:
+    name: PostgreSQL 16 / six-migration atomic rollback (NO DEPLOY)
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: satchel_ci
+          POSTGRES_PASSWORD: satchel_ci_ephemeral
+          POSTGRES_DB: satchel_atomic_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U satchel_ci -d satchel_atomic_ci"
+          --health-interval 4s
+          --health-timeout 4s
+          --health-retries 12
+    env:
+      CI: "true"
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGUSER: satchel_ci
+      PGPASSWORD: satchel_ci_ephemeral
+      PGDATABASE: satchel_atomic_ci
+    steps:
+      - uses: actions/checkout@v7
+      - name: Assert full six-migration sequence rolls back cleanly on synthetic PostgreSQL
+        run: bash tests/sql/war_satchel_atomic_migration_rehearsal.sh
