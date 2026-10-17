@@ -42,7 +42,9 @@ test("a forged client credit cannot supply owner amount destination or trusted c
   assert.match(credit, /WAR_SATCHEL_VAULT_WITHDRAWAL_CERTIFIED/);
   assert.match(credit, /WAR_SATCHEL_FUNDED_WITHDRAWALS_ENABLED/);
   assert.match(credit, /Object\.keys\(input\)\.sort\(\)\.join\(","\) !== "intentId,txHash"/);
-  assert.match(credit, /inspectCanonicalSatchelDeposit\(/);
+  assert.match(credit, /authenticateOwnerDeposit\(/);
+  assert.match(credit, /authenticatedDeposit: verified/);
+  assert.doesNotMatch(credit, /canonicalJson\(|inspectCanonicalSatchelDeposit\(/);
   assert.match(credit, /recordUncreditedWarSatchelReceipt\(/);
   assert.match(credit, /readIndependentSatchelBank\(/);
   assert.match(credit, /creditRecordedSatchelProof\(/);
