@@ -219,11 +219,30 @@ export async function executeFundedMechaTicketBatch(
       }
       // HARD DURABLE FENCE BEFORE signing/network call, including if the
       // signer times out. From here the reserved funds CANNOT be auto-refunded.
-      await markSatchelSubmissionAttempt(prisma, {
-        executionId: claim.executionId,
-        ownerUserId: viewer.id,
-        ticketRequestId: claim.ticketRequestId,
-      });
+      try {
+        await markSatchelSubmissionAttempt(prisma, {
+          executionId: claim.executionId,
+          ownerUserId: viewer.id,
+          ticketRequestId: claim.ticketRequestId,
+        });
+      } catch (error) {
+        // A deterministic refusal raised inside the serializable DB
+        // transaction means the attempt fence rolled back and NO signer
+        // was called. The initial reserve may be released in FULL.
+        // A database timeout, lost COMMIT acknowledgement or unknown
+        // exception must remain quarantined, never retried/refunded.
+        if (error instanceof Error &&
+            error.message.startsWith("WAR_SATCHEL_FUNDED_REFUSED:")) {
+          return {
+            kind: "rejected_before_broadcast",
+            reason: "prebroadcast_mandate_or_market_refused",
+          };
+        }
+        return {
+          kind: "unknown_after_broadcast",
+          reason: "submission_fence_acknowledgement_unknown",
+        };
+      }
       let txHash: string;
       try {
         const response = await signer.submitOneShot({
