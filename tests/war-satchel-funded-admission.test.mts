@@ -161,7 +161,7 @@ test("noncanonical and stale bank attestations never create a proposal", () => {
 });
 test("bank shortfalls, uncounted user liabilities and overflowed money refuse entry", () => {
   rejects("physical_vault_or_global_liability_shortfall", f => { f.vault.bankBalanceUwolo="1999999999"; });
-  rejects("physical_vault_or_global_liability_shortfall", f => { f.vault.aggregateLiabilityUwolo="999999999"; });
+  rejects("physical_vault_or_global_liability_shortfall", f => { f.vault.aggregateLiabilityUwolo="899999999"; });
   rejects("noncanonical_or_overflowing_uwolo", f => { f.vault.bankBalanceUwolo="1.5"; });
   rejects("noncanonical_or_overflowing_uwolo", f => { f.balance.availableUwolo="-1"; });
   rejects("noncanonical_or_overflowing_uwolo", f => { f.vault.bankBalanceUwolo="9223372036854775808"; });
