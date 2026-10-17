@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6876bb63b905d4a1f839f6389d1191fd68d9abdb170af82b72680cae10b846c0",
+      "sha256": "0e53d544e40469d857d38b6b58f4aad63c164fefe1b54732e339c407d9cc45f8",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/hd-release-gate-and-dependency-expiry-20261017",
-    "commit": "070369cab20bb26087a3c1305c2254e37399ee61"
+    "branch": "main",
+    "commit": "f8d47807a626cfe982488a5ab4f0591a10d5044c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

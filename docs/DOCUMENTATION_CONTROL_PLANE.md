@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/hd-release-gate-and-dependency-expiry-20261017` at `070369cab20bb26087a3c1305c2254e37399ee61`
+Implementation baseline: `main` at `f8d47807a626cfe982488a5ab4f0591a10d5044c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
