@@ -99,5 +99,6 @@ test("runtime fixture remains offline: no wallet transfer or custody authorizati
   assert.equal(DISCONNECTED_KEPLR.useKeplr().status, "disconnected");
   const card = readFileSync(path.resolve(ROOT, "components/profile/MechaAutoBetCard.tsx"), "utf8");
   assert.match(card, /<WarSatchelFundingAction/);
-  assert.match(card, /disabled aria-disabled="true"/);
+  const funding = readFileSync(new URL("../components/profile/WarSatchelFundingAction.tsx", import.meta.url), "utf8");
+  assert.match(funding, /disabled=\{busy \|\| !ready \|\| !valid\}/);
 });
