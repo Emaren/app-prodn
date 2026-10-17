@@ -10,6 +10,7 @@
  * escrow rail and commits the existing canonical stake ticket.
  */
 import type { PrismaClient } from "@/lib/generated/prisma";
+import { requireSatchelFinancialBridge } from "./warSatchelFinancialBridgeHold.ts";
 import type { WagerViewer } from "./betWagering.ts";
 import { prepareBetStakeTicket, commitBetStakeTicket } from "./betStakeTickets.ts";
 import { getWoloBetEscrowRuntime } from "./woloChain.ts";
@@ -60,6 +61,7 @@ export type IsolatedSatchelSigner = {
 };
 
 function enabled(signer: IsolatedSatchelSigner) {
+  requireSatchelFinancialBridge();
   const vault = (process.env.WAR_SATCHEL_CERTIFIED_VAULT_ADDRESS || "").trim();
   if (process.env.WAR_SATCHEL_FUNDED_LEDGER_ENABLED !== "true" ||
       process.env.WAR_SATCHEL_FINANCIAL_OPERATOR_ATTESTED !== "true" ||

@@ -4,6 +4,7 @@
  * Endpoint is OFF unless a separately certified payout executor is online.
  */
 import { randomUUID } from "node:crypto";
+import { satchelFinancialBridgeReady } from "@/lib/warSatchelFinancialBridgeHold";
 import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
@@ -25,7 +26,8 @@ function out(status:number,body:Record<string,unknown>){
   return NextResponse.json(body,{status,headers:H});
 }
 function enabled(){
-  return process.env.WAR_SATCHEL_FUNDED_LEDGER_ENABLED==="true" &&
+  return satchelFinancialBridgeReady() &&
+    process.env.WAR_SATCHEL_FUNDED_LEDGER_ENABLED==="true" &&
     process.env.WAR_SATCHEL_FINANCIAL_OPERATOR_ATTESTED==="true" &&
     process.env.WAR_SATCHEL_VAULT_CUSTODY_ROLE_VERIFIED==="true" &&
     process.env.WAR_SATCHEL_VAULT_WITHDRAWAL_CERTIFIED==="true" &&

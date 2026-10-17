@@ -11,6 +11,7 @@ import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
 import { readWarSatchelBoundedUtf8 } from "@/lib/warSatchelBoundedBody";
 import { readIndependentSatchelBank } from "@/lib/warSatchelFundedLedger";
+import { satchelFinancialBridgeReady } from "@/lib/warSatchelFinancialBridgeHold";
 import { warSatchelVaultDistinctFromKnownWallets } from "@/lib/warSatchelVaultBoundary";
 
 export const runtime = "nodejs";
@@ -23,7 +24,8 @@ function disabled() {
     { status: 503, headers: HEADERS });
 }
 function isEnabled() {
-  return process.env.WAR_SATCHEL_FUNDED_LEDGER_ENABLED === "true" &&
+  return satchelFinancialBridgeReady() &&
+    process.env.WAR_SATCHEL_FUNDED_LEDGER_ENABLED === "true" &&
     process.env.WAR_SATCHEL_FINANCIAL_OPERATOR_ATTESTED === "true" &&
     process.env.WAR_SATCHEL_VAULT_CUSTODY_ROLE_VERIFIED === "true" &&
     process.env.WAR_SATCHEL_VAULT_WITHDRAWAL_CERTIFIED === "true" &&
