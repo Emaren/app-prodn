@@ -27,7 +27,7 @@ const expected = {
 } as const;
 
 function verify(approval: unknown = fixture.return_approval,
-                overrides: Partial<typeof expected> = {},
+                overrides: Partial<import('../lib/warSatchelSignedV2Return.ts').ExpectedSignedReturn> = {},
                 independentOperatorPublicKeyHex = fixture.approval_public_key_hex) {
   return verifySatchelSignedV2Return({
     approval, independentOperatorPublicKeyHex, expected: {...expected, ...overrides},
