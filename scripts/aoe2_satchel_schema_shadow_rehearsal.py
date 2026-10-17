@@ -237,7 +237,7 @@ def describe_schema_delta(source: bytes, restored: bytes) -> str:
             return "comment"
         if line.startswith("\\"):
             return "psql-directive"
-        token = re.match(r"\\s*([A-Za-z_]+)", line)
+        token = re.match(r"\s*([A-Za-z_]+)", line)
         keyword = token.group(1).upper() if token else "BLANK_OR_PUNCT"
         # Whitelist SQL statement verbs; redact all other content as OTHER.
         return keyword if keyword in {
