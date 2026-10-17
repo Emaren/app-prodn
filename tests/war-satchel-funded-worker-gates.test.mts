@@ -1,0 +1,32 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import test from "node:test";
+const read=(name:string)=>readFileSync(new URL("../"+name,import.meta.url),"utf8");
+
+test("funded Mecha worker has no public timer and always fails shut without certified operator approvals",()=>{
+ const worker=read("scripts/war-satchel-funded-mecha-worker.ts");
+ assert.match(worker,/const execute = args\[0\] === "--execute"/);
+ assert.match(worker,/!approved\(\)/);
+ assert.match(worker,/WAR_SATCHEL_SIGNER_OPERATOR_APPROVED/);
+ assert.match(worker,/WAR_SATCHEL_VAULT_WITHDRAWAL_CERTIFIED/);
+ assert.match(worker,/WAR_SATCHEL_UNMATCHED_REFUND_CREDIT_CERTIFIED/);
+ assert.match(worker,/WAR_SATCHEL_BET_PAYOUT_ROUTING_CERTIFIED/);
+ assert.match(worker,/await assertLocalSatchelSignerHealth\(config\)/);
+ assert.match(worker,/executeFundedMechaTicketBatch\(prisma, signer, ids\)/);
+ assert.match(worker,/take: MAX_BATCH/);
+ assert.match(worker,/attemptCount: 0/);
+ assert.match(worker,/reservationId: null/);
+ assert.match(worker,/process\.exitCode = 3/);
+ assert.doesNotMatch(worker,/fromMnemonic\(|runuser|exec\(|systemctl|cron\(/);
+});
+test("the signer client only accepts approved local port, owner-fenced memo and the correct betting escrow",()=>{
+ const src=read("lib/warSatchelIsolatedSignerTransport.ts");
+ assert.match(src,/http:\/\/127\.0\.0\.1:8094/);
+ assert.match(src,/const ROLE = "exclusive-war-satchel-v1"/);
+ assert.match(src,/recipientAddress !== config\.escrowAddress/);
+ assert.match(src,/approvedByOperator !== true/);
+ assert.match(src,/await assertLocalSatchelSignerHealth\(config, reader\)/);
+ assert.match(src,/keyFingerprint !== config\.keyFingerprint/);
+ assert.match(src,/reason: "signer_request_or_acknowledgement_unknown"/);
+ assert.doesNotMatch(src,/setTimeout\(|retry\(|while\s*\(/);
+});
