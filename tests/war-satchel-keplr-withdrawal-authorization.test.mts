@@ -48,7 +48,12 @@ test("changed withdrawal amount cannot reuse a signed Keplr approval",()=>{
 });
 test("signed withdrawal cannot be redirected to another player wallet",()=>{
  const other="wolo1"+"q".repeat(38);
- assert.throws(()=>check({...challenge,walletAddress:other}),/wallet_does_not_own_signature/);
+ assert.throws(()=>verifySatchelWithdrawalKeplrSignature({
+   challenge:{...challenge,walletAddress:other},
+   ownerUid:owner,ownerWallet:other,
+   nowMs:Date.parse("2026-10-17T01:02:00.000Z"),
+   signature:signChallenge(),
+ }),/wallet_does_not_own_signature/);
 });
 test("expired or already-consumed challenge cannot be used twice",()=>{
  assert.throws(()=>check({...challenge,consumedAtUtc:"2026-10-17T01:01:00.000Z"}),/owner_wallet_expiry_or_consumed/);
