@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "54b916d8a61ef82724f3ed0e3943fbb42c17938e7200fc66b58a899829e03355",
+      "sha256": "ae3b3920a095d16d8638027957d6322146dedabf8c73e630d694bfa33edfce0e",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/host-checkpoint-mainline-20261016",
-    "commit": "0ae8dcf3fa0eee8893e748122aa9fb429565eb12"
+    "branch": "fix/hd-braces-waiver-scope-review-20261017",
+    "commit": "b5deefc3759620e1eee58292dd8584b62798ad4c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
