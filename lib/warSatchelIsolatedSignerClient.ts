@@ -12,6 +12,7 @@
  */
 import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { getWoloBetEscrowRuntime } from "./woloChain.ts";
+import { buildBetStakeTicketMemo } from "./betStakeMemo.ts";
 import type { IsolatedSatchelSigner } from "./warSatchelAutoBetExecutor.ts";
 
 const URL="http://127.0.0.1:8194/v1/one-shot";
@@ -116,15 +117,22 @@ export async function makeSatchelLoopbackSigner(
     stop("sidecar_health_hmac_mismatch");
   }
 
-  let used=false;
+  const attempted=new Set<string>();
   return Object.freeze({
     attestedVaultAddress:cfg.addr,
     custodyRole:"exclusive-war-satchel-v1" as const,
     async submitOneShot(input){
       // A client object is one-use as an extra line of defense. The REAL
       // signer MUST persist durable global ID uniqueness across restarts.
-      if(used) return {kind:"unknown" as const,reason:"client_already_used"};
-      used=true;
+      if(attempted.has(input.requestId))
+        return {kind:"unknown" as const,reason:"same_payment_id_never_retried"};
+      // Mark attempted before even evaluating the payload. This does not
+      // substitute for durable sidecar dedupe across process restarts.
+      attempted.add(input.requestId);
+      const ticketMemo=typeof input.memo==="string"
+        ? /^AoE2HDBets bet ticket v1 · ticket ([1-9][0-9]{0,14})$/.exec(input.memo)
+        : null;
+      const parsedTicketId=ticketMemo?Number(ticketMemo[1]):0;
       if(!REQUEST.test(input.requestId)||
           input.chainId!=="wolo-1"||input.denom!=="uwolo"||
           input.senderAddress!==cfg.addr||
@@ -132,7 +140,8 @@ export async function makeSatchelLoopbackSigner(
           !AMOUNT.test(input.amountUwolo)||
           BigInt(input.amountUwolo)>MAX_GAME||
           typeof input.memo!=="string"||input.memo.length>240||
-          !input.memo.includes(input.requestId.replace("satchel:ticket:",""))){
+          !Number.isSafeInteger(parsedTicketId)||parsedTicketId<=0||
+          input.memo!==buildBetStakeTicketMemo(parsedTicketId)){
         return {kind:"unknown" as const,reason:"custody_send_did_not_match_fenced_wager"};
       }
       const payload={
