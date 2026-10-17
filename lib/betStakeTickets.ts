@@ -791,6 +791,7 @@ export async function commitBetStakeTicket(
     if (process.env.WAR_SATCHEL_LIVE_EXECUTOR_ENABLED !== "true" ||
         process.env.WAR_SATCHEL_BET_PAYOUT_ROUTING_CERTIFIED !== "true" ||
         process.env.WAR_SATCHEL_UNMATCHED_REFUND_CREDIT_CERTIFIED !== "true" ||
+        !input.viewer.walletAddress ||
         ticket.walletAddress !== process.env.WAR_SATCHEL_CERTIFIED_VAULT_ADDRESS ||
         !reservation || reservation.ownerUserId !== input.viewer.id ||
         reservation.status !== "unknown_hold" ||
@@ -1045,7 +1046,7 @@ export async function commitBetStakeTicket(
         await ensureBetMarketWalletSideLock(tx, {
           marketId: leg.marketId,
           userId: input.viewer.id,
-          walletAddress: custodialAuto ? input.viewer.walletAddress : ticket.walletAddress,
+          walletAddress: custodialAuto ? input.viewer.walletAddress! : ticket.walletAddress,
           side: leg.side === "right" ? "right" : "left",
         });
         const createdWager = await tx.betWager.create({
