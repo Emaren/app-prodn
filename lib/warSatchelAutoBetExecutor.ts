@@ -48,6 +48,7 @@ export type IsolatedSatchelSigner = {
    */
   submitOneShot(input: Readonly<{
     requestId: string;
+    ownerUid: string;
     chainId: "wolo-1";
     senderAddress: string;
     recipientAddress: string;
@@ -249,6 +250,7 @@ export async function executeFundedMechaTicketBatch(
       try {
         const response = await signer.submitOneShot({
           requestId: claim.ticketRequestId,
+          ownerUid: viewer.uid,
           chainId: "wolo-1",
           senderAddress: signer.attestedVaultAddress,
           recipientAddress: escrow.escrowAddress!,
