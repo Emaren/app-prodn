@@ -26,7 +26,10 @@ function isEnabled() {
   return process.env.WAR_SATCHEL_FUNDED_LEDGER_ENABLED === "true" &&
     process.env.WAR_SATCHEL_FINANCIAL_OPERATOR_ATTESTED === "true" &&
     process.env.WAR_SATCHEL_VAULT_CUSTODY_ROLE_VERIFIED === "true" &&
+    process.env.WAR_SATCHEL_VAULT_WITHDRAWAL_CERTIFIED === "true" &&
+    process.env.WAR_SATCHEL_FUNDED_WITHDRAWALS_ENABLED === "true" &&
     process.env.WAR_SATCHEL_DEPOSIT_INSTRUCTIONS_ENABLED === "true" &&
+    process.env.WAR_SATCHEL_FUNDED_CREDIT_ENABLED === "true" &&
     process.env.WAR_SATCHEL_OWNER_PROOF_ENABLED === "true";
 }
 export async function POST(request: NextRequest) {
