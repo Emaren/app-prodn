@@ -9,7 +9,10 @@ export async function readWarSatchelBoundedUtf8(
   body: ReadableStream<Uint8Array> | null,
   maxBytes: number,
 ): Promise<string | null> {
-  if (!body || !Number.isSafeInteger(maxBytes) || maxBytes <= 0 || maxBytes > 1024 * 1024) {
+  // Every caller supplies its own explicit byte limit. Most public requests
+  // remain at 128–3072 bytes. The offline authenticated Comet proof bridge
+  // legitimately needs up to 15 MiB; keep the universal hard cap at 16 MiB.
+  if (!body || !Number.isSafeInteger(maxBytes) || maxBytes <= 0 || maxBytes > 16 * 1024 * 1024) {
     return null;
   }
   let reader: ReadableStreamDefaultReader<Uint8Array>;
