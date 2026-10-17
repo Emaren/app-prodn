@@ -86,6 +86,10 @@ export default function WarSatchelFundingAction({
   const [intentId, setIntentId] = useState("");
   const [detail, setDetail] = useState("");
   const [credited, setCredited] = useState(false);
+  const [knownIntents, setKnownIntents] = useState<Array<{id:string;amountUwolo:string;createdAtUtc:string}>>([]);
+  const [recoveryIntent, setRecoveryIntent] = useState("");
+  const [recoveryHash, setRecoveryHash] = useState("");
+  const [mayHaveSent, setMayHaveSent] = useState(false);
 
   const refreshBalance = async () => {
     const response = await fetch("/api/user/war-satchel/balance", {
@@ -118,6 +122,31 @@ export default function WarSatchelFundingAction({
     }).catch(() => { if (active) setBalance(null); });
     return () => { active = false; };
   }, []);
+  useEffect(() => {
+    let active = true;
+    setKnownIntents([]); setRecoveryIntent(""); setRecoveryHash("");
+    if (!walletAddress) return;
+    void fetch("/api/user/war-satchel/funding-intents", {
+      credentials: "same-origin", cache: "no-store",
+    }).then(reply).then(data => {
+      if (!active || data.available !== true || !Array.isArray(data.recentIntents)) return;
+      const recovered = data.recentIntents.filter(item => {
+        if (!item || typeof item !== "object") return false;
+        const v = item as Record<string, unknown>;
+        return typeof v.id === "string" &&
+          /^[a-f0-9-]{36}$/i.test(v.id) &&
+          typeof v.amountUwolo === "string" &&
+          typeof v.createdAtUtc === "string";
+      }).slice(0, 5).map(item => {
+        const v = item as Record<string, unknown>;
+        return {id: String(v.id), amountUwolo: String(v.amountUwolo),
+          createdAtUtc: String(v.createdAtUtc)};
+      });
+      setKnownIntents(recovered);
+      setRecoveryIntent(recovered[0]?.id || "");
+    }).catch(() => {});
+    return () => {active = false;};
+  }, [walletAddress]);
 
   const amount = /^\d+$/.test(depositAmount.trim()) ? Number(depositAmount.trim()) : NaN;
   const valid = Number.isSafeInteger(amount) && amount >= 1 && amount <= 10000;
@@ -125,7 +154,8 @@ export default function WarSatchelFundingAction({
     Boolean(walletAddress && ADDR.test(walletAddress));
 
   const sendFromKeplr = async () => {
-    if (busy || !ready || !valid || txHash) return;
+    if (busy || !ready || !valid || txHash || mayHaveSent ||
+        knownIntents.length > 0) return;
     setBusy(true); setDetail(""); setCredited(false);
     try {
       // Server mints an owner-linked memo and exact amount; a client cannot
@@ -139,6 +169,15 @@ export default function WarSatchelFundingAction({
         throw Error("Keplr transfer quote does not match your wallet or amount.");
       }
       const quote = quoteRaw;
+      // The intent ID must survive even if Keplr accepts a transaction but
+      // the browser loses its HTTP response. Never discard it on timeout.
+      setIntentId(quote.intentId);
+      setKnownIntents(current => current.some(x => x.id === quote.intentId) ?
+        current : [{
+          id: quote.intentId, amountUwolo: quote.amountUwolo,
+          createdAtUtc: new Date().toISOString(),
+        }, ...current].slice(0,5));
+      setRecoveryIntent(quote.intentId);
       const keplr = (window as unknown as { keplr?: Keplr }).keplr;
       if (!keplr?.enable || !keplr.getOfflineSigner) {
         throw Error("Keplr extension is not installed or the Wolo chain is unavailable.");
@@ -159,6 +198,9 @@ export default function WarSatchelFundingAction({
       try {
         // The wallet extension shows this transfer for explicit confirmation.
         // A returned success is NOT yet an account credit.
+        // Mark uncertain BEFORE signing: even an exception can follow an
+        // on-chain send. Never offer a repeat-send button for this intent.
+        setMayHaveSent(true);
         const result = await client.sendTokens(
           walletAddress, quote.recipientAddress,
           [{ denom: "uwolo", amount: quote.amountUwolo }],
@@ -212,10 +254,47 @@ export default function WarSatchelFundingAction({
         <p>War Satchel funding is not certified for production. No deposit address will be shown until withdrawals and custody are safe.</p>
       )}
       {!txHash && (
-        <button type="button" disabled={busy || !ready || !valid} onClick={() => void sendFromKeplr()}
+        <button type="button" disabled={busy || !ready || !valid || mayHaveSent ||
+          knownIntents.length > 0} onClick={() => void sendFromKeplr()}
           className="rounded-xl border border-amber-300/40 px-4 py-3 font-bold text-amber-100 disabled:cursor-not-allowed disabled:opacity-40">
           {busy ? "CONFIRMING WITH KEPLR..." : ready ? "TRANSFER WOLO FROM KEPLR" : "FUNDING AWAITING VAULT CERTIFICATION"}
         </button>
+      )}
+      {knownIntents.length > 0 && !txHash && (
+        <div className="space-y-2 rounded-xl border border-sky-200/25 p-3">
+          <p className="font-semibold text-sky-100">Recover a Keplr deposit</p>
+          <p className="text-xs text-slate-300">
+            A transfer may already be on WoloChain. Find the original
+            transaction hash in Keplr history. Do not send the funds again.
+          </p>
+          <label className="block text-xs text-slate-200">
+            Original deposit intent
+            <select value={recoveryIntent} onChange={e => setRecoveryIntent(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-white/20 bg-slate-950 p-2 text-white">
+              {knownIntents.map(item => <option key={item.id} value={item.id}>
+                {wolo(item.amountUwolo)} WOLO · {item.id}
+              </option>)}
+            </select>
+          </label>
+          <label className="block text-xs text-slate-200">
+            Original WoloChain transaction hash
+            <input value={recoveryHash} onChange={e => setRecoveryHash(e.target.value.trim())}
+              maxLength={64} spellCheck={false} autoComplete="off"
+              placeholder="64-character transaction hash"
+              className="mt-1 w-full rounded-lg border border-white/20 bg-slate-950 p-2 font-mono text-xs text-white"/>
+          </label>
+          <button type="button"
+            disabled={busy || !TX_HASH.test(recoveryHash.toUpperCase()) ||
+              !knownIntents.some(item => item.id === recoveryIntent)}
+            onClick={() => {
+              setIntentId(recoveryIntent);
+              setTxHash(recoveryHash.toUpperCase());
+              setDetail("Verify the ORIGINAL transfer. No WOLO will be resent.");
+            }}
+            className="rounded-lg border border-sky-200/40 p-2 font-semibold disabled:opacity-40">
+            VERIFY EXISTING TRANSFER — DO NOT RESEND
+          </button>
+        </div>
       )}
       {txHash && (
         <div className="space-y-2 rounded-xl border border-sky-200/25 p-3">
