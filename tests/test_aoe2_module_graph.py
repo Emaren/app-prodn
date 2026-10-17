@@ -190,7 +190,7 @@ class ModuleGraphTests(unittest.TestCase):
         self.assertTrue(graph.client_directive('// comment\n\n"use client";\nimport "x";'))
         self.assertFalse(graph.client_directive('import "x";\n"use client";'))
         self.assertFalse(graph.client_directive('// no directive\n'))
-        
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -1,0 +1,233 @@
+"""Offline adversarial contracts for the operator-only Satchel schema rehearsal."""
+import hashlib
+import importlib.util
+import io
+import pathlib
+import re
+import subprocess
+import sys
+import tempfile
+import unittest
+from contextlib import redirect_stdout
+from unittest import mock
+
+SCRIPT = pathlib.Path(__file__).resolve().parents[1] / "scripts" / "aoe2_satchel_schema_shadow_rehearsal.py"
+SPEC = importlib.util.spec_from_file_location("aoe2_satchel_schema_shadow_rehearsal", SCRIPT)
+MODULE = importlib.util.module_from_spec(SPEC)
+assert SPEC and SPEC.loader
+SPEC.loader.exec_module(MODULE)
+
+
+class ShadowSafetyTests(unittest.TestCase):
+    def test_source_identity_requires_exact_40_hex(self):
+        for sha in ("main", "a" * 39, "A" * 40, "a" * 41):
+            with self.subTest(sha=sha), self.assertRaises(MODULE.RehearsalStop):
+                MODULE.source_evidence(sha)
+
+    def test_refuse_non_shadow_sql(self):
+        for db in ("aoe2hd_db", "postgres", "satchel_history_ci",
+                   "aoe2war_satchel_shadow_;DROP DATABASE postgres",
+                   "aoe2war_satchel_shadow_foo-bar"):
+            with self.subTest(db=db):
+                with self.assertRaises(MODULE.RehearsalStop):
+                    MODULE.apply_to_shadow(db, b"SELECT 1;")
+
+    def test_refuse_unsafe_database_name_even_for_readonly(self):
+        with self.assertRaises(MODULE.RehearsalStop):
+            MODULE.psql("postgres; DROP DATABASE aoe2hd_db", "SELECT 1")
+
+    def test_six_sql_has_transaction_rollback_and_no_existing_data_backfill(self):
+        sql = MODULE.six_sql().decode("utf-8")
+        self.assertTrue(sql.startswith("BEGIN;"))
+        self.assertTrue(sql.rstrip().endswith("ROLLBACK;"))
+        self.assertEqual(sql.count("CREATE OR REPLACE FUNCTION"), 6)
+        self.assertIn("owner_count", sql)
+        self.assertNotIn("DROP DATABASE", sql)
+        self.assertNotIn("UPDATE users", sql)
+
+    def test_never_include_postgres_stderr_in_exception(self):
+        p = subprocess.CompletedProcess(
+            args=["pg_dump"], returncode=1, stdout=b"", stderr=b"secret-token"
+        )
+        with mock.patch.object(MODULE.subprocess, "run", return_value=p):
+            with self.assertRaises(MODULE.RehearsalStop) as caught:
+                MODULE.invoke(["pg_dump"])
+        self.assertNotIn("secret-token", str(caught.exception))
+
+    def test_schema_dump_is_schema_only(self):
+        with mock.patch.object(MODULE, "postgres", return_value=b"x" * 1200) as pg:
+            MODULE.schema_bytes("aoe2hd_db")
+        self.assertIn("--schema-only", pg.call_args.args)
+        self.assertIn("--no-owner", pg.call_args.args)
+        self.assertIn("--no-acl", pg.call_args.args)
+        self.assertIn("--lock-wait-timeout=5s", pg.call_args.args)
+        self.assertNotIn("--data-only", pg.call_args.args)
+
+    def test_schema_dump_rejects_oversized_output(self):
+        with mock.patch.object(MODULE, "postgres", return_value=b"x" * 32_000_001):
+            with self.assertRaises(MODULE.RehearsalStop):
+                MODULE.schema_bytes("aoe2hd_db")
+
+    def test_exact_source_inventory_expected(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = pathlib.Path(temp)
+            folder = root / "prisma" / "migrations"
+            expected = [f"historic_{i:03d}" for i in range(112)] + list(MODULE.SATCHEL)
+            for name in expected:
+                target = folder / name / "migration.sql"
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text("SELECT 1;\n")
+            with (
+                mock.patch.object(MODULE, "ROOT", root),
+                mock.patch.object(MODULE, "invoke", side_effect=[
+                    b"a" * 40 + b"\n", b""
+                ]),
+            ):
+                sources = MODULE.source_evidence("a" * 40)
+            self.assertEqual(len(sources), 118)
+            self.assertEqual(
+                sources["historic_000"],
+                hashlib.sha256(b"SELECT 1;\n").hexdigest(),
+            )
+
+    def test_production_frontier_five_prior_plus_sixth(self):
+        sources = {f"historic_{i:03d}": "a" * 64 for i in range(112)}
+        sources.update({name: "b" * 64 for name in MODULE.SATCHEL})
+        history = "\n".join(f"historic_{i:03d}|{'a'*64}|A" for i in range(112))
+        history += "\nlegacy_apr_1|" + "c"*64 + "|R"
+        history += "\nlegacy_apr_2|" + "d"*64 + "|R"
+        with mock.patch.object(MODULE, "psql", side_effect=[
+            "aoe2hd_db|5432|/var/lib/postgresql/16/main|160015",
+            history, "0",
+        ]):
+            result = MODULE.production_frontier(sources)
+        self.assertEqual(result["completed"], 112)
+        self.assertEqual(result["rolled_back"], 2)
+        self.assertEqual(tuple(result["pending"]), MODULE.SATCHEL)
+
+    def test_production_frontier_fails_checksum_drift(self):
+        sources = {f"historic_{i:03d}": "a" * 64 for i in range(112)}
+        sources.update({name: "b" * 64 for name in MODULE.SATCHEL})
+        history = "\n".join(
+            f"historic_{i:03d}|{('f' if i==7 else 'a')*64}|A"
+            for i in range(112)
+        )
+        history += "\nlegacy_apr_1|" + "c"*64 + "|R"
+        history += "\nlegacy_apr_2|" + "d"*64 + "|R"
+        with mock.patch.object(MODULE, "psql", side_effect=[
+            "aoe2hd_db|5432|/var/lib/postgresql/16/main|160015", history,
+        ]):
+            with self.assertRaisesRegex(MODULE.RehearsalStop, "checksum"):
+                MODULE.production_frontier(sources)
+
+    def test_rehearsal_success_removes_only_shadow(self):
+        with (
+            mock.patch.object(MODULE, "postgres", return_value=b"") as pg,
+            mock.patch.object(MODULE, "schema_bytes", return_value=b"same-schema"),
+            mock.patch.object(MODULE, "apply_to_shadow") as apply,
+            mock.patch.object(MODULE, "six_sql", return_value=b"BEGIN; ROLLBACK;"),
+        ):
+            result = MODULE.rehearse()
+        statements = [c.args[1] for c in apply.call_args_list]
+        self.assertEqual(statements, [b"same-schema", b"BEGIN; ROLLBACK;"])
+        sql_cmds = [" ".join(c.args) for c in pg.call_args_list]
+        self.assertEqual(sum("CREATE DATABASE" in c for c in sql_cmds), 1)
+        self.assertEqual(sum("DROP DATABASE" in c for c in sql_cmds), 1)
+        self.assertNotIn('DROP DATABASE "aoe2hd_db"', " ".join(sql_cmds))
+        self.assertTrue(result["disposable_database_removed"])
+        self.assertFalse(result["production_mutated"])
+        self.assertFalse(result["production_data_copied"])
+
+    def test_rehearsal_error_still_drops_shadow(self):
+        with (
+            mock.patch.object(MODULE, "postgres", return_value=b"") as pg,
+            mock.patch.object(MODULE, "schema_bytes", return_value=b"same-schema"),
+            mock.patch.object(MODULE, "apply_to_shadow",
+                side_effect=MODULE.RehearsalStop("synthetic SQL failed")),
+        ):
+            with self.assertRaisesRegex(MODULE.RehearsalStop, "synthetic SQL failed"):
+                MODULE.rehearse()
+        self.assertTrue(any("DROP DATABASE" in " ".join(c.args)
+                            for c in pg.call_args_list))
+
+    def test_cleanup_failure_never_claims_success(self):
+        def pg(*args, **kwargs):
+            if any("DROP DATABASE" in a for a in args):
+                raise MODULE.RehearsalStop("cleanup refused")
+            return b""
+        with (
+            mock.patch.object(MODULE, "postgres", side_effect=pg),
+            mock.patch.object(MODULE, "schema_bytes", return_value=b"same-schema"),
+            mock.patch.object(MODULE, "apply_to_shadow"),
+            mock.patch.object(MODULE, "six_sql", return_value=b"BEGIN; ROLLBACK;"),
+        ):
+            with self.assertRaisesRegex(MODULE.RehearsalStop, "cleanup failed"):
+                MODULE.rehearse()
+
+    def test_default_cli_mode_does_not_rehearse(self):
+        with (
+            mock.patch.object(sys, "argv", ["rehearsal", "--source-sha", "a" * 40]),
+            mock.patch.object(MODULE, "invoke", return_value=b""),
+            mock.patch.object(MODULE, "source_evidence", return_value={"a": "b"}),
+            mock.patch.object(MODULE, "production_frontier",
+                return_value={"completed": 112, "rolled_back": 2,
+                              "pending": list(MODULE.SATCHEL)}),
+            mock.patch.object(MODULE, "rehearse") as rehearse,
+            redirect_stdout(io.StringIO()) as output,
+        ):
+            code = MODULE.main()
+        self.assertEqual(code, 0)
+        rehearse.assert_not_called()
+        self.assertIn("READ-ONLY", output.getvalue())
+
+    def test_cli_rejects_rehearse_without_explicit_authorization(self):
+        with mock.patch.object(sys, "argv", [
+            "rehearsal", "--source-sha", "a"*40, "--rehearse",
+        ]):
+            with self.assertRaises(SystemExit):
+                MODULE.main()
+
+
+    def test_schema_fingerprint_ignores_only_verified_pg_dump_nonce(self):
+        def dump(token, ddl="CREATE TABLE public.users(id integer);"):
+            return (
+                "-- PostgreSQL database dump\n"
+                + "\\restrict " + token + "\n"
+                + ddl + "\n"
+                + "\\unrestrict " + token + "\n"
+                + "-- PostgreSQL database dump complete\n"
+            ).encode()
+        a, b = "a" * 64, "b" * 64
+        self.assertEqual(
+            MODULE.schema_fingerprint(dump(a)),
+            MODULE.schema_fingerprint(dump(b)),
+        )
+        self.assertNotEqual(
+            MODULE.schema_fingerprint(dump(a)),
+            MODULE.schema_fingerprint(dump(a, "CREATE TABLE public.users(id bigint);")),
+        )
+        self.assertEqual(
+            MODULE.schema_fingerprint(b"CREATE TABLE users(id INTEGER);\n"),
+            hashlib.sha256(b"CREATE TABLE users(id INTEGER);\n").hexdigest(),
+        )
+
+    def test_schema_fingerprint_rejects_mismatched_or_duplicated_nonce(self):
+        a, b = "a" * 64, "b" * 64
+        malformed = [
+            ("\\restrict " + a + "\n\\unrestrict " + b + "\n").encode(),
+            ("\\restrict " + a + "\n").encode(),
+            ("\\unrestrict " + a + "\n").encode(),
+            ("\\restrict " + a + "\n\\restrict " + a
+             + "\n\\unrestrict " + a + "\n").encode(),
+            ("SELECT 1;\n" * 20 + "\\restrict " + a + "\n"
+             + "\\unrestrict " + a + "\n").encode(),
+        ]
+        for payload in malformed:
+            with self.subTest(payload=payload[:20]), self.assertRaises(
+                MODULE.RehearsalStop
+            ):
+                MODULE.schema_fingerprint(payload)
+
+
+if __name__ == "__main__":
+    unittest.main()
