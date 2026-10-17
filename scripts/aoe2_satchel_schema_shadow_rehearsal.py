@@ -252,6 +252,43 @@ def describe_schema_delta(source: bytes, restored: bytes) -> str:
             "REVOKE", "COPY", "INSERT", "UPDATE", "DELETE", "BEGIN", "END",
         } else "OTHER"
 
+    def section_type(lines: list[str], offset: int) -> str:
+        """Only the pg_dump metadata TYPE; never print object name or SQL.
+
+        A changed column/function body normally begins with whitespace and
+        is otherwise labeled OTHER. Inspect the preceding pg_dump section
+        descriptor, but strictly allowlist the returned TYPE token.
+        """
+        allowed = {
+            "ACL", "AGGREGATE", "CAST", "COLLATION", "COMMENT",
+            "CONSTRAINT", "DEFAULT", "DOMAIN", "EXTENSION", "FUNCTION",
+            "INDEX", "MATERIALIZED VIEW", "POLICY", "PROCEDURE",
+            "PUBLICATION", "RULE", "SCHEMA", "SEQUENCE", "TABLE",
+            "TRIGGER", "TYPE", "VIEW",
+        }
+        # This is diagnostic metadata, not schema equivalence evidence.
+        for prior in reversed(lines[max(0, offset - 1500):offset + 1]):
+            if not prior.startswith("-- Name: "):
+                continue
+            match = re.search(r"; Type: ([A-Z ]+); Schema:", prior)
+            if match:
+                return match.group(1) if match.group(1) in allowed else "OTHER"
+        return "UNKNOWN"
+
+    def safe_clues(line: str) -> str:
+        """Fixed labels only; literals, identifiers and paths are never emitted."""
+        flags = [
+            label for label, present in (
+                ("LIVE_DATABASE_LITERAL", SOURCE_DATABASE in line),
+                ("SHADOW_DATABASE_LITERAL", SHADOW_PREFIX in line),
+                ("REGCLASS_CAST", "::regclass" in line.lower()),
+                ("CAST_EXPRESSION", "::" in line),
+                ("FUNCTION_SEARCH_PATH", "search_path" in line.lower()),
+            )
+            if present
+        ]
+        return ",".join(flags) if flags else "NONE"
+
     def line_id(line: str) -> str:
         return hashlib.sha256(line.encode("utf-8")).hexdigest()[:12]
 
@@ -266,6 +303,10 @@ def describe_schema_delta(source: bytes, restored: bytes) -> str:
             f"{tag}: source_lines={a + 1}-{b} "
             f"shadow_lines={c + 1}-{d} "
             f"source_kind={kind(sample_a)} shadow_kind={kind(sample_b)} "
+            f"source_section={section_type(original, a)} "
+            f"shadow_section={section_type(shadow, c)} "
+            f"source_clues={safe_clues(sample_a)} "
+            f"shadow_clues={safe_clues(sample_b)} "
             f"source_line_sha12={line_id(sample_a)} "
             f"shadow_line_sha12={line_id(sample_b)}"
         )
