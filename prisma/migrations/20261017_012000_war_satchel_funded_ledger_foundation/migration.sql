@@ -303,10 +303,10 @@ CREATE FUNCTION war_satchel_funded_withdrawal_transition()
 RETURNS TRIGGER LANGUAGE plpgsql AS $satchel_withdrawal$
 BEGIN
   IF (NEW.id, NEW.owner_user_id, NEW.owner_wallet_address,
-      NEW.amount_uwolo, NEW.created_at)
+      NEW.amount_uwolo, NEW.created_at, NEW.authorizing_challenge_id)
      IS DISTINCT FROM
      (OLD.id, OLD.owner_user_id, OLD.owner_wallet_address,
-      OLD.amount_uwolo, OLD.created_at) THEN
+      OLD.amount_uwolo, OLD.created_at, OLD.authorizing_challenge_id) THEN
     RAISE EXCEPTION 'funded Satchel withdrawal economic identity immutable';
   END IF;
   IF (OLD.status='reserved' AND NEW.status NOT IN ('reserved','unknown_hold','cancelled'))
