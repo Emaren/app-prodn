@@ -15,8 +15,8 @@ import {
   type BetAutoShadowPresetInput,
 } from "./betAutomation.ts";
 
-const INT64_MAX = 9223372036854775807n;
-const UWOLO_PER_WOLO = 1000000n;
+const INT64_MAX = BigInt("9223372036854775807");
+const UWOLO_PER_WOLO = BigInt(1000000);
 const HASH = /^[0-9a-fA-F]{64}$/;
 const ADDRESS = /^wolo1[023456789acdefghjklmnpqrstuvwxyz]{38,90}$/;
 const MAX_VAULT_HEAD_AGE_MS = 90_000;
@@ -116,7 +116,7 @@ function parseAmount(value: string): bigint | null {
 
 function parseHeight(value: string): bigint | null {
   const n = parseAmount(value);
-  return n !== null && n > 0n ? n : null;
+  return n !== null && n > BigInt(0) ? n : null;
 }
 
 function utc(value: string): number | null {
