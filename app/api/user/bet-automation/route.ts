@@ -217,6 +217,13 @@ export async function PATCH(request: NextRequest) {
     }
 
     const saved = await resolved.prisma.$transaction(async (tx) => {
+      if (process.env.WAR_SATCHEL_LIVE_EXECUTOR_ENABLED === "true" &&
+          process.env.WAR_SATCHEL_FUNDED_LEDGER_ENABLED === "true") {
+        // A profile pause/edit must serialize with the funded worker's
+        // FINAL owner-consent check before it can submit an on-chain wager.
+        // Preview-only plans retain their existing lightweight path.
+        await tx.$executeRaw`SELECT pg_advisory_xact_lock(724176, 47)`;
+      }
       const current = await tx.betAutoPreset.findUnique({
         where: { userId: resolved.user.id },
         select: { id: true, version: true },
