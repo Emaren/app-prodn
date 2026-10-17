@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "a1a61f73287ce480633071b4bea67d6dea58ce2cf4fb08f71918d9bb22eda9b2",
+      "sha256": "1691b47aeaa48503174ee729b8cc72e5f3eebaf9ef025b8cf84a6b3e2e0745ea",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/hd-mecha-funded-seam-with-reviewed-deps-20261017",
-    "commit": "37ead594db665d745254e26aec974440dccef082"
+    "branch": "integration/hd-satchel-sync-main-20261017",
+    "commit": "21d88550b138adb95dbee748cf7e84273e67215d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

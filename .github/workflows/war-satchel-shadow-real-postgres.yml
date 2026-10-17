@@ -1,0 +1,67 @@
+name: War Satchel Real PostgreSQL Shadow Rehearsal Proof
+
+on:
+  pull_request:
+    paths:
+      - "scripts/aoe2_satchel_schema_shadow_rehearsal.py"
+      - "tests/sql/war_satchel_shadow_real_postgres_ci.py"
+      - ".github/workflows/war-satchel-shadow-real-postgres.yml"
+      - "prisma/migrations/20261014_103500_war_satchel_noncrediting_foundation/**"
+      - "prisma/migrations/20261014_133000_war_satchel_wallet_owner_challenges/**"
+      - "prisma/migrations/20261014_150000_war_satchel_simulated_double_entry/**"
+      - "prisma/migrations/20261014_164500_war_satchel_simulation_concurrency_guard/**"
+      - "prisma/migrations/20261014_191500_war_satchel_simulation_single_owner/**"
+      - "prisma/migrations/20261015_151500_war_satchel_simulation_guard_correction/**"
+      - "prisma/migrations/20261017_012000_war_satchel_funded_ledger_foundation/**"
+  push:
+    branches: [main]
+    paths:
+      - "scripts/aoe2_satchel_schema_shadow_rehearsal.py"
+      - "tests/sql/war_satchel_shadow_real_postgres_ci.py"
+      - ".github/workflows/war-satchel-shadow-real-postgres.yml"
+      - "prisma/migrations/20261014_103500_war_satchel_noncrediting_foundation/**"
+      - "prisma/migrations/20261014_133000_war_satchel_wallet_owner_challenges/**"
+      - "prisma/migrations/20261014_150000_war_satchel_simulated_double_entry/**"
+      - "prisma/migrations/20261014_164500_war_satchel_simulation_concurrency_guard/**"
+      - "prisma/migrations/20261014_191500_war_satchel_simulation_single_owner/**"
+      - "prisma/migrations/20261015_151500_war_satchel_simulation_guard_correction/**"
+      - "prisma/migrations/20261017_012000_war_satchel_funded_ledger_foundation/**"
+
+permissions:
+  contents: read
+
+jobs:
+  postgres-shadow-e2e:
+    name: PostgreSQL 16 / real schema shadow rehearsal end-to-end (NO DEPLOY)
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: satchel_ci
+          POSTGRES_PASSWORD: satchel_ci_ephemeral
+          POSTGRES_DB: satchel_shadow_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U satchel_ci -d satchel_shadow_ci"
+          --health-interval 4s
+          --health-timeout 4s
+          --health-retries 12
+    env:
+      CI: "true"
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGUSER: satchel_ci
+      PGPASSWORD: satchel_ci_ephemeral
+      PGDATABASE: satchel_shadow_ci
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check PostgreSQL 16 client is present
+        run: |
+          psql --version
+          pg_dump --version
+          pg_isready -h 127.0.0.1 -p 5432 -U satchel_ci -d satchel_shadow_ci
+      - name: Prove real schema-only shadow restore, seven SQL migrations, rollback and cleanup
+        run: python3 tests/sql/war_satchel_shadow_real_postgres_ci.py
