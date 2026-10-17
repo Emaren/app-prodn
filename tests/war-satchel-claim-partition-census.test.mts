@@ -29,18 +29,40 @@ const reservations=wagers.map(w=>({
   amountUwolo:BigInt(w.stakeLeg.ticket.totalAmountWolo)*BigInt(1_000_000),
 }));
 const args={claimId:88,ownerUserId:17,vaultAddress:vault};
+const fullTicketLegs=wagers.flatMap(w=>[
+  {
+    id:w.stakeLeg.id,
+    ticketId:w.stakeLeg.ticket.id,
+    marketId:7,amountWolo:w.amountWolo,
+    wager:{
+      id:w.id,userId:17,marketId:7,stakeLegId:w.stakeLeg.id,
+      amountWolo:w.amountWolo,status:"won",executionMode:"onchain_escrow",
+    },
+  },
+  {
+    id:200+w.id,
+    ticketId:w.stakeLeg.ticket.id,marketId:700+w.id,amountWolo:5,
+    wager:{
+      id:500+w.id,userId:17,marketId:700+w.id,stakeLegId:200+w.id,
+      amountWolo:5,status:"active",executionMode:"onchain_escrow",
+    },
+  },
+]);
 type Fixture=Readonly<{
   claim?:Record<string,unknown>|null;
   wagers?:readonly typeof wagers[number][];
   reservations?:readonly typeof reservations[number][];
+  legs?:readonly typeof fullTicketLegs[number][];
 }>;
 function mock(opts:Fixture={}):PrismaClient {
   const rows={claim:opts.claim===undefined?claim:opts.claim,
-    wagers:opts.wagers??wagers,reservations:opts.reservations??reservations};
+    wagers:opts.wagers??wagers,reservations:opts.reservations??reservations,
+    legs:opts.legs??fullTicketLegs};
   const tx={
     pendingWoloClaim:{async findUnique(){return rows.claim;}},
     betWager:{async findMany(){return rows.wagers;}},
     satchelFundedReservation:{async findMany(){return rows.reservations;}},
+    betStakeLeg:{async findMany(){return rows.legs;}},
   };
   return {
     async $transaction(action:unknown){
@@ -57,6 +79,9 @@ test("read-only census binds two market contributions to separately committed va
   assert.equal(result.totalReturnUwolo,BigInt(44_000_000));
   assert.deepEqual(result.contributions.map(c=>c.ticketId),[101,102]);
   assert.equal(result.originalReservationsMatched,true);
+  assert.equal(result.fullTicketSourceReview.fullTicketSourceLegPartitionVerified,true);
+  assert.deepEqual(result.fullTicketSourceReview.tickets.map(t=>t.legCount),[2,2]);
+  assert.equal(result.fullTicketSourceReview.signerAuthorizationGranted,false);
   assert.equal(result.sourceSnapshot,"database_repeatable_read_only");
   assert.equal(result.chainProofAuthorized,false);
   assert.equal(result.escrowExecutionAuthorized,false);
@@ -113,4 +138,15 @@ test("refuse market claim totals that omit or misattribute a ticket",async()=>{
       },
     }},wagers[1]],
   }),args),/unverified_wager_leg_owner_or_original_funding/);
+});
+
+test("incomplete second-market source evidence cannot masquerade as a complete return allocation",async()=>{
+  await assert.rejects(readWarSatchelClaimPartitionCensus(mock({
+    legs:fullTicketLegs.filter(l=>l.ticketId!==101||l.marketId===7),
+  }),args),/full_ticket_principal_does_not_equal_funding/);
+  await assert.rejects(readWarSatchelClaimPartitionCensus(mock({
+    legs:fullTicketLegs.map(l=>l.id===fullTicketLegs[1].id
+      ? {...l,wager:{...l.wager,userId:999}}
+      : l),
+  }),args),/missing_duplicate_or_untrusted_ticket_leg/);
 });
