@@ -128,10 +128,16 @@ END;
 $test$;
 
 -- Owner payout failure matrix, all synthetic and rolled back.
+INSERT INTO war_satchel_funded_withdrawal_challenges
+  (id,owner_user_id,owner_uid,wallet_address,amount_uwolo,issued_at,expires_at,consumed_at)
+VALUES('fd000000-2222-4222-8222-000000000042',71241,'owner:test:71241',
+  'wolo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq',25000000,
+  NOW()-INTERVAL '1 minute',NOW()+INTERVAL '2 minutes',NOW());
 INSERT INTO war_satchel_funded_withdrawals
-  (id,owner_user_id,owner_wallet_address,amount_uwolo)
+  (id,owner_user_id,owner_wallet_address,authorizing_challenge_id,amount_uwolo)
 VALUES('fd000000-1111-4111-8111-000000000041',71241,
-  'wolo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq',25000000);
+  'wolo1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq',
+  'fd000000-2222-4222-8222-000000000042',25000000);
 
 DO $withdrawal_test$
 DECLARE failed BOOLEAN;
@@ -175,6 +181,30 @@ BEGIN
   EXCEPTION WHEN OTHERS THEN failed:=SQLERRM LIKE '%illegal%';
   END;
   IF NOT failed THEN RAISE EXCEPTION 'sent payout was made eligible for replay'; END IF;
+
+  failed:=FALSE;
+  BEGIN
+    UPDATE war_satchel_funded_withdrawal_challenges SET amount_uwolo=25000001
+      WHERE owner_user_id=71241;
+  EXCEPTION WHEN OTHERS THEN failed:=SQLERRM LIKE '%immutable%';
+  END;
+  IF NOT failed THEN RAISE EXCEPTION 'Keplr signed withdrawal authorization mutated'; END IF;
+
+  failed:=FALSE;
+  BEGIN
+    UPDATE war_satchel_funded_withdrawal_challenges SET consumed_at=NULL
+      WHERE owner_user_id=71241;
+  EXCEPTION WHEN OTHERS THEN failed:=SQLERRM LIKE '%one-use%';
+  END;
+  IF NOT failed THEN RAISE EXCEPTION 'withdrawal authorization replayed'; END IF;
+
+  failed:=FALSE;
+  BEGIN
+    UPDATE war_satchel_funded_withdrawals
+      SET authorizing_challenge_id=NULL WHERE owner_user_id=71241;
+  EXCEPTION WHEN OTHERS THEN failed:=TRUE;
+  END;
+  IF NOT failed THEN RAISE EXCEPTION 'withdrawal dissociated from Keplr approval'; END IF;
 
   failed:=FALSE;
   BEGIN
