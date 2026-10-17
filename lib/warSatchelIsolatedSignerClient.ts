@@ -22,7 +22,7 @@ const REQUEST=/^satchel:ticket:[1-9][0-9]{0,14}$/;
 const HASH=/^[A-F0-9]{64}$/;
 const AMOUNT=/^[1-9][0-9]{0,18}$/;
 const MAX_BODY=4096;
-const TOKEN=/^[a-f0-9]{64,128}$/i;
+const TOKEN=/^(?:[a-f0-9]{64}|[a-f0-9]{128})$/i;
 const PORT=8194;
 const MAX_GAME=BigInt(1000)*BigInt(1000000);
 
