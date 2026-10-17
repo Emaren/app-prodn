@@ -73,3 +73,30 @@ test("funded custody never mistakes already-spent bet escrow funds for Satchel b
   assert.match(ledger, /status: "unknown_hold"/);
   assert.match(ledger, /ticket\.status !== "recorded"/);
 });
+
+test("no physical wolo-1 bank transfer can fund both a deposit and an escrow claim return", () => {
+  const ledger = read("lib/warSatchelFundedLedger.ts");
+  const deposit = ledger.split("export async function creditRecordedSatchelProof(")[1]
+    ?.split("export async function reserveForWatcherExecution(")[0];
+  const claimReturn = ledger.split("export async function creditVerifiedSatchelClaimReturn(")[1];
+  assert.ok(deposit && claimReturn, "both credit pathways must exist");
+  assert.match(deposit, /satchelFundedClaimReturn\.findUnique\(/);
+  assert.match(deposit, /physical_transfer_already_credited_as_claim_return/);
+  assert.match(claimReturn, /warSatchelProofCandidate\.findUnique\(/);
+  assert.match(claimReturn, /claim_return_hash_already_used_as_deposit_candidate/);
+  assert.match(claimReturn, /claim_return_hash_already_used_as_deposit/);
+  for (const section of [deposit, claimReturn]) {
+    assert.match(section, /chainId_txHash_transferIndex/);
+    assert.match(section, /chainId:\s*"wolo-1",\s*txHash:\s*proof\.txHash,\s*transferIndex:\s*0/);
+  }
+  assert.ok(
+    deposit.indexOf("physical_transfer_already_credited_as_claim_return") <
+    deposit.indexOf("satchelFundedReceipt.create("),
+    "deposit must fence a reused return before issuing a credit"
+  );
+  assert.ok(
+    claimReturn.indexOf("claim_return_hash_already_used_as_deposit_candidate") <
+    claimReturn.indexOf("satchelFundedClaimReturn.create("),
+    "claim return must reject any previously observed deposit effect before credit"
+  );
+});
