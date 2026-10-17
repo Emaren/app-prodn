@@ -227,8 +227,15 @@ DECLARE n_tables INTEGER; n_functions INTEGER; body TEXT;
 BEGIN
   SELECT count(*) INTO n_tables FROM pg_class c JOIN pg_namespace n
   ON n.oid=c.relnamespace WHERE n.nspname='public'
-  AND c.relkind IN ('r','p') AND c.relname LIKE 'war_satchel_%';
-  IF n_tables <> 6 THEN RAISE EXCEPTION 'six simulation table identities missing'; END IF;
+  AND c.relkind IN ('r','p') AND c.relname IN (
+    'war_satchel_deposit_intents',
+    'war_satchel_proof_candidates',
+    'war_satchel_wallet_challenges',
+    'war_satchel_ledger_accounts',
+    'war_satchel_ledger_journals',
+    'war_satchel_ledger_postings'
+  );
+  IF n_tables <> 6 THEN RAISE EXCEPTION 'six original simulation tables missing'; END IF;
   SELECT count(*) INTO n_tables FROM pg_class c JOIN pg_namespace n
   ON n.oid=c.relnamespace WHERE n.nspname='public'
   AND c.relkind IN ('r','p') AND c.relname LIKE 'war_satchel_funded_%';
