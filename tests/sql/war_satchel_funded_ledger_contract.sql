@@ -26,11 +26,11 @@ VALUES
 
 INSERT INTO war_satchel_funded_journal
 (owner_user_id, source_key, event_kind, amount_uwolo, delta_available_uwolo,
- delta_reserved_uwolo, delta_committed_uwolo, delta_withdrawal_pending_uwolo, receipt_id)
+ delta_reserved_uwolo, delta_committed_uwolo, delta_withdrawal_pending_uwolo, receipt_id, execution_id)
 VALUES
 (71241,'test:credited', 'deposit_credit',50000000,50000000,0,0,0,
- (SELECT id FROM war_satchel_funded_receipts WHERE tx_hash=repeat('A',64))),
-(71241,'test:reserved','wager_reserve',25000000,-25000000,25000000,0,0,NULL);
+ (SELECT id FROM war_satchel_funded_receipts WHERE tx_hash=repeat('A',64)),NULL),
+(71241,'test:reserved','wager_reserve',25000000,-25000000,25000000,0,0,NULL,81001);
 
 DO $test$
 DECLARE
