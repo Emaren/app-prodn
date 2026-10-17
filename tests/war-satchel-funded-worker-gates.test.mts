@@ -44,3 +44,14 @@ test("protected Watcher tick and one-off operator CLI share ONE signer implement
  assert.match(source,/durable_request_fenced !== true/);
  assert.doesNotMatch(tick+worker,/createLocalIsolatedSatchelSigner|assertLocalSatchelSignerHealth/);
 });
+
+test("stale player/market/consent rejection cannot starve the Watcher queue or trigger an unsafe retry",()=>{
+ const source=read("lib/warSatchelAutoBetExecutor.ts");
+ assert.match(source,/error\.message\.startsWith\("WAR_SATCHEL_FUNDED_REFUSED:"\)/);
+ assert.match(source,/return \{ kind: "ineligible" as const \}/);
+ assert.match(source,/throw error;/);
+ // Only explicitly thrown business vetoes made inside the rolled-back
+ // reservation transaction are skippable. A DB timeout or commit failure
+ // remains an unknown state and MUST stop rather than submit again.
+ assert.doesNotMatch(source,/catch \{\s*return \{ kind: "ineligible"/);
+});
