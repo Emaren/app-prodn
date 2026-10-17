@@ -106,6 +106,8 @@ export function inspectSatchelClaimPartitionPreview(input: Readonly<{
   const contributions: SatchelClaimPartitionContribution[] = [];
   let principalUwolo = BigInt(0);
   let returnUwolo = BigInt(0);
+  const seenFundingTransactions = new Set<string>();
+  const seenOperationIds = new Set<string>();
   const ticketIds = Array.from(groups.keys()).sort((a,b) => a-b);
   for (const ticketId of ticketIds) {
     const group = groups.get(ticketId)!;
@@ -122,6 +124,15 @@ export function inspectSatchelClaimPartitionPreview(input: Readonly<{
       vaultAddress: input.vaultAddress,
       wagers: group,
     });
+    // Different ticket IDs must not describe the same durable request or
+    // physical chain transaction, even in a stale or forged snapshot. The
+    // database has matching uniqueness rules; enforce here independently.
+    if (seenFundingTransactions.has(proof.fundingTxHash) ||
+        seenOperationIds.has(proof.operationId)) {
+      reject("multiple_tickets_share_one_chain_effect_or_operation");
+    }
+    seenFundingTransactions.add(proof.fundingTxHash);
+    seenOperationIds.add(proof.operationId);
     principalUwolo += proof.principalUwolo;
     returnUwolo += proof.amountUwolo;
     contributions.push(Object.freeze({
