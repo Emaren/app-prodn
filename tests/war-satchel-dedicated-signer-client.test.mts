@@ -57,6 +57,9 @@ function mockRead(healthBody:Record<string,unknown>,resultBody:Record<string,unk
     }
     sendCalls++;
     assert.equal((init?.method||"GET"),"POST");
+    const requestBody=JSON.parse(String(init?.body)) as Record<string,unknown>;
+    assert.equal(requestBody.owner_id,args.ownerUid);
+    assert.equal(requestBody.request_id,args.requestId);
     return new Response(JSON.stringify(resultBody),{status:200});
   };
   return {reader:reader as typeof fetch,calls:()=>({healthCalls,sendCalls})};
