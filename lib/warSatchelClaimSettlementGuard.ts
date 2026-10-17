@@ -29,8 +29,11 @@ export async function assertNoUnroutedSatchelSettlementClaim(
   }
   const wagers = await prisma.betWager.findMany({
     where: {
+      // Never infer custody from legacy status strings: a wager may be
+      // "active", "void", "lost", or midway through settlement. If ANY
+      // escrow-funded Satchel ticket exists for this owner+market, stop the
+      // legacy direct-wallet payout path until exact return routing exists.
       marketId: input.marketId, userId: input.ownerUserId,
-      status: input.claimKind === "bet_refund" ? "void" : "won",
     },
     select: {
       id: true,
