@@ -191,7 +191,7 @@ def schema_fingerprint(data: bytes) -> str:
         lines = data.decode("utf-8", "strict").splitlines(keepends=True)
     except UnicodeError as exc:
         raise RehearsalStop("invalid UTF-8 in schema-only dump") from exc
-    nonce_pattern = re.compile(r"^(\\\\(?:un)?restrict) ([A-Za-z0-9]{24,160})(\\r?\\n?)$")
+    nonce_pattern = re.compile(r"^(\\(?:un)?restrict) ([A-Za-z0-9]{24,160})(\r?\n?)$")
     matches: list[tuple[int, str, str, str]] = []
     for index, line in enumerate(lines):
         if line.startswith("\\restrict ") or line.startswith("\\unrestrict "):
