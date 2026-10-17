@@ -172,7 +172,7 @@ def schema_bytes(database: str) -> bytes:
         raise RehearsalStop("unsafe schema snapshot database identity")
     result = postgres(
         "pg_dump", "--schema-only", "--no-owner", "--no-acl",
-        "--dbname", database, timeout=90,
+        "--lock-wait-timeout=5s", "--dbname", database, timeout=90,
     )
     if len(result) > 32_000_000 or len(result) < 1000:
         raise RehearsalStop("schema-only export size outside audited bounds")
