@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ae3b3920a095d16d8638027957d6322146dedabf8c73e630d694bfa33edfce0e",
+      "sha256": "f54180fe9dbd591c3c2f1690f7490d465fb9c98169fe73e420111b2f16668057",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/hd-braces-waiver-scope-review-20261017",
-    "commit": "b5deefc3759620e1eee58292dd8584b62798ad4c"
+    "branch": "feat/hd-mecha-funded-seam-with-reviewed-deps-20261017",
+    "commit": "241ffbf847d8f81271cf83b2cdd71637c5de470e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
