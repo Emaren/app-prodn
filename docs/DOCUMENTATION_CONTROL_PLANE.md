@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/hd-satchel-signed-v2-return-proof-20261017` at `980d146940ea38afd4cd7fe9be54c2d0d90cdb1c`
+Implementation baseline: `feat/hd-satchel-signed-v2-return-proof-20261017` at `8a2fc3e2e8b21af996f6f0c60d24630633cc7474`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
