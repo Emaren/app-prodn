@@ -60,6 +60,7 @@ class ShadowSafetyTests(unittest.TestCase):
         self.assertIn("--schema-only", pg.call_args.args)
         self.assertIn("--no-owner", pg.call_args.args)
         self.assertIn("--no-acl", pg.call_args.args)
+        self.assertIn("--lock-wait-timeout=5s", pg.call_args.args)
         self.assertNotIn("--data-only", pg.call_args.args)
 
     def test_schema_dump_rejects_oversized_output(self):
