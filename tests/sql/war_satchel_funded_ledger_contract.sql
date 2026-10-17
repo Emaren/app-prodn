@@ -15,21 +15,21 @@ VALUES
 INSERT INTO war_satchel_proof_candidates
 (intent_id,user_id,chain_id,tx_hash,transfer_index,sender_address,vault_address,amount_uwolo,tx_height,verified_at)
 VALUES
-('d1171771-5fc6-4904-9042-988123891111',71241,'wolo-1',repeat('A',64),0,'wolo1ssssssssssssssssssssssssssssssssssssss',
+('d1171771-5fc6-4904-9042-988123891111',71241,'wolo-1',repeat('E',64),0,'wolo1ssssssssssssssssssssssssssssssssssssss',
  'wolo1vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv',50000000,321,NOW());
 
 INSERT INTO war_satchel_funded_receipts
 (owner_user_id,proof_candidate_id,chain_id,tx_hash,transfer_index,amount_uwolo,vault_address,canonical_height)
 VALUES
-(71241,(SELECT id FROM war_satchel_proof_candidates WHERE tx_hash=repeat('A',64)),
- 'wolo-1',repeat('A',64),0,50000000,'wolo1vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv',321);
+(71241,(SELECT id FROM war_satchel_proof_candidates WHERE tx_hash=repeat('E',64)),
+ 'wolo-1',repeat('E',64),0,50000000,'wolo1vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv',321);
 
 INSERT INTO war_satchel_funded_journal
 (owner_user_id, source_key, event_kind, amount_uwolo, delta_available_uwolo,
  delta_reserved_uwolo, delta_committed_uwolo, delta_withdrawal_pending_uwolo, receipt_id, execution_id)
 VALUES
 (71241,'test:credited', 'deposit_credit',50000000,50000000,0,0,0,
- (SELECT id FROM war_satchel_funded_receipts WHERE tx_hash=repeat('A',64)),NULL),
+ (SELECT id FROM war_satchel_funded_receipts WHERE tx_hash=repeat('E',64)),NULL),
 (71241,'test:reserved','wager_reserve',25000000,-25000000,25000000,0,0,NULL,81001);
 
 DO $test$
@@ -53,7 +53,7 @@ BEGIN
     INSERT INTO war_satchel_funded_receipts
     (owner_user_id,proof_candidate_id,chain_id,tx_hash,transfer_index,amount_uwolo,vault_address,canonical_height)
     VALUES
-    (71242,(SELECT id FROM war_satchel_proof_candidates WHERE tx_hash=repeat('A',64)),
+    (71242,(SELECT id FROM war_satchel_proof_candidates WHERE tx_hash=repeat('E',64)),
      'wolo-1',repeat('B',64),0,50000000,'wolo1vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv',321);
   EXCEPTION WHEN unique_violation THEN failed := TRUE;
   END;
