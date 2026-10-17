@@ -299,6 +299,8 @@ export async function reserveForWatcherExecution(
       !Number.isSafeInteger(input.executionId) || input.executionId <= 0 ||
       !Number.isSafeInteger(input.presetVersion) || input.presetVersion <= 0 ||
       !positiveAmount(input.reserveUwolo) ||
+      input.reserveUwolo > BigInt(1000) * BigInt(1000000) ||
+      input.reserveUwolo % BigInt(1000000) !== BigInt(0) ||
       !input.signedSpendingConsentVerified) stop("unverified_spending_consent_or_reserve");
   return withExclusiveSatchelTx(prisma, async tx => {
     const found = await tx.satchelFundedReservation.findUnique({
@@ -326,6 +328,59 @@ export async function reserveForWatcherExecution(
         exec.selectedSide !== input.selectedSide ||
         BigInt(exec.winnerStakeWolo + exec.desyncStakeWolo) * BigInt(1000000) !== input.reserveUwolo) {
       stop("watcher_execution_or_consent_changed");
+    }
+    const evidence = exec.sourceEvidence && typeof exec.sourceEvidence === "object" &&
+      !Array.isArray(exec.sourceEvidence)
+        ? exec.sourceEvidence as Record<string, unknown>
+        : {};
+    if (evidence.mode !== "shadow" ||
+        evidence.exactSteamRosterMatch !== true ||
+        evidence.exactUploaderUidMatch !== true ||
+        evidence.marketIntegrityStatus !== "verified" ||
+        evidence.ownerUid !== input.ownerUid ||
+        evidence.propositionHash !== exec.propositionHash ||
+        evidence.canonicalSessionKey !== exec.gameIdentityKey) {
+      stop("watcher_identity_evidence_not_attested");
+    }
+    const market = await tx.betMarket.findUnique({
+      where: { id: exec.winnerMarketId },
+      select: {
+        id: true, status: true, marketType: true,
+        integrityStatus: true, propositionHash: true,
+      },
+    });
+    if (!market || market.status !== "live" || market.marketType !== "winner" ||
+        market.integrityStatus !== "verified" ||
+        market.propositionHash !== exec.propositionHash) {
+      stop("canonical_watcher_market_not_live");
+    }
+    if (exec.desyncMarketId !== null) {
+      const desync = await tx.betMarket.findUnique({
+        where: { id: exec.desyncMarketId },
+        select: { status: true, marketType: true, parentMarketId: true,
+          propositionHash: true, integrityStatus: true },
+      });
+      if (!desync || desync.status !== "live" ||
+          desync.marketType !== "desync" || desync.parentMarketId !== market.id ||
+          desync.propositionHash !== market.propositionHash ||
+          desync.integrityStatus !== "verified") {
+        stop("desync_wager_market_no_longer_consistent");
+      }
+    }
+    // A protected daily cap must be checked independently of the UI plan;
+    // count the day's RESERVATION attempts, even if subsequently returned,
+    // to bound runaway Watcher activity after reconnects/crashes.
+    const todayUtc = new Date(new Date().toISOString().slice(0, 10) + "T00:00:00.000Z");
+    const daily = await tx.satchelFundedJournal.aggregate({
+      where: {
+        ownerUserId: input.ownerUserId, eventKind: "wager_reserve",
+        createdAt: { gte: todayUtc },
+      },
+      _sum: { amountUwolo: true },
+    });
+    const dailySpent = daily._sum.amountUwolo ?? BigInt(0);
+    if (dailySpent + input.reserveUwolo > BigInt(10000) * BigInt(1000000)) {
+      stop("daily_watcher_wager_cap_exhausted");
     }
 
     requireFreshBank(input.bank, Date.now());
