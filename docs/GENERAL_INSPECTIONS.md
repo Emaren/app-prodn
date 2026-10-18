@@ -15,6 +15,36 @@ sensitivity: "internal"
 
 # AoE2WAR General Inspections
 
+## October 18, 2026 — live Kingdom Index score is not the historical 64
+
+The Kingdom Index opens **Ledger View** by default; Realm View remains
+available from the existing toggle. The 64/100 HD Leaderboard value in
+`config/kingdom-index-baseline.json` is a **historical source review**, not
+a current release-bound quality score. The source review is preserved as
+`lastReviewScore` and its dimension bars are labeled historical in the detail
+drawer. It no longer occupies the live `score` field on the route ledger.
+
+The public `score` field now accepts only a nonstale, source-aligned **agent**
+observation. The agent's typed timestamp must include an explicit timezone
+and time, and the readout expires after 15 minutes (or if more than five
+minutes in the future). Agent observations are reported as `AGENT OBSERVED`,
+NOT certified; agent claims cannot yield a displayed 100. Source reviews,
+unverified `certified` claims, missing or drifted source, and stale evidence
+display `—` as current quality; the old review remains inspectable.
+
+`/api/kingdom-index` uses `private, no-store` so the 60-second visible-page
+poll cannot be served a CDN-held or stale-while-revalidate score snapshot.
+The optional server-managed evidence feed still requires an explicitly
+configured `KINGDOM_INDEX_EVIDENCE_PATH`, valid dimensions and compatible
+source versions. **No agent reporter or independently authenticated 100-point
+criterion verifier is installed by this change.** Without a current feed,
+the index remains unmeasured rather than inventing an upgrade.
+
+This is display truth and score freshness, NOT a new score or a financial
+release permit. The ranking specialty gates and production browser/database
+evidence in issue #668 remain open. The historical 64 stays in source
+history for honest comparison with future independently measured releases.
+
 ## October 18, 2026 — report each missing evidence point before prioritizing upgrades
 
 The read-only `scripts/report_general_inspections.mjs` command analyzes
@@ -50,8 +80,9 @@ reviewed before certification.
 The public `/api/kingdom-index` snapshot includes
 `specializedAssurance`, an additive read-only `profile` and array of
 `{id, requirement, status:"unverified"}` objects. **Unverified is not a
-passing score.** The public UI, page scores, historical 64/100 leaderboard
-assessment and financial operations remain unchanged.
+passing score.** The public scoring budget, the historical 64/100 leaderboard
+assessment and financial operations remain unchanged. The historical
+assessment is not a current/live score on the Ledger.
 
 ### Read-only route-dependency evidence
 
