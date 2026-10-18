@@ -34,7 +34,7 @@
 /general-inspections
 /kingdom
 /kingdom-index
-/kingdom-betters
+/kingdom-bettors
 /kingdom-agents
 /kingdom-intelligence
 /kingdom-treasury
