@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "eee74d628dc09ac3a7cc4266fcdaa8c32aa5c2ec0b64413661091fc0451f12dc",
+      "sha256": "e75b58f24c2d41968e2d0d3f5c075df8b66f4077c33b4762f5ecb28e845ea321",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -733,7 +733,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-18",
       "sensitivity": "internal",
-      "sha256": "5a749cc1c41b86d7be1edc7dfc428220c9fbc24d8da7e47635a12a526a800a1a",
+      "sha256": "d9bf518b3ef50dd9d165f92df7218b64e1c178b536ac4c67b6ea31b6b411458f",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/20261018-kingdom-index-assurance-harden",
-    "commit": "10f334cc800c8ced286f62ff38cacc8d45b98a4e"
+    "branch": "fix/20261018-index-route-boundary-provenance",
+    "commit": "8bc1f18c1e15931903654fb286124a41ed05464b"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

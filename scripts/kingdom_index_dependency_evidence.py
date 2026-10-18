@@ -23,12 +23,26 @@ import aoe2_module_graph as modules
 ROOT = Path(__file__).resolve().parents[1]
 ASSET_SUFFIXES = frozenset({".css", ".scss", ".json", ".svg", ".png", ".jpg", ".jpeg", ".webp"})
 EXTRA_ROOTS = ("config", "public")
-GLOBAL_INPUTS = ("package.json", "yarn.lock", "next.config.js", "next.config.mjs",
-                 "next.config.ts", "tsconfig.json")
+# These repository-wide inputs affect all routes regardless of direct imports.
+# This is source evidence, not an emitted-bundle or deployment attestation.
+GLOBAL_INPUTS = (
+    "package.json", "yarn.lock", "package-lock.json", "pnpm-lock.yaml",
+    "pnpm-workspace.yaml", "next.config.js", "next.config.mjs",
+    "next.config.ts", "tsconfig.json", "postcss.config.js",
+    "postcss.config.mjs", "postcss.config.cjs", "tailwind.config.js",
+    "tailwind.config.ts", "prisma/schema.prisma", "middleware.ts",
+    "middleware.js", "instrumentation.ts", "instrumentation.js",
+)
+# Next segment boundaries can render without being imported by page.tsx.
+SEGMENT_BOUNDARY_STEMS = (
+    "layout", "template", "loading", "error", "not-found", "default",
+    "global-error",
+)
+SEGMENT_BOUNDARY_SUFFIXES = (".tsx", ".ts", ".jsx", ".js")
 MAX_SOURCE_BYTES = 2_000_000
 MAX_MODULES_PER_ROUTE = 4096
 API_LITERAL = re.compile(r"""(?<![\w])/(api/[A-Za-z0-9_\-/]+)""")
-DYNAMIC_IMPORT = re.compile(r"""\b(?:import|require)\s*\(\s*(?!["'\x60])""")
+DYNAMIC_IMPORT = re.compile(r"""\b(?:import|require)\s*\(\s*(?![\"'])""")
 CSS_IMPORT = re.compile(r"""@import\s+(?:url\()?\s*["']([^"'\r\n]+)["']""")
 # Existing module census intentionally anchors ordinary import lines. Catch
 # valid side-effect imports after semicolons without claiming a full TS parser.
@@ -101,7 +115,19 @@ def route_evidence(root: Path, href: str,
     entry = "app/" + href.strip("/") + ("/" if href != "/" else "") + "page.tsx"
     if entry not in present:
         raise DependencyEvidenceError("No statically known page entry: " + href)
-    pending = [entry]
+    # Capture ancestor layouts and segment boundaries as independent inputs.
+    boundaries: set[str] = set()
+    segment = posixpath.dirname(entry)
+    while segment == "app" or segment.startswith("app/"):
+        for stem in SEGMENT_BOUNDARY_STEMS:
+            for ext in SEGMENT_BOUNDARY_SUFFIXES:
+                candidate = segment + "/" + stem + ext
+                if candidate in present:
+                    boundaries.add(candidate)
+        if segment == "app":
+            break
+        segment = posixpath.dirname(segment)
+    pending = [entry, *sorted(boundaries)]
     visited: set[str] = set()
     unresolved: set[str] = set()
     external: set[str] = set()
@@ -161,6 +187,7 @@ def route_evidence(root: Path, href: str,
     return {
         "href": href,
         "entrypoint": entry,
+        "app_segment_boundaries": sorted(boundaries),
         "source_closure": "dep-" + h.hexdigest()[:24],
         "file_count": len(bound),
         "files": bound,
@@ -171,7 +198,7 @@ def route_evidence(root: Path, href: str,
         "dependency_completeness_certified": False,
         "quality_score_authority": "none",
         "status": "LEXICAL_GAPS_REVIEW" if unresolved or nonliteral else "STATIC_LEXICAL_CENSUS_ONLY",
-        "limitations": "No Next.js bundle, server actions, import-condition resolution, remote APIs, "
+        "limitations": "No Next.js bundle, public-asset closure, server actions, import-condition resolution, remote APIs, "
                        "side effects, database schema or production runtime attestation.",
     }
 
