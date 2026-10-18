@@ -6,6 +6,7 @@ import catalog from "@/config/kingdom-index-routes.json";
 import baseline from "@/config/kingdom-index-baseline.json";
 import qualityRubric from "@/config/kingdom-index-quality-rubric.json";
 import assuranceProfiles from "@/config/kingdom-index-assurance-profiles.json";
+import { classifyPublicKingdomAuditStatus } from "@/lib/kingdomIndexAuditStatus";
 import { PAGE_CHANGE_MANIFEST } from "@/lib/pageChangeManifest.generated";
 
 export type District = "citadel" | "arena" | "forge" | "bazaar" | "commons";
@@ -134,9 +135,12 @@ export async function loadKingdomIndex(): Promise<KingdomIndexSnapshot> {
     // deployed route version or exact source version is unavailable.
     const versionAligned=Boolean(obs && version && measuredVersion===version);
     const stale=Boolean(obs && (now-(dateValue(obs.checkedAt)??0)>AUDIT_TTL_MS || (dateValue(obs.checkedAt)??0)>now+300_000));
-    const status:KingdomIndexEntry["status"]=!obs?"unmeasured":!versionAligned?"drifted":stale?"stale":obs.kind==="source-review"?"provisional":"current";
-    const profile = (assuranceProfiles.routeProfiles as Record<string,string>)[route.href] ?? "general";
-    const specialty = (assuranceProfiles.profiles as Record<string,{gates: {id:string;requirement:string}[]}>)[profile];
+    const status:KingdomIndexEntry["status"]=classifyPublicKingdomAuditStatus({
+      kind:obs?.kind??null, versionAligned, stale,
+    });
+    const profile = (assuranceProfiles.routeProfiles as Record<string,string>)[route.href] ?? "unclassified";
+    const specialty = (assuranceProfiles.profiles as Record<string,{gates: {id:string;requirement:string}[]}>)[profile]
+      ?? {gates:[{id:"missing-assurance-profile",requirement:"No independently reviewed engineering assurance profile exists for this public route."}]};
     return {
       href:route.href,label:route.label,district:route.district as District,
       specializedAssurance: {profile, gates: specialty.gates.map(gate=>({id:gate.id,requirement:gate.requirement,status:"unverified" as const}))},
