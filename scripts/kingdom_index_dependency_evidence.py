@@ -30,6 +30,9 @@ MAX_MODULES_PER_ROUTE = 4096
 API_LITERAL = re.compile(r"""(?<![\w])/(api/[A-Za-z0-9_\-/]+)""")
 DYNAMIC_IMPORT = re.compile(r"""\b(?:import|require)\s*\(\s*(?!["'\x60])""")
 CSS_IMPORT = re.compile(r"""@import\s+(?:url\()?\s*["']([^"'\r\n]+)["']""")
+# Existing module census intentionally anchors ordinary import lines. Catch
+# valid side-effect imports after semicolons without claiming a full TS parser.
+INLINE_IMPORT = re.compile(r"""(?m);[ \t]*(?:import|export)\s+(?:type\s+)?(?:[^;"']{0,750}?\s+from\s+)?["']([^"'\r\n]+)["']""")
 
 
 class DependencyEvidenceError(RuntimeError):
@@ -122,6 +125,7 @@ def route_evidence(root: Path, href: str,
         except UnicodeDecodeError as exc:
             raise DependencyEvidenceError("Non-UTF8 module: " + rel) from exc
         references = modules.extract_import_references(source)
+        references += [(m.group(1), "runtime") for m in INLINE_IMPORT.finditer(source)]
         if rel.endswith((".css", ".scss")):
             references += [(m.group(1), "runtime") for m in CSS_IMPORT.finditer(source)]
         for specifier, _kind in references:
