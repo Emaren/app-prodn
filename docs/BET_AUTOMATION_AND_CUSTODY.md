@@ -23,7 +23,9 @@ Environment labels cannot select another verifier digest. The exact hashed
 executable is copied into a private directory before invocation; runtime proof
 objects use process-local identity and cannot be forged by copying a symbol.
 Owner, wallet, immutable intent times/economics and proof freshness are rechecked
-under the existing financial transaction fence. A committed receipt can be read
+under the existing financial transaction fence. The original authenticated primary
+and witness head deadlines survive verifier and database I/O; late expiry aborts
+the transaction. A committed receipt can be read
 after restart/expiry without crediting again or requiring another transfer.
 
 The additive `20261018_020000_war_satchel_physical_receipt_consumption` migration

@@ -6,7 +6,7 @@ import path from "node:path";
 import pg from "pg";
 import {PrismaPg} from "@prisma/adapter-pg";
 import {PrismaClient} from "@/lib/generated/prisma";
-import {authenticateOwnerDeposit,isAuthenticatedWarSatchelDeposit} from "../lib/warSatchelAuthenticatedDeposit.ts";
+import {authenticateOwnerDeposit,isAuthenticatedWarSatchelDeposit,authenticatedWarSatchelDepositFreshAt} from "../lib/warSatchelAuthenticatedDeposit.ts";
 import {creditRecordedSatchelProof,readRecordedSatchelCredit} from "../lib/warSatchelFundedLedger.ts";
 import {createHash} from "node:crypto";
 
@@ -33,6 +33,8 @@ test("real signed SDK deposit authenticates then credits the linked HD owner exa
   }) as typeof fetch;
   const authenticated=await authenticateOwnerDeposit(expected,reader(envelope));
   assert.equal(isAuthenticatedWarSatchelDeposit(authenticated),true);
+  assert.equal(authenticatedWarSatchelDepositFreshAt(authenticated,authenticated.verifiedAtMs),true);
+  assert.equal(authenticatedWarSatchelDepositFreshAt(authenticated,authenticated.authenticatedHeadExpiresAtMs),false,"CLI success must not reset the original signed head expiry");
   assert.equal(isAuthenticatedWarSatchelDeposit({...authenticated}),false,"copying the private symbol is insufficient");
   assert.equal(isAuthenticatedWarSatchelDeposit(JSON.parse(JSON.stringify(envelope))),false);
   await t.test("forged chain, denom, success, ownership, amount and finality fail independent verification",async()=>{
@@ -65,6 +67,12 @@ test("real signed SDK deposit authenticates then credits the linked HD owner exa
     const adapter=()=>new PrismaPg({host:socket,user:"credit_fixture",database:"postgres"});
     db=new PrismaClient({adapter:adapter()});
     const input={ownerUserId:1,ownerUid:i.OwnerID,proofCandidateId:BigInt(1),expectedTxHash:o.TxHash,authenticatedDeposit:authenticated,bank:{chainId:"wolo-1" as const,denom:"uwolo" as const,vaultAddress:i.Vault,balanceUwolo:BigInt(i.AmountUWolo),height:BigInt(102),observedAtMs:Date.now()}};
+    await t.test("an expired genuine proof cannot enter the financial transaction",async inner=>{
+      inner.mock.method(Date,"now",()=>authenticated.authenticatedHeadExpiresAtMs);
+      try { await assert.rejects(creditRecordedSatchelProof(db!,input),/authenticated_comet_deposit_required/); }
+      finally { inner.mock.restoreAll(); }
+      assert.equal((await sql!.query("SELECT count(*) FROM war_satchel_funded_receipts")).rows[0].count,"0");
+    });
     await t.test("a failure after receipt insertion rolls back consumption, journal and balance",async()=>{
       await sql!.query("CREATE FUNCTION fixture_journal_failure() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'isolated crash after receipt'; END $$; CREATE TRIGGER fixture_crash BEFORE INSERT ON war_satchel_funded_journal FOR EACH ROW EXECUTE FUNCTION fixture_journal_failure()");
       await assert.rejects(creditRecordedSatchelProof(db!,input),/isolated crash after receipt/);

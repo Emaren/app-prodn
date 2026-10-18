@@ -1,5 +1,5 @@
 import { requireSatchelFinancialBridge } from "./warSatchelFinancialBridgeHold.ts";
-import { isAuthenticatedWarSatchelDeposit, type AuthenticatedWarSatchelDeposit } from "./warSatchelAuthenticatedDeposit.ts";
+import { authenticatedWarSatchelDepositFreshAt, type AuthenticatedWarSatchelDeposit } from "./warSatchelAuthenticatedDeposit.ts";
 import { inspectSingleTicketSatchelReturn } from "./warSatchelClaimReturnAttribution.ts";
 import { verifyLiveCanonicalSatchelClaimReturn } from "./warSatchelCanonicalClaimReturn.ts";
 import { getWoloBetEscrowRuntime } from "./woloChain.ts";
@@ -257,12 +257,10 @@ export async function creditRecordedSatchelProof(
   if (!Number.isSafeInteger(input.ownerUserId) || input.ownerUserId <= 0 ||
       !positiveAmount(input.proofCandidateId) ||
       !TX_HASH.test(input.expectedTxHash) ||
-      !isAuthenticatedWarSatchelDeposit(input.authenticatedDeposit) ||
+      !authenticatedWarSatchelDepositFreshAt(input.authenticatedDeposit) ||
       input.authenticatedDeposit.txHash !== input.expectedTxHash ||
       input.authenticatedDeposit.ownerUid !== input.ownerUid ||
-      input.authenticatedDeposit.height <= BigInt(0) ||
-      input.authenticatedDeposit.verifiedAtMs > Date.now() ||
-      Date.now() - input.authenticatedDeposit.verifiedAtMs > BANK_HEAD_MAX_AGE_MS) {
+      input.authenticatedDeposit.height <= BigInt(0)) {
     stop("authenticated_comet_deposit_required");
   }
 
@@ -274,7 +272,7 @@ export async function creditRecordedSatchelProof(
         !actors[0].wallet_address) stop("authenticated_wallet_binding_mismatch");
     // Recheck after waiting for the global lock; an old opaque proof cannot
     // remain spendable across a delayed worker or an expired intent.
-    if (Date.now() - input.authenticatedDeposit.verifiedAtMs > BANK_HEAD_MAX_AGE_MS)
+    if (!authenticatedWarSatchelDepositFreshAt(input.authenticatedDeposit))
       stop("authenticated_deposit_proof_stale");
     const proof = await tx.warSatchelProofCandidate.findUnique({
       where: { id: input.proofCandidateId },
@@ -330,6 +328,11 @@ export async function creditRecordedSatchelProof(
     const account = await getOrCreateBalance(tx, input.ownerUserId);
     if (account.availableUwolo + proof.amountUwolo > MAX_I64) stop("owner_balance_overflow");
 
+    // Row/aggregate waits consume the original authenticated head window too.
+    // Recheck after those waits, immediately before creating a new receipt.
+    if (!authenticatedWarSatchelDepositFreshAt(input.authenticatedDeposit))
+      stop("authenticated_deposit_proof_stale");
+
     const receipt = await tx.satchelFundedReceipt.create({
       data: {
         ownerUserId: input.ownerUserId,
@@ -363,6 +366,10 @@ export async function creditRecordedSatchelProof(
         updatedAt: new Date(),
       },
     });
+    // Trigger/unique-index and balance writes may also wait. Throwing here
+    // rolls back every new receipt, consumption, journal and balance change.
+    if (!authenticatedWarSatchelDepositFreshAt(input.authenticatedDeposit))
+      stop("authenticated_deposit_proof_stale");
     return Object.freeze({
       status: "credited" as const,
       receiptId: receipt.id.toString(),
