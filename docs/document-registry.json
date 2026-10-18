@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e42d19ac967a507b4223a02bf3b36ef2a8f53ab0642508211e01ed2a124de494",
+      "sha256": "ab7711f8ef73a21b3895d3ab1cc8089c8312a09ceb91cb77d674e8f1a1b43cad",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1509,9 +1509,9 @@
       "owner": "aoe2war-web",
       "path": "docs/RELEASE_RECOVERY_OS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-29",
+      "reviewed_at": "2026-10-18",
       "sensitivity": "internal",
-      "sha256": "a42c6b1aff44ad5cd447b968afa3f1b0229d877e8a0a5b5d8ecb54e84a9e379d",
+      "sha256": "66f43829b70581b800a5d6901d15988e933674bd2870b37f91a4a95b0aa62dd3",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/20261018-website-hold-evidence-preflight",
-    "commit": "dc86e2440eeb3ff22c820f3e6975e19dd7d9869a"
+    "branch": "feat/20261018-release-frontier-ladder",
+    "commit": "44d1f27434649b780cf2389859015271b20d96d7"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
