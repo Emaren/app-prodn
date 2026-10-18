@@ -80,9 +80,11 @@ test("AoE2WAR OS change-notice version hashes exactly the three route source fil
   const digest = createHash("sha256");
   for (const path of files) {
     digest.update(path);
-    digest.update(Buffer.from([0]));
+    // Match the canonical Python generator's literal backslash-zero separator.
+    digest.update(Buffer.from("\\0"));
     digest.update(readFileSync(new URL("../" + path, import.meta.url)));
-    digest.update(Buffer.from([0]));
+    // Match the canonical Python generator's literal backslash-zero separator.
+    digest.update(Buffer.from("\\0"));
   }
   const edition = "src-" + digest.digest("hex").slice(0, 20);
   const manifest = source("lib/pageChangeManifest.generated.ts");

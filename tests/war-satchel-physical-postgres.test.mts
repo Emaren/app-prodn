@@ -59,6 +59,15 @@ test("physical Satchel receipts are globally unique in real isolated PostgreSQL"
       await assert.rejects(c.query("UPDATE war_satchel_physical_receipt_consumptions SET owner_user_id=2"),/immutable/);
       assert.equal((await c.query("SELECT count(*) FROM war_satchel_physical_receipt_consumptions")).rows[0].count,"5");
     });
+    await t.test("governed eight-migration rehearsal rolls back all schema changes",async()=>{
+      await c.query("CREATE DATABASE rehearsal_fixture");const scratch=await connect("rehearsal_fixture");
+      await scratch.query("CREATE TABLE users(id int PRIMARY KEY); CREATE TABLE bet_auto_presets(id int PRIMARY KEY); CREATE TABLE bet_auto_executions(id int PRIMARY KEY); CREATE TABLE pending_wolo_claims(id int PRIMARY KEY); INSERT INTO users VALUES(99)");
+      const cohort=execFileSync("python3",["-c","import sys; from scripts.aoe2_satchel_schema_shadow_rehearsal import cohort_sql; sys.stdout.buffer.write(cohort_sql())"],{encoding:"utf8"});
+      await scratch.query(cohort);
+      assert.equal((await scratch.query("SELECT to_regclass('war_satchel_physical_receipt_consumptions') AS name")).rows[0].name,null);
+      assert.equal((await scratch.query("SELECT to_regclass('war_satchel_funded_receipts') AS name")).rows[0].name,null);
+      assert.equal((await scratch.query("SELECT id FROM users")).rows[0].id,99);
+    });
     await t.test("historical cross-path collision aborts migration with original rows intact",async()=>{
       await c.query("CREATE DATABASE collision_fixture");const old=await connect("collision_fixture");await setup(old);await deposit(old,1);await returned(old,1);
       await assert.rejects(old.query(migration),{code:"23505"});await old.query("ROLLBACK");

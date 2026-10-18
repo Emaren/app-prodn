@@ -3,7 +3,10 @@
 -- commit event ordinals; uniqueness is the physical uppercase chain/tx identity.
 -- This additive migration never edits historical receipts, balances or journals.
 -- An existing collision aborts installation rather than rewriting liabilities.
-BEGIN;
+-- A single DO statement is atomic both standalone and inside the governed
+-- rehearsal transaction; it never commits its caller's transaction.
+DO $install$
+BEGIN
 LOCK TABLE war_satchel_funded_receipts, war_satchel_funded_claim_returns IN SHARE ROW EXCLUSIVE MODE;
 
 CREATE TABLE "war_satchel_physical_receipt_consumptions" (
@@ -59,4 +62,5 @@ CREATE TRIGGER satchel_physical_consumption_no_truncate BEFORE TRUNCATE
   ON war_satchel_physical_receipt_consumptions FOR EACH STATEMENT
   EXECUTE FUNCTION war_satchel_funded_audit_immutable();
 
-COMMIT;
+END;
+$install$;

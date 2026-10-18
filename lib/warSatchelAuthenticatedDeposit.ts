@@ -11,7 +11,7 @@
 import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
 import { constants } from "node:fs";
-import { chmod, mkdtemp, realpath, rm, writeFile, open } from "node:fs/promises";
+import { chmod, mkdtemp, realpath, rm, writeFile, open, type FileHandle } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { isAbsolute, join } from "node:path";
 import { promisify } from "node:util";
@@ -85,8 +85,9 @@ function requireConfiguration(x: ExpectedWarSatchelDeposit) {
 async function snapshotBinary(path: string, destination: string, digest: string) {
   if (await realpath(path) !== path) stop("verifier_binary_file_invalid");
   const file = await open(path, constants.O_RDONLY | constants.O_NOFOLLOW | constants.O_NONBLOCK);
-  const output = await open(destination, "wx", 0o500);
+  let output: FileHandle | undefined;
   try {
+    output = await open(destination, "wx", 0o500);
     const before = await file.stat();
     if (!before.isFile() || before.size <= 0 || before.size > BIN_LIMIT || (before.mode & 0o022) !== 0)
       stop("verifier_binary_file_invalid");
@@ -106,7 +107,7 @@ async function snapshotBinary(path: string, destination: string, digest: string)
     if (before.ino !== after.ino || before.dev !== after.dev || size !== before.size ||
         before.size !== after.size || before.mtimeMs !== after.mtimeMs || hash.digest("hex") !== digest)
       stop("verifier_binary_not_exact_attested_artifact");
-  } finally { await file.close(); await output.close(); }
+  } finally { await file.close(); if (output) await output.close(); }
 }
 function receiptObject(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value))

@@ -89,7 +89,7 @@ original_apply = SHADOW.apply_to_shadow
 
 def observed_apply(database: str, sql: bytes) -> None:
     original_apply(database, sql)
-    observed.append("schema_restore" if len(observed) == 0 else "seven_file_rollback")
+    observed.append("schema_restore" if len(observed) == 0 else "eight_file_rollback")
     if len(observed) == 1:
         # Inspect real restored shadow table before the Satchel SQL runs.
         # A schema-only export MUST NOT carry the synthetic source user row.
@@ -130,10 +130,10 @@ with (
     if result.get("status") != "PASS" or not result.get("disposable_database_removed"):
         refuse("rehearsal returned a non-certified result")
     if not result.get("pending_migrations_exercised"):
-        refuse("seven migrations were not actually exercised")
-    if result.get("pending_migration_count") != 7:
+        refuse("eight migrations were not actually exercised")
+    if result.get("pending_migration_count") != 8:
         refuse("incomplete pending funded migration cohort")
-    if observed != ["schema_restore", "seven_file_rollback"]:
+    if observed != ["schema_restore", "eight_file_rollback"]:
         refuse("real PostgreSQL work sequence was incomplete")
     assert_no_shadow_databases()
 
@@ -156,7 +156,7 @@ if query(DB, "SELECT count(*) FROM pg_class WHERE relname LIKE 'war_satchel_%'")
     refuse("Satchel schema leaked into source synthetic database")
 
 print("PASS: real PostgreSQL 16 schema-only shadow restore (zero copied rows)")
-print("PASS: six immutable migrations in rolled-back shadow transaction")
+print("PASS: eight immutable migrations in rolled-back shadow transaction")
 print("PASS: before/after schema SHA proof and disposable database cleanup")
 print("PASS: forced SQL fault cleans up shadow and preserves source sentinel")
 print("scope=CI_EPHEMERAL_ONLY production_mutated=0 custody_authorized=0")

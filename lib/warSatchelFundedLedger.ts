@@ -186,6 +186,22 @@ async function requirePhysicalConsumption(
     stop("database_physical_consumption_missing_or_conflicting");
 }
 
+async function committedDepositResult(tx: Prisma.TransactionClient,
+  receipt: {id:bigint;ownerUserId:number;txHash:string;amountUwolo:bigint;vaultAddress:string},
+): Promise<FundedCreditResult> {
+  await requirePhysicalConsumption(tx,"deposit",receipt);
+  const journal = await tx.satchelFundedJournal.findUnique({
+    where:{sourceKey:"satchel:credit:wolo-1:"+receipt.txHash+":0"},
+  });
+  const account = await tx.satchelFundedBalance.findUnique({where:{ownerUserId:receipt.ownerUserId}});
+  if (!journal || !account || journal.receiptId !== receipt.id ||
+      journal.ownerUserId !== receipt.ownerUserId || journal.eventKind !== "deposit_credit" ||
+      journal.amountUwolo !== receipt.amountUwolo || journal.deltaAvailableUwolo !== receipt.amountUwolo ||
+      journal.deltaReservedUwolo !== BigInt(0) || journal.deltaCommittedUwolo !== BigInt(0) ||
+      journal.deltaWithdrawalPendingUwolo !== BigInt(0)) stop("incomplete_recorded_deposit_credit");
+  return Object.freeze({status:"already_credited" as const,receiptId:String(receipt.id),availableUwolo:String(account.availableUwolo)});
+}
+
 /** Return the committed outcome after a lost response or restart, without RPC
  * or a second credit. Recheck the linked owner and immutable physical receipt.
  */
@@ -208,9 +224,7 @@ export async function readRecordedSatchelCredit(prisma: PrismaClient, input: {
     if (receipt.ownerUserId !== input.ownerUserId || receipt.txHash !== input.txHash ||
         receipt.amountUwolo !== proof.amountUwolo || receipt.canonicalHeight !== proof.txHeight)
       stop("recorded_credit_identity_mismatch");
-    await requirePhysicalConsumption(tx,"deposit",receipt);
-    const balance = await tx.satchelFundedBalance.findUnique({where:{ownerUserId:input.ownerUserId}});
-    return Object.freeze({status:"already_credited" as const,receiptId:String(receipt.id),availableUwolo:String(balance?.availableUwolo ?? BigInt(0))});
+    return committedDepositResult(tx,receipt);
   });
 }
 
@@ -266,6 +280,7 @@ export async function creditRecordedSatchelProof(
       where: { id: input.proofCandidateId },
       include: { intent: true },
     });
+    if (proof) await tx.$queryRaw`SELECT id FROM war_satchel_deposit_intents WHERE id=${proof.intentId}::uuid FOR UPDATE`;
     if (!proof || proof.userId !== input.ownerUserId || proof.status !== "uncredited" ||
         proof.chainId !== "wolo-1" || proof.txHash !== input.expectedTxHash ||
         proof.transferIndex !== 0 || proof.vaultAddress !== fundedVaultAddress() ||
@@ -291,12 +306,7 @@ export async function creditRecordedSatchelProof(
     });
     if (previous) {
       if (previous.ownerUserId !== input.ownerUserId) stop("proof_already_claimed_by_other_owner");
-      const account = await tx.satchelFundedBalance.findUnique({ where: { ownerUserId: input.ownerUserId } });
-      return Object.freeze({
-        status: "already_credited" as const,
-        receiptId: previous.id.toString(),
-        availableUwolo: String(account?.availableUwolo ?? BigInt(0)),
-      });
+      return committedDepositResult(tx,previous);
     }
     // The same physical MsgSend cannot first credit an escrow claim return
     // and then enter an owner's balance again as a wallet deposit. The two
