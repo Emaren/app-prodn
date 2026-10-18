@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/20261018-kingdom-betters-arena` at `84695c82c27ae3154d9ae04dce20745d0d5daacb`
+Implementation baseline: `feat/20261018-kingdom-betters-arena` at `882e2d6b5b0a5f60b10ca797c04a6e01cc7afede`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
