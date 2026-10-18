@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6f64659f41768f536ae1161629952b0d41cd900f3f2e8351ab98cd03d1720000",
+      "sha256": "7a4684d5ed9fe971e09d4e6a0a2e93d7c551ae1bee3056714a55759554db50c2",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2117,7 +2117,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feat/20261018-kingdom-index-assurance-evidence",
-    "commit": "792f68fc71d06eafae730ed033e2194848975662"
+    "commit": "0344d6b58edf7d8b651245adf912b4337c627025"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
