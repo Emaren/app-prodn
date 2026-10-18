@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "release-recovery-contract"
-reviewed_at: "2026-09-29"
+reviewed_at: "2026-10-18"
 review_interval_days: 30
 sensitivity: "internal"
 ---
