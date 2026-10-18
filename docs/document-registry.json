@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "0fc2fe81af85bb6ecdf1eef30f988a031cd5c6cbb977f920a936e325ad7b658c",
+      "sha256": "b77005d53bd0a3c766c8ee10591b81e2efc8b9e45d2aca6960cfdcce0b3f99e1",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "70bcc62e0cbbf547d053ac36eb9aea82b0fffd0944b8c55ae2be3bceda347419",
+      "sha256": "5800e483c665203ee62958ca10fd363f63adf079e32ccda050397833f0a38c7d",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/20261018-leaderboard-request-freshness",
-    "commit": "9d2e392f5e80011d69a97b683c62ebca5d01fc03"
+    "branch": "fix/20261018-mecha-custody-endpoint-boundary",
+    "commit": "c5a7c7b8c9e2ebc34ba7935839a3e7973b669470"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

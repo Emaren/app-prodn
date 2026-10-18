@@ -15,6 +15,62 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## October 18, 2026 — Satchel/Mecha launch blockers and independent release tracks
+
+This is the **app-owned launch boundary**, separate from Codex's WoloChain
+implementation and WoloChain issue #5. A chain-observed wallet balance is NOT
+an independently reconciled spendable War Satchel balance. The wallet funding
+button remains disabled; intent and deposit-evidence APIs explicitly refuse
+deposit/credit/wager authority. Canonical receipts may persist only as
+**uncredited** research evidence. A screenshot or environment switch cannot
+substitute for a funded custody ledger.
+
+Mecha deliberately keeps `LIVE_EXECUTOR_IMPLEMENTED=false`. The existing
+worker admits proven self-only Watcher markets and writes `shadow_ready` rows,
+but never reserves WOLO, accepts a funded ticket/wager, or decrements a plan.
+Shipping Wolo settlement binaries alone will NOT activate live Auto Bets.
+
+Required app-and-chain work before a real-money canary:
+
+1. Independently certify the versioned `bet-custody-v1` contract. The future
+   configured custody URL must exactly equal
+   `http://127.0.0.1:8092/settlement/v1/bet-custody`. This revision now rejects
+   other hosts, ports, query fragments, credentials and normalized URL aliases
+   when merely recognising a configured capability. Presence is NOT proof.
+2. Verify segregated vault and signer control, independently authenticated
+   finality, immutable intent owner/recipient matching, exact receipt admission,
+   separate spendable-balance projection, installed custody migrations, ledger
+   conservation and nonnegative double-entry, withdrawals and error recovery.
+3. Implement an idempotent funded Mecha consumer: recheck frozen proposition,
+   Watcher uploader and exact Steam roster, self-side, Desync sibling, plan
+   version, 1,000-WOLO per-game and 10,000-WOLO plan budget; atomically reserve
+   ledger funds and accept a durable stake ticket before decrementing a finite
+   plan. Uncertain broadcasts cannot automatically retry.
+4. Preserve WoloChain #5's claim #889, producer/signing isolation, full
+   solvency/liability review, quiesced backup, code-only paired rollback and
+   unchanged consensus. No app code can approve those controls.
+5. Build the authenticated, source-transitive independent website-only
+   release authority in app issue #665 with challenge-bound receipts,
+   immutable HOLD and durable replay fencing. The existing `aoe2war finish`
+   must still refuse the Wolo P1 until a real approved alternative exists.
+
+**Operator / agent diagnostic** (read-only clean local checkout):
+
+```bash
+python3 scripts/aoe2_satchel_readiness.py --json
+```
+
+Exit code **2 is intentional**: source inventory can never grant funds,
+custody, settlement, release or production certification. It emits exact
+source hashes and named blockers without env secrets, network or DB writes.
+Changed or missing source sentinels are **UNVERIFIED**, never READY.
+
+Release order: exact source tests and CI → independent Wolo financial review
+→ certified vault/ledger migrations → funded consumer and idempotency tests
+→ explicitly approved bounded real-money canary → protected deployment and
+runtime rollback verification. General Inspections / Kingdom Intelligence
+earn green only from actual exact-version evidence.
+
 ## October 18, 2026 — aborting preview batches must never count as pre-existing bets
 
 Rebased the objective fix from historical draft #619. PostgreSQL's
