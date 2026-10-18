@@ -75,6 +75,7 @@ async function main() {
     return;
   }
   if (mode !== "--inspect") protectedOperator();
+  else if (process.getuid?.() !== 0) reject("root_inspection_required");
   const prisma = getPrisma();
   try {
     if (mode === "--inspect") {
