@@ -15,6 +15,25 @@ sensitivity: "internal"
 
 # AoE2WAR General Inspections
 
+## October 18, 2026 — nightly agent-readable route dependency gap evidence
+
+The `.github/workflows/kingdom-index-source-census.yml` workflow now
+publishes an additional JSON evidence artifact from
+`scripts/kingdom_index_dependency_evidence.py`, plus a GitHub Actions
+step summary of route files, unresolved local imports, nonliteral imports
+and lexical-census status. On PRs, inspect `/leaderboard` and
+`/kingdom-index`; on schedule/manual runs, inspect all 68 registered
+routes. Changes to shared config, lockfiles, Prisma schema and module
+resolver trigger the census, not only page-local components.
+
+These results are strictly **source-only diagnostic observations**.
+The original source census `--check` remains a blocking drift guard.
+A job success means **the sensor ran**, not that complete dependency
+closure, the deployed bundle, p95 performance or business correctness was
+proven. No quality point is awarded, no production source is authenticated,
+and no finance/release permit is created. Artifacts support agent triage
+and a future trusted receipt/criterion evidence pipeline.
+
 ## October 18, 2026 — latest-only Index inspection polling
 
 Kingdom Index uses one request-start sequence for its sixty-second and
