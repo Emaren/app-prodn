@@ -1219,8 +1219,8 @@ async function committedClaimReturnResult(tx:Prisma.TransactionClient,
   const account=await tx.satchelFundedBalance.findUnique({where:{ownerUserId:receipt.ownerUserId}});
   if(!journal||!account||journal.claimReturnId!==receipt.id||journal.ownerUserId!==receipt.ownerUserId||
      journal.eventKind!=="claim_return_credit"||journal.amountUwolo!==receipt.amountUwolo||
-     journal.deltaAvailableUwolo!==receipt.amountUwolo||journal.deltaReservedUwolo!==0n||
-     journal.deltaCommittedUwolo!==0n||journal.deltaWithdrawalPendingUwolo!==0n)
+     journal.deltaAvailableUwolo!==receipt.amountUwolo||journal.deltaReservedUwolo!==BigInt(0)||
+     journal.deltaCommittedUwolo!==BigInt(0)||journal.deltaWithdrawalPendingUwolo!==BigInt(0))
     stop("incomplete_recorded_claim_return_credit");
   return Object.freeze({status:"already_credited" as const,returnId:String(receipt.id),availableUwolo:String(account.availableUwolo)});
 }
@@ -1272,7 +1272,7 @@ export async function creditVerifiedSatchelClaimReturn(
     const prior=await tx.satchelFundedClaimReturn.findUnique({where:{claimId:input.claimId}});
     if(!prior)return null;
     if(prior.ownerUserId!==input.ownerUserId || prior.txHash!==txHash ||
-       prior.amountUwolo!==BigInt(claim.amountWolo)*1000000n || prior.vaultAddress!==vault)
+       prior.amountUwolo!==BigInt(claim.amountWolo)*BigInt(1000000) || prior.vaultAddress!==vault)
       stop("claim_return_already_owned_or_conflicting");
     return committedClaimReturnResult(tx,prior);
   });
@@ -1281,7 +1281,7 @@ export async function creditVerifiedSatchelClaimReturn(
   const proof=await authenticateSatchelClaimReturn(durable.expected);
   if(!authenticatedWarSatchelClaimReturnFreshAt(proof))stop("authenticated_comet_return_required");
   const bank=await readIndependentSatchelBank();
-  if(bank.height<proof.canonicalHeight+2n)
+  if(bank.height<proof.canonicalHeight+BigInt(2))
     stop("bank_does_not_cover_canonical_return_height");
   return withExclusiveSatchelTx(prisma,async tx=>{
     if(!authenticatedWarSatchelClaimReturnFreshAt(proof))stop("authenticated_comet_return_expired_under_lock");
