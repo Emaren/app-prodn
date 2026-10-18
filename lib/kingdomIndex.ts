@@ -6,7 +6,7 @@ import catalog from "@/config/kingdom-index-routes.json";
 import baseline from "@/config/kingdom-index-baseline.json";
 import qualityRubric from "@/config/kingdom-index-quality-rubric.json";
 import assuranceProfiles from "@/config/kingdom-index-assurance-profiles.json";
-import { classifyPublicKingdomAuditStatus, publicObservedKingdomScore } from "@/lib/kingdomIndexAuditStatus";
+import { classifyPublicKingdomAuditStatus, publicObservedKingdomScore, isKingdomObservationStale } from "@/lib/kingdomIndexAuditStatus";
 import { PAGE_CHANGE_MANIFEST } from "@/lib/pageChangeManifest.generated";
 
 export type District = "citadel" | "arena" | "forge" | "bazaar" | "commons";
@@ -54,7 +54,6 @@ export type KingdomIndexSnapshot = {
 // Values are evidence-bound, not AI-guessed. 100 requires independent certification.
 const PAGE_VERSIONS = new Map<string,string>(PAGE_CHANGE_MANIFEST.map(r=>[r.href,r.version]));
 const MAX_LEDGER_BYTES = 256_000;
-const AUDIT_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 function dateValue(raw: unknown): number | null {
   if(typeof raw !== "string" || raw.length>50) return null;
   const ms=Date.parse(raw);
@@ -85,6 +84,7 @@ function validRecord(raw: unknown, allowSet: Set<string>): raw is PageObservatio
   return typeof r.href==="string" && allowSet.has(r.href) &&
     scoreValue(r.score) && typeof r.sourceVersion==="string" && r.sourceVersion.length>4 &&
     dateValue(r.checkedAt)!==null &&
+    (r.kind==="source-review" || /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,3})?(?:Z|[+-]\d{2}:\d{2})$/.test(String(r.checkedAt))) &&
     (r.kind==="certified" || r.kind==="agent" || r.kind==="source-review") &&
     (!r.history || (Array.isArray(r.history) && r.history.length<=60 &&
       r.history.every(item=>!!item && typeof item==="object" && scoreValue((item as {score?:unknown}).score) &&
@@ -135,7 +135,7 @@ export async function loadKingdomIndex(): Promise<KingdomIndexSnapshot> {
     // Historical evidence can be inspected but cannot count as current if the
     // deployed route version or exact source version is unavailable.
     const versionAligned=Boolean(obs && version && measuredVersion===version);
-    const stale=Boolean(obs && (now-(dateValue(obs.checkedAt)??0)>AUDIT_TTL_MS || (dateValue(obs.checkedAt)??0)>now+300_000));
+    const stale=Boolean(obs && isKingdomObservationStale({kind:obs.kind,checkedAtMs:dateValue(obs.checkedAt),nowMs:now}));
     const status:KingdomIndexEntry["status"]=classifyPublicKingdomAuditStatus({
       kind:obs?.kind??null, versionAligned, stale,
     });
