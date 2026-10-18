@@ -58,6 +58,7 @@ test("new adapter delegates to one source-held already reviewed withdrawal runti
   assert.match(source,/recordReviewedSatchelWithdrawalApproval\(prisma, review\)/);
   assert.match(source,/constants\.O_NOFOLLOW/);
   assert.match(source,/a\.uid !== 0/);
+  assert.match(source,/root_inspection_required/);
   assert.match(source,/\(a\.mode & 0o777\) !== 0o600/);
   assert.doesNotMatch(source,/broadcastTx|private.?key|mnemonic|execSync/);
 });
