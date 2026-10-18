@@ -1,0 +1,226 @@
+{
+  "schema": 1,
+  "version": "2026-10-18-v1",
+  "baseRubric": "config/kingdom-index-quality-rubric.json",
+  "policy": "These are specialized required proofs, not additional points. No route may be called engineering-certified at 100 when a gate is unknown or failed. Unknown evidence never earns points. This file is a planning contract, not a source of live verification.",
+  "profiles": {
+    "general": {
+      "label": "General public page",
+      "gates": []
+    },
+    "rankings": {
+      "label": "Competitive ranking truth",
+      "gates": [
+        {
+          "id": "steam-rating-authority",
+          "dimension": "correctness",
+          "requirement": "Exact Steam RM/DM rating authority, SteamID64 and alias joins independently reconciled"
+        },
+        {
+          "id": "disconnect-adjudication",
+          "dimension": "correctness",
+          "requirement": "Watcher-final, disconnect/desync veto and replay outcome precedence verified"
+        },
+        {
+          "id": "rank-pagination",
+          "dimension": "functionality",
+          "requirement": "Rank ties, full roster search, scope, sort and pagination stable on production-scale fixtures"
+        },
+        {
+          "id": "lane-cache-coherence",
+          "dimension": "performance",
+          "requirement": "RM/DM lane freshness, cancellation, cache invalidation and bounded query evidence"
+        },
+        {
+          "id": "ranking-browser-matrix",
+          "dimension": "tests",
+          "requirement": "Basic/Advanced/Extreme, keyboard, mobile, history and bookmarks tested in real browser"
+        }
+      ]
+    },
+    "betting": {
+      "label": "Wager and financial truth",
+      "gates": [
+        {
+          "id": "money-conservation",
+          "dimension": "correctness",
+          "requirement": "Original stakes, holds, fee, refund and matched-only accounting independently conserved"
+        },
+        {
+          "id": "financial-authz",
+          "dimension": "correctness",
+          "requirement": "Owner authorization, no duplicate settlement, uncertain outcomes and retry fences verified"
+        },
+        {
+          "id": "read-side-effects",
+          "dimension": "functionality",
+          "requirement": "Read-only views audited for inadvertent settlement, payout or signing effects"
+        },
+        {
+          "id": "live-chain-boundary",
+          "dimension": "tests",
+          "requirement": "Live-chain custody and financial activation explicitly distinguished from read-only page delivery"
+        }
+      ]
+    },
+    "battlerecords": {
+      "label": "Replay and evidence provenance",
+      "gates": [
+        {
+          "id": "artifact-finality",
+          "dimension": "correctness",
+          "requirement": "Final artifact hash, exact-current replay identity and immutable original bytes independently checked"
+        },
+        {
+          "id": "winner-veto",
+          "dimension": "correctness",
+          "requirement": "Disconnect, desync and unknown result never laundered into a verified winner"
+        },
+        {
+          "id": "replay-corpus-scale",
+          "dimension": "performance",
+          "requirement": "Pagination and large replay archive load tested without unbounded hotpath reads"
+        }
+      ]
+    },
+    "challenges": {
+      "label": "Warrior challenge workflow",
+      "gates": [
+        {
+          "id": "challenge-authority",
+          "dimension": "correctness",
+          "requirement": "Only eligible actors can accept, withdraw, challenge or adjudicate a result"
+        },
+        {
+          "id": "matchup-state-machine",
+          "dimension": "functionality",
+          "requirement": "Lifecycle idempotency, participant counts, expiry and duplicate challenges proven"
+        },
+        {
+          "id": "challenge-financial-fence",
+          "dimension": "tests",
+          "requirement": "Challenge display and read activity cannot accidentally trigger money-moving behavior"
+        }
+      ]
+    },
+    "belts": {
+      "label": "Champion and belt authority",
+      "gates": [
+        {
+          "id": "holder-provenance",
+          "dimension": "correctness",
+          "requirement": "Title holder, transfer chronology, eligibility and disputes supported by canonical records"
+        },
+        {
+          "id": "tribute-noncrediting",
+          "dimension": "correctness",
+          "requirement": "Bounty/tribute estimates cannot appear as paid transactions without authoritative receipts"
+        },
+        {
+          "id": "belt-display-parity",
+          "dimension": "functionality",
+          "requirement": "Responsive belt views and historical/current title state remain coherent across site"
+        }
+      ]
+    },
+    "index": {
+      "label": "Kingdom engineering index",
+      "gates": [
+        {
+          "id": "source-closure",
+          "dimension": "maintainability",
+          "requirement": "Candidate and all transitive route dependencies accounted for or explicit unresolved gaps"
+        },
+        {
+          "id": "score-verification",
+          "dimension": "correctness",
+          "requirement": "Every scored criterion bound to inspectable exact-version proof; no unverified 100"
+        },
+        {
+          "id": "staleness",
+          "dimension": "functionality",
+          "requirement": "Stale, drifted, provisional and unknown measurements cannot masquerade as certified"
+        }
+      ]
+    },
+    "release": {
+      "label": "Release and deployment controls",
+      "gates": [
+        {
+          "id": "manifest-authority",
+          "dimension": "correctness",
+          "requirement": "Exact Git source, manifest, gate, deployed artifact and controller identities agree"
+        },
+        {
+          "id": "preflight-refusal",
+          "dimension": "tests",
+          "requirement": "Unsafe candidate, stale receipts, replayed permits and incomplete rollout fail closed"
+        },
+        {
+          "id": "rollback-continuity",
+          "dimension": "functionality",
+          "requirement": "Staged activation, health soak and proven rollback remain independent of Wolo settlement"
+        }
+      ]
+    },
+    "media": {
+      "label": "Live media and broadcast",
+      "gates": [
+        {
+          "id": "source-attribution",
+          "dimension": "correctness",
+          "requirement": "Live versus replayed media and broadcast provenance honestly labeled"
+        },
+        {
+          "id": "bounded-stream",
+          "dimension": "performance",
+          "requirement": "Large media files, preloads, polling and background activity remain bounded"
+        },
+        {
+          "id": "playback-accessibility",
+          "dimension": "functionality",
+          "requirement": "Keyboard, captions or accessible alternatives, mobile and errors tested"
+        }
+      ]
+    },
+    "citizen": {
+      "label": "Citizen identity and roster",
+      "gates": [
+        {
+          "id": "real-vs-system-identity",
+          "dimension": "correctness",
+          "requirement": "Citizen counts exclude system agents and placeholder/house avatars without false claims"
+        },
+        {
+          "id": "identity-binding",
+          "dimension": "correctness",
+          "requirement": "Steam identity, names, wallet ownership and claimed status correctly distinguished"
+        }
+      ]
+    }
+  },
+  "routeProfiles": {
+    "/leaderboard": "rankings",
+    "/leaderboard/og": "rankings",
+    "/bets": "betting",
+    "/kingdom-bettors": "betting",
+    "/staking": "betting",
+    "/champions": "belts",
+    "/champions/e2": "belts",
+    "/champions/e3": "belts",
+    "/champions/e4": "belts",
+    "/champions/e5": "belts",
+    "/belts": "belts",
+    "/bounties": "belts",
+    "/challenge": "challenges",
+    "/battle-archive": "battlerecords",
+    "/game-stats": "battlerecords",
+    "/library": "battlerecords",
+    "/kingdom-index": "index",
+    "/general-inspections": "index",
+    "/aoe2war-os": "release",
+    "/television-wolo": "media",
+    "/radio": "media",
+    "/players": "citizen"
+  }
+}

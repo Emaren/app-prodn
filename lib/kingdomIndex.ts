@@ -5,6 +5,7 @@ import path from "node:path";
 import catalog from "@/config/kingdom-index-routes.json";
 import baseline from "@/config/kingdom-index-baseline.json";
 import qualityRubric from "@/config/kingdom-index-quality-rubric.json";
+import assuranceProfiles from "@/config/kingdom-index-assurance-profiles.json";
 import { PAGE_CHANGE_MANIFEST } from "@/lib/pageChangeManifest.generated";
 
 export type District = "citadel" | "arena" | "forge" | "bazaar" | "commons";
@@ -37,6 +38,7 @@ export type KingdomIndexEntry = {
   bytes: number | null;
   dimensions: PageObservation["dimensions"] | null;
   notes: string | null;
+  specializedAssurance: { profile: string; gates: { id: string; requirement: string; status: "unverified" }[] };
 };
 export type KingdomIndexSnapshot = {
   schema: 1;
@@ -133,8 +135,11 @@ export async function loadKingdomIndex(): Promise<KingdomIndexSnapshot> {
     const versionAligned=Boolean(obs && version && measuredVersion===version);
     const stale=Boolean(obs && (now-(dateValue(obs.checkedAt)??0)>AUDIT_TTL_MS || (dateValue(obs.checkedAt)??0)>now+300_000));
     const status:KingdomIndexEntry["status"]=!obs?"unmeasured":!versionAligned?"drifted":stale?"stale":obs.kind==="source-review"?"provisional":"current";
+    const profile = (assuranceProfiles.routeProfiles as Record<string,string>)[route.href] ?? "general";
+    const specialty = (assuranceProfiles.profiles as Record<string,{gates: {id:string;requirement:string}[]}>)[profile];
     return {
       href:route.href,label:route.label,district:route.district as District,
+      specializedAssurance: {profile, gates: specialty.gates.map(gate=>({id:gate.id,requirement:gate.requirement,status:"unverified" as const}))},
       sourceVersion:version??null,measuredVersion,
       // Keep a historical score visible only with an explicit noncurrent state.
       score:obs?.score??null, checkedAt:obs?.checkedAt??null,
