@@ -24,6 +24,8 @@ export type SatchelSpendChallenge = {
   desyncStakeWolo: number;
   perGameCapWolo: number;
   dailyCapWolo: number;
+  untilOut: boolean;
+  gamesRemaining: number | null;
   nonce: string;
   issuedAtUtc: string;
   challengeExpiresAtUtc: string;
@@ -61,6 +63,9 @@ export function satchelAutoSpendChallengeText(c: SatchelSpendChallenge) {
     ((c.desyncSide === "none" && c.desyncStakeWolo === 0) ||
       (c.desyncSide !== "none" && c.desyncStakeWolo > 0)), "invalid game amount");
   const combined = c.winnerStakeWolo + c.desyncStakeWolo;
+  enforce(typeof c.untilOut === "boolean" && (c.untilOut ? c.gamesRemaining === null :
+    Number.isSafeInteger(c.gamesRemaining) && c.gamesRemaining! > 0 &&
+    c.gamesRemaining! * combined <= 10000), "invalid finite game authorization");
   enforce(Number.isSafeInteger(c.perGameCapWolo) && c.perGameCapWolo <= 1000 &&
     c.perGameCapWolo >= combined &&
     Number.isSafeInteger(c.dailyCapWolo) && c.dailyCapWolo <= 10000 &&
@@ -79,6 +84,8 @@ export function satchelAutoSpendChallengeText(c: SatchelSpendChallenge) {
     "Linked Keplr wallet: " + c.walletAddress,
     "Mecha preset ID: " + c.presetId,
     "Exact preset version: " + c.presetVersion,
+    "Winner selection: own exact verified Steam roster side",
+    "Game allowance: " + (c.untilOut ? "until available funds run out" : String(c.gamesRemaining) + " future games"),
     "Winner bet WOLO: " + c.winnerStakeWolo,
     "Desync selection: " + c.desyncSide,
     "Desync bet WOLO: " + c.desyncStakeWolo,
@@ -89,6 +96,7 @@ export function satchelAutoSpendChallengeText(c: SatchelSpendChallenge) {
     "Issued: " + c.issuedAtUtc,
     "Challenge expires: " + c.challengeExpiresAtUtc,
     "You authorize automated bets ONLY within these limits from your verified War Satchel.",
+    "Only new Watcher games first opened after this authorization may spend funds.",
     "You do NOT authorize withdrawal, wallet-key access, or spending from your Keplr wallet.",
     "Pausing the plan or revoking this mandate must stop new betting immediately.",
   ].join("\n");
@@ -151,4 +159,48 @@ export function verifySatchelAutoSpendSignature(input: {
     wagerAuthorized: false as const,
     withdrawalAuthorized: false as const,
   });
+}
+
+type StoredConsent = {
+  ownerUid: string; walletAddress: string; presetId: number; presetVersion: number;
+  winnerStakeWolo: number; desyncSide: string; desyncStakeWolo: number;
+  perGameCapWolo: number; dailyCapWolo: number; nonce: string;
+  issuedAt: Date; challengeExpiresAt: Date; spendExpiresAt: Date;
+  signedAt: Date | null; revokedAt: Date | null;
+};
+type OriginalMandate = {
+  untilOut: boolean; gamesRemaining: number | null; challengeText: string;
+  ownerSignatureJson: unknown; signedAt: Date | null;
+};
+export function storedSatchelSpendChallenge(row: StoredConsent,
+  mandate: Pick<OriginalMandate, "untilOut" | "gamesRemaining">): SatchelSpendChallenge {
+  enforce(["none", "no", "yes"].includes(row.desyncSide), "invalid stored side");
+  return { ownerUid: row.ownerUid, walletAddress: row.walletAddress,
+    presetId: row.presetId, presetVersion: row.presetVersion,
+    winnerStakeWolo: row.winnerStakeWolo, desyncSide: row.desyncSide as SatchelSpendChallenge["desyncSide"],
+    desyncStakeWolo: row.desyncStakeWolo, perGameCapWolo: row.perGameCapWolo,
+    dailyCapWolo: row.dailyCapWolo, untilOut: mandate.untilOut, gamesRemaining: mandate.gamesRemaining,
+    nonce: row.nonce, issuedAtUtc: row.issuedAt.toISOString(),
+    challengeExpiresAtUtc: row.challengeExpiresAt.toISOString(), spendExpiresAtUtc: row.spendExpiresAt.toISOString(),
+    signedAtUtc: row.signedAt?.toISOString() ?? null, revokedAtUtc: row.revokedAt?.toISOString() ?? null };
+}
+
+/** Re-verify durable original ADR-36 bytes under the execution lock, not signedAt alone. */
+export function verifyDurableSatchelAutoSpendMandate(input: {
+  consent: StoredConsent; originalMandate: OriginalMandate | null;
+  ownerUid: string; ownerWallet: string; presetId: number; presetVersion: number;
+  untilOut: boolean; gamesRemaining: number | null; now: Date;
+}) {
+  const {consent: c, originalMandate: m} = input;
+  enforce(m && c.signedAt && m.signedAt && c.signedAt.getTime() === m.signedAt.getTime() &&
+    c.revokedAt === null && c.spendExpiresAt.getTime() > input.now.getTime(), "original signed mandate absent expired or revoked");
+  enforce(m.untilOut === input.untilOut && (m.untilOut ? input.gamesRemaining === null :
+    Number.isSafeInteger(input.gamesRemaining) && input.gamesRemaining! > 0 &&
+    input.gamesRemaining! <= m.gamesRemaining!), "finite game mandate changed");
+  const original = storedSatchelSpendChallenge(c, m);
+  enforce(satchelAutoSpendChallengeText(original) === m.challengeText, "stored challenge text changed");
+  return verifySatchelAutoSpendSignature({ challenge: {...original, signedAtUtc: null},
+    ownerUid: input.ownerUid, ownerWallet: input.ownerWallet,
+    presetId: input.presetId, presetVersion: input.presetVersion,
+    nowUtc: c.signedAt.toISOString(), keplrSignature: m.ownerSignatureJson as KeplrSatchelSpendSignature });
 }

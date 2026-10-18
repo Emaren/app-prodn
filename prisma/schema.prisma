@@ -5506,9 +5506,22 @@ model SatchelAutoSpendConsent {
 
   owner User          @relation(fields: [ownerUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   preset BetAutoPreset @relation(fields: [presetId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  originalMandate SatchelAutoSpendMandate?
 
   @@index([ownerUserId, presetId, presetVersion, signedAt], map: "ix_satchel_auto_consent_owner_plan")
   @@map("war_satchel_auto_spend_consents")
+}
+
+/// Original owner-signed finite/until-out authorization. Old signedAt flags alone grant no spend.
+model SatchelAutoSpendMandate {
+  consentId String @id @map("consent_id") @db.Uuid
+  untilOut Boolean @map("until_out")
+  gamesRemaining Int? @map("games_remaining")
+  challengeText String @map("challenge_text") @db.Text
+  ownerSignatureJson Json? @map("owner_signature_json")
+  signedAt DateTime? @map("signed_at") @db.Timestamp(6)
+  consent SatchelAutoSpendConsent @relation(fields: [consentId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+  @@map("war_satchel_auto_spend_mandates")
 }
 
 /** User-specific physical Satchel withdrawal in escrow-like quarantine.
@@ -5596,4 +5609,91 @@ model SatchelPhysicalReceiptConsumption {
   @@id([chainId, txHash])
   @@unique([receiptKind, sourceReceiptId])
   @@map("war_satchel_physical_receipt_consumptions")
+}
+
+/** Original owner ADR36 bytes and durable hold, never inferred from signer replies. */
+model SatchelWithdrawalAuthorization {
+  withdrawalId String @id @map("withdrawal_id") @db.Uuid
+  ownerUserId Int @map("owner_user_id")
+  ownerUid String @map("owner_uid") @db.VarChar(100)
+  walletAddress String @map("wallet_address") @db.VarChar(100)
+  vaultAddress String @map("vault_address") @db.VarChar(100)
+  amountUwolo BigInt @map("amount_uwolo")
+  challengeId String @unique(map:"uq_satchel_withdraw_auth_challenge") @map("challenge_id") @db.Uuid
+  ownerMandateJson Json @map("owner_mandate_json")
+  ownerMandateDigest String @map("owner_mandate_digest") @db.VarChar(64)
+  reservationDigest String @unique(map:"uq_satchel_withdraw_auth_hold") @map("reservation_digest") @db.VarChar(64)
+  memo String @db.VarChar(160)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  @@map("war_satchel_withdrawal_authorizations")
+}
+model SatchelWithdrawalApproval {
+  withdrawalId String @id @map("withdrawal_id") @db.Uuid
+  approvalJson Json @map("approval_json")
+  approvalDigest String @map("approval_digest") @db.VarChar(64)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  @@map("war_satchel_withdrawal_approvals")
+}
+model SatchelWithdrawalRevocation {
+  withdrawalId String @id @map("withdrawal_id") @db.Uuid
+  ownerUserId Int @map("owner_user_id")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  @@map("war_satchel_withdrawal_revocations")
+}
+/** Persisted before the first possible dispatch, never sent a second time. */
+model SatchelWithdrawalAttempt {
+  operationId String @id @map("operation_id") @db.VarChar(128)
+  withdrawalId String @unique(map:"uq_satchel_withdraw_attempt_id") @map("withdrawal_id") @db.Uuid
+  requestJson Json @map("request_json")
+  requestDigest String @map("request_digest") @db.VarChar(64)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  @@map("war_satchel_withdrawal_attempts")
+}
+/** Transport observations remain nonauthoritative and append-only. */
+model SatchelWithdrawalObservation {
+  id BigInt @id @default(autoincrement())
+  operationId String @map("operation_id") @db.VarChar(128)
+  txHash String? @map("tx_hash") @db.VarChar(64)
+  state String @db.VarChar(32)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  @@index([operationId,createdAt],map:"ix_satchel_withdraw_observation_op")
+  @@map("war_satchel_withdrawal_observations")
+}
+/** Exact independently signed v2 return economics, admitted before proof lookup. */
+model SatchelClaimReturnAuthorization {
+  claimId Int @id @map("claim_id")
+  ownerUserId Int @map("owner_user_id")
+  ownerUid String @map("owner_uid") @db.VarChar(100)
+  ticketId Int @map("ticket_id")
+  marketId Int @map("market_id")
+  legId Int @map("leg_id")
+  entitlementId String @map("entitlement_id") @db.VarChar(160)
+  operationId String @map("operation_id") @db.VarChar(128)
+  fundingTxHash String @map("funding_tx_hash") @db.VarChar(64)
+  fundedAmountUwolo BigInt @map("funded_amount_uwolo")
+  amountUwolo BigInt @map("amount_uwolo")
+  principalUwolo BigInt @map("principal_uwolo")
+  claimKind String @map("claim_kind") @db.VarChar(24)
+  escrowAddress String @map("escrow_address") @db.VarChar(100)
+  vaultAddress String @map("vault_address") @db.VarChar(100)
+  returnTxHash String @unique(map:"uq_satchel_return_authorization_hash") @map("return_tx_hash") @db.VarChar(64)
+  approvalJson Json @map("approval_json")
+  allocationDigest String @map("allocation_digest") @db.VarChar(64)
+  contextFingerprint String @map("context_fingerprint") @db.VarChar(64)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  @@map("war_satchel_claim_return_authorizations")
+}
+
+/// Authenticated withdrawal completion shares the physical tx namespace with credits.
+/// Separate UUID key preserves the original immutable bigint receipt contract.
+model SatchelWithdrawalPhysicalConsumption {
+  chainId String @map("chain_id") @db.VarChar(32)
+  txHash String @map("tx_hash") @db.VarChar(64)
+  messageIndex Int @default(0) @map("message_index")
+  withdrawalId String @unique @map("withdrawal_id") @db.Uuid
+  ownerUserId Int @map("owner_user_id")
+  amountUwolo BigInt @map("amount_uwolo")
+  vaultAddress String @map("vault_address") @db.VarChar(100)
+  @@id([chainId,txHash])
+  @@map("war_satchel_withdrawal_physical_consumptions")
 }

@@ -7,6 +7,7 @@ import { createPublicKey, ECDH, verify as verifyEcdsa } from "node:crypto";
 import { makeSignDoc, pubkeyToAddress, serializeSignDoc } from "@cosmjs/amino";
 
 const MARK=Symbol("VerifiedSatchelWithdrawalOwner");
+const issuedProofs=new WeakSet<object>();
 const ADDRESS=/^wolo1[023456789acdefghjklmnpqrstuvwxyz]{38,90}$/;
 const UUID=/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i;
 const I64=BigInt("9223372036854775807");
@@ -25,6 +26,7 @@ export type SatchelWithdrawalChallengeProof=Readonly<{
 export type SatchelVerifiedWithdrawal=Readonly<{
   challengeId:string; ownerUid:string;walletAddress:string;
   amountUwolo:string;verifiedAtMs:number;
+  ownerMandate:Readonly<{challenge:Readonly<{id:string;owner_uid:string;wallet_address:string;amount_uwolo:string;issued_at_utc:string;expires_at_utc:string}>;pub_key:Readonly<{type:string;value:string}>;signature:string}>;
   [MARK]:true;
 }>;
 export function withdrawalChallengeText(c:SatchelWithdrawalChallengeProof){
@@ -81,11 +83,13 @@ export function verifySatchelWithdrawalKeplrSignature(input:{
   }});
   if(!verifyEcdsa("sha256",Buffer.from(serializeSignDoc(doc)),
     {key,dsaEncoding:"ieee-p1363"},rawSig))fail("invalid_adr36_signature");
-  return Object.freeze({
+  const proof=Object.freeze({
+    ownerMandate:Object.freeze({challenge:Object.freeze({id:c.id,owner_uid:c.ownerUid,wallet_address:c.walletAddress,amount_uwolo:c.amountUwolo,issued_at_utc:c.issuedAtUtc,expires_at_utc:c.expiresAtUtc}),pub_key:Object.freeze({...sig.pub_key}),signature:sig.signature}),
     challengeId:c.id,ownerUid:c.ownerUid,walletAddress:c.walletAddress,
     amountUwolo:c.amountUwolo,verifiedAtMs:input.nowMs,[MARK]:true as const,
   });
+  issuedProofs.add(proof);return proof;
 }
 export function isVerifiedSatchelWithdrawal(x:unknown):x is SatchelVerifiedWithdrawal{
-  return !!x&&typeof x==="object"&&(x as SatchelVerifiedWithdrawal)[MARK]===true;
+  return !!x&&typeof x==="object"&&issuedProofs.has(x as object);
 }

@@ -30,6 +30,8 @@ const original: SatchelSpendChallenge = {
   desyncStakeWolo: 25,
   perGameCapWolo: 100,
   dailyCapWolo: 1000,
+  untilOut: false,
+  gamesRemaining: 4,
   nonce: "a".repeat(32),
   issuedAtUtc: "2026-10-17T01:00:00.000Z",
   challengeExpiresAtUtc: "2026-10-17T01:05:00.000Z",
