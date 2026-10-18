@@ -1,11 +1,11 @@
 {
   "schema": 1,
-  "updatedAt": "2026-10-18T12:00:00Z",
+  "updatedAt": "2026-10-18",
   "observations": [
     {
       "href": "/leaderboard",
       "score": 64,
-      "checkedAt": "2026-10-18T12:00:00Z",
+      "checkedAt": "2026-10-18",
       "sourceVersion": "src-92adf8e684a9a7c49785",
       "kind": "source-review",
       "dimensions": {
@@ -17,7 +17,7 @@
       },
       "history": [
         {
-          "at": "2026-10-18T12:00:00Z",
+          "at": "2026-10-18",
           "score": 64
         }
       ],

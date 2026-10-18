@@ -28,6 +28,7 @@ function statusTitle(entry: KingdomIndexEntry) {
 }
 function formatStamp(input: string | null) {
   if (!input) return "—";
+  if (/^\\d{4}-\\d{2}-\\d{2}$/.test(input)) return input+" · DATE ONLY";
   const d=new Date(input);
   return Number.isFinite(d.getTime()) ? d.toISOString().slice(0,16).replace("T"," ")+" UTC" : "—";
 }
