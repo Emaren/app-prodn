@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "3cb7d22eab2fb88781f9b1a9e6b89402ddf65b69f0c5a3d0e59433ab9620f1f9",
+      "sha256": "fc5a6489d9d702c05c1264ae0fbe6e75013359bd53e00f45935d03117dafafa5",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -1509,9 +1509,9 @@
       "owner": "aoe2war-web",
       "path": "docs/RELEASE_RECOVERY_OS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-29",
+      "reviewed_at": "2026-10-18",
       "sensitivity": "internal",
-      "sha256": "a42c6b1aff44ad5cd447b968afa3f1b0229d877e8a0a5b5d8ecb54e84a9e379d",
+      "sha256": "98bef8ea69e4c315ee794a893ead633cdf2b59a1aa1fb7dc2dd9c1be06dae63c",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/20261018-kingdom-betters-arena",
-    "commit": "882e2d6b5b0a5f60b10ca797c04a6e01cc7afede"
+    "branch": "feat/20261018-release-frontier-ladder",
+    "commit": "c61731764acf934c470be00b8b0f6310df89ffd1"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
