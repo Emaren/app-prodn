@@ -1,5 +1,6 @@
 import "server-only";
-import { readFile } from "node:fs/promises";
+import { open } from "node:fs/promises";
+import { constants } from "node:fs";
 import path from "node:path";
 import catalog from "@/config/kingdom-index-routes.json";
 import baseline from "@/config/kingdom-index-baseline.json";
@@ -18,6 +19,7 @@ export type PageObservation = {
   loadMs?: number;
   bytes?: number;
   notes?: string;
+  evidenceRefs?: string[];
 };
 export type KingdomIndexEntry = {
   href: string;
@@ -59,6 +61,19 @@ function scoreValue(raw: unknown): raw is number {
 function validRecord(raw: unknown, allowSet: Set<string>): raw is PageObservation {
   if(!raw || typeof raw!=="object" || Array.isArray(raw)) return false;
   const r=raw as Record<string,unknown>;
+  // An agent score must carry full dimension evidence; an audited 100 cannot
+  // be manufactured from a caller-supplied number alone.
+  if(r.kind==="agent" || r.kind==="certified"){
+    if(!r.dimensions || typeof r.dimensions!=="object" || Array.isArray(r.dimensions)) return false;
+    const d=r.dimensions as Record<string,unknown>;
+    const weights:Record<string,number>={correctness:30,functionality:25,performance:20,maintainability:15,tests:10};
+    if(!Object.entries(weights).every(([key,max])=>typeof d[key]==="number" &&
+      Number.isInteger(d[key]) && (d[key] as number)>=0 && (d[key] as number)<=max)) return false;
+    if(Object.keys(weights).reduce((sum,key)=>sum+(d[key] as number),0)!==r.score) return false;
+    if(!Array.isArray(r.evidenceRefs) || r.evidenceRefs.length < (r.kind==="certified"?2:1) ||
+      r.evidenceRefs.length>12 || !r.evidenceRefs.every(ref=>typeof ref==="string" &&
+        /^https:\/\/github\.com\/Emaren\//.test(ref) && ref.length<400)) return false;
+  }
   return typeof r.href==="string" && allowSet.has(r.href) &&
     scoreValue(r.score) && typeof r.sourceVersion==="string" && r.sourceVersion.length>4 &&
     dateValue(r.checkedAt)!==null &&
@@ -69,16 +84,24 @@ function validRecord(raw: unknown, allowSet: Set<string>): raw is PageObservatio
 }
 async function observations(): Promise<{ rows: PageObservation[]; source: KingdomIndexSnapshot["source"] }> {
   const allow=new Set(catalog.map(r=>r.href));
-  const original=(baseline.observations as PageObservation[]).filter(r=>validRecord(r,allow));
+  const original=(baseline.observations as unknown[]).filter(r=>validRecord(r,allow)) as PageObservation[];
   // An operator-controlled, sanitized public snapshot, outside the deploy tree.
   // The visitor never selects this path and cannot submit an audit.
   const file=process.env.KINGDOM_INDEX_EVIDENCE_PATH;
   if(!file) return {rows:original,source:"review-baseline"};
   try {
-    const safePath=path.resolve(file);
-    const stat=await import("node:fs/promises").then(fs=>fs.lstat(safePath));
-    if(!stat.isFile() || stat.isSymbolicLink() || stat.size>MAX_LEDGER_BYTES) throw new Error("Invalid evidence file");
-    const json=JSON.parse(await readFile(safePath,"utf8")) as {schema?:unknown;observations?:unknown};
+    if(!path.isAbsolute(file)) throw new Error("Evidence path must be absolute");
+    const handle=await open(file,constants.O_RDONLY|constants.O_NOFOLLOW|constants.O_NONBLOCK);
+    let rawText="";
+    try {
+      const stat=await handle.stat();
+      if(!stat.isFile() || stat.size<2 || stat.size>MAX_LEDGER_BYTES) throw new Error("Invalid evidence file");
+      const bytes=Buffer.alloc(stat.size+1);
+      const {bytesRead}=await handle.read(bytes,0,bytes.length,0);
+      if(bytesRead!==stat.size) throw new Error("Evidence file changed during read");
+      rawText=bytes.subarray(0,bytesRead).toString("utf8");
+    } finally { await handle.close(); }
+    const json=JSON.parse(rawText) as {schema?:unknown;observations?:unknown};
     if(json.schema!==1 || !Array.isArray(json.observations) || json.observations.length>250) throw new Error("Invalid evidence schema");
     const verified=json.observations.filter(r=>validRecord(r,allow)) as PageObservation[];
     // Operator evidence supersedes a review baseline for the exact route.

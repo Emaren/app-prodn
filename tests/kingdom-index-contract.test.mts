@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readdirSync,existsSync,readFileSync } from "node:fs";
+import { readdirSync,readFileSync } from "node:fs";
 import { join } from "node:path";
 import test from "node:test";
 import catalog from "../config/kingdom-index-routes.json" with { type: "json" };
@@ -31,7 +31,7 @@ test("every static public App Router page has exactly one nonprivate Kingdom Ind
 });
 test("public index uses actual source-attested scores and refuses guessed completion",()=>{
  const source=readFileSync(join(root,"lib/kingdomIndex.ts"),"utf8");
- assert.match(source,/sourceVersion===version/);
+ assert.match(source,/measuredVersion===version/);
  assert.match(source,/status.*unmeasured/);
  assert.match(source,/AUDIT_TTL_MS/);
  assert.doesNotMatch(source,/score:\s*100/);
