@@ -77,7 +77,7 @@ async function independentlyExpected(
   if (!original || original.status !== "committed" || original.ownerUserId !== owner.ownerUserId ||
       original.ticketRequestId !== attributed.operationId || original.txHash?.toUpperCase() !== attributed.fundingTxHash ||
       !ticket || ticket.userId !== owner.ownerUserId || !positive(ticket.totalAmountWolo) ||
-      original.amountUwolo !== BigInt(ticket.totalAmountWolo) * 1000000n ||
+      original.amountUwolo !== BigInt(ticket.totalAmountWolo) * BigInt(1000000) ||
       ticket.legs.length < 1 || ticket.legs.length > 16)
     refuse("original_funded_reservation_missing_or_changed");
   // All allocation legs must describe the actual durable ticket, not just a
@@ -89,7 +89,7 @@ async function independentlyExpected(
     const matching = legs.filter(v => object(v).leg_id === String(leg.id));
     if (!positive(leg.amountWolo) || matching.length !== 1 ||
         object(matching[0]).market_id !== String(leg.marketId) ||
-        object(matching[0]).stake_uwolo !== String(BigInt(leg.amountWolo) * 1000000n))
+        object(matching[0]).stake_uwolo !== String(BigInt(leg.amountWolo) * BigInt(1000000)))
       refuse("allocation_not_original_ticket_legs");
   }
   const unsigned = {
