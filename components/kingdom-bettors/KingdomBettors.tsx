@@ -3,9 +3,9 @@ import {useEffect,useMemo,useRef,useState} from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {ArrowLeft,ArrowRight,ArrowUpRight,Bot,ChevronDown,Crown,Grid2X2,History,List,Swords,Target,Trophy,RefreshCcw} from "lucide-react";
-import type {KingdomBettor,KingdomBelt,KingdomBettersSnapshot} from "@/lib/kingdomBetters";
+import type {KingdomBettor,KingdomBelt,KingdomBettorsSnapshot} from "@/lib/kingdomBettors";
 import {useUserAuth} from "@/context/UserAuthContext";
-import styles from "./KingdomBetters.module.css";
+import styles from "./KingdomBettors.module.css";
 
 const W = new Intl.NumberFormat("en-US",{maximumFractionDigits:0});
 function num(v:number|null|undefined){return v===null||v===undefined?"—":W.format(v);}
@@ -43,7 +43,7 @@ function BettorCard({bettor,selected,onClick}:{bettor:KingdomBettor;selected:boo
  </button>;
 }
 type Side="left"|"right";
-function Comparison({bettor,side,choose,receipts,selectedKeys,remove,add,active}:{bettor:KingdomBettor|null;side:Side;choose:()=>void;receipts:KingdomBettersSnapshot["receipts"];selectedKeys:string[];remove:(key:string)=>void;add:()=>void;active:boolean}){
+function Comparison({bettor,side,choose,receipts,selectedKeys,remove,add,active}:{bettor:KingdomBettor|null;side:Side;choose:()=>void;receipts:KingdomBettorsSnapshot["receipts"];selectedKeys:string[];remove:(key:string)=>void;add:()=>void;active:boolean}){
  const own=receipts.filter(row=>row.bettorKey===bettor?.key);
  return <div className={styles.duelist} data-side={side}>
    <div className={styles.duelistHeading}><span>{side==="left"?"I · CHALLENGERS":"II · DEFENDERS"}</span><button onClick={choose} aria-pressed={active} type="button">{active?"SELECTING":"SELECT"} <Target size={13}/></button></div>
@@ -91,7 +91,7 @@ function BeltColumn({belts,index,setIndex}:{belts:KingdomBelt[];index:number;set
    </div>
   </div>;
 }
-export default function KingdomBetters({initial}:{initial:KingdomBettersSnapshot}){
+export default function KingdomBettors({initial}:{initial:KingdomBettorsSnapshot}){
   const {isAdmin}=useUserAuth();
   const [snapshot,setSnapshot]=useState(initial);
   const [view,setView]=useState<"arena"|"ledger">("arena");
@@ -143,7 +143,7 @@ export default function KingdomBetters({initial}:{initial:KingdomBettersSnapshot
    if(!a.length||!b.length||a.some(x=>!x)||b.some(x=>!x)){setNotice("Choose registered human warriors on both sides to nominate a match.");return;}
    setSubmitting(true);setNotice("");
    try{
-     const response=await fetch("/api/kingdom-betters/nominations",{method:"POST",headers:{"Content-Type":"application/json"},
+     const response=await fetch("/api/kingdom-bettors/nominations",{method:"POST",headers:{"Content-Type":"application/json"},
        body:JSON.stringify({left:a,right:b,trophyId:currentBelt?.id??null,requestId:crypto.randomUUID()})});
      const data=await response.json() as {detail?:string;id?:number};
      if(!response.ok)throw new Error(data.detail||"Unable to issue the request.");
@@ -152,8 +152,8 @@ export default function KingdomBetters({initial}:{initial:KingdomBettersSnapshot
    finally{setSubmitting(false);}
   }
   async function refresh(){
-   try{const r=await fetch("/api/kingdom-betters",{cache:"no-store"});
-    if(r.ok){const v=await r.json() as KingdomBettersSnapshot;setSnapshot(v);setBeltIndex(i=>Math.min(i,Math.max(0,v.belts.length-1)));setNotice("Fresh public evidence loaded.");}
+   try{const r=await fetch("/api/kingdom-bettors",{cache:"no-store"});
+    if(r.ok){const v=await r.json() as KingdomBettorsSnapshot;setSnapshot(v);setBeltIndex(i=>Math.min(i,Math.max(0,v.belts.length-1)));setNotice("Fresh public evidence loaded.");}
     else setNotice("Unable to refresh right now.");}
    catch{setNotice("Unable to refresh right now.");}
   }
@@ -164,7 +164,7 @@ export default function KingdomBetters({initial}:{initial:KingdomBettersSnapshot
        <div className={styles.titleBlock}><div className={styles.overline}><Swords size={13}/> AOE2WAR / THE WAGER KINGDOM</div><h1>KINGDOM <em>BETTERS</em></h1><p>THE HOUSE · THE WARRIORS · THE TITLES</p></div>
        <div className={styles.headerActions}>
         <button type="button" onClick={()=>void refresh()} aria-label="Refresh bettor records" title="Refresh records"><RefreshCcw size={17}/></button>
-        {isAdmin&&<Link href="/admin/kingdom-betters" title="House bettor controls"><Bot size={18}/></Link>}
+        {isAdmin&&<Link href="/admin/kingdom-bettors" title="House bettor controls"><Bot size={18}/></Link>}
         <div className={styles.viewToggle} role="group" aria-label="Bettor presentation">
           <button type="button" title="Arena" aria-label="Arena view" aria-pressed={view==="arena"} data-active={view==="arena"} onClick={()=>setView("arena")}><Grid2X2 size={18}/></button>
           <button type="button" title="Bettor ledger" aria-label="Ledger view" aria-pressed={view==="ledger"} data-active={view==="ledger"} onClick={()=>setView("ledger")}><List size={19}/></button>
