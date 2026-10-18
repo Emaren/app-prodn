@@ -1,6 +1,6 @@
 "use client";
 import {useCallback,useEffect,useState} from "react";
-import {Bot,PlusCircle,RefreshCw} from "lucide-react";
+import {Bot,PlusCircle} from "lucide-react";
 
 type Persona={slug:string;displayName:string;mode:string};
 export default function ProvisionKingdomPersonas(){

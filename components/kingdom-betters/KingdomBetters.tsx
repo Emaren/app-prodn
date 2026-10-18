@@ -1,7 +1,8 @@
 "use client";
 import {useEffect,useMemo,useRef,useState} from "react";
 import Link from "next/link";
-import {ArrowLeft,ArrowRight,ArrowUpRight,Bot,ChevronDown,Crown,Grid2X2,History,List,ScrollText,ShieldCheck,Swords,Target,Trophy,Users,Wallet,RefreshCcw} from "lucide-react";
+import Image from "next/image";
+import {ArrowLeft,ArrowRight,ArrowUpRight,Bot,ChevronDown,Crown,Grid2X2,History,List,Swords,Target,Trophy,RefreshCcw} from "lucide-react";
 import type {KingdomBettor,KingdomBelt,KingdomBettersSnapshot} from "@/lib/kingdomBetters";
 import {useUserAuth} from "@/context/UserAuthContext";
 import styles from "./KingdomBetters.module.css";
@@ -14,7 +15,7 @@ function Portrait({bettor,large=false}:{bettor:KingdomBettor;large?:boolean}){
  const [failed,setFailed]=useState(false);
  useEffect(()=>{setFailed(false);},[bettor.avatar]);
  return <div className={large?styles.portraitLarge:styles.portrait} data-house={bettor.role==="house"}>
-   {bettor.avatar&&!failed?<img src={bettor.avatar} alt="" onError={()=>setFailed(true)} loading="lazy"/>:
+   {bettor.avatar&&!failed?<Image src={bettor.avatar} width={large?390:170} height={large?500:200} unoptimized alt="" onError={()=>setFailed(true)} loading="lazy"/>:
    <div className={styles.avatarGlyph} aria-hidden="true">{bettor.role==="house"?<Bot size={large?42:23}/>:bettor.name.slice(0,1).toUpperCase()}</div>}
    {bettor.role==="house"&&<span className={styles.aiMark}>AI</span>}
  </div>;
@@ -75,9 +76,9 @@ function BeltColumn({belts,index,setIndex}:{belts:KingdomBelt[];index:number;set
    <div className={styles.towerTop}><Crown size={15}/><span>TITLE ARCHIVE</span></div>
    <button type="button" className={styles.beltNav} onClick={()=>shift(-1)} disabled={count<2} aria-label="Previous championship"><ArrowLeft size={19}/></button>
    <div className={styles.beltVisual}>
-    {count>1&&<img className={styles.neighborBelt} src={belts[(index-1+count)%count].image} alt="" loading="lazy"/>}
-    {current?<img className={styles.activeBelt} src={current.image} alt={current.name} loading="lazy"/>:<Trophy size={82}/>}
-    {count>1&&<img className={styles.neighborBelt} src={belts[(index+1)%count].image} alt="" loading="lazy"/>}
+    {count>1&&<Image className={styles.neighborBelt} src={belts[(index-1+count)%count].image} width={200} height={80} alt="" loading="lazy"/>}
+    {current?<Image className={styles.activeBelt} src={current.image} width={350} height={180} alt={current.name} loading="lazy"/>:<Trophy size={82}/>}
+    {count>1&&<Image className={styles.neighborBelt} src={belts[(index+1)%count].image} width={200} height={80} alt="" loading="lazy"/>}
    </div>
    <button type="button" className={styles.beltNav} onClick={()=>shift(1)} disabled={count<2} aria-label="Next championship"><ArrowRight size={19}/></button>
    <div className={styles.beltLedger}>

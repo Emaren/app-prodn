@@ -44,7 +44,7 @@ test("both arena and ledger are actually interactive",()=>{
  const s=source("components/kingdom-betters/KingdomBetters.tsx");
  assert.match(s,/setView\("arena"\)/);
  assert.match(s,/setView\("ledger"\)/);
- assert.match(s,//api/kingdom-betters/nominations/);
+ assert.match(s,/api\\/kingdom-betters\\/nominations/);
  assert.match(s,/left\.map/);assert.match(s,/right\.map/);
  assert.match(s,/REQUEST THIS MATCHUP/);
 });
