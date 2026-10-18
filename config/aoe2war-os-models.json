@@ -1,7 +1,7 @@
 {
   "schema": 1,
   "capturedFrom": "Emaren/app-prodn/prisma/schema.prisma",
-  "sourceBaseline": "4eeccfb1a58aad0a4a185d7e990599a57c01bd7b",
+  "sourceBaseline": "d1d1e2ecda5a69954b8d5a9462cdf975aeca62f2",
   "models": [
     "User",
     "ApiKey",
@@ -201,9 +201,17 @@
     "SatchelFundedJournal",
     "SatchelFundedReservation",
     "SatchelAutoSpendConsent",
+    "SatchelAutoSpendMandate",
     "SatchelFundedWithdrawal",
     "SatchelWithdrawalChallenge",
     "SatchelFundedClaimReturn",
-    "SatchelPhysicalReceiptConsumption"
+    "SatchelPhysicalReceiptConsumption",
+    "SatchelWithdrawalAuthorization",
+    "SatchelWithdrawalApproval",
+    "SatchelWithdrawalRevocation",
+    "SatchelWithdrawalAttempt",
+    "SatchelWithdrawalObservation",
+    "SatchelClaimReturnAuthorization",
+    "SatchelWithdrawalPhysicalConsumption"
   ]
 }
