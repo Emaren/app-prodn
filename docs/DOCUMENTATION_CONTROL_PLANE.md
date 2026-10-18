@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/satchel-funded-integration` at `30af562558f35bb1695d4d73d908e6c271444ca6`
+Implementation baseline: `fix/20261018-index-review-lineage` at `811670496587f02d80e1ed547825259cc5ea128d`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

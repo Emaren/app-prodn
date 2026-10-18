@@ -42,8 +42,9 @@ test("Ledger is the first default mode and stale scores are historical only",()=
  const server=readFileSync(join(root,"lib/kingdomIndex.ts"),"utf8");
  const api=readFileSync(join(root,"app/api/kingdom-index/route.ts"),"utf8");
  assert.match(ui,/useState<Mode>\("ledger"\)/);
- assert.match(server,/lastReviewScore:obs\?\.score\?\?null/);
- assert.match(server,/score: publicObservedKingdomScore/);
+ assert.match(server,/lastReviewScore:lineage\.lastReviewScore/);
+ assert.match(server,/score: liveScore/);
+ assert.match(server,/const liveScore=publicObservedKingdomScore/);
  assert.match(api,/private, no-store, max-age=0/);
  assert.doesNotMatch(api,/stale-while-revalidate|s-maxage/);
 });
