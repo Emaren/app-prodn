@@ -102,6 +102,14 @@ export async function loadLeaderboardLaneCached(
       lane,
       normalizedScope,
     );
+  // Match the public API contract, including non-finite caller values.
+  const requestedLimit =
+    Number.isSafeInteger(limit)
+      ? Math.max(1, Math.min(600, limit))
+      : 64;
+  // Deduplication must include the requested row window. A concurrent
+  // small prefetch must never satisfy a larger requested first page.
+  const requestKey = `${cacheKey}:limit:${requestedLimit}`;
 
   if (!force) {
     const cached =
@@ -110,13 +118,17 @@ export async function loadLeaderboardLaneCached(
         normalizedScope,
       );
 
-    if (cached) {
+    if (
+      cached &&
+      (cached.entries.length >= requestedLimit ||
+        cached.entries.length >= cached.trackedPlayers)
+    ) {
       return cached;
     }
   }
 
   const pending =
-    laneRequests.get(cacheKey);
+    laneRequests.get(requestKey);
 
   if (pending) {
     return pending;
@@ -128,7 +140,7 @@ export async function loadLeaderboardLaneCached(
         lane,
         scope: normalizedScope,
         offset: "0",
-        limit: String(limit),
+        limit: String(requestedLimit),
       });
 
     const response =
@@ -171,7 +183,7 @@ export async function loadLeaderboardLaneCached(
   })();
 
   laneRequests.set(
-    cacheKey,
+    requestKey,
     request,
   );
 
@@ -179,11 +191,11 @@ export async function loadLeaderboardLaneCached(
     return await request;
   } finally {
     if (
-      laneRequests.get(cacheKey) ===
+      laneRequests.get(requestKey) ===
       request
     ) {
       laneRequests.delete(
-        cacheKey,
+        requestKey,
       );
     }
   }

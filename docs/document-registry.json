@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e75b58f24c2d41968e2d0d3f5c075df8b66f4077c33b4762f5ecb28e845ea321",
+      "sha256": "95989b46a2d572ff9dcae8bd2a1633f4cdac43ab20097454623fe8c996f64029",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -983,7 +983,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-10-18",
       "sensitivity": "internal",
-      "sha256": "bd354ab743ccc76bd0b00bd0e79fdb1fd267a01bb051438571907e25dedd2297",
+      "sha256": "f64db01778e8fed952324e17315563c13c9c1b098f852fc84fdf877485477171",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/20261018-index-route-boundary-provenance",
-    "commit": "8bc1f18c1e15931903654fb286124a41ed05464b"
+    "branch": "fix/20261018-leaderboard-client-cache-limits",
+    "commit": "9cf16d9776c78034af7c4faf6d99b0c0d6eb2ce3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
