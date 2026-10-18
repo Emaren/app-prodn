@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/20261018-index-unified-census-source-authority` at `54003d6cd30f70905ad7be02637b808a792ff327`
+Implementation baseline: `fix/20261018-index-refresh-race-fence` at `8f63ac64fb4cb15e36f8024bda24b98f03285b25`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
