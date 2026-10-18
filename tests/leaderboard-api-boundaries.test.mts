@@ -33,3 +33,8 @@ test("local production preview respects saved RM or DM preference", () => {
   assert.match(page, /previewUrl\.searchParams\.set\(\s*"lane",\s*preferredLane/);
   assert.doesNotMatch(page, /previewUrl\.searchParams\.set\(\s*"lane",\s*"rm"/);
 });
+
+test("live leaderboard API disables intermediaries caching stale roster rankings",()=>{
+  assert.match(route, /private, no-store, max-age=0/);
+  assert.match(route, /dynamic = "force-dynamic"/);
+});

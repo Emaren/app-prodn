@@ -111,5 +111,5 @@ export async function GET(request: NextRequest) {
       nextOffset < leaderboard.trackedPlayers,
     trackedPlayers: leaderboard.trackedPlayers,
     rankedPlayers: leaderboard.rankedPlayers,
-  });
+  }, { headers: { "Cache-Control": "private, no-store, max-age=0" } });
 }

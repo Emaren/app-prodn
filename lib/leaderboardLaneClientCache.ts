@@ -27,6 +27,9 @@ const laneRequests =
 // A delayed old prefetch must not replace a newer authoritative response.
 let laneSnapshotSequence = 0;
 const laneSnapshotRevisions = new Map<string, number>();
+// Unversioned SSR seeds can warm a tab, but must never replace a verified
+// network response already accepted for that lane/scope.
+const laneNetworkAccepted = new Set<string>();
 
 function leaderboardCacheKey(
   lane: LeaderboardLane,
@@ -62,8 +65,8 @@ export function seedLeaderboardLaneCache(
   // the historical richer-window preference because they lack a request ID.
   const latestApplied = laneSnapshotRevisions.get(cacheKey) ?? 0;
   if (
-    requestSequence !== undefined &&
-    requestSequence < latestApplied
+    (requestSequence === undefined && laneNetworkAccepted.has(cacheKey)) ||
+    (requestSequence !== undefined && requestSequence < latestApplied)
   ) {
     return;
   }
@@ -73,6 +76,7 @@ export function seedLeaderboardLaneCache(
     summary.entries.length >= current.entries.length
   ) {
     laneCache.set(cacheKey, summary);
+    if (requestSequence !== undefined) laneNetworkAccepted.add(cacheKey);
     laneSnapshotRevisions.set(
       cacheKey,
       requestSequence ?? ++laneSnapshotSequence,
@@ -145,7 +149,9 @@ export async function loadLeaderboardLaneCached(
   const pending =
     laneRequests.get(requestKey);
 
-  if (pending) {
+  // An explicit forced refresh must start a new request even if an old
+  // same-window request is in flight. Its later start gets cache authority.
+  if (pending && !force) {
     return pending;
   }
 
@@ -181,7 +187,11 @@ export async function loadLeaderboardLaneCached(
       payload.lane !== lane ||
       normalizeLeaderboardScope(
         payload.scope,
-      ) !== normalizedScope
+      ) !== normalizedScope ||
+      !Number.isSafeInteger(payload.trackedPlayers) ||
+      (payload.trackedPlayers ?? -1) < 0 ||
+      payload.entries.length > requestedLimit ||
+      payload.entries.length > (payload.trackedPlayers ?? -1)
     ) {
       throw new Error(
         `Leaderboard ${lane.toUpperCase()} lane unavailable`,
