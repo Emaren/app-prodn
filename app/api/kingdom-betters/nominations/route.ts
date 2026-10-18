@@ -43,7 +43,7 @@ export async function POST(request:NextRequest){
       if(recent.length>=3)throw new Error("LIMIT_REACHED");
       const row=await tx.userActivityEvent.create({data:{userId:viewer.id,type:"kingdom_match_nomination",path:"/kingdom-betters",label:"Spectator challenge",metadata:{
         requestId,left,right,trophyId:typeof trophyId==="string"?trophyId:null,note,
-        leftNames:left.map(k=>named.get(k)),rightNames:right.map(k=>named.get(k)),
+        leftNames:left.map(k=>named.get(k)??"Warrior"),rightNames:right.map(k=>named.get(k)??"Warrior"),
         status:"pending_commissioner_review",source:"kingdom-betters-v1",woloAuthority:false
       }},select:{id:true}});
       return {id:row.id,duplicate:false};
