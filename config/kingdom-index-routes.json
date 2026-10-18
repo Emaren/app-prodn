@@ -1,0 +1,404 @@
+[
+  {
+    "href": "/",
+    "label": "Kingdom Gate",
+    "district": "citadel",
+    "sourceTree": "git-654a0eb9794d3005c100"
+  },
+  {
+    "href": "/about",
+    "label": "About",
+    "district": "commons",
+    "sourceTree": "git-2701e3019dcdc0d5d693"
+  },
+  {
+    "href": "/academy",
+    "label": "Academy",
+    "district": "forge",
+    "sourceTree": "git-534b8348b7a3b403ce84"
+  },
+  {
+    "href": "/ai",
+    "label": "Ai",
+    "district": "commons",
+    "sourceTree": "git-c9b9e2d4b43f35cf79b1"
+  },
+  {
+    "href": "/aoe2war-os",
+    "label": "AoE2WAR OS",
+    "district": "citadel",
+    "sourceTree": "git-2ac1499656190f37d10c"
+  },
+  {
+    "href": "/battle-archive",
+    "label": "Battle Archive",
+    "district": "forge",
+    "sourceTree": "git-a0c7a0e8ee0db3605d1a"
+  },
+  {
+    "href": "/belts",
+    "label": "Belts",
+    "district": "arena",
+    "sourceTree": "git-afc8ddc97bb2c051cf97"
+  },
+  {
+    "href": "/bets",
+    "label": "Bets",
+    "district": "bazaar",
+    "sourceTree": "git-9d4c85a9fbbac3b9e5ab"
+  },
+  {
+    "href": "/betting-mechanics",
+    "label": "Betting Mechanics",
+    "district": "bazaar",
+    "sourceTree": "git-9612eed618ac558d9df1"
+  },
+  {
+    "href": "/bounties",
+    "label": "Bounties",
+    "district": "bazaar",
+    "sourceTree": "git-d7919bf02bf5c209cfb4"
+  },
+  {
+    "href": "/challenge",
+    "label": "Challenge",
+    "district": "arena",
+    "sourceTree": "git-31bf8fcd2a9d6da519b4"
+  },
+  {
+    "href": "/champions",
+    "label": "Champions",
+    "district": "arena",
+    "sourceTree": "git-1a88fa1493a2bfc905b9"
+  },
+  {
+    "href": "/champions/e2",
+    "label": "Champions E2",
+    "district": "arena",
+    "sourceTree": "git-d10929e82593e713f1ff"
+  },
+  {
+    "href": "/champions/e3",
+    "label": "Champions E3",
+    "district": "arena",
+    "sourceTree": "git-d9f272dff129a4a7ac65"
+  },
+  {
+    "href": "/champions/e4",
+    "label": "Champions E4",
+    "district": "arena",
+    "sourceTree": "git-aa8dc7fade2b539a8081"
+  },
+  {
+    "href": "/champions/e5",
+    "label": "Champions E5",
+    "district": "arena",
+    "sourceTree": "git-2c2aa888906fb1d4de41"
+  },
+  {
+    "href": "/champions/legacy",
+    "label": "Champions · Legacy",
+    "district": "arena",
+    "sourceTree": "git-d9f347de8679bce5e66c"
+  },
+  {
+    "href": "/chaosium",
+    "label": "Chaosium",
+    "district": "arena",
+    "sourceTree": "git-c6f7cbaff8cfa8e83021"
+  },
+  {
+    "href": "/clans",
+    "label": "Clans",
+    "district": "commons",
+    "sourceTree": "git-c3c88b75aec3b1435451"
+  },
+  {
+    "href": "/download",
+    "label": "Download",
+    "district": "commons",
+    "sourceTree": "git-d5a21875adacf53b288c"
+  },
+  {
+    "href": "/forum",
+    "label": "Forum",
+    "district": "commons",
+    "sourceTree": "git-39e607a1dd776116bd29"
+  },
+  {
+    "href": "/game-stats",
+    "label": "Parser Observatory",
+    "district": "forge",
+    "sourceTree": "git-9f9873a09e5fda28ca48"
+  },
+  {
+    "href": "/general-inspections",
+    "label": "General Inspections",
+    "district": "citadel",
+    "sourceTree": "git-c8bcb6201deb6814acb0"
+  },
+  {
+    "href": "/hd-replay-engine",
+    "label": "Replay Engine",
+    "district": "forge",
+    "sourceTree": "git-2e65da9ddcca2ca85de4"
+  },
+  {
+    "href": "/kingdom",
+    "label": "Kingdom",
+    "district": "citadel",
+    "sourceTree": "git-a35af16c330262570725"
+  },
+  {
+    "href": "/kingdom-agents",
+    "label": "Kingdom Agents",
+    "district": "citadel",
+    "sourceTree": "git-215746b76718a2adce73"
+  },
+  {
+    "href": "/kingdom-forge",
+    "label": "Kingdom Forge",
+    "district": "citadel",
+    "sourceTree": "git-cfafea7fa9d669764312"
+  },
+  {
+    "href": "/kingdom-index",
+    "label": "Kingdom Index",
+    "district": "citadel",
+    "sourceTree": null
+  },
+  {
+    "href": "/kingdom-intelligence",
+    "label": "Kingdom Intelligence",
+    "district": "citadel",
+    "sourceTree": "git-48d48bd0ddae7c42b155"
+  },
+  {
+    "href": "/kingdom-treasury",
+    "label": "Kingdom Treasury",
+    "district": "citadel",
+    "sourceTree": "git-4f65fd577fdc6b65e36a"
+  },
+  {
+    "href": "/leaderboard",
+    "label": "HD Leaderboard",
+    "district": "arena",
+    "sourceTree": "git-c0fbeae22c1bd627ec5a"
+  },
+  {
+    "href": "/leaderboard/og",
+    "label": "Battle Ledger",
+    "district": "arena",
+    "sourceTree": "git-959ea0be1b1ccd0832d5"
+  },
+  {
+    "href": "/leagues",
+    "label": "Leagues",
+    "district": "arena",
+    "sourceTree": "git-b51846794c9c80aa6185"
+  },
+  {
+    "href": "/library",
+    "label": "Library",
+    "district": "forge",
+    "sourceTree": "git-298ba16598b262a852f4"
+  },
+  {
+    "href": "/live-games",
+    "label": "Live Games",
+    "district": "arena",
+    "sourceTree": "git-c97e36e21a267a60b572"
+  },
+  {
+    "href": "/lobby",
+    "label": "Lobby",
+    "district": "commons",
+    "sourceTree": "git-c8443ae21d80888ed68d"
+  },
+  {
+    "href": "/market",
+    "label": "Market",
+    "district": "bazaar",
+    "sourceTree": "git-b8dff7370b6b30f6153a"
+  },
+  {
+    "href": "/national-champions",
+    "label": "National Champions",
+    "district": "arena",
+    "sourceTree": "git-b459077abde5f98b763f"
+  },
+  {
+    "href": "/nations",
+    "label": "Nations",
+    "district": "arena",
+    "sourceTree": "git-cd9b16ced5ed02f59c69"
+  },
+  {
+    "href": "/olympia",
+    "label": "Olympia",
+    "district": "arena",
+    "sourceTree": "git-1196f628351dcf34a22f"
+  },
+  {
+    "href": "/oracle",
+    "label": "Oracle",
+    "district": "bazaar",
+    "sourceTree": "git-1dd7af951d89649a2554"
+  },
+  {
+    "href": "/players",
+    "label": "Players",
+    "district": "arena",
+    "sourceTree": "git-265daf48d466e31660dd"
+  },
+  {
+    "href": "/radio",
+    "label": "Radio",
+    "district": "commons",
+    "sourceTree": "git-f09f0f719afb8ac0b7cb"
+  },
+  {
+    "href": "/realm",
+    "label": "Realm",
+    "district": "commons",
+    "sourceTree": "git-d45e005074c20dc13ab8"
+  },
+  {
+    "href": "/replay-parser",
+    "label": "Replay Parser",
+    "district": "forge",
+    "sourceTree": "git-74e28e56b02a7a75052e"
+  },
+  {
+    "href": "/requests",
+    "label": "Requests",
+    "district": "commons",
+    "sourceTree": "git-559b9fa0585025a1f9f1"
+  },
+  {
+    "href": "/rivalries",
+    "label": "Rivalries",
+    "district": "arena",
+    "sourceTree": "git-9d5c1d5e0e181b7695aa"
+  },
+  {
+    "href": "/roadmap",
+    "label": "Roadmap",
+    "district": "commons",
+    "sourceTree": "git-b84b26137c80e5b658df"
+  },
+  {
+    "href": "/round-chamber",
+    "label": "Round Chamber",
+    "district": "citadel",
+    "sourceTree": "git-2b3c5e81735f3ba9c478"
+  },
+  {
+    "href": "/speed",
+    "label": "Speed",
+    "district": "citadel",
+    "sourceTree": "git-8efdd4f4f74e8ecce546"
+  },
+  {
+    "href": "/staking",
+    "label": "Staking",
+    "district": "bazaar",
+    "sourceTree": "git-734aa210a2c5383d3009"
+  },
+  {
+    "href": "/statistics",
+    "label": "Statistics",
+    "district": "forge",
+    "sourceTree": "git-386d6ad4f06b57f260eb"
+  },
+  {
+    "href": "/submit",
+    "label": "Submit",
+    "district": "commons",
+    "sourceTree": "git-459ba7620293acef6430"
+  },
+  {
+    "href": "/television-wolo",
+    "label": "Television WOLO",
+    "district": "commons",
+    "sourceTree": "git-aa4acbdeedd7b0c5ac5d"
+  },
+  {
+    "href": "/tournaments",
+    "label": "Tournaments",
+    "district": "arena",
+    "sourceTree": "git-c4d0441d20dc7484a55b"
+  },
+  {
+    "href": "/traffic",
+    "label": "Traffic",
+    "district": "forge",
+    "sourceTree": "git-1c0afe0f5aa40deec813"
+  },
+  {
+    "href": "/users",
+    "label": "Users",
+    "district": "arena",
+    "sourceTree": "git-ef5c9a6e9b735e615b69"
+  },
+  {
+    "href": "/war-chest",
+    "label": "War Chest",
+    "district": "bazaar",
+    "sourceTree": "git-104eb8b69e053605ad2b"
+  },
+  {
+    "href": "/war-engine",
+    "label": "War Engine",
+    "district": "forge",
+    "sourceTree": "git-dd089199693013c0961a"
+  },
+  {
+    "href": "/wargraph",
+    "label": "WarGraph",
+    "district": "arena",
+    "sourceTree": "git-3124c5705667766dd755"
+  },
+  {
+    "href": "/watch",
+    "label": "Watch",
+    "district": "arena",
+    "sourceTree": "git-5b306442fb40b8209579"
+  },
+  {
+    "href": "/wolo",
+    "label": "Wolo",
+    "district": "bazaar",
+    "sourceTree": "git-0a093fdbc80e3e1d4a01"
+  },
+  {
+    "href": "/wolo-1",
+    "label": "Wolo 1",
+    "district": "bazaar",
+    "sourceTree": "git-3408e184099cf941d3fe"
+  },
+  {
+    "href": "/wolochain",
+    "label": "WoloChain",
+    "district": "bazaar",
+    "sourceTree": "git-2a5b4e7f2fe63b0f8666"
+  },
+  {
+    "href": "/wolomania",
+    "label": "Wolomania",
+    "district": "bazaar",
+    "sourceTree": "git-a9ddfb3f46138eee8802"
+  },
+  {
+    "href": "/workshop",
+    "label": "Workshop",
+    "district": "forge",
+    "sourceTree": "git-cd76d770312e6aadd9b2"
+  },
+  {
+    "href": "/zodiac",
+    "label": "Zodiac",
+    "district": "arena",
+    "sourceTree": "git-ba356cc9d2ccd22f3e2c"
+  }
+]
