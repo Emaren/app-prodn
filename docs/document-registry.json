@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b4bb417c3406ea34ff615ee5af0c4846de60a4570ca12d28586cf3d0dd03ea68",
+      "sha256": "e140c528de180c3ac0549dabf89ca5d360682f986d9ce51d746f4afb1061896d",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -983,7 +983,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-10-18",
       "sensitivity": "internal",
-      "sha256": "21b46c6f244fc8c7ee937cb5073f7106d68742eabf2b7cab856d7f6b311c4b8e",
+      "sha256": "aa7a9ced55ecf706feb3081b3ab788025e77a01bb253aa2c4cd5ebe7dc144610",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/20261018-kingdom-index-live-score-ledger-first",
-    "commit": "1c7a4c909ae889d5f35a4aba31cdcdcdbee76f80"
+    "branch": "fix/20261018-leaderboard-server-cache-fencing",
+    "commit": "720e123190436996a8d2b8d2d88074d928f1c570"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

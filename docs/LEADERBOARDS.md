@@ -181,6 +181,16 @@ homepage composition feature, not part of the public pagination contract.
 `entries.length` is only the current returned page. Neither value should be
 relabeled as the other.
 
+Server cache refreshes are now publication-fenced by both the invalidation
+epoch and monotonic refresh-start sequence. An older in-flight server ranking
+calculation can still return its own snapshot to an already waiting caller,
+but it cannot repopulate the shared cache after explicit invalidation or
+replace a more recent accepted generation. This preserves nonblanking
+stale-while-revalidate while blocking stale cache resurrection. Pure
+adversarial tests cover out-of-order completion and post-invalidation builds.
+These source tests are NOT measured production latency or independent Steam
+ranking truth.
+
 Leaderboard caches are scope-safe. Server cache keys include normalized lane,
 scope, offset, limit, enrichment flags, search, and sort. The client snapshot
 cache keys by `lane:scope`; in-flight requests additionally key by the bounded

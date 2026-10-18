@@ -58,6 +58,7 @@ import { featuredWarriorBestRank } from "@/lib/featuredWarriorPresentation";
 import {
   loadPublicLeaderboardRawGames,
 } from "@/lib/publicLeaderboardGameCorpus";
+import { mayPublishLeaderboardRefresh } from "@/lib/leaderboardRefreshFence";
 
 import {
   matchesPublicPlayerSearch,
@@ -71,12 +72,15 @@ const LEADERBOARD_CACHE_MAX_ENTRIES = 24;
 type LeaderboardCacheEntry = {
   generation: string;
   timeBucket: number;
+  refreshSequence: number;
   value: LobbyLeaderboardSummary;
 };
 
 const leaderboardCache = new Map<string, LeaderboardCacheEntry>();
 const leaderboardPromises =
   new Map<string, Promise<LobbyLeaderboardSummary>>();
+// This monotonic start-order is local to the worker, not a replay/Steam rank.
+let leaderboardRefreshSequence = 0;
 
 type LeaderboardGameCorpus = {
   uniqueGames: CandidateLeaderboardGame[];
@@ -1568,6 +1572,8 @@ function startLeaderboardRefresh(
     return existing;
   }
 
+  const refreshEpoch = leaderboardGameCorpusEpoch;
+  const refreshSequence = ++leaderboardRefreshSequence;
   const run =
     loadLobbyLeaderboardFresh(
       prisma,
@@ -1575,12 +1581,23 @@ function startLeaderboardRefresh(
       projectionGeneration,
     )
       .then((value) => {
+        // Invalidation fences old in-flight builds. Independently, a late
+        // older generation cannot replace an already accepted newer one.
+        // The calling request may still receive its own snapshot; only
+        // shared cache authority is fenced here.
+        if (!mayPublishLeaderboardRefresh({
+          requestEpoch: refreshEpoch,
+          currentEpoch: leaderboardGameCorpusEpoch,
+          requestSequence: refreshSequence,
+          acceptedSequence: leaderboardCache.get(cacheKey)?.refreshSequence ?? null,
+        })) return value;
         leaderboardCache.set(
           cacheKey,
           {
             generation:
               projectionGeneration,
             timeBucket,
+            refreshSequence,
             value,
           },
         );
