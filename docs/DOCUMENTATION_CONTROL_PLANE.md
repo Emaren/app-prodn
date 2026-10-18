@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/20261018-kingdom-index-dependency-sensor-ci` at `05ea6ed10dd481ed0a9ccb4c97782d66574828e5`
+Implementation baseline: `codex/satchel-funded-integration` at `6b43c50845f16ea139fee567b05947b668733b0b`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

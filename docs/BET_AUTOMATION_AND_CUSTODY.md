@@ -1348,3 +1348,103 @@ Before changing the app from Preview:
    both the app and custody service.
 8. Decrement finite game counts only after durable financial acceptance.
 9. Enable live execution only in a separate reviewed release.
+
+## 2026-10-18: signed wager review and authenticated acceptance integration
+
+The held integration branch reuses PRs #638, #655 and #656 with current main.
+It does not activate custody. `SATCHEL_FINANCIAL_BRIDGE_READY` remains the
+literal `false`; preview settings and operator environment flags cannot lift
+that source hold. No production migration, financial operation or service
+replacement is authorized by this integration.
+
+The actual Wolo interface is bearer-authenticated loopback **8094**:
+`GET /satchel/v1/health`, `POST /satchel/v2/one-shot` for wagers, and
+`POST /satchel/v1/proofs/operation` for read-only proof export. The two unused
+unmerged HMAC/camel-case prototypes now refuse without I/O. They cannot be
+reactivated with environment flags. Existing 8092/8093 settlement authorities,
+the consensus executable and founder claim #889 are unchanged.
+
+The app's `SatchelWagerAuthorization` records the original owner, linked wallet,
+Watcher game/proposition, preset version, exact ticket legs, original Keplr
+mandate/signature, reserve-journal identity and ledger revision under the
+existing global financial lock. It adds no second balance ledger. Its three
+HD-domain digests are deterministic snapshot bindings, not reserve proofs.
+`SatchelWagerApproval` accepts only a separately signed Ed25519 reservation
+matching that request. The version-1 sign bytes are the existing Go
+`WagerReservationMessage` contract, covered by an actual Go golden fixture.
+`attachIndependentSatchelWagerReview` is trusted internal ingress; no browser
+approval endpoint or private-key approval generator ships with this change.
+The independent reviewer must verify the actual hold, original owner consent,
+current market, aggregate liabilities and operating-fee headroom before signing.
+
+A first pass may reserve funds and prepare the immutable review request, then
+return `waiting_for_review`. That leaves the original hold unattempted; it
+neither releases money nor claims a broadcast. Only an unattempted reservation
+with an original independent approval may resume through the bounded intake.
+The submission transaction rechecks current consent, wallet, market and the
+reviewed ticket legs before durably entering `unknown_hold`. A changed market
+promotion cannot silently inherit the old review. Concurrent workers cannot
+both acquire the first-attempt fence. An unknown/attempted operation is excluded
+from every signing intake, including after restart.
+
+An authenticated service ACK yields **broadcast_accepted**, never finality.
+Its candidate hash is durably unique and immutable. Ticket and funded-ledger
+commit require an opaque proof produced by the pinned offline verifier, binding
+the actual Cosmos bytes, committed execution, exact transfer, fee and original
+signed reservation. Satchel ticket acceptance does not fall back to ordinary
+REST. Its timestamp comes from the authenticated primary `/commit` signed
+header at the exact inclusion height/block identity; fractional seconds survive.
+Proof freshness is checked again inside the ticket and financial transactions.
+`reconcileFundedSatchelWager` is proof-only recovery of one exact attempted
+operation: it cannot sign, prepare a new ticket, release funds or rebroadcast.
+If an ACK was lost, its supplied hash is admitted only after the journaled
+operation's authenticated proof matches it. Existing unique ticket/transfer
+locks and immutable funded journals preserve exactly-once acceptance.
+
+Both deposit and financial-proof adapters pin the **new** reviewed Wolo PR #39
+custody artifact, source `99f32de617964565875ed4689bea0d688bb99147`, CI run
+`39129775493`, Linux AMD64 SHA-256
+`d431c580a47ff020d997534145c5c53959c70c6f2d00d13029582ee8ec8709ac`.
+This is not a relabeling of the historical PR #29 or `bdbce253` settlement
+artifact. The isolated test script first builds that clean source; Linux CI
+must reproduce the pinned bytes. Its native macOS test-loader substitution
+exists only in disposable tests. Synthetic validator/reviewer authority grants
+no mainnet authority.
+
+Source validation includes genuine SDK MsgSend execution, authenticated Comet
+proofs and real isolated PostgreSQL credit/uniqueness/crash tests. The wager
+proof test authenticates a real synthetic 7-WOLO transfer and its actual ante
+fee; independently re-signed wrong-fee, amount and memo expectations fail.
+This is component integration evidence. It does **not** certify the complete
+100-WOLO deposit → 12-WOLO Watcher ticket → settlement/refund → withdrawal user
+journey, which still needs a governed disposable database/service rehearsal.
+
+Activation remains **BLOCKED**. Independent vault control, signer exclusivity,
+public trust/approval authority outside app write control and a current trusted
+consensus checkpoint/witness must be provisioned and inspected. An automatic
+independent reservation-review consumer is not implemented by the signature
+import function. Aggregate pending gas fees need a separately accounted budget;
+the app's existing `readIndependentSatchelBank` reads configured RPC/REST JSON
+and is **not independently authenticated bank-state or solvency evidence**.
+Do not treat that function's name, a signed review digest or source CI as bank
+certification. These are substantive remaining implementation/provisioning
+requirements before lifting the source hold. Eligibility/jurisdiction controls
+and the complete owner journey need independent launch review too.
+
+The additive `20261019_010000_war_satchel_wager_authority` migration is test-only
+in this delivery. Its request, review and candidate tables reject mutation,
+wrong-reserve admission and hash reuse; installation rolls back atomically with
+its caller. No earlier six-migration or eight-migration approval covers this
+new cohort. Existing SQL simulation release authority remains main's contract;
+financial PostgreSQL tests run separately in the isolated CI job. No deleted
+release framework or deferred simulation migration is resurrected.
+
+Wolo issue #5 and its one canonical six-control checklist remain binding:
+producer/signer isolation, accepted/uncertain operation reconciliation, #889 and
+all liabilities, independently checked bank/fees, fresh quiesced snapshots and
+bounded financial-state-preserving rollback. PR #43 preserves the completed
+Control One evidence; its source CI does not establish live isolation. Do not
+fast-forward a VPS checkout, fence producers, install a service, apply this
+migration, broadcast a canary or enable money based on this document. A later
+owner-approved protected cutover must name the exact reviewed artifacts,
+complete the missing evidence and retain consensus/8092/8093 separation.
