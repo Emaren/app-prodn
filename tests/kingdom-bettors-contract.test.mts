@@ -56,7 +56,7 @@ test("canonical Kingdom Bettors spelling is consistent across the arena and publ
  const house=source("lib/kingdomBettors.ts");
  assert.ok(ui.includes("<em>BETTORS</em>"));
  assert.doesNotMatch(ui,/BETTERS|Betters/);
- assert.ok(page.includes('"/kingdom-bettors"'));
+ assert.match(page,/Kingdom Bettors/);
  assert.ok(page.includes('"/kingdom-bettors"'));
  assert.match(personas,/Tony · Paulie · Tommy · Henry/);
  assert.match(house,/name:"Paulie"/);
