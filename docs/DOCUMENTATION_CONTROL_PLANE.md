@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/20261018-app-mecha-kingdom-truth` at `1f903c2a612c99a6cda429532f43963b7ced8847`
+Implementation baseline: `fix/20261018-app-route-authority-evidence-report` at `9fa38519d165ea98be58746b34a5373066850653`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
