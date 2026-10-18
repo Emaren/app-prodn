@@ -51,6 +51,43 @@ class SourceClosureTests(unittest.TestCase):
         self.assertIn("lib/ranking.ts", row["files"])
         self.assertIn("config/arena.json", row["files"])
 
+    def test_ancestor_layout_and_segment_error_are_transitive_inputs(self):
+        self.write("app/leaderboard/page.tsx", "export default function P(){}")
+        self.write("app/layout.tsx", 'import "@/lib/siteShell"; export default function L(){}')
+        self.write("app/leaderboard/error.tsx", 'import "@/lib/fallback"; export default function E(){}')
+        shell = self.write("lib/siteShell.ts", "export const shell=1")
+        self.write("lib/fallback.ts", "export const fallback=1")
+        first = deps.route_evidence(self.root, "/leaderboard")
+        self.assertIn("app/layout.tsx", first["app_segment_boundaries"])
+        self.assertIn("app/leaderboard/error.tsx", first["app_segment_boundaries"])
+        self.assertIn("lib/siteShell.ts", first["files"])
+        self.assertIn("lib/fallback.ts", first["files"])
+        shell.write_text("export const shell=2")
+        self.assertNotEqual(first["source_closure"],
+                            deps.route_evidence(self.root, "/leaderboard")["source_closure"])
+
+    def test_lockfile_and_prisma_contract_change_page_source(self):
+        self.write("app/leaderboard/page.tsx", "export default function P(){}")
+        lock = self.write("yarn.lock", "v1")
+        schema = self.write("prisma/schema.prisma", "model Warrior { id String @id }")
+        first = deps.route_evidence(self.root, "/leaderboard")
+        for path in ("yarn.lock", "prisma/schema.prisma"):
+            self.assertIn(path, first["files"])
+        lock.write_text("v2")
+        second = deps.route_evidence(self.root, "/leaderboard")
+        self.assertNotEqual(first["source_closure"], second["source_closure"])
+        schema.write_text("model Warrior { id String @id; name String }")
+        self.assertNotEqual(second["source_closure"],
+                            deps.route_evidence(self.root, "/leaderboard")["source_closure"])
+
+    def test_template_expression_import_is_not_silently_green(self):
+        self.write("app/leaderboard/page.tsx",
+                   "const x = import(`@/lib/${segment}`); export default function P(){}")
+        row = deps.route_evidence(self.root, "/leaderboard")
+        self.assertIn("app/leaderboard/page.tsx", row["nonliteral_import_modules"])
+        self.assertEqual("LEXICAL_GAPS_REVIEW", row["status"])
+        self.assertFalse(row["dependency_completeness_certified"])
+
     def test_unknown_imports_are_never_green(self):
         self.write("app/about/page.tsx", 'import "@/lib/missing"; const helper=import(name);')
         row = deps.route_evidence(self.root, "/about")
