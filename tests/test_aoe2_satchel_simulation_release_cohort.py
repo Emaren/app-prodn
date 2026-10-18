@@ -47,7 +47,7 @@ class ExactHistoricalSimulationCohortTests(unittest.TestCase):
             module.PREVIOUS_PRODUCTION_SOURCE,
             [module.LATEST_PATH, module.COHORT_PATHS[0]],
         )
-        self.assertEqual(result, [module.LATEST_PATH, module.COHORT_PATHS[0]])
+        self.assertEqual(result, sorted([module.LATEST_PATH, module.COHORT_PATHS[0]]))
 
     def test_unknown_sql_or_source_does_not_grant_contract(self):
         example = {
