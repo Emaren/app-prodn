@@ -527,6 +527,49 @@ test("shadow worker materializes one immutable preview row per preset and canoni
   assert.equal(rows.length, 1);
 });
 
+test("Mecha never claims candidate rows already exist when P2002 aborts a preview batch", async () => {
+  let attempts = 0;
+  const db = {
+    betAutoPreset: { findMany: async () => [{
+      ...preset(), user: { uid: "emaren", steamId: OWNER_STEAM },
+    }] },
+    betMarket: { findMany: async () => [{ ...market(), childMarkets: [] }] },
+    betAutoExecution: {
+      createMany: async () => {
+        attempts += 1;
+        throw Object.assign(new Error("duplicate-key batch aborted"), { code: "P2002" });
+      },
+    },
+  };
+  await assert.rejects(
+    runBetAutoShadowWorker(db as never, {
+      activeSessions: [session()] as never,
+      env: { BET_AUTOMATION_MODE: "shadow" },
+    }),
+    /BET_AUTO_SHADOW_INSERT_CONFLICT_UNVERIFIED/,
+  );
+  assert.equal(attempts, 1);
+});
+
+test("Mecha refuses impossible Prisma insert counts instead of false success", async () => {
+  for (const count of [-1, 2, 0.5, NaN]) {
+    const db = {
+      betAutoPreset: { findMany: async () => [{
+        ...preset(), user: { uid: "emaren", steamId: OWNER_STEAM },
+      }] },
+      betMarket: { findMany: async () => [{ ...market(), childMarkets: [] }] },
+      betAutoExecution: { createMany: async () => ({ count }) },
+    };
+    await assert.rejects(
+      runBetAutoShadowWorker(db as never, {
+        activeSessions: [session()] as never,
+        env: { BET_AUTOMATION_MODE: "shadow" },
+      }),
+      /BET_AUTO_SHADOW_INSERT_COUNT_INVALID/,
+    );
+  }
+});
+
 test("disabled automation mode performs no shadow database work", async () => {
   const prisma = {
     betAutoPreset: {
