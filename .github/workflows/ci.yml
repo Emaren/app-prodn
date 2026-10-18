@@ -119,7 +119,7 @@ jobs:
   isolated-rating-postgres:
     name: Isolated Steam-rating PostgreSQL chronology
     runs-on: ubuntu-24.04
-    timeout-minutes: 12
+    timeout-minutes: 20
     env:
       # Never connect to production. The test creates a private Unix-socket
       # cluster under /tmp, exercises authority selection, then destroys it.

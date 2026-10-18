@@ -15,6 +15,9 @@ test("real signed SDK deposit authenticates then credits the linked HD owner exa
   const fixture=JSON.parse(readFileSync(path.join(path.dirname(binary),"isolated-sdk-proof.json"),"utf8"));
   assert.equal(fixture.fixture_only,true);assert.equal(fixture.mainnet_authority,false);
   const i=fixture.intent,o=fixture.deposit_observation;
+  // HD persists JavaScript millisecond ISO strings, including a .000 suffix.
+  // Go RFC3339Nano may omit it; reconstruct the actual durable HD context.
+  i.CreatedAt=new Date(i.CreatedAt).toISOString();i.ExpiresAt=new Date(i.ExpiresAt).toISOString();
   const root=realpathSync(mkdtempSync("/tmp/hd-credit-postgres-"));
   const socket=path.join(root,"socket"),data=path.join(root,"data");mkdirSync(socket,{mode:0o700});
   const authority=path.join(root,"authority.json");
@@ -64,7 +67,7 @@ test("real signed SDK deposit authenticates then credits the linked HD owner exa
     const input={ownerUserId:1,ownerUid:i.OwnerID,proofCandidateId:BigInt(1),expectedTxHash:o.TxHash,authenticatedDeposit:authenticated,bank:{chainId:"wolo-1" as const,denom:"uwolo" as const,vaultAddress:i.Vault,balanceUwolo:BigInt(i.AmountUWolo),height:BigInt(102),observedAtMs:Date.now()}};
     await t.test("a failure after receipt insertion rolls back consumption, journal and balance",async()=>{
       await sql!.query("CREATE FUNCTION fixture_journal_failure() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'isolated crash after receipt'; END $$; CREATE TRIGGER fixture_crash BEFORE INSERT ON war_satchel_funded_journal FOR EACH ROW EXECUTE FUNCTION fixture_journal_failure()");
-      await assert.rejects(creditRecordedSatchelProof(db!,input));
+      await assert.rejects(creditRecordedSatchelProof(db!,input),/isolated crash after receipt/);
       assert.equal((await sql!.query("SELECT count(*) FROM war_satchel_physical_receipt_consumptions")).rows[0].count,"0");
       assert.equal((await sql!.query("SELECT count(*) FROM war_satchel_funded_receipts")).rows[0].count,"0");
       await sql!.query("DROP TRIGGER fixture_crash ON war_satchel_funded_journal");
@@ -83,6 +86,14 @@ test("real signed SDK deposit authenticates then credits the linked HD owner exa
       assert.equal(retry?.status,"already_credited");assert.equal(retry?.availableUwolo,i.AmountUWolo);
       await assert.rejects(readRecordedSatchelCredit(db!,{ownerUserId:1,ownerUid:"another-owner",intentId:expected.intentId,txHash:o.TxHash}));
       await assert.rejects(readRecordedSatchelCredit(db!,{ownerUserId:1,ownerUid:i.OwnerID,intentId:expected.intentId,txHash:"B".repeat(64)}));
+    });
+    await t.test("partial historical receipt cannot masquerade as a committed credit",async()=>{
+      const partialId="00000000-0000-4000-8000-000000000002",partialHash="C".repeat(64);
+      await sql!.query("INSERT INTO war_satchel_deposit_intents(id,user_id,sender_address,vault_address,amount_uwolo,memo,nonce,created_at,expires_at) VALUES($1,1,$2,$3,$4,$5,'incomplete_receipt_nonce_1234',$6,$7)",[partialId,i.Sender,i.Vault,i.AmountUWolo,i.Memo+"/incomplete",i.CreatedAt,i.ExpiresAt]);
+      const partial=await sql!.query("INSERT INTO war_satchel_proof_candidates(intent_id,user_id,chain_id,tx_hash,transfer_index,sender_address,vault_address,amount_uwolo,tx_height,verified_at) VALUES($1,1,'wolo-1',$2,0,$3,$4,$5,$6,now()) RETURNING id",[partialId,partialHash,i.Sender,i.Vault,i.AmountUWolo,o.Height]);
+      await sql!.query("INSERT INTO war_satchel_funded_receipts(owner_user_id,proof_candidate_id,chain_id,tx_hash,transfer_index,amount_uwolo,vault_address,canonical_height) VALUES(1,$1,'wolo-1',$2,0,$3,$4,$5)",[partial.rows[0].id,partialHash,i.AmountUWolo,i.Vault,o.Height]);
+      await assert.rejects(readRecordedSatchelCredit(db!,{ownerUserId:1,ownerUid:i.OwnerID,intentId:partialId,txHash:partialHash}),/incomplete_recorded_deposit_credit/);
+      assert.equal((await sql!.query("SELECT available_uwolo FROM war_satchel_funded_balances")).rows[0].available_uwolo,i.AmountUWolo);
     });
   }finally{
     if(db)await db.$disconnect();if(sql)await sql.end();

@@ -22,8 +22,8 @@ with tempfile.TemporaryDirectory(prefix="hd-real-comet-") as tmp:
     run(["git", "checkout", "--quiet", "--detach", SOURCE], cwd=source)
     assert not subprocess.check_output(["git","status","--porcelain"],cwd=source)
     env = os.environ.copy()
-    env.update({"GOTOOLCHAIN":"local","GOENV":"off","GOWORK":"off","GOFLAGS":"","CGO_ENABLED":"0","GOAMD64":"v1","TZ":"UTC"})
-    for key in ["DATABASE_URL","DIRECT_URL","PGHOST","PGPORT","PGUSER","PGPASSWORD","PGDATABASE"]:
+    env.update({"GOTOOLCHAIN":"local","GOENV":"off","GOWORK":"off","GOFLAGS":"","CGO_ENABLED":"0","GOAMD64":"v1","GOEXPERIMENT":"","GOFIPS140":"off","GIT_NO_REPLACE_OBJECTS":"1","TZ":"UTC"})
+    for key in ["DATABASE_URL","DIRECT_URL","PGHOST","PGPORT","PGUSER","PGPASSWORD","PGDATABASE","GODEBUG","GOOS","GOARCH"]:
         env.pop(key,None)
     binary = root / "wolosatcheld"
     run(["go","build","-trimpath","-buildvcs=true","-tags=go1.27","-mod=readonly","-ldflags=-buildid=","-o",str(binary),"./cmd/wolosatcheld"],cwd=source,env=env)
