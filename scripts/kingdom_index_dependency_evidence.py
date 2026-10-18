@@ -104,7 +104,6 @@ def route_evidence(root: Path, href: str,
     external: set[str] = set()
     api_routes: set[str] = set()
     nonliteral: set[str] = set()
-    shared_count = 0
 
     while pending:
         rel = pending.pop()
@@ -198,7 +197,8 @@ def snapshot(root: Path, hrefs: list[str]) -> dict[str, Any]:
         "source": "WORKTREE_LEXICAL_ONLY",
         "git_head": sha,
         "worktree_clean": clean,
-        "git_exact_candidate_proven": clean and sha is not None,
+        "git_exact_candidate_proven": False,
+        "git_status_limitation": "Porcelain cleanliness is only a diagnostic; hidden index flags and mismatched bytes are not independently excluded.",
         "routes": routes,
         "any_unresolved": any(
             row["status"] != "STATIC_LEXICAL_CENSUS_ONLY" for row in routes

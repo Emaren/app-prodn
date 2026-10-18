@@ -82,6 +82,14 @@ class SourceClosureTests(unittest.TestCase):
         self.assertFalse(result["financial_release_authorized"])
         self.assertFalse(result["git_exact_candidate_proven"])
 
+    def test_git_status_clean_does_not_pretend_exact_source_attested(self):
+        self.write("app/about/page.tsx", "export default function P(){}")
+        from unittest import mock
+        with mock.patch.object(deps, "_head", return_value=("a" * 40, True)):
+            result = deps.snapshot(self.root, ["/about"])
+        self.assertTrue(result["worktree_clean"])
+        self.assertFalse(result["git_exact_candidate_proven"])
+
     def test_excessive_source_refused(self):
         self.write("app/about/page.tsx", "x"*(deps.MAX_SOURCE_BYTES+1))
         with self.assertRaisesRegex(deps.DependencyEvidenceError, "bounded"):
