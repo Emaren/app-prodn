@@ -20,31 +20,31 @@ test("existing counter-bet authority remains preview-only for all modes",()=>{
   }
 });
 test("admin provision can only add disabled policies and cannot mint wallets",()=>{
- const s=source("app/api/admin/kingdom-betters/personas/route.ts");
+ const s=source("app/api/admin/kingdom-bettors/personas/route.ts");
  assert.match(s,/requireAdmin/);
  assert.match(s,/mode:"disabled"/);
  assert.match(s,/skipDuplicates:true/);
  assert.doesNotMatch(s,/walletAddress|sendTokens|stakeTxHash|betWager.create/);
 });
 test("spectator challenge does not call wager, mint, or canonical title transfer",()=>{
- const s=source("app/api/kingdom-betters/nominations/route.ts");
+ const s=source("app/api/kingdom-bettors/nominations/route.ts");
  assert.match(s,/getSessionUid/);assert.match(s,/isInternalSystemUid/);
  assert.match(s,/pg_advisory_xact_lock/);assert.match(s,/LIMIT_REACHED/);
  assert.match(s,/kingdom_match_nomination/);
  assert.doesNotMatch(s,/betWager.create|trophy.update|transferWolo|woloTx|createChampionshipChallenge/);
 });
 test("public bet records disclose only actual transaction references",()=>{
- const s=source("lib/kingdomBetters.ts");
+ const s=source("lib/kingdomBettors.ts");
  assert.match(s,/payoutTxHash/);assert.match(s,/chain-reference/);
  assert.match(s,/recorded-only/);
  assert.match(s,/isInternalSystemUid/);
  assert.doesNotMatch(s,/Math.random\(/);
 });
 test("both arena and ledger are actually interactive",()=>{
- const s=source("components/kingdom-betters/KingdomBetters.tsx");
+ const s=source("components/kingdom-bettors/KingdomBettors.tsx");
  assert.match(s,/setView\("arena"\)/);
  assert.match(s,/setView\("ledger"\)/);
- assert.match(s,/api.+kingdom-betters.+nominations/);
+ assert.match(s,/api.+kingdom-bettors.+nominations/);
  assert.match(s,/left\.map/);assert.match(s,/right\.map/);
  assert.match(s,/REQUEST THIS MATCHUP/);
 });

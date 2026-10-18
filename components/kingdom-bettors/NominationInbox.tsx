@@ -4,7 +4,7 @@ import {RefreshCcw,Swords} from "lucide-react";
 type Row={id:number;createdAt:string;proposer:string;metadata:unknown};
 export default function NominationInbox(){
  const [rows,setRows]=useState<Row[]>([]),[error,setError]=useState(""),[loading,setLoading]=useState(false);
- const load=useCallback(async()=>{setLoading(true);try{const r=await fetch("/api/admin/kingdom-betters/nominations",{cache:"no-store"});const data=await r.json() as {rows?:Row[];detail?:string};if(!r.ok)throw new Error(data.detail||"Review queue unavailable");setRows(data.rows??[]);setError("");}catch(e){setError(e instanceof Error?e.message:"Unable to read nominations.");}finally{setLoading(false);}},[]);
+ const load=useCallback(async()=>{setLoading(true);try{const r=await fetch("/api/admin/kingdom-bettors/nominations",{cache:"no-store"});const data=await r.json() as {rows?:Row[];detail?:string};if(!r.ok)throw new Error(data.detail||"Review queue unavailable");setRows(data.rows??[]);setError("");}catch(e){setError(e instanceof Error?e.message:"Unable to read nominations.");}finally{setLoading(false);}},[]);
  useEffect(()=>{void load();},[load]);
  return <section className="mb-7 rounded-3xl border border-amber-200/15 bg-slate-950/90 p-6 text-white">
   <header className="flex flex-wrap items-center justify-between gap-3"><h2 className="flex items-center gap-3 font-serif text-2xl text-amber-100"><Swords size={22}/>Spectator Matchup Requests</h2>
