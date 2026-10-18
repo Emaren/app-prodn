@@ -32,6 +32,9 @@ SATCHEL = (
     "20261015_151500_war_satchel_simulation_guard_correction",
     "20261017_012000_war_satchel_funded_ledger_foundation",
     "20261018_020000_war_satchel_physical_receipt_consumption",
+    "20261018_040000_war_satchel_financial_authorizations",
+    "20261018_041000_war_satchel_withdrawal_physical_consumption",
+    "20261018_042000_war_satchel_auto_spend_mandate",
 )
 SHA = re.compile(r"^[0-9a-f]{40}$")
 HEX_SHA256 = re.compile(r"^[0-9a-f]{64}$")
@@ -82,8 +85,8 @@ def source_evidence(expected_sha: str) -> dict[str, str]:
     folder = ROOT / "prisma" / "migrations"
     sql_files = sorted(folder.glob("*/migration.sql"))
     names = [p.parent.name for p in sql_files]
-    if len(names) != 120 or len(set(names)) != 120:
-        raise RehearsalStop("source migration inventory is not 120 unique files")
+    if len(names) != 123 or len(set(names)) != 123:
+        raise RehearsalStop("source migration inventory is not 123 unique files")
     if [name for name in names if name in SATCHEL] != list(SATCHEL):
         raise RehearsalStop("exact Satchel migration identity/order changed")
     if any(
@@ -371,6 +374,31 @@ BEGIN
   SELECT count(*) INTO n_functions FROM pg_proc p JOIN pg_namespace n
   ON n.oid=p.pronamespace WHERE n.nspname='public'
   AND p.proname LIKE 'war_satchel_%';
+  -- The recovered Codex finance patch adds immutable authorization,
+  -- claim-return, withdrawal consumption and signed spending-mandate tables.
+  -- Never accept the previous eight-file rehearsal as certification of these.
+  SELECT count(*) INTO n_tables FROM pg_class c JOIN pg_namespace n
+  ON n.oid=c.relnamespace WHERE n.nspname='public'
+  AND c.relkind IN ('r','p') AND c.relname IN (
+    'war_satchel_withdrawal_authorizations',
+    'war_satchel_withdrawal_approvals',
+    'war_satchel_withdrawal_revocations',
+    'war_satchel_withdrawal_attempts',
+    'war_satchel_withdrawal_observations',
+    'war_satchel_claim_return_authorizations',
+    'war_satchel_withdrawal_physical_consumptions',
+    'war_satchel_auto_spend_mandates'
+  );
+  IF n_tables <> 8 THEN RAISE EXCEPTION 'eight recovered financial evidence tables missing'; END IF;
+  IF (SELECT count(*) FROM pg_trigger WHERE NOT tgisinternal AND tgenabled='O'
+    AND tgname IN (
+      'satchel_withdrawal_physical_guard',
+      'satchel_credit_global_physical_guard',
+      'satchel_withdrawal_physical_immutable',
+      'satchel_withdrawal_physical_no_truncate',
+      'satchel_original_mandate_lock',
+      'satchel_original_mandate_no_truncate'
+    )) <> 6 THEN RAISE EXCEPTION 'recovered financial immutable/global guards missing'; END IF;
   IF n_functions < 6 THEN RAISE EXCEPTION 'Satchel functions missing'; END IF;
   SELECT pg_get_functiondef(oid) INTO body FROM pg_proc
   WHERE proname='war_satchel_assert_balanced_sandbox_journal';
@@ -422,13 +450,13 @@ def rehearse(*, explain_schema_mismatch: bool = False,
                 "shadow schema not equal to production schema-only export"
                 + (": " + diagnostics if diagnostics else "")
             )
-        # Diagnostic ONLY: run the same eight-file SQL cohort in the disposable
+        # Diagnostic ONLY: run the full eleven-file SQL cohort in the disposable
         # restored shadow. Passing here never proves source schema equivalence,
         # nor permits applying any migration to the production database.
         apply_to_shadow(name, cohort_sql())
         after_digest = schema_fingerprint(schema_bytes(name))
         if baseline_digest != after_digest:
-            raise RehearsalStop("schema changed after eight-migration ROLLBACK")
+            raise RehearsalStop("schema changed after eleven-migration ROLLBACK")
         result = {
             "status": ("DIAGNOSTIC_ONLY_SCHEMA_MISMATCH" if schema_mismatch else "PASS"),
             "database": SOURCE_DATABASE,
@@ -499,7 +527,7 @@ def main() -> int:
         for key, value in receipt.items():
             print(f"{key}: {value}")
         # Schema mismatch cannot be classified as a passed release gate,
-        # even if the detached eight-file SQL cohort rolls back cleanly.
+        # even if the detached eleven-file SQL cohort rolls back cleanly.
         return 0 if receipt["status"] == "PASS" else 2
     except RehearsalStop as exc:
         print(f"STOP: {exc}", file=sys.stderr)
