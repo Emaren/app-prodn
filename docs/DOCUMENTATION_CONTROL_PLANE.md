@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/20261018-index-route-boundary-provenance` at `8bc1f18c1e15931903654fb286124a41ed05464b`
+Implementation baseline: `fix/20261018-leaderboard-client-cache-limits` at `9cf16d9776c78034af7c4faf6d99b0c0d6eb2ce3`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
