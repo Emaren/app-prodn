@@ -55,6 +55,7 @@ test("physical Satchel receipts are globally unique in real isolated PostgreSQL"
     });
     await t.test("physical consumption is immutable",async()=>{
       await assert.rejects(c.query("DELETE FROM war_satchel_physical_receipt_consumptions"),/immutable/);
+      await assert.rejects(c.query("TRUNCATE war_satchel_physical_receipt_consumptions"),/immutable/);
       await assert.rejects(c.query("UPDATE war_satchel_physical_receipt_consumptions SET owner_user_id=2"),/immutable/);
       assert.equal((await c.query("SELECT count(*) FROM war_satchel_physical_receipt_consumptions")).rows[0].count,"5");
     });

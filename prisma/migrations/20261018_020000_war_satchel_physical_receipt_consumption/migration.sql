@@ -55,4 +55,8 @@ CREATE TRIGGER satchel_physical_consumption_immutable BEFORE UPDATE OR DELETE
   ON war_satchel_physical_receipt_consumptions FOR EACH ROW
   EXECUTE FUNCTION war_satchel_funded_audit_immutable();
 
+CREATE TRIGGER satchel_physical_consumption_no_truncate BEFORE TRUNCATE
+  ON war_satchel_physical_receipt_consumptions FOR EACH STATEMENT
+  EXECUTE FUNCTION war_satchel_funded_audit_immutable();
+
 COMMIT;
