@@ -58,8 +58,11 @@ assessment and financial operations remain unchanged.
 `scripts/kingdom_index_dependency_evidence.py` **reuses** the existing
 `aoe2_module_graph.py` lexical extractor and resolver. It follows static
 local TypeScript/JavaScript imports, JSON/CSS references and possible literal
-`/api/` route links, and hashes the resulting source closure together with
-global build manifests. It records unresolved imports and dynamic module
+`/api/` route links; includes ancestor Next.js layout, template and error/loading
+boundaries with their transitive imports; and includes the present package lock,
+Prisma schema, build configuration and middleware/instrumentation inputs.
+Interpolated backtick imports are flagged for review, not treated as resolved.
+Its hash remains working-tree evidence and does not authenticate a build artifact. It records unresolved imports and dynamic module
 references without claiming to resolve runtime paths.
 
 ~~~bash
