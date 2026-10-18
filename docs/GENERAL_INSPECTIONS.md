@@ -8,7 +8,7 @@ systems: ["app-prodn","aoe2war","wolochain","vpssentry"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "inspection-scoring-contract"
-reviewed_at: "2026-10-06"
+reviewed_at: "2026-10-18"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -29,6 +29,71 @@ This tool does not run benchmarks, refresh Doctor evidence, change
 WoloChain, or assume that 100/100 is attainable without the missing live
 measurements. Use its sorted losses to prioritize repairs, refresh original
 evidence from the appropriate authority, then verify genuine point gains.
+
+
+## October 18, 2026 — Kingdom Index page-specific quality evidence
+
+Kingdom Index now separates **one site-wide engineering rubric** from
+**route-specific obligations**. `config/kingdom-index-quality-rubric.json` is
+the universal 30 correctness + 25 functionality + 20 performance +
+15 maintainability + 10 testing budget; every one of its 20 criteria must
+be supported by inspectable exact-release evidence before a certified 100.
+`config/kingdom-index-assurance-profiles.json` defines additional,
+**noncrediting** mandatory proofs for riskier domain surfaces. HD Leaderboard
+must prove Steam RM/DM authority and disconnect vetoes, betting must prove
+money conservation and financial-side-effect boundaries, replay pages require
+exact final-artifact authority, while AoE2WAR OS requires manifest, staging
+and rollback proof. These are not extra points. General-purpose route profiles
+default to the common rubric; future route-specific obligations must be
+reviewed before certification.
+
+The public `/api/kingdom-index` snapshot includes
+`specializedAssurance`, an additive read-only `profile` and array of
+`{id, requirement, status:"unverified"}` objects. **Unverified is not a
+passing score.** The public UI, page scores, historical 64/100 leaderboard
+assessment and financial operations remain unchanged.
+
+### Read-only route-dependency evidence
+
+`scripts/kingdom_index_dependency_evidence.py` **reuses** the existing
+`aoe2_module_graph.py` lexical extractor and resolver. It follows static
+local TypeScript/JavaScript imports, JSON/CSS references and possible literal
+`/api/` route links, and hashes the resulting source closure together with
+global build manifests. It records unresolved imports and dynamic module
+references without claiming to resolve runtime paths.
+
+~~~bash
+python3 scripts/kingdom_index_dependency_evidence.py --route /leaderboard --json
+python3 scripts/kingdom_index_dependency_evidence.py --all --json > /tmp/aoe2war-route-dependencies.json
+~~~
+
+This is a **working-tree source diagnostic**, not a Next.js compiler/bundler
+closure proof or production certification. A `STATIC_LEXICAL_CENSUS_ONLY`
+result is not proof that all possible imports, runtime APIs, server actions,
+dynamic SQL queries, financial effects or network dependencies were examined.
+The instrument never executes source, reads keys, changes state or awards
+quality points; tests exercise transitive shared-code changes, repository
+config changes, literal API references and unknown/dynamic imports.
+
+Two older version mechanisms remain separate:
+`scripts/kingdom_index_source_audit.mjs` hashes a narrow catalog subset
+from committed Git blobs; `generate_page_change_manifest.py` hashes
+page-specific working-tree files for a legacy page notice manifest.
+`lib/kingdomIndex.ts` may prefer the latter for overlapping routes.
+**Neither older hash is a dependency-complete certificate.** The new
+diagnostic reports extra evidence but does not silently replace either.
+Only migrate the identity policy after testing side-by-side behavior and
+authenticating exact Git source, API data inputs and deployed artifact.
+
+### Path to real 100/100
+
+First establish source dependency visibility, domain-specialized invariants,
+browser/accessibility evidence and production-scale P75/P95, queries, heap and
+staleness receipts. Then record verified criterion-level proof in a
+reviewed, nonforgable release-bound ledger. Keep unknown/failed gates unearned.
+Only extract large UI modules behind behavior-preserving snapshots and
+performance parity. Do not reward file-count reductions or arbitrary
+decomposition. See app issue #668 for the HD Leaderboard execution ladder.
 
 ## Purpose
 

@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b0a80c8168dbbdba87299e09541443252751520b02a48a65ca76c8797bb72332",
+      "sha256": "6f64659f41768f536ae1161629952b0d41cd900f3f2e8351ab98cd03d1720000",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -731,9 +731,9 @@
       "owner": "aoe2war-web",
       "path": "docs/GENERAL_INSPECTIONS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-06",
+      "reviewed_at": "2026-10-18",
       "sensitivity": "internal",
-      "sha256": "a5b01bc7484936ac9ab034e36ff249b8bdaa99c17bf37df97603c7d5d66eb2a3",
+      "sha256": "5a6efcb09c676f78e1e50de81370b6ce7bbe3690e91bd22db3416946c4c42359",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/20261018-leaderboard-foundation-audit",
-    "commit": "de8a211c57d6a725ecdaeb34a710e0ab7cc28596"
+    "branch": "feat/20261018-kingdom-index-assurance-evidence",
+    "commit": "792f68fc71d06eafae730ed033e2194848975662"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
