@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e83c48c6472b4a7db8dbd759091431b2dd31a390f85f2e8bfc502a956fddbf9a",
+      "sha256": "962598603344d44bff77d1cb494066409360d403a9ca3002d06ce65a1b8b5085",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -983,7 +983,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-10-18",
       "sensitivity": "internal",
-      "sha256": "aa7a9ced55ecf706feb3081b3ab788025e77a01bb253aa2c4cd5ebe7dc144610",
+      "sha256": "6a33b6861b73d3b18aa0486688378f8fbb1940da3f1bae55f5d8d919385aa303",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/20261018-kingdom-index-dependency-sensor-ci",
-    "commit": "05ea6ed10dd481ed0a9ccb4c97782d66574828e5"
+    "branch": "fix/20261018-leaderboard-client-cache-authority-v2",
+    "commit": "6dbd23c35f982ddbd16176d018ab14ca1cdbc606"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
