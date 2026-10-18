@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "updatedAt": "2026-10-18",
+  "observations": [
+    {
+      "href": "/leaderboard",
+      "score": 64,
+      "checkedAt": "2026-10-18",
+      "sourceVersion": "src-92adf8e684a9a7c49785",
+      "kind": "source-review",
+      "dimensions": {
+        "correctness": 24,
+        "functionality": 11,
+        "performance": 15,
+        "maintainability": 9,
+        "tests": 5
+      },
+      "history": [
+        {
+          "at": "2026-10-18",
+          "score": 64
+        }
+      ],
+      "notes": "Provisional code-and-screenshot engineering assessment; no certified cold-browser run or complete database audit. Movement snapshots unavailable, bookmark projection incomplete."
+    }
+  ]
+}

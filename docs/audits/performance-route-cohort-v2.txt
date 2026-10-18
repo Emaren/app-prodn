@@ -33,6 +33,7 @@
 /hd-replay-engine
 /general-inspections
 /kingdom
+/kingdom-index
 /kingdom-agents
 /kingdom-intelligence
 /kingdom-treasury

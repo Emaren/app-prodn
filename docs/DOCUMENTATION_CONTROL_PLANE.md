@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/20261018-app-route-authority-evidence-report` at `9fa38519d165ea98be58746b34a5373066850653`
+Implementation baseline: `feat/20261018-public-kingdom-index-evidence-atlas` at `1e9550f468e57c288598683fa4955a01a67ceb09`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
