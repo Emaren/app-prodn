@@ -4,6 +4,7 @@ import { constants } from "node:fs";
 import path from "node:path";
 import catalog from "@/config/kingdom-index-routes.json";
 import baseline from "@/config/kingdom-index-baseline.json";
+import qualityRubric from "@/config/kingdom-index-quality-rubric.json";
 import { PAGE_CHANGE_MANIFEST } from "@/lib/pageChangeManifest.generated";
 
 export type District = "citadel" | "arena" | "forge" | "bazaar" | "commons";
@@ -66,10 +67,12 @@ function validRecord(raw: unknown, allowSet: Set<string>): raw is PageObservatio
   if(r.kind==="agent" || r.kind==="certified"){
     if(!r.dimensions || typeof r.dimensions!=="object" || Array.isArray(r.dimensions)) return false;
     const d=r.dimensions as Record<string,unknown>;
-    const weights:Record<string,number>={correctness:30,functionality:25,performance:20,maintainability:15,tests:10};
+    const weights:Record<string,number>=Object.fromEntries(Object.entries(qualityRubric.dimensions).map(([key,dimension])=>[key,dimension.weight]));
     if(!Object.entries(weights).every(([key,max])=>typeof d[key]==="number" &&
       Number.isInteger(d[key]) && (d[key] as number)>=0 && (d[key] as number)<=max)) return false;
     if(Object.keys(weights).reduce((sum,key)=>sum+(d[key] as number),0)!==r.score) return false;
+    // An agent observation or provisional source review cannot self-award 100.
+    if(r.score===100 && r.kind!=="certified") return false;
     if(!Array.isArray(r.evidenceRefs) || r.evidenceRefs.length < (r.kind==="certified"?2:1) ||
       r.evidenceRefs.length>12 || !r.evidenceRefs.every(ref=>typeof ref==="string" &&
         /^https:\/\/github\.com\/Emaren\//.test(ref) && ref.length<400)) return false;
