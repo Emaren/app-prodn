@@ -15,6 +15,20 @@ sensitivity: "internal"
 
 # AoE2WAR General Inspections
 
+## October 18, 2026 — show the route-specific quality proof gates
+
+Kingdom Index details now render the existing `specializedAssurance.gates`
+with each requirement and its actual `unverified` status, rather than
+silently transporting those obligations in API JSON. For HD Leaderboard,
+this includes independent Steam rating and result precedence, rank/pagination,
+lane-cache coherence, and the real-browser test matrix. This is an honest
+checklist of missing evidence, not a declaration that any gate passed.
+
+The details are visible in both the default Ledger View and the optional
+Realm View. No Leaderboard page component, rank calculation, asset or style
+was changed by this Index presentation. Specialty obligations remain
+noncrediting and mandatory before a full engineering certificate.
+
 ## October 18, 2026 — live Kingdom Index score is not the historical 64
 
 The Kingdom Index opens **Ledger View** by default; Realm View remains
