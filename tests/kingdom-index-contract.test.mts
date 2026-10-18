@@ -36,3 +36,14 @@ test("public index uses actual source-attested scores and refuses guessed comple
  assert.match(source,/AUDIT_TTL_MS/);
  assert.doesNotMatch(source,/score:\s*100/);
 });
+
+test("Ledger is the first default mode and stale scores are historical only",()=>{
+ const ui=readFileSync(join(root,"components/kingdom-index/KingdomIndex.tsx"),"utf8");
+ const server=readFileSync(join(root,"lib/kingdomIndex.ts"),"utf8");
+ const api=readFileSync(join(root,"app/api/kingdom-index/route.ts"),"utf8");
+ assert.match(ui,/useState<Mode>\("ledger"\)/);
+ assert.match(server,/lastReviewScore:obs\?\.score\?\?null/);
+ assert.match(server,/score: publicObservedKingdomScore/);
+ assert.match(api,/private, no-store, max-age=0/);
+ assert.doesNotMatch(api,/stale-while-revalidate|s-maxage/);
+});
