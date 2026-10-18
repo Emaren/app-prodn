@@ -53,3 +53,43 @@ test("client lane prefetch cannot shortchange larger concurrent requests", async
     globalThis.fetch = originalFetch;
   }
 });
+
+test("later authoritative response replaces a richer obsolete lane cache", async () => {
+  const originalFetch = globalThis.fetch;
+  const waiters = new Map<number, (response: Response) => void>();
+  globalThis.fetch = ((input: RequestInfo | URL) => {
+    const url = new URL(String(input), "http://localhost");
+    const limit = Number(url.searchParams.get("limit"));
+    return new Promise<Response>((resolve) => waiters.set(limit, resolve));
+  }) as typeof fetch;
+
+  const resolve = (limit: number, count: number, total: number) => {
+    const pending = waiters.get(limit);
+    assert.ok(pending, `missing ${limit} request`);
+    pending(new Response(JSON.stringify({
+      lane: "rm", scope: "claimed", trackedPlayers: total,
+      entries: Array.from({ length: count }, (_, index) => ({ rank: index + 1 })),
+    }), { status: 200, headers: { "content-type": "application/json" } }));
+  };
+
+  try {
+    const obsolete = loadLeaderboardLaneCached("rm", { scope: "claimed", limit: 128, force: true });
+    const current = loadLeaderboardLaneCached("rm", { scope: "claimed", limit: 64, force: true });
+    // The latest request returns first with fewer members.
+    resolve(64, 20, 20);
+    assert.equal((await current).trackedPlayers, 20);
+    resolve(128, 128, 200);
+    assert.equal((await obsolete).trackedPlayers, 200);
+    const cached = readLeaderboardLaneCache("rm", "claimed");
+    assert.equal(cached?.trackedPlayers, 20);
+    assert.equal(cached?.entries.length, 20);
+
+    // A later smaller *fresh* response must replace the old longer snapshot.
+    const refreshed = loadLeaderboardLaneCached("rm", { scope: "claimed", limit: 128, force: true });
+    resolve(128, 12, 12);
+    assert.equal((await refreshed).entries.length, 12);
+    assert.equal(readLeaderboardLaneCache("rm", "claimed")?.trackedPlayers, 12);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
