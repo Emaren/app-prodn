@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "c807b68f2346a0296ade5624541e5d813356df8431f73fd25485de79d7b88cd6",
+      "sha256": "b4bb417c3406ea34ff615ee5af0c4846de60a4570ca12d28586cf3d0dd03ea68",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2117,7 +2117,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/20261018-kingdom-index-live-score-ledger-first",
-    "commit": "7d811df29798c99d47463f6b0117658660653207"
+    "commit": "1c7a4c909ae889d5f35a4aba31cdcdcdbee76f80"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
