@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight, Castle, ChevronDown, Clock3, Compass, Grid2X2, List, X } from "lucide-react";
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import type { District, KingdomIndexEntry, KingdomIndexSnapshot } from "@/lib/kingdomIndex";
+import { isLatestKingdomIndexRefresh } from "@/lib/kingdomIndexRefreshOrder";
 import styles from "./KingdomIndex.module.css";
 
 const REGIONS: ReadonlyArray<{ id: District; name: string; numeral: string; subtitle: string }> = [
@@ -117,14 +118,20 @@ export default function KingdomIndex({initial}:{initial:KingdomIndexSnapshot}){
   const [selected,setSelected]=useState<string|null>(null);
   const [expanded,setExpanded]=useState<string|null>(null);
   const [connectionLost,setConnectionLost]=useState(false);
+  const latestRefreshId=useRef(0);
   const refresh=useCallback(async (signal?:AbortSignal)=>{
+    const requestId=++latestRefreshId.current;
     try{
       const response=await fetch("/api/kingdom-index",{cache:"no-store",signal});
       if(!response.ok)throw new Error("no measurement feed");
       const next=await response.json() as KingdomIndexSnapshot;
       if(next.schema!==1||!Array.isArray(next.pages))throw new Error("bad evidence");
-      if(!signal?.aborted){setSnapshot(next);setConnectionLost(false);}
-    }catch{if(!signal?.aborted)setConnectionLost(true);}
+      if(!signal?.aborted&&isLatestKingdomIndexRefresh(requestId,latestRefreshId.current)){
+        setSnapshot(next);setConnectionLost(false);
+      }
+    }catch{
+      if(!signal?.aborted&&isLatestKingdomIndexRefresh(requestId,latestRefreshId.current))setConnectionLost(true);
+    }
   },[]);
   useEffect(()=>{
     const controller=new AbortController();
