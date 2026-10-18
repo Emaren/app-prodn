@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "3053be069a6aeb42e65bb4037fb37cb30dde39cedb41b672ed1fae4e78aa3d77",
+      "sha256": "a920d6e5d7b229f8d362bbb308dc4ebc77b887d837fd90f2b13fa5f623ca4301",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2117,7 +2117,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "codex/satchel-complete-financial-paths",
-    "commit": "3f5413e1728f203ef176943566682ea7e34ef0d0"
+    "commit": "a33cca8d47d8e5b764af235a8e0a4bf7b93ac5f8"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
