@@ -33,7 +33,7 @@ test("public index uses actual source-attested scores and refuses guessed comple
  const source=readFileSync(join(root,"lib/kingdomIndex.ts"),"utf8");
  assert.match(source,/measuredVersion===version/);
  assert.match(source,/status.*unmeasured/);
- assert.match(source,/AUDIT_TTL_MS/);
+ assert.match(source,/isKingdomObservationStale/);
  assert.doesNotMatch(source,/score:\s*100/);
 });
 
