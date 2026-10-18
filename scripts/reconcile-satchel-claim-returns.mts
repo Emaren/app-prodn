@@ -1,6 +1,6 @@
 /** Operator/server-only future runtime path. Financial source hold is checked
  * before reading a database or proof endpoint; this is not an activation lane. */
-import { readFile, open } from "node:fs/promises";
+import { open } from "node:fs/promises";
 import { constants } from "node:fs";
 import { isAbsolute } from "node:path";
 import { requireSatchelFinancialBridge } from "../lib/warSatchelFinancialBridgeHold.ts";
