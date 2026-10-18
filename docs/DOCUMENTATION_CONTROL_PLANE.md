@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/20261018-index-specialty-gate-details` at `3239a0ea251734688e5943377dd94ebc2dc7b9ad`
+Implementation baseline: `fix/20261018-index-unified-census-source-authority` at `54003d6cd30f70905ad7be02637b808a792ff327`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
