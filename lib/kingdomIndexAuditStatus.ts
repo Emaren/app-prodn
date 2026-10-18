@@ -30,3 +30,31 @@ export function classifyPublicKingdomAuditStatus({
   if (kind === "certified" || kind === "source-review") return "provisional";
   return "current";
 }
+
+/** Only an aligned, unexpired agent observation may expose an observed score.
+ * Historical reviews and unverified certificate claims remain inspectable,
+ * but never occupy the live quality slot. This is NOT a certification grant.
+ */
+export function publicObservedKingdomScore(input: {
+  status: PublicIndexAuditStatus;
+  kind: PublicIndexAuditKind | null;
+  score: number | null;
+}): number | null {
+  return input.status === "current" && input.kind === "agent" &&
+    typeof input.score === "number" && Number.isInteger(input.score) &&
+    input.score >= 0 && input.score < 100 ? input.score : null;
+}
+
+/** An agent observation is only a fresh signal while actively refreshed.
+ * The 30-day review-retention window is not permission to call an agent feed live.
+ */
+export function isKingdomObservationStale(input: {
+  kind: PublicIndexAuditKind;
+  checkedAtMs: number | null;
+  nowMs: number;
+}): boolean {
+  if(input.checkedAtMs===null || !Number.isFinite(input.checkedAtMs) || !Number.isFinite(input.nowMs)) return true;
+  const age = input.nowMs - input.checkedAtMs;
+  const ttl = input.kind==="agent" ? 15*60*1000 : 30*24*60*60*1000;
+  return age > ttl || age < -5*60*1000;
+}

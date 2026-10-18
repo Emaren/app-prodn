@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import profiles from "../config/kingdom-index-assurance-profiles.json" with { type: "json" };
 import catalog from "../config/kingdom-index-routes.json" with { type: "json" };
-import { classifyPublicKingdomAuditStatus as status } from "../lib/kingdomIndexAuditStatus.ts";
+import { classifyPublicKingdomAuditStatus as status, publicObservedKingdomScore, isKingdomObservationStale } from "../lib/kingdomIndexAuditStatus.ts";
 import { readFileSync } from "node:fs";
 
 test("all public routes have an explicit, existing assurance profile",()=>{
@@ -59,4 +59,23 @@ test("public server entrypoint and display both use the fail-closed boundary",()
   assert.match(source,/p\.status==="current"&&p\.kind==="certified"/);
   assert.match(ui,/CERTIFICATION CLAIM UNVERIFIED/);
   assert.ok(profiles.policy.includes("authenticated"));
+});
+
+test("live quality slot never recycles historical or asserted certified scores",()=>{
+  assert.equal(publicObservedKingdomScore({status:"drifted",kind:"source-review",score:64}),null);
+  assert.equal(publicObservedKingdomScore({status:"provisional",kind:"source-review",score:64}),null);
+  assert.equal(publicObservedKingdomScore({status:"stale",kind:"agent",score:82}),null);
+  assert.equal(publicObservedKingdomScore({status:"provisional",kind:"certified",score:100}),null);
+  assert.equal(publicObservedKingdomScore({status:"current",kind:"agent",score:72}),72);
+  assert.equal(publicObservedKingdomScore({status:"current",kind:"agent",score:100}),null);
+  assert.equal(publicObservedKingdomScore({status:"current",kind:"agent",score:NaN}),null);
+});
+
+test("agent scores expire after fifteen minutes and future timestamps fail closed",()=>{
+ const now=Date.parse("2026-10-18T20:00:00Z");
+ assert.equal(isKingdomObservationStale({kind:"agent",checkedAtMs:now-14*60_000,nowMs:now}),false);
+ assert.equal(isKingdomObservationStale({kind:"agent",checkedAtMs:now-16*60_000,nowMs:now}),true);
+ assert.equal(isKingdomObservationStale({kind:"agent",checkedAtMs:now+6*60_000,nowMs:now}),true);
+ assert.equal(isKingdomObservationStale({kind:"agent",checkedAtMs:null,nowMs:now}),true);
+ assert.equal(isKingdomObservationStale({kind:"source-review",checkedAtMs:now-24*60*60_000,nowMs:now}),false);
 });

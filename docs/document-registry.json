@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5800e483c665203ee62958ca10fd363f63adf079e32ccda050397833f0a38c7d",
+      "sha256": "b4bb417c3406ea34ff615ee5af0c4846de60a4570ca12d28586cf3d0dd03ea68",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -733,7 +733,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-18",
       "sensitivity": "internal",
-      "sha256": "d9bf518b3ef50dd9d165f92df7218b64e1c178b536ac4c67b6ea31b6b411458f",
+      "sha256": "a2ac401101825589f60620d3b9c7ff6b746ebf1ca2123ccadc720eb0ceeee131",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/20261018-mecha-custody-endpoint-boundary",
-    "commit": "c5a7c7b8c9e2ebc34ba7935839a3e7973b669470"
+    "branch": "fix/20261018-kingdom-index-live-score-ledger-first",
+    "commit": "1c7a4c909ae889d5f35a4aba31cdcdcdbee76f80"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
