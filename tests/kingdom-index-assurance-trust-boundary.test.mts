@@ -89,3 +89,11 @@ test("specialized gate requirements are rendered as explicitly unverified proof 
   assert.match(ui,/No gate counts as passed without authenticated source-bound evidence/);
   assert.doesNotMatch(ui,/specializedAssurance\.gates\.filter\([^\n]*=>[^\n]*"verified"/);
 });
+
+test("Kingdom Index labels its route-local source evidence as non-transitive",()=>{
+  const src=readFileSync(new URL("../lib/kingdomIndex.ts",import.meta.url),"utf8");
+  const ui=readFileSync(new URL("../components/kingdom-index/KingdomIndex.tsx",import.meta.url),"utf8");
+  assert.match(src,/NOT complete transitive provenance/);
+  assert.match(ui,/ROUTE SOURCE/);
+  assert.match(ui,/transitive dependencies and deployed runtime still require independent proof/);
+});

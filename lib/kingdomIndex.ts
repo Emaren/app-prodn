@@ -7,7 +7,6 @@ import baseline from "@/config/kingdom-index-baseline.json";
 import qualityRubric from "@/config/kingdom-index-quality-rubric.json";
 import assuranceProfiles from "@/config/kingdom-index-assurance-profiles.json";
 import { classifyPublicKingdomAuditStatus, publicObservedKingdomScore, isKingdomObservationStale } from "@/lib/kingdomIndexAuditStatus";
-import { PAGE_CHANGE_MANIFEST } from "@/lib/pageChangeManifest.generated";
 
 export type District = "citadel" | "arena" | "forge" | "bazaar" | "commons";
 export type PageAuditKind = "certified" | "agent" | "source-review";
@@ -29,6 +28,7 @@ export type KingdomIndexEntry = {
   label: string;
   district: District;
   sourceVersion: string | null;
+  sourceVersionAuthority: "route-local-git-census";
   measuredVersion: string | null;
   score: number | null;
   lastReviewScore: number | null;
@@ -52,7 +52,6 @@ export type KingdomIndexSnapshot = {
   source: "file" | "review-baseline";
 };
 // Values are evidence-bound, not AI-guessed. 100 requires independent certification.
-const PAGE_VERSIONS = new Map<string,string>(PAGE_CHANGE_MANIFEST.map(r=>[r.href,r.version]));
 const MAX_LEDGER_BYTES = 256_000;
 function dateValue(raw: unknown): number | null {
   if(typeof raw !== "string" || raw.length>50) return null;
@@ -129,7 +128,11 @@ export async function loadKingdomIndex(): Promise<KingdomIndexSnapshot> {
   const proof=await observations();
   const byRoute=new Map(proof.rows.map(r=>[r.href,r]));
   const pages: KingdomIndexEntry[]=catalog.map(route=>{
-    const version=PAGE_VERSIONS.get(route.href)??route.sourceTree;
+    // All 68 routes use the same CI-regenerated source census. The older
+    // PAGE_CHANGE_MANIFEST uses a separate algorithm and only covers a subset;
+    // mixing those versions could claim a source match for obsolete code.
+    // This is a route-local fingerprint, NOT complete transitive provenance.
+    const version = /^src-[a-f0-9]{16}$/.test(route.sourceTree) ? route.sourceTree : null;
     const obs=byRoute.get(route.href);
     const measuredVersion=obs?.sourceVersion??null;
     // Historical evidence can be inspected but cannot count as current if the
@@ -145,7 +148,7 @@ export async function loadKingdomIndex(): Promise<KingdomIndexSnapshot> {
     return {
       href:route.href,label:route.label,district:route.district as District,
       specializedAssurance: {profile, gates: specialty.gates.map(gate=>({id:gate.id,requirement:gate.requirement,status:"unverified" as const}))},
-      sourceVersion:version??null,measuredVersion,
+      sourceVersion:version,sourceVersionAuthority:"route-local-git-census",measuredVersion,
       // Keep a historical score visible only with an explicit noncurrent state.
       score: publicObservedKingdomScore({ status, kind: obs?.kind??null, score: obs?.score??null }),
       lastReviewScore:obs?.score??null, checkedAt:obs?.checkedAt??null,
