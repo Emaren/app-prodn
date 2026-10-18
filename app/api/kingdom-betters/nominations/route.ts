@@ -36,7 +36,7 @@ export async function POST(request:NextRequest){
     const named=new Map(participants.map(p=>[p.uid,p.inGameName||p.steamPersonaName||"Warrior"]));
     const now=new Date(),today=new Date(now.getTime()-86_400_000);
     const result=await db.$transaction(async tx=>{
-      await tx.$queryRaw`SELECT pg_advisory_xact_lock(79711, ${viewer.id})`;
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(79711, ${viewer.id})`;
       const recent=await tx.userActivityEvent.findMany({where:{userId:viewer.id,type:"kingdom_match_nomination",createdAt:{gte:today}},take:20,orderBy:{createdAt:"desc"},select:{id:true,metadata:true}});
       const duplicate=recent.find(x=>x.metadata && typeof x.metadata==="object"&&!Array.isArray(x.metadata)&&"requestId" in x.metadata && x.metadata.requestId===requestId);
       if(duplicate)return {id:duplicate.id,duplicate:true};
