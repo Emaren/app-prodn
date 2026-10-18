@@ -1,11 +1,17 @@
 import { requireSatchelFinancialBridge } from "./warSatchelFinancialBridgeHold.ts";
 import { authenticatedWarSatchelDepositFreshAt, type AuthenticatedWarSatchelDeposit } from "./warSatchelAuthenticatedDeposit.ts";
 import { inspectSingleTicketSatchelReturn } from "./warSatchelClaimReturnAttribution.ts";
-import { verifyLiveCanonicalSatchelClaimReturn } from "./warSatchelCanonicalClaimReturn.ts";
+import { authenticateSatchelClaimReturn, authenticatedWarSatchelClaimReturnFreshAt } from "./warSatchelAuthenticatedClaimReturn.ts";
+import { loadDurableSatchelClaimReturnExpectation } from "./warSatchelClaimReturnAuthorization.ts";
 import { getWoloBetEscrowRuntime } from "./woloChain.ts";
 import { isVerifiedSatchelWithdrawal, type SatchelVerifiedWithdrawal } from "./warSatchelWithdrawalAuthorization.ts";
 import { randomUUID } from "node:crypto";
-import { inspectLiveCanonicalWithdrawal } from "./warSatchelCanonicalWithdrawal.ts";
+import { satchelFiniteGameSlotAvailable, satchelWatcherSpendWindowIssue } from "./warSatchelWatcherSpendWindow.ts";
+import { verifyDurableSatchelAutoSpendMandate } from "./warSatchelAutoSpendConsent.ts";
+import { authenticateWarSatchelFinancialProof,financialProofFreshAt } from "./warSatchelAuthenticatedFinancialProof.ts";
+import { createHash } from "node:crypto";
+import {withdrawalReservationDigest,withdrawalOwnerMandateDigest,verifyIndependentWithdrawalApproval,readWithdrawalReviewerKey,
+ type WithdrawalOwnerMandate,type IndependentWithdrawalApproval,type DurableWithdrawalEconomics} from "./warSatchelWithdrawalReview.ts";
 /**
  * War Satchel C4: database-atomic, source-idempotent financial posting.
  *
@@ -449,6 +455,7 @@ export async function reserveForWatcherExecution(
         spendExpiresAt: { gt: new Date() },
       },
       orderBy: { signedAt: "desc" },
+      include: { originalMandate: true },
     });
     if (!mandate ||
         mandate.winnerStakeWolo !== exec.winnerStakeWolo ||
@@ -458,6 +465,23 @@ export async function reserveForWatcherExecution(
         mandate.dailyCapWolo > 10000 ||
         mandate.signedAt === null) {
       stop("keplr_signed_spending_mandate_missing_or_stale");
+    }
+    try { verifyDurableSatchelAutoSpendMandate({ consent: mandate, originalMandate: mandate.originalMandate,
+      ownerUid: input.ownerUid, ownerWallet: exec.preset.user.walletAddress || "",
+      presetId: exec.presetId, presetVersion: exec.presetVersion,
+      untilOut: exec.preset.untilOut, gamesRemaining: exec.preset.gamesRemaining, now: new Date() });
+    } catch { stop("original_keplr_spending_signature_missing_or_invalid"); }
+    // A finite plan's last game can have several simultaneous Watcher rows.
+    // Keep each unresolved send/reserve in its own slot until commit decrements
+    // gamesRemaining or a proven no-broadcast release frees it. UNKNOWN never
+    // creates room for a replacement game. This read shares the vault lock.
+    const unresolvedReservations = await tx.satchelFundedReservation.count({
+      where: { status: { in: ["reserved", "unknown_hold"] },
+        execution: { presetId: exec.presetId, presetVersion: exec.presetVersion } },
+    });
+    if (!satchelFiniteGameSlotAvailable({ untilOut: exec.preset.untilOut,
+      gamesRemaining: exec.preset.gamesRemaining, unresolvedReservations })) {
+      stop("finite_plan_exhausted_or_all_game_slots_reserved");
     }
     const evidence = exec.sourceEvidence && typeof exec.sourceEvidence === "object" &&
       !Array.isArray(exec.sourceEvidence)
@@ -477,6 +501,10 @@ export async function reserveForWatcherExecution(
       select: {
         id: true, status: true, marketType: true,
         integrityStatus: true, propositionHash: true,
+        scheduledMatchId: true, linkedSessionKey: true, createdAt: true,
+        closeAt: true, phaseOpensAt: true, phaseClosesAt: true,
+        winnerSide: true, settledAt: true, voidedAt: true, refundStatus: true,
+        settlementExecutedAt: true, linkedGameStatsId: true, lateFinalGameStatsId: true,
       },
     });
     if (!market || market.status !== "live" || market.marketType !== "winner" ||
@@ -484,11 +512,18 @@ export async function reserveForWatcherExecution(
         market.propositionHash !== exec.propositionHash) {
       stop("canonical_watcher_market_not_live");
     }
+    const windowIssue = satchelWatcherSpendWindowIssue({ market,
+      executionCreatedAt: exec.createdAt, signedAt: mandate.signedAt, now: new Date() });
+    if (windowIssue) stop(windowIssue);
     if (exec.desyncMarketId !== null) {
       const desync = await tx.betMarket.findUnique({
         where: { id: exec.desyncMarketId },
         select: { status: true, marketType: true, parentMarketId: true,
-          propositionHash: true, integrityStatus: true },
+          propositionHash: true, integrityStatus: true,
+          scheduledMatchId: true, linkedSessionKey: true, createdAt: true,
+          closeAt: true, phaseOpensAt: true, phaseClosesAt: true,
+          winnerSide: true, settledAt: true, voidedAt: true, refundStatus: true,
+          settlementExecutedAt: true, linkedGameStatsId: true, lateFinalGameStatsId: true },
       });
       if (!desync || desync.status !== "live" ||
           desync.marketType !== "desync" || desync.parentMarketId !== market.id ||
@@ -496,6 +531,9 @@ export async function reserveForWatcherExecution(
           desync.integrityStatus !== "verified") {
         stop("desync_wager_market_no_longer_consistent");
       }
+      const desyncIssue = satchelWatcherSpendWindowIssue({ market: desync,
+        executionCreatedAt: exec.createdAt, signedAt: mandate.signedAt, now: new Date() });
+      if (desyncIssue) stop(desyncIssue);
     }
     // A protected daily cap must be checked independently of the UI plan;
     // count the day's RESERVATION attempts, even if subsequently returned,
@@ -660,6 +698,7 @@ export async function markSatchelSubmissionAttempt(
         signedAt: { not: null }, revokedAt: null, spendExpiresAt: { gt: now },
       },
       orderBy: { signedAt: "desc" },
+      include: { originalMandate: true },
     });
     if (!permit || permit.winnerStakeWolo !== execution.winnerStakeWolo ||
         permit.desyncStakeWolo !== execution.desyncStakeWolo ||
@@ -667,14 +706,36 @@ export async function markSatchelSubmissionAttempt(
         permit.perGameCapWolo < execution.winnerStakeWolo + execution.desyncStakeWolo) {
       stop("keplr_auto_spending_mandate_revoked_before_broadcast");
     }
+    try { verifyDurableSatchelAutoSpendMandate({ consent: permit, originalMandate: permit.originalMandate,
+      ownerUid: execution.preset.user.uid, ownerWallet: execution.preset.user.walletAddress,
+      presetId: execution.presetId, presetVersion: execution.presetVersion,
+      untilOut: execution.preset.untilOut, gamesRemaining: execution.preset.gamesRemaining, now });
+    } catch { stop("original_keplr_spending_signature_missing_or_invalid"); }
     const market = await tx.betMarket.findUnique({
       where: { id: execution.winnerMarketId },
-      select: { status: true, integrityStatus: true, propositionHash: true },
+      select: { status: true, integrityStatus: true, propositionHash: true,
+        marketType: true, scheduledMatchId: true, linkedSessionKey: true, createdAt: true,
+        closeAt: true, phaseOpensAt: true, phaseClosesAt: true,
+        winnerSide: true, settledAt: true, voidedAt: true, refundStatus: true,
+        settlementExecutedAt: true, linkedGameStatsId: true, lateFinalGameStatsId: true },
     });
     if (!market || market.status !== "live" ||
         market.integrityStatus !== "verified" ||
         market.propositionHash !== execution.propositionHash) {
       stop("watcher_proposition_not_live_before_broadcast");
+    }
+    const windowIssue = satchelWatcherSpendWindowIssue({ market,
+      executionCreatedAt: execution.createdAt, signedAt: permit.signedAt!, now });
+    if (windowIssue) stop(windowIssue);
+    if (execution.desyncMarketId !== null) {
+      const desync = await tx.betMarket.findUnique({ where: { id: execution.desyncMarketId } });
+      if (!desync || desync.parentMarketId !== execution.winnerMarketId ||
+          desync.propositionHash !== execution.propositionHash || desync.integrityStatus !== "verified") {
+        stop("desync_wager_market_no_longer_consistent");
+      }
+      const desyncIssue = satchelWatcherSpendWindowIssue({ market: desync,
+        executionCreatedAt: execution.createdAt, signedAt: permit.signedAt!, now });
+      if (desyncIssue) stop(desyncIssue);
     }
     const changed = await tx.satchelFundedReservation.updateMany({
       where: { id: reservation.id, status: "reserved" },
@@ -888,6 +949,16 @@ export async function reserveOwnerSatchelWithdrawal(
         amountUwolo:input.amountUwolo, status:"reserved",
       },
     });
+    const economics={withdrawalId:id,ownerUserId:input.ownerUserId,ownerUid:input.ownerUid,
+      wallet:input.ownerKeplrWallet,vault:fundedVaultAddress(),amountUwolo:input.amountUwolo.toString(),
+      memo:"aoe2war/satchel/withdraw/v1/"+id,ownerMandate:signed.ownerMandate};
+    await tx.satchelWithdrawalAuthorization.create({data:{
+      withdrawalId:id,ownerUserId:input.ownerUserId,ownerUid:input.ownerUid,
+      walletAddress:input.ownerKeplrWallet,vaultAddress:economics.vault,amountUwolo:input.amountUwolo,
+      challengeId:challenge.id,ownerMandateJson:signed.ownerMandate as Prisma.InputJsonValue,
+      ownerMandateDigest:withdrawalOwnerMandateDigest(signed.ownerMandate),
+      reservationDigest:withdrawalReservationDigest(economics),memo:economics.memo,
+    }});
     await tx.satchelFundedJournal.create({
       data:{
         ownerUserId:input.ownerUserId,sourceKey:"satchel:withdraw:reserve:"+id,
@@ -918,24 +989,69 @@ export async function reserveOwnerSatchelWithdrawal(
 /** A signer must durably fence the request before any possible network send.
  * Even a crash or timeout after this transition is NOT safe to resend.
  */
-export async function markSatchelWithdrawalAttempt(
-  prisma: PrismaClient,
-  input:{withdrawalId:string;ownerUserId:number},
-) {
-  withdrawalGate();
+function withdrawalEconomics(a:{withdrawalId:string;ownerUserId:number;ownerUid:string;walletAddress:string;vaultAddress:string;amountUwolo:bigint;memo:string;reservationDigest:string;ownerMandateJson:unknown}):DurableWithdrawalEconomics{
+  return {withdrawalId:a.withdrawalId,ownerUserId:a.ownerUserId,ownerUid:a.ownerUid,wallet:a.walletAddress,
+    vault:a.vaultAddress,amountUwolo:a.amountUwolo.toString(),memo:a.memo,reservationDigest:a.reservationDigest,
+    ownerMandate:a.ownerMandateJson as WithdrawalOwnerMandate};
+}
+/** Trusted reviewer ingress ONLY: signature supplied by a separate approval
+ * authority after inspecting this durable reservation. Never a browser route. */
+export async function recordReviewedSatchelWithdrawalApproval(prisma:PrismaClient,input:{withdrawalId:string;approval:IndependentWithdrawalApproval}){
+  withdrawalGate();const reviewer=await readWithdrawalReviewerKey();
   return withExclusiveSatchelTx(prisma,async tx=>{
-    const found=await tx.satchelFundedWithdrawal.findUnique({
-      where:{id:input.withdrawalId},
-    });
-    if (!found || found.ownerUserId!==input.ownerUserId || found.status!=="reserved") {
-      stop("already_attempted_withdrawal_never_resubmit");
-    }
-    const changed=await tx.satchelFundedWithdrawal.updateMany({
-      where:{id:found.id,status:"reserved"},
-      data:{status:"unknown_hold",updatedAt:new Date()},
-    });
+    const withdrawal=await tx.satchelFundedWithdrawal.findUnique({where:{id:input.withdrawalId}});
+    const authorization=await tx.satchelWithdrawalAuthorization.findUnique({where:{withdrawalId:input.withdrawalId}});
+    if(!withdrawal||!authorization||withdrawal.status!=="reserved"||
+      await tx.satchelWithdrawalRevocation.findUnique({where:{withdrawalId:input.withdrawalId}}))stop("withdrawal_not_reviewable");
+    const reserve=await tx.satchelFundedJournal.findUnique({where:{sourceKey:"satchel:withdraw:reserve:"+input.withdrawalId}});
+    if(!reserve||reserve.amountUwolo!==authorization.amountUwolo||reserve.ownerUserId!==authorization.ownerUserId||
+      reserve.deltaAvailableUwolo!==-authorization.amountUwolo||reserve.deltaWithdrawalPendingUwolo!==authorization.amountUwolo)
+      stop("withdrawal_durable_hold_missing");
+    verifyIndependentWithdrawalApproval(input.approval,withdrawalEconomics(authorization),reviewer,Date.now());
+    const digest=createHash("sha256").update(JSON.stringify(input.approval)).digest("hex");
+    const existing=await tx.satchelWithdrawalApproval.findUnique({where:{withdrawalId:input.withdrawalId}});
+    if(existing){if(existing.approvalDigest!==digest)stop("withdrawal_approval_changed");return {state:"already_reviewed" as const};}
+    await tx.satchelWithdrawalApproval.create({data:{withdrawalId:input.withdrawalId,
+      approvalJson:input.approval as Prisma.InputJsonValue,approvalDigest:digest}});
+    return {state:"reviewed" as const};
+  });
+}
+
+/** Atomic pre-dispatch fence. A cancellation and this operation use the same
+ * vault transaction lock. UNKNOWN is never automatically dispatched again. */
+export async function markSatchelWithdrawalAttempt(
+  prisma:PrismaClient,input:{withdrawalId:string;ownerUserId:number},
+){
+  withdrawalGate();const reviewer=await readWithdrawalReviewerKey();
+  const bank=await readIndependentSatchelBank();
+  return withExclusiveSatchelTx(prisma,async tx=>{
+    const found=await tx.satchelFundedWithdrawal.findUnique({where:{id:input.withdrawalId}});
+    const authorization=await tx.satchelWithdrawalAuthorization.findUnique({where:{withdrawalId:input.withdrawalId}});
+    const reviewed=await tx.satchelWithdrawalApproval.findUnique({where:{withdrawalId:input.withdrawalId}});
+    if(!found||found.ownerUserId!==input.ownerUserId||found.status!=="reserved"||!authorization||!reviewed)
+      stop("already_attempted_or_unreviewed_withdrawal_never_resubmit");
+    const actors=await tx.$queryRaw<Array<{uid:string;wallet_address:string|null}>>`
+      SELECT uid,wallet_address FROM users WHERE id=${input.ownerUserId} FOR UPDATE`;
+    if(actors.length!==1||actors[0].uid!==authorization.ownerUid||actors[0].wallet_address!==authorization.walletAddress||
+       await tx.satchelWithdrawalRevocation.findUnique({where:{withdrawalId:found.id}}))stop("withdrawal_revoked_or_owner_changed");
+    const economics=withdrawalEconomics(authorization),approval=reviewed.approvalJson as IndependentWithdrawalApproval;
+    if(economics.vault!==fundedVaultAddress()||found.amountUwolo!==authorization.amountUwolo||
+      found.ownerWalletAddress!==authorization.walletAddress)stop("withdrawal_authorization_identity_changed");
+    verifyIndependentWithdrawalApproval(approval,economics,reviewer,Date.now());
+    requireFreshBank(bank,Date.now());
+    const account=await tx.satchelFundedBalance.findUnique({where:{ownerUserId:input.ownerUserId}});
+    if(!account||account.withdrawalPendingUwolo<found.amountUwolo||await outstandingVaultLiability(tx)>bank.balanceUwolo)
+      stop("withdrawal_liability_or_vault_not_backed");
+    const operationId="satchel:withdrawal:"+found.id;
+    const request={protocol:1,operation_id:operationId,chain_id:"wolo-1",from_address:economics.vault,
+      to_address:economics.wallet,amount:{denom:"uwolo",amount:economics.amountUwolo},memo:economics.memo,
+      owner_id:economics.ownerUid,approval,owner_mandate:economics.ownerMandate};
+    await tx.satchelWithdrawalAttempt.create({data:{operationId,withdrawalId:found.id,
+      requestJson:request as Prisma.InputJsonValue,requestDigest:createHash("sha256").update(JSON.stringify(request)).digest("hex")}});
+    const changed=await tx.satchelFundedWithdrawal.updateMany({where:{id:found.id,status:"reserved"},
+      data:{status:"unknown_hold",updatedAt:new Date()}});
     if(changed.count!==1)stop("withdrawal_attempt_race");
-    return Object.freeze({state:"broadcast_uncertainty_locked" as const});
+    return Object.freeze({state:"broadcast_uncertainty_locked" as const,operationId,request:Object.freeze(request)});
   });
 }
 
@@ -979,6 +1095,8 @@ export async function cancelUnbroadcastSatchelWithdrawal(
         version:{increment:BigInt(1)},updatedAt:new Date(),
       },
     });
+    const authorization=await tx.satchelWithdrawalAuthorization.findUnique({where:{withdrawalId:found.id}});
+    if(authorization)await tx.satchelWithdrawalRevocation.create({data:{withdrawalId:found.id,ownerUserId:input.ownerUserId}});
     await tx.satchelFundedWithdrawal.update({
       where:{id:found.id},data:{status:"cancelled",updatedAt:new Date()},
     });
@@ -993,74 +1111,53 @@ export async function cancelUnbroadcastSatchelWithdrawal(
  * payout-completion API, and no path to mark an unknown hash as "sent"
  * without matching chain evidence.
  */
-export async function finalizeProvenSatchelWithdrawal(
-  prisma: PrismaClient,
-  input:{withdrawalId:string;ownerUserId:number;txHash:string},
-) {
-  withdrawalGate();
-  if(!TX_HASH.test(input.txHash))stop("invalid_withdrawal_tx_hash");
-  const withdrawal=await prisma.satchelFundedWithdrawal.findUnique({
-    where:{id:input.withdrawalId},
-  });
-  if(!withdrawal || withdrawal.ownerUserId!==input.ownerUserId ||
-      !["unknown_hold","sent"].includes(withdrawal.status))stop("withdrawal_not_inflight");
-  const vault=fundedVaultAddress();
-  const proven=await inspectLiveCanonicalWithdrawal({
-    withdrawalId:withdrawal.id,txHash:input.txHash,
-    vaultAddress:vault,ownerWalletAddress:withdrawal.ownerWalletAddress,
-    amountUwolo:withdrawal.amountUwolo.toString(),
-  });
+export async function finalizeProvenSatchelWithdrawal(prisma:PrismaClient,input:{withdrawalId:string;ownerUserId:number;txHash:string}){
+  withdrawalGate();if(!TX_HASH.test(input.txHash))stop("invalid_withdrawal_tx_hash");
+  const withdrawal=await prisma.satchelFundedWithdrawal.findUnique({where:{id:input.withdrawalId}});
+  const authorization=await prisma.satchelWithdrawalAuthorization.findUnique({where:{withdrawalId:input.withdrawalId}});
+  const attempt=await prisma.satchelWithdrawalAttempt.findUnique({where:{withdrawalId:input.withdrawalId}});
+  const reviewed=await prisma.satchelWithdrawalApproval.findUnique({where:{withdrawalId:input.withdrawalId}});
+  if(!withdrawal||withdrawal.ownerUserId!==input.ownerUserId||!["unknown_hold","sent"].includes(withdrawal.status)||
+    !authorization||!attempt||!reviewed)stop("withdrawal_not_durably_inflight");
+  const observed=await prisma.satchelWithdrawalObservation.findMany({where:{operationId:attempt.operationId,txHash:{not:null}},select:{txHash:true}});
+  if(!observed.length||observed.some(x=>x.txHash!==input.txHash))stop("withdrawal_hash_missing_or_conflicting");
+  const economics=withdrawalEconomics(authorization);
+  const expectedContext={protocol:1,kind:"withdrawal",owner_id:economics.ownerUid,operation_id:attempt.operationId,
+    sender:economics.vault,recipient:economics.wallet,amount_uwolo:economics.amountUwolo,memo:economics.memo,
+    tx_hash:input.txHash,withdrawal_approval:reviewed.approvalJson,owner_mandate:authorization.ownerMandateJson};
+  const proven=await authenticateWarSatchelFinancialProof({kind:"withdrawal",ownerUid:economics.ownerUid,
+    operationId:attempt.operationId,txHash:input.txHash,vault:economics.vault,expectedContext,
+    requestPath:"/satchel/v1/proofs/operation",requestBody:{operation_id:attempt.operationId}});
   const bank=await readIndependentSatchelBank();
-  if(bank.height<BigInt(proven.headHeight))stop("bank_snapshot_precedes_withdrawal_proof");
+  if(bank.height<proven.height)stop("bank_snapshot_precedes_withdrawal_proof");
   return withExclusiveSatchelTx(prisma,async tx=>{
-    const fresh=await tx.satchelFundedWithdrawal.findUnique({
-      where:{id:withdrawal.id},
-    });
-    if(!fresh || fresh.ownerUserId!==input.ownerUserId ||
-       fresh.ownerWalletAddress!==withdrawal.ownerWalletAddress ||
-       fresh.amountUwolo!==withdrawal.amountUwolo)stop("withdrawal_identity_changed");
+    if(!financialProofFreshAt(proven))stop("withdrawal_authenticated_head_expired");
+    const fresh=await tx.satchelFundedWithdrawal.findUnique({where:{id:withdrawal.id}});
+    if(!fresh||fresh.ownerUserId!==input.ownerUserId||fresh.ownerWalletAddress!==economics.wallet||fresh.amountUwolo!==authorization.amountUwolo)
+      stop("withdrawal_identity_changed");
+    const physical=await tx.satchelWithdrawalPhysicalConsumption.findUnique({where:{chainId_txHash:{chainId:"wolo-1",txHash:proven.txHash}}});
+    const journal=await tx.satchelFundedJournal.findUnique({where:{sourceKey:"satchel:withdraw:sent:"+fresh.id}});
     if(fresh.status==="sent"){
-      if(fresh.txHash!==proven.hash || fresh.confirmedHeight!==BigInt(proven.confirmedHeight))
-        stop("withdrawal_conflicting_finality_proof");
-      return Object.freeze({state:"already_sent" as const,txHash:proven.hash});
+      if(fresh.txHash!==proven.txHash||fresh.confirmedHeight!==proven.height||!physical||physical.withdrawalId!==fresh.id||
+        physical.ownerUserId!==input.ownerUserId||physical.amountUwolo!==fresh.amountUwolo||physical.vaultAddress!==economics.vault||
+        !journal||journal.deltaWithdrawalPendingUwolo!==-fresh.amountUwolo)stop("withdrawal_incomplete_recorded_success");
+      return Object.freeze({state:"already_sent" as const,txHash:proven.txHash});
     }
-    if(fresh.status!=="unknown_hold")stop("cannot_finalize_unattempted_withdrawal");
-    const account=await tx.satchelFundedBalance.findUnique({
-      where:{ownerUserId:input.ownerUserId},
-    });
-    if(!account || account.withdrawalPendingUwolo<fresh.amountUwolo)stop("withdrawal_not_liability_backed");
-    requireFreshBank(bank,Date.now());
-    const liabilities=await outstandingVaultLiability(tx);
-    // This specific transfer already LEFT the vault. The current physical
-    // balance must fund every other claimant AFTER its pending liability
-    // is removed, not before (which would falsely require double collateral).
-    if(liabilities<fresh.amountUwolo ||
-       bank.balanceUwolo<liabilities-fresh.amountUwolo)
-       stop("post_withdrawal_vault_insolvent");
-    await tx.satchelFundedJournal.create({
-      data:{
-        ownerUserId:input.ownerUserId,
-        sourceKey:"satchel:withdraw:sent:"+fresh.id,
-        eventKind:"withdraw_sent",amountUwolo:fresh.amountUwolo,
-        deltaAvailableUwolo:BigInt(0),
-        deltaReservedUwolo:BigInt(0),
-        deltaCommittedUwolo:BigInt(0),
-        deltaWithdrawalPendingUwolo:-fresh.amountUwolo,
-      },
-    });
-    await tx.satchelFundedBalance.update({
-      where:{ownerUserId:input.ownerUserId},
-      data:{
-        withdrawalPendingUwolo:{decrement:fresh.amountUwolo},
-        version:{increment:BigInt(1)},updatedAt:new Date(),
-      },
-    });
-    await tx.satchelFundedWithdrawal.update({
-      where:{id:fresh.id},
-      data:{status:"sent",txHash:proven.hash,
-        confirmedHeight:BigInt(proven.confirmedHeight),updatedAt:new Date()},
-    });
-    return Object.freeze({state:"sent" as const,txHash:proven.hash});
+    if(fresh.status!=="unknown_hold"||physical||journal)stop("withdrawal_conflicting_finality_proof");
+    const account=await tx.satchelFundedBalance.findUnique({where:{ownerUserId:input.ownerUserId}});
+    if(!account||account.withdrawalPendingUwolo<fresh.amountUwolo)stop("withdrawal_not_liability_backed");
+    requireFreshBank(bank,Date.now());const liabilities=await outstandingVaultLiability(tx);
+    if(liabilities<fresh.amountUwolo||bank.balanceUwolo<liabilities-fresh.amountUwolo)stop("post_withdrawal_vault_insolvent");
+    await tx.satchelWithdrawalPhysicalConsumption.create({data:{chainId:"wolo-1",txHash:proven.txHash,messageIndex:0,
+      withdrawalId:fresh.id,ownerUserId:input.ownerUserId,amountUwolo:fresh.amountUwolo,vaultAddress:economics.vault}});
+    await tx.satchelFundedJournal.create({data:{ownerUserId:input.ownerUserId,sourceKey:"satchel:withdraw:sent:"+fresh.id,
+      eventKind:"withdraw_sent",amountUwolo:fresh.amountUwolo,deltaAvailableUwolo:BigInt(0),deltaReservedUwolo:BigInt(0),
+      deltaCommittedUwolo:BigInt(0),deltaWithdrawalPendingUwolo:-fresh.amountUwolo}});
+    await tx.satchelFundedBalance.update({where:{ownerUserId:input.ownerUserId},data:{
+      withdrawalPendingUwolo:{decrement:fresh.amountUwolo},version:{increment:BigInt(1)},updatedAt:new Date()}});
+    await tx.satchelFundedWithdrawal.update({where:{id:fresh.id},data:{status:"sent",txHash:proven.txHash,confirmedHeight:proven.height,updatedAt:new Date()}});
+    if(!financialProofFreshAt(proven))stop("withdrawal_authenticated_head_expired");
+    return Object.freeze({state:"sent" as const,txHash:proven.txHash});
   });
 }
 
@@ -1114,6 +1211,20 @@ export async function quarantineUnknownSatchelWager(
   });
 }
 
+async function committedClaimReturnResult(tx:Prisma.TransactionClient,
+  receipt:{id:bigint;claimId:number;ownerUserId:number;txHash:string;amountUwolo:bigint;vaultAddress:string},
+) {
+  await requirePhysicalConsumption(tx,"claim_return",receipt);
+  const journal=await tx.satchelFundedJournal.findUnique({where:{sourceKey:"satchel:return:claim:"+receipt.claimId}});
+  const account=await tx.satchelFundedBalance.findUnique({where:{ownerUserId:receipt.ownerUserId}});
+  if(!journal||!account||journal.claimReturnId!==receipt.id||journal.ownerUserId!==receipt.ownerUserId||
+     journal.eventKind!=="claim_return_credit"||journal.amountUwolo!==receipt.amountUwolo||
+     journal.deltaAvailableUwolo!==receipt.amountUwolo||journal.deltaReservedUwolo!==0n||
+     journal.deltaCommittedUwolo!==0n||journal.deltaWithdrawalPendingUwolo!==0n)
+    stop("incomplete_recorded_claim_return_credit");
+  return Object.freeze({status:"already_credited" as const,returnId:String(receipt.id),availableUwolo:String(account.availableUwolo)});
+}
+
 /**
  * Apply a physically received escrow payout/complete unmatched refund to the
  * ORIGINAL Steam owner's spendable War Satchel. No token is transmitted here.
@@ -1132,7 +1243,7 @@ export async function creditVerifiedSatchelClaimReturn(
      process.env.WAR_SATCHEL_BET_PAYOUT_ROUTING_CERTIFIED!=="true" ||
      process.env.WAR_SATCHEL_UNMATCHED_REFUND_CREDIT_CERTIFIED!=="true")
     stop("claim_return_credit_not_certified");
-  if(!Number.isSafeInteger(input.claimId)||input.claimId<1||
+  if(!Number.isSafeInteger(input.claimId)||input.claimId<1||input.claimId===889||
      !Number.isSafeInteger(input.ownerUserId)||input.ownerUserId<1)
     stop("invalid_claim_return_identity");
   const vault=fundedVaultAddress();
@@ -1153,16 +1264,32 @@ export async function creditVerifiedSatchelClaimReturn(
   const sourceMarketId=claim.sourceMarketId;
   if(sourceMarketId===null)stop("missing_claim_market_identity");
   const txHash=claim.payoutTxHash.toUpperCase();
-  const proof=await verifyLiveCanonicalSatchelClaimReturn({
-    claimId:claim.id,claimKind:claim.claimKind,
-    txHash,escrowAddress:escrow.escrowAddress,
-    vaultAddress:vault,
-    amountUwolo:(BigInt(claim.amountWolo)*BigInt(1000000)).toString(),
+  const durableOwner={claimId:input.claimId,ownerUserId:input.ownerUserId,ownerUid:input.ownerUid,vault,escrow:escrow.escrowAddress};
+  // Recover only a complete committed credit after restart; no new proof or
+  // ledger mutation is required for this exact immutable receipt+journal.
+  const recorded=await withExclusiveSatchelTx(prisma,async tx=>{
+    await loadDurableSatchelClaimReturnExpectation(tx,durableOwner);
+    const prior=await tx.satchelFundedClaimReturn.findUnique({where:{claimId:input.claimId}});
+    if(!prior)return null;
+    if(prior.ownerUserId!==input.ownerUserId || prior.txHash!==txHash ||
+       prior.amountUwolo!==BigInt(claim.amountWolo)*1000000n || prior.vaultAddress!==vault)
+      stop("claim_return_already_owned_or_conflicting");
+    return committedClaimReturnResult(tx,prior);
   });
+  if(recorded)return recorded;
+  const durable=await loadDurableSatchelClaimReturnExpectation(prisma,durableOwner);
+  const proof=await authenticateSatchelClaimReturn(durable.expected);
+  if(!authenticatedWarSatchelClaimReturnFreshAt(proof))stop("authenticated_comet_return_required");
   const bank=await readIndependentSatchelBank();
-  if(bank.height<proof.headHeight || bank.height<proof.canonicalHeight+BigInt(2))
+  if(bank.height<proof.canonicalHeight+2n)
     stop("bank_does_not_cover_canonical_return_height");
   return withExclusiveSatchelTx(prisma,async tx=>{
+    if(!authenticatedWarSatchelClaimReturnFreshAt(proof))stop("authenticated_comet_return_expired_under_lock");
+    const reloaded=await loadDurableSatchelClaimReturnExpectation(tx,durableOwner);
+    if(reloaded.contextFingerprint!==durable.contextFingerprint ||
+       proof.expected.contextFingerprint!==reloaded.contextFingerprint ||
+       proof.txHash!==reloaded.expected.txHash)
+      stop("claim_return_durable_context_changed");
     const owner=await tx.$queryRaw<Array<{id:number;uid:string}>>`
       SELECT id,uid FROM users WHERE id=${input.ownerUserId} FOR UPDATE
     `;
@@ -1179,18 +1306,10 @@ export async function creditVerifiedSatchelClaimReturn(
       where:{claimId:claim.id},
     });
     if(prior){
-      if(prior.ownerUserId!==input.ownerUserId||
-         prior.txHash!==proof.txHash ||
-         prior.amountUwolo!==proof.amountUwolo)
+      if(prior.ownerUserId!==input.ownerUserId||prior.txHash!==proof.txHash ||
+         prior.amountUwolo!==proof.amountUwolo || prior.vaultAddress!==vault)
         stop("claim_return_already_owned_or_conflicting");
-      const account=await tx.satchelFundedBalance.findUnique({
-        where:{ownerUserId:input.ownerUserId},
-      });
-      return Object.freeze({
-        status:"already_credited" as const,
-        returnId:prior.id.toString(),
-        availableUwolo:String(account?.availableUwolo??BigInt(0)),
-      });
+      return committedClaimReturnResult(tx,prior);
     }
     const wagers=await tx.betWager.findMany({
       where:{
@@ -1271,6 +1390,7 @@ export async function creditVerifiedSatchelClaimReturn(
     const currentBalance=await getOrCreateBalance(tx,input.ownerUserId);
     if(currentBalance.availableUwolo+proof.amountUwolo>MAX_I64)
       stop("owner_spendable_overflow");
+    if(!authenticatedWarSatchelClaimReturnFreshAt(proof))stop("authenticated_comet_return_expired_before_writes");
     const receipt=await tx.satchelFundedClaimReturn.create({
       data:{
         claimId:claim.id,ownerUserId:input.ownerUserId,
@@ -1299,6 +1419,8 @@ export async function creditVerifiedSatchelClaimReturn(
         version:{increment:BigInt(1)},updatedAt:new Date(),
       },
     });
+    // Do not commit if row/trigger waits consumed either signed source head.
+    if(!authenticatedWarSatchelClaimReturnFreshAt(proof))stop("authenticated_comet_return_expired_before_commit");
     return Object.freeze({
       status:"credited" as const,
       returnId:receipt.id.toString(),

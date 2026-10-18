@@ -94,6 +94,10 @@ export type ExpectedSignedReturn = Readonly<{
   entitlementId: string;
   claimKind: "bet_refund" | "bet_payout";
   amountUwolo: string;
+  // Independently reloaded original HD leg economics. Older read-only
+  // consumers may omit these; the authenticated financial caller requires both.
+  principalUwolo?: string;
+  stakeUwolo?: string;
   fundedAmountUwolo: string;
   escrowAddress: string;
   vaultAddress: string;
@@ -211,7 +215,9 @@ export function verifySatchelSignedV2Return(input: {
       if (claim === expected.claimId && legId === expected.legId &&
           marketId === expected.marketId && id === expected.entitlementId &&
           kind === expected.claimKind &&
-          returned.toString() === expected.amountUwolo)
+          returned.toString() === expected.amountUwolo &&
+          (expected.principalUwolo === undefined || principal.toString() === expected.principalUwolo) &&
+          (expected.stakeUwolo === undefined || stake.toString() === expected.stakeUwolo))
         found++;
     }
     if (legPrincipal > stake) stop("principal_exceeds_stake");

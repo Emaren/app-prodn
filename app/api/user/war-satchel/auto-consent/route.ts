@@ -6,10 +6,11 @@ import { randomBytes, randomUUID } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
+import { Prisma } from "@/lib/generated/prisma";
 import { readWarSatchelBoundedUtf8 } from "@/lib/warSatchelBoundedBody";
 import {
   satchelAutoSpendChallengeText, verifySatchelAutoSpendSignature,
-  type SatchelSpendChallenge,
+  storedSatchelSpendChallenge, verifyDurableSatchelAutoSpendMandate,
 } from "@/lib/warSatchelAutoSpendConsent";
 
 export const runtime = "nodejs";
@@ -36,6 +37,7 @@ async function viewer(request: NextRequest) {
       betAutoPreset: { select: {
         id: true, version: true, enabled: true, selfOnly: true,
         winnerStakeWolo: true, desyncSide: true, desyncStakeWolo: true,
+        untilOut: true, gamesRemaining: true,
       } } },
   });
   return user ? { prisma, user } : null;
@@ -49,28 +51,6 @@ async function jsonBody(request: NextRequest) {
       ? obj as Record<string, unknown> : null;
   } catch { return null; }
 }
-function witness(row: {
-  ownerUid: string; walletAddress: string; presetId: number; presetVersion: number;
-  winnerStakeWolo: number; desyncSide: string; desyncStakeWolo: number;
-  perGameCapWolo: number; dailyCapWolo: number; nonce: string;
-  issuedAt: Date; challengeExpiresAt: Date; spendExpiresAt: Date;
-  signedAt: Date | null; revokedAt: Date | null;
-}): SatchelSpendChallenge {
-  if (!["none", "no", "yes"].includes(row.desyncSide)) throw Error("invalid stored plan");
-  return {
-    ownerUid: row.ownerUid, walletAddress: row.walletAddress,
-    presetId: row.presetId, presetVersion: row.presetVersion,
-    winnerStakeWolo: row.winnerStakeWolo,
-    desyncSide: row.desyncSide as SatchelSpendChallenge["desyncSide"],
-    desyncStakeWolo: row.desyncStakeWolo, perGameCapWolo: row.perGameCapWolo,
-    dailyCapWolo: row.dailyCapWolo, nonce: row.nonce,
-    issuedAtUtc: row.issuedAt.toISOString(),
-    challengeExpiresAtUtc: row.challengeExpiresAt.toISOString(),
-    spendExpiresAtUtc: row.spendExpiresAt.toISOString(),
-    signedAtUtc: row.signedAt?.toISOString() ?? null,
-    revokedAtUtc: row.revokedAt?.toISOString() ?? null,
-  };
-}
 export async function GET(request: NextRequest) {
   if (!enabled()) return reply(200, { available: false, signed: false });
   const actor = await viewer(request);
@@ -82,9 +62,16 @@ export async function GET(request: NextRequest) {
       walletAddress: actor.user.walletAddress || "", signedAt: { not: null },
       revokedAt: null, spendExpiresAt: { gt: now } },
     orderBy: { signedAt: "desc" },
-    select: { id: true, perGameCapWolo: true, dailyCapWolo: true, spendExpiresAt: true },
+    include: { originalMandate: true },
   });
-  return reply(200, { available: true, signed: Boolean(signed),
+  let originalVerified = false;
+  if (signed) try {
+    verifyDurableSatchelAutoSpendMandate({consent:signed, originalMandate:signed.originalMandate,
+      ownerUid:actor.user.uid, ownerWallet:actor.user.walletAddress || "", presetId:plan.id,
+      presetVersion:plan.version, untilOut:plan.untilOut, gamesRemaining:plan.gamesRemaining, now});
+    originalVerified = true;
+  } catch { /* A historical signedAt flag alone never grants permission. */ }
+  return reply(200, { available: true, signed: originalVerified,
     presetVersion: plan.version, perGameCapWolo: signed?.perGameCapWolo ?? null,
     dailyCapWolo: signed?.dailyCapWolo ?? null,
     expiresAtUtc: signed?.spendExpiresAt.toISOString() ?? null });
@@ -114,7 +101,16 @@ export async function POST(request: NextRequest) {
   }
   try {
     const row = await actor.prisma.$transaction(async tx => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(724176, 47)`;
       await tx.$executeRaw`SELECT pg_advisory_xact_lock(721005, ${actor.user.id})`;
+      const current = await tx.betAutoPreset.findUnique({ where: {id:plan.id} });
+      const linkedOwner = await tx.user.findUnique({where:{id:actor.user.id},select:{walletAddress:true}});
+      if (!current || !current.enabled || !current.selfOnly || current.version !== plan.version ||
+          current.winnerStakeWolo !== plan.winnerStakeWolo || current.desyncSide !== plan.desyncSide ||
+          current.desyncStakeWolo !== plan.desyncStakeWolo || current.untilOut !== plan.untilOut ||
+          current.gamesRemaining !== plan.gamesRemaining || linkedOwner?.walletAddress !== actor.user.walletAddress) {
+        throw Error("plan or owner changed");
+      }
       const now = new Date();
       const recent = await tx.satchelAutoSpendConsent.count({
         where: { ownerUserId: actor.user.id,
@@ -123,10 +119,11 @@ export async function POST(request: NextRequest) {
       if (recent >= 5) throw Error("consent request limit");
       const already = await tx.satchelAutoSpendConsent.findFirst({
         where: { ownerUserId: actor.user.id, presetId: plan.id, presetVersion: plan.version,
-          signedAt: { not: null }, revokedAt: null, spendExpiresAt: { gt: now } },
+          signedAt: { not: null }, revokedAt: null, spendExpiresAt: { gt: now },
+          originalMandate:{is:{signedAt:{not:null}}} },
       });
       if (already) throw Error("one active consent per plan");
-      return tx.satchelAutoSpendConsent.create({
+      const created = await tx.satchelAutoSpendConsent.create({
         data: {
           id: randomUUID(), ownerUserId: actor.user.id, ownerUid: actor.user.uid,
           walletAddress: actor.user.walletAddress!, presetId: plan.id,
@@ -138,10 +135,15 @@ export async function POST(request: NextRequest) {
           spendExpiresAt: new Date(now.getTime()+24*60*60*1000),
         },
       });
+      const challenge = storedSatchelSpendChallenge(created, current);
+      await tx.satchelAutoSpendMandate.create({data:{consentId:created.id,
+        untilOut:current.untilOut, gamesRemaining:current.gamesRemaining,
+        challengeText:satchelAutoSpendChallengeText(challenge)}});
+      return {created,challenge};
     }, { maxWait: 4000, timeout: 7000 });
-    const challenge = witness(row);
+    const {created,challenge} = row;
     return reply(201, {
-      challengeId: row.id, chainId: "wolo-1", walletAddress: row.walletAddress,
+      challengeId: created.id, chainId: "wolo-1", walletAddress: created.walletAddress,
       message: satchelAutoSpendChallengeText(challenge),
       expiresAtUtc: challenge.challengeExpiresAtUtc,
       spendingExpiresAtUtc: challenge.spendExpiresAtUtc,
@@ -168,29 +170,40 @@ export async function PUT(request: NextRequest) {
   const plan = actor.user.betAutoPreset;
   try {
     await actor.prisma.$transaction(async tx => {
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(724176, 47)`;
       const consent = await tx.satchelAutoSpendConsent.findFirst({
         where: { id: body.challengeId as string, ownerUserId: actor.user.id,
           presetId: plan.id, presetVersion: plan.version, walletAddress: actor.user.walletAddress! },
       });
       if (!consent || consent.signedAt || consent.revokedAt) throw Error("missing challenge");
+      const mandate = await tx.satchelAutoSpendMandate.findUnique({where:{consentId:consent.id}});
+      if (!mandate || mandate.signedAt || mandate.ownerSignatureJson) throw Error("missing original challenge");
       const original = await tx.betAutoPreset.findUnique({ where: { id: plan.id } });
+      const linkedOwner = await tx.user.findUnique({where:{id:actor.user.id},select:{walletAddress:true}});
       if (!original || !original.enabled || !original.selfOnly ||
           original.version !== consent.presetVersion ||
           original.winnerStakeWolo !== consent.winnerStakeWolo ||
           original.desyncSide !== consent.desyncSide ||
-          original.desyncStakeWolo !== consent.desyncStakeWolo) throw Error("plan drift");
+          original.desyncStakeWolo !== consent.desyncStakeWolo ||
+          original.untilOut !== mandate.untilOut || original.gamesRemaining !== mandate.gamesRemaining ||
+          linkedOwner?.walletAddress !== consent.walletAddress) throw Error("plan drift");
+      const challenge = storedSatchelSpendChallenge(consent,mandate);
+      if (satchelAutoSpendChallengeText(challenge) !== mandate.challengeText) throw Error("challenge drift");
+      const signedAt = new Date();
       verifySatchelAutoSpendSignature({
-        challenge: witness(consent), ownerUid: actor.user.uid,
+        challenge, ownerUid: actor.user.uid,
         ownerWallet: actor.user.walletAddress!, presetId: plan.id, presetVersion: plan.version,
-        nowUtc: new Date().toISOString(),
+        nowUtc: signedAt.toISOString(),
         keplrSignature: signature as { pub_key: { type: string; value: string }; signature: string },
       });
       const result = await tx.satchelAutoSpendConsent.updateMany({
         where: { id: consent.id, signedAt: null, revokedAt: null,
           challengeExpiresAt: { gt: new Date() } },
-        data: { signedAt: new Date() },
+        data: { signedAt },
       });
       if (result.count !== 1) throw Error("challenge consumed");
+      await tx.satchelAutoSpendMandate.update({where:{consentId:consent.id},
+        data:{signedAt,ownerSignatureJson:signature as Prisma.InputJsonValue}});
     }, { isolationLevel: "Serializable", maxWait: 4000, timeout: 7000 });
     return reply(200, { signed: true, autoBetSpendConsent: true, creditAuthorized: false,
       withdrawalAuthorized: false });

@@ -34,6 +34,7 @@ export type SatchelReturnWager = Readonly<{
 }>;
 export type SingleTicketSatchelReturn = Readonly<{
   ticketId: number;
+  legId: number;
   operationId: string;
   fundingTxHash: string;
   marketId: number;
@@ -118,8 +119,11 @@ export function inspectSingleTicketSatchelReturn(input: Readonly<{
       dueWolo !== BigInt(input.claimAmountWolo)) {
     refuse("claim_not_exact_owner_entitlement");
   }
+  // v2 assigns one immutable leg to each market. Never choose a leg from an
+  // aggregated legacy claim, even when the ticket and total happen to match.
+  if (legIds.size !== 1) refuse("multi_leg_claim_requires_partition_review");
   return Object.freeze({
-    ticketId, operationId, fundingTxHash, marketId: input.marketId,
+    ticketId, legId: [...legIds][0], operationId, fundingTxHash, marketId: input.marketId,
     amountUwolo: dueWolo * MICRO,
     principalUwolo: principalWolo * MICRO,
     wagerCount: input.wagers.length,
