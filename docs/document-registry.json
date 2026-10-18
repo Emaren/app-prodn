@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "3cb7d22eab2fb88781f9b1a9e6b89402ddf65b69f0c5a3d0e59433ab9620f1f9",
+      "sha256": "d31c242f96966492f2d87974f47062e1a9f3082a63249422c32100ac9d1b58a2",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/20261018-kingdom-betters-arena",
-    "commit": "882e2d6b5b0a5f60b10ca797c04a6e01cc7afede"
+    "branch": "feat/20261018-website-hold-evidence-preflight",
+    "commit": "8888c08e2c269d8f8727c8a96574475d9b9db48a"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
