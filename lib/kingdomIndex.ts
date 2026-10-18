@@ -62,6 +62,8 @@ function scoreValue(raw: unknown): raw is number {
 function validRecord(raw: unknown, allowSet: Set<string>): raw is PageObservation {
   if(!raw || typeof raw!=="object" || Array.isArray(raw)) return false;
   const r=raw as Record<string,unknown>;
+  // A provisional source review or agent observation must never claim 100.
+  if(r.score===100 && r.kind!=="certified") return false;
   // An agent score must carry full dimension evidence; an audited 100 cannot
   // be manufactured from a caller-supplied number alone.
   if(r.kind==="agent" || r.kind==="certified"){
@@ -71,8 +73,7 @@ function validRecord(raw: unknown, allowSet: Set<string>): raw is PageObservatio
     if(!Object.entries(weights).every(([key,max])=>typeof d[key]==="number" &&
       Number.isInteger(d[key]) && (d[key] as number)>=0 && (d[key] as number)<=max)) return false;
     if(Object.keys(weights).reduce((sum,key)=>sum+(d[key] as number),0)!==r.score) return false;
-    // An agent observation or provisional source review cannot self-award 100.
-    if(r.score===100 && r.kind!=="certified") return false;
+
     if(!Array.isArray(r.evidenceRefs) || r.evidenceRefs.length < (r.kind==="certified"?2:1) ||
       r.evidenceRefs.length>12 || !r.evidenceRefs.every(ref=>typeof ref==="string" &&
         /^https:\/\/github\.com\/Emaren\//.test(ref) && ref.length<400)) return false;
