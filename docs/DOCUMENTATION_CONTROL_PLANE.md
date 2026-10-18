@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/20261018-leaderboard-request-freshness` at `9d2e392f5e80011d69a97b683c62ebca5d01fc03`
+Implementation baseline: `fix/20261018-mecha-custody-endpoint-boundary` at `c5a7c7b8c9e2ebc34ba7935839a3e7973b669470`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
