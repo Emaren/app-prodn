@@ -89,7 +89,7 @@ class ShadowSafetyTests(unittest.TestCase):
                 ]),
             ):
                 sources = MODULE.source_evidence("a" * 40)
-            self.assertEqual(len(sources), 120)
+            self.assertEqual(len(sources), 123)
             self.assertEqual(
                 sources["historic_000"],
                 hashlib.sha256(b"SELECT 1;\n").hexdigest(),
@@ -140,7 +140,7 @@ class ShadowSafetyTests(unittest.TestCase):
         self.assertEqual(sum("DROP DATABASE" in c for c in sql_cmds), 1)
         self.assertNotIn('DROP DATABASE "aoe2hd_db"', " ".join(sql_cmds))
         self.assertTrue(result["disposable_database_removed"])
-        self.assertEqual(result["pending_migration_count"], 8)
+        self.assertEqual(result["pending_migration_count"], 11)
         self.assertTrue(result["pending_migrations_exercised"])
         self.assertFalse(result["production_mutated"])
         self.assertFalse(result["production_data_copied"])
