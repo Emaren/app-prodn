@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/hd-mecha-funded-seam-with-reviewed-deps-20261017` at `bff2faf61d8d3b02ccfcbd21a3b866f9684d9247`
+Implementation baseline: `codex/satchel-authenticated-deposit-credit` at `3689cacfd5c6079b16fcd1a8c4def63609bb957c`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
