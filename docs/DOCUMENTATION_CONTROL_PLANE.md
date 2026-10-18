@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/satchel-complete-financial-paths` at `314d19740531711a9709e1088ef14ea80d65bbf8`
+Implementation baseline: `audit/20261018-satchel-schema-roundtrip` at `7174e6a34e7cef63aa874f2405622b2a41890456`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
