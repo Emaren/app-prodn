@@ -182,10 +182,14 @@ homepage composition feature, not part of the public pagination contract.
 relabeled as the other.
 
 Leaderboard caches are scope-safe. Server cache keys include normalized lane,
-scope, offset, limit, enrichment flags, search, and sort. The client lane cache
-and in-flight request map key by `lane:scope`, and a response is accepted only
-when both fields match the request. Switching scope cannot momentarily show a
-cached response from the other board.
+scope, offset, limit, enrichment flags, search, and sort. The client snapshot
+cache keys by `lane:scope`; in-flight requests additionally key by the bounded
+row limit, so a 64-row prefetch cannot satisfy a concurrent 128-row request.
+A cached partial first page cannot satisfy a larger requested window unless
+it already represents the full tracked roster. A response is accepted only
+when the lane and scope match the request. Switching scope must not show a
+cached response from the other board; a background authoritative refresh
+retains visible rows rather than blanking the board.
 
 Competitive boards remove internal systems by exact reserved UID:
 
