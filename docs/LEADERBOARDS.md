@@ -199,9 +199,16 @@ A cached partial first page cannot satisfy a larger requested window unless
 it already represents the full tracked roster. Network responses are accepted
 into the cache by request-start sequence, so a delayed older response cannot
 undo a newer ranking snapshot; a newer, shorter authoritative response replaces
-an older larger one. External server-rendered seeds without request sequence
-retain the historical richer-window preference, so true cross-source freshness
-still requires explicit versioned proof. A response is accepted only
+an older larger one. External server-rendered seeds without request sequence may initially
+warm the cache, but cannot overwrite a newer already accepted network response
+for the same lane/scope, even when the seed has more rows. A forced fetch
+now starts a fresh request despite an older same-window in-flight request;
+publication remains ordered by request start. The fetch contract also rejects
+impossible totals, overlong row windows, and negative or noninteger roster
+counts. The public API replies with private/no-store to prevent intermediary
+caches from replaying ranking data. SSR seeds still lack independent version
+proof; this correction prevents rollback, not cross-source certification.
+A response is accepted only
 when the lane and scope match the request. Switching scope must not show a
 cached response from the other board; a background authoritative refresh
 retains visible rows rather than blanking the board.

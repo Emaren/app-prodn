@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/satchel-funded-integration` at `6b43c50845f16ea139fee567b05947b668733b0b`
+Implementation baseline: `fix/20261018-leaderboard-client-cache-authority-v2` at `6dbd23c35f982ddbd16176d018ab14ca1cdbc606`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
