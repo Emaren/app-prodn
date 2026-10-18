@@ -15,6 +15,28 @@ sensitivity: "internal"
 
 # AoE2WAR General Inspections
 
+## October 18, 2026 — canonical route-census identity for every Index page
+
+Kingdom Index now selects the 68-route, CI-updated
+`config/kingdom-index-routes.json` `sourceTree` fingerprint for ALL
+public pages. The legacy `lib/pageChangeManifest.generated.ts` is generated
+by a different algorithm, covers only 25 routes and contains outdated
+Leaderboard source versions. Its fingerprints are not interchangeable
+with the Index route census and no longer override that census for scoring.
+
+The detail display labels this value ROUTE SOURCE and explicitly warns:
+it is a **route-local Git blob census**, not an authenticated deployed
+runtime identity, fully closed transitive import graph, CI/build attestation
+or independent proof of production correctness. The source-census workflow
+tests exact local fingerprints; a shared import can still change without
+changing the route-local value. That unresolved coverage prevents 100/100.
+
+Agent-fed observations must match the current census namespace, have
+recent timestamps, and remain noncertified. An old 20-character manifest
+identity or the historical Leaderboard 64 cannot receive current credit.
+No additional agent writer, finance permission, deployment authority or
+source-closure certificate is implemented by this change.
+
 ## October 18, 2026 — show the route-specific quality proof gates
 
 Kingdom Index details now render the existing `specializedAssurance.gates`
