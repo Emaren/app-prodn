@@ -114,7 +114,7 @@ def route_evidence(root: Path, href: str,
             raise DependencyEvidenceError("Dependency closure exceeds node limit")
         visited.add(rel)
         raw = _source(root, rel, all_sources)
-        if Path(rel).suffix.lower() not in modules.MODULE_SUFFIXES | ASSET_SUFFIXES:
+        if Path(rel).suffix.lower() not in (set(modules.MODULE_SUFFIXES) | ASSET_SUFFIXES):
             continue
         if not rel.endswith((".ts", ".tsx", ".js", ".jsx", ".mjs", ".mts", ".css", ".scss")):
             continue
