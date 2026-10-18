@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/20261018-mecha-custody-endpoint-boundary` at `c5a7c7b8c9e2ebc34ba7935839a3e7973b669470`
+Implementation baseline: `fix/20261018-kingdom-index-live-score-ledger-first` at `72ee972db172a851c348b27052ad3bd3e4a4d552`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
