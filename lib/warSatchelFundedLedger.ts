@@ -173,6 +173,47 @@ async function getOrCreateBalance(tx: Prisma.TransactionClient, ownerUserId: num
   return tx.satchelFundedBalance.create({ data: { ownerUserId } });
 }
 
+async function requirePhysicalConsumption(
+  tx: Prisma.TransactionClient, kind: "deposit" | "claim_return",
+  receipt: {id: bigint; ownerUserId: number; txHash: string; amountUwolo: bigint; vaultAddress: string},
+) {
+  const consumed = await tx.satchelPhysicalReceiptConsumption.findUnique({
+    where: {chainId_txHash: {chainId: "wolo-1", txHash: receipt.txHash}},
+  });
+  if (!consumed || consumed.messageIndex !== 0 || consumed.receiptKind !== kind ||
+      consumed.sourceReceiptId !== receipt.id || consumed.ownerUserId !== receipt.ownerUserId ||
+      consumed.amountUwolo !== receipt.amountUwolo || consumed.vaultAddress !== receipt.vaultAddress)
+    stop("database_physical_consumption_missing_or_conflicting");
+}
+
+/** Return the committed outcome after a lost response or restart, without RPC
+ * or a second credit. Recheck the linked owner and immutable physical receipt.
+ */
+export async function readRecordedSatchelCredit(prisma: PrismaClient, input: {
+  ownerUserId: number; ownerUid: string; intentId: string; txHash: string;
+}): Promise<FundedCreditResult | null> {
+  return withExclusiveSatchelTx(prisma, async tx => {
+    const owners = await tx.$queryRaw<Array<{uid:string; wallet_address:string|null}>>`
+      SELECT uid,wallet_address FROM users WHERE id=${input.ownerUserId} FOR UPDATE
+    `;
+    if (owners.length !== 1 || owners[0].uid !== input.ownerUid || !owners[0].wallet_address)
+      stop("authenticated_wallet_binding_mismatch");
+    const proof = await tx.warSatchelProofCandidate.findUnique({where:{intentId:input.intentId}});
+    if (!proof) return null;
+    if (proof.userId !== input.ownerUserId || proof.txHash !== input.txHash ||
+        proof.senderAddress !== owners[0].wallet_address || proof.vaultAddress !== fundedVaultAddress())
+      stop("canonical_receipt_owner_or_intent_mismatch");
+    const receipt = await tx.satchelFundedReceipt.findUnique({where:{proofCandidateId:proof.id}});
+    if (!receipt) return null;
+    if (receipt.ownerUserId !== input.ownerUserId || receipt.txHash !== input.txHash ||
+        receipt.amountUwolo !== proof.amountUwolo || receipt.canonicalHeight !== proof.txHeight)
+      stop("recorded_credit_identity_mismatch");
+    await requirePhysicalConsumption(tx,"deposit",receipt);
+    const balance = await tx.satchelFundedBalance.findUnique({where:{ownerUserId:input.ownerUserId}});
+    return Object.freeze({status:"already_credited" as const,receiptId:String(receipt.id),availableUwolo:String(balance?.availableUwolo ?? BigInt(0))});
+  });
+}
+
 export type FundedCreditResult =
   | Readonly<{ status: "credited"; receiptId: string; availableUwolo: string }>
   | Readonly<{ status: "already_credited"; receiptId: string; availableUwolo: string }>;
@@ -205,7 +246,9 @@ export async function creditRecordedSatchelProof(
       !isAuthenticatedWarSatchelDeposit(input.authenticatedDeposit) ||
       input.authenticatedDeposit.txHash !== input.expectedTxHash ||
       input.authenticatedDeposit.ownerUid !== input.ownerUid ||
-      input.authenticatedDeposit.height <= BigInt(0)) {
+      input.authenticatedDeposit.height <= BigInt(0) ||
+      input.authenticatedDeposit.verifiedAtMs > Date.now() ||
+      Date.now() - input.authenticatedDeposit.verifiedAtMs > BANK_HEAD_MAX_AGE_MS) {
     stop("authenticated_comet_deposit_required");
   }
 
@@ -215,6 +258,10 @@ export async function creditRecordedSatchelProof(
     `;
     if (actors.length !== 1 || actors[0].uid !== input.ownerUid ||
         !actors[0].wallet_address) stop("authenticated_wallet_binding_mismatch");
+    // Recheck after waiting for the global lock; an old opaque proof cannot
+    // remain spendable across a delayed worker or an expired intent.
+    if (Date.now() - input.authenticatedDeposit.verifiedAtMs > BANK_HEAD_MAX_AGE_MS)
+      stop("authenticated_deposit_proof_stale");
     const proof = await tx.warSatchelProofCandidate.findUnique({
       where: { id: input.proofCandidateId },
       include: { intent: true },
@@ -230,6 +277,8 @@ export async function creditRecordedSatchelProof(
         input.authenticatedDeposit.amountUwolo !== proof.amountUwolo.toString() ||
         input.authenticatedDeposit.height !== proof.txHeight ||
         input.authenticatedDeposit.memo !== proof.intent.memo ||
+        input.authenticatedDeposit.createdAtUtc !== proof.intent.createdAt.toISOString() ||
+        input.authenticatedDeposit.expiresAtUtc !== proof.intent.expiresAt.toISOString() ||
         proof.intent.userId !== input.ownerUserId ||
         proof.intent.senderAddress !== proof.senderAddress ||
         proof.intent.vaultAddress !== proof.vaultAddress ||
@@ -259,6 +308,8 @@ export async function creditRecordedSatchelProof(
       } },
     });
     if (priorReturn) stop("physical_transfer_already_credited_as_claim_return");
+    if (Date.now() >= proof.intent.expiresAt.getTime() || proof.intent.status !== "prepared")
+      stop("deposit_intent_expired_or_not_prepared");
     requireFreshBank(input.bank, Date.now());
     if (input.bank.height < proof.txHeight + BigInt(2)) stop("deposit_requires_three_confirmations");
     const oldLiability = await outstandingVaultLiability(tx);
@@ -281,6 +332,7 @@ export async function creditRecordedSatchelProof(
         vaultAddress: proof.vaultAddress,
       },
     });
+    await requirePhysicalConsumption(tx,"deposit",receipt);
     const journalKey = "satchel:credit:wolo-1:" + proof.txHash + ":0";
     await tx.satchelFundedJournal.create({
       data: {
@@ -1211,6 +1263,7 @@ export async function creditVerifiedSatchelClaimReturn(
         canonicalHeight:proof.canonicalHeight,
       },
     });
+    await requirePhysicalConsumption(tx,"claim_return",receipt);
     await tx.satchelFundedJournal.create({
       data:{
         ownerUserId:input.ownerUserId,

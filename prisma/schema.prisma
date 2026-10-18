@@ -74,6 +74,7 @@ model User {
   warSatchelLedgerAccounts       WarSatchelLedgerAccount[]
   satchelFundedBalance           SatchelFundedBalance?
   satchelFundedReceipts          SatchelFundedReceipt[]
+  satchelPhysicalConsumptions    SatchelPhysicalReceiptConsumption[]
   satchelClaimReturns            SatchelFundedClaimReturn[]
   satchelFundedJournal           SatchelFundedJournal[]
   satchelFundedReservations      SatchelFundedReservation[]
@@ -5576,4 +5577,23 @@ model SatchelFundedClaimReturn {
   @@unique([chainId, txHash, transferIndex], map: "uq_satchel_funded_return_transfer")
   @@index([ownerUserId, createdAt], map: "ix_satchel_funded_return_owner")
   @@map("war_satchel_funded_claim_returns")
+}
+
+/// Global physical transaction identity shared by both existing receipt paths.
+/// Populated atomically by database triggers; never written from API payloads.
+model SatchelPhysicalReceiptConsumption {
+  chainId         String @map("chain_id") @db.VarChar(32)
+  txHash          String @map("tx_hash") @db.VarChar(64)
+  messageIndex    Int    @default(0) @map("message_index")
+  ownerUserId     Int    @map("owner_user_id")
+  receiptKind     String @map("receipt_kind") @db.VarChar(16)
+  sourceReceiptId BigInt @map("source_receipt_id")
+  amountUwolo     BigInt @map("amount_uwolo")
+  vaultAddress    String @map("vault_address") @db.VarChar(100)
+
+  owner User @relation(fields: [ownerUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
+
+  @@id([chainId, txHash])
+  @@unique([receiptKind, sourceReceiptId])
+  @@map("war_satchel_physical_receipt_consumptions")
 }

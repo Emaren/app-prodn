@@ -13,7 +13,7 @@ import { satchelFinancialBridgeReady } from "@/lib/warSatchelFinancialBridgeHold
 import { readWarSatchelBoundedUtf8 } from "@/lib/warSatchelBoundedBody";
 import { authenticateOwnerDeposit } from "@/lib/warSatchelAuthenticatedDeposit";
 import { recordUncreditedWarSatchelReceipt } from "@/lib/warSatchelUncreditedProofRecorder";
-import { readIndependentSatchelBank, creditRecordedSatchelProof } from "@/lib/warSatchelFundedLedger";
+import { readIndependentSatchelBank, creditRecordedSatchelProof, readRecordedSatchelCredit } from "@/lib/warSatchelFundedLedger";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -75,6 +75,13 @@ export async function POST(request: NextRequest) {
     });
     if (!intent) return fail(404, "No matching owned immutable intent.");
 
+    const previous = await readRecordedSatchelCredit(prisma, {
+      ownerUserId: owner.id, ownerUid: owner.uid, intentId: intent.id, txHash,
+    });
+    if (previous) return NextResponse.json({credited:true,state:previous.status,
+      receiptId:previous.receiptId,availableUwolo:previous.availableUwolo,
+      chainId:"wolo-1",denom:"uwolo"},{headers:H});
+
     // Physical execution must be authenticated by the independently pinned
     // WoloChain Comet verifier. The old REST-only canonical JSON cannot give
     // this route custody authority, even when two gateways agree.
@@ -93,7 +100,7 @@ export async function POST(request: NextRequest) {
         amountUwolo: intent.amountUwolo.toString(), memo: intent.memo,
         createdAtUtc: immutable.createdAtUtc,
         expiresAtUtc: immutable.expiresAtUtc, txHash,
-      }),
+      }, fetch, request.signal),
       readIndependentSatchelBank(),
     ]);
     // The chain height is a fresh server-side vault snapshot, not a claim
