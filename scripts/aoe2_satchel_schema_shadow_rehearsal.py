@@ -296,10 +296,37 @@ def describe_schema_delta(source: bytes, restored: bytes) -> str:
     def line_id(line: str) -> str:
         return hashlib.sha256(line.encode("utf-8")).hexdigest()[:12]
 
+    # Never truncate the ACCOUNTING of changed hunks to the six-item preview.
+    # Classifications are conservative diagnostics, NOT equivalence evidence.
+    # In particular an apparent CHECK-only reformat could change semantics;
+    # every fingerprint mismatch stays a hard financial release STOP.
     diffs = []
+    total_hunks = 0
+    check_definition_candidates = 0
+    manual_review_hunks = 0
+    first_manual_review_source_line = None
     matcher = difflib.SequenceMatcher(a=original, b=shadow, autojunk=True)
+    check_prefix = re.compile(r"^\s*CONSTRAINT\s+\S+\s+CHECK\s*\(", re.I)
     for tag, a, b, c, d in matcher.get_opcodes():
         if tag == "equal":
+            continue
+        total_hunks += 1
+        # One or more complete CHECK declarations, on both sides, are a
+        # diagnostic *candidate* only. Anything else must be reviewed.
+        source_changed = original[a:b]
+        shadow_changed = shadow[c:d]
+        check_like = (
+            bool(source_changed) and bool(shadow_changed)
+            and all(check_prefix.match(line) for line in source_changed)
+            and all(check_prefix.match(line) for line in shadow_changed)
+        )
+        if check_like:
+            check_definition_candidates += 1
+        else:
+            manual_review_hunks += 1
+            if first_manual_review_source_line is None:
+                first_manual_review_source_line = a + 1
+        if len(diffs) >= 6:
             continue
         sample_a = original[a] if a < b else ""
         sample_b = shadow[c] if c < d else ""
@@ -314,11 +341,14 @@ def describe_schema_delta(source: bytes, restored: bytes) -> str:
             f"source_line_sha12={line_id(sample_a)} "
             f"shadow_line_sha12={line_id(sample_b)}"
         )
-        if len(diffs) >= 6:
-            break
     return (
         f"schema delta source_lines={len(original)} "
-        f"shadow_lines={len(shadow)}; "
+        f"shadow_lines={len(shadow)} "
+        f"total_hunks={total_hunks} "
+        f"complete_check_definition_candidates={check_definition_candidates} "
+        f"needs_manual_review_hunks={manual_review_hunks} "
+        f"first_manual_review_source_line="
+        f"{first_manual_review_source_line if first_manual_review_source_line is not None else 'NONE'}; "
         + ("; ".join(diffs) if diffs else "difference not localized")
     )
 

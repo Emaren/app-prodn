@@ -405,6 +405,41 @@ class ShadowSafetyTests(unittest.TestCase):
         self.assertEqual(sum("CREATE DATABASE" in s for s in statements), 1)
         self.assertEqual(sum("DROP DATABASE" in s for s in statements), 1)
 
+    def test_all_redacted_schema_delta_hunks_counted(self):
+        # Deliberately prove the bounded preview does not hide the total.
+        source, shadow = ["-- schema-only dump"], ["-- schema-only dump"]
+        for i in range(9):
+            source.extend([
+                f"    CONSTRAINT private_{i} CHECK ((hidden_value > {i})),",
+                f"-- stable boundary {i}",
+            ])
+            shadow.extend([
+                f"    CONSTRAINT private_{i} CHECK ((hidden_value >= {i})),",
+                f"-- stable boundary {i}",
+            ])
+        result = MODULE.describe_schema_delta(
+            ("\n".join(source) + "\n").encode(),
+            ("\n".join(shadow) + "\n").encode(),
+        )
+        self.assertIn("total_hunks=9", result)
+        self.assertIn("complete_check_definition_candidates=9", result)
+        self.assertIn("needs_manual_review_hunks=0", result)
+        self.assertIn("first_manual_review_source_line=NONE", result)
+        self.assertEqual(result.count("source_line_sha12="), 6)
+        self.assertNotIn("private_", result)
+        self.assertNotIn("hidden_value", result)
+
+    def test_non_check_schema_changes_cannot_be_classified_as_check(self):
+        source = b"ALTER TABLE public.private_payments ADD COLUMN balance bigint;\n"
+        shadow = b"ALTER TABLE public.private_payments ADD COLUMN balance text;\n"
+        result = MODULE.describe_schema_delta(source, shadow)
+        self.assertIn("total_hunks=1", result)
+        self.assertIn("complete_check_definition_candidates=0", result)
+        self.assertIn("needs_manual_review_hunks=1", result)
+        self.assertIn("first_manual_review_source_line=1", result)
+        self.assertNotIn("private_payments", result)
+        self.assertNotIn("balance", result)
+
     def test_schema_delta_flag_denied_outside_authorized_rehearsal(self):
         with mock.patch.object(sys, "argv", [
             "rehearsal", "--source-sha", "a" * 40, "--explain-schema-mismatch",
