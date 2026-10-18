@@ -8,6 +8,7 @@ import {
   normalizeLeaderboardSortKey,
 } from "@/lib/leaderboardSort";
 import { getPrisma } from "@/lib/prisma";
+import { parseLeaderboardPaginationInteger } from "@/lib/leaderboardRequestParams";
 import { buildPreviewDataUrl } from "@/lib/previewDataSource";
 
 export const runtime = "nodejs";
@@ -15,14 +16,6 @@ export const dynamic = "force-dynamic";
 
 const DEFAULT_LIMIT = 128;
 const MAX_LIMIT = 600;
-
-function readIntegerParam(request: NextRequest, name: string, fallback: number) {
-  const rawValue = request.nextUrl.searchParams.get(name);
-  if (!rawValue) return fallback;
-
-  const parsed = Number.parseInt(rawValue, 10);
-  return Number.isFinite(parsed) ? parsed : fallback;
-}
 
 export async function GET(request: NextRequest) {
   const previewUrl =
@@ -69,10 +62,10 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const offset = Math.max(0, readIntegerParam(request, "offset", 0));
+  const offset = Math.max(0, parseLeaderboardPaginationInteger(request.nextUrl.searchParams.get("offset"), 0, 0, 100_000));
   const limit = Math.max(
     1,
-    Math.min(MAX_LIMIT, readIntegerParam(request, "limit", DEFAULT_LIMIT))
+    Math.min(MAX_LIMIT, parseLeaderboardPaginationInteger(request.nextUrl.searchParams.get("limit"), DEFAULT_LIMIT, 1, MAX_LIMIT))
   );
   const lane = normalizeLeaderboardLane(request.nextUrl.searchParams.get("lane"));
   const scope = normalizeLeaderboardScope(
