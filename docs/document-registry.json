@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "aeb9c1c62760844261adfcd229712a7768932426e77d7e8a28a29177f9d8d5eb",
+      "sha256": "eee74d628dc09ac3a7cc4266fcdaa8c32aa5c2ec0b64413661091fc0451f12dc",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2117,7 +2117,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feat/20261018-kingdom-index-assurance-harden",
-    "commit": "a05db72d99b8c7a249422933e35c893f3896833b"
+    "commit": "10f334cc800c8ced286f62ff38cacc8d45b98a4e"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
