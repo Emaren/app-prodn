@@ -43,6 +43,9 @@ class ShadowSafetyTests(unittest.TestCase):
         self.assertEqual(sql.count("CREATE OR REPLACE FUNCTION"), 6)
         self.assertIn("owner_count", sql)
         self.assertIn("seven funded table identities missing", sql)
+        self.assertIn("global physical receipt identity missing", sql)
+        self.assertIn("global physical receipt triggers missing", sql)
+        self.assertNotIn("COMMIT;", sql)
         self.assertIn("signed funded-spend-consent table missing", sql)
         self.assertNotIn("DROP DATABASE", sql)
         self.assertNotIn("UPDATE users", sql)
@@ -86,7 +89,7 @@ class ShadowSafetyTests(unittest.TestCase):
                 ]),
             ):
                 sources = MODULE.source_evidence("a" * 40)
-            self.assertEqual(len(sources), 119)
+            self.assertEqual(len(sources), 120)
             self.assertEqual(
                 sources["historic_000"],
                 hashlib.sha256(b"SELECT 1;\n").hexdigest(),
@@ -137,7 +140,7 @@ class ShadowSafetyTests(unittest.TestCase):
         self.assertEqual(sum("DROP DATABASE" in c for c in sql_cmds), 1)
         self.assertNotIn('DROP DATABASE "aoe2hd_db"', " ".join(sql_cmds))
         self.assertTrue(result["disposable_database_removed"])
-        self.assertEqual(result["pending_migration_count"], 7)
+        self.assertEqual(result["pending_migration_count"], 8)
         self.assertTrue(result["pending_migrations_exercised"])
         self.assertFalse(result["production_mutated"])
         self.assertFalse(result["production_data_copied"])

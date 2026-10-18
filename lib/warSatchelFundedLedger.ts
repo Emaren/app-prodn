@@ -1,5 +1,5 @@
 import { requireSatchelFinancialBridge } from "./warSatchelFinancialBridgeHold.ts";
-import { isAuthenticatedWarSatchelDeposit, type AuthenticatedWarSatchelDeposit } from "./warSatchelAuthenticatedDeposit.ts";
+import { authenticatedWarSatchelDepositFreshAt, type AuthenticatedWarSatchelDeposit } from "./warSatchelAuthenticatedDeposit.ts";
 import { inspectSingleTicketSatchelReturn } from "./warSatchelClaimReturnAttribution.ts";
 import { verifyLiveCanonicalSatchelClaimReturn } from "./warSatchelCanonicalClaimReturn.ts";
 import { getWoloBetEscrowRuntime } from "./woloChain.ts";
@@ -173,6 +173,61 @@ async function getOrCreateBalance(tx: Prisma.TransactionClient, ownerUserId: num
   return tx.satchelFundedBalance.create({ data: { ownerUserId } });
 }
 
+async function requirePhysicalConsumption(
+  tx: Prisma.TransactionClient, kind: "deposit" | "claim_return",
+  receipt: {id: bigint; ownerUserId: number; txHash: string; amountUwolo: bigint; vaultAddress: string},
+) {
+  const consumed = await tx.satchelPhysicalReceiptConsumption.findUnique({
+    where: {chainId_txHash: {chainId: "wolo-1", txHash: receipt.txHash}},
+  });
+  if (!consumed || consumed.messageIndex !== 0 || consumed.receiptKind !== kind ||
+      consumed.sourceReceiptId !== receipt.id || consumed.ownerUserId !== receipt.ownerUserId ||
+      consumed.amountUwolo !== receipt.amountUwolo || consumed.vaultAddress !== receipt.vaultAddress)
+    stop("database_physical_consumption_missing_or_conflicting");
+}
+
+async function committedDepositResult(tx: Prisma.TransactionClient,
+  receipt: {id:bigint;ownerUserId:number;txHash:string;amountUwolo:bigint;vaultAddress:string},
+): Promise<FundedCreditResult> {
+  await requirePhysicalConsumption(tx,"deposit",receipt);
+  const journal = await tx.satchelFundedJournal.findUnique({
+    where:{sourceKey:"satchel:credit:wolo-1:"+receipt.txHash+":0"},
+  });
+  const account = await tx.satchelFundedBalance.findUnique({where:{ownerUserId:receipt.ownerUserId}});
+  if (!journal || !account || journal.receiptId !== receipt.id ||
+      journal.ownerUserId !== receipt.ownerUserId || journal.eventKind !== "deposit_credit" ||
+      journal.amountUwolo !== receipt.amountUwolo || journal.deltaAvailableUwolo !== receipt.amountUwolo ||
+      journal.deltaReservedUwolo !== BigInt(0) || journal.deltaCommittedUwolo !== BigInt(0) ||
+      journal.deltaWithdrawalPendingUwolo !== BigInt(0)) stop("incomplete_recorded_deposit_credit");
+  return Object.freeze({status:"already_credited" as const,receiptId:String(receipt.id),availableUwolo:String(account.availableUwolo)});
+}
+
+/** Return the committed outcome after a lost response or restart, without RPC
+ * or a second credit. Recheck the linked owner and immutable physical receipt.
+ */
+export async function readRecordedSatchelCredit(prisma: PrismaClient, input: {
+  ownerUserId: number; ownerUid: string; intentId: string; txHash: string;
+}): Promise<FundedCreditResult | null> {
+  return withExclusiveSatchelTx(prisma, async tx => {
+    const owners = await tx.$queryRaw<Array<{uid:string; wallet_address:string|null}>>`
+      SELECT uid,wallet_address FROM users WHERE id=${input.ownerUserId} FOR UPDATE
+    `;
+    if (owners.length !== 1 || owners[0].uid !== input.ownerUid || !owners[0].wallet_address)
+      stop("authenticated_wallet_binding_mismatch");
+    const proof = await tx.warSatchelProofCandidate.findUnique({where:{intentId:input.intentId}});
+    if (!proof) return null;
+    if (proof.userId !== input.ownerUserId || proof.txHash !== input.txHash ||
+        proof.senderAddress !== owners[0].wallet_address || proof.vaultAddress !== fundedVaultAddress())
+      stop("canonical_receipt_owner_or_intent_mismatch");
+    const receipt = await tx.satchelFundedReceipt.findUnique({where:{proofCandidateId:proof.id}});
+    if (!receipt) return null;
+    if (receipt.ownerUserId !== input.ownerUserId || receipt.txHash !== input.txHash ||
+        receipt.amountUwolo !== proof.amountUwolo || receipt.canonicalHeight !== proof.txHeight)
+      stop("recorded_credit_identity_mismatch");
+    return committedDepositResult(tx,receipt);
+  });
+}
+
 export type FundedCreditResult =
   | Readonly<{ status: "credited"; receiptId: string; availableUwolo: string }>
   | Readonly<{ status: "already_credited"; receiptId: string; availableUwolo: string }>;
@@ -202,7 +257,7 @@ export async function creditRecordedSatchelProof(
   if (!Number.isSafeInteger(input.ownerUserId) || input.ownerUserId <= 0 ||
       !positiveAmount(input.proofCandidateId) ||
       !TX_HASH.test(input.expectedTxHash) ||
-      !isAuthenticatedWarSatchelDeposit(input.authenticatedDeposit) ||
+      !authenticatedWarSatchelDepositFreshAt(input.authenticatedDeposit) ||
       input.authenticatedDeposit.txHash !== input.expectedTxHash ||
       input.authenticatedDeposit.ownerUid !== input.ownerUid ||
       input.authenticatedDeposit.height <= BigInt(0)) {
@@ -215,10 +270,15 @@ export async function creditRecordedSatchelProof(
     `;
     if (actors.length !== 1 || actors[0].uid !== input.ownerUid ||
         !actors[0].wallet_address) stop("authenticated_wallet_binding_mismatch");
+    // Recheck after waiting for the global lock; an old opaque proof cannot
+    // remain spendable across a delayed worker or an expired intent.
+    if (!authenticatedWarSatchelDepositFreshAt(input.authenticatedDeposit))
+      stop("authenticated_deposit_proof_stale");
     const proof = await tx.warSatchelProofCandidate.findUnique({
       where: { id: input.proofCandidateId },
       include: { intent: true },
     });
+    if (proof) await tx.$queryRaw`SELECT id FROM war_satchel_deposit_intents WHERE id=${proof.intentId}::uuid FOR UPDATE`;
     if (!proof || proof.userId !== input.ownerUserId || proof.status !== "uncredited" ||
         proof.chainId !== "wolo-1" || proof.txHash !== input.expectedTxHash ||
         proof.transferIndex !== 0 || proof.vaultAddress !== fundedVaultAddress() ||
@@ -230,6 +290,8 @@ export async function creditRecordedSatchelProof(
         input.authenticatedDeposit.amountUwolo !== proof.amountUwolo.toString() ||
         input.authenticatedDeposit.height !== proof.txHeight ||
         input.authenticatedDeposit.memo !== proof.intent.memo ||
+        input.authenticatedDeposit.createdAtUtc !== proof.intent.createdAt.toISOString() ||
+        input.authenticatedDeposit.expiresAtUtc !== proof.intent.expiresAt.toISOString() ||
         proof.intent.userId !== input.ownerUserId ||
         proof.intent.senderAddress !== proof.senderAddress ||
         proof.intent.vaultAddress !== proof.vaultAddress ||
@@ -242,12 +304,7 @@ export async function creditRecordedSatchelProof(
     });
     if (previous) {
       if (previous.ownerUserId !== input.ownerUserId) stop("proof_already_claimed_by_other_owner");
-      const account = await tx.satchelFundedBalance.findUnique({ where: { ownerUserId: input.ownerUserId } });
-      return Object.freeze({
-        status: "already_credited" as const,
-        receiptId: previous.id.toString(),
-        availableUwolo: String(account?.availableUwolo ?? BigInt(0)),
-      });
+      return committedDepositResult(tx,previous);
     }
     // The same physical MsgSend cannot first credit an escrow claim return
     // and then enter an owner's balance again as a wallet deposit. The two
@@ -259,6 +316,8 @@ export async function creditRecordedSatchelProof(
       } },
     });
     if (priorReturn) stop("physical_transfer_already_credited_as_claim_return");
+    if (Date.now() >= proof.intent.expiresAt.getTime() || proof.intent.status !== "prepared")
+      stop("deposit_intent_expired_or_not_prepared");
     requireFreshBank(input.bank, Date.now());
     if (input.bank.height < proof.txHeight + BigInt(2)) stop("deposit_requires_three_confirmations");
     const oldLiability = await outstandingVaultLiability(tx);
@@ -268,6 +327,11 @@ export async function creditRecordedSatchelProof(
     }
     const account = await getOrCreateBalance(tx, input.ownerUserId);
     if (account.availableUwolo + proof.amountUwolo > MAX_I64) stop("owner_balance_overflow");
+
+    // Row/aggregate waits consume the original authenticated head window too.
+    // Recheck after those waits, immediately before creating a new receipt.
+    if (!authenticatedWarSatchelDepositFreshAt(input.authenticatedDeposit))
+      stop("authenticated_deposit_proof_stale");
 
     const receipt = await tx.satchelFundedReceipt.create({
       data: {
@@ -281,6 +345,7 @@ export async function creditRecordedSatchelProof(
         vaultAddress: proof.vaultAddress,
       },
     });
+    await requirePhysicalConsumption(tx,"deposit",receipt);
     const journalKey = "satchel:credit:wolo-1:" + proof.txHash + ":0";
     await tx.satchelFundedJournal.create({
       data: {
@@ -301,6 +366,10 @@ export async function creditRecordedSatchelProof(
         updatedAt: new Date(),
       },
     });
+    // Trigger/unique-index and balance writes may also wait. Throwing here
+    // rolls back every new receipt, consumption, journal and balance change.
+    if (!authenticatedWarSatchelDepositFreshAt(input.authenticatedDeposit))
+      stop("authenticated_deposit_proof_stale");
     return Object.freeze({
       status: "credited" as const,
       receiptId: receipt.id.toString(),
@@ -1211,6 +1280,7 @@ export async function creditVerifiedSatchelClaimReturn(
         canonicalHeight:proof.canonicalHeight,
       },
     });
+    await requirePhysicalConsumption(tx,"claim_return",receipt);
     await tx.satchelFundedJournal.create({
       data:{
         ownerUserId:input.ownerUserId,

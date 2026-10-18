@@ -119,11 +119,12 @@ jobs:
   isolated-rating-postgres:
     name: Isolated Steam-rating PostgreSQL chronology
     runs-on: ubuntu-24.04
-    timeout-minutes: 12
+    timeout-minutes: 20
     env:
       # Never connect to production. The test creates a private Unix-socket
       # cluster under /tmp, exercises authority selection, then destroys it.
       RUN_PLAYER_CURRENT_RATING_PG_TESTS: "1"
+      RUN_SATCHEL_PHYSICAL_PG_TESTS: "1"
       AOE2WAR_TEST_PG_BIN: /usr/lib/postgresql/16/bin
       DATABASE_URL: postgresql://fixture:fixture@127.0.0.1:5432/not_used
     steps:
@@ -149,4 +150,12 @@ jobs:
           node --experimental-strip-types \
             --experimental-loader ./scripts/aoe2-alias-loader.mjs \
             --disable-warning=MODULE_TYPELESS_PACKAGE_JSON \
-            --test tests/current-watcher-rating-postgres.test.mts
+            --test tests/current-watcher-rating-postgres.test.mts tests/war-satchel-physical-postgres.test.mts
+
+      - name: Pin Go for actual Satchel verifier integration
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version: '1.24.6'
+          cache: false
+      - name: Authenticate real SDK deposit and atomically credit isolated PostgreSQL
+        run: python3 scripts/check-satchel-authenticated-credit.py

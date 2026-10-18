@@ -292,9 +292,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BET_AUTOMATION_AND_CUSTODY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-14",
+      "reviewed_at": "2026-10-18",
       "sensitivity": "internal",
-      "sha256": "29d441a63f400d39c7a23bedf74f6385849a4490f0f626d7b0677168d984fecf",
+      "sha256": "878f76123a049959c0344670c8e9303c7ee178fe1b5c793b212c08950fa44d19",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "f828b8eaf47f1a6d49bf2c4c84eb99c4169a2ffc6129e4820461edec76b5a22c",
+      "sha256": "0d72ace75c8b9583873520c1a0c1b4a158ae83002b7bc67842a83418198ecd98",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/hd-mecha-funded-seam-with-reviewed-deps-20261017",
-    "commit": "bff2faf61d8d3b02ccfcbd21a3b866f9684d9247"
+    "branch": "codex/satchel-authenticated-deposit-credit",
+    "commit": "3689cacfd5c6079b16fcd1a8c4def63609bb957c"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

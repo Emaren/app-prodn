@@ -13,6 +13,7 @@ on:
       - "tests/sql/war_satchel_simulation_owner_isolation_contract.sql"
       - "prisma/migrations/20261015_151500_war_satchel_simulation_guard_correction/**"
       - "prisma/migrations/20261017_012000_war_satchel_funded_ledger_foundation/**"
+      - "prisma/migrations/20261018_020000_war_satchel_physical_receipt_consumption/**"
       - "tests/sql/war_satchel_funded_ledger_contract.sql"
       - "tests/sql/war_satchel_atomic_migration_rehearsal.sh"
       - "tests/sql/war_satchel_simulation_guard_correction_contract.sql"
@@ -33,6 +34,7 @@ on:
       - "tests/sql/war_satchel_simulation_owner_isolation_contract.sql"
       - "prisma/migrations/20261015_151500_war_satchel_simulation_guard_correction/**"
       - "prisma/migrations/20261017_012000_war_satchel_funded_ledger_foundation/**"
+      - "prisma/migrations/20261018_020000_war_satchel_physical_receipt_consumption/**"
       - "tests/sql/war_satchel_funded_ledger_contract.sql"
       - "tests/sql/war_satchel_atomic_migration_rehearsal.sh"
       - "tests/sql/war_satchel_simulation_guard_correction_contract.sql"
@@ -107,6 +109,8 @@ jobs:
         run: psql -X -v ON_ERROR_STOP=1 -f prisma/migrations/20261017_012000_war_satchel_funded_ledger_foundation/migration.sql
       - name: Prove global deposit uniqueness, no overdraft, no 2 percent refund fee and immutable held wager
         run: psql -X -v ON_ERROR_STOP=1 -f tests/sql/war_satchel_funded_ledger_contract.sql
+      - name: Install global physical transaction consumption atomically
+        run: psql -X -v ON_ERROR_STOP=1 -f prisma/migrations/20261018_020000_war_satchel_physical_receipt_consumption/migration.sql
   atomic-six-migration-rehearsal:
     name: PostgreSQL 16 / six-migration atomic rollback (NO DEPLOY)
     runs-on: ubuntu-latest
