@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "746029c133882b560c64a3ad94ed7eae05221f66c7e604a1f01b3c2b60249a9e",
+      "sha256": "7a5d2d675ae1c314e40a8d27673d6451959e26d1e11d632d3502425247a2429d",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -733,7 +733,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-18",
       "sensitivity": "internal",
-      "sha256": "f8bb28b2e60197f58ba588e47aa796c6051390183a0baaf759abb5c3579bc817",
+      "sha256": "1ef165668ca6e015c0311202b0b91f9909ae96ba3618c02ebba01826ad087e90",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/20261018-index-unified-census-source-authority",
-    "commit": "54003d6cd30f70905ad7be02637b808a792ff327"
+    "branch": "fix/20261018-index-refresh-race-fence",
+    "commit": "8f63ac64fb4cb15e36f8024bda24b98f03285b25"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

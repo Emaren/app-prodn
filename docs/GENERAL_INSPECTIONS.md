@@ -15,6 +15,19 @@ sensitivity: "internal"
 
 # AoE2WAR General Inspections
 
+## October 18, 2026 — latest-only Index inspection polling
+
+Kingdom Index uses one request-start sequence for its sixty-second and
+visibility-triggered refreshes. A slow earlier successful response cannot
+replace a newer snapshot; a slow earlier failure cannot set SIGNAL
+UNAVAILABLE after a newer successful observation. Unmount aborts still
+prevent state updates. The gate is a pure helper with reversed-completion
+regressions, and the Index route fingerprint is regenerated exactly.
+
+This prevents presentation drift **without** creating measurements or
+certifying a route. Current agents still require source-bound evidence,
+freshness and independent certification before a 100/100 green claim.
+
 ## October 18, 2026 — canonical route-census identity for every Index page
 
 Kingdom Index now selects the 68-route, CI-updated
