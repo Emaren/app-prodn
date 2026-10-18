@@ -29,6 +29,28 @@ behavior, authority, architecture, financial policy, recovery, release
 procedure, or debugging strategy, update the owning living contract and this
 memory before closing the work.
 
+## 2026-10-18 — Imported guard names and perfect scores are not proofs
+
+Rebased the older route scanner's unused-import/comment-only guard fix
+from draft #621: imported authentication helpers are not evidence that
+sensitive handlers call them. The scanner now conservatively tracks
+actual lexical calls/delegations and flags unresolved sensitive routes
+for manual review. The new General Inspections evidence-delta tool
+from draft #470 computes precisely missing weighted points from one
+verified source without altering denominators, thresholds, or category
+definitions. Source identity and trustworthy evidence remain mandatory.
+
+## 2026-10-18 — Source-aligned Kingdom health and truthful Mecha preview writes
+
+Rebased two objective fixes from historical drafts #619 and #622 onto
+certified website source `5aecab73`. Mecha preview batches no longer
+treat an aborted `createMany` operation as proof of existing rows.
+Kingdom Agents no longer combine current-looking health information
+collected from different certified production versions. Both are
+source-bound corrections with negative tests; neither claims any
+health category now scores 100 or enables funded auto-betting.
+Live Satchel custody remains financially disabled.
+
 ## 2026-10-16 — Host backup integrity is not a fresh isolated restore
 
 October 16 Ubuntu maintenance upgraded eight exact package versions without

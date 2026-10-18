@@ -6,7 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Anvil, Archive, BarChart3, Bot, BrainCircuit, Network, Castle, Cpu, Landmark, ClipboardCheck, Crown, Eye, Globe2, GraduationCap, Hammer, MessageSquare, Radio, Scale, Store, Target, Trophy, UsersRound, X, Zap } from "lucide-react";
+import { Anvil, Archive, BarChart3, Bot, BrainCircuit, Network, Castle, Swords, Cpu, Landmark, ClipboardCheck, Crown, Eye, Globe2, GraduationCap, Hammer, MessageSquare, Radio, Scale, Store, Target, Trophy, UsersRound, X, Zap } from "lucide-react";
 import { createPortal } from "react-dom";
 import SpeedRuntime from "@/components/speed/SpeedRuntime";
 import SpeedWebVitals from "@/components/speed/SpeedWebVitals";
@@ -128,6 +128,7 @@ const KINGDOM_LINKS = [
   { href: "/oracle", label: "The Oracle", icon: Eye, body: "Price the future of the Kingdom" },
   { href: "/leaderboard", label: "Leaderboard", icon: BarChart3, body: "Ratings, records, and ranked warriors" },
   { href: "/champions", label: "Champions", icon: Crown, body: "Belts, reigns, title rules" },
+  { href: "/kingdom-bettors", label: "Kingdom Bettors", icon: Swords, body: "The bettors, the house, the championship arena" },
   { href: "/chaosium", label: "Chaosium", icon: Crown, body: "Every belt, every reign, every transfer" },
   { href: "/olympia", label: "Olympia", icon: Globe2, body: "National champions under one standard" },
   { href: "/leagues", label: "Leagues", icon: Trophy, body: "1v1 to 4v4 · RM and DM" },
@@ -139,6 +140,7 @@ const KINGDOM_LINKS = [
   { href: "/market", label: "Marketplace", icon: Store, body: "Player shops, craft, and commissions" },
   { href: "/ai", label: "AI Council", icon: Bot, body: "Ask the public house council" },
   { href: "/kingdom-intelligence", label: "Kingdom Intelligence", icon: BrainCircuit, body: "Watch the kingdom reason about itself" },
+  { href: "/kingdom-index", label: "Kingdom Index", icon: Landmark, body: "The realm's measured engineering atlas" },
   { href: "/aoe2war-os", label: "AoE2WAR OS", icon: Cpu, body: "The living engineering machine: releases, tests, Prisma, and source evidence" },
   { href: "/television-wolo", label: "Television WOLO", icon: Radio, body: "The Kingdom broadcast and spectator arena" },
   { href: "/kingdom-agents", label: "Kingdom Agents", icon: Network, body: "Meet the live sentinels protecting the kingdom" },
@@ -158,6 +160,8 @@ const KINGDOM_LINKS = [
 ] as const;
 
 const PAGE_HEADINGS: ReadonlyArray<{ prefix: string; title: string }> = [
+  { prefix: "/kingdom-bettors", title: "Kingdom Bettors" },
+  { prefix: "/admin/kingdom-bettors", title: "Kingdom Bettors Command" },
   { prefix: "/admin/oracle", title: "Oracle Command Center" },
   { prefix: "/admin/ai", title: "AI Command Center" },
   { prefix: "/admin/bounties", title: "Bounty Command Center" },
@@ -181,6 +185,7 @@ const PAGE_HEADINGS: ReadonlyArray<{ prefix: string; title: string }> = [
   { prefix: "/leagues", title: "Leagues" },
   { prefix: "/kingdom-forge", title: "Kingdom Forge" },
   { prefix: "/kingdom-intelligence", title: "Kingdom Intelligence" },
+  { prefix: "/kingdom-index", title: "Kingdom Index" },
   { prefix: "/aoe2war-os", title: "AoE2WAR OS" },
   { prefix: "/television-wolo", title: "Television WOLO" },
   { prefix: "/kingdom-agents", title: "Kingdom Agents" },

@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/satchel-complete-financial-paths` at `314d19740531711a9709e1088ef14ea80d65bbf8`
+Implementation baseline: `feat/20261018-kingdom-index-dependency-sensor-ci` at `05ea6ed10dd481ed0a9ccb4c97782d66574828e5`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

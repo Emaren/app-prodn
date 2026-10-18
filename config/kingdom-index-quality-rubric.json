@@ -1,0 +1,145 @@
+{
+  "schema": 1,
+  "version": "2026-10-18-v1",
+  "maximum": 100,
+  "scoringPolicy": "One uniform engineering readiness rubric for every public Kingdom Index route. Each criterion requires an independently inspectable dated receipt for its scored points. Source inspection alone cannot certify browser, production performance or financial correctness.",
+  "dimensions": {
+    "correctness": {
+      "weight": 30,
+      "criteria": [
+        {
+          "id": "authoritative_data",
+          "max": 10,
+          "requirement": "Canonical database and external truth sources, identity and provenance validated against independent observations"
+        },
+        {
+          "id": "business_invariants",
+          "max": 8,
+          "requirement": "Boundary cases, money/result invariants and permissions proven under realistic input"
+        },
+        {
+          "id": "failure_semantics",
+          "max": 6,
+          "requirement": "Malformed, absent, stale, partial and contradictory data fail safely without invented truth"
+        },
+        {
+          "id": "security_boundaries",
+          "max": 6,
+          "requirement": "Authentication, authorization, privacy and hostile-input paths independently exercised"
+        }
+      ]
+    },
+    "functionality": {
+      "weight": 25,
+      "criteria": [
+        {
+          "id": "critical_journeys",
+          "max": 9,
+          "requirement": "Main workflows verified in production-equivalent conditions"
+        },
+        {
+          "id": "state_consistency",
+          "max": 6,
+          "requirement": "Navigation, refresh, search, pagination and preference state maintain consistent semantics"
+        },
+        {
+          "id": "accessibility",
+          "max": 5,
+          "requirement": "Keyboard, focus, screen reader and reduced-motion behaviour verified"
+        },
+        {
+          "id": "responsive",
+          "max": 5,
+          "requirement": "Mobile and desktop behavior plus loading, empty and failure states verified"
+        }
+      ]
+    },
+    "performance": {
+      "weight": 20,
+      "criteria": [
+        {
+          "id": "measured_latency",
+          "max": 7,
+          "requirement": "Measured cold/warm navigation and P75/P95 performance on specified device/network budgets"
+        },
+        {
+          "id": "bounded_data",
+          "max": 5,
+          "requirement": "Query plans, pagination, payload size and cache invalidation proven at production-scale row counts"
+        },
+        {
+          "id": "render_efficiency",
+          "max": 4,
+          "requirement": "Component rerenders, heap growth and JS footprint profiled under interactions"
+        },
+        {
+          "id": "sustained_load",
+          "max": 4,
+          "requirement": "Concurrency and sustained usage within stated infrastructure budgets"
+        }
+      ]
+    },
+    "maintainability": {
+      "weight": 15,
+      "criteria": [
+        {
+          "id": "module_boundaries",
+          "max": 5,
+          "requirement": "Logic separated by stable domain contracts; no unnecessary coupling, duplication or giant state ownership"
+        },
+        {
+          "id": "dependency_visibility",
+          "max": 4,
+          "requirement": "Transitive dependencies and source provenance tracked, including shared code and configuration"
+        },
+        {
+          "id": "documentation",
+          "max": 3,
+          "requirement": "Canonical contracts, operator playbooks, limitations and change receipts current"
+        },
+        {
+          "id": "safe_extension",
+          "max": 3,
+          "requirement": "New functionality can be added without violating tested interfaces or unrelated routes"
+        }
+      ]
+    },
+    "tests": {
+      "weight": 10,
+      "criteria": [
+        {
+          "id": "domain_regressions",
+          "max": 4,
+          "requirement": "Property, unit and adversarial tests cover correctness and failure modes"
+        },
+        {
+          "id": "integration",
+          "max": 3,
+          "requirement": "Real data/database and API integration boundaries exercised"
+        },
+        {
+          "id": "browser",
+          "max": 2,
+          "requirement": "Cold browser interaction, accessibility and visual/layout regression verified"
+        },
+        {
+          "id": "release_certification",
+          "max": 1,
+          "requirement": "Exact-source CI, staging, production and rollback evidence preserved"
+        }
+      ]
+    }
+  },
+  "certification": {
+    "rule": "Score 100 requires all weighted criteria demonstrably satisfied on the exact deployed source, an independent production/browser performance receipt, and current provenance. Unknown evidence earns no points; tests passing alone never grant 100.",
+    "statuses": [
+      "unmeasured",
+      "provisional",
+      "drifted",
+      "stale",
+      "current"
+    ],
+    "provisional_is_not_certification": true,
+    "source_fingerprint_is_not_transitive_proof": true
+  }
+}

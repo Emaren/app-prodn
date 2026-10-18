@@ -23,6 +23,11 @@ const laneRequests =
     Promise<LobbyLeaderboardSummary>
   >();
 
+// Request starts, not arrival order, determine snapshot recency.
+// A delayed old prefetch must not replace a newer authoritative response.
+let laneSnapshotSequence = 0;
+const laneSnapshotRevisions = new Map<string, number>();
+
 function leaderboardCacheKey(
   lane: LeaderboardLane,
   scope: LeaderboardScope,
@@ -35,6 +40,7 @@ export function seedLeaderboardLaneCache(
     | LobbyLeaderboardSummary
     | null
     | undefined,
+  requestSequence?: number,
 ) {
   if (!summary) {
     return;
@@ -52,15 +58,24 @@ export function seedLeaderboardLaneCache(
   const current =
     laneCache.get(cacheKey);
 
-  // Prefer the richer snapshot when both represent the same lane and scope.
+  // Fresh network snapshots beat older rich ones. External/SSR seeds retain
+  // the historical richer-window preference because they lack a request ID.
+  const latestApplied = laneSnapshotRevisions.get(cacheKey) ?? 0;
   if (
-    !current ||
-    summary.entries.length >=
-      current.entries.length
+    requestSequence !== undefined &&
+    requestSequence < latestApplied
   ) {
-    laneCache.set(
+    return;
+  }
+  if (
+    requestSequence !== undefined ||
+    !current ||
+    summary.entries.length >= current.entries.length
+  ) {
+    laneCache.set(cacheKey, summary);
+    laneSnapshotRevisions.set(
       cacheKey,
-      summary,
+      requestSequence ?? ++laneSnapshotSequence,
     );
   }
 }
@@ -102,6 +117,14 @@ export async function loadLeaderboardLaneCached(
       lane,
       normalizedScope,
     );
+  // Match the public API contract, including non-finite caller values.
+  const requestedLimit =
+    Number.isSafeInteger(limit)
+      ? Math.max(1, Math.min(600, limit))
+      : 64;
+  // Deduplication must include the requested row window. A concurrent
+  // small prefetch must never satisfy a larger requested first page.
+  const requestKey = `${cacheKey}:limit:${requestedLimit}`;
 
   if (!force) {
     const cached =
@@ -110,25 +133,30 @@ export async function loadLeaderboardLaneCached(
         normalizedScope,
       );
 
-    if (cached) {
+    if (
+      cached &&
+      (cached.entries.length >= requestedLimit ||
+        cached.entries.length >= cached.trackedPlayers)
+    ) {
       return cached;
     }
   }
 
   const pending =
-    laneRequests.get(cacheKey);
+    laneRequests.get(requestKey);
 
   if (pending) {
     return pending;
   }
 
+  const requestSequence = ++laneSnapshotSequence;
   const request = (async () => {
     const params =
       new URLSearchParams({
         lane,
         scope: normalizedScope,
         offset: "0",
-        limit: String(limit),
+        limit: String(requestedLimit),
       });
 
     const response =
@@ -165,13 +193,14 @@ export async function loadLeaderboardLaneCached(
 
     seedLeaderboardLaneCache(
       summary,
+      requestSequence,
     );
 
     return summary;
   })();
 
   laneRequests.set(
-    cacheKey,
+    requestKey,
     request,
   );
 
@@ -179,11 +208,11 @@ export async function loadLeaderboardLaneCached(
     return await request;
   } finally {
     if (
-      laneRequests.get(cacheKey) ===
+      laneRequests.get(requestKey) ===
       request
     ) {
       laneRequests.delete(
-        cacheKey,
+        requestKey,
       );
     }
   }

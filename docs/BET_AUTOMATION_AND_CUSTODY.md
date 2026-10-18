@@ -8,42 +8,102 @@ systems: ["app-prodn","aoe2-watcher","wolochain"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "financial-domain-contract"
-reviewed_at: "2026-10-18"
+reviewed_at: "2026-10-14"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # Bet Automation and Wolo Custody Boundary
 
-## Authenticated deposit and global consumption, October 18
+## October 18, 2026 — Satchel/Mecha launch blockers and independent release tracks
 
-HD consumes PR #29's fixed-source Comet verifier, pinned to the reviewed Linux
-binary SHA `3c2f89936802d016a43efdb8b2ec914bd388e78e0b1251f76a837c793d5da92e`.
-Environment labels cannot select another verifier digest. The exact hashed
-executable is copied into a private directory before invocation; runtime proof
-objects use process-local identity and cannot be forged by copying a symbol.
-Owner, wallet, immutable intent times/economics and proof freshness are rechecked
-under the existing financial transaction fence. The original authenticated primary
-and witness head deadlines survive verifier and database I/O; late expiry aborts
-the transaction. A committed receipt can be read
-after restart/expiry without crediting again or requiring another transfer.
+This is the **app-owned launch boundary**, separate from Codex's WoloChain
+implementation and WoloChain issue #5. A chain-observed wallet balance is NOT
+an independently reconciled spendable War Satchel balance. The wallet funding
+button remains disabled; intent and deposit-evidence APIs explicitly refuse
+deposit/credit/wager authority. Canonical receipts may persist only as
+**uncredited** research evidence. A screenshot or environment switch cannot
+substitute for a funded custody ledger.
 
-The additive `20261018_020000_war_satchel_physical_receipt_consumption` migration
-introduces one immutable `(chain_id, uppercase tx_hash)` primary key shared by
-both existing deposit and claim-return tables. Triggers consume it in the same
-transaction as each receipt. Rollback removes only uncommitted consumption;
-legacy collisions abort installation with original history intact. The app also
-requires the exact trigger-created consumption before posting a balance.
+Mecha deliberately keeps `LIVE_EXECUTOR_IMPLEMENTED=false`. The existing
+worker admits proven self-only Watcher markets and writes `shadow_ready` rows,
+but never reserves WOLO, accepts a funded ticket/wager, or decrements a plan.
+Shipping Wolo settlement binaries alone will NOT activate live Auto Bets.
 
-This is an **eighth** Satchel migration. Earlier seven-file shadow receipts do
-not authorize it; a new exact protected frontier/rehearsal and reviewed trigger
-admission are required. This source work executes SQL only in disposable tests.
-The hardcoded financial hold remains false. No production credit, key/vault
-provisioning, migration, deployment or broadcast is authorized by these tests.
-The isolated SDK→Comet→HD→PostgreSQL test mocks the hold only inside its dedicated
-test process and uses synthetic chain authority and a private Unix-socket DB.
-Linux CI retains the production binary pin; macOS uses the same source compiled
-natively in that test process. Neither fixture certifies live custody.
+Required app-and-chain work before a real-money canary:
+
+1. Independently certify the versioned `bet-custody-v1` contract. The future
+   configured custody URL must exactly equal
+   `http://127.0.0.1:8092/settlement/v1/bet-custody`. This revision now rejects
+   other hosts, ports, query fragments, credentials and normalized URL aliases
+   when merely recognising a configured capability. Presence is NOT proof.
+2. Verify segregated vault and signer control, independently authenticated
+   finality, immutable intent owner/recipient matching, exact receipt admission,
+   separate spendable-balance projection, installed custody migrations, ledger
+   conservation and nonnegative double-entry, withdrawals and error recovery.
+3. Implement an idempotent funded Mecha consumer: recheck frozen proposition,
+   Watcher uploader and exact Steam roster, self-side, Desync sibling, plan
+   version, 1,000-WOLO per-game and 10,000-WOLO plan budget; atomically reserve
+   ledger funds and accept a durable stake ticket before decrementing a finite
+   plan. Uncertain broadcasts cannot automatically retry.
+4. Preserve WoloChain #5's claim #889, producer/signing isolation, full
+   solvency/liability review, quiesced backup, code-only paired rollback and
+   unchanged consensus. No app code can approve those controls.
+5. Build the authenticated, source-transitive independent website-only
+   release authority in app issue #665 with challenge-bound receipts,
+   immutable HOLD and durable replay fencing. The existing `aoe2war finish`
+   must still refuse the Wolo P1 until a real approved alternative exists.
+
+**Operator / agent diagnostic** (read-only clean local checkout):
+
+```bash
+python3 scripts/aoe2_satchel_readiness.py --json
+```
+
+Exit code **2 is intentional**: source inventory can never grant funds,
+custody, settlement, release or production certification. It emits exact
+source hashes and named blockers without env secrets, network or DB writes.
+Changed or missing source sentinels are **UNVERIFIED**, never READY.
+
+Release order: exact source tests and CI → independent Wolo financial review
+→ certified vault/ledger migrations → funded consumer and idempotency tests
+→ explicitly approved bounded real-money canary → protected deployment and
+runtime rollback verification. General Inspections / Kingdom Intelligence
+earn green only from actual exact-version evidence.
+
+## October 18, 2026 — aborting preview batches must never count as pre-existing bets
+
+Rebased the objective fix from historical draft #619. PostgreSQL's
+`createMany(skipDuplicates: true)` successful return count is the only
+authority for how many Mecha preview rows were inserted. An unexpected
+`P2002` is now reported as
+`BET_AUTO_SHADOW_INSERT_CONFLICT_UNVERIFIED`; impossible return counts
+are refused with `BET_AUTO_SHADOW_INSERT_COUNT_INVALID`. We do not
+fabricate "already exists" acknowledgements or retry uncertain batches.
+Tests explicitly exercise both negative paths.
+
+This is **preview-only** correctness. It does not create balances,
+accept stakes, decrement saved plans or authorize a Satchel transfer.
+
+
+## October 18, 2026 — website-only release separation (candidate, not deployed)
+
+For the website-only release candidate, the October 15 C3a
+`war_satchel_simulation_guard_correction` migration is deliberately
+**deferred**, preserving the original SQL in Git at `f579cd0d` and on
+the held Satchel development/release track. The five older,
+already-present but unapplied C1–C3a migrations remain unchanged in
+source. The active production database remains at 112 applied
+migrations per the last operator-verified frontier; no Satchel SQL was
+installed by the website-only candidate.
+
+This separation does not authorize a user to transfer WOLO, credit a
+Satchel balance, execute real Mecha wagers or issue withdrawals. Any
+code requiring unapplied Satchel tables or the corrected simulation
+function must remain disabled until a separately reviewed guarded
+schema rollout. This candidate is website/runtime work only, subject
+to full GitHub and protected release gates; no deployment is claimed.
+
 
 ## October 16, 2026 — never truncate an active Watcher bet behind unrelated live markets
 

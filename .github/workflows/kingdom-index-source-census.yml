@@ -1,0 +1,101 @@
+name: Kingdom Index source census
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '19 6 * * *'
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'components/**'
+      - 'lib/**'
+      - 'config/kingdom-index-routes.json'
+      - 'scripts/kingdom_index_source_audit.mjs'
+      - 'scripts/kingdom_index_dependency_evidence.py'
+      - 'scripts/aoe2_module_graph.py'
+      - 'config/**'
+      - 'prisma/schema.prisma'
+      - 'package.json'
+      - 'yarn.lock'
+      - 'next.config.*'
+      - 'middleware.*'
+      - '.github/workflows/kingdom-index-source-census.yml'
+jobs:
+  registry:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify all public routes and source revisions
+        run: |
+          set -euo pipefail
+          node scripts/kingdom_index_source_audit.mjs --check | tee kingdom-index-census.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kingdom-index-source-census
+          path: kingdom-index-census.json
+          if-no-files-found: ignore
+
+  dependency-evidence:
+    name: Read-only route dependency visibility (NOT certification)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Capture source-only dependency graph for relevant routes
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p kingdom-index-dependency-reports
+          python3 scripts/kingdom_index_dependency_evidence.py --route /leaderboard --json > kingdom-index-dependency-reports/leaderboard.json
+          python3 scripts/kingdom_index_dependency_evidence.py --route /kingdom-index --json > kingdom-index-dependency-reports/kingdom-index.json
+          if [[ "${{ github.event_name }}" != "pull_request" ]]; then
+            python3 scripts/kingdom_index_dependency_evidence.py --all --json > kingdom-index-dependency-reports/all-routes.json
+          fi
+      - name: Summarize source gaps; never label them certification
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          rows = []
+          for source in sorted(Path("kingdom-index-dependency-reports").glob("*.json")):
+              result = json.loads(source.read_text())
+              assert result["schema"] == 1
+              assert result["source"] == "WORKTREE_LEXICAL_ONLY"
+              assert result["page_quality_certified"] is False
+              assert result["financial_release_authorized"] is False
+              for route in result["routes"]:
+                  assert route["dependency_completeness_certified"] is False
+                  assert route["quality_score_authority"] == "none"
+                  rows.append((source.name, route["href"], route["file_count"],
+                               len(route["unresolved_local_imports"]),
+                               len(route["nonliteral_import_modules"]),
+                               route["status"]))
+          assert rows
+          with Path(os.environ["GITHUB_STEP_SUMMARY"]).open("a") as out:
+              out.write("## Kingdom Index dependency visibility — NOT A CERTIFICATE\n\n")
+              out.write("These are lexical working-tree observations, not trusted bundle, runtime, finance, or 100-point evidence.\n\n")
+              out.write("| Inventory | Route | Files | Unresolved | Dynamic | Status |\n")
+              out.write("|---|---|---:|---:|---:|---|\n")
+              for source, href, count, missing, dynamic, state in rows:
+                  out.write(f"| {source} | {href} | {count} | {missing} | {dynamic} | {state} |\n")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kingdom-index-dependency-evidence
+          path: kingdom-index-dependency-reports/*.json
+          if-no-files-found: ignore

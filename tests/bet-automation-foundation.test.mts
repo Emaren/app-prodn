@@ -141,6 +141,41 @@ test("custody capability alone cannot activate an unimplemented executor", () =>
   assert.equal(runtime.code, "LIVE_EXECUTOR_UNAVAILABLE");
 });
 
+test("custody config refuses nonlocal, ambiguous and redirected origins", () => {
+  const base = {
+    BET_AUTOMATION_MODE: "live",
+    WOLO_BET_CUSTODY_CAPABILITY: "bet-custody-v1",
+    WOLO_SETTLEMENT_AUTH_TOKEN: "test-only-secret",
+  };
+  const rejected = [
+    "https://example.com/settlement/v1/bet-custody",
+    "https://127.0.0.1:8092/settlement/v1/bet-custody",
+    "http://localhost:8092/settlement/v1/bet-custody",
+    "http://127.0.0.1:8093/settlement/v1/bet-custody",
+    "http://127.0.0.1:8092/settlement/v1/bet-custody?role=owner",
+    "http://127.0.0.1:8092/settlement/v1/bet-custody#confirmed",
+    "http://admin:token@127.0.0.1:8092/settlement/v1/bet-custody",
+    "http://127.0.0.1:8092/settlement/v1/bet-custody/../bet-custody",
+    " http://127.0.0.1:8092/settlement/v1/bet-custody ",
+    "http://0x7f000001:8092/settlement/v1/bet-custody",
+    "http://[::1]:8092/settlement/v1/bet-custody",
+    "",
+  ];
+  for (const endpoint of rejected) {
+    const runtime = readBetAutomationRuntime({ ...base, WOLO_BET_CUSTODY_URL: endpoint });
+    assert.equal(runtime.custodyCapabilityPresent, false, endpoint);
+    assert.equal(runtime.executionReady, false, endpoint);
+    assert.equal(runtime.mode, "disabled", endpoint);
+    assert.equal(runtime.code, "LIVE_CUSTODY_UNAVAILABLE", endpoint);
+  }
+  const noToken = readBetAutomationRuntime({
+    ...base, WOLO_SETTLEMENT_AUTH_TOKEN: "   ",
+    WOLO_BET_CUSTODY_URL: "http://127.0.0.1:8092/settlement/v1/bet-custody",
+  });
+  assert.equal(noToken.custodyCapabilityPresent, false);
+  assert.equal(noToken.executionReady, false);
+});
+
 test("profile and API keep the preview boundary explicit", () => {
   const card = readFileSync(
     new URL("../components/profile/AutoBetReserveCard.tsx", import.meta.url),

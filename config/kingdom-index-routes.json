@@ -1,0 +1,410 @@
+[
+  {
+    "href": "/",
+    "label": "Kingdom Gate",
+    "district": "citadel",
+    "sourceTree": "src-e6739575d025d772"
+  },
+  {
+    "href": "/about",
+    "label": "About",
+    "district": "commons",
+    "sourceTree": "src-8f8de2f71e79f473"
+  },
+  {
+    "href": "/academy",
+    "label": "Academy",
+    "district": "forge",
+    "sourceTree": "src-c4599ac67cbf46b6"
+  },
+  {
+    "href": "/ai",
+    "label": "Ai",
+    "district": "commons",
+    "sourceTree": "src-8d9d1b8f967b6278"
+  },
+  {
+    "href": "/aoe2war-os",
+    "label": "AoE2WAR OS",
+    "district": "citadel",
+    "sourceTree": "src-c9086bb10fdcc44d"
+  },
+  {
+    "href": "/battle-archive",
+    "label": "Battle Archive",
+    "district": "forge",
+    "sourceTree": "src-acf3aa18f1df8d76"
+  },
+  {
+    "href": "/belts",
+    "label": "Belts",
+    "district": "arena",
+    "sourceTree": "src-751752a8d502b241"
+  },
+  {
+    "href": "/bets",
+    "label": "Bets",
+    "district": "bazaar",
+    "sourceTree": "src-7d3c35d9c409ca86"
+  },
+  {
+    "href": "/betting-mechanics",
+    "label": "Betting Mechanics",
+    "district": "bazaar",
+    "sourceTree": "src-b50b7e10492d58a4"
+  },
+  {
+    "href": "/bounties",
+    "label": "Bounties",
+    "district": "bazaar",
+    "sourceTree": "src-1287b6ca4f7b796b"
+  },
+  {
+    "href": "/challenge",
+    "label": "Challenge",
+    "district": "arena",
+    "sourceTree": "src-dbd0a8fba7cdb518"
+  },
+  {
+    "href": "/champions",
+    "label": "Champions",
+    "district": "arena",
+    "sourceTree": "src-758ab8bfeb89f265"
+  },
+  {
+    "href": "/champions/e2",
+    "label": "Champions E2",
+    "district": "arena",
+    "sourceTree": "src-e7d38b7aa9a616c4"
+  },
+  {
+    "href": "/champions/e3",
+    "label": "Champions E3",
+    "district": "arena",
+    "sourceTree": "src-ed32013994a90101"
+  },
+  {
+    "href": "/champions/e4",
+    "label": "Champions E4",
+    "district": "arena",
+    "sourceTree": "src-5763c0189c4bd9c1"
+  },
+  {
+    "href": "/champions/e5",
+    "label": "Champions E5",
+    "district": "arena",
+    "sourceTree": "src-000842162c803499"
+  },
+  {
+    "href": "/champions/legacy",
+    "label": "Champions · Legacy",
+    "district": "arena",
+    "sourceTree": "src-43f96288520be260"
+  },
+  {
+    "href": "/chaosium",
+    "label": "Chaosium",
+    "district": "arena",
+    "sourceTree": "src-4d77ca7bd8ce360a"
+  },
+  {
+    "href": "/clans",
+    "label": "Clans",
+    "district": "commons",
+    "sourceTree": "src-dddc3843b35e6424"
+  },
+  {
+    "href": "/download",
+    "label": "Download",
+    "district": "commons",
+    "sourceTree": "src-3c378ff334ccf19b"
+  },
+  {
+    "href": "/forum",
+    "label": "Forum",
+    "district": "commons",
+    "sourceTree": "src-6632b8968724dd29"
+  },
+  {
+    "href": "/game-stats",
+    "label": "Parser Observatory",
+    "district": "forge",
+    "sourceTree": "src-49b7f05aa7803128"
+  },
+  {
+    "href": "/general-inspections",
+    "label": "General Inspections",
+    "district": "citadel",
+    "sourceTree": "src-9ecd6f93dd380d8b"
+  },
+  {
+    "href": "/hd-replay-engine",
+    "label": "Replay Engine",
+    "district": "forge",
+    "sourceTree": "src-d1cf04cb35a82e5d"
+  },
+  {
+    "href": "/kingdom",
+    "label": "Kingdom",
+    "district": "citadel",
+    "sourceTree": "src-3d14f0c60b59f8de"
+  },
+  {
+    "href": "/kingdom-agents",
+    "label": "Kingdom Agents",
+    "district": "citadel",
+    "sourceTree": "src-ee8e4f6acd409f36"
+  },
+  {
+    "href": "/kingdom-bettors",
+    "label": "Kingdom Bettors",
+    "district": "bazaar",
+    "sourceTree": "src-f01f64fb56c3e2d1"
+  },
+  {
+    "href": "/kingdom-forge",
+    "label": "Kingdom Forge",
+    "district": "citadel",
+    "sourceTree": "src-81f4df36942f50f1"
+  },
+  {
+    "href": "/kingdom-index",
+    "label": "Kingdom Index",
+    "district": "citadel",
+    "sourceTree": "src-c50a8aa359931fc0"
+  },
+  {
+    "href": "/kingdom-intelligence",
+    "label": "Kingdom Intelligence",
+    "district": "citadel",
+    "sourceTree": "src-5537012d8de333d7"
+  },
+  {
+    "href": "/kingdom-treasury",
+    "label": "Kingdom Treasury",
+    "district": "citadel",
+    "sourceTree": "src-5dc93baf4a126903"
+  },
+  {
+    "href": "/leaderboard",
+    "label": "HD Leaderboard",
+    "district": "arena",
+    "sourceTree": "src-acb102bb1e1a3216"
+  },
+  {
+    "href": "/leaderboard/og",
+    "label": "Battle Ledger",
+    "district": "arena",
+    "sourceTree": "src-74534df4827fd6fe"
+  },
+  {
+    "href": "/leagues",
+    "label": "Leagues",
+    "district": "arena",
+    "sourceTree": "src-362410976fffdd6a"
+  },
+  {
+    "href": "/library",
+    "label": "Library",
+    "district": "forge",
+    "sourceTree": "src-0eea289dede83f81"
+  },
+  {
+    "href": "/live-games",
+    "label": "Live Games",
+    "district": "arena",
+    "sourceTree": "src-e780e7609d8602b9"
+  },
+  {
+    "href": "/lobby",
+    "label": "Lobby",
+    "district": "commons",
+    "sourceTree": "src-04dfb3ac78830ef4"
+  },
+  {
+    "href": "/market",
+    "label": "Market",
+    "district": "bazaar",
+    "sourceTree": "src-7fa729c34740784f"
+  },
+  {
+    "href": "/national-champions",
+    "label": "National Champions",
+    "district": "arena",
+    "sourceTree": "src-5d434ba4526f5acf"
+  },
+  {
+    "href": "/nations",
+    "label": "Nations",
+    "district": "arena",
+    "sourceTree": "src-382a869d40a3b6a4"
+  },
+  {
+    "href": "/olympia",
+    "label": "Olympia",
+    "district": "arena",
+    "sourceTree": "src-1656154a04a19746"
+  },
+  {
+    "href": "/oracle",
+    "label": "Oracle",
+    "district": "bazaar",
+    "sourceTree": "src-21740ca72c1f5354"
+  },
+  {
+    "href": "/players",
+    "label": "Players",
+    "district": "arena",
+    "sourceTree": "src-5c54660dec674885"
+  },
+  {
+    "href": "/radio",
+    "label": "Radio",
+    "district": "commons",
+    "sourceTree": "src-0700bd78ac567e54"
+  },
+  {
+    "href": "/realm",
+    "label": "Realm",
+    "district": "commons",
+    "sourceTree": "src-7fec61d1b036c9c1"
+  },
+  {
+    "href": "/replay-parser",
+    "label": "Replay Parser",
+    "district": "forge",
+    "sourceTree": "src-9a67f1f9293f5f5f"
+  },
+  {
+    "href": "/requests",
+    "label": "Requests",
+    "district": "commons",
+    "sourceTree": "src-45953cb3ebf093f1"
+  },
+  {
+    "href": "/rivalries",
+    "label": "Rivalries",
+    "district": "arena",
+    "sourceTree": "src-e0171c35d49605e1"
+  },
+  {
+    "href": "/roadmap",
+    "label": "Roadmap",
+    "district": "commons",
+    "sourceTree": "src-7030b8ca7f65c356"
+  },
+  {
+    "href": "/round-chamber",
+    "label": "Round Chamber",
+    "district": "citadel",
+    "sourceTree": "src-d142b50a463482e7"
+  },
+  {
+    "href": "/speed",
+    "label": "Speed",
+    "district": "citadel",
+    "sourceTree": "src-ca844fec07598e37"
+  },
+  {
+    "href": "/staking",
+    "label": "Staking",
+    "district": "bazaar",
+    "sourceTree": "src-baba4d72a206ada4"
+  },
+  {
+    "href": "/statistics",
+    "label": "Statistics",
+    "district": "forge",
+    "sourceTree": "src-0e47d6198190354e"
+  },
+  {
+    "href": "/submit",
+    "label": "Submit",
+    "district": "commons",
+    "sourceTree": "src-9031525f34c719f1"
+  },
+  {
+    "href": "/television-wolo",
+    "label": "Television WOLO",
+    "district": "commons",
+    "sourceTree": "src-d5c871d90be8c5c5"
+  },
+  {
+    "href": "/tournaments",
+    "label": "Tournaments",
+    "district": "arena",
+    "sourceTree": "src-965bec0f9bf642d4"
+  },
+  {
+    "href": "/traffic",
+    "label": "Traffic",
+    "district": "forge",
+    "sourceTree": "src-d8faf1bbe07eb8b3"
+  },
+  {
+    "href": "/users",
+    "label": "Users",
+    "district": "arena",
+    "sourceTree": "src-93e7214753f4ad06"
+  },
+  {
+    "href": "/war-chest",
+    "label": "War Chest",
+    "district": "bazaar",
+    "sourceTree": "src-f41fdb932c1091b4"
+  },
+  {
+    "href": "/war-engine",
+    "label": "War Engine",
+    "district": "forge",
+    "sourceTree": "src-375d874a3a6d2788"
+  },
+  {
+    "href": "/wargraph",
+    "label": "WarGraph",
+    "district": "arena",
+    "sourceTree": "src-a61e667799a9fa03"
+  },
+  {
+    "href": "/watch",
+    "label": "Watch",
+    "district": "arena",
+    "sourceTree": "src-7816372533261a6a"
+  },
+  {
+    "href": "/wolo",
+    "label": "Wolo",
+    "district": "bazaar",
+    "sourceTree": "src-12a52d4629a56471"
+  },
+  {
+    "href": "/wolo-1",
+    "label": "Wolo 1",
+    "district": "bazaar",
+    "sourceTree": "src-457be4f9279122b5"
+  },
+  {
+    "href": "/wolochain",
+    "label": "WoloChain",
+    "district": "bazaar",
+    "sourceTree": "src-4e0984349f20c1a8"
+  },
+  {
+    "href": "/wolomania",
+    "label": "Wolomania",
+    "district": "bazaar",
+    "sourceTree": "src-90086c4d54e0e54e"
+  },
+  {
+    "href": "/workshop",
+    "label": "Workshop",
+    "district": "forge",
+    "sourceTree": "src-348732576fe2d0e4"
+  },
+  {
+    "href": "/zodiac",
+    "label": "Zodiac",
+    "district": "arena",
+    "sourceTree": "src-b8f4ab87c3834ae9"
+  }
+]

@@ -8,12 +8,194 @@ systems: ["app-prodn","aoe2war","wolochain","vpssentry"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "inspection-scoring-contract"
-reviewed_at: "2026-10-06"
+reviewed_at: "2026-10-18"
 review_interval_days: 30
 sensitivity: "internal"
 ---
 
 # AoE2WAR General Inspections
+
+## October 18, 2026 — nightly agent-readable route dependency gap evidence
+
+The `.github/workflows/kingdom-index-source-census.yml` workflow now
+publishes an additional JSON evidence artifact from
+`scripts/kingdom_index_dependency_evidence.py`, plus a GitHub Actions
+step summary of route files, unresolved local imports, nonliteral imports
+and lexical-census status. On PRs, inspect `/leaderboard` and
+`/kingdom-index`; on schedule/manual runs, inspect all 68 registered
+routes. Changes to shared config, lockfiles, Prisma schema and module
+resolver trigger the census, not only page-local components.
+
+These results are strictly **source-only diagnostic observations**.
+The original source census `--check` remains a blocking drift guard.
+A job success means **the sensor ran**, not that complete dependency
+closure, the deployed bundle, p95 performance or business correctness was
+proven. No quality point is awarded, no production source is authenticated,
+and no finance/release permit is created. Artifacts support agent triage
+and a future trusted receipt/criterion evidence pipeline.
+
+## October 18, 2026 — latest-only Index inspection polling
+
+Kingdom Index uses one request-start sequence for its sixty-second and
+visibility-triggered refreshes. A slow earlier successful response cannot
+replace a newer snapshot; a slow earlier failure cannot set SIGNAL
+UNAVAILABLE after a newer successful observation. Unmount aborts still
+prevent state updates. The gate is a pure helper with reversed-completion
+regressions, and the Index route fingerprint is regenerated exactly.
+
+This prevents presentation drift **without** creating measurements or
+certifying a route. Current agents still require source-bound evidence,
+freshness and independent certification before a 100/100 green claim.
+
+## October 18, 2026 — canonical route-census identity for every Index page
+
+Kingdom Index now selects the 68-route, CI-updated
+`config/kingdom-index-routes.json` `sourceTree` fingerprint for ALL
+public pages. The legacy `lib/pageChangeManifest.generated.ts` is generated
+by a different algorithm, covers only 25 routes and contains outdated
+Leaderboard source versions. Its fingerprints are not interchangeable
+with the Index route census and no longer override that census for scoring.
+
+The detail display labels this value ROUTE SOURCE and explicitly warns:
+it is a **route-local Git blob census**, not an authenticated deployed
+runtime identity, fully closed transitive import graph, CI/build attestation
+or independent proof of production correctness. The source-census workflow
+tests exact local fingerprints; a shared import can still change without
+changing the route-local value. That unresolved coverage prevents 100/100.
+
+Agent-fed observations must match the current census namespace, have
+recent timestamps, and remain noncertified. An old 20-character manifest
+identity or the historical Leaderboard 64 cannot receive current credit.
+No additional agent writer, finance permission, deployment authority or
+source-closure certificate is implemented by this change.
+
+## October 18, 2026 — show the route-specific quality proof gates
+
+Kingdom Index details now render the existing `specializedAssurance.gates`
+with each requirement and its actual `unverified` status, rather than
+silently transporting those obligations in API JSON. For HD Leaderboard,
+this includes independent Steam rating and result precedence, rank/pagination,
+lane-cache coherence, and the real-browser test matrix. This is an honest
+checklist of missing evidence, not a declaration that any gate passed.
+
+The details are visible in both the default Ledger View and the optional
+Realm View. No Leaderboard page component, rank calculation, asset or style
+was changed by this Index presentation. Specialty obligations remain
+noncrediting and mandatory before a full engineering certificate.
+
+## October 18, 2026 — live Kingdom Index score is not the historical 64
+
+The Kingdom Index opens **Ledger View** by default; Realm View remains
+available from the existing toggle. The 64/100 HD Leaderboard value in
+`config/kingdom-index-baseline.json` is a **historical source review**, not
+a current release-bound quality score. The source review is preserved as
+`lastReviewScore` and its dimension bars are labeled historical in the detail
+drawer. It no longer occupies the live `score` field on the route ledger.
+
+The public `score` field now accepts only a nonstale, source-aligned **agent**
+observation. The agent's typed timestamp must include an explicit timezone
+and time, and the readout expires after 15 minutes (or if more than five
+minutes in the future). Agent observations are reported as `AGENT OBSERVED`,
+NOT certified; agent claims cannot yield a displayed 100. Source reviews,
+unverified `certified` claims, missing or drifted source, and stale evidence
+display `—` as current quality; the old review remains inspectable.
+
+`/api/kingdom-index` uses `private, no-store` so the 60-second visible-page
+poll cannot be served a CDN-held or stale-while-revalidate score snapshot.
+The optional server-managed evidence feed still requires an explicitly
+configured `KINGDOM_INDEX_EVIDENCE_PATH`, valid dimensions and compatible
+source versions. **No agent reporter or independently authenticated 100-point
+criterion verifier is installed by this change.** Without a current feed,
+the index remains unmeasured rather than inventing an upgrade.
+
+This is display truth and score freshness, NOT a new score or a financial
+release permit. The ranking specialty gates and production browser/database
+evidence in issue #668 remain open. The historical 64 stays in source
+history for honest comparison with future independently measured releases.
+
+## October 18, 2026 — report each missing evidence point before prioritizing upgrades
+
+The read-only `scripts/report_general_inspections.mjs` command analyzes
+one certified General Inspections API snapshot and reports the largest
+weighted proof gaps across the seven official categories without changing
+scores or thresholds. Its `--expected-release=<40-hex-sha>` option binds
+the report to the intended deployed source. Missing timestamps, duplicate
+check identities, mismatched weighted arithmetic, or unavailable response
+fail closed rather than producing a false healthy score.
+
+This tool does not run benchmarks, refresh Doctor evidence, change
+WoloChain, or assume that 100/100 is attainable without the missing live
+measurements. Use its sorted losses to prioritize repairs, refresh original
+evidence from the appropriate authority, then verify genuine point gains.
+
+
+## October 18, 2026 — Kingdom Index page-specific quality evidence
+
+Kingdom Index now separates **one site-wide engineering rubric** from
+**route-specific obligations**. `config/kingdom-index-quality-rubric.json` is
+the universal 30 correctness + 25 functionality + 20 performance +
+15 maintainability + 10 testing budget; every one of its 20 criteria must
+be supported by inspectable exact-release evidence before a certified 100.
+`config/kingdom-index-assurance-profiles.json` defines additional,
+**noncrediting** mandatory proofs for riskier domain surfaces. HD Leaderboard
+must prove Steam RM/DM authority and disconnect vetoes, betting must prove
+money conservation and financial-side-effect boundaries, replay pages require
+exact final-artifact authority, while AoE2WAR OS requires manifest, staging
+and rollback proof. These are not extra points. General-purpose route profiles
+default to the common rubric; future route-specific obligations must be
+reviewed before certification.
+
+The public `/api/kingdom-index` snapshot includes
+`specializedAssurance`, an additive read-only `profile` and array of
+`{id, requirement, status:"unverified"}` objects. **Unverified is not a
+passing score.** The public scoring budget, the historical 64/100 leaderboard
+assessment and financial operations remain unchanged. The historical
+assessment is not a current/live score on the Ledger.
+
+### Read-only route-dependency evidence
+
+`scripts/kingdom_index_dependency_evidence.py` **reuses** the existing
+`aoe2_module_graph.py` lexical extractor and resolver. It follows static
+local TypeScript/JavaScript imports, JSON/CSS references and possible literal
+`/api/` route links; includes ancestor Next.js layout, template and error/loading
+boundaries with their transitive imports; and includes the present package lock,
+Prisma schema, build configuration and middleware/instrumentation inputs.
+Interpolated backtick imports are flagged for review, not treated as resolved.
+Its hash remains working-tree evidence and does not authenticate a build artifact. It records unresolved imports and dynamic module
+references without claiming to resolve runtime paths.
+
+~~~bash
+python3 scripts/kingdom_index_dependency_evidence.py --route /leaderboard --json
+python3 scripts/kingdom_index_dependency_evidence.py --all --json > /tmp/aoe2war-route-dependencies.json
+~~~
+
+This is a **working-tree source diagnostic**, not a Next.js compiler/bundler
+closure proof or production certification. A `STATIC_LEXICAL_CENSUS_ONLY`
+result is not proof that all possible imports, runtime APIs, server actions,
+dynamic SQL queries, financial effects or network dependencies were examined.
+The instrument never executes source, reads keys, changes state or awards
+quality points; tests exercise transitive shared-code changes, repository
+config changes, literal API references and unknown/dynamic imports.
+
+Two older version mechanisms remain separate:
+`scripts/kingdom_index_source_audit.mjs` hashes a narrow catalog subset
+from committed Git blobs; `generate_page_change_manifest.py` hashes
+page-specific working-tree files for a legacy page notice manifest.
+`lib/kingdomIndex.ts` may prefer the latter for overlapping routes.
+**Neither older hash is a dependency-complete certificate.** The new
+diagnostic reports extra evidence but does not silently replace either.
+Only migrate the identity policy after testing side-by-side behavior and
+authenticating exact Git source, API data inputs and deployed artifact.
+
+### Path to real 100/100
+
+First establish source dependency visibility, domain-specialized invariants,
+browser/accessibility evidence and production-scale P75/P95, queries, heap and
+staleness receipts. Then record verified criterion-level proof in a
+reviewed, nonforgable release-bound ledger. Keep unknown/failed gates unearned.
+Only extract large UI modules behind behavior-preserving snapshots and
+performance parity. Do not reward file-count reductions or arbitrary
+decomposition. See app issue #668 for the HD Leaderboard execution ladder.
 
 ## Purpose
 
@@ -239,3 +421,57 @@ and retry the publication failure rather than masking it as healthy liveness.
 - Wolo, databases, settlement, and protected evidence are never mutated by inspection.
 - A display score never overrides the underlying Doctor, release, Speed OS, Storage OS, or
   recovery receipt.
+
+## October 18, 2026 — Kingdom Index certification and special-gate policy
+
+The public `/kingdom-index` uses one common, 100-point **engineering quality
+rubric**: correctness 30, functionality 25, performance 20, maintainability
+15, tests 10. Each dimension contains four distinct criteria. The specialized
+evidence profiles in `config/kingdom-index-assurance-profiles.json` add
+mandatory **proof obligations**, not extra score points. All 68 registered
+public routes now have an explicit profile assignment, even where the profile
+is the general one. An unassigned future route emits an unverified
+`missing-assurance-profile` gate; it is not assumed safe.
+
+### Status and independent attestation
+
+A dated `source-review` or `agent` inspection is not a certified 100.
+Furthermore, an operator-authored observation saying `kind:"certified"`,
+even with a matching source hash and GitHub links, is **not itself proof**
+that the 20 criteria, relevant specialty gates, independent data/financial
+truth, real-browser behavior, and production performance were certified.
+
+The server now treats every such *unverified certification claim* as
+`provisional` after checking source and staleness, and labels it explicitly
+`CERTIFICATION CLAIM UNVERIFIED`. No certificate counts as current without
+a future independent, authenticated receipt verifier; no arbitrary JSON
+field or GitHub URL makes that verifier's decision. Source drift and stale
+timestamps take precedence over provisional labeling.
+
+The historical HD Leaderboard 64/100 source review remains unchanged. Source
+dependency snapshots from `scripts/kingdom_index_dependency_evidence.py`
+are working-tree lexical observations only, not complete Next.js bundle or
+deployed-source identity certification.
+
+### Route-by-route campaign protocol
+
+1. Confirm the exact deployed Git source, route source closure, imported
+   APIs/shared modules, and freshness. Preserve unresolved dependencies.
+2. Establish page-specific authority: Steam ratings and ties for rankings;
+   holds, refunds, payout and GET side effects for finance; chain-of-truth
+   for replays; challenge/holder authority for titles; signed release
+   provenance for AoE2WAR OS.
+3. Collect independent browser/mobile/accessibility/load and database
+   observations with timestamps, source and reproducible test conditions.
+4. Score each of the 20 **weighted criteria** from actual inspectable
+   evidence. A specialty gate marked unverified or failed prevents 100,
+   regardless of the arithmetic. An unknown criterion earns no points.
+5. Record PR/commit/test artifacts, source drift, operational limitations
+   and the next highest-value defect. Refactor only behind parity tests;
+   preserve published visuals unless intentionally commissioning redesign.
+6. Stop at objective diminishing returns, not when an LLM thinks a number
+   looks good. A 100/100 rating must be independently reproducible.
+
+The application read model remains observational and read-only; financial
+operations, Wolo signing, payouts and settlement releases require their
+separate protected authorities.

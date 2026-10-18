@@ -292,9 +292,9 @@
       "owner": "aoe2war-web",
       "path": "docs/BET_AUTOMATION_AND_CUSTODY.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-18",
+      "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "878f76123a049959c0344670c8e9303c7ee178fe1b5c793b212c08950fa44d19",
+      "sha256": "b77005d53bd0a3c766c8ee10591b81e2efc8b9e45d2aca6960cfdcce0b3f99e1",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "5d0fd2c6495c976b1e23527c7e1c5e2134c13752844692a18a827fb9fd3b5a19",
+      "sha256": "e83c48c6472b4a7db8dbd759091431b2dd31a390f85f2e8bfc502a956fddbf9a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-16",
       "sensitivity": "internal",
-      "sha256": "5f52310fff11dd2a47ef4e605670163fd3c26e5b380fa6f3e77633d3f0079525",
+      "sha256": "73ac821dd5a1f6662aff94a90fe3641e8fd0571e36bdbeabae8f0264870874ee",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -731,9 +731,9 @@
       "owner": "aoe2war-web",
       "path": "docs/GENERAL_INSPECTIONS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-10-06",
+      "reviewed_at": "2026-10-18",
       "sensitivity": "internal",
-      "sha256": "2fd4f9444b73b6462d1241e03ec838535725ab3862bbc2566a1c596ff25fabed",
+      "sha256": "9810b6efcff4c5170ac27809c6a20c8e900b507e2b36e63ddd0f9dda467a0127",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -940,7 +940,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-06",
       "sensitivity": "internal",
-      "sha256": "e9982dd80d5415ac2fba969d9c15e1831ebf82d453bac211a71f83fe515f1bd1",
+      "sha256": "c5976640aeec45e9a429db9a305c1816fbbd0f8dbbeaf13abedbd8a943b296eb",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -981,9 +981,9 @@
       "owner": "aoe2war-web",
       "path": "docs/LEADERBOARDS.md",
       "review_interval_days": 90,
-      "reviewed_at": "2026-07-28",
+      "reviewed_at": "2026-10-18",
       "sensitivity": "internal",
-      "sha256": "ce1c2d5ec4c4f33bc73a4ad9c4e764459683b18ba85f5063558ed2c8615b8bf5",
+      "sha256": "aa7a9ced55ecf706feb3081b3ab788025e77a01bb253aa2c4cd5ebe7dc144610",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1509,9 +1509,9 @@
       "owner": "aoe2war-web",
       "path": "docs/RELEASE_RECOVERY_OS.md",
       "review_interval_days": 30,
-      "reviewed_at": "2026-09-29",
+      "reviewed_at": "2026-10-18",
       "sensitivity": "internal",
-      "sha256": "a42c6b1aff44ad5cd447b968afa3f1b0229d877e8a0a5b5d8ecb54e84a9e379d",
+      "sha256": "66f43829b70581b800a5d6901d15988e933674bd2870b37f91a4a95b0aa62dd3",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -1971,7 +1971,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "restricted",
-      "sha256": "3be74c74dd73e234526d24839d3ec9cfc332cdcaacd0eb069ef7e6829686bf97",
+      "sha256": "8e79666b17dbedfed13670eb1fc06c8984031f178b804b615193972da93782a2",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "codex/satchel-complete-financial-paths",
-    "commit": "314d19740531711a9709e1088ef14ea80d65bbf8"
+    "branch": "feat/20261018-kingdom-index-dependency-sensor-ci",
+    "commit": "05ea6ed10dd481ed0a9ccb4c97782d66574828e5"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

@@ -15,6 +15,23 @@ sensitivity: "internal"
 
 # Kingdom Intelligence
 
+## October 18, 2026 — require matching production source for combined health
+
+Rebased the source-identity arbitration from historical draft #622.
+General Inspections presents a certified 40-hex production release SHA;
+public Kingdom Intelligence presents its 12-hex prefix. Those streams
+are only combined as current health when the prefix matches exactly.
+A disagreement is surfaced as `SOURCE DRIFT`, invalid or missing
+evidence as `RELEASE UNVERIFIED`. KI Doctor scores, activity and
+healthy system-agent states are withheld when their release cannot
+be aligned with inspection evidence. Independent inspection watchposts
+remain visible with their own provenance.
+
+This intentionally does **not** change underlying health scores or
+claim every system is healthy. A green presentation cannot substitute
+for verified runtime evidence.
+
+
 ## 2026-10-16 — One General Inspections evidence scan per public OS refresh
 
 The public AoE2WAR OS endpoint combines General Inspections and Kingdom

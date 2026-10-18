@@ -126,7 +126,7 @@ export default async function LeaderboardPage({
     if (previewUrl) {
       previewUrl.searchParams.set(
         "lane",
-        "rm",
+        preferredLane,
       );
       previewUrl.searchParams.set(
         "scope",
