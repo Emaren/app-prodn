@@ -186,11 +186,25 @@ function configuredModeFromEnv(raw: string | undefined): BetAutomationMode {
   return "disabled";
 }
 
-function isHTTPURL(value: string | undefined) {
-  if (!value?.trim()) return false;
+// This capability probes a private *local* settlement boundary, not a
+// configurable webhook. Reject DNS names, remote HTTPS, credentials, fragments,
+// ambiguous paths and alternate ports: an environment typo must not advertise
+// a remote or attacker-controlled service as custody-ready.
+const LOCAL_BET_CUSTODY_ENDPOINT =
+  "http://127.0.0.1:8092/settlement/v1/bet-custody";
+
+function isLocalBetCustodyEndpoint(value: string | undefined): boolean {
+  if (!value || value !== value.trim()) return false;
   try {
     const parsed = new URL(value);
-    return parsed.protocol === "http:" || parsed.protocol === "https:";
+    return (
+      parsed.href === LOCAL_BET_CUSTODY_ENDPOINT &&
+      parsed.origin === "http://127.0.0.1:8092" &&
+      parsed.username === "" &&
+      parsed.password === "" &&
+      parsed.search === "" &&
+      parsed.hash === ""
+    );
   } catch {
     return false;
   }
@@ -214,7 +228,7 @@ export function readBetAutomationRuntime(
   const custodyCapabilityPresent =
     env.WOLO_BET_CUSTODY_CAPABILITY?.trim() ===
       BET_AUTOMATION_CUSTODY_CAPABILITY &&
-    isHTTPURL(env.WOLO_BET_CUSTODY_URL) &&
+    isLocalBetCustodyEndpoint(env.WOLO_BET_CUSTODY_URL) &&
     Boolean(env.WOLO_SETTLEMENT_AUTH_TOKEN?.trim());
 
   if (configuredMode === "disabled") {
