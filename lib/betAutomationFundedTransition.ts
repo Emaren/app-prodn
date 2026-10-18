@@ -26,6 +26,7 @@ export type FundedAutoClaimResult =
 
 export type FundedAutoTicketOutcome =
   | Readonly<{ kind: "accepted"; ticketId: number; fundingTxHash: string }>
+  | Readonly<{ kind: "waiting_for_review"; reason: string }>
   | Readonly<{ kind: "rejected_before_broadcast"; reason: string }>
   | Readonly<{ kind: "unknown_after_broadcast"; reason: string }>;
 
@@ -134,6 +135,10 @@ export async function runFundedMechaTransitionBatch(
           await ports.holdUnknown(claim, "commit_receipt_unknown");
           unknownHeld += 1;
         }
+      } else if (outcome.kind === "waiting_for_review") {
+        // The hold remains reserved and unattempted. Only the original review
+        // may resume it; no signature, release or UNKNOWN transition occurred.
+        skipped += 1;
       } else if (outcome.kind === "rejected_before_broadcast") {
         await ports.releaseUnbroadcast(claim, outcome.reason);
         rejectedBeforeBroadcast += 1;

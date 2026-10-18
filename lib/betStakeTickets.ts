@@ -1,3 +1,7 @@
+import {requireSatchelFinancialBridge} from "./warSatchelFinancialBridgeHold.ts";
+import {buildSatchelWagerAuthorization,assertAuthenticatedSatchelWager,assertSatchelWagerTicketLegs,type SatchelWagerTicketLeg} from "./warSatchelWagerAuthorization.ts";
+import type {AuthenticatedWarSatchelFinancialProof} from "./warSatchelAuthenticatedFinancialProof.ts";
+import type {SatchelWagerReservation} from "./warSatchelWagerReservation.ts";
 import { createHash } from "node:crypto";
 
 import { Prisma, type PrismaClient } from "@/lib/generated/prisma";
@@ -774,6 +778,7 @@ export async function commitBetStakeTicket(
     viewer: WagerViewer;
     stakeTxHash: unknown;
     walletAddress?: unknown;
+    satchelFundingProof?: AuthenticatedWarSatchelFinancialProof;
   }
 ) {
   const escrowRuntime = requireTicketRailEnabled();
@@ -784,7 +789,26 @@ export async function commitBetStakeTicket(
   const requestedWallet = normalizeString(input.walletAddress, 100) || ticket.walletAddress;
   const custodialAuto = ticket.source === "auto" &&
     ticket.walletProvider === "satchel-vault";
+  let assertCustodyProof: (()=>void) | undefined;
+  let assertCustodyLegs: ((legs:readonly SatchelWagerTicketLeg[])=>void) | undefined;
   if (custodialAuto) {
+    requireSatchelFinancialBridge();
+    const authorization=await prisma.satchelWagerAuthorization.findUnique({where:{operationId:ticket.clientRequestId},include:{approval:true,broadcast:true}});
+    if(!authorization?.approval || !authorization.broadcast || authorization.ownerUserId!==input.viewer.id || !stakeTxHash)
+      throw new BetWagerError(409,"Authenticated Satchel reservation and funding proof are required.");
+    const a=buildSatchelWagerAuthorization(authorization.snapshotJson as never);
+    const r=authorization.approval.approvalJson as unknown as SatchelWagerReservation;
+    if(a.reservationDigest!==authorization.reservationDigest || a.ledgerRevision!==authorization.ledgerRevision ||
+      a.consentDigest!==authorization.consentDigest || a.snapshot.ticketId!==ticket.id ||
+      a.snapshot.ownerUserId!==input.viewer.id || a.snapshot.ownerUid!==input.viewer.uid ||
+      a.snapshot.vault!==ticket.walletAddress || a.snapshot.recipient!==escrowRuntime.escrowAddress ||
+      a.snapshot.amountUwolo!==String(BigInt(ticket.totalAmountWolo)*BigInt(1000000)) ||
+      a.snapshot.memo!==buildBetStakeTicketMemo(ticket.id,ticket.version) || authorization.broadcast.txHash!==stakeTxHash)
+      throw new BetWagerError(409,"Satchel funding proof does not match the durable ticket economics.");
+    assertCustodyLegs=(legs)=>assertSatchelWagerTicketLegs(a,legs);
+    assertCustodyLegs(ticket.legs);
+    assertCustodyProof=()=>assertAuthenticatedSatchelWager(input.satchelFundingProof,a,r,stakeTxHash);
+    assertCustodyProof();
     const reservation = await prisma.satchelFundedReservation.findUnique({
       where: { ticketRequestId: ticket.clientRequestId },
     });
@@ -794,7 +818,7 @@ export async function commitBetStakeTicket(
         !input.viewer.walletAddress ||
         ticket.walletAddress !== process.env.WAR_SATCHEL_CERTIFIED_VAULT_ADDRESS ||
         !reservation || reservation.ownerUserId !== input.viewer.id ||
-        reservation.status !== "unknown_hold" ||
+        !["unknown_hold", "committed"].includes(reservation.status) ||
         reservation.amountUwolo !== BigInt(ticket.totalAmountWolo) * BigInt(1000000)) {
       throw new BetWagerError(503, "The Satchel stake has no verified owner reserve and payout route.");
     }
@@ -851,12 +875,16 @@ export async function commitBetStakeTicket(
     }
   );
 
-  const verification = await verifyStakeTransfer({
-    txHash: stakeTxHash,
-    fromAddress: ticket.walletAddress,
-    expectedAmountWolo: ticket.totalAmountWolo,
-    expectedMemo: buildBetStakeTicketMemo(ticket.id, ticket.version),
-  });
+  // Custody acceptance uses ONLY the opaque independently authenticated
+  // Comet proof. Ordinary REST remains the existing manual-ticket contract.
+  const verification = custodialAuto
+    ? {verified:true,detail:"Authenticated Satchel committed transfer",txTimestamp:input.satchelFundingProof!.txTimestamp}
+    : await verifyStakeTransfer({
+      txHash: stakeTxHash,
+      fromAddress: ticket.walletAddress,
+      expectedAmountWolo: ticket.totalAmountWolo,
+      expectedMemo: buildBetStakeTicketMemo(ticket.id, ticket.version),
+    });
   if (!verification.verified) {
     await prisma.betStakeTicket.updateMany({
       where: { id: ticket.id, status: { not: "recorded" } },
@@ -924,6 +952,7 @@ export async function commitBetStakeTicket(
   try {
     await prisma.$transaction(async (tx) => {
       const lockedAt = new Date();
+      assertCustodyProof?.();
       await acquireBetStakeTicketLock(
         tx,
         ticket.id
@@ -962,6 +991,7 @@ export async function commitBetStakeTicket(
           "Ticket legs changed while the transfer was being verified. Retry recovery against the canonical market."
         );
       }
+      assertCustodyLegs?.(lockedTicket.legs);
       await acquireBetStakeTransferLock(
         tx,
         stakeTxHash
@@ -1128,6 +1158,7 @@ export async function commitBetStakeTicket(
       if (recorded.count !== 1) {
         throw new BetWagerError(409, "Ticket state changed while its legs were being recorded.");
       }
+      assertCustodyProof?.();
     });
   } catch (error) {
     const refreshed = await loadOwnedTicket(prisma, ticket.id, input.viewer.id);

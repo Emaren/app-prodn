@@ -1,3 +1,5 @@
+import {buildSatchelWagerAuthorization,wagerReviewContext,assertAuthenticatedSatchelWager,assertSatchelWagerTicketLegs,type SatchelWagerSnapshot} from "./warSatchelWagerAuthorization.ts";
+import {verifyIndependentWagerReservation,type SatchelWagerReservation} from "./warSatchelWagerReservation.ts";
 import { requireSatchelFinancialBridge } from "./warSatchelFinancialBridgeHold.ts";
 import { authenticatedWarSatchelDepositFreshAt, type AuthenticatedWarSatchelDeposit } from "./warSatchelAuthenticatedDeposit.ts";
 import { inspectSingleTicketSatchelReturn } from "./warSatchelClaimReturnAttribution.ts";
@@ -8,7 +10,7 @@ import { isVerifiedSatchelWithdrawal, type SatchelVerifiedWithdrawal } from "./w
 import { randomUUID } from "node:crypto";
 import { satchelFiniteGameSlotAvailable, satchelWatcherSpendWindowIssue } from "./warSatchelWatcherSpendWindow.ts";
 import { verifyDurableSatchelAutoSpendMandate } from "./warSatchelAutoSpendConsent.ts";
-import { authenticateWarSatchelFinancialProof,financialProofFreshAt } from "./warSatchelAuthenticatedFinancialProof.ts";
+import { authenticateWarSatchelFinancialProof,financialProofFreshAt,type AuthenticatedWarSatchelFinancialProof } from "./warSatchelAuthenticatedFinancialProof.ts";
 import { createHash } from "node:crypto";
 import {withdrawalReservationDigest,withdrawalOwnerMandateDigest,verifyIndependentWithdrawalApproval,readWithdrawalReviewerKey,
  type WithdrawalOwnerMandate,type IndependentWithdrawalApproval,type DurableWithdrawalEconomics} from "./warSatchelWithdrawalReview.ts";
@@ -658,8 +660,9 @@ export async function releaseUnbroadcastSatchelReservation(
  */
 export async function markSatchelSubmissionAttempt(
   prisma: PrismaClient,
-  input: { executionId: number; ownerUserId: number; ticketRequestId: string },
+  input: { executionId: number; ownerUserId: number; ticketRequestId: string; reservation: SatchelWagerReservation },
 ) {
+  const reviewKey = await readWithdrawalReviewerKey();
   return withExclusiveSatchelTx(prisma, async tx => {
     const reservation = await tx.satchelFundedReservation.findUnique({
       where: { executionId: input.executionId },
@@ -669,6 +672,18 @@ export async function markSatchelSubmissionAttempt(
         reservation.status !== "reserved") {
       stop("already_submitted_or_not_owner");
     }
+    const authorization = await tx.satchelWagerAuthorization.findUnique({where:{operationId:input.ticketRequestId},include:{approval:true}});
+    if(!authorization?.approval || authorization.reservationId!==reservation.id || authorization.ownerUserId!==input.ownerUserId)
+      stop("independent_wager_review_missing_before_attempt");
+    const a=decodeWagerAuthorization(authorization);
+    const grant=verifyIndependentWagerReservation(authorization.approval.approvalJson,wagerReviewContext(a,input.reservation),reviewKey,Date.now());
+    const reviewedTicket=await tx.betStakeTicket.findUnique({where:{id:a.snapshot.ticketId},include:{legs:true}});
+    if(!reviewedTicket || reviewedTicket.userId!==input.ownerUserId || reviewedTicket.clientRequestId!==input.ticketRequestId ||
+      reviewedTicket.walletAddress!==a.snapshot.vault || reviewedTicket.status!=="awaiting_signature" || reviewedTicket.stakeTxHash!==null)
+      stop("reviewed_ticket_changed_before_attempt");
+    try{assertSatchelWagerTicketLegs(a,reviewedTicket.legs);}catch{stop("reviewed_ticket_legs_changed_before_attempt");}
+
+    if(grant.signature!==input.reservation.signature)stop("wager_review_changed_before_attempt");
     // A Watcher reservation can sit between creation and first broadcast.
     // Revalidate the CURRENT linked Keplr wallet, enabled preset, signed
     // spending mandate and live proposition while still holding the same
@@ -679,6 +694,8 @@ export async function markSatchelSubmissionAttempt(
     });
     if (!execution || execution.reservationId !== reservation.id ||
         execution.preset.userId !== input.ownerUserId ||
+        execution.gameIdentityKey!==a.snapshot.gameIdentityKey || execution.propositionHash!==a.snapshot.propositionHash ||
+        execution.presetId!==a.snapshot.presetId || execution.presetVersion!==a.snapshot.presetVersion ||
         execution.status !== "funded_reserved" ||
         !execution.preset.enabled || !execution.preset.selfOnly ||
         execution.preset.version !== execution.presetVersion ||
@@ -711,6 +728,7 @@ export async function markSatchelSubmissionAttempt(
       presetId: execution.presetId, presetVersion: execution.presetVersion,
       untilOut: execution.preset.untilOut, gamesRemaining: execution.preset.gamesRemaining, now });
     } catch { stop("original_keplr_spending_signature_missing_or_invalid"); }
+    if(permit.id!==a.snapshot.consentId || permit.originalMandate?.challengeText!==a.snapshot.challengeText)stop("wager_review_consent_changed_before_attempt");
     const market = await tx.betMarket.findUnique({
       where: { id: execution.winnerMarketId },
       select: { status: true, integrityStatus: true, propositionHash: true,
@@ -766,6 +784,7 @@ export async function commitVerifiedSatchelAutoTicket(
     ownerUserId: number;
     ticketId: number;
     fundingTxHash: string;
+    authenticatedWager?: AuthenticatedWarSatchelFinancialProof;
   },
 ): Promise<{ status: "committed" | "already_committed"; ticketId: number }> {
   if (!Number.isSafeInteger(input.executionId) || input.executionId <= 0 ||
@@ -777,6 +796,11 @@ export async function commitVerifiedSatchelAutoTicket(
       where: { executionId: input.executionId },
     });
     if (!reservation || reservation.ownerUserId !== input.ownerUserId) stop("not_reserved_for_owner");
+    const authorization=await tx.satchelWagerAuthorization.findUnique({where:{operationId:reservation.ticketRequestId},include:{approval:true,broadcast:true}});
+    if(!authorization?.approval || authorization.broadcast?.txHash!==input.fundingTxHash)stop("wager_commit_without_authenticated_attempt");
+    const a=decodeWagerAuthorization(authorization);
+    if(a.snapshot.ticketId!==input.ticketId || a.ownerUserId!==input.ownerUserId)stop("wager_commit_context_changed");
+    assertAuthenticatedSatchelWager(input.authenticatedWager,a,authorization.approval.approvalJson as unknown as SatchelWagerReservation,input.fundingTxHash);
     if (reservation.status === "committed") {
       if (reservation.ticketId !== input.ticketId ||
           reservation.txHash !== input.fundingTxHash) stop("conflicting_committed_ticket");
@@ -859,6 +883,7 @@ export async function commitVerifiedSatchelAutoTicket(
         data: { gamesRemaining: { decrement: 1 } },
       });
     }
+    assertAuthenticatedSatchelWager(input.authenticatedWager,a,authorization.approval.approvalJson as unknown as SatchelWagerReservation,input.fundingTxHash);
     return { status: "committed" as const, ticketId: input.ticketId };
   });
 }
@@ -1427,4 +1452,97 @@ export async function creditVerifiedSatchelClaimReturn(
       availableUwolo:account.availableUwolo.toString(),
     });
   });
+}
+
+/** Request an INDEPENDENT review of an existing hold. This never issues a signature. */
+export async function prepareSatchelWagerReview(prisma:PrismaClient,input:{executionId:number;ownerUserId:number;ticketId:number}){
+ return withExclusiveSatchelTx(prisma,async tx=>{
+  const r=await tx.satchelFundedReservation.findUnique({where:{executionId:input.executionId}});
+  if(!r||r.ownerUserId!==input.ownerUserId||r.status!=='reserved')stop('wager_review_requires_unattempted_owner_hold');
+  const prior=await tx.satchelWagerAuthorization.findUnique({where:{operationId:r.ticketRequestId}});
+  if(prior){const a=decodeWagerAuthorization(prior);if(a.snapshot.ticketId!==input.ticketId)stop('wager_review_ticket_changed');return a;}
+  const e=await tx.betAutoExecution.findUnique({where:{id:input.executionId},include:{preset:{include:{user:true}}}});
+  const t=await tx.betStakeTicket.findUnique({where:{id:input.ticketId},include:{legs:true}});
+  const balance=await tx.satchelFundedBalance.findUnique({where:{ownerUserId:input.ownerUserId}});
+  const journal=await tx.satchelFundedJournal.findUnique({where:{sourceKey:r.id}});
+  if(!e||!t||!balance||!journal||e.preset.userId!==input.ownerUserId||e.reservationId!==r.id||
+    e.status!=='funded_reserved'||t.userId!==input.ownerUserId||t.clientRequestId!==r.ticketRequestId||
+    t.source!=='auto'||t.walletProvider!=='satchel-vault'||t.walletAddress!==fundedVaultAddress()||
+    t.status!=='awaiting_signature'||t.stakeTxHash!==null||balance.reservedUwolo<r.amountUwolo||
+    journal.eventKind!=='wager_reserve'||journal.amountUwolo!==r.amountUwolo||journal.deltaReservedUwolo!==r.amountUwolo)
+    stop('wager_review_not_canonical_reserved_ticket');
+  const winner=t.legs.find(l=>l.marketId===e.winnerMarketId),desync=t.legs.find(l=>l.marketId===e.desyncMarketId);
+  if(!winner || winner.side!==e.selectedSide || winner.amountWolo!==e.winnerStakeWolo ||
+    t.legs.some(l=>l.propositionHash!==e.propositionHash) ||
+    (e.desyncMarketId===null ? t.legs.length!==1 : t.legs.length!==2 || !desync ||
+      desync.side!==(e.desyncSide==='yes'?'right':'left') || desync.amountWolo!==e.desyncStakeWolo))
+    stop('wager_review_ticket_differs_from_watcher_execution');
+  const consent=await tx.satchelAutoSpendConsent.findFirst({where:{ownerUserId:input.ownerUserId,
+    ownerUid:e.preset.user.uid,walletAddress:e.preset.user.walletAddress||'',presetId:e.presetId,presetVersion:e.presetVersion,
+    signedAt:{not:null},revokedAt:null,spendExpiresAt:{gt:new Date()}},orderBy:{signedAt:'desc'},include:{originalMandate:true}});
+  if(!consent?.originalMandate)stop('wager_review_original_consent_missing');
+  try{verifyDurableSatchelAutoSpendMandate({consent,originalMandate:consent.originalMandate,ownerUid:e.preset.user.uid,
+    ownerWallet:e.preset.user.walletAddress||'',presetId:e.presetId,presetVersion:e.presetVersion,
+    untilOut:e.preset.untilOut,gamesRemaining:e.preset.gamesRemaining,now:new Date()});}catch{stop('wager_review_original_consent_invalid');}
+  const escrow=getWoloBetEscrowRuntime();if(!escrow.onchainAllowed||!escrow.escrowAddress)stop('wager_review_escrow_unavailable');
+  const a=buildSatchelWagerAuthorization({executionId:e.id,ownerUserId:input.ownerUserId,ownerUid:e.preset.user.uid,
+    ownerWallet:e.preset.user.walletAddress||'',reservationId:r.id,operationId:r.ticketRequestId,ticketId:t.id,
+    vault:t.walletAddress,recipient:escrow.escrowAddress,amountUwolo:r.amountUwolo.toString(),memo:"AoE2HDBets bet ticket v1 · ticket "+t.id,
+    gameIdentityKey:e.gameIdentityKey,propositionHash:e.propositionHash,presetId:e.presetId,presetVersion:e.presetVersion,
+    consentId:consent.id,challengeText:consent.originalMandate.challengeText,ownerSignatureJson:consent.originalMandate.ownerSignatureJson,
+    ledgerVersion:balance.version.toString(),availableUwolo:balance.availableUwolo.toString(),reservedUwolo:balance.reservedUwolo.toString(),
+    journalId:journal.id.toString(),legs:t.legs.map(l=>({id:l.id,marketId:l.marketId,side:l.side,amountWolo:l.amountWolo,propositionHash:l.propositionHash}))});
+  await tx.satchelWagerAuthorization.create({data:{operationId:a.operationId,reservationId:a.reservationId,ownerUserId:a.ownerUserId,
+    snapshotJson:a.snapshot as unknown as Prisma.InputJsonValue,reservationDigest:a.reservationDigest,ledgerRevision:a.ledgerRevision,consentDigest:a.consentDigest}});
+  return a;
+ });
+}
+function decodeWagerAuthorization(row:{snapshotJson:unknown;operationId:string;reservationId:string;ownerUserId:number;reservationDigest:string;ledgerRevision:string;consentDigest:string}){
+ const a=buildSatchelWagerAuthorization(row.snapshotJson as SatchelWagerSnapshot);
+ if(a.operationId!==row.operationId||a.reservationId!==row.reservationId||a.ownerUserId!==row.ownerUserId||
+   a.reservationDigest!==row.reservationDigest||a.ledgerRevision!==row.ledgerRevision||a.consentDigest!==row.consentDigest)
+   stop('wager_authorization_snapshot_corrupt');
+ return a;
+}
+/** Trusted reviewer ingress, analogous to withdrawal approval. No public route,
+ * signature generator, bearer-based authority or automatic signing fallback. */
+export async function attachIndependentSatchelWagerReview(prisma:PrismaClient,input:{operationId:string;ownerUserId:number;approval:SatchelWagerReservation}){
+ const key=await readWithdrawalReviewerKey();
+ return withExclusiveSatchelTx(prisma,async tx=>{
+  const row=await tx.satchelWagerAuthorization.findUnique({where:{operationId:input.operationId}});
+  if(!row||row.ownerUserId!==input.ownerUserId)stop('wager_review_owner_missing');
+  const a=decodeWagerAuthorization(row);
+  const approval=verifyIndependentWagerReservation(input.approval,wagerReviewContext(a,input.approval),key,Date.now());
+  const prior=await tx.satchelWagerApproval.findUnique({where:{operationId:a.operationId}});
+  if(prior){if(JSON.stringify(prior.approvalJson)!==JSON.stringify(JSON.parse(JSON.stringify(approval)))){
+    // JSONB key order is not part of the signature; compare canonical sign bytes and signature.
+    const old=verifyIndependentWagerReservation(prior.approvalJson,wagerReviewContext(a,approval),key,Date.now());
+    if(old.signature!==approval.signature)stop('wager_review_conflict');
+   }return {state:'already_reviewed' as const};}
+  const r=await tx.satchelFundedReservation.findUnique({where:{id:a.reservationId}});
+  if(!r||r.status!=='reserved'||r.ownerUserId!==input.ownerUserId)stop('wager_review_already_attempted');
+  await tx.satchelWagerApproval.create({data:{operationId:a.operationId,approvalJson:approval as unknown as Prisma.InputJsonValue}});
+  return {state:'reviewed' as const};
+ });
+}
+export async function loadSatchelWagerReview(prisma:PrismaClient,input:{operationId:string;ownerUserId:number},historical=false){
+ noFundsUntilCertified();
+ const row=await prisma.satchelWagerAuthorization.findUnique({where:{operationId:input.operationId},include:{approval:true,broadcast:true}});
+ if(!row||row.ownerUserId!==input.ownerUserId)stop('wager_review_owner_missing');
+ const a=decodeWagerAuthorization(row),raw=row.approval?.approvalJson as unknown as SatchelWagerReservation|undefined;
+ const review=raw?verifyIndependentWagerReservation(raw,wagerReviewContext(a,raw),await readWithdrawalReviewerKey(),historical?raw.issued_at*1000:Date.now()):null;
+ return {authorization:a,review,candidateHash:row.broadcast?.txHash??null};
+}
+/** Persist ACK identity before any proof I/O. A conflicting hash remains held. */
+export async function recordSatchelWagerBroadcastCandidate(prisma:PrismaClient,input:{operationId:string;ownerUserId:number;txHash:string}){
+ if(!TX_HASH.test(input.txHash)||input.txHash==='0'.repeat(64))stop('wager_candidate_hash_invalid');
+ return withExclusiveSatchelTx(prisma,async tx=>{
+  const a=await tx.satchelWagerAuthorization.findUnique({where:{operationId:input.operationId}});
+  if(!a||a.ownerUserId!==input.ownerUserId)stop('wager_candidate_owner_missing');
+  const r=await tx.satchelFundedReservation.findUnique({where:{id:a.reservationId}});
+  const prior=await tx.satchelWagerBroadcast.findUnique({where:{operationId:a.operationId}});
+  if(prior){if(prior.txHash!==input.txHash)stop('wager_candidate_hash_conflict');return;}
+  if(!r||r.status!=='unknown_hold')stop('wager_candidate_without_attempt_fence');
+  await tx.satchelWagerBroadcast.create({data:{operationId:a.operationId,txHash:input.txHash}});
+ });
 }

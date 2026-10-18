@@ -1,4 +1,4 @@
-/** Shared return/operation adapter for Wolo PR29. Exported HTTP JSON is
+/** Shared return/operation adapter for the exact reviewed Wolo custody build. Exported HTTP JSON is
  * untrusted until the exact pinned offline executable authenticates Comet and
  * the full independently persisted expected context. No execution or credit.
  */
@@ -10,13 +10,19 @@ import { tmpdir } from "node:os";
 import { isAbsolute, join } from "node:path";
 import { promisify } from "node:util";
 import { readWarSatchelBoundedUtf8 } from "./warSatchelBoundedBody.ts";
+import { verifyIndependentWagerReservation } from "./warSatchelWagerReservation.ts";
+import { readWithdrawalReviewerKey } from "./warSatchelWithdrawalReview.ts";
 
 const invoke = promisify(execFile);
 const MARK = Symbol("authenticated-wolo-comet-financial-proof");
 const issued = new WeakSet<object>();
 let active = 0;
-// PR29 run39069854469, exact source155fcf67, two clean Linux/amd64 builds.
-const PINNED_VERIFIER_SHA256 = "3c2f89936802d016a43efdb8b2ec914bd388e78e0b1251f76a837c793d5da92e";
+// PR39 run39129775493, exact source99f32de617964565875ed4689bea0d688bb99147.
+// Independently downloaded/raw-hashed Linux/amd64 custody-backend artifact;
+// its verify-financial-proof subcommand supports signed wager reservations.
+// Wolo docs/settlement-contracts/custody-backend-artifact-20261018.json binds
+// this NEW artifact. The historical PR29 binary is not being relabeled.
+const PINNED_VERIFIER_SHA256 = "d431c580a47ff020d997534145c5c53959c70c6f2d00d13029582ee8ec8709ac";
 const ENDPOINT = "http://127.0.0.1:8094";
 const HASH = /^[A-F0-9]{64}$/;
 const DIGEST = /^[a-f0-9]{64}$/;
@@ -30,15 +36,15 @@ function stop(reason: string): never {
   throw new Error("SATCHEL_AUTHENTICATED_FINANCIAL_PROOF_REFUSED:" + reason);
 }
 export type ExpectedWarSatchelFinancialProof = Readonly<{
-  kind: "withdrawal" | "claim_return";
+  kind: "withdrawal" | "claim_return" | "wager";
   ownerUid: string; operationId: string; txHash: string; vault: string;
   expectedContext: Readonly<Record<string, unknown>>;
   requestPath: "/satchel/v1/proofs/operation" | "/satchel/v1/proofs/return";
   requestBody: Readonly<Record<string, unknown>>;
 }>;
 export type AuthenticatedWarSatchelFinancialProof = Readonly<{
-  kind: "withdrawal" | "claim_return"; ownerUid: string; operationId: string;
-  txHash: string; height: bigint; blockHash: string; receiptId: string;
+  kind: "withdrawal" | "claim_return" | "wager"; ownerUid: string; operationId: string;
+  txHash: string; height: bigint; blockHash: string; txTimestamp: string; receiptId: string;
   contextDigest: string; verifiedAtMs: number; authenticatedHeadExpiresAtMs: number;
   [MARK]: true;
 }>;
@@ -49,9 +55,16 @@ export function financialProofFreshAt(value: unknown, nowMs = Date.now()): value
     Number.isSafeInteger(proof.authenticatedHeadExpiresAtMs) && proof.verifiedAtMs <= nowMs &&
     nowMs - proof.verifiedAtMs <= 30_000 && nowMs < proof.authenticatedHeadExpiresAtMs;
 }
-function assertExpected(x: ExpectedWarSatchelFinancialProof) {
+/** Pure admission check for SERVER-PERSISTED expectations. This creates no
+ * authenticated proof. The separate public approval key must come from the
+ * protected authority, never from exported evidence or a browser request.
+ */
+export function assertExpectedWarSatchelFinancialProof(
+  x: ExpectedWarSatchelFinancialProof,
+  wagerApprovalPublicKeyHex?: string,
+) {
   const c = x.expectedContext;
-  if ((x.kind !== "withdrawal" && x.kind !== "claim_return") || !OWNER.test(x.ownerUid) ||
+  if ((x.kind !== "withdrawal" && x.kind !== "claim_return" && x.kind !== "wager") || !OWNER.test(x.ownerUid) ||
       !ADDRESS.test(x.vault) || !HASH.test(x.txHash) || x.txHash === "0".repeat(64) ||
       !/^satchel:[a-z]+:[A-Za-z0-9-]{1,100}$/.test(x.operationId) ||
       c.protocol !== 1 || c.kind !== x.kind || c.owner_id !== x.ownerUid ||
@@ -67,13 +80,35 @@ function assertExpected(x: ExpectedWarSatchelFinancialProof) {
         !c.withdrawal_approval || !c.owner_mandate ||
         JSON.stringify(x.requestBody) !== JSON.stringify({operation_id:x.operationId}))
       stop("durable_withdrawal_expectations_invalid");
-  } else {
+  } else if (x.kind === "claim_return") {
     const approval = receiptObject(c.return_approval);
     if (x.requestPath !== "/satchel/v1/proofs/return" || c.recipient !== x.vault ||
         typeof approval.claim_id !== "string" || !/^[1-9][0-9]{0,15}$/.test(approval.claim_id) ||
         approval.claim_id === "889" ||
         JSON.stringify(x.requestBody) !== JSON.stringify({claim_id:approval.claim_id}))
       stop("durable_return_expectations_invalid");
+  } else {
+    const exactKeys = ["protocol", "kind", "owner_id", "operation_id", "sender",
+      "recipient", "amount_uwolo", "memo", "tx_hash", "reservation"];
+    const keys = Reflect.ownKeys(c);
+    if (keys.length !== exactKeys.length ||
+        keys.some(key => typeof key !== "string" || !exactKeys.includes(key)) ||
+        x.requestPath !== "/satchel/v1/proofs/operation" || c.sender !== x.vault ||
+        typeof c.amount_uwolo !== "string" ||
+        JSON.stringify(x.requestBody) !== JSON.stringify({operation_id:x.operationId}))
+      stop("durable_wager_expectations_invalid");
+    const a = receiptObject(c.reservation);
+    // This is the exact ORIGINAL review read from the consumer's immutable
+    // attempt. Historical proof verification uses its original issuance time,
+    // matching Go VerifyFinancialProof; it grants no fresh submission window.
+    verifyIndependentWagerReservation(a, {
+      operationId: x.operationId, ownerUid: x.ownerUid, vault: x.vault,
+      recipient: String(c.recipient), amountUwolo: c.amount_uwolo,
+      memo: String(c.memo), reservationDigest: String(a.reservation_digest),
+      ledgerRevision: String(a.ledger_revision), consentDigest: String(a.consent_digest),
+      feeUwolo: String(a.fee_uwolo), issuedAt: a.issued_at as number,
+      expiresAt: a.expires_at as number,
+    }, wagerApprovalPublicKeyHex || "", Number(a.issued_at) * 1000);
   }
 }
 function requireConfiguration(x: {vault: string}) {
@@ -182,6 +217,81 @@ export function verifiedFinancialTranscriptHeadExpiry(
   return expiresAtMs;
 }
 
+function timestampObject(value: unknown, allowed: readonly string[]) {
+  const object = receiptObject(value);
+  if (Object.keys(object).some(key => !allowed.includes(key)))
+    stop("authenticated_tx_timestamp_metadata_invalid");
+  return object;
+}
+function validCommitTimestamp(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  const parts = /^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d):(\d\d)(?:\.(\d{1,9}))?(Z|[+-]\d\d:\d\d)$/.exec(value);
+  if (!parts) return false;
+  const [year, month, day, hour, minute, second] = parts.slice(1, 7).map(Number);
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  if (month < 1 || month > 12 || day < 1 || day > days[month - 1] ||
+      hour > 23 || minute > 59 || second > 59) return false;
+  if (parts[8] !== "Z") {
+    const [offsetHour, offsetMinute] = parts[8].slice(1).split(":").map(Number);
+    if (offsetHour > 23 || offsetMinute > 59) return false;
+  }
+  return Number.isFinite(Date.parse(value));
+}
+
+/** Metadata extraction ONLY AFTER the pinned verifier authenticates these
+ * exact transcript bytes and returns this inclusion height/block hash.
+ * Source99f32de portable proofs contain /commit, not /block. Comet authenticates
+ * the signed header's time and its binding to commit.block_id.hash. REST's
+ * second-precision transaction timestamp is never used here.
+ * The pure helper does not authenticate a proof or issue an opaque receipt.
+ */
+export function verifiedFinancialTranscriptTxTimestamp(
+  exported: string, height: bigint, blockHash: string,
+): string {
+  if (typeof exported !== "string" || Buffer.byteLength(exported) > PROOF_LIMIT ||
+      typeof height !== "bigint" || height <= BigInt(0) ||
+      height > BigInt(Number.MAX_SAFE_INTEGER) || typeof blockHash !== "string" ||
+      !HASH.test(blockHash) || blockHash === "0".repeat(64))
+    stop("authenticated_tx_timestamp_metadata_invalid");
+  const envelope = receiptObject(JSON.parse(exported) as unknown);
+  const proof = receiptObject(envelope.proof);
+  if (envelope.height !== Number(height) || envelope.block_hash !== blockHash ||
+      proof.version !== 1 || proof.chain_id !== "wolo-1" || proof.kind !== "transfer" ||
+      !Array.isArray(proof.responses) || proof.responses.length === 0 || proof.responses.length > 80)
+    stop("authenticated_tx_timestamp_metadata_invalid");
+  const matches = proof.responses.filter(value => {
+    const response = receiptObject(value);
+    return response.source === "primary" && response.path === "/commit" &&
+      response.query === "height=" + height.toString();
+  });
+  if (matches.length === 0) stop("authenticated_tx_timestamp_missing");
+  let timestamp: string | undefined;
+  for (const value of matches) {
+    const response = timestampObject(value, ["source", "path", "query", "body"]);
+    const body = timestampObject(response.body, ["jsonrpc", "id", "result", "error"]);
+    if (body.error !== undefined && body.error !== null)
+      stop("authenticated_tx_timestamp_metadata_invalid");
+    const result = timestampObject(body.result, ["signed_header", "canonical"]);
+    const signed = timestampObject(result.signed_header, ["header", "commit"]);
+    const header = timestampObject(signed.header, ["version", "chain_id", "height", "time",
+      "last_block_id", "last_commit_hash", "data_hash", "validators_hash", "next_validators_hash",
+      "consensus_hash", "app_hash", "last_results_hash", "evidence_hash", "proposer_address"]);
+    const commit = timestampObject(signed.commit, ["height", "round", "block_id", "signatures"]);
+    const identity = timestampObject(commit.block_id, ["hash", "parts"]);
+    if (result.canonical !== true || header.chain_id !== "wolo-1" ||
+        header.height !== height.toString() || commit.height !== height.toString() ||
+        identity.hash !== blockHash || !validCommitTimestamp(header.time))
+      stop("authenticated_tx_timestamp_identity_mismatch");
+    if (timestamp !== undefined && timestamp !== header.time)
+      stop("authenticated_tx_timestamp_inconsistent");
+    // Replay can fetch the same primary commit again during light-client
+    // verification. Identical observations are harmless; differing ones fence.
+    timestamp = header.time;
+  }
+  return timestamp!;
+}
+
 /** Only a successful exact-source offline verifier can issue the opaque result. */
 export async function authenticateWarSatchelFinancialProof(
   expected: ExpectedWarSatchelFinancialProof, reader: typeof fetch = fetch,
@@ -194,7 +304,8 @@ export async function authenticateWarSatchelFinancialProof(
     signal.throwIfAborted();
     // Isolate nested approvals from callers mutating their object during I/O.
     expected = JSON.parse(JSON.stringify(expected)) as ExpectedWarSatchelFinancialProof;
-    assertExpected(expected);
+    const approvalPublicKey = expected.kind === "wager" ? await readWithdrawalReviewerKey() : undefined;
+    assertExpectedWarSatchelFinancialProof(expected, approvalPublicKey);
     const cfg = requireConfiguration(expected);
     const response = await reader(ENDPOINT + expected.requestPath, {
       method: "POST", redirect: "error", cache: "no-store",
@@ -231,8 +342,9 @@ export async function authenticateWarSatchelFinancialProof(
         stop("offline_receipt_identity_does_not_match_durable_context");
       const verifiedAtMs = Date.now();
       const authenticatedHeadExpiresAtMs = verifiedFinancialTranscriptHeadExpiry(exported, verifiedAtMs);
+      const txTimestamp = verifiedFinancialTranscriptTxTimestamp(exported, BigInt(height), String(receipt.block_hash));
       const result = Object.freeze({kind:expected.kind,ownerUid:expected.ownerUid,operationId:expected.operationId,
-        txHash:expected.txHash,height:BigInt(height),blockHash:String(receipt.block_hash),
+        txHash:expected.txHash,height:BigInt(height),blockHash:String(receipt.block_hash),txTimestamp,
         receiptId:String(receipt.receipt_id),contextDigest:String(receipt.context_digest),
         verifiedAtMs,authenticatedHeadExpiresAtMs,[MARK]:true as const});
       issued.add(result);

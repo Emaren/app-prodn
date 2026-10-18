@@ -6,7 +6,7 @@ import test from "node:test";
 import pg from "pg";
 
 const bin = process.env.AOE2WAR_TEST_PG_BIN || "/opt/homebrew/opt/postgresql@16/bin";
-const migrations = ["20261014_103500_war_satchel_noncrediting_foundation", "20261014_133000_war_satchel_wallet_owner_challenges", "20261014_150000_war_satchel_simulated_double_entry", "20261014_164500_war_satchel_simulation_concurrency_guard", "20261014_191500_war_satchel_simulation_single_owner", "20261015_151500_war_satchel_simulation_guard_correction", "20261017_012000_war_satchel_funded_ledger_foundation"];
+const migrations = ["20261014_103500_war_satchel_noncrediting_foundation", "20261014_133000_war_satchel_wallet_owner_challenges", "20261014_150000_war_satchel_simulated_double_entry", "20261014_164500_war_satchel_simulation_concurrency_guard", "20261014_191500_war_satchel_simulation_single_owner", "20261017_012000_war_satchel_funded_ledger_foundation"];
 const migration = readFileSync(new URL("../prisma/migrations/20261018_020000_war_satchel_physical_receipt_consumption/migration.sql",import.meta.url),"utf8");
 const vault = "wolo1"+"p".repeat(38);
 const sender = "wolo1"+"q".repeat(38);
@@ -59,11 +59,16 @@ test("physical Satchel receipts are globally unique in real isolated PostgreSQL"
       await assert.rejects(c.query("UPDATE war_satchel_physical_receipt_consumptions SET owner_user_id=2"),/immutable/);
       assert.equal((await c.query("SELECT count(*) FROM war_satchel_physical_receipt_consumptions")).rows[0].count,"5");
     });
-    await t.test("governed eight-migration rehearsal rolls back all schema changes",async()=>{
+    await t.test("existing migration cohort rolls back all schema changes in one caller transaction",async()=>{
       await c.query("CREATE DATABASE rehearsal_fixture");const scratch=await connect("rehearsal_fixture");
       await scratch.query("CREATE TABLE users(id int PRIMARY KEY); CREATE TABLE bet_auto_presets(id int PRIMARY KEY); CREATE TABLE bet_auto_executions(id int PRIMARY KEY); CREATE TABLE pending_wolo_claims(id int PRIMARY KEY); INSERT INTO users VALUES(99)");
-      const cohort=execFileSync("python3",["-c","import sys; from scripts.aoe2_satchel_schema_shadow_rehearsal import cohort_sql; sys.stdout.buffer.write(cohort_sql())"],{encoding:"utf8"});
-      await scratch.query(cohort);
+      // Exercise the actual checked-in SQL directly. The production website
+      // release controller does not own these held financial migrations.
+      await scratch.query("BEGIN");
+      for(const m of migrations)await scratch.query(readFileSync(new URL("../prisma/migrations/"+m+"/migration.sql",import.meta.url),"utf8"));
+      await scratch.query(migration);
+      assert.equal((await scratch.query("SELECT to_regclass('war_satchel_physical_receipt_consumptions') AS name")).rows[0].name,"war_satchel_physical_receipt_consumptions");
+      await scratch.query("ROLLBACK");
       assert.equal((await scratch.query("SELECT to_regclass('war_satchel_physical_receipt_consumptions') AS name")).rows[0].name,null);
       assert.equal((await scratch.query("SELECT to_regclass('war_satchel_funded_receipts') AS name")).rows[0].name,null);
       assert.equal((await scratch.query("SELECT id FROM users")).rows[0].id,99);

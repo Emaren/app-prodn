@@ -21,6 +21,7 @@ import {
   releaseUnbroadcastSatchelReservation,
   commitVerifiedSatchelAutoTicket,
   quarantineUnknownSatchelWager,
+  prepareSatchelWagerReview, loadSatchelWagerReview, recordSatchelWagerBroadcastCandidate,
 } from "./warSatchelFundedLedger.ts";
 import {
   runFundedMechaTransitionBatch,
@@ -28,6 +29,10 @@ import {
   type FundedAutoReservedClaim,
   type FundedAutoWorkerCounts,
 } from "./betAutomationFundedTransition.ts";
+
+import {authenticateWarSatchelFinancialProof,type AuthenticatedWarSatchelFinancialProof} from "./warSatchelAuthenticatedFinancialProof.ts";
+import {wagerFinancialContext} from "./warSatchelWagerAuthorization.ts";
+import type { SatchelWagerReservation } from "./warSatchelWagerReservation.ts";
 
 const HASH = /^[A-Fa-f0-9]{64}$/;
 const VAULT = /^wolo1[023456789acdefghjklmnpqrstuvwxyz]{38,90}$/;
@@ -55,8 +60,9 @@ export type IsolatedSatchelSigner = {
     denom: "uwolo";
     amountUwolo: string;
     memo: string;
+    reservation: SatchelWagerReservation;
   }>): Promise<
-    | Readonly<{ kind: "broadcast_confirmed"; txHash: string }>
+    | Readonly<{ kind: "broadcast_accepted"; txHash: string }>
     | Readonly<{ kind: "unknown"; reason: string }>
   >;
 };
@@ -113,6 +119,7 @@ export async function executeFundedMechaTicketBatch(
     throw Error("MECHA_FUNDED_ESCROW_NOT_CERTIFIED");
   }
   const userById = new Map<number, WagerViewer>();
+  const provenByExecution = new Map<number, AuthenticatedWarSatchelFinancialProof>();
 
   return runFundedMechaTransitionBatch(executionIds, {
     async claimAndReserve(executionId) {
@@ -120,9 +127,20 @@ export async function executeFundedMechaTicketBatch(
         where: { id: executionId },
         include: { preset: { include: { user: true } } },
       });
-      if (!execution || execution.status !== "shadow_ready" ||
-          execution.ticketId !== null || execution.reservationId !== null ||
-          execution.attemptCount !== 0) return { kind: "already_handled" as const };
+      if (!execution || execution.ticketId !== null) return { kind: "already_handled" as const };
+      // Resume ONLY an unattempted durable reservation awaiting independent
+      // review. UNKNOWN/funded_submitting rows never re-enter a signing path.
+      if(execution.status==="funded_reserved" && execution.reservationId && execution.attemptCount===1){
+        const prior=await prisma.satchelFundedReservation.findUnique({where:{executionId}});
+        if(!prior||prior.status!=="reserved"||prior.ownerUserId!==execution.preset.userId||prior.id!==execution.reservationId)
+          return {kind:"already_handled" as const};
+        userById.set(executionId,ownerView(execution.preset.user));
+        return {kind:"atomically_reserved" as const,executionId,ownerUid:execution.preset.user.uid,
+          gameIdentityKey:execution.gameIdentityKey,reservationId:prior.id,ticketRequestId:prior.ticketRequestId,
+          reserveUwolo:prior.amountUwolo.toString()};
+      }
+      if(execution.status !== "shadow_ready"||execution.reservationId!==null||execution.attemptCount!==0)
+        return {kind:"already_handled" as const};
       const user = execution.preset.user;
       if (!execution.preset.enabled || !execution.preset.selfOnly ||
           !user.walletAddress ||
@@ -212,7 +230,7 @@ export async function executeFundedMechaTicketBatch(
       } catch {
         return { kind: "rejected_before_broadcast", reason: "canonical_ticket_preparation_refused" };
       }
-      if (ticket.duplicate || ticket.ticket.status !== "awaiting_signature" ||
+      if (ticket.ticket.status !== "awaiting_signature" ||
           ticket.ticket.source !== "auto" ||
           ticket.ticket.walletAddress !== signer.attestedVaultAddress ||
           ticket.ticket.clientRequestId !== claim.ticketRequestId ||
@@ -220,6 +238,15 @@ export async function executeFundedMechaTicketBatch(
           ticket.ticket.legs.length !== legs.length) {
         return { kind: "unknown_after_broadcast", reason: "ticket_preparation_conflict" };
       }
+      await prepareSatchelWagerReview(prisma,{executionId:claim.executionId,ownerUserId:viewer.id,ticketId:ticket.ticket.id});
+      let reviewed:Awaited<ReturnType<typeof loadSatchelWagerReview>>;
+      try{reviewed=await loadSatchelWagerReview(prisma,{operationId:claim.ticketRequestId,ownerUserId:viewer.id});}
+      catch(error){
+        if(error instanceof Error && error.message.startsWith("SATCHEL_WAGER_RESERVATION_REFUSED:"))
+          return {kind:"rejected_before_broadcast",reason:"independent_review_invalid_or_expired"};
+        throw error;
+      }
+      if(!reviewed.review)return {kind:"waiting_for_review",reason:"independent_reservation_review_required"};
       // HARD DURABLE FENCE BEFORE signing/network call, including if the
       // signer times out. From here the reserved funds CANNOT be auto-refunded.
       try {
@@ -227,6 +254,7 @@ export async function executeFundedMechaTicketBatch(
           executionId: claim.executionId,
           ownerUserId: viewer.id,
           ticketRequestId: claim.ticketRequestId,
+          reservation: reviewed.review,
         });
       } catch (error) {
         // A deterministic refusal raised inside the serializable DB
@@ -235,7 +263,8 @@ export async function executeFundedMechaTicketBatch(
         // A database timeout, lost COMMIT acknowledgement or unknown
         // exception must remain quarantined, never retried/refunded.
         if (error instanceof Error &&
-            error.message.startsWith("WAR_SATCHEL_FUNDED_REFUSED:")) {
+            error.message.startsWith("WAR_SATCHEL_FUNDED_REFUSED:") &&
+            !/already_submitted_or_not_owner|racing_funded_submission/.test(error.message)) {
           return {
             kind: "rejected_before_broadcast",
             reason: "prebroadcast_mandate_or_market_refused",
@@ -257,18 +286,27 @@ export async function executeFundedMechaTicketBatch(
           denom: "uwolo",
           amountUwolo: claim.reserveUwolo,
           memo: ticket.ticket.memo,
+          reservation: reviewed.review,
         });
-        if (response.kind !== "broadcast_confirmed" || !HASH.test(response.txHash)) {
+        if (response.kind !== "broadcast_accepted" || !HASH.test(response.txHash)) {
           return { kind: "unknown_after_broadcast", reason: "signer_did_not_prove_broadcast" };
         }
         txHash = response.txHash.toUpperCase();
       } catch {
         return { kind: "unknown_after_broadcast", reason: "signer_transport_unknown" };
       }
+      let proven:AuthenticatedWarSatchelFinancialProof;
+      try{
+        await recordSatchelWagerBroadcastCandidate(prisma,{operationId:claim.ticketRequestId,ownerUserId:viewer.id,txHash});
+        proven=await authenticateWarSatchelFinancialProof({kind:"wager",ownerUid:viewer.uid,
+          operationId:claim.ticketRequestId,txHash,vault:signer.attestedVaultAddress,
+          expectedContext:wagerFinancialContext(reviewed.authorization,reviewed.review,txHash),
+          requestPath:"/satchel/v1/proofs/operation",requestBody:{operation_id:claim.ticketRequestId}});
+      }catch{return {kind:"unknown_after_broadcast",reason:"wager_consensus_proof_unavailable"};}
       try {
         const result = await commitBetStakeTicket(prisma, {
           ticketId: ticket.ticket.id, viewer, stakeTxHash: txHash,
-          walletAddress: signer.attestedVaultAddress,
+          walletAddress: signer.attestedVaultAddress, satchelFundingProof:proven,
         });
         if (result.ticket.status !== "recorded" ||
             result.ticket.stakeTxHash !== txHash) {
@@ -277,6 +315,7 @@ export async function executeFundedMechaTicketBatch(
       } catch {
         return { kind: "unknown_after_broadcast", reason: "canonical_ticket_commit_unknown" };
       }
+      provenByExecution.set(claim.executionId,proven);
       return { kind: "accepted", ticketId: ticket.ticket.id, fundingTxHash: txHash };
     },
     async commitAccepted(claim, accepted) {
@@ -287,6 +326,7 @@ export async function executeFundedMechaTicketBatch(
         ownerUserId: viewer.id,
         ticketId: accepted.ticketId,
         fundingTxHash: accepted.fundingTxHash,
+        authenticatedWager:provenByExecution.get(claim.executionId),
       });
     },
     async releaseUnbroadcast(claim) {
@@ -312,4 +352,30 @@ export async function executeFundedMechaTicketBatch(
       });
     },
   });
+}
+
+/** Proof-only recovery of ONE exact attempted operation. No signer connection,
+ * new authorization, new ticket preparation, release or broadcast exists here. */
+export async function reconcileFundedSatchelWager(prisma:PrismaClient,input:{executionId:number;txHash:string}){
+ requireSatchelFinancialBridge();
+ if(!Number.isSafeInteger(input.executionId)||input.executionId<1||!HASH.test(input.txHash)||input.txHash==='0'.repeat(64))
+  throw Error('MECHA_FUNDED_RECONCILIATION_IDENTITY_INVALID');
+ const e=await prisma.betAutoExecution.findUnique({where:{id:input.executionId},include:{preset:{include:{user:true}},satchelFundedReservation:true}});
+ if(!e?.satchelFundedReservation||!['unknown_hold','committed'].includes(e.satchelFundedReservation.status)||
+   !['funded_submitting','funded_unknown_hold','accepted'].includes(e.status))throw Error('MECHA_FUNDED_RECONCILIATION_NOT_ATTEMPTED');
+ const viewer=ownerView(e.preset.user),operationId=e.satchelFundedReservation.ticketRequestId;
+ const {authorization:a,review,candidateHash}=await loadSatchelWagerReview(prisma,{operationId,ownerUserId:viewer.id},true);
+ const txHash=input.txHash.toUpperCase();
+ if(!review||a.snapshot.executionId!==e.id||a.reservationId!==e.satchelFundedReservation.id||
+   (candidateHash!==null&&candidateHash!==txHash))throw Error('MECHA_FUNDED_RECONCILIATION_CONTEXT_CONFLICT');
+ const proven=await authenticateWarSatchelFinancialProof({kind:'wager',ownerUid:viewer.uid,operationId,txHash,vault:a.snapshot.vault,
+   expectedContext:wagerFinancialContext(a,review,txHash),requestPath:'/satchel/v1/proofs/operation',requestBody:{operation_id:operationId}});
+ // If ACK was lost, admit its hash only AFTER the real journaled operation's
+ // Comet proof authenticates. Never treat an operator-provided hash as payment.
+ await recordSatchelWagerBroadcastCandidate(prisma,{operationId,ownerUserId:viewer.id,txHash});
+ const ticket=await commitBetStakeTicket(prisma,{ticketId:a.snapshot.ticketId,viewer,stakeTxHash:txHash,
+   walletAddress:a.snapshot.vault,satchelFundingProof:proven});
+ if(ticket.ticket.status!=='recorded')throw Error('MECHA_FUNDED_RECONCILIATION_TICKET_UNRECORDED');
+ return commitVerifiedSatchelAutoTicket(prisma,{executionId:e.id,ownerUserId:viewer.id,ticketId:a.snapshot.ticketId,
+   fundingTxHash:txHash,authenticatedWager:proven});
 }

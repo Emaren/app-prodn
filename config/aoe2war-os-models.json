@@ -212,6 +212,9 @@
     "SatchelWithdrawalAttempt",
     "SatchelWithdrawalObservation",
     "SatchelClaimReturnAuthorization",
-    "SatchelWithdrawalPhysicalConsumption"
+    "SatchelWithdrawalPhysicalConsumption",
+    "SatchelWagerAuthorization",
+    "SatchelWagerApproval",
+    "SatchelWagerBroadcast"
   ]
 }

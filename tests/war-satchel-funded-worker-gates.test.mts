@@ -21,21 +21,20 @@ test("funded Mecha worker has no public timer and always fails shut without cert
  assert.match(worker,/await connectCertifiedSatchelSigner\(\)/);
  assert.match(worker,/executeFundedMechaTicketBatch\(prisma, signer, ids\)/);
  assert.match(worker,/take: MAX_BATCH/);
- assert.match(worker,/attemptCount: 0/);
- assert.match(worker,/reservationId: null/);
+ assert.match(worker,/ticketId:\s*null/);
+ assert.match(worker,/status:"shadow_ready",reservationId:null,attemptCount:0/);
+ assert.match(worker,/status:"funded_reserved",reservationId:\{not:null\},attemptCount:1/);
+ assert.match(worker,/satchelFundedReservation:\{is:\{status:"reserved",wagerAuthorization:\{is:\{approval:\{isNot:null\}\}\}\}\}/);
+ assert.doesNotMatch(worker,/status:"unknown_hold"|status:"funded_submitting"/);
  assert.match(worker,/process\.exitCode = 3/);
  assert.doesNotMatch(worker,/fromMnemonic\(|runuser|exec\(|systemctl|cron\(/);
 });
-test("the signer client only accepts approved local port, owner-fenced memo and the correct betting escrow",()=>{
+test("retired camel-case signer cannot retain a financial or health I/O path",()=>{
  const src=read("lib/warSatchelIsolatedSignerTransport.ts");
- assert.match(src,/http:\/\/127\.0\.0\.1:8094/);
- assert.match(src,/const ROLE = "exclusive-war-satchel-v1"/);
- assert.match(src,/recipientAddress !== config\.escrowAddress/);
- assert.match(src,/approvedByOperator !== true/);
- assert.match(src,/await assertLocalSatchelSignerHealth\(config, reader\)/);
- assert.match(src,/keyFingerprint !== config\.keyFingerprint/);
- assert.match(src,/reason: "signer_request_or_acknowledgement_unknown"/);
- assert.doesNotMatch(src,/setTimeout\(|retry\(|while\s*\(/);
+ assert.match(src,/SATCHEL_SIGNER_INTERFACE_RETIRED:use_connectCertifiedSatchelSigner/);
+ assert.match(src,/createLocalIsolatedSatchelSigner/);
+ assert.match(src,/assertLocalSatchelSignerHealth/);
+ assert.doesNotMatch(src,/https?:\/\/|submitOneShot|Authorization|reader\(|fetch\(|setTimeout\(|retry\(|while\s*\(/);
 });
 
 test("protected Watcher tick and one-off operator CLI share ONE signer implementation",()=>{
@@ -46,8 +45,10 @@ test("protected Watcher tick and one-off operator CLI share ONE signer implement
  assert.match(worker,/connectCertifiedSatchelSigner/);
  assert.match(source,/const ENDPOINT = "http:\/\/127\.0\.0\.1:8094"/);
  assert.match(source,/build_sha256 !== cfg\.build/);
- assert.match(source,/durable_request_fenced !== true/);
- assert.doesNotMatch(tick+worker,/createLocalIsolatedSatchelSigner|assertLocalSatchelSignerHealth/);
+ assert.match(source,/durable_request_fenced\s*!==\s*true/);
+ assert.match(source,/execution_protocol !== 2/);
+ assert.match(source,/owner_bound_wager_reservation_required !== true/);
+ assert.doesNotMatch(tick+worker+read("lib/warSatchelFundedOutboxTick.ts"),/warSatchelIsolatedSignerClient|warSatchelIsolatedSignerTransport|makeSatchelLoopbackSigner|createLocalIsolatedSatchelSigner|assertLocalSatchelSignerHealth/);
 });
 
 test("stale player/market/consent rejection cannot starve the Watcher queue or trigger an unsafe retry",()=>{

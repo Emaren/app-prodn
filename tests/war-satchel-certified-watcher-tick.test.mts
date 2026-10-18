@@ -6,7 +6,11 @@ const read=(x:string)=>readFileSync(new URL("../"+x,import.meta.url),"utf8");
 test("an observed canonical Watcher game is the only source of funded Mecha candidates",()=>{
  const src=read("lib/warSatchelFundedWatcherTick.ts");
  assert.match(src,/status:"shadow_ready"/);
- assert.match(src,/ticketId:null,reservationId:null,attemptCount:0/);
+ assert.match(src,/ticketId:null/);
+ assert.match(src,/status:"shadow_ready",reservationId:null,attemptCount:0/);
+ assert.match(src,/status:"funded_reserved",reservationId:\{not:null\},attemptCount:1/);
+ assert.match(src,/status:"reserved",wagerAuthorization:\{is:\{approval:\{isNot:null\}/);
+ assert.doesNotMatch(src,/status:"(?:funded_submitting|funded_unknown_hold)"/);
  assert.match(src,/winnerMarket:\{status:"live",integrityStatus:"verified"/);
  assert.match(src,/satchelAutoSpendConsents:\{some:\{/);
  assert.match(src,/signedAt:\{not:null\},revokedAt:null,spendExpiresAt:\{gt:now\}/);

@@ -63,10 +63,12 @@ async function main() {
   }
   const jobs = await prisma.betAutoExecution.findMany({
     where: {
-      status: "shadow_ready",
-      attemptCount: 0,
-      ticketId: null,
-      reservationId: null,
+      ticketId:null,
+      AND:[{OR:[
+        {status:"shadow_ready",reservationId:null,attemptCount:0},
+        {status:"funded_reserved",reservationId:{not:null},attemptCount:1,
+          satchelFundedReservation:{is:{status:"reserved",wagerAuthorization:{is:{approval:{isNot:null}}}}}},
+      ]}],
       preset: { enabled: true, selfOnly: true },
     },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],

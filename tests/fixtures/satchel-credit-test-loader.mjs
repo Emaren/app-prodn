@@ -9,12 +9,13 @@ export async function load(url, context, nextLoad) {
   if (url.endsWith('/lib/warSatchelFinancialBridgeHold.ts')) {
     source = source.replace('SATCHEL_FINANCIAL_BRIDGE_READY = false as const', 'SATCHEL_FINANCIAL_BRIDGE_READY = true as const');
   }
-  if (url.endsWith('/lib/warSatchelAuthenticatedDeposit.ts') && process.platform !== 'linux') {
+  if ((url.endsWith('/lib/warSatchelAuthenticatedDeposit.ts') ||
+       url.endsWith('/lib/warSatchelAuthenticatedFinancialProof.ts')) && process.platform !== 'linux') {
     // Native macOS test compile of the identical pinned Go source has different
     // bytes. Linux CI exercises the UNMODIFIED production artifact SHA pin.
     const digest = process.env.SATCHEL_TEST_BINARY_SHA256;
     if (!/^[a-f0-9]{64}$/.test(digest || '')) throw Error('test binary identity missing');
-    source = source.replace('3c2f89936802d016a43efdb8b2ec914bd388e78e0b1251f76a837c793d5da92e', digest);
+    source = source.replace('d431c580a47ff020d997534145c5c53959c70c6f2d00d13029582ee8ec8709ac', digest);
   }
   return {...result, source};
 }

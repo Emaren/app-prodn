@@ -5477,6 +5477,8 @@ model SatchelFundedReservation {
   owner User @relation(fields: [ownerUserId], references: [id], onDelete: Restrict, onUpdate: NoAction)
   execution BetAutoExecution @relation(fields: [executionId], references: [id], onDelete: Restrict, onUpdate: NoAction)
 
+  wagerAuthorization SatchelWagerAuthorization?
+
   @@index([ownerUserId, status, createdAt], map: "ix_satchel_funded_reservation_owner")
   @@map("war_satchel_funded_reservations")
 }
@@ -5696,4 +5698,35 @@ model SatchelWithdrawalPhysicalConsumption {
   vaultAddress String @map("vault_address") @db.VarChar(100)
   @@id([chainId,txHash])
   @@map("war_satchel_withdrawal_physical_consumptions")
+}
+
+/// Immutable review request built from the existing funded reservation; no parallel ledger.
+model SatchelWagerAuthorization {
+  operationId String @id @map("operation_id") @db.VarChar(128)
+  reservationId String @unique @map("reservation_id") @db.VarChar(128)
+  ownerUserId Int @map("owner_user_id")
+  snapshotJson Json @map("snapshot_json")
+  reservationDigest String @map("reservation_digest") @db.VarChar(64)
+  ledgerRevision String @map("ledger_revision") @db.VarChar(64)
+  consentDigest String @map("consent_digest") @db.VarChar(64)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  reservation SatchelFundedReservation @relation(fields:[reservationId],references:[id],onDelete:Restrict,onUpdate:NoAction)
+  approval SatchelWagerApproval?
+  broadcast SatchelWagerBroadcast?
+  @@map("war_satchel_wager_authorizations")
+}
+model SatchelWagerApproval {
+  operationId String @id @map("operation_id") @db.VarChar(128)
+  approvalJson Json @map("approval_json")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  authorization SatchelWagerAuthorization @relation(fields:[operationId],references:[operationId],onDelete:Restrict,onUpdate:NoAction)
+  @@map("war_satchel_wager_approvals")
+}
+/// A candidate hash records an ACK, never finality. UNKNOWN requires proof-only recovery.
+model SatchelWagerBroadcast {
+  operationId String @id @map("operation_id") @db.VarChar(128)
+  txHash String @unique @map("tx_hash") @db.VarChar(64)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
+  authorization SatchelWagerAuthorization @relation(fields:[operationId],references:[operationId],onDelete:Restrict,onUpdate:NoAction)
+  @@map("war_satchel_wager_broadcasts")
 }

@@ -21,8 +21,9 @@ const invoke = promisify(execFile);
 const MARK = Symbol("authenticated-wolo-comet-deposit");
 const issued = new WeakSet<object>();
 let active = 0;
-// PR29 run39069854469, exact source155fcf67, two clean Linux/amd64 builds.
-const PINNED_VERIFIER_SHA256 = "3c2f89936802d016a43efdb8b2ec914bd388e78e0b1251f76a837c793d5da92e";
+// Reviewed PR39 custody backend: source99f32de617964565875ed4689bea0d688bb99147,
+// CI39129775493; NEW Linux/amd64 artifact. Historical PR29 bytes are not relabeled.
+const PINNED_VERIFIER_SHA256 = "d431c580a47ff020d997534145c5c53959c70c6f2d00d13029582ee8ec8709ac";
 const ENDPOINT = "http://127.0.0.1:8094/satchel/v1/proofs/deposit";
 const HASH = /^[A-F0-9]{64}$/;
 const DIGEST = /^[a-f0-9]{64}$/;

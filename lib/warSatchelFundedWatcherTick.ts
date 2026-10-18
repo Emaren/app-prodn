@@ -34,7 +34,12 @@ export async function runCertifiedWatcherFundedTick(prisma:PrismaClient){
   // time-valid Mecha plan and an existing positive ledger balance.
   const executions=await prisma.betAutoExecution.findMany({
     where:{
-      status:"shadow_ready",ticketId:null,reservationId:null,attemptCount:0,
+      ticketId:null,
+      AND:[{OR:[
+        {status:"shadow_ready",reservationId:null,attemptCount:0},
+        {status:"funded_reserved",reservationId:{not:null},attemptCount:1,
+          satchelFundedReservation:{is:{status:"reserved",wagerAuthorization:{is:{approval:{isNot:null}}}}}},
+      ]}],
       OR:[{nextAttemptAt:null},{nextAttemptAt:{lte:now}}],
       winnerMarket:{status:"live",integrityStatus:"verified",
         marketType:"winner"},
@@ -44,7 +49,7 @@ export async function runCertifiedWatcherFundedTick(prisma:PrismaClient){
         satchelAutoSpendConsents:{some:{
           signedAt:{not:null},revokedAt:null,spendExpiresAt:{gt:now},
         }},
-        user:{satchelFundedBalance:{is:{availableUwolo:{gt:BigInt(0)}}}},
+        user:{satchelFundedBalance:{is:{OR:[{availableUwolo:{gt:BigInt(0)}},{reservedUwolo:{gt:BigInt(0)}}]}}},
       },
     },
     orderBy:[{createdAt:"asc"},{id:"asc"}],

@@ -58,8 +58,12 @@ export async function runFundedMechaOutboxTick(
   const signer=await connectCertifiedSatchelSigner();
   const rows=await prisma.betAutoExecution.findMany({
     where:{
-      status:"shadow_ready",
-      reservationId:null,ticketId:null,attemptCount:0,
+      ticketId:null,
+      AND:[{OR:[
+        {status:"shadow_ready",reservationId:null,attemptCount:0},
+        {status:"funded_reserved",reservationId:{not:null},attemptCount:1,
+          satchelFundedReservation:{is:{status:"reserved",wagerAuthorization:{is:{approval:{isNot:null}}}}}},
+      ]}],
       createdAt:{gte:earliest,lte:now},
       OR:[{nextAttemptAt:null},{nextAttemptAt:{lte:now}}],
       preset:{
