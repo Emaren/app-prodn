@@ -79,3 +79,13 @@ test("agent scores expire after fifteen minutes and future timestamps fail close
  assert.equal(isKingdomObservationStale({kind:"agent",checkedAtMs:null,nowMs:now}),true);
  assert.equal(isKingdomObservationStale({kind:"source-review",checkedAtMs:now-24*60*60_000,nowMs:now}),false);
 });
+
+test("specialized gate requirements are rendered as explicitly unverified proof obligations",()=>{
+  const ui = readFileSync(new URL("../components/kingdom-index/KingdomIndex.tsx",import.meta.url),"utf8");
+  assert.match(ui,/item\.specializedAssurance\.gates\.map\(/);
+  assert.match(ui,/MANDATORY PROOF GATES/);
+  assert.match(ui,/gate\.status\.toUpperCase\(\)/);
+  assert.match(ui,/gate\.requirement/);
+  assert.match(ui,/No gate counts as passed without authenticated source-bound evidence/);
+  assert.doesNotMatch(ui,/specializedAssurance\.gates\.filter\([^\n]*=>[^\n]*"verified"/);
+});

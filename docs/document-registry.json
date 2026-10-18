@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "e140c528de180c3ac0549dabf89ca5d360682f986d9ce51d746f4afb1061896d",
+      "sha256": "d580326e9160c1f7ba91123454f2fd8cb925d306ddd59713c15c3760bd2da264",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -733,7 +733,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-18",
       "sensitivity": "internal",
-      "sha256": "a2ac401101825589f60620d3b9c7ff6b746ebf1ca2123ccadc720eb0ceeee131",
+      "sha256": "77dc9ac9138ac5df493fa78ba9933379e873de3b942300a1796aaa53affa2328",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/20261018-leaderboard-server-cache-fencing",
-    "commit": "720e123190436996a8d2b8d2d88074d928f1c570"
+    "branch": "feat/20261018-index-specialty-gate-details",
+    "commit": "3239a0ea251734688e5943377dd94ebc2dc7b9ad"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

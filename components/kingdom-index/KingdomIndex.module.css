@@ -107,3 +107,14 @@
 @media(max-width:860px){.hero{align-items:start;flex-direction:column}.heroRight{width:100%;justify-content:space-between;align-items:center}.district[data-region]{grid-column:span 12;transform:none;margin-top:0}.district[data-region="commons"] .buildings{grid-template-columns:repeat(3,minmax(0,1fr))}.district[data-region="arena"] .buildings,.district[data-region="forge"] .buildings{grid-template-columns:repeat(3,minmax(0,1fr))}.ledgerHead,.ledgerRow{grid-template-columns:minmax(150px,1fr) 74px 100px 33px;gap:10px}.ledgerHead span:nth-child(4),.ledgerTime{display:none}.ledgerHead,.ledgerRow{padding-left:16px;padding-right:16px}}
 @media(max-width:570px){.shell{padding:27px 10px}.hero{padding:0 9px}.heroIdentity h1{font-size:52px}.counters{gap:14px}.counters b{font-size:23px}.motto{font-size:8px}.atlas{padding:45px 11px 25px;border-radius:20px}.district{padding:15px;border-radius:17px}.district[data-region] .buildings{grid-template-columns:repeat(2,minmax(0,1fr))}.node{min-height:119px}.districtTitles h2{font-size:25px}.districtTitles span{font-size:8px}.ledgerHead,.ledgerRow{grid-template-columns:minmax(125px,1fr) 63px 34px;gap:8px}.ledgerHead span:nth-child(3),.ledgerRow>.spark,.ledgerRow>.emptySpark{display:none}.ledgerRow .score{font-size:27px}.ledgerName a{font-size:12px}.ledgerName{gap:8px}.detail{padding:19px}.floatingEvidence{right:14px;bottom:14px}}
 @media(prefers-reduced-motion:reduce){.root *,.root *::before,.root *::after{scroll-behavior:auto!important;animation:none!important;transition:none!important}}
+
+/* The Index reveals existing specialty obligations without declaring proof. */
+.assurancePanel{margin-top:21px;border-top:1px solid rgba(197,208,197,.12);padding-top:16px}
+.assurancePanel h3{font-size:10px;letter-spacing:.15em;color:#cdb989;font-weight:700;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.assurancePanel h3 span{font-size:9px;color:#8fa1a0}
+.assuranceList{display:grid;gap:8px;margin-top:11px}
+.assuranceItem{padding:11px 12px;border:1px solid rgba(197,208,197,.11);border-radius:9px;background:rgba(8,14,20,.44)}
+.assuranceItem>div{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.assuranceItem strong{text-transform:capitalize;font-size:10px;color:#d6d9cd;font-weight:550}
+.assuranceItem span{font-size:9px;letter-spacing:.08em;color:#d8ab85;font-weight:600}
+.assuranceItem p{font-size:10px;color:#8fa1a0;line-height:1.6;margin:7px 0 0;overflow-wrap:anywhere}
