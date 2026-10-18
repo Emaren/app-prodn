@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "cbbbd6b38f3c181800b2094b82795774f193534495fa81dac32476c094076a42",
+      "sha256": "374ca482063dae8fcaf5208ddfeaa9c954ccc8fea602547d1b8927eece7e72c3",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/20261018-public-kingdom-index-evidence-atlas",
-    "commit": "1e9550f468e57c288598683fa4955a01a67ceb09"
+    "branch": "feat/20261018-kingdom-betters-arena",
+    "commit": "6a5c55afd82d061eb4dba55c9d0dbdc52d8a3801"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
