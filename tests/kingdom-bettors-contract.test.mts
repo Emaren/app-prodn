@@ -48,3 +48,17 @@ test("both arena and ledger are actually interactive",()=>{
  assert.match(s,/left\.map/);assert.match(s,/right\.map/);
  assert.match(s,/REQUEST THIS MATCHUP/);
 });
+
+test("canonical Kingdom Bettors spelling is consistent across the arena and public route",()=>{
+ const ui=source("components/kingdom-bettors/KingdomBettors.tsx");
+ const page=source("app/kingdom-bettors/page.tsx");
+ const personas=source("components/kingdom-bettors/ProvisionKingdomPersonas.tsx");
+ const house=source("lib/kingdomBettors.ts");
+ assert.match(ui,/<em>BETTORS<\\/em>/);
+ assert.doesNotMatch(ui,/BETTERS|Betters/);
+ assert.match(page,/Kingdom Bettors/);
+ assert.match(page,/\\/kingdom-bettors/);
+ assert.match(personas,/Tony · Paulie · Tommy · Henry/);
+ assert.match(house,/name:"Paulie"/);
+ assert.doesNotMatch(house,/Pauly/);
+});

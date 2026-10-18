@@ -161,7 +161,7 @@ export default function KingdomBettors({initial}:{initial:KingdomBettorsSnapshot
     <div className={styles.skyline} aria-hidden="true"/>
     <div className={styles.shell}>
       <header className={styles.pageHeader}>
-       <div className={styles.titleBlock}><div className={styles.overline}><Swords size={13}/> AOE2WAR / THE WAGER KINGDOM</div><h1>KINGDOM <em>BETTERS</em></h1><p>THE HOUSE · THE WARRIORS · THE TITLES</p></div>
+       <div className={styles.titleBlock}><div className={styles.overline}><Swords size={13}/> AOE2WAR / THE WAGER KINGDOM</div><h1>KINGDOM <em>BETTORS</em></h1><p>THE HOUSE · THE WARRIORS · THE TITLES</p></div>
        <div className={styles.headerActions}>
         <button type="button" onClick={()=>void refresh()} aria-label="Refresh bettor records" title="Refresh records"><RefreshCcw size={17}/></button>
         {isAdmin&&<Link href="/admin/kingdom-bettors" title="House bettor controls"><Bot size={18}/></Link>}
