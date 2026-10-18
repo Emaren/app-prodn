@@ -6,7 +6,7 @@ import catalog from "@/config/kingdom-index-routes.json";
 import baseline from "@/config/kingdom-index-baseline.json";
 import qualityRubric from "@/config/kingdom-index-quality-rubric.json";
 import assuranceProfiles from "@/config/kingdom-index-assurance-profiles.json";
-import { classifyPublicKingdomAuditStatus } from "@/lib/kingdomIndexAuditStatus";
+import { classifyPublicKingdomAuditStatus, publicObservedKingdomScore } from "@/lib/kingdomIndexAuditStatus";
 import { PAGE_CHANGE_MANIFEST } from "@/lib/pageChangeManifest.generated";
 
 export type District = "citadel" | "arena" | "forge" | "bazaar" | "commons";
@@ -31,6 +31,7 @@ export type KingdomIndexEntry = {
   sourceVersion: string | null;
   measuredVersion: string | null;
   score: number | null;
+  lastReviewScore: number | null;
   checkedAt: string | null;
   kind: PageAuditKind | null;
   status: "unmeasured" | "current" | "drifted" | "stale" | "provisional";
@@ -146,7 +147,8 @@ export async function loadKingdomIndex(): Promise<KingdomIndexSnapshot> {
       specializedAssurance: {profile, gates: specialty.gates.map(gate=>({id:gate.id,requirement:gate.requirement,status:"unverified" as const}))},
       sourceVersion:version??null,measuredVersion,
       // Keep a historical score visible only with an explicit noncurrent state.
-      score:obs?.score??null, checkedAt:obs?.checkedAt??null,
+      score: publicObservedKingdomScore({ status, kind: obs?.kind??null, score: obs?.score??null }),
+      lastReviewScore:obs?.score??null, checkedAt:obs?.checkedAt??null,
       kind:obs?.kind??null,status,
       history:obs?.history?.slice(-40)??[],
       loadMs:typeof obs?.loadMs==="number"&&Number.isFinite(obs.loadMs)&&obs.loadMs>=0?obs.loadMs:null,
@@ -157,7 +159,7 @@ export async function loadKingdomIndex(): Promise<KingdomIndexSnapshot> {
   });
   return {
     schema:1,generatedAt:new Date(now).toISOString(),pages,
-    observed:pages.filter(p=>p.score!==null).length,
+    observed:pages.filter(p=>p.lastReviewScore!==null).length,
     certified:pages.filter(p=>p.status==="current"&&p.kind==="certified").length,
     drifted:pages.filter(p=>p.status==="drifted"||p.status==="stale").length,
     source:proof.source,
