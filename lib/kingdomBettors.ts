@@ -18,13 +18,13 @@ export type KingdomBetReceipt = {
   stake:number; payout:number|null; outcome:string; recordedAt:string;
   stakeTxHash:string|null; payoutTxHash:string|null; payoutProofStatus:"chain-reference"|"recorded-only";
 };
-export type KingdomBettersSnapshot = {
+export type KingdomBettorsSnapshot = {
   generatedAt:string; bettors:KingdomBettor[]; belts:KingdomBelt[]; receipts:KingdomBetReceipt[];
   engine:{executorInstalled:false;status:"preview-only";limitWolo:10};
 };
 const HOUSE = [
   {slug:"tony",name:"Tony"},
-  {slug:"paulie",name:"Pauly"},
+  {slug:"paulie",name:"Paulie"},
   {slug:"tommy",name:"Tommy"},
   {slug:"henry",name:"Henry"},
 ] as const;
@@ -55,7 +55,7 @@ function bounded(value:number|null|undefined) {
 function txRef(value:string|null|undefined) {
   return value && /^[a-fA-F0-9]{64}$/.test(value) ? value.toUpperCase() : null;
 }
-export async function loadKingdomBetters():Promise<KingdomBettersSnapshot> {
+export async function loadKingdomBettors():Promise<KingdomBettorsSnapshot> {
   const db=getPrisma();
   const [users,bots,grouped,recent,belts]=await Promise.all([
     db.user.findMany({select:{id:true,uid:true,inGameName:true,steamPersonaName:true,createdAt:true},take:500,orderBy:{id:"asc"}}),
