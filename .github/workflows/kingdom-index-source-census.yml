@@ -1,0 +1,26 @@
+name: Kingdom Index source census
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '19 6 * * *'
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'components/**'
+      - 'lib/**'
+      - 'config/kingdom-index-routes.json'
+      - 'scripts/kingdom_index_source_audit.mjs'
+jobs:
+  registry:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Verify all public routes and source revisions
+        run: node scripts/kingdom_index_source_audit.mjs --check
