@@ -1742,10 +1742,14 @@ def manifest_release(data: dict, *, json_output: bool = False) -> int:
     release_sha = local["head"]
     implementation_sha = docs.get("implementation_baseline")
     risk = gate_payload["risk_class"]
-    migrations = [
-        path for path in scope["changed_files"]
-        if path.startswith("prisma/migrations/")
-    ]
+    # Include the exact already-present-but-unapplied five C1-C3a simulation
+    # migrations with the sixth corrected simulation migration only when the
+    # historical source, production ancestor and all six blob hashes are pinned.
+    # Never extend real-money/funded Satchel releases through this exception.
+    from aoe2_satchel_simulation_release_cohort import scoped_manifest_paths
+    migrations = scoped_manifest_paths(
+        ROOT, str(prod["source_sha"]), list(scope["changed_files"])
+    )
 
     manifest = {
         "schema": 1,
