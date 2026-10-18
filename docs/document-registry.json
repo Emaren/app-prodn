@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "ab7711f8ef73a21b3895d3ab1cc8089c8312a09ceb91cb77d674e8f1a1b43cad",
+      "sha256": "b0a80c8168dbbdba87299e09541443252751520b02a48a65ca76c8797bb72332",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -981,9 +981,9 @@
       "owner": "aoe2war-web",
       "path": "docs/LEADERBOARDS.md",
       "review_interval_days": 90,
-      "reviewed_at": "2026-07-28",
+      "reviewed_at": "2026-10-18",
       "sensitivity": "internal",
-      "sha256": "ce1c2d5ec4c4f33bc73a4ad9c4e764459683b18ba85f5063558ed2c8615b8bf5",
+      "sha256": "bd354ab743ccc76bd0b00bd0e79fdb1fd267a01bb051438571907e25dedd2297",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/20261018-release-frontier-ladder",
-    "commit": "44d1f27434649b780cf2389859015271b20d96d7"
+    "branch": "feat/20261018-leaderboard-foundation-audit",
+    "commit": "de8a211c57d6a725ecdaeb34a710e0ab7cc28596"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

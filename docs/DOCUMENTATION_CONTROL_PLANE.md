@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/20261018-release-frontier-ladder` at `44d1f27434649b780cf2389859015271b20d96d7`
+Implementation baseline: `feat/20261018-leaderboard-foundation-audit` at `de8a211c57d6a725ecdaeb34a710e0ab7cc28596`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

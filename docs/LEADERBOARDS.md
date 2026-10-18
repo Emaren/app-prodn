@@ -8,7 +8,7 @@ systems: ["app-prodn","api-prodn"]
 audience: ["developers","ai-agents"]
 source_of_truth: "git"
 authority: "product-contract"
-reviewed_at: "2026-07-28"
+reviewed_at: "2026-10-18"
 review_interval_days: 90
 sensitivity: "internal"
 ---
@@ -378,8 +378,7 @@ presentation** separate. Its lane value resolves in this order:
 1. current immutable Watcher receipt-backed Steam RM/DM rating;
 2. newest dated accepted replay-player HD-header snapshot for that exact Steam
    identity, rendered explicitly as `Last RM` / `Last DM`;
-3. reconstructed **lane-specific** `Site Elo` when no Steam lane snapshot is available;
-4. unrated/profile state when there is no replay-backed history.
+3. unrated/profile state when no authoritative Steam lane rating exists. **Computed Site Elo is not displayed as Steam RM/DM**, even when historical game evidence exists.
 
 The second tier is historical presentation, not current-account authority. It
 cannot populate `CurrentWatcherAccountState`, rename or verify an account,
@@ -387,3 +386,65 @@ supersede a newer receipt-backed lane, or gain result/financial authority.
 Non-positive legacy rating sentinels are unavailable. Historical Steam fallback
 chronology uses replay `played_on` only; ingestion/acceptance time does not make
 an older embedded rating newer.
+
+## October 18, 2026 — Kingdom Index HD Leaderboard foundation audit (open)
+
+The public Kingdom Index displayed **64/100**, kind `source-review` and state
+`SOURCE DRIFT`. That is a dated, provisional source/screenshot observation,
+**not** an independently certified production or browser-quality result.
+It remains unraised through the first engineering pass.
+
+### Uniform engineering-quality framework
+
+The single source of scoring criteria is
+`config/kingdom-index-quality-rubric.json` (version
+`2026-10-18-v1`). It is applied identically across Kingdom Index routes.
+The 100-point budget is Correctness 30, Functionality 25, Performance 20,
+Maintainability 15 and Tests 10, each with four named evidence obligations.
+**No individual route earns 100 from source review, agent opinion or passing
+unit CI alone.** An independently inspectable, exact-version, date-scoped
+production/browser and backend evidence packet is required. Unknown evidence
+earns no points. Route-version drift invalidates a prior assessment as a
+*current* certificate; preserve the historical score honestly.
+
+### First confirmed corrections
+
+- `/api/lobby/leaderboard` previously used permissive `parseInt` query
+  parsing, so inputs such as `25junk` or `1e9` could silently mis-specify
+  pagination. The new pure input parser accepts complete decimal strings,
+  caps legitimate offsets/limits, and has adversarial regressions.
+- The local **development-only** production-data preview seeded RM even when
+  the saved lane was DM. The initial load now respects the saved lane.
+- The historical rating presentation contract above wrongly described a Site
+  Elo fallback. **Current RM/DM rating columns do not use computed Site Elo**
+  as a substitute for Steam rating truth, consistent with
+  `lib/leaderboardRating.ts` and the V1 rating contract.
+
+### Independent work still required before any leaderboard 100
+
+- Independently verify SteamID64 identity joins, adjudication/disconnect
+  vetoes, canonical rank/page ties, aliases and replay completeness at
+  production-scale inputs. Source-only tests do not certify the database.
+- Cold and warm real-browser runs across all Basic/Advanced/Extreme views,
+  RM/DM lanes, scopes, search, spotlight, bookmark, rank-window, mobile,
+  keyboard, screen reader, offline/errors and preference persistence.
+- Measured P75/P95 latency, payload sizes, query plans, backend cache
+  invalidation, heap budgets and sustained-load response. No fabricated ms.
+- Decompose verified hot spots **only with behavior and profile parity**:
+  `components/leaderboard/ModernLeaderboardPage.tsx` (~56 KB),
+  `components/leaderboard/LivingLeaderboard.tsx` (~80 KB), and
+  `lib/lobbyLeaderboard.ts` (~42 KB), preserving interaction timing.
+- Repair source fingerprint **dependency closure** before treating drift as
+  exhaustive. Current `scripts/kingdom_index_source_audit.mjs` hashes
+  known page/component prefixes; changes in transitive imports such as
+  `lib/lobbyLeaderboard.ts` may be omitted. This is a documented
+  evidence-trust limitation and prevents a conclusive 100 certificate.
+- Cross-check the historical movement snapshot and bookmark projection
+  gaps against current source and running behavior; do not assume the
+  provisional October 18 note proves these gaps still exist.
+
+**Approach:** one verified behavior-preserving improvement at a time, record
+the exact Git and test receipts, refresh the fingerprint, assess regressions,
+then generate a new current dated engineering observation with honest points.
+The actual live production page remains untouched until the normal protected
+application release is approved and deployed.
