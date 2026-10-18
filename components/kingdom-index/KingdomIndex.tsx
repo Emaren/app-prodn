@@ -58,19 +58,21 @@ function PageDetail({ item, close }: {item:KingdomIndexEntry;close:()=>void}) {
       <button className={styles.close} onClick={close} type="button" aria-label="Close details"><X size={17}/></button>
     </div>
     <div className={styles.detailScore}><Score entry={item}/><Sparkline points={item.history} score={item.score}/></div>
+    {item.lastReviewScore!==null&&item.score===null&&<p className={styles.evidenceNote}>HISTORICAL REVIEW: {item.lastReviewScore}/100. No current source-aligned engineering score is independently established.</p>}
     <div className={styles.detailMetrics}>
       <div><span>LAST REVIEW</span><b>{formatStamp(item.checkedAt)}</b></div>
       <div><span>PAGE LOAD</span><b>{item.loadMs!==null?`${Math.round(item.loadMs)} ms`:"—"}</b></div>
       <div><span>PAYLOAD</span><b>{item.bytes!==null?`${(item.bytes/1024).toFixed(1)} KB`:"—"}</b></div>
       <div><span>SOURCE</span><b title={item.sourceVersion??""}>{item.sourceVersion?item.sourceVersion.slice(0,19):"—"}</b></div>
     </div>
-    {item.dimensions&&<div className={styles.bars}>
+    {item.dimensions&&<div className={styles.bars} aria-label={item.score===null?"Historical review dimensions, not current certification":"Observed engineering dimensions"}>
       {Object.entries(item.dimensions).map(([name,value])=>{
         const denominator:Record<string,number>={correctness:30,functionality:25,performance:20,maintainability:15,tests:10};
         const max=denominator[name]??100;
         return <div key={name} className={styles.barRow}><span>{name}</span><div><i style={{width:`${Math.min(100,Math.max(0,value/max*100))}%`}}/></div><b>{value}/{max}</b></div>;
       })}
     </div>}
+    {item.dimensions&&item.score===null&&<p className={styles.evidenceNote}>The dimension bars above belong to the historical review, not a current, verified audit.</p>}
     {item.notes&&<p className={styles.evidenceNote}>{item.notes}</p>}
     <Link href={item.href} className={styles.detailLink}>ENTER PAGE <ArrowUpRight size={15}/></Link>
   </section>;
@@ -100,7 +102,7 @@ function DistrictSection({ region, pages, selected, focus }: {region:(typeof REG
 }
 export default function KingdomIndex({initial}:{initial:KingdomIndexSnapshot}){
   const [snapshot,setSnapshot]=useState(initial);
-  const [mode,setMode]=useState<Mode>("realm");
+  const [mode,setMode]=useState<Mode>("ledger");
   const [selected,setSelected]=useState<string|null>(null);
   const [expanded,setExpanded]=useState<string|null>(null);
   const [connectionLost,setConnectionLost]=useState(false);
