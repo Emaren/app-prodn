@@ -21,7 +21,7 @@ function walk(directory,parts=[]) {
 }
 test("every static public App Router page has exactly one nonprivate Kingdom Index address",()=>{
   const known=walk(join(root,"app")).sort();
-  const actual=catalog.map(p=>p.href).filter(h=>h!=="/kingdom-index").sort();
+  const actual=catalog.map(p=>p.href).sort();
   assert.deepEqual(actual,known);
   assert.equal(new Set(catalog.map(x=>x.href)).size,catalog.length);
   for(const item of catalog) {

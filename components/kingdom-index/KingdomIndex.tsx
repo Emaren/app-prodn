@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Activity, ArrowDownRight, ArrowUpRight, Castle, ChevronDown, ChevronRight, CircleHelp, Clock3, Compass, Grid2X2, Layers3, List, RefreshCcw, ShieldCheck, X } from "lucide-react";
+import { ArrowUpRight, Castle, ChevronDown, Clock3, Compass, Grid2X2, List, X } from "lucide-react";
 import SpeedReadyMarker from "@/components/speed/SpeedReadyMarker";
 import type { District, KingdomIndexEntry, KingdomIndexSnapshot } from "@/lib/kingdomIndex";
 import styles from "./KingdomIndex.module.css";
