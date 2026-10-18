@@ -94,6 +94,7 @@ export default function HeaderMenu({
       { href: "/wolo", label: "$WOLO", icon: Coins, featured: true },
       { href: "/staking", label: "Staking", icon: HandCoins, featured: true },
       { href: "/bets", label: "Bets", icon: BadgeDollarSign, featured: true },
+      { href: "/kingdom-betters", label: "Kingdom Betters", icon: Swords, featured: true },
       { href: "/kingdom", label: "Kingdom", icon: Castle, featured: true },
       { href: "/kingdom-index", label: "Kingdom Index", icon: BarChart3, featured: true },
       { href: "/round-chamber", label: "Round Chamber", icon: Scale, featured: true },
@@ -107,6 +108,7 @@ export default function HeaderMenu({
       { href: "/kingdom-agents", label: "Kingdom Agents", icon: Network, featured: true },
       { href: "/radio", label: "Radio WOLO", icon: Radio, featured: true },
       { href: "/admin/user-list", label: "Admin", icon: Shield, adminOnly: true, featured: true },
+      { href: "/admin/kingdom-betters", label: "House Bettors Control", icon: Bot, adminOnly: true, featured: true },
       {
         href: "/live-games",
         label: "Live Games",

@@ -6,7 +6,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { Anvil, Archive, BarChart3, Bot, BrainCircuit, Network, Castle, Cpu, Landmark, ClipboardCheck, Crown, Eye, Globe2, GraduationCap, Hammer, MessageSquare, Radio, Scale, Store, Target, Trophy, UsersRound, X, Zap } from "lucide-react";
+import { Anvil, Archive, BarChart3, Bot, BrainCircuit, Network, Castle, Swords, Cpu, Landmark, ClipboardCheck, Crown, Eye, Globe2, GraduationCap, Hammer, MessageSquare, Radio, Scale, Store, Target, Trophy, UsersRound, X, Zap } from "lucide-react";
 import { createPortal } from "react-dom";
 import SpeedRuntime from "@/components/speed/SpeedRuntime";
 import SpeedWebVitals from "@/components/speed/SpeedWebVitals";
@@ -128,6 +128,7 @@ const KINGDOM_LINKS = [
   { href: "/oracle", label: "The Oracle", icon: Eye, body: "Price the future of the Kingdom" },
   { href: "/leaderboard", label: "Leaderboard", icon: BarChart3, body: "Ratings, records, and ranked warriors" },
   { href: "/champions", label: "Champions", icon: Crown, body: "Belts, reigns, title rules" },
+  { href: "/kingdom-betters", label: "Kingdom Betters", icon: Swords, body: "The bettors, the house, the championship arena" },
   { href: "/chaosium", label: "Chaosium", icon: Crown, body: "Every belt, every reign, every transfer" },
   { href: "/olympia", label: "Olympia", icon: Globe2, body: "National champions under one standard" },
   { href: "/leagues", label: "Leagues", icon: Trophy, body: "1v1 to 4v4 · RM and DM" },
@@ -159,6 +160,8 @@ const KINGDOM_LINKS = [
 ] as const;
 
 const PAGE_HEADINGS: ReadonlyArray<{ prefix: string; title: string }> = [
+  { prefix: "/kingdom-betters", title: "Kingdom Betters" },
+  { prefix: "/admin/kingdom-betters", title: "Kingdom Betters Command" },
   { prefix: "/admin/oracle", title: "Oracle Command Center" },
   { prefix: "/admin/ai", title: "AI Command Center" },
   { prefix: "/admin/bounties", title: "Bounty Command Center" },
