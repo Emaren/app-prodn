@@ -15,6 +15,21 @@ sensitivity: "internal"
 
 # AoE2WAR General Inspections
 
+## October 18, 2026 — report each missing evidence point before prioritizing upgrades
+
+The read-only `scripts/report_general_inspections.mjs` command analyzes
+one certified General Inspections API snapshot and reports the largest
+weighted proof gaps across the seven official categories without changing
+scores or thresholds. Its `--expected-release=<40-hex-sha>` option binds
+the report to the intended deployed source. Missing timestamps, duplicate
+check identities, mismatched weighted arithmetic, or unavailable response
+fail closed rather than producing a false healthy score.
+
+This tool does not run benchmarks, refresh Doctor evidence, change
+WoloChain, or assume that 100/100 is attainable without the missing live
+measurements. Use its sorted losses to prioritize repairs, refresh original
+evidence from the appropriate authority, then verify genuine point gains.
+
 ## Purpose
 
 General Inspections is the public-facing maintenance board for the AoE2WAR operating estate.

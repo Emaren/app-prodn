@@ -29,6 +29,17 @@ behavior, authority, architecture, financial policy, recovery, release
 procedure, or debugging strategy, update the owning living contract and this
 memory before closing the work.
 
+## 2026-10-18 — Imported guard names and perfect scores are not proofs
+
+Rebased the older route scanner's unused-import/comment-only guard fix
+from draft #621: imported authentication helpers are not evidence that
+sensitive handlers call them. The scanner now conservatively tracks
+actual lexical calls/delegations and flags unresolved sensitive routes
+for manual review. The new General Inspections evidence-delta tool
+from draft #470 computes precisely missing weighted points from one
+verified source without altering denominators, thresholds, or category
+definitions. Source identity and trustworthy evidence remain mandatory.
+
 ## 2026-10-18 — Source-aligned Kingdom health and truthful Mecha preview writes
 
 Rebased two objective fixes from historical drafts #619 and #622 onto

@@ -39,6 +39,22 @@ SENSITIVE_NAME_RE = re.compile(
 )
 MAX_SOURCE_BYTES = 1_500_000
 
+# Conservative lexical call/delegation evidence. An imported but unused guard
+# must NOT suppress a manual authority trace. Comment stripping may flag extra
+# routes for review; this analyzer never certifies real authentication.
+COMMENTS_RE = re.compile(r"/\*.*?\*/|//[^\r\n]*", re.DOTALL)
+GUARD_DELEGATE_RE = re.compile(
+    r"\bexport\s+const\s+(?:GET|HEAD|OPTIONS|POST|PUT|PATCH|DELETE)\s*=\s*"
+)
+
+
+def used_guard_signals(source: str) -> list[str]:
+    stripped = COMMENTS_RE.sub(" ", source)
+    return sorted(signal for signal in GUARDS if (
+        re.search(r"\b" + re.escape(signal) + r"\s*\(", stripped)
+        or re.search(GUARD_DELEGATE_RE.pattern + re.escape(signal) + r"\b", stripped)
+    ))
+
 
 class RouteCensusError(RuntimeError):
     pass
@@ -66,6 +82,7 @@ def classify_route(path: str, source: str) -> dict[str, Any]:
                      key=HTTP_METHODS.index)
     guards = sorted(signal for signal in GUARDS
                     if re.search(r"\b" + re.escape(signal) + r"\b", source))
+    used_guards = used_guard_signals(source)
     bodies = sorted(symbol for symbol in BODY_READERS if symbol in source)
     sensitive_name = bool(SENSITIVE_NAME_RE.search(path))
     if path.startswith("app/api/admin/"):
@@ -83,12 +100,13 @@ def classify_route(path: str, source: str) -> dict[str, Any]:
         "mutation_method_count": sum(method in MUTATING for method in methods),
         "surface": surface,
         "local_guard_symbols_seen": guards,
+        "call_or_delegation_guard_symbols_seen": used_guards,
         "body_reader_symbols_seen": bodies,
         # Only an owner review prompt. An internal route needs authority review
         # even when its generic path lacks money/replay/security keywords.
         # A guard may still live inside a delegated helper.
         "manual_authority_trace_candidate": (
-            mutating and (sensitive_name or surface == "internal_path") and not guards
+            mutating and (sensitive_name or surface == "internal_path") and not used_guards
         ),
     }
 
@@ -121,12 +139,16 @@ def inspect(root: Path = ROOT) -> dict[str, Any]:
         "local_guard_signal_route_count": sum(
             bool(row["local_guard_symbols_seen"]) for row in rows
         ),
+        "call_or_delegation_guard_signal_route_count": sum(
+            bool(row["call_or_delegation_guard_symbols_seen"]) for row in rows
+        ),
         "manual_authority_trace_candidate_count": len(review),
         "manual_authority_trace_candidates": review,
         "routes": rows,
-        "interpretation": "Missing lexical symbol does not mean missing "
-                          "authorization. Review actual imported call paths "
-                          "and negative tests before reporting an issue.",
+        "interpretation": "Import-only and comment-only guard names do not "
+                          "clear manual review. Call/delegation hints are "
+                          "still lexical, not proof of real authorization. "
+                          "Trace imported call paths and negative tests.",
     }
 
 
@@ -144,6 +166,7 @@ def main() -> int:
             print("⚔️  AOE2WAR HD ROUTE AUTHORITY EVIDENCE CENSUS")
             for key in ("route_file_count", "exported_handler_count",
                         "mutation_route_count", "local_guard_signal_route_count",
+                        "call_or_delegation_guard_signal_route_count",
                         "manual_authority_trace_candidate_count"):
                 print(f"  {key}: {report[key]}")
             for path in report["manual_authority_trace_candidates"][:25]:

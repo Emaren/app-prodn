@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "f11f8dff57fcef4e58dbb6e025cc8e6139832d73f8ba42245d3b22060626914d",
+      "sha256": "b2f8db08d438df022cb3afd16be4e60d450bc1069ff3614da8e2ae282056b616",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-16",
       "sensitivity": "internal",
-      "sha256": "dffeca1fbcbf6ef333064212a3d4200605fbd33d195e19868b3b116b0cafdda2",
+      "sha256": "73ac821dd5a1f6662aff94a90fe3641e8fd0571e36bdbeabae8f0264870874ee",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -733,7 +733,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-06",
       "sensitivity": "internal",
-      "sha256": "2fd4f9444b73b6462d1241e03ec838535725ab3862bbc2566a1c596ff25fabed",
+      "sha256": "a5b01bc7484936ac9ab034e36ff249b8bdaa99c17bf37df97603c7d5d66eb2a3",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/20261018-app-mecha-kingdom-truth",
-    "commit": "1f903c2a612c99a6cda429532f43963b7ced8847"
+    "branch": "fix/20261018-app-route-authority-evidence-report",
+    "commit": "9fa38519d165ea98be58746b34a5373066850653"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
