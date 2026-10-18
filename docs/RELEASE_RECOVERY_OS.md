@@ -8,7 +8,7 @@ systems: ["app-prodn"]
 audience: ["developers","operators","ai-agents"]
 source_of_truth: "git"
 authority: "release-recovery-contract"
-reviewed_at: "2026-09-29"
+reviewed_at: "2026-10-18"
 review_interval_days: 30
 sensitivity: "internal"
 ---
@@ -722,3 +722,68 @@ The permanent lesson is:
 
 > Yesterday's solved incident should become tomorrow's boring branch in
 > `aoe2war finish`.
+
+## October 18 — Wolo settlement HOLD: finite evidence ladder (source-only)
+
+**Symptom:** `aoe2war finish --dry-run` says `Deploy EXPECTED` but
+`documentation_plan.unknown_p1` includes
+`WoloChain/vps-source-drift`. This is **not a broken Next.js build**.
+The app source, GitHub and Mac can be exact while protected Finish remains
+blocked because WoloChain's actual settlement runtimes differ from the
+federated implementation baseline. Never clear this by editing the index
+or changing the VPS checkout without independently verified service binaries.
+
+**Read-only, repeatable capture from the canonical Mac checkout:**
+
+~~~bash
+cd ~/projects/AoE2HDBets/app-prodn
+./bin/aoe2war finish --dry-run --json > /tmp/aoe2war-finish-plan.json
+python3 scripts/aoe2_release_frontier_ladder.py \
+  --finish-plan /tmp/aoe2war-finish-plan.json --json
+~~~
+
+The first command exits nonzero when release is blocked; the second should
+still be run for a diagnosis. The analyzer reads the emitted JSON rather than
+repeating an expensive estate scan. It refuses incorrect, duplicate-keyed,
+nonfinite or oversized evidence. Do not publish private raw Finish receipts.
+
+If independently obtained **read-only** WoloChain frontier evidence is already
+available, append `--wolo-frontier <path>`. The dated candidate-observation
+contract is `docs/settlement-contracts/protected-release-frontier-20261018.json`
+in WoloChain PR #41. It is a *historical, nonexclusive observation*, **not**
+a current approval or a new chain audit. Its observations must be refreshed
+from the protected host for current operations.
+
+**Six separately witnessed financial controls — no shortcuts:**
+
+1. Fence every HD and DE ingress/writer/signer capable of creating new work.
+2. Reconcile accepted and in-flight operations against independent chain
+   outcomes, without attempting a second payout for an uncertain broadcast.
+3. Resolve or conservatively preserve the exact claim #889 liability.
+4. Capture fresh quiesced, checksum-verified state for both settlement lanes.
+5. Demonstrate rollback of **only** the two settlement-service binaries,
+   without restoring payment state or touching consensus.
+6. Independently reconcile current bank reserves, escrow/payout liabilities
+   and fee headroom.
+
+These six names are owned by the guarded WoloChain
+`settlement-bdbce253-code-cutover.py` contract. A true flag in a supplied
+JSON file is only `REPORTED_ONLY_NOT_AUTHORIZED`; it cannot authorize a
+financial action. Proceed to the actual 8092/8093 code-only cutover **only**
+with protected owner approval after the full current packet is independently
+witnessed. Verify both live PID executable hashes, unchanged node, then
+reconcile Wolo source checkout. Run ordinary protected web Finish afterward.
+
+**Single next action:** work on the first independently unproven control,
+capture exact evidence and move to the next; don't rerun the same 50-second
+Finish plan until the source/runtimes or release authority can actually change.
+
+The separate alternative website-only release authority is tracked by
+`Emaren/app-prodn#665`. Its non-authorizing scope-inspection foundation is
+`#664`. Neither the ladder nor its observational JSON authorizes that
+alternative lane, activates War Satchel or initiates counter-wagers.
+
+**Diagnostic ownership:** the ladder script is a read-only AI/operator handoff
+sensor, not an auto-fixer or a credential-bearing remote subagent. An offline
+Desktop Commander or absent VPS observer prevents certification; it must be
+reported as missing evidence, never inferred from green GitHub CI.
