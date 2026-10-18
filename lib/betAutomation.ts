@@ -194,7 +194,8 @@ const LOCAL_BET_CUSTODY_ENDPOINT =
   "http://127.0.0.1:8092/settlement/v1/bet-custody";
 
 function isLocalBetCustodyEndpoint(value: string | undefined): boolean {
-  if (!value || value !== value.trim()) return false;
+  // Raw equality rejects URL parser normalization of dot segments or escapes.
+  if (value !== LOCAL_BET_CUSTODY_ENDPOINT) return false;
   try {
     const parsed = new URL(value);
     return (
