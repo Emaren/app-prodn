@@ -47,3 +47,17 @@ test("Ledger is the first default mode and stale scores are historical only",()=
  assert.match(api,/private, no-store, max-age=0/);
  assert.doesNotMatch(api,/stale-while-revalidate|s-maxage/);
 });
+
+test("all 68 Index route identities use the canonical CI route census, not stale partial manifest",()=>{
+ const source=readFileSync(join(root,"lib/kingdomIndex.ts"),"utf8");
+ const legacy=readFileSync(join(root,"lib/pageChangeManifest.generated.ts"),"utf8");
+ assert.match(source,/route\.sourceTree/);
+ assert.match(source,/sourceVersionAuthority:"route-local-git-census"/);
+ assert.doesNotMatch(source,/PAGE_VERSIONS\.get/);
+ assert.doesNotMatch(source,/import \{ PAGE_CHANGE_MANIFEST \}/);
+ assert.ok(catalog.length>=68);
+ for(const r of catalog) assert.match(r.sourceTree,/^src-[a-f0-9]{16}$/,r.href);
+ const leader=catalog.find(r=>r.href==="/leaderboard");
+ assert.ok(leader);
+ assert.ok(!legacy.includes(`version: "${leader.sourceTree}"`),"legacy source authority must not be silently substituted");
+});
