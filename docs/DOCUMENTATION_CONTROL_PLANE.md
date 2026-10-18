@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/20261018-release-pinned-satchel-simulation-cohort` at `45bf9ae5792f8ea565858063981377ca125c2231`
+Implementation baseline: `fix/20261018-release-pinned-satchel-simulation-cohort` at `e81eaabe806fc44ec27667de58afbb250d5d6a0e`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
