@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/20261018-kingdom-index-live-score-ledger-first` at `2a1767077d8c1d6d5ccb178109a8f5f122325139`
+Implementation baseline: `fix/20261018-kingdom-index-live-score-ledger-first` at `7d811df29798c99d47463f6b0117658660653207`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
