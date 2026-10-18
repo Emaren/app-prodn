@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "7a5d2d675ae1c314e40a8d27673d6451959e26d1e11d632d3502425247a2429d",
+      "sha256": "e83c48c6472b4a7db8dbd759091431b2dd31a390f85f2e8bfc502a956fddbf9a",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -733,7 +733,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-18",
       "sensitivity": "internal",
-      "sha256": "1ef165668ca6e015c0311202b0b91f9909ae96ba3618c02ebba01826ad087e90",
+      "sha256": "9810b6efcff4c5170ac27809c6a20c8e900b507e2b36e63ddd0f9dda467a0127",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/20261018-index-refresh-race-fence",
-    "commit": "8f63ac64fb4cb15e36f8024bda24b98f03285b25"
+    "branch": "feat/20261018-kingdom-index-dependency-sensor-ci",
+    "commit": "05ea6ed10dd481ed0a9ccb4c97782d66574828e5"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
