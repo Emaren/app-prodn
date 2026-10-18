@@ -140,7 +140,7 @@ class WebsiteHoldScopeTests(unittest.TestCase):
             with mock.patch.object(MODULE, "REPO", p):
                 with self.assertRaisesRegex(ValueError, "Worktree dirty"):
                     MODULE.inspect_commits(base, base)
-                with self.assertRaises(ValueError):
+                with self.assertRaisesRegex(RuntimeError, "source ancestry"):
                     MODULE.inspect_commits(base, "f" * 40)
 
 

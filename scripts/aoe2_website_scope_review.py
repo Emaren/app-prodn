@@ -133,6 +133,8 @@ def _git(*args: str) -> bytes:
     except subprocess.TimeoutExpired as exc:
         raise RuntimeError("Git source inspection timed out") from exc
     finally:
+        if proc.stdout is not None:
+            proc.stdout.close()
         if proc.poll() is None:
             proc.kill()
             proc.wait()
