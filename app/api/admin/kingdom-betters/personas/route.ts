@@ -12,7 +12,7 @@ export async function POST(request:NextRequest){
  const gate=await requireAdmin(request);
  if("error" in gate)return gate.error;
  const origin=request.headers.get("origin");
- if(!origin||new URL(origin).host!==request.nextUrl.host)return NextResponse.json({detail:"Invalid origin"},{status:403,headers:HEADERS});
+ if(!origin||origin!==request.nextUrl.origin)return NextResponse.json({detail:"Invalid origin"},{status:403,headers:HEADERS});
  try{
   const result=await gate.prisma.bettingBotConfig.createMany({data:MISSING.map(x=>({
    slug:x.slug,reservedUid:x.uid,displayName:x.name,mode:"disabled",oppositeOnly:true,

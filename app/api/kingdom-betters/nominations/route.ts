@@ -7,7 +7,7 @@ const NO_STORE={"Cache-Control":"private, no-store"};
 function error(detail:string,status:number){return NextResponse.json({detail},{status,headers:NO_STORE});}
 export async function POST(request:NextRequest){
   const origin=request.headers.get("origin");
-  if(!origin || new URL(origin).host!==request.nextUrl.host)return error("Invalid request origin.",403);
+  if(!origin || !origin.startsWith(request.nextUrl.origin+"/") && origin!==request.nextUrl.origin)return error("Invalid request origin.",403);
   const uid=await getSessionUid(request);
   if(!uid)return error("Sign in to propose a matchup.",401);
   const db=getPrisma();

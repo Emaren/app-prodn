@@ -125,11 +125,16 @@ export default function KingdomBetters({initial}:{initial:KingdomBettersSnapshot
     if(s==="left")setLeft(update);else setRight(update);
   }
   function changeTeamSize(size:number){
-    if(!humans.length)return;
-    const use=humans.map(x=>x.key).filter(x=>!left.includes(x)&&!right.includes(x));
-    setLeft(l=>[...l,...use.slice(0,Math.max(0,size-l.length))].slice(0,size));
-    setRight(r=>[...r,...use.slice(Math.max(0,size-left.length),Math.max(0,size-left.length)+Math.max(0,size-r.length))].slice(0,size));
-    setNotice("");
+    const available=humans.map(x=>x.key);
+    const first=left.filter(k=>available.includes(k)).slice(0,size);
+    const second=right.filter(k=>available.includes(k)&&!first.includes(k)).slice(0,size);
+    for(const k of available){
+      if(first.length<size && !first.includes(k)&&!second.includes(k))first.push(k);
+    }
+    for(const k of available){
+      if(second.length<size && !first.includes(k)&&!second.includes(k))second.push(k);
+    }
+    setLeft(first);setRight(second);setNotice("");
   }
   async function submit(){
    if(submitting)return;

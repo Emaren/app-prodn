@@ -42,7 +42,7 @@ function versionOf(href) {
  const direct=href.slice(1);
  const directory="app/"+direct+(direct?"/":"");
  const prefixes=direct?[directory,"components/"+direct+"/","lib/"+direct+"/"]:[];
- const exact=direct?new Set(["lib/"+direct+".ts","lib/"+direct+".tsx"]):new Set(["app/page.tsx","app/HomePageClient.tsx"]);
+ const exact=direct?new Set(["lib/"+direct+".ts","lib/"+direct+".tsx",...(href==="/kingdom-betters"?["lib/kingdomBetters.ts"]:[])]):new Set(["app/page.tsx","app/HomePageClient.tsx"]);
  const selected=files.filter(file=>
   (direct?prefixes.some(prefix=>file.path.startsWith(prefix)):false)||exact.has(file.path)
  ).filter(file=>!file.path.includes("/__tests__/")&&!file.path.endsWith(".map")).sort((a,b)=>a.path.localeCompare(b.path));
