@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b2f8db08d438df022cb3afd16be4e60d450bc1069ff3614da8e2ae282056b616",
+      "sha256": "cbbbd6b38f3c181800b2094b82795774f193534495fa81dac32476c094076a42",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/20261018-app-route-authority-evidence-report",
-    "commit": "9fa38519d165ea98be58746b34a5373066850653"
+    "branch": "feat/20261018-public-kingdom-index-evidence-atlas",
+    "commit": "1e9550f468e57c288598683fa4955a01a67ceb09"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
