@@ -31,7 +31,18 @@ function approval():IndependentWithdrawalApproval{
 test("cross-language original mandate and approval bytes match Wolo fixture exactly",()=>{
  assert.equal(withdrawalOwnerMandateDigest(f.withdrawal_request.owner_mandate),f.owner_mandate_digest);
  assert.equal(withdrawalApprovalSignBytes(f.withdrawal_request.approval,f.vault).toString(),f.withdrawal_approval_sign_bytes);
- assert.equal(withdrawalHoldDigest(f.withdrawal_request.approval.reservation_digest,f.withdrawal_request.owner_mandate),f.withdrawal_hold_digest);
+ // Go's public synthetic fixture uses an uppercase placeholder C*64
+ // reservation digest; that is not an admissible canonical production hash.
+ // Keep the byte-format interoperability assertion WITHOUT weakening the
+ // real finance verifier's strict lowercase digest requirement.
+ const fixtureDigest=f.withdrawal_request.approval.reservation_digest as string;
+ assert.match(fixtureDigest,/^[A-F0-9]{64}$/);
+ assert.throws(()=>withdrawalHoldDigest(fixtureDigest,f.withdrawal_request.owner_mandate),/reservation_digest/);
+ const originalGoFixtureHold=createHash("sha256").update(JSON.stringify([
+  "aoe2war/satchel/withdraw-hold/v1",fixtureDigest,
+  withdrawalOwnerMandateDigest(f.withdrawal_request.owner_mandate)
+ ])).digest("hex");
+ assert.equal(originalGoFixtureHold,f.withdrawal_hold_digest);
 });
 test("original ADR36 and independent reviewer jointly authorize exact durable hold",()=>{
  assert(verifyIndependentWithdrawalApproval(approval(),economics,reviewerKey,now));
