@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "a24c61c67e1730f4a762de87b1a5f7dff49346758f47f4f27a513a1a5754653d",
+      "sha256": "0fc2fe81af85bb6ecdf1eef30f988a031cd5c6cbb977f920a936e325ad7b658c",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b3f55c27ccae517be46ea2b30ec226e3a332206817841d508e45b8dac16acda3",
+      "sha256": "f11f8dff57fcef4e58dbb6e025cc8e6139832d73f8ba42245d3b22060626914d",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -683,7 +683,7 @@
       "review_interval_days": 14,
       "reviewed_at": "2026-10-16",
       "sensitivity": "internal",
-      "sha256": "5f52310fff11dd2a47ef4e605670163fd3c26e5b380fa6f3e77633d3f0079525",
+      "sha256": "dffeca1fbcbf6ef333064212a3d4200605fbd33d195e19868b3b116b0cafdda2",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -940,7 +940,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-06",
       "sensitivity": "internal",
-      "sha256": "e9982dd80d5415ac2fba969d9c15e1831ebf82d453bac211a71f83fe515f1bd1",
+      "sha256": "c5976640aeec45e9a429db9a305c1816fbbd0f8dbbeaf13abedbd8a943b296eb",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "release/20261018-website-no-new-satchel-migration",
-    "commit": "dd0aad9806c928873c284d25349ffd6832b9c927"
+    "branch": "fix/20261018-app-mecha-kingdom-truth",
+    "commit": "1f903c2a612c99a6cda429532f43963b7ced8847"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
