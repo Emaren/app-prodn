@@ -59,11 +59,12 @@ function PageDetail({ item, close }: {item:KingdomIndexEntry;close:()=>void}) {
     </div>
     <div className={styles.detailScore}><Score entry={item}/><Sparkline points={item.history} score={item.score}/></div>
     {item.lastReviewScore!==null&&item.score===null&&<p className={styles.evidenceNote}>HISTORICAL REVIEW: {item.lastReviewScore}/100. No current source-aligned engineering score is independently established.</p>}
+    <p className={styles.evidenceNote}>Route source fingerprint is a local Git census only; transitive dependencies and deployed runtime still require independent proof.</p>
     <div className={styles.detailMetrics}>
       <div><span>LAST REVIEW</span><b>{formatStamp(item.checkedAt)}</b></div>
       <div><span>PAGE LOAD</span><b>{item.loadMs!==null?`${Math.round(item.loadMs)} ms`:"—"}</b></div>
       <div><span>PAYLOAD</span><b>{item.bytes!==null?`${(item.bytes/1024).toFixed(1)} KB`:"—"}</b></div>
-      <div><span>SOURCE</span><b title={item.sourceVersion??""}>{item.sourceVersion?item.sourceVersion.slice(0,19):"—"}</b></div>
+      <div><span>ROUTE SOURCE</span><b title={item.sourceVersion??""}>{item.sourceVersion?item.sourceVersion.slice(0,19):"—"}</b></div>
     </div>
     {item.dimensions&&<div className={styles.bars} aria-label={item.score===null?"Historical review dimensions, not current certification":"Observed engineering dimensions"}>
       {Object.entries(item.dimensions).map(([name,value])=>{
