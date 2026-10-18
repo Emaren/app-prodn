@@ -4,6 +4,8 @@ import profiles from "../config/kingdom-index-assurance-profiles.json" with { ty
 import catalog from "../config/kingdom-index-routes.json" with { type: "json" };
 import { classifyPublicKingdomAuditStatus as status, publicObservedKingdomScore, isKingdomObservationStale } from "../lib/kingdomIndexAuditStatus.ts";
 import { readFileSync } from "node:fs";
+import { selectKingdomScoreLineage } from "../lib/kingdomIndexScoreLineage.ts";
+
 
 test("all public routes have an explicit, existing assurance profile",()=>{
   const hrefs = catalog.map(row=>row.href);
@@ -96,4 +98,27 @@ test("Kingdom Index labels its route-local source evidence as non-transitive",()
   assert.match(src,/NOT complete transitive provenance/);
   assert.match(ui,/ROUTE SOURCE/);
   assert.match(ui,/transitive dependencies and deployed runtime still require independent proof/);
+});
+
+test("fresh agent observations cannot overwrite historical review lineage",()=>{
+ const dims=(score:number)=>({
+  correctness:score,functionality:0,performance:0,maintainability:0,tests:0
+ });
+ const review={score:64,dimensions:dims(24)};
+ const agent={score:72,dimensions:dims(29)};
+ assert.deepEqual(selectKingdomScoreLineage(review,agent,72),{
+  lastReviewScore:64,dimensions:agent.dimensions
+ });
+ assert.deepEqual(selectKingdomScoreLineage(review,agent,null),{
+  lastReviewScore:64,dimensions:review.dimensions
+ });
+ assert.deepEqual(selectKingdomScoreLineage(null,agent,null),{
+  lastReviewScore:null,dimensions:null
+ });
+ const source=readFileSync(new URL("../lib/kingdomIndex.ts",import.meta.url),"utf8");
+ assert.match(source,/r\.kind==="source-review"/);
+ assert.match(source,/lineage\.lastReviewScore/);
+ assert.match(source,/dimensions:lineage\.dimensions/);
+ assert.match(source,/observed:pages\.filter\(p=>p\.kind!==null\)/);
+ assert.doesNotMatch(source,/lastReviewScore:obs\?\.score/);
 });
