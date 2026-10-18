@@ -186,7 +186,12 @@ scope, offset, limit, enrichment flags, search, and sort. The client snapshot
 cache keys by `lane:scope`; in-flight requests additionally key by the bounded
 row limit, so a 64-row prefetch cannot satisfy a concurrent 128-row request.
 A cached partial first page cannot satisfy a larger requested window unless
-it already represents the full tracked roster. A response is accepted only
+it already represents the full tracked roster. Network responses are accepted
+into the cache by request-start sequence, so a delayed older response cannot
+undo a newer ranking snapshot; a newer, shorter authoritative response replaces
+an older larger one. External server-rendered seeds without request sequence
+retain the historical richer-window preference, so true cross-source freshness
+still requires explicit versioned proof. A response is accepted only
 when the lane and scope match the request. Switching scope must not show a
 cached response from the other board; a background authoritative refresh
 retains visible rows rather than blanking the board.

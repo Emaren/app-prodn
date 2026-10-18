@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/20261018-leaderboard-client-cache-limits` at `9cf16d9776c78034af7c4faf6d99b0c0d6eb2ce3`
+Implementation baseline: `fix/20261018-leaderboard-request-freshness` at `9d2e392f5e80011d69a97b683c62ebca5d01fc03`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

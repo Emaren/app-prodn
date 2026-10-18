@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "95989b46a2d572ff9dcae8bd2a1633f4cdac43ab20097454623fe8c996f64029",
+      "sha256": "70bcc62e0cbbf547d053ac36eb9aea82b0fffd0944b8c55ae2be3bceda347419",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -983,7 +983,7 @@
       "review_interval_days": 90,
       "reviewed_at": "2026-10-18",
       "sensitivity": "internal",
-      "sha256": "f64db01778e8fed952324e17315563c13c9c1b098f852fc84fdf877485477171",
+      "sha256": "21b46c6f244fc8c7ee937cb5073f7106d68742eabf2b7cab856d7f6b311c4b8e",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/20261018-leaderboard-client-cache-limits",
-    "commit": "9cf16d9776c78034af7c4faf6d99b0c0d6eb2ce3"
+    "branch": "fix/20261018-leaderboard-request-freshness",
+    "commit": "9d2e392f5e80011d69a97b683c62ebca5d01fc03"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

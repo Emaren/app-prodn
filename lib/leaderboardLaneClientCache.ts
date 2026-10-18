@@ -23,6 +23,11 @@ const laneRequests =
     Promise<LobbyLeaderboardSummary>
   >();
 
+// Request starts, not arrival order, determine snapshot recency.
+// A delayed old prefetch must not replace a newer authoritative response.
+let laneSnapshotSequence = 0;
+const laneSnapshotRevisions = new Map<string, number>();
+
 function leaderboardCacheKey(
   lane: LeaderboardLane,
   scope: LeaderboardScope,
@@ -35,6 +40,7 @@ export function seedLeaderboardLaneCache(
     | LobbyLeaderboardSummary
     | null
     | undefined,
+  requestSequence?: number,
 ) {
   if (!summary) {
     return;
@@ -52,15 +58,24 @@ export function seedLeaderboardLaneCache(
   const current =
     laneCache.get(cacheKey);
 
-  // Prefer the richer snapshot when both represent the same lane and scope.
+  // Fresh network snapshots beat older rich ones. External/SSR seeds retain
+  // the historical richer-window preference because they lack a request ID.
+  const latestApplied = laneSnapshotRevisions.get(cacheKey) ?? 0;
   if (
-    !current ||
-    summary.entries.length >=
-      current.entries.length
+    requestSequence !== undefined &&
+    requestSequence < latestApplied
   ) {
-    laneCache.set(
+    return;
+  }
+  if (
+    requestSequence !== undefined ||
+    !current ||
+    summary.entries.length >= current.entries.length
+  ) {
+    laneCache.set(cacheKey, summary);
+    laneSnapshotRevisions.set(
       cacheKey,
-      summary,
+      requestSequence ?? ++laneSnapshotSequence,
     );
   }
 }
@@ -134,6 +149,7 @@ export async function loadLeaderboardLaneCached(
     return pending;
   }
 
+  const requestSequence = ++laneSnapshotSequence;
   const request = (async () => {
     const params =
       new URLSearchParams({
@@ -177,6 +193,7 @@ export async function loadLeaderboardLaneCached(
 
     seedLeaderboardLaneCache(
       summary,
+      requestSequence,
     );
 
     return summary;
