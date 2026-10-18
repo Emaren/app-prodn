@@ -74,6 +74,16 @@ function PageDetail({ item, close }: {item:KingdomIndexEntry;close:()=>void}) {
     </div>}
     {item.dimensions&&item.score===null&&<p className={styles.evidenceNote}>The dimension bars above belong to the historical review, not a current, verified audit.</p>}
     {item.notes&&<p className={styles.evidenceNote}>{item.notes}</p>}
+    {item.specializedAssurance.gates.length>0&&<section className={styles.assurancePanel} aria-label={`${item.label} specialized engineering proof obligations`}>
+      <h3>MANDATORY PROOF GATES <span>{item.specializedAssurance.profile.toUpperCase()}</span></h3>
+      <div className={styles.assuranceList} role="list">
+        {item.specializedAssurance.gates.map(gate=><div className={styles.assuranceItem} role="listitem" key={gate.id}>
+          <div><strong>{gate.id.replace(/-/g," ")}</strong><span>{gate.status.toUpperCase()}</span></div>
+          <p>{gate.requirement}</p>
+        </div>)}
+      </div>
+      <p className={styles.evidenceNote}>Specialized obligations are mandatory, not bonus points. No gate counts as passed without authenticated source-bound evidence.</p>
+    </section>}
     <Link href={item.href} className={styles.detailLink}>ENTER PAGE <ArrowUpRight size={15}/></Link>
   </section>;
 }
