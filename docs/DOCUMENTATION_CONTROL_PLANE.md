@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/20261018-website-hold-evidence-preflight` at `8888c08e2c269d8f8727c8a96574475d9b9db48a`
+Implementation baseline: `feat/20261018-website-hold-evidence-preflight` at `dc86e2440eeb3ff22c820f3e6975e19dd7d9869a`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "d31c242f96966492f2d87974f47062e1a9f3082a63249422c32100ac9d1b58a2",
+      "sha256": "e42d19ac967a507b4223a02bf3b36ef2a8f53ab0642508211e01ed2a124de494",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2117,7 +2117,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feat/20261018-website-hold-evidence-preflight",
-    "commit": "8888c08e2c269d8f8727c8a96574475d9b9db48a"
+    "commit": "dc86e2440eeb3ff22c820f3e6975e19dd7d9869a"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
