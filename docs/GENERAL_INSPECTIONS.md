@@ -319,3 +319,57 @@ and retry the publication failure rather than masking it as healthy liveness.
 - Wolo, databases, settlement, and protected evidence are never mutated by inspection.
 - A display score never overrides the underlying Doctor, release, Speed OS, Storage OS, or
   recovery receipt.
+
+## October 18, 2026 — Kingdom Index certification and special-gate policy
+
+The public `/kingdom-index` uses one common, 100-point **engineering quality
+rubric**: correctness 30, functionality 25, performance 20, maintainability
+15, tests 10. Each dimension contains four distinct criteria. The specialized
+evidence profiles in `config/kingdom-index-assurance-profiles.json` add
+mandatory **proof obligations**, not extra score points. All 68 registered
+public routes now have an explicit profile assignment, even where the profile
+is the general one. An unassigned future route emits an unverified
+`missing-assurance-profile` gate; it is not assumed safe.
+
+### Status and independent attestation
+
+A dated `source-review` or `agent` inspection is not a certified 100.
+Furthermore, an operator-authored observation saying `kind:"certified"`,
+even with a matching source hash and GitHub links, is **not itself proof**
+that the 20 criteria, relevant specialty gates, independent data/financial
+truth, real-browser behavior, and production performance were certified.
+
+The server now treats every such *unverified certification claim* as
+`provisional` after checking source and staleness, and labels it explicitly
+`CERTIFICATION CLAIM UNVERIFIED`. No certificate counts as current without
+a future independent, authenticated receipt verifier; no arbitrary JSON
+field or GitHub URL makes that verifier's decision. Source drift and stale
+timestamps take precedence over provisional labeling.
+
+The historical HD Leaderboard 64/100 source review remains unchanged. Source
+dependency snapshots from `scripts/kingdom_index_dependency_evidence.py`
+are working-tree lexical observations only, not complete Next.js bundle or
+deployed-source identity certification.
+
+### Route-by-route campaign protocol
+
+1. Confirm the exact deployed Git source, route source closure, imported
+   APIs/shared modules, and freshness. Preserve unresolved dependencies.
+2. Establish page-specific authority: Steam ratings and ties for rankings;
+   holds, refunds, payout and GET side effects for finance; chain-of-truth
+   for replays; challenge/holder authority for titles; signed release
+   provenance for AoE2WAR OS.
+3. Collect independent browser/mobile/accessibility/load and database
+   observations with timestamps, source and reproducible test conditions.
+4. Score each of the 20 **weighted criteria** from actual inspectable
+   evidence. A specialty gate marked unverified or failed prevents 100,
+   regardless of the arithmetic. An unknown criterion earns no points.
+5. Record PR/commit/test artifacts, source drift, operational limitations
+   and the next highest-value defect. Refactor only behind parity tests;
+   preserve published visuals unless intentionally commissioning redesign.
+6. Stop at objective diminishing returns, not when an LLM thinks a number
+   looks good. A 100/100 rating must be independently reproducible.
+
+The application read model remains observational and read-only; financial
+operations, Wolo signing, payouts and settlement releases require their
+separate protected authorities.

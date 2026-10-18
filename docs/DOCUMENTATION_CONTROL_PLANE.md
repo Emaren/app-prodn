@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feat/20261018-kingdom-index-assurance-evidence` at `25cae768d761cc5f05adca675d9d6f528c55582a`
+Implementation baseline: `feat/20261018-kingdom-index-assurance-harden` at `10f334cc800c8ced286f62ff38cacc8d45b98a4e`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
