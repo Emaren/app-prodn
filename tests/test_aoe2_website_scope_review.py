@@ -68,7 +68,7 @@ class WebsiteHoldScopeTests(unittest.TestCase):
                 MODULE.inspect_commits("a" * 40, "b" * 40)
 
     def test_commits_never_authorize_website_release(self):
-        with mock.patch.object(MODULE, "_git", side_effect=["", "", "", "", "app/AppShell.tsx"]):
+        with mock.patch.object(MODULE, "_git", side_effect=["", "", "", "", "b" * 40, "app/AppShell.tsx"]):
             result = MODULE.inspect_commits("a" * 40, "b" * 40)
         self.assertFalse(result["website_release_authorized"])
         self.assertFalse(result["financial_scope_admitted"])

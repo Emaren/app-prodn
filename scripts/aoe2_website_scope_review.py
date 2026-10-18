@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 from pathlib import Path
@@ -44,7 +45,7 @@ def inspect_paths(paths: list[str]) -> dict:
     unique = sorted(set(paths))
     risky: list[dict] = []
     for raw in unique:
-        if not raw or "\\x00" in raw or raw.startswith("/") or "\\" in raw:
+        if not raw or "\\0" in raw or raw.startswith("/") or "\\" in raw:
             risky.append({"path": raw[:200], "reason": "invalid path"})
             continue
         pieces = Path(raw).parts
@@ -89,7 +90,7 @@ def _git(*args: str) -> str:
     p = subprocess.run(
         ["git", *args], cwd=REPO, capture_output=True, text=True,
         check=False, timeout=30,
-        env=None,
+        env={k: v for k, v in os.environ.items() if not k.startswith("GIT_")},
     )
     if p.returncode:
         raise RuntimeError("Cannot establish exact Git source ancestry")
@@ -105,6 +106,8 @@ def inspect_commits(base: str, candidate: str) -> dict:
     # Fail closed on staged/untracked material; no local state is modified.
     if _git("status", "--porcelain=v1", "--untracked-files=all"):
         raise ValueError("Worktree dirty; scope unproven")
+    if _git("rev-parse", "HEAD") != candidate:
+        raise ValueError("Checked-out source is not the exact candidate")
     path_data = _git("diff", "--name-only", "--diff-filter=ACDMRTUXB", base, candidate)
     report = inspect_paths(path_data.splitlines() if path_data else [])
     report.update({"base_commit": base, "candidate_commit": candidate})
