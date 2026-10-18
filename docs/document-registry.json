@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "51eebe9d1b0c7984f729472347a57c066242cbb12777f05d574087f6e6f4ae6d",
+      "sha256": "aeb9c1c62760844261adfcd229712a7768932426e77d7e8a28a29177f9d8d5eb",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -733,7 +733,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-18",
       "sensitivity": "internal",
-      "sha256": "5a6efcb09c676f78e1e50de81370b6ce7bbe3690e91bd22db3416946c4c42359",
+      "sha256": "5a749cc1c41b86d7be1edc7dfc428220c9fbc24d8da7e47635a12a526a800a1a",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/20261018-kingdom-index-assurance-evidence",
-    "commit": "25cae768d761cc5f05adca675d9d6f528c55582a"
+    "branch": "feat/20261018-kingdom-index-assurance-harden",
+    "commit": "a05db72d99b8c7a249422933e35c893f3896833b"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
