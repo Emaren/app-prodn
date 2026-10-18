@@ -16,7 +16,7 @@ export async function GET() {
         schema: 1,
         observedAt: new Date().toISOString(),
         releaseSha: null,
-        sources: { intelligence: false, intelligenceStale: true, inspections: false },
+        sources: { intelligence: false, intelligenceStale: true, inspections: false, releaseAlignment: "unknown" },
         readinessScore: null,
         doctorScore: null,
         directive: null,

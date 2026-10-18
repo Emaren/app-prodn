@@ -15,6 +15,21 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## October 18, 2026 — aborting preview batches must never count as pre-existing bets
+
+Rebased the objective fix from historical draft #619. PostgreSQL's
+`createMany(skipDuplicates: true)` successful return count is the only
+authority for how many Mecha preview rows were inserted. An unexpected
+`P2002` is now reported as
+`BET_AUTO_SHADOW_INSERT_CONFLICT_UNVERIFIED`; impossible return counts
+are refused with `BET_AUTO_SHADOW_INSERT_COUNT_INVALID`. We do not
+fabricate "already exists" acknowledgements or retry uncertain batches.
+Tests explicitly exercise both negative paths.
+
+This is **preview-only** correctness. It does not create balances,
+accept stakes, decrement saved plans or authorize a Satchel transfer.
+
+
 ## October 18, 2026 — website-only release separation (candidate, not deployed)
 
 For the website-only release candidate, the October 15 C3a

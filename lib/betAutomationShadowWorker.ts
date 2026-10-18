@@ -345,14 +345,18 @@ export async function runBetAutoShadowWorker(
       data: candidates,
       skipDuplicates: true,
     });
+    // Only successful PostgreSQL return counts are authoritative.
+    // Never label unknown/aborted preview rows as already existing.
+    if (!Number.isSafeInteger(created.count) ||
+        created.count < 0 || created.count > candidates.length) {
+      throw new Error("BET_AUTO_SHADOW_INSERT_COUNT_INVALID");
+    }
     createdCount = created.count;
   } catch (error) {
-    /*
-     * PostgreSQL createMany(skipDuplicates) is the primary concurrency guard.
-     * Keep the fallback narrowly idempotent for mocked/alternate Prisma
-     * surfaces that report P2002 at the batch boundary.
-     */
-    if (!isPrismaUniqueConstraintError(error)) throw error;
+    if (isPrismaUniqueConstraintError(error)) {
+      throw new Error("BET_AUTO_SHADOW_INSERT_CONFLICT_UNVERIFIED", { cause: error });
+    }
+    throw error;
   }
 
   return {
