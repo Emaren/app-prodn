@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `test/hd-shadow-rehearsal-real-postgres-ci-20261017` at `513e0d736ab234a31291bbc1becbeebe43100318`
+Implementation baseline: `release/20261018-website-no-new-satchel-migration` at `dd0aad9806c928873c284d25349ffd6832b9c927`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

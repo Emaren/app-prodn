@@ -15,6 +15,25 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## October 18, 2026 — website-only release separation (candidate, not deployed)
+
+For the website-only release candidate, the October 15 C3a
+`war_satchel_simulation_guard_correction` migration is deliberately
+**deferred**, preserving the original SQL in Git at `f579cd0d` and on
+the held Satchel development/release track. The five older,
+already-present but unapplied C1–C3a migrations remain unchanged in
+source. The active production database remains at 112 applied
+migrations per the last operator-verified frontier; no Satchel SQL was
+installed by the website-only candidate.
+
+This separation does not authorize a user to transfer WOLO, credit a
+Satchel balance, execute real Mecha wagers or issue withdrawals. Any
+code requiring unapplied Satchel tables or the corrected simulation
+function must remain disabled until a separately reviewed guarded
+schema rollout. This candidate is website/runtime work only, subject
+to full GitHub and protected release gates; no deployment is claimed.
+
+
 ## October 16, 2026 — never truncate an active Watcher bet behind unrelated live markets
 
 The non-financial Mecha shadow evaluator previously queried the newest
