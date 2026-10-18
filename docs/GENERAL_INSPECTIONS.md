@@ -15,6 +15,26 @@ sensitivity: "internal"
 
 # AoE2WAR General Inspections
 
+## October 18, 2026 — archival score lineage remains immutable under live agent updates
+
+The dated `/leaderboard` source review scored **64/100** and its rubric
+dimensions are historical evidence, not the current measured score. Previously
+a newer operator agent observation replaced the review in one map; once it
+expired, the UI could relabel that newer agent number as the "historical review"
+and show its stale dimensions as history.
+
+The Index now maintains separate baseline source-review and current agent
+lineages. A fresh, aligned observation supplies the live measured score and
+its own dimension breakdown; an expired/uncorroborated agent claim supplies
+neither. The historical review score and dimension bars remain derived only
+from the dated baseline. The "observed" count recognizes current agent-only
+routes instead of depending on the existence of an archived review. Pure
+lineage tests cover current, expired and absent-review cases.
+
+This change does **not** independently verify an agent-produced number,
+install the scoring agent, change page appearance, or award 100. Financial
+release and current 100-point specialty gates remain unaffected.
+
 ## October 18, 2026 — nightly agent-readable route dependency gap evidence
 
 The `.github/workflows/kingdom-index-source-census.yml` workflow now

@@ -7,6 +7,7 @@ import baseline from "@/config/kingdom-index-baseline.json";
 import qualityRubric from "@/config/kingdom-index-quality-rubric.json";
 import assuranceProfiles from "@/config/kingdom-index-assurance-profiles.json";
 import { classifyPublicKingdomAuditStatus, publicObservedKingdomScore, isKingdomObservationStale } from "@/lib/kingdomIndexAuditStatus";
+import { selectKingdomScoreLineage } from "@/lib/kingdomIndexScoreLineage";
 
 export type District = "citadel" | "arena" | "forge" | "bazaar" | "commons";
 export type PageAuditKind = "certified" | "agent" | "source-review";
@@ -127,6 +128,14 @@ export async function loadKingdomIndex(): Promise<KingdomIndexSnapshot> {
   const now=Date.now();
   const proof=await observations();
   const byRoute=new Map(proof.rows.map(r=>[r.href,r]));
+  // The operator feed may replace a current observation, but may not rewrite
+  // or relabel the independent historical baseline. Keep both lineages.
+  const allowed = new Set(catalog.map(r=>r.href));
+  const reviews = new Map(
+    (baseline.observations as unknown[])
+      .filter((r): r is PageObservation => validRecord(r,allowed) && r.kind==="source-review")
+      .map(r=>[r.href,r] as const),
+  );
   const pages: KingdomIndexEntry[]=catalog.map(route=>{
     // All 68 routes use the same CI-regenerated source census. The older
     // PAGE_CHANGE_MANIFEST uses a separate algorithm and only covers a subset;
@@ -142,6 +151,8 @@ export async function loadKingdomIndex(): Promise<KingdomIndexSnapshot> {
     const status:KingdomIndexEntry["status"]=classifyPublicKingdomAuditStatus({
       kind:obs?.kind??null, versionAligned, stale,
     });
+    const liveScore=publicObservedKingdomScore({status,kind:obs?.kind??null,score:obs?.score??null});
+    const lineage=selectKingdomScoreLineage(reviews.get(route.href)??null,obs??null,liveScore);
     const profile = (assuranceProfiles.routeProfiles as Record<string,string>)[route.href] ?? "unclassified";
     const specialty = (assuranceProfiles.profiles as Record<string,{gates: {id:string;requirement:string}[]}>)[profile]
       ?? {gates:[{id:"missing-assurance-profile",requirement:"No independently reviewed engineering assurance profile exists for this public route."}]};
@@ -150,19 +161,19 @@ export async function loadKingdomIndex(): Promise<KingdomIndexSnapshot> {
       specializedAssurance: {profile, gates: specialty.gates.map(gate=>({id:gate.id,requirement:gate.requirement,status:"unverified" as const}))},
       sourceVersion:version,sourceVersionAuthority:"route-local-git-census",measuredVersion,
       // Keep a historical score visible only with an explicit noncurrent state.
-      score: publicObservedKingdomScore({ status, kind: obs?.kind??null, score: obs?.score??null }),
-      lastReviewScore:obs?.score??null, checkedAt:obs?.checkedAt??null,
+      score: liveScore,
+      lastReviewScore:lineage.lastReviewScore, checkedAt:obs?.checkedAt??null,
       kind:obs?.kind??null,status,
       history:obs?.history?.slice(-40)??[],
       loadMs:typeof obs?.loadMs==="number"&&Number.isFinite(obs.loadMs)&&obs.loadMs>=0?obs.loadMs:null,
       bytes:typeof obs?.bytes==="number"&&Number.isFinite(obs.bytes)&&obs.bytes>=0?obs.bytes:null,
-      dimensions:obs?.dimensions??null,
+      dimensions:lineage.dimensions,
       notes:typeof obs?.notes==="string"?obs.notes.slice(0,500):null,
     };
   });
   return {
     schema:1,generatedAt:new Date(now).toISOString(),pages,
-    observed:pages.filter(p=>p.lastReviewScore!==null).length,
+    observed:pages.filter(p=>p.kind!==null).length,
     certified:pages.filter(p=>p.status==="current"&&p.kind==="certified").length,
     drifted:pages.filter(p=>p.status==="drifted"||p.status==="stale").length,
     source:proof.source,

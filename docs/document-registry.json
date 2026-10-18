@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "962598603344d44bff77d1cb494066409360d403a9ca3002d06ce65a1b8b5085",
+      "sha256": "4851d8429fb947311542bc70098e5cecd8a7fd2682ada0a7886a2dc2cae42e2c",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -733,7 +733,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-18",
       "sensitivity": "internal",
-      "sha256": "9810b6efcff4c5170ac27809c6a20c8e900b507e2b36e63ddd0f9dda467a0127",
+      "sha256": "ead67e4cbf0ef503e19b2b9ee1f23faf05cc8b58dda3d1ea42dec0602b707b71",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/20261018-leaderboard-client-cache-authority-v2",
-    "commit": "6dbd23c35f982ddbd16176d018ab14ca1cdbc606"
+    "branch": "fix/20261018-index-review-lineage",
+    "commit": "811670496587f02d80e1ed547825259cc5ea128d"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
