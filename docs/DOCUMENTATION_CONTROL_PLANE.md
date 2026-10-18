@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/20261018-leaderboard-client-cache-authority-v2` at `6dbd23c35f982ddbd16176d018ab14ca1cdbc606`
+Implementation baseline: `fix/20261018-index-review-lineage` at `852d6f0bbd93513d5bd0da0cf66b6717f51bd437`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
