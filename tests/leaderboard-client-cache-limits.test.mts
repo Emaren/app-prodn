@@ -93,3 +93,58 @@ test("later authoritative response replaces a richer obsolete lane cache", async
     globalThis.fetch = originalFetch;
   }
 });
+
+test("a forced refresh supersedes a pending same-window fetch, even when old response finishes last", async () => {
+  const originalFetch = globalThis.fetch;
+  const waiters: Array<(response: Response) => void> = [];
+  globalThis.fetch = (() => new Promise<Response>((resolve) => waiters.push(resolve))) as typeof fetch;
+  const answer = (resolve: (response: Response) => void, count: number) => resolve(
+    new Response(JSON.stringify({
+      lane: "dm", scope: "all", trackedPlayers: count,
+      entries: Array.from({ length: count }, (_, rank) => ({rank:rank+1})),
+    }), {status:200, headers:{"content-type":"application/json"}})
+  );
+  try {
+    const old = loadLeaderboardLaneCached("dm", {scope:"all",limit:50,force:true});
+    const latest = loadLeaderboardLaneCached("dm", {scope:"all",limit:50,force:true});
+    assert.equal(waiters.length, 2, "force must bypass old in-flight response");
+    answer(waiters[1], 12);
+    assert.equal((await latest).trackedPlayers, 12);
+    answer(waiters[0], 23);
+    assert.equal((await old).trackedPlayers, 23);
+    assert.equal(readLeaderboardLaneCache("dm","all")?.trackedPlayers, 12);
+    // The most recent network truth wins against an unversioned SSR seed.
+    const {seedLeaderboardLaneCache} = await import("../lib/leaderboardLaneClientCache.ts");
+    seedLeaderboardLaneCache({
+      lane: "dm", scope: "all", trackedPlayers: 50,
+      entries: Array.from({length:50},(_,rank)=>({rank:rank+1})),
+    } as never);
+    assert.equal(readLeaderboardLaneCache("dm","all")?.trackedPlayers, 12);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("leaderboard cache refuses impossible roster counts and oversized payloads", async () => {
+  const originalFetch = globalThis.fetch;
+  let response: Record<string,unknown> = {};
+  globalThis.fetch = (async () => new Response(JSON.stringify(response),{
+    status:200,headers:{"content-type":"application/json"},
+  })) as typeof fetch;
+  try {
+    for (const invalid of [
+      {lane:"rm",scope:"all",trackedPlayers:-1,entries:[]},
+      {lane:"rm",scope:"all",trackedPlayers:"3",entries:[]},
+      {lane:"rm",scope:"all",trackedPlayers:1,entries:[{rank:1},{rank:2}]},
+      {lane:"rm",scope:"all",trackedPlayers:8,entries:Array.from({length:6},(_,i)=>({rank:i+1}))},
+    ]) {
+      response=invalid;
+      await assert.rejects(
+        loadLeaderboardLaneCached("rm",{scope:"all",limit:5,force:true}),
+        /lane unavailable/
+      );
+    }
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
