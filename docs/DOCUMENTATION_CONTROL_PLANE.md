@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `codex/satchel-authenticated-deposit-credit` at `3689cacfd5c6079b16fcd1a8c4def63609bb957c`
+Implementation baseline: `codex/satchel-complete-financial-paths` at `3f5413e1728f203ef176943566682ea7e34ef0d0`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
