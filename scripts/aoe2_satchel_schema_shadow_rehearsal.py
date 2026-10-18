@@ -306,7 +306,7 @@ def describe_schema_delta(source: bytes, restored: bytes) -> str:
     manual_review_hunks = 0
     first_manual_review_source_line = None
     matcher = difflib.SequenceMatcher(a=original, b=shadow, autojunk=True)
-    check_prefix = re.compile(r"^\\s*CONSTRAINT\\s+\\S+\\s+CHECK\\s*\\(", re.I)
+    check_prefix = re.compile(r"^\s*CONSTRAINT\s+\S+\s+CHECK\s*\(", re.I)
     for tag, a, b, c, d in matcher.get_opcodes():
         if tag == "equal":
             continue
