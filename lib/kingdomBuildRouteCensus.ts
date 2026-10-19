@@ -6,6 +6,7 @@ import path from "node:path";
 export type KingdomBuildRouteCounts = {
   publicStatic: number;
   publicDynamic: number;
+  publicUtility: number;
   admin: number;
   sensitiveDynamic: number;
   apiHandlers: number;
@@ -51,15 +52,16 @@ export function classifyKingdomBuildRoutes(raw: unknown): KingdomBuildRouteCount
     else pageIds.add(normalizedPage(key));
   }
   const counts: KingdomBuildRouteCounts = {
-    publicStatic: 0, publicDynamic: 0, admin: 0, sensitiveDynamic: 0, apiHandlers: handlerIds.size, totalPages: pageIds.size,
+    publicStatic: 0, publicDynamic: 0, publicUtility: 0, admin: 0, sensitiveDynamic: 0, apiHandlers: handlerIds.size, totalPages: pageIds.size,
   };
   for (const href of pageIds) {
     if (href === "/admin" || href.startsWith("/admin/")) { counts.admin++; continue; }
     if (EXCLUDED_SENSITIVE.has(href)) { counts.sensitiveDynamic++; continue; }
-    if (href.includes("[") || UTILITY.has(href)) { counts.publicDynamic++; continue; }
+    if (UTILITY.has(href)) { counts.publicUtility++; continue; }
+    if (href.includes("[")) { counts.publicDynamic++; continue; }
     counts.publicStatic++;
   }
-  if (counts.totalPages !== counts.publicStatic + counts.publicDynamic + counts.admin + counts.sensitiveDynamic) return null;
+  if (counts.totalPages !== counts.publicStatic + counts.publicDynamic + counts.publicUtility + counts.admin + counts.sensitiveDynamic) return null;
   return counts;
 }
 
