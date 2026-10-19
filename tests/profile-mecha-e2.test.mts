@@ -85,7 +85,9 @@ test("Mecha UI shows only server-owned preview status; not an on-chain wallet", 
   assert.match(funding, /disabled=\{busy \|\| !ready \|\| !valid \|\| mayHaveSent \|\|\s*knownIntents\.length > 0\}/);
   assert.match(funding, /FUNDING AWAITING VAULT CERTIFICATION/);
   assert.match(funding, /FUNDING AWAITING VAULT CERTIFICATION/);
-  assert.match(card, /satchelVerifiedBalanceWolo: string \| null = null/);
+  assert.match(card, /satchelVerifiedBalanceWolo = satchelBalance \\?/);
+  assert.match(card, /parseCertifiedWarSatchelRead\\(value\\)/);
+  assert.match(card, /Uncertified · no verified Satchel credit/);
   assert.match(card, /satchelVerifiedBalanceWolo \?\? "—"/);
   assert.doesNotMatch(card, /0 LOCKED|satchelVerified \? "0"/);
   assert.match(card, /DESYNC OPTIONS/);
