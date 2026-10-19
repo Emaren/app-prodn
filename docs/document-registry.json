@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "1be0ad243fd1822b4066c0c63bd110d4186e052292b72aec8d99be71fdd4b019",
+      "sha256": "b3ffa74189ac0f9477b91063e5fecde99d3856eb68a77856f6764865bf008f21",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/20261019-satchel-reservation-debit-admission",
-    "commit": "01ac50ae4f01edbc76184ac50874f1d31cf63e69"
+    "branch": "audit/20261019-satchel-pending-gas-headroom",
+    "commit": "dfb717fea1a86e3b6c9a68364403c171ab71e127"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
