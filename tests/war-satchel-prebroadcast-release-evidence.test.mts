@@ -137,7 +137,7 @@ test("release checks persisted independent records BEFORE journal credit in excl
   const check = body.indexOf("prebroadcastReleaseEvidenceIssue({");
   const debitRead = body.indexOf("satchelFundedJournal.findUnique({");
   assert.ok(debitRead >= 0 && debitRead < check, "original reserve debit must be fetched before refund admission");
-  assert.match(body, /sourceKey: reservation\\.id/);
+  assert.match(body, /sourceKey: reservation\.id/);
   assert.match(body, /ticket, reserveJournal,/);
   const journal = body.indexOf("satchelFundedJournal.create({");
   const account = body.indexOf("satchelFundedBalance.update({");
