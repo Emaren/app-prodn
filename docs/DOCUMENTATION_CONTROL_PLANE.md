@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/20261018-satchel-unified-funded-outbox` at `7725b00e63c00ef396209658c4c679e4baf078e4`
+Implementation baseline: `fix/20261018-satchel-verified-watcher-single-selector` at `98e7350193b0ccc9d8f75439b246dbd2881b20d2`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
