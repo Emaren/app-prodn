@@ -3450,6 +3450,22 @@ def documentation_blocker_details(summary: dict[str, Any]) -> list[str]:
         return []
 
     details: list[str] = []
+    # Finish will not attempt ANY automatic documentation repair while the
+    # plan is blocked. Show every actionable P0/P1 anyway, rather than
+    # misleading operators into thinking a dry-run has already cleared it.
+    # This changes presentation only; the blocked gate is never weakened.
+    for severity, key in (("P0", "auto_remediable_p0"), ("P1", "auto_remediable_p1")):
+        for item in summary.get(key) or []:
+            if not isinstance(item, dict):
+                continue
+            area = str(item.get("area") or "unknown area")
+            finding_key = str(item.get("key") or "unknown")
+            reason = str(item.get("detail") or "no detail")
+            details.append(
+                f"{severity} [{area}/{finding_key}] "
+                f"(pending remediation; blocked): {reason[:350]}"
+            )
+
     for item in summary.get("blocked_source_docs") or []:
         if not isinstance(item, dict):
             continue
