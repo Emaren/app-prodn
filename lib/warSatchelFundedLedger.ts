@@ -619,8 +619,12 @@ export async function releaseUnbroadcastSatchelReservation(
       } },
       select: { status: true, stakeTxHash: true, broadcastSubmittedAt: true },
     });
+    const reserveJournal = await tx.satchelFundedJournal.findUnique({
+      where: { sourceKey: reservation.id },
+    });
     const issue = prebroadcastReleaseEvidenceIssue({
-      reservation, ownerUserId: input.ownerUserId, execution, authority, ticket,
+      reservation, ownerUserId: input.ownerUserId, execution, authority,
+      ticket, reserveJournal,
     });
     if (issue) stop(issue);
     const account = await tx.satchelFundedBalance.findUnique({
