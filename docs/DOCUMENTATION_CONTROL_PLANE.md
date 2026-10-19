@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/20261019-satchel-reservation-debit-admission` at `01ac50ae4f01edbc76184ac50874f1d31cf63e69`
+Implementation baseline: `audit/20261019-satchel-pending-gas-headroom` at `dfb717fea1a86e3b6c9a68364403c171ab71e127`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
