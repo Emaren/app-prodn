@@ -369,16 +369,30 @@ def validate_bundle(root: Path, version: str) -> list[dict[str, Any]]:
         )
 
     rows = manifest["files"]
+    # v1.6.5 publisher emits an exact ten-file inventory with correct SHA-256
+    # receipts in build-order rather than deployment-order. Order is not an
+    # authenticity property; normalize only after exact membership, count,
+    # duplicate and type checks. Output remains in canonical promotion order.
     names = [row.get("filename") for row in rows if isinstance(row, dict)]
-    if names != canonical:
+    if (
+        len(names) != len(canonical)
+        or any(not isinstance(name, str) for name in names)
+        or len(set(names)) != len(names)
+        or set(names) != set(canonical)
+        or (
+            tuple(map(int, version.split("."))) < (1, 6, 5)
+            and names != canonical
+        )
+    ):
         raise WatcherReleasePromotionError(
             "Watcher release manifest inventory mismatch"
         )
+    by_name = {row["filename"]: row for row in rows}
 
     manifest_hashes: dict[str, str] = {}
     inventory: list[dict[str, Any]] = []
-    for row in rows:
-        name = str(row["filename"])
+    for name in canonical:
+        row = by_name[name]
         file_path = root / name
         info = require_regular_file(file_path, name)
         digest = sha256_file(file_path)
