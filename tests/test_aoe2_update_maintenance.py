@@ -109,6 +109,74 @@ class MaintenanceTests(unittest.TestCase):
         self.assertEqual(plan["external_hold"], {"proof": "exact"})
         self.assertTrue(plan["maintenance_only"])
 
+    def test_checker_summary_truncation_admits_only_renewed_exact_source_reviews(self):
+        # Actual 2026-10-19 Finisher JSON omitted the ValueError header:
+        # aoe2_audit.checker_summary keeps just the last three lines.
+        expired = (datetime.now(timezone.utc).date() - timedelta(days=1)).isoformat()
+        detail = ("- api-prodn:docs/replay-intelligence/engine-witness-pilot.md: "
+                  "documentation review expired on " + expired + " | - "
+                  "api-prodn:docs/replay-intelligence/exact-cohort-materializer.md: "
+                  "documentation review expired on " + expired +
+                  " | make: *** [generate] Error 1")
+        registry = {"documents": [
+            {"path": "docs/replay-intelligence/engine-witness-pilot.md",
+             "reviewed_at": datetime.now(timezone.utc).date().isoformat(),
+             "review_interval_days": 30},
+            {"path": "docs/replay-intelligence/exact-cohort-materializer.md",
+             "reviewed_at": datetime.now(timezone.utc).date().isoformat(),
+             "review_interval_days": 30},
+        ]}
+        payload = renewed_review_incident()
+        for finding in payload["findings"]:
+            if finding["severity"] == "P0":
+                finding["detail"] = detail
+        with mock.patch.object(update.aoe2_audit, "load_json", return_value=registry):
+            plan = self.plan(payload)
+        self.assertFalse(plan["blocked"])
+        self.assertEqual(len(plan["auto_remediable_p0"]), 2)
+        self.assertEqual(plan["unknown_p0"], [])
+        self.assertIsNotNone(plan["external_hold"])
+        # Only the dedicated independent docs lane can accept the same case.
+        with mock.patch.object(update.aoe2_audit, "load_json", return_value=registry):
+            standard = self.plan(payload, maintenance=False)
+        self.assertTrue(standard["blocked"])
+        self.assertEqual(len(standard["unknown_p1"]), 1)
+
+        for malformed in (
+            detail.replace(" | - api-prodn:", " | - unrelated failure | - api-prodn:"),
+            detail.replace("api-prodn:", "alien-prodn:", 1),
+            detail.replace("Error 1", "Error 2"),
+            detail.replace("documentation review expired", "signature failed", 1),
+            "some build error | " + detail,
+        ):
+            with self.subTest(detail=malformed):
+                candidate = copy.deepcopy(payload)
+                for finding in candidate["findings"]:
+                    if finding["severity"] == "P0":
+                        finding["detail"] = malformed
+                with mock.patch.object(update.aoe2_audit, "load_json", return_value=registry):
+                    rejected = self.plan(candidate)
+                self.assertTrue(rejected["blocked"])
+                self.assertEqual(len(rejected["unknown_p0"]), 2)
+
+    def test_checker_summary_truncation_never_admits_stale_canonical_review(self):
+        expired = (datetime.now(timezone.utc).date() - timedelta(days=1)).isoformat()
+        payload = renewed_review_incident()
+        for finding in payload["findings"]:
+            if finding["severity"] == "P0":
+                finding["detail"] = (
+                    "- api-prodn:docs/replay-intelligence/engine-witness-pilot.md: "
+                    "documentation review expired on " + expired +
+                    " | make: *** [generate] Error 1"
+                )
+        with mock.patch.object(update.aoe2_audit, "load_json", return_value={
+            "documents": [{"path": "docs/replay-intelligence/engine-witness-pilot.md",
+                           "reviewed_at": expired, "review_interval_days": 30}]
+        }):
+            plan = self.plan(payload)
+        self.assertTrue(plan["blocked"])
+        self.assertEqual(len(plan["unknown_p0"]), 2)
+
     def test_central_p0_recovery_rejects_unrelated_or_concatenated_errors(self):
         for detail in (
             "Build failure: taxonomy contract failed",

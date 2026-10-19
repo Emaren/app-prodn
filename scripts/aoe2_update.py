@@ -917,9 +917,20 @@ def recoverable_central_review_p0(finding: dict[str, Any]) -> bool:
         return False
 
     detail = finding.get("detail")
-    prefix = "ValueError: taxonomy contract failed: | - "
+    # The central audit stores only checker_summary()'s last three nonempty
+    # lines. For a two-document expiry that discards the diagnostic's
+    # "ValueError: taxonomy contract failed:" prefix, leaving "- <path> ..."
+    # as the first character. Admit precisely those two known shapes;
+    # never accept arbitrary build failures, extra diagnostics or fragments.
+    prefixes = (
+        "ValueError: taxonomy contract failed: | - ",
+        "- ",
+    )
     suffix = " | make: *** [generate] Error 1"
-    if not isinstance(detail, str) or not detail.startswith(prefix) or not detail.endswith(suffix):
+    if not isinstance(detail, str) or not detail.endswith(suffix):
+        return False
+    prefix = next((value for value in prefixes if detail.startswith(value)), None)
+    if prefix is None:
         return False
 
     items = detail[len(prefix):-len(suffix)].split(" | - ")
