@@ -33,7 +33,7 @@ export function parseCertifiedWarSatchelRead(input: unknown): CertifiedWarSatche
   if (!input || typeof input !== "object" || Array.isArray(input)) return null;
   const value = input as Record<string, unknown>;
   if (value.available !== true || value.chainId !== "wolo-1" ||
-      value.denom !== "uwolo" || value.wageringEnabled !== false) return null;
+      value.denom !== "uwolo" || typeof value.wageringEnabled !== "boolean") return null;
   const availableUwolo = ledgerInteger(value.availableUwolo);
   const reservedUwolo = ledgerInteger(value.reservedUwolo);
   const withdrawalPendingUwolo = ledgerInteger(value.withdrawalPendingUwolo);
