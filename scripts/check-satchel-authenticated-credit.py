@@ -59,6 +59,13 @@ with tempfile.TemporaryDirectory(prefix="hd-real-comet-") as tmp:
     binary_sha256 = hashlib.sha256(binary.read_bytes()).hexdigest()
     if "GOOS=linux" in metadata and "GOARCH=amd64" in metadata:
         assert binary_sha256 == LINUX_AMD64_SHA256, "reviewed Linux verifier checksum mismatch"
+    # Import a disposable *test-only* source for four genuine sequential
+    # Cosmos SDK signed sends in a single ephemeral application/chain.
+    # This source is NOT part of the pinned mainnet verifier binary and must
+    # NEVER be installed into a production WoloChain checkout.
+    continuous_test = ROOT / "tests/fixtures/satchel-v1-continuous-sdk_test.go"
+    assert continuous_test.is_file()
+    (source / "internal/satchel/satchel_v1_continuous_sdk_test.go").write_bytes(continuous_test.read_bytes())
     # Modify only a TEST fixture after compiling the exact reviewed verifier.
     # Override the helper builder's memo BEFORE it creates the real signature.
     fixture = source / "internal/satchel/isolated_execution_test.go"
@@ -91,3 +98,12 @@ func (b hdMemoBuilder) SetMemo(_ string) { b.TxBuilder.SetMemo(b.memo) }
     assert genuine_wager["fixture_only"] is True and genuine_wager["mainnet_authority"] is False
     assert genuine_wager["intent"]["AmountUWolo"] == "12000000", "wrong actual SDK wager amount"
     run(["node","--experimental-strip-types","--experimental-loader","./scripts/aoe2-alias-loader.mjs","--experimental-loader","./tests/fixtures/satchel-credit-test-loader.mjs","--disable-warning=MODULE_TYPELESS_PACKAGE_JSON","--test","tests/war-satchel-wager-real-verifier.test.mts"],cwd=ROOT,env=env)
+
+    # One chain, four sequential SDK transactions with independent fee budget:
+    # 100 deposit -> 12 escrow -> 12 no-fee principal return -> 100 withdrawal.
+    # A second fixture proves a 1uwolo gas shortage prevents full payout.
+    # Real Cosmos SDK execution, but NOT a light-client/Comet finality proof
+    # for the continuous session and not connected to the Prisma ledger.
+    run(["go","test","-tags=go1.27","./internal/satchel",
+         "-run","^TestSatchelV1ContinuousIsolatedSDKFeeConservation$",
+         "-count=1"],cwd=source,env=env)
