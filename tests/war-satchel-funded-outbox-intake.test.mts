@@ -4,31 +4,32 @@ import test from "node:test";
 
 const load=(path:string)=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
 
-test("only a bounded, signed Watcher shadow outbox feeds the funded executor",()=>{
+test("one bounded signed Watcher selector feeds both financial entrypoints",()=>{
   const tick=load("lib/warSatchelFundedOutboxTick.ts");
+  const cli=load("scripts/war-satchel-funded-mecha-worker.ts");
   const selector=load("lib/warSatchelEligibleOutbox.ts");
-  const source=tick+selector;
-  assert.match(tick,/const MAX=FUNDED_MECHA_CANDIDATE_LIMIT/);
   assert.match(selector,/FUNDED_MECHA_CANDIDATE_LIMIT = 25/);
   assert.match(selector,/FUNDED_MECHA_CANDIDATE_MAX_AGE_MS = 4 \* 60 \* 1000/);
-  assert.match(source,/status:"shadow_ready"/);
-  assert.match(source,/ticketId:null/);
-  assert.match(source,/status:"shadow_ready",reservationId:null,attemptCount:0/);
-  // A durable pre-broadcast reservation may resume only after approval. An
-  // attempted/uncertain send must never re-enter this intake.
-  assert.match(source,/status:"funded_reserved",reservationId:\{not:null\},attemptCount:1/);
-  assert.match(source,/satchelFundedReservation:\{is:\{status:"reserved",wagerAuthorization:\{is:\{approval:\{isNot:null\}\}\}\}\}/);
-  assert.doesNotMatch(source,/status:"unknown_hold"|status:"funded_submitting"/);
-  assert.match(source,/createdAt:\{gte:earliest,lte:now\}/);
-  assert.match(source,/user:\{walletAddress:\{not:null\}\}/);
-  assert.match(source,/orderBy:\[\{createdAt:"asc"\},\{id:"asc"\}\]/);
-  assert.match(source,/take: max/);
+  assert.match(selector,/status: "shadow_ready", reservationId: null, attemptCount: 0/);
+  assert.match(selector,/status: "funded_reserved", reservationId: \{ not: null \}, attemptCount: 1/);
+  assert.match(selector,/wagerAuthorization: \{ is: \{ approval: \{ isNot: null \} \}/);
+  assert.doesNotMatch(selector,/status: "unknown_hold"|status: "funded_submitting"/);
+  assert.match(selector,/createdAt: \{ gte: earliest, lte: now \}/);
+  assert.match(selector,/nextAttemptAt: \{ lte: now \}/);
+  assert.match(selector,/user: \{ walletAddress: \{ not: null \} \}/);
+  assert.match(selector,/gamesRemaining: \{ gt: 0 \}/);
+  assert.match(selector,/orderBy: \[\{ createdAt: "asc" \}, \{ id: "asc" \}\]/);
+  assert.match(selector,/take: max/);
+  assert.match(selector,/requireSatchelFinancialBridge\(\)/);
   assert.match(tick,/readEligibleFundedMechaIds\(prisma,options\)/);
+  assert.match(cli,/readEligibleFundedMechaIds\(prisma,\{limit:MAX_BATCH\}\)/);
+  assert.doesNotMatch(tick+cli,/betAutoExecution\.findMany/);
   assert.match(tick,/executeFundedMechaTicketBatch\(/);
-  assert.match(source,/warSatchelDedicatedSignerClient/);
-  assert.doesNotMatch(source,/warSatchelIsolatedSignerClient|warSatchelIsolatedSignerTransport|makeSatchelLoopbackSigner|createLocalIsolatedSatchelSigner/);
-  assert.doesNotMatch(source,/setInterval\(|while\s*\(/);
+  assert.match(tick,/warSatchelDedicatedSignerClient/);
+  assert.doesNotMatch(tick+cli,/warSatchelIsolatedSignerClient|warSatchelIsolatedSignerTransport|makeSatchelLoopbackSigner|createLocalIsolatedSatchelSigner/);
+  assert.doesNotMatch(tick+cli,/setInterval\(|while\s*\(/);
 });
+
 test("unapproved producer, withdrawal, claim return or custody flag cannot execute one funded bet",()=>{
   const source=load("lib/warSatchelFundedOutboxTick.ts");
   for(const flag of [
