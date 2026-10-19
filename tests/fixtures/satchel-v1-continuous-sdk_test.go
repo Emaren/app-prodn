@@ -30,13 +30,13 @@ import (
 // The exact 100 WOLO remains a customer liability even when escrow sends
 // back an unmatched 12 WOLO. The vault must cover its OWN two 1-uwolo fees.
 // Escrow similarly needs independent gas for returning the full principal.
-// A successful funded branch and a refused unfunded branch are exercised.
+// A successful funded branch and a refused underfunded branch are exercised.
 func TestSatchelV1ContinuousIsolatedSDKFeeConservation(t *testing.T) {
     t.Run("independently_prefunded_vault_and_escrow_gas", func(t *testing.T) {
         rehearseContinuousSatchelSDK(t, 2, true)
     })
-    t.Run("unfunded_vault_cannot_pay_out_full_principal", func(t *testing.T) {
-        rehearseContinuousSatchelSDK(t, 0, false)
+    t.Run("underfunded_vault_cannot_pay_out_full_principal", func(t *testing.T) {
+        rehearseContinuousSatchelSDK(t, 1, false)
     })
 }
 
