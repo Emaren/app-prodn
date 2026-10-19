@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "f83b33db412de84b0dab1cd9aa687e987b87c4a80b489f79575f8b8455adfb24",
+      "sha256": "81e0ae3ea10e582415e7feedf0fe84180f43525edec1ef69c56e9da6d1cce805",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2143,7 +2143,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feature/kingdom-brain-progress-foundation-20261019",
-    "commit": "0456188908f5128460969c17f278883bded15874"
+    "commit": "d77f95d0d14e98185fb1cf903f7e551db1ed5ce3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
