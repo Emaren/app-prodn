@@ -25,6 +25,11 @@ const OPERATION = /^satchel:ticket:[1-9][0-9]{0,11}$/;
 const SHA = /^[0-9a-f]{64}$/;
 const TOKEN = /^[A-Za-z0-9_-]{48,512}$/;
 const MAX_REPLY_BYTES = 4096;
+const APPROVAL_FIELDS = [
+  "version", "operation_id", "owner_id", "vault", "recipient", "amount_uwolo",
+  "memo", "reservation_digest", "ledger_revision", "consent_digest",
+  "fee_uwolo", "issued_at", "expires_at", "signature",
+] as const;
 
 function stop(reason: string): never {
   throw Error("SATCHEL_AUTO_REVIEWER_REFUSED:" + reason);
@@ -70,16 +75,17 @@ export function verifySatchelReviewerReply(
   nowMs = Date.now(),
 ): Readonly<{ kind: "pending" } | { kind: "reviewed"; approval: SatchelWagerReservation }> {
   if (!Number.isSafeInteger(nowMs) || nowMs < 0) stop("invalid_review_clock");
-  const basic = exact(reply,
-    (reply as { status?: unknown } | null)?.status === "SIGNED"
-      ? ["protocol", "status", "operation_id", "approval"]
-      : ["protocol", "status", "operation_id"]);
+  const status = reply && typeof reply === "object" && !Array.isArray(reply) &&
+    Object.getPrototypeOf(reply) === Object.prototype
+    ? Object.getOwnPropertyDescriptor(reply, "status")?.value : undefined;
+  const basic = exact(reply, status === "SIGNED"
+    ? ["protocol", "status", "operation_id", "approval"]
+    : ["protocol", "status", "operation_id"]);
   if (basic.protocol !== 1 || basic.operation_id !== original.operationId ||
       !OPERATION.test(original.operationId)) stop("wrong_operation_or_protocol");
   if (basic.status === "PENDING") return Object.freeze({ kind: "pending" as const });
   if (basic.status !== "SIGNED") stop("unknown_reviewer_status");
-  const raw = basic.approval;
-  if (!raw || typeof raw !== "object") stop("missing_signed_review");
+  const raw = exact(basic.approval, APPROVAL_FIELDS);
   // The reviewer's claimed fee and times are allowed only if the signature
   // authenticates them under the original HD reservation/ledger/consent.
   const approval = verifyIndependentWagerReservation(raw,
