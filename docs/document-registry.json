@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "b77005d53bd0a3c766c8ee10591b81e2efc8b9e45d2aca6960cfdcce0b3f99e1",
+      "sha256": "af150c685d0963d6b02faa23942a53e06060c9a41bcdf1d42ca461581ab37128",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "808758b9dbc9997b6766c0f788b89ad5259aa6b4bfb0ad946497cd12b57b8df9",
+      "sha256": "ee2415b7727f2475d29f6463f2f33cb2eb6b59ca07491b12fd6761ceac9f3817",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/20261019-central-review-truncated-audit-recovery",
-    "commit": "c29f1780140b803d43d855a0a9be3d68f4f852cd"
+    "branch": "fix/20261019-preflight-and-finance-census-rebase",
+    "commit": "76f08a66619d1a48cfd991de8c351d446f5635f5"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
