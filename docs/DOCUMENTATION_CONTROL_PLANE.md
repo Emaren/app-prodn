@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `release/watcher-165-website-only-20261019` at `2feebe1fb19aa08322e80075c4244919fbe472b6`
+Implementation baseline: `release/watcher-165-website-only-20261019` at `7cc49ffeb8e4345f90865aa9392851d9be7650a8`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
