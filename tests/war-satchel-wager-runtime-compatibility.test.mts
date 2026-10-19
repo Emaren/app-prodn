@@ -11,7 +11,7 @@ const r = fixture.context.reservation;
 test("Go reservation fixture remains canonical on Linux and Mac runtimes",()=>{
  const encodedAddress=(v:unknown)=>{
    if(typeof v!=="string")return false;
-   try {const x=fromBech32(v);return x.prefix==="wolo"&&x.data.length===20;}
+   try {const x=fromBech32(v,90);return x.prefix==="wolo"&&x.data.length===20;}
    catch(error){throw Error("cross-runtime Bech32 decoder refusal: "+(error instanceof Error?error.message:String(error)));}
  };
  const amount=(v:unknown,limit:bigint)=>typeof v==="string"&&/^[1-9][0-9]{0,18}$/.test(v)
