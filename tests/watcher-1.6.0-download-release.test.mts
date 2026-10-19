@@ -12,10 +12,10 @@ const release = fs.readFileSync(
   "utf8",
 );
 
-test("Watcher 1.6.4 Extreme hero uses the current responsive release artwork", () => {
+test("Watcher 1.6.5 Extreme hero uses the current responsive release artwork", () => {
   assert.match(
     release,
-    /version: "1\.6\.4"/,
+    /version: "1\.6\.5"/,
   );
 
   assert.match(page, /watcher-v164-desktop\.webp/);
@@ -38,7 +38,7 @@ test("Watcher 1.6.4 Extreme hero uses the current responsive release artwork", (
   }
 });
 
-test("Watcher 1.6.4 release advertises recovery, low-footprint lifecycle and media shedding", () => {
+test("Watcher 1.6.5 release advertises recovery, low-footprint lifecycle and media shedding", () => {
   assert.match(
     release,
     /Active replay-folder recovery/,
@@ -106,11 +106,11 @@ test("Watcher 1.6.4 release advertises recovery, low-footprint lifecycle and med
 
   assert.match(
     release,
-    /AoE2HDBets Watcher Setup 1\.6\.4\.exe/,
+    /AoE2HDBets Watcher Setup 1\.6\.5\.exe/,
   );
 
   assert.match(
     release,
-    /AoE2HDBets Watcher 1\.6\.4\.exe/,
+    /AoE2HDBets Watcher 1\.6\.5\.exe/,
   );
 });
