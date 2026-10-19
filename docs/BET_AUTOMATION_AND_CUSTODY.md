@@ -15,6 +15,29 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## October 18 — streamed, strictly capped vault bank HTTP observations
+
+The held funded ledger previously checked the response `Content-Length`
+but called `Response.text()` before checking the actual byte count. A
+malformed or chunked mainnet status/bank response could therefore buffer
+arbitrary bytes in process memory before reaching the nominal 64 KiB cap.
+
+`lib/warSatchelBankJsonTransport.ts` now reuses the already-tested
+`readWarSatchelBoundedUtf8` streaming reader with a strict 65536-byte
+ceiling, finite chunk count, fatal UTF-8 decoding, and early cancellation.
+It still admits ONLY the canonical read-only RPC status or an exactly
+scoped REST `wolo-1` bank-by-denom request, with GET/no-store,
+no redirects, and a five-second timeout. Invalid length, oversized
+chunks, malformed/non-object JSON and transport failure are refused.
+Regression tests inject fake streams with no external mainnet request.
+
+This is **resource/transport hardening only**. Neither REST JSON nor a
+status endpoint is cryptographically authenticated financial proof; a
+network-visible balance is not independently reconciled vault solvency.
+The source-level `SATCHEL_FINANCIAL_BRIDGE_READY=false` hold remains
+mandatory. No custody credit, signed wager, withdrawal, service operation,
+production activation or changes to mainnet source were performed.
+
 ## October 18, 2026 — strict finite Bech32 decoding on Linux
 
 The Wolo protocol-2 reservation verifier previously called CosmJS
