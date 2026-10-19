@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "541973656af6e8527884a27d8aa3b1e63ac2410170188edfb10970bd21980213",
+      "sha256": "3d0a4aecaca877db71286fe0209ee580a05a961e4c658a95023f9966636b6125",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2117,7 +2117,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "fix/20261019-mecha-pending-review-outbox",
-    "commit": "3bec79adb360849a1eb97be982ce89087050ac2c"
+    "commit": "24c66086af55d7e92cd48be242ebfa925b77c81a"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
