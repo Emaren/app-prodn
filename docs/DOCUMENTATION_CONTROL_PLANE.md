@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/20261018-satchel-verified-watcher-single-selector` at `a0b50e3b56fae6376a0635ed7f22d59e333bf3e3`
+Implementation baseline: `fix/20261018-satchel-aged-review-visibility` at `89833256de3ecf6346b64270ab07af66d66bc822`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
