@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "b7739fe6a61bc171c7c38f6b7901c95e9726d41b04e30f9232719eb097c169e5",
+      "sha256": "74cdf02b8b6169acb230059539f23d5f6ee5cac360e03eaa136fa1107986ab99",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "bdac37b3d73c480336269c09eacab0d7d2e28648a064e25c48c477217b0fb60f",
+      "sha256": "6400de01c99492044f44d729d8b07b4673bf0234aa79a44e19fb68116623de59",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "test/20261019-satchel-owner-pg-roundtrip",
-    "commit": "174b40644f2b32f908805b5fa15b917585aec0b7"
+    "branch": "test/20261019-continuous-sdk-gas-conservation",
+    "commit": "6484cb47ae11e1b72a4ac479d5889c83c17dd272"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
