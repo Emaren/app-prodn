@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "f0f5176ad7dd6f5a188024cf71bd27f7d2f9f8b4b0285646498acae27d09b8c3",
+      "sha256": "b5644d3c6bf5cd11e3e0e28eba9e6f5b684055c1764c98b6156b66c094417187",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "f456303575c8df32dac171a803cd96831af9cf941c7350a7d760a97ff8c762e1",
+      "sha256": "20de57b36c99178a9a031feb616aaa355b940452fa1b08537025c5b35cb65cee",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "test/20261019-satchel-100-deposit-12-wager-sdk",
-    "commit": "4c064a827241a409d61bc1229ee808c4fe9d58d6"
+    "branch": "fix/20261019-satchel-refund-journal-provenance",
+    "commit": "0b739d0777211734561af44695d654f12a7497d9"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
