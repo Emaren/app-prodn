@@ -89,7 +89,7 @@ export function verifySatchelReviewerReply(
   // The reviewer's claimed fee and times are allowed only if the signature
   // authenticates them under the original HD reservation/ledger/consent.
   const approval = verifyIndependentWagerReservation(raw,
-    wagerReviewContext(original, raw as SatchelWagerReservation), reviewerPublicKey, nowMs);
+    wagerReviewContext(original, raw as unknown as SatchelWagerReservation), reviewerPublicKey, nowMs);
   return Object.freeze({ kind: "reviewed" as const, approval });
 }
 
