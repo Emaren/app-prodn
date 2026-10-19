@@ -32,6 +32,14 @@ sensitivity: "internal"
 - A future route-wide census must count file templates (public, private utility, sensitive dynamic, admin), distinct benchmark URLs and API handlers separately, all generated from source and versioned build proofs.
 - No existing page's visual design is changed by these new pages. The new views are high-density, visual-first instruments; descriptions exist for accessibility and direct authority drilldowns rather than explanatory prose walls.
 
+## Exact deployed Next.js route census
+
+The read-only `/api/kingdom-route-census` instrument reads the bounded, local `.next/server/app-paths-manifest.json` of the **running deployed build**. It counts unique page templates separately from API handler files. It classifies public static, public dynamic, public utility, authenticated admin and sensitive dynamic invoice surfaces without exposing operator route paths or individual sensitive IDs.
+
+This is a *build output* observation, not a source-branch estimate or a fresh browser speed benchmark. Source-linked Kingdom Index registered-route counts remain separately owned by the existing 70-route candidate catalog. Speed's 78-route old performance cohort stays historical. The manifest reader does not accept request-controlled paths, follows no final symlink, caps input size and entries and caches a read for two minutes. Missing/malformed manifests result in `unavailable` (HTTP 503); no fallback historical count is presented as live.
+
+Node source / runtime roles: `lib/kingdomBuildRouteClassifier.ts` (pure bounded taxonomy), `lib/kingdomBuildRouteCensus.ts` (server-only bounded reader), `app/api/kingdom-route-census/route.ts` (sanitized no-store projection), `tests/kingdom-build-route-census.test.mts` (synthetic parser regression evidence).
+
 ## Before anyone assigns 100/100
 
 Release-build dependency closure, criterion-level independent evidence, current production browser checks and current-source certification are required. A route-local Git blob fingerprint cannot account for every shared import. New routes begin unmeasured until existing auditors prove otherwise.
