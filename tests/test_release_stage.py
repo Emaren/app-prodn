@@ -173,7 +173,19 @@ class StageTests(unittest.TestCase):
             script,
         )
         self.assertIn(
-            'if [row.get("filename") for row in rows] != expected:',
+            'names = [row.get("filename") for row in rows]',
+            script,
+        )
+        self.assertIn(
+            'len(set(names)) != len(expected)',
+            script,
+        )
+        self.assertIn(
+            'set(names) != set(expected)',
+            script,
+        )
+        self.assertIn(
+            'tuple(map(int, version.split("."))) < (1, 6, 5)',
             script,
         )
         self.assertIn(
