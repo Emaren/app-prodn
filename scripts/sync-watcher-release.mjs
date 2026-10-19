@@ -10,6 +10,10 @@ const FEATURE_CHIPS = [
   "Windows portable fallback",
   "macOS DMG + ZIP",
   "Linux AppImage",
+  "War Room player dashboard",
+  "English / Français Watcher language toggle",
+  "Old Blue Classic retained",
+  "War Satchel and Auto Bets — activation pending (website-controlled)",
   "Historical replay import",
   "Disk-backed historical replay imports",
   "Bounded historical parser retries",
@@ -76,7 +80,7 @@ export const WATCHER_RELEASE = {
   previousVersion: ${previousVersion ? JSON.stringify(previousVersion) : "null"},
   label: ${JSON.stringify(`AoE2HDBets Watcher ${version}`)},
   releasedOn: ${JSON.stringify(releasedOn)},
-  signingStatus: "Signed and timestamped Windows builds; unsigned macOS build; Linux AppImage available",
+  signingStatus: "Signed and timestamped Windows builds; unsigned manual macOS downloads; Linux AppImage available",
   featureChips: ${JSON.stringify(
     [`AoE2HDBets Watcher ${version}`, releasedOn, ...FEATURE_CHIPS],
     null,
@@ -124,7 +128,7 @@ export const WATCHER_DOWNLOAD_ARTIFACTS: readonly WatcherDownloadArtifact[] = [
     filename: ${JSON.stringify(`AoE2HDBets Watcher-${version}-arm64.dmg`)},
     format: "DMG",
     description:
-      "Best Mac install path. Drag in, pair once, and keep it open while AoE2HD runs under macOS or CrossOver.",
+      "Unsigned manual Mac download (not Apple notarized). Gatekeeper may require review; verify the published SHA-256 before installing.",
     downloadPath: ${JSON.stringify(`/downloads/${encodeURIComponent(`AoE2HDBets Watcher-${version}-arm64.dmg`)}`)},
     trackedHref: "/download/watcher/mac-dmg",
     primary: false,
@@ -139,7 +143,7 @@ export const WATCHER_DOWNLOAD_ARTIFACTS: readonly WatcherDownloadArtifact[] = [
     filename: "aoe2hdbets-watcher-direct.zip",
     format: "ZIP",
     description:
-      "Same Mac app bundle, packaged as a direct ZIP for users who hit DMG or Gatekeeper friction.",
+      "Unsigned manual ZIP alternative. Not notarized or an automatic Gatekeeper workaround; verify the official SHA-256 first.",
     downloadPath: "/downloads/aoe2hdbets-watcher-direct.zip",
     trackedHref: "/download/watcher/mac-zip",
     primary: false,
