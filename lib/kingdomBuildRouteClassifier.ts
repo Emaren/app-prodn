@@ -48,4 +48,3 @@ export function classifyKingdomBuildRoutes(raw: unknown): KingdomBuildRouteCount
   if (counts.totalPages !== counts.publicStatic + counts.publicDynamic + counts.publicUtility + counts.admin + counts.sensitiveDynamic) return null;
   return counts;
 }
-
