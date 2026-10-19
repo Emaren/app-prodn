@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `feature/kingdom-brain-progress-foundation-20261019` at `0456188908f5128460969c17f278883bded15874`
+Implementation baseline: `feature/kingdom-brain-progress-foundation-20261019` at `d77f95d0d14e98185fb1cf903f7e551db1ed5ce3`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 
