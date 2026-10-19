@@ -15,6 +15,30 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## October 19 — exact-amount isolated SDK proof milestones
+
+The existing `scripts/check-satchel-authenticated-credit.py` compiles the
+unchanged, pinned WoloChain `99f32de6` verifier and modifies **only a
+disposable Go test fixture** before signing the test transfers. The two
+separately initialized genuine Cosmos SDK executions now prove exactly:
+
+- **100 WOLO deposit** (`100000000uwolo`): authenticated Comet inclusion,
+  correct transfer, receipt uniqueness, atomic funded-ledger credit, replay
+  and crash rollback.
+- **12 WOLO escrow wager** (`12000000uwolo`): signed reservation and exact
+  ticket leg, real SDK fee identity, authenticated transaction and Comet
+  proofs, forged evidence rejection, wrong-13-WOLO re-signing rejection.
+
+Each standalone SDK test starts from its own isolated sender genesis balance,
+with an unchanged one-`uwolo` fixture ante fee. They are **not a continuous
+100 → 12 custody session**, not bank solvency, not an independently provisioned
+signer/reviewer, and not live production approval. The same immutable source
+`SATCHEL_FINANCIAL_BRIDGE_READY=false` remains binding. Full Watcher
+admission, settlement/void, authenticated Satchel claim return, Keplr
+withdrawal, fee/liability conservation and rollback across a *shared*
+isolated PostgreSQL+SDK journey remain mandatory V1 acceptance gates.
+
+
 ## October 19 — certified owner-account display (presentation only)
 
 The Mecha profile previously held the Satchel balance at an unconditional null.
