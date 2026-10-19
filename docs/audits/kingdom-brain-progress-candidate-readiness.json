@@ -32,6 +32,11 @@
       "id": "financial",
       "result": "unchanged_hold",
       "evidence": "no financial service or WoloChain edits"
+    },
+    {
+      "id": "deployed-route-census",
+      "result": "implementation_pending_exact_head_ci",
+      "evidence": "Pure parser, bounded Next manifest reader, no-store API and regression tests; fail-closed on missing manifest; exact production runtime unverified"
     }
   ],
   "limitations": [
@@ -39,5 +44,10 @@
     "Project milestone percentages intentionally unmeasured",
     "Full admin/dynamic/API route census still pending",
     "Existing pages not aesthetically changed"
+  ],
+  "notes": [
+    "Navigation added in existing Kingdom menus without replacing existing pages",
+    "Documentation implementation baseline regenerated on commit 7275c3c800049f228910dbc691d3d165300747ec",
+    "New exact-head CI required after automation-authored documentation update"
   ]
 }
