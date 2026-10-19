@@ -11,7 +11,7 @@ export type CertifiedWarSatchelRead = Readonly<{
   version: string;
 }>;
 
-const MAX_I64 = 9223372036854775807n;
+const MAX_I64 = BigInt("9223372036854775807");
 
 function ledgerInteger(value: unknown): string | null {
   if (typeof value !== "string" || !/^(0|[1-9][0-9]{0,18})$/.test(value)) return null;
