@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "b5644d3c6bf5cd11e3e0e28eba9e6f5b684055c1764c98b6156b66c094417187",
+      "sha256": "b7739fe6a61bc171c7c38f6b7901c95e9726d41b04e30f9232719eb097c169e5",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "20de57b36c99178a9a031feb616aaa355b940452fa1b08537025c5b35cb65cee",
+      "sha256": "bdac37b3d73c480336269c09eacab0d7d2e28648a064e25c48c477217b0fb60f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/20261019-satchel-refund-journal-provenance",
-    "commit": "0b739d0777211734561af44695d654f12a7497d9"
+    "branch": "test/20261019-satchel-owner-pg-roundtrip",
+    "commit": "174b40644f2b32f908805b5fa15b917585aec0b7"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
