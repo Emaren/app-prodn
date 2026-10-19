@@ -5,9 +5,12 @@ import test from "node:test";
 const load=(path:string)=>readFileSync(new URL("../"+path,import.meta.url),"utf8");
 
 test("only a bounded, signed Watcher shadow outbox feeds the funded executor",()=>{
-  const source=load("lib/warSatchelFundedOutboxTick.ts");
-  assert.match(source,/const MAX=25/);
-  assert.match(source,/const MAX_AGE_MS=4\*60\*1000/);
+  const tick=load("lib/warSatchelFundedOutboxTick.ts");
+  const selector=load("lib/warSatchelEligibleOutbox.ts");
+  const source=tick+selector;
+  assert.match(tick,/const MAX=FUNDED_MECHA_CANDIDATE_LIMIT/);
+  assert.match(selector,/FUNDED_MECHA_CANDIDATE_LIMIT = 25/);
+  assert.match(selector,/FUNDED_MECHA_CANDIDATE_MAX_AGE_MS = 4 \* 60 \* 1000/);
   assert.match(source,/status:"shadow_ready"/);
   assert.match(source,/ticketId:null/);
   assert.match(source,/status:"shadow_ready",reservationId:null,attemptCount:0/);
@@ -19,8 +22,9 @@ test("only a bounded, signed Watcher shadow outbox feeds the funded executor",()
   assert.match(source,/createdAt:\{gte:earliest,lte:now\}/);
   assert.match(source,/user:\{walletAddress:\{not:null\}\}/);
   assert.match(source,/orderBy:\[\{createdAt:"asc"\},\{id:"asc"\}\]/);
-  assert.match(source,/take:max/);
-  assert.match(source,/executeFundedMechaTicketBatch\(/);
+  assert.match(source,/take: max/);
+  assert.match(tick,/readEligibleFundedMechaIds\(prisma,options\)/);
+  assert.match(tick,/executeFundedMechaTicketBatch\(/);
   assert.match(source,/warSatchelDedicatedSignerClient/);
   assert.doesNotMatch(source,/warSatchelIsolatedSignerClient|warSatchelIsolatedSignerTransport|makeSatchelLoopbackSigner|createLocalIsolatedSatchelSigner/);
   assert.doesNotMatch(source,/setInterval\(|while\s*\(/);
@@ -60,12 +64,12 @@ test("retired sidecar entry points contain no callable financial transport",()=>
 
 test("empty funded Watcher outbox does not probe the custody signer",()=>{
  const source=load("lib/warSatchelFundedOutboxTick.ts");
- const query=source.indexOf("const rows=await prisma.betAutoExecution.findMany(");
- const empty=source.indexOf("if(!rows.length)return Object.freeze(");
+ const query=source.indexOf("const ids=await readEligibleFundedMechaIds(prisma,options);");
+ const empty=source.indexOf("if(!ids.length)return Object.freeze(");
  const signer=source.indexOf("const signer=await connectCertifiedSatchelSigner();");
  const execute=source.indexOf("const counts=await executeFundedMechaTicketBatch(");
  assert.ok(query>=0 && empty>query && signer>empty && execute>signer,
   "read-only queue selection and empty return must precede signer connection");
  assert.match(source,/if\(!satchelFinancialBridgeReady\(\)/);
- assert.match(source,/const MAX=25/);
+ assert.match(source,/const MAX=FUNDED_MECHA_CANDIDATE_LIMIT/);
 });
