@@ -15,6 +15,8 @@ test("real signed SDK deposit authenticates then credits the linked HD owner exa
   const fixture=JSON.parse(readFileSync(path.join(path.dirname(binary),"isolated-sdk-proof.json"),"utf8"));
   assert.equal(fixture.fixture_only,true);assert.equal(fixture.mainnet_authority,false);
   const i=fixture.intent,o=fixture.deposit_observation;
+  // V1 acceptance amount: actual signed SDK MsgSend of 100 WOLO.
+  assert.equal(i.AmountUWolo, "100000000");
   // HD persists JavaScript millisecond ISO strings, including a .000 suffix.
   // Go RFC3339Nano may omit it; reconstruct the actual durable HD context.
   i.CreatedAt=new Date(i.CreatedAt).toISOString();i.ExpiresAt=new Date(i.ExpiresAt).toISOString();

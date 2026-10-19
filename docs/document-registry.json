@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "0d64875f3ecd14a8078571e52002992d02f9394c56ac68fe478918bbceec19d7",
+      "sha256": "f0f5176ad7dd6f5a188024cf71bd27f7d2f9f8b4b0285646498acae27d09b8c3",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b6d9b41080e9c4ebba000131019be2d66c5b696634ff99117b087ed8444dd52f",
+      "sha256": "f456303575c8df32dac171a803cd96831af9cf941c7350a7d760a97ff8c762e1",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "feat/20261019-mecha-satchel-verified-balance",
-    "commit": "fe686b92420df8949d7cddbc6c5185e7472768d0"
+    "branch": "test/20261019-satchel-100-deposit-12-wager-sdk",
+    "commit": "4c064a827241a409d61bc1229ee808c4fe9d58d6"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
