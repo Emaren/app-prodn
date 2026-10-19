@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6cf4f5d16ed020eb255cd58ed9b67eede8540581e5724948215ec96b581d5557",
+      "sha256": "b6d9b41080e9c4ebba000131019be2d66c5b696634ff99117b087ed8444dd52f",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2117,7 +2117,7 @@
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
     "branch": "feat/20261019-mecha-satchel-verified-balance",
-    "commit": "f48c83a62866adf88ad6b2343707fe2b15de2909"
+    "commit": "fe686b92420df8949d7cddbc6c5185e7472768d0"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
