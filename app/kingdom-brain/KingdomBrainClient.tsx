@@ -8,6 +8,7 @@ import styles from "./KingdomBrain.module.css";
 
 type Node = (typeof atlas.nodes)[number];
 type IndexSignal = { schema?: number; generatedAt?: string; pages?: unknown[]; observed?: number; certified?: number; drifted?: number };
+type PatrolSignal = { schema?: number; registered?: number; assigned?: number; entries?: unknown[]; agentsRunning?: null; policyVersion?: string };
 type AgentSignal = { schema?: number; observedAt?: string; releaseSha?: string | null; agents?: unknown[]; sources?: { intelligence?: boolean; inspections?: boolean; intelligenceStale?: boolean; releaseAlignment?: string } };
 type Signal<T> = { state: "unknown" | "current" | "unavailable"; data: T | null; receivedAt: number | null };
 const empty = <T,>(): Signal<T> => ({ state: "unknown", data: null, receivedAt: null });
@@ -35,6 +36,7 @@ export default function KingdomBrainClient() {
   const [selected, setSelected] = useState("intelligence");
   const [index, setIndex] = useState<Signal<IndexSignal>>(empty);
   const [agents, setAgents] = useState<Signal<AgentSignal>>(empty);
+  const [patrol, setPatrol] = useState<Signal<PatrolSignal>>(empty);
   const [busy, setBusy] = useState(false);
   const [captureAt, setCaptureAt] = useState<string | null>(null);
   const refresh = useCallback(async () => {
@@ -43,13 +45,15 @@ export default function KingdomBrainClient() {
     const timeout = window.setTimeout(() => controller.abort(), 12000);
     setBusy(true);
     try {
-      const [a, b] = await Promise.allSettled([
+      const [a, b, c] = await Promise.allSettled([
         read<IndexSignal>("/api/kingdom-index", value => value?.schema === 1 && Array.isArray(value.pages), controller.signal),
         read<AgentSignal>("/api/kingdom-agents", value => value?.schema === 1 && Array.isArray(value.agents), controller.signal),
+        read<PatrolSignal>("/api/kingdom-patrol", value => value?.schema === 1 && Array.isArray(value.entries), controller.signal),
       ]);
       const now = Date.now();
       setIndex(a.status === "fulfilled" ? { state: "current", data: a.value, receivedAt: now } : { state: "unavailable", data: null, receivedAt: null });
       setAgents(b.status === "fulfilled" ? { state: "current", data: b.value, receivedAt: now } : { state: "unavailable", data: null, receivedAt: null });
+      setPatrol(c.status === "fulfilled" ? { state: "current", data: c.value, receivedAt: now } : { state: "unavailable", data: null, receivedAt: null });
       setCaptureAt(new Date(now).toISOString());
     } finally {
       window.clearTimeout(timeout);
@@ -71,7 +75,8 @@ export default function KingdomBrainClient() {
   const connected = new Set([...incoming.map(edge => edge.from), ...outgoing.map(edge => edge.to), selected]);
   const indexKnown = index.state === "current" && index.data;
   const agentsKnown = agents.state === "current" && agents.data;
-  const agentCurrent = agentsKnown && agents.data?.sources?.releaseAlignment === "aligned" && !agents.data.sources.intelligenceStale;
+  const patrolKnown = patrol.state === "current" && patrol.data;
+  const agentCurrent = agentsKnown && agentsKnown.sources?.releaseAlignment === "aligned" && !agentsKnown.sources.intelligenceStale;
   const sourceStatus = !agentsKnown ? "UNKNOWN" : agentCurrent ? "ALIGNED" : "UNVERIFIED";
 
   return (
@@ -95,7 +100,8 @@ export default function KingdomBrainClient() {
         <section className={styles.meters} aria-label="Live status summary">
           <div className={styles.meter}><GitBranch size={17}/><strong>{safeCount(indexKnown ? index.data?.pages?.length : null)}</strong><span>INDEX ROUTES</span></div>
           <div className={styles.meter}><ShieldCheck size={17}/><strong>{safeCount(indexKnown ? index.data?.certified : null)}</strong><span>CERTIFIED</span></div>
-          <div className={styles.meter}><Network size={17}/><strong>{safeCount(agentsKnown ? agents.data?.agents?.length : null)}</strong><span>OBSERVED WATCHPOSTS</span></div>
+          <div className={styles.meter}><Network size={17}/><strong>{safeCount(patrolKnown ? patrolKnown.assigned : null)}/{safeCount(patrolKnown ? patrolKnown.registered : null)}</strong><span>POLICY ASSIGNMENTS</span></div>
+          <div className={styles.meter}><Network size={17}/><strong>{safeCount(agentsKnown ? agentsKnown.agents?.length : null)}</strong><span>OBSERVED WATCHPOSTS</span></div>
           <div className={styles.meter}><Activity size={17}/><strong>{captureAt ? time(captureAt) : "—"}</strong><span>LAST SIGNAL RECEIVED</span></div>
         </section>
 
