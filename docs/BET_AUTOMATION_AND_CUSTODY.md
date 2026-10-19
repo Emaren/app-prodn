@@ -15,6 +15,37 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## October 19 — one-chain signed SDK transaction and gas solvency rehearsal
+
+`tests/fixtures/satchel-v1-continuous-sdk_test.go` is injected **only**
+into a disposable copy of the pinned Wolo SDK after the trusted verifier
+binary was built and its reviewed checksum authenticated. The isolated
+Cosmos SDK application executes four **sequential genuine bank MsgSends**,
+signed by distinct disposable owner/vault/escrow keys on the *same chain*:
+
+1. Player → vault, **100,000,000 uwolo** deposit.
+2. Vault → escrow, **12,000,000 uwolo** signed wager (1 uwolo vault fee).
+3. Escrow → vault, **12,000,000 uwolo** full principal return (escrow's
+   1 uwolo fee comes from a separately prefunded escrow gas coin).
+4. Vault → owner, **100,000,000 uwolo** full customer withdrawal
+   (another 1 uwolo vault fee).
+
+One case prefunds 2 uwolo of independent vault gas so both vault sends
+leave **zero** customer liability and zero vault funds. The negative case
+prefunds only 1 uwolo and **requires the final 100-WOLO withdrawal to
+fail** rather than deducting a fee from the player's principal or
+misrepresenting the vault as solvent. These test funds have no mainnet
+value and use no real custody keys.
+
+This is a stronger, one-chain SDK **bank accounting** test. The separate
+actual SDK deposit/wager proofs remain in place. It is NOT yet a single
+continuous independently authenticated Comet light-client proof with
+Prisma owner-ledger writes, real Watcher events, Keplr consents,
+independent signer/reviewer attestations, validated settlement claim
+allocation, or final customer withdrawal proof. No live source HOLD
+changes or mainnet financial actions are authorized.
+
+
 ## October 19 — first connected owner-liability PostgreSQL roundtrip
 
 The dedicated isolated PostgreSQL 16 CI job now runs
