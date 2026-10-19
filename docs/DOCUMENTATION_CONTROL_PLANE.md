@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `audit/20261019-satchel-pending-gas-headroom` at `36059006c594a56496fa706a4ee674c4d846ec6e`
+Implementation baseline: `feature/20261019-satchel-autoreviewer-ingress` at `0e57b2e81b0cb9189212f28f999f3d55c782ff9b`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

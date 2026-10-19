@@ -1823,3 +1823,38 @@ fast-forward a VPS checkout, fence producers, install a service, apply this
 migration, broadcast a canary or enable money based on this document. A later
 owner-approved protected cutover must name the exact reviewed artifacts,
 complete the missing evidence and retain consensus/8092/8093 separation.
+
+## October 19 — private independent reviewer pickup bridge (SOURCE HOLD)
+
+The held Mecha funded executor now attempts one bounded **private** reviewer pickup
+only when the original durable Satchel wager authorization has no approved
+signature. It posts only `{protocol:1,operation_id}` to a fixed loopback
+`127.0.0.1:8095/reviewer/v1/wagers` service: no owner-selected bank data,
+stake amount, fee amount, signature key, market identity or remote reviewer URL
+is accepted over this ingress. A future separately controlled review service
+**must** re-read and authenticate the immutable original Keplr mandate, exact
+Watcher/Steam market/UID source, SQL hold and aggregate bank/gas liabilities
+before it issues any response. Its implementation and certifiable runtime
+remain **UNBUILT** (Wolo issue #46).
+
+The app accepts either an exact `PENDING` response (no money path) or an
+Ed25519-signed protocol-2 `WagerReservation` matching the HD-persisted
+operation, owner, vault/escrow, amount, memo, immutable reservation, ledger and
+consent digests and signed fee/time. The public verifier key comes from
+operator-controlled private disk, **never** the HTTP body. Verification precedes
+the existing serializable original-hold attachment; only its durable receipt
+can allow a later transition to the irreversible submission attempt fence.
+A transport failure, missing/expired grant, bad signature, service refusal or
+unknown response stays `waiting_for_review`: no release, new signer call,
+ticket acceptance or retry of an uncertain broadcast. Existing 8094 signer,
+8092/8093 legacy services and consensus are untouched.
+
+This source lane adds no public endpoint, background cron, issuer private key,
+approved production signer or independently authenticated bank oracle.
+`WAR_SATCHEL_AUTO_REVIEWER_ENABLED` and operator flags cannot defeat immutable
+`SATCHEL_FINANCIAL_BRIDGE_READY=false`. Even a valid reviewer signature is
+not standalone custody solvency evidence. A real, independently operated 8095
+review service, signed authority provisioning, replay-safe reviewer journal,
+fully authenticated producer/liability/fee census, protected migrations and
+complete Keplr→Watcher→wager→return→withdrawal rehearsal remain mandatory.
+No customer funds move from this source-only implementation.
