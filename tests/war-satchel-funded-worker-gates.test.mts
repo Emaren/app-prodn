@@ -23,10 +23,10 @@ test("funded Mecha worker has no public timer and always fails shut without cert
  assert.match(worker,/executeFundedMechaTicketBatch\(prisma, signer, ids\)/);
  assert.match(selector,/take: max/);
  assert.match(selector,/ticketId:\s*null/);
- assert.match(selector,/status:"shadow_ready",reservationId:null,attemptCount:0/);
- assert.match(selector,/status:"funded_reserved",reservationId:\{not:null\},attemptCount:1/);
- assert.match(selector,/satchelFundedReservation:\{is:\{status:"reserved",wagerAuthorization:\{is:\{approval:\{isNot:null\}\}\}\}\}/);
- assert.doesNotMatch(selector,/status:"unknown_hold"|status:"funded_submitting"/);
+ assert.match(selector,/status: "shadow_ready", reservationId: null, attemptCount: 0/);
+ assert.match(selector,/status: "funded_reserved", reservationId: \{ not: null \}, attemptCount: 1/);
+ assert.match(selector,/wagerAuthorization: \{ is: \{ approval: \{ isNot: null \} \}/);
+ assert.doesNotMatch(selector,/status: "unknown_hold"|status: "funded_submitting"/);
  assert.match(worker,/readEligibleFundedMechaIds\(prisma,\{limit:MAX_BATCH\}\)/);
  assert.doesNotMatch(worker,/betAutoExecution\.findMany/);
  assert.match(selector,/nextAttemptAt/);
