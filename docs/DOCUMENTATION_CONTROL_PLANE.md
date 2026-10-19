@@ -19,7 +19,7 @@ Repository ID: `app-prodn`
 
 Documentation owner: `aoe2war-web`
 
-Implementation baseline: `fix/20261018-satchel-aged-review-visibility` at `89833256de3ecf6346b64270ab07af66d66bc822`
+Implementation baseline: `fix/20261019-satchel-no-broadcast-guard` at `47944b772be2eaa35abf0014856a32a1e9783b2a`
 
 The implementation baseline identifies the code commit described by this documentation. Documentation-only commits may follow it without creating a self-referential registry hash.
 

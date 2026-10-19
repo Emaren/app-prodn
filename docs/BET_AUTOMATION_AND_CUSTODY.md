@@ -15,6 +15,31 @@ sensitivity: "internal"
 
 # Bet Automation and Wolo Custody Boundary
 
+## October 19 — fail closed on contradictory no-broadcast reservation evidence
+
+The funded ledger's existing `releaseUnbroadcastSatchelReservation` transaction
+still requires separately established no-broadcast authority. A caller-provided
+`independentlyNoBroadcast: true` is NOT a signer, consensus, reviewer or bank
+attestation, and must not be treated as sufficient in isolation.
+
+Before any refund journal credit, the existing exclusive serializable vault
+transaction now cross-checks the persisted execution (one first reservation,
+still `funded_reserved`, no accepted ticket), reservation (no hash or ticket),
+signed authorization (matching owner/reservation, no broadcast marker), and
+canonical stake ticket (if prepared, still unsigned and `awaiting_signature`).
+Contradictions refuse, retaining the hold for separately authenticated
+operator reconciliation. Isolated tests exercise every rejection class and
+assert the evidence checks precede money mutation.
+
+This is a **defense-in-depth change, not an aged-reservation release worker**.
+No signer is invoked; no timed automatic refunds, stale wagers, new spending
+authority, production migration, chain transaction or release permit is added.
+The existing source-level `SATCHEL_FINANCIAL_BRIDGE_READY=false` stays binding.
+A future aged-release workflow still requires independent no-send attestation,
+explicit permission and recovery/solvency review before any customer balance
+can change.
+
+
 ## October 18 — bounded aged-Watcher approval backlog in operator preview
 
 The shared funded Mecha selector admits only fresh Watcher executions

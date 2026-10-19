@@ -2,6 +2,7 @@ import {buildSatchelWagerAuthorization,wagerReviewContext,assertAuthenticatedSat
 import { readBoundedSatchelBankJson } from "./warSatchelBankJsonTransport.ts";
 import {verifyIndependentWagerReservation,type SatchelWagerReservation} from "./warSatchelWagerReservation.ts";
 import { requireSatchelFinancialBridge } from "./warSatchelFinancialBridgeHold.ts";
+import { prebroadcastReleaseEvidenceIssue } from "./warSatchelPrebroadcastReleaseEvidence.ts";
 import { authenticatedWarSatchelDepositFreshAt, type AuthenticatedWarSatchelDeposit } from "./warSatchelAuthenticatedDeposit.ts";
 import { inspectSingleTicketSatchelReturn } from "./warSatchelClaimReturnAttribution.ts";
 import { authenticateSatchelClaimReturn, authenticatedWarSatchelClaimReturnFreshAt } from "./warSatchelAuthenticatedClaimReturn.ts";
@@ -600,6 +601,28 @@ export async function releaseUnbroadcastSatchelReservation(
     if (!reservation || reservation.ownerUserId !== input.ownerUserId) stop("reservation_owner_missing");
     if (reservation.status === "released") return { status: "already_released" as const };
     if (reservation.status !== "reserved") stop("reservation_inflight_or_committed");
+    // A caller-provided no-broadcast Boolean is NOT independent proof of
+    // safety. Reconcile the actual durable execution, reservation, signed
+    // authorization and canonical ticket within the shared vault lock.
+    // Any contradictory persisted send evidence must quarantine the funds.
+    const execution = await tx.betAutoExecution.findUnique({
+      where: { id: reservation.executionId },
+      select: { reservationId: true, ticketId: true, status: true, attemptCount: true },
+    });
+    const authority = await tx.satchelWagerAuthorization.findUnique({
+      where: { operationId: reservation.ticketRequestId },
+      include: { broadcast: true },
+    });
+    const ticket = await tx.betStakeTicket.findUnique({
+      where: { userId_clientRequestId: {
+        userId: input.ownerUserId, clientRequestId: reservation.ticketRequestId,
+      } },
+      select: { status: true, stakeTxHash: true, broadcastSubmittedAt: true },
+    });
+    const issue = prebroadcastReleaseEvidenceIssue({
+      reservation, ownerUserId: input.ownerUserId, execution, authority, ticket,
+    });
+    if (issue) stop(issue);
     const account = await tx.satchelFundedBalance.findUnique({
       where: { ownerUserId: input.ownerUserId },
     });
