@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "035a2e8777f86592601616cb50fad6792c9c3e4d2041b50ec3cda997d8b571a7",
+      "sha256": "d33c12b092332a789216e923f65bff6170c5be351e8611ff0e5f62cccba2a576",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "38d04eed0c22fad487ee23fc4f981fed1f511c93f7d70cdf2591b5a106bfc7ba",
+      "sha256": "5b255a7a6a6350b6981dd4980a5384e22ebddfd866fca1cadff3933f7ec76e81",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/20261018-satchel-unified-funded-outbox",
-    "commit": "7725b00e63c00ef396209658c4c679e4baf078e4"
+    "branch": "fix/20261018-satchel-verified-watcher-single-selector",
+    "commit": "a0b50e3b56fae6376a0635ed7f22d59e333bf3e3"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",

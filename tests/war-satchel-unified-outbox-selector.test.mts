@@ -22,10 +22,21 @@ test("CLI and scheduled tick share a precise four-minute and deferred-candidate 
   assert.deepEqual(query.where.OR,[
     {nextAttemptAt:null},{nextAttemptAt:{lte:now}},
   ]);
+  assert.deepEqual(query.where.winnerMarket,{
+    status:"live",integrityStatus:"verified",marketType:"winner",
+  });
   assert.deepEqual(query.where.preset,{
     enabled:true,selfOnly:true,
     OR:[{untilOut:true},{gamesRemaining:{gt:0}}],
-    user:{walletAddress:{not:null}},
+    satchelAutoSpendConsents:{some:{
+      signedAt:{not:null},revokedAt:null,spendExpiresAt:{gt:now},
+    }},
+    user:{walletAddress:{not:null},
+      satchelFundedBalance:{is:{OR:[
+        {availableUwolo:{gt:BigInt(0)}},
+        {reservedUwolo:{gt:BigInt(0)}},
+      ]}},
+    },
   });
   assert.deepEqual(query.where.AND,[{OR:[
     {status:"shadow_ready",reservationId:null,attemptCount:0},

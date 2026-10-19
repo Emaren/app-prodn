@@ -11,8 +11,8 @@ import type { PrismaClient } from "@/lib/generated/prisma";
 import { requireSatchelFinancialBridge } from "./warSatchelFinancialBridgeHold.ts";
 import { executeFundedMechaTicketBatch } from "./warSatchelAutoBetExecutor.ts";
 import { connectCertifiedSatchelSigner } from "./warSatchelDedicatedSignerClient.ts";
+import { readEligibleFundedMechaIds } from "./warSatchelEligibleOutbox.ts";
 
-const LIMIT=25;
 function financialReady(){
   requireSatchelFinancialBridge();
   if(process.env.WAR_SATCHEL_FUNDED_LEDGER_ENABLED!=="true" ||
@@ -29,34 +29,10 @@ function financialReady(){
 }
 export async function runCertifiedWatcherFundedTick(prisma:PrismaClient){
   financialReady();
-  const now=new Date();
-  // Query only bounded observed games which have an active, owner-signed,
-  // time-valid Mecha plan and an existing positive ledger balance.
-  const executions=await prisma.betAutoExecution.findMany({
-    where:{
-      ticketId:null,
-      AND:[{OR:[
-        {status:"shadow_ready",reservationId:null,attemptCount:0},
-        {status:"funded_reserved",reservationId:{not:null},attemptCount:1,
-          satchelFundedReservation:{is:{status:"reserved",wagerAuthorization:{is:{approval:{isNot:null}}}}}},
-      ]}],
-      OR:[{nextAttemptAt:null},{nextAttemptAt:{lte:now}}],
-      winnerMarket:{status:"live",integrityStatus:"verified",
-        marketType:"winner"},
-      preset:{
-        enabled:true,selfOnly:true,
-        OR:[{untilOut:true},{gamesRemaining:{gt:0}}],
-        satchelAutoSpendConsents:{some:{
-          signedAt:{not:null},revokedAt:null,spendExpiresAt:{gt:now},
-        }},
-        user:{satchelFundedBalance:{is:{OR:[{availableUwolo:{gt:BigInt(0)}},{reservedUwolo:{gt:BigInt(0)}}]}}},
-      },
-    },
-    orderBy:[{createdAt:"asc"},{id:"asc"}],
-    take:LIMIT,
-    select:{id:true},
-  });
-  if(executions.length===0){
+  // The certified private tick, operator CLI and bounded tick now share
+  // the same trusted Watcher market, owner, consent and age filter.
+  const ids=await readEligibleFundedMechaIds(prisma);
+  if(ids.length===0){
     return Object.freeze({
       examined:0,claimed:0,accepted:0,rejectedBeforeBroadcast:0,
       unknownHeld:0,skipped:0,
@@ -65,5 +41,5 @@ export async function runCertifiedWatcherFundedTick(prisma:PrismaClient){
   // No signer connection is attempted until there is an eligible
   // Watcher-sourced candidate and ALL certified operator controls pass.
   const signer=await connectCertifiedSatchelSigner();
-  return executeFundedMechaTicketBatch(prisma,signer,executions.map(x=>x.id));
+  return executeFundedMechaTicketBatch(prisma,signer,ids);
 }

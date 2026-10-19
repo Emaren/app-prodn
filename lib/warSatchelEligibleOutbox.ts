@@ -33,10 +33,20 @@ export function fundedMechaEligibleQuery(
       ] }],
       createdAt: { gte: earliest, lte: now },
       OR: [{ nextAttemptAt: null }, { nextAttemptAt: { lte: now } }],
+      winnerMarket: { status: "live", integrityStatus: "verified",
+        marketType: "winner" },
       preset: {
         enabled: true, selfOnly: true,
         OR: [{ untilOut: true }, { gamesRemaining: { gt: 0 } }],
-        user: { walletAddress: { not: null } },
+        satchelAutoSpendConsents: { some: {
+          signedAt: { not: null }, revokedAt: null, spendExpiresAt: { gt: now },
+        } },
+        user: { walletAddress: { not: null },
+          satchelFundedBalance: { is: { OR: [
+            { availableUwolo: { gt: BigInt(0) } },
+            { reservedUwolo: { gt: BigInt(0) } },
+          ] } },
+        },
       },
     },
     orderBy: [{ createdAt: "asc" }, { id: "asc" }],
