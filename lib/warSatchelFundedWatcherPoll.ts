@@ -10,6 +10,7 @@
  * route, cron registration, server action or client-exposed webhook.
  */
 import type { PrismaClient } from "@/lib/generated/prisma";
+import { requireSatchelFinancialBridge } from "./warSatchelFinancialBridgeHold.ts";
 import {
   executeFundedMechaTicketBatch,
   type IsolatedSatchelSigner,
@@ -24,6 +25,9 @@ export type FundedMechaWatcherPoll = Readonly<{
 
 const MAX_BATCH=25;
 function guarded(){
+  // A collection read is already an operational act. Do not consult the
+  // funded queue until source authority has independently been released.
+  requireSatchelFinancialBridge();
   if (process.env.WAR_SATCHEL_LIVE_EXECUTOR_ENABLED !== "true" ||
       process.env.WAR_SATCHEL_FUNDED_LEDGER_ENABLED !== "true" ||
       process.env.WAR_SATCHEL_FINANCIAL_OPERATOR_ATTESTED !== "true" ||
