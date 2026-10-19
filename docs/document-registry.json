@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "4deb0595a3e4ae4d177a36def9d92752f1b45f288035cb09e5814dc54b05d3a2",
+      "sha256": "035a2e8777f86592601616cb50fad6792c9c3e4d2041b50ec3cda997d8b571a7",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "b8c0d16f5efb782fbe5de3f1188dbb3febb661b89a9f8bbdd73eeb9a45a8b6ca",
+      "sha256": "38d04eed0c22fad487ee23fc4f981fed1f511c93f7d70cdf2591b5a106bfc7ba",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "fix/20261018-satchel-balance-hard-hold",
-    "commit": "f29efda5e2699af0d99cbbbd3c1e5f04c921fee7"
+    "branch": "fix/20261018-satchel-unified-funded-outbox",
+    "commit": "7725b00e63c00ef396209658c4c679e4baf078e4"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
