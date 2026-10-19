@@ -2,13 +2,17 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getPrisma } from "@/lib/prisma";
 import { getSessionUid } from "@/lib/session";
+import { satchelFinancialBridgeReady } from "@/lib/warSatchelFinancialBridgeHold";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const H = { "Cache-Control": "private, no-store" };
 
 export async function GET(request: NextRequest) {
-  const activated = process.env.WAR_SATCHEL_FUNDED_LEDGER_ENABLED === "true" &&
+  // Even a read-only balance must not claim a certified ledger when the
+  // immutable custody release interlock is active.
+  const activated = satchelFinancialBridgeReady() &&
+    process.env.WAR_SATCHEL_FUNDED_LEDGER_ENABLED === "true" &&
     process.env.WAR_SATCHEL_FINANCIAL_OPERATOR_ATTESTED === "true";
   // New financial tables are not installed in production until the explicit
   // seven-file migration frontier is approved. Do not query a missing table.
