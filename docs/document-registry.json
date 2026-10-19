@@ -294,7 +294,7 @@
       "review_interval_days": 30,
       "reviewed_at": "2026-10-14",
       "sensitivity": "internal",
-      "sha256": "693797c6484037a7e5b4e174841267e5d582113ffdb7f6e6392808083f5bfbbf",
+      "sha256": "fab3f38bb146bb37096e9a415768d0505fca3b4b57ec3e85fd7c0e59008d1c36",
       "source_of_truth": "git",
       "status": "active",
       "systems": [
@@ -639,7 +639,7 @@
       "review_interval_days": 0,
       "reviewed_at": "2026-07-26",
       "sensitivity": "internal",
-      "sha256": "6115e762ae2b59e788212df0a09dce7e0d0afec6d260e38b071e97b087c7b8d7",
+      "sha256": "eee926fd78b16141500caba779d65f47ec86e280328966e4fd59505927d55b97",
       "source_of_truth": "generated",
       "status": "generated",
       "systems": [
@@ -2116,8 +2116,8 @@
   ],
   "generated_at": "2026-09-05T02:38:00Z",
   "implementation_baseline": {
-    "branch": "security/20261018-satchel-history-secret-scan",
-    "commit": "a278393a07208087f99a179ba49ee8be26f9f679"
+    "branch": "fix/20261018-satchel-bank-stream-bounds",
+    "commit": "8c90f5c90e6123276fe5236b050f8656b8476f41"
   },
   "owner": "aoe2war-web",
   "repo": "app-prodn",
